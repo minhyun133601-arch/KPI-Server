@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KPI 검침 서버 프리뷰</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3f0e8;
+        --panel: #fffdf8;
+        --line: #d7cfbe;
+        --text: #241f17;
+        --muted: #6d6356;
+        --accent: #0f6d62;
+        --accent-strong: #0a4f47;
+        --danger: #b03a2e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, rgba(15, 109, 98, 0.12), transparent 28%),
+          linear-gradient(180deg, #f7f4ed 0%, var(--bg) 100%);
+        color: var(--text);
+        font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+      }
+
+      .shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px 20px 40px;
+      }
+
+      .hero {
+        display: grid;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .hero h1 {
+        margin: 0;
+        font-size: 32px;
+        line-height: 1.1;
+      }
+
+      .hero p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 12px 30px rgba(36, 31, 23, 0.06);
+      }
+
+      .login-panel {
+        display: grid;
+        gap: 14px;
+        padding: 18px;
+        margin-bottom: 18px;
+      }
+
+      .login-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .field input {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 0 12px;
+        font: inherit;
+        background: #fff;
+        color: var(--text);
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .actions button {
+        min-height: 42px;
+        border: 0;
+        border-radius: 999px;
+        padding: 0 16px;
+        font: inherit;
+        cursor: pointer;
+        color: #fff;
+        background: var(--accent);
+      }
+
+      .actions button.secondary {
+        background: var(--accent-strong);
+      }
+
+      .status {
+        min-height: 20px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .status.error {
+        color: var(--danger);
+      }
+
+      .meta {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .meta code {
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: rgba(15, 109, 98, 0.08);
+        color: var(--accent-strong);
+      }
+
+      #meteringHost {
+        min-height: 640px;
+      }
+
+      @media (max-width: 900px) {
+        .login-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .shell {
+          padding-inline: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <section class="hero">
+        <h1>KPI 검침 서버 프리뷰</h1>
+        <p>
+          내부 서버 기준으로 검침 앱을 먼저 연결하는 테스트 페이지다.
+          Server-first load를 우선 시도하고, shared-store가 없으면 preset 데이터로 fallback 한다.
+        </p>
+      </section>
+
+      <section class="panel login-panel">
+        <div class="login-grid">
+          <div class="field">
+            <label for="usernameInput">계정명 / Username</label>
+            <input id="usernameInput" type="text" value="공무환경팀 김민현" autocomplete="username" />
+          </div>
+          <div class="field">
+            <label for="passwordInput">비밀번호 / Password</label>
+            <input id="passwordInput" type="password" autocomplete="current-password" />
+          </div>
+          <div class="field">
+            <label for="serverInfoInput">서버 상태 / Server</label>
+            <input id="serverInfoInput" type="text" value="http://127.0.0.1:3100" disabled />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="loginBtn" type="button">로그인 후 열기</button>
+          <button id="reloadBtn" type="button" class="secondary">다시 불러오기</button>
+        </div>
+
+        <div id="statusText" class="status">로그인 후 검침 앱을 불러올 수 있다.</div>
+        <div id="metaText" class="meta"></div>
+      </section>
+
+      <div id="meteringHost" class="panel"></div>
+    </div>
+
+    <script>
+      window.__SHARED_APP_CONFIG__ = {
+        enabled: true,
+        apiBase: "/api",
+      };
+    </script>
+    <script>
+      const usernameInput = document.getElementById("usernameInput");
+      const passwordInput = document.getElementById("passwordInput");
+      const loginBtn = document.getElementById("loginBtn");
+      const reloadBtn = document.getElementById("reloadBtn");
+      const statusText = document.getElementById("statusText");
+      const metaText = document.getElementById("metaText");
+      const meteringHost = document.getElementById("meteringHost");
+      const serverInfoInput = document.getElementById("serverInfoInput");
+      const routeBase = window.location.pathname.startsWith("/apps/metering")
+        ? "/apps/metering"
+        : "/preview/metering";
+
+      const previewState = {
+        scriptsLoaded: false,
+        mounted: false,
+        embeddedStylesCssText: "",
+      };
+
+      serverInfoInput.value = window.location.origin;
+
+      function setStatus(message, isError = false) {
+        statusText.textContent = message;
+        statusText.classList.toggle("error", Boolean(isError));
+      }
+
+      function setMeta(parts) {
+        metaText.innerHTML = "";
+        parts.filter(Boolean).forEach((part) => {
+          const code = document.createElement("code");
+          code.textContent = part;
+          metaText.appendChild(code);
+        });
+      }
+
+      function loadScript(src) {
+        return new Promise((resolve, reject) => {
+          const existing = document.querySelector(`script[data-preview-src="${src}"]`);
+          if (existing) {
+            if (existing.dataset.loaded === "true") {
+              resolve();
+              return;
+            }
+            existing.addEventListener("load", () => resolve(), { once: true });
+            existing.addEventListener("error", () => reject(new Error(`script_load_failed:${src}`)), { once: true });
+            return;
+          }
+
+          const script = document.createElement("script");
+          script.src = src;
+          script.async = false;
+          script.dataset.previewSrc = src;
+          script.addEventListener("load", () => {
+            script.dataset.loaded = "true";
+            resolve();
+          }, { once: true });
+          script.addEventListener("error", () => reject(new Error(`script_load_failed:${src}`)), { once: true });
+          document.head.appendChild(script);
+        });
+      }
+
+      async function ensureEmbeddedStylesCssText() {
+        if (previewState.embeddedStylesCssText) {
+          return previewState.embeddedStylesCssText;
+        }
+
+        const response = await fetch(`${routeBase}/assets/embedded.css`, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("embedded_styles_load_failed");
+        }
+
+        previewState.embeddedStylesCssText = await response.text();
+        return previewState.embeddedStylesCssText;
+      }
+
+      async function loginWithCredentials() {
+        const username = String(usernameInput.value || "").trim();
+        const password = String(passwordInput.value || "").trim();
+        if (!username || !password) {
+          throw new Error("username_and_password_required");
+        }
+
+        const loginResponse = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+          body: JSON.stringify({ username, password }),
+        });
+
+        const loginPayload = await loginResponse.json().catch(() => null);
+        if (!loginResponse.ok || !loginPayload?.ok) {
+          throw new Error(loginPayload?.error || "login_failed");
+        }
+
+        return loginPayload.user || null;
+      }
+
+      async function getCurrentUser() {
+        const meResponse = await fetch("/api/auth/me", { cache: "no-store" });
+        if (!meResponse.ok) {
+          return null;
+        }
+
+        const mePayload = await meResponse.json().catch(() => null);
+        return mePayload?.user || null;
+      }
+
+      async function fetchSharedStore() {
+        const response = await fetch("/api/shared-store", { cache: "no-store" });
+        if (response.status === 404) {
+          return null;
+        }
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok) {
+          throw new Error(payload?.error || "shared_store_load_failed");
+        }
+        return payload;
+      }
+
+      async function ensureMeteringScripts(sharedPayload) {
+        await loadScript(`${routeBase}/assets/preset-entry-data.js`);
+
+        if (sharedPayload?.store && typeof sharedPayload.store === "object") {
+          window.__LOCAL_APP_STORE__ = sharedPayload.store;
+        }
+
+        await loadScript(`${routeBase}/assets/template.js`);
+        await loadScript(`${routeBase}/assets/app.js`);
+        previewState.scriptsLoaded = true;
+      }
+
+      async function mountMetering(sharedPayload, user) {
+        if (!window.KpiMeteringApp || typeof window.KpiMeteringApp.mount !== "function") {
+          throw new Error("metering_mount_api_missing");
+        }
+
+        if (previewState.mounted && typeof window.KpiMeteringApp.unmount === "function") {
+          await window.KpiMeteringApp.unmount({ clearHost: true });
+          previewState.mounted = false;
+        }
+
+        await window.KpiMeteringApp.mount(meteringHost, {
+          assetBaseUrl: `${routeBase}/assets/`,
+          embeddedStylesCssText: previewState.embeddedStylesCssText,
+        });
+        previewState.mounted = true;
+
+        const metaParts = [
+          user?.username ? `user:${user.username}` : "",
+          sharedPayload?.meta?.version ? `shared-store:v${sharedPayload.meta.version}` : "shared-store:fallback",
+          sharedPayload?.meta?.updatedAt ? `updated:${sharedPayload.meta.updatedAt}` : "updated:preset",
+        ];
+        setMeta(metaParts);
+      }
+
+      async function openMetering() {
+        setStatus("로그인과 shared-store를 확인하는 중...");
+
+        try {
+          let user = await getCurrentUser();
+          if (!user) {
+            user = await loginWithCredentials();
+          }
+          const sharedPayload = await fetchSharedStore();
+          setStatus("검침 앱 자산을 불러오는 중...");
+          await ensureEmbeddedStylesCssText();
+          await ensureMeteringScripts(sharedPayload);
+          setStatus("검침 앱을 마운트하는 중...");
+          await mountMetering(sharedPayload, user);
+          setStatus("검침 앱 로드 완료");
+        } catch (error) {
+          console.error(error);
+          setStatus(`프리뷰 로드 실패: ${error.message || error}`, true);
+        }
+      }
+
+      loginBtn.addEventListener("click", () => {
+        void openMetering();
+      });
+
+      reloadBtn.addEventListener("click", () => {
+        void openMetering();
+      });
+
+      async function tryAutoOpen() {
+        const user = await getCurrentUser();
+        if (!user) {
+          setStatus("세션이 없으면 계정명과 비밀번호를 넣고 로그인 후 열기를 누르세요.");
+          setMeta([`route:${routeBase}`, `server:${window.location.origin}`]);
+          return;
+        }
+
+        void openMetering();
+      }
+
+      window.addEventListener("load", () => {
+        void tryAutoOpen();
+      });
+    </script>
+  </body>
+</html>

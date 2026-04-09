@@ -1,0 +1,18 @@
+# Legacy internal server runtime state
+작업내역/internal-server/data/*
+!작업내역/internal-server/data/.gitkeep
+작업내역/internal-server/files/*
+!작업내역/internal-server/files/.gitkeep
+작업내역/internal-server/logs/*
+!작업내역/internal-server/logs/.gitkeep
+
+# Active internal server runtime state
+06_★★★_KPI런타임/internal-server/.env
+06_★★★_KPI런타임/internal-server/var/*
+!06_★★★_KPI런타임/internal-server/var/.gitkeep
+!06_★★★_KPI런타임/internal-server/var/files/.gitkeep
+!06_★★★_KPI런타임/internal-server/var/logs/.gitkeep
+!06_★★★_KPI런타임/internal-server/var/migration-backups/.gitkeep
+!06_★★★_KPI런타임/internal-server/var/backups/.gitkeep
+!06_★★★_KPI런타임/internal-server/var/backups/file-storage/.gitkeep
+!06_★★★_KPI런타임/internal-server/var/backups/runtime-snapshots/.gitkeep

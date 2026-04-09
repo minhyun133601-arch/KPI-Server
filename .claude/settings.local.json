@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find . -type f -name package.json -o -name requirements.txt -o -name pyproject.toml -o -name .env* -o -name docker* -o -name *.sql)",
+      "Bash(find /c/Users/user/Desktop/KPI-kpi/06_★★★_KPI런타임 -type f -name *.js)",
+      "Bash(find /c/Users/user/Desktop/KPI-kpi/01_★★★_팀별내역서 -type f -name *.js)"
+    ]
+  }
+}

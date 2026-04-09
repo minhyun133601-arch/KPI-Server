@@ -1,0 +1,4 @@
+[kpi-internal-server] applied migrations: 001_initial_foundation.sql, 002_operational_hardening_indexes.sql, 002_session_and_access_indexes.sql
+[kpi-internal-server] listening on http://127.0.0.1:3100
+[kpi-internal-server] storage root: C:\Users\kimminhyun\Desktop\KPI-main\KPI-main\06_★★★_KPI런타임\internal-server\var
+[kpi-internal-server] files root: C:\Users\kimminhyun\Desktop\KPI-main\KPI-main\06_★★★_KPI런타임\internal-server\var\files

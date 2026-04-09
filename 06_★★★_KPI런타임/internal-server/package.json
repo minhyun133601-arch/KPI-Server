@@ -1,0 +1,26 @@
+{
+  "name": "kpi-internal-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Internal Node and PostgreSQL baseline for KPI serverization",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "backup:runtime-snapshot": "node src/scripts/backupRuntimeSnapshot.js",
+    "db:migrate": "node src/scripts/migrate.js",
+    "import:portal-data": "node src/scripts/importCurrentPortalData.js",
+    "import:util-production-data": "node src/scripts/importCurrentPortalData.js util_electric_data util_gas_data util_wastewater_data util_production_daily",
+    "migrate:metering-billing-docs": "node src/scripts/migrateMeteringBillingDocuments.js",
+    "sessions:prune": "node src/scripts/pruneExpiredSessions.js",
+    "report:legacy-attachments": "node src/scripts/reportLegacyAttachmentStatus.js",
+    "restore:runtime-snapshot": "node src/scripts/restoreRuntimeSnapshot.js",
+    "seed:work-runtime": "node src/scripts/seedWorkRuntimeBootstrap.js",
+    "seed:metering": "node src/scripts/seedMeteringSharedStore.js",
+    "user:reset-password": "node src/scripts/resetUserPassword.js",
+    "smoke:kpi-root": "node src/scripts/verifyKpiRootStatic.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

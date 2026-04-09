@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \":*)",
+      "Bash(npm install:*)",
+      "Bash(where python:*)",
+      "Bash(where python3:*)",
+      "Bash(where py:*)",
+      "Bash(py -3 -c \"print\\('hello'\\)\")",
+      "Bash(node -e ':*)",
+      "Bash(node)",
+      "Bash(node \"c:/Users/kimminhyun/Desktop/KPI-main/fix-calendar.js\")",
+      "Bash(node \"c:/Users/kimminhyun/Desktop/KPI-main/fix-calendar2.js\")"
+    ]
+  }
+}
