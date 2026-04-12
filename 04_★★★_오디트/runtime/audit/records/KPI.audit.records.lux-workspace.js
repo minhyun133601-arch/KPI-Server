@@ -868,6 +868,16 @@
             const attachmentItem = typeof getAuditLuxYearEvidenceItem === 'function'
                 ? getAuditLuxYearEvidenceItem(dataKey, selectedYear, selectedTeam)
                 : null;
+            const attachmentTargetLabel =
+                Number.isFinite(selectedYear) && selectedTeam
+                    ? `${selectedYear}년 ${selectedTeam}`
+                    : '';
+            const attachmentButtonText = selectedTeam
+                ? `${selectedTeam} ${attachmentItem ? '첨부 교체' : '첨부'}`
+                : '첨부';
+            const attachmentButtonTitle = attachmentTargetLabel
+                ? `${attachmentTargetLabel} 조도 증빙 ${attachmentItem ? '교체' : '첨부'}`
+                : '년도와 팀을 먼저 선택해 주세요.';
             const yearGuide = selectedYear < now.year
                 ? `${selectedYear}년은 1~4분기 모두 입력할 수 있습니다.`
                 : `${now.year}년은 현재 ${now.quarter}분기까지 입력할 수 있습니다.`;
@@ -934,7 +944,13 @@
                                 </div>
                                 <select class="audit-select audit-lux-year-select" onchange="setAuditLuxWorkspaceYear('${dataKey}', this.value)">${yearOptions}</select>
                                 ${getAuditLuxWorkspaceFullscreenButtonHtml()}
-                                <button type="button" class="work-btn" onclick="openAuditLuxAttachmentPicker('${dataKey}')">${attachmentItem ? '첨부 교체' : '첨부'}</button>
+                                <button
+                                    type="button"
+                                    class="work-btn"
+                                    onclick="openAuditLuxAttachmentPicker('${dataKey}')"
+                                    title="${escapeHtml(attachmentButtonTitle)}"
+                                    ${attachmentTargetLabel ? '' : 'disabled'}
+                                >${escapeHtml(attachmentButtonText)}</button>
                                 <input type="file" id="audit-lux-attachment-input-${dataKey}" class="audit-hidden-input" accept="image/*,application/pdf" onchange="handleAuditLuxAttachmentChange('${dataKey}', this)" />
                                 <button
                                     type="button"
@@ -1138,6 +1154,13 @@
         }
 
         function openAuditLuxAttachmentPicker(dataKey) {
+            const { entryForm } = getAuditLuxWorkspaceState(dataKey);
+            const year = Number(entryForm.year);
+            const team = String(entryForm.team || '').trim();
+            if (!Number.isFinite(year) || !team) {
+                alert('년도와 팀을 먼저 선택해 주세요.');
+                return;
+            }
             const input = document.getElementById(`audit-lux-attachment-input-${dataKey}`);
             if (input) input.click();
         }

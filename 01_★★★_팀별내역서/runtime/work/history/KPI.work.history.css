@@ -1408,6 +1408,13 @@
     flex: 1;
 }
 
+.attachment-view-name-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
 .attachment-view-actions {
     display: inline-flex;
     align-items: center;

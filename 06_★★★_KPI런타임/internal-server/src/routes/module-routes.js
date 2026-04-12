@@ -1,4 +1,5 @@
 import { sendJson } from '../lib/http.js';
+import { getModuleRecordPermissionKey } from '../lib/portal-data-registry.js';
 import { findModuleRecord, upsertModuleRecord } from '../repositories/modules.js';
 import {
   assertOpenPermission,
@@ -18,15 +19,37 @@ function getModuleRecordMeta(record) {
   };
 }
 
+function readStoredPermissionKey(record) {
+  const permissionKey = String(record?.permission_key || '').trim();
+  return permissionKey || '';
+}
+
+async function resolveModuleRecordPermissionKey(moduleKey, recordKey, existingRecord = null) {
+  const knownPermissionKey = getModuleRecordPermissionKey(moduleKey, recordKey);
+  if (knownPermissionKey) {
+    return knownPermissionKey;
+  }
+
+  const loadedRecord = existingRecord || (await findModuleRecord(moduleKey, recordKey));
+  return readStoredPermissionKey(loadedRecord);
+}
+
 export async function handleGetModuleRecord(context, moduleKey, recordKey) {
   const { res, auth, url } = context;
-  const permissionKey = serializePermissionKey(url.searchParams.get('permissionKey'));
-  await assertOpenPermission(permissionKey, auth, 'read');
+  void url;
   const record = await findModuleRecord(moduleKey, recordKey);
   if (!record) {
     sendJson(res, 404, { ok: false, error: 'not_found' });
     return;
   }
+
+  const permissionKey = await resolveModuleRecordPermissionKey(moduleKey, recordKey, record);
+  if (!permissionKey) {
+    sendJson(res, 400, { ok: false, error: 'permission_key_unresolved' });
+    return;
+  }
+
+  await assertOpenPermission(permissionKey, auth, 'read');
   sendJson(res, 200, {
     ok: true,
     record
@@ -36,7 +59,15 @@ export async function handleGetModuleRecord(context, moduleKey, recordKey) {
 export async function handleUpsertModuleRecord(context, moduleKey, recordKey) {
   const { req, res, auth } = context;
   const body = await parseBody(req);
-  const permissionKey = serializePermissionKey(body.permissionKey);
+  void body.permissionKey;
+  const existingRecord = await findModuleRecord(moduleKey, recordKey);
+  const permissionKey = await resolveModuleRecordPermissionKey(moduleKey, recordKey, existingRecord);
+  if (!permissionKey) {
+    sendJson(res, 400, { ok: false, error: 'permission_key_unresolved' });
+    return;
+  }
+
+  serializePermissionKey(permissionKey);
   await assertOpenPermission(permissionKey, auth, 'write');
 
   let record;

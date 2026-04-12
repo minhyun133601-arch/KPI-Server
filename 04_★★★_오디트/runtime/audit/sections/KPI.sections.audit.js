@@ -40,7 +40,7 @@
                     viewerMode: 'full-bleed',
                     desc: '조도 점검 및 기록 (분기별)',
                     dataKey: 'audit_lux',
-                    fileName: '04_★★★_오디트/data/current/data_audit_lux.js',
+                    fileName: 'DB record: portal_data/audit_lux',
                     content: `
                         <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
                             <h3 class="text-slate-800 font-semibold text-base">조도 점검 데이터 입력 안내</h3>
@@ -53,7 +53,7 @@
                                 <li>미달 시 개선 조치, 완료 일자 및 확인 결과</li>
                                 <li>측정자, 측정 장비/교정 정보(가능 시)</li>
                             </ul>
-                            <div class="mt-3 text-xs text-slate-500">입력 위치: 04_★★★_오디트/data/current/data_audit_lux.js</div>
+                            <div class="mt-3 text-xs text-slate-500">저장 위치: DB record portal_data/audit_lux</div>
                         </div>
                     `
                 },
@@ -63,7 +63,7 @@
                     color: '#e11d48',
                     desc: '법정 설비 교육/검사 일정 및 법규 관리',
                     dataKey: 'audit_legal_facility',
-                    fileName: '04_★★★_오디트/data/current/data_audit_regulation.js',
+                    fileName: 'DB record: portal_data/audit_regulation',
                     content: `
                         <div class="grid gap-6">
                             <div class="p-4 rounded-xl border border-slate-200 bg-white">
@@ -171,7 +171,7 @@
                                     <li>지적사항, 개선 계획, 완료일 및 재점검 결과</li>
                                     <li>책임 부서/담당자, 검토/승인 정보</li>
                                 </ul>
-                                <div class="mt-3 text-xs text-slate-500">입력 위치: 04_★★★_오디트/data/current/data_audit_regulation.js</div>
+                                <div class="mt-3 text-xs text-slate-500">저장 위치: DB record portal_data/audit_regulation</div>
                             </div>
                         </div>
                     `

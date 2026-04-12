@@ -129,6 +129,11 @@
             let changed = false;
             if (!snapshot || typeof snapshot !== 'object' || !snapshot.teams) return false;
 
+            if (hasUtilMeteringSnapshotData(snapshot) && UTIL_ELECTRIC_DATA.length) {
+                UTIL_ELECTRIC_DATA.length = 0;
+                changed = true;
+            }
+
             Object.entries(UTIL_ELECTRIC_METERING_TEAM_MAP).forEach(([teamName, teamKey]) => {
                 const teamSnapshot = snapshot.teams?.[teamKey];
                 if (!teamSnapshot || typeof teamSnapshot !== 'object') return;
@@ -155,9 +160,10 @@
                 changed = recalculateUtilYearSummaryRows(yearNode.rows) || changed;
             });
 
-            if (window.PortalData?.util_electric_data) {
-                window.PortalData.util_electric_data.teams = UTIL_ELECTRIC_DATA;
-            }
+            syncUtilDatasetPortalData(
+                'util_electric_data',
+                buildUtilDatasetServerPayload('util_electric_data', UTIL_ELECTRIC_DATA)
+            );
             return changed;
         }
 
@@ -180,6 +186,10 @@
 
                 if (changed) {
                     rebuildUtilEntryCollections();
+                    await queueUtilDatasetServerWrite(
+                        'util_electric_data',
+                        buildUtilDatasetServerPayload('util_electric_data', UTIL_ELECTRIC_DATA)
+                    );
                 }
 
                 return changed;
@@ -254,6 +264,7 @@
             writeChain: Promise.resolve(),
             lastErrorMessage: ''
         };
+        const utilDatasetServerPersistenceState = Object.create(null);
 
         function isUtilPlainObject(value) {
             return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -263,6 +274,149 @@
             return isUtilPlainObject(window.__KPI_SERVER_RUNTIME_CONFIG__)
                 ? window.__KPI_SERVER_RUNTIME_CONFIG__
                 : {};
+        }
+
+        function getUtilDatasetServerRuntimeConfig(dataKey) {
+            const runtimeConfig = getKpiServerRuntimeConfig();
+            const utilData = isUtilPlainObject(runtimeConfig.utilData)
+                ? runtimeConfig.utilData
+                : {};
+            const records = isUtilPlainObject(utilData.records)
+                ? utilData.records
+                : {};
+            const record = isUtilPlainObject(records[dataKey])
+                ? records[dataKey]
+                : {};
+            const apiBaseRaw = String(record.apiBase || utilData.apiBase || runtimeConfig.apiBase || '/api').trim();
+            const apiBase = apiBaseRaw.startsWith('/') ? apiBaseRaw : `/${apiBaseRaw.replace(/^\/+/, '')}`;
+            return {
+                enabled: Boolean(utilData.enabled),
+                apiBase,
+                moduleKey: String(record.moduleKey || utilData.moduleKey || 'portal_data').trim() || 'portal_data',
+                recordKey: String(record.recordKey || dataKey).trim() || String(dataKey || '').trim(),
+                permissionKey: String(record.permissionKey || '').trim(),
+                readEnabled: Boolean(record.readEnabled),
+                writeEnabled: Boolean(record.writeEnabled)
+            };
+        }
+
+        function supportsUtilDatasetServerPersistence(dataKey) {
+            const config = getUtilDatasetServerRuntimeConfig(dataKey);
+            return Boolean(window.KpiRuntime?.hasServerAuthority?.())
+                && Boolean(config.enabled)
+                && Boolean(config.writeEnabled)
+                && typeof window.fetch === 'function';
+        }
+
+        function buildUtilDatasetServerRecordEndpoint(dataKey) {
+            const config = getUtilDatasetServerRuntimeConfig(dataKey);
+            return `${config.apiBase.replace(/\/+$/, '')}/modules/${encodeURIComponent(config.moduleKey)}/records/${encodeURIComponent(config.recordKey)}`;
+        }
+
+        function cloneUtilDatasetPayload(value) {
+            try {
+                return JSON.parse(JSON.stringify(value ?? null));
+            } catch (error) {
+                return value ?? null;
+            }
+        }
+
+        function syncUtilDatasetPortalData(dataKey, payload) {
+            window.PortalData = window.PortalData || {};
+            window.PortalData[dataKey] = cloneUtilDatasetPayload(payload);
+        }
+
+        function buildUtilDatasetServerPayload(dataKey, teams) {
+            const currentPayload = isUtilPlainObject(window.PortalData?.[dataKey])
+                ? window.PortalData[dataKey]
+                : {};
+            const currentMeta = isUtilPlainObject(currentPayload.meta)
+                ? currentPayload.meta
+                : {};
+            const fallbackModuleKey = String(dataKey || '').replace(/_data$/i, '').trim() || String(dataKey || '').trim();
+
+            return {
+                ...cloneUtilDatasetPayload(currentPayload),
+                meta: {
+                    moduleKey: String(currentMeta.moduleKey || fallbackModuleKey).trim() || fallbackModuleKey,
+                    moduleName: String(currentMeta.moduleName || fallbackModuleKey).trim() || fallbackModuleKey,
+                    version: Number.isFinite(Number(currentMeta.version)) ? Number(currentMeta.version) : 1,
+                    updatedAt: new Date().toISOString()
+                },
+                teams: cloneUtilDatasetPayload(Array.isArray(teams) ? teams : [])
+            };
+        }
+
+        async function writeUtilDatasetStateToServer(dataKey, payload) {
+            if (!supportsUtilDatasetServerPersistence(dataKey)) {
+                return false;
+            }
+
+            const config = getUtilDatasetServerRuntimeConfig(dataKey);
+            const response = await window.fetch(buildUtilDatasetServerRecordEndpoint(dataKey), {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                cache: 'no-store',
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    permissionKey: config.permissionKey,
+                    payload: cloneUtilDatasetPayload(payload)
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`${dataKey}_write_failed:${response.status}`);
+            }
+
+            const result = await response.json().catch(() => ({}));
+            if (result?.record?.payload) {
+                syncUtilDatasetPortalData(dataKey, result.record.payload);
+            } else {
+                syncUtilDatasetPortalData(dataKey, payload);
+            }
+            return true;
+        }
+
+        function queueUtilDatasetServerWrite(dataKey, payload) {
+            if (!supportsUtilDatasetServerPersistence(dataKey)) {
+                return Promise.resolve(false);
+            }
+
+            const state = utilDatasetServerPersistenceState[dataKey] || (utilDatasetServerPersistenceState[dataKey] = {
+                writeChain: Promise.resolve(true),
+                lastErrorMessage: ''
+            });
+            const snapshot = cloneUtilDatasetPayload(payload);
+            state.writeChain = Promise.resolve(state.writeChain)
+                .catch(() => false)
+                .then(() => writeUtilDatasetStateToServer(dataKey, snapshot))
+                .catch((error) => {
+                    state.lastErrorMessage = `${dataKey} server write failed`;
+                    console.error(state.lastErrorMessage, error);
+                    return false;
+                });
+            return state.writeChain;
+        }
+
+        function hasUtilMeteringSnapshotData(snapshot) {
+            if (!snapshot || typeof snapshot !== 'object' || !snapshot.teams || typeof snapshot.teams !== 'object') {
+                return false;
+            }
+
+            return Object.values(snapshot.teams).some((teamSnapshot) => {
+                if (!teamSnapshot || typeof teamSnapshot !== 'object') {
+                    return false;
+                }
+                return Object.values(teamSnapshot).some((monthData) => {
+                    if (!monthData || typeof monthData !== 'object') {
+                        return false;
+                    }
+                    return normalizeUtilMetricValue(monthData.usage) !== null
+                        || normalizeUtilMetricValue(monthData.cost) !== null;
+                });
+            });
         }
 
         function getUtilProductionServerRuntimeConfig() {
@@ -394,6 +548,11 @@
             }
         }
 
+        function getUtilProductionUpdatedAtValue(value) {
+            const parsed = Date.parse(String(value || ''));
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
         function applyUtilProductionDailyState(normalized) {
             if (!normalized || typeof normalized !== 'object') return;
             UTIL_PRODUCTION_DAILY_STATE.meta = normalized.meta;
@@ -413,6 +572,41 @@
             } catch (error) {
                 // ignore local cache write failures
             }
+        }
+
+        async function migrateLocalUtilProductionDailyToServer() {
+            if (!supportsUtilProductionServerPersistence()) {
+                return false;
+            }
+
+            const localSnapshot = readUtilProductionDailyLocalSnapshot();
+            if (!isUtilPlainObject(localSnapshot) || !Object.keys(localSnapshot).length) {
+                return false;
+            }
+
+            const portalSnapshot = (window.PortalData && isUtilPlainObject(window.PortalData.util_production_daily))
+                ? window.PortalData.util_production_daily
+                : null;
+            const normalizedLocal = normalizeUtilProductionDailyState(localSnapshot);
+            const normalizedPortal = normalizeUtilProductionDailyState(portalSnapshot);
+            const hasPortalSnapshot = isUtilPlainObject(portalSnapshot) && Object.keys(portalSnapshot).length > 0;
+            const localUpdatedAt = getUtilProductionUpdatedAtValue(normalizedLocal?.meta?.updatedAt);
+            const portalUpdatedAt = getUtilProductionUpdatedAtValue(normalizedPortal?.meta?.updatedAt);
+
+            if (hasPortalSnapshot && localUpdatedAt > 0 && portalUpdatedAt >= localUpdatedAt) {
+                return false;
+            }
+
+            const saved = await queueUtilProductionDailyServerWrite(normalizedLocal);
+            if (!saved) {
+                return false;
+            }
+
+            applyUtilProductionDailyState(normalizedLocal);
+            window.dispatchEvent(new CustomEvent('util-production-data-updated', {
+                detail: { source: 'local-to-server-auto', synced: true }
+            }));
+            return true;
         }
 
         async function publishLocalUtilProductionDailyToServer() {
@@ -467,6 +661,7 @@
             supportsUtilProductionServerPersistence,
             supportsUtilProductionArchiveServerPersistence,
             queueUtilProductionDailyServerWrite,
+            migrateLocalUtilProductionDailyToServer,
             publishLocalUtilProductionDailyToServer,
             get lastErrorMessage() {
                 return utilProductionServerPersistenceState.lastErrorMessage;
@@ -500,10 +695,41 @@
             return yearNode;
         }
 
+        function buildUtilGasExistingCostLookup() {
+            const lookup = new Map();
+            (Array.isArray(UTIL_GAS_DATA) ? UTIL_GAS_DATA : []).forEach((teamNode) => {
+                const teamName = String(teamNode?.name || '').trim();
+                if (!teamName || !Array.isArray(teamNode?.years)) return;
+                teamNode.years.forEach((yearNode) => {
+                    const yearValue = Number(yearNode?.label);
+                    if (!Number.isFinite(yearValue) || !Array.isArray(yearNode?.rows)) return;
+                    yearNode.rows.forEach((row, index) => {
+                        const monthNumber = index + 1;
+                        if (monthNumber < 1 || monthNumber > 12) return;
+                        const costValue = normalizeUtilMetricValue(row?.cost);
+                        if (costValue === null) return;
+                        lookup.set(`${teamName}::${yearValue}::${monthNumber}`, costValue);
+                    });
+                });
+            });
+            return lookup;
+        }
+
+        function getUtilGasExistingCost(lookup, teamName, yearValue, monthNumber) {
+            if (!(lookup instanceof Map)) return null;
+            return lookup.get(`${teamName}::${yearValue}::${monthNumber}`) ?? null;
+        }
+
         function applyUtilGasMeteringSnapshot(snapshot) {
             const touchedYearNodes = new Set();
             let changed = false;
             if (!snapshot || typeof snapshot !== 'object' || !snapshot.teams) return false;
+            const existingCostLookup = buildUtilGasExistingCostLookup();
+
+            if (hasUtilMeteringSnapshotData(snapshot) && UTIL_GAS_DATA.length) {
+                UTIL_GAS_DATA.length = 0;
+                changed = true;
+            }
 
             UTIL_GAS_METERING_TEAM_NAMES.forEach(teamName => {
                 const teamSnapshot = snapshot.teams?.[teamName];
@@ -525,8 +751,11 @@
                     const monthRow = ensureUtilMonthRow(yearNode.rows, monthNumber);
                     touchedYearNodes.add(yearNode);
                     changed = setUtilMetricValue(monthRow, 'usage', usageValue) || changed;
-                    if (nextCostValue !== null) {
-                        changed = setUtilMetricValue(monthRow, 'cost', nextCostValue) || changed;
+                    const costValue = nextCostValue !== null
+                        ? nextCostValue
+                        : getUtilGasExistingCost(existingCostLookup, teamName, yearValue, monthNumber);
+                    if (costValue !== null) {
+                        changed = setUtilMetricValue(monthRow, 'cost', costValue) || changed;
                     }
                 });
             });
@@ -535,9 +764,10 @@
                 changed = recalculateUtilYearSummaryRows(yearNode.rows) || changed;
             });
 
-            if (window.PortalData?.util_gas_data) {
-                window.PortalData.util_gas_data.teams = UTIL_GAS_DATA;
-            }
+            syncUtilDatasetPortalData(
+                'util_gas_data',
+                buildUtilDatasetServerPayload('util_gas_data', UTIL_GAS_DATA)
+            );
             return changed;
         }
 
@@ -560,6 +790,10 @@
 
                 if (changed) {
                     rebuildUtilEntryCollections();
+                    await queueUtilDatasetServerWrite(
+                        'util_gas_data',
+                        buildUtilDatasetServerPayload('util_gas_data', UTIL_GAS_DATA)
+                    );
                 }
 
                 return changed;

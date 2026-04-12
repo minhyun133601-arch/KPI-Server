@@ -147,12 +147,14 @@
                     const previousStartDay = UtilProductionState.startDay;
                     UtilProductionState.startDay = cycleStartDay;
                     const startDayChanged = previousStartDay !== UtilProductionState.startDay;
-                    const result = mergeUtilProductionExtractorRows(rows, {
-                        fallbackTeam: UtilProductionBridgeState.activeTeam
+                    const result = await mergeUtilProductionExtractorRows(rows, {
+                        fallbackTeam: UtilProductionBridgeState.activeTeam,
+                        requireServerSave: true
                     });
+                    let serverSaved = !!result.serverSaved;
                     const archiveResult = { savedCount: 0, failedCount: 0, unsupported: false };
                     if (startDayChanged && result.addedCount === 0 && result.patchedCount === 0) {
-                        persistUtilProductionDailyState();
+                        serverSaved = await persistUtilProductionDailyState({ requireServer: true });
                     }
                     const failedNotice = failedFileNames.length
                         ? `, 형식 오류 제외 ${failedFileNames.length.toLocaleString('ko-KR')}개 (${failedFileNames.join(', ')})`
@@ -160,13 +162,15 @@
                     const patchedNotice = result.patchedCount > 0
                         ? `, 수율/CAPA/가동률 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
                         : '';
-                    const statusText = `기입 완료: 추가 ${result.addedCount.toLocaleString('ko-KR')}건, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`;
+                    const serverNotice = serverSaved ? ', DB 저장 완료' : '';
+                    const statusText = `기입 완료: 추가 ${result.addedCount.toLocaleString('ko-KR')}건, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}${serverNotice}`;
                     setUtilProductionExtractorStatus(statusText, result.addedCount === 0 && result.patchedCount === 0);
                     if (typeof UtilProductionBridgeState.onApplied === 'function') {
                         UtilProductionBridgeState.onApplied({
                             ...result,
                             failedFiles,
                             archiveResult,
+                            serverSaved,
                             unlinkedExcludedCount: 0
                         });
                     }
@@ -180,6 +184,7 @@
                             addedCount: result.addedCount,
                             skippedCount: result.skippedCount,
                             failedFiles,
+                            serverSaved,
                             archivedCount: 0,
                             archiveFailedCount: 0,
                             archiveUnsupported: false,

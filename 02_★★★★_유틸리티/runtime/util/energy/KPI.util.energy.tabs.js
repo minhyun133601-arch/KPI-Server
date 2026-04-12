@@ -402,8 +402,9 @@
                                     productionUploadInput.disabled = true;
                                     const activeTeam = combinedSection.dataset.activeTeam || data[0]?.name || '';
                                     const parsed = await parseUtilProductionExcelFiles(files, activeTeam);
-                                    const result = mergeUtilProductionExtractorRows(parsed.rows, {
-                                        fallbackTeam: activeTeam
+                                    const result = await mergeUtilProductionExtractorRows(parsed.rows, {
+                                        fallbackTeam: activeTeam,
+                                        requireServerSave: true
                                     });
                                     const addedTeams = Array.isArray(result.addedTeams) ? result.addedTeams.filter(Boolean) : [];
                                     const failedFileNames = Array.isArray(parsed.failedFiles)
@@ -423,7 +424,8 @@
                                     const patchedNotice = result.patchedCount > 0
                                         ? `\n수율/CAPA/가동률 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
                                         : '';
-                                    alert(`기입 완료: 추가 ${result.addedCount.toLocaleString('ko-KR')}건, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`);
+                                    const serverNotice = result.serverSaved ? '\nDB 저장 완료' : '';
+                                    alert(`기입 완료: 추가 ${result.addedCount.toLocaleString('ko-KR')}건, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}${serverNotice}`);
                                 } catch (error) {
                                     alert(`기입 실패: ${error?.message || '알 수 없는 오류'}`);
                                 } finally {

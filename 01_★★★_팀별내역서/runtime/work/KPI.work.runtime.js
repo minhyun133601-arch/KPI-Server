@@ -24,6 +24,14 @@
         renderLastModified();
     });
 
+    runtime.registerBootTask('work-local-record-migration', () => {
+        void window.KpiWorkServerRuntime?.migrateLocalWorkDataToServer?.();
+    });
+
+    runtime.registerBootTask('work-history-local-migration', () => {
+        void window.KpiWorkHistory?.migrateLocalBackupToServer?.();
+    });
+
     runtime.registerSaveProvider('work-team-calendar-save', () => null);
 
     runtime.registerSaveProvider('work-history-save', (context = {}) => {

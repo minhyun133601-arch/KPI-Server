@@ -18,158 +18,20 @@ const LEGACY_STICK_FIELD_IDS = [
   "field_stick_after_2025_08",
 ];
 const EQUIPMENT_TITLE_DOUBLE_CLICK_DELAY_MS = 320;
-const HISTORICAL_ENTRY_VALUE_FIXES = {
-  "2024-01-01": {
-    field_03: "3701.30",
-    field_11: "33915.90",
-    field_14: "3043.60",
-    field_18: "8684.00",
-  },
-  "2024-02-01": {
-    field_03: "3802.00",
-    field_11: "35235.10",
-    field_14: "4429.90",
-    field_18: "8918.10",
-  },
-  "2025-01-01": {
-    field_18: "10725.70",
-  },
-  "2025-03-28": {
-    field_10: "33060.6",
-  },
-  "2025-04-01": {
-    field_10: "33060.6",
-  },
-  "2025-04-02": {
-    field_10: "33060.6",
-  },
-  "2025-04-03": {
-    field_10: "33060.6",
-  },
-  "2025-04-04": {
-    field_10: "33060.6",
-  },
-  "2025-04-07": {
-    field_10: "33060.6",
-  },
-  "2025-04-08": {
-    field_10: "33060.6",
-  },
-  "2025-04-09": {
-    field_10: "33060.6",
-  },
-  "2025-04-10": {
-    field_10: "33060.6",
-  },
-  "2025-04-11": {
-    field_10: "33060.6",
-  },
-  "2025-04-14": {
-    field_10: "33060.6",
-  },
-  "2025-04-15": {
-    field_10: "33060.6",
-  },
-  "2025-04-16": {
-    field_10: "33060.6",
-  },
-  "2025-04-17": {
-    field_10: "33060.6",
-  },
-  "2025-04-18": {
-    field_10: "33060.6",
-  },
-  "2025-04-21": {
-    field_10: "33060.6",
-  },
-  "2025-04-22": {
-    field_10: "33060.6",
-  },
-  "2025-04-23": {
-    field_10: "33060.6",
-  },
-  "2025-04-24": {
-    field_10: "33060.6",
-  },
-  "2025-04-25": {
-    field_10: "33060.6",
-  },
-  "2025-04-28": {
-    field_10: "33060.6",
-  },
-  "2025-04-29": {
-    field_10: "33060.6",
-  },
-  "2025-04-30": {
-    field_10: "33060.6",
-  },
-  "2025-06-02": {
-    field_22: "4410.32",
-  },
-  "2025-08-04": {
-    field_23: "7504.44",
-  },
-  "2025-12-02": {
-    field_18: "12648.7",
-  },
-};
-const ENTRY_VALUE_CORRECTIONS = {
-  "2025-04-09": { field_05: "13764.7" },
-  "2025-04-10": { field_05: "13766.8" },
-  "2025-04-17": { field_23: "7111.70" },
-  "2025-04-18": { field_23: "7115.11" },
-  "2025-05-02": { field_03: "5032.0" },
-  "2025-05-07": { field_03: "5034.8" },
-  "2025-05-12": { field_17: "65336.4" },
-  "2025-05-13": { field_17: "65354.7" },
-  "2025-05-27": { field_17: "65612.6" },
-  "2025-05-28": { field_17: "65633.1" },
-  "2025-06-04": { field_17: "65758.8" },
-  "2025-06-09": { field_17: "65848.6" },
-  "2025-07-07": { field_17: "66405.7" },
-  "2025-07-08": { field_17: "66426.0" },
-  "2025-07-09": { field_17: "66446.3" },
-  "2025-07-10": { field_17: "66466.7" },
-  "2025-08-05": { field_03: "5206.0", field_19: "84346.2" },
-  "2025-08-06": { field_03: "5208.5", field_19: "84375.9" },
-  "2025-08-25": { field_14: "24987.7" },
-  "2025-08-26": { field_14: "25007.5" },
-  "2025-09-08": { field_21: "6632.77", field_24: "18988.10" },
-  "2025-09-09": { field_21: "6637.33", field_24: "18999.99" },
-  "2025-09-19": { field_05: "14056.6", field_09: "20281.7" },
-  "2025-09-22": { field_05: "14062.4", field_09: "20286.6" },
-  "2025-09-23": { field_05: "14064.3", field_09: "20288.2" },
-  "2025-09-24": { field_05: "14066.3", field_09: "20289.9" },
-  "2025-09-25": { field_05: "14068.2", field_09: "20291.5" },
-  "2025-09-26": { field_05: "14070.1", field_09: "20293.1" },
-  "2025-11-05": { field_18: "12522.5" },
-  "2025-11-06": { field_18: "12526.3" },
-  "2025-11-10": { field_21: "6858.72", field_24: "19604.68" },
-  "2025-11-11": { field_21: "6861.92", field_24: "19613.31" },
-  "2025-11-21": { field_17: "69026.5" },
-  "2025-11-24": { field_17: "69081.6" },
-  "2026-01-05": { field_26: "2036.21" },
-  "2026-01-06": { field_26: "2037.19" },
-  "2026-01-23": { field_17: "70313.3" },
-  "2026-01-26": { field_17: "70376.4" },
-  "2026-01-28": { field_16: "1669.89", field_19: "88462.7" },
-  "2026-01-29": { field_16: "1680.92", field_19: "88489.0" },
-  "2026-01-30": { field_18: "13065.3" },
-  "2026-03-19": { field_12: "42697.4" },
-};
-const LOCAL_STORE_FILE_NAME = "preset-entry-data.js";
+const HISTORICAL_ENTRY_VALUE_FIXES = {};
+const ENTRY_VALUE_CORRECTIONS = {};
+const LOCAL_STORE_FILE_NAME = "";
 const LOCAL_FILE_HANDLE_DB_NAME = "monthly-electric-local-file";
 const LOCAL_FILE_HANDLE_STORE_NAME = "handles";
-const LOCAL_FILE_HANDLE_KEY = "preset-entry-data";
+const LOCAL_FILE_HANDLE_KEY = "metering-local-store-retired";
 const LOCAL_BILLING_DOCUMENT_DIRECTORY_HANDLE_KEY = "billing-document-directory";
-const ENABLE_LOCAL_FILE_OVERWRITE_PERSISTENCE = true;
+const ENABLE_LOCAL_FILE_OVERWRITE_PERSISTENCE = false;
 const ENABLE_SHARED_SERVER_WRITE = true;
 const SHARED_APP_CONFIG = resolveSharedAppConfig();
 const LEGACY_BILLING_DOCUMENT_DIRECTORY_NAME = "청구서";
 const BILLING_DOCUMENT_DIRECTORY_NAMES = Object.freeze({
-  electric: "전기 청구서",
-  gas: "가스 청구서",
-  production: "생산량 문서",
+  electric: "유틸리티/전기 청구서",
+  gas: "유틸리티/가스 청구서",
 });
 const BILLING_DOCUMENT_ACCEPT = ".pdf,application/pdf";
 const GAS_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY = "gas_bukjeong";
@@ -359,7 +221,7 @@ const RESOURCE_DISPLAY_META = Object.freeze({
     equipmentItemLabel: "검침 항목",
   }),
   [RESOURCE_TYPES.PRODUCTION]: Object.freeze({
-    billingDocumentDirectory: BILLING_DOCUMENT_DIRECTORY_NAMES.production,
+    billingDocumentDirectory: "",
     eyebrow: "Monthly Production Sheet",
     title: "월간 생산량 기입 시트",
     teamEntrySectionTitle: "팀별 생산량",
@@ -1498,7 +1360,24 @@ function getAcceptedBillingDocumentDirectoryNames(resourceType = getCurrentResou
   if (isElectricResourceType(resourceType)) {
     nextNames.push(LEGACY_BILLING_DOCUMENT_DIRECTORY_NAME);
   }
-  return nextNames.filter((name, index, list) => list.indexOf(name) === index);
+  return nextNames.filter((name, index, list) => name && list.indexOf(name) === index);
+}
+
+function getBillingDocumentDirectorySegments(directoryName) {
+  return normalizeRelativeFilePath(directoryName).split("/").filter(Boolean);
+}
+
+function getBillingDocumentDirectoryLeafName(directoryName) {
+  const segments = getBillingDocumentDirectorySegments(directoryName);
+  return segments[segments.length - 1] || normalizeText(directoryName);
+}
+
+async function getNestedDirectoryHandle(rootHandle, directorySegments, options = {}) {
+  let currentHandle = rootHandle;
+  for (const segment of directorySegments) {
+    currentHandle = await currentHandle.getDirectoryHandle(segment, options);
+  }
+  return currentHandle;
 }
 
 function supportsTeamModeForResource(resourceType = getCurrentResourceType()) {
@@ -4694,7 +4573,8 @@ function getBillingDocumentFileNameFromPath(relativePath) {
 }
 
 function buildBillingDocumentRelativePath(fileName, resourceType = getCurrentResourceType()) {
-  return `${getBillingDocumentDirectoryName(resourceType)}/${fileName}`;
+  const directoryName = getBillingDocumentDirectoryName(resourceType);
+  return directoryName ? `${directoryName}/${fileName}` : fileName;
 }
 
 function normalizeBillingDocumentRelativePath(
@@ -5104,8 +4984,18 @@ async function uploadBillingDocument(
   if (!isPdfBillingFile(file)) {
     throw new Error("billing_document_pdf_only");
   }
-  const base64Data = await readFileAsBase64(file);
   const resourceType = getCurrentResourceType();
+  if (!supportsBillingSettlementForResource(resourceType)) {
+    throw new Error("billing_document_resource_unsupported");
+  }
+  const base64Data = await readFileAsBase64(file);
+  const managedFileName = buildBillingDocumentFileName(
+    monthValue,
+    file?.name,
+    file?.type,
+    resourceType,
+    scopeKey
+  );
   if (!supportsSharedServerPersistence()) {
     return uploadBillingDocumentToLocalStore(file, monthValue, base64Data, scopeKey);
   }
@@ -5119,7 +5009,8 @@ async function uploadBillingDocument(
       monthValue,
       resourceType,
       scopeKey,
-      fileName: file?.name || "",
+      fileName: managedFileName,
+      storageFolder: getBillingDocumentDirectoryName(resourceType),
       mimeType: file?.type || "",
       base64Data,
     }),
@@ -12787,8 +12678,7 @@ function formatBillingDocumentMonthLabel(monthValue) {
     return "";
   }
 
-  const [year, month] = normalizedMonth.split("-");
-  return `${year.slice(-2)}.${month}`;
+  return normalizedMonth;
 }
 
 function getBillingDocumentResourceLabel(resourceType = getCurrentResourceType()) {
@@ -12810,6 +12700,10 @@ function getBillingDocumentLabel(
 ) {
   const monthLabel = formatBillingDocumentMonthLabel(monthValue);
   const resourceLabel = getBillingDocumentResourceLabel(resourceType);
+  if (isProductionResourceType(resourceType)) {
+    return [monthLabel, resourceLabel].filter(Boolean).join(" ") || resourceLabel;
+  }
+
   const normalizedScopeKey = normalizeText(scopeKey);
   const hasScopedElectricLabel =
     normalizedScopeKey &&
@@ -12819,9 +12713,7 @@ function getBillingDocumentLabel(
   const scopeLabel = hasScopedElectricLabel
     ? getBillingSettlementScopeLabel(normalizedScopeKey, resourceType)
     : "";
-  const label = hasScopedElectricLabel
-    ? [monthLabel, scopeLabel].filter(Boolean).join(" ")
-    : [monthLabel, resourceLabel, scopeLabel].filter(Boolean).join(" ");
+  const label = [monthLabel, resourceLabel, scopeLabel, "청구서"].filter(Boolean).join(" ");
   return label || resourceLabel;
 }
 
@@ -14997,27 +14889,34 @@ function loadStore() {
   try {
     const presetLocalStore = getPresetLocalStore();
     const currentStore = safeParse(safeStorageGetItem(STORAGE_KEY));
+    const previousStore = safeParse(safeStorageGetItem(PREVIOUS_STORAGE_KEY));
+    const legacyEntries = safeParse(safeStorageGetItem(LEGACY_STORAGE_KEY));
+    const legacyStore = isPlainObject(legacyEntries)
+      ? {
+          mode: MODES.EQUIPMENT,
+          equipmentItems: DEFAULT_EQUIPMENT_ITEMS,
+          equipmentEntries: legacyEntries,
+          teamAssignments: {},
+        }
+      : null;
     if (isPlainObject(presetLocalStore)) {
-      if (shouldUseSharedServerAsAuthority()) {
-        return normalizeStore(presetLocalStore);
-      }
-      if (isPlainObject(currentStore)) {
-        return normalizeStore(mergeCurrentStoreWithPresetLocalStore(currentStore, presetLocalStore));
-      }
-
-      return normalizeStore(presetLocalStore);
+      let mergedStore = presetLocalStore;
+      [legacyStore, previousStore, currentStore]
+        .filter((candidate) => isPlainObject(candidate))
+        .forEach((candidate) => {
+          mergedStore = mergeCurrentStoreWithPresetLocalStore(candidate, mergedStore);
+        });
+      return normalizeStore(mergedStore);
     }
 
     if (isPlainObject(currentStore)) {
       return normalizeStore(currentStore);
     }
 
-    const previousStore = safeParse(safeStorageGetItem(PREVIOUS_STORAGE_KEY));
     if (isPlainObject(previousStore)) {
       return normalizeStore(previousStore);
     }
 
-    const legacyEntries = safeParse(safeStorageGetItem(LEGACY_STORAGE_KEY));
     return normalizeStore({
       mode: MODES.EQUIPMENT,
       equipmentItems: DEFAULT_EQUIPMENT_ITEMS,
@@ -15027,6 +14926,57 @@ function loadStore() {
   } catch (error) {
     return createDefaultStore();
   }
+}
+
+async function migrateLocalStoreToSharedServer() {
+  if (!supportsSharedServerPersistence()) {
+    return false;
+  }
+
+  if (
+    typeof window !== "undefined" &&
+    window.__SHARED_APP_STORE_PRELOAD__ &&
+    typeof window.__SHARED_APP_STORE_PRELOAD__.then === "function"
+  ) {
+    try {
+      await window.__SHARED_APP_STORE_PRELOAD__;
+    } catch (error) {
+      console.warn("Shared metering store preload failed before local migration.", error);
+    }
+  }
+
+  const currentStore = safeParse(safeStorageGetItem(STORAGE_KEY));
+  const previousStore = safeParse(safeStorageGetItem(PREVIOUS_STORAGE_KEY));
+  const legacyEntries = safeParse(safeStorageGetItem(LEGACY_STORAGE_KEY));
+  const hasLocalCandidate =
+    isPlainObject(currentStore) ||
+    isPlainObject(previousStore) ||
+    isPlainObject(legacyEntries);
+  if (!hasLocalCandidate) {
+    return false;
+  }
+
+  const nextStore = loadStore();
+  const serverStore = getPresetLocalStore();
+  const nextSnapshot = JSON.stringify(normalizeStore(nextStore));
+  const serverSnapshot = isPlainObject(serverStore)
+    ? JSON.stringify(normalizeStore(serverStore))
+    : "";
+
+  safeStorageSetItem(STORAGE_KEY, nextSnapshot);
+  if (serverSnapshot && serverSnapshot === nextSnapshot) {
+    return false;
+  }
+
+  const saved = await writeStorePayloadToSharedServer(nextStore);
+  if (!saved) {
+    return false;
+  }
+
+  state.store = normalizeStore(nextStore);
+  window.__LOCAL_APP_STORE__ = JSON.parse(JSON.stringify(state.store));
+  window.__PRESET_ELECTRIC_ENTRIES__ = getElectricPresetEntriesForStore(window.__LOCAL_APP_STORE__);
+  return true;
 }
 
 function normalizeResourceDataset(rawDataset, resourceType) {
@@ -15440,15 +15390,23 @@ async function resolveBillingDocumentDirectoryHandle(
   }
 
   const acceptedDirectoryNames = getAcceptedBillingDocumentDirectoryNames(resourceType);
-  if (acceptedDirectoryNames.includes(candidateHandle.name)) {
-    return candidateHandle;
-  }
-
   for (const directoryName of acceptedDirectoryNames) {
+    const directorySegments = getBillingDocumentDirectorySegments(directoryName);
+    const leafName = getBillingDocumentDirectoryLeafName(directoryName);
+    if (candidateHandle.name === directoryName || candidateHandle.name === leafName) {
+      return candidateHandle;
+    }
+
+    const lookupSegments =
+      directorySegments[0] === candidateHandle.name
+        ? directorySegments.slice(1)
+        : directorySegments;
+    if (lookupSegments.length === 0) {
+      return candidateHandle;
+    }
+
     try {
-      return await candidateHandle.getDirectoryHandle(directoryName, {
-        create: false,
-      });
+      return await getNestedDirectoryHandle(candidateHandle, lookupSegments, { create: false });
     } catch (error) {
       void error;
     }
@@ -18776,6 +18734,7 @@ window.KpiMeteringApp = {
   mount: mountIntegratedMetering,
   unmount: (options) => unmountIntegratedMetering(options),
   manualSave: (options) => performManualSave(options),
+  migrateLocalStoreToSharedServer: () => migrateLocalStoreToSharedServer(),
   getElectricMonthlyTeamSnapshot: (monthValue) => buildElectricMonthlyTeamSnapshot(monthValue),
   getElectricUtilityDatasetSnapshot: () => buildElectricUtilityDatasetSnapshot(),
   getGasUtilityDatasetSnapshot: () => buildGasUtilityDatasetSnapshot(),

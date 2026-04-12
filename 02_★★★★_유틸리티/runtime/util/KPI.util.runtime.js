@@ -28,6 +28,18 @@
         bootUtilGasMeteringSync();
     });
 
+    runtime.registerBootTask('util-metering-local-migration', () => {
+        void window.KpiMeteringBridge?.ensureIntegratedMeteringRuntime?.()
+            ?.then((app) => app?.migrateLocalStoreToSharedServer?.())
+            .catch((error) => {
+                console.warn('[kpi] metering local migration skipped', error);
+            });
+    });
+
+    runtime.registerBootTask('util-production-local-migration', () => {
+        void window.KpiUtilityServerRuntime?.migrateLocalUtilProductionDailyToServer?.();
+    });
+
     runtime.registerSaveProvider('util-shared-save', (context = {}) => {
         if (context.sectionId !== 'util') return null;
 

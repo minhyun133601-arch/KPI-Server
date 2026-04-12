@@ -12,6 +12,51 @@ $logDir = Join-Path $serverDir 'var\logs'
 $stdout = Join-Path $logDir 'server.stdout.log'
 $stderr = Join-Path $logDir 'server.stderr.log'
 
+function Resolve-NodeExecutablePath {
+  $command = Get-Command node -ErrorAction SilentlyContinue
+  if ($command -and $command.Source -and (Test-Path $command.Source)) {
+    return $command.Source
+  }
+
+  $candidatePaths = @(
+    'C:\Program Files\nodejs\node.exe'
+  )
+
+  foreach ($candidatePath in $candidatePaths) {
+    if (Test-Path $candidatePath) {
+      return $candidatePath
+    }
+  }
+
+  $userRoot = 'C:\Users'
+  if (Test-Path $userRoot) {
+    $wingetPackages = Get-ChildItem -Path $userRoot -Directory -ErrorAction SilentlyContinue |
+      ForEach-Object {
+        Join-Path $_.FullName 'AppData\Local\Microsoft\WinGet\Packages'
+      } |
+      Where-Object { Test-Path $_ }
+
+    foreach ($packagesRoot in $wingetPackages) {
+      $packageDirs = Get-ChildItem -Path $packagesRoot -Directory -Filter 'OpenJS.NodeJS.LTS_Microsoft.Winget.Source_*' -ErrorAction SilentlyContinue |
+        Sort-Object FullName
+      foreach ($packageDir in $packageDirs) {
+        $nodeDir = Get-ChildItem -Path $packageDir.FullName -Directory -Filter 'node-*' -ErrorAction SilentlyContinue |
+          Sort-Object Name -Descending |
+          Select-Object -First 1
+        if (-not $nodeDir) {
+          continue
+        }
+        $candidatePath = Join-Path $nodeDir.FullName 'node.exe'
+        if (Test-Path $candidatePath) {
+          return $candidatePath
+        }
+      }
+    }
+  }
+
+  throw 'Node.js executable was not found. Install Node.js or add node.exe to PATH.'
+}
+
 function Resolve-EnvFilePath {
   param(
     [string]$ServerDir,
@@ -77,6 +122,7 @@ function Read-EnvMap {
 
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
+$nodeExecutablePath = Resolve-NodeExecutablePath
 $resolvedEnvFile = Resolve-EnvFilePath -ServerDir $serverDir -Environment $Environment -EnvFile $EnvFile
 $envMap = Read-EnvMap -FilePath $resolvedEnvFile
 $port = 3100
@@ -102,7 +148,7 @@ $previousEnvFile = $env:KPI_ENV_FILE
 try {
   $env:KPI_ENV_FILE = $resolvedEnvFile
   $process = Start-Process `
-    -FilePath node `
+    -FilePath $nodeExecutablePath `
     -ArgumentList 'src/server.js' `
     -WorkingDirectory $serverDir `
     -PassThru `
@@ -122,6 +168,7 @@ Start-Sleep -Seconds 2
 Write-Host "Started KPI internal server."
 Write-Host "Environment: $Environment"
 Write-Host "Env file: $resolvedEnvFile"
+Write-Host "Node: $nodeExecutablePath"
 Write-Host "PID: $($process.Id)"
 Write-Host "Health: http://127.0.0.1:$port/api/health"
 Write-Host "Stdout: $stdout"

@@ -1,7 +1,32 @@
 import fs from 'node:fs/promises';
 import { sendJson } from '../lib/http.js';
 import { deleteDocument, getDocumentFile, saveBase64Document } from '../services/files.js';
-import { assertOpenPermission, normalizeText, parseBody, serializePermissionKey } from './route-context.js';
+import {
+  assertOpenPermission,
+  normalizeText,
+  parseBody,
+  serializePermissionKey,
+  serializeServerUrlPath
+} from './route-context.js';
+
+const SERVER_MANAGED_STORAGE_FOLDER_BY_OWNER_DOMAIN = Object.freeze({
+  'audit.lux.evidence': ['오디트', '조도']
+});
+
+function normalizeUploadMetadata(metadata, ownerDomain) {
+  const normalizedMetadata =
+    metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+      ? { ...metadata }
+      : {};
+  const storageFolder = SERVER_MANAGED_STORAGE_FOLDER_BY_OWNER_DOMAIN[ownerDomain];
+  if (storageFolder) {
+    return {
+      ...normalizedMetadata,
+      storageFolder
+    };
+  }
+  return metadata ?? {};
+}
 
 async function loadDocumentOr404(res, documentId) {
   const loaded = await getDocumentFile(documentId);
@@ -29,27 +54,37 @@ async function sendDocumentBinary(res, loaded, disposition = 'attachment') {
   res.end(data);
 }
 
+function serializeDocumentRecord(record) {
+  return {
+    ...record,
+    file_size_bytes: record.byte_size,
+    preview_url: serializeServerUrlPath(`/api/files/${record.id}/view`),
+    download_url: serializeServerUrlPath(`/api/files/${record.id}/download`)
+  };
+}
+
 export async function handleUploadBase64File(context) {
   const { req, res, auth } = context;
   const body = await parseBody(req);
   const permissionKey = serializePermissionKey(body.permissionKey);
+  const ownerDomain = normalizeText(body.ownerDomain || 'generic');
   await assertOpenPermission(permissionKey, auth, 'write');
 
   const document = await saveBase64Document({
     actorUserId: auth?.user?.id || null,
     permissionKey,
-    ownerDomain: normalizeText(body.ownerDomain || 'generic'),
+    ownerDomain,
     ownerKey: normalizeText(body.ownerKey || 'unassigned'),
     fileCategory: normalizeText(body.fileCategory || 'attachment'),
     originalName: normalizeText(body.originalName || 'file.bin'),
     mimeType: normalizeText(body.mimeType || 'application/octet-stream'),
     base64Data: normalizeText(body.base64Data),
-    metadata: body.metadata ?? {}
+    metadata: normalizeUploadMetadata(body.metadata, ownerDomain)
   });
 
   sendJson(res, 201, {
     ok: true,
-    document
+    document: serializeDocumentRecord(document)
   });
 }
 

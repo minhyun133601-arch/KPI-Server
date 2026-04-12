@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(projectRoot, '..', '..');
 const defaultStorageRoot = path.join(projectRoot, 'var');
-const envFilePath = resolveEnvFilePath(process.env.KPI_ENV_FILE) || path.join(projectRoot, '.env');
+const envFilePath = resolveDefaultEnvFilePath();
 
 loadDotEnv(envFilePath);
 
@@ -46,6 +46,27 @@ function resolveEnvFilePath(raw) {
   const trimmed = String(raw || '').trim();
   if (!trimmed) return null;
   return path.isAbsolute(trimmed) ? trimmed : path.resolve(projectRoot, trimmed);
+}
+
+function resolveDefaultEnvFilePath() {
+  const explicitEnvFilePath = resolveEnvFilePath(process.env.KPI_ENV_FILE);
+  if (explicitEnvFilePath) {
+    return explicitEnvFilePath;
+  }
+
+  const candidatePaths = [
+    path.join(projectRoot, '.env.production.local'),
+    path.join(projectRoot, '.env.development.local'),
+    path.join(projectRoot, '.env')
+  ];
+
+  for (const candidatePath of candidatePaths) {
+    if (fs.existsSync(candidatePath)) {
+      return candidatePath;
+    }
+  }
+
+  return path.join(projectRoot, '.env');
 }
 
 function normalizeStorageRoot(raw) {

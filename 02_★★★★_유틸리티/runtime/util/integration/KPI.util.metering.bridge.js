@@ -1,5 +1,5 @@
 (function () {
-    const INTEGRATED_METERING_ASSET_VERSION = 'v112';
+    const INTEGRATED_METERING_ASSET_VERSION = 'v115';
 
     const integratedMeteringState = {
         loadPromise: null
@@ -130,7 +130,6 @@
         }
 
         integratedMeteringState.loadPromise = Promise.resolve()
-            .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('preset-entry-data.js', { cacheBust: true })))
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('shared-store.js', { cacheBust: true })))
             .then(() => applyIntegratedMeteringServerRuntime())
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('template.js', { cacheBust: true })))

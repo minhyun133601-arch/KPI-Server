@@ -13,6 +13,7 @@
         ATTACHMENT_SLOT_META,
         getRecordAttachments,
         getRecordAttachment,
+        getAttachmentStorageDisplayPath,
         normalizeRecordCategory,
         isKpiRecord,
         getRecordTagLabels,
@@ -276,11 +277,17 @@
 
             const previewUrl = attachment.previewUrl || attachment.url || attachment.downloadUrl || '#';
             const downloadUrl = attachment.downloadUrl || attachment.url || previewUrl;
+            const storagePath = typeof getAttachmentStorageDisplayPath === 'function'
+                ? getAttachmentStorageDisplayPath(attachment)
+                : '';
             return `
                 <div class="attachment-view-item">
                     <span class="attachment-type-label">${escapeHtml(meta.label)}</span>
                     <div class="attachment-view-meta">
-                        <a class="attachment-link" href="${escapeAttribute(previewUrl)}" target="_blank" rel="noopener">${escapeHtml(attachment.originalName)}</a>
+                        <span class="attachment-view-name-wrap">
+                            <a class="attachment-link" href="${escapeAttribute(previewUrl)}" target="_blank" rel="noopener">${escapeHtml(attachment.originalName)}</a>
+                            ${storagePath ? `<span class="attachment-size">${escapeHtml(storagePath)}</span>` : ''}
+                        </span>
                         <span class="attachment-view-actions">
                             <a class="attachment-view-btn" href="${escapeAttribute(previewUrl)}" target="_blank" rel="noopener">미리보기</a>
                             <a class="attachment-size" href="${escapeAttribute(downloadUrl)}" target="_blank" rel="noopener">${escapeHtml(view.formatFileSize(attachment.size))}</a>

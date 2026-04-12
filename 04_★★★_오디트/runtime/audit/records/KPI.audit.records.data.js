@@ -5,7 +5,7 @@
         const AUDIT_LUX_BASE_YEAR = 2023;
         const AUDIT_LUX_EVIDENCE_MAX_BYTES = 25 * 1024 * 1024;
         const AUDIT_LUX_EVIDENCE_OWNER_DOMAIN = 'audit.lux.evidence';
-        const AUDIT_LUX_EVIDENCE_STORAGE_FOLDER = ['Audit', '조도 스캔본'];
+        const AUDIT_LUX_EVIDENCE_STORAGE_FOLDER = ['오디트', '조도'];
         const AUDIT_MONTHLY_REPORT_FOLDER = '04_★★★_오디트/보고서/월간 실적 보고서/';
 
         const AUDIT_MONTHLY_REPORT_FALLBACK = [
@@ -978,7 +978,7 @@
                 || (sourceMimeType === 'image/webp' ? '.webp' : '')
                 || (sourceMimeType === 'image/gif' ? '.gif' : '')
                 || (sourceMimeType.startsWith('image/') ? '.jpg' : '');
-            return `${Number(year)} ${String(team || '').trim()} 조도${ext}`;
+            return `${Number(year)} ${String(team || '').trim()} 조도 증빙${ext}`;
         }
 
         async function uploadAuditLuxEvidenceToServer(dataKey, year, team, file) {
@@ -1228,21 +1228,24 @@
             const titleParts = [];
             if (item.team) titleParts.push(item.team);
             if (item.year) titleParts.push(String(item.year) + '년');
-            const title = titleParts.join(' ') || '조도 스캔본';
-            const file = item.file || item.path || '';
-            if (!file) {
+            const title = titleParts.join(' ') || '조도 증빙';
+            const viewUrl = getAuditEvidenceViewUrl(item);
+            if (!viewUrl) {
                 return `<div class="audit-ref-empty">파일 경로가 없습니다.</div>`;
             }
             const rotate = Number.isFinite(parseFloat(item.rotate)) ? parseFloat(item.rotate) : 0;
             const rotateStyle = rotate ? ` style="transform: rotate(${rotate}deg);"` : '';
-            const imagePath = resolveAuditEvidenceFileUrl(file);
+            const mediaHtml = isAuditEvidencePdf(item)
+                ? `<iframe class="audit-lux-preview-frame" src="${escapeHtml(viewUrl)}" title="${escapeHtml(title)} 미리보기"></iframe>`
+                : `<img class="audit-ref-image" src="${escapeHtml(viewUrl)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async"${rotateStyle} />`;
             const encodedId = encodeURIComponent(item.id || '');
             return `
                 <div class="audit-ref-preview">
-                    <img class="audit-ref-image" src="${imagePath}" alt="${escapeHtml(title)}" loading="lazy" decoding="async"${rotateStyle} />
+                    ${mediaHtml}
                     <div class="audit-ref-meta">
                         <div>
                             <div class="audit-ref-meta-title">${escapeHtml(title)}</div>
+                            <div class="audit-ref-meta-sub">${escapeHtml(getAuditEvidenceFileLabel(item))}</div>
                         </div>
                         <button class="work-btn audit-ref-open" onclick="openAuditEvidence('${dataKey}', '${encodedId}')">원본 열기</button>
                     </div>
@@ -1263,7 +1266,7 @@
             const list = getAuditEvidenceList(dataKey);
             const selected = list.find(item => item.id === id);
             preview.innerHTML = renderAuditEvidencePreviewHtml(dataKey, selected);
-            preview.classList.toggle('has-image', !!selected?.file || !!selected?.path);
+            preview.classList.toggle('has-image', Boolean(getAuditEvidenceViewUrl(selected)));
         }
 
         function openAuditEvidence(dataKey, evidenceKey) {
@@ -1271,14 +1274,8 @@
             const list = getAuditEvidenceList(dataKey);
             const item = list.find(entry => entry.id === id);
             if (!item) return;
-            const file = item.file || item.path || '';
-            if (!file) return;
-            let url = '';
-            try {
-                url = new URL(file, window.location.href).toString();
-            } catch (err) {
-                url = encodeURI(file);
-            }
+            const url = getAuditEvidenceViewUrl(item);
+            if (!url) return;
             window.open(url, '_blank');
         }
 
@@ -1297,24 +1294,21 @@
             if (!items.length) items = list;
 
             const pages = items.map(item => {
-                const file = item.file || item.path || '';
-                if (!file) return '';
+                const viewUrl = getAuditEvidenceViewUrl(item);
+                if (!viewUrl) return '';
                 const rotate = Number.isFinite(parseFloat(item.rotate)) ? parseFloat(item.rotate) : 0;
                 const rotateStyle = rotate ? ` style="transform: rotate(${rotate}deg);"` : '';
-                let imagePath = '';
-                try {
-                    imagePath = new URL(file, window.location.href).toString();
-                } catch (err) {
-                    imagePath = encodeURI(file);
-                }
                 const titleParts = [];
                 if (item.team) titleParts.push(item.team);
                 if (item.year) titleParts.push(String(item.year) + '년');
-                const title = titleParts.join(' ') || '조도 스캔본';
+                const title = titleParts.join(' ') || '조도 증빙';
+                const mediaHtml = isAuditEvidencePdf(item)
+                    ? `<iframe class="print-frame" src="${escapeHtml(viewUrl)}" title="${escapeHtml(title)}"></iframe>`
+                    : `<img class="print-image" src="${escapeHtml(viewUrl)}" alt="${escapeHtml(title)}"${rotateStyle} />`;
                 return `
                     <div class="print-page">
                         <div class="print-title">${escapeHtml(title)}</div>
-                        <img class="print-image" src="${imagePath}" alt="${escapeHtml(title)}"${rotateStyle} />
+                        ${mediaHtml}
                     </div>
                 `;
             }).join('');
@@ -1324,13 +1318,14 @@
                 <html lang="ko">
                 <head>
                     <meta charset="UTF-8" />
-                    <title>조도 스캔본 인쇄</title>
+                    <title>조도 증빙 인쇄</title>
                     <style>
                         @page { margin: 12mm; }
                         body { margin: 0; font-family: 'Noto Sans KR', sans-serif; color: #0f172a; }
                         .print-page { page-break-after: always; display: flex; flex-direction: column; align-items: center; gap: 10px; }
                         .print-title { font-size: 14px; font-weight: 700; }
                         .print-image { max-width: 100%; max-height: 92vh; object-fit: contain; image-orientation: from-image; border: 1px solid #e2e8f0; }
+                        .print-frame { width: 100%; height: 92vh; border: 1px solid #e2e8f0; }
                         .print-page:last-child { page-break-after: auto; }
                     </style>
                 </head>

@@ -1,7 +1,6 @@
-import path from 'node:path';
-import { config } from '../config.js';
 import {
   CURRENT_PORTAL_DATA_RECORDS,
+  getModuleRecordPermissionKey,
   PORTAL_DATA_MODULE_KEY,
   WORK_RUNTIME_BOOTSTRAP_RECORDS,
   WORK_RUNTIME_MODULE_KEY
@@ -11,9 +10,7 @@ import { listModuleRecordsByModuleKey } from '../repositories/modules.js';
 
 export const PORTAL_DATA_BOOTSTRAP_PATH = '/bootstrap/portal-data.js';
 
-const PORTAL_DATA_SCRIPT_SOURCES = CURRENT_PORTAL_DATA_RECORDS
-  .map((record) => path.relative(config.repoRoot, record.filePath).split(path.sep).join('/'))
-  .filter(Boolean);
+const PORTAL_DATA_SCRIPT_SOURCES = Object.freeze([]);
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -26,9 +23,52 @@ function serializeJsonForScript(value) {
     .replace(/\u2029/g, '\\u2029');
 }
 
-async function splitReadableModuleRecords(records) {
+function resolveRecordPermissionKey(record) {
+  const knownPermissionKey = getModuleRecordPermissionKey(record?.module_key, record?.record_key);
+  return String(knownPermissionKey || record?.permission_key || '').trim();
+}
+
+async function splitReadableModuleRecords(records, auth, canAccessPermission) {
   const source = Array.isArray(records) ? records : [];
-  return { readable: source, blocked: [] };
+  const permissionProbe = typeof canAccessPermission === 'function'
+    ? canAccessPermission
+    : async () => true;
+
+  const readable = [];
+  const blocked = [];
+
+  for (const record of source) {
+    const permissionKey = resolveRecordPermissionKey(record);
+    if (!permissionKey) {
+      blocked.push({
+        moduleKey: record?.module_key || '',
+        recordKey: record?.record_key || '',
+        reason: 'permission_key_unresolved'
+      });
+      continue;
+    }
+
+    const canRead = await permissionProbe(auth?.user, permissionKey, 'read');
+    if (!canRead) {
+      blocked.push({
+        moduleKey: record?.module_key || '',
+        recordKey: record?.record_key || '',
+        permissionKey
+      });
+      continue;
+    }
+
+    readable.push(
+      permissionKey === record?.permission_key
+        ? record
+        : {
+            ...record,
+            permission_key: permissionKey
+          }
+    );
+  }
+
+  return { readable, blocked };
 }
 
 function buildPortalDataBootstrapTag() {
@@ -40,7 +80,10 @@ export function injectPortalDataBootstrap(html) {
   let inserted = false;
 
   for (const src of PORTAL_DATA_SCRIPT_SOURCES) {
-    const regex = new RegExp(`^[ \\t]*<script\\s+src="${escapeRegExp(src)}"><\\/script>\\s*\\r?\\n?`, 'm');
+    const regex = new RegExp(
+      `^[ \\t]*<script\\s+src="${escapeRegExp(src)}(?:\\?[^"]*)?"><\\/script>\\s*\\r?\\n?`,
+      'm'
+    );
     if (!inserted && regex.test(nextHtml)) {
       nextHtml = nextHtml.replace(regex, buildPortalDataBootstrapTag());
       inserted = true;
@@ -147,8 +190,8 @@ export async function buildPortalDataBootstrapScript(auth, canAccessPermission) 
     { readable: records, blocked: blockedPortalRecords },
     { readable: workRuntimeRecords, blocked: blockedWorkRuntimeRecords }
   ] = await Promise.all([
-    splitReadableModuleRecords(allRecords),
-    splitReadableModuleRecords(allWorkRuntimeRecords)
+    splitReadableModuleRecords(allRecords, auth, canAccessPermission),
+    splitReadableModuleRecords(allWorkRuntimeRecords, auth, canAccessPermission)
   ]);
   const payload = buildPortalDataBootstrapPayload(records, workRuntimeRecords, {
     knownPortalRecordKeys: new Set(allRecords.map((record) => record.record_key)),
@@ -224,6 +267,34 @@ export async function buildPortalDataBootstrapScript(auth, canAccessPermission) 
       apiBase: '/api',
       readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_METERING_APP, 'read'),
       writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_METERING_APP, 'write')
+    },
+    utilData: {
+      enabled: true,
+      apiBase: '/api',
+      moduleKey: PORTAL_DATA_MODULE_KEY,
+      records: {
+        util_electric_data: {
+          moduleKey: PORTAL_DATA_MODULE_KEY,
+          recordKey: 'util_electric_data',
+          permissionKey: PERMISSION_KEYS.UTIL_ENERGY_ELECTRIC,
+          readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_ENERGY_ELECTRIC, 'read'),
+          writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_ENERGY_ELECTRIC, 'write')
+        },
+        util_gas_data: {
+          moduleKey: PORTAL_DATA_MODULE_KEY,
+          recordKey: 'util_gas_data',
+          permissionKey: PERMISSION_KEYS.UTIL_ENERGY_GAS,
+          readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_ENERGY_GAS, 'read'),
+          writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_ENERGY_GAS, 'write')
+        },
+        util_wastewater_data: {
+          moduleKey: PORTAL_DATA_MODULE_KEY,
+          recordKey: 'util_wastewater_data',
+          permissionKey: PERMISSION_KEYS.UTIL_ENERGY_WASTEWATER,
+          readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_ENERGY_WASTEWATER, 'read'),
+          writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_ENERGY_WASTEWATER, 'write')
+        }
+      }
     },
     utilProduction: {
       enabled: true,

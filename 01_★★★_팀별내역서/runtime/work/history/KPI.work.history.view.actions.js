@@ -23,6 +23,7 @@
         flattenAttachmentSlots,
         uploadPendingAttachments,
         deleteAttachmentsFromServer,
+        getAttachmentStorageDisplayPath,
         savePayload,
         saveNow,
         getRecordRuntimeConfig,
@@ -577,6 +578,9 @@
             const meta = ATTACHMENT_SLOT_META[slotKey];
             const existing = state.formState.existingAttachments?.[slotKey] || null;
             const pending = state.formState.pendingFiles?.[slotKey] || null;
+            const storagePath = typeof getAttachmentStorageDisplayPath === 'function'
+                ? getAttachmentStorageDisplayPath(existing)
+                : '';
             const isExistingPdf = existing
                 ? (/\.pdf$/i.test(String(existing.originalName || '')) || String(existing.mimeType || '').trim() === 'application/pdf')
                 : false;
@@ -598,6 +602,7 @@
                             <div class="attachment-meta">
                                 <span class="attachment-name">${history.escapeHtml(existing.originalName)}</span>
                                 <span class="attachment-size">${history.escapeHtml(view.formatFileSize(existing.size))}</span>
+                                ${storagePath ? `<span class="attachment-size">${history.escapeHtml(storagePath)}</span>` : ''}
                             </div>
                             <div class="attachment-actions">
                                 <a class="btn btn-secondary btn-sm" href="${history.escapeAttribute(existing.previewUrl || existing.url || '#')}" target="_blank" rel="noopener">미리보기</a>
@@ -612,6 +617,7 @@
                                 <div class="attachment-meta">
                                     <span class="attachment-name">${history.escapeHtml(existing.originalName)}</span>
                                     <span class="attachment-size">${history.escapeHtml(view.formatFileSize(existing.size))}</span>
+                                    ${storagePath ? `<span class="attachment-size">${history.escapeHtml(storagePath)}</span>` : ''}
                                 </div>
                                 <div class="attachment-actions">
                                     <span class="attachment-empty">PDF만 지원됩니다.</span>
@@ -712,7 +718,9 @@
                 uploadedAttachments = await uploadPendingAttachments(state.formState.pendingFiles, {
                     team: targetTeam,
                     startDate,
-                    endDate
+                    endDate,
+                    workContent,
+                    kpi
                 });
             } catch (error) {
                 console.error('[kpi] work history attachment upload failed', error);
@@ -733,6 +741,8 @@
                     team: targetTeam,
                     startDate,
                     endDate,
+                    workContent,
+                    kpi,
                     attachmentType: slotKey
                 });
                 nextAttachmentSlots[slotKey] = uploadedAttachments[0] || null;

@@ -15,7 +15,7 @@
         setShadowHost
     } = history;
 
-    const CSS_PATH = '01_★★★_팀별내역서/runtime/work/history/KPI.work.history.css?v=236';
+    const CSS_PATH = '01_★★★_팀별내역서/runtime/work/history/KPI.work.history.css?v=237';
     const COMPANY_LOGO_SRC = '※_공용자산/로고.jpg';
     const DEFAULT_SUBTITLE = '기간, 팀, 작업자, 업무내용, 첨부, 비용까지 기록하는 KPI 작업내역 화면';
     const OVERVIEW_KEY = 'overview';

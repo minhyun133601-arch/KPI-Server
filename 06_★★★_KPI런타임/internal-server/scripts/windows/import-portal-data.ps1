@@ -1,10 +1,3 @@
 $ErrorActionPreference = 'Stop'
 
-$serverDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-
-Push-Location $serverDir
-try {
-  npm run import:portal-data
-} finally {
-  Pop-Location
-}
+Write-Error 'import-portal-data.ps1 is retired. Portal data authority is DB-only; use DB backup/restore or migrations instead of JS data imports.'

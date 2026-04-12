@@ -393,12 +393,19 @@
             selectedTeam: ''
         };
 
-        function persistUtilProductionDailyState() {
+        async function persistUtilProductionDailyState(options = {}) {
+            const requireServer = options.requireServer === true;
             if (!window.KpiUtilityServerRuntime || typeof window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite !== 'function') {
+                if (requireServer) {
+                    throw new Error('생산량 데이터를 DB에 저장할 서버 런타임이 없습니다.');
+                }
                 return false;
             }
             if (typeof window.KpiUtilityServerRuntime.supportsUtilProductionServerPersistence === 'function'
                 && !window.KpiUtilityServerRuntime.supportsUtilProductionServerPersistence()) {
+                if (requireServer) {
+                    throw new Error('생산량 데이터를 DB에 저장할 권한 또는 서버 연결이 없습니다.');
+                }
                 return false;
             }
             UTIL_PRODUCTION_DAILY_STATE.meta = UTIL_PRODUCTION_DAILY_STATE.meta || {};
@@ -429,7 +436,11 @@
                 // localStorage 용량 초과 등은 무시하고 런타임 상태 유지
             }
             if (window.KpiUtilityServerRuntime && typeof window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite === 'function') {
-                return window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite(UTIL_PRODUCTION_DAILY_STATE);
+                const saved = await window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite(UTIL_PRODUCTION_DAILY_STATE);
+                if (requireServer && !saved) {
+                    throw new Error(window.KpiUtilityServerRuntime.lastErrorMessage || '생산량 데이터를 DB에 저장하지 못했습니다.');
+                }
+                return saved;
             }
             return false;
         }
@@ -549,13 +560,15 @@
             return { rows: linkedRows, excludedCount };
         }
 
-        function mergeUtilProductionExtractorRows(rows, options = {}) {
+        async function mergeUtilProductionExtractorRows(rows, options = {}) {
             const existingKeys = collectUtilProductionDailyEntryKeys();
             const fallbackTeam = sanitizeUtilUploadTeamName(options?.fallbackTeam || UtilProductionBridgeState.activeTeam || '');
             const sourceArchiveLookup = options?.sourceArchiveLookup || {};
+            const requireServerSave = options?.requireServerSave === true;
             let addedCount = 0;
             let skippedCount = 0;
             let patchedCount = 0;
+            let serverSaved = false;
             const addedTeamSet = new Set();
             (rows || []).forEach(row => {
                 const rawDate = row?.date ?? row?.values?.[0] ?? '';
@@ -636,14 +649,20 @@
                 addedCount += 1;
                 addedTeamSet.add(String(targetTeam?.name || teamName || '').trim());
             });
+            const shouldPersist = addedCount > 0
+                || patchedCount > 0
+                || (requireServerSave && Array.isArray(rows) && rows.length > 0);
             if (addedCount > 0 || patchedCount > 0) {
                 refreshUtilProductionDailyIndex();
-                persistUtilProductionDailyState();
+            }
+            if (shouldPersist) {
+                serverSaved = await persistUtilProductionDailyState({ requireServer: requireServerSave });
             }
             return {
                 addedCount,
                 skippedCount,
                 patchedCount,
+                serverSaved,
                 addedTeams: Array.from(addedTeamSet).filter(Boolean)
             };
         }

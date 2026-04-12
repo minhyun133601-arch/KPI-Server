@@ -13,7 +13,6 @@ AppData['equip'] = {
                     desc: '건조 공정 설비 이력 (1팀 1파트)',
                     rooms: [],
                     content: buildEquipAreaContent({
-                        guidePath: '03_★★★★_설비이력카드/data/equip/data_equip_team1_part1.js',
                         shellId: 'area-map-team1-part1',
                         templateId: 'team1_part1',
                         mapTitle: '생산 1팀 1파트 설비 배치도',
@@ -27,7 +26,6 @@ AppData['equip'] = {
                     desc: '건조 공정 설비 이력 (1팀 2파트)',
                     rooms: [],
                     content: buildEquipAreaContent({
-                        guidePath: '03_★★★★_설비이력카드/data/equip/data_equip_team1_part2.js',
                         shellId: 'area-map-team1-part2',
                         templateId: 'team1_part2',
                         mapTitle: '생산 1팀 2파트 설비 배치도',
@@ -50,7 +48,6 @@ AppData['equip'] = {
                         '3층 알레르기 원료 보관실'
                     ],
                     content: buildEquipAreaContent({
-                        guidePath: '03_★★★★_설비이력카드/data/equip/data_equip_team2.js',
                         shellId: 'area-map-team2',
                         templateId: 'team2',
                         mapTitle: '생산 2팀 설비 배치도',
@@ -71,7 +68,6 @@ AppData['equip'] = {
                         '외포장실'
                     ],
                     content: buildEquipAreaContent({
-                        guidePath: '03_★★★★_설비이력카드/data/equip/data_equip_team3.js',
                         shellId: 'area-map-team3',
                         templateId: 'team3',
                         mapTitle: '생산 3팀 설비 배치도',

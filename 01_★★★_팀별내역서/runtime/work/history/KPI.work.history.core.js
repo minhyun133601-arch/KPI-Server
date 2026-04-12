@@ -18,6 +18,7 @@
         team4: { name: '공무환경팀', desc: '폐수 · 전체 · 기타', class: 'team4' }
     });
     const LOCAL_BACKUP_KEY = `workhistory:${DATA_KEY}`;
+    const WORK_HISTORY_STORAGE_ROOT_FOLDER = '작업내역';
     const ATTACHMENT_SLOT_KEYS = ['billing', 'report'];
     const ATTACHMENT_SLOT_META = Object.freeze({
         billing: {
@@ -220,6 +221,7 @@
             documentId,
             attachmentType: normalizedType,
             storageRelPath: String(item.storageRelPath || item.storage_rel_path || '').trim(),
+            storageFolder: String(item.storageFolder || item.storage_folder || '').trim(),
             fileCategory: String(item.fileCategory || item.file_category || '').trim()
         };
     }
@@ -478,18 +480,62 @@
         return `${DATA_KEY}:${teamKey}:${slotKey}:${dateKey}:${nonce}`;
     }
 
+    function getAttachmentStorageTeamName(team) {
+        const teamKey = String(team || '').trim();
+        return TeamInfo[teamKey]?.name || teamKey || '미지정팀';
+    }
+
+    function getAttachmentStorageSlotName(attachmentType, slotMeta) {
+        const slotKey = ATTACHMENT_SLOT_KEYS.includes(String(attachmentType || '').trim())
+            ? String(attachmentType).trim()
+            : 'report';
+        return String(slotMeta?.label || ATTACHMENT_SLOT_META[slotKey]?.label || '첨부').trim() || '첨부';
+    }
+
+    function buildAttachmentStorageFolder(context, attachmentType, slotMeta) {
+        return [
+            WORK_HISTORY_STORAGE_ROOT_FOLDER,
+            getAttachmentStorageTeamName(context?.team),
+            getAttachmentStorageSlotName(attachmentType, slotMeta)
+        ].join('/');
+    }
+
+    function formatAttachmentTitleToken(context) {
+        const title = String(context?.workContent || context?.title || '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return title ? ` (${title})` : '';
+    }
+
+    function formatAttachmentDateLabel(startDate, endDate) {
+        const start = String(startDate || '').trim();
+        const end = String(endDate || '').trim();
+        if (start && end && start !== end) return `${start}~${end}`;
+        return start || end || '날짜미정';
+    }
+
+    function formatAttachmentKpiToken(context) {
+        return context?.kpi === true ? ' ★KPI' : '';
+    }
+
     function formatAttachmentFileName(context, slotMeta, fallbackName) {
         const teamKey = String(context?.team || '').trim();
         const teamLabel = TeamInfo[teamKey]?.name || teamKey || '팀';
-        const startDate = String(context?.startDate || '').trim();
-        const endDate = String(context?.endDate || '').trim();
-        const dateLabel = startDate && endDate
-            ? `${startDate}~${endDate}`
-            : (startDate || endDate || '날짜미정');
+        const dateLabel = formatAttachmentDateLabel(context?.startDate, context?.endDate);
         const slotLabel = String(slotMeta?.label || '').trim() || '첨부';
-        const nameBody = `${teamLabel} ${dateLabel} ${slotLabel}`.trim();
+        const titleToken = formatAttachmentTitleToken(context);
+        const kpiToken = formatAttachmentKpiToken(context);
+        const nameBody = `${teamLabel} ${dateLabel}${titleToken} ${slotLabel}${kpiToken}`.trim();
         const safeBody = nameBody.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_');
         return `${safeBody}.pdf`;
+    }
+
+    function getAttachmentStorageDisplayPath(attachment) {
+        const explicitFolder = String(attachment?.storageFolder || attachment?.storage_folder || '').trim();
+        if (explicitFolder) return explicitFolder.replace(/\\/g, '/');
+        const relPath = String(attachment?.storageRelPath || attachment?.storage_rel_path || '').trim().replace(/\\/g, '/');
+        const slashIndex = relPath.lastIndexOf('/');
+        return slashIndex > 0 ? relPath.slice(0, slashIndex) : '';
     }
 
     async function uploadPendingAttachments(files, context = {}) {
@@ -507,11 +553,13 @@
         for (const file of files) {
             const originalName = formatAttachmentFileName(context, slotMeta, file?.name);
             const mimeType = String(file?.type || '').trim() || 'application/octet-stream';
-            const isPdf = /\.pdf$/i.test(originalName) || mimeType === 'application/pdf';
+            const sourceFileName = String(file?.name || '').trim();
+            const isPdf = /\.pdf$/i.test(sourceFileName) || mimeType === 'application/pdf';
             if (!isPdf) {
                 throw new Error('attachment_pdf_only');
             }
             const base64Data = await readFileAsBase64(file);
+            const storageFolder = buildAttachmentStorageFolder(context, attachmentType, slotMeta);
             const response = await fetch(`${assetRuntime.apiBase.replace(/\/+$/, '')}/files/base64`, {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -533,7 +581,9 @@
                         endDate: String(context.endDate || '').trim(),
                         originalName,
                         attachmentType,
-                        folder: `${String(context.team || 'unassigned').trim() || 'unassigned'}/${attachmentType}`
+                        storageFolder,
+                        folder: storageFolder,
+                        legacyFolder: `${String(context.team || 'unassigned').trim() || 'unassigned'}/${attachmentType}`
                     }
                 })
             });
@@ -554,6 +604,7 @@
                 documentId: String(documentRecord.id || '').trim(),
                 attachmentType,
                 storageRelPath: String(documentRecord.storage_rel_path || ''),
+                storageFolder: String(documentRecord.metadata?.storageFolder || storageFolder),
                 fileCategory: String(documentRecord.file_category || slotMeta.fileCategory || '')
             }));
         }
@@ -644,6 +695,46 @@
         return writeState.writeChain || Promise.resolve(true);
     }
 
+    async function migrateLocalBackupToServer() {
+        const runtime = getRecordRuntimeConfig();
+        if (!(window.KpiRuntime?.canUseServerWrite?.(runtime?.writeEnabled === true))) {
+            return false;
+        }
+
+        let localPayload = null;
+        try {
+            const stored = localStorage.getItem(LOCAL_BACKUP_KEY);
+            if (stored) {
+                localPayload = JSON.parse(stored);
+            }
+        } catch (_error) {
+            localPayload = null;
+        }
+
+        if (!localPayload || typeof localPayload !== 'object') {
+            return false;
+        }
+
+        const normalizedLocal = normalizePayload(localPayload);
+        const portalPayload = getSeedPayload();
+        const hasPortalPayload = !!(
+            window.PortalData
+            && typeof window.PortalData === 'object'
+            && Object.prototype.hasOwnProperty.call(window.PortalData, DATA_KEY)
+        );
+
+        if (
+            hasPortalPayload
+            && getTimeValue(normalizedLocal?.meta?.updatedAt) > 0
+            && getTimeValue(portalPayload?.meta?.updatedAt) >= getTimeValue(normalizedLocal?.meta?.updatedAt)
+        ) {
+            return false;
+        }
+
+        replacePayload(normalizedLocal);
+        return queueServerWrite(normalizedLocal);
+    }
+
     function savePayload(payload) {
         const runtime = getRecordRuntimeConfig();
         if (!(window.KpiRuntime?.canUseServerWrite?.(runtime?.writeEnabled === true))) {
@@ -717,6 +808,8 @@
         getTeamRecords,
         uploadPendingAttachments,
         deleteAttachmentsFromServer,
+        getAttachmentStorageDisplayPath,
+        migrateLocalBackupToServer,
         savePayload,
         saveNow,
         waitForPendingSave,
