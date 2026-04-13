@@ -1,6 +1,6 @@
 import { config } from '../config.js';
 import { buildCookie, readJsonBody } from '../lib/http.js';
-import { assertCanAccessPermission, isAdminRole } from '../services/auth.js';
+import { assertCanAccessPermission, isAdminRole, isOwnerRole } from '../services/auth.js';
 
 export function normalizeText(value) {
   return String(value || '').trim();
@@ -27,6 +27,14 @@ export function requireAuth(auth) {
 export function requireAdmin(auth) {
   requireAuth(auth);
   if (!isAdminRole(auth.user)) {
+    throw new Error('forbidden');
+  }
+  return true;
+}
+
+export function requireOwner(auth) {
+  requireAuth(auth);
+  if (!isOwnerRole(auth.user)) {
     throw new Error('forbidden');
   }
   return true;

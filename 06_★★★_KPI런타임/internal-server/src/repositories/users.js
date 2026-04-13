@@ -72,7 +72,27 @@ export async function findUserProfileById(userId) {
 export async function listUsers() {
   const result = await query(`
     select u.id, u.username, u.display_name, u.is_active, u.created_at, u.updated_at,
-      coalesce(array_agg(r.role_key order by r.role_key) filter (where r.role_key is not null), '{}') as roles
+      coalesce(array_agg(r.role_key order by r.role_key) filter (where r.role_key is not null), '{}') as roles,
+      exists (
+        select 1
+        from app_sessions s
+        where s.user_id = u.id
+          and s.expires_at > now()
+      ) as session_active,
+      coalesce(
+        (
+          select max(s.last_seen_at)
+          from app_sessions s
+          where s.user_id = u.id
+            and s.expires_at > now()
+        ),
+        (
+          select max(a.created_at)
+          from app_audit_log a
+          where a.actor_user_id = u.id
+            and a.action_key = 'auth.login'
+        )
+      ) as last_access_at
     from app_users u
     left join app_user_roles r on r.user_id = u.id
     group by u.id
@@ -99,6 +119,16 @@ export async function updateUserPasswordHash(userId, passwordHash) {
      where id = $1
      returning id, username, display_name, is_active, created_at, updated_at`,
     [userId, passwordHash]
+  );
+  return result.rows[0] || null;
+}
+
+export async function deleteUserById(userId) {
+  const result = await query(
+    `delete from app_users
+     where id = $1
+     returning id, username, display_name, is_active, created_at, updated_at`,
+    [userId]
   );
   return result.rows[0] || null;
 }

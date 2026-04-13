@@ -7,6 +7,7 @@ const ERROR_STATUS_CODES = new Map([
   ['invalid_json', 400],
   ['permission_key_required', 400],
   ['username_and_password_required', 400],
+  ['invalid_username_format', 400],
   ['month_value_required', 400],
   ['billing_document_resource_unsupported', 400],
   ['empty_file_payload', 400],

@@ -1,7 +1,8 @@
 import { sendJson } from '../lib/http.js';
 import { PERMISSION_KEYS } from '../lib/permission-registry.js';
-import { findModuleRecord, upsertModuleRecord } from '../repositories/modules.js';
+import { findModuleRecord } from '../repositories/modules.js';
 import { saveBase64Document } from '../services/files.js';
+import { saveModuleRecord } from '../services/module-records.js';
 import {
   assertOpenPermission,
   normalizeExpectedVersion,
@@ -126,7 +127,7 @@ export async function handleSharedStorePut(context) {
   const body = await parseBody(req);
   let nextRecord;
   try {
-    nextRecord = await upsertModuleRecord({
+    nextRecord = await saveModuleRecord({
       moduleKey: METERING_SHARED_STORE_MODULE_KEY,
       recordKey: METERING_SHARED_STORE_RECORD_KEY,
       permissionKey: METERING_SHARED_STORE_PERMISSION_KEY,

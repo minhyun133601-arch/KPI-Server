@@ -1,6 +1,7 @@
 import { sendJson } from '../lib/http.js';
 import { getModuleRecordPermissionKey } from '../lib/portal-data-registry.js';
-import { findModuleRecord, upsertModuleRecord } from '../repositories/modules.js';
+import { findModuleRecord } from '../repositories/modules.js';
+import { saveModuleRecord } from '../services/module-records.js';
 import {
   assertOpenPermission,
   normalizeExpectedVersion,
@@ -72,7 +73,7 @@ export async function handleUpsertModuleRecord(context, moduleKey, recordKey) {
 
   let record;
   try {
-    record = await upsertModuleRecord({
+    record = await saveModuleRecord({
       moduleKey,
       recordKey,
       permissionKey,

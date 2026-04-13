@@ -1,6 +1,7 @@
-@echo off
+﻿@echo off
+chcp 65001 >nul
 setlocal
-for /d %%D in ("%~dp006_*") do (
+for /d %%D in ("%~dp0..\06_*") do (
   if exist "%%~fD\internal-server\scripts\windows\stop-server.ps1" (
     set "SERVER_DIR=%%~fD\internal-server"
   )

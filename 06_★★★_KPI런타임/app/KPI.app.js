@@ -1,5 +1,5 @@
-        // ----------------------------------------------------------------
-        // [앱 로직]
+﻿        // ----------------------------------------------------------------
+        // [\uC571 \uB85C\uC9C1]
         // ----------------------------------------------------------------
 
         const KpiRuntime = window.KpiRuntime;
@@ -9,8 +9,25 @@
             busy: false,
             activeAction: null,
             providerKey: '',
-            message: '현재 화면은 저장 대상이 없습니다.',
+            message: '\uD604\uC7AC \uD654\uBA74\uC740 \uC800\uC7A5 \uB300\uC0C1\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.',
             tone: ''
+        };
+        const OWNER_RECORDS_TAB_KEYS = Object.freeze({
+            LOGIN: 'login',
+            USERS: 'users'
+        });
+        const OwnerRecordsState = {
+            isOwner: false,
+            panelOpen: false,
+            loading: false,
+            loaded: false,
+            activeTab: OWNER_RECORDS_TAB_KEYS.LOGIN,
+            loginHistory: [],
+            users: [],
+            errorMessage: ''
+        };
+        const RuntimeAuthState = {
+            busy: false
         };
         const GLOBAL_RECENT_UPDATE_STORAGE_KEY = 'kpi:global-recent-update';
         const DASHBOARD_SECTION_ORDER = ['work', 'util', 'equip', 'audit', 'data'];
@@ -21,7 +38,7 @@
             audit: '#fef2f2',
             data: '#f8fafc'
         });
-        const COMPANY_LOGO_SRC = '※_공용자산/로고.jpg';
+        const COMPANY_LOGO_SRC = '\u203B_\uACF5\uC6A9\uC790\uC0B0/\uB85C\uACE0.jpg';
         const DashboardHomeState = {
             sectionId: DASHBOARD_SECTION_ORDER[0]
         };
@@ -194,7 +211,439 @@
         function syncDashboardLastModified() {
             const target = document.getElementById('last-modified-text');
             if (!target) return;
-            target.textContent = `최종 수정: ${formatDashboardDateTime(getLatestRecentUpdateValue())}`;
+            target.textContent = `理쒖쥌 ?섏젙: ${formatDashboardDateTime(getLatestRecentUpdateValue())}`;
+        }
+
+        function getRuntimeCurrentUser() {
+            const runtimeConfig = KpiRuntime?.getServerRuntimeConfig?.() || null;
+            const currentUser = runtimeConfig?.auth?.currentUser;
+            return currentUser && typeof currentUser === 'object' ? currentUser : null;
+        }
+
+        function hasOwnerRole(user = null) {
+            const currentUser = user || getRuntimeCurrentUser();
+            if (!currentUser) return false;
+            if (currentUser.isOwner === true) return true;
+            return Array.isArray(currentUser.roles) && currentUser.roles.includes('owner');
+        }
+
+        function getRuntimeAuthElements() {
+            return {
+                dashboardBar: document.getElementById('dashboard-auth-bar'),
+                dashboardIdentity: document.getElementById('dashboard-auth-identity'),
+                dashboardRole: document.getElementById('dashboard-auth-role'),
+                dashboardLogout: document.getElementById('dashboard-auth-logout'),
+                viewerBar: document.getElementById('viewer-auth-bar'),
+                viewerIdentity: document.getElementById('viewer-auth-identity'),
+                viewerRole: document.getElementById('viewer-auth-role'),
+                viewerLogout: document.getElementById('viewer-auth-logout')
+            };
+        }
+
+        function getRuntimeAuthIdentityLabel(user = null) {
+            const currentUser = user || getRuntimeCurrentUser();
+            if (!currentUser) return '';
+            const username = normalizeOwnerRecordsText(currentUser.username, '');
+            const displayName = normalizeOwnerRecordsText(
+                currentUser.displayName || currentUser.display_name,
+                ''
+            );
+            if (displayName && username && displayName !== username) {
+                return `${displayName} (${username})`;
+            }
+            return displayName || username;
+        }
+
+        function getRuntimeAuthRoleLabel(user = null) {
+            const currentUser = user || getRuntimeCurrentUser();
+            if (!currentUser) return '';
+            if (hasOwnerRole(currentUser)) {
+                return 'owner';
+            }
+            const roles = Array.isArray(currentUser.roles)
+                ? currentUser.roles.map(role => String(role || '').trim()).filter(Boolean)
+                : [];
+            if (!roles.length) {
+                return 'user';
+            }
+            return roles.join(', ');
+        }
+
+        function renderRuntimeAuthUi() {
+            const elements = getRuntimeAuthElements();
+            const currentUser = getRuntimeCurrentUser();
+            const identityLabel = getRuntimeAuthIdentityLabel(currentUser);
+            const roleLabel = getRuntimeAuthRoleLabel(currentUser);
+            const isVisible = Boolean(currentUser && identityLabel);
+            const logoutLabel = RuntimeAuthState.busy ? 'Signing out...' : 'Logout';
+
+            [
+                [elements.dashboardBar, elements.dashboardIdentity, elements.dashboardRole, elements.dashboardLogout],
+                [elements.viewerBar, elements.viewerIdentity, elements.viewerRole, elements.viewerLogout]
+            ].forEach(([bar, identity, role, logoutButton]) => {
+                if (bar) {
+                    bar.hidden = !isVisible;
+                }
+                if (identity) {
+                    identity.textContent = identityLabel || '-';
+                }
+                if (role) {
+                    role.textContent = roleLabel || '';
+                }
+                if (logoutButton) {
+                    logoutButton.disabled = RuntimeAuthState.busy;
+                    logoutButton.textContent = logoutLabel;
+                }
+            });
+        }
+
+        async function logoutCurrentUser() {
+            if (RuntimeAuthState.busy) return;
+            RuntimeAuthState.busy = true;
+            renderRuntimeAuthUi();
+
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin'
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || payload?.ok !== true) {
+                    throw new Error(payload?.error || 'logout_failed');
+                }
+                window.location.replace('/login');
+            } catch (error) {
+                console.error('Logout failed.', error);
+                RuntimeAuthState.busy = false;
+                renderRuntimeAuthUi();
+                if (typeof window.alert === 'function') {
+                    window.alert('Logout failed. Please try again.');
+                }
+            }
+        }
+
+        function bindRuntimeAuthUi() {
+            if (window.__runtimeAuthUiBound) return;
+            window.__runtimeAuthUiBound = true;
+            const { dashboardLogout, viewerLogout } = getRuntimeAuthElements();
+            [dashboardLogout, viewerLogout].forEach(button => {
+                button?.addEventListener('click', () => {
+                    void logoutCurrentUser();
+                });
+            });
+        }
+
+        function getOwnerRecordsElements() {
+            return {
+                toggle: document.getElementById('owner-records-toggle'),
+                panel: document.getElementById('owner-records-panel'),
+                closeButton: document.getElementById('owner-records-close'),
+                feedback: document.getElementById('owner-records-feedback'),
+                loginTab: document.getElementById('owner-records-tab-login'),
+                usersTab: document.getElementById('owner-records-tab-users'),
+                loginCount: document.getElementById('owner-records-login-count'),
+                usersCount: document.getElementById('owner-records-users-count'),
+                loginPane: document.getElementById('owner-records-pane-login'),
+                usersPane: document.getElementById('owner-records-pane-users')
+            };
+        }
+
+        function normalizeOwnerRecordsText(value, fallback = '-') {
+            const normalized = String(value || '').trim();
+            return normalized || fallback;
+        }
+
+        function renderOwnerRoleChips(roles = []) {
+            const items = Array.isArray(roles)
+                ? roles.map(role => String(role || '').trim()).filter(Boolean)
+                : [];
+            if (!items.length) {
+                return '<span class="owner-records-chip is-neutral">-</span>';
+            }
+            return `<div class="owner-records-inline-list">${items.map(role => `<span class="owner-records-chip is-neutral">${escapeDashboardHtml(role)}</span>`).join('')}</div>`;
+        }
+
+        function renderOwnerStatusChip(label, tone = 'neutral') {
+            const toneClass = tone === 'positive' ? ' is-positive' : ' is-neutral';
+            return `<span class="owner-records-chip${toneClass}">${escapeDashboardHtml(label)}</span>`;
+        }
+
+        function renderOwnerSessionDot(isActive) {
+            const statusLabel = isActive
+                ? '\uC811\uC18D\uC911'
+                : '\uBBF8\uC811\uC18D';
+            const toneClass = isActive ? ' is-active' : ' is-inactive';
+            return `<span class="owner-records-session-dot${toneClass}" title="${statusLabel}" aria-label="${statusLabel}"></span>`;
+        }
+
+        function renderOwnerRecentChanges(entries = []) {
+            if (!Array.isArray(entries) || !entries.length) {
+                return '<div class="owner-records-primary"><span class="owner-records-sub">\uAE30\uB85D \uC5C6\uC74C</span></div>';
+            }
+            return entries.map(entry => {
+                const changedAt = escapeDashboardHtml(formatDashboardDateTime(entry?.changedAt));
+                const changeType = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.changeType));
+                const itemLabel = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.itemLabel));
+                return `
+                    <div class="owner-records-primary owner-records-activity-item">
+                        <strong>${changedAt} ${changeType}</strong>
+                        <span class="owner-records-sub">${itemLabel}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function buildOwnerLoginHistoryHtml(entries = []) {
+            if (!Array.isArray(entries) || !entries.length) {
+                return '<div class="owner-records-empty">\uC544\uC9C1 \uAE30\uB85D\uB41C \uB85C\uADF8\uC778 \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</div>';
+            }
+            const rows = entries.map(entry => {
+                const username = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.username));
+                const displayName = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.displayName));
+                const ipAddress = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.ipAddress));
+                const userAgent = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.userAgent, '\uBE0C\uB77C\uC6B0\uC800 \uC815\uBCF4 \uC5C6\uC74C'));
+                const lastSeenAt = formatDashboardDateTime(entry?.lastSeenAt);
+                const expiresAt = formatDashboardDateTime(entry?.expiresAt);
+                const sessionChip = entry?.sessionActive
+                    ? renderOwnerStatusChip('\uC811\uC18D\uC911', 'positive')
+                    : renderOwnerStatusChip('\uC885\uB8CC');
+                const userChip = entry?.isActive
+                    ? renderOwnerStatusChip('\uACC4\uC815 \uD65C\uC131', 'positive')
+                    : renderOwnerStatusChip('\uACC4\uC815 \uBE44\uD65C\uC131');
+                return `
+                    <tr>
+                        <td>
+                            <div class="owner-records-primary">
+                                <strong>${username}</strong>
+                                <span class="owner-records-sub">${displayName}</span>
+                            </div>
+                        </td>
+                        <td>${formatDashboardDateTime(entry?.loggedInAt)}</td>
+                        <td>${renderOwnerRoleChips(entry?.roles)}</td>
+                        <td>
+                            <div class="owner-records-primary">
+                                <strong>${ipAddress}</strong>
+                                <span class="owner-records-sub">${userAgent}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="owner-records-inline-list">
+                                ${sessionChip}
+                                ${userChip}
+                            </div>
+                            <div class="owner-records-sub">\uB9C8\uC9C0\uB9C9 \uD65C\uB3D9 ${escapeDashboardHtml(lastSeenAt)} / \uB9CC\uB8CC ${escapeDashboardHtml(expiresAt)}</div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            return `
+                <table class="owner-records-table">
+                    <thead>
+                        <tr>
+                            <th>\uC544\uC774\uB514</th>
+                            <th>\uB85C\uADF8\uC778 \uC2DC\uAC04</th>
+                            <th>\uC5ED\uD560</th>
+                            <th>\uC811\uC18D \uC815\uBCF4</th>
+                            <th>\uC0C1\uD0DC</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
+        function buildOwnerUsersHtml(entries = []) {
+            if (!Array.isArray(entries) || !entries.length) {
+                return '<div class="owner-records-empty">\uB4F1\uB85D\uB41C \uACC4\uC815\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</div>';
+            }
+            const rows = entries.map(entry => {
+                const username = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.username));
+                const displayName = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.displayName));
+                const lastAccessAt = escapeDashboardHtml(formatDashboardDateTime(entry?.lastAccessAt));
+                const statusChip = entry?.isActive
+                    ? renderOwnerStatusChip('\uD65C\uC131', 'positive')
+                    : renderOwnerStatusChip('\uBE44\uD65C\uC131');
+                return `
+                    <tr>
+                        <td>
+                            <div class="owner-records-primary">
+                                <span class="owner-records-account-line">
+                                    <strong>${username}</strong>
+                                    ${renderOwnerSessionDot(entry?.sessionActive)}
+                                </span>
+                                <span class="owner-records-sub">${displayName}</span>
+                                <span class="owner-records-sub">\uCD5C\uC885 \uC811\uC18D ${lastAccessAt}</span>
+                            </div>
+                        </td>
+                        <td>${renderOwnerRoleChips(entry?.roles)}</td>
+                        <td>${statusChip}</td>
+                        <td>${renderOwnerRecentChanges(entry?.recentChanges)}</td>
+                    </tr>
+                `;
+            }).join('');
+            return `
+                <table class="owner-records-table">
+                    <thead>
+                        <tr>
+                            <th>\uC544\uC774\uB514</th>
+                            <th>\uC5ED\uD560</th>
+                            <th>\uC0C1\uD0DC</th>
+                            <th>\uC0DD\uC131/\uC218\uC815</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
+        function renderOwnerRecordsPanel() {
+            const elements = getOwnerRecordsElements();
+            const isOwner = hasOwnerRole();
+            OwnerRecordsState.isOwner = isOwner;
+
+            if (elements.loginTab?.firstElementChild) {
+                elements.loginTab.firstElementChild.textContent = '\uAE30\uB85D';
+            }
+            if (elements.usersTab?.firstElementChild) {
+                elements.usersTab.firstElementChild.textContent = '\uB4F1\uB85D \uACC4\uC815';
+            }
+
+            if (elements.toggle) {
+                elements.toggle.hidden = !isOwner;
+                elements.toggle.classList.toggle('is-active', isOwner && OwnerRecordsState.panelOpen);
+                elements.toggle.setAttribute('aria-expanded', isOwner && OwnerRecordsState.panelOpen ? 'true' : 'false');
+            }
+
+            if (!isOwner) {
+                OwnerRecordsState.panelOpen = false;
+                if (elements.panel) {
+                    elements.panel.hidden = true;
+                }
+                return;
+            }
+
+            const activeTab = OwnerRecordsState.activeTab === OWNER_RECORDS_TAB_KEYS.USERS
+                ? OWNER_RECORDS_TAB_KEYS.USERS
+                : OWNER_RECORDS_TAB_KEYS.LOGIN;
+            OwnerRecordsState.activeTab = activeTab;
+
+            if (elements.panel) {
+                elements.panel.hidden = !OwnerRecordsState.panelOpen;
+            }
+            if (elements.loginCount) {
+                elements.loginCount.textContent = String(OwnerRecordsState.loginHistory.length);
+            }
+            if (elements.usersCount) {
+                elements.usersCount.textContent = String(OwnerRecordsState.users.length);
+            }
+            if (elements.loginTab) {
+                const active = activeTab === OWNER_RECORDS_TAB_KEYS.LOGIN;
+                elements.loginTab.classList.toggle('is-active', active);
+                elements.loginTab.setAttribute('aria-selected', active ? 'true' : 'false');
+            }
+            if (elements.usersTab) {
+                const active = activeTab === OWNER_RECORDS_TAB_KEYS.USERS;
+                elements.usersTab.classList.toggle('is-active', active);
+                elements.usersTab.setAttribute('aria-selected', active ? 'true' : 'false');
+            }
+            if (elements.feedback) {
+                const feedbackMessage = OwnerRecordsState.loading
+                    ? '\uAE30\uB85D\uC744 \uBD88\uB7EC\uC624\uB294 \uC911\uC785\uB2C8\uB2E4.'
+                    : OwnerRecordsState.errorMessage;
+                elements.feedback.textContent = feedbackMessage;
+                elements.feedback.hidden = !feedbackMessage;
+                elements.feedback.classList.toggle('is-error', Boolean(OwnerRecordsState.errorMessage) && !OwnerRecordsState.loading);
+            }
+            if (elements.loginPane) {
+                elements.loginPane.hidden = activeTab !== OWNER_RECORDS_TAB_KEYS.LOGIN;
+                elements.loginPane.innerHTML = buildOwnerLoginHistoryHtml(OwnerRecordsState.loginHistory);
+            }
+            if (elements.usersPane) {
+                elements.usersPane.hidden = activeTab !== OWNER_RECORDS_TAB_KEYS.USERS;
+                elements.usersPane.innerHTML = buildOwnerUsersHtml(OwnerRecordsState.users);
+            }
+        }
+
+        async function loadOwnerRecordsOverview(options = {}) {
+            if (!OwnerRecordsState.isOwner) return;
+            if (OwnerRecordsState.loading) return;
+            const shouldForce = options.force === true;
+            if (OwnerRecordsState.loaded && !shouldForce) {
+                renderOwnerRecordsPanel();
+                return;
+            }
+
+            OwnerRecordsState.loading = true;
+            OwnerRecordsState.errorMessage = '';
+            renderOwnerRecordsPanel();
+
+            try {
+                const response = await fetch('/api/owner/access-overview?limit=100', {
+                    credentials: 'same-origin'
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || payload?.ok !== true) {
+                    throw new Error(payload?.error || 'owner_records_load_failed');
+                }
+                OwnerRecordsState.loginHistory = Array.isArray(payload.loginHistory) ? payload.loginHistory : [];
+                OwnerRecordsState.users = Array.isArray(payload.users) ? payload.users : [];
+                OwnerRecordsState.loaded = true;
+            } catch (error) {
+                console.error('Owner records load failed.', error);
+                OwnerRecordsState.errorMessage = '\uAE30\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.';
+            } finally {
+                OwnerRecordsState.loading = false;
+                renderOwnerRecordsPanel();
+            }
+        }
+
+        function setOwnerRecordsTab(tabKey) {
+            OwnerRecordsState.activeTab = tabKey === OWNER_RECORDS_TAB_KEYS.USERS
+                ? OWNER_RECORDS_TAB_KEYS.USERS
+                : OWNER_RECORDS_TAB_KEYS.LOGIN;
+            renderOwnerRecordsPanel();
+        }
+
+        function setOwnerRecordsPanelOpen(nextOpen) {
+            if (!OwnerRecordsState.isOwner) return;
+            OwnerRecordsState.panelOpen = nextOpen === true;
+            renderOwnerRecordsPanel();
+            if (OwnerRecordsState.panelOpen) {
+                void loadOwnerRecordsOverview({ force: true });
+            }
+        }
+
+        function bindOwnerRecordsUi() {
+            if (window.__ownerRecordsUiBound) return;
+            window.__ownerRecordsUiBound = true;
+            const { toggle, closeButton, loginTab, usersTab } = getOwnerRecordsElements();
+            toggle?.addEventListener('click', () => {
+                setOwnerRecordsPanelOpen(!OwnerRecordsState.panelOpen);
+            });
+            closeButton?.addEventListener('click', () => {
+                setOwnerRecordsPanelOpen(false);
+            });
+            loginTab?.addEventListener('click', () => {
+                setOwnerRecordsTab(OWNER_RECORDS_TAB_KEYS.LOGIN);
+            });
+            usersTab?.addEventListener('click', () => {
+                setOwnerRecordsTab(OWNER_RECORDS_TAB_KEYS.USERS);
+            });
+            document.addEventListener('keydown', evt => {
+                if (evt.key !== 'Escape') return;
+                if (!OwnerRecordsState.panelOpen) return;
+                setOwnerRecordsPanelOpen(false);
+            });
+            document.addEventListener('click', evt => {
+                if (!OwnerRecordsState.panelOpen) return;
+                const target = evt.target;
+                if (!(target instanceof Element)) return;
+                const { toggle: currentToggle, panel } = getOwnerRecordsElements();
+                if (panel?.contains(target) || currentToggle?.contains(target)) {
+                    return;
+                }
+                setOwnerRecordsPanelOpen(false);
+            }, true);
         }
 
         function ensureSidebarTreeState(sections = null) {
@@ -237,68 +686,68 @@
                     <div class="viewer-home-hero">
                         <div class="viewer-home-brand-panel">
                             <div class="viewer-home-brand-frame">
-                                <img class="viewer-home-brand-logo" src="${companyLogoSrc}" alt="회사 로고" />
+                                <img class="viewer-home-brand-logo" src="${companyLogoSrc}" alt="\uD68C\uC0AC \uB85C\uACE0" />
                             </div>
                         </div>
                         <div class="viewer-home-copy-panel">
-                            <h1 class="viewer-home-policy-title">2026년 경영방침</h1>
+                            <h1 class="viewer-home-policy-title">2026\uB144 \uACBD\uC601\uBC29\uCE68</h1>
                             <div class="viewer-home-policy-rule"></div>
                             <div class="viewer-home-policy-points">
                                 <p class="viewer-home-policy-line">
                                     <span class="viewer-home-policy-line-icon" aria-hidden="true"><i class="fas fa-arrow-trend-up"></i></span>
-                                    <span>새로운 기준으로 지속 성장의 기반을 구축한다</span>
+                                    <span>\uC0C8\uB85C\uC6B4 \uAE30\uC220\uB825\uC73C\uB85C \uC9C0\uC18D \uC131\uC7A5\uC758 \uAE30\uBC18\uC744 \uAD6C\uCD95\uD569\uC2DC\uB2E4</span>
                                 </p>
                                 <p class="viewer-home-policy-line viewer-home-policy-line-strong">
                                     <span class="viewer-home-policy-line-icon" aria-hidden="true"><i class="fas fa-brain"></i></span>
-                                    <span>AI 역량을 확보하여 업무효율을 극대화한다.</span>
+                                    <span>AI \uBC0F \uB514\uC9C0\uD138 \uC815\uBCF4\uD654\uB97C \uD1B5\uD574 \uC5C5\uBB34 \uD6A8\uC728\uC744 \uADF9\uB300\uD654\uD569\uC2DC\uB2E4</span>
                                 </p>
                             </div>
                         </div>
                     </div>
-                    <section class="viewer-home-guideline-section" aria-label="행동 강령">
+                    <section class="viewer-home-guideline-section" aria-label="\uD589\uB3D9 \uAC15\uB839">
                         <div class="viewer-home-guideline-header">
-                            <h2 class="viewer-home-guideline-title">신소가 행동강령</h2>
+                            <h2 class="viewer-home-guideline-title">\uC2E0\uC18C\uAC00 \uD589\uB3D9\uAC15\uB839</h2>
                         </div>
                         <div class="viewer-home-guideline-grid">
                             <article class="viewer-home-guideline-card viewer-home-guideline-card-trust">
                                 <div class="viewer-home-guideline-icon"><i class="fas fa-handshake"></i></div>
                                 <div class="viewer-home-guideline-copy">
-                                    <div class="viewer-home-guideline-name">신뢰(信賴)</div>
-                                    <div class="viewer-home-guideline-quote">“의지하고, 이해하고, 믿고, 열어라”</div>
-                                    <div class="viewer-home-guideline-tag">“의리신열”</div>
+                                    <div class="viewer-home-guideline-name">\uC2E0\uB8B0(\u4FE1\u983C)</div>
+                                    <div class="viewer-home-guideline-quote">\uC131\uC758\uC788\uACE0, \uC774\uD574\uD558\uACE0, \uBBFF\uACE0, \uC758\uC9C0\uD558\uC790</div>
+                                    <div class="viewer-home-guideline-tag">\uC131\uC758\uB85C \uB9FA\uC740 \uAD00\uACC4</div>
                                     <ul class="viewer-home-guideline-list">
-                                        <li>차이나 부족함을 인정하고 스스로를 낮추는 겸손한 자세</li>
-                                        <li>상대를 배려, 존중하고 이해하려는 태도</li>
-                                        <li>존중, 성실, 책임 있는 행동을 취하는 자세</li>
-                                        <li>개방적이고 열린 마음으로 받아들이려는 자세</li>
+                                        <li>\uCC28\uC774\uC640 \uBD80\uC871\uD568\uC744 \uC778\uC815\uD558\uACE0 \uC2A4\uC2A4\uB85C\uB97C \uB4DC\uB7EC\uB0B4\uB294 \uACB8\uC190\uD55C \uC790\uC138</li>
+                                        <li>\uC0C1\uB300\uB97C \uBC30\uB824\uD558\uACE0 \uC874\uC911\uD558\uBA70 \uC774\uD574\uD558\uB824\uB294 \uD0DC\uB3C4</li>
+                                        <li>\uC874\uC911, \uC0C1\uB2F4, \uCC45\uC784 \uC788\uB294 \uD589\uB3D9\uC744 \uCDE8\uD558\uB294 \uC790\uC138</li>
+                                        <li>\uAC1C\uBC29\uC801\uC774\uACE0 \uB530\uB73B\uD55C \uB9C8\uC74C\uC73C\uB85C \uBC1B\uC544\uB4E4\uC774\uB294 \uC790\uC138</li>
                                     </ul>
                                 </div>
                             </article>
                             <article class="viewer-home-guideline-card viewer-home-guideline-card-communication">
                                 <div class="viewer-home-guideline-icon"><i class="fas fa-comments"></i></div>
                                 <div class="viewer-home-guideline-copy">
-                                    <div class="viewer-home-guideline-name">소통(疏通)</div>
-                                    <div class="viewer-home-guideline-quote">“찾아가고, 다가가고, 듣고, 말하라”</div>
-                                    <div class="viewer-home-guideline-tag">“방다청설”</div>
+                                    <div class="viewer-home-guideline-name">\uC18C\uD1B5(\u758F\u901A)</div>
+                                    <div class="viewer-home-guideline-quote">\uC0AC\uB78C\uACFC \uB9C8\uC74C\uC744 \uC5F4\uACE0, \uC6C3\uACE0, \uB9D0\uD558\uC790</div>
+                                    <div class="viewer-home-guideline-tag">\uC9C4\uC2EC \uC788\uB294 \uB300\uD654</div>
                                     <ul class="viewer-home-guideline-list">
-                                        <li>적극적인 문제해결과 도전하려는 자세</li>
-                                        <li>자발적이며 친절하게 협업하고 협력하는 모습</li>
-                                        <li>경청하고 수용하는 태도</li>
-                                        <li>진정성과 공감대 형성을 위한 적극적인 자세</li>
+                                        <li>\uAD6C\uCCB4\uC801\uC778 \uBB38\uC81C \uD574\uACB0\uACFC \uC2E4\uCC9C\uC73C\uB85C \uC774\uC5B4\uAC00\uB294 \uC790\uC138</li>
+                                        <li>\uC790\uBC1C\uC801\uC774\uBA70 \uCE5C\uC808\uD558\uAC8C \uC791\uC5C5\uD558\uACE0 \uD611\uB825\uD558\uB294 \uBAA8\uC2B5</li>
+                                        <li>\uACBD\uCCAD\uD558\uACE0 \uC218\uC6A9\uD558\uB294 \uD0DC\uB3C4</li>
+                                        <li>\uC9C4\uC815\uC131\uACFC \uACF5\uAC10\uC744 \uBC14\uD0D5\uC73C\uB85C \uD55C \uC8FC\uCCB4\uC801 \uC790\uC138</li>
                                     </ul>
                                 </div>
                             </article>
                             <article class="viewer-home-guideline-card viewer-home-guideline-card-value">
                                 <div class="viewer-home-guideline-icon"><i class="fas fa-lightbulb"></i></div>
                                 <div class="viewer-home-guideline-copy">
-                                    <div class="viewer-home-guideline-name">가치창조(價値創造)</div>
-                                    <div class="viewer-home-guideline-quote">“경험하고, 나누고, 배우고, 쓸모있게 하라”</div>
-                                    <div class="viewer-home-guideline-tag">“경나학쓸”</div>
+                                    <div class="viewer-home-guideline-name">\uAC00\uCE58\uCC3D\uC870(\u50F9\u5024\u5275\u9020)</div>
+                                    <div class="viewer-home-guideline-quote">\uC0DD\uAC01\uD558\uACE0 \uB098\uB204\uACE0 \uBC30\uC6B0\uACE0 \uC5F0\uAD6C\uD558\uBA70 \uC2E4\uD589\uD558\uC790</div>
+                                    <div class="viewer-home-guideline-tag">\uCC3D\uC758\uC801 \uC131\uC7A5</div>
                                     <ul class="viewer-home-guideline-list">
-                                        <li>도전을 통해 노하우를 쌓고 다양한 기능과 지식을 획득하는 자세</li>
-                                        <li>생각과 정보를 나누고 공유하는 자세</li>
-                                        <li>새로운 기술과 환경에서 아이디어를 찾고 학습하려는 자세</li>
-                                        <li>창의적인 마인드와 가치지향적인 태도</li>
+                                        <li>\uC548\uC804\uC744 \uD1B5\uD574 \uD559\uD558\uACE0 \uC775\uD788\uACE0 \uB2E4\uC591\uD55C \uAE30\uB2A5\uACFC \uC9C0\uC2DD\uC744 \uD68D\uB4DD\uD558\uB294 \uC790\uC138</li>
+                                        <li>\uC0DD\uAC01\uACFC \uC815\uBCF4\uB97C \uB098\uB204\uACE0 \uACF5\uC720\uD558\uB294 \uC790\uC138</li>
+                                        <li>\uC0C8\uB85C\uC6B4 \uAE30\uC220\uACFC \uD658\uACBD\uC5D0\uC11C \uC544\uC774\uB514\uC5B4\uB97C \uCC3E\uACE0 \uC2E4\uD589\uD558\uB824\uB294 \uC790\uC138</li>
+                                        <li>\uCC3D\uC758\uC801\uC778 \uB9C8\uC778\uB4DC\uB85C \uAC00\uCE58\uB97C \uCD94\uAD6C\uD558\uB294 \uD0DC\uB3C4</li>
                                     </ul>
                                 </div>
                             </article>
@@ -328,7 +777,7 @@
                 return `
                     <div class="dashboard-panel">
                         <div class="dashboard-panel-surface">
-                            <div class="dashboard-empty-state">표시할 모듈이 없습니다.</div>
+                            <div class="dashboard-empty-state">\uD45C\uC2DC\uD560 \uBAA8\uB4C8\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</div>
                         </div>
                     </div>
                 `;
@@ -342,8 +791,8 @@
                         <div class="dashboard-workspace-panel" style="--section-color:${accent}; --section-soft:${softAccent};">
                             <span class="dashboard-workspace-icon"><i class="fas ${escapeDashboardHtml(section.icon || 'fa-folder-open')}"></i></span>
                             <div class="dashboard-workspace-title">${escapeDashboardHtml(section.name || id)}</div>
-                            <div class="dashboard-workspace-copy">왼쪽에서 하위 메뉴를 눌러 바로 열 수 있습니다.</div>
-                            <div class="dashboard-workspace-meta">${visibleCategoryCount}개 항목</div>
+                            <div class="dashboard-workspace-copy">\uC67C\uCABD\uC5D0\uC11C \uD558\uC704 \uBA54\uB274\uB97C \uB20C\uB7EC \uBC14\uB85C \uC774\uB3D9\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.</div>
+                            <div class="dashboard-workspace-meta">${visibleCategoryCount}\uAC1C \uD56D\uBAA9</div>
                         </div>
                     </div>
                 </div>
@@ -382,7 +831,7 @@
                                 const isActiveCategory = selectedSectionId === entry.id && getNavigationSelectionCategoryIndex(entry.id) === index;
                                 return `
                                 <button type="button" class="dashboard-tree-subitem${isActiveCategory ? ' active' : ''}" onclick="openSectionCategory('${entry.id}', ${index})"${isActiveCategory ? ' aria-current="page"' : ''}>
-                                    <span class="dashboard-tree-subitem-title">${escapeDashboardHtml(category.title || `항목 ${index + 1}`)}</span>
+                                    <span class="dashboard-tree-subitem-title">${escapeDashboardHtml(category.title || `\uD56D\uBAA9 ${index + 1}`)}</span>
                                 </button>
                             `;
                             }).join('')}
@@ -404,8 +853,8 @@
             const selectedCategories = getSectionNavigationCategories(selectedEntry?.section);
             renderDashboardSideNav(sections, selectedEntry);
 
-            stageTitle.textContent = selectedEntry?.section?.name || '대시보드';
-            stageCount.textContent = `${selectedCategories.length}개`;
+            stageTitle.textContent = selectedEntry?.section?.name || '\uB300\uC2DC\uBCF4\uB4DC';
+            stageCount.textContent = `${selectedCategories.length}\uAC1C`;
             subtabBar.innerHTML = '';
 
             panelContainer.innerHTML = buildDashboardSectionPanelHtml(selectedEntry);
@@ -558,16 +1007,16 @@
 
         function getDefaultGlobalSaveStatus(action) {
             if (!getDashboardHiddenState()) {
-                return '대시보드에서는 저장 작업이 없습니다.';
+                return '\uB300\uC2DC\uBCF4\uB4DC\uC5D0\uC11C\uB294 \uC800\uC7A5 \uC791\uC5C5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.';
             }
             if (!action) {
-                return '현재 화면은 저장 대상이 없습니다.';
+                return '\uD604\uC7AC \uD654\uBA74\uC740 \uC800\uC7A5 \uB300\uC0C1\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.';
             }
-            return action.statusText || '현재 화면 데이터를 중앙 서버에 저장합니다.';
+            return action.statusText || '\uD604\uC7AC \uD654\uBA74 \uB370\uC774\uD130\uB97C \uC911\uC559 \uC11C\uBC84\uC5D0 \uC800\uC7A5\uD569\uB2C8\uB2E4.';
         }
 
         function getDefaultGlobalSaveButtonLabel(action) {
-            return action?.buttonLabel || '저장';
+            return action?.buttonLabel || '\uC800\uC7A5';
         }
 
         function resolveGlobalSaveAction() {
@@ -594,9 +1043,9 @@
             button.classList.toggle('is-error', !GlobalSaveUiState.busy && GlobalSaveUiState.tone === 'error');
             button.setAttribute('aria-disabled', button.disabled ? 'true' : 'false');
             buttonLabel.textContent = GlobalSaveUiState.busy
-                ? '저장 중...'
+                ? '\uC800\uC7A5 \uC911...'
                 : getDefaultGlobalSaveButtonLabel(action);
-            button.title = action?.title || GlobalSaveUiState.message || '저장';
+            button.title = action?.title || GlobalSaveUiState.message || '\uC800\uC7A5';
             status.textContent = GlobalSaveUiState.message;
             status.classList.toggle('is-success', GlobalSaveUiState.tone === 'success');
             status.classList.toggle('is-error', GlobalSaveUiState.tone === 'error');
@@ -645,7 +1094,7 @@
             GlobalSaveUiState.busy = true;
             GlobalSaveUiState.activeAction = action;
             GlobalSaveUiState.providerKey = String(action.providerKey || '');
-            GlobalSaveUiState.message = '중앙 서버에 저장 중입니다...';
+            GlobalSaveUiState.message = '\uC911\uC559 \uC11C\uBC84\uC5D0 \uC800\uC7A5 \uC911\uC785\uB2C8\uB2E4...';
             GlobalSaveUiState.tone = '';
             renderGlobalSaveUi();
 
@@ -663,7 +1112,7 @@
                     providerKey: action.providerKey,
                     sectionId: activeSectionId,
                     categoryTitle: activeRenderContext?.category?.title || '',
-                    label: action.historyLabel || action.buttonLabel || action.label || '저장',
+                    label: action.historyLabel || action.buttonLabel || action.label || '\uC800\uC7A5',
                     trigger: options.trigger || 'manual'
                 });
                 persistGlobalRecentUpdateRecord(savedRecord);
@@ -671,14 +1120,14 @@
                     ? new Date(savedRecord.savedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
                     : '';
                 GlobalSaveUiState.message = savedTime
-                    ? `저장이 완료되었습니다. ${savedTime}`
-                    : '저장이 완료되었습니다.';
+                    ? `\uC800\uC7A5\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. ${savedTime}`
+                    : '\uC800\uC7A5\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.';
                 GlobalSaveUiState.tone = '';
-                successAlertMessage = '저장되었습니다.';
+                successAlertMessage = '\uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.';
                 return true;
             } catch (error) {
                 console.error('KPI global save failed.', error);
-                GlobalSaveUiState.message = action.errorMessage || '저장에 실패했습니다.';
+                GlobalSaveUiState.message = action.errorMessage || '\uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.';
                 GlobalSaveUiState.tone = 'error';
                 return false;
             } finally {
@@ -770,10 +1219,10 @@
             const directSection = document.querySelector(`[data-util-dual="${normalizedItemKey}"] [data-util-dual-section="combined"]`);
             const activeTeam = String(directSection?.dataset?.activeTeam || '').trim();
             if (activeTeam) return activeTeam;
-            if (normalizedItemKey === 'electric') return UtilReportState.electricTeam === 'all' ? '전체' : (UtilReportState.electricTeam || '전체');
-            if (normalizedItemKey === 'gas') return UtilReportState.gasTeam === 'all' ? '전체' : (UtilReportState.gasTeam || '전체');
-            if (normalizedItemKey === 'waste') return UtilReportState.wasteTeam === 'all' ? '전체' : (UtilReportState.wasteTeam || '전체');
-            return UtilReportBuilderVizState.team || '전체';
+            if (normalizedItemKey === 'electric') return UtilReportState.electricTeam === 'all' ? '\uC804\uCCB4' : (UtilReportState.electricTeam || '\uC804\uCCB4');
+            if (normalizedItemKey === 'gas') return UtilReportState.gasTeam === 'all' ? '\uC804\uCCB4' : (UtilReportState.gasTeam || '\uC804\uCCB4');
+            if (normalizedItemKey === 'waste') return UtilReportState.wasteTeam === 'all' ? '\uC804\uCCB4' : (UtilReportState.wasteTeam || '\uC804\uCCB4');
+            return UtilReportBuilderVizState.team || '\uC804\uCCB4';
         }
 
         function openUtilSidebarReportShortcut(itemKey = '') {
@@ -820,10 +1269,10 @@
             const selectedSectionId = getNavigationSelectionSectionId();
             sidebar.innerHTML = `
                 <div class="sidebar-tree-shell">
-                    <button id="viewer-sidebar-toggle" type="button" class="sidebar-group-toggle sidebar-viewer-toggle" onclick="toggleViewerSidebar()" aria-label="닫기" title="닫기" aria-pressed="false">
+                    <button id="viewer-sidebar-toggle" type="button" class="sidebar-group-toggle sidebar-viewer-toggle" onclick="toggleViewerSidebar()" aria-label="\uB2EB\uAE30" title="\uB2EB\uAE30" aria-pressed="false">
                         <span class="sidebar-group-toggle-main">
                             <span class="sidebar-group-icon"><i class="fas fa-angles-left" aria-hidden="true"></i></span>
-                            <span id="viewer-sidebar-toggle-label" class="sidebar-group-label">닫기</span>
+                            <span id="viewer-sidebar-toggle-label" class="sidebar-group-label">\uB2EB\uAE30</span>
                         </span>
                     </button>
                     ${sections.map(sectionEntry => {
@@ -854,7 +1303,7 @@
                                                             <button type="button" class="sidebar-item sidebar-item-nested sidebar-item-team${isActiveTeam ? ' active' : ''}" style="--cat-color:${teamColor};" onclick="openSidebarTeamCategory('${sectionEntry.id}', ${index}, '${teamCategory.dataKey}')" id="cat-btn-${sectionEntry.id}-${index}-team-${teamIndex}"${isActiveTeam ? ' aria-current="page"' : ''}>
                                                                 <span class="sidebar-item-main">
                                                                     <i class="fas ${escapeDashboardHtml(teamCategory.icon || 'fa-layer-group')} w-5 text-center"></i>
-                                                                    <span>${escapeDashboardHtml(teamCategory.title || `팀 ${teamIndex + 1}`)}</span>
+                                                                    <span>${escapeDashboardHtml(teamCategory.title || `\uD300 ${teamIndex + 1}`)}</span>
                                                                 </span>
                                                             </button>
                                                         `;
@@ -867,7 +1316,7 @@
                                                 <button type="button" class="sidebar-item sidebar-item-nested${isActiveCategory ? ' active' : ''}" style="--cat-color:${categoryColor};" onclick="selectCategory('${sectionEntry.id}', ${index})" id="cat-btn-${sectionEntry.id}-${index}"${isActiveCategory ? ' aria-current="page"' : ''}>
                                                     <span class="sidebar-item-main">
                                                         <i class="fas ${escapeDashboardHtml(category.icon || 'fa-folder')} w-5 text-center"></i>
-                                                        <span>${escapeDashboardHtml(category.title || `항목 ${index + 1}`)}</span>
+                                                        <span>${escapeDashboardHtml(category.title || `\uD56D\uBAA9 ${index + 1}`)}</span>
                                                     </span>
                                                 </button>
                                             </div>
@@ -885,11 +1334,11 @@
         function getViewerSidebarToggleMeta(isCollapsed = ViewerLayoutState.sidebarCollapsed === true) {
             return isCollapsed
                 ? {
-                    label: '열기',
+                    label: '\uC5F4\uAE30',
                     icon: 'fa-angles-right'
                 }
                 : {
-                    label: '닫기',
+                    label: '\uB2EB\uAE30',
                     icon: 'fa-angles-left'
                 };
         }
@@ -1021,6 +1470,11 @@
         bindGlobalSaveButton();
         bindGlobalSaveHotkey();
         bindGlobalSaveRefreshHooks();
+        bindRuntimeAuthUi();
+        bindOwnerRecordsUi();
+        renderRuntimeAuthUi();
         renderGlobalSaveUi({ forceDefault: true });
+        renderOwnerRecordsPanel();
         KpiRuntime?.runBootTasks?.();
         goHome();
+

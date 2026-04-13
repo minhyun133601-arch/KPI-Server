@@ -7,6 +7,7 @@ import {
 } from './portal-data-registry.js';
 import { PERMISSION_KEYS, getWorkPermissionKey } from './permission-registry.js';
 import { listModuleRecordsByModuleKey } from '../repositories/modules.js';
+import { isOwnerRole } from '../services/auth.js';
 
 export const PORTAL_DATA_BOOTSTRAP_PATH = '/bootstrap/portal-data.js';
 
@@ -262,6 +263,17 @@ export async function buildPortalDataBootstrapScript(auth, canAccessPermission) 
     source: 'internal_server',
     enabled: true,
     apiBase: '/api',
+    auth: {
+      currentUser: auth?.user
+        ? {
+            id: auth.user.id,
+            username: String(auth.user.username || '').trim(),
+            displayName: String(auth.user.display_name || '').trim(),
+            roles: Array.isArray(auth.user.roles) ? auth.user.roles : [],
+            isOwner: isOwnerRole(auth.user)
+          }
+        : null
+    },
     metering: {
       enabled: true,
       apiBase: '/api',

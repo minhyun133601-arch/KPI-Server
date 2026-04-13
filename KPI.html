@@ -217,6 +217,65 @@
             font-size: 0.76rem;
             line-height: 1.5;
         }
+        .runtime-auth-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+            padding: 0.7rem 0.8rem;
+            border: 1px solid #dbe3ee;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .runtime-auth-bar[hidden] {
+            display: none !important;
+        }
+        .runtime-auth-copy {
+            min-width: 0;
+            flex: 1;
+            display: grid;
+            gap: 0;
+        }
+        .runtime-auth-caption {
+            display: none;
+        }
+        .runtime-auth-identity {
+            color: #0f172a;
+            font-size: 0.82rem;
+            font-weight: 900;
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .runtime-auth-role {
+            color: #475569;
+            font-size: 0.72rem;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+        .runtime-auth-logout {
+            flex: 0 0 auto;
+            min-height: 34px;
+            padding: 0 0.85rem;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #334155;
+            font-size: 0.74rem;
+            font-weight: 800;
+            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 0 10px 20px -18px rgba(15, 23, 42, 0.35);
+        }
+        .runtime-auth-logout:hover:not(:disabled) {
+            border-color: #94a3b8;
+            background: #f8fafc;
+        }
+        .runtime-auth-logout:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
         .dashboard-main {
             min-width: 0;
             display: flex;
@@ -1352,6 +1411,12 @@
             min-width: 0;
             margin-left: auto;
         }
+        .viewer-header-actions .runtime-auth-bar {
+            min-width: 0;
+            max-width: min(420px, 45vw);
+            padding-top: 0.45rem;
+            padding-bottom: 0.45rem;
+        }
         .viewer-version-badge { display: none; }
         .global-save-dock {
             display: inline-flex;
@@ -1428,6 +1493,253 @@
         }
         .global-save-toolbar-button i {
             font-size: 0.82rem;
+        }
+        .owner-records-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.42rem;
+            height: 34px;
+            padding: 0 0.78rem;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #475569;
+            font-size: 0.78rem;
+            font-weight: 800;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            box-shadow: 0 10px 20px -18px rgba(15, 23, 42, 0.4);
+        }
+        .owner-records-toggle:hover {
+            border-color: #94a3b8;
+            background: #f8fbff;
+            color: #0f172a;
+        }
+        .owner-records-toggle.is-active {
+            border-color: #93c5fd;
+            background: #eff6ff;
+            color: #1d4ed8;
+            box-shadow: 0 12px 22px -18px rgba(37, 99, 235, 0.45);
+        }
+        .owner-records-toggle[hidden] {
+            display: none !important;
+        }
+        .owner-records-panel {
+            position: fixed;
+            top: 78px;
+            right: 20px;
+            z-index: 1200;
+            width: min(620px, calc(100vw - 24px));
+            max-height: calc(100vh - 108px);
+            display: grid;
+            grid-template-rows: auto auto auto minmax(0, 1fr);
+            gap: 0.9rem;
+            padding: 16px;
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: 0 24px 56px -34px rgba(15, 23, 42, 0.5);
+            overflow: hidden;
+        }
+        .owner-records-panel[hidden] {
+            display: none !important;
+        }
+        .owner-records-panel-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        .owner-records-panel-title {
+            margin: 0;
+            color: #0f172a;
+            font-size: 1rem;
+            font-weight: 900;
+        }
+        .owner-records-panel-copy {
+            margin-top: 0.25rem;
+            color: #64748b;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+        .owner-records-panel-close {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            height: 34px;
+            padding: 0 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #475569;
+            font-size: 0.78rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .owner-records-panel-close:hover {
+            border-color: #94a3b8;
+            background: #f8fbff;
+            color: #0f172a;
+        }
+        .owner-records-tabs {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .owner-records-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            min-height: 34px;
+            padding: 0 0.78rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #475569;
+            font-size: 0.78rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .owner-records-tab.is-active {
+            border-color: #93c5fd;
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+        .owner-records-tab-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 0.34rem;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.16);
+            color: inherit;
+            font-size: 0.72rem;
+            font-weight: 900;
+        }
+        .owner-records-feedback {
+            min-height: 20px;
+            color: #475569;
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+        .owner-records-feedback.is-error {
+            color: #b42318;
+        }
+        .owner-records-pane {
+            min-height: 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            background: #ffffff;
+            overflow: auto;
+        }
+        .owner-records-empty {
+            padding: 18px;
+            color: #64748b;
+            font-size: 0.82rem;
+            text-align: center;
+        }
+        .owner-records-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.78rem;
+            color: #0f172a;
+        }
+        .owner-records-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+            color: #475569;
+            font-size: 0.74rem;
+            font-weight: 900;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .owner-records-table tbody td {
+            padding: 11px 12px;
+            border-bottom: 1px solid #edf2f7;
+            vertical-align: top;
+            line-height: 1.45;
+        }
+        .owner-records-table tbody tr:last-child td {
+            border-bottom: 0;
+        }
+        .owner-records-primary {
+            display: grid;
+            gap: 0.22rem;
+        }
+        .owner-records-account-line {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.38rem;
+            min-width: 0;
+        }
+        .owner-records-primary strong {
+            font-weight: 900;
+        }
+        .owner-records-session-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #94a3b8;
+            box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.18);
+            flex: 0 0 auto;
+        }
+        .owner-records-session-dot.is-active {
+            background: #16a34a;
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.16);
+        }
+        .owner-records-session-dot.is-inactive {
+            background: #dc2626;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);
+        }
+        .owner-records-activity-item + .owner-records-activity-item {
+            margin-top: 0.55rem;
+            padding-top: 0.55rem;
+            border-top: 1px dashed #e2e8f0;
+        }
+        .owner-records-sub {
+            color: #64748b;
+            font-size: 0.74rem;
+            word-break: break-word;
+        }
+        .owner-records-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 24px;
+            padding: 0 0.52rem;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #475569;
+            font-size: 0.72rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .owner-records-chip.is-positive {
+            border-color: #86efac;
+            background: #f0fdf4;
+            color: #166534;
+        }
+        .owner-records-chip.is-neutral {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+            color: #475569;
+        }
+        .owner-records-inline-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
         }
         .global-save-button {
             display: inline-flex;
@@ -4116,6 +4428,17 @@
                 flex-wrap: wrap;
                 margin-left: 0;
             }
+            .viewer-header-actions .runtime-auth-bar {
+                width: 100%;
+                max-width: none;
+            }
+            .owner-records-panel {
+                top: 116px;
+                right: 12px;
+                width: calc(100vw - 24px);
+                max-height: calc(100vh - 132px);
+                padding: 14px;
+            }
             .global-save-toolbar-button {
                 min-height: 38px;
             }
@@ -4139,13 +4462,21 @@
         <div class="dashboard-shell">
             <aside class="dashboard-side">
                 <div class="dashboard-side-brand">
-                                <span class="dashboard-version-badge">V311</span>
+                        <span class="dashboard-version-badge">V319</span>
                 </div>
                 <div id="dashboard-side-nav" class="dashboard-side-nav">
                     <!-- JS로 홈 사이드 탭 렌더 -->
                 </div>
                 <div class="dashboard-side-footer">
                     <div id="last-modified-text" class="dashboard-side-meta">최종 수정: -</div>
+                </div>
+                <div id="dashboard-auth-bar" class="runtime-auth-bar" hidden>
+                    <div class="runtime-auth-copy">
+                        <span class="runtime-auth-caption">Signed In</span>
+                        <strong id="dashboard-auth-identity" class="runtime-auth-identity">-</strong>
+                        <span id="dashboard-auth-role" class="runtime-auth-role"></span>
+                    </div>
+                        <button id="dashboard-auth-logout" type="button" class="runtime-auth-logout">Logout</button>
                 </div>
             </aside>
 
@@ -4175,12 +4506,24 @@
                 <span class="viewer-header-brand-text">공무환경팀 통합 관리문서</span>
             </div>
             <div class="viewer-header-actions">
+                <div id="viewer-auth-bar" class="runtime-auth-bar" hidden>
+                    <div class="runtime-auth-copy">
+                        <span class="runtime-auth-caption">Signed In</span>
+                        <strong id="viewer-auth-identity" class="runtime-auth-identity">-</strong>
+                        <span id="viewer-auth-role" class="runtime-auth-role"></span>
+                    </div>
+                    <button id="viewer-auth-logout" type="button" class="runtime-auth-logout">Logout</button>
+                </div>
                 <div id="global-save-dock" class="global-save-dock" aria-live="polite">
                     <span id="global-save-status" class="global-save-status">현재 화면은 저장 대상이 없습니다.</span>
                     <span id="global-save-recent-chip" class="global-save-date-chip">
                         <span class="label">최근 수정</span>
                         <span id="global-save-recent-value" class="value">-</span>
                     </span>
+                    <button id="owner-records-toggle" type="button" class="owner-records-toggle" aria-expanded="false" aria-controls="owner-records-panel" hidden>
+                        <i class="fas fa-shield-halved"></i>
+                        <span>기록 관리</span>
+                    </button>
                     <span id="global-save-date-chip" class="global-save-date-chip is-hidden">
                         <span class="label">오늘 날짜</span>
                         <span id="global-save-date-value" class="value">-</span>
@@ -4192,6 +4535,29 @@
                 </div>
             </div>
         </header>
+
+        <aside id="owner-records-panel" class="owner-records-panel" hidden>
+            <div class="owner-records-panel-head">
+                <div>
+                    <h2 class="owner-records-panel-title">기록 관리</h2>
+                    <div class="owner-records-panel-copy">오너 계정 전용으로 로그인 기록과 등록 계정을 확인합니다.</div>
+                </div>
+                <button id="owner-records-close" type="button" class="owner-records-panel-close">닫기</button>
+            </div>
+            <div class="owner-records-tabs" role="tablist" aria-label="기록 관리 탭">
+                <button id="owner-records-tab-login" type="button" class="owner-records-tab is-active" data-owner-records-tab="login" role="tab" aria-selected="true">
+                    <span>로그인 기록</span>
+                    <span id="owner-records-login-count" class="owner-records-tab-count">0</span>
+                </button>
+                <button id="owner-records-tab-users" type="button" class="owner-records-tab" data-owner-records-tab="users" role="tab" aria-selected="false">
+                    <span>등록 계정</span>
+                    <span id="owner-records-users-count" class="owner-records-tab-count">0</span>
+                </button>
+            </div>
+            <div id="owner-records-feedback" class="owner-records-feedback"></div>
+            <section id="owner-records-pane-login" class="owner-records-pane"></section>
+            <section id="owner-records-pane-users" class="owner-records-pane" hidden></section>
+        </aside>
 
         <div id="viewer-body" class="viewer-body">
             <!-- 좌측 사이드바 (카테고리) -->
@@ -4274,6 +4640,6 @@
     <script src="02_★★★★_유틸리티/runtime/util/KPI.util.runtime.js"></script>
     <script src="04_★★★_오디트/runtime/audit/KPI.audit.runtime.js"></script>
     <script src="01_★★★_팀별내역서/runtime/work/KPI.work.runtime.js?v=227"></script>
-    <script src="06_★★★_KPI런타임/app/KPI.app.js?v=231"></script>
+    <script src="06_★★★_KPI런타임/app/KPI.app.js?v=233"></script>
 </body>
 </html>

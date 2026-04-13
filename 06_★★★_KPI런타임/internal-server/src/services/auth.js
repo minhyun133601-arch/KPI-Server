@@ -14,6 +14,19 @@ import {
 } from '../repositories/users.js';
 
 const ADMIN_ROLES = new Set(['owner', 'admin']);
+const OWNER_ROLE = 'owner';
+const USERNAME_PATTERN = /^[A-Za-z0-9._-]+$/;
+
+function normalizeUsername(input) {
+  const value = String(input || '').trim();
+  if (!value) {
+    throw new Error('username_and_password_required');
+  }
+  if (!USERNAME_PATTERN.test(value)) {
+    throw new Error('invalid_username_format');
+  }
+  return value;
+}
 
 function normalizeRoles(inputRoles) {
   const allowed = new Set(['owner', 'admin', 'sheet_editor', 'viewer']);
@@ -38,8 +51,9 @@ export async function bootstrapOwner({ username, displayName, password }) {
     throw new Error('owner_already_exists');
   }
 
+  const normalizedUsername = normalizeUsername(username);
   const passwordHash = await hashPassword(password);
-  const user = await createUser({ username, displayName, passwordHash });
+  const user = await createUser({ username: normalizedUsername, displayName, passwordHash });
   await replaceUserRoles(user.id, ['owner']);
   await appendAuditLog({
     actorUserId: user.id,
@@ -56,8 +70,9 @@ export async function createManagedUser({ actorUserId, username, displayName, pa
     throw new Error('username_and_password_required');
   }
 
+  const normalizedUsername = normalizeUsername(username);
   const passwordHash = await hashPassword(password);
-  const user = await createUser({ username, displayName, passwordHash });
+  const user = await createUser({ username: normalizedUsername, displayName, passwordHash });
   const normalizedRoles = normalizeRoles(roles);
   await replaceUserRoles(user.id, normalizedRoles.length ? normalizedRoles : ['viewer']);
   await appendAuditLog({
@@ -118,7 +133,12 @@ export async function login({ username, password, ipAddress, userAgent }) {
     actionKey: 'auth.login',
     targetType: 'session',
     targetKey: tokenHash,
-    detail: { username: user.username }
+    detail: {
+      username: user.username,
+      displayName: user.display_name,
+      ipAddress: ipAddress || '',
+      userAgent: userAgent || ''
+    }
   });
 
   return {
@@ -173,6 +193,10 @@ export async function buildUserProfile(userId) {
 
 export function isAdminRole(user) {
   return Array.isArray(user?.roles) && user.roles.some((role) => ADMIN_ROLES.has(role));
+}
+
+export function isOwnerRole(user) {
+  return Array.isArray(user?.roles) && user.roles.includes(OWNER_ROLE);
 }
 
 export async function assertCanAccessPermission(user, permissionKey, mode = 'read') {
