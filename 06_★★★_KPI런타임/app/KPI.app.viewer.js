@@ -214,12 +214,6 @@
             updateViewerTitle(dataId, viewerCategory);
             renderSidebar();
             setViewerContentMode(isFullBleed ? 'full-bleed' : 'default');
-            if (String(category.dataKey || '').trim() === 'owner_accounts' && hasOwnerRole()) {
-                setOwnerRecordsTab(OWNER_RECORDS_TAB_KEYS.USERS);
-                setOwnerRecordsPanelOpen(true);
-            } else if (OwnerRecordsState.panelOpen) {
-                setOwnerRecordsPanelOpen(false);
-            }
             const headerHtml = `
                 <div class="border-b pb-4 mb-6">
                     <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">

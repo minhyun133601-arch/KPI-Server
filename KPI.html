@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Noto Sans KR -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="06_★★★_KPI런타임/styles/KPI.shell.css?v=001">
+    <link rel="stylesheet" href="06_★★★_KPI런타임/styles/KPI.shell.css?v=004">
 
 </head>
 <body>
@@ -20,7 +20,7 @@
         <div class="dashboard-shell">
             <aside class="dashboard-side">
                 <div class="dashboard-side-brand">
-                        <span class="dashboard-version-badge">V323</span>
+                        <span class="dashboard-version-badge">V327</span>
                 </div>
                 <div id="dashboard-side-nav" class="dashboard-side-nav">
                     <!-- JS로 홈 사이드 탭 렌더 -->
@@ -90,29 +90,6 @@
             </div>
         </header>
 
-        <aside id="owner-records-panel" class="owner-records-panel" hidden>
-            <div class="owner-records-panel-head">
-                <div>
-                    <h2 class="owner-records-panel-title">계정 관리</h2>
-                    <div class="owner-records-panel-copy">오너 계정 전용으로 로그인 기록과 등록 계정을 확인합니다.</div>
-                </div>
-                <button id="owner-records-close" type="button" class="owner-records-panel-close">닫기</button>
-            </div>
-            <div class="owner-records-tabs" role="tablist" aria-label="기록 관리 탭">
-                <button id="owner-records-tab-login" type="button" class="owner-records-tab is-active" data-owner-records-tab="login" role="tab" aria-selected="true">
-                    <span>로그인 기록</span>
-                    <span id="owner-records-login-count" class="owner-records-tab-count">0</span>
-                </button>
-                <button id="owner-records-tab-users" type="button" class="owner-records-tab" data-owner-records-tab="users" role="tab" aria-selected="false">
-                    <span>등록 계정</span>
-                    <span id="owner-records-users-count" class="owner-records-tab-count">0</span>
-                </button>
-            </div>
-            <div id="owner-records-feedback" class="owner-records-feedback"></div>
-            <section id="owner-records-pane-login" class="owner-records-pane"></section>
-            <section id="owner-records-pane-users" class="owner-records-pane" hidden></section>
-        </aside>
-
         <div id="viewer-body" class="viewer-body">
             <!-- 좌측 사이드바 (카테고리) -->
             <nav id="sidebar" class="sidebar custom-scroll">
@@ -140,7 +117,7 @@
     <script src="02_★★★★_유틸리티/runtime/util/sections/KPI.sections.util.js"></script>
     <script src="05_★★★_데이터기입/runtime/data/sections/KPI.sections.data.js"></script>
     <script src="04_★★★_오디트/runtime/audit/sections/KPI.sections.audit.js"></script>
-    <script src="06_★★★_KPI런타임/sections/KPI.sections.owner.js?v=001"></script>
+    <script src="06_★★★_KPI런타임/sections/KPI.sections.owner.js?v=002"></script>
     <script src="06_★★★_KPI런타임/sections/KPI.section.registry.js"></script>
 
 
@@ -199,10 +176,10 @@
     <script src="04_★★★_오디트/runtime/audit/KPI.audit.runtime.js"></script>
     <script src="01_★★★_팀별내역서/runtime/work/KPI.work.runtime.js?v=227"></script>
     <script src="06_★★★_KPI런타임/app/KPI.app.shared.js?v=001"></script>
-    <script src="06_★★★_KPI런타임/app/KPI.app.auth-owner.js?v=001"></script>
+    <script src="06_★★★_KPI런타임/app/KPI.app.auth-owner.js?v=005"></script>
     <script src="06_★★★_KPI런타임/app/KPI.app.navigation.js?v=001"></script>
     <script src="06_★★★_KPI런타임/app/KPI.app.global-save.js?v=001"></script>
-    <script src="06_★★★_KPI런타임/app/KPI.app.viewer.js?v=001"></script>
-    <script src="06_★★★_KPI런타임/app/KPI.app.js?v=238"></script>
+    <script src="06_★★★_KPI런타임/app/KPI.app.viewer.js?v=002"></script>
+    <script src="06_★★★_KPI런타임/app/KPI.app.js?v=239"></script>
 </body>
 </html>

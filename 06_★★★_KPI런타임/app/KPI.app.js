@@ -6,7 +6,7 @@
         bindOwnerRecordsUi();
         renderRuntimeAuthUi();
         renderGlobalSaveUi({ forceDefault: true });
-        renderOwnerRecordsPanel();
+        renderOwnerRecordsView();
         KpiRuntime?.runBootTasks?.();
         goHome();
 

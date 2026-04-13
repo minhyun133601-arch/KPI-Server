@@ -18,13 +18,13 @@
         });
         const OwnerRecordsState = {
             isOwner: false,
-            panelOpen: false,
             loading: false,
             loaded: false,
-            activeTab: OWNER_RECORDS_TAB_KEYS.LOGIN,
+            activeTab: OWNER_RECORDS_TAB_KEYS.USERS,
             loginHistory: [],
             users: [],
-            errorMessage: ''
+            errorMessage: '',
+            mountRoot: null
         };
         const RuntimeAuthState = {
             busy: false

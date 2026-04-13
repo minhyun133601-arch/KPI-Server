@@ -17,10 +17,9 @@
                     color: '#7c3aed',
                     ownerOnly: true,
                     desc: '오너 계정의 로그인 기록과 등록 계정을 확인합니다.',
+                    viewerMode: 'full-bleed',
                     content: `
-                        <div class="space-y-3 text-slate-700">
-                            <p>계정 관련 기록과 등록 계정을 확인합니다.</p>
-                        </div>
+                        <section class="owner-records-view" data-owner-records-root></section>
                     `
                 },
                 {

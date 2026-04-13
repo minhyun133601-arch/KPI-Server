@@ -104,18 +104,26 @@
             });
         }
 
+        const OWNER_RECORDS_DATA_KEY = 'owner_accounts';
+        const OWNER_RECORDS_FULLSCREEN_SHORTCUT = 'Alt+Enter';
+        const OWNER_RECORDS_TAB_LABELS = Object.freeze({
+            [OWNER_RECORDS_TAB_KEYS.LOGIN]: '로그인 기록',
+            [OWNER_RECORDS_TAB_KEYS.USERS]: '등록 계정'
+        });
+
+        function getOwnerRecordsMountRoot() {
+            return OwnerRecordsState.mountRoot instanceof Element
+                ? OwnerRecordsState.mountRoot
+                : null;
+        }
+
         function getOwnerRecordsElements() {
+            const root = getOwnerRecordsMountRoot();
             return {
-                toggle: document.getElementById('owner-records-toggle'),
-                panel: document.getElementById('owner-records-panel'),
-                closeButton: document.getElementById('owner-records-close'),
-                feedback: document.getElementById('owner-records-feedback'),
-                loginTab: document.getElementById('owner-records-tab-login'),
-                usersTab: document.getElementById('owner-records-tab-users'),
-                loginCount: document.getElementById('owner-records-login-count'),
-                usersCount: document.getElementById('owner-records-users-count'),
-                loginPane: document.getElementById('owner-records-pane-login'),
-                usersPane: document.getElementById('owner-records-pane-users')
+                root,
+                loginTab: root?.querySelector('[data-owner-records-tab="login"]') || null,
+                usersTab: root?.querySelector('[data-owner-records-tab="users"]') || null,
+                fullscreenButton: root?.querySelector('[data-owner-records-action="fullscreen"]') || null
             };
         }
 
@@ -164,13 +172,22 @@
             }).join('');
         }
 
+        function buildOwnerDisplayNameLine(usernameValue, displayNameValue) {
+            const username = normalizeOwnerRecordsText(usernameValue, '');
+            const displayName = normalizeOwnerRecordsText(displayNameValue, '');
+            if (!displayName || displayName === username) {
+                return '';
+            }
+            return `<span class="owner-records-sub">${escapeDashboardHtml(displayName)}</span>`;
+        }
+
         function buildOwnerLoginHistoryHtml(entries = []) {
             if (!Array.isArray(entries) || !entries.length) {
                 return '<div class="owner-records-empty">\uC544\uC9C1 \uAE30\uB85D\uB41C \uB85C\uADF8\uC778 \uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.</div>';
             }
             const rows = entries.map(entry => {
                 const username = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.username));
-                const displayName = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.displayName));
+                const displayNameLine = buildOwnerDisplayNameLine(entry?.username, entry?.displayName);
                 const ipAddress = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.ipAddress));
                 const userAgent = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.userAgent, '\uBE0C\uB77C\uC6B0\uC800 \uC815\uBCF4 \uC5C6\uC74C'));
                 const lastSeenAt = formatDashboardDateTime(entry?.lastSeenAt);
@@ -186,7 +203,7 @@
                         <td>
                             <div class="owner-records-primary">
                                 <strong>${username}</strong>
-                                <span class="owner-records-sub">${displayName}</span>
+                                ${displayNameLine}
                             </div>
                         </td>
                         <td>${formatDashboardDateTime(entry?.loggedInAt)}</td>
@@ -229,7 +246,7 @@
             }
             const rows = entries.map(entry => {
                 const username = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.username));
-                const displayName = escapeDashboardHtml(normalizeOwnerRecordsText(entry?.displayName));
+                const displayNameLine = buildOwnerDisplayNameLine(entry?.username, entry?.displayName);
                 const lastAccessAt = escapeDashboardHtml(formatDashboardDateTime(entry?.lastAccessAt));
                 const statusChip = entry?.isActive
                     ? renderOwnerStatusChip('\uD65C\uC131', 'positive')
@@ -242,7 +259,7 @@
                                     <strong>${username}</strong>
                                     ${renderOwnerSessionDot(entry?.sessionActive)}
                                 </span>
-                                <span class="owner-records-sub">${displayName}</span>
+                                ${displayNameLine}
                                 <span class="owner-records-sub">\uCD5C\uC885 \uC811\uC18D ${lastAccessAt}</span>
                             </div>
                         </td>
@@ -267,72 +284,192 @@
             `;
         }
 
-        function renderOwnerRecordsPanel() {
-            const elements = getOwnerRecordsElements();
+        function getOwnerRecordsActiveSessionCount() {
+            return OwnerRecordsState.users.filter(entry => entry?.sessionActive === true).length;
+        }
+
+        function getOwnerRecordsActiveUserCount() {
+            return OwnerRecordsState.users.filter(entry => entry?.isActive === true).length;
+        }
+
+        function getOwnerRecordsLatestLoginLabel() {
+            const latestLogin = OwnerRecordsState.loginHistory[0];
+            return formatDashboardDateTime(latestLogin?.loggedInAt || latestLogin?.lastSeenAt);
+        }
+
+        function isOwnerRecordsBrowserFullscreen() {
+            const root = getOwnerRecordsMountRoot();
+            return Boolean(root && document.fullscreenElement === root);
+        }
+
+        async function toggleOwnerRecordsBrowserFullscreen() {
+            const root = getOwnerRecordsMountRoot();
+            if (!root) return;
+            try {
+                if (document.fullscreenElement === root) {
+                    await document.exitFullscreen?.();
+                    return;
+                }
+                await root.requestFullscreen?.();
+            } catch (error) {
+                console.error('Owner records fullscreen toggle failed.', error);
+            }
+        }
+
+        function buildOwnerRecordsSummaryHtml() {
+            const cards = [
+                {
+                    label: '등록 계정',
+                    value: String(OwnerRecordsState.users.length),
+                    copy: `${getOwnerRecordsActiveUserCount()}개 계정 활성`
+                },
+                {
+                    label: '접속 중 세션',
+                    value: String(getOwnerRecordsActiveSessionCount()),
+                    copy: '브라우저 세션 기준'
+                },
+                {
+                    label: '최근 로그인',
+                    value: getOwnerRecordsLatestLoginLabel(),
+                    copy: '가장 최근 활동 시각'
+                }
+            ];
+            return cards.map(card => `
+                <article class="owner-records-summary-card">
+                    <div class="owner-records-summary-label">${escapeDashboardHtml(card.label)}</div>
+                    <div class="owner-records-summary-value">${escapeDashboardHtml(card.value)}</div>
+                    <div class="owner-records-summary-copy">${escapeDashboardHtml(card.copy)}</div>
+                </article>
+            `).join('');
+        }
+
+        function buildOwnerRecordsShellHtml() {
+            const activeTab = OwnerRecordsState.activeTab === OWNER_RECORDS_TAB_KEYS.LOGIN
+                ? OWNER_RECORDS_TAB_KEYS.LOGIN
+                : OWNER_RECORDS_TAB_KEYS.USERS;
+            const isFullscreen = isOwnerRecordsBrowserFullscreen();
+            const feedbackMessage = OwnerRecordsState.loading
+                ? '기록을 불러오는 중입니다.'
+                : OwnerRecordsState.errorMessage;
+            const activeBodyHtml = activeTab === OWNER_RECORDS_TAB_KEYS.LOGIN
+                ? buildOwnerLoginHistoryHtml(OwnerRecordsState.loginHistory)
+                : buildOwnerUsersHtml(OwnerRecordsState.users);
+            const currentUserLabel = getRuntimeAuthIdentityLabel() || '-';
+            const fullscreenButtonHtml = `
+                <button
+                    type="button"
+                    class="owner-records-fullscreen-button${isFullscreen ? ' is-active' : ''}"
+                    data-owner-records-action="fullscreen"
+                    aria-pressed="${isFullscreen ? 'true' : 'false'}"
+                    aria-label="${isFullscreen ? '전체화면 종료' : '전체화면'}"
+                    title="${isFullscreen ? '전체화면 종료' : `전체화면 (${OWNER_RECORDS_FULLSCREEN_SHORTCUT})`}"
+                >
+                    <i class="fas ${isFullscreen ? 'fa-compress' : 'fa-expand'}" aria-hidden="true"></i>
+                </button>
+            `;
+            const shellHeadHtml = isFullscreen ? '' : `
+                <div class="owner-records-shell-head">
+                    <div class="owner-records-shell-copy-block">
+                        <div class="owner-records-shell-kicker">OWNER ONLY</div>
+                        <h2 class="owner-records-shell-title">계정 관리</h2>
+                        <p class="owner-records-shell-copy">오너 계정 전용으로 로그인 기록과 등록 계정을 한 화면에서 확인합니다.</p>
+                        <div class="owner-records-shell-meta">
+                            <span class="owner-records-shell-meta-item">현재 로그인 ${escapeDashboardHtml(currentUserLabel)}</span>
+                        </div>
+                    </div>
+                    <div class="owner-records-shell-actions">
+                        ${fullscreenButtonHtml}
+                    </div>
+                </div>
+            `;
+            const summaryHtml = isFullscreen ? '' : `
+                <section class="owner-records-summary-grid" aria-label="계정 관리 요약">
+                    ${buildOwnerRecordsSummaryHtml()}
+                </section>
+            `;
+
+            return `
+                <section class="owner-records-shell${isFullscreen ? ' is-browser-fullscreen' : ''}">
+                    ${shellHeadHtml}
+                    ${summaryHtml}
+                    <div class="owner-records-toolbar${isFullscreen ? ' is-browser-fullscreen' : ''}">
+                        <div class="owner-records-tabs" role="tablist" aria-label="기록 관리 탭">
+                            <button
+                                type="button"
+                                class="owner-records-tab${activeTab === OWNER_RECORDS_TAB_KEYS.USERS ? ' is-active' : ''}"
+                                data-owner-records-tab="users"
+                                role="tab"
+                                aria-selected="${activeTab === OWNER_RECORDS_TAB_KEYS.USERS ? 'true' : 'false'}"
+                            >
+                                <span>${OWNER_RECORDS_TAB_LABELS[OWNER_RECORDS_TAB_KEYS.USERS]}</span>
+                                <span class="owner-records-tab-count">${OwnerRecordsState.users.length}</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="owner-records-tab${activeTab === OWNER_RECORDS_TAB_KEYS.LOGIN ? ' is-active' : ''}"
+                                data-owner-records-tab="login"
+                                role="tab"
+                                aria-selected="${activeTab === OWNER_RECORDS_TAB_KEYS.LOGIN ? 'true' : 'false'}"
+                            >
+                                <span>${OWNER_RECORDS_TAB_LABELS[OWNER_RECORDS_TAB_KEYS.LOGIN]}</span>
+                                <span class="owner-records-tab-count">${OwnerRecordsState.loginHistory.length}</span>
+                            </button>
+                        </div>
+                        ${isFullscreen ? `<div class="owner-records-shell-actions">${fullscreenButtonHtml}</div>` : ''}
+                    </div>
+                    <div class="owner-records-feedback${OwnerRecordsState.errorMessage && !OwnerRecordsState.loading ? ' is-error' : ''}"${feedbackMessage ? '' : ' hidden'}>${escapeDashboardHtml(feedbackMessage || '')}</div>
+                    <section class="owner-records-pane" aria-label="${escapeDashboardHtml(OWNER_RECORDS_TAB_LABELS[activeTab])}">
+                        ${activeBodyHtml}
+                    </section>
+                </section>
+            `;
+        }
+
+        function renderOwnerRecordsView() {
+            const root = getOwnerRecordsMountRoot();
             const isOwner = hasOwnerRole();
             OwnerRecordsState.isOwner = isOwner;
-
-            if (elements.loginTab?.firstElementChild) {
-                elements.loginTab.firstElementChild.textContent = '\uAE30\uB85D';
-            }
-            if (elements.usersTab?.firstElementChild) {
-                elements.usersTab.firstElementChild.textContent = '\uB4F1\uB85D \uACC4\uC815';
-            }
-
-            if (elements.toggle) {
-                elements.toggle.hidden = !isOwner;
-                elements.toggle.classList.toggle('is-active', isOwner && OwnerRecordsState.panelOpen);
-                elements.toggle.setAttribute('aria-expanded', isOwner && OwnerRecordsState.panelOpen ? 'true' : 'false');
-            }
-
+            if (!root) return;
             if (!isOwner) {
-                OwnerRecordsState.panelOpen = false;
-                if (elements.panel) {
-                    elements.panel.hidden = true;
-                }
+                root.innerHTML = '';
                 return;
             }
 
-            const activeTab = OwnerRecordsState.activeTab === OWNER_RECORDS_TAB_KEYS.USERS
-                ? OWNER_RECORDS_TAB_KEYS.USERS
-                : OWNER_RECORDS_TAB_KEYS.LOGIN;
-            OwnerRecordsState.activeTab = activeTab;
+            root.innerHTML = buildOwnerRecordsShellHtml();
+            const { loginTab, usersTab, fullscreenButton } = getOwnerRecordsElements();
+            loginTab?.addEventListener('click', () => {
+                setOwnerRecordsTab(OWNER_RECORDS_TAB_KEYS.LOGIN);
+            });
+            usersTab?.addEventListener('click', () => {
+                setOwnerRecordsTab(OWNER_RECORDS_TAB_KEYS.USERS);
+            });
+            fullscreenButton?.addEventListener('click', () => {
+                void toggleOwnerRecordsBrowserFullscreen();
+            });
+        }
 
-            if (elements.panel) {
-                elements.panel.hidden = !OwnerRecordsState.panelOpen;
+        function mountOwnerRecordsView(root = null) {
+            if (!(root instanceof Element)) {
+                OwnerRecordsState.mountRoot = null;
+                return;
             }
-            if (elements.loginCount) {
-                elements.loginCount.textContent = String(OwnerRecordsState.loginHistory.length);
+            OwnerRecordsState.mountRoot = root;
+            OwnerRecordsState.isOwner = hasOwnerRole();
+            renderOwnerRecordsView();
+            if (OwnerRecordsState.isOwner) {
+                void loadOwnerRecordsOverview({ force: true });
             }
-            if (elements.usersCount) {
-                elements.usersCount.textContent = String(OwnerRecordsState.users.length);
+        }
+
+        function clearOwnerRecordsView() {
+            const root = getOwnerRecordsMountRoot();
+            if (document.fullscreenElement === root) {
+                void document.exitFullscreen?.();
             }
-            if (elements.loginTab) {
-                const active = activeTab === OWNER_RECORDS_TAB_KEYS.LOGIN;
-                elements.loginTab.classList.toggle('is-active', active);
-                elements.loginTab.setAttribute('aria-selected', active ? 'true' : 'false');
+            if (root) {
+                root.innerHTML = '';
             }
-            if (elements.usersTab) {
-                const active = activeTab === OWNER_RECORDS_TAB_KEYS.USERS;
-                elements.usersTab.classList.toggle('is-active', active);
-                elements.usersTab.setAttribute('aria-selected', active ? 'true' : 'false');
-            }
-            if (elements.feedback) {
-                const feedbackMessage = OwnerRecordsState.loading
-                    ? '\uAE30\uB85D\uC744 \uBD88\uB7EC\uC624\uB294 \uC911\uC785\uB2C8\uB2E4.'
-                    : OwnerRecordsState.errorMessage;
-                elements.feedback.textContent = feedbackMessage;
-                elements.feedback.hidden = !feedbackMessage;
-                elements.feedback.classList.toggle('is-error', Boolean(OwnerRecordsState.errorMessage) && !OwnerRecordsState.loading);
-            }
-            if (elements.loginPane) {
-                elements.loginPane.hidden = activeTab !== OWNER_RECORDS_TAB_KEYS.LOGIN;
-                elements.loginPane.innerHTML = buildOwnerLoginHistoryHtml(OwnerRecordsState.loginHistory);
-            }
-            if (elements.usersPane) {
-                elements.usersPane.hidden = activeTab !== OWNER_RECORDS_TAB_KEYS.USERS;
-                elements.usersPane.innerHTML = buildOwnerUsersHtml(OwnerRecordsState.users);
-            }
+            OwnerRecordsState.mountRoot = null;
         }
 
         async function loadOwnerRecordsOverview(options = {}) {
@@ -340,13 +477,13 @@
             if (OwnerRecordsState.loading) return;
             const shouldForce = options.force === true;
             if (OwnerRecordsState.loaded && !shouldForce) {
-                renderOwnerRecordsPanel();
+                renderOwnerRecordsView();
                 return;
             }
 
             OwnerRecordsState.loading = true;
             OwnerRecordsState.errorMessage = '';
-            renderOwnerRecordsPanel();
+            renderOwnerRecordsView();
 
             try {
                 const response = await fetch('/api/owner/access-overview?limit=100', {
@@ -364,7 +501,7 @@
                 OwnerRecordsState.errorMessage = '\uAE30\uB85D\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4.';
             } finally {
                 OwnerRecordsState.loading = false;
-                renderOwnerRecordsPanel();
+                renderOwnerRecordsView();
             }
         }
 
@@ -372,47 +509,39 @@
             OwnerRecordsState.activeTab = tabKey === OWNER_RECORDS_TAB_KEYS.USERS
                 ? OWNER_RECORDS_TAB_KEYS.USERS
                 : OWNER_RECORDS_TAB_KEYS.LOGIN;
-            renderOwnerRecordsPanel();
-        }
-
-        function setOwnerRecordsPanelOpen(nextOpen) {
-            if (!OwnerRecordsState.isOwner) return;
-            OwnerRecordsState.panelOpen = nextOpen === true;
-            renderOwnerRecordsPanel();
-            if (OwnerRecordsState.panelOpen) {
-                void loadOwnerRecordsOverview({ force: true });
-            }
+            renderOwnerRecordsView();
         }
 
         function bindOwnerRecordsUi() {
             if (window.__ownerRecordsUiBound) return;
             window.__ownerRecordsUiBound = true;
-            const { toggle, closeButton, loginTab, usersTab } = getOwnerRecordsElements();
-            toggle?.addEventListener('click', () => {
-                setOwnerRecordsPanelOpen(!OwnerRecordsState.panelOpen);
-            });
-            closeButton?.addEventListener('click', () => {
-                setOwnerRecordsPanelOpen(false);
-            });
-            loginTab?.addEventListener('click', () => {
-                setOwnerRecordsTab(OWNER_RECORDS_TAB_KEYS.LOGIN);
-            });
-            usersTab?.addEventListener('click', () => {
-                setOwnerRecordsTab(OWNER_RECORDS_TAB_KEYS.USERS);
-            });
-            document.addEventListener('keydown', evt => {
-                if (evt.key !== 'Escape') return;
-                if (!OwnerRecordsState.panelOpen) return;
-                setOwnerRecordsPanelOpen(false);
-            });
-            document.addEventListener('click', evt => {
-                if (!OwnerRecordsState.panelOpen) return;
-                const target = evt.target;
-                if (!(target instanceof Element)) return;
-                const { toggle: currentToggle, panel } = getOwnerRecordsElements();
-                if (panel?.contains(target) || currentToggle?.contains(target)) {
+            KpiRuntime?.registerSectionInitializer?.('owner', (context = {}) => {
+                const dataKey = String(context.category?.dataKey || '').trim();
+                if (dataKey !== OWNER_RECORDS_DATA_KEY) {
+                    clearOwnerRecordsView();
                     return;
                 }
-                setOwnerRecordsPanelOpen(false);
-            }, true);
+                const root = context.container?.querySelector?.('[data-owner-records-root]') || null;
+                mountOwnerRecordsView(root);
+            });
+            KpiRuntime?.registerViewChangeHandler?.('owner-records-view', (context = {}) => {
+                const dataKey = String(context.category?.dataKey || '').trim();
+                if (context.sectionId === 'owner' && dataKey === OWNER_RECORDS_DATA_KEY) return;
+                clearOwnerRecordsView();
+            });
+            document.addEventListener('keydown', evt => {
+                if (!getOwnerRecordsMountRoot()) return;
+                if (evt.altKey && evt.key === 'Enter') {
+                    evt.preventDefault();
+                    void toggleOwnerRecordsBrowserFullscreen();
+                    return;
+                }
+                if (evt.key === 'Escape' && isOwnerRecordsBrowserFullscreen()) {
+                    evt.preventDefault();
+                    void document.exitFullscreen?.();
+                }
+            });
+            document.addEventListener('fullscreenchange', () => {
+                renderOwnerRecordsView();
+            });
         }
