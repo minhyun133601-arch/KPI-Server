@@ -5,6 +5,7 @@
 const TAB_SERVER = 'server';
 const TAB_DATA = 'data';
 let overviewCache = null;
+let commandRegistryCache = new Map();
 const iconMap = { monitor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="12" rx="2"></rect><path d="M8 19.5h8"></path><path d="M12 16.5v3"></path></svg>', server: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="6" rx="2"></rect><rect x="4" y="14" width="16" height="6" rx="2"></rect><path d="M8 7h.01M8 17h.01M16 7h2M16 17h2"></path></svg>', database: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7" ry="3.5"></ellipse><path d="M5 5.5v6c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-6"></path><path d="M5 11.5v6c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-6"></path></svg>', clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 7.5v5l3 2"></path></svg>', power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v8"></path><path d="M6.5 6.5a8 8 0 1 0 11 0"></path></svg>', stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>', refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 5v5h-5"></path><path d="M4 19v-5h5"></path><path d="M18 10a6.5 6.5 0 0 0-11-2L4 10"></path><path d="M6 14a6.5 6.5 0 0 0 11 2l3-2"></path></svg>', user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5.5 19a6.5 6.5 0 0 1 13 0"></path></svg>', key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="3"></circle><path d="M10.5 13.5 19 5l2 2-1.5 1.5 1 1L18 12l-1-1-1.5 1.5"></path></svg>', trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7h15"></path><path d="M9 4.5h6"></path><path d="M7 7l1 12h8l1-12"></path></svg>', folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5h6l2 2h9v7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Z"></path></svg>', terminal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2"></rect><path d="m7.5 9 3 3-3 3"></path><path d="M12.5 15h4"></path></svg>', tools: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 7 3-3 3 3-3 3"></path><path d="M17 7 8 16"></path><path d="m5 13 6 6"></path><path d="M4 20h4"></path></svg>', list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path><circle cx="5" cy="6" r="1"></circle><circle cx="5" cy="12" r="1"></circle><circle cx="5" cy="18" r="1"></circle></svg>', table: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 10h16M10 5v14"></path></svg>', spark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8Z"></path><path d="m19 15 .8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8Z"></path></svg>' };
 const commandIconMap = { 'server.start': 'power', 'server.stop': 'stop', 'server.recover': 'refresh', 'startup.register': 'clock', 'startup.unregister': 'clock', 'system.scheduleShutdown': 'clock', 'account.bootstrapOwner': 'user', 'account.createEmployee': 'user', 'account.resetPassword': 'key', 'account.deleteUser': 'trash', 'db.listTables': 'table', 'db.openConsole': 'terminal', 'filesystem.openCommandsFolder': 'folder', 'filesystem.openLogsFolder': 'folder' };
 const commandLabelMap = {
@@ -84,6 +85,9 @@ function setStatusTone(element, tone) {
     element.classList.add(tone);
   }
 }
+function getCommand(commandKey) {
+  return commandRegistryCache.get(commandKey) || null;
+}
 function setResult(summary, output = '-') {
   const timeLabel = nowLabel();
   const resultText = summary || '완료';
@@ -137,9 +141,10 @@ function renderStatus(overview) {
 
   const startupRegistered = Boolean(overview.startupTaskRegistered);
   $('startupStatus').textContent = startupRegistered ? '등록됨' : '미등록';
-  setStatusTone($('startupStatus'), startupRegistered ? 'status-up' : 'status-warn');
+  setStatusTone($('startupStatus'), startupRegistered ? 'status-up' : 'status-down');
   setTileTone('startupTile', startupRegistered ? 'ok' : 'down');
   setTileTone('resultTile', 'ok');
+  renderCardActions(overview);
 }
 function renderUserStats(users = []) {
   const total = Array.isArray(users) ? users.length : 0;
@@ -180,6 +185,42 @@ function renderUsers(users, errorMessage = '') {
     `;
   }).join('');
 }
+async function executeCommand(command, payload = {}, options = {}) {
+  if (command.confirmMessage && !window.confirm(command.confirmMessage)) {
+    return null;
+  }
+  setResult(`${command.title} 실행 중...`);
+  const result = await fetchJson(`/api/actions/${command.key}`, {
+    method: 'POST',
+    headers: actionHeader,
+    body: JSON.stringify(payload)
+  });
+  if (command.key === 'db.listTables') {
+    $('tablesOutput').textContent = result.output || '출력 없음';
+  }
+  setResult(result.summary || `${command.title} 완료`, result.output || '-');
+  await reloadOverview();
+  if (typeof options.onSuccess === 'function') {
+    options.onSuccess(result);
+  }
+  return result;
+}
+function buildInlineButton({ label, iconName, variant = 'secondary', onClick }) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = variant === 'primary' ? 'primary-button' : 'secondary-button';
+  button.appendChild(createIcon(iconName, 'button-icon'));
+  button.append(label);
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      await onClick();
+    } finally {
+      button.disabled = false;
+    }
+  });
+  return button;
+}
 function buildActionItem(command) {
   const wrapper = document.createElement('div');
   wrapper.className = 'action-row';
@@ -200,72 +241,20 @@ function buildActionItem(command) {
   copy.appendChild(description);
   const action = document.createElement('div');
   action.className = 'action-cta';
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = command.key.includes('stop') || command.key.includes('delete')
-    ? 'secondary-button'
-    : 'primary-button';
-  button.appendChild(createIcon(commandIconMap[command.key] || 'spark', 'button-icon'));
-  button.append(commandLabel(command));
-  button.addEventListener('click', async () => {
-    if (command.confirmMessage && !window.confirm(command.confirmMessage)) {
-      return;
-    }
-    button.disabled = true;
-    setResult(`${command.title} 실행 중...`);
-    try {
-      const payload = await fetchJson(`/api/actions/${command.key}`, {
-        method: 'POST',
-        headers: actionHeader,
-        body: JSON.stringify({})
-      });
-      if (command.key === 'db.listTables') {
-        $('tablesOutput').textContent = payload.output || '출력 없음';
+  action.appendChild(buildInlineButton({
+    label: commandLabel(command),
+    iconName: commandIconMap[command.key] || 'spark',
+    variant: command.key.includes('stop') || command.key.includes('delete') ? 'secondary' : 'primary',
+    onClick: async () => {
+      try {
+        await executeCommand(command);
+      } catch (error) {
+        setResult(`${command.title} 실패`, error.message);
       }
-      setResult(payload.summary || `${command.title} 완료`, payload.output || '-');
-      await reloadOverview();
-    } catch (error) {
-      setResult(`${command.title} 실패`, error.message);
-    } finally {
-      button.disabled = false;
     }
-  });
-  action.appendChild(button);
+  }));
   wrapper.appendChild(copy);
   wrapper.appendChild(action);
-  return wrapper;
-}
-function buildToggleActionItem(config) {
-  const command = config.active ? config.activeCommand : config.inactiveCommand;
-  const wrapper = document.createElement('div');
-  wrapper.className = 'action-row';
-  const copy = document.createElement('div');
-  copy.className = 'action-copy';
-  copy.innerHTML = `<div class="action-copy-head"></div><p>${escapeHtml(config.description)}</p><span class="action-note">${escapeHtml(config.note)}</span>`;
-  copy.querySelector('.action-copy-head').append(createIcon(config.iconName, 'action-icon'), Object.assign(document.createElement('h3'), { textContent: config.title }));
-  const action = document.createElement('div');
-  action.className = 'action-cta';
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = config.active ? 'secondary-button' : 'primary-button';
-  button.appendChild(createIcon(commandIconMap[command.key] || config.iconName, 'button-icon'));
-  button.append(commandLabel(command));
-  button.addEventListener('click', async () => {
-    if (command.confirmMessage && !window.confirm(command.confirmMessage)) return;
-    button.disabled = true;
-    setResult(`${command.title} 실행 중...`);
-    try {
-      const payload = await fetchJson(`/api/actions/${command.key}`, { method: 'POST', headers: actionHeader, body: JSON.stringify({}) });
-      setResult(payload.summary || `${command.title} 완료`, payload.output || '-');
-      await reloadOverview();
-    } catch (error) {
-      setResult(`${command.title} 실패`, error.message);
-    } finally {
-      button.disabled = false;
-    }
-  });
-  action.appendChild(button);
-  wrapper.append(copy, action);
   return wrapper;
 }
 function buildField(controlConfig) {
@@ -295,6 +284,80 @@ function renderStaticIcons() {
   document.querySelectorAll('[data-icon]').forEach((node) => {
     node.innerHTML = iconSvg(node.dataset.icon);
   });
+}
+function closeScheduleModal() {
+  $('scheduleModal').hidden = true;
+  document.body.classList.remove('modal-open');
+}
+function openScheduleModal() {
+  const command = getCommand('system.scheduleShutdown');
+  if (!command) {
+    setResult('예약 설정을 아직 불러오지 못했습니다.');
+    return;
+  }
+  $('scheduleModalDescription').textContent = compactDescription(command);
+  const form = $('scheduleModalForm');
+  form.innerHTML = '';
+  const groupedFields = [];
+  for (let index = 0; index < (command.fields || []).length; index += 2) {
+    groupedFields.push(command.fields.slice(index, index + 2));
+  }
+  for (const group of groupedFields) {
+    const row = document.createElement('div');
+    row.className = 'field-row';
+    if (group.length === 1) {
+      row.classList.add('field-row-single');
+    }
+    for (const field of group) {
+      const label = document.createElement('label');
+      const labelText = document.createElement('span');
+      labelText.textContent = field.label;
+      label.appendChild(labelText);
+      label.appendChild(buildField(field));
+      row.appendChild(label);
+    }
+    form.appendChild(row);
+  }
+  const actions = document.createElement('div');
+  actions.className = 'form-actions';
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'secondary-button';
+  closeButton.textContent = '닫기';
+  closeButton.addEventListener('click', closeScheduleModal);
+  const submitButton = document.createElement('button');
+  submitButton.type = 'submit';
+  submitButton.className = 'primary-button';
+  submitButton.textContent = commandLabel(command);
+  actions.append(closeButton, submitButton);
+  form.appendChild(actions);
+  form.onsubmit = async (event) => {
+    event.preventDefault();
+    const payload = {};
+    for (const field of command.fields || []) {
+      const value = form.elements[field.name]?.value ?? '';
+      payload[field.name] = String(value).trim();
+    }
+    submitButton.disabled = true;
+    closeButton.disabled = true;
+    try {
+      const result = await executeCommand(command, payload, {
+        onSuccess: () => {
+          closeScheduleModal();
+        }
+      });
+      if (result) {
+        form.reset();
+      }
+    } catch (error) {
+      setResult(`${command.title} 실패`, error.message);
+    } finally {
+      submitButton.disabled = false;
+      closeButton.disabled = false;
+    }
+  };
+  $('scheduleModal').hidden = false;
+  document.body.classList.add('modal-open');
 }
 function buildFormItem(command) {
   const wrapper = document.createElement('details');
@@ -352,26 +415,22 @@ function buildFormItem(command) {
   form.appendChild(actions);
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (command.confirmMessage && !window.confirm(command.confirmMessage)) {
-      return;
-    }
     button.disabled = true;
-    setResult(`${command.title} 실행 중...`);
     const payload = {};
     for (const field of command.fields || []) {
       const value = form.elements[field.name]?.value ?? '';
       payload[field.name] = String(value).trim();
     }
     try {
-      const result = await fetchJson(`/api/actions/${command.key}`, {
-        method: 'POST',
-        headers: actionHeader,
-        body: JSON.stringify(payload)
+      const result = await executeCommand(command, payload, {
+        onSuccess: () => {
+          form.reset();
+          wrapper.open = false;
+        }
       });
-      setResult(result.summary || `${command.title} 완료`, result.output || '-');
-      form.reset();
-      wrapper.open = false;
-      await reloadOverview();
+      if (!result) {
+        return;
+      }
     } catch (error) {
       setResult(`${command.title} 실패`, error.message);
     } finally {
@@ -388,54 +447,22 @@ function buildFormItem(command) {
   return wrapper;
 }
 function renderCommands(commands) {
-  const serverActions = $('serverActions');
-  const systemActions = $('systemActions');
   const accountActions = $('accountActions');
   const toolActions = $('toolActions');
-  serverActions.innerHTML = '';
-  systemActions.innerHTML = '';
   accountActions.innerHTML = '';
   toolActions.innerHTML = '';
-  const byKey = new Map(commands.map((command) => [command.key, command]));
-  const serverRunning = Boolean(overviewCache?.kpi?.health?.ok);
-  const startupRegistered = Boolean(overviewCache?.startupTaskRegistered);
-
-  if (byKey.has('server.start') && byKey.has('server.stop')) {
-    serverActions.appendChild(buildToggleActionItem({
-      title: '서버 실행',
-      iconName: 'server',
-      active: serverRunning,
-      activeCommand: byKey.get('server.stop'),
-      inactiveCommand: byKey.get('server.start'),
-      description: serverRunning ? '서버와 PostgreSQL이 현재 실행 중입니다.' : '현재 서버 스택을 다시 올립니다.',
-      note: serverRunning ? '현재 상태: 실행 중' : '현재 상태: 중지'
-    }));
-  }
-
-  if (byKey.has('server.recover')) {
-    serverActions.appendChild(buildActionItem(byKey.get('server.recover')));
-  }
-
-  if (byKey.has('startup.register') && byKey.has('startup.unregister')) {
-    systemActions.appendChild(buildToggleActionItem({
-      title: '부팅 자동실행',
-      iconName: 'clock',
-      active: startupRegistered,
-      activeCommand: byKey.get('startup.unregister'),
-      inactiveCommand: byKey.get('startup.register'),
-      description: startupRegistered ? '현재 사용자 로그인 시 자동으로 서버를 올리도록 등록돼 있습니다.' : '현재 등록된 자동실행이 없습니다.',
-      note: startupRegistered ? '현재 상태: 등록됨' : '현재 상태: 미등록'
-    }));
-  }
+  commandRegistryCache = new Map(commands.map((command) => [command.key, command]));
+  renderCardActions(overviewCache);
 
   for (const command of commands) {
-    if (['server.start', 'server.stop', 'server.recover', 'startup.register', 'startup.unregister'].includes(command.key)) {
-      continue;
-    }
-    if (command.category === 'startup' || command.category === 'system') {
-      systemActions.appendChild(command.kind === 'form'
-        ? buildFormItem(command)
-        : buildActionItem(command));
+    if ([
+      'server.start',
+      'server.stop',
+      'server.recover',
+      'startup.register',
+      'startup.unregister',
+      'system.scheduleShutdown'
+    ].includes(command.key)) {
       continue;
     }
     if (command.category === 'account') {
@@ -445,6 +472,81 @@ function renderCommands(commands) {
     if (command.category === 'db' || command.category === 'tools') {
       toolActions.appendChild(buildActionItem(command));
     }
+  }
+}
+function renderCardActions(overview = null) {
+  const nextOverview = overview || overviewCache;
+  const scheduleActions = $('scheduleActions');
+  const kpiActions = $('kpiActions');
+  const startupActions = $('startupActions');
+  if (!scheduleActions || !kpiActions || !startupActions) {
+    return;
+  }
+
+  scheduleActions.innerHTML = '';
+  kpiActions.innerHTML = '';
+  startupActions.innerHTML = '';
+
+  const scheduleCommand = getCommand('system.scheduleShutdown');
+  if (scheduleCommand) {
+    scheduleActions.appendChild(buildInlineButton({
+      label: '예약 설정',
+      iconName: 'clock',
+      variant: 'secondary',
+      onClick: async () => {
+        openScheduleModal();
+      }
+    }));
+  }
+
+  const serverRunning = Boolean(nextOverview?.kpi?.health?.ok);
+  const serverCommand = getCommand(serverRunning ? 'server.stop' : 'server.start');
+  if (serverCommand) {
+    kpiActions.appendChild(buildInlineButton({
+      label: serverRunning ? '서버 닫기' : '서버 열기',
+      iconName: commandIconMap[serverCommand.key] || 'server',
+      variant: serverRunning ? 'secondary' : 'primary',
+      onClick: async () => {
+        try {
+          await executeCommand(serverCommand);
+        } catch (error) {
+          setResult(`${serverCommand.title} 실패`, error.message);
+        }
+      }
+    }));
+  }
+
+  const recoverCommand = getCommand('server.recover');
+  if (recoverCommand) {
+    kpiActions.appendChild(buildInlineButton({
+      label: '복구',
+      iconName: 'refresh',
+      variant: 'secondary',
+      onClick: async () => {
+        try {
+          await executeCommand(recoverCommand);
+        } catch (error) {
+          setResult(`${recoverCommand.title} 실패`, error.message);
+        }
+      }
+    }));
+  }
+
+  const startupRegistered = Boolean(nextOverview?.startupTaskRegistered);
+  const startupCommand = getCommand(startupRegistered ? 'startup.unregister' : 'startup.register');
+  if (startupCommand) {
+    startupActions.appendChild(buildInlineButton({
+      label: startupRegistered ? '자동실행 해제' : '자동실행 등록',
+      iconName: commandIconMap[startupCommand.key] || 'clock',
+      variant: startupRegistered ? 'secondary' : 'primary',
+      onClick: async () => {
+        try {
+          await executeCommand(startupCommand);
+        } catch (error) {
+          setResult(`${startupCommand.title} 실패`, error.message);
+        }
+      }
+    }));
   }
 }
 function normalizeTabName(tabName = '') {
@@ -690,6 +792,17 @@ function bindStaticEvents() {
     button.addEventListener('click', () => {
       activateTab(button.dataset.tab);
     });
+  });
+  $('scheduleModalClose').addEventListener('click', closeScheduleModal);
+  $('scheduleModal').addEventListener('click', (event) => {
+    if (event.target?.dataset?.modalClose === 'true') {
+      closeScheduleModal();
+    }
+  });
+  window.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !$('scheduleModal').hidden) {
+      closeScheduleModal();
+    }
   });
   window.addEventListener('hashchange', () => {
     activateTab(getRequestedTab(), { syncHash: false });
