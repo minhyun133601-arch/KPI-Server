@@ -71,9 +71,13 @@ if ($DryRun) {
   exit 0
 }
 
-& shutdown.exe /a *> $null
-& shutdown.exe /s /t $secondsUntilShutdown
-if ($LASTEXITCODE -ne 0) {
+$abortProcess = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', 'shutdown.exe /a >nul 2>&1' -NoNewWindow -Wait -PassThru
+if ($abortProcess.ExitCode -notin @(0, 1116)) {
+  throw ("Failed to clear the existing shutdown schedule. ExitCode={0}" -f $abortProcess.ExitCode)
+}
+
+$shutdownProcess = Start-Process -FilePath 'shutdown.exe' -ArgumentList @('/s', '/t', $secondsUntilShutdown) -NoNewWindow -Wait -PassThru
+if ($shutdownProcess.ExitCode -ne 0) {
   throw 'Failed to schedule the computer shutdown.'
 }
 

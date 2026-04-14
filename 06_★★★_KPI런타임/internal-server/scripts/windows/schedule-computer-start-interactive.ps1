@@ -50,12 +50,14 @@ $timeInput = Read-StartTimeText -DefaultValue $DefaultTime
 $targetTime = Convert-ToTargetDateTime -Value $timeInput -Now $now
 $startupScriptPath = (Resolve-Path (Join-Path $PSScriptRoot 'start-central-stack.startup.ps1')).Path
 $argumentList = "-NoProfile -ExecutionPolicy Bypass -File `"$startupScriptPath`" -DelaySeconds $DelaySeconds"
+$currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 
 Write-Host ("CURRENT_TIME={0}" -f $now.ToString('yyyy-MM-dd HH:mm:ss'))
 Write-Host ("SCHEDULED_START={0}" -f $targetTime.ToString('yyyy-MM-dd HH:mm:ss'))
 Write-Host ("TASK_NAME={0}" -f $TaskName)
+Write-Host ("TASK_CONTEXT={0}" -f $currentUser)
 Write-Host ("ACTION=powershell.exe {0}" -f $argumentList)
-Write-Host 'START_MODE=Wake timer + server start task'
+Write-Host 'START_MODE=Wake timer + current-user scheduled task'
 Write-Host 'NOTE=Full power-on from complete shutdown depends on BIOS/UEFI RTC alarm or Wake-on-LAN.'
 
 if ($DryRun) {
@@ -65,7 +67,6 @@ if ($DryRun) {
 
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $argumentList
 $trigger = New-ScheduledTaskTrigger -Once -At $targetTime
-$principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
 $settings = New-ScheduledTaskSettingsSet `
   -WakeToRun `
   -StartWhenAvailable `
@@ -77,9 +78,8 @@ Register-ScheduledTask `
   -TaskName $TaskName `
   -Action $action `
   -Trigger $trigger `
-  -Principal $principal `
   -Settings $settings `
-  -Description 'Wakes the computer when possible and starts the KPI internal server stack at the scheduled time.' `
+  -Description 'Wakes the computer when possible and starts the KPI internal server stack at the scheduled time for the current user session.' `
   -Force | Out-Null
 
 Write-Host

@@ -94,6 +94,26 @@ function setResult(summary, output = '-') {
   $('resultTileSummary').textContent = resultText;
   $('resultTileMeta').textContent = timeLabel;
 }
+function formatDateTime(value) {
+  if (!value) {
+    return '-';
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+  const parts = new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(date);
+  const map = Object.fromEntries(parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]));
+  return `${map.year || '0000'}-${map.month || '00'}-${map.day || '00'} ${map.hour || '00'}:${map.minute || '00'}:${map.second || '00'}`;
+}
 function scheduleKindLabel(kind) {
   return kind === 'start' ? '시작' : '종료';
 }
@@ -169,7 +189,7 @@ function renderUsers(users, errorMessage = '') {
   renderUserStats(users);
   tbody.innerHTML = users.map((user) => {
     const roles = Array.isArray(user.roles) && user.roles.length ? user.roles.join(', ') : '-';
-    const lastAccess = user.last_access_at ? String(user.last_access_at).replace('T', ' ').slice(0, 19) : '-';
+    const lastAccess = formatDateTime(user.last_access_at);
     const sessionClass = user.session_active ? 'is-active' : 'is-inactive';
     const sessionLabel = user.session_active ? '활성' : '없음';
     return `
