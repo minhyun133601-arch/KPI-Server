@@ -57,8 +57,10 @@ function setStatusTone(element, tone) {
   }
 }
 function setResult(summary, output = '-') {
-  $('resultSummary').textContent = `${summary || '완료'} · ${nowLabel()}`;
-  $('resultOutput').textContent = output || '-';
+  const timeLabel = nowLabel();
+  const resultText = summary || '완료';
+  $('resultTileSummary').textContent = resultText;
+  $('resultTileMeta').textContent = timeLabel;
 }
 function renderStatus(overview) {
   overviewCache = overview;
@@ -81,6 +83,7 @@ function renderStatus(overview) {
   $('startupStatus').textContent = startupRegistered ? '등록됨' : '미등록';
   setStatusTone($('startupStatus'), startupRegistered ? 'status-up' : 'status-warn');
   setTileTone('startupTile', startupRegistered ? 'ok' : 'down');
+  setTileTone('resultTile', 'ok');
 }
 function renderUserStats(users = []) {
   const total = Array.isArray(users) ? users.length : 0;
@@ -106,13 +109,17 @@ function renderUsers(users, errorMessage = '') {
   tbody.innerHTML = users.map((user) => {
     const roles = Array.isArray(user.roles) && user.roles.length ? user.roles.join(', ') : '-';
     const lastAccess = user.last_access_at ? String(user.last_access_at).replace('T', ' ').slice(0, 19) : '-';
+    const sessionClass = user.session_active ? 'is-active' : 'is-inactive';
+    const sessionLabel = user.session_active ? '활성' : '없음';
     return `
       <tr>
         <td>${escapeHtml(user.username)}</td>
         <td>${escapeHtml(user.display_name || '')}</td>
         <td>${escapeHtml(roles)}</td>
         <td>${escapeHtml(lastAccess)}</td>
-        <td>${user.session_active ? '활성' : '-'}</td>
+        <td class="session-cell">
+          <span class="session-toggle ${sessionClass}" role="img" aria-label="${sessionLabel}" title="${sessionLabel}"></span>
+        </td>
       </tr>
     `;
   }).join('');
@@ -397,33 +404,89 @@ function bindDragScroll(element) {
     return;
   }
   element.dataset.dragBound = 'true';
+  const dragThreshold = 4;
+  const dragSpeed = 1.45;
+  const edgeZone = 28;
+  const edgeBoostMax = 18;
   let active = false;
   let dragging = false;
+  let pointerId = null;
+  let activePointerType = 'mouse';
   let startX = 0;
   let startY = 0;
   let scrollLeft = 0;
   let scrollTop = 0;
-  const dragThreshold = 4;
+  let lastClientX = 0;
+  let lastClientY = 0;
+  let edgeFrame = 0;
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+  const edgeDelta = (position, min, max) => {
+    if (position < min + edgeZone) {
+      const ratio = (min + edgeZone - position) / edgeZone;
+      return -Math.ceil(clamp(ratio, 0, 1) * edgeBoostMax);
+    }
+    if (position > max - edgeZone) {
+      const ratio = (position - (max - edgeZone)) / edgeZone;
+      return Math.ceil(clamp(ratio, 0, 1) * edgeBoostMax);
+    }
+    return 0;
+  };
+  const stopEdgeScroll = () => {
+    if (!edgeFrame) {
+      return;
+    }
+    cancelAnimationFrame(edgeFrame);
+    edgeFrame = 0;
+  };
+  const runEdgeScroll = () => {
+    if (!(active && dragging)) {
+      edgeFrame = 0;
+      return;
+    }
+    const rect = element.getBoundingClientRect();
+    const extraX = edgeDelta(lastClientX, rect.left, rect.right);
+    const extraY = edgeDelta(lastClientY, rect.top, rect.bottom);
+    if (extraX || extraY) {
+      scrollLeft += extraX;
+      scrollTop += extraY;
+      element.scrollLeft += extraX;
+      element.scrollTop += extraY;
+    }
+    edgeFrame = requestAnimationFrame(runEdgeScroll);
+  };
+  const ensureEdgeScroll = () => {
+    if (!edgeFrame) {
+      edgeFrame = requestAnimationFrame(runEdgeScroll);
+    }
+  };
   const stop = () => {
     if (!active) {
       return;
     }
     active = false;
     dragging = false;
+    pointerId = null;
+    stopEdgeScroll();
     element.classList.remove('is-dragging');
   };
-  const start = (clientX, clientY) => {
+  const start = (clientX, clientY, nextPointerId = null, nextPointerType = 'mouse') => {
     active = true;
     dragging = false;
+    pointerId = nextPointerId;
+    activePointerType = nextPointerType || 'mouse';
     startX = clientX;
     startY = clientY;
     scrollLeft = element.scrollLeft;
     scrollTop = element.scrollTop;
+    lastClientX = clientX;
+    lastClientY = clientY;
   };
   const move = (clientX, clientY, event) => {
     if (!active) {
       return;
     }
+    lastClientX = clientX;
+    lastClientY = clientY;
     const deltaX = clientX - startX;
     const deltaY = clientY - startY;
 
@@ -437,36 +500,36 @@ function bindDragScroll(element) {
     }
 
     event.preventDefault();
-    element.scrollLeft = scrollLeft - deltaX;
-    element.scrollTop = scrollTop - deltaY;
+    const direction = activePointerType === 'touch' ? -1 : 1;
+    element.scrollLeft = scrollLeft + (deltaX * dragSpeed * direction);
+    element.scrollTop = scrollTop + (deltaY * dragSpeed * direction);
+    ensureEdgeScroll();
   };
-  element.addEventListener('mousedown', (event) => {
-    if (event.button !== 0) {
+  element.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 && event.pointerType !== 'touch') {
       return;
     }
-    start(event.clientX, event.clientY);
+    start(event.clientX, event.clientY, event.pointerId, event.pointerType);
+    if (typeof element.setPointerCapture === 'function') {
+      element.setPointerCapture(event.pointerId);
+    }
     event.preventDefault();
   });
-  window.addEventListener('mousemove', (event) => {
+  element.addEventListener('pointermove', (event) => {
+    if (pointerId !== null && event.pointerId !== pointerId) {
+      return;
+    }
     move(event.clientX, event.clientY, event);
   });
-  window.addEventListener('mouseup', stop);
-  element.addEventListener('touchstart', (event) => {
-    const touch = event.touches[0];
-    if (!touch) {
+  const finishPointer = (event) => {
+    if (pointerId !== null && event.pointerId !== pointerId) {
       return;
     }
-    start(touch.clientX, touch.clientY);
-  }, { passive: true });
-  element.addEventListener('touchmove', (event) => {
-    const touch = event.touches[0];
-    if (!touch) {
-      return;
-    }
-    move(touch.clientX, touch.clientY, event);
-  }, { passive: false });
-  element.addEventListener('touchend', stop);
-  element.addEventListener('touchcancel', stop);
+    stop();
+  };
+  element.addEventListener('pointerup', finishPointer);
+  element.addEventListener('pointercancel', finishPointer);
+  element.addEventListener('lostpointercapture', stop);
   element.addEventListener('dragstart', (event) => {
     event.preventDefault();
   });

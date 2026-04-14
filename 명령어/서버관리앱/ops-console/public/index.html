@@ -8,7 +8,7 @@
     rel="icon"
     href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f2723'/%3E%3Cpath d='M8 24V8h3v6.5L17.5 8H22l-7 7.5 7.3 8.5h-4.6L12 17.2V24H8Z' fill='%23f5f7f5'/%3E%3C/svg%3E"
   />
-  <link rel="stylesheet" href="/styles.css?v=20260414g" />
+  <link rel="stylesheet" href="/styles.css?v=20260414l" />
 </head>
 <body>
   <div class="page-shell">
@@ -71,6 +71,15 @@
           </div>
           <strong id="startupStatus">확인 중</strong>
           <span class="status-meta">Windows 예약 작업</span>
+        </article>
+        <article id="resultTile" class="status-tile status-result-tile">
+          <div class="status-headline">
+            <span class="status-light" aria-hidden="true"></span>
+            <span class="ui-icon status-icon" data-icon="spark" aria-hidden="true"></span>
+            <span class="status-label">최근 결과</span>
+          </div>
+          <strong id="resultTileSummary">대기 중</strong>
+          <span id="resultTileMeta" class="status-meta">아직 실행한 작업이 없습니다.</span>
         </article>
       </section>
 
@@ -189,20 +198,6 @@
 
         <aside class="activity-column">
           <section class="section section-compact">
-            <div class="section-head">
-              <div class="section-title-group">
-                <span class="ui-icon section-icon" data-icon="spark" aria-hidden="true"></span>
-                <div>
-                  <h2>최근 결과</h2>
-                  <p>가장 마지막으로 실행한 작업</p>
-                </div>
-              </div>
-            </div>
-            <div id="resultSummary" class="result-summary">아직 실행한 작업이 없습니다.</div>
-            <pre id="resultOutput" class="output-box drag-scroll">-</pre>
-          </section>
-
-          <section class="section section-compact">
             <div class="section-head section-head-inline">
               <div class="section-title-group">
                 <span class="ui-icon section-icon" data-icon="table" aria-hidden="true"></span>
@@ -238,6 +233,6 @@
     </main>
   </div>
 
-  <script src="/app.js?v=20260414g" type="module"></script>
+  <script src="/app.js?v=20260414l" type="module"></script>
 </body>
 </html>

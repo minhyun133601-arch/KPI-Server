@@ -71,7 +71,9 @@ function serveStaticFile(res, filePath) {
   res.writeHead(200, {
     'Content-Type': mimeTypes[extension] || 'application/octet-stream',
     'Content-Length': body.length,
-    'Cache-Control': extension === '.html' ? 'no-store' : 'public, max-age=300'
+    'Cache-Control': 'no-store',
+    'Pragma': 'no-cache',
+    'Expires': '0'
   });
   res.end(body);
 }
