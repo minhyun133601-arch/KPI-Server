@@ -371,8 +371,8 @@
                 <div class="owner-records-shell-head">
                     <div class="owner-records-shell-copy-block">
                         <div class="owner-records-shell-kicker">OWNER ONLY</div>
-                        <h2 class="owner-records-shell-title">데이터관리</h2>
-                        <p class="owner-records-shell-copy">오너 계정 전용으로 계정, 로그인 기록, 권한 상태를 한 화면에서 확인합니다.</p>
+                        <h2 class="owner-records-shell-title">계정 관리</h2>
+                        <p class="owner-records-shell-copy">오너 계정 전용으로 로그인 기록과 등록 계정을 한 화면에서 확인합니다.</p>
                         <div class="owner-records-shell-meta">
                             <span class="owner-records-shell-meta-item">현재 로그인 ${escapeDashboardHtml(currentUserLabel)}</span>
                         </div>
@@ -383,7 +383,7 @@
                 </div>
             `;
             const summaryHtml = isFullscreen ? '' : `
-                <section class="owner-records-summary-grid" aria-label="데이터관리 요약">
+                <section class="owner-records-summary-grid" aria-label="계정 관리 요약">
                     ${buildOwnerRecordsSummaryHtml()}
                 </section>
             `;
@@ -463,8 +463,18 @@
 
         function clearOwnerRecordsView() {
             const root = getOwnerRecordsMountRoot();
-            if (document.fullscreenElement === root) {
-                void document.exitFullscreen?.();
+            if (
+                document.fullscreenElement === root
+                && typeof document.exitFullscreen === 'function'
+            ) {
+                try {
+                    const exitResult = document.exitFullscreen();
+                    if (exitResult && typeof exitResult.catch === 'function') {
+                        exitResult.catch(() => {});
+                    }
+                } catch (error) {
+                    // Ignore local preview fullscreen teardown failures.
+                }
             }
             if (root) {
                 root.innerHTML = '';

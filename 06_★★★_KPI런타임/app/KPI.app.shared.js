@@ -78,7 +78,7 @@
             return DASHBOARD_SECTION_ORDER.map((id, index) => {
                 const section = AppData[id];
                 if (!section) return null;
-                if (section.ownerOnly === true && !hasOwnerRole()) return null;
+                if (section.ownerOnly === true && !canShowOwnerWorkspace()) return null;
                 const categories = Array.isArray(section.categories) ? section.categories : [];
                 return {
                     id,
@@ -221,6 +221,26 @@
             const runtimeConfig = KpiRuntime?.getServerRuntimeConfig?.() || null;
             const currentUser = runtimeConfig?.auth?.currentUser;
             return currentUser && typeof currentUser === 'object' ? currentUser : null;
+        }
+
+        function isLocalDashboardPreviewMode() {
+            const runtimeConfig = KpiRuntime?.getServerRuntimeConfig?.() || null;
+            if (
+                runtimeConfig
+                && runtimeConfig.enabled === true
+                && String(runtimeConfig.source || '').trim() === 'internal_server'
+            ) {
+                return false;
+            }
+            const protocol = String(window.location.protocol || '').trim().toLowerCase();
+            if (protocol === 'file:') return true;
+            if (!/^(http:|https:)$/.test(protocol)) return false;
+            const hostname = String(window.location.hostname || '').trim().toLowerCase();
+            return hostname === 'localhost' || hostname === '127.0.0.1';
+        }
+
+        function canShowOwnerWorkspace(user = null) {
+            return hasOwnerRole(user) || isLocalDashboardPreviewMode();
         }
 
         function hasOwnerRole(user = null) {

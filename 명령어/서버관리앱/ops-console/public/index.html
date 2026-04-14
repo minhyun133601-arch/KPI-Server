@@ -1,25 +1,27 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KPI 서버 관리 앱</title>
+  <title>KPI 운영 콘솔</title>
   <link
     rel="icon"
     href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f2723'/%3E%3Cpath d='M8 24V8h3v6.5L17.5 8H22l-7 7.5 7.3 8.5h-4.6L12 17.2V24H8Z' fill='%23f5f7f5'/%3E%3C/svg%3E"
   />
-  <link rel="stylesheet" href="/styles.css?v=20260414l" />
+  <link rel="stylesheet" href="/styles.css?v=20260414q" />
 </head>
 <body>
   <div class="page-shell">
     <header class="hero-band">
       <div class="hero-copy">
         <p class="eyebrow">LOCAL OPS CONSOLE</p>
-        <h1>KPI 서버 관리 앱</h1>
-        <p class="hero-summary">서버 시작 전에도 바로 쓰는 로컬 운영 화면</p>
+        <h1>KPI 운영 콘솔</h1>
+        <p class="hero-summary">서버 관리와 데이터 관리를 로컬 콘솔에서 바로 처리합니다.</p>
         <div class="hero-meta">
           <span class="meta-chip">localhost 전용</span>
           <span class="meta-chip">서버 시작 전 사용 가능</span>
+          <span class="meta-chip"><span>운영 콘솔</span><strong id="opsHeaderUrl">-</strong></span>
+          <span class="meta-chip meta-chip-wide"><span>명령어</span><strong id="opsHeaderRoot">-</strong></span>
         </div>
       </div>
       <div class="hero-actions">
@@ -36,14 +38,14 @@
 
     <main class="page-main">
       <section class="status-strip">
-        <article id="opsTile" class="status-tile">
+        <article id="scheduleTile" class="status-tile">
           <div class="status-headline">
             <span class="status-light" aria-hidden="true"></span>
-            <span class="ui-icon status-icon" data-icon="monitor" aria-hidden="true"></span>
-            <span class="status-label">운영 콘솔</span>
+            <span class="ui-icon status-icon" data-icon="clock" aria-hidden="true"></span>
+            <span class="status-label">컴퓨터 예약</span>
           </div>
-          <strong id="opsUrl">-</strong>
-          <span id="opsSummary" class="status-meta">로컬 전용</span>
+          <strong id="scheduleStatus">확인 중</strong>
+          <span id="scheduleSummary" class="status-meta">시작 / 종료 예약 상태</span>
         </article>
         <article id="kpiTile" class="status-tile">
           <div class="status-headline">
@@ -70,7 +72,7 @@
             <span class="status-label">부팅 자동실행</span>
           </div>
           <strong id="startupStatus">확인 중</strong>
-          <span class="status-meta">Windows 예약 작업</span>
+          <span class="status-meta">현재 사용자 시작프로그램</span>
         </article>
         <article id="resultTile" class="status-tile status-result-tile">
           <div class="status-headline">
@@ -83,61 +85,77 @@
         </article>
       </section>
 
-      <section class="workbench">
-        <div class="content-column">
-          <nav class="tab-bar" aria-label="운영 화면 분류">
-            <button class="tab-button is-active" data-tab="operations" type="button">
-              <span class="ui-icon tab-icon" data-icon="power" aria-hidden="true"></span>
-              <span>운영</span>
-            </button>
-            <button class="tab-button" data-tab="accounts" type="button">
-              <span class="ui-icon tab-icon" data-icon="user" aria-hidden="true"></span>
-              <span>계정</span>
-            </button>
-            <button class="tab-button" data-tab="diagnostics" type="button">
-              <span class="ui-icon tab-icon" data-icon="tools" aria-hidden="true"></span>
-              <span>진단</span>
-            </button>
-          </nav>
+      <section class="workbench workbench-tabs">
+        <nav class="tab-bar" aria-label="운영 콘솔 분류">
+          <button class="tab-button is-active" data-tab="server" type="button">
+            <span class="ui-icon tab-icon" data-icon="server" aria-hidden="true"></span>
+            <span>서버 관리</span>
+          </button>
+          <button class="tab-button" data-tab="data" type="button">
+            <span class="ui-icon tab-icon" data-icon="database" aria-hidden="true"></span>
+            <span>데이터 관리</span>
+          </button>
+        </nav>
 
-          <section class="tab-panel is-active" data-tab-panel="operations">
-            <div class="section-grid">
-              <section class="section">
-                <div class="section-head">
-                  <div class="section-title-group">
-                    <span class="ui-icon section-icon" data-icon="power" aria-hidden="true"></span>
-                    <div>
-                      <h2>서버 제어</h2>
-                      <p>지금 가장 많이 쓰는 작업만 모았습니다.</p>
-                    </div>
+        <section class="tab-panel tab-panel-layout is-active" data-tab-panel="server">
+          <div class="section-stack">
+            <section class="section">
+              <div class="section-head">
+                <div class="section-title-group">
+                  <span class="ui-icon section-icon" data-icon="power" aria-hidden="true"></span>
+                  <div>
+                    <h2>서버 관리</h2>
+                    <p>서버 실행, 종료, 복구 작업을 한 곳에 모았습니다.</p>
                   </div>
                 </div>
-                <div id="serverActions" class="action-list"></div>
-              </section>
+              </div>
+              <div id="serverActions" class="action-list"></div>
+            </section>
 
-              <section class="section">
-                <div class="section-head">
-                  <div class="section-title-group">
-                    <span class="ui-icon section-icon" data-icon="clock" aria-hidden="true"></span>
-                    <div>
-                      <h2>자동실행 / 시스템</h2>
-                      <p>부팅, 종료, 운영 편의 작업입니다.</p>
-                    </div>
+            <section class="section">
+              <div class="section-head">
+                <div class="section-title-group">
+                  <span class="ui-icon section-icon" data-icon="clock" aria-hidden="true"></span>
+                  <div>
+                    <h2>자동실행 / 시스템</h2>
+                    <p>로그인 자동실행과 시작 / 종료 예약을 관리합니다.</p>
                   </div>
                 </div>
-                <div id="systemActions" class="action-list"></div>
-              </section>
-            </div>
-          </section>
+              </div>
+              <div id="systemActions" class="action-list"></div>
+            </section>
+          </div>
 
-          <section class="tab-panel" data-tab-panel="accounts">
+          <div class="section-stack">
+            <section class="section section-compact">
+              <div class="section-head">
+                <div class="section-title-group">
+                  <span class="ui-icon section-icon" data-icon="terminal" aria-hidden="true"></span>
+                  <div>
+                    <h2>로그 보기</h2>
+                    <p>최근 로그 60줄을 바로 확인합니다.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="toolbar-row toolbar-row-tight">
+                <button class="secondary-button log-button" data-log-key="serverStdout" type="button">서버 stdout</button>
+                <button class="secondary-button log-button" data-log-key="serverStderr" type="button">서버 stderr</button>
+                <button class="secondary-button log-button" data-log-key="postgres" type="button">PostgreSQL</button>
+              </div>
+              <pre id="logOutput" class="output-box drag-scroll">로그를 선택해 주세요.</pre>
+            </section>
+          </div>
+        </section>
+
+        <section class="tab-panel tab-panel-layout" data-tab-panel="data">
+          <div class="section-stack">
             <section class="section">
               <div class="section-head">
                 <div class="section-title-group">
                   <span class="ui-icon section-icon" data-icon="user" aria-hidden="true"></span>
                   <div>
                     <h2>계정 관리</h2>
-                    <p>필요한 작업만 펼쳐서 입력합니다.</p>
+                    <p>오너, 직원 계정과 비밀번호 작업을 처리합니다.</p>
                   </div>
                 </div>
               </div>
@@ -149,8 +167,8 @@
                 <div class="section-title-group">
                   <span class="ui-icon section-icon" data-icon="list" aria-hidden="true"></span>
                   <div>
-                    <h2>사용자 목록</h2>
-                    <p>현재 DB에 저장된 계정 상태입니다.</p>
+                    <h2>사용자 현황</h2>
+                    <p>현재 DB에 등록된 계정 상태를 확인합니다.</p>
                   </div>
                 </div>
                 <div class="summary-group">
@@ -168,71 +186,51 @@
                       <th>아이디</th>
                       <th>표시 이름</th>
                       <th>역할</th>
-                      <th>최근 접근</th>
+                      <th>최근 접속</th>
                       <th>세션</th>
                     </tr>
                   </thead>
                   <tbody id="usersTableBody">
-                    <tr><td colspan="5">불러오는 중</td></tr>
+                    <tr><td colspan="5">불러오는 중...</td></tr>
                   </tbody>
                 </table>
               </div>
             </section>
-          </section>
+          </div>
 
-          <section class="tab-panel" data-tab-panel="diagnostics">
+          <div class="section-stack">
             <section class="section">
               <div class="section-head">
                 <div class="section-title-group">
                   <span class="ui-icon section-icon" data-icon="tools" aria-hidden="true"></span>
                   <div>
                     <h2>DB / 도구</h2>
-                    <p>콘솔, 폴더, 보조 진단 작업입니다.</p>
+                    <p>DB 콘솔과 운영 보조 작업을 처리합니다.</p>
                   </div>
                 </div>
               </div>
               <div id="toolActions" class="action-list"></div>
             </section>
-          </section>
-        </div>
 
-        <aside class="activity-column">
-          <section class="section section-compact">
-            <div class="section-head section-head-inline">
-              <div class="section-title-group">
-                <span class="ui-icon section-icon" data-icon="table" aria-hidden="true"></span>
-                <div>
-                  <h2>DB 테이블</h2>
-                  <p>테이블 이름만 빠르게 확인합니다.</p>
+            <section class="section section-compact">
+              <div class="section-head section-head-inline">
+                <div class="section-title-group">
+                  <span class="ui-icon section-icon" data-icon="table" aria-hidden="true"></span>
+                  <div>
+                    <h2>DB 테이블</h2>
+                    <p>테이블 목록을 이 화면에서 바로 확인합니다.</p>
+                  </div>
                 </div>
+                <button id="loadTablesButton" class="secondary-button" type="button">불러오기</button>
               </div>
-              <button id="loadTablesButton" class="secondary-button" type="button">불러오기</button>
-            </div>
-            <pre id="tablesOutput" class="output-box drag-scroll">아직 불러오지 않았습니다.</pre>
-          </section>
-
-          <section class="section section-compact">
-            <div class="section-head">
-              <div class="section-title-group">
-                <span class="ui-icon section-icon" data-icon="terminal" aria-hidden="true"></span>
-                <div>
-                  <h2>로그 보기</h2>
-                  <p>최근 로그 60줄</p>
-                </div>
-              </div>
-            </div>
-            <div class="toolbar-row toolbar-row-tight">
-              <button class="secondary-button log-button" data-log-key="serverStdout" type="button">서버 stdout</button>
-              <button class="secondary-button log-button" data-log-key="serverStderr" type="button">서버 stderr</button>
-              <button class="secondary-button log-button" data-log-key="postgres" type="button">PostgreSQL</button>
-            </div>
-            <pre id="logOutput" class="output-box drag-scroll">로그를 선택해 주세요.</pre>
-          </section>
-        </aside>
+              <pre id="tablesOutput" class="output-box drag-scroll">아직 불러오지 않았습니다.</pre>
+            </section>
+          </div>
+        </section>
       </section>
     </main>
   </div>
 
-  <script src="/app.js?v=20260414l" type="module"></script>
+  <script src="/app.js?v=20260414q" type="module"></script>
 </body>
 </html>

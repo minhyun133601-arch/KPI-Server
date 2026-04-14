@@ -15,6 +15,18 @@ export const appVarDir = path.join(appRoot, 'var');
 export const appLogsDir = path.join(appVarDir, 'logs');
 export const appPortFile = path.join(appVarDir, 'ops-console-port.txt');
 export const appPidFile = path.join(appVarDir, 'ops-console-pid.txt');
+export const shutdownScheduleStateFile = path.join(appVarDir, 'shutdown-schedule.json');
+export const startupProgramsDir = process.env.APPDATA
+  ? path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup')
+  : '';
+export const startupScriptName = 'KPI-Central-Autostart.vbs';
+export const legacyStartupShortcutName = 'KPI Internal Server Startup.lnk';
+export const startupScriptFile = startupProgramsDir
+  ? path.join(startupProgramsDir, startupScriptName)
+  : '';
+export const legacyStartupShortcutFile = startupProgramsDir
+  ? path.join(startupProgramsDir, legacyStartupShortcutName)
+  : '';
 export const internalServerVarDir = path.join(internalServerDir, 'var');
 export const internalServerLogsDir = path.join(internalServerVarDir, 'logs');
 export const postgresLogFile = path.join(internalServerDir, 'var', 'central-runtime', 'postgres', 'logs', 'postgres.log');

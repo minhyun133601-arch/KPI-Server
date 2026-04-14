@@ -8,12 +8,15 @@ import {
   internalServerDir,
   internalServerLogsDir,
   internalServerScripts,
-  postgresLogFile
+  postgresLogFile,
+  shutdownScheduleStateFile,
+  startupScriptFile,
+  legacyStartupShortcutFile
 } from './paths.mjs';
 import { commandRegistry } from './command-registry.mjs';
 
 const execFileAsync = promisify(execFile);
-const startupTaskName = 'KPI Internal Server Startup';
+const scheduledStartTaskName = 'KPI Internal Server Scheduled Start';
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -142,6 +145,83 @@ function tailFile(filePath, lineCount = 60) {
   return lines.slice(Math.max(0, lines.length - lineCount)).join('\n').trim();
 }
 
+function readJsonFile(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  return safeJsonParse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function writeJsonFile(filePath, value) {
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
+function removeFileIfExists(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
+
+  fs.unlinkSync(filePath);
+}
+
+function parseClockTime(timeText) {
+  const match = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(String(timeText || '').trim());
+  if (!match) {
+    return null;
+  }
+
+  return {
+    hours: Number.parseInt(match[1], 10),
+    minutes: Number.parseInt(match[2], 10)
+  };
+}
+
+function getNextOccurrenceFromTimeText(timeText, now = new Date()) {
+  const parsed = parseClockTime(timeText);
+  if (!parsed) {
+    return null;
+  }
+
+  const target = new Date(now);
+  target.setHours(parsed.hours, parsed.minutes, 0, 0);
+  if (target <= now) {
+    target.setDate(target.getDate() + 1);
+  }
+  return target;
+}
+
+function formatScheduleTimeLabel(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.valueOf())) {
+    return '-';
+  }
+
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${month}.${day} ${hour}:${minute}`;
+}
+
+function buildScheduleState(kind, targetAt, extra = {}) {
+  const date = targetAt instanceof Date ? targetAt : new Date(targetAt);
+  if (Number.isNaN(date.valueOf())) {
+    return {
+      active: false,
+      kind
+    };
+  }
+
+  return {
+    active: true,
+    kind,
+    targetAt: date.toISOString(),
+    timeLabel: formatScheduleTimeLabel(date),
+    ...extra
+  };
+}
+
 async function requestJson(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
@@ -199,14 +279,69 @@ async function getPostgresReadyState() {
 }
 
 async function getStartupTaskRegistered() {
+  return Boolean(
+    (startupScriptFile && fs.existsSync(startupScriptFile))
+    || (legacyStartupShortcutFile && fs.existsSync(legacyStartupShortcutFile))
+  );
+}
+
+async function getScheduledStartState() {
+  const commandText = [
+    `$taskName = '${scheduledStartTaskName.replaceAll("'", "''")}'`,
+    '$task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue',
+    'if (-not $task) { [pscustomobject]@{ active = $false } | ConvertTo-Json -Compress; exit 0 }',
+    '$info = Get-ScheduledTaskInfo -TaskName $taskName',
+    "$nextRunTime = ''",
+    "if ($info.NextRunTime) { $nextRunTime = $info.NextRunTime.ToString('o') }",
+    '[pscustomobject]@{ active = $true; state = [string]$task.State; nextRunTime = $nextRunTime } | ConvertTo-Json -Compress'
+  ].join('; ');
+
   try {
-    const { stdout } = await runPowerShellCommand(
-      `$task = Get-ScheduledTask -TaskName '${startupTaskName}' -ErrorAction SilentlyContinue; if ($task) { 'registered' } else { 'missing' }`
-    );
-    return stdout.trim() === 'registered';
+    const result = await runPowerShellCommand(commandText, { timeoutMs: 15000 });
+    const payload = safeJsonParse(result.stdout);
+    if (!payload?.active || !payload.nextRunTime) {
+      return { active: false, kind: 'start' };
+    }
+
+    const targetAt = new Date(payload.nextRunTime);
+    if (Number.isNaN(targetAt.valueOf()) || targetAt <= new Date()) {
+      return { active: false, kind: 'start' };
+    }
+
+    return buildScheduleState('start', targetAt, {
+      source: 'scheduled-task',
+      taskState: payload.state || ''
+    });
   } catch {
-    return false;
+    return { active: false, kind: 'start' };
   }
+}
+
+function getShutdownScheduleState() {
+  const payload = readJsonFile(shutdownScheduleStateFile);
+  if (!payload?.targetAt) {
+    return { active: false, kind: 'shutdown' };
+  }
+
+  const targetAt = new Date(payload.targetAt);
+  if (Number.isNaN(targetAt.valueOf()) || targetAt <= new Date()) {
+    removeFileIfExists(shutdownScheduleStateFile);
+    return { active: false, kind: 'shutdown' };
+  }
+
+  return buildScheduleState('shutdown', targetAt, {
+    source: 'shutdown-exe'
+  });
+}
+
+async function getComputerScheduleState() {
+  const start = await getScheduledStartState();
+  const shutdown = getShutdownScheduleState();
+  return {
+    start,
+    shutdown,
+    active: [start, shutdown].filter((item) => item.active)
+  };
 }
 
 async function ensureRuntimeReady() {
@@ -241,6 +376,7 @@ export async function getOverview() {
   const health = await requestJson(urls.healthUrl);
   const postgres = await getPostgresReadyState();
   const startupTaskRegistered = await getStartupTaskRegistered();
+  const computerSchedule = await getComputerScheduleState();
 
   let users = [];
   let usersError = '';
@@ -263,6 +399,7 @@ export async function getOverview() {
       health
     },
     postgres,
+    computerSchedule,
     startupTaskRegistered,
     users,
     usersError,
@@ -366,7 +503,7 @@ async function actionRegisterStartup() {
   });
   return {
     ok: true,
-    summary: '부팅 자동실행 등록이 완료되었습니다.',
+    summary: '로그인 자동실행 등록이 완료되었습니다.',
     output: [result.stdout, result.stderr].filter(Boolean).join('\n')
   };
 }
@@ -377,7 +514,7 @@ async function actionUnregisterStartup() {
   });
   return {
     ok: true,
-    summary: '부팅 자동실행 해제가 완료되었습니다.',
+    summary: '로그인 자동실행 해제가 완료되었습니다.',
     output: [result.stdout, result.stderr].filter(Boolean).join('\n')
   };
 }
@@ -515,6 +652,15 @@ async function actionScheduleShutdown(payload) {
   const result = await runPowerShellScript(internalServerScripts.scheduleShutdown, ['-TimeText', timeText], {
     timeoutMs: 60000
   });
+  const targetAt = getNextOccurrenceFromTimeText(timeText);
+  if (targetAt) {
+    writeJsonFile(shutdownScheduleStateFile, {
+      kind: 'shutdown',
+      timeText,
+      targetAt: targetAt.toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  }
   return {
     ok: true,
     summary: '컴퓨터 종료 예약이 완료되었습니다.',

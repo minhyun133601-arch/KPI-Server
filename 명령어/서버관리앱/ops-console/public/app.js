@@ -1,12 +1,40 @@
-const actionHeader = {
+﻿const actionHeader = {
   'X-KPI-Ops-Request': 'true',
   'Content-Type': 'application/json'
 };
+const TAB_SERVER = 'server';
+const TAB_DATA = 'data';
 let overviewCache = null;
 const iconMap = { monitor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="12" rx="2"></rect><path d="M8 19.5h8"></path><path d="M12 16.5v3"></path></svg>', server: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="6" rx="2"></rect><rect x="4" y="14" width="16" height="6" rx="2"></rect><path d="M8 7h.01M8 17h.01M16 7h2M16 17h2"></path></svg>', database: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7" ry="3.5"></ellipse><path d="M5 5.5v6c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-6"></path><path d="M5 11.5v6c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-6"></path></svg>', clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 7.5v5l3 2"></path></svg>', power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v8"></path><path d="M6.5 6.5a8 8 0 1 0 11 0"></path></svg>', stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>', refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 5v5h-5"></path><path d="M4 19v-5h5"></path><path d="M18 10a6.5 6.5 0 0 0-11-2L4 10"></path><path d="M6 14a6.5 6.5 0 0 0 11 2l3-2"></path></svg>', user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5.5 19a6.5 6.5 0 0 1 13 0"></path></svg>', key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="3"></circle><path d="M10.5 13.5 19 5l2 2-1.5 1.5 1 1L18 12l-1-1-1.5 1.5"></path></svg>', trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7h15"></path><path d="M9 4.5h6"></path><path d="M7 7l1 12h8l1-12"></path></svg>', folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5h6l2 2h9v7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Z"></path></svg>', terminal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2"></rect><path d="m7.5 9 3 3-3 3"></path><path d="M12.5 15h4"></path></svg>', tools: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 7 3-3 3 3-3 3"></path><path d="M17 7 8 16"></path><path d="m5 13 6 6"></path><path d="M4 20h4"></path></svg>', list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path><circle cx="5" cy="6" r="1"></circle><circle cx="5" cy="12" r="1"></circle><circle cx="5" cy="18" r="1"></circle></svg>', table: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 10h16M10 5v14"></path></svg>', spark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8Z"></path><path d="m19 15 .8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8Z"></path></svg>' };
 const commandIconMap = { 'server.start': 'power', 'server.stop': 'stop', 'server.recover': 'refresh', 'startup.register': 'clock', 'startup.unregister': 'clock', 'system.scheduleShutdown': 'clock', 'account.bootstrapOwner': 'user', 'account.createEmployee': 'user', 'account.resetPassword': 'key', 'account.deleteUser': 'trash', 'db.listTables': 'table', 'db.openConsole': 'terminal', 'filesystem.openCommandsFolder': 'folder', 'filesystem.openLogsFolder': 'folder' };
-const commandLabelMap = { 'server.start': '실행', 'server.stop': '중지', 'server.recover': '복구', 'startup.register': '등록', 'startup.unregister': '해제', 'system.scheduleShutdown': '예약', 'account.bootstrapOwner': '생성', 'account.createEmployee': '생성', 'account.resetPassword': '변경', 'account.deleteUser': '삭제', 'db.listTables': '불러오기', 'db.openConsole': '열기', 'filesystem.openCommandsFolder': '열기', 'filesystem.openLogsFolder': '열기' };
-const compactDescriptionMap = { 'server.start': '현재 런타임을 올립니다.', 'server.stop': '서버와 PostgreSQL을 순서대로 종료합니다.', 'server.recover': '실행 꼬임을 정리한 뒤 다시 올립니다.', 'startup.register': 'Windows 시작 시 자동으로 올립니다.', 'startup.unregister': 'Windows 시작 자동실행을 해제합니다.', 'system.scheduleShutdown': '시작 또는 종료 시각을 예약합니다.', 'db.listTables': '테이블 이름만 바로 확인합니다.', 'db.openConsole': 'psql 콘솔 창을 엽니다.', 'filesystem.openCommandsFolder': '명령어 폴더를 엽니다.', 'filesystem.openLogsFolder': '로그 폴더를 엽니다.' };
+const commandLabelMap = {
+  'server.start': '실행',
+  'server.stop': '중지',
+  'server.recover': '복구',
+  'startup.register': '등록',
+  'startup.unregister': '해제',
+  'system.scheduleShutdown': '예약',
+  'account.bootstrapOwner': '생성',
+  'account.createEmployee': '생성',
+  'account.resetPassword': '변경',
+  'account.deleteUser': '삭제',
+  'db.listTables': '불러오기',
+  'db.openConsole': '열기',
+  'filesystem.openCommandsFolder': '열기',
+  'filesystem.openLogsFolder': '열기'
+};
+const compactDescriptionMap = {
+  'server.start': '현재 서버 스택을 올립니다.',
+  'server.stop': '서버와 PostgreSQL을 순서대로 종료합니다.',
+  'server.recover': '실행 중인 흔적을 정리하고 다시 올립니다.',
+  'startup.register': '현재 사용자 로그인 시 자동으로 서버를 올립니다.',
+  'startup.unregister': '현재 사용자 자동실행을 해제합니다.',
+  'system.scheduleShutdown': '시작 또는 종료 시간을 예약합니다.',
+  'db.listTables': '테이블 이름만 바로 확인합니다.',
+  'db.openConsole': 'psql 콘솔 창을 엽니다.',
+  'filesystem.openCommandsFolder': '명령어 폴더를 엽니다.',
+  'filesystem.openLogsFolder': '로그 폴더를 엽니다.'
+};
 function $(id) {
   return document.getElementById(id);
 }
@@ -62,11 +90,37 @@ function setResult(summary, output = '-') {
   $('resultTileSummary').textContent = resultText;
   $('resultTileMeta').textContent = timeLabel;
 }
+function scheduleKindLabel(kind) {
+  return kind === 'start' ? '시작' : '종료';
+}
+function getActiveScheduleItems(schedule = {}) {
+  return ['start', 'shutdown']
+    .map((kind) => schedule[kind])
+    .filter((item) => item?.active);
+}
+function renderScheduleStatus(schedule = {}) {
+  const activeItems = getActiveScheduleItems(schedule);
+  const statusText = activeItems.length === 0
+    ? '예약 없음'
+    : activeItems.length === 2
+      ? '시작·종료 예약'
+      : `${scheduleKindLabel(activeItems[0].kind)} 예약`;
+  const summaryText = activeItems.length === 0
+    ? '시작 / 종료 예약 없음'
+    : activeItems.map((item) => `${scheduleKindLabel(item.kind)} ${item.timeLabel || '-'}`).join(' / ');
+  $('scheduleStatus').textContent = statusText;
+  $('scheduleSummary').textContent = summaryText;
+  setStatusTone($('scheduleStatus'), activeItems.length ? 'status-up' : 'status-warn');
+  setTileTone('scheduleTile', activeItems.length ? 'ok' : 'warn');
+}
 function renderStatus(overview) {
   overviewCache = overview;
-  $('opsUrl').textContent = overview.app.localUrl;
-  $('opsSummary').textContent = overview.app.commandsRoot;
-  setTileTone('opsTile', 'ok');
+  $('opsHeaderUrl').textContent = overview.app.localUrl;
+  $('opsHeaderUrl').title = overview.app.localUrl;
+  $('opsHeaderRoot').textContent = overview.app.commandsRoot;
+  $('opsHeaderRoot').title = overview.app.commandsRoot;
+  renderScheduleStatus(overview.computerSchedule);
+
   const kpiOk = Boolean(overview.kpi.health?.ok);
   $('kpiStatus').textContent = kpiOk ? '실행 중' : '중지';
   $('kpiSummary').textContent = kpiOk
@@ -74,11 +128,13 @@ function renderStatus(overview) {
     : (overview.kpi.health?.error || '헬스 체크 실패');
   setStatusTone($('kpiStatus'), kpiOk ? 'status-up' : 'status-down');
   setTileTone('kpiTile', kpiOk ? 'ok' : 'down');
+
   const postgresOk = Boolean(overview.postgres?.ok);
   $('postgresStatus').textContent = postgresOk ? '연결 가능' : '중지 또는 미설치';
   $('postgresSummary').textContent = overview.postgres?.message || '-';
   setStatusTone($('postgresStatus'), postgresOk ? 'status-up' : 'status-down');
   setTileTone('postgresTile', postgresOk ? 'ok' : 'down');
+
   const startupRegistered = Boolean(overview.startupTaskRegistered);
   $('startupStatus').textContent = startupRegistered ? '등록됨' : '미등록';
   setStatusTone($('startupStatus'), startupRegistered ? 'status-up' : 'status-warn');
@@ -164,7 +220,7 @@ function buildActionItem(command) {
         body: JSON.stringify({})
       });
       if (command.key === 'db.listTables') {
-        $('tablesOutput').textContent = payload.output || '출력이 없습니다.';
+        $('tablesOutput').textContent = payload.output || '출력 없음';
       }
       setResult(payload.summary || `${command.title} 완료`, payload.output || '-');
       await reloadOverview();
@@ -351,7 +407,7 @@ function renderCommands(commands) {
       active: serverRunning,
       activeCommand: byKey.get('server.stop'),
       inactiveCommand: byKey.get('server.start'),
-      description: serverRunning ? '서버와 PostgreSQL을 함께 중지할 수 있습니다.' : '현재 런타임을 다시 올립니다.',
+      description: serverRunning ? '서버와 PostgreSQL이 현재 실행 중입니다.' : '현재 서버 스택을 다시 올립니다.',
       note: serverRunning ? '현재 상태: 실행 중' : '현재 상태: 중지'
     }));
   }
@@ -367,7 +423,7 @@ function renderCommands(commands) {
       active: startupRegistered,
       activeCommand: byKey.get('startup.unregister'),
       inactiveCommand: byKey.get('startup.register'),
-      description: startupRegistered ? 'Windows 시작 시 자동으로 서버를 올리도록 등록돼 있습니다.' : '현재 등록된 자동실행이 없습니다.',
+      description: startupRegistered ? '현재 사용자 로그인 시 자동으로 서버를 올리도록 등록돼 있습니다.' : '현재 등록된 자동실행이 없습니다.',
       note: startupRegistered ? '현재 상태: 등록됨' : '현재 상태: 미등록'
     }));
   }
@@ -391,13 +447,42 @@ function renderCommands(commands) {
     }
   }
 }
-function activateTab(tabName) {
+function normalizeTabName(tabName = '') {
+  return String(tabName || '').trim().toLowerCase() === TAB_DATA ? TAB_DATA : TAB_SERVER;
+}
+function getRequestedTab() {
+  const hash = String(window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
+  return normalizeTabName(hash);
+}
+function syncTabHash(tabName) {
+  const normalized = normalizeTabName(tabName);
+  if (window.location.hash === `#${normalized}`) {
+    return;
+  }
+  history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${normalized}`);
+}
+async function hydrateTab(tabName) {
+  const normalized = normalizeTabName(tabName);
+  if (normalized === TAB_SERVER) {
+    await loadLog('serverStdout');
+    return;
+  }
+  await loadTables();
+}
+function activateTab(tabName, options = {}) {
+  const normalized = normalizeTabName(tabName);
   document.querySelectorAll('.tab-button').forEach((button) => {
-    button.classList.toggle('is-active', button.dataset.tab === tabName);
+    button.classList.toggle('is-active', button.dataset.tab === normalized);
   });
   document.querySelectorAll('.tab-panel').forEach((panel) => {
-    panel.classList.toggle('is-active', panel.dataset.tabPanel === tabName);
+    panel.classList.toggle('is-active', panel.dataset.tabPanel === normalized);
   });
+  if (options.syncHash !== false) {
+    syncTabHash(normalized);
+  }
+  if (options.hydrate !== false) {
+    void hydrateTab(normalized);
+  }
 }
 function bindDragScroll(element) {
   if (element.dataset.dragBound === 'true') {
@@ -558,7 +643,7 @@ async function loadTables() {
   $('tablesOutput').textContent = '불러오는 중...';
   try {
     const payload = await fetchJson('/api/db/tables');
-    $('tablesOutput').textContent = payload.output || '출력이 없습니다.';
+    $('tablesOutput').textContent = payload.output || '출력 없음';
     setResult('DB 테이블 목록을 불러왔습니다.', payload.output || '-');
   } catch (error) {
     $('tablesOutput').textContent = error.message;
@@ -606,15 +691,20 @@ function bindStaticEvents() {
       activateTab(button.dataset.tab);
     });
   });
+  window.addEventListener('hashchange', () => {
+    activateTab(getRequestedTab(), { syncHash: false });
+  });
 }
 async function bootstrap() {
   renderStaticIcons();
   bindDragScrollTargets();
   bindStaticEvents();
-  activateTab('operations');
+  const initialTab = getRequestedTab();
+  activateTab(initialTab, { hydrate: false });
   await reloadOverview();
-  await loadLog('serverStdout');
+  await hydrateTab(initialTab);
 }
 bootstrap().catch((error) => {
   setResult('초기 로드 실패', error.message);
 });
+

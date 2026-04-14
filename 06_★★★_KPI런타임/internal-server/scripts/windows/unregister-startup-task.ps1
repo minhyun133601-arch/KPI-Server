@@ -1,13 +1,34 @@
 param(
-  [string]$TaskName = 'KPI Internal Server Startup'
+  [string]$TaskName = 'KPI Internal Server Startup',
+  [string]$StartupFileName = 'KPI-Central-Autostart.vbs',
+  [string]$LegacyShortcutName = 'KPI Internal Server Startup.lnk'
 )
 
 $ErrorActionPreference = 'Stop'
 
-if (-not (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue)) {
-  Write-Host "Startup task was not found: $TaskName"
+$startupDirectory = [Environment]::GetFolderPath('Startup')
+if ([string]::IsNullOrWhiteSpace($startupDirectory)) {
+  throw 'Windows Startup folder could not be resolved.'
+}
+
+$startupFilePath = Join-Path $startupDirectory $StartupFileName
+$legacyShortcutPath = Join-Path $startupDirectory $LegacyShortcutName
+$removedItems = @()
+
+if (Test-Path -LiteralPath $startupFilePath) {
+  Remove-Item -LiteralPath $startupFilePath -Force
+  $removedItems += $startupFilePath
+}
+
+if (Test-Path -LiteralPath $legacyShortcutPath) {
+  Remove-Item -LiteralPath $legacyShortcutPath -Force
+  $removedItems += $legacyShortcutPath
+}
+
+if (-not $removedItems.Count) {
+  Write-Host "Startup script was not found: $startupFilePath"
   exit 0
 }
 
-Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
-Write-Host "Removed startup task: $TaskName"
+Write-Host "Removed startup entries:"
+$removedItems | ForEach-Object { Write-Host $_ }

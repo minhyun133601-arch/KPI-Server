@@ -2,8 +2,8 @@ export const commandRegistry = [
   { key: 'server.start', category: 'server', title: '서버 열기', description: 'KPI 서버, 로컬 PostgreSQL, 환경 파일을 현재 런타임 기준으로 올립니다.', kind: 'action' },
   { key: 'server.stop', category: 'server', title: '서버 닫기', description: 'KPI 서버와 로컬 PostgreSQL을 순서대로 종료합니다.', kind: 'action', confirmMessage: 'KPI 서버와 로컬 PostgreSQL을 종료합니다.' },
   { key: 'server.recover', category: 'server', title: '복구 재시작', description: '서버를 정리한 뒤 stale postmaster.pid를 안전 조건에서만 정리하고 다시 올립니다.', kind: 'action', confirmMessage: '현재 서버를 복구 재시작합니다.' },
-  { key: 'startup.register', category: 'startup', title: '부팅 자동실행 등록', description: 'Windows 시작 시 KPI 서버를 자동으로 올리는 예약 작업을 등록합니다.', kind: 'action' },
-  { key: 'startup.unregister', category: 'startup', title: '부팅 자동실행 해제', description: 'Windows 시작 자동실행 예약 작업을 제거합니다.', kind: 'action' },
+  { key: 'startup.register', category: 'startup', title: '부팅 자동실행 등록', description: '현재 사용자 로그인 시 KPI 서버를 자동으로 올리는 시작프로그램을 등록합니다.', kind: 'action' },
+  { key: 'startup.unregister', category: 'startup', title: '부팅 자동실행 해제', description: '현재 사용자 시작프로그램 자동실행을 제거합니다.', kind: 'action' },
   {
     key: 'account.bootstrapOwner',
     category: 'account',

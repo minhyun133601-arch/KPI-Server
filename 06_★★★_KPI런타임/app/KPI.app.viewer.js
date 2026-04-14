@@ -62,14 +62,20 @@
                     ${sections.map(sectionEntry => {
                         const isExpanded = SidebarTreeState.expandedSections[sectionEntry.id] === true;
                         const isActiveSection = selectedSectionId === sectionEntry.id;
+                        const actionIcon = sectionEntry.section?.directLaunch === true
+                            ? 'fa-arrow-up-right-from-square'
+                            : 'fa-chevron-right';
+                        const sectionAction = sectionEntry.section?.directLaunch === true
+                            ? `openSection('${sectionEntry.id}')`
+                            : `toggleSidebarSection('${sectionEntry.id}')`;
                         return `
                             <div class="sidebar-group${isExpanded ? ' is-expanded' : ''}" style="--cat-color:${sectionEntry.accent}; --cat-soft:${sectionEntry.softAccent};">
-                                <button type="button" class="sidebar-group-toggle${isActiveSection ? ' is-active' : ''}" onclick="toggleSidebarSection('${sectionEntry.id}')">
+                                <button type="button" class="sidebar-group-toggle${isActiveSection ? ' is-active' : ''}" onclick="${sectionAction}">
                                     <span class="sidebar-group-toggle-main">
                                         <span class="sidebar-group-icon"><i class="fas ${escapeDashboardHtml(sectionEntry.section.icon || 'fa-folder-open')}"></i></span>
                                         <span class="sidebar-group-label">${escapeDashboardHtml(sectionEntry.section.name || sectionEntry.id)}</span>
                                     </span>
-                                    <span class="sidebar-group-chevron"><i class="fas fa-chevron-right"></i></span>
+                                    <span class="sidebar-group-chevron"><i class="fas ${actionIcon}"></i></span>
                                 </button>
                                 <div class="sidebar-group-items">
                                     ${getSidebarRenderableCategories(sectionEntry).map(({ category, index }) => {
@@ -97,7 +103,7 @@
                                         }
                                         return `
                                             <div class="sidebar-category-branch">
-                                                <button type="button" class="sidebar-item sidebar-item-nested${isActiveCategory ? ' active' : ''}" style="--cat-color:${categoryColor};" onclick="selectCategory('${sectionEntry.id}', ${index})" id="cat-btn-${sectionEntry.id}-${index}"${isActiveCategory ? ' aria-current="page"' : ''}>
+                                                <button type="button" class="sidebar-item sidebar-item-nested${isActiveCategory ? ' active' : ''}" style="--cat-color:${categoryColor};" onclick="selectCategory('${sectionEntry.id}', ${index}, { __allowLaunch: true })" id="cat-btn-${sectionEntry.id}-${index}"${isActiveCategory ? ' aria-current="page"' : ''}>
                                                     <span class="sidebar-item-main">
                                                         <i class="fas ${escapeDashboardHtml(category.icon || 'fa-folder')} w-5 text-center"></i>
                                                         <span>${escapeDashboardHtml(category.title || `\uD56D\uBAA9 ${index + 1}`)}</span>
@@ -163,6 +169,73 @@
             contentContainer.classList.toggle('content-card-full-bleed', isFullBleed);
         }
 
+        function parseLaunchDimension(value, fallback, minimum = 960, maximum = 2400) {
+            const parsed = Number.parseInt(String(value || ''), 10);
+            if (!Number.isInteger(parsed)) return fallback;
+            return Math.max(minimum, Math.min(maximum, parsed));
+        }
+
+        function buildCategoryPopupFeatures(category = null) {
+            const availableWidth = Number(window.screen?.availWidth) || Number(window.outerWidth) || 1600;
+            const availableHeight = Number(window.screen?.availHeight) || Number(window.outerHeight) || 1000;
+            const hostLeft = Number(window.screenX ?? window.screenLeft ?? 0) || 0;
+            const hostTop = Number(window.screenY ?? window.screenTop ?? 0) || 0;
+            const hostWidth = Number(window.outerWidth) || availableWidth;
+            const hostHeight = Number(window.outerHeight) || availableHeight;
+            const popupWidth = parseLaunchDimension(category?.launchWindowWidth, Math.min(1540, availableWidth), 1040, Math.max(1040, availableWidth));
+            const popupHeight = parseLaunchDimension(category?.launchWindowHeight, Math.min(980, availableHeight), 760, Math.max(760, availableHeight));
+            const popupLeft = hostLeft + Math.max(24, Math.round((hostWidth - popupWidth) / 2));
+            const popupTop = hostTop + Math.max(24, Math.round((hostHeight - popupHeight) / 2));
+            return [
+                'popup=yes',
+                `width=${popupWidth}`,
+                `height=${popupHeight}`,
+                `left=${popupLeft}`,
+                `top=${popupTop}`,
+                'resizable=yes',
+                'scrollbars=yes'
+            ].join(',');
+        }
+
+        function openCategoryLaunch(category = null) {
+            const launchUrl = String(category?.launchUrl || '').trim();
+            if (!launchUrl) return false;
+            const launchTarget = String(category?.launchTarget || '').trim().toLowerCase();
+            const launchWindowName = String(category?.launchWindowName || '').trim();
+            if (launchTarget === 'popup') {
+                const popupWindow = window.open(
+                    launchUrl,
+                    launchWindowName || 'kpi-owner-ops-console',
+                    buildCategoryPopupFeatures(category)
+                );
+                if (popupWindow) {
+                    try {
+                        popupWindow.focus();
+                    } catch (error) {
+                        // Ignore focus failures and keep the popup open.
+                    }
+                    return true;
+                }
+            }
+            const nextWindow = window.open(launchUrl, '_blank', 'noopener,noreferrer');
+            if (!nextWindow) {
+                window.location.assign(launchUrl);
+                return false;
+            }
+            return true;
+        }
+
+        window.KpiOpenOwnerToolWindow = function openOwnerToolWindow(launchUrl = '', launchTitle = '', launchWindowName = 'kpi-owner-ops-console') {
+            return openCategoryLaunch({
+                title: String(launchTitle || '').trim(),
+                launchUrl: String(launchUrl || '').trim(),
+                launchTarget: 'popup',
+                launchWindowName: String(launchWindowName || 'kpi-owner-ops-console').trim(),
+                launchWindowWidth: 1540,
+                launchWindowHeight: 980
+            });
+        };
+
         function selectCategory(dataId, index, options = {}) {
             void window.KpiMeteringBridge?.destroyIntegratedMeteringMount?.();
             const data = AppData[dataId];
@@ -181,6 +254,9 @@
                     __skipShortcut: true
                 });
                 return;
+            }
+            if (options.__allowLaunch === true) {
+                openCategoryLaunch(category);
             }
             const accent = category.color || data.accent || '#2563eb';
             const contentContainer = document.getElementById('content-container');

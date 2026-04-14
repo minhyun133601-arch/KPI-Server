@@ -1,30 +1,34 @@
 param(
   [string]$TaskName = 'KPI Internal Server Startup',
-  [int]$DelaySeconds = 20
+  [int]$DelaySeconds = 20,
+  [string]$StartupFileName = 'KPI-Central-Autostart.vbs',
+  [string]$LegacyShortcutName = 'KPI Internal Server Startup.lnk'
 )
 
 $ErrorActionPreference = 'Stop'
 
+$startupDirectory = [Environment]::GetFolderPath('Startup')
+if ([string]::IsNullOrWhiteSpace($startupDirectory)) {
+  throw 'Windows Startup folder could not be resolved.'
+}
+
 $startupScriptPath = (Resolve-Path (Join-Path $PSScriptRoot 'start-central-stack.startup.ps1')).Path
-$argumentList = "-NoProfile -ExecutionPolicy Bypass -File `"$startupScriptPath`" -DelaySeconds $DelaySeconds"
+$startupFilePath = Join-Path $startupDirectory $StartupFileName
+$legacyShortcutPath = Join-Path $startupDirectory $LegacyShortcutName
+$startupCommand = "& `"$startupScriptPath`" -DelaySeconds $DelaySeconds"
+$encodedCommand = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($startupCommand))
+$launcherCommand = "powershell.exe -NoProfile -WindowStyle Hidden -EncodedCommand $encodedCommand"
+$scriptBody = @"
+Set shell = CreateObject("WScript.Shell")
+command = "$launcherCommand"
+shell.Run command, 0, False
+"@
 
-$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $argumentList
-$trigger = New-ScheduledTaskTrigger -AtStartup
-$principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
-$settings = New-ScheduledTaskSettingsSet `
-  -StartWhenAvailable `
-  -AllowStartIfOnBatteries `
-  -DontStopIfGoingOnBatteries `
-  -MultipleInstances IgnoreNew
+New-Item -ItemType Directory -Path $startupDirectory -Force | Out-Null
+Set-Content -LiteralPath $startupFilePath -Value $scriptBody -Encoding ASCII
+if (Test-Path -LiteralPath $legacyShortcutPath) {
+  Remove-Item -LiteralPath $legacyShortcutPath -Force -ErrorAction SilentlyContinue
+}
 
-Register-ScheduledTask `
-  -TaskName $TaskName `
-  -Action $action `
-  -Trigger $trigger `
-  -Principal $principal `
-  -Settings $settings `
-  -Description 'Starts the KPI internal server stack at Windows startup.' `
-  -Force | Out-Null
-
-Write-Host "Registered startup task: $TaskName"
-Write-Host "Action: powershell.exe $argumentList"
+Write-Host "Registered startup script: $startupFilePath"
+Write-Host "Command: $launcherCommand"
