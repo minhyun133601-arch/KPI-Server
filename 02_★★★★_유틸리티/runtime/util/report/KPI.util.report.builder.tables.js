@@ -195,6 +195,248 @@
             return renderUtilReportBuilderVizCombinedDetailTable(data, focusMonthKey, focusSeriesKey);
         }
 
+        function renderUtilReportBuilderVizAppliedComparisonChart(data, options = {}) {
+            const comparison = data?.appliedComparison;
+            if (!comparison || comparison.enabled !== true || !comparison.baseYear || !comparison.compareYear) return '';
+            if (comparison.hasData !== true) {
+                return `<div class="util-report-builder-viz-empty">${escapeHtml(`${comparison.baseYear}년 원단위를 ${comparison.compareYear}년에 적용할 데이터가 없습니다.`)}</div>`;
+            }
+            return renderUtilMultiSeriesChart([
+                {
+                    label: comparison.actualTitle,
+                    color: '#2563eb',
+                    type: 'bar',
+                    points: comparison.actualPoints,
+                    seriesKey: 'actual'
+                },
+                {
+                    label: comparison.appliedTitle,
+                    color: '#f97316',
+                    type: 'line',
+                    lineDash: '7 5',
+                    lineWidth: 3,
+                    points: comparison.appliedPoints,
+                    seriesKey: 'applied'
+                }
+            ], {
+                mode: 'modal',
+                hideHeader: true,
+                hideUnit: true,
+                showLabels: options.showLabels === true,
+                decimals: comparison.digits,
+                minWidth: 0,
+                forceWidth: options.forceWidth,
+                pointSpacing: options.pointSpacing,
+                height: options.height,
+                frameExtraHeight: 148,
+                topCenterTitle: `${comparison.compareYear}년 실제 / ${comparison.baseYear}년 기준 적용`,
+                periodLabel: `기준년도 ${comparison.baseYear} | 비교년도 ${comparison.compareYear}`,
+                inlinePeriodLegend: true,
+                axisXLabel: '월',
+                axisYLabel: comparison.axisLabel,
+                axisXIcon: '📅',
+                axisYIcon: '📈'
+            });
+        }
+
+        function renderUtilReportBuilderVizAppliedComparisonDetail(data, focusMonthKey = '') {
+            const comparison = data?.appliedComparison;
+            if (!comparison || comparison.enabled !== true || !comparison.baseYear || !comparison.compareYear) return '';
+            if (comparison.hasData !== true) {
+                return `<div class="util-report-builder-viz-detail-empty">${escapeHtml(`${comparison.baseYear}년 원단위를 ${comparison.compareYear}년에 적용할 데이터가 없습니다.`)}</div>`;
+            }
+            const selectedMonthKey = normalizeUtilReportMonthKey(focusMonthKey);
+            const actualMap = buildUtilReportBuilderVizPointValueMap(comparison.actualPoints);
+            const appliedMap = buildUtilReportBuilderVizPointValueMap(comparison.appliedPoints);
+            const deltaMap = buildUtilReportBuilderVizPointValueMap(comparison.deltaPoints);
+            const timelineKeys = Array.from(
+                new Set(
+                    []
+                        .concat(comparison.actualPoints || [])
+                        .concat(comparison.appliedPoints || [])
+                        .map(point => normalizeUtilReportMonthKey(point?.key || point?.label || ''))
+                        .filter(Boolean)
+                )
+            ).sort(compareUtilReportMonthKeys);
+            if (!timelineKeys.length) {
+                return `<div class="util-report-builder-viz-detail-empty">${escapeHtml(`${comparison.baseYear}년 원단위를 ${comparison.compareYear}년에 적용할 데이터가 없습니다.`)}</div>`;
+            }
+            const bodyHtml = timelineKeys.map(monthKey => {
+                const actualValue = Number(actualMap.get(monthKey));
+                const appliedValue = Number(appliedMap.get(monthKey));
+                const deltaValue = Number(deltaMap.get(monthKey));
+                const rowFocused = selectedMonthKey === monthKey;
+                const rowClass = rowFocused ? ' class="is-row-focused"' : '';
+                return `
+                    <tr${rowClass}>
+                        <td>${escapeHtml(formatUtilReportMonthLong(monthKey))}</td>
+                        <td>${Number.isFinite(actualValue) ? formatUtilNumber(actualValue, comparison.digits) : '-'}</td>
+                        <td>${Number.isFinite(appliedValue) ? formatUtilNumber(appliedValue, comparison.digits) : '-'}</td>
+                        <td>${Number.isFinite(deltaValue) ? formatUtilNumber(deltaValue, comparison.digits) : '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+            const actualTotal = timelineKeys.reduce((sum, monthKey) => {
+                const value = Number(actualMap.get(monthKey));
+                return Number.isFinite(value) ? (sum + value) : sum;
+            }, 0);
+            const appliedTotal = timelineKeys.reduce((sum, monthKey) => {
+                const value = Number(appliedMap.get(monthKey));
+                return Number.isFinite(value) ? (sum + value) : sum;
+            }, 0);
+            const deltaTotal = timelineKeys.reduce((sum, monthKey) => {
+                const value = Number(deltaMap.get(monthKey));
+                return Number.isFinite(value) ? (sum + value) : sum;
+            }, 0);
+            return `
+                <div class="util-report-builder-viz-detail-block">
+                    <div class="util-report-builder-viz-detail-title">${escapeHtml(`${comparison.baseYear}년 기준 원단위 적용 비교`)}</div>
+                    <div class="util-report-table-shell">
+                        <table class="util-report-yoy-table util-report-builder-viz-timeline-table">
+                            <thead>
+                                <tr>
+                                    <th>월</th>
+                                    <th>${escapeHtml(formatUtilLabelWithUnit(comparison.actualTitle, comparison.numeratorUnitLabel || ''))}</th>
+                                    <th>${escapeHtml(formatUtilLabelWithUnit(comparison.appliedTitle, comparison.numeratorUnitLabel || ''))}</th>
+                                    <th>${escapeHtml(formatUtilLabelWithUnit('차이', comparison.numeratorUnitLabel || ''))}</th>
+                                </tr>
+                            </thead>
+                            <tbody>${bodyHtml}</tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>합계</td>
+                                    <td>${formatUtilNumber(actualTotal, comparison.digits)}</td>
+                                    <td>${formatUtilNumber(appliedTotal, comparison.digits)}</td>
+                                    <td>${formatUtilNumber(deltaTotal, comparison.digits)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderUtilReportBuilderVizAppliedComparisonChart(data, options = {}) {
+            const comparison = data?.appliedComparison;
+            if (!comparison || comparison.enabled !== true || !comparison.baseYear || !comparison.compareYear) return '';
+            if (comparison.hasData !== true) {
+                return `<div class="util-report-builder-viz-empty">${escapeHtml(`${comparison.baseYear}년 원단위를 ${comparison.compareYear}년에 적용할 데이터가 없습니다.`)}</div>`;
+            }
+            return renderUtilMultiSeriesChart([
+                {
+                    label: comparison.actualTitle,
+                    color: '#2563eb',
+                    type: 'bar',
+                    points: comparison.actualPoints,
+                    seriesKey: 'actual'
+                },
+                {
+                    label: comparison.appliedTitle,
+                    color: '#f97316',
+                    type: 'line',
+                    lineDash: '7 5',
+                    lineWidth: 3,
+                    points: comparison.appliedPoints,
+                    seriesKey: 'applied'
+                }
+            ], {
+                mode: 'modal',
+                hideHeader: true,
+                hideUnit: true,
+                showLabels: options.showLabels === true,
+                decimals: comparison.digits,
+                minWidth: 0,
+                forceWidth: options.forceWidth,
+                pointSpacing: options.pointSpacing,
+                height: options.height,
+                frameExtraHeight: 148,
+                topCenterTitle: `${comparison.compareYear}년 실제 / ${comparison.baseYear}년 기준 적용`,
+                periodLabel: `기준년도 ${comparison.baseYear} | 비교년도 ${comparison.compareYear}`,
+                inlinePeriodLegend: true,
+                axisXLabel: '월',
+                axisYLabel: comparison.axisLabel,
+                axisXIcon: '',
+                axisYIcon: '값'
+            });
+        }
+
+        function renderUtilReportBuilderVizAppliedComparisonDetail(data, focusMonthKey = '') {
+            const comparison = data?.appliedComparison;
+            if (!comparison || comparison.enabled !== true || !comparison.baseYear || !comparison.compareYear) return '';
+            if (comparison.hasData !== true) {
+                return `<div class="util-report-builder-viz-detail-empty">${escapeHtml(`${comparison.baseYear}년 원단위를 ${comparison.compareYear}년에 적용할 데이터가 없습니다.`)}</div>`;
+            }
+            const selectedMonthKey = normalizeUtilReportMonthKey(focusMonthKey);
+            const actualMap = buildUtilReportBuilderVizPointValueMap(comparison.actualPoints);
+            const appliedMap = buildUtilReportBuilderVizPointValueMap(comparison.appliedPoints);
+            const deltaMap = buildUtilReportBuilderVizPointValueMap(comparison.deltaPoints);
+            const timelineKeys = Array.from(
+                new Set(
+                    []
+                        .concat(comparison.actualPoints || [])
+                        .concat(comparison.appliedPoints || [])
+                        .map(point => normalizeUtilReportMonthKey(point?.key || point?.label || ''))
+                        .filter(Boolean)
+                )
+            ).sort(compareUtilReportMonthKeys);
+            if (!timelineKeys.length) {
+                return `<div class="util-report-builder-viz-detail-empty">${escapeHtml(`${comparison.baseYear}년 원단위를 ${comparison.compareYear}년에 적용할 데이터가 없습니다.`)}</div>`;
+            }
+            const bodyHtml = timelineKeys.map(monthKey => {
+                const actualValue = Number(actualMap.get(monthKey));
+                const appliedValue = Number(appliedMap.get(monthKey));
+                const deltaValue = Number(deltaMap.get(monthKey));
+                const rowFocused = selectedMonthKey === monthKey;
+                const rowClass = rowFocused ? ' class="is-row-focused"' : '';
+                return `
+                    <tr${rowClass}>
+                        <td>${escapeHtml(formatUtilReportMonthLong(monthKey))}</td>
+                        <td>${Number.isFinite(actualValue) ? formatUtilNumber(actualValue, comparison.digits) : '-'}</td>
+                        <td>${Number.isFinite(appliedValue) ? formatUtilNumber(appliedValue, comparison.digits) : '-'}</td>
+                        <td>${Number.isFinite(deltaValue) ? formatUtilNumber(deltaValue, comparison.digits) : '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+            const actualTotal = timelineKeys.reduce((sum, monthKey) => {
+                const value = Number(actualMap.get(monthKey));
+                return Number.isFinite(value) ? (sum + value) : sum;
+            }, 0);
+            const appliedTotal = timelineKeys.reduce((sum, monthKey) => {
+                const value = Number(appliedMap.get(monthKey));
+                return Number.isFinite(value) ? (sum + value) : sum;
+            }, 0);
+            const deltaTotal = timelineKeys.reduce((sum, monthKey) => {
+                const value = Number(deltaMap.get(monthKey));
+                return Number.isFinite(value) ? (sum + value) : sum;
+            }, 0);
+            return `
+                <div class="util-report-builder-viz-detail-block">
+                    <div class="util-report-builder-viz-detail-title">${escapeHtml(`${comparison.baseYear}년 기준 원단위 적용 비교`)}</div>
+                    <div class="util-report-table-shell">
+                        <table class="util-report-yoy-table util-report-builder-viz-timeline-table">
+                            <thead>
+                                <tr>
+                                    <th>월</th>
+                                    <th>${escapeHtml(formatUtilLabelWithUnit(comparison.actualTitle, comparison.numeratorUnitLabel || ''))}</th>
+                                    <th>${escapeHtml(formatUtilLabelWithUnit(comparison.appliedTitle, comparison.numeratorUnitLabel || ''))}</th>
+                                    <th>${escapeHtml(formatUtilLabelWithUnit('차이', comparison.numeratorUnitLabel || ''))}</th>
+                                </tr>
+                            </thead>
+                            <tbody>${bodyHtml}</tbody>
+                            <tfoot>
+                                <tr>
+                                    <td>합계</td>
+                                    <td>${formatUtilNumber(actualTotal, comparison.digits)}</td>
+                                    <td>${formatUtilNumber(appliedTotal, comparison.digits)}</td>
+                                    <td>${formatUtilNumber(deltaTotal, comparison.digits)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
         function renderUtilReportBuilderVizRatioDetailTable(data, focusMonthKey = '') {
             const digits = getUtilReportBuilderVizMetricDecimals('ratio');
             const selectedMonthKey = normalizeUtilReportMonthKey(focusMonthKey);
@@ -273,6 +515,254 @@
             `;
         }
 
+        function getUtilReportBuilderVizAppliedDeltaClass(value) {
+            if (!Number.isFinite(value) || value === 0) return '';
+            return value > 0
+                ? 'util-report-builder-viz-detail-delta-up'
+                : 'util-report-builder-viz-detail-delta-down';
+        }
+
+        function formatUtilReportBuilderVizAppliedDeltaValue(value, digits) {
+            if (!Number.isFinite(value)) return '-';
+            return `${value > 0 ? '+' : ''}${formatUtilNumber(value, digits)}`;
+        }
+
+        function formatUtilReportBuilderVizAppliedDeltaRate(deltaValue, appliedValue) {
+            if (!Number.isFinite(deltaValue) || !Number.isFinite(appliedValue) || appliedValue === 0) return '';
+            const rate = (deltaValue / appliedValue) * 100;
+            return `${rate > 0 ? '+' : ''}${formatUtilNumber(rate, 1)}%`;
+        }
+
+        function buildUtilReportBuilderVizAppliedComparisonStats(comparison) {
+            if (!comparison || comparison.enabled !== true) return null;
+            const actualMap = buildUtilReportBuilderVizPointValueMap(comparison.actualPoints);
+            const appliedMap = buildUtilReportBuilderVizPointValueMap(comparison.appliedPoints);
+            const deltaMap = buildUtilReportBuilderVizPointValueMap(comparison.deltaPoints);
+            const timelineKeys = Array.from(
+                new Set(
+                    []
+                        .concat(comparison.actualPoints || [])
+                        .concat(comparison.appliedPoints || [])
+                        .map(point => normalizeUtilReportMonthKey(point?.key || point?.label || ''))
+                        .filter(Boolean)
+                )
+            ).sort(compareUtilReportMonthKeys);
+            const actualTotal = timelineKeys.reduce((sum, monthKey) => {
+                const value = Number(actualMap.get(monthKey));
+                return Number.isFinite(value) ? (sum + value) : sum;
+            }, 0);
+            const appliedTotal = timelineKeys.reduce((sum, monthKey) => {
+                const value = Number(appliedMap.get(monthKey));
+                return Number.isFinite(value) ? (sum + value) : sum;
+            }, 0);
+            const deltaTotal = timelineKeys.reduce((sum, monthKey) => {
+                const value = Number(deltaMap.get(monthKey));
+                return Number.isFinite(value) ? (sum + value) : sum;
+            }, 0);
+            let peakMonthKey = '';
+            let peakDeltaValue = NaN;
+            timelineKeys.forEach(monthKey => {
+                const deltaValue = Number(deltaMap.get(monthKey));
+                if (!Number.isFinite(deltaValue)) return;
+                if (!Number.isFinite(peakDeltaValue) || Math.abs(deltaValue) > Math.abs(peakDeltaValue)) {
+                    peakMonthKey = monthKey;
+                    peakDeltaValue = deltaValue;
+                }
+            });
+            const peakAppliedValue = peakMonthKey ? Number(appliedMap.get(peakMonthKey)) : NaN;
+            return {
+                actualMap,
+                appliedMap,
+                deltaMap,
+                timelineKeys,
+                actualTotal,
+                appliedTotal,
+                deltaTotal,
+                deltaTotalClass: getUtilReportBuilderVizAppliedDeltaClass(deltaTotal),
+                deltaTotalRateText: formatUtilReportBuilderVizAppliedDeltaRate(deltaTotal, appliedTotal),
+                peakMonthKey,
+                peakDeltaValue,
+                peakDeltaClass: getUtilReportBuilderVizAppliedDeltaClass(peakDeltaValue),
+                peakDeltaRateText: formatUtilReportBuilderVizAppliedDeltaRate(peakDeltaValue, peakAppliedValue)
+            };
+        }
+
+        function renderUtilReportBuilderVizAppliedComparisonMeta(comparison, stats, options = {}) {
+            if (!comparison || !stats) return '';
+            const includePeak = options.includePeak === true && !!stats.peakMonthKey;
+            const chips = [
+                {
+                    tone: `delta ${stats.deltaTotalClass}`.trim(),
+                    label: '실제 - 적용',
+                    value: formatUtilReportBuilderVizAppliedDeltaValue(stats.deltaTotal, comparison.digits),
+                    meta: stats.deltaTotalRateText || comparison.deltaTitle || ''
+                },
+                {
+                    tone: 'actual',
+                    label: '실제값 합계',
+                    value: formatUtilNumber(stats.actualTotal, comparison.digits),
+                    meta: comparison.actualTitle || ''
+                },
+                {
+                    tone: 'applied',
+                    label: '적용값 합계',
+                    value: formatUtilNumber(stats.appliedTotal, comparison.digits),
+                    meta: comparison.appliedTitle || ''
+                }
+            ];
+            if (includePeak) {
+                chips.push({
+                    tone: `peak ${stats.peakDeltaClass}`.trim(),
+                    label: '가장 큰 차이 월',
+                    value: `${formatUtilReportMonthLong(stats.peakMonthKey)} ${formatUtilReportBuilderVizAppliedDeltaValue(stats.peakDeltaValue, comparison.digits)}`,
+                    meta: stats.peakDeltaRateText || comparison.deltaTitle || ''
+                });
+            }
+            return `
+                <div class="util-report-builder-viz-compare-meta${options.compact === true ? ' is-compact' : ''}">
+                    ${chips.map(item => `
+                        <div class="util-report-builder-viz-compare-chip is-${escapeHtml(item.tone)}">
+                            <div class="label">${escapeHtml(item.label)}</div>
+                            <div class="value">${escapeHtml(item.value)}</div>
+                            ${item.meta ? `<div class="meta">${escapeHtml(item.meta)}</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderUtilReportBuilderVizAppliedComparisonChartNext(data, options = {}) {
+            const comparison = data?.appliedComparison;
+            if (!comparison || comparison.enabled !== true || !comparison.baseYear || !comparison.compareYear) return '';
+            if (comparison.hasData !== true) {
+                return `<div class="util-report-builder-viz-empty">${escapeHtml(`${comparison.baseYear}년 원단위를 ${comparison.compareYear}년에 적용할 데이터가 없습니다.`)}</div>`;
+            }
+            const actualChartType = normalizeUtilReportBuilderVizChartType(options.actualChartType || options.chartType || 'bar');
+            const appliedChartType = normalizeUtilReportBuilderVizChartType(options.appliedChartType || options.chartType || actualChartType);
+            const stats = buildUtilReportBuilderVizAppliedComparisonStats(comparison);
+            const chartHtml = renderUtilMultiSeriesChart([
+                {
+                    label: comparison.actualTitle,
+                    color: '#2563eb',
+                    type: actualChartType,
+                    lineWidth: actualChartType === 'line' ? 4 : undefined,
+                    points: comparison.actualPoints,
+                    seriesKey: 'actual'
+                },
+                {
+                    label: comparison.appliedTitle,
+                    color: '#f97316',
+                    type: appliedChartType,
+                    lineDash: appliedChartType === 'line' ? '7 5' : '',
+                    lineWidth: appliedChartType === 'line' ? 3.2 : undefined,
+                    points: comparison.appliedPoints,
+                    seriesKey: 'applied'
+                }
+            ], {
+                mode: 'modal',
+                hideHeader: true,
+                hideUnit: true,
+                showLabels: options.showLabels === true,
+                decimals: comparison.digits,
+                minWidth: 0,
+                forceWidth: options.forceWidth,
+                pointSpacing: options.pointSpacing,
+                height: options.height,
+                frameExtraHeight: 148,
+                topCenterTitle: comparison.deltaTitle || `${comparison.compareYear} 실제값 vs ${comparison.baseYear} 기준 적용값`,
+                periodLabel: `${comparison.actualTitle} / ${comparison.appliedTitle}${stats?.deltaTotalRateText ? ` | 실제-적용 ${formatUtilReportBuilderVizAppliedDeltaValue(stats.deltaTotal, comparison.digits)}` : ''}`,
+                inlinePeriodLegend: true,
+                axisXLabel: '월',
+                axisYLabel: comparison.axisLabel,
+                axisXIcon: '',
+                axisYIcon: '값'
+            });
+            return chartHtml;
+        }
+
+        function renderUtilReportBuilderVizAppliedComparisonDetailNext(data, focusMonthKey = '') {
+            const comparison = data?.appliedComparison;
+            if (!comparison || comparison.enabled !== true || !comparison.baseYear || !comparison.compareYear) return '';
+            if (comparison.hasData !== true) {
+                return `<div class="util-report-builder-viz-detail-empty">${escapeHtml(`${comparison.baseYear}년 원단위를 ${comparison.compareYear}년에 적용할 데이터가 없습니다.`)}</div>`;
+            }
+            const selectedMonthKey = normalizeUtilReportMonthKey(focusMonthKey);
+            const stats = buildUtilReportBuilderVizAppliedComparisonStats(comparison);
+            if (!stats || !stats.timelineKeys.length) {
+                return `<div class="util-report-builder-viz-detail-empty">${escapeHtml(`${comparison.baseYear}년 원단위를 ${comparison.compareYear}년에 적용할 데이터가 없습니다.`)}</div>`;
+            }
+            const bodyHtml = stats.timelineKeys.map(monthKey => {
+                const actualValue = Number(stats.actualMap.get(monthKey));
+                const appliedValue = Number(stats.appliedMap.get(monthKey));
+                const deltaValue = Number(stats.deltaMap.get(monthKey));
+                const deltaClass = getUtilReportBuilderVizAppliedDeltaClass(deltaValue);
+                const deltaRateText = formatUtilReportBuilderVizAppliedDeltaRate(deltaValue, appliedValue);
+                const rowFocused = selectedMonthKey === monthKey;
+                const rowClass = rowFocused ? ' class="is-row-focused"' : '';
+                return `
+                    <tr${rowClass}>
+                        <td>${escapeHtml(formatUtilReportMonthLong(monthKey))}</td>
+                        <td class="is-actual">${Number.isFinite(actualValue) ? formatUtilNumber(actualValue, comparison.digits) : '-'}</td>
+                        <td class="is-applied">${Number.isFinite(appliedValue) ? formatUtilNumber(appliedValue, comparison.digits) : '-'}</td>
+                        <td class="util-report-builder-viz-compare-delta-cell ${deltaClass}">
+                            <div class="util-report-builder-viz-compare-delta-value">${escapeHtml(formatUtilReportBuilderVizAppliedDeltaValue(deltaValue, comparison.digits))}</div>
+                            ${deltaRateText ? `<div class="util-report-builder-viz-compare-delta-rate">${escapeHtml(deltaRateText)}</div>` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            return `
+                <div class="util-report-builder-viz-detail-block util-report-builder-viz-compare-block">
+                    <div class="util-report-builder-viz-detail-title">${escapeHtml(`${comparison.baseYear} 원단위 적용 분석`)}</div>
+                    ${renderUtilReportBuilderVizAppliedComparisonMeta(comparison, stats, { includePeak: true })}
+                    <div class="util-report-table-shell">
+                        <table class="util-report-yoy-table util-report-builder-viz-timeline-table util-report-builder-viz-compare-table">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <div class="util-head-cell">
+                                            <div class="util-head-label">월</div>
+                                            <div class="util-head-sub">${escapeHtml(`${comparison.compareYear} 적용 대상`)}</div>
+                                        </div>
+                                    </th>
+                                    <th class="is-actual">
+                                        <div class="util-head-cell">
+                                            <div class="util-head-label">실제값</div>
+                                            <div class="util-head-sub">${escapeHtml(formatUtilLabelWithUnit(comparison.actualTitle, comparison.numeratorUnitLabel || ''))}</div>
+                                        </div>
+                                    </th>
+                                    <th class="is-applied">
+                                        <div class="util-head-cell">
+                                            <div class="util-head-label">적용값</div>
+                                            <div class="util-head-sub">${escapeHtml(formatUtilLabelWithUnit(comparison.appliedTitle, comparison.numeratorUnitLabel || ''))}</div>
+                                        </div>
+                                    </th>
+                                    <th class="is-delta">
+                                        <div class="util-head-cell">
+                                            <div class="util-head-label">차이</div>
+                                            <div class="util-head-sub">${escapeHtml(formatUtilLabelWithUnit(comparison.deltaTitle || '실제 - 적용', comparison.numeratorUnitLabel || ''))}</div>
+                                        </div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>${bodyHtml}</tbody>
+                            <tfoot>
+                                <tr class="util-report-builder-viz-compare-total">
+                                    <td>합계</td>
+                                    <td class="is-actual">${formatUtilNumber(stats.actualTotal, comparison.digits)}</td>
+                                    <td class="is-applied">${formatUtilNumber(stats.appliedTotal, comparison.digits)}</td>
+                                    <td class="util-report-builder-viz-compare-delta-cell ${stats.deltaTotalClass}">
+                                        <div class="util-report-builder-viz-compare-delta-value">${escapeHtml(formatUtilReportBuilderVizAppliedDeltaValue(stats.deltaTotal, comparison.digits))}</div>
+                                        ${stats.deltaTotalRateText ? `<div class="util-report-builder-viz-compare-delta-rate">${escapeHtml(stats.deltaTotalRateText)}</div>` : ''}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
         function setUtilReportBuilderVizDirtyMessage(modal, message = '') {
             if (!modal) return;
             const dirtyEl = modal.querySelector('[data-role="util-report-builder-viz-dirty"]');
@@ -331,8 +821,7 @@
             setUtilReportBuilderVizDirtyMessage(modal, dirtyText);
         }
 
-        function renderUtilReportBuilderVizModal() {
-            const modal = document.getElementById('util-report-builder-viz-modal');
+        function renderUtilReportBuilderVizHost(modal) {
             if (!modal) return;
             const subEl = modal.querySelector('[data-role="util-report-builder-viz-sub"]');
             const kpiEl = modal.querySelector('[data-role="util-report-builder-viz-kpis"]');
@@ -346,6 +835,7 @@
             const ratioTitleEl = modal.querySelector('[data-role="util-report-builder-viz-ratio-title"]');
             if (!kpiEl || !mainChartEl || !ratioChartEl) return;
             modal.classList.toggle('is-chart-fullscreen', UtilReportBuilderVizState.chartFullscreen === true);
+            syncUtilReportBuilderVizControls(modal);
             syncUtilReportBuilderVizChartView(modal);
             syncUtilReportBuilderVizActionState(modal);
             if (UtilReportBuilderVizState.hasGenerated !== true) {
@@ -369,6 +859,7 @@
                 || '비율'
             );
             const normalizedFocusMonthKey = normalizeUtilReportMonthKey(UtilReportBuilderVizState.focusMonthKey);
+            const appliedModeEnabled = data?.appliedModeEnabled === true;
             const availableMonthKeys = new Set(
                 [
                     ...(Array.isArray(data?.usagePoints) ? data.usagePoints : []),
@@ -385,7 +876,11 @@
                 const monthFocusText = focusMonthKey ? ` · 선택 월: ${focusMonthKey}` : '';
                 subEl.textContent = `기간: ${rangeLabel} · 항목: ${data?.itemLabel || '-'} · 팀: ${teamLabel} · 총 ${formatUtilNumber(data?.result?.monthCount || rowCount)}개월${monthFocusText}`;
             }
-            if (ratioTitleEl) ratioTitleEl.textContent = ratioTitle;
+            if (ratioTitleEl) {
+                ratioTitleEl.textContent = appliedModeEnabled
+                    ? `${ratioTitle} 적용 분석`
+                    : ratioTitle;
+            }
 
             if (!rowCount) {
                 setUtilReportBuilderVizDirtyMessage(modal, '');
@@ -414,8 +909,9 @@
             kpiEl.innerHTML = renderUtilReportBuilderVizKpiCards(data);
             syncUtilReportBuilderVizActionState(modal, data);
 
-            const viewportWidth = Number(window.innerWidth) || 0;
-            const viewportHeight = Number(window.innerHeight) || 0;
+            const hostWindow = modal.ownerDocument?.defaultView || window;
+            const viewportWidth = Number(hostWindow.innerWidth) || 0;
+            const viewportHeight = Number(hostWindow.innerHeight) || 0;
             const headHeight = Math.ceil(modal.querySelector('.util-report-builder-viz-head')?.getBoundingClientRect?.().height || 0);
             const controlsHeight = Math.ceil(modal.querySelector('.util-report-builder-viz-controls')?.getBoundingClientRect?.().height || 0);
             const bodyHeight = Math.ceil(modal.querySelector('.util-report-builder-viz-body')?.getBoundingClientRect?.().height || 0);
@@ -456,8 +952,8 @@
                 ? Math.max(560, mainChartHeight + 120)
                 : Math.max(720, mainChartHeight + 250));
             const ratioFrameMinHeight = isChartFullscreen
-                ? Math.max(720, ratioChartHeight + 110)
-                : Math.max(600, ratioChartHeight + 200);
+                ? Math.max(appliedModeEnabled ? 760 : 720, ratioChartHeight + (appliedModeEnabled ? 138 : 110))
+                : Math.max(appliedModeEnabled ? 700 : 600, ratioChartHeight + (appliedModeEnabled ? 224 : 200));
             const activeView = normalizeUtilReportBuilderVizChartView(UtilReportBuilderVizState.chartViewKey);
             const shouldAutoScrollDetails = UtilReportBuilderVizState.pendingDetailScroll === true;
             if (mainPanelEl) mainPanelEl.style.minWidth = '';
@@ -472,9 +968,17 @@
             const costChartType = normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.costChartType || 'line');
             const productionChartType = normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.productionChartType || 'line');
             const ratioChartType = normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.ratioChartType || 'line');
+            const ratioActualChartType = normalizeUtilReportBuilderVizChartType(
+                normalizeUtilReportBuilderVizOptionalChartType(UtilReportBuilderVizState.ratioActualChartType)
+                || ratioChartType
+            );
+            const ratioAppliedChartType = normalizeUtilReportBuilderVizChartType(
+                normalizeUtilReportBuilderVizOptionalChartType(UtilReportBuilderVizState.ratioAppliedChartType)
+                || ratioChartType
+            );
             const focusSeriesKey = normalizeUtilReportBuilderVizSeriesKey(UtilReportBuilderVizState.focusSeriesKey);
             const detailFocusSeriesKey = normalizeUtilReportBuilderVizSeriesKey(UtilReportBuilderVizState.detailFocusSeriesKey || isolatedSeriesKey);
-            const typeLabelMap = { bar: '막대', line: '선' };
+            const typeLabelMap = { bar: '막대', line: '선', none: '없음' };
             const activeSeriesKey = isolatedSeriesKey || focusSeriesKey;
             if (mainNoteEl) {
                 const focusLabelMap = { usage: '사용량', cost: '비용', production: '생산량' };
@@ -528,43 +1032,60 @@
                     scrollUtilReportFocusedElementIntoView(mainDetailEl);
                 }
             }
-            ratioChartEl.innerHTML = hasRatioData
-                ? renderUtilTrendChart(data.ratioPoints, data.ratioUnitLabel, {
-                    mode: 'modal',
-                    chartType: ratioChartType,
-                    showTypeSelect: false,
-                    showLabelToggle: false,
+            const ratioChartHtml = appliedModeEnabled
+                ? (renderUtilReportBuilderVizAppliedComparisonChartNext(data, {
+                    actualChartType: ratioActualChartType,
+                    appliedChartType: ratioAppliedChartType,
                     showLabels: UtilReportBuilderVizState.showLabels === true,
-                    decimals: ratioDecimals,
-                    minWidth: 0,
                     forceWidth: chartWidth,
                     pointSpacing,
-                    height: Math.max(380, ratioChartHeight + 34),
-                    topCenterTitle: formatUtilLabelWithUnit(ratioTitle, data.ratioUnitLabel),
-                    axisXLabel: '월',
-                    axisYLabel: data.ratioAxisLabel
-                        || getUtilReportBuilderVizRatioAxisLabel(
-                            data?.itemKey,
-                            data?.ratioUnitLabel,
-                            data?.ratioNumeratorMetric,
-                            data?.ratioDenominatorMetric,
-                            data?.ratioUseDenominator
-                        ),
-                    axisXIcon: '📅',
-                    axisYIcon: '⚡',
-                    seriesKey: 'ratio',
-                    focusMonthKey
-                })
-                : `<div class="util-report-builder-viz-empty">${escapeHtml(ratioTitle)}을(를) 계산할 수 있는 데이터가 없습니다.</div>`;
-            if (activeView === 'ratio') syncUtilAnalyticsChartHostHeight(ratioChartEl, 36);
+                    height: Math.max(410, ratioChartHeight + 56)
+                }) || '<div class="util-report-builder-viz-empty">원단위 기준과 적용 대상을 선택하면 적용 분석 그래프가 표시됩니다.</div>')
+                : (hasRatioData
+                    ? renderUtilTrendChart(data.ratioPoints, data.ratioUnitLabel, {
+                        mode: 'modal',
+                        chartType: ratioChartType,
+                        showTypeSelect: false,
+                        showLabelToggle: false,
+                        showLabels: UtilReportBuilderVizState.showLabels === true,
+                        decimals: ratioDecimals,
+                        minWidth: 0,
+                        forceWidth: chartWidth,
+                        pointSpacing,
+                        height: Math.max(380, ratioChartHeight + 34),
+                        topCenterTitle: formatUtilLabelWithUnit(ratioTitle, data.ratioUnitLabel),
+                        axisXLabel: '월',
+                        axisYLabel: data.ratioAxisLabel
+                            || getUtilReportBuilderVizRatioAxisLabel(
+                                data?.itemKey,
+                                data?.ratioUnitLabel,
+                                data?.ratioNumeratorMetric,
+                                data?.ratioDenominatorMetric,
+                                data?.ratioUseDenominator
+                            ),
+                        axisXIcon: '',
+                        axisYIcon: '값',
+                        seriesKey: 'ratio',
+                        focusMonthKey
+                    })
+                    : `<div class="util-report-builder-viz-empty">${escapeHtml(ratioTitle)}을(를) 계산할 수 있는 데이터가 없습니다.</div>`);
+            ratioChartEl.innerHTML = ratioChartHtml;
+            if (activeView === 'ratio') syncUtilAnalyticsChartHostHeight(ratioChartEl, appliedModeEnabled ? 42 : 36);
             if (ratioDetailEl) {
                 ratioDetailEl.innerHTML = UtilReportBuilderVizDetachedTableState.detached
                     ? renderUtilReportBuilderVizDetachedPlaceholder(data)
-                    : renderUtilReportBuilderVizRatioDetailTable(data, focusMonthKey);
+                    : (appliedModeEnabled
+                        ? (renderUtilReportBuilderVizAppliedComparisonDetailNext(data, focusMonthKey)
+                            || '<div class="util-report-builder-viz-detail-empty">원단위 기준과 적용 대상을 선택하면 적용 분석 상세표가 표시됩니다.</div>')
+                        : renderUtilReportBuilderVizRatioDetailTable(data, focusMonthKey));
                 if (!UtilReportBuilderVizDetachedTableState.detached && shouldAutoScrollDetails && activeView === 'ratio') {
                     scrollUtilReportFocusedElementIntoView(ratioDetailEl);
                 }
             }
             syncUtilReportBuilderVizDetachedTableWindow(data);
             UtilReportBuilderVizState.pendingDetailScroll = false;
+        }
+
+        function renderUtilReportBuilderVizModal() {
+            renderUtilReportBuilderVizHost(document.getElementById('util-report-builder-viz-modal'));
         }

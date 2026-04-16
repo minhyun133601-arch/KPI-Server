@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '../config.js';
 import { closePool } from '../db/pool.js';
+import { resolveManagedDocumentStorageFolder } from '../lib/document-storage.js';
 import { ensureDir } from '../lib/fs.js';
 import { findModuleRecord, upsertModuleRecord } from '../repositories/modules.js';
 import { initializeFileStorage, saveBase64Document } from '../services/files.js';
@@ -50,6 +51,21 @@ function buildBillingOwnerKey(resourceType, monthValue, scopeKey) {
     normalizeMonthValue(monthValue),
     normalizeScopeKey(scopeKey)
   ].filter(Boolean).join(':');
+}
+
+function getMeteringBillingStorageFolder(resourceType) {
+  const storageFolder = resolveManagedDocumentStorageFolder({
+    ownerDomain: METERING_BILLING_DOCUMENT_OWNER_DOMAIN,
+    ownerKey: buildBillingOwnerKey(resourceType, '', DEFAULT_SCOPE_KEY),
+    fileCategory: METERING_BILLING_DOCUMENT_FILE_CATEGORY,
+    metadata: {
+      resourceType: normalizeText(resourceType || 'electric')
+    }
+  });
+  if (!storageFolder) {
+    throw new Error('billing_document_resource_unsupported');
+  }
+  return storageFolder;
 }
 
 function isBillingDocumentLeafRecord(rawDocument) {
@@ -352,7 +368,8 @@ async function migrateBillingDocuments(store, options) {
               recordKey: METERING_SHARED_STORE_RECORD_KEY,
               resourceType: container.resourceType,
               monthValue: normalizeMonthValue(monthValue),
-              scopeKey: normalizeScopeKey(scopeKey)
+              scopeKey: normalizeScopeKey(scopeKey),
+              storageFolder: getMeteringBillingStorageFolder(container.resourceType)
             }
           });
 
@@ -385,7 +402,8 @@ async function migrateBillingDocuments(store, options) {
             recordKey: METERING_SHARED_STORE_RECORD_KEY,
             resourceType: container.resourceType,
             monthValue: normalizeMonthValue(monthValue),
-            scopeKey: normalizeScopeKey(scopeKey)
+            scopeKey: normalizeScopeKey(scopeKey),
+            storageFolder: getMeteringBillingStorageFolder(container.resourceType)
           }
         });
 

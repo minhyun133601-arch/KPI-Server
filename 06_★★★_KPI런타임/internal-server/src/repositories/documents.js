@@ -42,3 +42,23 @@ export async function deleteDocumentById(documentId) {
   );
   return result.rows[0] || null;
 }
+
+export async function updateDocumentStorageLocation({
+  documentId,
+  storageRelPath,
+  metadata
+}) {
+  const result = await query(
+    `update app_documents
+        set storage_rel_path = $2,
+            metadata = $3::jsonb
+      where id = $1
+      returning id, permission_key, owner_domain, owner_key, file_category, original_name, stored_name, mime_type, byte_size, storage_rel_path, metadata, uploaded_by_user_id, created_at`,
+    [
+      documentId,
+      storageRelPath,
+      JSON.stringify(metadata ?? {})
+    ]
+  );
+  return result.rows[0] || null;
+}

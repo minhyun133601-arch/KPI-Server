@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { config } from '../config.js';
 import {
   CURRENT_PORTAL_DATA_RECORDS,
   getModuleRecordPermissionKey,
@@ -11,7 +13,15 @@ import { isOwnerRole } from '../services/auth.js';
 
 export const PORTAL_DATA_BOOTSTRAP_PATH = '/bootstrap/portal-data.js';
 
-const PORTAL_DATA_SCRIPT_SOURCES = Object.freeze([]);
+const PORTAL_DATA_SCRIPT_SOURCES = Object.freeze(
+  CURRENT_PORTAL_DATA_RECORDS
+    .map((record) => {
+      const filePath = String(record?.filePath || '').trim();
+      if (!filePath) return '';
+      return path.relative(config.localSourceRoot, filePath).split(path.sep).join('/');
+    })
+    .filter(Boolean)
+);
 
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -117,7 +127,6 @@ function buildPortalDataBootstrapPayload(records, workRuntimeRecords = [], optio
     ? options.knownWorkRuntimeRecordKeys
     : new Set(workRuntimeRecords.map((record) => record.record_key));
   const portalData = {};
-  const areaMapData = {};
   const importedMeta = [];
   const missing = [];
 
@@ -130,17 +139,7 @@ function buildPortalDataBootstrapPayload(records, workRuntimeRecords = [], optio
       continue;
     }
 
-    if (recordDef.sourceRoot === 'AreaMapData') {
-      if (Array.isArray(recordDef.sourceKeys) && recordDef.sourceKeys.length) {
-        for (const sourceKey of recordDef.sourceKeys) {
-          areaMapData[sourceKey] = loaded.payload?.[sourceKey] ?? null;
-        }
-      } else {
-        areaMapData[recordDef.sourceKey] = loaded.payload ?? null;
-      }
-    } else {
-      portalData[recordDef.sourceKey] = loaded.payload ?? null;
-    }
+    portalData[recordDef.sourceKey] = loaded.payload ?? null;
 
     importedMeta.push({
       moduleKey: loaded.module_key,
@@ -176,7 +175,6 @@ function buildPortalDataBootstrapPayload(records, workRuntimeRecords = [], optio
 
   return {
     portalData,
-    areaMapData,
     importedMeta,
     missing
   };
@@ -223,41 +221,6 @@ export async function buildPortalDataBootstrapScript(auth, canAccessPermission) 
       writeEnabled: await permissionProbe(auth?.user, permissionKey, 'write')
     };
   }
-
-  const areaRecordConfigs = {
-    team3: {
-      moduleKey: PORTAL_DATA_MODULE_KEY,
-      recordKey: 'area_map_team3',
-      permissionKey: PERMISSION_KEYS.EQUIP_AREA_TEAM3,
-      bundleKeys: ['team3'],
-      readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.EQUIP_AREA_TEAM3, 'read'),
-      writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.EQUIP_AREA_TEAM3, 'write')
-    },
-    team1_part1: {
-      moduleKey: PORTAL_DATA_MODULE_KEY,
-      recordKey: 'area_map_existing_teams',
-      permissionKey: PERMISSION_KEYS.EQUIP_AREA_EXISTING_TEAMS,
-      bundleKeys: ['team1_part1', 'team1_part2', 'team2'],
-      readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.EQUIP_AREA_EXISTING_TEAMS, 'read'),
-      writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.EQUIP_AREA_EXISTING_TEAMS, 'write')
-    },
-    team1_part2: {
-      moduleKey: PORTAL_DATA_MODULE_KEY,
-      recordKey: 'area_map_existing_teams',
-      permissionKey: PERMISSION_KEYS.EQUIP_AREA_EXISTING_TEAMS,
-      bundleKeys: ['team1_part1', 'team1_part2', 'team2'],
-      readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.EQUIP_AREA_EXISTING_TEAMS, 'read'),
-      writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.EQUIP_AREA_EXISTING_TEAMS, 'write')
-    },
-    team2: {
-      moduleKey: PORTAL_DATA_MODULE_KEY,
-      recordKey: 'area_map_existing_teams',
-      permissionKey: PERMISSION_KEYS.EQUIP_AREA_EXISTING_TEAMS,
-      bundleKeys: ['team1_part1', 'team1_part2', 'team2'],
-      readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.EQUIP_AREA_EXISTING_TEAMS, 'read'),
-      writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.EQUIP_AREA_EXISTING_TEAMS, 'write')
-    }
-  };
 
   const runtimeConfig = {
     source: 'internal_server',
@@ -369,22 +332,10 @@ export async function buildPortalDataBootstrapScript(auth, canAccessPermission) 
         ownerDomain: 'work',
         fileCategory: 'attachment'
       }
-    },
-    area: {
-      enabled: true,
-      apiBase: '/api',
-      moduleKey: PORTAL_DATA_MODULE_KEY,
-      records: areaRecordConfigs,
-      assets: {
-        permissionKey: PERMISSION_KEYS.EQUIP_AREA_ASSETS,
-        readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.EQUIP_AREA_ASSETS, 'read'),
-        writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.EQUIP_AREA_ASSETS, 'write')
-      }
     }
   };
 
   const serializedPortalData = serializeJsonForScript(payload.portalData);
-  const serializedAreaMapData = serializeJsonForScript(payload.areaMapData);
   const serializedMeta = serializeJsonForScript({
     moduleKey: PORTAL_DATA_MODULE_KEY,
     importedCount: payload.importedMeta.length,
@@ -403,8 +354,6 @@ export async function buildPortalDataBootstrapScript(auth, canAccessPermission) 
     `window.__KPI_SERVER_RUNTIME_CONFIG__ = ${serializedRuntimeConfig};`,
     'window.PortalData = window.PortalData || {};',
     `Object.assign(window.PortalData, ${serializedPortalData});`,
-    'window.AreaMapData = window.AreaMapData || {};',
-    `Object.assign(window.AreaMapData, ${serializedAreaMapData});`,
     `window.__KPI_PORTAL_DATA_BOOTSTRAP__ = ${serializedMeta};`,
     warningLine,
     ''

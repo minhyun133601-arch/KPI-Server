@@ -13,7 +13,9 @@
         normalizeCost,
         normalizeAssignees,
         normalizePayload,
+        isAllowedRecordCategory,
         normalizeRecordCategory,
+        normalizeRecordCategoryGroup,
         isKpiRecord,
         ATTACHMENT_SLOT_KEYS,
         ATTACHMENT_SLOT_META,
@@ -23,7 +25,6 @@
         flattenAttachmentSlots,
         uploadPendingAttachments,
         deleteAttachmentsFromServer,
-        getAttachmentStorageDisplayPath,
         savePayload,
         saveNow,
         getRecordRuntimeConfig,
@@ -188,6 +189,35 @@
         }
     }
 
+    function syncRecordCategoryInputs(groupValue = '', categoryValue = '') {
+        const groupSelect = getElement('recordCategoryGroup');
+        const categorySelect = getElement('recordCategory');
+        if (!groupSelect || !categorySelect) return;
+
+        const rawCategoryValue = String(categoryValue || '').trim();
+        const normalizedCategoryValue = normalizeRecordCategory(rawCategoryValue, { preserveLegacy: true }) || rawCategoryValue;
+        const normalizedGroupValue = normalizeRecordCategoryGroup(groupValue, {
+            category: normalizedCategoryValue
+        });
+
+        if (typeof view.buildCategoryOptionsMarkup === 'function') {
+            categorySelect.innerHTML = view.buildCategoryOptionsMarkup(normalizedGroupValue, normalizedCategoryValue);
+        }
+
+        const hasSelectableCategories = Array.from(categorySelect.options || []).some(option => (
+            String(option.value || '').trim()
+        ));
+        categorySelect.disabled = !normalizedGroupValue || !hasSelectableCategories;
+        groupSelect.value = normalizedGroupValue;
+
+        const optionValues = Array.from(categorySelect.options || [])
+            .map(option => String(option.value || '').trim())
+            .filter(Boolean);
+        categorySelect.value = optionValues.includes(normalizedCategoryValue)
+            ? normalizedCategoryValue
+            : '';
+    }
+
     function handleRootClick(event) {
         const actionTarget = event.target.closest('[data-action]');
         if (actionTarget) {
@@ -267,6 +297,11 @@
             state.currentCategoryFilter = String(target.value || '').trim();
             syncCategoryFilterInputs(state.currentCategoryFilter, target);
             view.renderCurrentView?.();
+            return;
+        }
+
+        if (target.id === 'recordCategoryGroup') {
+            syncRecordCategoryInputs(target.value, '');
             return;
         }
 
@@ -351,6 +386,7 @@
         syncSearchInputs(state.currentKeyword);
         syncCategoryFilterInputs(state.currentCategoryFilter);
         syncActiveTabUi();
+        view.updateSearchCount?.();
     }
 
     function syncActiveTabUi() {
@@ -432,13 +468,17 @@
         if (index !== null && Number.isFinite(index)) {
             const record = getPayload().teams?.[team]?.[index];
             if (record) {
+                const editCategory = normalizeRecordCategory(record.category, { preserveLegacy: true }) || String(record.category || '').trim();
+                const editCategoryGroup = normalizeRecordCategoryGroup(record.categoryGroup, {
+                    category: editCategory,
+                    kpi: isKpiRecord(record)
+                });
                 getElement('modalTitle').textContent = '작업내역 수정';
                 getElement('recordStartDate').value = record.startDate || '';
                 getElement('recordEndDate').value = record.endDate || '';
                 getElement('recordTeam').value = record.team || defaultTeam;
                 getElement('recordAssignee').value = (record.assignees || normalizeAssignees(record.assignee || '')).join('\n');
-                getElement('recordCategory').value = normalizeRecordCategory(record.category, { preserveLegacy: false }) || '';
-                getElement('recordKpiFlag').checked = isKpiRecord(record);
+                syncRecordCategoryInputs(editCategoryGroup, editCategory);
                 getElement('recordWorkContent').value = record.workContent || '';
                 getElement('recordRemarks').value = record.remarks || '';
                 getElement('recordCost').value = view.formatCostInputValue(record.cost);
@@ -451,8 +491,7 @@
             getElement('modalTitle').textContent = '작업내역 추가';
             getElement('recordStartDate').value = view.todayInputValue();
             getElement('recordEndDate').value = view.todayInputValue();
-            getElement('recordCategory').value = '';
-            getElement('recordKpiFlag').checked = false;
+            syncRecordCategoryInputs('', '');
             getElement('recordCost').value = '';
         }
 
@@ -578,9 +617,6 @@
             const meta = ATTACHMENT_SLOT_META[slotKey];
             const existing = state.formState.existingAttachments?.[slotKey] || null;
             const pending = state.formState.pendingFiles?.[slotKey] || null;
-            const storagePath = typeof getAttachmentStorageDisplayPath === 'function'
-                ? getAttachmentStorageDisplayPath(existing)
-                : '';
             const isExistingPdf = existing
                 ? (/\.pdf$/i.test(String(existing.originalName || '')) || String(existing.mimeType || '').trim() === 'application/pdf')
                 : false;
@@ -602,7 +638,6 @@
                             <div class="attachment-meta">
                                 <span class="attachment-name">${history.escapeHtml(existing.originalName)}</span>
                                 <span class="attachment-size">${history.escapeHtml(view.formatFileSize(existing.size))}</span>
-                                ${storagePath ? `<span class="attachment-size">${history.escapeHtml(storagePath)}</span>` : ''}
                             </div>
                             <div class="attachment-actions">
                                 <a class="btn btn-secondary btn-sm" href="${history.escapeAttribute(existing.previewUrl || existing.url || '#')}" target="_blank" rel="noopener">미리보기</a>
@@ -617,7 +652,6 @@
                                 <div class="attachment-meta">
                                     <span class="attachment-name">${history.escapeHtml(existing.originalName)}</span>
                                     <span class="attachment-size">${history.escapeHtml(view.formatFileSize(existing.size))}</span>
-                                    ${storagePath ? `<span class="attachment-size">${history.escapeHtml(storagePath)}</span>` : ''}
                                 </div>
                                 <div class="attachment-actions">
                                     <span class="attachment-empty">PDF만 지원됩니다.</span>
@@ -667,13 +701,23 @@
         const startDate = String(getElement('recordStartDate')?.value || '').trim();
         const endDate = String(getElement('recordEndDate')?.value || '').trim();
         const assignees = normalizeAssignees(getElement('recordAssignee')?.value || '');
+        const categoryGroup = String(getElement('recordCategoryGroup')?.value || '').trim();
         const category = String(getElement('recordCategory')?.value || '').trim();
-        const kpi = getElement('recordKpiFlag')?.checked === true;
+        const kpi = false;
         const workContent = String(getElement('recordWorkContent')?.value || '').trim();
         const remarks = String(getElement('recordRemarks')?.value || '').trim();
         const cost = normalizeCost(getElement('recordCost')?.value || '');
         const minDate = typeof view.minInputValue === 'function' ? view.minInputValue() : '2024-01-01';
         const today = view.todayInputValue();
+        const normalizedCategory = normalizeRecordCategory(category, { preserveLegacy: true }) || category;
+        const normalizedCategoryGroup = normalizeRecordCategoryGroup(categoryGroup, {
+            category: normalizedCategory,
+            kpi
+        });
+        const requiresCategory = normalizedCategoryGroup !== 'report';
+        const categoryOptionValues = Array.from(getElement('recordCategory')?.options || [])
+            .map(option => String(option.value || '').trim())
+            .filter(Boolean);
 
         if (!startDate || !endDate) {
             window.alert('작업 기간을 입력해주세요.');
@@ -703,8 +747,12 @@
             window.alert('작업자를 입력해주세요.');
             return false;
         }
-        if (!RECORD_CATEGORY_OPTIONS.includes(category)) {
-            window.alert('카테고리를 선택해주세요.');
+        if (!normalizedCategoryGroup) {
+            window.alert('구분을 선택해주세요.');
+            return false;
+        }
+        if (requiresCategory && (!normalizedCategory || !categoryOptionValues.includes(normalizedCategory) || (!isAllowedRecordCategory(normalizedCategory) && normalizedCategory !== category))) {
+            window.alert('하위 카테고리를 선택해주세요.');
             return false;
         }
         if (!workContent) {
@@ -718,9 +766,7 @@
                 uploadedAttachments = await uploadPendingAttachments(state.formState.pendingFiles, {
                     team: targetTeam,
                     startDate,
-                    endDate,
-                    workContent,
-                    kpi
+                    endDate
                 });
             } catch (error) {
                 console.error('[kpi] work history attachment upload failed', error);
@@ -741,8 +787,6 @@
                     team: targetTeam,
                     startDate,
                     endDate,
-                    workContent,
-                    kpi,
                     attachmentType: slotKey
                 });
                 nextAttachmentSlots[slotKey] = uploadedAttachments[0] || null;
@@ -761,7 +805,8 @@
             team: targetTeam,
             startDate,
             endDate,
-            category,
+            categoryGroup: normalizedCategoryGroup,
+            category: requiresCategory ? normalizedCategory : '',
             kpi,
             assignees,
             assignee: assignees.join(', '),

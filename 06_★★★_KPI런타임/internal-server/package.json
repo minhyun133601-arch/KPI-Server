@@ -10,6 +10,7 @@
     "backup:runtime-snapshot": "node src/scripts/backupRuntimeSnapshot.js",
     "db:migrate": "node src/scripts/migrate.js",
     "migrate:metering-billing-docs": "node src/scripts/migrateMeteringBillingDocuments.js",
+    "repair:metering-billing-storage": "node src/scripts/repairMeteringBillingDocumentStorage.js",
     "sessions:prune": "node src/scripts/pruneExpiredSessions.js",
     "report:legacy-attachments": "node src/scripts/reportLegacyAttachmentStatus.js",
     "restore:runtime-snapshot": "node src/scripts/restoreRuntimeSnapshot.js",

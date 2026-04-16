@@ -9,6 +9,7 @@
         initUtilTabs(container);
         initUtilEnergyLauncher(container);
         initUtilReportPanel(container);
+        initUtilSheetReports(container);
 
         const isUtilReportPanel = typeof category?.content === 'string'
             && category.content.includes('data-role="util-report-panel"');
@@ -28,16 +29,8 @@
         bootUtilGasMeteringSync();
     });
 
-    runtime.registerBootTask('util-metering-local-migration', () => {
-        void window.KpiMeteringBridge?.ensureIntegratedMeteringRuntime?.()
-            ?.then((app) => app?.migrateLocalStoreToSharedServer?.())
-            .catch((error) => {
-                console.warn('[kpi] metering local migration skipped', error);
-            });
-    });
-
-    runtime.registerBootTask('util-production-local-migration', () => {
-        void window.KpiUtilityServerRuntime?.migrateLocalUtilProductionDailyToServer?.();
+    runtime.registerBootTask('util-waste-metering-sync', () => {
+        bootUtilWasteMeteringSync();
     });
 
     runtime.registerSaveProvider('util-shared-save', (context = {}) => {
@@ -94,6 +87,7 @@
         ['util-report-graph', () => typeof closeUtilReportGraphModal === 'function' && closeUtilReportGraphModal()],
         ['util-report-composition', () => typeof closeUtilReportCompositionModal === 'function' && closeUtilReportCompositionModal()],
         ['util-report-yoy', () => typeof closeUtilReportYoYModal === 'function' && closeUtilReportYoYModal()],
+        ['util-sheet-report', () => typeof closeUtilSheetReportModal === 'function' && closeUtilSheetReportModal()],
         ['util-report', () => typeof closeUtilReportModal === 'function' && closeUtilReportModal()],
         ['util-energy', () => typeof closeUtilEnergyModal === 'function' && closeUtilEnergyModal()],
         ['util-chart', () => typeof closeUtilChartModal === 'function' && closeUtilChartModal()],

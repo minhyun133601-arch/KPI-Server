@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+﻿import fs from 'node:fs';
 import path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -260,7 +260,7 @@ async function getPostgresReadyState() {
   }
 
   try {
-    await execFileAsync(executable, ['-h', '127.0.0.1', '-p', '5433'], {
+    await execFileAsync(executable, ['-h', '127.0.0.1', '-p', '5434'], {
       cwd: internalServerDir,
       windowsHide: true,
       encoding: 'utf8',
@@ -268,12 +268,12 @@ async function getPostgresReadyState() {
     });
     return {
       ok: true,
-      message: '5433 포트 연결 가능'
+      message: '5434 포트 연결 가능'
     };
   } catch (error) {
     return {
       ok: false,
-      message: '5433 포트 응답 없음'
+      message: '5434 포트 응답 없음'
     };
   }
 }

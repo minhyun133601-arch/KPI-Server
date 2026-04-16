@@ -8,7 +8,7 @@ $pgCtlPath = Join-Path $postgresBinDir 'pg_ctl.exe'
 $pgIsReadyPath = Join-Path $postgresBinDir 'pg_isready.exe'
 $postgresDataDir = Join-Path $serverDir 'var\central-runtime\postgres\data'
 $postgresLogFile = Join-Path $serverDir 'var\central-runtime\postgres\logs\postgres.log'
-$postgresPort = 5433
+$postgresPort = 5434
 
 if (-not (Test-Path (Join-Path $postgresDataDir 'PG_VERSION'))) {
   throw "Local KPI PostgreSQL cluster is not initialized. Run initialize-central-runtime.ps1 first."

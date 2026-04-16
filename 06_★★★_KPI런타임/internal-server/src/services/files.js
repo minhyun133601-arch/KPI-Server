@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { runtimePaths } from '../config.js';
+import { resolveDocumentStorage } from '../lib/document-storage.js';
 import { ensureDir } from '../lib/fs.js';
 import { appendAuditLog } from '../repositories/audit-log.js';
 import { createDocumentRecord, deleteDocumentById, findDocumentById } from '../repositories/documents.js';
@@ -54,7 +55,13 @@ export async function saveBase64Document({
     String(now.getUTCMonth() + 1).padStart(2, '0'),
     String(now.getUTCDate()).padStart(2, '0')
   ];
-  const preferredParts = sanitizeStorageFolderSegments(metadata?.storageFolder);
+  const resolvedStorage = resolveDocumentStorage({
+    ownerDomain,
+    ownerKey,
+    fileCategory,
+    metadata
+  });
+  const preferredParts = sanitizeStorageFolderSegments(resolvedStorage.storageFolder);
   const parts = preferredParts.length ? preferredParts : datedParts;
   const targetDir = path.join(runtimePaths.filesRoot, ...parts);
   await ensureDir(targetDir);
@@ -75,7 +82,7 @@ export async function saveBase64Document({
     mimeType: String(mimeType || 'application/octet-stream'),
     byteSize: binary.length,
     storageRelPath,
-    metadata,
+    metadata: resolvedStorage.metadata,
     uploadedByUserId: actorUserId
   });
 

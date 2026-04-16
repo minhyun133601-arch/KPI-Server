@@ -2,11 +2,35 @@
         // [작업내역 로컬 데이터/주차 처리]
         // ----------------------------------------------------------------
         const WorkCache = {};
-        const WorkState = { activeWeek: {}, activeMonth: {}, activeDate: {}, monthFilters: {}, monthReportCache: {}, teamCalendarMonth: {}, teamCalendarSharedMonth: '', teamCalendarDate: {}, teamCalendarSharedDate: '', teamCalendarSelectedDates: {}, teamCalendarEditor: {}, teamCalendarDatePicked: {}, teamCalendarModal: '', teamCalendarHubDataKey: '', teamCalendarInline: false, teamCalendarMemberAnchor: {}, teamCalendarGasMode: {}, teamCalendarUtilityPopup: {}, workEntryRootConnected: false };
-        const EquipState = { selectedRoom: {} };
+        const WorkState = { activeWeek: {}, activeMonth: {}, activeDate: {}, monthFilters: {}, monthReportCache: {}, teamCalendarMonth: {}, teamCalendarSharedMonth: '', teamCalendarDate: {}, teamCalendarSharedDate: '', teamCalendarSelectedDates: {}, teamCalendarEditor: {}, teamCalendarDatePicked: {}, teamCalendarModal: '', teamCalendarHubDataKey: '', teamCalendarInline: false, teamCalendarMemberAnchor: {}, teamCalendarGasMode: {}, teamCalendarUtilityPopup: {}, teamCalendarMode: 'detail', workEntryRootConnected: false };
         const WORK_DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
         const WORK_DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
         const WORK_DAY_COLORS = ['#2563eb', '#22c55e', '#f59e0b', '#f97316', '#ef4444', '#8b5cf6', '#0ea5e9'];
+        const WORK_TEAM_CALENDAR_MODE_DETAIL = 'detail';
+        const WORK_TEAM_CALENDAR_MODE_PROCESS = 'process';
+        const WORK_TEAM_CALENDAR_MODE_GROUP = 'group';
+        const WORK_TEAM_CALENDAR_MODE_ORDER = Object.freeze([
+            WORK_TEAM_CALENDAR_MODE_DETAIL,
+            WORK_TEAM_CALENDAR_MODE_PROCESS,
+            WORK_TEAM_CALENDAR_MODE_GROUP
+        ]);
+        const WORK_TEAM_CALENDAR_PROCESS_DRY_KEY = 'work_team_calendar_process_dry';
+        const WORK_TEAM_CALENDAR_PROCESS_STICK_KEY = 'work_team_calendar_process_stick';
+        const WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY = 'work_team_calendar_process_liquid';
+        const WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY = 'work_team_calendar_group_bukjeong';
+        const WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY = 'work_team_calendar_group_yusan';
+        const WORK_TEAM_CALENDAR_PROCESS_KEYS = Object.freeze([
+            WORK_TEAM_CALENDAR_PROCESS_DRY_KEY,
+            WORK_TEAM_CALENDAR_PROCESS_STICK_KEY,
+            WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY
+        ]);
+        const WORK_TEAM_CALENDAR_DETAIL_KEYS = Object.freeze([
+            'work_team_calendar_team1_part1',
+            'work_team_calendar_team1_part2',
+            'work_team_calendar_team2',
+            'work_team_calendar_team3',
+            'work_team_calendar_team4'
+        ]);
         const WORK_TEAM_CALENDAR_BASE_RANGE = Object.freeze({ start: '2024-01', minimumEnd: '2026-03' });
         const WORK_TEAM_CALENDAR_RANGE = Object.freeze({
             start: WORK_TEAM_CALENDAR_BASE_RANGE.start,
@@ -134,7 +158,10 @@
         }
 
         function getEquipTeams() {
-            return (AppData?.equip?.categories || []).map(cat => cat.title);
+            const source = Array.isArray(AppData?.equip?.teamCategories) && AppData.equip.teamCategories.length
+                ? AppData.equip.teamCategories
+                : (AppData?.equip?.categories || []);
+            return source.map(cat => cat.title);
         }
 
         const WORK_TEAM_TOP = '유산';
@@ -160,7 +187,9 @@
         }
 
         function resolveEquipCategoryByTeam(team) {
-            const categories = AppData?.equip?.categories || [];
+            const categories = Array.isArray(AppData?.equip?.teamCategories) && AppData.equip.teamCategories.length
+                ? AppData.equip.teamCategories
+                : (AppData?.equip?.categories || []);
             const normalized = normalizeWorkTeamName(team);
             return categories.find(cat => (
                 cat.title === team || normalizeWorkTeamName(cat.title) === normalized
@@ -170,41 +199,6 @@
         function getEquipRooms(team) {
             const cat = resolveEquipCategoryByTeam(team);
             return cat?.rooms || [];
-        }
-
-        function getEquipRoomKey(category) {
-            return encodeURIComponent(category?.title || '');
-        }
-
-        function getEquipRoomSelection(category) {
-            const key = getEquipRoomKey(category);
-            const rooms = category?.rooms || [];
-            const selected = EquipState.selectedRoom[key];
-            return rooms.includes(selected) ? selected : '';
-        }
-
-        function equipRoomSelect(key, value) {
-            EquipState.selectedRoom[key] = value;
-            const badge = document.querySelector(`[data-room-badge="${key}"]`);
-            if (badge) badge.textContent = value || '전체';
-        }
-
-        function renderEquipRoomBar(category) {
-            const rooms = category?.rooms || [];
-            if (!rooms.length) return '';
-            const key = getEquipRoomKey(category);
-            const selected = getEquipRoomSelection(category);
-            const options = buildSelectOptions(rooms, selected, '전체');
-            const safeKey = key;
-            return `
-                <div class="equip-room-bar">
-                    <div class="equip-room-label">실 선택</div>
-                    <select class="equip-room-select" onchange="equipRoomSelect('${safeKey}', this.value)">
-                        ${options}
-                    </select>
-                    <span class="equip-room-badge" data-room-badge="${safeKey}">${selected || '전체'}</span>
-                </div>
-            `;
         }
 
         function getEquipIconInfo(team) {
@@ -285,9 +279,349 @@
             return Array.isArray(AppData?.work?.teamCategories) ? AppData.work.teamCategories : [];
         }
 
+        function getWorkTeamCalendarRawCategoryList() {
+            const hiddenTeamCategories = getWorkHiddenTeamCategories().filter(cat => cat?.view === 'team_calendar');
+            if (hiddenTeamCategories.length) return hiddenTeamCategories;
+            return getWorkVisibleCategories().filter(cat => cat?.view === 'team_calendar');
+        }
+
+        function getWorkTeamCalendarRawCategoryByDataKey(dataKey) {
+            const normalized = String(dataKey || '').trim();
+            if (!normalized) return null;
+            return getWorkTeamCalendarRawCategoryList().find(cat => String(cat?.dataKey || '').trim() === normalized) || null;
+        }
+
+        function getWorkTeamCalendarMode() {
+            const normalized = String(WorkState?.teamCalendarMode || '').trim().toLowerCase();
+            return WORK_TEAM_CALENDAR_MODE_ORDER.includes(normalized)
+                ? normalized
+                : WORK_TEAM_CALENDAR_MODE_DETAIL;
+        }
+
+        function setWorkTeamCalendarMode(mode) {
+            const normalized = String(mode || '').trim().toLowerCase();
+            const nextMode = WORK_TEAM_CALENDAR_MODE_ORDER.includes(normalized)
+                ? normalized
+                : WORK_TEAM_CALENDAR_MODE_DETAIL;
+            WorkState.teamCalendarMode = nextMode;
+            return nextMode;
+        }
+
+        function getNextWorkTeamCalendarMode(mode = '') {
+            const currentMode = WORK_TEAM_CALENDAR_MODE_ORDER.includes(String(mode || '').trim().toLowerCase())
+                ? String(mode || '').trim().toLowerCase()
+                : getWorkTeamCalendarMode();
+            const currentIndex = WORK_TEAM_CALENDAR_MODE_ORDER.indexOf(currentMode);
+            return WORK_TEAM_CALENDAR_MODE_ORDER[(currentIndex + 1) % WORK_TEAM_CALENDAR_MODE_ORDER.length];
+        }
+
+        function getWorkTeamCalendarModeMeta(mode = '') {
+            const currentMode = WORK_TEAM_CALENDAR_MODE_ORDER.includes(String(mode || '').trim().toLowerCase())
+                ? String(mode || '').trim().toLowerCase()
+                : getWorkTeamCalendarMode();
+            const labelMap = {
+                [WORK_TEAM_CALENDAR_MODE_DETAIL]: '\uD300\uBCC4',
+                [WORK_TEAM_CALENDAR_MODE_PROCESS]: '\uACF5\uC815\uBCC4',
+                [WORK_TEAM_CALENDAR_MODE_GROUP]: '\uACF5\uC7A5\uBCC4'
+            };
+            return {
+                mode: currentMode,
+                label: labelMap[currentMode] || labelMap[WORK_TEAM_CALENDAR_MODE_DETAIL],
+                nextMode: getNextWorkTeamCalendarMode(currentMode),
+                nextLabel: labelMap[getNextWorkTeamCalendarMode(currentMode)] || labelMap[WORK_TEAM_CALENDAR_MODE_DETAIL]
+            };
+        }
+
+        function getWorkTeamCalendarUtilityVisibleDataKeys(mode = '', itemKey = '') {
+            const normalizedMode = WORK_TEAM_CALENDAR_MODE_ORDER.includes(String(mode || '').trim().toLowerCase())
+                ? String(mode || '').trim().toLowerCase()
+                : getWorkTeamCalendarMode();
+            const normalizedItemKey = String(itemKey || '').trim().toLowerCase();
+            if (normalizedItemKey === 'waste') {
+                return [
+                    WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY,
+                    WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY,
+                    'work_team_calendar_overview'
+                ];
+            }
+            if (normalizedMode === WORK_TEAM_CALENDAR_MODE_GROUP) {
+                return [
+                    WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY,
+                    WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY,
+                    'work_team_calendar_overview'
+                ];
+            }
+            if (normalizedMode === WORK_TEAM_CALENDAR_MODE_PROCESS) {
+                return normalizedItemKey === 'gas'
+                    ? [WORK_TEAM_CALENDAR_PROCESS_DRY_KEY, WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY, 'work_team_calendar_overview']
+                    : WORK_TEAM_CALENDAR_PROCESS_KEYS.concat('work_team_calendar_overview');
+            }
+            return normalizedItemKey === 'gas'
+                ? ['work_team_calendar_team1_part1', 'work_team_calendar_team1_part2', 'work_team_calendar_team3', 'work_team_calendar_overview']
+                : ['work_team_calendar_team1_part1', 'work_team_calendar_team1_part2', 'work_team_calendar_team2', 'work_team_calendar_team3', 'work_team_calendar_overview'];
+        }
+
+        function resolveWorkTeamCalendarSourceDataKeys(dataKey) {
+            const normalized = String(dataKey || '').trim();
+            if (!normalized) return [];
+            if (normalized === WORK_TEAM_CALENDAR_PROCESS_DRY_KEY) {
+                return ['work_team_calendar_team1_part1', 'work_team_calendar_team1_part2'];
+            }
+            if (normalized === WORK_TEAM_CALENDAR_PROCESS_STICK_KEY) {
+                return ['work_team_calendar_team2'];
+            }
+            if (normalized === WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY) {
+                return ['work_team_calendar_team3'];
+            }
+            if (normalized === WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY) {
+                return ['work_team_calendar_team1_part1'];
+            }
+            if (normalized === WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY) {
+                return ['work_team_calendar_team1_part2', 'work_team_calendar_team2', 'work_team_calendar_team3'];
+            }
+            if (normalized === 'work_team_calendar_overview') {
+                return WORK_TEAM_CALENDAR_DETAIL_KEYS.slice();
+            }
+            return [normalized];
+        }
+
+        function buildWorkTeamCalendarGroupCategory(dataKey) {
+            if (dataKey === WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY) {
+                const source = getWorkTeamCalendarRawCategoryByDataKey('work_team_calendar_team1_part1');
+                if (!source) return null;
+                return {
+                    ...source,
+                    title: '북정',
+                    dataKey,
+                    processLabel: '북정',
+                    processTag: '북정',
+                    desc: '1팀 1파트 기준 북정 통합 현황',
+                    processDesc: '1팀 1파트를 기준으로 묶은 북정 통합 현황입니다.',
+                    emptyProductionLabel: '생산량 없음',
+                    emptyWorkLabel: '작업 내역 미입력'
+                };
+            }
+            if (dataKey === WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY) {
+                const source = getWorkTeamCalendarRawCategoryByDataKey('work_team_calendar_team2')
+                    || getWorkTeamCalendarRawCategoryByDataKey('work_team_calendar_team1_part2');
+                if (!source) return null;
+                return {
+                    ...source,
+                    title: '유산',
+                    dataKey,
+                    icon: 'fa-layer-group',
+                    color: '#059669',
+                    secondaryColor: '#047857',
+                    tint: '#ecfdf5',
+                    processLabel: '유산',
+                    processTag: '유산',
+                    desc: '1팀 2파트, 2팀, 3팀 기준 유산 통합 현황',
+                    processDesc: '1팀 2파트, 2팀, 3팀을 묶은 유산 통합 현황입니다.',
+                    emptyProductionLabel: '생산량 없음',
+                    emptyWorkLabel: '작업 내역 미입력'
+                };
+            }
+            return null;
+        }
+
+        function buildWorkTeamCalendarProcessCategory(dataKey) {
+            if (dataKey === WORK_TEAM_CALENDAR_PROCESS_DRY_KEY) {
+                const source = getWorkTeamCalendarRawCategoryByDataKey('work_team_calendar_team1_part2')
+                    || getWorkTeamCalendarRawCategoryByDataKey('work_team_calendar_team1_part1');
+                if (!source) return null;
+                return {
+                    ...source,
+                    title: '\uAC74\uC870',
+                    dataKey,
+                    icon: 'fa-cheese',
+                    color: '#f59e0b',
+                    secondaryColor: '#d97706',
+                    tint: '#fff7ed',
+                    processLabel: '\uAC74\uC870',
+                    processTag: '\uACF5\uC815',
+                    desc: '\uAC74\uC870 \uACF5\uC815 \uD1B5\uD569 \uB0B4\uC5ED',
+                    processDesc: '1\uD300 1\uD30C\uD2B8\uC640 1\uD300 2\uD30C\uD2B8\uB97C \uD568\uAED8 \uBCF4\uB294 \uAC74\uC870 \uACF5\uC815 \uB0B4\uC5ED\uC785\uB2C8\uB2E4.',
+                    emptyProductionLabel: source.emptyProductionLabel,
+                    emptyWorkLabel: source.emptyWorkLabel
+                };
+            }
+            if (dataKey === WORK_TEAM_CALENDAR_PROCESS_STICK_KEY) {
+                const source = getWorkTeamCalendarRawCategoryByDataKey('work_team_calendar_team2');
+                if (!source) return null;
+                return {
+                    ...source,
+                    title: '\uC2A4\uD2F1,\uC18C\uD3EC\uC7A5',
+                    dataKey,
+                    processLabel: '\uC2A4\uD2F1,\uC18C\uD3EC\uC7A5',
+                    processTag: '\uACF5\uC815',
+                    desc: '\uC2A4\uD2F1,\uC18C\uD3EC\uC7A5 \uACF5\uC815 \uB0B4\uC5ED',
+                    processDesc: '2\uD300 \uAE30\uC900\uC73C\uB85C \uC2A4\uD2F1,\uC18C\uD3EC\uC7A5 \uACF5\uC815\uC744 \uBCF4\uB294 \uB0B4\uC5ED\uC785\uB2C8\uB2E4.',
+                    emptyProductionLabel: source.emptyProductionLabel,
+                    emptyWorkLabel: source.emptyWorkLabel
+                };
+            }
+            if (dataKey === WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY) {
+                const source = getWorkTeamCalendarRawCategoryByDataKey('work_team_calendar_team3');
+                if (!source) return null;
+                return {
+                    ...source,
+                    title: '\uC561\uC0C1',
+                    dataKey,
+                    processLabel: '\uC561\uC0C1',
+                    processTag: '\uACF5\uC815',
+                    desc: '\uC561\uC0C1 \uACF5\uC815 \uB0B4\uC5ED',
+                    processDesc: '3\uD300 \uAE30\uC900\uC73C\uB85C \uC561\uC0C1 \uACF5\uC815\uC744 \uBCF4\uB294 \uB0B4\uC5ED\uC785\uB2C8\uB2E4.',
+                    emptyProductionLabel: source.emptyProductionLabel,
+                    emptyWorkLabel: source.emptyWorkLabel
+                };
+            }
+            return null;
+        }
+
+        function getWorkTeamCalendarOverviewCategory() {
+            const source = getWorkTeamCalendarRawCategoryByDataKey('work_team_calendar_overview');
+            if (!source) return null;
+            return {
+                ...source,
+                title: '\uD1B5\uD569 \uD604\uD669',
+                processLabel: '\uD1B5\uD569 \uD604\uD669',
+                processTag: '\uC804\uCCB4'
+            };
+        }
+
+        function appendWorkTeamCalendarOverviewCategory(categories = []) {
+            const overviewCategory = getWorkTeamCalendarOverviewCategory();
+            const filtered = Array.isArray(categories)
+                ? categories.filter(Boolean).filter(category => String(category?.dataKey || '').trim() !== 'work_team_calendar_overview')
+                : [];
+            if (overviewCategory) filtered.push(overviewCategory);
+            return filtered;
+        }
+
+        function getWorkTeamCalendarDisplayCategoryList() {
+            if (getWorkTeamCalendarMode() === WORK_TEAM_CALENDAR_MODE_PROCESS) {
+                return appendWorkTeamCalendarOverviewCategory([
+                    buildWorkTeamCalendarProcessCategory(WORK_TEAM_CALENDAR_PROCESS_DRY_KEY),
+                    buildWorkTeamCalendarProcessCategory(WORK_TEAM_CALENDAR_PROCESS_STICK_KEY),
+                    buildWorkTeamCalendarProcessCategory(WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY)
+                ]);
+            }
+            if (getWorkTeamCalendarMode() === WORK_TEAM_CALENDAR_MODE_GROUP) {
+                return appendWorkTeamCalendarOverviewCategory([
+                    buildWorkTeamCalendarGroupCategory(WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY),
+                    buildWorkTeamCalendarGroupCategory(WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY),
+                    getWorkTeamCalendarRawCategoryByDataKey('work_team_calendar_team4')
+                ]);
+            }
+            return appendWorkTeamCalendarOverviewCategory(getWorkTeamCalendarRawCategoryList().filter(category => {
+                const dataKey = String(category?.dataKey || '').trim();
+                return dataKey !== 'work_team_calendar_overview' && dataKey !== 'work_team_calendar_team4';
+            }));
+        }
+
+        function mapWorkTeamCalendarDataKeyForMode(dataKey, mode) {
+            const normalizedMode = WORK_TEAM_CALENDAR_MODE_ORDER.includes(String(mode || '').trim().toLowerCase())
+                ? String(mode || '').trim().toLowerCase()
+                : WORK_TEAM_CALENDAR_MODE_DETAIL;
+            const normalizedKey = String(dataKey || '').trim();
+            if (normalizedKey === 'work_team_calendar_overview') {
+                return 'work_team_calendar_overview';
+            }
+            if (normalizedMode === WORK_TEAM_CALENDAR_MODE_GROUP) {
+                if (normalizedKey === WORK_TEAM_CALENDAR_PROCESS_DRY_KEY) {
+                    return 'work_team_calendar_overview';
+                }
+                if (normalizedKey === 'work_team_calendar_team1_part1' || normalizedKey === WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY) {
+                    return WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY;
+                }
+                if (
+                    normalizedKey === 'work_team_calendar_team1_part2'
+                    || normalizedKey === 'work_team_calendar_team2'
+                    || normalizedKey === 'work_team_calendar_team3'
+                    || normalizedKey === WORK_TEAM_CALENDAR_PROCESS_STICK_KEY
+                    || normalizedKey === WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY
+                    || normalizedKey === WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY
+                ) {
+                    return WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY;
+                }
+                if (normalizedKey === 'work_team_calendar_team4') {
+                    return 'work_team_calendar_team4';
+                }
+                return WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY;
+            }
+            if (normalizedMode === WORK_TEAM_CALENDAR_MODE_PROCESS) {
+                if (
+                    normalizedKey === WORK_TEAM_CALENDAR_PROCESS_DRY_KEY
+                    || normalizedKey === 'work_team_calendar_team1_part1'
+                    || normalizedKey === 'work_team_calendar_team1_part2'
+                    || normalizedKey === WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY
+                    || normalizedKey === WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY
+                    || normalizedKey === 'work_team_calendar_team4'
+                ) {
+                    return WORK_TEAM_CALENDAR_PROCESS_DRY_KEY;
+                }
+                if (normalizedKey === WORK_TEAM_CALENDAR_PROCESS_STICK_KEY || normalizedKey === 'work_team_calendar_team2') {
+                    return WORK_TEAM_CALENDAR_PROCESS_STICK_KEY;
+                }
+                if (normalizedKey === WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY || normalizedKey === 'work_team_calendar_team3') {
+                    return WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY;
+                }
+                return WORK_TEAM_CALENDAR_PROCESS_DRY_KEY;
+            }
+            if (normalizedKey === WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY || normalizedKey === 'work_team_calendar_team1_part1') {
+                return 'work_team_calendar_team1_part1';
+            }
+            if (normalizedKey === WORK_TEAM_CALENDAR_PROCESS_DRY_KEY) {
+                return 'work_team_calendar_team1_part1';
+            }
+            if (normalizedKey === WORK_TEAM_CALENDAR_PROCESS_STICK_KEY) {
+                return 'work_team_calendar_team2';
+            }
+            if (normalizedKey === WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY) {
+                return 'work_team_calendar_team3';
+            }
+            if (normalizedKey === WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY) {
+                return 'work_team_calendar_team1_part2';
+            }
+            if (normalizedKey === 'work_team_calendar_team4') {
+                return 'work_team_calendar_team1_part1';
+            }
+            return WORK_TEAM_CALENDAR_DETAIL_KEYS.includes(normalizedKey)
+                ? normalizedKey
+                : 'work_team_calendar_team1_part1';
+        }
+
+        function applyWorkTeamCalendarMode(mode) {
+            const nextMode = setWorkTeamCalendarMode(mode);
+            const modalOpen = !!document.getElementById('work-team-calendar-modal')?.classList.contains('is-open');
+            const currentModalKey = modalOpen ? String(WorkState.teamCalendarModal || '').trim() : '';
+            const currentKey = String(
+                WorkState.teamCalendarHubDataKey
+                || currentModalKey
+                || (nextMode === WORK_TEAM_CALENDAR_MODE_GROUP ? WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY : 'work_team_calendar_team1_part1')
+            ).trim();
+            const targetDataKey = mapWorkTeamCalendarDataKeyForMode(currentKey, nextMode);
+            WorkState.teamCalendarHubDataKey = targetDataKey;
+            if (modalOpen) {
+                WorkState.teamCalendarModal = targetDataKey;
+            }
+            return targetDataKey;
+        }
+
+        function toggleWorkTeamCalendarDisplayMode() {
+            const nextMode = getNextWorkTeamCalendarMode();
+            const targetDataKey = applyWorkTeamCalendarMode(nextMode);
+            if (typeof selectCategory === 'function' && getNavigationSelectionSectionId?.() === 'work' && getNavigationSelectionCategoryIndex?.('work') === 0) {
+                selectCategory('work', 0, { teamDataKey: targetDataKey });
+                return targetDataKey;
+            }
+            if (typeof renderSidebar === 'function') renderSidebar();
+            return targetDataKey;
+        }
+
         function getWorkAllCategories() {
             const deduped = new Map();
-            [...getWorkHiddenTeamCategories(), ...getWorkVisibleCategories()].forEach(category => {
+            [...getWorkHiddenTeamCategories(), ...getWorkTeamCalendarDisplayCategoryList(), ...getWorkVisibleCategories()].forEach(category => {
                 const dataKey = String(category?.dataKey || '').trim();
                 const dedupeKey = dataKey || String(category?.title || '').trim();
                 if (!dedupeKey || deduped.has(dedupeKey)) return;
@@ -303,9 +637,7 @@
         }
 
         function getWorkTeamCalendarCategoryList() {
-            const hiddenTeamCategories = getWorkHiddenTeamCategories().filter(cat => cat?.view === 'team_calendar');
-            if (hiddenTeamCategories.length) return hiddenTeamCategories;
-            return getWorkVisibleCategories().filter(cat => cat?.view === 'team_calendar');
+            return getWorkTeamCalendarDisplayCategoryList();
         }
 
         function getWorkTeamCalendarCategory(dataKey) {

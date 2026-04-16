@@ -74,9 +74,30 @@ function normalizeStorageRoot(raw) {
   return path.isAbsolute(raw) ? raw : path.resolve(projectRoot, raw);
 }
 
+function resolveOptionalRoot(raw, baseDir = repoRoot) {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return null;
+  return path.isAbsolute(trimmed) ? trimmed : path.resolve(baseDir, trimmed);
+}
+
+function hasLocalSourceMarker(candidateRoot) {
+  return fs.existsSync(path.join(candidateRoot, 'KPI.html'))
+    && fs.existsSync(path.join(candidateRoot, '06_★★★_KPI런타임', 'app', 'KPI.app.js'));
+}
+
+function hasLocalSeedSource(candidateRoot) {
+  return fs.existsSync(path.join(candidateRoot, '02_★★★★_유틸리티', 'apps', 'metering', 'preset-entry-data.js'))
+    || fs.existsSync(path.join(candidateRoot, '02_★★★★_유틸리티', 'data', 'current', 'data_util_electric.js'));
+}
+
+function resolveLocalSourceRoot() {
+  return resolveOptionalRoot(process.env.KPI_LOCAL_SOURCE_ROOT) || repoRoot;
+}
+
 export const config = {
   projectRoot,
   repoRoot,
+  localSourceRoot: resolveLocalSourceRoot(),
   envFilePath,
   host: process.env.KPI_SERVER_HOST || '127.0.0.1',
   port: readInt(process.env.KPI_SERVER_PORT, 3100),

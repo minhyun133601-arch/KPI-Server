@@ -7,6 +7,10 @@
             labor: '#eab308'
         };
         const UTIL_REPORT_GAS_COMBINED_TEAM_LABEL = '1팀 2파트 LNG+LPG';
+        const UTIL_REPORT_GAS_YUSAN_LNG_LABEL = '유산 LNG';
+        const UTIL_REPORT_GAS_YUSAN_LPG_LABEL = '유산 LPG';
+        const UTIL_REPORT_GAS_OVERALL_LNG_LABEL = '통합 LNG';
+        const UTIL_REPORT_GAS_OVERALL_LPG_LABEL = '통합 LPG';
         const UTIL_REPORT_TEAM_TOTAL_EX_WASTE_PREFIX = 'team-total-excl-waste';
         const UTIL_REPORT_TEAM_TOTAL_EX_WASTE_TOTAL_KEY = `${UTIL_REPORT_TEAM_TOTAL_EX_WASTE_PREFIX}::total`;
         const UTIL_REPORT_TEAM_TOTAL_EX_WASTE_TEAM_SPECS = [
@@ -62,7 +66,7 @@
             graphDenominatorMetric: '',
             graphUseDenominator: true,
             graphChartType: 'line',
-            openOnReportTab: true,
+            openOnReportTab: false,
             builderCustomMode: false,
             builderItemKey: 'electric',
             builderValueKeys: ['electric_usage', 'electric_cost', 'production'],
@@ -100,6 +104,8 @@
             to: '',
             team: '전체',
             itemKey: 'electric',
+            appliedBaseYear: '',
+            appliedCompareYear: '',
             valueKeys: ['electric_usage', 'electric_cost', 'production']
         };
 
@@ -146,6 +152,9 @@
             costChartType: 'line',
             productionChartType: 'line',
             ratioChartType: 'line',
+            ratioActualChartType: '',
+            ratioAppliedChartType: '',
+            appliedModeEnabled: false,
             focusSeriesKey: '',
             isolatedSeriesKey: '',
             detailFocusSeriesKey: '',
@@ -159,6 +168,9 @@
         const UtilReportBuilderVizDetachedTableState = {
             win: null,
             detached: false
+        };
+        const UtilReportBuilderVizPopupState = {
+            win: null
         };
 
         const UTIL_REPORT_METRIC_OPTIONS = [
@@ -394,7 +406,6 @@
 
         function normalizeUtilReportCostUnitKey(unitKey) {
             const raw = String(unitKey || '').trim().toLowerCase();
-            if (raw === 'none') return 'none';
             if (raw === '1') return 'krw';
             if (raw === '1000') return 'thousand';
             if (raw === '1000000') return 'million';
@@ -404,20 +415,17 @@
 
         function normalizeUtilReportProductionUnitKey(unitKey) {
             const raw = String(unitKey || '').trim();
-            if (raw === 'none') return 'none';
             return UTIL_REPORT_PRODUCTION_UNIT_OPTIONS.some(item => item.key === raw) ? raw : 'kg';
         }
 
         function getUtilReportProductionScale(unitKey) {
             const normalized = normalizeUtilReportProductionUnitKey(unitKey);
-            if (normalized === 'none') return 1;
             const matched = UTIL_REPORT_PRODUCTION_UNIT_OPTIONS.find(item => item.key === normalized);
             return matched ? matched.scale : 1;
         }
 
         function getUtilReportProductionUnitLabel(unitKey) {
             const normalized = normalizeUtilReportProductionUnitKey(unitKey);
-            if (normalized === 'none') return '';
             if (normalized === '10kg') return '10kg';
             if (normalized === '100kg') return '100kg';
             if (normalized === 'ton') return '톤';
@@ -539,7 +547,53 @@
             });
         }
 
+        function parseUtilReportGasAggregateTeamLabel(teamName = '') {
+            const normalized = normalizeUtilTeamName(teamName).toLowerCase();
+            if (!normalized) return null;
+            if (normalized === '유산lng') {
+                return { groupKey: 'yusan', fuelKey: 'lng', label: UTIL_REPORT_GAS_YUSAN_LNG_LABEL };
+            }
+            if (normalized === '유산lpg') {
+                return { groupKey: 'yusan', fuelKey: 'lpg', label: UTIL_REPORT_GAS_YUSAN_LPG_LABEL };
+            }
+            if (normalized === '통합lng' || normalized === '전체lng') {
+                return { groupKey: 'overview', fuelKey: 'lng', label: UTIL_REPORT_GAS_OVERALL_LNG_LABEL };
+            }
+            if (normalized === '통합lpg' || normalized === '전체lpg') {
+                return { groupKey: 'overview', fuelKey: 'lpg', label: UTIL_REPORT_GAS_OVERALL_LPG_LABEL };
+            }
+            return null;
+        }
+
+        function getUtilReportGasAggregateSourceTeams(teamName = '') {
+            const parsed = parseUtilReportGasAggregateTeamLabel(teamName);
+            if (!parsed) return [];
+            const yusanFuelSource = parsed.fuelKey === 'lpg' ? '1팀 2파트 (LPG)' : '1팀 2파트 (LNG)';
+            const yusanSources = [yusanFuelSource, '3팀 (LNG)'];
+            if (parsed.groupKey === 'overview') return ['1팀 1파트 (LNG)'].concat(yusanSources);
+            return yusanSources;
+        }
+
+        function matchesUtilReportGasSourceTeam(entryTeamName, sourceTeamName) {
+            const entry = String(entryTeamName || '').trim();
+            const source = String(sourceTeamName || '').trim();
+            if (!entry || !source) return false;
+            if (entry === source) return true;
+            const entryCanonical = canonicalizeUtilTeamName(entry);
+            const sourceCanonical = canonicalizeUtilTeamName(source);
+            if (!entryCanonical || !sourceCanonical || entryCanonical !== sourceCanonical) return false;
+            const sourceFuel = inferUtilFuelType(source);
+            if (!sourceFuel) return true;
+            return inferUtilFuelType(entry) === sourceFuel;
+        }
+
         function hasUtilReportGasTeamOption(entries, teamName, fuelKey = '') {
+            const aggregateSources = getUtilReportGasAggregateSourceTeams(teamName);
+            if (aggregateSources.length) {
+                return aggregateSources.every(sourceTeamName =>
+                    (entries || []).some(entry => matchesUtilReportGasSourceTeam(entry?.team, sourceTeamName))
+                );
+            }
             const normalizedSite = normalizeUtilReportSiteKey(teamName);
             const canonical = canonicalizeUtilTeamName(teamName);
             return (entries || []).some(entry => {
@@ -568,24 +622,35 @@
         }
 
         function buildUtilReportGasTeamOptions(entries = UTIL_GAS_ENTRIES, includeSiteGroups = false) {
-            const preferred = [
-                { label: '유산', teamName: '유산' },
+            const preferred = [];
+            if (includeSiteGroups) {
+                preferred.push(
+                    { label: '북정', teamName: '북정' },
+                    { label: '유산', teamName: '유산' },
+                    { label: UTIL_REPORT_GAS_YUSAN_LNG_LABEL, teamName: UTIL_REPORT_GAS_YUSAN_LNG_LABEL },
+                    { label: UTIL_REPORT_GAS_YUSAN_LPG_LABEL, teamName: UTIL_REPORT_GAS_YUSAN_LPG_LABEL }
+                );
+            }
+            preferred.push(
                 { label: '1팀 1파트', teamName: '1팀 1파트' },
                 { label: UTIL_REPORT_GAS_COMBINED_TEAM_LABEL, teamName: '1팀 2파트' },
                 { label: '1팀 2파트 LNG', teamName: '1팀 2파트', fuelKey: 'lng' },
                 { label: '1팀 2파트 LPG', teamName: '1팀 2파트', fuelKey: 'lpg' },
-                { label: '3팀', teamName: '3팀' }
-            ];
+                { label: '3팀', teamName: '3팀' },
+                { label: UTIL_REPORT_GAS_OVERALL_LNG_LABEL, teamName: UTIL_REPORT_GAS_OVERALL_LNG_LABEL },
+                { label: UTIL_REPORT_GAS_OVERALL_LPG_LABEL, teamName: UTIL_REPORT_GAS_OVERALL_LPG_LABEL }
+            );
             return preferred
                 .filter(option => hasUtilReportGasTeamOption(entries, option.teamName, option.fuelKey || ''))
                 .map(option => option.label);
         }
 
         function buildUtilReportElectricTeamOptions(entries = UTIL_ELECTRIC_ENTRIES, includeSiteGroups = true) {
-            const preferred = ['유산', '1팀 1파트', '1팀 2파트', '2팀', '3팀'];
-            const filtered = preferred.filter(teamName => hasUtilReportTeamOption(entries, teamName));
-            if (includeSiteGroups) return filtered;
-            return filtered.filter(teamName => teamName !== '유산');
+            const preferred = (includeSiteGroups
+                ? ['북정', '유산']
+                : []
+            ).concat(['1팀 1파트', '1팀 2파트', '2팀', '3팀']);
+            return preferred.filter(teamName => hasUtilReportTeamOption(entries, teamName));
         }
 
         function buildUtilReportWasteTeamOptions(entries = UTIL_WASTE_ENTRIES) {
@@ -596,7 +661,7 @@
             const normalizedItemKey = normalizeUtilReportBuilderItemKey(itemKey);
             let teams = [];
             if (normalizedItemKey === 'gas') {
-                teams = buildUtilReportGasTeamOptions(UTIL_GAS_ENTRIES, false);
+                teams = buildUtilReportGasTeamOptions(UTIL_GAS_ENTRIES, true);
             } else if (normalizedItemKey === 'waste') {
                 teams = buildUtilReportWasteTeamOptions(UTIL_WASTE_ENTRIES);
             } else {
@@ -633,7 +698,10 @@
             }
 
             if (normalizedItemKey === 'gas') {
+                const aggregate = parseUtilReportGasAggregateTeamLabel(raw);
+                if (aggregate?.label && options.includes(aggregate.label)) return aggregate.label;
                 const fuel = inferUtilFuelType(raw);
+                if (canonical === '2팀' && options.includes('유산')) return '유산';
                 const matchedByCanonical = options.filter(option => canonicalizeUtilTeamName(option) === canonical);
                 if (!matchedByCanonical.length) return '';
                 if (fuel) {
@@ -687,14 +755,14 @@
             const baseOptions = Array.isArray(UTIL_REPORT_BUILDER_VIZ_USAGE_UNIT_OPTIONS[normalizedItemKey])
                 ? UTIL_REPORT_BUILDER_VIZ_USAGE_UNIT_OPTIONS[normalizedItemKey].slice()
                 : UTIL_REPORT_BUILDER_VIZ_USAGE_UNIT_OPTIONS.electric.slice();
-            return [{ key: 'none', label: '없음', scale: 1 }].concat(baseOptions);
+            return baseOptions;
         }
 
         function normalizeUtilReportBuilderVizUsageUnitKey(unitKey, itemKey = UtilReportBuilderVizState.itemKey) {
             const raw = String(unitKey || '').trim().toLowerCase();
             const options = getUtilReportBuilderVizUsageUnitOptions(itemKey);
             if (options.some(item => item.key === raw)) return raw;
-            return String(options.find(item => item.key !== 'none')?.key || options[0]?.key || 'kwh');
+            return String(options[0]?.key || 'kwh');
         }
 
         function getUtilReportBuilderVizUsageUnitOption(unitKey, itemKey = UtilReportBuilderVizState.itemKey) {
@@ -709,7 +777,6 @@
 
         function getUtilReportBuilderVizUsageLabel(unitKey, itemKey = UtilReportBuilderVizState.itemKey) {
             const key = normalizeUtilReportBuilderVizUsageUnitKey(unitKey, itemKey);
-            if (key === 'none') return '';
             return String(getUtilReportBuilderVizUsageUnitOption(key, itemKey)?.label || 'kWh');
         }
 

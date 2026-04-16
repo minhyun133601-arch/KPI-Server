@@ -268,6 +268,18 @@
 
                 const syncProductionControlState = () => {
                     if (!controls) return;
+                    const fixedStartDay = DEFAULT_UTIL_PRODUCTION_PERIOD.startDay;
+                    const startDayChanged = UtilProductionState.startDay !== fixedStartDay;
+                    UtilProductionState.startDay = fixedStartDay;
+                    const productionStartSelect = controls.querySelector('[data-production-start]');
+                    if (productionStartSelect) {
+                        productionStartSelect.innerHTML = buildUtilDayOptions(fixedStartDay);
+                        productionStartSelect.value = String(fixedStartDay);
+                        productionStartSelect.disabled = true;
+                        productionStartSelect.setAttribute('aria-label', `생산량 시작일 ${fixedStartDay}일 고정`);
+                        productionStartSelect.title = `시작일 ${fixedStartDay}일 고정`;
+                    }
+                    if (startDayChanged) persistUtilProductionDailyState();
                 };
 
                 if (!combinedSection.dataset.productionDataUpdatedBound) {
@@ -295,7 +307,7 @@
                             <input type="file" data-production-upload-input accept=".xlsx,.xls" multiple style="display:none;">
                             <label class="util-dual-control">
                                 생산량 시작일
-                                <select class="util-table-select util-table-select-sm" data-production-start>${buildUtilDayOptions(UtilProductionState.startDay)}</select>
+                                <select class="util-table-select util-table-select-sm" data-production-start disabled aria-label="생산량 시작일 1일 고정" title="시작일 1일 고정">${buildUtilDayOptions(DEFAULT_UTIL_PRODUCTION_PERIOD.startDay)}</select>
                             </label>
                         `;
                         const gasControlHtml = isGas ? `
@@ -322,15 +334,6 @@
                             ${productionControlHtml}
                             ${gasControlHtml}
                         `;
-                        const productionStartSelect = controls.querySelector('[data-production-start]');
-                        if (productionStartSelect) {
-                            productionStartSelect.addEventListener('change', () => {
-                                UtilProductionState.startDay = clampUtilDay(productionStartSelect.value, DEFAULT_UTIL_PRODUCTION_PERIOD.startDay);
-                                persistUtilProductionDailyState();
-                                syncProductionControlState();
-                                renderTeam(combinedSection.dataset.activeTeam || data[0]?.name);
-                            });
-                        }
                         const actionMenu = controls.querySelector('[data-util-action-menu]');
                         const closeActionMenu = () => {
                             if (actionMenu) actionMenu.open = false;
@@ -402,9 +405,8 @@
                                     productionUploadInput.disabled = true;
                                     const activeTeam = combinedSection.dataset.activeTeam || data[0]?.name || '';
                                     const parsed = await parseUtilProductionExcelFiles(files, activeTeam);
-                                    const result = await mergeUtilProductionExtractorRows(parsed.rows, {
-                                        fallbackTeam: activeTeam,
-                                        requireServerSave: true
+                                    const result = mergeUtilProductionExtractorRows(parsed.rows, {
+                                        fallbackTeam: activeTeam
                                     });
                                     const addedTeams = Array.isArray(result.addedTeams) ? result.addedTeams.filter(Boolean) : [];
                                     const failedFileNames = Array.isArray(parsed.failedFiles)
@@ -424,8 +426,7 @@
                                     const patchedNotice = result.patchedCount > 0
                                         ? `\n수율/CAPA/가동률 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
                                         : '';
-                                    const serverNotice = result.serverSaved ? '\nDB 저장 완료' : '';
-                                    alert(`기입 완료: 추가 ${result.addedCount.toLocaleString('ko-KR')}건, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}${serverNotice}`);
+                                    alert(`기입 완료: 추가 ${result.addedCount.toLocaleString('ko-KR')}건, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`);
                                 } catch (error) {
                                     alert(`기입 실패: ${error?.message || '알 수 없는 오류'}`);
                                 } finally {
@@ -473,8 +474,6 @@
                             });
                         }
                     }
-                    const productionStartSelect = controls.querySelector('[data-production-start]');
-                    if (productionStartSelect) productionStartSelect.value = String(UtilProductionState.startDay);
                     const gasSelect = controls.querySelector('[data-gas-convert]');
                     if (gasSelect) gasSelect.value = combinedSection.dataset.gasConvert || 'off';
                     syncProductionControlState();

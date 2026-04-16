@@ -1,4 +1,5 @@
 import { sendJson } from '../lib/http.js';
+import { resolveManagedDocumentStorageFolder } from '../lib/document-storage.js';
 import { PERMISSION_KEYS } from '../lib/permission-registry.js';
 import { findModuleRecord } from '../repositories/modules.js';
 import { saveBase64Document } from '../services/files.js';
@@ -16,10 +17,6 @@ const METERING_SHARED_STORE_RECORD_KEY = 'shared_store_v1';
 const METERING_SHARED_STORE_PERMISSION_KEY = PERMISSION_KEYS.UTIL_METERING_APP;
 const METERING_BILLING_DOCUMENT_OWNER_DOMAIN = 'metering.billing_document';
 const METERING_BILLING_DOCUMENT_FILE_CATEGORY = 'billing_document';
-const BILLING_DOCUMENT_STORAGE_FOLDER_BY_RESOURCE = Object.freeze({
-  electric: '유틸리티/전기 청구서',
-  gas: '유틸리티/가스 청구서'
-});
 
 function getMeteringSharedStoreMeta(record) {
   return {
@@ -38,8 +35,14 @@ function buildMeteringBillingOwnerKey(resourceType, monthValue, scopeKey) {
 }
 
 function getMeteringBillingStorageFolder(resourceType) {
-  const normalizedResourceType = normalizeText(resourceType || 'electric');
-  const storageFolder = BILLING_DOCUMENT_STORAGE_FOLDER_BY_RESOURCE[normalizedResourceType];
+  const storageFolder = resolveManagedDocumentStorageFolder({
+    ownerDomain: METERING_BILLING_DOCUMENT_OWNER_DOMAIN,
+    ownerKey: buildMeteringBillingOwnerKey(resourceType, '', 'default'),
+    fileCategory: METERING_BILLING_DOCUMENT_FILE_CATEGORY,
+    metadata: {
+      resourceType: normalizeText(resourceType || 'electric')
+    }
+  });
   if (!storageFolder) {
     throw new Error('billing_document_resource_unsupported');
   }

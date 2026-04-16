@@ -314,10 +314,6 @@
             UtilReportState.graphNumeratorMetric = normalizeUtilReportGraphMetric(UtilReportState.graphNumeratorMetric, options, defaultNumerator);
             const fallbackDenominator = options.some(item => item.key === 'production') ? 'production' : UtilReportState.graphNumeratorMetric;
             UtilReportState.graphDenominatorMetric = normalizeUtilReportGraphMetric(UtilReportState.graphDenominatorMetric, options, fallbackDenominator);
-            if (UtilReportState.graphDenominatorMetric === UtilReportState.graphNumeratorMetric) {
-                const alternative = options.find(item => item.key !== UtilReportState.graphNumeratorMetric);
-                if (alternative) UtilReportState.graphDenominatorMetric = alternative.key;
-            }
         }
 
         function isUtilMonthInReportRange(year, month, state, yearFilter = '') {

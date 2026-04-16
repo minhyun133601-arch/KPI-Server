@@ -68,12 +68,24 @@
             if (!filter || filter === 'all') return true;
             const entry = String(entryTeamName || '').trim();
             if (entry === filter) return true;
+            const normalizedScope = normalizeUtilReportScope(scopeKey);
+            if (normalizedScope === 'gas') {
+                const aggregateSources = typeof getUtilReportGasAggregateSourceTeams === 'function'
+                    ? getUtilReportGasAggregateSourceTeams(filter)
+                    : [];
+                if (aggregateSources.length) {
+                    return aggregateSources.some(sourceTeamName => (
+                        typeof matchesUtilReportGasSourceTeam === 'function'
+                            ? matchesUtilReportGasSourceTeam(entry, sourceTeamName)
+                            : entry === sourceTeamName
+                    ));
+                }
+            }
             const filterSite = normalizeUtilReportSiteKey(filter);
             if (filterSite !== 'all') {
                 const entrySite = resolveUtilReportSiteKeyByTeam(entry);
                 if (entrySite && entrySite === filterSite) return true;
             }
-            const normalizedScope = normalizeUtilReportScope(scopeKey);
             if (normalizedScope === 'gas' && isUtilReportGasCombinedTeamSelection(filter)) {
                 return canonicalizeUtilTeamName(entry) === '1팀2파트';
             }

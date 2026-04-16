@@ -1,6 +1,35 @@
+        function ensureUtilReportBuilderVizRatioAppliedControls(modal) {
+            if (!modal) return;
+            const ratioPanelEl = modal.querySelector('[data-role="util-report-builder-viz-ratio-panel"]');
+            const ratioToolsEl = ratioPanelEl?.querySelector('.util-report-builder-viz-panel-tools');
+            if (!ratioPanelEl || !ratioToolsEl) return;
+
+            const baseField = ratioToolsEl.querySelector('[data-role="util-report-builder-viz-applied-base-year"]')?.closest('.util-report-builder-viz-field');
+            const compareField = ratioToolsEl.querySelector('[data-role="util-report-builder-viz-applied-compare-year"]')?.closest('.util-report-builder-viz-field');
+            [baseField, compareField].forEach(field => {
+                if (field) field.setAttribute('data-role', 'util-report-builder-viz-applied-year-field');
+            });
+
+            if (!ratioToolsEl.querySelector('[data-role="util-report-builder-viz-applied-toggle"]')) {
+                const appliedField = document.createElement('div');
+                appliedField.className = 'util-report-builder-viz-field is-sm';
+                appliedField.innerHTML = `
+                    <label>적용</label>
+                    <button
+                        type="button"
+                        class="util-report-chart-type-toggle"
+                        data-role="util-report-builder-viz-applied-toggle"
+                        aria-pressed="false"
+                    >적용</button>
+                `;
+                ratioToolsEl.insertBefore(appliedField, baseField || ratioToolsEl.firstChild);
+            }
+        }
+
         function ensureUtilReportBuilderVizModal() {
             let modal = document.getElementById('util-report-builder-viz-modal');
             if (modal) {
+                ensureUtilReportBuilderVizRatioAppliedControls(modal);
                 bindUtilReportBuilderVizViewportDrag(modal);
                 return modal;
             }
@@ -33,14 +62,6 @@
                                     <div class="util-report-builder-viz-field is-lg">
                                         <label>끝</label>
                                         <select data-role="util-report-builder-viz-to"></select>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="util-report-builder-viz-group">
-                                <div class="util-report-builder-viz-fields">
-                                    <div class="util-report-builder-viz-field is-lg">
-                                        <label>대상팀</label>
-                                        <select data-role="util-report-builder-viz-team"></select>
                                     </div>
                                 </div>
                             </div>
@@ -113,8 +134,24 @@
                                 <div class="util-report-builder-viz-panel-title" data-role="util-report-builder-viz-ratio-title">비율</div>
                                 <div class="util-report-builder-viz-panel-tools">
                                     <div class="util-report-builder-viz-field is-sm">
+                                        <label>원단위 기준</label>
+                                        <select data-role="util-report-builder-viz-applied-base-year"></select>
+                                    </div>
+                                    <div class="util-report-builder-viz-field is-sm">
+                                        <label>적용 대상</label>
+                                        <select data-role="util-report-builder-viz-applied-compare-year"></select>
+                                    </div>
+                                    <div class="util-report-builder-viz-field is-sm" data-role="util-report-builder-viz-ratio-type-field">
                                         <label>비율</label>
                                         <button type="button" class="util-report-chart-type-toggle" data-role="util-report-builder-viz-ratio-type-toggle" data-chart-type="line">선</button>
+                                    </div>
+                                    <div class="util-report-builder-viz-field is-sm" data-role="util-report-builder-viz-ratio-actual-type-field" hidden>
+                                        <label>실제값</label>
+                                        <button type="button" class="util-report-chart-type-toggle" data-role="util-report-builder-viz-ratio-actual-type-toggle" data-chart-type="line">선</button>
+                                    </div>
+                                    <div class="util-report-builder-viz-field is-sm" data-role="util-report-builder-viz-ratio-applied-type-field" hidden>
+                                        <label>적용값</label>
+                                        <button type="button" class="util-report-chart-type-toggle" data-role="util-report-builder-viz-ratio-applied-type-toggle" data-chart-type="line">선</button>
                                     </div>
                                     <div class="util-report-builder-viz-field is-label">
                                         <label>레이블</label>
@@ -130,6 +167,7 @@
                 </div>
             `;
             document.body.appendChild(modal);
+            ensureUtilReportBuilderVizRatioAppliedControls(modal);
             bindUtilReportBuilderVizViewportDrag(modal);
 
             modal.addEventListener('click', event => {
@@ -178,6 +216,27 @@
                     }
                     return;
                 }
+                const appliedToggleBtn = event.target.closest('[data-role="util-report-builder-viz-applied-toggle"]');
+                if (appliedToggleBtn) {
+                    UtilReportBuilderVizState.appliedModeEnabled = !(UtilReportBuilderVizState.appliedModeEnabled === true);
+                    if (UtilReportBuilderVizState.appliedModeEnabled === true) {
+                        const defaultYears = resolveUtilReportBuilderVizDefaultAppliedYears();
+                        if (!UtilReportBuilderVizState.appliedBaseYear) {
+                            UtilReportBuilderVizState.appliedBaseYear = defaultYears.baseYear;
+                        }
+                        if (!UtilReportBuilderVizState.appliedCompareYear) {
+                            UtilReportBuilderVizState.appliedCompareYear = normalizeUtilReportBuilderVizAppliedCompareYear(
+                                defaultYears.compareYear,
+                                UtilReportBuilderVizState.appliedBaseYear
+                            );
+                        }
+                    }
+                    syncUtilReportBuilderVizControls(modal);
+                    UtilReportBuilderVizState.hasGenerated = true;
+                    UtilReportBuilderVizState.isDirty = false;
+                    renderUtilReportBuilderVizModal();
+                    return;
+                }
                 const monthHitTarget = event.target.closest('[data-role="util-chart-month-hit"]');
                 if (monthHitTarget) {
                     const monthKey = normalizeUtilReportMonthKey(monthHitTarget.getAttribute('data-month-key') || '');
@@ -210,16 +269,42 @@
                     modal.querySelector(getUtilReportBuilderVizActivePanelSelector())?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     return;
                 }
-                const typeToggleBtn = event.target.closest('[data-role="util-report-builder-viz-usage-type-toggle"], [data-role="util-report-builder-viz-cost-type-toggle"], [data-role="util-report-builder-viz-production-type-toggle"], [data-role="util-report-builder-viz-ratio-type-toggle"]');
+                const typeToggleBtn = event.target.closest('[data-role="util-report-builder-viz-usage-type-toggle"], [data-role="util-report-builder-viz-cost-type-toggle"], [data-role="util-report-builder-viz-production-type-toggle"], [data-role="util-report-builder-viz-ratio-type-toggle"], [data-role="util-report-builder-viz-ratio-actual-type-toggle"], [data-role="util-report-builder-viz-ratio-applied-type-toggle"]');
                 if (typeToggleBtn) {
                     const role = typeToggleBtn.getAttribute('data-role') || '';
-                    const nextType = typeToggleBtn.dataset.chartType === 'line' ? 'bar' : 'line';
+                    const currentType = role === 'util-report-builder-viz-usage-type-toggle'
+                        ? normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.usageChartType || 'bar')
+                        : (role === 'util-report-builder-viz-cost-type-toggle'
+                            ? normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.costChartType || 'line')
+                            : (role === 'util-report-builder-viz-production-type-toggle'
+                                ? normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.productionChartType || 'line')
+                                : (role === 'util-report-builder-viz-ratio-actual-type-toggle'
+                                    ? normalizeUtilReportBuilderVizChartType(
+                                        normalizeUtilReportBuilderVizOptionalChartType(UtilReportBuilderVizState.ratioActualChartType)
+                                        || UtilReportBuilderVizState.ratioChartType
+                                        || 'line'
+                                    )
+                                    : (role === 'util-report-builder-viz-ratio-applied-type-toggle'
+                                        ? normalizeUtilReportBuilderVizChartType(
+                                            normalizeUtilReportBuilderVizOptionalChartType(UtilReportBuilderVizState.ratioAppliedChartType)
+                                            || UtilReportBuilderVizState.ratioChartType
+                                            || 'line'
+                                        )
+                                        : normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.ratioChartType || 'line')))));
+                    const allowNone = role === 'util-report-builder-viz-usage-type-toggle'
+                        || role === 'util-report-builder-viz-cost-type-toggle'
+                        || role === 'util-report-builder-viz-production-type-toggle';
+                    const nextType = getUtilReportBuilderVizNextChartType(currentType, allowNone);
                     if (role === 'util-report-builder-viz-usage-type-toggle') {
                         UtilReportBuilderVizState.usageChartType = nextType;
                     } else if (role === 'util-report-builder-viz-cost-type-toggle') {
                         UtilReportBuilderVizState.costChartType = nextType;
                     } else if (role === 'util-report-builder-viz-production-type-toggle') {
                         UtilReportBuilderVizState.productionChartType = nextType;
+                    } else if (role === 'util-report-builder-viz-ratio-actual-type-toggle') {
+                        UtilReportBuilderVizState.ratioActualChartType = nextType;
+                    } else if (role === 'util-report-builder-viz-ratio-applied-type-toggle') {
+                        UtilReportBuilderVizState.ratioAppliedChartType = nextType;
                     } else if (role === 'util-report-builder-viz-ratio-type-toggle') {
                         UtilReportBuilderVizState.ratioChartType = nextType;
                     }
@@ -282,6 +367,14 @@
                 if (!role.startsWith('util-report-builder-viz-')) return;
                 if (role === 'util-report-builder-viz-ratio-numerator' || role === 'util-report-builder-viz-ratio-denominator') {
                     syncUtilReportBuilderVizRatioSelects(modal);
+                }
+                if (
+                    role === 'util-report-builder-viz-from'
+                    || role === 'util-report-builder-viz-to'
+                    || role === 'util-report-builder-viz-applied-base-year'
+                    || role === 'util-report-builder-viz-applied-compare-year'
+                ) {
+                    syncUtilReportBuilderVizAppliedYearSelects(modal);
                 }
                 collectUtilReportBuilderVizStateFromModal(modal);
                 syncUtilDualSectionFromReportBuilderViz(UtilReportBuilderVizState.itemKey);
@@ -510,21 +603,22 @@
                 UtilReportBuilderVizState.usageUnitKey,
                 normalizedItemKey
             );
+            if (typeof openUtilReportBuilderVizPopupWindow === 'function') {
+                const popup = openUtilReportBuilderVizPopupWindow();
+                if (popup) {
+                    const inlineModal = document.getElementById('util-report-builder-viz-modal');
+                    if (inlineModal?.classList.contains('is-open')) {
+                        closeUtilReportBuilderVizModal();
+                    }
+                    return;
+                }
+            }
             openUtilReportBuilderVizModal();
         }
 
         function toggleUtilInlineReport(itemKey = '', teamName = '') {
             const normalizedItemKey = normalizeUtilReportBuilderItemKey(itemKey || UtilReportState.builderItemKey || UtilReportBuilderVizState.itemKey || 'electric');
             const normalizedTeam = normalizeUtilReportBuilderTeam(teamName || UtilReportBuilderVizState.team || '전체', normalizedItemKey);
-            const openedVizModal = document.getElementById('util-report-builder-viz-modal');
-            const isSameTargetOpen = !!(openedVizModal
-                && openedVizModal.classList.contains('is-open')
-                && normalizeUtilReportBuilderItemKey(UtilReportBuilderVizState.itemKey) === normalizedItemKey
-                && normalizeUtilReportBuilderTeam(UtilReportBuilderVizState.team, normalizedItemKey) === normalizedTeam);
-            if (isSameTargetOpen) {
-                closeUtilReportBuilderVizModal();
-                return false;
-            }
             openUtilReportBuilderModal(normalizedItemKey, normalizedTeam);
             return true;
         }

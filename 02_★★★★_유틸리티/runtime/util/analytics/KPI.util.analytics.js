@@ -511,72 +511,6 @@
             return queueState.writeChain || Promise.resolve(true);
         }
 
-        function readWorkLocalSnapshot(dataKey) {
-            try {
-                const stored = localStorage.getItem(`workdata:${dataKey}`);
-                if (!stored) return null;
-                const parsed = JSON.parse(stored);
-                return (parsed && typeof parsed === 'object') ? parsed : null;
-            } catch (error) {
-                return null;
-            }
-        }
-
-        function getWorkUpdatedAtValue(value) {
-            const parsed = Date.parse(String(value || ''));
-            return Number.isFinite(parsed) ? parsed : 0;
-        }
-
-        function getMigratableWorkDataKeys() {
-            const runtime = window.__KPI_SERVER_RUNTIME_CONFIG__?.work;
-            if (!runtime || runtime.enabled !== true || !runtime.records || typeof runtime.records !== 'object') {
-                return [];
-            }
-            return Object.keys(runtime.records).filter((dataKey) => dataKey !== 'work_history_records');
-        }
-
-        async function migrateLocalWorkDataToServer() {
-            if (!window.KpiRuntime?.hasServerAuthority?.()) {
-                return false;
-            }
-
-            let migrated = false;
-            const dataKeys = getMigratableWorkDataKeys();
-            for (const dataKey of dataKeys) {
-                const runtime = getWorkServerRuntimeConfig(dataKey);
-                if (!(window.KpiRuntime?.canUseServerWrite?.(runtime?.writeEnabled === true))) {
-                    continue;
-                }
-
-                const localPayload = readWorkLocalSnapshot(dataKey);
-                if (!localPayload) {
-                    continue;
-                }
-
-                const normalizedLocal = cloneWorkDataPayload(localPayload);
-                normalizeWorkData(normalizedLocal);
-
-                const hasServerPayload = !!(
-                    window.PortalData
-                    && Object.prototype.hasOwnProperty.call(window.PortalData, dataKey)
-                );
-                const serverPayload = hasServerPayload ? window.PortalData[dataKey] : null;
-                const localUpdatedAt = getWorkUpdatedAtValue(normalizedLocal?.meta?.updatedAt);
-                const serverUpdatedAt = getWorkUpdatedAtValue(serverPayload?.meta?.updatedAt);
-
-                if (hasServerPayload && localUpdatedAt > 0 && serverUpdatedAt >= localUpdatedAt) {
-                    continue;
-                }
-
-                WorkCache[dataKey] = normalizedLocal;
-                syncWorkPortalDataCache(dataKey, normalizedLocal);
-                const saved = await queueWorkServerWrite(dataKey, normalizedLocal);
-                migrated = saved || migrated;
-            }
-
-            return migrated;
-        }
-
         function getWorkData(dataKey, moduleName) {
             if (WorkCache[dataKey]) return WorkCache[dataKey];
             let data = null;
@@ -630,12 +564,6 @@
             syncWorkPortalDataCache(dataKey, data);
             return queueWorkServerWrite(dataKey, data);
         }
-
-        window.KpiWorkServerRuntime = Object.assign(window.KpiWorkServerRuntime || {}, {
-            getWorkServerRuntimeConfig,
-            waitForWorkServerWrite,
-            migrateLocalWorkDataToServer
-        });
 
         function normalizeWorkData(data) {
             (data.weeks || []).forEach(week => {

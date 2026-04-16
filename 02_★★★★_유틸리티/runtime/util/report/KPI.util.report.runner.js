@@ -99,6 +99,9 @@
             if (options.renderModal || modal?.classList.contains('is-open')) {
                 renderUtilReportModal(result);
             }
+            if (typeof syncUtilReportDetachedTableWindow === 'function') {
+                syncUtilReportDetachedTableWindow(result);
+            }
             return result;
         }
 

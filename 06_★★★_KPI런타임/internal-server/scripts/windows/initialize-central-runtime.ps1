@@ -24,7 +24,7 @@ $pgCtlPath = Join-Path $postgresBinDir 'pg_ctl.exe'
 $pgIsReadyPath = Join-Path $postgresBinDir 'pg_isready.exe'
 $psqlPath = Join-Path $postgresBinDir 'psql.exe'
 
-$postgresPort = 5433
+$postgresPort = 5434
 $postgresSuperuser = 'postgres'
 $appDatabase = 'kpi_internal'
 $appUser = 'kpi_app'

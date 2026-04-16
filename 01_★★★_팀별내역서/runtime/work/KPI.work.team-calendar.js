@@ -315,7 +315,7 @@
 
         function getWorkTeamCalendarUtilityPopupMetric(dataKey = WorkState.teamCalendarModal) {
             const raw = String(WorkState.teamCalendarUtilityPopup?.[dataKey] || '').trim().toLowerCase();
-            return ['electric', 'gas'].includes(raw) ? raw : '';
+            return ['electric', 'gas', 'work'].includes(raw) ? raw : '';
         }
 
         function closeWorkTeamCalendarUtilityPopup(dataKey = WorkState.teamCalendarModal, options = {}) {
@@ -330,10 +330,13 @@
 
         function openWorkTeamCalendarUtilityPopup(metricKey, options = {}) {
             const dataKey = options.dataKey || WorkState.teamCalendarModal;
-            if (!dataKey || typeof isWorkTeamCalendarOverview !== 'function' || !isWorkTeamCalendarOverview(dataKey)) return false;
-            const normalizedMetric = ['electric', 'gas'].includes(String(metricKey || '').trim().toLowerCase())
-                ? String(metricKey || '').trim().toLowerCase()
-                : '';
+            if (!dataKey) return false;
+            const normalizedMetric = String(metricKey || '').trim().toLowerCase();
+            const isOverviewCalendar = typeof isWorkTeamCalendarOverview === 'function'
+                ? isWorkTeamCalendarOverview(dataKey)
+                : false;
+            const allowedMetrics = isOverviewCalendar ? ['electric', 'gas', 'work'] : ['work'];
+            if (!allowedMetrics.includes(normalizedMetric)) return false;
             if (!normalizedMetric) return false;
             const currentMetric = getWorkTeamCalendarUtilityPopupMetric(dataKey);
             const nextMetric = currentMetric === normalizedMetric ? '' : normalizedMetric;
@@ -402,7 +405,7 @@
             const isOverviewCalendar = typeof isWorkTeamCalendarOverview === 'function'
                 ? isWorkTeamCalendarOverview(dataKey)
                 : false;
-            const utilityPopupMetric = isOverviewCalendar ? getWorkTeamCalendarUtilityPopupMetric(dataKey) : '';
+            const utilityPopupMetric = getWorkTeamCalendarUtilityPopupMetric(dataKey);
             const hasUtilityPopup = !!utilityPopupMetric;
             const prevDisabled = monthKey === WORK_TEAM_CALENDAR_RANGE.start ? 'disabled' : '';
             const nextDisabled = monthKey === WORK_TEAM_CALENDAR_RANGE.end ? 'disabled' : '';
@@ -422,10 +425,14 @@
                 if (typeof isWorkTeamCalendarHistoryKpi === 'function') {
                     return isWorkTeamCalendarHistoryKpi(record);
                 }
+                if (typeof window.KpiWorkHistory?.isImportantRecord === 'function') {
+                    return window.KpiWorkHistory.isImportantRecord(record);
+                }
                 if (typeof window.KpiWorkHistory?.isKpiRecord === 'function') {
                     return window.KpiWorkHistory.isKpiRecord(record);
                 }
-                return String(record?.category || '').trim() === 'KPI';
+                return String(record?.category || '').trim() === 'KPI'
+                    || String(record?.categoryGroup || record?.categoryType || '').trim() === 'report';
             };
             const hasSelectedEntryContent = selectedHistoryRecords.length > 0;
             const hasReadonlyEntryContent = hasSelectedEntryContent && !isOverviewCalendar;
@@ -433,6 +440,8 @@
             const selectedHistoryKpiCount = hasSelectedEntryContent
                 ? selectedHistoryRecords.filter(isHistoryKpiRecord).length
                 : 0;
+            const historyKpiLabel = window.KpiWorkHistory?.IMPORTANT_FLAG_LABEL || '★';
+            const historyKpiPillLabel = window.KpiWorkHistory?.IMPORTANT_FLAG_PILL_LABEL || '★';
             const selectedHistoryCostSummary = hasSelectedEntryContent && typeof getWorkTeamCalendarHistoryCostSummary === 'function'
                 ? getWorkTeamCalendarHistoryCostSummary(selectedHistoryRecords)
                 : { totalCost: 0, costText: '-' };
@@ -486,7 +495,7 @@
                         : (selectedProductionSummary?.isOffday ? '-' : (category.emptyProductionLabel || '\uD488\uBAA9 \uC5C6\uC74C'))
                 );
             let detailCountBadgeText = hasSelectedEntryContent
-                ? (formatUtilNumber(selectedHistoryRecords.length, 0) + '\uAC74' + (selectedHistoryHasKpi ? (' \u00B7 KPI' + (selectedHistoryKpiCount > 1 ? (' ' + formatUtilNumber(selectedHistoryKpiCount, 0) + '\uAC74') : '')) : '') + ' \u00B7 \uBE44\uC6A9 ' + (selectedHistoryCostSummary.costText || '-'))
+                ? (formatUtilNumber(selectedHistoryRecords.length, 0) + '\uAC74' + (selectedHistoryHasKpi ? (' \u00B7 ' + historyKpiLabel + (selectedHistoryKpiCount > 1 ? (' ' + formatUtilNumber(selectedHistoryKpiCount, 0)) : '')) : '') + ' \u00B7 \uBE44\uC6A9 ' + (selectedHistoryCostSummary.costText || '-'))
                 : detailCountText;
             if (isOverviewCalendar) {
                 detailSub = '\uD300\uBCC4 \uC0DD\uC0B0 \uD488\uBAA9 \uBCF4\uAE30';
@@ -534,8 +543,8 @@
             )).join('');
             const utilitySummary = getWorkTeamCalendarUtilitySummary(dataKey, monthKey);
             const isOverviewSummary = isOverviewCalendar === true;
-            const isWasteSummary = !isOverviewSummary && !!utilitySummary.waste;
-            const gasChoiceHtml = !isWasteSummary && !isOverviewSummary && utilitySummary.gas.canSelect
+            const isWasteOnlySummary = !isOverviewSummary && !!utilitySummary.waste && !utilitySummary.electric && !utilitySummary.gas;
+            const gasChoiceHtml = !isWasteOnlySummary && !isOverviewSummary && utilitySummary.gas.canSelect
                 ? `
                     <div class="work-team-calendar-utility-choices" aria-label="가스 기준 선택">
                         <button type="button" class="work-team-calendar-utility-choice ${utilitySummary.gas.mode === 'all' ? 'is-active' : ''}" onclick="setWorkTeamCalendarGasMode('all')">전체</button>
@@ -544,7 +553,31 @@
                     </div>
                 `
                 : '';
-            const utilitySummaryHtml = isWasteSummary
+            const isWorkPopupActive = utilityPopupMetric === 'work';
+            const workUtilityChipHtml = `
+                <button
+                    type="button"
+                    class="work-team-calendar-utility-chip is-button${isWorkPopupActive ? ' is-active' : ''}"
+                    onclick="openWorkTeamCalendarUtilityPopup('work')"
+                    aria-pressed="${isWorkPopupActive ? 'true' : 'false'}"
+                    aria-label="작업내역 열기"
+                >
+                    <span class="work-team-calendar-utility-label">${escapeHtml(utilitySummary.workEntryLabel || '작업내역')}</span>
+                    <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.workEntryCountText || '0건')}</span>
+                    <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.workCostText || '-')}</span>
+                    <span class="work-team-calendar-utility-hint">클릭하여 작업내역 보기</span>
+                </button>
+            `;
+            const wasteUtilityChipHtml = utilitySummary.waste
+                ? `
+                        <div class="work-team-calendar-utility-chip">
+                            <span class="work-team-calendar-utility-label">폐수 방류량</span>
+                            <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.waste?.usageText || '-')}</span>
+                            <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.waste?.costText || '-')}</span>
+                        </div>
+                    `
+                : '';
+            const utilitySummaryHtml = isWasteOnlySummary
                 ? `
                     <div class="work-team-calendar-utility-strip">
                         <div class="work-team-calendar-utility-chip">
@@ -552,11 +585,7 @@
                             <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.waste?.usageText || '-')}</span>
                             <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.waste?.costText || '-')}</span>
                         </div>
-                        <div class="work-team-calendar-utility-chip">
-                            <span class="work-team-calendar-utility-label">${escapeHtml(utilitySummary.workEntryLabel || '작업내역')}</span>
-                            <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.workEntryCountText || '0 items')}</span>
-                            <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.workCostText || '-')}</span>
-                        </div>
+                        ${workUtilityChipHtml}
                     </div>
                 `
                 : `
@@ -572,16 +601,13 @@
                             <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.gas.costText || '-')}</span>
                             ${gasChoiceHtml}
                         </div>
+                        ${wasteUtilityChipHtml}
                         <div class="work-team-calendar-utility-chip">
                             <span class="work-team-calendar-utility-label">총 생산량</span>
                             <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.production?.totalAmountText || '-')}</span>
                             <span class="work-team-calendar-utility-meta">${escapeHtml(utilitySummary.production?.itemCountText || '-')}</span>
                         </div>
-                        <div class="work-team-calendar-utility-chip">
-                            <span class="work-team-calendar-utility-label">작업내역</span>
-                            <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.workEntryCountText || '0 items')}</span>
-                            <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.workCostText || '-')}</span>
-                        </div>
+                        ${workUtilityChipHtml}
                     </div>
                 `;
             let utilitySummaryHtmlResolved = isOverviewSummary
@@ -622,13 +648,16 @@
                     ? buildWorkTeamCalendarOverviewUtilityBreakdown(monthKey)
                     : { monthLabel: '', electric: [], gas: [] };
                 const renderOverviewUtilityChip = (metricKey, label, valueText, metaText) => {
-                    const isActionMetric = metricKey === 'electric' || metricKey === 'gas';
+                    const isActionMetric = metricKey === 'electric' || metricKey === 'gas' || metricKey === 'work';
                     const activeClass = utilityPopupMetric === metricKey ? ' is-active' : '';
+                    const hintText = metricKey === 'work'
+                        ? '클릭하여 작업내역 보기'
+                        : '클릭하여 팀별 상세 보기';
                     const bodyHtml = `
                         <span class="work-team-calendar-utility-label">${escapeHtml(label)}</span>
                         <span class="work-team-calendar-utility-value">${escapeHtml(valueText || '-')}</span>
                         <span class="work-team-calendar-utility-meta">${escapeHtml(metaText || '-')}</span>
-                        ${isActionMetric ? '<span class="work-team-calendar-utility-hint">클릭하여 팀별 상세 보기</span>' : ''}
+                        ${isActionMetric ? `<span class="work-team-calendar-utility-hint">${escapeHtml(hintText)}</span>` : ''}
                     `;
                     if (!isActionMetric) {
                         return `<div class="work-team-calendar-utility-chip">${bodyHtml}</div>`;
@@ -651,91 +680,155 @@
                         ${renderOverviewUtilityChip('waste', '폐수 방류량', utilitySummary.waste?.usageText || '-', `비용 ${utilitySummary.waste?.costText || '-'}`)}
                         ${renderOverviewUtilityChip('production', '총생산량', utilitySummary.production?.totalAmountText || '-', utilitySummary.production?.itemCountText || '-')}
                         ${renderOverviewUtilityChip('work', '작업내역', utilitySummary.workEntryCountText || '0건', `비용 ${utilitySummary.workCostText || '-'}`)}
+                        ${equipUtilityChipHtml}
                     </div>
                 `;
                 if (hasUtilityPopup) {
-                    const utilityPopupItems = (utilityPopupMetric === 'electric'
-                        ? (utilityBreakdown.electric || [])
-                        : (utilityBreakdown.gas || []))
-                        .filter(item => {
-                            const detailRows = Array.isArray(item?.detailRows) ? item.detailRows.filter(detail => String(detail?.valueText || '').trim()) : [];
-                            if (detailRows.length) return true;
-                            return String(item?.valueText || '').trim() && String(item?.valueText || '').trim() !== '-';
-                        });
-                    const utilityPopupTitle = utilityPopupMetric === 'electric' ? '전기 사용량' : '가스 사용량';
-                    const utilityPopupValue = utilityPopupMetric === 'electric'
-                        ? (utilitySummary.electric?.usageText || '-')
-                        : (utilitySummary.gas?.usageText || '-');
-                    const utilityPopupCost = utilityPopupMetric === 'electric'
-                        ? (utilitySummary.electric?.costText || '-')
-                        : (utilitySummary.gas?.costText || '-');
-                    const utilityPopupModeChoices = '';
-                    const utilityPopupRowsHtml = utilityPopupItems.length
-                        ? utilityPopupItems.map(item => {
-                            const detailRows = Array.isArray(item?.detailRows)
-                                ? item.detailRows.filter(detail => String(detail?.valueText || '').trim())
-                                : [];
-                            const hasDetailRows = detailRows.length > 0;
-                            return `
-                                <div class="work-team-calendar-production-item${hasDetailRows ? ' is-utility-detail-card' : ''}">
-                                    <div class="work-team-calendar-production-main">
-                                        <div class="work-team-calendar-production-name">${escapeHtml(item.teamLabel || 'Unknown')}</div>
-                                        ${hasDetailRows ? `
-                                            <div class="work-team-calendar-utility-detail-list">
-                                                ${detailRows.map(detail => `
-                                                    <div class="work-team-calendar-utility-detail-row">
-                                                        <span class="work-team-calendar-utility-detail-label">${escapeHtml(detail.label || '')}</span>
-                                                        <span class="work-team-calendar-utility-detail-value">${escapeHtml(detail.valueText || '-')}</span>
-                                                        ${detail.metaText ? `<span class="work-team-calendar-utility-detail-meta">${escapeHtml(detail.metaText)}</span>` : ''}
-                                                    </div>
-                                                `).join('')}
-                                            </div>
-                                        ` : `
-                                            <div class="work-team-calendar-production-meta">${escapeHtml(item.metaText || '')}</div>
-                                        `}
+                    if (utilityPopupMetric === 'work') {
+                        const workPopupMonthLabel = utilityBreakdown.monthLabel || formatWorkTeamCalendarMonthOptionLabel(monthKey);
+                        const workPopupHistoryHtml = renderWorkTeamCalendarGroupedHistoryHtml(dataKey, monthDateKeys);
+                        utilityPopupHtml = `
+                            <div class="work-team-calendar-overlay-layer">
+                                <button type="button" class="work-team-calendar-overlay-backdrop" onclick="closeWorkTeamCalendarUtilityPopup()" aria-label="작업내역 팝업 닫기"></button>
+                                <div class="work-team-calendar-editor is-floating is-utility-popup" data-work-team-editor>
+                                    <div class="work-team-calendar-editor-head">
+                                        <div class="work-team-calendar-editor-handle" data-work-team-editor-handle>
+                                            <div class="work-team-calendar-editor-title">작업내역</div>
+                                            <div class="work-team-calendar-editor-sub">${escapeHtml(workPopupMonthLabel + ' 정리')}</div>
+                                        </div>
+                                        <div class="work-team-calendar-editor-actions">
+                                            <span class="work-team-calendar-editor-count">${escapeHtml(utilitySummary.workEntryCountText || '0건')}</span>
+                                            <button type="button" class="work-team-calendar-editor-btn" onclick="closeWorkTeamCalendarUtilityPopup()" aria-label="작업내역 팝업 닫기"><i class="fas fa-xmark"></i>닫기</button>
+                                        </div>
                                     </div>
-                                    ${hasDetailRows ? '' : `<div class="work-team-calendar-production-amount">${escapeHtml(item.valueText || '-')}</div>`}
-                                </div>
-                            `;
-                        }).join('')
-                        : `<div class="work-team-calendar-production-empty">조회 가능한 데이터가 없습니다.</div>`;
-                    utilityPopupHtml = `
-                        <div class="work-team-calendar-overlay-layer">
-                            <button type="button" class="work-team-calendar-overlay-backdrop" onclick="closeWorkTeamCalendarUtilityPopup()" aria-label="유틸리티 팝업 닫기"></button>
-                            <div class="work-team-calendar-editor is-floating is-utility-popup" data-work-team-editor>
-                                <div class="work-team-calendar-editor-head">
-                                    <div class="work-team-calendar-editor-handle" data-work-team-editor-handle>
-                                        <div class="work-team-calendar-editor-title">${escapeHtml(utilityPopupTitle)}</div>
-                                        <div class="work-team-calendar-editor-sub">${escapeHtml((utilityBreakdown.monthLabel || formatWorkTeamCalendarMonthOptionLabel(monthKey)) + ' 상세')}</div>
-                                    </div>
-                                    <div class="work-team-calendar-editor-actions">
-                                        <span class="work-team-calendar-editor-count">${escapeHtml(`${formatUtilNumber(utilityPopupItems.length, 0)}개`)}</span>
-                                        <button type="button" class="work-team-calendar-editor-btn" onclick="closeWorkTeamCalendarUtilityPopup()" aria-label="유틸리티 팝업 닫기"><i class="fas fa-xmark"></i>닫기</button>
+                                    <div class="work-team-calendar-field">
+                                        <div class="work-team-calendar-field-head">
+                                            <span class="work-team-calendar-field-label">월간 작업내역</span>
+                                        </div>
+                                        <div class="work-team-calendar-utility-popup-total">
+                                            <span class="work-team-calendar-utility-popup-total-value">${escapeHtml(utilitySummary.workEntryCountText || '0건')}</span>
+                                            <span class="work-team-calendar-utility-popup-total-meta">${escapeHtml(`비용 ${utilitySummary.workCostText || '-'}`)}</span>
+                                        </div>
+                                        ${workPopupHistoryHtml || '<div class="work-team-calendar-production-empty">조회 가능한 작업내역이 없습니다.</div>'}
                                     </div>
                                 </div>
-                                <div class="work-team-calendar-field">
-                                    <div class="work-team-calendar-field-head">
-                                        <span class="work-team-calendar-field-label">${escapeHtml(utilityPopupTitle)} 상세</span>
+                            </div>
+                        `;
+                    } else {
+                        const utilityPopupItems = (utilityPopupMetric === 'electric'
+                            ? (utilityBreakdown.electric || [])
+                            : (utilityBreakdown.gas || []))
+                            .filter(item => {
+                                const detailRows = Array.isArray(item?.detailRows) ? item.detailRows.filter(detail => String(detail?.valueText || '').trim()) : [];
+                                if (detailRows.length) return true;
+                                return String(item?.valueText || '').trim() && String(item?.valueText || '').trim() !== '-';
+                            });
+                        const utilityPopupTitle = utilityPopupMetric === 'electric' ? '전기 사용량' : '가스 사용량';
+                        const utilityPopupValue = utilityPopupMetric === 'electric'
+                            ? (utilitySummary.electric?.usageText || '-')
+                            : (utilitySummary.gas?.usageText || '-');
+                        const utilityPopupCost = utilityPopupMetric === 'electric'
+                            ? (utilitySummary.electric?.costText || '-')
+                            : (utilitySummary.gas?.costText || '-');
+                        const utilityPopupModeChoices = '';
+                        const utilityPopupRowsHtml = utilityPopupItems.length
+                            ? utilityPopupItems.map(item => {
+                                const detailRows = Array.isArray(item?.detailRows)
+                                    ? item.detailRows.filter(detail => String(detail?.valueText || '').trim())
+                                    : [];
+                                const hasDetailRows = detailRows.length > 0;
+                                return `
+                                    <div class="work-team-calendar-production-item${hasDetailRows ? ' is-utility-detail-card' : ''}">
+                                        <div class="work-team-calendar-production-main">
+                                            <div class="work-team-calendar-production-name">${escapeHtml(item.teamLabel || 'Unknown')}</div>
+                                            ${hasDetailRows ? `
+                                                <div class="work-team-calendar-utility-detail-list">
+                                                    ${detailRows.map(detail => `
+                                                        <div class="work-team-calendar-utility-detail-row">
+                                                            <span class="work-team-calendar-utility-detail-label">${escapeHtml(detail.label || '')}</span>
+                                                            <span class="work-team-calendar-utility-detail-value">${escapeHtml(detail.valueText || '-')}</span>
+                                                            ${detail.metaText ? `<span class="work-team-calendar-utility-detail-meta">${escapeHtml(detail.metaText)}</span>` : ''}
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                            ` : `
+                                                <div class="work-team-calendar-production-meta">${escapeHtml(item.metaText || '')}</div>
+                                            `}
+                                        </div>
+                                        ${hasDetailRows ? '' : `<div class="work-team-calendar-production-amount">${escapeHtml(item.valueText || '-')}</div>`}
                                     </div>
-                                    ${utilityPopupModeChoices}
-                                    <div class="work-team-calendar-utility-popup-total">
-                                        <span class="work-team-calendar-utility-popup-total-value">${escapeHtml(utilityPopupValue)}</span>
-                                        <span class="work-team-calendar-utility-popup-total-meta">${escapeHtml(`비용 ${utilityPopupCost}`)}</span>
+                                `;
+                            }).join('')
+                            : `<div class="work-team-calendar-production-empty">조회 가능한 데이터가 없습니다.</div>`;
+                        utilityPopupHtml = `
+                            <div class="work-team-calendar-overlay-layer">
+                                <button type="button" class="work-team-calendar-overlay-backdrop" onclick="closeWorkTeamCalendarUtilityPopup()" aria-label="유틸리티 팝업 닫기"></button>
+                                <div class="work-team-calendar-editor is-floating is-utility-popup" data-work-team-editor>
+                                    <div class="work-team-calendar-editor-head">
+                                        <div class="work-team-calendar-editor-handle" data-work-team-editor-handle>
+                                            <div class="work-team-calendar-editor-title">${escapeHtml(utilityPopupTitle)}</div>
+                                            <div class="work-team-calendar-editor-sub">${escapeHtml((utilityBreakdown.monthLabel || formatWorkTeamCalendarMonthOptionLabel(monthKey)) + ' 상세')}</div>
+                                        </div>
+                                        <div class="work-team-calendar-editor-actions">
+                                            <span class="work-team-calendar-editor-count">${escapeHtml(`${formatUtilNumber(utilityPopupItems.length, 0)}개`)}</span>
+                                            <button type="button" class="work-team-calendar-editor-btn" onclick="closeWorkTeamCalendarUtilityPopup()" aria-label="유틸리티 팝업 닫기"><i class="fas fa-xmark"></i>닫기</button>
+                                        </div>
                                     </div>
-                                    <div class="work-team-calendar-team-groups">
-                                        <div class="work-team-calendar-team-group">
-                                            <div class="work-team-calendar-team-group-head">
-                                                <div class="work-team-calendar-team-group-title">${escapeHtml(utilityPopupTitle)}</div>
-                                                <div class="work-team-calendar-team-group-meta">${escapeHtml((utilityBreakdown.monthLabel || formatWorkTeamCalendarMonthOptionLabel(monthKey)) + ' 합계')}</div>
+                                    <div class="work-team-calendar-field">
+                                        <div class="work-team-calendar-field-head">
+                                            <span class="work-team-calendar-field-label">${escapeHtml(utilityPopupTitle)} 상세</span>
+                                        </div>
+                                        ${utilityPopupModeChoices}
+                                        <div class="work-team-calendar-utility-popup-total">
+                                            <span class="work-team-calendar-utility-popup-total-value">${escapeHtml(utilityPopupValue)}</span>
+                                            <span class="work-team-calendar-utility-popup-total-meta">${escapeHtml(`비용 ${utilityPopupCost}`)}</span>
+                                        </div>
+                                        <div class="work-team-calendar-team-groups">
+                                            <div class="work-team-calendar-team-group">
+                                                <div class="work-team-calendar-team-group-head">
+                                                    <div class="work-team-calendar-team-group-title">${escapeHtml(utilityPopupTitle)}</div>
+                                                    <div class="work-team-calendar-team-group-meta">${escapeHtml((utilityBreakdown.monthLabel || formatWorkTeamCalendarMonthOptionLabel(monthKey)) + ' 합계')}</div>
+                                                </div>
+                                                <div class="work-team-calendar-production-list">${utilityPopupRowsHtml}</div>
                                             </div>
-                                            <div class="work-team-calendar-production-list">${utilityPopupRowsHtml}</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    }
                 }
+            }
+            if (!isOverviewSummary && hasUtilityPopup && utilityPopupMetric === 'work') {
+                const workPopupMonthLabel = formatWorkTeamCalendarMonthOptionLabel(monthKey);
+                const workPopupHistoryHtml = renderWorkTeamCalendarGroupedHistoryHtml(dataKey, monthDateKeys);
+                utilityPopupHtml = `
+                    <div class="work-team-calendar-overlay-layer">
+                        <button type="button" class="work-team-calendar-overlay-backdrop" onclick="closeWorkTeamCalendarUtilityPopup()" aria-label="작업내역 팝업 닫기"></button>
+                        <div class="work-team-calendar-editor is-floating is-utility-popup" data-work-team-editor>
+                            <div class="work-team-calendar-editor-head">
+                                <div class="work-team-calendar-editor-handle" data-work-team-editor-handle>
+                                    <div class="work-team-calendar-editor-title">${escapeHtml((category.title || '팀') + ' 작업내역')}</div>
+                                    <div class="work-team-calendar-editor-sub">${escapeHtml(workPopupMonthLabel + ' 정리')}</div>
+                                </div>
+                                <div class="work-team-calendar-editor-actions">
+                                    <span class="work-team-calendar-editor-count">${escapeHtml(utilitySummary.workEntryCountText || '0건')}</span>
+                                    <button type="button" class="work-team-calendar-editor-btn" onclick="closeWorkTeamCalendarUtilityPopup()" aria-label="작업내역 팝업 닫기"><i class="fas fa-xmark"></i>닫기</button>
+                                </div>
+                            </div>
+                            <div class="work-team-calendar-field">
+                                <div class="work-team-calendar-field-head">
+                                    <span class="work-team-calendar-field-label">월간 작업내역</span>
+                                </div>
+                                <div class="work-team-calendar-utility-popup-total">
+                                    <span class="work-team-calendar-utility-popup-total-value">${escapeHtml(utilitySummary.workEntryCountText || '0건')}</span>
+                                    <span class="work-team-calendar-utility-popup-total-meta">${escapeHtml(`비용 ${utilitySummary.workCostText || '-'}`)}</span>
+                                </div>
+                                ${workPopupHistoryHtml || '<div class="work-team-calendar-production-empty">조회 가능한 작업내역이 없습니다.</div>'}
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
             function buildWorkTeamCalendarHistoryCueHtml(count, kpiCount) {
                 const historyCount = Number(count || 0);
@@ -775,7 +868,7 @@
                         flagParts.push(`<span class="work-team-calendar-day-flag">오늘</span>`);
                     }
                     if (historyHasKpi) {
-                        const kpiFlagLabel = historyKpiCount > 1 ? `★KPI ${formatUtilNumber(historyKpiCount, 0)}` : '★KPI';
+                        const kpiFlagLabel = historyKpiCount > 1 ? `${historyKpiPillLabel} ${formatUtilNumber(historyKpiCount, 0)}` : historyKpiPillLabel;
                         flagParts.push(`<span class="work-team-calendar-day-flag is-kpi">${escapeHtml(kpiFlagLabel)}</span>`);
                     }
                 }

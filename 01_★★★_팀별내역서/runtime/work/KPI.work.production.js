@@ -4,15 +4,51 @@
             return String(dataKey || '').trim() === WORK_TEAM_CALENDAR_OVERVIEW_KEY;
         }
 
-        function getWorkTeamCalendarSourceCategories(dataKey) {
-            const categories = typeof getWorkTeamCalendarCategories === 'function'
-                ? getWorkTeamCalendarCategories()
-                : [];
-            if (isWorkTeamCalendarOverview(dataKey)) {
-                return categories.filter(category => category?.view === 'team_calendar' && !isWorkTeamCalendarOverview(category?.dataKey));
+        function shouldWorkTeamCalendarIncludeWasteSummary(dataKey) {
+            const normalized = String(dataKey || '').trim();
+            return normalized === WORK_TEAM_CALENDAR_OVERVIEW_KEY
+                || normalized === 'work_team_calendar_team4'
+                || normalized === 'work_team_calendar_group_bukjeong'
+                || normalized === 'work_team_calendar_group_yusan';
+        }
+
+        function getWorkTeamCalendarWasteSiteLabels(dataKey) {
+            const normalized = String(dataKey || '').trim();
+            if (!normalized) return [];
+            if (normalized === 'work_team_calendar_team4') {
+                return ['유산', '북정'];
             }
-            const category = getWorkTeamCalendarCategory(dataKey);
-            return category ? [category] : [];
+            const labels = [];
+            const seen = new Set();
+            getWorkTeamCalendarSourceCategories(dataKey).forEach(category => {
+                const sourceKey = String(category?.dataKey || '').trim();
+                let siteLabel = '';
+                if (sourceKey === 'work_team_calendar_team1_part1') {
+                    siteLabel = '북정';
+                } else if (
+                    sourceKey === 'work_team_calendar_team1_part2'
+                    || sourceKey === 'work_team_calendar_team2'
+                    || sourceKey === 'work_team_calendar_team3'
+                ) {
+                    siteLabel = '유산';
+                }
+                if (!siteLabel || seen.has(siteLabel)) return;
+                seen.add(siteLabel);
+                labels.push(siteLabel);
+            });
+            return labels;
+        }
+
+        function getWorkTeamCalendarSourceCategories(dataKey) {
+            const rawCategories = typeof getWorkTeamCalendarRawCategoryList === 'function'
+                ? getWorkTeamCalendarRawCategoryList()
+                : [];
+            const sourceDataKeys = typeof resolveWorkTeamCalendarSourceDataKeys === 'function'
+                ? resolveWorkTeamCalendarSourceDataKeys(dataKey)
+                : [String(dataKey || '').trim()];
+            return sourceDataKeys
+                .map(sourceDataKey => rawCategories.find(category => String(category?.dataKey || '').trim() === sourceDataKey) || null)
+                .filter(Boolean);
         }
 
         function getWorkTeamCalendarProductionSourceTeams(dataKey) {
@@ -351,8 +387,8 @@
             };
         }
 
-        function buildWorkTeamCalendarWasteMonthSummary(yearValue, monthValue) {
-            const siteLabels = ['유산', '북정'];
+        function buildWorkTeamCalendarWasteMonthSummary(dataKey, yearValue, monthValue) {
+            const siteLabels = getWorkTeamCalendarWasteSiteLabels(dataKey);
             let usageTotal = 0;
             let costTotal = 0;
             let hasUsage = false;
@@ -372,7 +408,9 @@
                 }
             });
             return {
-                usageText: hasUsage ? `총 ${formatUtilNumber(usageTotal, 0)}㎥` : '-',
+                usageText: hasUsage
+                    ? `${siteLabels.length > 1 ? '총 ' : ''}${formatUtilNumber(usageTotal, 0)}㎥`
+                    : '-',
                 costText: hasCost ? formatWorkTeamCalendarUtilityCostLabel(costTotal) : '-'
             };
         }
@@ -468,10 +506,14 @@
 
         function isWorkTeamCalendarHistoryKpi(record) {
             const history = getWorkTeamCalendarHistoryModule();
+            if (typeof history?.isImportantRecord === 'function') {
+                return history.isImportantRecord(record);
+            }
             if (typeof history?.isKpiRecord === 'function') {
                 return history.isKpiRecord(record);
             }
-            return String(record?.category || '').trim() === 'KPI';
+            return String(record?.category || '').trim() === 'KPI'
+                || String(record?.categoryGroup || record?.categoryType || '').trim() === 'report';
         }
 
         function normalizeWorkTeamCalendarHistoryCategory(record) {
@@ -484,12 +526,19 @@
 
         function getWorkTeamCalendarHistoryTagLabels(record) {
             const history = getWorkTeamCalendarHistoryModule();
-            if (typeof history?.getRecordTagLabels === 'function') {
-                return history.getRecordTagLabels(record);
-            }
             const labels = [];
+            const importantFlagLabel = history?.IMPORTANT_FLAG_LABEL || history?.KPI_FLAG_LABEL || '★';
+            const kpiFlagLabel = history?.KPI_FLAG_LABEL || '★';
             if (isWorkTeamCalendarHistoryKpi(record)) {
-                labels.push('KPI');
+                labels.push(importantFlagLabel);
+            }
+            if (typeof history?.getRecordTagLabels === 'function') {
+                return labels.concat(
+                    history.getRecordTagLabels(record).filter((label) => {
+                        const normalizedLabel = String(label || '').trim();
+                        return normalizedLabel !== kpiFlagLabel && normalizedLabel !== importantFlagLabel;
+                    })
+                );
             }
             const category = normalizeWorkTeamCalendarHistoryCategory(record);
             if (category) {
@@ -515,9 +564,11 @@
 
         function getWorkTeamCalendarHistoryTeamRecords(dataKey) {
             const payload = getWorkTeamCalendarHistoryPayload();
-            const sourceTeamKeys = isWorkTeamCalendarOverview(dataKey)
-                ? getWorkTeamCalendarHistoryTeamOrder()
-                : [getWorkTeamCalendarHistoryTeamKey(dataKey)].filter(Boolean);
+            const sourceTeamKeys = (typeof resolveWorkTeamCalendarSourceDataKeys === 'function'
+                ? resolveWorkTeamCalendarSourceDataKeys(dataKey)
+                : [String(dataKey || '').trim()])
+                .map(sourceDataKey => getWorkTeamCalendarHistoryTeamKey(sourceDataKey))
+                .filter(Boolean);
             if (!sourceTeamKeys.length) return [];
             return sourceTeamKeys
                 .flatMap(teamKey => {
@@ -604,11 +655,12 @@
 
         function getWorkTeamCalendarHistoryRecordTitle(record) {
             const view = getWorkTeamCalendarHistoryView();
+            const history = getWorkTeamCalendarHistoryModule();
             if (typeof view?.getRecordSummaryTitle === 'function') {
                 return view.getRecordSummaryTitle(record);
             }
             const categoryText = normalizeWorkTeamCalendarHistoryCategory(record);
-            const kpiPrefix = isWorkTeamCalendarHistoryKpi(record) ? 'KPI · ' : '';
+            const kpiPrefix = isWorkTeamCalendarHistoryKpi(record) ? `${history?.IMPORTANT_FLAG_LABEL || history?.KPI_FLAG_LABEL || '★'} · ` : '';
             const workTitle = String(record?.workContent || '')
                 .split(/\r?\n/)
                 .map(line => String(line || '').trim())
@@ -653,6 +705,21 @@
             const monthDateKeys = getWorkTeamCalendarHistoryMonthDateKeys(monthKey);
             if (!dataKey || !monthDateKeys.length) return 0;
             return getWorkTeamCalendarHistoryRecordsForDates(dataKey, monthDateKeys).length;
+        }
+
+        function getWorkTeamCalendarMonthImportantEntryCount(dataKey, monthKey) {
+            const monthDateKeys = getWorkTeamCalendarHistoryMonthDateKeys(monthKey);
+            if (!dataKey || !monthDateKeys.length) return 0;
+            return getWorkTeamCalendarHistoryRecordsForDates(dataKey, monthDateKeys)
+                .filter(record => isWorkTeamCalendarHistoryKpi(record))
+                .length;
+        }
+
+        function formatWorkTeamCalendarMonthEntryText(dataKey, monthKey) {
+            const count = getWorkTeamCalendarMonthEntryCount(dataKey, monthKey);
+            const importantCount = getWorkTeamCalendarMonthImportantEntryCount(dataKey, monthKey);
+            const starsText = importantCount > 0 ? ` ${'★'.repeat(importantCount)}` : '';
+            return `${formatUtilNumber(count, 0)}건${starsText}`;
         }
 
         function getWorkTeamCalendarHistoryCostSummary(records) {
@@ -702,9 +769,9 @@
             if (String(dataKey || '').trim() === 'work_team_calendar_team4') {
                 const workEntryCostSummary = getWorkTeamCalendarMonthEntryCostSummary(dataKey, monthKey);
                 return {
-                    waste: buildWorkTeamCalendarWasteMonthSummary(parsed.year, parsed.monthIndex + 1),
+                    waste: buildWorkTeamCalendarWasteMonthSummary(dataKey, parsed.year, parsed.monthIndex + 1),
                     workEntryLabel: '작업내역',
-                    workEntryCountText: `${formatUtilNumber(getWorkTeamCalendarMonthEntryCount(dataKey, monthKey), 0)}건`,
+                        workEntryCountText: formatWorkTeamCalendarMonthEntryText(dataKey, monthKey),
                     workCostText: workEntryCostSummary.costText
                 };
             }
@@ -716,7 +783,7 @@
                 electric: buildWorkTeamCalendarElectricMonthSummary(electricTeamNames, parsed.year, parsed.monthIndex + 1),
                 gas: buildWorkTeamCalendarGasMonthSummary(gasTeamNames, parsed.year, parsed.monthIndex + 1, getWorkTeamCalendarGasMode(dataKey)),
                 production: productionMonthSummary,
-                workEntryCountText: `${formatUtilNumber(getWorkTeamCalendarMonthEntryCount(dataKey, monthKey), 0)}건`,
+                workEntryCountText: formatWorkTeamCalendarMonthEntryText(dataKey, monthKey),
                 workCostText: workEntryCostSummary.costText
             };
         }
@@ -731,8 +798,19 @@
 
         function buildWorkTeamCalendarHistoryCompactCard(record) {
             const view = getWorkTeamCalendarHistoryView();
+            const history = getWorkTeamCalendarHistoryModule();
+            const importantFlagLabel = history?.IMPORTANT_FLAG_LABEL || history?.KPI_FLAG_LABEL || '★';
+            const importantPillLabel = history?.IMPORTANT_FLAG_PILL_LABEL || history?.KPI_FLAG_PILL_LABEL || '★';
+            const hasImportant = isWorkTeamCalendarHistoryKpi(record);
+            const tagItems = getWorkTeamCalendarHistoryTagLabels(record);
             if (typeof view?.buildCompactRecordCard === 'function') {
-                return view.buildCompactRecordCard(record, { kpiLabel: '★ KPI' });
+                return view.buildCompactRecordCard(record, {
+                    importantFlagLabel,
+                    importantPillLabel,
+                    kpiLabel: importantPillLabel,
+                    tagItems,
+                    isImportant: hasImportant
+                });
             }
             const teamKey = record?.team || record?._team || '';
             const teamInfo = getWorkTeamCalendarHistoryTeamInfo(teamKey);
@@ -744,10 +822,10 @@
                 .find(Boolean) || '';
             const metaItems = [
                 teamInfo?.name || '',
-                ...getWorkTeamCalendarHistoryTagLabels(record)
+                ...tagItems
             ].filter(Boolean);
             return `
-                <div class="work-team-calendar-work-card is-history-compact ${escapeHtml(teamInfo.class || '')}">
+                <div class="work-team-calendar-work-card is-history-compact ${hasImportant ? 'is-important ' : ''}${escapeHtml(teamInfo.class || '')}">
                     <div class="work-team-calendar-work-head">
                         <div class="work-team-calendar-work-date">${escapeHtml(formatWorkTeamCalendarHistoryDateRange(record?.startDate, record?.endDate))}</div>
                         <span class="work-team-calendar-work-cost">${escapeHtml(costText)}</span>
@@ -755,9 +833,9 @@
                     ${metaItems.length ? `
                         <div class="work-team-calendar-work-meta">
                             ${metaItems.map(item => {
-                                const isKpi = String(item || '').trim() === 'KPI';
-                                const label = isKpi ? '★ KPI' : item;
-                                return `<span class="work-team-calendar-work-pill ${isKpi ? 'is-kpi' : ''}">${escapeHtml(label)}</span>`;
+                                const isImportant = String(item || '').trim() === importantFlagLabel;
+                                const label = isImportant ? importantPillLabel : item;
+                                return `<span class="work-team-calendar-work-pill ${isImportant ? 'is-kpi' : ''}">${escapeHtml(label)}</span>`;
                             }).join('')}
                         </div>
                     ` : ''}
@@ -780,10 +858,13 @@
 
         function getWorkTeamCalendarUtilitySummary(dataKey, monthKey) {
             const parsed = parseMonthKey(monthKey);
+            const normalizedDataKey = String(dataKey || '').trim();
             const emptyGas = { usageText: '-', costText: '-', detailRows: [], availableModes: [], canSelect: false, mode: getWorkTeamCalendarGasMode(dataKey) };
             const emptyWaste = { usageText: '-', costText: '-' };
+            const includeWasteSummary = shouldWorkTeamCalendarIncludeWasteSummary(normalizedDataKey);
+            const isWasteOnlySummary = normalizedDataKey === 'work_team_calendar_team4';
             if (!parsed) {
-                if (isWorkTeamCalendarOverview(dataKey)) {
+                if (includeWasteSummary && !isWasteOnlySummary) {
                     return {
                         electric: { usageText: '-', costText: '-' },
                         gas: emptyGas,
@@ -793,7 +874,7 @@
                         workCostText: '-'
                     };
                 }
-                if (String(dataKey || '').trim() === 'work_team_calendar_team4') {
+                if (isWasteOnlySummary) {
                     return {
                         waste: emptyWaste,
                         workEntryLabel: '작업내역',
@@ -808,7 +889,7 @@
                     workCostText: '-'
                 };
             }
-            if (isWorkTeamCalendarOverview(dataKey)) {
+            if (includeWasteSummary && !isWasteOnlySummary) {
                 const workEntryCostSummary = getWorkTeamCalendarMonthEntryCostSummary(dataKey, monthKey);
                 return {
                     electric: buildWorkTeamCalendarElectricMonthSummary(
@@ -822,18 +903,18 @@
                         parsed.monthIndex + 1,
                         'all'
                     ),
-                    waste: buildWorkTeamCalendarWasteMonthSummary(parsed.year, parsed.monthIndex + 1),
+                    waste: buildWorkTeamCalendarWasteMonthSummary(dataKey, parsed.year, parsed.monthIndex + 1),
                     production: buildWorkTeamCalendarProductionMonthSummary(dataKey, monthKey),
-                    workEntryCountText: `${formatUtilNumber(getWorkTeamCalendarMonthEntryCount(dataKey, monthKey), 0)}건`,
+                        workEntryCountText: formatWorkTeamCalendarMonthEntryText(dataKey, monthKey),
                     workCostText: workEntryCostSummary.costText
                 };
             }
-            if (String(dataKey || '').trim() === 'work_team_calendar_team4') {
+            if (isWasteOnlySummary) {
                 const workEntryCostSummary = getWorkTeamCalendarMonthEntryCostSummary(dataKey, monthKey);
                 return {
-                    waste: buildWorkTeamCalendarWasteMonthSummary(parsed.year, parsed.monthIndex + 1),
+                    waste: buildWorkTeamCalendarWasteMonthSummary(dataKey, parsed.year, parsed.monthIndex + 1),
                     workEntryLabel: '작업내역',
-                    workEntryCountText: `${formatUtilNumber(getWorkTeamCalendarMonthEntryCount(dataKey, monthKey), 0)}건`,
+                    workEntryCountText: formatWorkTeamCalendarMonthEntryText(dataKey, monthKey),
                     workCostText: workEntryCostSummary.costText
                 };
             }
@@ -845,7 +926,7 @@
                 electric: buildWorkTeamCalendarElectricMonthSummary(electricTeamNames, parsed.year, parsed.monthIndex + 1),
                 gas: buildWorkTeamCalendarGasMonthSummary(gasTeamNames, parsed.year, parsed.monthIndex + 1, getWorkTeamCalendarGasMode(dataKey)),
                 production: productionMonthSummary,
-                workEntryCountText: `${formatUtilNumber(getWorkTeamCalendarMonthEntryCount(dataKey, monthKey), 0)}건`,
+                workEntryCountText: formatWorkTeamCalendarMonthEntryText(dataKey, monthKey),
                 workCostText: workEntryCostSummary.costText
             };
         }
@@ -991,7 +1072,7 @@
                 const teamLabel = String(category?.title || '').trim();
                 if (!teamLabel) return;
                 if (String(category?.dataKey || '').trim() === 'work_team_calendar_team4') {
-                    const wasteSummary = buildWorkTeamCalendarWasteMonthSummary(parsed.year, parsed.monthIndex + 1);
+                    const wasteSummary = buildWorkTeamCalendarWasteMonthSummary(category.dataKey, parsed.year, parsed.monthIndex + 1);
                     sections.waste.push({
                         teamLabel,
                         valueText: wasteSummary.usageText || '-',

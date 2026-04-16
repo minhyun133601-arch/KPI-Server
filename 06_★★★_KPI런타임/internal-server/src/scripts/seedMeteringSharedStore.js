@@ -1,9 +1,31 @@
-console.error(
-  [
-    '[kpi] seedMeteringSharedStore.js is retired.',
-    '[kpi] Metering shared-store authority is DB-only now.',
-    '[kpi] Use DB backup/restore or an explicit migration instead of JS preset files.'
-  ].join('\n')
-);
+import { closePool } from '../db/pool.js';
+import { seedMeteringSharedStore } from '../lib/local-db-baseline.js';
 
-process.exitCode = 1;
+function hasDryRunFlag(argv = []) {
+  return (Array.isArray(argv) ? argv : []).some((value) => String(value || '').trim() === '--dry-run');
+}
+
+async function main() {
+  const result = await seedMeteringSharedStore({
+    dryRun: hasDryRunFlag(process.argv.slice(2))
+  });
+  console.log(JSON.stringify(result, null, 2));
+}
+
+main()
+  .catch((error) => {
+    console.error(
+      JSON.stringify(
+        {
+          ok: false,
+          error: error.message
+        },
+        null,
+        2
+      )
+    );
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await closePool().catch(() => {});
+  });

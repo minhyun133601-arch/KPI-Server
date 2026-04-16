@@ -1,6 +1,6 @@
-
+﻿
         // ----------------------------------------------------------------
-        // [유틸리티 데이터] - 전기
+        // 유틸리티 데이터 - 전기
         // ----------------------------------------------------------------
         const UTIL_ELECTRIC_DATA = (window.PortalData && window.PortalData.util_electric_data && window.PortalData.util_electric_data.teams)
             ? window.PortalData.util_electric_data.teams
@@ -24,6 +24,14 @@
             lastSignature: ''
         };
         const UtilGasMeteringSyncState = {
+            bootstrapped: false,
+            timerId: 0,
+            syncPromise: null,
+            pending: false,
+            forceNext: false,
+            lastSignature: ''
+        };
+        const UtilWasteMeteringSyncState = {
             bootstrapped: false,
             timerId: 0,
             syncPromise: null,
@@ -91,6 +99,14 @@
             return numeric;
         }
 
+        function cloneUtilDatasetValue(value) {
+            try {
+                return JSON.parse(JSON.stringify(value ?? null));
+            } catch (error) {
+                return value ?? null;
+            }
+        }
+
         function setUtilMetricValue(row, key, value) {
             if (!row) return false;
             const nextValue = normalizeUtilMetricValue(value);
@@ -129,11 +145,6 @@
             let changed = false;
             if (!snapshot || typeof snapshot !== 'object' || !snapshot.teams) return false;
 
-            if (hasUtilMeteringSnapshotData(snapshot) && UTIL_ELECTRIC_DATA.length) {
-                UTIL_ELECTRIC_DATA.length = 0;
-                changed = true;
-            }
-
             Object.entries(UTIL_ELECTRIC_METERING_TEAM_MAP).forEach(([teamName, teamKey]) => {
                 const teamSnapshot = snapshot.teams?.[teamKey];
                 if (!teamSnapshot || typeof teamSnapshot !== 'object') return;
@@ -160,10 +171,9 @@
                 changed = recalculateUtilYearSummaryRows(yearNode.rows) || changed;
             });
 
-            syncUtilDatasetPortalData(
-                'util_electric_data',
-                buildUtilDatasetServerPayload('util_electric_data', UTIL_ELECTRIC_DATA)
-            );
+            if (window.PortalData?.util_electric_data) {
+                window.PortalData.util_electric_data.teams = UTIL_ELECTRIC_DATA;
+            }
             return changed;
         }
 
@@ -186,10 +196,6 @@
 
                 if (changed) {
                     rebuildUtilEntryCollections();
-                    await queueUtilDatasetServerWrite(
-                        'util_electric_data',
-                        buildUtilDatasetServerPayload('util_electric_data', UTIL_ELECTRIC_DATA)
-                    );
                 }
 
                 return changed;
@@ -251,7 +257,8 @@
         const UTIL_WASTE_DATA = (window.PortalData && window.PortalData.util_wastewater_data && window.PortalData.util_wastewater_data.teams)
             ? window.PortalData.util_wastewater_data.teams
             : createUtilTeamData(['유산', '북정']);
-        const DEFAULT_UTIL_PRODUCTION_PERIOD = { startDay: 15 };
+        const UTIL_WASTE_DATA_BASELINE = cloneUtilDatasetValue(UTIL_WASTE_DATA);
+        const DEFAULT_UTIL_PRODUCTION_PERIOD = { startDay: 1 };
         const UTIL_PRODUCTION_STORAGE_KEY = 'utildata:util_production_daily';
         const UTIL_PRODUCTION_RESET_MARKER_KEY = 'utildata:util_production_daily_reset_marker';
         const UTIL_PRODUCTION_RESET_MARKER_VALUE = '2026-02-27-reset-production-all-clear-v2-file-linked-only';
@@ -264,7 +271,6 @@
             writeChain: Promise.resolve(),
             lastErrorMessage: ''
         };
-        const utilDatasetServerPersistenceState = Object.create(null);
 
         function isUtilPlainObject(value) {
             return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -274,149 +280,6 @@
             return isUtilPlainObject(window.__KPI_SERVER_RUNTIME_CONFIG__)
                 ? window.__KPI_SERVER_RUNTIME_CONFIG__
                 : {};
-        }
-
-        function getUtilDatasetServerRuntimeConfig(dataKey) {
-            const runtimeConfig = getKpiServerRuntimeConfig();
-            const utilData = isUtilPlainObject(runtimeConfig.utilData)
-                ? runtimeConfig.utilData
-                : {};
-            const records = isUtilPlainObject(utilData.records)
-                ? utilData.records
-                : {};
-            const record = isUtilPlainObject(records[dataKey])
-                ? records[dataKey]
-                : {};
-            const apiBaseRaw = String(record.apiBase || utilData.apiBase || runtimeConfig.apiBase || '/api').trim();
-            const apiBase = apiBaseRaw.startsWith('/') ? apiBaseRaw : `/${apiBaseRaw.replace(/^\/+/, '')}`;
-            return {
-                enabled: Boolean(utilData.enabled),
-                apiBase,
-                moduleKey: String(record.moduleKey || utilData.moduleKey || 'portal_data').trim() || 'portal_data',
-                recordKey: String(record.recordKey || dataKey).trim() || String(dataKey || '').trim(),
-                permissionKey: String(record.permissionKey || '').trim(),
-                readEnabled: Boolean(record.readEnabled),
-                writeEnabled: Boolean(record.writeEnabled)
-            };
-        }
-
-        function supportsUtilDatasetServerPersistence(dataKey) {
-            const config = getUtilDatasetServerRuntimeConfig(dataKey);
-            return Boolean(window.KpiRuntime?.hasServerAuthority?.())
-                && Boolean(config.enabled)
-                && Boolean(config.writeEnabled)
-                && typeof window.fetch === 'function';
-        }
-
-        function buildUtilDatasetServerRecordEndpoint(dataKey) {
-            const config = getUtilDatasetServerRuntimeConfig(dataKey);
-            return `${config.apiBase.replace(/\/+$/, '')}/modules/${encodeURIComponent(config.moduleKey)}/records/${encodeURIComponent(config.recordKey)}`;
-        }
-
-        function cloneUtilDatasetPayload(value) {
-            try {
-                return JSON.parse(JSON.stringify(value ?? null));
-            } catch (error) {
-                return value ?? null;
-            }
-        }
-
-        function syncUtilDatasetPortalData(dataKey, payload) {
-            window.PortalData = window.PortalData || {};
-            window.PortalData[dataKey] = cloneUtilDatasetPayload(payload);
-        }
-
-        function buildUtilDatasetServerPayload(dataKey, teams) {
-            const currentPayload = isUtilPlainObject(window.PortalData?.[dataKey])
-                ? window.PortalData[dataKey]
-                : {};
-            const currentMeta = isUtilPlainObject(currentPayload.meta)
-                ? currentPayload.meta
-                : {};
-            const fallbackModuleKey = String(dataKey || '').replace(/_data$/i, '').trim() || String(dataKey || '').trim();
-
-            return {
-                ...cloneUtilDatasetPayload(currentPayload),
-                meta: {
-                    moduleKey: String(currentMeta.moduleKey || fallbackModuleKey).trim() || fallbackModuleKey,
-                    moduleName: String(currentMeta.moduleName || fallbackModuleKey).trim() || fallbackModuleKey,
-                    version: Number.isFinite(Number(currentMeta.version)) ? Number(currentMeta.version) : 1,
-                    updatedAt: new Date().toISOString()
-                },
-                teams: cloneUtilDatasetPayload(Array.isArray(teams) ? teams : [])
-            };
-        }
-
-        async function writeUtilDatasetStateToServer(dataKey, payload) {
-            if (!supportsUtilDatasetServerPersistence(dataKey)) {
-                return false;
-            }
-
-            const config = getUtilDatasetServerRuntimeConfig(dataKey);
-            const response = await window.fetch(buildUtilDatasetServerRecordEndpoint(dataKey), {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                cache: 'no-store',
-                credentials: 'same-origin',
-                body: JSON.stringify({
-                    permissionKey: config.permissionKey,
-                    payload: cloneUtilDatasetPayload(payload)
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error(`${dataKey}_write_failed:${response.status}`);
-            }
-
-            const result = await response.json().catch(() => ({}));
-            if (result?.record?.payload) {
-                syncUtilDatasetPortalData(dataKey, result.record.payload);
-            } else {
-                syncUtilDatasetPortalData(dataKey, payload);
-            }
-            return true;
-        }
-
-        function queueUtilDatasetServerWrite(dataKey, payload) {
-            if (!supportsUtilDatasetServerPersistence(dataKey)) {
-                return Promise.resolve(false);
-            }
-
-            const state = utilDatasetServerPersistenceState[dataKey] || (utilDatasetServerPersistenceState[dataKey] = {
-                writeChain: Promise.resolve(true),
-                lastErrorMessage: ''
-            });
-            const snapshot = cloneUtilDatasetPayload(payload);
-            state.writeChain = Promise.resolve(state.writeChain)
-                .catch(() => false)
-                .then(() => writeUtilDatasetStateToServer(dataKey, snapshot))
-                .catch((error) => {
-                    state.lastErrorMessage = `${dataKey} server write failed`;
-                    console.error(state.lastErrorMessage, error);
-                    return false;
-                });
-            return state.writeChain;
-        }
-
-        function hasUtilMeteringSnapshotData(snapshot) {
-            if (!snapshot || typeof snapshot !== 'object' || !snapshot.teams || typeof snapshot.teams !== 'object') {
-                return false;
-            }
-
-            return Object.values(snapshot.teams).some((teamSnapshot) => {
-                if (!teamSnapshot || typeof teamSnapshot !== 'object') {
-                    return false;
-                }
-                return Object.values(teamSnapshot).some((monthData) => {
-                    if (!monthData || typeof monthData !== 'object') {
-                        return false;
-                    }
-                    return normalizeUtilMetricValue(monthData.usage) !== null
-                        || normalizeUtilMetricValue(monthData.cost) !== null;
-                });
-            });
         }
 
         function getUtilProductionServerRuntimeConfig() {
@@ -527,7 +390,7 @@
             utilProductionServerPersistenceState.writeChain = utilProductionServerPersistenceState.writeChain
                 .then(() => writeUtilProductionDailyStateToServer(snapshot))
                 .catch((error) => {
-                    utilProductionServerPersistenceState.lastErrorMessage = '유틸 생산 일별 데이터를 중앙 서버에 저장하지 못했습니다.';
+                    utilProductionServerPersistenceState.lastErrorMessage = '유틸 생산 일계 데이터를 중앙 서버에 저장하지 못했습니다.';
                     if (window.KpiUtilityServerRuntime) {
                         window.KpiUtilityServerRuntime.lastErrorMessage = utilProductionServerPersistenceState.lastErrorMessage;
                     }
@@ -546,11 +409,6 @@
             } catch (error) {
                 return null;
             }
-        }
-
-        function getUtilProductionUpdatedAtValue(value) {
-            const parsed = Date.parse(String(value || ''));
-            return Number.isFinite(parsed) ? parsed : 0;
         }
 
         function applyUtilProductionDailyState(normalized) {
@@ -574,51 +432,16 @@
             }
         }
 
-        async function migrateLocalUtilProductionDailyToServer() {
-            if (!supportsUtilProductionServerPersistence()) {
-                return false;
-            }
-
-            const localSnapshot = readUtilProductionDailyLocalSnapshot();
-            if (!isUtilPlainObject(localSnapshot) || !Object.keys(localSnapshot).length) {
-                return false;
-            }
-
-            const portalSnapshot = (window.PortalData && isUtilPlainObject(window.PortalData.util_production_daily))
-                ? window.PortalData.util_production_daily
-                : null;
-            const normalizedLocal = normalizeUtilProductionDailyState(localSnapshot);
-            const normalizedPortal = normalizeUtilProductionDailyState(portalSnapshot);
-            const hasPortalSnapshot = isUtilPlainObject(portalSnapshot) && Object.keys(portalSnapshot).length > 0;
-            const localUpdatedAt = getUtilProductionUpdatedAtValue(normalizedLocal?.meta?.updatedAt);
-            const portalUpdatedAt = getUtilProductionUpdatedAtValue(normalizedPortal?.meta?.updatedAt);
-
-            if (hasPortalSnapshot && localUpdatedAt > 0 && portalUpdatedAt >= localUpdatedAt) {
-                return false;
-            }
-
-            const saved = await queueUtilProductionDailyServerWrite(normalizedLocal);
-            if (!saved) {
-                return false;
-            }
-
-            applyUtilProductionDailyState(normalizedLocal);
-            window.dispatchEvent(new CustomEvent('util-production-data-updated', {
-                detail: { source: 'local-to-server-auto', synced: true }
-            }));
-            return true;
-        }
-
         async function publishLocalUtilProductionDailyToServer() {
             if (!supportsUtilProductionServerPersistence()) {
-                window.alert('서버 저장 권한이 없어서 공유할 수 없습니다.');
+                window.alert('서버 저장 권한이 없어 공유할 수 없습니다.');
                 return false;
             }
             let localSnapshot = readUtilProductionDailyLocalSnapshot();
             if (!localSnapshot || !Object.keys(localSnapshot).length) {
-                const pasted = window.prompt('로컬 생산량 JSON을 붙여넣어 주세요. (없으면 취소)');
+                const pasted = window.prompt('로컬 생산 JSON을 붙여넣어 주세요. (없으면 취소)');
                 if (!pasted) {
-                    window.alert('로컬 생산량 데이터가 없습니다.');
+                    window.alert('로컬 생산 데이터가 없습니다.');
                     return false;
                 }
                 try {
@@ -630,7 +453,7 @@
                 }
             }
             if (!localSnapshot || !Object.keys(localSnapshot).length) {
-                window.alert('로컬 생산량 데이터가 없습니다.');
+                window.alert('로컬 생산 데이터가 없습니다.');
                 return false;
             }
             const normalized = normalizeUtilProductionDailyState(localSnapshot);
@@ -638,18 +461,18 @@
             try {
                 const saved = await queueUtilProductionDailyServerWrite(normalized);
                 if (!saved) {
-                    window.alert('서버 저장에 실패했습니다. 잠시 후 다시 시도하세요.');
+                    window.alert('서버 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
                     return false;
                 }
                 applyUtilProductionDailyState(normalized);
                 window.dispatchEvent(new CustomEvent('util-production-data-updated', {
                     detail: { source: 'local-to-server', synced: true }
                 }));
-                window.alert('로컬 생산량 데이터를 서버로 공유했습니다.');
+                window.alert('로컬 생산 데이터를 서버로 공유했습니다.');
                 return true;
             } catch (error) {
                 console.error('[kpi] util production local publish failed', error);
-                window.alert('서버 저장에 실패했습니다. 잠시 후 다시 시도하세요.');
+                window.alert('서버 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
                 return false;
             }
         }
@@ -661,7 +484,6 @@
             supportsUtilProductionServerPersistence,
             supportsUtilProductionArchiveServerPersistence,
             queueUtilProductionDailyServerWrite,
-            migrateLocalUtilProductionDailyToServer,
             publishLocalUtilProductionDailyToServer,
             get lastErrorMessage() {
                 return utilProductionServerPersistenceState.lastErrorMessage;
@@ -695,41 +517,10 @@
             return yearNode;
         }
 
-        function buildUtilGasExistingCostLookup() {
-            const lookup = new Map();
-            (Array.isArray(UTIL_GAS_DATA) ? UTIL_GAS_DATA : []).forEach((teamNode) => {
-                const teamName = String(teamNode?.name || '').trim();
-                if (!teamName || !Array.isArray(teamNode?.years)) return;
-                teamNode.years.forEach((yearNode) => {
-                    const yearValue = Number(yearNode?.label);
-                    if (!Number.isFinite(yearValue) || !Array.isArray(yearNode?.rows)) return;
-                    yearNode.rows.forEach((row, index) => {
-                        const monthNumber = index + 1;
-                        if (monthNumber < 1 || monthNumber > 12) return;
-                        const costValue = normalizeUtilMetricValue(row?.cost);
-                        if (costValue === null) return;
-                        lookup.set(`${teamName}::${yearValue}::${monthNumber}`, costValue);
-                    });
-                });
-            });
-            return lookup;
-        }
-
-        function getUtilGasExistingCost(lookup, teamName, yearValue, monthNumber) {
-            if (!(lookup instanceof Map)) return null;
-            return lookup.get(`${teamName}::${yearValue}::${monthNumber}`) ?? null;
-        }
-
         function applyUtilGasMeteringSnapshot(snapshot) {
             const touchedYearNodes = new Set();
             let changed = false;
             if (!snapshot || typeof snapshot !== 'object' || !snapshot.teams) return false;
-            const existingCostLookup = buildUtilGasExistingCostLookup();
-
-            if (hasUtilMeteringSnapshotData(snapshot) && UTIL_GAS_DATA.length) {
-                UTIL_GAS_DATA.length = 0;
-                changed = true;
-            }
 
             UTIL_GAS_METERING_TEAM_NAMES.forEach(teamName => {
                 const teamSnapshot = snapshot.teams?.[teamName];
@@ -751,11 +542,8 @@
                     const monthRow = ensureUtilMonthRow(yearNode.rows, monthNumber);
                     touchedYearNodes.add(yearNode);
                     changed = setUtilMetricValue(monthRow, 'usage', usageValue) || changed;
-                    const costValue = nextCostValue !== null
-                        ? nextCostValue
-                        : getUtilGasExistingCost(existingCostLookup, teamName, yearValue, monthNumber);
-                    if (costValue !== null) {
-                        changed = setUtilMetricValue(monthRow, 'cost', costValue) || changed;
+                    if (nextCostValue !== null) {
+                        changed = setUtilMetricValue(monthRow, 'cost', nextCostValue) || changed;
                     }
                 });
             });
@@ -764,10 +552,9 @@
                 changed = recalculateUtilYearSummaryRows(yearNode.rows) || changed;
             });
 
-            syncUtilDatasetPortalData(
-                'util_gas_data',
-                buildUtilDatasetServerPayload('util_gas_data', UTIL_GAS_DATA)
-            );
+            if (window.PortalData?.util_gas_data) {
+                window.PortalData.util_gas_data.teams = UTIL_GAS_DATA;
+            }
             return changed;
         }
 
@@ -790,10 +577,6 @@
 
                 if (changed) {
                     rebuildUtilEntryCollections();
-                    await queueUtilDatasetServerWrite(
-                        'util_gas_data',
-                        buildUtilDatasetServerPayload('util_gas_data', UTIL_GAS_DATA)
-                    );
                 }
 
                 return changed;
@@ -840,6 +623,197 @@
                 queueUtilGasDataSync({ force: true, delay: 0 });
             });
             queueUtilGasDataSync({ force: true, delay: 0 });
+        }
+
+        function resetUtilWasteDataToBaseline() {
+            const clonedBaseline = Array.isArray(UTIL_WASTE_DATA_BASELINE)
+                ? cloneUtilDatasetValue(UTIL_WASTE_DATA_BASELINE)
+                : [];
+            UTIL_WASTE_DATA.splice(0, UTIL_WASTE_DATA.length, ...(Array.isArray(clonedBaseline) ? clonedBaseline : []));
+            if (window.PortalData?.util_wastewater_data) {
+                window.PortalData.util_wastewater_data.teams = UTIL_WASTE_DATA;
+            }
+        }
+
+        function ensureUtilWasteTeamNode(teamName) {
+            let teamNode = UTIL_WASTE_DATA.find(item => String(item?.name || '').trim() === teamName) || null;
+            if (teamNode) return teamNode;
+            teamNode = { name: teamName, years: [] };
+            UTIL_WASTE_DATA.push(teamNode);
+            return teamNode;
+        }
+
+        function ensureUtilWasteYearNode(teamName, yearValue) {
+            const teamNode = ensureUtilWasteTeamNode(teamName);
+            if (!Array.isArray(teamNode.years)) teamNode.years = [];
+            let yearNode = teamNode.years.find(item => Number(item?.label) === Number(yearValue)) || null;
+            if (!yearNode) {
+                yearNode = { label: String(yearValue), rows: createDefaultUtilYearRows() };
+                teamNode.years.push(yearNode);
+                teamNode.years.sort((a, b) => Number(a?.label) - Number(b?.label));
+            }
+            if (!Array.isArray(yearNode.rows)) yearNode.rows = createDefaultUtilYearRows();
+            return yearNode;
+        }
+
+        function setUtilWasteCostDetails(row, costs) {
+            if (!row || !costs || typeof costs !== 'object') return false;
+            let changed = false;
+            const currentCosts = row.costs && typeof row.costs === 'object' ? row.costs : {};
+            const nextKeys = new Set([...Object.keys(currentCosts), ...Object.keys(costs)]);
+            if (!row.costs || typeof row.costs !== 'object') {
+                row.costs = {};
+                changed = true;
+            }
+
+            let componentTotal = 0;
+            let hasComponentValue = false;
+            nextKeys.forEach((key) => {
+                if (key === 'total') return;
+                const nextValue = normalizeUtilMetricValue(costs[key]);
+                const currentValue = normalizeUtilMetricValue(row.costs[key]);
+                if (currentValue !== nextValue) {
+                    row.costs[key] = nextValue;
+                    changed = true;
+                }
+                if (nextValue !== null) {
+                    componentTotal += nextValue;
+                    hasComponentValue = true;
+                }
+            });
+
+            const explicitTotal = normalizeUtilMetricValue(costs.total);
+            const resolvedTotal = explicitTotal !== null
+                ? explicitTotal
+                : hasComponentValue
+                    ? Math.round(componentTotal)
+                    : null;
+            const currentTotal = normalizeUtilMetricValue(row.costs.total);
+            if (currentTotal !== resolvedTotal) {
+                row.costs.total = resolvedTotal;
+                changed = true;
+            }
+            if (normalizeUtilMetricValue(row.cost) !== resolvedTotal) {
+                row.cost = resolvedTotal;
+                changed = true;
+            }
+            return changed;
+        }
+
+        function applyUtilWasteMeteringSnapshot(snapshot) {
+            const previousSignature = JSON.stringify(UTIL_WASTE_DATA);
+            const touchedYearNodes = new Set();
+            resetUtilWasteDataToBaseline();
+            let changed = previousSignature !== JSON.stringify(UTIL_WASTE_DATA);
+            if (!snapshot || typeof snapshot !== 'object' || !snapshot.teams) return changed;
+
+            Object.entries(snapshot.teams).forEach(([teamName, teamSnapshot]) => {
+                if (!teamSnapshot || typeof teamSnapshot !== 'object') return;
+
+                Object.entries(teamSnapshot).forEach(([monthValue, monthData]) => {
+                    const match = /^(\d{4})-(\d{2})$/.exec(String(monthValue || '').trim());
+                    if (!match) return;
+                    if (!monthData || typeof monthData !== 'object') return;
+
+                    const usageValue = normalizeUtilMetricValue(monthData.usage);
+                    const nextCostValue = normalizeUtilMetricValue(monthData.cost);
+                    const nextCosts = monthData.costs && typeof monthData.costs === 'object'
+                        ? monthData.costs
+                        : null;
+                    if (usageValue === null && nextCostValue === null && !nextCosts) return;
+
+                    const yearValue = Number(match[1]);
+                    const monthNumber = Number(match[2]);
+                    if (!Number.isFinite(yearValue) || !Number.isFinite(monthNumber)) return;
+
+                    const yearNode = ensureUtilWasteYearNode(teamName, yearValue);
+                    const monthRow = ensureUtilMonthRow(yearNode.rows, monthNumber);
+                    touchedYearNodes.add(yearNode);
+                    changed = setUtilMetricValue(monthRow, 'usage', usageValue) || changed;
+                    if (nextCostValue !== null) {
+                        changed = setUtilMetricValue(monthRow, 'cost', nextCostValue) || changed;
+                    }
+                    if (nextCosts) {
+                        changed = setUtilWasteCostDetails(monthRow, nextCosts) || changed;
+                    }
+                });
+            });
+
+            touchedYearNodes.forEach((yearNode) => {
+                changed = recalculateUtilYearSummaryRows(yearNode.rows) || changed;
+            });
+
+            if (window.PortalData?.util_wastewater_data) {
+                window.PortalData.util_wastewater_data.teams = UTIL_WASTE_DATA;
+            }
+            return changed;
+        }
+
+        async function syncUtilWasteDataFromMetering(options = {}) {
+            const { force = false } = options;
+            try {
+                const runtime = await window.KpiMeteringBridge?.ensureIntegratedMeteringRuntime?.();
+                const snapshot = runtime && typeof runtime.getWasteUtilityDatasetSnapshot === 'function'
+                    ? runtime.getWasteUtilityDatasetSnapshot()
+                    : null;
+                if (!snapshot) return false;
+
+                const signature = JSON.stringify(snapshot);
+                if (!force && signature === UtilWasteMeteringSyncState.lastSignature) {
+                    return false;
+                }
+
+                const changed = applyUtilWasteMeteringSnapshot(snapshot);
+                UtilWasteMeteringSyncState.lastSignature = signature;
+
+                if (changed) {
+                    rebuildUtilEntryCollections();
+                }
+
+                return changed;
+            } catch (error) {
+                console.error('Failed to sync wastewater utility data from metering runtime.', error);
+                return false;
+            }
+        }
+
+        function queueUtilWasteDataSync(options = {}) {
+            const { delay = 120, force = false } = options;
+            UtilWasteMeteringSyncState.forceNext = UtilWasteMeteringSyncState.forceNext || force;
+            if (UtilWasteMeteringSyncState.timerId) {
+                window.clearTimeout(UtilWasteMeteringSyncState.timerId);
+            }
+
+            UtilWasteMeteringSyncState.timerId = window.setTimeout(async () => {
+                UtilWasteMeteringSyncState.timerId = 0;
+                if (UtilWasteMeteringSyncState.syncPromise) {
+                    UtilWasteMeteringSyncState.pending = true;
+                    return;
+                }
+
+                const nextForce = UtilWasteMeteringSyncState.forceNext;
+                UtilWasteMeteringSyncState.forceNext = false;
+                UtilWasteMeteringSyncState.syncPromise = syncUtilWasteDataFromMetering({ force: nextForce });
+
+                try {
+                    await UtilWasteMeteringSyncState.syncPromise;
+                } finally {
+                    UtilWasteMeteringSyncState.syncPromise = null;
+                    if (UtilWasteMeteringSyncState.pending) {
+                        UtilWasteMeteringSyncState.pending = false;
+                        queueUtilWasteDataSync();
+                    }
+                }
+            }, Math.max(0, Number(delay) || 0));
+        }
+
+        function bootUtilWasteMeteringSync() {
+            if (UtilWasteMeteringSyncState.bootstrapped) return;
+            UtilWasteMeteringSyncState.bootstrapped = true;
+            window.addEventListener('kpi:metering-store-updated', () => {
+                queueUtilWasteDataSync({ force: true, delay: 0 });
+            });
+            queueUtilWasteDataSync({ force: true, delay: 0 });
         }
 
         function cloneUtilProductionTeamEntry(entry, fallbackTeam = '') {
@@ -953,7 +927,7 @@
             return Array.from(set).sort((a, b) => a.localeCompare(b, 'ko'));
         }
 
-        const UTIL_PRODUCTION_ARCHIVE_SOURCE_LABEL_DEFAULT = '원본 엑셀';
+        const UTIL_PRODUCTION_ARCHIVE_SOURCE_LABEL_DEFAULT = '원본 저장';
 
         function normalizeUtilProductionArchiveSourceLabel(value) {
             const label = String(value || '').trim();
@@ -1032,40 +1006,41 @@
             const serverReadBlocked = serverMode && serverConfig.readEnabled !== true;
             const hasPortalState = isUtilPlainObject(portalRaw) && Object.keys(portalRaw).length > 0;
             let source = portalRaw;
-            if ((!serverMode || !hasPortalState) && !serverReadBlocked) {
-                try {
-                const stored = localStorage.getItem(UTIL_PRODUCTION_STORAGE_KEY);
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    if (parsed && typeof parsed === 'object') source = parsed;
-                }
-            } catch (error) {
-                // localStorage parse 실패 시 PortalData 기본값 사용
-            }
-            } else if (serverReadBlocked) {
+            // Exported JS current data should win in local mode so the local view matches server snapshots.
+            if (serverReadBlocked) {
                 source = {};
+            } else if (!hasPortalState) {
+                try {
+                    const stored = localStorage.getItem(UTIL_PRODUCTION_STORAGE_KEY);
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        if (parsed && typeof parsed === 'object') source = parsed;
+                    }
+                } catch (error) {
+                    // localStorage parse 실패 시 PortalData 기본값 사용
+                }
             }
             const normalized = normalizeUtilProductionDailyState(source);
             let shouldReset = false;
-            if (serverMode) {
+            if (serverMode || hasPortalState) {
                 try {
                     const marker = localStorage.getItem(UTIL_PRODUCTION_RESET_MARKER_KEY);
                     if (marker !== UTIL_PRODUCTION_RESET_MARKER_VALUE) {
                         localStorage.setItem(UTIL_PRODUCTION_RESET_MARKER_KEY, UTIL_PRODUCTION_RESET_MARKER_VALUE);
                     }
                 } catch (error) {
-                    // Ignore marker write failures in server mode.
+                    // Ignore marker write failures when current data already exists.
                 }
             } else {
-            try {
-                const marker = localStorage.getItem(UTIL_PRODUCTION_RESET_MARKER_KEY);
-                shouldReset = marker !== UTIL_PRODUCTION_RESET_MARKER_VALUE;
-                if (shouldReset) {
-                    localStorage.setItem(UTIL_PRODUCTION_RESET_MARKER_KEY, UTIL_PRODUCTION_RESET_MARKER_VALUE);
+                try {
+                    const marker = localStorage.getItem(UTIL_PRODUCTION_RESET_MARKER_KEY);
+                    shouldReset = marker !== UTIL_PRODUCTION_RESET_MARKER_VALUE;
+                    if (shouldReset) {
+                        localStorage.setItem(UTIL_PRODUCTION_RESET_MARKER_KEY, UTIL_PRODUCTION_RESET_MARKER_VALUE);
+                    }
+                } catch (error) {
+                    shouldReset = true;
                 }
-            } catch (error) {
-                shouldReset = true;
-            }
             }
             if (shouldReset) {
                 normalized.teams = [];
@@ -1074,14 +1049,13 @@
                 try {
                     localStorage.setItem(UTIL_PRODUCTION_STORAGE_KEY, JSON.stringify(normalized));
                 } catch (error) {
-                    // localStorage 사용 불가 시 런타임 상태만 초기화
+                    // localStorage 사용 불가 시 현재 상태만 초기화
                 }
             }
             window.PortalData = window.PortalData || {};
             window.PortalData.util_production_daily = normalized;
             return normalized;
         }
-
         const UTIL_PRODUCTION_DAILY_STATE = loadUtilProductionDailyState();
         const UTIL_PRODUCTION_DAILY_DATA = UTIL_PRODUCTION_DAILY_STATE.teams;
         const UTIL_PRODUCTION_ARCHIVE_META = UTIL_PRODUCTION_DAILY_STATE.archives;
@@ -1259,3 +1233,8 @@
             if (year < 1990 || year > 2100) return null;
             return date;
         }
+
+
+
+
+

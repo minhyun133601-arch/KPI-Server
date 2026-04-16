@@ -1,3 +1,8 @@
+        const UtilChartDetachedState = {
+            win: null,
+            detached: false
+        };
+
         function downloadUtilChartImage() {
             const modal = document.getElementById('util-chart-modal');
             if (!modal) return;
@@ -68,33 +73,290 @@
             });
         }
 
+        function normalizeUtilChartDataList(chartData) {
+            const list = Array.isArray(chartData) ? chartData : [chartData];
+            return list.filter(Boolean);
+        }
+
+        function buildUtilChartMetaHtml(dataList) {
+            if (dataList.length > 1) {
+                return `<span>겹침 그래프: ${dataList.length}개</span>`;
+            }
+            const single = dataList[0] || {};
+            return `
+                <span>${escapeHtml(single.datasetLabel || '')}</span>
+                <span>${escapeHtml(single.teamLabel || '')}</span>
+                <span>${escapeHtml(single.metricLabel || '')}</span>
+                <span>${escapeHtml(single.from || '')} ~ ${escapeHtml(single.to || '')}</span>
+            `;
+        }
+
+        function getUtilChartDetachedWindow() {
+            const popup = UtilChartDetachedState.win;
+            if (popup && !popup.closed) return popup;
+            UtilChartDetachedState.win = null;
+            return null;
+        }
+
+        function closeUtilChartLinkedDetachedTables() {
+            if (typeof closeUtilEnergyDetachedTableWindow === 'function') {
+                closeUtilEnergyDetachedTableWindow();
+            }
+            if (typeof closeUtilReportDetachedTableWindow === 'function') {
+                closeUtilReportDetachedTableWindow();
+            }
+        }
+
+        function syncUtilChartDetachButtonState(root = document) {
+            const buttons = Array.from(root?.querySelectorAll?.('[data-chart-action="detach"]') || []);
+            buttons.forEach(button => {
+                button.textContent = UtilChartDetachedState.detached ? '그래프 복귀' : '그래프 팝업';
+                button.setAttribute('aria-pressed', UtilChartDetachedState.detached ? 'true' : 'false');
+                button.setAttribute('title', UtilChartDetachedState.detached ? '그래프 팝업 닫기' : '그래프 팝업 열기');
+            });
+        }
+
+        function getUtilChartDetachedHeadAssetsHtml() {
+            return Array.from(document.head.querySelectorAll('style, link[rel="stylesheet"]'))
+                .map(node => node.outerHTML)
+                .join('');
+        }
+
+        function buildUtilChartDetachedShellHtml() {
+            return `
+                <!doctype html>
+                <html lang="ko">
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <title>유틸리티 그래프</title>
+                    ${getUtilChartDetachedHeadAssetsHtml()}
+                    <style>
+                        body { margin: 0; background: #dbe4f3; color: #0f172a; }
+                        .util-chart-detached-shell { min-height: 100vh; background: #dbe4f3; }
+                        .util-chart-detached-shell .util-chart-modal { position: static; inset: auto; display: block; padding: 0; background: none; }
+                        .util-chart-detached-shell .util-chart-modal-card { width: 100%; min-height: 100vh; border-radius: 0; box-shadow: none; }
+                        .util-chart-detached-shell .util-chart-modal-header { position: sticky; top: 0; z-index: 5; cursor: grab; user-select: none; }
+                        .util-chart-detached-shell .util-chart-modal-header.is-window-dragging { cursor: grabbing; }
+                        .util-chart-detached-shell .util-chart-modal-body { min-height: calc(100vh - 70px); }
+                        .util-chart-detached-shell .util-chart-modal-scroll { min-height: calc(100vh - 128px); }
+                    </style>
+                </head>
+                <body>
+                    <div class="util-chart-detached-shell" data-role="util-chart-detached-root"></div>
+                </body>
+                </html>
+            `;
+        }
+
+        function bindUtilChartDetachedWindowDrag(popup) {
+            if (!popup || popup.__utilChartDetachedDragBound) return;
+            popup.__utilChartDetachedDragBound = true;
+
+            let activePointerId = null;
+            let startScreenX = 0;
+            let startScreenY = 0;
+            let headEl = null;
+
+            const isInteractiveTarget = target => !!target?.closest?.('button, input, select, textarea, label, a, summary, details, [contenteditable]');
+            const finishDrag = () => {
+                if (headEl) headEl.classList.remove('is-window-dragging');
+                activePointerId = null;
+                headEl = null;
+            };
+
+            popup.document.addEventListener('pointerdown', event => {
+                const nextHead = event.target?.closest?.('.util-chart-modal-header');
+                if (!nextHead) return;
+                if (event.pointerType === 'mouse' && event.button !== 0) return;
+                if (isInteractiveTarget(event.target)) return;
+                activePointerId = event.pointerId;
+                startScreenX = event.screenX;
+                startScreenY = event.screenY;
+                headEl = nextHead;
+                headEl.classList.add('is-window-dragging');
+                if (typeof headEl.setPointerCapture === 'function') {
+                    try { headEl.setPointerCapture(activePointerId); } catch (error) {}
+                }
+                event.preventDefault();
+            });
+
+            popup.document.addEventListener('pointermove', event => {
+                if (activePointerId === null || event.pointerId !== activePointerId) return;
+                const diffX = event.screenX - startScreenX;
+                const diffY = event.screenY - startScreenY;
+                startScreenX = event.screenX;
+                startScreenY = event.screenY;
+                if (!diffX && !diffY) return;
+                try {
+                    popup.moveBy(diffX, diffY);
+                } catch (error) {}
+                event.preventDefault();
+            });
+
+            popup.document.addEventListener('pointerup', event => {
+                if (event.pointerId !== activePointerId) return;
+                finishDrag();
+            });
+            popup.document.addEventListener('pointercancel', event => {
+                if (event.pointerId !== activePointerId) return;
+                finishDrag();
+            });
+            popup.document.addEventListener('lostpointercapture', finishDrag, true);
+            popup.addEventListener('blur', finishDrag);
+        }
+
+        function buildUtilChartDetachedCardHtml(dataList, showLabels) {
+            const list = normalizeUtilChartDataList(dataList);
+            const chartHtml = !list.length
+                ? `
+                    <div class="util-analytics-chart util-analytics-chart-empty is-modal">
+                        <div class="util-analytics-chart-empty-text">표시할 그래프 데이터가 없습니다.</div>
+                    </div>
+                `
+                : (list.length === 1
+                    ? renderUtilTrendChart(list[0].points || [], list[0].metricLabel, {
+                        mode: 'modal',
+                        decimals: list[0].decimals,
+                        chartType: list[0].chartType || 'line',
+                        showTypeSelect: false,
+                        showLabelToggle: true,
+                        showLabels
+                    })
+                    : (() => {
+                        const combined = buildUtilCombinedSeries(list);
+                        return renderUtilMultiSeriesChart(combined.series, {
+                            mode: 'modal',
+                            decimals: combined.decimals,
+                            showLabelToggle: true,
+                            showLabels
+                        });
+                    })());
+            return `
+                <div class="util-chart-modal is-open" data-role="util-chart-detached-modal">
+                    <div class="util-chart-modal-card" role="dialog" aria-modal="true" aria-label="유틸리티 그래프">
+                        <div class="util-chart-modal-header">
+                            <div class="util-chart-modal-title">유틸리티 그래프</div>
+                            <div class="util-chart-modal-actions">
+                                <button type="button" class="util-chart-modal-close" data-role="util-chart-detached-close">닫기</button>
+                            </div>
+                        </div>
+                        <div class="util-chart-modal-body">
+                            <div class="util-chart-modal-meta">${buildUtilChartMetaHtml(list)}</div>
+                            <div class="util-chart-modal-scroll">
+                                <div data-role="util-chart-detached-chart">${chartHtml}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function syncUtilChartDetachedWindow() {
+            const popup = getUtilChartDetachedWindow();
+            if (!popup) return;
+            const modal = ensureUtilChartModal();
+            const list = normalizeUtilChartDataList(modal._chartDataList || modal._chartData || []);
+            const showLabels = modal.dataset.showLabels !== 'false';
+            const root = popup.document.querySelector('[data-role="util-chart-detached-root"]');
+            if (!root) return;
+            root.innerHTML = buildUtilChartDetachedCardHtml(list, showLabels);
+            const closeBtn = popup.document.querySelector('[data-role="util-chart-detached-close"]');
+            if (closeBtn) {
+                closeBtn.onclick = () => closeUtilChartDetachedWindow();
+            }
+            const labelToggle = popup.document.querySelector('[data-chart-label-toggle]');
+            if (labelToggle) {
+                labelToggle.checked = showLabels;
+                labelToggle.onchange = () => {
+                    modal.dataset.showLabels = labelToggle.checked ? 'true' : 'false';
+                    renderUtilChartModal();
+                };
+            }
+        }
+
+        function closeUtilChartDetachedWindow(options = {}) {
+            const popup = getUtilChartDetachedWindow();
+            UtilChartDetachedState.win = null;
+            const wasDetached = UtilChartDetachedState.detached === true;
+            UtilChartDetachedState.detached = false;
+            if (popup && !popup.closed) {
+                popup.close();
+            }
+            syncUtilChartDetachButtonState(document);
+            if (wasDetached && options.closeLinkedTables !== false) {
+                closeUtilChartLinkedDetachedTables();
+            }
+        }
+
+        function openUtilChartDetachedWindow(chartData = null) {
+            const modal = ensureUtilChartModal();
+            const dataList = normalizeUtilChartDataList(chartData || modal._chartDataList || modal._chartData || []);
+            if (!dataList.length) return false;
+            modal._chartDataList = dataList;
+            modal._chartData = dataList[0] || null;
+            if (!modal.dataset.showLabels) {
+                modal.dataset.showLabels = 'true';
+            }
+            let popup = getUtilChartDetachedWindow();
+            if (!popup) {
+                popup = window.open('', 'util-chart-detached-window', 'popup=yes,width=1480,height=920,resizable=yes,scrollbars=yes');
+                if (!popup) {
+                    UtilChartDetachedState.detached = false;
+                    syncUtilChartDetachButtonState(document);
+                    return false;
+                }
+                popup.document.open();
+                popup.document.write(buildUtilChartDetachedShellHtml());
+                popup.document.close();
+                bindUtilChartDetachedWindowDrag(popup);
+                UtilChartDetachedState.win = popup;
+                popup.addEventListener('beforeunload', () => {
+                    if (UtilChartDetachedState.win !== popup) return;
+                    UtilChartDetachedState.win = null;
+                    if (UtilChartDetachedState.detached) {
+                        UtilChartDetachedState.detached = false;
+                        syncUtilChartDetachButtonState(document);
+                        closeUtilChartLinkedDetachedTables();
+                    }
+                });
+            }
+            UtilChartDetachedState.detached = true;
+            syncUtilChartDetachButtonState(document);
+            syncUtilChartDetachedWindow();
+            if (popup.focus) popup.focus();
+            return true;
+        }
+
         function openUtilChartModal(chartData) {
             const modal = ensureUtilChartModal();
             const metaEl = modal.querySelector('[data-role="meta"]');
             if (!metaEl) return;
-            const dataList = Array.isArray(chartData) ? chartData : [chartData];
-            if (dataList.length > 1) {
-                metaEl.innerHTML = `<span>겹침 그래프: ${dataList.length}개</span>`;
-            } else {
-                const single = dataList[0];
-                metaEl.innerHTML = `
-                    <span>${escapeHtml(single.datasetLabel || '')}</span>
-                    <span>${escapeHtml(single.teamLabel || '')}</span>
-                    <span>${escapeHtml(single.metricLabel || '')}</span>
-                    <span>${escapeHtml(single.from || '')} ~ ${escapeHtml(single.to || '')}</span>
-                `;
-            }
+            const dataList = normalizeUtilChartDataList(chartData);
+            if (!dataList.length) return;
+            metaEl.innerHTML = buildUtilChartMetaHtml(dataList);
             modal._chartDataList = dataList;
             modal._chartData = dataList[0] || null;
-            modal.dataset.showLabels = 'true';
+            if (!modal.dataset.showLabels) {
+                modal.dataset.showLabels = 'true';
+            }
             renderUtilChartModal();
+            syncUtilChartDetachButtonState(modal);
+            if (UtilChartDetachedState.detached) {
+                syncUtilChartDetachedWindow();
+                return;
+            }
             modal.classList.add('is-open');
         }
 
-        function closeUtilChartModal() {
+        function closeUtilChartModal(options = {}) {
             const modal = document.getElementById('util-chart-modal');
             if (!modal) return;
             modal.classList.remove('is-open');
+            syncUtilChartDetachButtonState(modal);
+            if (options.keepDetachedWindow !== true && UtilChartDetachedState.detached) {
+                closeUtilChartDetachedWindow({ closeLinkedTables: options.closeLinkedTables !== false });
+            }
             const energyOpen = document.getElementById('util-energy-modal')?.classList.contains('is-open');
             const reportOpen = document.getElementById('util-report-modal')?.classList.contains('is-open');
             const reportGraphOpen = document.getElementById('util-report-graph-modal')?.classList.contains('is-open');
@@ -716,4 +978,3 @@
             if (!candidates.length) return null;
             return candidates.sort((a, b) => Number(b.value) - Number(a.value))[0];
         }
-

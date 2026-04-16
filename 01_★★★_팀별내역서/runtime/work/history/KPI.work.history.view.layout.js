@@ -7,6 +7,10 @@
         TEAM_KEYS,
         TeamInfo,
         RECORD_CATEGORY_OPTIONS,
+        RECORD_CATEGORY_GROUP_ORDER,
+        RECORD_CATEGORY_GROUPS,
+        isImportantRecord,
+        isReportRecord,
         state,
         escapeHtml,
         escapeAttribute,
@@ -15,7 +19,7 @@
         setShadowHost
     } = history;
 
-    const CSS_PATH = '01_★★★_팀별내역서/runtime/work/history/KPI.work.history.css?v=237';
+    const CSS_PATH = '01_★★★_팀별내역서/runtime/work/history/KPI.work.history.css?v=242';
     const COMPANY_LOGO_SRC = '※_공용자산/로고.jpg';
     const DEFAULT_SUBTITLE = '기간, 팀, 작업자, 업무내용, 첨부, 비용까지 기록하는 KPI 작업내역 화면';
     const OVERVIEW_KEY = 'overview';
@@ -153,10 +157,26 @@
     }
 
     function buildCategoryFilterOptionsMarkup() {
+        const emptyCategoryGroupLabels = RECORD_CATEGORY_GROUP_ORDER
+            .filter(groupKey => !(RECORD_CATEGORY_GROUPS[groupKey]?.categories || []).length)
+            .map(groupKey => RECORD_CATEGORY_GROUPS[groupKey]?.label || groupKey)
+            .filter(Boolean);
         return [
             `<option value=""${state.currentCategoryFilter ? '' : ' selected'}>전체</option>`,
             ...RECORD_CATEGORY_OPTIONS.map(category => (
                 `<option value="${escapeAttribute(category)}"${state.currentCategoryFilter === category ? ' selected' : ''}>${escapeHtml(category)}</option>`
+            )),
+            ...emptyCategoryGroupLabels.map(label => (
+                `<option value="${escapeAttribute(label)}"${state.currentCategoryFilter === label ? ' selected' : ''}>${escapeHtml(label)}</option>`
+            ))
+        ].join('');
+    }
+
+    function buildCategoryGroupOptionsMarkup(selectedValue = '') {
+        return [
+            '<option value="">구분 선택</option>',
+            ...RECORD_CATEGORY_GROUP_ORDER.map(groupKey => (
+                `<option value="${escapeAttribute(groupKey)}"${selectedValue === groupKey ? ' selected' : ''}>${escapeHtml(RECORD_CATEGORY_GROUPS[groupKey]?.label || groupKey)}</option>`
             ))
         ].join('');
     }
@@ -183,10 +203,17 @@
         `;
     }
 
-    function buildCategoryOptionsMarkup() {
+    function buildCategoryOptionsMarkup(selectedGroup = '', selectedCategory = '') {
+        const categories = typeof history.getRecordCategoryOptionsForGroup === 'function'
+            ? history.getRecordCategoryOptionsForGroup(selectedGroup, { includeLegacyValue: selectedCategory })
+            : [];
+        const hasSelectedGroup = String(selectedGroup || '').trim().length > 0;
+        const hasSelectableCategories = categories.length > 0;
         return [
-            '<option value="">카테고리 선택</option>',
-            ...RECORD_CATEGORY_OPTIONS.map(category => `<option value="${escapeAttribute(category)}">${escapeHtml(category)}</option>`)
+            `<option value="">${hasSelectableCategories || !hasSelectedGroup ? '하위 카테고리 선택' : '하위 카테고리 없음'}</option>`,
+            ...categories.map(category => (
+                `<option value="${escapeAttribute(category)}"${selectedCategory === category ? ' selected' : ''}>${escapeHtml(category)}</option>`
+            ))
         ].join('');
     }
 
@@ -204,6 +231,8 @@
                 </span>
                 <span class="tab-metrics" data-team-metrics="${teamKey}">
                     <span class="tab-metrics-count">0건</span>
+                    <span class="tab-metrics-kpi">0건</span>
+                    <span class="tab-metrics-report">0건</span>
                     <span class="tab-metrics-cost">0원</span>
                 </span>
             </button>
@@ -429,17 +458,17 @@
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="recordCategory">카테고리</label>
+                                    <label for="recordCategoryGroup">구분</label>
+                                    <select id="recordCategoryGroup" required>
+                                        ${buildCategoryGroupOptionsMarkup()}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="recordCategory">하위 카테고리</label>
                                     <select id="recordCategory" required>
                                         ${buildCategoryOptionsMarkup()}
                                     </select>
-                                </div>
-                                <div class="form-group form-group-checkbox">
-                                    <span class="form-group-label">KPI</span>
-                                    <label class="check-field" for="recordKpiFlag">
-                                        <input type="checkbox" id="recordKpiFlag">
-                                    </label>
-                                    <div class="file-help">체크된 작업은 작업내역과 캘린더에 KPI로 표시됩니다.</div>
+                                    <div class="file-help">구분에 따라 하위 카테고리를 고를 수 있습니다.</div>
                                 </div>
                             </div>
 
@@ -585,26 +614,38 @@
         const currentDateEl = getElement('currentDate');
         const recordCountEl = getElement('recordCount');
         if (currentDateEl) currentDateEl.textContent = todayText;
-        const allRecords = Array.isArray(view.getAllRecords?.()) ? view.getAllRecords() : [];
-        if (recordCountEl) recordCountEl.textContent = `${allRecords.length || 0}건`;
+        const overviewRecords = Array.isArray(view.getFilteredOverviewRecords?.())
+            ? view.getFilteredOverviewRecords()
+            : (Array.isArray(view.getAllRecords?.()) ? view.getAllRecords() : []);
+        if (recordCountEl) recordCountEl.textContent = `${overviewRecords.length || 0}건`;
         const totalsByTeam = new Map();
         totalsByTeam.set(OVERVIEW_KEY, {
-            count: allRecords.length,
-            cost: allRecords.reduce((sum, record) => sum + (Number(record?.cost) || 0), 0)
+            count: overviewRecords.length,
+            kpi: overviewRecords.filter(record => typeof isImportantRecord === 'function' && isImportantRecord(record)).length,
+            report: overviewRecords.filter(record => typeof isReportRecord === 'function' && isReportRecord(record)).length,
+            cost: overviewRecords.reduce((sum, record) => sum + (Number(record?.cost) || 0), 0)
         });
         TEAM_KEYS.forEach(teamKey => {
-            const records = allRecords.filter(record => record.team === teamKey);
+            const records = Array.isArray(view.getFilteredTeamRecords?.(teamKey))
+                ? view.getFilteredTeamRecords(teamKey)
+                : [];
             totalsByTeam.set(teamKey, {
                 count: records.length,
+                kpi: records.filter(record => typeof isImportantRecord === 'function' && isImportantRecord(record)).length,
+                report: records.filter(record => typeof isReportRecord === 'function' && isReportRecord(record)).length,
                 cost: records.reduce((sum, record) => sum + (Number(record?.cost) || 0), 0)
             });
         });
         queryAll('[data-team-metrics]').forEach((node) => {
             const teamKey = node.dataset.teamMetrics || OVERVIEW_KEY;
-            const totals = totalsByTeam.get(teamKey) || { count: 0, cost: 0 };
+            const totals = totalsByTeam.get(teamKey) || { count: 0, kpi: 0, report: 0, cost: 0 };
             const countEl = node.querySelector('.tab-metrics-count');
+            const kpiEl = node.querySelector('.tab-metrics-kpi');
+            const reportEl = node.querySelector('.tab-metrics-report');
             const costEl = node.querySelector('.tab-metrics-cost');
             if (countEl) countEl.textContent = `${totals.count}건`;
+            if (kpiEl) kpiEl.textContent = `${totals.kpi}건`;
+            if (reportEl) reportEl.textContent = `${totals.report}건`;
             if (costEl) costEl.textContent = view.formatCurrency(totals.cost);
         });
         view.updateSearchCount?.();
@@ -709,6 +750,8 @@
         syncViewportLayout,
         renderShell,
         buildShellHtml,
+        buildCategoryGroupOptionsMarkup,
+        buildCategoryOptionsMarkup,
         buildTabButton,
         getFullscreenIconSvg,
         buildOverviewSection,

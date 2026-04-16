@@ -18,7 +18,6 @@
         team4: { name: '공무환경팀', desc: '폐수 · 전체 · 기타', class: 'team4' }
     });
     const LOCAL_BACKUP_KEY = `workhistory:${DATA_KEY}`;
-    const WORK_HISTORY_STORAGE_ROOT_FOLDER = '작업내역';
     const ATTACHMENT_SLOT_KEYS = ['billing', 'report'];
     const ATTACHMENT_SLOT_META = Object.freeze({
         billing: {
@@ -30,14 +29,56 @@
             fileCategory: 'report_pdf'
         }
     });
-    const RECORD_CATEGORY_OPTIONS = Object.freeze([
-        '설비 가동률 증대',
-        '자체 정비',
-        '계획 이행',
-        '법규 준수',
-        '운영 체계 구축',
-        '보고'
+    const KPI_FLAG_LABEL = '★';
+    const KPI_FLAG_PILL_LABEL = '★';
+    const IMPORTANT_FLAG_LABEL = '★';
+    const IMPORTANT_FLAG_PILL_LABEL = '★';
+    const ACTUAL_ACHIEVEMENT_RULES = Object.freeze([
+        Object.freeze({
+            team: 'team2',
+            startDate: '2026-02-22',
+            endDate: '2026-02-22',
+            workIncludes: Object.freeze(['배합실 무중력혼합기 핀밀 축 점검'])
+        }),
+        Object.freeze({
+            team: 'team1part2',
+            startDate: '2026-03-31',
+            endDate: '2026-03-31',
+            workIncludes: Object.freeze(['건조기 V/F 안전발판 개선'])
+        })
     ]);
+    const RECORD_CATEGORY_GROUP_ORDER = Object.freeze(['kpi', 'focus', 'report']);
+    const RECORD_CATEGORY_GROUPS = Object.freeze({
+        kpi: Object.freeze({
+            label: 'KPI',
+            categories: Object.freeze([
+                '설비 가동률 증대',
+                '자체 정비',
+                '계획 이행률',
+                '건조기 설치',
+                '법규 준수'
+            ])
+        }),
+        focus: Object.freeze({
+            label: '중점 추진 과제',
+            categories: Object.freeze([
+                '모니터링 운영 체계',
+                '데이터 관리 체계',
+                '법규 리스크 제로'
+            ])
+        }),
+        report: Object.freeze({
+            label: '보고',
+            categories: Object.freeze([])
+        })
+    });
+    const RECORD_CATEGORY_ALIAS_MAP = Object.freeze({
+        '계획 이행': '계획 이행률',
+        '운영 체계 구축': '모니터링 운영 체계'
+    });
+    const RECORD_CATEGORY_OPTIONS = Object.freeze(
+        RECORD_CATEGORY_GROUP_ORDER.flatMap(groupKey => RECORD_CATEGORY_GROUPS[groupKey]?.categories || [])
+    );
 
     const state = history.state || {
         loaded: false,
@@ -102,15 +143,124 @@
         return items.map(item => String(item || '').trim()).filter(Boolean);
     }
 
+    function normalizeRecordCategoryAlias(value) {
+        const rawValue = String(value || '').trim();
+        if (!rawValue) return '';
+        return RECORD_CATEGORY_ALIAS_MAP[rawValue] || rawValue;
+    }
+
+    function getRecordCategoryGroupKeyByCategory(value) {
+        const normalizedCategory = normalizeRecordCategoryAlias(value);
+        return RECORD_CATEGORY_GROUP_ORDER.find(groupKey => (
+            RECORD_CATEGORY_GROUPS[groupKey]?.categories?.includes(normalizedCategory)
+        )) || '';
+    }
+
     function isAllowedRecordCategory(value) {
-        return RECORD_CATEGORY_OPTIONS.includes(String(value || '').trim());
+        return RECORD_CATEGORY_OPTIONS.includes(normalizeRecordCategoryAlias(value));
     }
 
     function normalizeRecordCategory(value, options = {}) {
         const rawValue = String(value || '').trim();
         if (!rawValue || rawValue === 'KPI' || rawValue === '없음') return '';
-        if (isAllowedRecordCategory(rawValue)) return rawValue;
+        const normalizedValue = normalizeRecordCategoryAlias(rawValue);
+        if (isAllowedRecordCategory(normalizedValue)) return normalizedValue;
         return options.preserveLegacy === false ? '' : rawValue;
+    }
+
+    function normalizeRecordCategoryGroup(value, options = {}) {
+        const rawValue = String(value || '').trim();
+        const lowerValue = rawValue.toLowerCase();
+        if (RECORD_CATEGORY_GROUPS[lowerValue]) {
+            return lowerValue;
+        }
+        const matchedGroupKey = RECORD_CATEGORY_GROUP_ORDER.find(groupKey => (
+            RECORD_CATEGORY_GROUPS[groupKey]?.label === rawValue
+        ));
+        if (matchedGroupKey) {
+            return matchedGroupKey;
+        }
+
+        const categoryGroupKey = getRecordCategoryGroupKeyByCategory(options.category);
+        if (categoryGroupKey) {
+            return categoryGroupKey;
+        }
+
+        if (String(options.category || '').trim()) {
+            return options.kpi === true ? 'kpi' : 'focus';
+        }
+
+        if (options.kpi === true) {
+            return 'kpi';
+        }
+
+        return options.preserveLegacy === false ? '' : '';
+    }
+
+    function getRecordCategoryGroupOptions() {
+        return RECORD_CATEGORY_GROUP_ORDER.map(groupKey => ({
+            value: groupKey,
+            label: RECORD_CATEGORY_GROUPS[groupKey]?.label || groupKey,
+            categories: [...(RECORD_CATEGORY_GROUPS[groupKey]?.categories || [])]
+        }));
+    }
+
+    function getRecordCategoryOptionsForGroup(groupKey, options = {}) {
+        const normalizedGroupKey = normalizeRecordCategoryGroup(groupKey, options);
+        const categories = normalizedGroupKey
+            ? [...(RECORD_CATEGORY_GROUPS[normalizedGroupKey]?.categories || [])]
+            : [];
+        const legacyCategory = String(options.includeLegacyValue || '').trim();
+        if (legacyCategory && !categories.includes(legacyCategory)) {
+            categories.push(legacyCategory);
+        }
+        return categories;
+    }
+
+    function getRecordCategoryGroupLabel(recordOrGroupKey, options = {}) {
+        const isRecordObject = recordOrGroupKey && typeof recordOrGroupKey === 'object';
+        const groupKey = normalizeRecordCategoryGroup(
+            isRecordObject ? (recordOrGroupKey.categoryGroup || recordOrGroupKey.categoryType || '') : recordOrGroupKey,
+            {
+                ...options,
+                category: isRecordObject ? recordOrGroupKey.category : options.category,
+                kpi: isRecordObject ? isKpiRecord(recordOrGroupKey) : options.kpi
+            }
+        );
+        return groupKey ? (RECORD_CATEGORY_GROUPS[groupKey]?.label || '') : '';
+    }
+
+    function isReportRecord(record) {
+        return normalizeRecordCategoryGroup(record?.categoryGroup || record?.categoryType, {
+            category: record?.category,
+            kpi: isKpiRecord(record)
+        }) === 'report';
+    }
+
+    function normalizeAchievementText(value) {
+        return String(value || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function isAchievementRecord(record) {
+        const team = String(record?.team || '').trim();
+        const startDate = String(record?.startDate || record?.date || record?.weekStart || '').trim();
+        const endDate = String(record?.endDate || record?.date || record?.weekEnd || record?.weekStart || '').trim();
+        const workContent = normalizeAchievementText(record?.workContent || record?.currentWork || '');
+        if (!workContent) return false;
+        return ACTUAL_ACHIEVEMENT_RULES.some((rule) => {
+            if (rule.team && team !== rule.team) return false;
+            if (rule.startDate && startDate !== rule.startDate) return false;
+            if (rule.endDate && endDate !== rule.endDate) return false;
+            return Array.isArray(rule.workIncludes)
+                && rule.workIncludes.every(fragment => workContent.includes(normalizeAchievementText(fragment)));
+        });
+    }
+
+    function isImportantRecord(record) {
+        return isAchievementRecord(record);
     }
 
     function isKpiRecord(record) {
@@ -126,14 +276,23 @@
     function getRecordTagLabels(record, options = {}) {
         const includeKpi = options.includeKpi !== false;
         const includeCategory = options.includeCategory !== false;
+        const includeGroup = options.includeGroup !== false;
         const preserveLegacy = options.preserveLegacy !== false;
         const labels = [];
-        if (includeKpi && isKpiRecord(record)) {
-            labels.push('KPI');
+        if (includeKpi && isImportantRecord(record)) {
+            labels.push(IMPORTANT_FLAG_LABEL);
         }
         const category = normalizeRecordCategory(record?.category, { preserveLegacy });
         if (includeCategory && category) {
             labels.push(category);
+        } else if (includeGroup) {
+            const groupLabel = getRecordCategoryGroupLabel(record, {
+                category,
+                kpi: isKpiRecord(record)
+            });
+            if (groupLabel) {
+                labels.push(groupLabel);
+            }
         }
         return labels;
     }
@@ -221,7 +380,6 @@
             documentId,
             attachmentType: normalizedType,
             storageRelPath: String(item.storageRelPath || item.storage_rel_path || '').trim(),
-            storageFolder: String(item.storageFolder || item.storage_folder || '').trim(),
             fileCategory: String(item.fileCategory || item.file_category || '').trim()
         };
     }
@@ -289,6 +447,13 @@
     function normalizeRecord(record, fallbackTeam) {
         const assignees = normalizeAssignees(record?.assignees || record?.assignee || record?.worker || '');
         const category = normalizeRecordCategory(record?.category);
+        const categoryGroup = normalizeRecordCategoryGroup(
+            record?.categoryGroup || record?.categoryType,
+            {
+                category: category || record?.category,
+                kpi: isKpiRecord(record)
+            }
+        );
         const attachmentSlots = normalizeAttachmentSlots(
             record?.attachmentSlots || {
                 billing: record?.billingAttachment || record?.billingDocument || null,
@@ -301,6 +466,7 @@
             startDate: String(record?.startDate || record?.weekStart || record?.date || '').trim(),
             endDate: String(record?.endDate || record?.weekEnd || record?.date || record?.weekStart || '').trim(),
             plannedEndDate: String(record?.plannedEndDate || record?.expectedEndDate || '').trim(),
+            categoryGroup,
             category,
             kpi: isKpiRecord(record),
             assignees,
@@ -480,62 +646,18 @@
         return `${DATA_KEY}:${teamKey}:${slotKey}:${dateKey}:${nonce}`;
     }
 
-    function getAttachmentStorageTeamName(team) {
-        const teamKey = String(team || '').trim();
-        return TeamInfo[teamKey]?.name || teamKey || '미지정팀';
-    }
-
-    function getAttachmentStorageSlotName(attachmentType, slotMeta) {
-        const slotKey = ATTACHMENT_SLOT_KEYS.includes(String(attachmentType || '').trim())
-            ? String(attachmentType).trim()
-            : 'report';
-        return String(slotMeta?.label || ATTACHMENT_SLOT_META[slotKey]?.label || '첨부').trim() || '첨부';
-    }
-
-    function buildAttachmentStorageFolder(context, attachmentType, slotMeta) {
-        return [
-            WORK_HISTORY_STORAGE_ROOT_FOLDER,
-            getAttachmentStorageTeamName(context?.team),
-            getAttachmentStorageSlotName(attachmentType, slotMeta)
-        ].join('/');
-    }
-
-    function formatAttachmentTitleToken(context) {
-        const title = String(context?.workContent || context?.title || '')
-            .replace(/\s+/g, ' ')
-            .trim();
-        return title ? ` (${title})` : '';
-    }
-
-    function formatAttachmentDateLabel(startDate, endDate) {
-        const start = String(startDate || '').trim();
-        const end = String(endDate || '').trim();
-        if (start && end && start !== end) return `${start}~${end}`;
-        return start || end || '날짜미정';
-    }
-
-    function formatAttachmentKpiToken(context) {
-        return context?.kpi === true ? ' ★KPI' : '';
-    }
-
     function formatAttachmentFileName(context, slotMeta, fallbackName) {
         const teamKey = String(context?.team || '').trim();
         const teamLabel = TeamInfo[teamKey]?.name || teamKey || '팀';
-        const dateLabel = formatAttachmentDateLabel(context?.startDate, context?.endDate);
+        const startDate = String(context?.startDate || '').trim();
+        const endDate = String(context?.endDate || '').trim();
+        const dateLabel = startDate && endDate
+            ? `${startDate}~${endDate}`
+            : (startDate || endDate || '날짜미정');
         const slotLabel = String(slotMeta?.label || '').trim() || '첨부';
-        const titleToken = formatAttachmentTitleToken(context);
-        const kpiToken = formatAttachmentKpiToken(context);
-        const nameBody = `${teamLabel} ${dateLabel}${titleToken} ${slotLabel}${kpiToken}`.trim();
+        const nameBody = `${teamLabel} ${dateLabel} ${slotLabel}`.trim();
         const safeBody = nameBody.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_');
         return `${safeBody}.pdf`;
-    }
-
-    function getAttachmentStorageDisplayPath(attachment) {
-        const explicitFolder = String(attachment?.storageFolder || attachment?.storage_folder || '').trim();
-        if (explicitFolder) return explicitFolder.replace(/\\/g, '/');
-        const relPath = String(attachment?.storageRelPath || attachment?.storage_rel_path || '').trim().replace(/\\/g, '/');
-        const slashIndex = relPath.lastIndexOf('/');
-        return slashIndex > 0 ? relPath.slice(0, slashIndex) : '';
     }
 
     async function uploadPendingAttachments(files, context = {}) {
@@ -553,13 +675,11 @@
         for (const file of files) {
             const originalName = formatAttachmentFileName(context, slotMeta, file?.name);
             const mimeType = String(file?.type || '').trim() || 'application/octet-stream';
-            const sourceFileName = String(file?.name || '').trim();
-            const isPdf = /\.pdf$/i.test(sourceFileName) || mimeType === 'application/pdf';
+            const isPdf = /\.pdf$/i.test(originalName) || mimeType === 'application/pdf';
             if (!isPdf) {
                 throw new Error('attachment_pdf_only');
             }
             const base64Data = await readFileAsBase64(file);
-            const storageFolder = buildAttachmentStorageFolder(context, attachmentType, slotMeta);
             const response = await fetch(`${assetRuntime.apiBase.replace(/\/+$/, '')}/files/base64`, {
                 method: 'POST',
                 credentials: 'same-origin',
@@ -581,9 +701,7 @@
                         endDate: String(context.endDate || '').trim(),
                         originalName,
                         attachmentType,
-                        storageFolder,
-                        folder: storageFolder,
-                        legacyFolder: `${String(context.team || 'unassigned').trim() || 'unassigned'}/${attachmentType}`
+                        folder: `${String(context.team || 'unassigned').trim() || 'unassigned'}/${attachmentType}`
                     }
                 })
             });
@@ -604,7 +722,6 @@
                 documentId: String(documentRecord.id || '').trim(),
                 attachmentType,
                 storageRelPath: String(documentRecord.storage_rel_path || ''),
-                storageFolder: String(documentRecord.metadata?.storageFolder || storageFolder),
                 fileCategory: String(documentRecord.file_category || slotMeta.fileCategory || '')
             }));
         }
@@ -695,46 +812,6 @@
         return writeState.writeChain || Promise.resolve(true);
     }
 
-    async function migrateLocalBackupToServer() {
-        const runtime = getRecordRuntimeConfig();
-        if (!(window.KpiRuntime?.canUseServerWrite?.(runtime?.writeEnabled === true))) {
-            return false;
-        }
-
-        let localPayload = null;
-        try {
-            const stored = localStorage.getItem(LOCAL_BACKUP_KEY);
-            if (stored) {
-                localPayload = JSON.parse(stored);
-            }
-        } catch (_error) {
-            localPayload = null;
-        }
-
-        if (!localPayload || typeof localPayload !== 'object') {
-            return false;
-        }
-
-        const normalizedLocal = normalizePayload(localPayload);
-        const portalPayload = getSeedPayload();
-        const hasPortalPayload = !!(
-            window.PortalData
-            && typeof window.PortalData === 'object'
-            && Object.prototype.hasOwnProperty.call(window.PortalData, DATA_KEY)
-        );
-
-        if (
-            hasPortalPayload
-            && getTimeValue(normalizedLocal?.meta?.updatedAt) > 0
-            && getTimeValue(portalPayload?.meta?.updatedAt) >= getTimeValue(normalizedLocal?.meta?.updatedAt)
-        ) {
-            return false;
-        }
-
-        replacePayload(normalizedLocal);
-        return queueServerWrite(normalizedLocal);
-    }
-
     function savePayload(payload) {
         const runtime = getRecordRuntimeConfig();
         if (!(window.KpiRuntime?.canUseServerWrite?.(runtime?.writeEnabled === true))) {
@@ -781,10 +858,24 @@
         escapeAttribute,
         normalizeCost,
         normalizeAssignees,
+        KPI_FLAG_LABEL,
+        KPI_FLAG_PILL_LABEL,
+        IMPORTANT_FLAG_LABEL,
+        IMPORTANT_FLAG_PILL_LABEL,
+        RECORD_CATEGORY_GROUP_ORDER,
+        RECORD_CATEGORY_GROUPS,
         RECORD_CATEGORY_OPTIONS,
+        normalizeRecordCategoryAlias,
         isAllowedRecordCategory,
         normalizeRecordCategory,
+        normalizeRecordCategoryGroup,
+        getRecordCategoryGroupOptions,
+        getRecordCategoryOptionsForGroup,
+        getRecordCategoryGroupLabel,
         isKpiRecord,
+        isReportRecord,
+        isAchievementRecord,
+        isImportantRecord,
         getRecordTagLabels,
         formatRecordTagText,
         ATTACHMENT_SLOT_KEYS,
@@ -808,8 +899,6 @@
         getTeamRecords,
         uploadPendingAttachments,
         deleteAttachmentsFromServer,
-        getAttachmentStorageDisplayPath,
-        migrateLocalBackupToServer,
         savePayload,
         saveNow,
         waitForPendingSave,

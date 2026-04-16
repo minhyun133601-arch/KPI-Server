@@ -316,12 +316,9 @@
         }
 
         function buildUtilDayOptions(selectedDay) {
-            const safeSelected = clampUtilDay(selectedDay, DEFAULT_UTIL_PRODUCTION_PERIOD.startDay);
-            return Array.from({ length: 31 }, (_, idx) => {
-                const day = idx + 1;
-                const selected = day === safeSelected ? ' selected' : '';
-                return `<option value="${day}"${selected}>${day}일</option>`;
-            }).join('');
+            void selectedDay;
+            const fixedDay = DEFAULT_UTIL_PRODUCTION_PERIOD.startDay;
+            return `<option value="${fixedDay}" selected>${fixedDay}일</option>`;
         }
 
         function buildUtilSummaryStats(values) {
@@ -397,11 +394,8 @@
 
         function getUtilDualRatioMetricOptionsHtml(selectedKey = 'usage', disabledKey = '') {
             const normalized = normalizeUtilDualRatioMetricKey(selectedKey);
-            const disabled = String(disabledKey || '').trim()
-                ? normalizeUtilDualRatioMetricKey(disabledKey)
-                : '';
             return ['usage', 'cost', 'production']
-                .map(key => `<option value="${key}"${key === normalized ? ' selected' : ''}${key === disabled ? ' disabled' : ''}>${getUtilDualRatioMetricLabel(key)}</option>`)
+                .map(key => `<option value="${key}"${key === normalized ? ' selected' : ''}>${getUtilDualRatioMetricLabel(key)}</option>`)
                 .join('');
         }
 
@@ -536,8 +530,9 @@
             const teamTokenForYearAction = encodeURIComponent(String(teamName || ''));
             const detailType = 'production';
             const productionMetaMap = new Map();
+            const productionOptions = datasetKey === 'gas' ? { gasContext: true } : {};
             dataRows.forEach(row => {
-                productionMetaMap.set(row, resolveUtilProductionCell(teamName, yearValue, row));
+                productionMetaMap.set(row, resolveUtilProductionCell(teamName, yearValue, row, productionOptions));
             });
             const productionValues = dataRows
                 .map(row => Number(productionMetaMap.get(row)?.value))
@@ -565,13 +560,15 @@
             };
 
             const buildRow = (row, className, labelOverride, productionMeta) => {
+                const rowClassName = String(className || '').trim();
+                const isSummaryRow = rowClassName.includes('util-row-average') || rowClassName.includes('util-row-total');
                 const label = labelOverride || row.label;
                 const monthValue = parseUtilMonthLabel(row?.label);
                 const productionValue = productionMeta ? productionMeta.value : row?.production;
                 const cells = columns.map(col => {
                     if (col.key === 'label') {
                         const labelText = escapeHtml(String(label || ''));
-                        const detailButton = (Number.isFinite(yearValue) && monthValue)
+                        const detailButton = (!isSummaryRow && Number.isFinite(yearValue) && monthValue)
                             ? `<button type="button" class="util-detail-btn" onclick="openUtilProductionDailyDetail('${teamToken}', ${yearValue}, ${monthValue}, '${detailType}')">일별</button>`
                             : '';
                         const labelMain = detailButton
@@ -610,7 +607,7 @@
                     });
                     return `<td class="util-num util-cost-cell" data-col="cost" ${costAttrs} data-value="${costVal}"><div class="util-num-cell"><span class="util-num-value">${formatUtilNumber(costVal)}</span>${clearButton}</div></td>`;
                 }).join('');
-                return `<tr class="${className || ''}">${cells}</tr>`;
+                return rowClassName ? `<tr class="${rowClassName}">${cells}</tr>` : `<tr>${cells}</tr>`;
             };
 
             const avgProductionMeta = avgRow
@@ -631,17 +628,25 @@
             ` : '';
             const costLabelHtml = costLabelVisible ? `<span class="util-head-label" data-cost-label data-base-label="${escapeHtml(stripUtilLabelUnitSuffix(costModeLabel))}">${costModeLabel}</span>` : '';
             const costHeadClass = costModeEnabled && !costLabelVisible ? 'util-head-cell util-head-cell-cost-mode' : 'util-head-cell';
-            const costThClass = costModeEnabled && !costLabelVisible ? ' class="util-th-cost-mode"' : '';
+            const costThClass = costModeEnabled && !costLabelVisible ? 'util-th-cost-mode' : '';
+            const yearHeadSub = year?.label ? `${year.label} 월별 데이터` : '월별 데이터';
+            const footerHtml = (avgHtml || totalHtml)
+                ? `<tfoot>${avgHtml}${totalHtml}</tfoot>`
+                : '';
             const head = `
                 <thead>
                     <tr class="util-table-head">
-                        <th>${columns[0].label}</th>
+                        <th>
+                            <div class="util-head-cell">
+                                <span class="util-head-label">${columns[0].label}</span>
+                            </div>
+                        </th>
                         <th>
                             <div class="util-head-cell">
                                 <span class="util-head-label" data-unit-label="usage" data-base-label="${escapeHtml(stripUtilLabelUnitSuffix(columns[1].label))}">${columns[1].label}</span>
                             </div>
                         </th>
-                        <th${costThClass}>
+                        <th${costThClass ? ` class="${costThClass}"` : ''}>
                             <div class="${costHeadClass}">
                                 ${costModeControl}
                                 ${costLabelHtml}
@@ -679,9 +684,9 @@
                             <colgroup>
                                 <col style="width:20%">
                                 <col style="width:18%">
-                                <col style="width:18%">
-                                <col style="width:18%">
-                                <col style="width:26%">
+                            <col style="width:18%">
+                            <col style="width:18%">
+                            <col style="width:26%">
                             </colgroup>
                             ${head}
                             <tbody>${dataHtml}${avgHtml}${totalHtml}</tbody>
@@ -690,4 +695,3 @@
                 </div>
             `;
         }
-

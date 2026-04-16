@@ -377,7 +377,7 @@
 
         const defaultProductionPeriod = UTIL_PRODUCTION_DAILY_STATE.periodDefault || {};
         const UtilProductionState = {
-            startDay: clampUtilDay(defaultProductionPeriod.startDay, DEFAULT_UTIL_PRODUCTION_PERIOD.startDay)
+            startDay: DEFAULT_UTIL_PRODUCTION_PERIOD.startDay
         };
         defaultProductionPeriod.startDay = UtilProductionState.startDay;
         let UTIL_PRODUCTION_DAILY_INDEX = buildUtilProductionDailyIndex(UTIL_PRODUCTION_DAILY_DATA);
@@ -393,19 +393,12 @@
             selectedTeam: ''
         };
 
-        async function persistUtilProductionDailyState(options = {}) {
-            const requireServer = options.requireServer === true;
+        function persistUtilProductionDailyState() {
             if (!window.KpiUtilityServerRuntime || typeof window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite !== 'function') {
-                if (requireServer) {
-                    throw new Error('생산량 데이터를 DB에 저장할 서버 런타임이 없습니다.');
-                }
                 return false;
             }
             if (typeof window.KpiUtilityServerRuntime.supportsUtilProductionServerPersistence === 'function'
                 && !window.KpiUtilityServerRuntime.supportsUtilProductionServerPersistence()) {
-                if (requireServer) {
-                    throw new Error('생산량 데이터를 DB에 저장할 권한 또는 서버 연결이 없습니다.');
-                }
                 return false;
             }
             UTIL_PRODUCTION_DAILY_STATE.meta = UTIL_PRODUCTION_DAILY_STATE.meta || {};
@@ -436,11 +429,7 @@
                 // localStorage 용량 초과 등은 무시하고 런타임 상태 유지
             }
             if (window.KpiUtilityServerRuntime && typeof window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite === 'function') {
-                const saved = await window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite(UTIL_PRODUCTION_DAILY_STATE);
-                if (requireServer && !saved) {
-                    throw new Error(window.KpiUtilityServerRuntime.lastErrorMessage || '생산량 데이터를 DB에 저장하지 못했습니다.');
-                }
-                return saved;
+                return window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite(UTIL_PRODUCTION_DAILY_STATE);
             }
             return false;
         }
@@ -560,15 +549,13 @@
             return { rows: linkedRows, excludedCount };
         }
 
-        async function mergeUtilProductionExtractorRows(rows, options = {}) {
+        function mergeUtilProductionExtractorRows(rows, options = {}) {
             const existingKeys = collectUtilProductionDailyEntryKeys();
             const fallbackTeam = sanitizeUtilUploadTeamName(options?.fallbackTeam || UtilProductionBridgeState.activeTeam || '');
             const sourceArchiveLookup = options?.sourceArchiveLookup || {};
-            const requireServerSave = options?.requireServerSave === true;
             let addedCount = 0;
             let skippedCount = 0;
             let patchedCount = 0;
-            let serverSaved = false;
             const addedTeamSet = new Set();
             (rows || []).forEach(row => {
                 const rawDate = row?.date ?? row?.values?.[0] ?? '';
@@ -649,20 +636,14 @@
                 addedCount += 1;
                 addedTeamSet.add(String(targetTeam?.name || teamName || '').trim());
             });
-            const shouldPersist = addedCount > 0
-                || patchedCount > 0
-                || (requireServerSave && Array.isArray(rows) && rows.length > 0);
             if (addedCount > 0 || patchedCount > 0) {
                 refreshUtilProductionDailyIndex();
-            }
-            if (shouldPersist) {
-                serverSaved = await persistUtilProductionDailyState({ requireServer: requireServerSave });
+                persistUtilProductionDailyState();
             }
             return {
                 addedCount,
                 skippedCount,
                 patchedCount,
-                serverSaved,
                 addedTeams: Array.from(addedTeamSet).filter(Boolean)
             };
         }

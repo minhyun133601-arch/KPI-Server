@@ -9,23 +9,10 @@ import {
   serializeServerUrlPath
 } from './route-context.js';
 
-const SERVER_MANAGED_STORAGE_FOLDER_BY_OWNER_DOMAIN = Object.freeze({
-  'audit.lux.evidence': ['오디트', '조도']
-});
-
-function normalizeUploadMetadata(metadata, ownerDomain) {
-  const normalizedMetadata =
-    metadata && typeof metadata === 'object' && !Array.isArray(metadata)
-      ? { ...metadata }
-      : {};
-  const storageFolder = SERVER_MANAGED_STORAGE_FOLDER_BY_OWNER_DOMAIN[ownerDomain];
-  if (storageFolder) {
-    return {
-      ...normalizedMetadata,
-      storageFolder
-    };
-  }
-  return metadata ?? {};
+function normalizeUploadMetadata(metadata) {
+  return metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+    ? { ...metadata }
+    : {};
 }
 
 async function loadDocumentOr404(res, documentId) {
@@ -79,7 +66,7 @@ export async function handleUploadBase64File(context) {
     originalName: normalizeText(body.originalName || 'file.bin'),
     mimeType: normalizeText(body.mimeType || 'application/octet-stream'),
     base64Data: normalizeText(body.base64Data),
-    metadata: normalizeUploadMetadata(body.metadata, ownerDomain)
+    metadata: normalizeUploadMetadata(body.metadata)
   });
 
   sendJson(res, 201, {

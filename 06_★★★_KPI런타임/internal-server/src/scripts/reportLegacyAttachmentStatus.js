@@ -1,5 +1,4 @@
 import {
-  PORTAL_DATA_MODULE_KEY,
   WORK_RUNTIME_BOOTSTRAP_RECORDS,
   WORK_RUNTIME_MODULE_KEY
 } from '../lib/portal-data-registry.js';
@@ -161,39 +160,10 @@ function walkWorkLegacyAttachments(value, pathParts = [], found = []) {
   return found;
 }
 
-function walkAreaLegacyAssets(value, pathParts = [], found = []) {
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => walkAreaLegacyAssets(item, [...pathParts, `[${index}]`], found));
-    return found;
-  }
-
-  if (!isPlainObject(value)) {
-    return found;
-  }
-
-  const assetId = normalizeText(value.assetId);
-  const storage = normalizeText(value.storage);
-  const isLegacyLocalAsset = assetId.startsWith('area-asset-') || (storage === 'local' && !!assetId);
-  if (isLegacyLocalAsset) {
-    found.push({
-      path: pathParts.join('.'),
-      assetId,
-      storage: storage || 'local',
-      name: normalizeText(value.name)
-    });
-  }
-
-  Object.entries(value).forEach(([key, child]) => {
-    walkAreaLegacyAssets(child, [...pathParts, key], found);
-  });
-  return found;
-}
-
 async function main() {
-  const [meteringRecord, workRecords, portalRecords] = await Promise.all([
+  const [meteringRecord, workRecords] = await Promise.all([
     findModuleRecord(METERING_SHARED_STORE_MODULE_KEY, METERING_SHARED_STORE_RECORD_KEY),
-    listModuleRecordsByModuleKey(WORK_RUNTIME_MODULE_KEY),
-    listModuleRecordsByModuleKey(PORTAL_DATA_MODULE_KEY)
+    listModuleRecordsByModuleKey(WORK_RUNTIME_MODULE_KEY)
   ]);
 
   const workSummary = workRecords.map((record) => {
@@ -204,18 +174,6 @@ async function main() {
       sample: legacyAttachments.slice(0, 5)
     };
   }).filter((item) => item.legacyDirectoryAttachmentCount > 0);
-
-  const areaSummary = portalRecords
-    .filter((record) => normalizeText(record.record_key).startsWith('area_map_'))
-    .map((record) => {
-      const legacyAssets = walkAreaLegacyAssets(record.payload, [record.record_key]);
-      return {
-        recordKey: record.record_key,
-        legacyLocalAssetRefCount: legacyAssets.length,
-        sample: legacyAssets.slice(0, 5)
-      };
-    })
-    .filter((item) => item.legacyLocalAssetRefCount > 0);
 
   console.log(
     JSON.stringify(
@@ -236,11 +194,6 @@ async function main() {
             .filter((recordKey) => !workRecords.some((record) => record.record_key === recordKey)),
           legacyRecordCount: workSummary.length,
           records: workSummary
-        },
-        area: {
-          recordCount: portalRecords.filter((record) => normalizeText(record.record_key).startsWith('area_map_')).length,
-          legacyRecordCount: areaSummary.length,
-          records: areaSummary
         }
       },
       null,

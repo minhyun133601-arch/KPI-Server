@@ -1,6 +1,7 @@
 import { config } from '../config.js';
 import { hashPassword, randomToken, sha256, verifyPassword } from '../lib/crypto.js';
 import { parseCookies } from '../lib/http.js';
+import { PERMISSION_KEYS } from '../lib/permission-registry.js';
 import { appendAuditLog } from '../repositories/audit-log.js';
 import { createSession, deleteSession, findSession, touchSession } from '../repositories/sessions.js';
 import {
@@ -35,6 +36,22 @@ function normalizeRoles(inputRoles) {
     .map((role) => String(role || '').trim().toLowerCase())
     .filter((role) => allowed.has(role));
   return [...new Set(cleaned)];
+}
+
+function isViewerOnlyRoleSet(roles) {
+  return Array.isArray(roles) && roles.length === 1 && roles[0] === 'viewer';
+}
+
+async function grantDefaultViewerReadPermissions(userId) {
+  const permissionKeys = Object.values(PERMISSION_KEYS);
+  for (const permissionKey of permissionKeys) {
+    await upsertUserPermission(userId, {
+      permissionKey,
+      canRead: true,
+      canWrite: false,
+      expiresAt: null
+    });
+  }
 }
 
 export async function getBootstrapStatus() {
@@ -74,13 +91,17 @@ export async function createManagedUser({ actorUserId, username, displayName, pa
   const passwordHash = await hashPassword(password);
   const user = await createUser({ username: normalizedUsername, displayName, passwordHash });
   const normalizedRoles = normalizeRoles(roles);
-  await replaceUserRoles(user.id, normalizedRoles.length ? normalizedRoles : ['viewer']);
+  const assignedRoles = normalizedRoles.length ? normalizedRoles : ['viewer'];
+  await replaceUserRoles(user.id, assignedRoles);
+  if (isViewerOnlyRoleSet(assignedRoles)) {
+    await grantDefaultViewerReadPermissions(user.id);
+  }
   await appendAuditLog({
     actorUserId,
     actionKey: 'user.create',
     targetType: 'user',
     targetKey: user.id,
-    detail: { username: user.username, roles: normalizedRoles }
+    detail: { username: user.username, roles: assignedRoles }
   });
   return user;
 }

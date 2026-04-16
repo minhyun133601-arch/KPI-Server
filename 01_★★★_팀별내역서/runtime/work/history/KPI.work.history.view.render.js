@@ -13,9 +13,12 @@
         ATTACHMENT_SLOT_META,
         getRecordAttachments,
         getRecordAttachment,
-        getAttachmentStorageDisplayPath,
+        KPI_FLAG_LABEL,
+        KPI_FLAG_PILL_LABEL,
         normalizeRecordCategory,
+        getRecordCategoryGroupLabel,
         isKpiRecord,
+        isImportantRecord,
         getRecordTagLabels,
         escapeHtml,
         escapeAttribute
@@ -66,7 +69,7 @@
 
         if (start && recordEnd < start) return false;
         if (end && recordStart > end) return false;
-        if (categoryFilter && getRecordCategoryText(record) !== categoryFilter) return false;
+        if (categoryFilter && getRecordCategoryFilterText(record) !== categoryFilter) return false;
         if (!state.currentKeyword) return true;
         return buildSearchHaystack(record).includes(state.currentKeyword.toLowerCase());
     }
@@ -81,6 +84,14 @@
         return typeof normalizeRecordCategory === 'function'
             ? normalizeRecordCategory(record?.category)
             : String(record?.category || '').trim();
+    }
+
+    function getRecordCategoryFilterText(record) {
+        const categoryText = getRecordCategoryText(record);
+        if (categoryText) return categoryText;
+        return typeof getRecordCategoryGroupLabel === 'function'
+            ? getRecordCategoryGroupLabel(record)
+            : '';
     }
 
     function getRecordTeamInfo(record) {
@@ -102,10 +113,14 @@
             .map(attachment => attachment.originalName || '')
             .join(' ');
         const categoryText = getRecordCategoryText(record);
+        const categoryGroupText = typeof getRecordCategoryGroupLabel === 'function'
+            ? getRecordCategoryGroupLabel(record)
+            : '';
         const tagText = getRecordTags(record).join(' ');
         return [
             TeamInfo[record.team]?.name || '',
             TeamInfo[record.team]?.desc || '',
+            categoryGroupText,
             categoryText,
             tagText,
             view.formatAssigneeText(record),
@@ -204,7 +219,7 @@
 
     function getRecordSummaryTitle(record) {
         const categoryText = getRecordCategoryText(record);
-        const kpiPrefix = isKpiRecord(record) ? 'KPI · ' : '';
+        const importantPrefix = isImportantRecord(record) ? `${KPI_FLAG_LABEL} · ` : '';
         const workTitle = String(record?.workContent || '')
             .split(/\r?\n/)
             .map(line => String(line || '').trim())
@@ -215,24 +230,28 @@
             ? '청구서/보고서'
             : (billing ? '청구서' : (report ? '보고서' : ''));
 
-        if (attachmentLabel && workTitle) return `${kpiPrefix}${attachmentLabel} · ${workTitle}`;
-        if (attachmentLabel && categoryText) return `${kpiPrefix}${attachmentLabel} · ${categoryText}`;
-        if (workTitle) return `${kpiPrefix}${workTitle}`;
-        if (attachmentLabel) return `${kpiPrefix}${attachmentLabel} 첨부`;
-        if (categoryText) return `${kpiPrefix}${categoryText}`;
+        if (attachmentLabel && workTitle) return `${importantPrefix}${attachmentLabel} · ${workTitle}`;
+        if (attachmentLabel && categoryText) return `${importantPrefix}${attachmentLabel} · ${categoryText}`;
+        if (workTitle) return `${importantPrefix}${workTitle}`;
+        if (attachmentLabel) return `${importantPrefix}${attachmentLabel} 첨부`;
+        if (categoryText) return `${importantPrefix}${categoryText}`;
         const remarksTitle = String(record?.remarks || '')
             .split(/\r?\n/)
             .map(line => String(line || '').trim())
             .find(Boolean);
-        return `${kpiPrefix}${remarksTitle || '제목 미입력'}`;
+        return `${importantPrefix}${remarksTitle || '제목 미입력'}`;
     }
     function buildSummaryContent(record) {
         const info = getRecordTeamInfo(record);
+        const categoryGroupText = typeof getRecordCategoryGroupLabel === 'function'
+            ? getRecordCategoryGroupLabel(record)
+            : '';
         const categoryText = getRecordCategoryText(record);
         const items = [
             ['작업 팀', info.name],
+            ['구분', categoryGroupText || '-'],
             ['카테고리', categoryText || '-'],
-            ['KPI', isKpiRecord(record) ? 'KPI' : '일반'],
+            ['실적 표시', isImportantRecord(record) ? KPI_FLAG_LABEL : '-'],
             ['작업자', view.formatAssigneeText(record) || '미입력'],
             ['기간', view.formatDateRange(record.startDate, record.endDate)],
             ['종료예정일', view.formatDateKorean(record.plannedEndDate)],
@@ -277,17 +296,11 @@
 
             const previewUrl = attachment.previewUrl || attachment.url || attachment.downloadUrl || '#';
             const downloadUrl = attachment.downloadUrl || attachment.url || previewUrl;
-            const storagePath = typeof getAttachmentStorageDisplayPath === 'function'
-                ? getAttachmentStorageDisplayPath(attachment)
-                : '';
             return `
                 <div class="attachment-view-item">
                     <span class="attachment-type-label">${escapeHtml(meta.label)}</span>
                     <div class="attachment-view-meta">
-                        <span class="attachment-view-name-wrap">
-                            <a class="attachment-link" href="${escapeAttribute(previewUrl)}" target="_blank" rel="noopener">${escapeHtml(attachment.originalName)}</a>
-                            ${storagePath ? `<span class="attachment-size">${escapeHtml(storagePath)}</span>` : ''}
-                        </span>
+                        <a class="attachment-link" href="${escapeAttribute(previewUrl)}" target="_blank" rel="noopener">${escapeHtml(attachment.originalName)}</a>
                         <span class="attachment-view-actions">
                             <a class="attachment-view-btn" href="${escapeAttribute(previewUrl)}" target="_blank" rel="noopener">미리보기</a>
                             <a class="attachment-size" href="${escapeAttribute(downloadUrl)}" target="_blank" rel="noopener">${escapeHtml(view.formatFileSize(attachment.size))}</a>
@@ -309,15 +322,21 @@
             .map(line => String(line || '').trim())
             .find(Boolean) || '';
         const includeTeamTag = options.includeTeamTag !== false;
-        const kpiLabel = String(options.kpiLabel || '★ KPI');
+        const importantFlagLabel = String(options.importantFlagLabel || KPI_FLAG_LABEL);
+        const importantPillLabel = String(options.importantPillLabel || options.kpiLabel || KPI_FLAG_PILL_LABEL);
+        const tagItems = Array.isArray(options.tagItems) ? options.tagItems : getRecordTags(record);
+        const hasImportant = typeof options.isImportant === 'boolean'
+            ? options.isImportant
+            : isImportantRecord(record);
         const metaItems = [
             includeTeamTag ? info.name : '',
-            ...getRecordTags(record)
+            ...tagItems
         ].filter(Boolean);
         const outerClassName = [
             options.baseClassName || 'work-team-calendar-work-card',
             options.variantClassName || 'is-history-compact',
             info.class || '',
+            hasImportant ? 'is-important' : '',
             options.className || ''
         ].filter(Boolean).join(' ');
         const metaClassName = options.metaClassName || 'work-team-calendar-work-meta';
@@ -334,11 +353,11 @@
                     <span class="${escapeAttribute(costClassName)}">${escapeHtml(costText)}</span>
                 </div>
                 ${metaItems.length ? `
-                    <div class="${escapeAttribute(metaClassName)}">
+                        <div class="${escapeAttribute(metaClassName)}">
                         ${metaItems.map(item => {
-                            const isKpi = String(item || '').trim() === 'KPI';
-                            const label = isKpi ? kpiLabel : item;
-                            return `<span class="${escapeAttribute(`${pillClassName}${isKpi ? ` ${pillKpiClassName}` : ''}`)}">${escapeHtml(label)}</span>`;
+                            const isImportant = String(item || '').trim() === importantFlagLabel;
+                            const label = isImportant ? importantPillLabel : item;
+                            return `<span class="${escapeAttribute(`${pillClassName}${isImportant ? ` ${pillKpiClassName}` : ''}`)}">${escapeHtml(label)}</span>`;
                         }).join('')}
                     </div>
                 ` : ''}

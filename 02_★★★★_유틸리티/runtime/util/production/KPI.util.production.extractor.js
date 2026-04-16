@@ -143,18 +143,15 @@
                         })
                         .filter(item => item.fileName);
                     const failedFileNames = failedFiles.map(item => item.fileName);
-                    const cycleStartDay = clampUtilDay(data?.meta?.cycleStartDay, UtilProductionState.startDay);
                     const previousStartDay = UtilProductionState.startDay;
-                    UtilProductionState.startDay = cycleStartDay;
+                    UtilProductionState.startDay = DEFAULT_UTIL_PRODUCTION_PERIOD.startDay;
                     const startDayChanged = previousStartDay !== UtilProductionState.startDay;
-                    const result = await mergeUtilProductionExtractorRows(rows, {
-                        fallbackTeam: UtilProductionBridgeState.activeTeam,
-                        requireServerSave: true
+                    const result = mergeUtilProductionExtractorRows(rows, {
+                        fallbackTeam: UtilProductionBridgeState.activeTeam
                     });
-                    let serverSaved = !!result.serverSaved;
                     const archiveResult = { savedCount: 0, failedCount: 0, unsupported: false };
                     if (startDayChanged && result.addedCount === 0 && result.patchedCount === 0) {
-                        serverSaved = await persistUtilProductionDailyState({ requireServer: true });
+                        persistUtilProductionDailyState();
                     }
                     const failedNotice = failedFileNames.length
                         ? `, 형식 오류 제외 ${failedFileNames.length.toLocaleString('ko-KR')}개 (${failedFileNames.join(', ')})`
@@ -162,15 +159,13 @@
                     const patchedNotice = result.patchedCount > 0
                         ? `, 수율/CAPA/가동률 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
                         : '';
-                    const serverNotice = serverSaved ? ', DB 저장 완료' : '';
-                    const statusText = `기입 완료: 추가 ${result.addedCount.toLocaleString('ko-KR')}건, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}${serverNotice}`;
+                    const statusText = `기입 완료: 추가 ${result.addedCount.toLocaleString('ko-KR')}건, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`;
                     setUtilProductionExtractorStatus(statusText, result.addedCount === 0 && result.patchedCount === 0);
                     if (typeof UtilProductionBridgeState.onApplied === 'function') {
                         UtilProductionBridgeState.onApplied({
                             ...result,
                             failedFiles,
                             archiveResult,
-                            serverSaved,
                             unlinkedExcludedCount: 0
                         });
                     }
@@ -184,7 +179,6 @@
                             addedCount: result.addedCount,
                             skippedCount: result.skippedCount,
                             failedFiles,
-                            serverSaved,
                             archivedCount: 0,
                             archiveFailedCount: 0,
                             archiveUnsupported: false,
@@ -205,8 +199,13 @@
             });
         }
 
-        function listUtilDailyEntriesByMetric(teamName, year, month, metricKey) {
-            const period = getUtilProductionPeriod(year, month, UtilProductionState.startDay);
+        function resolveUtilProductionPeriodStartDay(options = {}) {
+            void options;
+            return DEFAULT_UTIL_PRODUCTION_PERIOD.startDay;
+        }
+
+        function listUtilDailyEntriesByMetric(teamName, year, month, metricKey, options = {}) {
+            const period = getUtilProductionPeriod(year, month, resolveUtilProductionPeriodStartDay(options));
             if (!period) return { period: null, entries: [] };
             const teamKey = normalizeUtilTeamName(teamName);
             const entries = UTIL_PRODUCTION_DAILY_INDEX[teamKey];
@@ -225,12 +224,23 @@
             return { period, entries: selected };
         }
 
-        function resolveUtilProductionSourceTeams(teamName) {
+        function resolveUtilProductionSourceTeams(teamName, options = {}) {
             const normalized = normalizeUtilTeamName(teamName).toLowerCase();
             if (!normalized) return [String(teamName || '').trim()].filter(Boolean);
-            if (normalized.includes('전체')) return ['1팀 1파트', '1팀 2파트', '2팀', '3팀'];
+            if (options.gasContext && normalized.includes('lpg')) return ['1팀 2파트'];
+            if (normalized.includes('전체') || normalized.includes('통합')) return options.gasContext ? ['1팀 1파트', '1팀 2파트', '3팀'] : ['1팀 1파트', '1팀 2파트', '2팀', '3팀'];
             if (normalized.includes('북정')) return ['1팀 1파트'];
-            if (normalized.includes('유산')) return ['1팀 2파트', '2팀', '3팀'];
+            if (normalized.includes('유산')) return options.gasContext ? ['1팀 2파트', '3팀'] : ['1팀 2파트', '2팀', '3팀'];
+            if (normalized.includes('건조') || normalized.includes('dry')) return ['1팀 1파트', '1팀 2파트'];
+            if (
+                normalized.includes('스틱')
+                || normalized.includes('소포장')
+                || normalized.includes('stick')
+                || normalized.includes('pouch')
+            ) {
+                return ['2팀'];
+            }
+            if (normalized.includes('액상') || normalized.includes('liquid')) return ['3팀'];
             if (normalized.includes('1팀') && normalized.includes('1파트')) return ['1팀 1파트'];
             if (normalized.includes('1팀') && normalized.includes('2파트')) return ['1팀 2파트'];
             if (normalized.includes('2팀')) return ['2팀'];
@@ -238,12 +248,12 @@
             return [String(teamName || '').trim()].filter(Boolean);
         }
 
-        function getUtilDailyMetricValue(teamName, year, month, metricKey) {
-            const sourceTeams = resolveUtilProductionSourceTeams(teamName);
+        function getUtilDailyMetricValue(teamName, year, month, metricKey, options = {}) {
+            const sourceTeams = resolveUtilProductionSourceTeams(teamName, options);
             let period = null;
             const entries = [];
             sourceTeams.forEach(sourceTeam => {
-                const listed = listUtilDailyEntriesByMetric(sourceTeam, year, month, metricKey);
+                const listed = listUtilDailyEntriesByMetric(sourceTeam, year, month, metricKey, options);
                 if (!period && listed?.period) period = listed.period;
                 if (Array.isArray(listed?.entries) && listed.entries.length) {
                     entries.push(...listed.entries);
@@ -268,16 +278,16 @@
             };
         }
 
-        function getUtilDailyProductionValue(teamName, year, month) {
-            return getUtilDailyMetricValue(teamName, year, month, 'amount');
+        function getUtilDailyProductionValue(teamName, year, month, options = {}) {
+            return getUtilDailyMetricValue(teamName, year, month, 'amount', options);
         }
 
-        function resolveUtilProductionCell(teamName, year, row) {
+        function resolveUtilProductionCell(teamName, year, row, options = {}) {
             const month = parseUtilMonthLabel(row?.label);
             if (!Number.isFinite(year) || !month) {
                 return { value: null, source: 'none', periodLabel: '', count: 0 };
             }
-            const daily = getUtilDailyProductionValue(teamName, year, month);
+            const daily = getUtilDailyProductionValue(teamName, year, month, options);
             if (daily) return daily;
             return { value: null, source: 'none', periodLabel: '', count: 0 };
         }

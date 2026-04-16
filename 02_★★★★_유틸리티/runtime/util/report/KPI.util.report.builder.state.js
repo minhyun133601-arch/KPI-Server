@@ -92,7 +92,25 @@
         }
 
         function normalizeUtilReportBuilderVizChartType(value) {
-            return String(value || '').trim().toLowerCase() === 'line' ? 'line' : 'bar';
+            const normalized = String(value || '').trim().toLowerCase();
+            if (normalized === 'line' || normalized === 'none') return normalized;
+            return 'bar';
+        }
+
+        function normalizeUtilReportBuilderVizOptionalChartType(value) {
+            const normalized = String(value || '').trim().toLowerCase();
+            return normalized === 'line' || normalized === 'bar'
+                ? normalized
+                : '';
+        }
+
+        function getUtilReportBuilderVizNextChartType(currentType, includeNone = false) {
+            const sequence = includeNone === true
+                ? ['line', 'bar', 'none']
+                : ['line', 'bar'];
+            const normalized = normalizeUtilReportBuilderVizChartType(currentType);
+            const currentIndex = sequence.indexOf(normalized);
+            return sequence[(currentIndex + 1) % sequence.length];
         }
 
         function normalizeUtilReportBuilderVizSeriesKey(value) {
@@ -104,11 +122,131 @@
             return String(value || '').trim().toLowerCase() === 'ratio' ? 'ratio' : 'main';
         }
 
+        function resolveUtilReportBuilderVizDefaultAppliedYears(range = null) {
+            const years = getUtilReportBuilderVizAvailableYears(range);
+            if (years.length < 2) {
+                return { baseYear: '', compareYear: '', years };
+            }
+            return {
+                baseYear: String(years[years.length - 2]),
+                compareYear: String(years[years.length - 1]),
+                years
+            };
+        }
+
+        function syncUtilReportBuilderVizAppliedToggleButton(button, enabled) {
+            if (!button) return;
+            const active = enabled === true;
+            button.textContent = '적용';
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+            button.setAttribute('aria-label', active ? '적용 분석 끄기' : '적용 분석 켜기');
+            button.title = active ? '적용 분석 끄기' : '적용 분석 켜기';
+        }
+
+        function getUtilReportBuilderVizAvailableYears(range = null) {
+            const normalizedRange = range
+                ? normalizeMonthRange(range.start || range.from, range.end || range.to)
+                : normalizeMonthRange(UtilReportBuilderVizState.from, UtilReportBuilderVizState.to);
+            const startParsed = parseUtilMonthValue(normalizedRange.start);
+            const endParsed = parseUtilMonthValue(normalizedRange.end);
+            if (!startParsed || !endParsed) return [];
+            const years = [];
+            for (let year = startParsed.year; year <= endParsed.year; year += 1) {
+                years.push(year);
+            }
+            return years;
+        }
+
+        function normalizeUtilReportBuilderVizAppliedBaseYear(value = '', range = null) {
+            const numeric = Number(value);
+            if (!Number.isFinite(numeric)) return '';
+            const year = Math.trunc(numeric);
+            return getUtilReportBuilderVizAvailableYears(range).includes(year)
+                ? String(year)
+                : '';
+        }
+
+        function normalizeUtilReportBuilderVizAppliedCompareYear(value = '', baseYear = '', range = null) {
+            const numeric = Number(value);
+            if (!Number.isFinite(numeric)) return '';
+            const year = Math.trunc(numeric);
+            const normalizedBaseYear = normalizeUtilReportBuilderVizAppliedBaseYear(baseYear, range);
+            if (normalizedBaseYear && String(year) === normalizedBaseYear) return '';
+            return getUtilReportBuilderVizAvailableYears(range).includes(year)
+                ? String(year)
+                : '';
+        }
+
+        function syncUtilReportBuilderVizAppliedYearSelects(modal) {
+            if (!modal) {
+                return {
+                    baseYear: '',
+                    compareYear: '',
+                    years: getUtilReportBuilderVizAvailableYears()
+                };
+            }
+            const range = normalizeMonthRange(
+                modal.querySelector('[data-role="util-report-builder-viz-from"]')?.value || UtilReportBuilderVizState.from,
+                modal.querySelector('[data-role="util-report-builder-viz-to"]')?.value || UtilReportBuilderVizState.to
+            );
+            const years = getUtilReportBuilderVizAvailableYears(range);
+            const baseSelect = modal.querySelector('[data-role="util-report-builder-viz-applied-base-year"]');
+            const compareSelect = modal.querySelector('[data-role="util-report-builder-viz-applied-compare-year"]');
+            const appliedModeEnabled = UtilReportBuilderVizState.appliedModeEnabled === true;
+            const defaultYears = resolveUtilReportBuilderVizDefaultAppliedYears(range);
+            let baseYear = normalizeUtilReportBuilderVizAppliedBaseYear(
+                baseSelect?.value || UtilReportBuilderVizState.appliedBaseYear,
+                range
+            );
+            if (appliedModeEnabled && !baseYear) {
+                baseYear = defaultYears.baseYear;
+            }
+            if (baseSelect) {
+                baseSelect.innerHTML = [
+                    '<option value="">선택</option>',
+                    ...years.map(year => `<option value="${year}">${year}년</option>`)
+                ].join('');
+                baseSelect.value = baseYear;
+            }
+            let compareYear = normalizeUtilReportBuilderVizAppliedCompareYear(
+                compareSelect?.value || UtilReportBuilderVizState.appliedCompareYear,
+                baseYear,
+                range
+            );
+            if (appliedModeEnabled && !compareYear) {
+                compareYear = normalizeUtilReportBuilderVizAppliedCompareYear(
+                    defaultYears.compareYear,
+                    baseYear,
+                    range
+                );
+            }
+            if (compareSelect) {
+                compareSelect.innerHTML = [
+                    '<option value="">선택</option>',
+                    ...years
+                        .filter(year => String(year) !== baseYear)
+                        .map(year => `<option value="${year}">${year}년</option>`)
+                ].join('');
+                compareSelect.value = compareYear;
+            }
+            return { baseYear, compareYear, years };
+        }
+
         function syncUtilReportBuilderVizStateFromReportState() {
             ensureUtilReportStateRange();
             const range = normalizeMonthRange(UtilReportState.from, UtilReportState.to);
             UtilReportBuilderVizState.from = range.start;
             UtilReportBuilderVizState.to = range.end;
+            UtilReportBuilderVizState.appliedBaseYear = normalizeUtilReportBuilderVizAppliedBaseYear(
+                UtilReportBuilderVizState.appliedBaseYear,
+                range
+            );
+            UtilReportBuilderVizState.appliedCompareYear = normalizeUtilReportBuilderVizAppliedCompareYear(
+                UtilReportBuilderVizState.appliedCompareYear,
+                UtilReportBuilderVizState.appliedBaseYear,
+                range
+            );
             const itemKey = normalizeUtilReportBuilderItemKey(UtilReportState.builderItemKey || UtilReportState.scopeKey || UtilReportBuilderVizState.itemKey);
             const scopedTeam = getUtilReportScopeTeamFilterByItem(itemKey, UtilReportState);
             const preferredTeam = scopedTeam && scopedTeam !== 'all'
@@ -132,6 +270,22 @@
             UtilReportBuilderVizState.costChartType = normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.costChartType || 'line');
             UtilReportBuilderVizState.productionChartType = normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.productionChartType || 'line');
             UtilReportBuilderVizState.ratioChartType = normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.ratioChartType || 'line');
+            UtilReportBuilderVizState.ratioActualChartType = normalizeUtilReportBuilderVizOptionalChartType(UtilReportBuilderVizState.ratioActualChartType);
+            UtilReportBuilderVizState.ratioAppliedChartType = normalizeUtilReportBuilderVizOptionalChartType(UtilReportBuilderVizState.ratioAppliedChartType);
+            UtilReportBuilderVizState.appliedModeEnabled = UtilReportBuilderVizState.appliedModeEnabled === true;
+            if (UtilReportBuilderVizState.appliedModeEnabled === true) {
+                const defaultYears = resolveUtilReportBuilderVizDefaultAppliedYears(range);
+                if (!UtilReportBuilderVizState.appliedBaseYear) {
+                    UtilReportBuilderVizState.appliedBaseYear = defaultYears.baseYear;
+                }
+                if (!UtilReportBuilderVizState.appliedCompareYear) {
+                    UtilReportBuilderVizState.appliedCompareYear = normalizeUtilReportBuilderVizAppliedCompareYear(
+                        defaultYears.compareYear,
+                        UtilReportBuilderVizState.appliedBaseYear,
+                        range
+                    );
+                }
+            }
             UtilReportBuilderVizState.focusSeriesKey = normalizeUtilReportBuilderVizSeriesKey(UtilReportBuilderVizState.focusSeriesKey);
             UtilReportBuilderVizState.isolatedSeriesKey = normalizeUtilReportBuilderVizSeriesKey(UtilReportBuilderVizState.isolatedSeriesKey);
             UtilReportBuilderVizState.detailFocusSeriesKey = normalizeUtilReportBuilderVizSeriesKey(UtilReportBuilderVizState.detailFocusSeriesKey);
@@ -150,10 +304,7 @@
             const from = modal.querySelector('[data-role="util-report-builder-viz-from"]')?.value || UtilReportBuilderVizState.from;
             const to = modal.querySelector('[data-role="util-report-builder-viz-to"]')?.value || UtilReportBuilderVizState.to;
             const itemKey = normalizeUtilReportBuilderItemKey(UtilReportBuilderVizState.itemKey);
-            const team = normalizeUtilReportBuilderTeam(
-                modal.querySelector('[data-role="util-report-builder-viz-team"]')?.value || UtilReportBuilderVizState.team,
-                itemKey
-            );
+            const team = normalizeUtilReportBuilderTeam(UtilReportBuilderVizState.team, itemKey);
             const usageUnitKey = normalizeUtilReportBuilderVizUsageUnitKey(
                 modal.querySelector('[data-role="util-report-builder-viz-usage-unit"]')?.value || UtilReportBuilderVizState.usageUnitKey,
                 itemKey
@@ -205,11 +356,52 @@
                 || modal.querySelector('[data-role="util-report-builder-viz-ratio-type"]')?.value
                 || UtilReportBuilderVizState.ratioChartType
             );
+            const ratioActualChartType = normalizeUtilReportBuilderVizChartType(
+                modal.querySelector('[data-role="util-report-builder-viz-ratio-actual-type-toggle"]')?.dataset?.chartType
+                || modal.querySelector('[data-role="util-report-builder-viz-ratio-actual-type"]')?.value
+                || normalizeUtilReportBuilderVizOptionalChartType(UtilReportBuilderVizState.ratioActualChartType)
+                || ratioChartType
+            );
+            const ratioAppliedChartType = normalizeUtilReportBuilderVizChartType(
+                modal.querySelector('[data-role="util-report-builder-viz-ratio-applied-type-toggle"]')?.dataset?.chartType
+                || modal.querySelector('[data-role="util-report-builder-viz-ratio-applied-type"]')?.value
+                || normalizeUtilReportBuilderVizOptionalChartType(UtilReportBuilderVizState.ratioAppliedChartType)
+                || ratioChartType
+            );
             const range = normalizeMonthRange(from, to);
+            const appliedToggleButton = modal.querySelector('[data-role="util-report-builder-viz-applied-toggle"]');
+            const appliedModeEnabled = appliedToggleButton
+                ? appliedToggleButton.getAttribute('aria-pressed') === 'true'
+                : UtilReportBuilderVizState.appliedModeEnabled === true;
+            const defaultAppliedYears = resolveUtilReportBuilderVizDefaultAppliedYears(range);
+            let appliedBaseYear = normalizeUtilReportBuilderVizAppliedBaseYear(
+                modal.querySelector('[data-role="util-report-builder-viz-applied-base-year"]')?.value
+                || UtilReportBuilderVizState.appliedBaseYear,
+                range
+            );
+            if (appliedModeEnabled && !appliedBaseYear) {
+                appliedBaseYear = defaultAppliedYears.baseYear;
+            }
+            let appliedCompareYear = normalizeUtilReportBuilderVizAppliedCompareYear(
+                modal.querySelector('[data-role="util-report-builder-viz-applied-compare-year"]')?.value
+                || UtilReportBuilderVizState.appliedCompareYear,
+                appliedBaseYear,
+                range
+            );
+            if (appliedModeEnabled && !appliedCompareYear) {
+                appliedCompareYear = normalizeUtilReportBuilderVizAppliedCompareYear(
+                    defaultAppliedYears.compareYear,
+                    appliedBaseYear,
+                    range
+                );
+            }
             UtilReportBuilderVizState.from = range.start;
             UtilReportBuilderVizState.to = range.end;
             UtilReportBuilderVizState.itemKey = itemKey;
             UtilReportBuilderVizState.team = team;
+            UtilReportBuilderVizState.appliedModeEnabled = appliedModeEnabled;
+            UtilReportBuilderVizState.appliedBaseYear = appliedBaseYear;
+            UtilReportBuilderVizState.appliedCompareYear = appliedCompareYear;
             UtilReportBuilderVizState.usageUnitKey = usageUnitKey;
             UtilReportBuilderVizState.costUnitKey = costUnitKey;
             UtilReportBuilderVizState.productionUnitKey = productionUnitKey;
@@ -223,6 +415,8 @@
             UtilReportBuilderVizState.costChartType = costChartType;
             UtilReportBuilderVizState.productionChartType = productionChartType;
             UtilReportBuilderVizState.ratioChartType = ratioChartType;
+            UtilReportBuilderVizState.ratioActualChartType = ratioActualChartType;
+            UtilReportBuilderVizState.ratioAppliedChartType = ratioAppliedChartType;
             UtilReportBuilderVizState.isolatedSeriesKey = normalizeUtilReportBuilderVizSeriesKey(UtilReportBuilderVizState.isolatedSeriesKey);
             if (UtilReportBuilderVizState.isolatedSeriesKey) {
                 UtilReportBuilderVizState.focusSeriesKey = UtilReportBuilderVizState.isolatedSeriesKey;
@@ -264,15 +458,15 @@
                 toSelect.innerHTML = monthHtml;
                 toSelect.value = UtilReportBuilderVizState.to;
             }
+            const appliedYears = syncUtilReportBuilderVizAppliedYearSelects(modal);
+            UtilReportBuilderVizState.appliedBaseYear = appliedYears.baseYear;
+            UtilReportBuilderVizState.appliedCompareYear = appliedYears.compareYear;
+            const appliedToggleBtn = modal.querySelector('[data-role="util-report-builder-viz-applied-toggle"]');
+            syncUtilReportBuilderVizAppliedToggleButton(appliedToggleBtn, UtilReportBuilderVizState.appliedModeEnabled === true);
+            modal.querySelectorAll('[data-role="util-report-builder-viz-applied-year-field"]').forEach(field => {
+                field.hidden = UtilReportBuilderVizState.appliedModeEnabled !== true;
+            });
 
-            const teamSelect = modal.querySelector('[data-role="util-report-builder-viz-team"]');
-            if (teamSelect) {
-                const itemKey = normalizeUtilReportBuilderItemKey(UtilReportBuilderVizState.itemKey);
-                teamSelect.innerHTML = buildUtilReportBuilderTeamOptions(itemKey)
-                    .map(team => `<option value="${escapeHtml(team)}">${escapeHtml(team)}</option>`)
-                    .join('');
-                teamSelect.value = normalizeUtilReportBuilderTeam(UtilReportBuilderVizState.team, itemKey);
-            }
             const usageUnitSelect = modal.querySelector('[data-role="util-report-builder-viz-usage-unit"]');
             if (usageUnitSelect) {
                 usageUnitSelect.innerHTML = getUtilReportBuilderVizUsageUnitOptions(UtilReportBuilderVizState.itemKey)
@@ -286,7 +480,6 @@
             const costUnitSelect = modal.querySelector('[data-role="util-report-builder-viz-cost-unit"]');
             if (costUnitSelect) {
                 costUnitSelect.innerHTML = `
-                    <option value="none">없음</option>
                     <option value="krw">원</option>
                     <option value="thousand">천원</option>
                     <option value="million">백만원</option>
@@ -295,7 +488,7 @@
             }
             const productionUnitSelect = modal.querySelector('[data-role="util-report-builder-viz-production-unit"]');
             if (productionUnitSelect) {
-                productionUnitSelect.innerHTML = [{ key: 'none', label: '없음' }].concat(UTIL_REPORT_PRODUCTION_UNIT_OPTIONS)
+                productionUnitSelect.innerHTML = UTIL_REPORT_PRODUCTION_UNIT_OPTIONS
                     .map(item => `<option value="${item.key}">${item.label}</option>`)
                     .join('');
                 productionUnitSelect.value = normalizeUtilReportProductionUnitKey(UtilReportBuilderVizState.productionUnitKey);
@@ -348,10 +541,39 @@
             syncUtilReportChartTypeToggleButton(productionTypeToggleBtn, UtilReportBuilderVizState.productionChartType || 'line');
             const ratioTypeSelect = modal.querySelector('[data-role="util-report-builder-viz-ratio-type"]');
             const ratioTypeToggleBtn = modal.querySelector('[data-role="util-report-builder-viz-ratio-type-toggle"]');
+            const ratioTypeField = modal.querySelector('[data-role="util-report-builder-viz-ratio-type-field"]');
+            const ratioActualTypeField = modal.querySelector('[data-role="util-report-builder-viz-ratio-actual-type-field"]');
+            const ratioAppliedTypeField = modal.querySelector('[data-role="util-report-builder-viz-ratio-applied-type-field"]');
+            const ratioActualTypeToggleBtn = modal.querySelector('[data-role="util-report-builder-viz-ratio-actual-type-toggle"]');
+            const ratioAppliedTypeToggleBtn = modal.querySelector('[data-role="util-report-builder-viz-ratio-applied-type-toggle"]');
+            const ratioActualChartType = normalizeUtilReportBuilderVizChartType(
+                normalizeUtilReportBuilderVizOptionalChartType(UtilReportBuilderVizState.ratioActualChartType)
+                || UtilReportBuilderVizState.ratioChartType
+                || 'line'
+            );
+            const ratioAppliedChartType = normalizeUtilReportBuilderVizChartType(
+                normalizeUtilReportBuilderVizOptionalChartType(UtilReportBuilderVizState.ratioAppliedChartType)
+                || UtilReportBuilderVizState.ratioChartType
+                || 'line'
+            );
             if (ratioTypeSelect) {
                 ratioTypeSelect.value = normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.ratioChartType || 'line');
             }
             syncUtilReportChartTypeToggleButton(ratioTypeToggleBtn, UtilReportBuilderVizState.ratioChartType || 'line');
+            syncUtilReportChartTypeToggleButton(ratioActualTypeToggleBtn, ratioActualChartType);
+            syncUtilReportChartTypeToggleButton(ratioAppliedTypeToggleBtn, ratioAppliedChartType);
+            if (ratioTypeField) {
+                ratioTypeField.hidden = UtilReportBuilderVizState.appliedModeEnabled === true;
+                ratioTypeField.setAttribute('aria-hidden', ratioTypeField.hidden ? 'true' : 'false');
+            }
+            if (ratioActualTypeField) {
+                ratioActualTypeField.hidden = UtilReportBuilderVizState.appliedModeEnabled !== true;
+                ratioActualTypeField.setAttribute('aria-hidden', ratioActualTypeField.hidden ? 'true' : 'false');
+            }
+            if (ratioAppliedTypeField) {
+                ratioAppliedTypeField.hidden = UtilReportBuilderVizState.appliedModeEnabled !== true;
+                ratioAppliedTypeField.setAttribute('aria-hidden', ratioAppliedTypeField.hidden ? 'true' : 'false');
+            }
             modal.querySelectorAll('[data-role="util-report-builder-viz-label-toggle"]').forEach(button => {
                 syncUtilReportBuilderVizLabelToggleButton(button, UtilReportBuilderVizState.showLabels === true);
             });
@@ -436,6 +658,9 @@
             const usageUnitKey = normalizeUtilReportBuilderVizUsageUnitKey(UtilReportBuilderVizState.usageUnitKey, itemKey);
             const costUnitKey = normalizeUtilReportCostUnitKey(UtilReportBuilderVizState.costUnitKey);
             const productionUnitKey = normalizeUtilReportProductionUnitKey(UtilReportBuilderVizState.productionUnitKey);
+            const usageChartType = normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.usageChartType || 'bar');
+            const costChartType = normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.costChartType || 'line');
+            const productionChartType = normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.productionChartType || 'line');
             const scopedTeams = applyUtilReportScopeToTeams(itemKey, {
                 electricTeam: teamFilter,
                 gasTeam: teamFilter,
@@ -474,9 +699,9 @@
             const usageUnitLabel = getUtilReportBuilderVizUsageLabel(usageUnitKey, itemKey);
             const costUnitLabel = getUtilReportUnitLabel(costUnitKey);
             const productionUnitLabel = getUtilReportProductionUnitLabel(productionUnitKey);
-            const usageEnabled = usageUnitKey !== 'none';
-            const costEnabled = costUnitKey !== 'none';
-            const productionEnabled = productionUnitKey !== 'none';
+            const usageEnabled = usageChartType !== 'none';
+            const costEnabled = costChartType !== 'none';
+            const productionEnabled = productionChartType !== 'none';
             const ratioConfig = resolveUtilReportBuilderVizRatioConfig(itemKey);
             const ratioNumeratorMetric = ratioConfig.numeratorMetric;
             const ratioDenominatorMetric = ratioConfig.denominatorMetric;
@@ -497,14 +722,51 @@
             const ratioUnitLabel = ratioMeta.unitLabel;
             const ratioTitle = ratioMeta.title;
             const ratioAxisLabel = ratioMeta.axisLabel;
+            const availableYears = getUtilReportBuilderVizAvailableYears(range);
+            const appliedBaseYear = normalizeUtilReportBuilderVizAppliedBaseYear(
+                UtilReportBuilderVizState.appliedBaseYear,
+                range
+            );
+            const appliedCompareYear = normalizeUtilReportBuilderVizAppliedCompareYear(
+                UtilReportBuilderVizState.appliedCompareYear,
+                appliedBaseYear,
+                range
+            );
+            const appliedModeEnabled = UtilReportBuilderVizState.appliedModeEnabled === true;
+            UtilReportBuilderVizState.appliedBaseYear = appliedBaseYear;
+            UtilReportBuilderVizState.appliedCompareYear = appliedCompareYear;
+            const ratioValueDigits = isUtilReportCostMetric(ratioNumeratorMetric)
+                ? getUtilReportBuilderVizMetricDecimals('cost')
+                : (ratioNumeratorMetric === 'production'
+                    ? getUtilReportBuilderVizMetricDecimals('production')
+                    : getUtilReportBuilderVizMetricDecimals('usage'));
+            const appliedComparisonEnabled = appliedModeEnabled && !!appliedBaseYear && !!appliedCompareYear && ratioEnabled && ratioUseDenominator;
+            const baseRatioMapByMonth = new Map();
+            if (appliedComparisonEnabled) {
+                (result.rows || []).forEach(row => {
+                    const rowYear = Number(row?.year);
+                    const rowMonth = Number(row?.month);
+                    if (!Number.isFinite(rowYear) || !Number.isFinite(rowMonth)) return;
+                    if (String(rowYear) !== appliedBaseYear) return;
+                    const numeratorRaw = Number(getUtilReportMetricValue(row, ratioNumeratorMetric));
+                    const denominatorRaw = Number(getUtilReportMetricValue(row, ratioDenominatorMetric));
+                    if (!Number.isFinite(numeratorRaw) || !Number.isFinite(denominatorRaw) || denominatorRaw === 0) return;
+                    baseRatioMapByMonth.set(rowMonth, numeratorRaw / denominatorRaw);
+                });
+            }
 
             const usagePoints = [];
             const costPoints = [];
             const productionPoints = [];
             const ratioPoints = [];
+            const actualComparePoints = [];
+            const appliedComparePoints = [];
+            const deltaComparePoints = [];
             (result.rows || []).forEach(row => {
                 const key = row?.monthKey;
                 const label = formatUtilReportMonthShort(row?.monthKey);
+                const rowYear = Number(row?.year);
+                const rowMonth = Number(row?.month);
                 const usageRaw = Number(row?.[usagePropKey]);
                 const costRaw = Number(row?.[costPropKey]);
                 const productionRaw = Number(row?.production);
@@ -536,7 +798,55 @@
                     numerator: ratioNumerator,
                     denominator: ratioDenominator
                 });
+                if (appliedComparisonEnabled && String(rowYear) === appliedCompareYear) {
+                    const actualValue = ratioNumeratorEnabled && Number.isFinite(ratioNumeratorRaw)
+                        ? ratioNumeratorRaw / ratioNumeratorScale
+                        : NaN;
+                    const baseRatio = Number(baseRatioMapByMonth.get(rowMonth));
+                    const appliedRaw = Number.isFinite(baseRatio) && Number.isFinite(ratioDenominatorRaw)
+                        ? (baseRatio * ratioDenominatorRaw)
+                        : NaN;
+                    const appliedValue = ratioNumeratorEnabled && Number.isFinite(appliedRaw)
+                        ? appliedRaw / ratioNumeratorScale
+                        : NaN;
+                    const deltaValue = Number.isFinite(actualValue) && Number.isFinite(appliedValue)
+                        ? (actualValue - appliedValue)
+                        : NaN;
+                    actualComparePoints.push({ key, label, value: actualValue });
+                    appliedComparePoints.push({ key, label, value: appliedValue });
+                    deltaComparePoints.push({ key, label, value: deltaValue });
+                }
             });
+            const appliedComparison = {
+                enabled: appliedComparisonEnabled,
+                hasData: appliedComparisonEnabled && appliedComparePoints.some(point => Number.isFinite(point?.value)),
+                baseYear: appliedBaseYear,
+                compareYear: appliedCompareYear,
+                years: availableYears,
+                digits: ratioValueDigits,
+                numeratorLabel: ratioMeta.numeratorLabel,
+                numeratorUnitLabel: ratioMeta.numeratorUnitLabel,
+                actualTitle: `${appliedCompareYear}년 실제 ${ratioMeta.numeratorLabel}`,
+                appliedTitle: appliedBaseYear
+                    ? `${appliedBaseYear}년 기준 적용 ${ratioMeta.numeratorLabel}`
+                    : '',
+                deltaTitle: appliedBaseYear
+                    ? `${appliedCompareYear}년 실제 - ${appliedBaseYear}년 기준 적용`
+                    : '',
+                axisLabel: formatUtilLabelWithUnit(ratioMeta.numeratorLabel, ratioMeta.numeratorUnitLabel),
+                actualPoints: actualComparePoints,
+                appliedPoints: appliedComparePoints,
+                deltaPoints: deltaComparePoints
+            };
+            if (appliedCompareYear) {
+                appliedComparison.actualTitle = `${appliedCompareYear}년 실제 ${ratioMeta.numeratorLabel}`;
+                appliedComparison.appliedTitle = appliedBaseYear
+                    ? `${appliedBaseYear}년 기준 적용 ${ratioMeta.numeratorLabel}`
+                    : '';
+                appliedComparison.deltaTitle = appliedBaseYear
+                    ? `${appliedCompareYear}년 실제 - ${appliedBaseYear}년 기준 적용`
+                    : '';
+            }
 
             return {
                 range,
@@ -559,6 +869,12 @@
                 ratioUnitLabel,
                 ratioTitle,
                 ratioAxisLabel,
+                ratioMeta,
+                availableYears,
+                appliedModeEnabled,
+                appliedBaseYear,
+                appliedCompareYear,
+                appliedComparison,
                 usagePoints,
                 costPoints,
                 productionPoints,

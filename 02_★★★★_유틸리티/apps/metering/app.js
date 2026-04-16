@@ -18,27 +18,169 @@ const LEGACY_STICK_FIELD_IDS = [
   "field_stick_after_2025_08",
 ];
 const EQUIPMENT_TITLE_DOUBLE_CLICK_DELAY_MS = 320;
-const HISTORICAL_ENTRY_VALUE_FIXES = {};
-const ENTRY_VALUE_CORRECTIONS = {};
-const LOCAL_STORE_FILE_NAME = "";
+const HISTORICAL_ENTRY_VALUE_FIXES = {
+  "2024-01-01": {
+    field_03: "3701.30",
+    field_11: "33915.90",
+    field_14: "3043.60",
+    field_18: "8684.00",
+  },
+  "2024-02-01": {
+    field_03: "3802.00",
+    field_11: "35235.10",
+    field_14: "4429.90",
+    field_18: "8918.10",
+  },
+  "2025-01-01": {
+    field_18: "10725.70",
+  },
+  "2025-03-28": {
+    field_10: "33060.6",
+  },
+  "2025-04-01": {
+    field_10: "33060.6",
+  },
+  "2025-04-02": {
+    field_10: "33060.6",
+  },
+  "2025-04-03": {
+    field_10: "33060.6",
+  },
+  "2025-04-04": {
+    field_10: "33060.6",
+  },
+  "2025-04-07": {
+    field_10: "33060.6",
+  },
+  "2025-04-08": {
+    field_10: "33060.6",
+  },
+  "2025-04-09": {
+    field_10: "33060.6",
+  },
+  "2025-04-10": {
+    field_10: "33060.6",
+  },
+  "2025-04-11": {
+    field_10: "33060.6",
+  },
+  "2025-04-14": {
+    field_10: "33060.6",
+  },
+  "2025-04-15": {
+    field_10: "33060.6",
+  },
+  "2025-04-16": {
+    field_10: "33060.6",
+  },
+  "2025-04-17": {
+    field_10: "33060.6",
+  },
+  "2025-04-18": {
+    field_10: "33060.6",
+  },
+  "2025-04-21": {
+    field_10: "33060.6",
+  },
+  "2025-04-22": {
+    field_10: "33060.6",
+  },
+  "2025-04-23": {
+    field_10: "33060.6",
+  },
+  "2025-04-24": {
+    field_10: "33060.6",
+  },
+  "2025-04-25": {
+    field_10: "33060.6",
+  },
+  "2025-04-28": {
+    field_10: "33060.6",
+  },
+  "2025-04-29": {
+    field_10: "33060.6",
+  },
+  "2025-04-30": {
+    field_10: "33060.6",
+  },
+  "2025-06-02": {
+    field_22: "4410.32",
+  },
+  "2025-08-04": {
+    field_23: "7504.44",
+  },
+  "2025-12-02": {
+    field_18: "12648.7",
+  },
+};
+const ENTRY_VALUE_CORRECTIONS = {
+  "2025-04-09": { field_05: "13764.7" },
+  "2025-04-10": { field_05: "13766.8" },
+  "2025-04-17": { field_23: "7111.70" },
+  "2025-04-18": { field_23: "7115.11" },
+  "2025-05-02": { field_03: "5032.0" },
+  "2025-05-07": { field_03: "5034.8" },
+  "2025-05-12": { field_17: "65336.4" },
+  "2025-05-13": { field_17: "65354.7" },
+  "2025-05-27": { field_17: "65612.6" },
+  "2025-05-28": { field_17: "65633.1" },
+  "2025-06-04": { field_17: "65758.8" },
+  "2025-06-09": { field_17: "65848.6" },
+  "2025-07-07": { field_17: "66405.7" },
+  "2025-07-08": { field_17: "66426.0" },
+  "2025-07-09": { field_17: "66446.3" },
+  "2025-07-10": { field_17: "66466.7" },
+  "2025-08-05": { field_03: "5206.0", field_19: "84346.2" },
+  "2025-08-06": { field_03: "5208.5", field_19: "84375.9" },
+  "2025-08-25": { field_14: "24987.7" },
+  "2025-08-26": { field_14: "25007.5" },
+  "2025-09-08": { field_21: "6632.77", field_24: "18988.10" },
+  "2025-09-09": { field_21: "6637.33", field_24: "18999.99" },
+  "2025-09-19": { field_05: "14056.6", field_09: "20281.7" },
+  "2025-09-22": { field_05: "14062.4", field_09: "20286.6" },
+  "2025-09-23": { field_05: "14064.3", field_09: "20288.2" },
+  "2025-09-24": { field_05: "14066.3", field_09: "20289.9" },
+  "2025-09-25": { field_05: "14068.2", field_09: "20291.5" },
+  "2025-09-26": { field_05: "14070.1", field_09: "20293.1" },
+  "2025-11-05": { field_18: "12522.5" },
+  "2025-11-06": { field_18: "12526.3" },
+  "2025-11-10": { field_21: "6858.72", field_24: "19604.68" },
+  "2025-11-11": { field_21: "6861.92", field_24: "19613.31" },
+  "2025-11-21": { field_17: "69026.5" },
+  "2025-11-24": { field_17: "69081.6" },
+  "2026-01-05": { field_26: "2036.21" },
+  "2026-01-06": { field_26: "2037.19" },
+  "2026-01-23": { field_17: "70313.3" },
+  "2026-01-26": { field_17: "70376.4" },
+  "2026-01-28": { field_16: "1669.89", field_19: "88462.7" },
+  "2026-01-29": { field_16: "1680.92", field_19: "88489.0" },
+  "2026-01-30": { field_18: "13065.3" },
+  "2026-03-19": { field_12: "42697.4" },
+};
+const LOCAL_STORE_FILE_NAME = "preset-entry-data.js";
 const LOCAL_FILE_HANDLE_DB_NAME = "monthly-electric-local-file";
 const LOCAL_FILE_HANDLE_STORE_NAME = "handles";
-const LOCAL_FILE_HANDLE_KEY = "metering-local-store-retired";
+const LOCAL_FILE_HANDLE_KEY = "preset-entry-data";
 const LOCAL_BILLING_DOCUMENT_DIRECTORY_HANDLE_KEY = "billing-document-directory";
-const ENABLE_LOCAL_FILE_OVERWRITE_PERSISTENCE = false;
+const ENABLE_LOCAL_FILE_OVERWRITE_PERSISTENCE = true;
 const ENABLE_SHARED_SERVER_WRITE = true;
 const SHARED_APP_CONFIG = resolveSharedAppConfig();
 const LEGACY_BILLING_DOCUMENT_DIRECTORY_NAME = "청구서";
 const BILLING_DOCUMENT_DIRECTORY_NAMES = Object.freeze({
-  electric: "유틸리티/전기 청구서",
-  gas: "유틸리티/가스 청구서",
+  electric: "전기 청구서",
+  gas: "가스 청구서",
+  production: "생산량 문서",
 });
 const BILLING_DOCUMENT_ACCEPT = ".pdf,application/pdf";
 const GAS_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY = "gas_bukjeong";
 const GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LNG_KEY = "yusan_lng";
 const GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_KEY = "yusan_lpg";
+const WASTE_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY = "waste_bukjeong";
+const WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY = "waste_yusan";
 const GAS_YUSAN_LNG_TEAM_KEY = "gas_yusan_lng";
 const GAS_YUSAN_LPG_TEAM_KEY = "gas_yusan_lpg";
+const WASTE_BUKJEONG_TEAM_KEY = "waste_bukjeong";
+const WASTE_YUSAN_TEAM_KEY = "waste_yusan";
 const ELECTRIC_BILLING_SETTLEMENT_FIELDS = [
   { key: "base_charge", label: "기본요금" },
   { key: "power_charge", label: "전력량요금" },
@@ -72,9 +214,46 @@ const GAS_LPG_BILLING_SETTLEMENT_FIELDS = [
   { key: "unit_price", label: "단가" },
   { key: "billing_amount", label: "총액" },
 ];
+const WASTE_BILLING_SETTLEMENT_FIELDS_BUKJEONG = [
+  { key: "water", label: "용수비" },
+  { key: "share", label: "폐수 분담금" },
+  { key: "sludge", label: "폐수오니 처리비용" },
+  { key: "resin", label: "혼합수지 처리비용" },
+  { key: "labor", label: "인건비" },
+  { key: "unit_price", label: "단가" },
+  { key: "billing_amount", label: "총비용" },
+];
+const WASTE_BILLING_SETTLEMENT_FIELDS_YUSAN = [
+  { key: "water", label: "용수비" },
+  { key: "share", label: "폐수 분담금" },
+  { key: "sludge", label: "폐수오니 처리비용" },
+  { key: "resin", label: "혼합수지 처리비용" },
+  { key: "outsourcing", label: "위탁관리비" },
+  { key: "unit_price", label: "단가" },
+  { key: "billing_amount", label: "총비용" },
+];
+const WASTE_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS_BUKJEONG = Object.freeze([
+  { key: "water", sign: 1 },
+  { key: "share", sign: 1 },
+  { key: "sludge", sign: 1 },
+  { key: "resin", sign: 1 },
+  { key: "labor", sign: 1 },
+]);
+const WASTE_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS_YUSAN = Object.freeze([
+  { key: "water", sign: 1 },
+  { key: "share", sign: 1 },
+  { key: "sludge", sign: 1 },
+  { key: "resin", sign: 1 },
+  { key: "outsourcing", sign: 1 },
+]);
 const BILLING_SETTLEMENT_FIELDS = [
   ...new Map(
-    [...ELECTRIC_BILLING_SETTLEMENT_FIELDS, ...GAS_BILLING_SETTLEMENT_FIELDS]
+    [
+      ...ELECTRIC_BILLING_SETTLEMENT_FIELDS,
+      ...GAS_BILLING_SETTLEMENT_FIELDS,
+      ...WASTE_BILLING_SETTLEMENT_FIELDS_BUKJEONG,
+      ...WASTE_BILLING_SETTLEMENT_FIELDS_YUSAN,
+    ]
       .map((field) => [field.key, field])
   ).values(),
 ];
@@ -92,6 +271,10 @@ const GAS_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set([
   "billing_amount",
 ]);
 const GAS_LPG_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set([
+  "unit_price",
+  "billing_amount",
+]);
+const WASTE_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set([
   "unit_price",
   "billing_amount",
 ]);
@@ -153,6 +336,10 @@ const GAS_LPG_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
   unit_price: "공급가액 ÷ LPG사용량",
   billing_amount: "공급가액 + 세액",
 });
+const WASTE_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
+  unit_price: "총비용 ÷ 해당 월 사용량",
+  billing_amount: "입력한 세부 비용 합계",
+});
 const BILLING_SETTLEMENT_FORMULA_GUIDES = ELECTRIC_BILLING_SETTLEMENT_FORMULA_GUIDES;
 const BILLING_SETTLEMENT_SCOPE_DEFINITIONS_BY_RESOURCE = Object.freeze({
   electric: Object.freeze([
@@ -176,6 +363,18 @@ const BILLING_SETTLEMENT_SCOPE_DEFINITIONS_BY_RESOURCE = Object.freeze({
       shortLabel: "유산 LPG",
     }),
   ]),
+  waste: Object.freeze([
+    Object.freeze({
+      key: WASTE_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY,
+      label: "북정 정산",
+      shortLabel: "북정",
+    }),
+    Object.freeze({
+      key: WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY,
+      label: "유산 정산",
+      shortLabel: "유산",
+    }),
+  ]),
   production: Object.freeze([]),
 });
 const BILLING_SETTLEMENT_SCOPE_DEFINITIONS =
@@ -195,6 +394,7 @@ const MODES = {
 const RESOURCE_TYPES = {
   ELECTRIC: "electric",
   GAS: "gas",
+  WASTE: "waste",
   PRODUCTION: "production",
 };
 const RESOURCE_DISPLAY_META = Object.freeze({
@@ -220,8 +420,19 @@ const RESOURCE_DISPLAY_META = Object.freeze({
     equipmentEmptyTitle: "설비 없음",
     equipmentItemLabel: "검침 항목",
   }),
-  [RESOURCE_TYPES.PRODUCTION]: Object.freeze({
+  [RESOURCE_TYPES.WASTE]: Object.freeze({
     billingDocumentDirectory: "",
+    eyebrow: "Monthly Wastewater Entry Sheet",
+    title: "월간 폐수 기입 시트",
+    teamEntrySectionTitle: "공장별 폐수",
+    teamSummaryLabel: "공장별 폐수",
+    teamMonthTitleSuffix: "폐수",
+    equipmentListLabel: "폐수 입력",
+    equipmentEmptyTitle: "폐수 입력 항목 없음",
+    equipmentItemLabel: "폐수 입력",
+  }),
+  [RESOURCE_TYPES.PRODUCTION]: Object.freeze({
+    billingDocumentDirectory: BILLING_DOCUMENT_DIRECTORY_NAMES.production,
     eyebrow: "Monthly Production Sheet",
     title: "월간 생산량 기입 시트",
     teamEntrySectionTitle: "팀별 생산량",
@@ -241,11 +452,16 @@ const RESOURCE_HERO_DESCRIPTIONS = Object.freeze({
     "월간 가스 사용량과 검침 항목별 수치를 기준에 맞게 누적 관리하고, 변동 흐름을 한눈에 점검하는 검침 시트입니다.",
     "A monthly metering sheet for tracking gas readings, managing item-based usage records, and reviewing fluctuation trends with clarity.",
   ].join("\n"),
+  [RESOURCE_TYPES.WASTE]: [
+    "월별 폐수 사용량과 공장별 처리비용을 직접 입력하고, 기존 폐수 집계를 흔들지 않도록 필요한 달만 수기값으로 덮어쓰는 입력 시트입니다.",
+    "A monthly wastewater input sheet for entering site usage and treatment costs while overriding only the months you update.",
+  ].join("\n"),
   [RESOURCE_TYPES.PRODUCTION]: "",
 });
 const RESOURCE_TOGGLE_ORDER = Object.freeze([
   RESOURCE_TYPES.ELECTRIC,
   RESOURCE_TYPES.GAS,
+  RESOURCE_TYPES.WASTE,
 ]);
 const EQUIPMENT_INPUT_FRACTION_DIGITS = 2;
 const FIXED_MIN_SELECTABLE_MONTH = "2024-01";
@@ -257,11 +473,13 @@ const DIRECT_TEAM_MONTHLY_AMOUNT_TEAM_KEYS = Object.freeze([TEAM_01_01_KEY]);
 const DIRECT_TEAM_MONTHLY_USAGE_TEAM_KEYS_BY_RESOURCE = Object.freeze({
   [RESOURCE_TYPES.ELECTRIC]: Object.freeze([TEAM_01_01_KEY, BUKJEONG_POWER_TEAM_KEY]),
   [RESOURCE_TYPES.GAS]: DIRECT_TEAM_MONTHLY_USAGE_TEAM_KEYS,
+  [RESOURCE_TYPES.WASTE]: Object.freeze([WASTE_BUKJEONG_TEAM_KEY, WASTE_YUSAN_TEAM_KEY]),
   [RESOURCE_TYPES.PRODUCTION]: Object.freeze([]),
 });
 const DIRECT_TEAM_MONTHLY_AMOUNT_TEAM_KEYS_BY_RESOURCE = Object.freeze({
   [RESOURCE_TYPES.ELECTRIC]: Object.freeze([TEAM_01_01_KEY, BUKJEONG_POWER_TEAM_KEY]),
   [RESOURCE_TYPES.GAS]: Object.freeze([]),
+  [RESOURCE_TYPES.WASTE]: Object.freeze([]),
   [RESOURCE_TYPES.PRODUCTION]: Object.freeze([]),
 });
 const DIRECT_TEAM_MONTHLY_STORAGE_KEY_ALIASES_BY_RESOURCE = Object.freeze({
@@ -269,6 +487,7 @@ const DIRECT_TEAM_MONTHLY_STORAGE_KEY_ALIASES_BY_RESOURCE = Object.freeze({
     [BUKJEONG_POWER_TEAM_KEY]: TEAM_01_01_KEY,
   }),
   [RESOURCE_TYPES.GAS]: Object.freeze({}),
+  [RESOURCE_TYPES.WASTE]: Object.freeze({}),
   [RESOURCE_TYPES.PRODUCTION]: Object.freeze({}),
 });
 const DIRECT_TEAM_MONTHLY_USAGE_KPI_TEAM_NAMES = Object.freeze({
@@ -277,6 +496,10 @@ const DIRECT_TEAM_MONTHLY_USAGE_KPI_TEAM_NAMES = Object.freeze({
   }),
   [RESOURCE_TYPES.GAS]: Object.freeze({
     [TEAM_01_01_KEY]: "1팀 1파트 (LNG)",
+  }),
+  [RESOURCE_TYPES.WASTE]: Object.freeze({
+    [WASTE_BUKJEONG_TEAM_KEY]: "북정",
+    [WASTE_YUSAN_TEAM_KEY]: "유산",
   }),
 });
 
@@ -288,6 +511,7 @@ const GAS_METER_ITEM_DEFINITIONS = Object.freeze([
   { id: "gas_field_05", label: "관리동", factor: 1 },
   { id: "gas_field_06", label: "액상보일러", factor: 1 },
 ]);
+const DEFAULT_WASTE_EQUIPMENT_ITEMS = Object.freeze([]);
 const DEFAULT_PRODUCTION_EQUIPMENT_ITEMS = Object.freeze([]);
 
 const TOTAL_POWER_TEAM_KEY = "power_total";
@@ -342,7 +566,12 @@ const GAS_TEAM_GROUPS = Object.freeze([
   { key: "team_03", label: "3팀 LNG", iconKey: "liquid" },
   { key: "team_04", label: "관리동", iconKey: "building" },
 ]);
+const WASTE_TEAM_GROUPS = Object.freeze([
+  { key: WASTE_BUKJEONG_TEAM_KEY, label: "북정", iconKey: "building" },
+  { key: WASTE_YUSAN_TEAM_KEY, label: "유산", iconKey: "drying" },
+]);
 const GAS_OVERVIEW_TEAM_KEYS = Object.freeze(GAS_TEAM_GROUPS.map((team) => team.key));
+const WASTE_OVERVIEW_TEAM_KEYS = Object.freeze(WASTE_TEAM_GROUPS.map((team) => team.key));
 const ELECTRIC_TOTAL_SUMMARY_TEAM_KEYS = Object.freeze([
   BUKJEONG_POWER_TEAM_KEY,
   TOTAL_POWER_TEAM_KEY,
@@ -976,6 +1205,7 @@ function buildElementRegistry() {
     heroText: queryWithinMountRoot("#heroText"),
     electricResourceBtn: queryWithinMountRoot("#electricResourceBtn"),
     gasResourceBtn: queryWithinMountRoot("#gasResourceBtn"),
+    wasteResourceBtn: queryWithinMountRoot("#wasteResourceBtn"),
     productionResourceBtn: queryWithinMountRoot("#productionResourceBtn"),
     equipmentModeBtn: queryWithinMountRoot("#equipmentModeBtn"),
     teamModeBtn: queryWithinMountRoot("#teamModeBtn"),
@@ -1064,44 +1294,23 @@ function ensureResourcePlaceholderButtons() {
   }
 
   queryWithinMountRoot("#productionPreviewResourceBtn")?.remove();
-
-  const placeholderDefinitions = [
-    {
-      id: "wastePreviewResourceBtn",
-      label: "폐수",
-      icon: "💧",
-      title: "폐수 유틸리티 기입은 준비 중입니다.",
-    },
-  ];
-
-  placeholderDefinitions.forEach((definition) => {
-    if (queryWithinMountRoot(`#${definition.id}`)) {
-      return;
-    }
-
+  if (!queryWithinMountRoot("#wasteResourceBtn")) {
     const button = createDetachedElement("button");
     button.type = "button";
-    button.id = definition.id;
-    button.className = "mode-chip is-placeholder";
-    button.disabled = true;
-    button.setAttribute("aria-disabled", "true");
-    button.title = definition.title;
+    button.id = "wasteResourceBtn";
+    button.className = "mode-chip";
 
     const icon = createDetachedElement("span");
     icon.className = "mode-chip-inline-icon";
     icon.setAttribute("aria-hidden", "true");
-    icon.textContent = definition.icon;
+    icon.textContent = "💧";
 
     const label = createDetachedElement("span");
-    label.textContent = definition.label;
+    label.textContent = "폐수";
 
-    const badge = createDetachedElement("span");
-    badge.className = "mode-chip-badge";
-    badge.textContent = "준비중";
-
-    button.append(icon, label, badge);
+    button.append(icon, label);
     modeSwitch.appendChild(button);
-  });
+  }
 }
 
 function resolveElements() {
@@ -1179,6 +1388,10 @@ function normalizeResourceType(value) {
     return RESOURCE_TYPES.GAS;
   }
 
+  if (value === RESOURCE_TYPES.WASTE) {
+    return RESOURCE_TYPES.WASTE;
+  }
+
   if (value === RESOURCE_TYPES.PRODUCTION) {
     return RESOURCE_TYPES.PRODUCTION;
   }
@@ -1192,6 +1405,10 @@ function getCurrentResourceType() {
 
 function isGasResourceType(resourceType = getCurrentResourceType()) {
   return normalizeResourceType(resourceType) === RESOURCE_TYPES.GAS;
+}
+
+function isWasteResourceType(resourceType = getCurrentResourceType()) {
+  return normalizeResourceType(resourceType) === RESOURCE_TYPES.WASTE;
 }
 
 function isElectricResourceType(resourceType = getCurrentResourceType()) {
@@ -1221,6 +1438,10 @@ function getBillingDocumentDirectoryName(resourceType = getCurrentResourceType()
   return getResourceDisplayMeta(resourceType).billingDocumentDirectory;
 }
 
+function supportsBillingDocumentForResource(resourceType = getCurrentResourceType()) {
+  return isElectricResourceType(resourceType) || isGasResourceType(resourceType);
+}
+
 function supportsScopedBillingSettlement(resourceType = getCurrentResourceType()) {
   return isElectricResourceType(resourceType) || isGasResourceType(resourceType);
 }
@@ -1247,6 +1468,48 @@ function isGasLpgBillingSettlementScope(scopeKey) {
   return normalizeText(scopeKey) === GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_KEY;
 }
 
+function isWasteBillingSettlementScope(scopeKey) {
+  return [
+    WASTE_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY,
+    WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY,
+  ].includes(normalizeText(scopeKey));
+}
+
+function getWasteBillingSettlementScopeKeyForTeam(teamKey) {
+  if (teamKey === WASTE_BUKJEONG_TEAM_KEY) {
+    return WASTE_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY;
+  }
+
+  if (teamKey === WASTE_YUSAN_TEAM_KEY) {
+    return WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY;
+  }
+
+  return "";
+}
+
+function getWasteBillingSettlementTeamKeyForScope(scopeKey) {
+  const normalizedScopeKey = normalizeText(scopeKey);
+  if (normalizedScopeKey === WASTE_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY) {
+    return WASTE_BUKJEONG_TEAM_KEY;
+  }
+
+  if (normalizedScopeKey === WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY) {
+    return WASTE_YUSAN_TEAM_KEY;
+  }
+
+  return "";
+}
+
+function getWasteBillingSettlementBillingAmountComponents(scopeKey) {
+  return normalizeText(scopeKey) === WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY
+    ? WASTE_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS_YUSAN
+    : WASTE_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS_BUKJEONG;
+}
+
+function getWasteBillingSettlementManualCostFieldKeys(scopeKey) {
+  return getWasteBillingSettlementBillingAmountComponents(scopeKey).map(({ key }) => key);
+}
+
 function getBillingSettlementFields(
   resourceType = getCurrentResourceType(),
   scopeKey = getCurrentBillingSettlementScope(resourceType)
@@ -1259,6 +1522,12 @@ function getBillingSettlementFields(
       : GAS_BILLING_SETTLEMENT_FIELDS;
   }
 
+  if (normalizedResourceType === RESOURCE_TYPES.WASTE) {
+    return normalizedScopeKey === WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY
+      ? WASTE_BILLING_SETTLEMENT_FIELDS_YUSAN
+      : WASTE_BILLING_SETTLEMENT_FIELDS_BUKJEONG;
+  }
+
   return ELECTRIC_BILLING_SETTLEMENT_FIELDS;
 }
 
@@ -1266,10 +1535,15 @@ function getBillingSettlementAutoCalculatedFieldKeySet(
   resourceType = getCurrentResourceType(),
   scopeKey = getCurrentBillingSettlementScope(resourceType)
 ) {
-  if (normalizeResourceType(resourceType) === RESOURCE_TYPES.GAS) {
+  const normalizedResourceType = normalizeResourceType(resourceType);
+  if (normalizedResourceType === RESOURCE_TYPES.GAS) {
     return isGasLpgBillingSettlementScope(scopeKey)
       ? GAS_LPG_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS
       : GAS_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS;
+  }
+
+  if (normalizedResourceType === RESOURCE_TYPES.WASTE) {
+    return WASTE_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS;
   }
 
   return ELECTRIC_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS;
@@ -1292,10 +1566,15 @@ function getBillingSettlementZeroDefaultFieldKeys(
   resourceType = getCurrentResourceType(),
   scopeKey = getCurrentBillingSettlementScope(resourceType)
 ) {
-  if (normalizeResourceType(resourceType) === RESOURCE_TYPES.GAS) {
+  const normalizedResourceType = normalizeResourceType(resourceType);
+  if (normalizedResourceType === RESOURCE_TYPES.GAS) {
     return isGasLpgBillingSettlementScope(scopeKey)
       ? []
       : GAS_BILLING_SETTLEMENT_ZERO_DEFAULT_FIELD_KEYS;
+  }
+
+  if (normalizedResourceType === RESOURCE_TYPES.WASTE) {
+    return [];
   }
 
   return BILLING_SETTLEMENT_ZERO_DEFAULT_FIELD_KEYS;
@@ -1306,11 +1585,16 @@ function getBillingSettlementFormulaGuide(
   resourceType = getCurrentResourceType(),
   scopeKey = getCurrentBillingSettlementScope(resourceType)
 ) {
-  if (normalizeResourceType(resourceType) === RESOURCE_TYPES.GAS) {
+  const normalizedResourceType = normalizeResourceType(resourceType);
+  if (normalizedResourceType === RESOURCE_TYPES.GAS) {
     const guides = isGasLpgBillingSettlementScope(scopeKey)
       ? GAS_LPG_BILLING_SETTLEMENT_FORMULA_GUIDES
       : GAS_BILLING_SETTLEMENT_FORMULA_GUIDES;
     return guides[fieldKey] || "";
+  }
+
+  if (normalizedResourceType === RESOURCE_TYPES.WASTE) {
+    return WASTE_BILLING_SETTLEMENT_FORMULA_GUIDES[fieldKey] || "";
   }
 
   return BILLING_SETTLEMENT_FORMULA_GUIDES[fieldKey] || "";
@@ -1360,36 +1644,28 @@ function getAcceptedBillingDocumentDirectoryNames(resourceType = getCurrentResou
   if (isElectricResourceType(resourceType)) {
     nextNames.push(LEGACY_BILLING_DOCUMENT_DIRECTORY_NAME);
   }
-  return nextNames.filter((name, index, list) => name && list.indexOf(name) === index);
-}
-
-function getBillingDocumentDirectorySegments(directoryName) {
-  return normalizeRelativeFilePath(directoryName).split("/").filter(Boolean);
-}
-
-function getBillingDocumentDirectoryLeafName(directoryName) {
-  const segments = getBillingDocumentDirectorySegments(directoryName);
-  return segments[segments.length - 1] || normalizeText(directoryName);
-}
-
-async function getNestedDirectoryHandle(rootHandle, directorySegments, options = {}) {
-  let currentHandle = rootHandle;
-  for (const segment of directorySegments) {
-    currentHandle = await currentHandle.getDirectoryHandle(segment, options);
-  }
-  return currentHandle;
+  return nextNames.filter((name, index, list) => list.indexOf(name) === index);
 }
 
 function supportsTeamModeForResource(resourceType = getCurrentResourceType()) {
   return (
     isElectricResourceType(resourceType) ||
     isGasResourceType(resourceType) ||
+    isWasteResourceType(resourceType) ||
     isProductionResourceType(resourceType)
   );
 }
 
+function supportsEquipmentModeForResource(resourceType = getCurrentResourceType()) {
+  return !isWasteResourceType(resourceType);
+}
+
 function supportsTeamModeForCurrentResource() {
   return supportsTeamModeForResource(getCurrentResourceType());
+}
+
+function supportsEquipmentModeForCurrentResource() {
+  return supportsEquipmentModeForResource(getCurrentResourceType());
 }
 
 function getDirectTeamMonthlyUsageTeamKeys(resourceType = getCurrentResourceType()) {
@@ -1457,7 +1733,11 @@ function getDirectTeamMonthlyUsageKpiTeamName(
 }
 
 function supportsBillingSettlementForResource(resourceType = getCurrentResourceType()) {
-  return isElectricResourceType(resourceType) || isGasResourceType(resourceType);
+  return (
+    isElectricResourceType(resourceType) ||
+    isGasResourceType(resourceType) ||
+    isWasteResourceType(resourceType)
+  );
 }
 
 function supportsBillingSettlementForCurrentResource() {
@@ -1465,6 +1745,10 @@ function supportsBillingSettlementForCurrentResource() {
 }
 
 function getTeamGroupsForResource(resourceType = getCurrentResourceType()) {
+  if (isWasteResourceType(resourceType)) {
+    return WASTE_TEAM_GROUPS;
+  }
+
   if (isGasResourceType(resourceType)) {
     return GAS_TEAM_GROUPS;
   }
@@ -1508,6 +1792,10 @@ function getCurrentOverallMonthlyUsage() {
     return calculateGasOverallMonthlyUsage();
   }
 
+  if (isWasteResourceType()) {
+    return calculateWasteOverallMonthlyUsage();
+  }
+
   if (isProductionResourceType()) {
     return calculateEquipmentGroupMonthlyUsage(getAllEquipmentIds());
   }
@@ -1520,6 +1808,10 @@ function getTeamModeOverallMonthlyUsage() {
     return calculateGasTeamDisplayTotalMonthlyUsage();
   }
 
+  if (isWasteResourceType()) {
+    return getCurrentOverallMonthlyUsage();
+  }
+
   if (isProductionResourceType()) {
     return getCurrentOverallMonthlyUsage();
   }
@@ -1530,6 +1822,10 @@ function getTeamModeOverallMonthlyUsage() {
 function getCurrentOverallUsageLabel() {
   if (isGasResourceType()) {
     return "가스 총사용량";
+  }
+
+  if (isWasteResourceType()) {
+    return "폐수 총사용량";
   }
 
   if (isProductionResourceType()) {
@@ -1678,6 +1974,8 @@ function getFallbackTeamMonthlyUsageFromPortalData(
     ? window.PortalData?.util_electric_data?.teams
     : isGasResourceType(resourceType)
       ? window.PortalData?.util_gas_data?.teams
+      : isWasteResourceType(resourceType)
+        ? window.PortalData?.util_wastewater_data?.teams
       : null;
   if (!Array.isArray(teamRecords)) {
     return null;
@@ -1709,6 +2007,69 @@ function getDirectTeamMonthlyUsage(
   }
 
   return getFallbackTeamMonthlyUsageFromPortalData(teamKey, monthValue, resourceType);
+}
+
+function findWastePortalMonthRow(teamKey, monthValue = state.currentMonth) {
+  const teamName = getWasteUtilitySnapshotTeamName(teamKey);
+  const normalizedMonth = normalizeMonthValue(monthValue);
+  if (!teamName || !normalizedMonth || typeof window === "undefined") {
+    return null;
+  }
+
+  const teamRecords = window.PortalData?.util_wastewater_data?.teams;
+  if (!Array.isArray(teamRecords)) {
+    return null;
+  }
+
+  const [yearValue, monthNumber] = normalizedMonth.split("-").map(Number);
+  const teamRecord =
+    teamRecords.find((item) => normalizeText(item?.name) === normalizeText(teamName)) || null;
+  const yearRecord =
+    Array.isArray(teamRecord?.years)
+      ? teamRecord.years.find((item) => Number(item?.label) === Number(yearValue))
+      : null;
+  return Array.isArray(yearRecord?.rows)
+    ? yearRecord.rows.find((item) => normalizeText(item?.label) === `${monthNumber}월`) || null
+    : null;
+}
+
+function buildWasteBillingSettlementFallbackEntry(
+  monthValue = state.currentMonth,
+  scopeKey = getCurrentBillingSettlementScope(RESOURCE_TYPES.WASTE)
+) {
+  const teamKey = getWasteBillingSettlementTeamKeyForScope(scopeKey);
+  const monthRow = findWastePortalMonthRow(teamKey, monthValue);
+  if (!teamKey || !monthRow) {
+    return null;
+  }
+
+  const fields = {};
+  const costFields = isPlainObject(monthRow.costs) ? monthRow.costs : {};
+  getWasteBillingSettlementManualCostFieldKeys(scopeKey).forEach((fieldKey) => {
+    const numericValue = normalizeTeamMonthlyAmountValue(costFields[fieldKey], null);
+    if (Number.isFinite(numericValue)) {
+      fields[fieldKey] = String(numericValue);
+    }
+  });
+
+  const rawTotalCost =
+    normalizeTeamMonthlyAmountValue(monthRow.cost, null) ??
+    normalizeTeamMonthlyAmountValue(costFields.total, null);
+  if (Number.isFinite(rawTotalCost)) {
+    fields.billing_amount = String(rawTotalCost);
+  }
+
+  const resolvedFields = resolveBillingSettlementFields(fields, monthValue, scopeKey);
+  if (!Object.keys(resolvedFields).length) {
+    return null;
+  }
+
+  return {
+    monthValue: normalizeMonthValue(monthValue),
+    fields: resolvedFields,
+    completed: false,
+    updatedAt: "",
+  };
 }
 
 function getDirectTeamMonthlyUsageInputValue(
@@ -1938,13 +2299,15 @@ function createDefaultResourceDataset(resourceType) {
   const defaultItems = (
     normalizedType === RESOURCE_TYPES.GAS
       ? DEFAULT_GAS_EQUIPMENT_ITEMS
+      : normalizedType === RESOURCE_TYPES.WASTE
+        ? DEFAULT_WASTE_EQUIPMENT_ITEMS
       : normalizedType === RESOURCE_TYPES.PRODUCTION
         ? DEFAULT_PRODUCTION_EQUIPMENT_ITEMS
       : DEFAULT_EQUIPMENT_ITEMS
   ).map((item) => ({ ...item }));
 
   return {
-    mode: MODES.EQUIPMENT,
+    mode: normalizedType === RESOURCE_TYPES.WASTE ? MODES.TEAM : MODES.EQUIPMENT,
     equipmentItems: defaultItems,
     equipmentEntries: {},
     teamAssignments: {},
@@ -2117,6 +2480,10 @@ const GAS_UTILITY_SNAPSHOT_TEAM_COST_SCOPES = Object.freeze({
   "1팀 2파트 (LPG)": GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_KEY,
   "3팀 (LNG)": GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LNG_KEY,
 });
+const WASTE_UTILITY_SNAPSHOT_TEAM_NAMES_BY_KEY = Object.freeze({
+  [WASTE_BUKJEONG_TEAM_KEY]: "북정",
+  [WASTE_YUSAN_TEAM_KEY]: "유산",
+});
 
 function cloneStoreSnapshot(store = state.store) {
   try {
@@ -2241,6 +2608,27 @@ function collectGasUtilitySnapshotMonthValues(store = state.store) {
   return Array.from(monthValues).sort((a, b) => a.localeCompare(b, "ko"));
 }
 
+function collectWasteUtilitySnapshotMonthValues(store = state.store) {
+  const dataset = getActiveResourceDataset(store, RESOURCE_TYPES.WASTE);
+  const monthValues = new Set();
+
+  Object.keys(dataset?.billingSettlementEntries || {}).forEach((rawMonthValue) => {
+    const monthValue = normalizeMonthValue(rawMonthValue);
+    if (monthValue) {
+      monthValues.add(monthValue);
+    }
+  });
+
+  Object.keys(dataset?.teamMonthlyEntries || {}).forEach((rawMonthValue) => {
+    const monthValue = normalizeMonthValue(rawMonthValue);
+    if (monthValue) {
+      monthValues.add(monthValue);
+    }
+  });
+
+  return Array.from(monthValues).sort((a, b) => a.localeCompare(b, "ko"));
+}
+
 function calculateGasUtilitySnapshotTeamUsage(equipmentIds = []) {
   const values = equipmentIds
     .map((equipmentId) => getTeamAssignedChipDisplayUsage(equipmentId))
@@ -2289,11 +2677,135 @@ function getGasUtilitySnapshotTeamName(teamKey) {
   return GAS_UTILITY_SNAPSHOT_TEAM_NAMES_BY_KEY[teamKey] || "";
 }
 
+function getWasteUtilitySnapshotTeamName(teamKey) {
+  return WASTE_UTILITY_SNAPSHOT_TEAM_NAMES_BY_KEY[teamKey] || "";
+}
+
 function getGasBillingSettlementScopeShortLabel(scopeKey) {
   const definition = getBillingSettlementScopeDefinitions(RESOURCE_TYPES.GAS).find(
     (item) => item.key === scopeKey
   );
   return definition?.shortLabel || "";
+}
+
+function calculateWasteSettlementScopeMonthlyUsage(
+  scopeKey,
+  monthValue = state.currentMonth
+) {
+  const teamKey = getWasteBillingSettlementTeamKeyForScope(scopeKey);
+  if (!teamKey) {
+    return null;
+  }
+
+  return getDirectTeamMonthlyUsage(teamKey, monthValue, RESOURCE_TYPES.WASTE);
+}
+
+function calculateWasteTeamDisplayAmount(teamKey, monthValue = state.currentMonth) {
+  const scopeKey = getWasteBillingSettlementScopeKeyForTeam(teamKey);
+  if (!scopeKey) {
+    return null;
+  }
+
+  return getBillingSettlementNumericField("billing_amount", monthValue, scopeKey);
+}
+
+function getWasteOverviewTeamAmountText(teamKey, monthValue = state.currentMonth) {
+  const amount = calculateWasteTeamDisplayAmount(teamKey, monthValue);
+  return Number.isFinite(amount) ? `금액 ${formatSettlementAmount(amount)}` : "";
+}
+
+function getWasteBillingSettlementFieldLabel(scopeKey, fieldKey) {
+  return (
+    getBillingSettlementFields(RESOURCE_TYPES.WASTE, scopeKey).find(
+      (field) => field.key === fieldKey
+    )?.label || fieldKey
+  );
+}
+
+function getWasteTeamAmountDetailText(teamKey, monthValue = state.currentMonth) {
+  if (!isWasteResourceType()) {
+    return "";
+  }
+
+  const scopeKey = getWasteBillingSettlementScopeKeyForTeam(teamKey);
+  const amount = calculateWasteTeamDisplayAmount(teamKey, monthValue);
+  if (!scopeKey || !Number.isFinite(amount)) {
+    return "";
+  }
+
+  const usageValue = getDirectTeamMonthlyUsage(teamKey, monthValue, RESOURCE_TYPES.WASTE);
+  const unitPrice = getBillingSettlementUnitPrice(monthValue, scopeKey);
+  const entryFields = getBillingSettlementEntry(monthValue, scopeKey)?.fields || {};
+  const parts = [`${getTeamDisplayLabel(teamKey)} 폐수 정산`];
+
+  if (Number.isFinite(usageValue)) {
+    parts.push(`월 사용량 ${formatWholeNumber(usageValue)}`);
+  }
+
+  getWasteBillingSettlementManualCostFieldKeys(scopeKey).forEach((fieldKey) => {
+    const numericValue = parseBillingSettlementNumericValue(entryFields[fieldKey]);
+    if (!Number.isFinite(numericValue)) {
+      return;
+    }
+
+    parts.push(
+      `${getWasteBillingSettlementFieldLabel(scopeKey, fieldKey)} ${formatSettlementAmount(
+        numericValue
+      )}`
+    );
+  });
+
+  if (Number.isFinite(unitPrice)) {
+    parts.push(`단가 ${formatNumber(unitPrice)}`);
+  }
+
+  parts.push(`총비용 ${formatSettlementAmount(amount)}`);
+  return parts.join("\n");
+}
+
+function calculateWasteOverallMonthlyUsage(monthValue = state.currentMonth) {
+  const values = WASTE_OVERVIEW_TEAM_KEYS
+    .map((teamKey) => getDirectTeamMonthlyUsage(teamKey, monthValue, RESOURCE_TYPES.WASTE))
+    .filter((value) => Number.isFinite(value));
+  return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
+}
+
+function calculateWasteOverallMonthlyAmount(monthValue = state.currentMonth) {
+  const values = WASTE_OVERVIEW_TEAM_KEYS
+    .map((teamKey) => calculateWasteTeamDisplayAmount(teamKey, monthValue))
+    .filter((value) => Number.isFinite(value));
+  return values.length ? values.reduce((sum, value) => sum + value, 0) : null;
+}
+
+function getWasteOverallAmountDetailText(monthValue = state.currentMonth) {
+  const amount = calculateWasteOverallMonthlyAmount(monthValue);
+  if (!Number.isFinite(amount)) {
+    return "";
+  }
+
+  const parts = WASTE_OVERVIEW_TEAM_KEYS.map((teamKey) => {
+    const teamAmount = calculateWasteTeamDisplayAmount(teamKey, monthValue);
+    return Number.isFinite(teamAmount)
+      ? `${getTeamDisplayLabel(teamKey)} 금액 ${formatSettlementAmount(teamAmount)}`
+      : "";
+  }).filter(Boolean);
+  parts.push(`통합 금액 ${formatSettlementAmount(amount)}`);
+  return parts.join("\n");
+}
+
+function buildWasteUtilitySnapshotCosts(rawFields, scopeKey) {
+  const costs = {};
+  getWasteBillingSettlementManualCostFieldKeys(scopeKey).forEach((fieldKey) => {
+    const numericValue = parseBillingSettlementNumericValue(rawFields?.[fieldKey]);
+    if (Number.isFinite(numericValue)) {
+      costs[fieldKey] = Math.round(numericValue);
+    }
+  });
+  const totalCost = calculateBillingSettlementBillingAmountValue(rawFields, scopeKey);
+  if (Number.isFinite(totalCost)) {
+    costs.total = Math.round(totalCost);
+  }
+  return Object.keys(costs).length ? costs : null;
 }
 
 function calculateGasTeamDisplayAmount(teamKey, monthValue = state.currentMonth, options = {}) {
@@ -2503,6 +3015,55 @@ function buildGasUtilityDatasetSnapshot(store = state.store) {
   );
 }
 
+function buildWasteUtilityDatasetSnapshot(store = state.store) {
+  const monthValues = collectWasteUtilitySnapshotMonthValues(store);
+  if (!monthValues.length) {
+    return {
+      months: [],
+      teams: {},
+    };
+  }
+
+  return withDetachedResourceSnapshot(
+    RESOURCE_TYPES.WASTE,
+    monthValues[0],
+    () => {
+      const teams = Object.fromEntries(
+        Object.entries(WASTE_UTILITY_SNAPSHOT_TEAM_NAMES_BY_KEY).map(([teamKey, teamName]) => [
+          teamName,
+          {},
+        ])
+      );
+
+      monthValues.forEach((monthValue) => {
+        state.currentMonth = monthValue;
+        Object.entries(WASTE_UTILITY_SNAPSHOT_TEAM_NAMES_BY_KEY).forEach(([teamKey, teamName]) => {
+          const usage = getDirectTeamMonthlyUsage(teamKey, monthValue, RESOURCE_TYPES.WASTE);
+          const scopeKey = getWasteBillingSettlementScopeKeyForTeam(teamKey);
+          const entryFields = getBillingSettlementEntry(monthValue, scopeKey)?.fields || {};
+          const totalCost = calculateBillingSettlementBillingAmountValue(entryFields, scopeKey);
+          const costs = buildWasteUtilitySnapshotCosts(entryFields, scopeKey);
+          if (!Number.isFinite(usage) && !Number.isFinite(totalCost) && !costs) {
+            return;
+          }
+
+          teams[teamName][monthValue] = {
+            usage: Number.isFinite(usage) ? Math.round(usage) : null,
+            cost: Number.isFinite(totalCost) ? Math.round(totalCost) : null,
+            costs,
+          };
+        });
+      });
+
+      return {
+        months: monthValues,
+        teams,
+      };
+    },
+    store
+  );
+}
+
 function init() {
   resolveElements();
   assertMountReady();
@@ -2540,6 +3101,9 @@ function bindEvents() {
   });
   elements.gasResourceBtn?.addEventListener("click", () => {
     void applyResourceType(RESOURCE_TYPES.GAS);
+  });
+  elements.wasteResourceBtn?.addEventListener("click", () => {
+    void applyResourceType(RESOURCE_TYPES.WASTE);
   });
   elements.productionResourceBtn?.addEventListener("click", () => {
     void applyResourceType(RESOURCE_TYPES.PRODUCTION);
@@ -2841,6 +3405,7 @@ function getEquipmentManageFactorButtonText(field, monthValue = state.currentMon
 function renderResourceUI() {
   const resourceType = getCurrentResourceType();
   const isGas = isGasResourceType(resourceType);
+  const isWaste = isWasteResourceType(resourceType);
   const isProduction = isProductionResourceType(resourceType);
   const resourceEyebrow = getResourceEyebrowText(resourceType);
 
@@ -2856,13 +3421,17 @@ function renderResourceUI() {
     elements.equipmentListLabel.textContent = getEquipmentListLabelText();
   }
   if (elements.electricResourceBtn) {
-    const isActive = !isGas && !isProduction;
+    const isActive = !isGas && !isWaste && !isProduction;
     elements.electricResourceBtn.classList.toggle("is-active", isActive);
     elements.electricResourceBtn.setAttribute("aria-pressed", String(isActive));
   }
   if (elements.gasResourceBtn) {
     elements.gasResourceBtn.classList.toggle("is-active", isGas);
     elements.gasResourceBtn.setAttribute("aria-pressed", String(isGas));
+  }
+  if (elements.wasteResourceBtn) {
+    elements.wasteResourceBtn.classList.toggle("is-active", isWaste);
+    elements.wasteResourceBtn.setAttribute("aria-pressed", String(isWaste));
   }
   if (elements.productionResourceBtn) {
     elements.productionResourceBtn.classList.toggle("is-active", isProduction);
@@ -2934,6 +3503,7 @@ function renderModeUI() {
   const isEquipmentMode = mode === MODES.EQUIPMENT;
   const isTeamMode = mode === MODES.TEAM;
   const supportsTeamMode = supportsTeamModeForCurrentResource();
+  const supportsEquipmentMode = supportsEquipmentModeForResource();
   const supportsEquipmentEditing = supportsEquipmentEditingForCurrentResource();
 
   if (!isEquipmentMode && state.openQuickEntryMenu) {
@@ -2944,21 +3514,39 @@ function renderModeUI() {
   renderResourceUI();
   elements.heroText.textContent = getHeroDescription(mode);
   elements.entrySectionLabel.textContent = getEntrySectionTitle();
-  elements.equipmentModeBtn.classList.toggle("is-hidden", !supportsTeamMode || !isTeamMode);
-  elements.teamModeBtn.classList.toggle("is-hidden", !supportsTeamMode || !isEquipmentMode);
+  elements.equipmentModeBtn.classList.toggle(
+    "is-hidden",
+    !supportsTeamMode || !supportsEquipmentMode || !isTeamMode
+  );
+  elements.teamModeBtn.classList.toggle(
+    "is-hidden",
+    !supportsTeamMode || !supportsEquipmentMode || !isEquipmentMode
+  );
   elements.equipmentModeBtn.setAttribute("aria-pressed", "false");
   elements.teamModeBtn.setAttribute("aria-pressed", "false");
   elements.equipmentModeBtn.title = "설비별로 전환";
   elements.teamModeBtn.title = "팀별로 전환";
 
-  elements.equipmentFieldsSection.classList.toggle("is-hidden", !isEquipmentMode);
+  elements.equipmentFieldsSection.classList.toggle(
+    "is-hidden",
+    !supportsEquipmentMode || !isEquipmentMode
+  );
   elements.teamModeSection.classList.toggle("is-hidden", !supportsTeamMode || !isTeamMode);
-  elements.formMeta.classList.toggle("is-hidden", !isEquipmentMode);
-  elements.entryStatusWrap?.classList.toggle("is-hidden", !isEquipmentMode);
-  elements.equipmentAddWrap?.classList.toggle("is-hidden", !isEquipmentMode || !supportsEquipmentEditing);
-  elements.saveEntryBtn?.classList.toggle("is-hidden", !isEquipmentMode);
+  elements.formMeta.classList.toggle("is-hidden", !supportsEquipmentMode || !isEquipmentMode);
+  elements.entryStatusWrap?.classList.toggle(
+    "is-hidden",
+    !supportsEquipmentMode || !isEquipmentMode
+  );
+  elements.equipmentAddWrap?.classList.toggle(
+    "is-hidden",
+    !supportsEquipmentMode || !isEquipmentMode || !supportsEquipmentEditing
+  );
+  elements.saveEntryBtn?.classList.toggle("is-hidden", !supportsEquipmentMode || !isEquipmentMode);
   elements.teamSaveBtn?.classList.toggle("is-hidden", !supportsTeamMode || !isTeamMode);
-  elements.quickEntryWrap?.classList.toggle("is-hidden", !isEquipmentMode);
+  elements.quickEntryWrap?.classList.toggle(
+    "is-hidden",
+    !supportsEquipmentMode || !isEquipmentMode
+  );
 
   syncEquipmentFullscreenUI();
   syncQuickEntryMenu();
@@ -2977,6 +3565,11 @@ async function applyMode(mode, options = {}) {
   }
 
   if (mode === MODES.TEAM && !supportsTeamModeForCurrentResource()) {
+    renderModeUI();
+    return;
+  }
+
+  if (mode === MODES.EQUIPMENT && !supportsEquipmentModeForCurrentResource()) {
     renderModeUI();
     return;
   }
@@ -3216,10 +3809,12 @@ function renderSummary() {
   usageCard?.classList.remove("is-focus-highlight");
   usageCard?.classList.add("is-focus-highlight");
   const selectedEquipmentIds = getSelectedEquipmentIds();
+  const isGas = isGasResourceType();
+  const isWaste = isWasteResourceType();
   const isProduction = isProductionResourceType();
-  const isElectricTeamMode = !isProduction && !isGasResourceType() && getCurrentMode() === MODES.TEAM;
+  const isElectricTeamMode = !isProduction && !isGas && !isWaste && getCurrentMode() === MODES.TEAM;
 
-  if (isGasResourceType()) {
+  if (isGas) {
     const isGasTeamMode = getCurrentMode() === MODES.TEAM;
     const focusedGasSummaryInfo =
       getCurrentMode() === MODES.EQUIPMENT && selectedEquipmentIds.length
@@ -3254,6 +3849,41 @@ function renderSummary() {
     }
     if (elements.otherMonthUsageLabel) {
       elements.otherMonthUsageLabel.textContent = gasStandaloneSummaryInfo.label;
+    }
+    syncCalendarDisplayModeToggleButton();
+    syncClearCardSelectionButton();
+    syncCalendarPopupWindow();
+    return;
+  }
+
+  if (isWaste) {
+    const overallUsage = calculateWasteOverallMonthlyUsage();
+    const yusanUsage = getTeamBoardMonthlyUsage(WASTE_YUSAN_TEAM_KEY, {
+      monthValue: state.currentMonth,
+      selectionOnly: true,
+    });
+    const bukjeongUsage = getTeamBoardMonthlyUsage(WASTE_BUKJEONG_TEAM_KEY, {
+      monthValue: state.currentMonth,
+      selectionOnly: true,
+    });
+
+    if (elements.totalPowerMonthUsageTotal) {
+      elements.totalPowerMonthUsageTotal.textContent = formatDailyUsage(overallUsage);
+    }
+    if (elements.summaryFocusLabel) {
+      elements.summaryFocusLabel.textContent = "폐수 총사용량";
+    }
+    if (elements.equipmentMonthUsageTotal) {
+      elements.equipmentMonthUsageTotal.textContent = formatDailyUsage(yusanUsage);
+    }
+    if (elements.equipmentMonthUsageLabel) {
+      elements.equipmentMonthUsageLabel.textContent = "유산";
+    }
+    if (elements.otherMonthUsageTotal) {
+      elements.otherMonthUsageTotal.textContent = formatDailyUsage(bukjeongUsage);
+    }
+    if (elements.otherMonthUsageLabel) {
+      elements.otherMonthUsageLabel.textContent = "북정";
     }
     syncCalendarDisplayModeToggleButton();
     syncClearCardSelectionButton();
@@ -3540,6 +4170,10 @@ function syncEquipmentFieldCardDisplayOrder() {
 }
 
 function resolveInitialMode() {
+  if (isWasteResourceType()) {
+    return MODES.TEAM;
+  }
+
   if (!supportsTeamModeForCurrentResource()) {
     return MODES.EQUIPMENT;
   }
@@ -3900,7 +4534,7 @@ async function handleTeamSettlementClick(event) {
     return;
   }
 
-  if (!isGasResourceType() && calculateTotalPowerMonthlyUsage() === null) {
+  if (isElectricResourceType() && calculateTotalPowerMonthlyUsage() === null) {
     window.alert("전력총량이 계산되어야 정산을 열 수 있습니다.");
     syncEquipmentFullscreenUI();
     return;
@@ -3933,6 +4567,9 @@ async function handleTeamSettlementAttachClick(event) {
   }
 
   const resourceType = getCurrentResourceType();
+  if (!supportsBillingDocumentForResource(resourceType)) {
+    return;
+  }
   const monthValue = normalizeMonthValue(state.currentMonth);
   const scopeKey = getCurrentBillingSettlementScope(resourceType);
   const scopeTitle = getBillingSettlementScopeTitle(scopeKey, resourceType);
@@ -3942,7 +4579,7 @@ async function handleTeamSettlementAttachClick(event) {
     return;
   }
 
-  if (!isGasResourceType(resourceType) && calculateTotalPowerMonthlyUsage() === null) {
+  if (isElectricResourceType(resourceType) && calculateTotalPowerMonthlyUsage() === null) {
     window.alert("전력총량이 계산되어야 정산을 열 수 있습니다.");
     syncEquipmentFullscreenUI();
     return;
@@ -4573,8 +5210,7 @@ function getBillingDocumentFileNameFromPath(relativePath) {
 }
 
 function buildBillingDocumentRelativePath(fileName, resourceType = getCurrentResourceType()) {
-  const directoryName = getBillingDocumentDirectoryName(resourceType);
-  return directoryName ? `${directoryName}/${fileName}` : fileName;
+  return `${getBillingDocumentDirectoryName(resourceType)}/${fileName}`;
 }
 
 function normalizeBillingDocumentRelativePath(
@@ -4984,18 +5620,8 @@ async function uploadBillingDocument(
   if (!isPdfBillingFile(file)) {
     throw new Error("billing_document_pdf_only");
   }
-  const resourceType = getCurrentResourceType();
-  if (!supportsBillingSettlementForResource(resourceType)) {
-    throw new Error("billing_document_resource_unsupported");
-  }
   const base64Data = await readFileAsBase64(file);
-  const managedFileName = buildBillingDocumentFileName(
-    monthValue,
-    file?.name,
-    file?.type,
-    resourceType,
-    scopeKey
-  );
+  const resourceType = getCurrentResourceType();
   if (!supportsSharedServerPersistence()) {
     return uploadBillingDocumentToLocalStore(file, monthValue, base64Data, scopeKey);
   }
@@ -5009,8 +5635,7 @@ async function uploadBillingDocument(
       monthValue,
       resourceType,
       scopeKey,
-      fileName: managedFileName,
-      storageFolder: getBillingDocumentDirectoryName(resourceType),
+      fileName: file?.name || "",
       mimeType: file?.type || "",
       base64Data,
     }),
@@ -7194,9 +7819,10 @@ function renderTeamMode() {
 
 function renderTeamTotals() {
   const isGas = isGasResourceType();
+  const isWaste = isWasteResourceType();
   const isProduction = isProductionResourceType();
-  const supportsAggregateTeamCard = !isGas && !isProduction;
-  const useTeamOverviewLayout = isElectricResourceType() || isGas;
+  const supportsAggregateTeamCard = !isGas && !isWaste && !isProduction;
+  const useTeamOverviewLayout = isElectricResourceType() || isGas || isWaste;
   const totalTeam = getTeamGroup(TOTAL_POWER_TEAM_KEY);
   const overallTotal = getTeamModeOverallMonthlyUsage();
   const availableItems = supportsAggregateTeamCard
@@ -7224,19 +7850,28 @@ function renderTeamTotals() {
   const totalLabel = document.createElement("span");
   totalLabel.className = "team-total-card-label";
   totalLabel.textContent =
-    isGas || isProduction ? getCurrentOverallUsageLabel() : "전력총량";
+    isGas || isWaste || isProduction ? getCurrentOverallUsageLabel() : "전력총량";
 
   const totalValue = document.createElement("strong");
   totalValue.textContent = formatDailyUsage(overallTotal);
 
   const tools = document.createElement("div");
   tools.className = "team-total-card-tools";
+  const wasteOverallAmount = isWaste
+    ? calculateWasteOverallMonthlyAmount(state.currentMonth)
+    : null;
   const totalAmountText = isElectricResourceType()
     ? getElectricTeamModeOverallAmountText(state.currentMonth)
-    : "";
+    : isWaste
+      ? Number.isFinite(wasteOverallAmount)
+        ? `금액 ${formatSettlementAmount(wasteOverallAmount)}`
+        : ""
+      : "";
   const totalAmountDetailText = isElectricResourceType()
     ? getElectricTeamModeOverallAmountDetailText(state.currentMonth)
-    : "";
+    : isWaste
+      ? getWasteOverallAmountDetailText(state.currentMonth)
+      : "";
 
   copy.appendChild(totalLabel);
   tools.appendChild(totalValue);
@@ -7289,7 +7924,7 @@ function renderTeamTotals() {
 function renderTeamBoards() {
   elements.teamBoards.innerHTML = "";
 
-  if (!state.store.equipmentItems.length) {
+  if (!state.store.equipmentItems.length && !isWasteResourceType()) {
     const emptyState = document.createElement("div");
     emptyState.className = "team-empty-state";
     emptyState.innerHTML = `
@@ -7513,6 +8148,53 @@ function createBukjeongSettlementMonthlyUsageSection(
   return groupWrap;
 }
 
+function createWasteSettlementMonthlyUsageSection(
+  monthValue = state.currentMonth,
+  scopeKey = getCurrentBillingSettlementScope(RESOURCE_TYPES.WASTE)
+) {
+  const teamKey = getWasteBillingSettlementTeamKeyForScope(scopeKey);
+  if (!teamKey) {
+    return document.createDocumentFragment();
+  }
+
+  const groupWrap = document.createElement("section");
+  groupWrap.className = "team-settlement-group";
+
+  const groupLabel = document.createElement("p");
+  groupLabel.className = "team-settlement-group-label";
+  groupLabel.textContent = `${getBillingSettlementScopeLabel(scopeKey, RESOURCE_TYPES.WASTE)} 기준`;
+
+  const groupGrid = document.createElement("div");
+  groupGrid.className = "team-settlement-group-grid";
+
+  const fieldWrap = document.createElement("label");
+  fieldWrap.className = "team-settlement-field";
+
+  const labelRow = document.createElement("div");
+  labelRow.className = "team-settlement-label-row";
+
+  const label = document.createElement("span");
+  label.className = "team-settlement-label";
+  label.textContent = "월 사용량";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.inputMode = "numeric";
+  input.className = "team-settlement-input";
+  input.dataset.teamDirectUsageInput = teamKey;
+  input.dataset.teamDirectUsageSurface = "settlement";
+  input.placeholder = "사용량 입력";
+  input.value = getDirectTeamMonthlyUsageInputValue(teamKey, monthValue, RESOURCE_TYPES.WASTE);
+  input.setAttribute("aria-label", `${getTeamDisplayLabel(teamKey)} 폐수 월 사용량`);
+  input.title = `${getTeamDisplayLabel(teamKey)} 폐수 정산 기준 월 사용량`;
+
+  labelRow.appendChild(label);
+  fieldWrap.append(labelRow, input);
+  groupGrid.appendChild(fieldWrap);
+  groupWrap.append(groupLabel, groupGrid);
+  return groupWrap;
+}
+
 function renderTeamSettlementSection() {
   if (
     !elements.teamSettlementSection ||
@@ -7536,9 +8218,14 @@ function renderTeamSettlementSection() {
   const scopeTitle = getBillingSettlementScopeTitle(scopeKey);
   const resourceType = getCurrentResourceType();
   const settlementEntry = getBillingSettlementEntry(monthValue, scopeKey);
-  const billingDocument = getBillingDocumentForMonth(monthValue, scopeKey);
-  const billingDirectoryName = getBillingDocumentDirectoryName(resourceType);
-  const hasBillingDocument = Boolean(billingDocument?.fileName);
+  const supportsBillingDocument = supportsBillingDocumentForResource(resourceType);
+  const billingDocument = supportsBillingDocument
+    ? getBillingDocumentForMonth(monthValue, scopeKey)
+    : null;
+  const billingDirectoryName = supportsBillingDocument
+    ? getBillingDocumentDirectoryName(resourceType)
+    : "";
+  const hasBillingDocument = supportsBillingDocument && Boolean(billingDocument?.fileName);
   const shouldShow = Boolean(
     monthValue &&
       (!isElectricResourceType(resourceType) || calculateTotalPowerMonthlyUsage() !== null) &&
@@ -7547,9 +8234,11 @@ function renderTeamSettlementSection() {
 
   elements.teamSettlementSection.classList.toggle("is-hidden", !shouldShow);
   elements.teamSettlementFileName.textContent = shouldShow
-    ? hasBillingDocument
-      ? `${scopeTitle} · ${billingDirectoryName} · ${billingDocument.fileName}`
-      : `${scopeTitle} · ${billingDirectoryName} · 청구서 미첨부`
+    ? supportsBillingDocument
+      ? hasBillingDocument
+        ? `${scopeTitle} · ${billingDirectoryName} · ${billingDocument.fileName}`
+        : `${scopeTitle} · ${billingDirectoryName} · 청구서 미첨부`
+      : `${scopeTitle} · 수기 입력`
     : "";
   elements.teamSettlementFileName.title = elements.teamSettlementFileName.textContent;
   const directoryConnectBtn = ensureTeamSettlementDirectoryConnectButton();
@@ -7558,20 +8247,28 @@ function renderTeamSettlementSection() {
     const hasConnectedDirectory = Boolean(localFilePersistenceState.billingDocumentDirectoryHandle);
     directoryConnectBtn.classList.toggle(
       "is-hidden",
-      !shouldShow || !supportsDirectoryPersistence
+      !shouldShow || !supportsBillingDocument || !supportsDirectoryPersistence
     );
     directoryConnectBtn.disabled =
-      !shouldShow || state.isBillingDocumentUploading || hasConnectedDirectory;
+      !shouldShow ||
+      !supportsBillingDocument ||
+      state.isBillingDocumentUploading ||
+      hasConnectedDirectory;
     directoryConnectBtn.textContent = hasConnectedDirectory ? "연결됨" : "폴더";
     directoryConnectBtn.title = hasConnectedDirectory
       ? `${billingDirectoryName} 폴더 연결 완료`
       : `${billingDirectoryName} 폴더 연결`;
   }
   if (elements.teamSettlementAttachBtn) {
-    elements.teamSettlementAttachBtn.disabled = !shouldShow || state.isBillingDocumentUploading;
+    elements.teamSettlementAttachBtn.classList.toggle(
+      "is-hidden",
+      !shouldShow || !supportsBillingDocument
+    );
+    elements.teamSettlementAttachBtn.disabled =
+      !shouldShow || !supportsBillingDocument || state.isBillingDocumentUploading;
     elements.teamSettlementAttachBtn.textContent = hasBillingDocument ? "삭제" : "첨부";
 
-    if (!shouldShow) {
+    if (!shouldShow || !supportsBillingDocument) {
       elements.teamSettlementAttachBtn.title = "청구서 첨부";
     } else if (state.isBillingDocumentUploading) {
       elements.teamSettlementAttachBtn.title = "청구서를 처리하고 있습니다.";
@@ -7586,16 +8283,26 @@ function renderTeamSettlementSection() {
     }
   }
   if (elements.teamSettlementPreviewBtn) {
-    elements.teamSettlementPreviewBtn.classList.toggle("is-hidden", !shouldShow || !hasBillingDocument);
-    elements.teamSettlementPreviewBtn.disabled = !shouldShow || !hasBillingDocument;
+    elements.teamSettlementPreviewBtn.classList.toggle(
+      "is-hidden",
+      !shouldShow || !supportsBillingDocument || !hasBillingDocument
+    );
+    elements.teamSettlementPreviewBtn.disabled =
+      !shouldShow || !supportsBillingDocument || !hasBillingDocument;
     elements.teamSettlementPreviewBtn.title = hasBillingDocument
       ? `${scopeTitle} · ${billingDocument.fileName} 미리보기`
       : "청구서 미리보기";
   }
   if (elements.teamSettlementOpenBtn) {
-    elements.teamSettlementOpenBtn.classList.add("is-hidden");
-    elements.teamSettlementOpenBtn.disabled = true;
-    elements.teamSettlementOpenBtn.title = "";
+    elements.teamSettlementOpenBtn.classList.toggle(
+      "is-hidden",
+      !shouldShow || !supportsBillingDocument || !hasBillingDocument
+    );
+    elements.teamSettlementOpenBtn.disabled =
+      !shouldShow || !supportsBillingDocument || !hasBillingDocument;
+    elements.teamSettlementOpenBtn.title = hasBillingDocument
+      ? `${scopeTitle} · ${billingDocument.fileName} 다운로드`
+      : "청구서 다운로드";
   }
   elements.teamSettlementFields.innerHTML = "";
   syncTeamSettlementCompletionButtonState(monthValue, shouldShow, scopeKey);
@@ -7608,6 +8315,14 @@ function renderTeamSettlementSection() {
   const scopeToggle = createTeamSettlementScopeToggleElement(scopeKey);
   if (scopeToggle) {
     fragment.appendChild(scopeToggle);
+  }
+  if (isWasteResourceType(resourceType)) {
+    fragment.appendChild(createWasteSettlementMonthlyUsageSection(monthValue, scopeKey));
+  } else if (
+    (isElectricResourceType(resourceType) && scopeKey === "bukjeong") ||
+    (isGasResourceType(resourceType) && scopeKey === GAS_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY)
+  ) {
+    fragment.appendChild(createBukjeongSettlementMonthlyUsageSection(monthValue, resourceType));
   }
   if (!settlementEntry) {
     const status = document.createElement("p");
@@ -7714,13 +8429,6 @@ function renderTeamSettlementSection() {
     groupWrap.appendChild(groupGrid);
     fragment.appendChild(groupWrap);
   });
-
-  if (
-    (isElectricResourceType(resourceType) && scopeKey === "bukjeong") ||
-    (isGasResourceType(resourceType) && scopeKey === GAS_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY)
-  ) {
-    fragment.appendChild(createBukjeongSettlementMonthlyUsageSection(monthValue, resourceType));
-  }
 
   elements.teamSettlementFields.appendChild(fragment);
 }
@@ -8507,7 +9215,9 @@ function createTeamOverviewSelectorElement(selectedTeamKeySet = new Set()) {
 
   const overviewTeamKeys = isGasResourceType()
     ? GAS_OVERVIEW_TEAM_KEYS
-    : ELECTRIC_TOTAL_OVERVIEW_TEAM_KEYS;
+    : isWasteResourceType()
+      ? WASTE_OVERVIEW_TEAM_KEYS
+      : ELECTRIC_TOTAL_OVERVIEW_TEAM_KEYS;
 
   overviewTeamKeys.forEach((teamKey) => {
     const team = getTeamGroup(teamKey);
@@ -8539,24 +9249,32 @@ function createTeamOverviewSelectorElement(selectedTeamKeySet = new Set()) {
       iconClass: "category-icon team-total-selector-icon",
     });
 
-    const overviewUsage = isGasResourceType()
-      ? getTeamBoardMonthlyUsage(team.key, { selectionOnly: true })
-      : getElectricOverviewTeamMonthlyUsage(team.key);
+    const overviewUsage = isElectricResourceType()
+      ? getElectricOverviewTeamMonthlyUsage(team.key)
+      : getTeamBoardMonthlyUsage(team.key, { selectionOnly: true });
     const totalValue = document.createElement("strong");
     totalValue.className = "team-total-selector-total";
     totalValue.textContent = `합계 ${formatDailyUsage(overviewUsage)}`;
 
     const amountText = isElectricResourceType()
       ? getElectricOverviewTeamAmountText(team.key)
-      : getGasOverviewTeamAmountText(team.key);
+      : isWasteResourceType()
+        ? getWasteOverviewTeamAmountText(team.key, state.currentMonth)
+        : getGasOverviewTeamAmountText(team.key);
     const amountDetailText = isElectricResourceType()
       ? amountText
-      : getGasTeamAmountDetailText(team.key, state.currentMonth, {
-          selectionOnly: true,
-        });
+      : isWasteResourceType()
+        ? getWasteTeamAmountDetailText(team.key, state.currentMonth)
+        : getGasTeamAmountDetailText(team.key, state.currentMonth, {
+            selectionOnly: true,
+          });
     const shareText = isElectricResourceType()
       ? getElectricOverviewTeamShareText(team.key)
-      : getGasOverviewTeamShareText(team.key);
+      : isWasteResourceType()
+        ? getTeamUsageShareText(team.key, calculateWasteOverallMonthlyUsage(), {
+            selectionOnly: true,
+          })
+        : getGasOverviewTeamShareText(team.key);
     button.title = [getTeamContextDetailText(team.key), amountDetailText, shareText]
       .filter(Boolean)
       .join("\n");
@@ -8912,6 +9630,15 @@ function getOrderedTeamGroupsForBoardRender() {
     const selectedTeamKeySet = new Set(getSelectedTeamKeys());
     if (!selectedTeamKeySet.size) {
       return [];
+    }
+
+    return teamGroups.filter((team) => selectedTeamKeySet.has(team.key));
+  }
+
+  if (isWasteResourceType()) {
+    const selectedTeamKeySet = new Set(getSelectedTeamKeys());
+    if (!selectedTeamKeySet.size) {
+      return teamGroups;
     }
 
     return teamGroups.filter((team) => selectedTeamKeySet.has(team.key));
@@ -10484,6 +11211,10 @@ function getBillingSettlementResourceType(
     return RESOURCE_TYPES.GAS;
   }
 
+  if (isWasteBillingSettlementScope(scopeKey)) {
+    return RESOURCE_TYPES.WASTE;
+  }
+
   if (normalizeText(scopeKey) === "yusan" || normalizeText(scopeKey) === "bukjeong") {
     return RESOURCE_TYPES.ELECTRIC;
   }
@@ -10524,6 +11255,10 @@ function getBillingSettlementUsageBaseValue(
 
   if (resourceType === RESOURCE_TYPES.GAS) {
     return calculateGasSettlementScopeMonthlyUsage(resolvedScopeKey, monthValue);
+  }
+
+  if (resourceType === RESOURCE_TYPES.WASTE) {
+    return calculateWasteSettlementScopeMonthlyUsage(resolvedScopeKey, monthValue);
   }
 
   if (resolvedScopeKey === "bukjeong") {
@@ -11285,6 +12020,11 @@ function getTeamAmountText(teamKey, options = {}, monthValue = state.currentMont
     return Number.isFinite(amount) ? `금액 ${formatSettlementAmount(amount)}` : "";
   }
 
+  if (isWasteResourceType()) {
+    const amount = calculateWasteTeamDisplayAmount(teamKey, monthValue);
+    return Number.isFinite(amount) ? `금액 ${formatSettlementAmount(amount)}` : "";
+  }
+
   if (isElectricResourceType() && isPowerReactiveTeamKey(teamKey)) {
     return "";
   }
@@ -11306,6 +12046,10 @@ function getTeamAmountText(teamKey, options = {}, monthValue = state.currentMont
 function getTeamAmountDetailText(teamKey, options = {}, monthValue = state.currentMonth) {
   if (isGasResourceType()) {
     return getGasTeamAmountDetailText(teamKey, monthValue, options);
+  }
+
+  if (isWasteResourceType()) {
+    return getWasteTeamAmountDetailText(teamKey, monthValue);
   }
 
   if (
@@ -11879,6 +12623,10 @@ function getGasTeamModeStandaloneSummaryInfo() {
 function getDefaultCalendarTrackedEquipmentIds() {
   if (isGasResourceType()) {
     return getGasOverallTrackedEquipmentIds();
+  }
+
+  if (isWasteResourceType()) {
+    return [];
   }
 
   return getConfiguredTotalPowerEquipmentIds();
@@ -12678,7 +13426,8 @@ function formatBillingDocumentMonthLabel(monthValue) {
     return "";
   }
 
-  return normalizedMonth;
+  const [year, month] = normalizedMonth.split("-");
+  return `${year.slice(-2)}.${month}`;
 }
 
 function getBillingDocumentResourceLabel(resourceType = getCurrentResourceType()) {
@@ -12700,10 +13449,6 @@ function getBillingDocumentLabel(
 ) {
   const monthLabel = formatBillingDocumentMonthLabel(monthValue);
   const resourceLabel = getBillingDocumentResourceLabel(resourceType);
-  if (isProductionResourceType(resourceType)) {
-    return [monthLabel, resourceLabel].filter(Boolean).join(" ") || resourceLabel;
-  }
-
   const normalizedScopeKey = normalizeText(scopeKey);
   const hasScopedElectricLabel =
     normalizedScopeKey &&
@@ -12713,7 +13458,9 @@ function getBillingDocumentLabel(
   const scopeLabel = hasScopedElectricLabel
     ? getBillingSettlementScopeLabel(normalizedScopeKey, resourceType)
     : "";
-  const label = [monthLabel, resourceLabel, scopeLabel, "청구서"].filter(Boolean).join(" ");
+  const label = hasScopedElectricLabel
+    ? [monthLabel, scopeLabel].filter(Boolean).join(" ")
+    : [monthLabel, resourceLabel, scopeLabel].filter(Boolean).join(" ");
   return label || resourceLabel;
 }
 
@@ -12913,6 +13660,8 @@ function calculateBillingSettlementUnitPriceValue(
   const unitPriceSourceValue =
     resourceType === RESOURCE_TYPES.GAS
       ? parseBillingSettlementNumericValue(rawFields?.power_charge)
+      : resourceType === RESOURCE_TYPES.WASTE
+        ? calculateBillingSettlementBillingAmountValue(rawFields, scopeKey)
       : resolveBillingSettlementElectricityChargeTotalValue(rawFields);
   const totalPowerUsage = getBillingSettlementUsageBaseValue(monthValue, scopeKey);
 
@@ -12959,6 +13708,13 @@ function calculateBillingSettlementBillingAmountValue(
       isGasLpgBillingSettlementScope(scopeKey)
         ? GAS_LPG_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS
         : GAS_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS
+    );
+  }
+
+  if (resourceType === RESOURCE_TYPES.WASTE) {
+    return calculateBillingSettlementSignedTotalValue(
+      normalizedFields,
+      getWasteBillingSettlementBillingAmountComponents(scopeKey)
     );
   }
 
@@ -13077,7 +13833,7 @@ function resolveBillingSettlementFields(
   }
 
   const billingAmount = calculateBillingSettlementBillingAmount(fields, scopeKey);
-  if (resourceType === RESOURCE_TYPES.GAS) {
+  if (resourceType === RESOURCE_TYPES.GAS || resourceType === RESOURCE_TYPES.WASTE) {
     if (billingAmount) {
       fields.billing_amount = billingAmount;
     } else if (preservedBillingAmount) {
@@ -13517,6 +14273,7 @@ function createDefaultStore() {
     resourceDatasets: {
       [RESOURCE_TYPES.ELECTRIC]: createDefaultResourceDataset(RESOURCE_TYPES.ELECTRIC),
       [RESOURCE_TYPES.GAS]: createDefaultResourceDataset(RESOURCE_TYPES.GAS),
+      [RESOURCE_TYPES.WASTE]: createDefaultResourceDataset(RESOURCE_TYPES.WASTE),
       [RESOURCE_TYPES.PRODUCTION]: createDefaultResourceDataset(RESOURCE_TYPES.PRODUCTION),
     },
   });
@@ -14123,6 +14880,8 @@ function mergeCurrentStoreWithPresetLocalStore(currentStore, presetLocalStore) {
   );
   const currentGasDataset = extractRawResourceDataset(currentStore, RESOURCE_TYPES.GAS);
   const presetGasDataset = extractRawResourceDataset(presetLocalStore, RESOURCE_TYPES.GAS);
+  const currentWasteDataset = extractRawResourceDataset(currentStore, RESOURCE_TYPES.WASTE);
+  const presetWasteDataset = extractRawResourceDataset(presetLocalStore, RESOURCE_TYPES.WASTE);
   const currentProductionDataset = extractRawResourceDataset(
     currentStore,
     RESOURCE_TYPES.PRODUCTION
@@ -14259,6 +15018,39 @@ function mergeCurrentStoreWithPresetLocalStore(currentStore, presetLocalStore) {
         billingSettlementEntries: mergeBillingSettlementEntriesWithPresetLocalStore(
           currentGasDataset.billingSettlementEntries,
           presetGasDataset.billingSettlementEntries
+        ),
+      },
+      [RESOURCE_TYPES.WASTE]: {
+        ...presetWasteDataset,
+        ...currentWasteDataset,
+        mode: MODES.TEAM,
+        equipmentItems: mergeEquipmentItemsWithPresetLocalStore(
+          currentWasteDataset.equipmentItems,
+          presetWasteDataset.equipmentItems
+        ),
+        equipmentEntries: mergeEquipmentEntriesWithPresetLocalStore(
+          currentWasteDataset.equipmentEntries,
+          presetWasteDataset.equipmentEntries
+        ),
+        teamAssignments: {},
+        teamMonthlyEntries: mergeTeamMonthlyEntriesWithPresetLocalStore(
+          currentWasteDataset.teamMonthlyEntries,
+          presetWasteDataset.teamMonthlyEntries,
+          RESOURCE_TYPES.WASTE
+        ),
+        teamMonthlyAmountEntries: mergeTeamMonthlyAmountEntriesWithPresetLocalStore(
+          currentWasteDataset.teamMonthlyAmountEntries,
+          presetWasteDataset.teamMonthlyAmountEntries,
+          RESOURCE_TYPES.WASTE
+        ),
+        billingDocuments: mergeBillingDocumentsWithPresetLocalStore(
+          currentWasteDataset.billingDocuments,
+          presetWasteDataset.billingDocuments,
+          RESOURCE_TYPES.WASTE
+        ),
+        billingSettlementEntries: mergeBillingSettlementEntriesWithPresetLocalStore(
+          currentWasteDataset.billingSettlementEntries,
+          presetWasteDataset.billingSettlementEntries
         ),
       },
       [RESOURCE_TYPES.PRODUCTION]: {
@@ -14889,34 +15681,27 @@ function loadStore() {
   try {
     const presetLocalStore = getPresetLocalStore();
     const currentStore = safeParse(safeStorageGetItem(STORAGE_KEY));
-    const previousStore = safeParse(safeStorageGetItem(PREVIOUS_STORAGE_KEY));
-    const legacyEntries = safeParse(safeStorageGetItem(LEGACY_STORAGE_KEY));
-    const legacyStore = isPlainObject(legacyEntries)
-      ? {
-          mode: MODES.EQUIPMENT,
-          equipmentItems: DEFAULT_EQUIPMENT_ITEMS,
-          equipmentEntries: legacyEntries,
-          teamAssignments: {},
-        }
-      : null;
     if (isPlainObject(presetLocalStore)) {
-      let mergedStore = presetLocalStore;
-      [legacyStore, previousStore, currentStore]
-        .filter((candidate) => isPlainObject(candidate))
-        .forEach((candidate) => {
-          mergedStore = mergeCurrentStoreWithPresetLocalStore(candidate, mergedStore);
-        });
-      return normalizeStore(mergedStore);
+      if (shouldUseSharedServerAsAuthority()) {
+        return normalizeStore(presetLocalStore);
+      }
+      if (isPlainObject(currentStore)) {
+        return normalizeStore(mergeCurrentStoreWithPresetLocalStore(currentStore, presetLocalStore));
+      }
+
+      return normalizeStore(presetLocalStore);
     }
 
     if (isPlainObject(currentStore)) {
       return normalizeStore(currentStore);
     }
 
+    const previousStore = safeParse(safeStorageGetItem(PREVIOUS_STORAGE_KEY));
     if (isPlainObject(previousStore)) {
       return normalizeStore(previousStore);
     }
 
+    const legacyEntries = safeParse(safeStorageGetItem(LEGACY_STORAGE_KEY));
     return normalizeStore({
       mode: MODES.EQUIPMENT,
       equipmentItems: DEFAULT_EQUIPMENT_ITEMS,
@@ -14926,57 +15711,6 @@ function loadStore() {
   } catch (error) {
     return createDefaultStore();
   }
-}
-
-async function migrateLocalStoreToSharedServer() {
-  if (!supportsSharedServerPersistence()) {
-    return false;
-  }
-
-  if (
-    typeof window !== "undefined" &&
-    window.__SHARED_APP_STORE_PRELOAD__ &&
-    typeof window.__SHARED_APP_STORE_PRELOAD__.then === "function"
-  ) {
-    try {
-      await window.__SHARED_APP_STORE_PRELOAD__;
-    } catch (error) {
-      console.warn("Shared metering store preload failed before local migration.", error);
-    }
-  }
-
-  const currentStore = safeParse(safeStorageGetItem(STORAGE_KEY));
-  const previousStore = safeParse(safeStorageGetItem(PREVIOUS_STORAGE_KEY));
-  const legacyEntries = safeParse(safeStorageGetItem(LEGACY_STORAGE_KEY));
-  const hasLocalCandidate =
-    isPlainObject(currentStore) ||
-    isPlainObject(previousStore) ||
-    isPlainObject(legacyEntries);
-  if (!hasLocalCandidate) {
-    return false;
-  }
-
-  const nextStore = loadStore();
-  const serverStore = getPresetLocalStore();
-  const nextSnapshot = JSON.stringify(normalizeStore(nextStore));
-  const serverSnapshot = isPlainObject(serverStore)
-    ? JSON.stringify(normalizeStore(serverStore))
-    : "";
-
-  safeStorageSetItem(STORAGE_KEY, nextSnapshot);
-  if (serverSnapshot && serverSnapshot === nextSnapshot) {
-    return false;
-  }
-
-  const saved = await writeStorePayloadToSharedServer(nextStore);
-  if (!saved) {
-    return false;
-  }
-
-  state.store = normalizeStore(nextStore);
-  window.__LOCAL_APP_STORE__ = JSON.parse(JSON.stringify(state.store));
-  window.__PRESET_ELECTRIC_ENTRIES__ = getElectricPresetEntriesForStore(window.__LOCAL_APP_STORE__);
-  return true;
 }
 
 function normalizeResourceDataset(rawDataset, resourceType) {
@@ -15007,6 +15741,22 @@ function normalizeResourceDataset(rawDataset, resourceType) {
       equipmentItems: normalizedEquipmentItems,
       equipmentEntries: gasEntries,
       teamAssignments: normalizedTeamAssignments,
+      teamMonthlyEntries: normalizeTeamMonthlyEntries(source.teamMonthlyEntries, normalizedType),
+      teamMonthlyAmountEntries: normalizeTeamMonthlyAmountEntries(
+        source.teamMonthlyAmountEntries,
+        normalizedType
+      ),
+      billingDocuments: normalizeBillingDocuments(source.billingDocuments, normalizedType),
+      billingSettlementEntries: normalizeBillingSettlementEntries(source.billingSettlementEntries),
+    };
+  }
+
+  if (normalizedType === RESOURCE_TYPES.WASTE) {
+    return {
+      mode: MODES.TEAM,
+      equipmentItems: normalizedEquipmentItems,
+      equipmentEntries: normalizeEquipmentEntries(source.equipmentEntries),
+      teamAssignments: {},
       teamMonthlyEntries: normalizeTeamMonthlyEntries(source.teamMonthlyEntries, normalizedType),
       teamMonthlyAmountEntries: normalizeTeamMonthlyAmountEntries(
         source.teamMonthlyAmountEntries,
@@ -15110,6 +15860,10 @@ function normalizeStore(rawStore) {
     extractRawResourceDataset(rawStore, RESOURCE_TYPES.GAS),
     RESOURCE_TYPES.GAS
   );
+  const wasteDataset = normalizeResourceDataset(
+    extractRawResourceDataset(rawStore, RESOURCE_TYPES.WASTE),
+    RESOURCE_TYPES.WASTE
+  );
   const productionDataset = normalizeResourceDataset(
     extractRawResourceDataset(rawStore, RESOURCE_TYPES.PRODUCTION),
     RESOURCE_TYPES.PRODUCTION
@@ -15121,6 +15875,7 @@ function normalizeStore(rawStore) {
       resourceDatasets: {
         [RESOURCE_TYPES.ELECTRIC]: electricDataset,
         [RESOURCE_TYPES.GAS]: gasDataset,
+        [RESOURCE_TYPES.WASTE]: wasteDataset,
         [RESOURCE_TYPES.PRODUCTION]: productionDataset,
       },
       mode: MODES.EQUIPMENT,
@@ -15390,23 +16145,15 @@ async function resolveBillingDocumentDirectoryHandle(
   }
 
   const acceptedDirectoryNames = getAcceptedBillingDocumentDirectoryNames(resourceType);
+  if (acceptedDirectoryNames.includes(candidateHandle.name)) {
+    return candidateHandle;
+  }
+
   for (const directoryName of acceptedDirectoryNames) {
-    const directorySegments = getBillingDocumentDirectorySegments(directoryName);
-    const leafName = getBillingDocumentDirectoryLeafName(directoryName);
-    if (candidateHandle.name === directoryName || candidateHandle.name === leafName) {
-      return candidateHandle;
-    }
-
-    const lookupSegments =
-      directorySegments[0] === candidateHandle.name
-        ? directorySegments.slice(1)
-        : directorySegments;
-    if (lookupSegments.length === 0) {
-      return candidateHandle;
-    }
-
     try {
-      return await getNestedDirectoryHandle(candidateHandle, lookupSegments, { create: false });
+      return await candidateHandle.getDirectoryHandle(directoryName, {
+        create: false,
+      });
     } catch (error) {
       void error;
     }
@@ -15863,6 +16610,8 @@ function normalizeEquipmentItems(items, resourceType = RESOURCE_TYPES.ELECTRIC) 
     return (
       normalizedResourceType === RESOURCE_TYPES.GAS
         ? DEFAULT_GAS_EQUIPMENT_ITEMS
+        : normalizedResourceType === RESOURCE_TYPES.WASTE
+          ? DEFAULT_WASTE_EQUIPMENT_ITEMS
         : normalizedResourceType === RESOURCE_TYPES.PRODUCTION
           ? DEFAULT_PRODUCTION_EQUIPMENT_ITEMS
         : DEFAULT_EQUIPMENT_ITEMS
@@ -16725,15 +17474,24 @@ function getBillingSettlementEntry(
     return null;
   }
 
+  const resolvedScopeKey = normalizeBillingSettlementScope(
+    scopeKey,
+    getBillingSettlementResourceType(scopeKey, getCurrentResourceType())
+  );
+  const resolvedResourceType = getBillingSettlementResourceType(
+    resolvedScopeKey,
+    getCurrentResourceType()
+  );
   const entry = normalizeBillingSettlementEntry(
     normalizedMonth,
     state.store.billingSettlementEntries[normalizedMonth] || null
   );
   if (!entry) {
-    return null;
+    return resolvedResourceType === RESOURCE_TYPES.WASTE
+      ? buildWasteBillingSettlementFallbackEntry(normalizedMonth, resolvedScopeKey)
+      : null;
   }
 
-  const resolvedScopeKey = normalizeBillingSettlementScope(scopeKey);
   if (isBillingSettlementLeafRecord(entry)) {
     if (resolvedScopeKey !== DEFAULT_BILLING_SETTLEMENT_SCOPE_KEY) {
       return null;
@@ -16751,7 +17509,9 @@ function getBillingSettlementEntry(
 
   const scopedEntry = isPlainObject(entry.scopes) ? entry.scopes[resolvedScopeKey] || null : null;
   if (!scopedEntry) {
-    return null;
+    return resolvedResourceType === RESOURCE_TYPES.WASTE
+      ? buildWasteBillingSettlementFallbackEntry(normalizedMonth, resolvedScopeKey)
+      : null;
   }
 
   return {
@@ -17683,21 +18443,18 @@ function syncEquipmentFullscreenUI() {
 function syncTeamSettlementButtonState() {
   if (elements.teamSettlementBtn) {
     const resourceType = getCurrentResourceType();
-    const isGasResource = isGasResourceType(resourceType);
     const isTeamMode = getCurrentMode() === MODES.TEAM;
     const supportsSettlement = supportsBillingSettlementForResource(resourceType);
-    const shouldShowSettlementButton =
-      isTeamMode && (supportsSettlement || isGasResource);
+    const requiresTotalPowerUsage = isElectricResourceType(resourceType);
+    const shouldShowSettlementButton = isTeamMode && supportsSettlement;
     const hasCurrentMonth = Boolean(normalizeMonthValue(state.currentMonth));
-    const billingDocument = isTeamMode ? getBillingDocumentForMonth(state.currentMonth) : null;
     const hasTotalPowerUsage = isTeamMode && calculateTotalPowerMonthlyUsage() !== null;
-    const canUseSettlementButton = isGasResource
-      ? supportsSettlement && isTeamMode && hasCurrentMonth && !state.isBillingDocumentUploading
-      : supportsSettlement &&
-        isTeamMode &&
-        hasCurrentMonth &&
-        hasTotalPowerUsage &&
-        !state.isBillingDocumentUploading;
+    const canUseSettlementButton =
+      supportsSettlement &&
+      isTeamMode &&
+      hasCurrentMonth &&
+      (!requiresTotalPowerUsage || hasTotalPowerUsage) &&
+      !state.isBillingDocumentUploading;
 
     elements.teamSettlementBtn.classList.toggle("is-hidden", !shouldShowSettlementButton);
     elements.teamSettlementBtn.disabled = !canUseSettlementButton;
@@ -17717,7 +18474,7 @@ function syncTeamSettlementButtonState() {
       elements.teamSettlementBtn.title = "청구서를 저장하고 있습니다.";
     } else if (!hasCurrentMonth) {
       elements.teamSettlementBtn.title = "기입 년월을 먼저 선택해 주세요.";
-    } else if (!isGasResource && !hasTotalPowerUsage) {
+    } else if (requiresTotalPowerUsage && !hasTotalPowerUsage) {
       elements.teamSettlementBtn.title = "전력총량이 계산되어야 정산을 열 수 있습니다.";
     } else if (state.isTeamSettlementPanelOpen) {
       elements.teamSettlementBtn.title = "정산 입력 닫기";
@@ -18734,8 +19491,8 @@ window.KpiMeteringApp = {
   mount: mountIntegratedMetering,
   unmount: (options) => unmountIntegratedMetering(options),
   manualSave: (options) => performManualSave(options),
-  migrateLocalStoreToSharedServer: () => migrateLocalStoreToSharedServer(),
   getElectricMonthlyTeamSnapshot: (monthValue) => buildElectricMonthlyTeamSnapshot(monthValue),
   getElectricUtilityDatasetSnapshot: () => buildElectricUtilityDatasetSnapshot(),
   getGasUtilityDatasetSnapshot: () => buildGasUtilityDatasetSnapshot(),
+  getWasteUtilityDatasetSnapshot: () => buildWasteUtilityDatasetSnapshot(),
 };

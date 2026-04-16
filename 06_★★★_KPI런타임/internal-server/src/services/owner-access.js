@@ -29,8 +29,6 @@ const MODULE_RECORD_LABELS = Object.freeze({
   'portal_data:work_kim_minhyun': '\uAE40\uBBFC\uD604 \uC791\uC5C5 \uAE30\uB85D',
   'portal_data:work_monthly_plan': '\uC6D4\uAC04 \uACC4\uD68D',
   'portal_data:work_history_records': '\uD300 \uC791\uC5C5 \uAE30\uB85D',
-  'portal_data:area_map_team3': '\uC124\uBE44 \uBC30\uCE58 \uD3003',
-  'portal_data:area_map_existing_teams': '\uAE30\uC874 \uC124\uBE44 \uBC30\uCE58',
   'work_runtime:work_team_calendar_team1_part1': '\uD3001 \uC791\uC5C5 \uCE98\uB9B0\uB354 1',
   'work_runtime:work_team_calendar_team1_part2': '\uD3001 \uC791\uC5C5 \uCE98\uB9B0\uB354 2',
   'work_runtime:work_team_calendar_team2': '\uD3002 \uC791\uC5C5 \uCE98\uB9B0\uB354',

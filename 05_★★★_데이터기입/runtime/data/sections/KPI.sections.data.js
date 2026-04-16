@@ -36,6 +36,17 @@
                     }
                 },
                 {
+                    title: '설비 이력 카드',
+                    icon: 'fa-screwdriver-wrench',
+                    color: '#475569',
+                    desc: '설비 이력 카드 연결 준비',
+                    content: `
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 px-5 py-5 text-sm text-slate-600">
+                            설비 이력 카드 연결은 준비 중입니다.
+                        </div>
+                    `
+                },
+                {
                     title: '보고서 관리',
                     icon: 'fa-file-lines',
                     color: '#0ea5e9',

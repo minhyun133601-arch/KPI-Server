@@ -62,8 +62,15 @@
                     role.textContent = roleLabel || '';
                 }
                 if (logoutButton) {
+                    const logoutLabelElement = logoutButton.querySelector('.runtime-auth-logout-label');
                     logoutButton.disabled = RuntimeAuthState.busy;
-                    logoutButton.textContent = logoutLabel;
+                    if (logoutLabelElement) {
+                        logoutLabelElement.textContent = logoutLabel;
+                    } else {
+                        logoutButton.textContent = logoutLabel;
+                    }
+                    logoutButton.title = logoutLabel;
+                    logoutButton.setAttribute('aria-label', logoutLabel);
                 }
             });
         }

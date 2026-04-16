@@ -14,10 +14,7 @@ export const PERMISSION_KEYS = Object.freeze({
   WORK_PERSON_LEE_HYOSEOK: 'work.person.lee_hyoseok',
   WORK_PERSON_KIM_MINHYUN: 'work.person.kim_minhyun',
   AUDIT_LUX: 'audit.lux',
-  AUDIT_REGULATION: 'audit.regulation',
-  EQUIP_AREA_TEAM3: 'equip.area.team3',
-  EQUIP_AREA_EXISTING_TEAMS: 'equip.area.existing_teams',
-  EQUIP_AREA_ASSETS: 'equip.area.assets'
+  AUDIT_REGULATION: 'audit.regulation'
 });
 
 const WORK_PERMISSION_KEY_BY_DATA_KEY = Object.freeze({
@@ -36,11 +33,6 @@ const AUDIT_PERMISSION_KEY_BY_DATA_KEY = Object.freeze({
   audit_regulation: PERMISSION_KEYS.AUDIT_REGULATION
 });
 
-const AREA_PERMISSION_KEY_BY_TEMPLATE_ID = Object.freeze({
-  area_map_team3: PERMISSION_KEYS.EQUIP_AREA_TEAM3,
-  area_map_existing_teams: PERMISSION_KEYS.EQUIP_AREA_EXISTING_TEAMS
-});
-
 export function getWorkPermissionKey(dataKey) {
   const normalized = String(dataKey || '').trim();
   if (/^work_team_calendar_/.test(normalized)) {
@@ -51,8 +43,4 @@ export function getWorkPermissionKey(dataKey) {
 
 export function getAuditPermissionKey(dataKey) {
   return AUDIT_PERMISSION_KEY_BY_DATA_KEY[String(dataKey || '').trim()] || '';
-}
-
-export function getAreaPermissionKey(templateId) {
-  return AREA_PERMISSION_KEY_BY_TEMPLATE_ID[String(templateId || '').trim()] || '';
 }

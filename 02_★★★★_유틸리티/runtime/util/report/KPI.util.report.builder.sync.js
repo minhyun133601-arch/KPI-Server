@@ -55,6 +55,42 @@
             else if (normalizedItemKey === 'waste') UtilReportState.wasteTeam = teamFilter;
         }
 
+        function resetUtilReportBuilderVizRangeToFull() {
+            const monthOptions = buildUtilReportMonthOptions();
+            if (!Array.isArray(monthOptions) || !monthOptions.length) return false;
+            const nextFrom = String(monthOptions[0]?.value || '').trim();
+            const nextTo = String(monthOptions[monthOptions.length - 1]?.value || '').trim();
+            if (!nextFrom || !nextTo) return false;
+            const range = normalizeMonthRange(nextFrom, nextTo);
+            const defaultYears = resolveUtilReportBuilderVizDefaultAppliedYears(range);
+            UtilReportState.from = range.start;
+            UtilReportState.to = range.end;
+            UtilReportBuilderVizState.from = range.start;
+            UtilReportBuilderVizState.to = range.end;
+            UtilReportBuilderVizState.appliedBaseYear = normalizeUtilReportBuilderVizAppliedBaseYear(
+                UtilReportBuilderVizState.appliedBaseYear,
+                range
+            );
+            UtilReportBuilderVizState.appliedCompareYear = normalizeUtilReportBuilderVizAppliedCompareYear(
+                UtilReportBuilderVizState.appliedCompareYear,
+                UtilReportBuilderVizState.appliedBaseYear,
+                range
+            );
+            if (UtilReportBuilderVizState.appliedModeEnabled === true) {
+                if (!UtilReportBuilderVizState.appliedBaseYear) {
+                    UtilReportBuilderVizState.appliedBaseYear = defaultYears.baseYear;
+                }
+                if (!UtilReportBuilderVizState.appliedCompareYear) {
+                    UtilReportBuilderVizState.appliedCompareYear = normalizeUtilReportBuilderVizAppliedCompareYear(
+                        defaultYears.compareYear,
+                        UtilReportBuilderVizState.appliedBaseYear,
+                        range
+                    );
+                }
+            }
+            return true;
+        }
+
         function syncUtilDualSectionFromReportBuilderViz(itemKey = UtilReportBuilderVizState.itemKey) {
             const normalizedItemKey = normalizeUtilDualDatasetKey(itemKey);
             const section = getUtilDualCombinedSection(normalizedItemKey);
@@ -181,20 +217,16 @@
             const scopeKey = normalizeUtilReportScope(normalizedItemKey);
             const metricOptions = getUtilReportGraphMetricOptions(scopeKey);
             const defaultNumerator = resolveUtilReportGraphMetricKeyByDualRatioMetric(normalizedItemKey, 'usage');
-            let numeratorMetric = normalizeUtilReportGraphMetric(
+            const numeratorMetric = normalizeUtilReportGraphMetric(
                 UtilReportState.graphNumeratorMetric,
                 metricOptions,
                 defaultNumerator
             );
-            let denominatorMetric = normalizeUtilReportGraphMetric(
+            const denominatorMetric = normalizeUtilReportGraphMetric(
                 UtilReportState.graphDenominatorMetric,
                 metricOptions,
                 metricOptions.some(item => item.key === 'production') ? 'production' : numeratorMetric
             );
-            if (denominatorMetric === numeratorMetric) {
-                const alternative = metricOptions.find(item => item.key !== numeratorMetric);
-                if (alternative) denominatorMetric = alternative.key;
-            }
             return {
                 itemKey: normalizedItemKey,
                 numeratorMetric,
@@ -212,11 +244,7 @@
 
         function normalizeUtilReportBuilderVizRatioPair(numeratorKey = 'usage', denominatorKey = 'production') {
             const normalizedNumerator = normalizeUtilDualRatioMetricKey(numeratorKey);
-            let normalizedDenominator = normalizeUtilDualRatioMetricKey(denominatorKey);
-            if (normalizedDenominator === normalizedNumerator) {
-                const fallbackDenominator = normalizedNumerator === 'production' ? 'cost' : 'production';
-                normalizedDenominator = getUtilDualRatioMetricAlternativeKey(normalizedNumerator, fallbackDenominator);
-            }
+            const normalizedDenominator = normalizeUtilDualRatioMetricKey(denominatorKey);
             return {
                 numerator: normalizedNumerator,
                 denominator: normalizedDenominator
@@ -368,11 +396,16 @@
         }
 
         function normalizeUtilReportChartType(chartType) {
-            return String(chartType || '').trim() === 'line' ? 'line' : 'bar';
+            const normalized = String(chartType || '').trim().toLowerCase();
+            if (normalized === 'line' || normalized === 'none') return normalized;
+            return 'bar';
         }
 
         function getUtilReportChartTypeLabel(chartType) {
-            return normalizeUtilReportChartType(chartType) === 'line' ? '선' : '막대';
+            const normalized = normalizeUtilReportChartType(chartType);
+            if (normalized === 'line') return '선';
+            if (normalized === 'none') return '없음';
+            return '막대';
         }
 
         function syncUtilReportChartTypeToggleButton(button, chartType) {
@@ -597,7 +630,8 @@
                 UtilReportState.wasteCostModeKey = 'total';
                 UtilReportState.activeWasteDetailCompositionKey = '';
             } else if (scopeKey === 'gas') {
-                UtilReportState.gasTeam = parsed.teamName;
+                const normalizedGasTeam = normalizeUtilReportBuilderTeam(parsed.teamName, 'gas');
+                UtilReportState.gasTeam = normalizedGasTeam === '전체' ? 'all' : normalizedGasTeam;
                 UtilReportState.wasteCostModeKey = 'total';
                 UtilReportState.activeWasteDetailCompositionKey = '';
             } else if (scopeKey === 'waste') {
@@ -785,4 +819,3 @@
             resetUtilReportSelectedProcessStates();
             UtilReportState.activeWasteDetailCompositionKey = '';
         }
-
