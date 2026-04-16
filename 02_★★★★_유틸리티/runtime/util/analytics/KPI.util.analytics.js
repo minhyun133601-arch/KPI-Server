@@ -521,13 +521,6 @@
             if (hasServerPayload) {
                 data = cloneWorkDataPayload(window.PortalData[dataKey]);
             }
-
-            if (!data && !serverReadBlocked) {
-                const stored = localStorage.getItem(`workdata:${dataKey}`);
-                if (stored) {
-                    try { data = JSON.parse(stored); } catch (e) { data = null; }
-                }
-            }
             if (!data && !serverReadBlocked && window.PortalData && window.PortalData[dataKey]) {
                 data = cloneWorkDataPayload(window.PortalData[dataKey]);
             }
@@ -555,11 +548,6 @@
             }
             data.meta = data.meta || {};
             data.meta.updatedAt = new Date().toISOString();
-            try {
-                localStorage.setItem(`workdata:${dataKey}`, JSON.stringify(data));
-            } catch (error) {
-                console.warn('[kpi] work local backup failed', dataKey, error);
-            }
             WorkCache[dataKey] = data;
             syncWorkPortalDataCache(dataKey, data);
             return queueWorkServerWrite(dataKey, data);

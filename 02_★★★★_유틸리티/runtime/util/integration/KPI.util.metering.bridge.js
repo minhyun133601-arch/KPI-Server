@@ -1,5 +1,5 @@
 (function () {
-    const INTEGRATED_METERING_ASSET_VERSION = 'v113';
+    const INTEGRATED_METERING_ASSET_VERSION = 'v114';
 
     const integratedMeteringState = {
         loadPromise: null,
@@ -30,15 +30,29 @@
         return document.contains(host);
     }
 
+    function resolveIntegratedMeteringAssetBaseUrl() {
+        const currentScript = document.currentScript;
+        if (currentScript && currentScript.src) {
+            return new URL('../../../apps/metering/', currentScript.src);
+        }
+
+        const bridgeScript = Array.from(document.scripts || []).find(script =>
+            typeof script?.src === 'string' && script.src.includes('KPI.util.metering.bridge.js')
+        );
+        if (bridgeScript && bridgeScript.src) {
+            return new URL('../../../apps/metering/', bridgeScript.src);
+        }
+
+        throw new Error('metering_bridge_asset_base_unavailable');
+    }
+
     function getIntegratedMeteringAssetPath(fileName, options = {}) {
-        const relativePath = encodeURI(`02_★★★★_유틸리티/apps/metering/${fileName}`);
-        const url = new URL(relativePath, window.location.href);
+        const url = new URL(fileName || '', resolveIntegratedMeteringAssetBaseUrl());
         if (options.cacheBust === true) {
             url.searchParams.set('v', INTEGRATED_METERING_ASSET_VERSION);
         }
         return url.href;
     }
-
     function loadIntegratedMeteringScriptOnce(src) {
         const existing = document.querySelector(`script[data-integrated-metering-src="${src}"]`);
         if (existing) {
@@ -154,15 +168,7 @@
             return integratedMeteringState.loadPromise;
         }
 
-        const runtimeConfig = getIntegratedMeteringServerRuntimeConfig();
-        const needsPresetSeed = !(runtimeConfig.enabled && /^(http:|https:)$/.test(window.location.protocol));
-
         integratedMeteringState.loadPromise = Promise.resolve()
-            .then(() => (
-                needsPresetSeed
-                    ? loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('preset-entry-data.js', { cacheBust: true }))
-                    : null
-            ))
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('shared-store.js', { cacheBust: true })))
             .then(() => applyIntegratedMeteringServerRuntime())
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('template.js', { cacheBust: true })))

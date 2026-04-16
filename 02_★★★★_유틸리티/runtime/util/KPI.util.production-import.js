@@ -423,11 +423,6 @@
             UTIL_PRODUCTION_DAILY_STATE.archives = UTIL_PRODUCTION_ARCHIVE_META;
             window.PortalData = window.PortalData || {};
             window.PortalData.util_production_daily = UTIL_PRODUCTION_DAILY_STATE;
-            try {
-                localStorage.setItem(UTIL_PRODUCTION_STORAGE_KEY, JSON.stringify(UTIL_PRODUCTION_DAILY_STATE));
-            } catch (error) {
-                // localStorage 용량 초과 등은 무시하고 런타임 상태 유지
-            }
             if (window.KpiUtilityServerRuntime && typeof window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite === 'function') {
                 return window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite(UTIL_PRODUCTION_DAILY_STATE);
             }

@@ -80,16 +80,6 @@ function resolveOptionalRoot(raw, baseDir = repoRoot) {
   return path.isAbsolute(trimmed) ? trimmed : path.resolve(baseDir, trimmed);
 }
 
-function hasLocalSourceMarker(candidateRoot) {
-  return fs.existsSync(path.join(candidateRoot, 'KPI.html'))
-    && fs.existsSync(path.join(candidateRoot, '06_★★★_KPI런타임', 'app', 'KPI.app.js'));
-}
-
-function hasLocalSeedSource(candidateRoot) {
-  return fs.existsSync(path.join(candidateRoot, '02_★★★★_유틸리티', 'apps', 'metering', 'preset-entry-data.js'))
-    || fs.existsSync(path.join(candidateRoot, '02_★★★★_유틸리티', 'data', 'current', 'data_util_electric.js'));
-}
-
 function resolveLocalSourceRoot() {
   return resolveOptionalRoot(process.env.KPI_LOCAL_SOURCE_ROOT) || repoRoot;
 }

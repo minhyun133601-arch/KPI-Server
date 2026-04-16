@@ -1,5 +1,3 @@
-import path from 'node:path';
-import { config } from '../config.js';
 import {
   CURRENT_PORTAL_DATA_RECORDS,
   getModuleRecordPermissionKey,
@@ -12,20 +10,6 @@ import { listModuleRecordsByModuleKey } from '../repositories/modules.js';
 import { isOwnerRole } from '../services/auth.js';
 
 export const PORTAL_DATA_BOOTSTRAP_PATH = '/bootstrap/portal-data.js';
-
-const PORTAL_DATA_SCRIPT_SOURCES = Object.freeze(
-  CURRENT_PORTAL_DATA_RECORDS
-    .map((record) => {
-      const filePath = String(record?.filePath || '').trim();
-      if (!filePath) return '';
-      return path.relative(config.localSourceRoot, filePath).split(path.sep).join('/');
-    })
-    .filter(Boolean)
-);
-
-function escapeRegExp(value) {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 function serializeJsonForScript(value) {
   return JSON.stringify(value ?? {})
@@ -88,27 +72,27 @@ function buildPortalDataBootstrapTag() {
 
 export function injectPortalDataBootstrap(html) {
   let nextHtml = String(html || '');
-  let inserted = false;
-
-  for (const src of PORTAL_DATA_SCRIPT_SOURCES) {
-    const regex = new RegExp(
-      `^[ \\t]*<script\\s+src="${escapeRegExp(src)}(?:\\?[^"]*)?"><\\/script>\\s*\\r?\\n?`,
-      'm'
-    );
-    if (!inserted && regex.test(nextHtml)) {
-      nextHtml = nextHtml.replace(regex, buildPortalDataBootstrapTag());
-      inserted = true;
-      continue;
-    }
-
-    nextHtml = nextHtml.replace(regex, '');
+  const bootstrapTag = buildPortalDataBootstrapTag();
+  const bootstrapSrc = `src="${PORTAL_DATA_BOOTSTRAP_PATH}"`;
+  if (nextHtml.includes(bootstrapSrc)) {
+    return {
+      html: nextHtml,
+      inserted: false
+    };
   }
 
+  let inserted = false;
   if (!inserted) {
     const xlsxTag = '<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>';
     if (nextHtml.includes(xlsxTag)) {
-      nextHtml = nextHtml.replace(xlsxTag, `${buildPortalDataBootstrapTag()}    ${xlsxTag}`);
+      nextHtml = nextHtml.replace(xlsxTag, `${bootstrapTag}    ${xlsxTag}`);
+      inserted = true;
     }
+  }
+
+  if (!inserted && nextHtml.includes('</body>')) {
+    nextHtml = nextHtml.replace('</body>', `${bootstrapTag}</body>`);
+    inserted = true;
   }
 
   return {

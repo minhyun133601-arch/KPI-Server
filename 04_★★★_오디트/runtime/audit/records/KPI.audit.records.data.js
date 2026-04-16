@@ -7,44 +7,7 @@
         const AUDIT_LUX_EVIDENCE_OWNER_DOMAIN = 'audit.lux.evidence';
         const AUDIT_LUX_EVIDENCE_STORAGE_FOLDER = ['Audit', '조도 스캔본'];
         const AUDIT_MONTHLY_REPORT_FOLDER = '04_★★★_오디트/보고서/월간 실적 보고서/';
-
-        const AUDIT_MONTHLY_REPORT_FALLBACK = [
-            '04_★★★_오디트/보고서/월간 실적 보고서/공무환경팀 실적보고서 20250414.pptx',
-            '04_★★★_오디트/보고서/월간 실적 보고서/공무환경팀 실적보고서 20250514.pptx',
-            '04_★★★_오디트/보고서/월간 실적 보고서/공무환경팀 실적보고서 20250613.pptx',
-            '04_★★★_오디트/보고서/월간 실적 보고서/공무환경팀 실적보고서 20250723.pptx',
-            '04_★★★_오디트/보고서/월간 실적 보고서/공무환경팀 실적보고서 20250821.pptx',
-            '04_★★★_오디트/보고서/월간 실적 보고서/공무환경팀 실적보고서 20250917.pptx',
-            '04_★★★_오디트/보고서/월간 실적 보고서/공무환경팀 실적보고서 20251029.pptx',
-            '04_★★★_오디트/보고서/월간 실적 보고서/공무환경팀 실적보고서 20251119.pptx',
-            '04_★★★_오디트/보고서/월간 실적 보고서/공무환경팀 실적보고서 20260120.pptx'
-        ];
-
         const AUDIT_LEGAL_FACILITY_ALERT_DAYS = 90;
-        const AUDIT_LEGAL_FACILITY_FALLBACK = [
-            { area: '유산', name: '류원대', item: '전기안전관리자', certificate: '전기산업기사', lastDate: '2022.09.01', cycleYears: 3, nextDate: '2025.08.31', organization: '한국전기기술인협회' },
-            { area: '유산', name: '류원대', item: '소방안전관리자', certificate: '-', lastDate: '2024.06.17', cycleYears: 2, nextDate: '2026.06.16', organization: '한국소방안전원' },
-            { area: '유산', name: '신태섭', item: '검사대상기기관리자(보일러)', certificate: '에너지관리기능사', lastDate: '2024.11.25', cycleYears: 3, nextDate: '2027.11.24', organization: '한국에너지기술인협회' },
-            { area: '유산', name: '신태섭', item: '가스시설관리자', certificate: '양성교육이수증', lastDate: '2025.01.13', cycleYears: 3, nextDate: '2028.01.12', organization: '한국가스안전공사' },
-            { area: '유산', name: '김민현', item: '검사대상기기관리자(보일러)', certificate: '에너지관리기사', lastDate: '2025.06.04', cycleYears: 3, nextDate: '2028.06.03', organization: '한국에너지기술인협회' },
-            { area: '유산', name: '김민현', item: '냉동기기 관리자', certificate: '공조냉동기계기사', lastDate: '2025.09.01', cycleYears: 3, nextDate: '2028.08.31', organization: '한국가스안전공사' },
-            { area: '유산', name: '김민현', item: '승강기안전관리자', certificate: '양성교육이수증', lastDate: '2025.02.28', cycleYears: 3, nextDate: '2028.02.27', organization: '승강기교육센터' },
-            { area: '유산', name: '신정래', item: 'HC 수질환경기술인', certificate: '수질환경기사', lastDate: '2024.03.27', cycleYears: 3, nextDate: '2027.03.26', organization: '한국환경보전협회' },
-            { area: '유산', name: '신정래', item: 'HC 대기환경기술인 (부)', certificate: '-', lastDate: '2025.07.15', cycleYears: 3, nextDate: '2028.07.14', organization: '-' },
-            { area: '유산', name: '신정래', item: '제2공장 수질환경기술인', certificate: '-', lastDate: '2024.12.17', cycleYears: 3, nextDate: '2027.12.16', organization: '-' },
-            { area: '유산', name: '신정래', item: '제2공장 대기환경기술인', certificate: '-', lastDate: '2024.03.27', cycleYears: 3, nextDate: '2027.03.26', organization: '-' },
-            { area: '유산', name: '이균원', item: '에이치씨글로벌 대기환경기술인 (정)', certificate: '대기환경기사', lastDate: '2024.07.03', cycleYears: 3, nextDate: '2027.07.02', organization: '-' },
-            { area: '북정', name: '김민규', item: '전기안전관리자', certificate: '전기기사', lastDate: '2023.09.13', cycleYears: 3, nextDate: '2026.09.12', organization: '한국전기기술인협회' },
-            { area: '북정', name: '김민규', item: '검사대상기기관리자(보일러)', certificate: '에너지관리기능사', lastDate: '2025.05.02', cycleYears: 3, nextDate: '2028.05.01', organization: '한국에너지기술인협회' },
-            { area: '북정', name: '김민규', item: '가스시설관리자', certificate: '양성교육이수증', lastDate: '2025.03.17', cycleYears: 3, nextDate: '2028.03.16', organization: '한국가스안전공사' },
-            { area: '북정', name: '김민규', item: '소방안전관리자', certificate: '소방설비기계기사', lastDate: '2024.09.11', cycleYears: 2, nextDate: '2026.09.10', organization: '한국소방안전원' },
-            { area: '북정', name: '이효석', item: '제1공장 수질환경기술인', certificate: '수질환경산업기사', lastDate: '2025.04.01', cycleYears: 3, nextDate: '2028.03.31', organization: '한국환경보전협회' },
-            { area: '북정', name: '이효석', item: '제1공장 대기환경기술인 (부)', certificate: '-', lastDate: '2025.05.20', cycleYears: 3, nextDate: '2028.05.19', organization: '-' },
-            { area: '북정', name: '정영배', item: '제1공장 대기환경기술인 (정)', certificate: '대기환경기사', lastDate: '2023.11.15', cycleYears: 3, nextDate: '2026.11.14', organization: '-' },
-            { area: '물류센터', name: '안준수', item: '검사대상기기관리자(보일러)', certificate: '에너지관리기능사', lastDate: '2025.06.20', cycleYears: 3, nextDate: '2028.06.19', organization: '한국에너지기술인협회' },
-            { area: '물류센터', name: '안준수', item: '가스시설관리자', certificate: '양성교육이수증', lastDate: '2023.12.01', cycleYears: 3, nextDate: '2026.11.30', organization: '한국가스안전공사' },
-            { area: '물류센터', name: '안준수', item: '승강기안전관리자', certificate: '-', lastDate: '-', cycleYears: 3, nextDate: '2026.11.30', organization: '승강기교육센터' }
-        ];
         const AUDIT_LEGAL_ORGANIZATION_LINKS = {
             '한국전기기술인협회': 'https://www.koema.or.kr',
             '한국소방안전원': 'https://www.kfsi.or.kr',
@@ -130,7 +93,7 @@
                 : [];
             const source = fromPortalAll.length
                 ? fromPortalAll
-                : (fromPortalMonthly.length ? fromPortalMonthly : AUDIT_MONTHLY_REPORT_FALLBACK);
+                : fromPortalMonthly;
             const normalized = source
                 .map((item, index) => normalizeAuditMonthlyReportItem(item, index))
                 .filter(item => item.file);
@@ -305,7 +268,7 @@
         function getAuditLegalFacilityEntries() {
             const source = Array.isArray(window.PortalData?.audit_legal_facility?.entries)
                 ? window.PortalData.audit_legal_facility.entries
-                : AUDIT_LEGAL_FACILITY_FALLBACK;
+                : [];
             return source.map((entry, index) => normalizeAuditLegalFacilityEntry(entry, index));
         }
 
@@ -547,13 +510,6 @@
             if (hasServerPayload) {
                 data = cloneAuditDataPayload(portalPayload);
             }
-
-            if (!data && !serverReadBlocked) {
-                const stored = localStorage.getItem(`auditdata:${dataKey}`);
-                if (stored) {
-                    try { data = JSON.parse(stored); } catch (e) { data = null; }
-                }
-            }
             if (!data && !serverReadBlocked && portalPayload) {
                 data = cloneAuditDataPayload(portalPayload);
             }
@@ -718,11 +674,6 @@
                 }
             }
             data.meta.updatedAt = new Date().toISOString();
-            try {
-                localStorage.setItem(`auditdata:${dataKey}`, JSON.stringify(data));
-            } catch (error) {
-                console.warn('[kpi] audit local backup failed', dataKey, error);
-            }
             syncAuditPortalDataCache(dataKey, data);
             return queueAuditServerWrite(dataKey, data);
         }

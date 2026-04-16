@@ -259,9 +259,6 @@
             : createUtilTeamData(['유산', '북정']);
         const UTIL_WASTE_DATA_BASELINE = cloneUtilDatasetValue(UTIL_WASTE_DATA);
         const DEFAULT_UTIL_PRODUCTION_PERIOD = { startDay: 1 };
-        const UTIL_PRODUCTION_STORAGE_KEY = 'utildata:util_production_daily';
-        const UTIL_PRODUCTION_RESET_MARKER_KEY = 'utildata:util_production_daily_reset_marker';
-        const UTIL_PRODUCTION_RESET_MARKER_VALUE = '2026-02-27-reset-production-all-clear-v2-file-linked-only';
         const UTIL_PRODUCTION_ARCHIVE_DB_NAME = 'kpi-util-production';
         const UTIL_PRODUCTION_ARCHIVE_STORE = 'production_files';
         const UTIL_PRODUCTION_ARCHIVE_MAX_COUNT = 200;
@@ -400,17 +397,6 @@
             return utilProductionServerPersistenceState.writeChain;
         }
 
-        function readUtilProductionDailyLocalSnapshot() {
-            try {
-                const stored = localStorage.getItem(UTIL_PRODUCTION_STORAGE_KEY);
-                if (!stored) return null;
-                const parsed = JSON.parse(stored);
-                return (parsed && typeof parsed === 'object') ? parsed : null;
-            } catch (error) {
-                return null;
-            }
-        }
-
         function applyUtilProductionDailyState(normalized) {
             if (!normalized || typeof normalized !== 'object') return;
             UTIL_PRODUCTION_DAILY_STATE.meta = normalized.meta;
@@ -425,56 +411,6 @@
             }
             window.PortalData = window.PortalData || {};
             window.PortalData.util_production_daily = normalized;
-            try {
-                localStorage.setItem(UTIL_PRODUCTION_STORAGE_KEY, JSON.stringify(normalized));
-            } catch (error) {
-                // ignore local cache write failures
-            }
-        }
-
-        async function publishLocalUtilProductionDailyToServer() {
-            if (!supportsUtilProductionServerPersistence()) {
-                window.alert('서버 저장 권한이 없어 공유할 수 없습니다.');
-                return false;
-            }
-            let localSnapshot = readUtilProductionDailyLocalSnapshot();
-            if (!localSnapshot || !Object.keys(localSnapshot).length) {
-                const pasted = window.prompt('로컬 생산 JSON을 붙여넣어 주세요. (없으면 취소)');
-                if (!pasted) {
-                    window.alert('로컬 생산 데이터가 없습니다.');
-                    return false;
-                }
-                try {
-                    const parsed = JSON.parse(pasted);
-                    localSnapshot = (parsed && typeof parsed === 'object') ? parsed : null;
-                } catch (error) {
-                    window.alert('JSON 형식이 올바르지 않습니다.');
-                    return false;
-                }
-            }
-            if (!localSnapshot || !Object.keys(localSnapshot).length) {
-                window.alert('로컬 생산 데이터가 없습니다.');
-                return false;
-            }
-            const normalized = normalizeUtilProductionDailyState(localSnapshot);
-            normalized.meta.updatedAt = new Date().toISOString();
-            try {
-                const saved = await queueUtilProductionDailyServerWrite(normalized);
-                if (!saved) {
-                    window.alert('서버 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-                    return false;
-                }
-                applyUtilProductionDailyState(normalized);
-                window.dispatchEvent(new CustomEvent('util-production-data-updated', {
-                    detail: { source: 'local-to-server', synced: true }
-                }));
-                window.alert('로컬 생산 데이터를 서버로 공유했습니다.');
-                return true;
-            } catch (error) {
-                console.error('[kpi] util production local publish failed', error);
-                window.alert('서버 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-                return false;
-            }
         }
 
         window.KpiUtilityServerRuntime = Object.assign(window.KpiUtilityServerRuntime || {}, {
@@ -484,7 +420,6 @@
             supportsUtilProductionServerPersistence,
             supportsUtilProductionArchiveServerPersistence,
             queueUtilProductionDailyServerWrite,
-            publishLocalUtilProductionDailyToServer,
             get lastErrorMessage() {
                 return utilProductionServerPersistenceState.lastErrorMessage;
             }
@@ -1005,53 +940,9 @@
             const serverMode = isUtilProductionServerMode();
             const serverReadBlocked = serverMode && serverConfig.readEnabled !== true;
             const hasPortalState = isUtilPlainObject(portalRaw) && Object.keys(portalRaw).length > 0;
-            let source = portalRaw;
-            // Exported JS current data should win in local mode so the local view matches server snapshots.
-            if (serverReadBlocked) {
-                source = {};
-            } else if (!hasPortalState) {
-                try {
-                    const stored = localStorage.getItem(UTIL_PRODUCTION_STORAGE_KEY);
-                    if (stored) {
-                        const parsed = JSON.parse(stored);
-                        if (parsed && typeof parsed === 'object') source = parsed;
-                    }
-                } catch (error) {
-                    // localStorage parse 실패 시 PortalData 기본값 사용
-                }
-            }
+            const source = serverReadBlocked ? {} : (hasPortalState ? portalRaw : {});
             const normalized = normalizeUtilProductionDailyState(source);
-            let shouldReset = false;
-            if (serverMode || hasPortalState) {
-                try {
-                    const marker = localStorage.getItem(UTIL_PRODUCTION_RESET_MARKER_KEY);
-                    if (marker !== UTIL_PRODUCTION_RESET_MARKER_VALUE) {
-                        localStorage.setItem(UTIL_PRODUCTION_RESET_MARKER_KEY, UTIL_PRODUCTION_RESET_MARKER_VALUE);
-                    }
-                } catch (error) {
-                    // Ignore marker write failures when current data already exists.
-                }
-            } else {
-                try {
-                    const marker = localStorage.getItem(UTIL_PRODUCTION_RESET_MARKER_KEY);
-                    shouldReset = marker !== UTIL_PRODUCTION_RESET_MARKER_VALUE;
-                    if (shouldReset) {
-                        localStorage.setItem(UTIL_PRODUCTION_RESET_MARKER_KEY, UTIL_PRODUCTION_RESET_MARKER_VALUE);
-                    }
-                } catch (error) {
-                    shouldReset = true;
-                }
-            }
-            if (shouldReset) {
-                normalized.teams = [];
-                normalized.archives = [];
-                utilProductionResetPending = true;
-                try {
-                    localStorage.setItem(UTIL_PRODUCTION_STORAGE_KEY, JSON.stringify(normalized));
-                } catch (error) {
-                    // localStorage 사용 불가 시 현재 상태만 초기화
-                }
-            }
+            utilProductionResetPending = false;
             window.PortalData = window.PortalData || {};
             window.PortalData.util_production_daily = normalized;
             return normalized;

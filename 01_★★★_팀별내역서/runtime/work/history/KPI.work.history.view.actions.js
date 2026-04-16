@@ -27,8 +27,7 @@
         deleteAttachmentsFromServer,
         savePayload,
         saveNow,
-        getRecordRuntimeConfig,
-        buildExportScript
+        getRecordRuntimeConfig
     } = history;
 
     function bindEvents() {
@@ -919,9 +918,10 @@
     }
 
     function downloadBackupSnapshot() {
-        const fileName = `data_${DATA_KEY}_${view.buildTimestampLabel()}.js`;
-        const content = buildExportScript(getPayload());
-        const blob = new Blob([content], { type: 'application/javascript;charset=utf-8' });
+        const fileName = `${DATA_KEY}_${view.buildTimestampLabel()}.json`;
+        const payload = normalizePayload(cloneJson(getPayload()));
+        const content = JSON.stringify(payload, null, 2);
+        const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = url;

@@ -1,7 +1,4 @@
-﻿const LEGACY_STORAGE_KEY = "monthly-electric-sheet-v1";
-const PREVIOUS_STORAGE_KEY = "monthly-electric-sheet-v2";
-const STORAGE_KEY = "monthly-electric-sheet-v3";
-const PRESET_IMPORT_VERSION = 6;
+﻿const PRESET_IMPORT_VERSION = 6;
 const ENTRY_RESET_VERSION = 1;
 const ENTRY_STATUS_BASELINE_VERSION = 3;
 const EQUIPMENT_FACTOR_MIGRATION_VERSION = 2;
@@ -18,151 +15,11 @@ const LEGACY_STICK_FIELD_IDS = [
   "field_stick_after_2025_08",
 ];
 const EQUIPMENT_TITLE_DOUBLE_CLICK_DELAY_MS = 320;
-const HISTORICAL_ENTRY_VALUE_FIXES = {
-  "2024-01-01": {
-    field_03: "3701.30",
-    field_11: "33915.90",
-    field_14: "3043.60",
-    field_18: "8684.00",
-  },
-  "2024-02-01": {
-    field_03: "3802.00",
-    field_11: "35235.10",
-    field_14: "4429.90",
-    field_18: "8918.10",
-  },
-  "2025-01-01": {
-    field_18: "10725.70",
-  },
-  "2025-03-28": {
-    field_10: "33060.6",
-  },
-  "2025-04-01": {
-    field_10: "33060.6",
-  },
-  "2025-04-02": {
-    field_10: "33060.6",
-  },
-  "2025-04-03": {
-    field_10: "33060.6",
-  },
-  "2025-04-04": {
-    field_10: "33060.6",
-  },
-  "2025-04-07": {
-    field_10: "33060.6",
-  },
-  "2025-04-08": {
-    field_10: "33060.6",
-  },
-  "2025-04-09": {
-    field_10: "33060.6",
-  },
-  "2025-04-10": {
-    field_10: "33060.6",
-  },
-  "2025-04-11": {
-    field_10: "33060.6",
-  },
-  "2025-04-14": {
-    field_10: "33060.6",
-  },
-  "2025-04-15": {
-    field_10: "33060.6",
-  },
-  "2025-04-16": {
-    field_10: "33060.6",
-  },
-  "2025-04-17": {
-    field_10: "33060.6",
-  },
-  "2025-04-18": {
-    field_10: "33060.6",
-  },
-  "2025-04-21": {
-    field_10: "33060.6",
-  },
-  "2025-04-22": {
-    field_10: "33060.6",
-  },
-  "2025-04-23": {
-    field_10: "33060.6",
-  },
-  "2025-04-24": {
-    field_10: "33060.6",
-  },
-  "2025-04-25": {
-    field_10: "33060.6",
-  },
-  "2025-04-28": {
-    field_10: "33060.6",
-  },
-  "2025-04-29": {
-    field_10: "33060.6",
-  },
-  "2025-04-30": {
-    field_10: "33060.6",
-  },
-  "2025-06-02": {
-    field_22: "4410.32",
-  },
-  "2025-08-04": {
-    field_23: "7504.44",
-  },
-  "2025-12-02": {
-    field_18: "12648.7",
-  },
-};
-const ENTRY_VALUE_CORRECTIONS = {
-  "2025-04-09": { field_05: "13764.7" },
-  "2025-04-10": { field_05: "13766.8" },
-  "2025-04-17": { field_23: "7111.70" },
-  "2025-04-18": { field_23: "7115.11" },
-  "2025-05-02": { field_03: "5032.0" },
-  "2025-05-07": { field_03: "5034.8" },
-  "2025-05-12": { field_17: "65336.4" },
-  "2025-05-13": { field_17: "65354.7" },
-  "2025-05-27": { field_17: "65612.6" },
-  "2025-05-28": { field_17: "65633.1" },
-  "2025-06-04": { field_17: "65758.8" },
-  "2025-06-09": { field_17: "65848.6" },
-  "2025-07-07": { field_17: "66405.7" },
-  "2025-07-08": { field_17: "66426.0" },
-  "2025-07-09": { field_17: "66446.3" },
-  "2025-07-10": { field_17: "66466.7" },
-  "2025-08-05": { field_03: "5206.0", field_19: "84346.2" },
-  "2025-08-06": { field_03: "5208.5", field_19: "84375.9" },
-  "2025-08-25": { field_14: "24987.7" },
-  "2025-08-26": { field_14: "25007.5" },
-  "2025-09-08": { field_21: "6632.77", field_24: "18988.10" },
-  "2025-09-09": { field_21: "6637.33", field_24: "18999.99" },
-  "2025-09-19": { field_05: "14056.6", field_09: "20281.7" },
-  "2025-09-22": { field_05: "14062.4", field_09: "20286.6" },
-  "2025-09-23": { field_05: "14064.3", field_09: "20288.2" },
-  "2025-09-24": { field_05: "14066.3", field_09: "20289.9" },
-  "2025-09-25": { field_05: "14068.2", field_09: "20291.5" },
-  "2025-09-26": { field_05: "14070.1", field_09: "20293.1" },
-  "2025-11-05": { field_18: "12522.5" },
-  "2025-11-06": { field_18: "12526.3" },
-  "2025-11-10": { field_21: "6858.72", field_24: "19604.68" },
-  "2025-11-11": { field_21: "6861.92", field_24: "19613.31" },
-  "2025-11-21": { field_17: "69026.5" },
-  "2025-11-24": { field_17: "69081.6" },
-  "2026-01-05": { field_26: "2036.21" },
-  "2026-01-06": { field_26: "2037.19" },
-  "2026-01-23": { field_17: "70313.3" },
-  "2026-01-26": { field_17: "70376.4" },
-  "2026-01-28": { field_16: "1669.89", field_19: "88462.7" },
-  "2026-01-29": { field_16: "1680.92", field_19: "88489.0" },
-  "2026-01-30": { field_18: "13065.3" },
-  "2026-03-19": { field_12: "42697.4" },
-};
-const LOCAL_STORE_FILE_NAME = "preset-entry-data.js";
+const HISTORICAL_ENTRY_VALUE_FIXES = Object.freeze({});
+const ENTRY_VALUE_CORRECTIONS = Object.freeze({});
 const LOCAL_FILE_HANDLE_DB_NAME = "monthly-electric-local-file";
 const LOCAL_FILE_HANDLE_STORE_NAME = "handles";
-const LOCAL_FILE_HANDLE_KEY = "preset-entry-data";
 const LOCAL_BILLING_DOCUMENT_DIRECTORY_HANDLE_KEY = "billing-document-directory";
-const ENABLE_LOCAL_FILE_OVERWRITE_PERSISTENCE = true;
 const ENABLE_SHARED_SERVER_WRITE = true;
 const SHARED_APP_CONFIG = resolveSharedAppConfig();
 const LEGACY_BILLING_DOCUMENT_DIRECTORY_NAME = "청구서";
@@ -578,45 +435,14 @@ const ELECTRIC_TOTAL_SUMMARY_TEAM_KEYS = Object.freeze([
   "power_reactive",
 ]);
 
-const TEAM_AMOUNT_ADJUSTMENTS = Object.freeze({
-  "2024-03": Object.freeze({
-    team_01_02: -399,
-    team_02: -107,
-    team_03: -117,
-    team_04: 623,
-  }),
-  "2024-04": Object.freeze({
-    team_01_02: 450,
-    team_02: 98,
-    team_03: 125,
-    team_04: -673,
-  }),
-  "2024-08": Object.freeze({
-    team_01_02: -346,
-    team_02: 93,
-    team_03: 134,
-    team_04: 119,
-  }),
-  "2025-02": Object.freeze({
-    team_01_02: 824419,
-    team_04: -824419,
-  }),
-});
+const TEAM_AMOUNT_ADJUSTMENTS = Object.freeze({});
 
-const SHARED_COMPRESSOR_SETTLEMENT_START_MONTH = "2026-02";
+const SHARED_COMPRESSOR_SETTLEMENT_START_MONTH = "9999-12";
 const SHARED_COMPRESSOR_VIRTUAL_ID = "shared_compressor_total";
-const SHARED_COMPRESSOR_VIRTUAL_LABEL = "컴프레셔 총합";
-const SHARED_COMPRESSOR_SETTLEMENT_RATIOS = Object.freeze({
-  team_01_02: 0.72,
-  team_02: 0.28,
-});
-const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_IDS_BY_TEAM = Object.freeze({
-  team_01_02: Object.freeze(["field_11"]),
-  team_02: Object.freeze(["field_14"]),
-});
-const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_ID_SET = new Set(
-  Object.values(SHARED_COMPRESSOR_SETTLEMENT_SOURCE_IDS_BY_TEAM).flat()
-);
+const SHARED_COMPRESSOR_VIRTUAL_LABEL = "???? ??";
+const SHARED_COMPRESSOR_SETTLEMENT_RATIOS = Object.freeze({});
+const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_IDS_BY_TEAM = Object.freeze({});
+const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_ID_SET = new Set();
 
 const ICON_SVGS = {
   drying: `
@@ -913,57 +739,13 @@ const GAS_SETTLEMENT_SCOPE_TEAM_KEYS = Object.freeze({
 });
 const GAS_CORRECTION_TARGET_IDS = new Set(["gas_field_03", "gas_field_04", "gas_field_06"]);
 const GAS_CORRECTION_SOURCE_IDS = ["gas_field_03", "gas_field_04", "gas_field_06"];
-const GAS_READING_VALIDATION_COMPARISON_EXCEPTIONS = new Set([
-  "gas_field_05|2025-03-01|2025-03-03",
-  "gas_field_05|2025-03-03|2025-03-01",
-]);
-const GAS_MONTHLY_BOUNDARY_READING_OVERRIDES = Object.freeze({
-  "2024-03": Object.freeze({
-    gas_field_01: Object.freeze({
-      endReading: 22588230,
-    }),
-  }),
-  "2025-09": Object.freeze({
-    gas_field_02: Object.freeze({
-      endReading: 926375,
-    }),
-  }),
-  "2025-10": Object.freeze({
-    gas_field_02: Object.freeze({
-      endReading: 952180,
-    }),
-  }),
-});
-const GAS_CORRECTION_MONTH_HINTS = Object.freeze({
-  "2024-04": "2팀 LNG 경계 보정: 4/1 시트값 22588348, 3월 계산값 22588230",
-  "2025-09": "건조기 경계 보정 포함: 계산값 109965 / 10/1 시트값 110989",
-  "2025-10": "건조기 경계 보정 포함: 계산값 135770 / 11월 첫 시트값 134746",
-});
-const LEGACY_SHIFTED_GAS_ENTRY_START_DATE = "2025-03-03";
-const LEGACY_SHIFTED_GAS_ENTRY_END_DATE = "2026-02-12";
-const LEGACY_GAS_2025_02_SHIFT_CUTOFF_UPDATED_AT = "2026-03-24T00:00:00.000Z";
-const LEGACY_GAS_2025_02_DATE_SHIFT_MAP = new Map([
-  ["2025-02-02", "2025-02-03"],
-  ["2025-02-03", "2025-02-04"],
-  ["2025-02-04", "2025-02-05"],
-  ["2025-02-05", "2025-02-06"],
-  ["2025-02-06", "2025-02-07"],
-  ["2025-02-09", "2025-02-10"],
-  ["2025-02-10", "2025-02-11"],
-  ["2025-02-11", "2025-02-12"],
-  ["2025-02-12", "2025-02-13"],
-  ["2025-02-13", "2025-02-14"],
-  ["2025-02-16", "2025-02-17"],
-  ["2025-02-17", "2025-02-18"],
-  ["2025-02-18", "2025-02-19"],
-  ["2025-02-19", "2025-02-20"],
-  ["2025-02-20", "2025-02-21"],
-  ["2025-02-23", "2025-02-24"],
-  ["2025-02-24", "2025-02-25"],
-  ["2025-02-25", "2025-02-26"],
-  ["2025-02-26", "2025-02-27"],
-  ["2025-02-27", "2025-02-28"],
-]);
+const GAS_READING_VALIDATION_COMPARISON_EXCEPTIONS = new Set();
+const GAS_MONTHLY_BOUNDARY_READING_OVERRIDES = Object.freeze({});
+const GAS_CORRECTION_MONTH_HINTS = Object.freeze({});
+const LEGACY_SHIFTED_GAS_ENTRY_START_DATE = "9999-12-31";
+const LEGACY_SHIFTED_GAS_ENTRY_END_DATE = "0000-01-01";
+const LEGACY_GAS_2025_02_SHIFT_CUTOFF_UPDATED_AT = "";
+const LEGACY_GAS_2025_02_DATE_SHIFT_MAP = new Map();
 
 const ENTRY_DAY_STATUS_ORDER = ["", "completed", "holiday"];
 const ENTRY_DAY_STATUS_META = {
@@ -1065,10 +847,7 @@ const equipmentFullscreenSession = {
 };
 
 const localFilePersistenceState = {
-  fileHandle: null,
   billingDocumentDirectoryHandle: null,
-  writeChain: Promise.resolve(),
-  lastErrorMessage: "",
 };
 
 const billingDocumentPreviewState = {
@@ -3072,7 +2851,6 @@ function init() {
   renderEquipmentFieldInputs();
   setupPeriodControls();
   bindEvents();
-  void restorePersistedLocalStoreFileHandle();
   void restorePersistedBillingDocumentDirectoryHandle();
   syncEquipmentAddMenu();
   syncQuickEntryMenu();
@@ -4466,31 +4244,6 @@ function scheduleEquipmentLocalAutosave() {
     equipmentLocalAutosaveTimer = 0;
     saveEquipmentEntryDraftToLocalStore();
   }, 900);
-}
-
-async function saveStoreToLocalDevice() {
-  if (getCurrentMode() === MODES.EQUIPMENT && state.selectedDate && isDirty()) {
-    const didSave = saveCurrentEquipmentEntry({ localOnly: true, allowValidationIssues: true });
-    if (!didSave) {
-      updateDirtyState();
-      updateActionState();
-      return false;
-    }
-  } else {
-    persistStore({ skipLocalFileWrite: true });
-  }
-
-  let didWriteLocalFile = false;
-  if (supportsLocalFileOverwritePersistence()) {
-    didWriteLocalFile = await writeStoreToLocalFileOnDemand();
-  }
-
-  state.loadedSnapshot = createFormSnapshot();
-  state.cleanStatusText = didWriteLocalFile
-    ? "이 PC 로컬 데이터와 index 파일에 저장했습니다."
-    : "이 PC 로컬 데이터에 저장했습니다.";
-  updateDirtyState();
-  return true;
 }
 
 function handleClearCurrentEntry() {
@@ -13896,10 +13649,7 @@ function appendManualSaveHistoryRecord(record) {
 }
 
 async function waitForQueuedPersistence() {
-  await Promise.allSettled([
-    sharedServerPersistenceState.writeChain,
-    localFilePersistenceState.writeChain,
-  ]);
+  await Promise.allSettled([sharedServerPersistenceState.writeChain]);
 }
 
 async function performManualSave(options = {}) {
@@ -13907,7 +13657,6 @@ async function performManualSave(options = {}) {
   const currentMode = getCurrentMode();
 
   sharedServerPersistenceState.lastErrorMessage = "";
-  localFilePersistenceState.lastErrorMessage = "";
 
   let didSave = false;
 
@@ -13920,11 +13669,11 @@ async function performManualSave(options = {}) {
         return false;
       }
     } else if (isDirty()) {
-      persistStore({ skipLocalFileWrite: true });
+      persistStore();
       didSave = true;
     }
   } else {
-    persistStore({ skipLocalFileWrite: true });
+    persistStore();
     didSave = true;
   }
 
@@ -13932,9 +13681,21 @@ async function performManualSave(options = {}) {
     return false;
   }
 
+  if (!supportsSharedServerPersistence()) {
+    const message = "?? ?? ??? ?? ??? ? ????.";
+    sharedServerPersistenceState.lastErrorMessage = message;
+    if (elements.saveStatus) {
+      elements.saveStatus.textContent = message;
+      elements.saveStatus.classList.add("is-dirty", "is-error");
+    }
+    updateDirtyState();
+    updateActionState();
+    return false;
+  }
+
   await waitForQueuedPersistence();
 
-  if (sharedServerPersistenceState.lastErrorMessage || localFilePersistenceState.lastErrorMessage) {
+  if (sharedServerPersistenceState.lastErrorMessage) {
     updateDirtyState();
     updateActionState();
     return false;
@@ -13948,10 +13709,10 @@ async function performManualSave(options = {}) {
     mode: currentMode,
     contextLabel: getManualSaveContextLabel(),
   });
-  persistStore({ skipLocalFileWrite: true });
+  persistStore();
   await waitForQueuedPersistence();
   state.loadedSnapshot = createFormSnapshot();
-  state.cleanStatusText = "저장이 완료되었습니다.";
+  state.cleanStatusText = "??? ???????.";
   updateDirtyState();
   updateActionState();
   return true;
@@ -14166,33 +13927,6 @@ function safeParse(raw) {
   }
 }
 
-function safeStorageGetItem(key) {
-  try {
-    if (window.location.protocol === "file:") {
-      return null;
-    }
-    return window.localStorage.getItem(key);
-  } catch (error) {
-    return null;
-  }
-}
-
-function safeStorageSetItem(key, value) {
-  try {
-    if (window.location.protocol === "file:") {
-      return false;
-    }
-    window.localStorage.setItem(key, value);
-    return true;
-  } catch (error) {
-    return false;
-  }
-}
-
-function isPlainObject(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
 function resolveSharedAppConfig() {
   if (typeof window === "undefined" || !isPlainObject(window.__SHARED_APP_CONFIG__)) {
     return {
@@ -14267,26 +14001,7 @@ function getBillingDocumentEndpoint() {
   return `${SHARED_APP_CONFIG.apiBase.replace(/\/+$/, "")}/billing-document`;
 }
 
-function createDefaultStore() {
-  return normalizeStore({
-    resourceType: RESOURCE_TYPES.ELECTRIC,
-    resourceDatasets: {
-      [RESOURCE_TYPES.ELECTRIC]: createDefaultResourceDataset(RESOURCE_TYPES.ELECTRIC),
-      [RESOURCE_TYPES.GAS]: createDefaultResourceDataset(RESOURCE_TYPES.GAS),
-      [RESOURCE_TYPES.WASTE]: createDefaultResourceDataset(RESOURCE_TYPES.WASTE),
-      [RESOURCE_TYPES.PRODUCTION]: createDefaultResourceDataset(RESOURCE_TYPES.PRODUCTION),
-    },
-  });
-}
-
 function getPresetBillingSettlementEntries() {
-  if (
-    typeof PRESET_BILLING_SETTLEMENT_ENTRIES !== "undefined" &&
-    isPlainObject(PRESET_BILLING_SETTLEMENT_ENTRIES)
-  ) {
-    return PRESET_BILLING_SETTLEMENT_ENTRIES;
-  }
-
   if (
     typeof window !== "undefined" &&
     isPlainObject(window.__LOCAL_APP_STORE__) &&
@@ -14323,14 +14038,6 @@ function getPresetLocalStore() {
   }
 
   return presetStore;
-}
-
-function shouldPreferPresetLocalStore() {
-  return (
-    ENABLE_LOCAL_FILE_OVERWRITE_PERSISTENCE &&
-    typeof window !== "undefined" &&
-    window.location.protocol === "file:"
-  );
 }
 
 function countPopulatedTeamAssignments(assignments) {
@@ -15677,37 +15384,26 @@ function calculateGasCorrectionFactorForMonth(monthValue = state.currentMonth) {
   return totalUsage / sourceUsageTotal;
 }
 
+function createDefaultStore() {
+  return normalizeStore({
+    resourceType: RESOURCE_TYPES.ELECTRIC,
+    resourceDatasets: {
+      [RESOURCE_TYPES.ELECTRIC]: createDefaultResourceDataset(RESOURCE_TYPES.ELECTRIC),
+      [RESOURCE_TYPES.GAS]: createDefaultResourceDataset(RESOURCE_TYPES.GAS),
+      [RESOURCE_TYPES.WASTE]: createDefaultResourceDataset(RESOURCE_TYPES.WASTE),
+      [RESOURCE_TYPES.PRODUCTION]: createDefaultResourceDataset(RESOURCE_TYPES.PRODUCTION),
+    },
+  });
+}
+
 function loadStore() {
   try {
     const presetLocalStore = getPresetLocalStore();
-    const currentStore = safeParse(safeStorageGetItem(STORAGE_KEY));
     if (isPlainObject(presetLocalStore)) {
-      if (shouldUseSharedServerAsAuthority()) {
-        return normalizeStore(presetLocalStore);
-      }
-      if (isPlainObject(currentStore)) {
-        return normalizeStore(mergeCurrentStoreWithPresetLocalStore(currentStore, presetLocalStore));
-      }
-
       return normalizeStore(presetLocalStore);
     }
 
-    if (isPlainObject(currentStore)) {
-      return normalizeStore(currentStore);
-    }
-
-    const previousStore = safeParse(safeStorageGetItem(PREVIOUS_STORAGE_KEY));
-    if (isPlainObject(previousStore)) {
-      return normalizeStore(previousStore);
-    }
-
-    const legacyEntries = safeParse(safeStorageGetItem(LEGACY_STORAGE_KEY));
-    return normalizeStore({
-      mode: MODES.EQUIPMENT,
-      equipmentItems: DEFAULT_EQUIPMENT_ITEMS,
-      equipmentEntries: legacyEntries,
-      teamAssignments: {},
-    });
+    return createDefaultStore();
   } catch (error) {
     return createDefaultStore();
   }
@@ -15900,52 +15596,29 @@ function normalizeStore(rawStore) {
 }
 
 function getPresetEquipmentEntries() {
-  const presetEntries =
-    typeof window !== "undefined" && isPlainObject(window.__FILE_PRESET_ELECTRIC_ENTRIES__)
-      ? window.__FILE_PRESET_ELECTRIC_ENTRIES__
-      : window.__PRESET_ELECTRIC_ENTRIES__;
-  if (
-    typeof window === "undefined" ||
-    !isPlainObject(presetEntries)
-  ) {
+  if (typeof window === "undefined" || !isPlainObject(window.__PRESET_ELECTRIC_ENTRIES__)) {
     return {};
   }
 
-  return normalizeEquipmentEntries(presetEntries);
+  return normalizeEquipmentEntries(window.__PRESET_ELECTRIC_ENTRIES__);
 }
 
 function getPresetGasEntries() {
-  const presetEntries =
-    typeof window !== "undefined" && isPlainObject(window.__FILE_PRESET_GAS_ENTRIES__)
-      ? window.__FILE_PRESET_GAS_ENTRIES__
-      : window.__PRESET_GAS_ENTRIES__;
-  if (
-    typeof window === "undefined" ||
-    !isPlainObject(presetEntries)
-  ) {
+  if (typeof window === "undefined" || !isPlainObject(window.__PRESET_GAS_ENTRIES__)) {
     return {};
   }
 
-  return normalizeEquipmentEntries(presetEntries);
+  return normalizeEquipmentEntries(window.__PRESET_GAS_ENTRIES__);
 }
 
 function mergePresetEquipmentEntries(entries) {
   return mergeEquipmentEntriesWithPresetLocalStore(entries, getPresetEquipmentEntries());
 }
 
-function supportsLocalFileOverwritePersistence() {
-  return (
-    ENABLE_LOCAL_FILE_OVERWRITE_PERSISTENCE &&
-    !shouldUseSharedServerAsAuthority() &&
-    window.location.protocol === "file:" &&
-    typeof window.showOpenFilePicker === "function"
-  );
-}
-
 function supportsPersistedLocalFileHandle() {
   return (
-    supportsLocalFileOverwritePersistence() &&
     typeof window !== "undefined" &&
+    window.location.protocol === "file:" &&
     "indexedDB" in window
   );
 }
@@ -16068,45 +15741,6 @@ function loadPersistedLocalHandleByKey(handleKey) {
       reject(error);
     }
   }).catch(() => null);
-}
-
-function persistLocalStoreFileHandle(fileHandle) {
-  return persistLocalHandleByKey(LOCAL_FILE_HANDLE_KEY, fileHandle);
-}
-
-function clearPersistedLocalStoreFileHandle() {
-  return clearPersistedLocalHandleByKey(LOCAL_FILE_HANDLE_KEY);
-}
-
-function loadPersistedLocalStoreFileHandle() {
-  return loadPersistedLocalHandleByKey(LOCAL_FILE_HANDLE_KEY);
-}
-
-async function restorePersistedLocalStoreFileHandle() {
-  if (localFilePersistenceState.fileHandle || !supportsPersistedLocalFileHandle()) {
-    return localFilePersistenceState.fileHandle;
-  }
-
-  const persistedHandle = await loadPersistedLocalStoreFileHandle();
-  if (!persistedHandle || persistedHandle.name !== LOCAL_STORE_FILE_NAME) {
-    if (persistedHandle) {
-      await clearPersistedLocalStoreFileHandle();
-    }
-    return null;
-  }
-
-  try {
-    const permission = await persistedHandle.requestPermission({ mode: "readwrite" });
-    if (permission !== "granted") {
-      return null;
-    }
-
-    localFilePersistenceState.fileHandle = persistedHandle;
-    return persistedHandle;
-  } catch (error) {
-    await clearPersistedLocalStoreFileHandle();
-    return null;
-  }
 }
 
 function persistBillingDocumentDirectoryHandle(directoryHandle) {
@@ -16375,155 +16009,6 @@ async function deleteBillingDocumentStorage(
   }
 
   return deleteBillingDocumentFromLocalDirectory(billingDocument, resourceType);
-}
-
-function escapeNonAsciiForJavaScript(text) {
-  return String(text || "").replace(/[^\x20-\x7E\r\n\t]/g, (character) => {
-    const codePoint = character.codePointAt(0);
-    if (typeof codePoint !== "number") {
-      return character;
-    }
-
-    if (codePoint <= 0xffff) {
-      return `\\u${codePoint.toString(16).padStart(4, "0")}`;
-    }
-
-    const adjusted = codePoint - 0x10000;
-    const highSurrogate = 0xd800 + (adjusted >> 10);
-    const lowSurrogate = 0xdc00 + (adjusted & 0x3ff);
-    return `\\u${highSurrogate.toString(16).padStart(4, "0")}\\u${lowSurrogate
-      .toString(16)
-      .padStart(4, "0")}`;
-  });
-}
-
-function buildLocalStoreScript(store) {
-  syncActiveResourceDatasetToStore(store);
-  const serializedStore = escapeNonAsciiForJavaScript(JSON.stringify(store, null, 2));
-  return [
-    `window.__LOCAL_APP_STORE__ = ${serializedStore};`,
-    "window.__PRESET_ELECTRIC_ENTRIES__ = window.__LOCAL_APP_STORE__.resourceDatasets?.electric?.equipmentEntries || window.__LOCAL_APP_STORE__.equipmentEntries || {};",
-    "window.__PRESET_GAS_ENTRIES__ = window.__LOCAL_APP_STORE__.resourceDatasets?.gas?.equipmentEntries || {};",
-    "",
-  ].join("\n");
-}
-
-async function ensureLocalStoreFileHandle() {
-  if (localFilePersistenceState.fileHandle) {
-    return localFilePersistenceState.fileHandle;
-  }
-
-  if (!supportsLocalFileOverwritePersistence()) {
-    return null;
-  }
-
-  const restoredHandle = await restorePersistedLocalStoreFileHandle();
-  if (restoredHandle) {
-    return restoredHandle;
-  }
-
-  let handles = [];
-  try {
-    handles = await window.showOpenFilePicker({
-      multiple: false,
-      types: [
-        {
-          description: "JavaScript Files",
-          accept: {
-            "text/javascript": [".js"],
-          },
-        },
-      ],
-    });
-  } catch (error) {
-    if (error?.name === "AbortError") {
-      return null;
-    }
-
-    throw error;
-  }
-
-  const [fileHandle] = handles;
-  if (!fileHandle) {
-    return null;
-  }
-
-  if (fileHandle.name !== LOCAL_STORE_FILE_NAME) {
-    window.alert(`${LOCAL_STORE_FILE_NAME} 파일을 선택해 주세요.`);
-    return null;
-  }
-
-  const permission = await fileHandle.requestPermission({ mode: "readwrite" });
-  if (permission !== "granted") {
-    return null;
-  }
-
-  localFilePersistenceState.fileHandle = fileHandle;
-  void persistLocalStoreFileHandle(fileHandle);
-  return fileHandle;
-}
-
-async function writeStoreToLocalFile() {
-  const fileHandle = await ensureLocalStoreFileHandle();
-  if (!fileHandle) {
-    return false;
-  }
-
-  try {
-    syncActiveResourceDatasetToStore(state.store);
-    const writable = await fileHandle.createWritable();
-    await writable.write(`\uFEFF${buildLocalStoreScript(state.store)}`);
-    await writable.close();
-    window.__LOCAL_APP_STORE__ = JSON.parse(JSON.stringify(state.store));
-    window.__PRESET_ELECTRIC_ENTRIES__ = getElectricPresetEntriesForStore(window.__LOCAL_APP_STORE__);
-    localFilePersistenceState.lastErrorMessage = "";
-    return true;
-  } catch (error) {
-    localFilePersistenceState.fileHandle = null;
-    void clearPersistedLocalStoreFileHandle();
-    throw error;
-  }
-}
-
-function queueLocalFileStoreWrite() {
-  if (!supportsLocalFileOverwritePersistence()) {
-    return;
-  }
-
-  localFilePersistenceState.writeChain = localFilePersistenceState.writeChain
-    .then(() => writeStoreToLocalFile())
-    .catch((error) => {
-      const message = "로컬 파일 저장에 실패했습니다.";
-      localFilePersistenceState.lastErrorMessage = message;
-      console.error(message, error);
-      if (elements.saveStatus) {
-        elements.saveStatus.textContent = message;
-        elements.saveStatus.classList.add("is-dirty", "is-error");
-      }
-    });
-}
-
-async function writeStoreToLocalFileOnDemand() {
-  if (!supportsLocalFileOverwritePersistence()) {
-    return false;
-  }
-
-  try {
-    localFilePersistenceState.writeChain = localFilePersistenceState.writeChain.then(() =>
-      writeStoreToLocalFile()
-    );
-    const writeResult = await localFilePersistenceState.writeChain;
-    return Boolean(writeResult);
-  } catch (error) {
-    const message = "로컬 파일 저장에 실패했습니다.";
-    localFilePersistenceState.lastErrorMessage = message;
-    console.error(message, error);
-    if (elements.saveStatus) {
-      elements.saveStatus.textContent = message;
-      elements.saveStatus.classList.add("is-dirty", "is-error");
-    }
-    return false;
-  }
 }
 
 async function writeStoreToSharedServer() {
@@ -19232,18 +18717,14 @@ function renderCalendar() {
 }
 
 function persistStore(options = {}) {
-  const { skipLocalFileWrite = true, skipSharedServerWrite = false } = options;
+  const { skipSharedServerWrite = false } = options;
   syncActiveResourceDatasetToStore(state.store);
   clearEquipmentReadingTimelineCaches();
-  safeStorageSetItem(STORAGE_KEY, JSON.stringify(state.store));
   window.__LOCAL_APP_STORE__ = JSON.parse(JSON.stringify(state.store));
   window.__PRESET_ELECTRIC_ENTRIES__ = getElectricPresetEntriesForStore(window.__LOCAL_APP_STORE__);
   notifyKpiMeteringStoreUpdated();
   if (!skipSharedServerWrite && ENABLE_SHARED_SERVER_WRITE) {
     queueSharedStoreWrite();
-  }
-  if (!skipLocalFileWrite || Boolean(localFilePersistenceState.fileHandle)) {
-    queueLocalFileStoreWrite();
   }
 }
 
