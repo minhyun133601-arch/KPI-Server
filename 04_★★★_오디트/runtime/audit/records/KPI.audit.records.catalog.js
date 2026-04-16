@@ -5,7 +5,7 @@
         const AUDIT_LUX_BASE_YEAR = 2023;
         const AUDIT_LUX_EVIDENCE_MAX_BYTES = 25 * 1024 * 1024;
         const AUDIT_LUX_EVIDENCE_OWNER_DOMAIN = 'audit.lux.evidence';
-        const AUDIT_LUX_EVIDENCE_STORAGE_FOLDER = ['오디트', '조도'];
+        const AUDIT_LUX_EVIDENCE_STORAGE_FOLDER = ['Audit', '조도 스캔본'];
         const AUDIT_MONTHLY_REPORT_FOLDER = '04_★★★_오디트/보고서/월간 실적 보고서/';
 
         const AUDIT_MONTHLY_REPORT_FALLBACK = [

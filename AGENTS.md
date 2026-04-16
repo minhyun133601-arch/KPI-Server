@@ -20,13 +20,8 @@ not_own:
   - "serverization roadmap or runtime rollout phase / 서버화 로드맵 또는 런타임 롤아웃 단계"
   - "network ACL, firewall, VLAN, DNS, reverse proxy exposure decision / 네트워크 ACL·방화벽·VLAN·DNS·리버스 프록시 노출 결정"
   - "IT-facing wording, request packaging, or handoff message / IT 전달 문구·요청 패키지·핸드오프 메시지"
-escalate_to:
-  runtime_plan: "central_server_deployment_plan_ko.md"
-  workstation_setup: "새컴퓨터_동일작업환경_세팅_프롬프트.md"
 authority_set:
   - "AGENTS.md"
-  - "central_server_deployment_plan_ko.md"
-  - "새컴퓨터_동일작업환경_세팅_프롬프트.md"
 supporting_docs_only:
   - "legacy analyses"
   - "old prompts"
@@ -62,36 +57,36 @@ supporting_docs_only:
 - EN: This document governs repository-wide AI behavior, code-structure rules, and testing/completion standards.
 
 ### Directive A-03
-- KR: `central_server_deployment_plan_ko.md`는 현재 런타임 구조, 중앙 서버 롤아웃 단계, 제품 표면, 저장 권위본, 노출/운영 게이트를 결정한다.
-- EN: `central_server_deployment_plan_ko.md` governs the current runtime topology, central-server rollout phase, product surface, storage authority, and exposure/operations gates.
+- KR: 이 저장소의 활성 권위 문서는 `AGENTS.md` 하나다. 제거된 병렬 문서나 외부 문서를 현재 기준으로 삼지 않는다.
+- EN: `AGENTS.md` is the only active authority document for this repository. Removed parallel or external docs are not authoritative.
 
 ### Directive A-04
-- KR: `새컴퓨터_동일작업환경_세팅_프롬프트.md`는 새 Windows 작업환경 복원 절차와 범용 개발환경 세팅 흐름을 결정한다.
-- EN: `새컴퓨터_동일작업환경_세팅_프롬프트.md` governs new-Windows workstation reconstruction and the generic development-environment setup flow.
+- KR: 과거 작업환경 메모, 옛 프롬프트, 삭제된 문서명은 참고 흔적으로만 취급한다. 현재 규칙은 이 문서에 흡수한다.
+- EN: Historical setup notes, old prompts, and removed document names are reference traces only. Current rules must be absorbed into this document.
 
 ### Directive A-05
 - KR: 이 문서는 **코드를 어떻게 수정할지**를 결정하지만, **무슨 네트워크를 열지**나 **어떤 문구로 IT에 전달할지**는 결정하지 않는다.
 - EN: This document decides **how code should be changed**, but it does not decide **which network path should be opened** or **how the IT handoff should be phrased**.
 
 ### Directive A-06
-- KR: `codex_master_onprem_web_system_blueprint.md`의 좋은 원칙은 이 문서와 `central_server_deployment_plan_ko.md`에 흡수된 참조 원칙으로만 취급한다. 병렬 권위 문서로 취급하지 않는다.
-- EN: The useful principles from `codex_master_onprem_web_system_blueprint.md` are treated only as absorbed reference guidance inside this file and `central_server_deployment_plan_ko.md`; it is not a parallel authority document.
+- KR: archive, old prompts, legacy analyses는 supporting material일 뿐 권위 문서가 아니다.
+- EN: Archive material, old prompts, and legacy analyses are supporting material only; they are not authority documents.
 
 ### Directive A-07
 - KR: 충돌이 코드 스타일, 테스트, 레이어 분리, 보안 기본기, 문서 언어 정책에 관한 것이라면 `AGENTS.md`가 이긴다.
 - EN: If the conflict is about code style, tests, layering, security fundamentals, or documentation language policy, `AGENTS.md` wins.
 
 ### Directive A-07a
-- KR: `codex_master_onprem_web_system_blueprint.md`는 흡수 완료 후 archive 대상이다. 새 코드/검증 규칙은 `AGENTS.md`에, 새 런타임/배포 규칙은 `central_server_deployment_plan_ko.md`에, 새 작업환경 복원 규칙은 `새컴퓨터_동일작업환경_세팅_프롬프트.md`에만 추가한다.
-- EN: After absorption, `codex_master_onprem_web_system_blueprint.md` is an archive candidate. New code/verification rules belong in `AGENTS.md`, new runtime/deployment rules belong in `central_server_deployment_plan_ko.md`, and new workstation-rebuild rules belong in `새컴퓨터_동일작업환경_세팅_프롬프트.md`.
+- KR: 새 코드, 검증, 런타임, 작업환경 규칙은 병렬 권위 문서로 늘리지 말고 `AGENTS.md`에만 추가한다.
+- EN: New code, verification, runtime, and workstation rules must not grow into parallel authority docs; add them to `AGENTS.md` only.
 
 ### Directive A-08
-- KR: 충돌이 현재 live 구조, 중앙 서버 롤아웃 단계, 저장 권위본, 노출 범위에 관한 것이라면 `central_server_deployment_plan_ko.md`가 이긴다.
-- EN: If the conflict is about the live runtime structure, central-server rollout phase, storage authority, or exposure scope, `central_server_deployment_plan_ko.md` wins.
+- KR: 삭제된 문서를 참조하는 오래된 지시와 현재 `AGENTS.md`가 충돌하면 `AGENTS.md`가 이긴다.
+- EN: If an old instruction that references a removed document conflicts with current `AGENTS.md`, `AGENTS.md` wins.
 
 ### Directive A-09
-- KR: 충돌이 새 PC 세팅, 로컬 도구 복원, 범용 개발환경 재구성 절차에 관한 것이라면 `새컴퓨터_동일작업환경_세팅_프롬프트.md`가 이긴다.
-- EN: If the conflict is about new-PC setup, local tool restoration, or generic development-environment reconstruction, `새컴퓨터_동일작업환경_세팅_프롬프트.md` wins.
+- KR: 저장소 안에 남아 있는 handoff, audit, legacy 문서는 supporting material로만 읽고, 기준 판단은 `AGENTS.md`로 한다.
+- EN: Treat handoff, audit, and legacy docs left in the repo as supporting material only; base decisions on `AGENTS.md`.
 
 ## 2. AI Role and Working Posture / AI 역할과 작업 태도
 
@@ -100,8 +95,8 @@ supporting_docs_only:
 - EN: The agent MUST act like a careful senior engineer who prioritizes **correctness, security, maintainability, and reviewability** over clever shortcuts.
 
 ### Directive A-11
-- KR: 작업 시작 전에는 이 문서, `central_server_deployment_plan_ko.md`, 관련이 있으면 `새컴퓨터_동일작업환경_세팅_프롬프트.md`, README, build/test 설정, CI 설정, 그리고 실제로 손댈 파일을 먼저 읽는다.
-- EN: Before editing, the agent MUST read this document, `central_server_deployment_plan_ko.md`, `새컴퓨터_동일작업환경_세팅_프롬프트.md` when relevant, the README, build/test configuration, CI configuration, and the files that will actually be touched.
+- KR: 작업 시작 전에는 이 문서, 저장소의 현재 문서, build/test 설정, CI 설정, 그리고 실제로 손댈 파일을 먼저 읽는다.
+- EN: Before editing, the agent MUST read this document, the repo’s current docs, build/test configuration, CI configuration, and the files that will actually be touched.
 
 ### Directive A-12
 - KR: 여러 모듈, 데이터 모델, 공개 동작을 건드리는 변경은 수정 전에 짧은 계획을 먼저 남긴다.
@@ -142,8 +137,8 @@ supporting_docs_only:
 - EN: Long documents do not need line-by-line full translation, but **core operating rules, risk boundaries, and prohibitions** MUST also appear in English.
 
 ### Directive A-23a
-- KR: 사용자의 명시적 요청이 없는 한 repo-owned markdown는 `AGENTS.md`, `central_server_deployment_plan_ko.md`, `새컴퓨터_동일작업환경_세팅_프롬프트.md` 3개만 유지한다. 추가 checklist, runbook, temporary note, helper prompt `*.md`는 만들지 않는다.
-- EN: Unless the user explicitly requests it, keep repo-owned markdown limited to `AGENTS.md`, `central_server_deployment_plan_ko.md`, and `새컴퓨터_동일작업환경_세팅_프롬프트.md`. Do not create extra checklist, runbook, temporary-note, or helper-prompt `*.md` files.
+- KR: 사용자의 명시적 요청이 없는 한 repo-owned authority/rules markdown는 `AGENTS.md` 하나만 유지한다. 추가 checklist, runbook, temporary note, helper prompt `*.md`는 만들지 않는다.
+- EN: Unless the user explicitly requests it, keep repo-owned authority/rules markdown limited to `AGENTS.md`. Do not create extra checklist, runbook, temporary-note, or helper-prompt `*.md` files.
 
 ### Directive A-24
 - KR: 설명은 쉽게 하되 기준은 낮추지 않는다.
@@ -422,8 +417,8 @@ supporting_docs_only:
 - EN: Do not introduce speculative frameworks or abstractions merely for “future flexibility.”
 
 ### Directive A-124
-- KR: 권위 문서를 병렬로 늘리지 않는다. 새 기준은 `AGENTS.md`, `central_server_deployment_plan_ko.md`, `새컴퓨터_동일작업환경_세팅_프롬프트.md` 안에 흡수한다.
-- EN: Do not grow parallel authority documents. New rules SHOULD be absorbed into `AGENTS.md`, `central_server_deployment_plan_ko.md`, and `새컴퓨터_동일작업환경_세팅_프롬프트.md`.
+- KR: 권위 문서를 병렬로 늘리지 않는다. 새 기준은 `AGENTS.md` 안에 흡수한다.
+- EN: Do not grow parallel authority documents. New rules SHOULD be absorbed into `AGENTS.md`.
 
 ### Directive A-125
 - KR: live runtime을 다루는 작업에서 승인 없이 스택 전환, 공개 주소 전환, 저장 권위본 전환을 하지 않는다.

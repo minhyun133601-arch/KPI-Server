@@ -43,6 +43,24 @@ export async function deleteDocumentById(documentId) {
   return result.rows[0] || null;
 }
 
+export async function findLatestDocumentByOwner({
+  ownerDomain,
+  ownerKey,
+  fileCategory
+}) {
+  const result = await query(
+    `select id, permission_key, owner_domain, owner_key, file_category, original_name, stored_name, mime_type, byte_size, storage_rel_path, metadata, uploaded_by_user_id, created_at
+     from app_documents
+     where owner_domain = $1
+       and owner_key = $2
+       and file_category = $3
+     order by created_at desc
+     limit 1`,
+    [ownerDomain, ownerKey, fileCategory]
+  );
+  return result.rows[0] || null;
+}
+
 export async function updateDocumentStorageLocation({
   documentId,
   storageRelPath,

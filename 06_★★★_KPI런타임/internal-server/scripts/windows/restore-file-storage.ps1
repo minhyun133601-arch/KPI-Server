@@ -6,8 +6,66 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $serverDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$backupRoot = Join-Path $serverDir 'var\backups\file-storage'
-$targetRoot = Join-Path $serverDir 'var\files'
+
+function Convert-ToAbsolutePath {
+  param(
+    [string]$BaseDir,
+    [string]$PathValue
+  )
+
+  if ([string]::IsNullOrWhiteSpace($PathValue)) {
+    return [System.IO.Path]::GetFullPath((Join-Path $BaseDir 'var'))
+  }
+
+  if ([System.IO.Path]::IsPathRooted($PathValue)) {
+    return [System.IO.Path]::GetFullPath($PathValue)
+  }
+
+  return [System.IO.Path]::GetFullPath((Join-Path $BaseDir $PathValue))
+}
+
+function Get-ConfiguredStorageRoot {
+  param([string]$ServerDir)
+
+  $candidatePaths = @()
+  if ($env:KPI_ENV_FILE) {
+    $candidatePaths += if ([System.IO.Path]::IsPathRooted($env:KPI_ENV_FILE)) {
+      $env:KPI_ENV_FILE
+    } else {
+      Join-Path $ServerDir $env:KPI_ENV_FILE
+    }
+  }
+  $candidatePaths += @(
+    (Join-Path $ServerDir '.env.production.local'),
+    (Join-Path $ServerDir '.env.development.local'),
+    (Join-Path $ServerDir '.env')
+  )
+
+  foreach ($candidatePath in @($candidatePaths | Select-Object -Unique)) {
+    if (-not (Test-Path $candidatePath)) {
+      continue
+    }
+
+    foreach ($line in Get-Content -Path $candidatePath -Encoding utf8) {
+      $trimmed = ([string]$line).Trim()
+      if (-not $trimmed -or $trimmed.StartsWith('#')) {
+        continue
+      }
+      if (-not $trimmed.StartsWith('KPI_STORAGE_ROOT=')) {
+        continue
+      }
+
+      $value = $trimmed.Substring('KPI_STORAGE_ROOT='.Length).Trim().Trim('"')
+      return Convert-ToAbsolutePath -BaseDir $ServerDir -PathValue $value
+    }
+  }
+
+  return Convert-ToAbsolutePath -BaseDir $ServerDir -PathValue 'var'
+}
+
+$storageRoot = Get-ConfiguredStorageRoot -ServerDir $serverDir
+$backupRoot = Join-Path $storageRoot 'backups\file-storage'
+$targetRoot = Join-Path $storageRoot 'files'
 
 function Resolve-LatestBackupPath {
   param([string]$Root)
@@ -44,12 +102,12 @@ $summary = [ordered]@{
 }
 
 if (-not $Force) {
-  $summary['note'] = 'Add -Force to overwrite var/files from this backup.'
+  $summary['note'] = 'Add -Force to overwrite the configured storage-root files directory from this backup.'
   $summary | ConvertTo-Json -Depth 6
   exit 0
 }
 
-$preRestoreRoot = Join-Path $serverDir ('var\backups\pre-restore-file-storage\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$preRestoreRoot = Join-Path $storageRoot ('backups\pre-restore-file-storage\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
 if (Test-Path $targetRoot) {
   New-Item -ItemType Directory -Path $preRestoreRoot -Force | Out-Null
   Copy-Item -Path $targetRoot -Destination $preRestoreRoot -Recurse -Force

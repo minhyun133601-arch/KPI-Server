@@ -8,6 +8,62 @@ $ErrorActionPreference = 'Stop'
 
 $serverDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
+function Convert-ToAbsolutePath {
+  param(
+    [string]$BaseDir,
+    [string]$PathValue
+  )
+
+  if ([string]::IsNullOrWhiteSpace($PathValue)) {
+    return [System.IO.Path]::GetFullPath((Join-Path $BaseDir 'var'))
+  }
+
+  if ([System.IO.Path]::IsPathRooted($PathValue)) {
+    return [System.IO.Path]::GetFullPath($PathValue)
+  }
+
+  return [System.IO.Path]::GetFullPath((Join-Path $BaseDir $PathValue))
+}
+
+function Get-ConfiguredStorageRoot {
+  param([string]$ServerDir)
+
+  $candidatePaths = @()
+  if ($env:KPI_ENV_FILE) {
+    $candidatePaths += if ([System.IO.Path]::IsPathRooted($env:KPI_ENV_FILE)) {
+      $env:KPI_ENV_FILE
+    } else {
+      Join-Path $ServerDir $env:KPI_ENV_FILE
+    }
+  }
+  $candidatePaths += @(
+    (Join-Path $ServerDir '.env.production.local'),
+    (Join-Path $ServerDir '.env.development.local'),
+    (Join-Path $ServerDir '.env')
+  )
+
+  foreach ($candidatePath in @($candidatePaths | Select-Object -Unique)) {
+    if (-not (Test-Path $candidatePath)) {
+      continue
+    }
+
+    foreach ($line in Get-Content -Path $candidatePath -Encoding utf8) {
+      $trimmed = ([string]$line).Trim()
+      if (-not $trimmed -or $trimmed.StartsWith('#')) {
+        continue
+      }
+      if (-not $trimmed.StartsWith('KPI_STORAGE_ROOT=')) {
+        continue
+      }
+
+      $value = $trimmed.Substring('KPI_STORAGE_ROOT='.Length).Trim().Trim('"')
+      return Convert-ToAbsolutePath -BaseDir $ServerDir -PathValue $value
+    }
+  }
+
+  return Convert-ToAbsolutePath -BaseDir $ServerDir -PathValue 'var'
+}
+
 function Get-RetentionPlan {
   param(
     [string]$Root,
@@ -61,8 +117,9 @@ function Invoke-RetentionDelete {
   }
 }
 
-$runtimePlan = Get-RetentionPlan -Root (Join-Path $serverDir 'var\backups\runtime-snapshots') -Type 'file'
-$fileStoragePlan = Get-RetentionPlan -Root (Join-Path $serverDir 'var\backups\file-storage') -Type 'directory'
+$storageRoot = Get-ConfiguredStorageRoot -ServerDir $serverDir
+$runtimePlan = Get-RetentionPlan -Root (Join-Path $storageRoot 'backups\runtime-snapshots') -Type 'file'
+$fileStoragePlan = Get-RetentionPlan -Root (Join-Path $storageRoot 'backups\file-storage') -Type 'directory'
 
 if ($Force) {
   Invoke-RetentionDelete -Plan $runtimePlan

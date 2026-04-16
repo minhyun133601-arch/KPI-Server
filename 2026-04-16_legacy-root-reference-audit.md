@@ -30,73 +30,54 @@ DB 실물 경로 분포 확인 결과:
 
 ## 2. 조사 결과 / Findings
 
-### A. `var/files` 를 직접 가리키는 stale 스크립트
+### A. `var/files` 를 직접 가리키던 stale 스크립트
 
-다음 스크립트는 현재 운영 경로 `var/prod/files` 가 아니라 **예전 기본 루트 `var/files`** 를 직접 가리킨다.
+초기 조사 시점에는 아래 스크립트가 **예전 기본 루트 `var/files`** 를 직접 가리키고 있었다.
 
 1. `06_★★★_KPI런타임/internal-server/scripts/windows/backup-file-storage.ps1`
-   - `var\files` 를 백업 원본으로 사용
-   - 근거: `:4`
-   - `var\backups\file-storage` 를 백업 목적지로 사용
-   - 근거: `:5`
-
 2. `06_★★★_KPI런타임/internal-server/scripts/windows/restore-file-storage.ps1`
-   - `var\backups\file-storage` 에서 읽음
-   - 근거: `:9`
-   - `var\files` 로 복원함
-   - 근거: `:10`
-   - 프리뷰 문구도 `overwrite var/files` 라고 적혀 있음
-   - 근거: `:47`
 
-영향 / Impact:
+후속 조치:
 
-- 지금 이 상태로 실행하면 **현재 첨부파일 110건이 있는 `var/prod/files` 는 건드리지 못한다.**
-- `backup-file-storage.ps1` 는 사실상 빈 `var/files` 를 백업할 가능성이 높다.
-- `restore-file-storage.ps1` 는 현재 루트가 아닌 예전 루트로 복원한다.
+- 두 스크립트 모두 `.env.production.local` 등 환경 파일의 `KPI_STORAGE_ROOT` 를 읽어 동작하도록 수정했다.
+- 현재 기준으로는 `var/prod/files`, `var/prod/backups/file-storage` 를 직접 계산해 사용한다.
+- `restore-file-storage.ps1` 프리뷰 문구도 더 이상 `overwrite var/files` 를 가리키지 않는다.
+
+검증:
+
+- PowerShell parser 검증 통과
+- `backup-retention.ps1` 프리뷰 실행 시 `var/prod/backups/...` 해석 확인
 
 판정 / Status:
 
-- `STALE_REF`
+- `RESOLVED_CONFIGURED_STORAGE_ROOT`
 
-### B. 위 stale 스크립트를 연쇄로 물고 있는 상위 스크립트
+### B. 위 stale 스크립트를 연쇄로 물고 있던 상위 스크립트
 
-다음 스크립트들은 위 A 항목을 간접 호출하거나, 같은 예전 backup root를 기준으로 보고서를 만든다.
+초기 조사 시점에는 아래 스크립트가 같은 예전 backup root를 전제로 동작하고 있었다.
 
 1. `06_★★★_KPI런타임/internal-server/scripts/windows/backup-all.ps1`
-   - `backup-file-storage.ps1` 를 직접 호출
-   - 결과적으로 파일 백업 단계가 예전 `var/files` 기준이 된다
+   - `backup-file-storage.ps1` 를 호출하므로 A 항목의 영향을 받는 구조였다
 
 2. `06_★★★_KPI런타임/internal-server/scripts/windows/backup-retention.ps1`
-   - runtime snapshot retention root를 `var\backups\runtime-snapshots` 로 잡음
-   - 근거: `:64`
-   - file-storage retention root를 `var\backups\file-storage` 로 잡음
-   - 근거: `:65`
 
 3. `06_★★★_KPI런타임/internal-server/scripts/windows/report-serverization-readiness.ps1`
-   - runtime backup root를 `var\backups\runtime-snapshots` 로 잡음
-   - 근거: `:165`
-   - file backup root를 `var\backups\file-storage` 로 잡음
-   - 근거: `:166`
-   - `restore-file-storage.ps1` 프리뷰를 그대로 호출함
-   - 근거: `:173`
 
-반면 현재 Node 쪽 runtime snapshot 스크립트는 `config.storageRoot/backups/runtime-snapshots`, 즉 **`var/prod/backups/runtime-snapshots`** 를 쓴다.
+후속 조치:
 
-- 근거: `06_★★★_KPI런타임/internal-server/src/scripts/backupRuntimeSnapshot.js:33`
+- `backup-retention.ps1`, `report-serverization-readiness.ps1` 도 동일하게 `KPI_STORAGE_ROOT` 기준으로 수정했다.
+- 현재 preview 기준으로 runtime backup root는 `var/prod/backups/runtime-snapshots`, file backup root는 `var/prod/backups/file-storage` 로 해석된다.
+- `backup-all.ps1` 는 수정된 `backup-file-storage.ps1` 를 호출하므로 연쇄 stale 경로도 함께 정리된 상태다.
 
-실물 상태:
+검증:
 
-- 현재 존재: `06_★★★_KPI런타임/internal-server/var/prod/backups/runtime-snapshots`
-- 현재 없음: `06_★★★_KPI런타임/internal-server/var/backups`
-
-영향 / Impact:
-
-- readiness report 와 retention preview 가 **현재 백업 위치를 놓치거나 빈 경로를 보는** 상태다.
-- runtime snapshot 은 `var/prod/backups/...` 에 생성되는데, 운영 스크립트는 `var/backups/...` 를 보고 있다.
+- `backup-retention.ps1` preview 결과
+  - runtime snapshots root: `06_★★★_KPI런타임/internal-server/var/prod/backups/runtime-snapshots`
+  - file-storage root: `06_★★★_KPI런타임/internal-server/var/prod/backups/file-storage`
 
 판정 / Status:
 
-- `STALE_REF`
+- `RESOLVED_CONFIGURED_BACKUP_ROOT`
 
 ### C. 로그 경로가 둘로 갈라져 있음
 
@@ -128,36 +109,30 @@ DB 실물 경로 분포 확인 결과:
 
 - `SPLIT_PATH`
 
-### D. 현재 실물 기준 비어 있는 레거시/중복 폴더
+### D. 현재 실물 기준 비어 있었던 레거시/중복 폴더
 
-아래 폴더들은 현재 실물 파일이 없고, DB 기준 살아 있는 첨부 경로도 아니다.
+초기 조사 시점에는 아래 폴더가 실파일 `0` 기준의 빈 껍데기였다.
 
 1. `06_★★★_KPI런타임/internal-server/var/files`
-   - 파일 `0`, 하위 디렉터리 `0`
-   - 의미: 예전 기본 storage root의 빈 껍데기
-
 2. `06_★★★_KPI런타임/internal-server/var/prod/files/유틸리티`
-   - 파일 `0`, 하위 디렉터리 `2`
-   - 하위 폴더:
-     - `가스 청구서`
-     - `전기 청구서`
-   - 의미: `첨부파일/유틸리티/...` 로 통일되기 전/중간 단계 흔적 가능성이 높음
-
 3. `06_★★★_KPI런타임/internal-server/var/prod/files/2026`
-   - 파일 `0`, 하위 디렉터리 `2`
-   - 하위 폴더:
-     - `04`
-     - `04/15`
-   - 의미: 날짜 기반 임시 구조 또는 migration 흔적로 보이나, 현재 코드/DB 참조는 발견되지 않음
+
+후속 조치:
+
+- 세 폴더 모두 절대경로 검증 후 삭제했다.
 
 현재 실제 사용 중인 첨부 루트:
 
 - `06_★★★_KPI런타임/internal-server/var/prod/files/첨부파일`
    - 파일 `110`, 하위 디렉터리 `3`
 
+현재 상태:
+
+- 위 세 legacy 폴더는 모두 현재 파일시스템 기준 `exists = false`
+
 판정 / Status:
 
-- `EMPTY_ORPHAN_DIR`
+- `REMOVED_EMPTY_ORPHAN_DIR`
 
 ### E. `var` 아래 런타임 흔적 중 유지 대상과 고아 흔적
 
@@ -178,22 +153,32 @@ DB 실물 경로 분포 확인 결과:
 - `ACTIVE_RUNTIME_ASSET`
 - 지금 당장 삭제 후보로 보면 안 됨
 
-#### E-2. 현재 코드 참조가 잡히지 않는 것
+#### E-2. 현재 코드 참조가 잡히지 않던 것
 
-`06_★★★_KPI런타임/internal-server/var/codex-postgres`
+초기 조사 대상:
 
-- 실제 PostgreSQL 데이터 디렉터리/로그 파일이 남아 있음
-- 하지만 현재 저장소 전체에서 `codex-postgres` 문자열 참조는 발견되지 않음
+- `06_★★★_KPI런타임/internal-server/var/codex-postgres`
+
+조사 결과:
+
+- 저장소 전체에서 `codex-postgres` 문자열 참조는 발견되지 않았음
+- 현재 활성 Postgres 프로세스는 `var/central-runtime/postgres/data` 만 사용 중이었음
+- 실물 크기 약 `48.83 MB`, 구성 `data/`, `postgres.log`
+
+후속 조치:
+
+- active tree 밖으로 격리 이동 완료
+- 현재 위치: `archive/legacy-runtime/codex-postgres-2026-04-16`
 
 판정:
 
-- `LIKELY_ORPHAN_RUNTIME`
+- `MOVED_TO_ARCHIVE_PENDING_FINAL_DELETE`
 
 주의:
 
-- 이 폴더는 빈 폴더가 아니라 **실데이터가 들어 있는 별도 Postgres cluster 흔적**이므로, 삭제 전에는 외부 백업/용도 확인이 먼저다.
+- 즉시 영구삭제는 하지 않았고, 문제 없다는 운영 확인 후 최종 삭제하면 된다.
 
-### F. 저장소 안에서 실제로 끊어진 문서 참조
+### F. 저장소 안에서 확인한 제거 문서 흔적
 
 현재 이 작업복사본에는 아래 문서가 없다.
 
@@ -201,56 +186,43 @@ DB 실물 경로 분포 확인 결과:
 - `새컴퓨터_동일작업환경_세팅_프롬프트.md`
 - `codex_master_onprem_web_system_blueprint.md`
 
-그런데 `AGENTS.md` 는 이 문서들을 반복적으로 권위/참조 문서로 가리킨다.
+초기 조사 시점에는 `AGENTS.md` 와 `서버이식_오버레이_작업가이드.md` 에서 위 문서명을 직접 참조하고 있었다.
 
-- 근거:
-  - `AGENTS.md:24`
-  - `AGENTS.md:25`
-  - `AGENTS.md:65`
-  - `AGENTS.md:69`
-  - `AGENTS.md:77`
-  - `AGENTS.md:85`
-  - `AGENTS.md:103`
-  - `AGENTS.md:145`
-  - `AGENTS.md:425`
+후속 조치:
 
-또한 `서버이식_오버레이_작업가이드.md` 도 `central_server_deployment_plan_ko.md` 를 함께 읽으라고 적고 있다.
+- `AGENTS.md` 에서 위 문서들을 권위 체인에서 제거함
+- `서버이식_오버레이_작업가이드.md` 의 직접 참조를 현재 활성 권위 문서 표현으로 교체함
 
-- 근거: `서버이식_오버레이_작업가이드.md:90`
+현재 판정 / Current status:
 
-판정 / Status:
+- `RESOLVED_REFERENCE_CLEANUP`
 
-- `MISSING_DOC_REF`
+메모 / Note:
 
-영향 / Impact:
-
-- 사람/AI 모두 “권위 문서 체인”을 따라가려다 중간에서 끊긴다.
-- 이 저장소 단독으로 보면 운영 기준 문서가 비어 있는 상태다.
+- 이 세 문서는 이제 현 저장소 기준 권위 문서 체인에 포함되지 않는다.
 
 ## 3. 우선순위별 정리 대상 / Cleanup priority
 
-### 바로 삭제 검토 가능한 것
-
-다음은 **현재 조사 기준으로는 빈 폴더**다.
-
-- `06_★★★_KPI런타임/internal-server/var/files`
-- `06_★★★_KPI런타임/internal-server/var/prod/files/유틸리티`
-- `06_★★★_KPI런타임/internal-server/var/prod/files/2026`
-
-단, 삭제 전에 묶어서 확인할 것:
+### 이번 작업에서 실제 정리한 것
 
 - `backup-file-storage.ps1`
 - `restore-file-storage.ps1`
-- `backup-all.ps1`
 - `backup-retention.ps1`
 - `report-serverization-readiness.ps1`
+- `06_★★★_KPI런타임/internal-server/var/files`
+- `06_★★★_KPI런타임/internal-server/var/prod/files/유틸리티`
+- `06_★★★_KPI런타임/internal-server/var/prod/files/2026`
+- `06_★★★_KPI런타임/internal-server/var/codex-postgres` -> `archive/legacy-runtime/codex-postgres-2026-04-16`
 
-이 다섯 군데가 아직 예전 경로나 빈 경로를 보고 있기 때문에, 스크립트를 먼저 맞추지 않으면 “폴더는 지웠는데 운영 스크립트는 계속 옛 경로를 찾는” 상태가 된다.
+결과:
 
-### 삭제 전에 외부 확인이 반드시 필요한 것
+- 운영 스크립트는 이제 `KPI_STORAGE_ROOT` 기준 경로를 사용한다.
+- 빈 legacy 폴더 3개는 실제 삭제가 끝났다.
 
-- `06_★★★_KPI런타임/internal-server/var/codex-postgres`
-  - 코드 참조는 안 잡히지만 실데이터가 들어 있는 Postgres cluster 흔적이라 바로 지우면 안 됨
+### 최종 삭제 전에 운영 확인이 필요한 것
+
+- `archive/legacy-runtime/codex-postgres-2026-04-16`
+  - active tree 밖으로는 뺐지만, 최종 영구삭제 전에는 며칠 정도 운영 확인이 안전함
 
 ### 현재 유지해야 하는 것
 
@@ -258,37 +230,16 @@ DB 실물 경로 분포 확인 결과:
 - `06_★★★_KPI런타임/internal-server/var/prod/backups/runtime-snapshots`
 - `06_★★★_KPI런타임/internal-server/var/central-runtime`
 
-## 4. 권장 정리 순서 / Recommended cleanup order
+## 4. 남은 정리 순서 / Remaining cleanup order
 
-1. 운영 권위 경로를 명시적으로 확정
-   - files: `var/prod/files`
-   - runtime snapshot backups: `var/prod/backups/runtime-snapshots`
-   - stdout/stderr logs: `var/logs` 유지 여부 또는 `var/prod/logs` 통합 여부
+1. `archive/legacy-runtime/codex-postgres-2026-04-16` 최종 삭제 여부 결정
+2. 로그 경로를 `var/logs` 유지로 둘지, `var/prod/logs` 로 통합할지 결정
 
-2. Windows 운영 스크립트 경로 정리
-   - `backup-file-storage.ps1`
-   - `restore-file-storage.ps1`
-   - `backup-all.ps1`
-   - `backup-retention.ps1`
-   - `report-serverization-readiness.ps1`
-   - 필요하면 `start-server.ps1` 로그 경로도 함께 결정
+## 5. 이번 정리에서 하지 않은 것 / Not changed in this cleanup
 
-3. 빈 레거시 폴더 삭제
-   - `var/files`
-   - `var/prod/files/유틸리티`
-   - `var/prod/files/2026`
-
-4. 문서 참조 정리
-   - 권위 문서가 실제로 이 저장소에 있어야 하는지
-   - 아니면 `AGENTS.md` 에서 외부 저장소 의존으로 명시할지 결정
-
-5. `var/codex-postgres` 용도 확인 후 보관/삭제 결정
-
-## 5. 이번 조사에서 하지 않은 것 / Not changed in this audit
-
-- 코드 수정 없음
-- 폴더 삭제 없음
 - DB 데이터 변경 없음
-- 백업/복원 스크립트 실행 없음
+- `archive/legacy-runtime/codex-postgres-2026-04-16` 영구삭제 없음
+- 실제 file-storage restore 실행 없음
+- 로그 경로 통합 작업 없음
 
-즉, 이 문서는 **현황 조사 문서**이며 아직 정리 작업은 시작하지 않았다.
+즉, 이번 정리는 **운영 스크립트의 저장 루트 정합성 확보 + 빈 legacy 폴더 삭제 + 고아 Postgres 흔적의 archive 격리 이동**까지만 진행했다.

@@ -9,6 +9,7 @@
     "dev": "node --watch src/server.js",
     "backup:runtime-snapshot": "node src/scripts/backupRuntimeSnapshot.js",
     "db:migrate": "node src/scripts/migrate.js",
+    "migrate:audit-lux-evidence": "node src/scripts/migrateAuditLuxEvidence.js",
     "migrate:metering-billing-docs": "node src/scripts/migrateMeteringBillingDocuments.js",
     "repair:metering-billing-storage": "node src/scripts/repairMeteringBillingDocumentStorage.js",
     "sessions:prune": "node src/scripts/pruneExpiredSessions.js",
