@@ -3,10 +3,8 @@ import {
   WORK_RUNTIME_MODULE_KEY
 } from '../lib/portal-data-registry.js';
 import { closePool } from '../db/pool.js';
-import { findModuleRecord, listModuleRecordsByModuleKey } from '../repositories/modules.js';
-
-const METERING_SHARED_STORE_MODULE_KEY = 'util_metering';
-const METERING_SHARED_STORE_RECORD_KEY = 'shared_store_v1';
+import { listModuleRecordsByModuleKey } from '../repositories/modules.js';
+import { loadMeteringAuthorityStore } from '../services/metering-authority.js';
 
 function normalizeText(value) {
   return String(value || '').trim();
@@ -161,8 +159,8 @@ function walkWorkLegacyAttachments(value, pathParts = [], found = []) {
 }
 
 async function main() {
-  const [meteringRecord, workRecords] = await Promise.all([
-    findModuleRecord(METERING_SHARED_STORE_MODULE_KEY, METERING_SHARED_STORE_RECORD_KEY),
+  const [meteringState, workRecords] = await Promise.all([
+    loadMeteringAuthorityStore(),
     listModuleRecordsByModuleKey(WORK_RUNTIME_MODULE_KEY)
   ]);
 
@@ -179,10 +177,11 @@ async function main() {
     JSON.stringify(
       {
         ok: true,
-        metering: meteringRecord
+        metering: meteringState
           ? {
-              recordVersion: meteringRecord.version,
-              ...scanMeteringBillingDocuments(meteringRecord.payload)
+              recordVersion: meteringState.meta?.version || 0,
+              recordVersions: meteringState.meta?.recordVersions || null,
+              ...scanMeteringBillingDocuments(meteringState.store)
             }
           : { missing: true },
         workRuntime: {

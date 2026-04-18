@@ -1,9 +1,12 @@
 import { sendJson } from '../lib/http.js';
 import { resolveManagedDocumentStorageFolder } from '../lib/document-storage.js';
 import { PERMISSION_KEYS } from '../lib/permission-registry.js';
-import { findModuleRecord } from '../repositories/modules.js';
 import { saveBase64Document } from '../services/files.js';
-import { saveModuleRecord } from '../services/module-records.js';
+import {
+  METERING_MODULE_KEY,
+  loadMeteringAuthorityStore,
+  saveMeteringAuthorityStore,
+} from '../services/metering-authority.js';
 import {
   assertOpenPermission,
   normalizeExpectedVersion,
@@ -12,21 +15,9 @@ import {
   serializeServerUrlPath
 } from './route-context.js';
 
-const METERING_SHARED_STORE_MODULE_KEY = 'util_metering';
-const METERING_SHARED_STORE_RECORD_KEY = 'shared_store_v1';
 const METERING_SHARED_STORE_PERMISSION_KEY = PERMISSION_KEYS.UTIL_METERING_APP;
 const METERING_BILLING_DOCUMENT_OWNER_DOMAIN = 'metering.billing_document';
 const METERING_BILLING_DOCUMENT_FILE_CATEGORY = 'billing_document';
-
-function getMeteringSharedStoreMeta(record) {
-  return {
-    moduleKey: record.module_key,
-    recordKey: record.record_key,
-    permissionKey: record.permission_key,
-    version: record.version,
-    updatedAt: record.updated_at
-  };
-}
 
 function buildMeteringBillingOwnerKey(resourceType, monthValue, scopeKey) {
   return [normalizeText(resourceType || 'electric'), normalizeText(monthValue), normalizeText(scopeKey || 'default')]
@@ -75,7 +66,7 @@ export async function handleBillingDocumentUpload(context) {
     mimeType,
     base64Data,
     metadata: {
-      moduleKey: METERING_SHARED_STORE_MODULE_KEY,
+      moduleKey: METERING_MODULE_KEY,
       monthValue,
       resourceType,
       scopeKey,
@@ -104,11 +95,8 @@ export async function handleSharedStoreGet(context) {
   const { res, auth } = context;
   await assertOpenPermission(METERING_SHARED_STORE_PERMISSION_KEY, auth, 'read');
 
-  const record = await findModuleRecord(
-    METERING_SHARED_STORE_MODULE_KEY,
-    METERING_SHARED_STORE_RECORD_KEY
-  );
-  if (!record) {
+  const authorityState = await loadMeteringAuthorityStore();
+  if (!authorityState) {
     sendJson(res, 404, {
       ok: false,
       error: 'not_found'
@@ -118,8 +106,8 @@ export async function handleSharedStoreGet(context) {
 
   sendJson(res, 200, {
     ok: true,
-    store: record.payload || {},
-    meta: getMeteringSharedStoreMeta(record)
+    store: authorityState.store || {},
+    meta: authorityState.meta || null
   });
 }
 
@@ -128,36 +116,27 @@ export async function handleSharedStorePut(context) {
   await assertOpenPermission(METERING_SHARED_STORE_PERMISSION_KEY, auth, 'write');
 
   const body = await parseBody(req);
-  let nextRecord;
   try {
-    nextRecord = await saveModuleRecord({
-      moduleKey: METERING_SHARED_STORE_MODULE_KEY,
-      recordKey: METERING_SHARED_STORE_RECORD_KEY,
-      permissionKey: METERING_SHARED_STORE_PERMISSION_KEY,
-      payload: body.store ?? {},
+    const nextState = await saveMeteringAuthorityStore({
+      store: body.store ?? {},
       updatedByUserId: auth?.user?.id || null,
-      expectedVersion: normalizeExpectedVersion(body.expectedVersion)
+      expectedVersion: normalizeExpectedVersion(body.expectedVersion),
+      expectedRecordVersions: body.expectedRecordVersions
+    });
+
+    sendJson(res, 200, {
+      ok: true,
+      meta: nextState.meta || null
     });
   } catch (error) {
     if (error?.message === 'version_conflict') {
       sendJson(res, 409, {
         ok: false,
         error: 'version_conflict',
-        currentMeta: getMeteringSharedStoreMeta(error.currentRecord || {
-          module_key: METERING_SHARED_STORE_MODULE_KEY,
-          record_key: METERING_SHARED_STORE_RECORD_KEY,
-          permission_key: METERING_SHARED_STORE_PERMISSION_KEY,
-          version: error.currentVersion || 0,
-          updated_at: null
-        })
+        currentMeta: error.currentMeta || null
       });
       return;
     }
     throw error;
   }
-
-  sendJson(res, 200, {
-    ok: true,
-    meta: getMeteringSharedStoreMeta(nextRecord)
-  });
 }

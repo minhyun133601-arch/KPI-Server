@@ -1,4 +1,6 @@
-param()
+param(
+  [switch]$SkipServerRestart
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -129,13 +131,17 @@ $removedPid = Remove-StalePostmasterPidFile
 Write-Host 'Initializing PostgreSQL runtime and environment...'
 & $initializeScriptPath
 
-Write-Host 'Starting KPI internal server again...'
-& $startServerScriptPath -ForceRestart
-Wait-ForHttpEndpoint -Uri $healthUrl
+if ($SkipServerRestart) {
+  Write-Host 'Recovery runtime reset completed. Server restart was skipped.'
+} else {
+  Write-Host 'Starting KPI internal server again...'
+  & $startServerScriptPath -ForceRestart
+  Wait-ForHttpEndpoint -Uri $healthUrl
 
-Write-Host 'Recovery completed.'
-Write-Host "Health: $healthUrl"
-Write-Host "Login: $loginUrl"
+  Write-Host 'Recovery completed.'
+  Write-Host "Health: $healthUrl"
+  Write-Host "Login: $loginUrl"
+}
 if ($removedPid) {
   Write-Host 'A stale postmaster.pid file was cleaned during recovery.'
 }

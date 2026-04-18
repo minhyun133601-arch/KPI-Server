@@ -18,7 +18,7 @@ const MODULE_RECORD_LABELS = Object.freeze({
   'portal_data:util_electric_data': '\uC804\uAE30 \uC0AC\uC6A9\uB7C9',
   'portal_data:util_gas_data': '\uAC00\uC2A4 \uC0AC\uC6A9\uB7C9',
   'portal_data:util_wastewater_data': '\uD3D0\uC218 \uC0AC\uC6A9\uB7C9',
-  'portal_data:util_production_daily': '\uC77C\uC77C \uC0DD\uC0B0',
+  'util_production:daily_state_v1': '\uC77C\uC77C \uC0DD\uC0B0 \uAD8C\uC704\uBCF8',
   'portal_data:audit_lux': '\uC870\uB3C4 \uC810\uAC80',
   'portal_data:audit_regulation': '\uBC95\uC815 \uC810\uAC80',
   'portal_data:work_kim_mingyu': '\uAE40\uBBFC\uADDC \uC791\uC5C5 \uAE30\uB85D',
@@ -33,7 +33,12 @@ const MODULE_RECORD_LABELS = Object.freeze({
   'work_runtime:work_team_calendar_team1_part2': '\uD3001 \uC791\uC5C5 \uCE98\uB9B0\uB354 2',
   'work_runtime:work_team_calendar_team2': '\uD3002 \uC791\uC5C5 \uCE98\uB9B0\uB354',
   'work_runtime:work_team_calendar_team3': '\uD3003 \uC791\uC5C5 \uCE98\uB9B0\uB354',
-  'util_metering:shared_store_v1': '\uAC80\uCE68 \uD1B5\uD569 \uC800\uC7A5'
+  'util_metering:shared_store_v1': '\uAC80\uCE68 \uD1B5\uD569 \uC800\uC7A5 (\uB808\uAC70\uC2DC)',
+  'util_metering:ui_state_v1': '\uAC80\uCE68 \uC571 \uC0C1\uD0DC',
+  'util_metering:electric_v1': '\uAC80\uCE68 \uC804\uAE30 \uAD8C\uC704\uBCF8',
+  'util_metering:gas_v1': '\uAC80\uCE68 \uAC00\uC2A4 \uAD8C\uC704\uBCF8',
+  'util_metering:waste_v1': '\uAC80\uCE68 \uD3D0\uC218 \uAD8C\uC704\uBCF8',
+  'util_metering:production_v1': '\uAC80\uCE68 \uC0DD\uC0B0\uB7C9 \uAD8C\uC704\uBCF8'
 });
 
 function normalizeLimit(limit) {

@@ -73,3 +73,45 @@ export async function upsertModuleRecord({
     return result.rows[0];
   });
 }
+
+export async function deleteModuleRecord({
+  moduleKey,
+  recordKey,
+  expectedVersion
+}) {
+  return withTransaction(async (client) => {
+    await client.query('select pg_advisory_xact_lock(hashtextextended($1, 0))', [
+      `${moduleKey}:${recordKey}`
+    ]);
+
+    const currentResult = await client.query(
+      `select id, module_key, record_key, permission_key, payload, version, created_at, updated_at, updated_by_user_id
+       from app_module_records
+       where module_key = $1 and record_key = $2
+       for update`,
+      [moduleKey, recordKey]
+    );
+    const currentRecord = currentResult.rows[0] || null;
+    const currentVersion = Number.isInteger(currentRecord?.version) ? currentRecord.version : 0;
+
+    if (Number.isInteger(expectedVersion) && expectedVersion >= 0 && currentVersion !== expectedVersion) {
+      const error = new Error('version_conflict');
+      error.currentRecord = currentRecord;
+      error.currentVersion = currentVersion;
+      throw error;
+    }
+
+    if (!currentRecord) {
+      return null;
+    }
+
+    const result = await client.query(
+      `delete from app_module_records
+       where module_key = $1 and record_key = $2
+       returning id, module_key, record_key, permission_key, payload, version, created_at, updated_at, updated_by_user_id`,
+      [moduleKey, recordKey]
+    );
+
+    return result.rows[0] || null;
+  });
+}

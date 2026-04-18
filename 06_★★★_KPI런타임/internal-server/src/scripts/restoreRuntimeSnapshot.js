@@ -11,11 +11,17 @@ const SNAPSHOT_TABLES = Object.freeze([
   'app_sessions',
   'app_module_records',
   'app_documents',
+  'util_production_daily_state',
+  'util_production_daily_entries',
+  'util_production_daily_archives',
   'app_audit_log'
 ]);
 
 const TRUNCATE_ORDER = Object.freeze([
   'app_audit_log',
+  'util_production_daily_entries',
+  'util_production_daily_archives',
+  'util_production_daily_state',
   'app_documents',
   'app_module_records',
   'app_sessions',
@@ -33,6 +39,9 @@ const INSERT_ORDER = Object.freeze([
   'app_sessions',
   'app_module_records',
   'app_documents',
+  'util_production_daily_state',
+  'util_production_daily_entries',
+  'util_production_daily_archives',
   'app_audit_log'
 ]);
 

@@ -81,6 +81,36 @@ function Wait-ForPostgres {
   throw "PostgreSQL on port $postgresPort did not become ready in time."
 }
 
+function Test-PostgresReady {
+  & $pgIsReadyPath -h 127.0.0.1 -p $postgresPort 2>$null | Out-Null
+  return ($LASTEXITCODE -eq 0)
+}
+
+function Ensure-PostgresStarted {
+  & $pgCtlPath -D $postgresDataDir status 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) {
+    return
+  }
+
+  if (Test-PostgresReady) {
+    Write-Warning "PostgreSQL is already accepting connections on port $postgresPort even though pg_ctl status did not report it as running."
+    return
+  }
+
+  & $pgCtlPath -D $postgresDataDir -l $postgresLogFile -o "-p $postgresPort" start | Out-Null
+  $startExitCode = $LASTEXITCODE
+  if ($startExitCode -eq 0) {
+    return
+  }
+
+  try {
+    Wait-ForPostgres -TimeoutSeconds 10
+    Write-Warning "pg_ctl start returned exit code $startExitCode, but PostgreSQL became ready on port $postgresPort."
+  } catch {
+    throw "Local KPI PostgreSQL failed to start cleanly on port $postgresPort (pg_ctl exit code $startExitCode)."
+  }
+}
+
 function Wait-ForHttpEndpoint {
   param(
     [string]$Uri,
@@ -148,10 +178,7 @@ if (-not (Test-Path (Join-Path $postgresDataDir 'PG_VERSION'))) {
 }
 
 $postgresLogFile = Join-Path $postgresLogDir 'postgres.log'
-$statusOutput = & $pgCtlPath -D $postgresDataDir status 2>$null
-if ($LASTEXITCODE -ne 0) {
-  & $pgCtlPath -D $postgresDataDir -l $postgresLogFile -o "-p $postgresPort" start | Out-Null
-}
+Ensure-PostgresStarted
 
 Wait-ForPostgres
 

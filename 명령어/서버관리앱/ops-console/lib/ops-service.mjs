@@ -3,6 +3,7 @@ import path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import {
+  appLogsDir,
   commandsRoot,
   envFilePath,
   internalServerDir,
@@ -17,6 +18,12 @@ import { commandRegistry } from './command-registry.mjs';
 
 const execFileAsync = promisify(execFile);
 const scheduledStartTaskName = 'KPI Internal Server Scheduled Start';
+const serverActionLogFile = path.join(appLogsDir, 'server-actions.log');
+const postgresDataDir = path.join(internalServerDir, 'var', 'central-runtime', 'postgres', 'data');
+const postmasterPidPath = path.join(postgresDataDir, 'postmaster.pid');
+const postgresPort = 5434;
+const serverActionStaleTimeoutMs = 10 * 60 * 1000;
+let pendingServerAction = null;
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -165,6 +172,341 @@ function removeFileIfExists(filePath) {
   fs.unlinkSync(filePath);
 }
 
+function appendServerActionLog(message) {
+  const line = `${new Date().toISOString()} ${message}\n`;
+  fs.appendFileSync(serverActionLogFile, line, 'utf8');
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function buildServerActionSnapshot() {
+  if (!pendingServerAction) {
+    return {
+      active: false,
+      logFile: serverActionLogFile
+    };
+  }
+
+  return {
+    active: Boolean(pendingServerAction.active),
+    key: pendingServerAction.key,
+    pid: pendingServerAction.pid,
+    startedAt: pendingServerAction.startedAt,
+    completedAt: pendingServerAction.completedAt || '',
+    summary: pendingServerAction.summary,
+    lastExitCode: pendingServerAction.lastExitCode ?? null,
+    error: pendingServerAction.error || '',
+    logFile: serverActionLogFile
+  };
+}
+
+function getServerActionSuccessSummary(actionKey) {
+  return actionKey === 'server.recover'
+    ? '복구 재시작이 완료되었습니다.'
+    : 'KPI 서버가 준비되었습니다.';
+}
+
+function getServerActionFailureSummary(actionKey) {
+  return actionKey === 'server.recover'
+    ? '복구 재시작이 실패했습니다.'
+    : '서버 시작이 실패했습니다.';
+}
+
+function finishPendingServerAction(actionIdOrUpdates = {}, maybeUpdates = {}) {
+  const expectedActionId = typeof actionIdOrUpdates === 'string' ? actionIdOrUpdates : '';
+  const updates = expectedActionId ? maybeUpdates : actionIdOrUpdates;
+  if (!pendingServerAction) {
+    return false;
+  }
+
+  if (expectedActionId && pendingServerAction.id !== expectedActionId) {
+    return false;
+  }
+
+  pendingServerAction = {
+    ...pendingServerAction,
+    active: false,
+    completedAt: updates.completedAt || new Date().toISOString(),
+    lastExitCode: updates.lastExitCode ?? pendingServerAction.lastExitCode ?? null,
+    summary: updates.summary || pendingServerAction.summary,
+    error: updates.error || ''
+  };
+
+  return true;
+}
+
+function updatePendingServerAction(actionIdOrUpdates = {}, maybeUpdates = {}) {
+  const expectedActionId = typeof actionIdOrUpdates === 'string' ? actionIdOrUpdates : '';
+  const updates = expectedActionId ? maybeUpdates : actionIdOrUpdates;
+  if (!pendingServerAction) {
+    return false;
+  }
+
+  if (expectedActionId && pendingServerAction.id !== expectedActionId) {
+    return false;
+  }
+
+  pendingServerAction = {
+    ...pendingServerAction,
+    ...updates
+  };
+
+  return true;
+}
+
+function appendScriptResultToServerActionLog(actionKey, result) {
+  if (result?.stdout) {
+    appendServerActionLog(`[${actionKey}] stdout\n${result.stdout}`);
+  }
+
+  if (result?.stderr) {
+    appendServerActionLog(`[${actionKey}] stderr\n${result.stderr}`);
+  }
+}
+
+async function waitForServerHealth(timeoutMs = 120000, pollMs = 2000) {
+  const { healthUrl } = getServerUrls();
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const health = await requestJson(healthUrl);
+    if (health.ok) {
+      return health;
+    }
+
+    await sleep(pollMs);
+  }
+
+  throw new Error('server_health_timeout');
+}
+
+async function resolveStalePendingServerActionIfNeeded() {
+  if (!pendingServerAction?.active) {
+    return;
+  }
+
+  const startedAtMs = Date.parse(pendingServerAction.startedAt || '');
+  if (!Number.isFinite(startedAtMs)) {
+    return;
+  }
+
+  if ((Date.now() - startedAtMs) < serverActionStaleTimeoutMs) {
+    return;
+  }
+
+  const actionId = pendingServerAction.id;
+  const actionKey = pendingServerAction.key;
+  const health = await requestJson(getServerUrls().healthUrl);
+  if (health.ok) {
+    appendServerActionLog(`[${actionKey}] auto-finished after stale timeout because server health is ok`);
+    finishPendingServerAction(actionId, {
+      summary: getServerActionSuccessSummary(actionKey),
+      lastExitCode: 0,
+      error: ''
+    });
+    return;
+  }
+
+  const postgresState = await getPostgresReadyState();
+  appendServerActionLog(
+    `[${actionKey}] timed out after ${serverActionStaleTimeoutMs}ms (serverHealthy=${health.ok} postgresReady=${postgresState.ok})`
+  );
+  finishPendingServerAction(actionId, {
+    summary: `${getServerActionFailureSummary(actionKey)} 시간 초과`,
+    lastExitCode: -1,
+    error: 'server_action_timeout'
+  });
+}
+
+async function waitForPostgresStopped(timeoutMs = 30000, pollMs = 1000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const postgresState = await getPostgresReadyState();
+    const listening = await isPortListening(postgresPort);
+    if (!postgresState.ok && !listening) {
+      return;
+    }
+
+    await sleep(pollMs);
+  }
+
+  throw new Error('postgres_stop_timeout');
+}
+
+async function processExistsWindows(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) {
+    return false;
+  }
+
+  try {
+    const result = await runPowerShellCommand(
+      `$process = Get-Process -Id ${pid} -ErrorAction SilentlyContinue; if ($process) { 'true' } else { 'false' }`,
+      { timeoutMs: 10000 }
+    );
+    return result.stdout.trim().toLowerCase() === 'true';
+  } catch {
+    return false;
+  }
+}
+
+async function isPortListening(port) {
+  try {
+    const result = await runPowerShellCommand(
+      `$listener = Get-NetTCPConnection -State Listen -LocalPort ${port} -ErrorAction SilentlyContinue; if ($listener) { 'true' } else { 'false' }`,
+      { timeoutMs: 10000 }
+    );
+    return result.stdout.trim().toLowerCase() === 'true';
+  } catch {
+    return false;
+  }
+}
+
+async function removeStalePostmasterPidIfSafe() {
+  if (!fs.existsSync(postmasterPidPath)) {
+    return false;
+  }
+
+  const postgresState = await getPostgresReadyState();
+  if (postgresState.ok) {
+    throw new Error('postgres_still_accepting_connections');
+  }
+
+  const firstPidLine = fs.readFileSync(postmasterPidPath, 'utf8')
+    .split(/\r?\n/)
+    .map((line) => String(line || '').trim())
+    .find(Boolean);
+  const parsedPid = Number.parseInt(firstPidLine || '', 10);
+  if (Number.isInteger(parsedPid) && parsedPid > 0 && await processExistsWindows(parsedPid)) {
+    throw new Error(`postmaster_pid_still_active_${parsedPid}`);
+  }
+
+  fs.unlinkSync(postmasterPidPath);
+  appendServerActionLog('[server.recover] removed stale postmaster.pid');
+  return true;
+}
+
+function startInternalServerProcess() {
+  const child = spawn(process.execPath, ['src/server.js'], {
+    cwd: internalServerDir,
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+    env: {
+      ...process.env,
+      KPI_ENV_FILE: envFilePath
+    }
+  });
+  child.unref();
+  appendServerActionLog(`[server-process] spawned pid=${child.pid}`);
+  return child.pid;
+}
+
+async function runStartLifecycleJob(actionKey, actionId) {
+  appendServerActionLog(`[${actionKey}] ensuring old listener is cleared`);
+  const stopResult = await runPowerShellScript(internalServerScripts.stopServer, ['-Environment', 'Production'], {
+    timeoutMs: 60000
+  });
+  appendScriptResultToServerActionLog(actionKey, stopResult);
+
+  appendServerActionLog(`[${actionKey}] initializing runtime`);
+  const initResult = await runPowerShellScript(internalServerScripts.initializeRuntime, [], {
+    timeoutMs: 180000
+  });
+  appendScriptResultToServerActionLog(actionKey, initResult);
+
+  const pid = startInternalServerProcess();
+  updatePendingServerAction(actionId, { pid });
+  await waitForServerHealth(120000);
+  appendServerActionLog(`[${actionKey}] health check passed`);
+  return pid;
+}
+
+async function runRecoverLifecycleJob(actionKey, actionId) {
+  appendServerActionLog(`[${actionKey}] stopping current node server`);
+  const stopServerResult = await runPowerShellScript(internalServerScripts.stopServer, ['-Environment', 'Production'], {
+    timeoutMs: 60000
+  });
+  appendScriptResultToServerActionLog(actionKey, stopServerResult);
+
+  appendServerActionLog(`[${actionKey}] stopping local postgres`);
+  const stopPostgresResult = await runPowerShellScript(internalServerScripts.stopLocalPostgres, [], {
+    timeoutMs: 60000
+  });
+  appendScriptResultToServerActionLog(actionKey, stopPostgresResult);
+
+  await sleep(2000);
+  await waitForPostgresStopped(30000);
+  await removeStalePostmasterPidIfSafe();
+
+  const clusterVersionFile = path.join(postgresDataDir, 'PG_VERSION');
+  if (!fs.existsSync(clusterVersionFile) || !fs.existsSync(envFilePath)) {
+    appendServerActionLog(`[${actionKey}] runtime bootstrap fallback`);
+    const initResult = await runPowerShellScript(internalServerScripts.initializeRuntime, [], {
+      timeoutMs: 180000
+    });
+    appendScriptResultToServerActionLog(actionKey, initResult);
+  } else {
+    appendServerActionLog(`[${actionKey}] starting local postgres cluster`);
+    const startPostgresResult = await startLocalPostgresCluster();
+    appendScriptResultToServerActionLog(actionKey, startPostgresResult);
+    await waitForPostgresReady(30000);
+  }
+
+  const pid = startInternalServerProcess();
+  updatePendingServerAction(actionId, { pid });
+  await waitForServerHealth(120000);
+  appendServerActionLog(`[${actionKey}] health check passed`);
+  return pid;
+}
+
+function launchTrackedServerAction(actionKey, jobRunner) {
+  if (pendingServerAction?.active) {
+    return {
+      alreadyRunning: true,
+      snapshot: buildServerActionSnapshot()
+    };
+  }
+
+  appendServerActionLog(`[${actionKey}] launch requested`);
+  const actionId = `${actionKey}:${Date.now()}`;
+  pendingServerAction = {
+    id: actionId,
+    active: true,
+    key: actionKey,
+    pid: null,
+    startedAt: new Date().toISOString(),
+    summary: `${actionKey === 'server.recover' ? '복구 재시작' : '서버 시작'} 요청이 진행 중입니다.`,
+    lastExitCode: null,
+    error: ''
+  };
+
+  void (async () => {
+    try {
+      await jobRunner(actionKey, actionId);
+      finishPendingServerAction(actionId, {
+        summary: getServerActionSuccessSummary(actionKey),
+        lastExitCode: 0
+      });
+    } catch (error) {
+      appendServerActionLog(`[${actionKey}] failed: ${error.message}`);
+      finishPendingServerAction(actionId, {
+        summary: getServerActionFailureSummary(actionKey),
+        lastExitCode: -1,
+        error: error.message
+      });
+    }
+  })();
+
+  return {
+    alreadyRunning: false,
+    snapshot: buildServerActionSnapshot()
+  };
+}
+
 function parseClockTime(timeText) {
   const match = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(String(timeText || '').trim());
   if (!match) {
@@ -247,11 +589,7 @@ async function requestJson(url) {
 }
 
 async function getPostgresReadyState() {
-  const candidates = [
-    'C:\\Program Files\\PostgreSQL\\17\\bin\\pg_isready.exe',
-    'C:\\Program Files\\PostgreSQL\\16\\bin\\pg_isready.exe'
-  ];
-  const executable = candidates.find((candidate) => fs.existsSync(candidate));
+  const executable = resolvePostgresBinary('pg_isready.exe');
   if (!executable) {
     return {
       ok: false,
@@ -260,7 +598,7 @@ async function getPostgresReadyState() {
   }
 
   try {
-    await execFileAsync(executable, ['-h', '127.0.0.1', '-p', '5434'], {
+    await execFileAsync(executable, ['-h', '127.0.0.1', '-p', String(postgresPort)], {
       cwd: internalServerDir,
       windowsHide: true,
       encoding: 'utf8',
@@ -268,14 +606,70 @@ async function getPostgresReadyState() {
     });
     return {
       ok: true,
-      message: '5434 포트 연결 가능'
+      message: `${postgresPort} 포트 연결 가능`
     };
   } catch (error) {
     return {
       ok: false,
-      message: '5434 포트 응답 없음'
+      message: `${postgresPort} 포트 응답 없음`
     };
   }
+}
+
+function resolvePostgresBinary(fileName) {
+  const candidates = [
+    path.join('C:\\Program Files\\PostgreSQL\\17\\bin', fileName),
+    path.join('C:\\Program Files\\PostgreSQL\\16\\bin', fileName)
+  ];
+  return candidates.find((candidate) => fs.existsSync(candidate)) || '';
+}
+
+async function waitForPostgresReady(timeoutMs = 30000, pollMs = 1000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const postgresState = await getPostgresReadyState();
+    if (postgresState.ok) {
+      return;
+    }
+
+    await sleep(pollMs);
+  }
+
+  throw new Error('postgres_start_timeout');
+}
+
+async function startLocalPostgresCluster() {
+  const pgCtlPath = resolvePostgresBinary('pg_ctl.exe');
+  if (!pgCtlPath) {
+    throw new Error('pg_ctl_not_found');
+  }
+
+  const postgresState = await getPostgresReadyState();
+  if (postgresState.ok) {
+    return {
+      stdout: `Local KPI PostgreSQL is already accepting connections on port ${postgresPort}.`,
+      stderr: ''
+    };
+  }
+
+  const child = spawn(
+    pgCtlPath,
+    ['-D', postgresDataDir, '-l', postgresLogFile, '-o', `-p ${postgresPort}`, 'start'],
+    {
+      cwd: internalServerDir,
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true
+    }
+  );
+  child.unref();
+  appendServerActionLog(`[postgres] spawned pg_ctl pid=${child.pid}`);
+  await waitForPostgresReady(30000);
+
+  return {
+    stdout: `Local KPI PostgreSQL started on port ${postgresPort}.`,
+    stderr: ''
+  };
 }
 
 async function getStartupTaskRegistered() {
@@ -372,6 +766,7 @@ async function listUsersWhenAvailable(postgresState) {
 }
 
 export async function getOverview() {
+  await resolveStalePendingServerActionIfNeeded();
   const urls = getServerUrls();
   const health = await requestJson(urls.healthUrl);
   const postgres = await getPostgresReadyState();
@@ -401,11 +796,13 @@ export async function getOverview() {
     postgres,
     computerSchedule,
     startupTaskRegistered,
+    serverAction: buildServerActionSnapshot(),
     users,
     usersError,
     envFileExists: fs.existsSync(envFilePath),
     commandRegistry,
     logFiles: {
+      serverActions: serverActionLogFile,
       serverStdout: path.join(internalServerLogsDir, 'server.stdout.log'),
       serverStderr: path.join(internalServerLogsDir, 'server.stderr.log'),
       postgres: postgresLogFile
@@ -443,6 +840,7 @@ export async function getDbTableList() {
 
 export async function getLogContent(logKey) {
   const logMap = {
+    serverActions: serverActionLogFile,
     serverStdout: path.join(internalServerLogsDir, 'server.stdout.log'),
     serverStderr: path.join(internalServerLogsDir, 'server.stderr.log'),
     postgres: postgresLogFile
@@ -460,13 +858,26 @@ export async function getLogContent(logKey) {
 }
 
 async function actionServerStart() {
-  const result = await runPowerShellScript(internalServerScripts.startCentralStack, [], {
-    timeoutMs: 180000
-  });
+  await resolveStalePendingServerActionIfNeeded();
+  const launched = launchTrackedServerAction('server.start', runStartLifecycleJob);
+  if (launched.alreadyRunning) {
+    return {
+      ok: true,
+      summary: '이미 서버 작업이 진행 중입니다.',
+      data: {
+        serverAction: launched.snapshot
+      },
+      output: `현재 작업: ${launched.snapshot.key}\n로그: ${launched.snapshot.logFile}`
+    };
+  }
+
   return {
     ok: true,
-    summary: 'KPI 서버 시작 요청이 완료되었습니다.',
-    output: [result.stdout, result.stderr].filter(Boolean).join('\n')
+    summary: 'KPI 서버 시작 요청을 보냈습니다.',
+    data: {
+      serverAction: launched.snapshot
+    },
+    output: `상태를 자동으로 확인합니다.\n로그: ${launched.snapshot.logFile}`
   };
 }
 
@@ -487,13 +898,26 @@ async function actionServerStop() {
 }
 
 async function actionServerRecover() {
-  const result = await runPowerShellScript(internalServerScripts.recoverCentralStack, [], {
-    timeoutMs: 240000
-  });
+  await resolveStalePendingServerActionIfNeeded();
+  const launched = launchTrackedServerAction('server.recover', runRecoverLifecycleJob);
+  if (launched.alreadyRunning) {
+    return {
+      ok: true,
+      summary: '이미 서버 작업이 진행 중입니다.',
+      data: {
+        serverAction: launched.snapshot
+      },
+      output: `현재 작업: ${launched.snapshot.key}\n로그: ${launched.snapshot.logFile}`
+    };
+  }
+
   return {
     ok: true,
-    summary: '복구 재시작이 완료되었습니다.',
-    output: [result.stdout, result.stderr].filter(Boolean).join('\n')
+    summary: '복구 재시작 요청을 보냈습니다.',
+    data: {
+      serverAction: launched.snapshot
+    },
+    output: `상태를 자동으로 확인합니다.\n로그: ${launched.snapshot.logFile}`
   };
 }
 

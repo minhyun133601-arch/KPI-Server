@@ -1,3 +1,7 @@
+-- purpose: initialize baseline auth, permission, document, and session tables for the KPI internal server.
+-- rollback_note: treat this as forward-only on shared environments; recover by restoring a pre-migration database snapshot instead of dropping live baseline tables.
+-- recovery_note: after fixing the underlying failure, rerun `npm run db:migrate`; the statements in this file are idempotent.
+
 create extension if not exists pgcrypto;
 
 create table if not exists app_users (

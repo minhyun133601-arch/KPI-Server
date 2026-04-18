@@ -9,7 +9,8 @@ try {
       {
         ok: true,
         databaseUrl: config.databaseUrl,
-        applied: result.applied
+        applied: result.applied,
+        adopted: result.adopted
       },
       null,
       2

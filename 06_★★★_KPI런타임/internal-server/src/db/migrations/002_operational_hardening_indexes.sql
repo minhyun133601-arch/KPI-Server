@@ -1,3 +1,7 @@
+-- purpose: add operational indexes that keep session, audit, permission, and document lookups predictable under authenticated runtime load.
+-- rollback_note: if an index introduces a confirmed query-plan regression, drop only the affected index after checking that no later migration depends on it.
+-- recovery_note: restore the pre-migration snapshot for full rollback, or rerun `npm run db:migrate` after fixing permissions or lock contention.
+
 create index if not exists idx_app_sessions_user_id
   on app_sessions(user_id);
 

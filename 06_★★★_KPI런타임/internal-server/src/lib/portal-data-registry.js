@@ -5,26 +5,6 @@ export const WORK_RUNTIME_MODULE_KEY = 'work_runtime';
 
 export const CURRENT_PORTAL_DATA_RECORDS = Object.freeze([
   {
-    recordKey: 'util_electric_data',
-    permissionKey: PERMISSION_KEYS.UTIL_ENERGY_ELECTRIC,
-    sourceKey: 'util_electric_data'
-  },
-  {
-    recordKey: 'util_gas_data',
-    permissionKey: PERMISSION_KEYS.UTIL_ENERGY_GAS,
-    sourceKey: 'util_gas_data'
-  },
-  {
-    recordKey: 'util_wastewater_data',
-    permissionKey: PERMISSION_KEYS.UTIL_ENERGY_WASTEWATER,
-    sourceKey: 'util_wastewater_data'
-  },
-  {
-    recordKey: 'util_production_daily',
-    permissionKey: PERMISSION_KEYS.UTIL_PRODUCTION_DAILY,
-    sourceKey: 'util_production_daily'
-  },
-  {
     recordKey: 'audit_lux',
     permissionKey: PERMISSION_KEYS.AUDIT_LUX,
     sourceKey: 'audit_lux'

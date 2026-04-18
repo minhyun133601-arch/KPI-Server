@@ -10,6 +10,7 @@ import { handleGetModuleRecord, handleUpsertModuleRecord } from './routes/module
 import { handleOwnerAccessOverview } from './routes/owner-routes.js';
 import { getRouteErrorStatusCode } from './routes/route-errors.js';
 import { handleBillingDocumentUpload, handleSharedStoreGet, handleSharedStorePut } from './routes/shared-store-routes.js';
+import { handleUtilProductionDailyGet, handleUtilProductionDailyPut } from './routes/util-production-routes.js';
 
 function createRouteKey(method, pathName) {
   return `${method} ${pathName}`;
@@ -40,6 +41,8 @@ const EXACT_ROUTE_HANDLERS = new Map([
   ['GET /api/admin/users', handleListUsers],
   ['POST /api/admin/users', handleCreateUser],
   [`GET ${PORTAL_DATA_BOOTSTRAP_PATH}`, handlePortalDataBootstrap],
+  ['GET /api/util-production/daily', handleUtilProductionDailyGet],
+  ['PUT /api/util-production/daily', handleUtilProductionDailyPut],
   ['POST /api/billing-document', handleBillingDocumentUpload],
   ['GET /api/shared-store', handleSharedStoreGet],
   ['PUT /api/shared-store', handleSharedStorePut],

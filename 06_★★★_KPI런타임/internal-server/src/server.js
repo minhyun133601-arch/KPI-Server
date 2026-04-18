@@ -29,6 +29,13 @@ async function start() {
       if (result.applied.length) {
         console.log(`[kpi-internal-server] applied migrations: ${result.applied.join(', ')}`);
       }
+      if (result.adopted.length) {
+        console.log(
+          `[kpi-internal-server] adopted legacy migration ids: ${result.adopted
+            .map((item) => `${item.legacyId} -> ${item.canonicalId}`)
+            .join(', ')}`
+        );
+      }
     } catch (error) {
       console.warn(`[kpi-internal-server] migration skipped or failed: ${error.message}`);
     }
