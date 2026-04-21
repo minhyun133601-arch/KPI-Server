@@ -1,4 +1,4 @@
-﻿(function initKpiWorkHistoryCore() {
+(function initKpiWorkHistoryCore() {
     const history = window.KpiWorkHistory || {};
 
     const DATA_KEY = 'work_history_records';
@@ -25,15 +25,49 @@
             fileCategory: 'billing_pdf'
         },
         report: {
-            label: '보고서',
+            label: '보고자료',
             fileCategory: 'report_pdf'
         }
     });
+    const WORK_HISTORY_ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
+    const WORK_HISTORY_ATTACHMENT_RULES = Object.freeze({
+        '.pdf': Object.freeze(['application/pdf']),
+        '.xls': Object.freeze(['application/vnd.ms-excel']),
+        '.xlsx': Object.freeze(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
+        '.ppt': Object.freeze(['application/vnd.ms-powerpoint']),
+        '.pptx': Object.freeze(['application/vnd.openxmlformats-officedocument.presentationml.presentation']),
+        '.doc': Object.freeze(['application/msword']),
+        '.docx': Object.freeze(['application/vnd.openxmlformats-officedocument.wordprocessingml.document']),
+        '.hwp': Object.freeze(['application/x-hwp', 'application/haansofthwp']),
+        '.hwpx': Object.freeze(['application/x-hwp+zip', 'application/haansofthwpx'])
+    });
+    const WORK_HISTORY_ATTACHMENT_ALLOWED_EXTENSIONS = Object.freeze(Object.keys(WORK_HISTORY_ATTACHMENT_RULES));
+    const WORK_HISTORY_ATTACHMENT_EXTENSION_BY_MIME = Object.freeze(
+        Object.fromEntries(
+            WORK_HISTORY_ATTACHMENT_ALLOWED_EXTENSIONS.flatMap((ext) => (
+                (WORK_HISTORY_ATTACHMENT_RULES[ext] || []).map((mimeType) => [mimeType, ext])
+            ))
+        )
+    );
+    const WORK_HISTORY_ATTACHMENT_ACCEPT = WORK_HISTORY_ATTACHMENT_ALLOWED_EXTENSIONS.join(',');
     const KPI_FLAG_LABEL = '★';
     const KPI_FLAG_PILL_LABEL = '★';
     const IMPORTANT_FLAG_LABEL = '★';
     const IMPORTANT_FLAG_PILL_LABEL = '★';
-    const ACTUAL_ACHIEVEMENT_RULES = Object.freeze([]);
+    const ACTUAL_ACHIEVEMENT_RULES = Object.freeze([
+        Object.freeze({
+            team: 'team2',
+            startDate: '2026-02-22',
+            endDate: '2026-02-22',
+            workIncludes: Object.freeze(['배합실 무중력혼합기 핀밀 축 점검'])
+        }),
+        Object.freeze({
+            team: 'team1part2',
+            startDate: '2026-03-31',
+            endDate: '2026-03-31',
+            workIncludes: Object.freeze(['건조기 V/F 안전발판 개선'])
+        })
+    ]);
     const RECORD_CATEGORY_GROUP_ORDER = Object.freeze(['kpi', 'focus', 'report']);
     const RECORD_CATEGORY_GROUPS = Object.freeze({
         kpi: Object.freeze({
@@ -117,6 +151,27 @@
 
     function escapeAttribute(value) {
         return escapeHtml(value).replace(/"/g, '&quot;');
+    }
+
+    function getWorkHistoryAttachmentExtension(fileName, mimeType = '') {
+        const normalizedName = String(fileName || '').trim().toLowerCase();
+        const normalizedMimeType = String(mimeType || '').trim().toLowerCase();
+        const nameMatch = normalizedName.match(/(\.[a-z0-9]{1,16})$/);
+        const extFromName = String(nameMatch?.[1] || '').trim();
+        if (WORK_HISTORY_ATTACHMENT_ALLOWED_EXTENSIONS.includes(extFromName)) {
+            return extFromName;
+        }
+        return WORK_HISTORY_ATTACHMENT_EXTENSION_BY_MIME[normalizedMimeType] || '';
+    }
+
+    function validateWorkHistoryAttachment(file) {
+        if (!(file instanceof File)) {
+            return 'invalid_file';
+        }
+        if (Number(file.size || 0) > WORK_HISTORY_ATTACHMENT_MAX_BYTES) {
+            return 'file_too_large';
+        }
+        return getWorkHistoryAttachmentExtension(file.name, file.type) ? '' : 'unsupported_type';
     }
 
     function normalizeCost(value) {
@@ -633,7 +688,7 @@
         return `${DATA_KEY}:${teamKey}:${slotKey}:${dateKey}:${nonce}`;
     }
 
-    function formatAttachmentFileName(context, slotMeta, fallbackName) {
+    function formatAttachmentFileName(context, slotMeta, fallbackName, mimeType = '') {
         const teamKey = String(context?.team || '').trim();
         const teamLabel = TeamInfo[teamKey]?.name || teamKey || '팀';
         const startDate = String(context?.startDate || '').trim();
@@ -644,7 +699,8 @@
         const slotLabel = String(slotMeta?.label || '').trim() || '첨부';
         const nameBody = `${teamLabel} ${dateLabel} ${slotLabel}`.trim();
         const safeBody = nameBody.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_');
-        return `${safeBody}.pdf`;
+        const ext = getWorkHistoryAttachmentExtension(fallbackName, mimeType);
+        return `${safeBody}${ext || ''}`;
     }
 
     async function uploadPendingAttachments(files, context = {}) {
@@ -660,12 +716,12 @@
         const slotMeta = ATTACHMENT_SLOT_META[attachmentType] || ATTACHMENT_SLOT_META.report;
         const uploaded = [];
         for (const file of files) {
-            const originalName = formatAttachmentFileName(context, slotMeta, file?.name);
-            const mimeType = String(file?.type || '').trim() || 'application/octet-stream';
-            const isPdf = /\.pdf$/i.test(originalName) || mimeType === 'application/pdf';
-            if (!isPdf) {
-                throw new Error('attachment_pdf_only');
+            const errorKey = validateWorkHistoryAttachment(file);
+            if (errorKey) {
+                throw new Error(errorKey);
             }
+            const originalName = formatAttachmentFileName(context, slotMeta, file?.name, file?.type);
+            const mimeType = String(file?.type || '').trim() || 'application/octet-stream';
             const base64Data = await readFileAsBase64(file);
             const response = await fetch(`${assetRuntime.apiBase.replace(/\/+$/, '')}/files/base64`, {
                 method: 'POST',
@@ -686,6 +742,7 @@
                         team: String(context.team || '').trim(),
                         startDate: String(context.startDate || '').trim(),
                         endDate: String(context.endDate || '').trim(),
+                        sourceFileName: String(file?.name || '').trim(),
                         originalName,
                         attachmentType,
                         folder: `${String(context.team || 'unassigned').trim() || 'unassigned'}/${attachmentType}`
@@ -867,6 +924,8 @@
         formatRecordTagText,
         ATTACHMENT_SLOT_KEYS,
         ATTACHMENT_SLOT_META,
+        WORK_HISTORY_ATTACHMENT_MAX_BYTES,
+        WORK_HISTORY_ATTACHMENT_ACCEPT,
         normalizeAttachment,
         normalizeAttachmentSlots,
         flattenAttachmentSlots,
@@ -884,6 +943,7 @@
         getPayload,
         replacePayload,
         getTeamRecords,
+        validateWorkHistoryAttachment,
         uploadPendingAttachments,
         deleteAttachmentsFromServer,
         savePayload,

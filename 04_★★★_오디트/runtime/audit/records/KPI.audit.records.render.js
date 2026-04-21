@@ -1,9 +1,5 @@
         function renderAuditContent(category) {
             const dataKey = category.dataKey;
-            if (dataKey === 'audit_monthly_report') {
-                renderAuditMonthlyReportContent(category);
-                return;
-            }
             if (dataKey === 'audit_legal_facility') {
                 renderAuditLegalFacilityContent(category);
                 return;

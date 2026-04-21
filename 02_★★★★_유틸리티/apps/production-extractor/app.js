@@ -37,6 +37,57 @@ const state = {
 };
 
 const dom = {};
+function requireProductionParsingApi() {
+  const api = window.KPIProductionExtractorImportParsing;
+  if (api) return api;
+  throw new Error("KPIProductionExtractorImportParsing is not loaded.");
+}
+
+function getProductionParsingContext() {
+  return {
+    XLSX,
+    TARGET_COLS,
+    HEADER_ROW,
+    DATA_START_ROW,
+    TEAM_VALUE_INDEX,
+    LINE_VALUE_INDEX,
+    PRODUCTION_VALUE_INDEX,
+    PRODUCTION_DATE_OFFSET_DAYS,
+    REQUIRED_HEADER_RULES,
+    parseProductionValue,
+  };
+}
+
+function requireProductionExportActionsApi() {
+  const api = window.KPIProductionExtractorExportActions;
+  if (api) return api;
+  throw new Error("KPIProductionExtractorExportActions is not loaded.");
+}
+
+function getProductionExportActionsContext() {
+  return {
+    window,
+    document,
+    XLSX,
+    state,
+    dom,
+    formatNumber,
+    parseDateText,
+    parseProductionValue,
+    formatYmd,
+    setStatus,
+    getSelectedPeriodText,
+    getSelectedTeamText,
+    getSelectedLineText,
+    getSelectedSortText,
+    getDateRangeLabel,
+    normalizeValue,
+    computeProductionStats,
+    PRODUCTION_VALUE_INDEX,
+    PRODUCTION_DATE_OFFSET_DAYS,
+  };
+}
+
 const EMBED_DATA_SECTION_IDS = [
   "metricsSection",
   "periodSummarySection",
@@ -366,363 +417,51 @@ async function handleExtract() {
   }
 }
 async function parseExcelFile(file, cycleStartDay) {
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
-  if (workbook.SheetNames.length === 0) {
-    throw new Error(`[${file.name}] 시트가 없습니다.`);
-  }
-
-  const rows = [];
-  let headers = [];
-  let minDate = null;
-  let maxDate = null;
-  let parsedSheetCount = 0;
-
-  for (const sheetName of workbook.SheetNames) {
-    const worksheet = workbook.Sheets[sheetName];
-    if (!worksheet) continue;
-
-    const rawHeaders = TARGET_COLS.map((col) =>
-      String(getCellDisplayValue(worksheet, `${col}${HEADER_ROW}`) || "").trim(),
-    );
-
-    if (rawHeaders.every((header) => header === "")) continue;
-
-    validateTemplateHeaders(file.name, sheetName, rawHeaders);
-
-    const displayHeaders = rawHeaders.map(
-      (header, index) => header || `${TARGET_COLS[index]}열`,
-    );
-    if (headers.length === 0) {
-      headers = displayHeaders;
-    }
-
-    const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1:A1");
-    const lastRow = range.e.r + 1;
-
-    for (let rowNumber = DATA_START_ROW; rowNumber <= lastRow; rowNumber += 1) {
-      const values = TARGET_COLS.map((col) => getCellDisplayValue(worksheet, `${col}${rowNumber}`));
-      if (!hasData(values)) continue;
-
-      const dateCell = worksheet[`A${rowNumber}`];
-      const parsedDate = parseDate(dateCell, values[0]);
-      const dateObj = applyDateOffset(parsedDate, PRODUCTION_DATE_OFFSET_DAYS);
-      values[0] = dateObj ? formatYmd(dateObj) : normalizeValue(values[0]);
-
-      const lineValue = normalizeValue(values[LINE_VALUE_INDEX]);
-      const teamValue = normalizeValue(values[TEAM_VALUE_INDEX]);
-      values[TEAM_VALUE_INDEX] = resolveProductionTeamValue(teamValue, lineValue);
-      values[LINE_VALUE_INDEX] = lineValue === "" ? "라인 없음" : String(lineValue);
-
-      if (dateObj) {
-        if (!minDate || dateObj < minDate) minDate = dateObj;
-        if (!maxDate || dateObj > maxDate) maxDate = dateObj;
-      }
-
-      const periodInfo = dateObj
-        ? getPeriodInfo(dateObj, cycleStartDay)
-        : { key: "NO_DATE", label: "날짜 없음", start: null };
-
-      rows.push({
-        fileName: file.name,
-        sheetName,
-        rowNumber,
-        values,
-        dateObj,
-        teamKey: values[TEAM_VALUE_INDEX],
-        lineKey: values[LINE_VALUE_INDEX],
-        periodKey: periodInfo.key,
-        periodLabel: periodInfo.label,
-        periodStart: periodInfo.start,
-      });
-    }
-
-    parsedSheetCount += 1;
-  }
-
-  if (parsedSheetCount === 0) {
-    throw new Error(`[${file.name}] 형식에 맞는 시트를 찾지 못했습니다. (3행 A/B/C/E/F 헤더 확인)`);
-  }
-
-  return {
-    fileName: file.name,
-    headers,
-    rows,
-    productionRangeLabel: buildDateRangeLabel(minDate, maxDate),
-    sheetCount: parsedSheetCount,
-  };
-}
-
-function validateTemplateHeaders(fileName, sheetName, headers) {
-  for (let index = 0; index < TARGET_COLS.length; index += 1) {
-    const col = TARGET_COLS[index];
-    const rawHeader = String(headers[index] || "").trim();
-    const normalized = normalizeHeader(rawHeader);
-    const patterns = REQUIRED_HEADER_RULES[col] || [];
-
-    if (normalized === "" || patterns.length === 0) {
-      throw new Error(`[${fileName} - ${sheetName}] ${col}${HEADER_ROW} 헤더가 비어있습니다.`);
-    }
-
-    const isValid = patterns.some((pattern) => pattern.test(normalized));
-    if (!isValid) {
-      throw new Error(
-        `[${fileName} - ${sheetName}] ${col}${HEADER_ROW} 헤더 형식이 다릅니다. 현재: "${rawHeader}"`,
-      );
-    }
-  }
-}
-
-function normalizeHeader(text) {
-  return String(text || "")
-    .toLowerCase()
-    .replaceAll(/\s+/g, "")
-    .replaceAll(/[._\-()]/g, "");
-}
-
-function deduplicateRows(rows) {
-  const seenKeys = new Set();
-  const dedupedRows = [];
-  let removedCount = 0;
-
-  for (const row of rows) {
-    const key = buildRowDedupKey(row);
-    if (seenKeys.has(key)) {
-      removedCount += 1;
-      continue;
-    }
-    seenKeys.add(key);
-    dedupedRows.push(row);
-  }
-
-  return { rows: dedupedRows, removedCount };
-}
-
-function buildRowDedupKey(row) {
-  const values = Array.isArray(row?.values) ? row.values : [];
-  // Dedupe compares row content only (date/team/line/product/amount), not row number.
-  return values
-    .map((value, index) => canonicalizeValueForDedup(value, index))
-    .join("||");
-}
-
-function canonicalizeValueForDedup(value, index) {
-  if (index === PRODUCTION_VALUE_INDEX) {
-    const numeric = parseProductionValue(value);
-    if (numeric !== null) return `N:${numeric}`;
-  }
-
-  if (index === 0) {
-    const parsedDate = parseDateText(value);
-    if (parsedDate) return `D:${formatYmd(parsedDate)}`;
-  }
-
-  if (value === null || value === undefined) return "";
-  if (typeof value === "number" && Number.isFinite(value)) return `N:${value}`;
-
-  return String(value).trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-function getCellDisplayValue(worksheet, address) {
-  const cell = worksheet[address];
-  if (!cell) return "";
-
-  if (cell.v instanceof Date) {
-    const normalizedDate = normalizeExcelJsDate(cell.v);
-    if (normalizedDate) return formatYmd(normalizedDate);
-    return formatYmd(cell.v);
-  }
-  if (typeof cell.v === "number" && isDateFormattedCell(cell)) {
-    const parsed = XLSX.SSF.parse_date_code(cell.v);
-    if (parsed) return formatYmd(new Date(parsed.y, parsed.m - 1, parsed.d));
-  }
-  if (cell.w !== undefined && cell.w !== null && String(cell.w).trim() !== "") return cell.w;
-  if (cell.v === undefined || cell.v === null) return "";
-  return cell.v;
-}
-
-function isDateFormattedCell(cell) {
-  const format = String(cell.z || "").toLowerCase();
-  return format.includes("yy") || format.includes("mm") || format.includes("dd");
-}
-
-function isLikelyExcelDateSerial(value) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return false;
-  return value >= 30000 && value <= 80000;
-}
-
-function hasData(values) {
-  return values.some((value) => {
-    if (value === null || value === undefined) return false;
-    if (typeof value === "string") return value.trim() !== "";
-    return true;
-  });
-}
-
-function normalizeValue(value) {
-  if (value === null || value === undefined) return "";
-  if (typeof value === "string") return value.trim();
-  return value;
-}
-
-function normalizeCompactText(value) {
-  return String(value ?? "")
-    .replace(/\s+/g, "")
-    .toLowerCase();
-}
-
-function isEmptyTeamText(value) {
-  const normalized = normalizeCompactText(value);
-  if (!normalized) return true;
-  return (
-    normalized === "-" ||
-    normalized === "없음" ||
-    normalized === "팀없음" ||
-    normalized === "미입력" ||
-    normalized === "na" ||
-    normalized === "n/a"
+  return requireProductionParsingApi().parseExcelFile(
+    getProductionParsingContext(),
+    file,
+    cycleStartDay,
   );
 }
 
-function resolveProductionTeamValue(teamValue, lineValue) {
-  const teamText = String(normalizeValue(teamValue) ?? "").trim();
-  const teamNormalized = normalizeCompactText(teamText);
-  const lineNormalized = normalizeCompactText(normalizeValue(lineValue));
-
-  if (isEmptyTeamText(teamText) || teamNormalized.includes("3팀") || lineNormalized.includes("액상")) {
-    return "3팀";
-  }
-  return teamText;
+function deduplicateRows(rows) {
+  return requireProductionParsingApi().deduplicateRows(getProductionParsingContext(), rows);
 }
 
-function parseDate(cell, fallbackValue) {
-  if (cell) {
-    if (cell.v instanceof Date) {
-      const normalizedDate = normalizeExcelJsDate(cell.v);
-      if (normalizedDate) return normalizedDate;
-      return stripTime(cell.v);
-    }
-
-    if (typeof cell.v === "number" && (isDateFormattedCell(cell) || isLikelyExcelDateSerial(cell.v))) {
-      const parsed = XLSX.SSF.parse_date_code(cell.v);
-      if (parsed) {
-        const date = new Date(parsed.y, parsed.m - 1, parsed.d);
-        if (date.getFullYear() >= 1990 && date.getFullYear() <= 2100) {
-          return date;
-        }
-      }
-    }
-
-    const fromDisplay = parseDateText(cell.w);
-    if (fromDisplay) return fromDisplay;
-  }
-
-  return parseDateText(fallbackValue);
+function normalizeValue(value) {
+  return requireProductionParsingApi().normalizeValue(value);
 }
 
 function parseDateText(value) {
-  if (value === null || value === undefined) return null;
-  const text = String(value).trim();
-  const match = text.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
-  if (!match) return null;
-
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-    return null;
-  }
-  if (year < 1990 || year > 2100) return null;
-  return date;
-}
-
-function stripTime(date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function normalizeExcelJsDate(date) {
-  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) return null;
-  const isUtcMidnight =
-    date.getUTCHours() === 0 &&
-    date.getUTCMinutes() === 0 &&
-    date.getUTCSeconds() === 0 &&
-    date.getUTCMilliseconds() === 0;
-  if (isUtcMidnight) {
-    return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-  }
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
-
-function applyDateOffset(date, offsetDays) {
-  if (!(date instanceof Date) || !Number.isFinite(date.getTime())) return null;
-  const safeOffset = Number.isFinite(Number(offsetDays)) ? Number(offsetDays) : 0;
-  const shifted = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  shifted.setDate(shifted.getDate() + safeOffset);
-  return shifted;
+  return requireProductionParsingApi().parseDateText(value);
 }
 
 function sanitizeCycleDay(value) {
-  const day = Number(value);
-  if (!Number.isFinite(day)) return 15;
-  return Math.min(31, Math.max(1, Math.floor(day)));
+  return requireProductionParsingApi().sanitizeCycleDay(value);
 }
 
 function getPeriodInfo(date, cycleStartDay) {
-  const periodStart = getCyclePeriodStart(date, cycleStartDay);
-  const nextMonth = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 1);
-  const nextStart = buildCycleDate(nextMonth.getFullYear(), nextMonth.getMonth(), cycleStartDay);
-  const periodEnd = new Date(nextStart);
-  periodEnd.setDate(periodEnd.getDate() - 1);
-
-  const key = `${periodStart.getFullYear()}-${String(periodStart.getMonth() + 1).padStart(2, "0")}`;
-  const label = `${periodStart.getFullYear()}년 ${periodStart.getMonth() + 1}월 (${formatMd(periodStart)}~${formatMd(periodEnd)})`;
-  return { key, label, start: periodStart };
-}
-
-function getCyclePeriodStart(date, cycleStartDay) {
-  const cleanDate = stripTime(date);
-  const thisMonthStart = buildCycleDate(cleanDate.getFullYear(), cleanDate.getMonth(), cycleStartDay);
-  if (cleanDate >= thisMonthStart) return thisMonthStart;
-
-  const prevMonthDate = new Date(cleanDate.getFullYear(), cleanDate.getMonth() - 1, 1);
-  return buildCycleDate(prevMonthDate.getFullYear(), prevMonthDate.getMonth(), cycleStartDay);
-}
-
-function buildCycleDate(year, monthIndex, cycleStartDay) {
-  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
-  const day = Math.min(lastDay, cycleStartDay);
-  return new Date(year, monthIndex, day);
+  return requireProductionParsingApi().getPeriodInfo(
+    getProductionParsingContext(),
+    date,
+    cycleStartDay,
+  );
 }
 
 function formatYmd(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function formatMd(date) {
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${m}/${d}`;
+  return requireProductionParsingApi().formatYmd(date);
 }
 
 function buildDateRangeLabel(minDate, maxDate) {
-  if (!minDate || !maxDate) return "날짜 없음";
-  return `${formatYmd(minDate)} ~ ${formatYmd(maxDate)}`;
+  return requireProductionParsingApi().buildDateRangeLabel(
+    getProductionParsingContext(),
+    minDate,
+    maxDate,
+  );
 }
 
 function getDateRangeLabel(rows) {
-  let minDate = null;
-  let maxDate = null;
-  for (const row of rows) {
-    if (!row.dateObj) continue;
-    if (!minDate || row.dateObj < minDate) minDate = row.dateObj;
-    if (!maxDate || row.dateObj > maxDate) maxDate = row.dateObj;
-  }
-  return buildDateRangeLabel(minDate, maxDate);
+  return requireProductionParsingApi().getDateRangeLabel(getProductionParsingContext(), rows);
 }
 
 function compareRowsByFallback(a, b) {
@@ -1325,358 +1064,36 @@ function handleKpiImportResultMessage(event) {
 }
 
 function initializeStoredExportPanel() {
-  if (!dom.storedSection) return;
-  if (!window.parent || window.parent === window) {
-    if (dom.downloadStoredBtn) dom.downloadStoredBtn.disabled = true;
-    if (dom.refreshStoredBtn) dom.refreshStoredBtn.disabled = true;
-    return;
-  }
-  refreshStoredRowsFromParent(false);
+  return requireProductionExportActionsApi().initializeStoredExportPanel(
+    getProductionExportActionsContext(),
+  );
 }
 
 async function refreshStoredRowsFromParent(showNotice = true) {
-  try {
-    const payload = await requestStoredRowsViaBridge();
-    state.storedRows = normalizeStoredRowsPayload(payload.rows);
-    state.storedTeams = normalizeStoredTeamList(payload.teams, state.storedRows);
-    populateStoredTeamOptions();
-    applyStoredDateRangeDefaults();
-    if (showNotice) {
-      setStatus(`기입데이터 갱신: ${formatNumber(state.storedRows.length)}건`);
-    }
-  } catch (error) {
-    if (showNotice) {
-      setStatus(`기입데이터 조회 실패: ${error.message || "알 수 없는 오류"}`, true);
-    }
-  }
-}
-
-function requestStoredRowsViaBridge() {
-  return new Promise((resolve, reject) => {
-    if (!window.parent || window.parent === window) {
-      reject(new Error("KPI 연동 화면에서만 조회할 수 있습니다."));
-      return;
-    }
-    const requestId = `kpi_stored_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error("기입데이터 응답 시간이 초과되었습니다."));
-    }, 10000);
-
-    const cleanup = () => {
-      clearTimeout(timeout);
-      window.removeEventListener("message", onMessage);
-    };
-
-    const onMessage = (event) => {
-      const data = event?.data;
-      if (!data || data.type !== "kpi-production-stored-data-response") return;
-      if (String(data.requestId || "") !== requestId) return;
-      cleanup();
-      if (!data.ok) {
-        reject(new Error(String(data.message || "기입데이터 조회 실패")));
-        return;
-      }
-      resolve({
-        rows: Array.isArray(data.rows) ? data.rows : [],
-        teams: Array.isArray(data.teams) ? data.teams : [],
-      });
-    };
-
-    window.addEventListener("message", onMessage);
-    try {
-      window.parent.postMessage(
-        {
-          type: "kpi-production-stored-data-request",
-          requestId,
-        },
-        "*",
-      );
-    } catch (error) {
-      cleanup();
-      reject(error);
-    }
-  });
-}
-
-function normalizeStoredRowsPayload(rows) {
-  const list = Array.isArray(rows) ? rows : [];
-  const dedupe = new Set();
-  const normalizedRows = [];
-  for (const row of list) {
-    const parsedDate = parseDateText(row?.date);
-    const amount = parseProductionValue(row?.amount ?? row?.production ?? row?.value);
-    const team = String(row?.team ?? "").trim();
-    const lineName = String(row?.lineName ?? row?.line ?? "").trim();
-    const productName = String(row?.productName ?? row?.product ?? row?.itemName ?? "").trim();
-    if (!parsedDate || amount === null || !team) continue;
-    const date = formatYmd(parsedDate);
-    const key = [
-      date,
-      team.toLowerCase(),
-      lineName.toLowerCase(),
-      productName.toLowerCase(),
-      String(amount),
-    ].join("|");
-    if (dedupe.has(key)) continue;
-    dedupe.add(key);
-    normalizedRows.push({
-      date,
-      team,
-      lineName,
-      productName,
-      amount,
-    });
-  }
-  normalizedRows.sort((a, b) => {
-    const dateDiff = String(a.date).localeCompare(String(b.date), "ko");
-    if (dateDiff !== 0) return dateDiff;
-    const teamDiff = String(a.team).localeCompare(String(b.team), "ko");
-    if (teamDiff !== 0) return teamDiff;
-    const lineDiff = String(a.lineName).localeCompare(String(b.lineName), "ko");
-    if (lineDiff !== 0) return lineDiff;
-    return String(a.productName).localeCompare(String(b.productName), "ko");
-  });
-  return normalizedRows;
-}
-
-function normalizeStoredTeamList(teams, rows) {
-  const set = new Set();
-  (Array.isArray(teams) ? teams : []).forEach((team) => {
-    const value = String(team || "").trim();
-    if (value) set.add(value);
-  });
-  (Array.isArray(rows) ? rows : []).forEach((row) => {
-    const value = String(row?.team || "").trim();
-    if (value) set.add(value);
-  });
-  return Array.from(set).sort((a, b) => a.localeCompare(b, "ko"));
-}
-
-function populateStoredTeamOptions() {
-  if (!dom.storedTeamSelect) return;
-  const previous = String(dom.storedTeamSelect.value || "ALL");
-  dom.storedTeamSelect.innerHTML = "";
-  const allOption = document.createElement("option");
-  allOption.value = "ALL";
-  allOption.textContent = "전체 팀";
-  dom.storedTeamSelect.appendChild(allOption);
-  for (const team of state.storedTeams) {
-    const option = document.createElement("option");
-    option.value = team;
-    option.textContent = team;
-    dom.storedTeamSelect.appendChild(option);
-  }
-  const exists = previous === "ALL" || state.storedTeams.includes(previous);
-  dom.storedTeamSelect.value = exists ? previous : "ALL";
-}
-
-function applyStoredDateRangeDefaults() {
-  if (!dom.storedStartDate || !dom.storedEndDate) return;
-  if (!state.storedRows.length) {
-    if (!dom.storedStartDate.value) dom.storedStartDate.value = "";
-    if (!dom.storedEndDate.value) dom.storedEndDate.value = "";
-    return;
-  }
-  const dates = state.storedRows.map((row) => String(row.date || "")).filter(Boolean);
-  if (!dates.length) return;
-  const minDate = dates[0];
-  const maxDate = dates[dates.length - 1];
-  if (!dom.storedStartDate.value) dom.storedStartDate.value = minDate;
-  if (!dom.storedEndDate.value) dom.storedEndDate.value = maxDate;
-}
-
-function sanitizeFileNameToken(value, fallback = "전체팀") {
-  const raw = String(value || "").trim() || fallback;
-  return raw.replace(/[\\/:*?"<>|]/g, "_");
+  return requireProductionExportActionsApi().refreshStoredRowsFromParent(
+    getProductionExportActionsContext(),
+    showNotice,
+  );
 }
 
 async function handleDownloadStoredRows() {
-  if (!window.parent || window.parent === window) {
-    setStatus("KPI 연동 화면에서만 기입데이터 추출이 가능합니다.", true);
-    return;
-  }
-  if (!dom.downloadStoredBtn) return;
-
-  dom.downloadStoredBtn.disabled = true;
-  if (dom.refreshStoredBtn) dom.refreshStoredBtn.disabled = true;
-  try {
-    const payload = await requestStoredRowsViaBridge();
-    state.storedRows = normalizeStoredRowsPayload(payload.rows);
-    state.storedTeams = normalizeStoredTeamList(payload.teams, state.storedRows);
-    populateStoredTeamOptions();
-    applyStoredDateRangeDefaults();
-
-    if (!state.storedRows.length) {
-      setStatus("기입된 생산량 데이터가 없습니다.", true);
-      return;
-    }
-
-    const startDate = String(dom.storedStartDate?.value || "").trim();
-    const endDate = String(dom.storedEndDate?.value || "").trim();
-    const selectedTeam = String(dom.storedTeamSelect?.value || "ALL");
-    const parsedStart = parseDateText(startDate);
-    const parsedEnd = parseDateText(endDate);
-    if (!parsedStart || !parsedEnd) {
-      setStatus("시작일/종료일을 입력해주세요.", true);
-      return;
-    }
-    const safeStart = formatYmd(parsedStart);
-    const safeEnd = formatYmd(parsedEnd);
-    if (safeStart > safeEnd) {
-      setStatus("시작일은 종료일보다 늦을 수 없습니다.", true);
-      return;
-    }
-
-    const filteredRows = state.storedRows.filter((row) => {
-      const date = String(row.date || "");
-      if (!date || date < safeStart || date > safeEnd) return false;
-      if (selectedTeam !== "ALL" && String(row.team || "") !== selectedTeam) return false;
-      return true;
-    });
-    if (!filteredRows.length) {
-      setStatus("선택한 기간/팀 조건에 맞는 기입데이터가 없습니다.", true);
-      return;
-    }
-
-    const teamLabel = selectedTeam === "ALL" ? "전체팀" : selectedTeam;
-    const fileName = `생산량기입데이터_${safeStart.replaceAll("-", "")}_${safeEnd.replaceAll("-", "")}_${sanitizeFileNameToken(teamLabel)}.xlsx`;
-    exportStoredRowsToXlsx(filteredRows, fileName, {
-      startDate: safeStart,
-      endDate: safeEnd,
-      teamLabel,
-    });
-    setStatus(`기입데이터 엑셀 추출 완료: ${fileName}`);
-  } catch (error) {
-    setStatus(`기입데이터 추출 실패: ${error.message || "알 수 없는 오류"}`, true);
-  } finally {
-    dom.downloadStoredBtn.disabled = false;
-    if (dom.refreshStoredBtn) dom.refreshStoredBtn.disabled = false;
-  }
-}
-
-function exportStoredRowsToXlsx(rows, fileName, options = {}) {
-  const resultAoa = [["생산일자", "팀", "라인명", "품명", "생산량"]];
-  for (const row of rows) {
-    resultAoa.push([
-      String(row.date || ""),
-      String(row.team || ""),
-      String(row.lineName || ""),
-      String(row.productName || ""),
-      Number(row.amount) || 0,
-    ]);
-  }
-  const resultSheet = XLSX.utils.aoa_to_sheet(resultAoa);
-  resultSheet["!cols"] = [
-    { wch: 12 },
-    { wch: 14 },
-    { wch: 20 },
-    { wch: 28 },
-    { wch: 14 },
-  ];
-
-  const sum = rows.reduce((acc, row) => acc + (Number(row.amount) || 0), 0);
-  const summarySheet = XLSX.utils.aoa_to_sheet([
-    ["생성일시", new Date().toLocaleString("ko-KR")],
-    ["시작일", String(options.startDate || "")],
-    ["종료일", String(options.endDate || "")],
-    ["팀", String(options.teamLabel || "전체팀")],
-    ["건수", rows.length],
-    ["생산량 합계", sum],
-  ]);
-
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, resultSheet, "기입데이터");
-  XLSX.utils.book_append_sheet(workbook, summarySheet, "요약");
-  XLSX.writeFile(workbook, fileName);
+  return requireProductionExportActionsApi().handleDownloadStoredRows(
+    getProductionExportActionsContext(),
+  );
 }
 
 function downloadFilteredRows() {
-  if (state.filteredRows.length === 0) {
-    setStatus("다운로드할 데이터가 없습니다.", true);
-    return;
-  }
-
-  const safePeriod = getSelectedPeriodText().replace(/[\\/:*?"<>|]/g, "_");
-  const safeTeam = getSelectedTeamText().replace(/[\\/:*?"<>|]/g, "_");
-  const safeLine = getSelectedLineText().replace(/[\\/:*?"<>|]/g, "_");
-  exportRowsToXlsx(state.filteredRows, `생산량추출_${safePeriod}_${safeTeam}_${safeLine}.xlsx`);
+  return requireProductionExportActionsApi().downloadFilteredRows(
+    getProductionExportActionsContext(),
+  );
 }
 
 function downloadAllRows() {
-  if (state.rows.length === 0) {
-    setStatus("다운로드할 데이터가 없습니다.", true);
-    return;
-  }
-  exportRowsToXlsx(state.rows, "생산량추출_전체.xlsx");
+  return requireProductionExportActionsApi().downloadAllRows(
+    getProductionExportActionsContext(),
+  );
 }
 
-function exportRowsToXlsx(rows, fileName) {
-  const aoa = [];
-  aoa.push(["추출 기준", `A/B/C/E/F 열, 날짜 +${PRODUCTION_DATE_OFFSET_DAYS}일 보정, 정산 시작일 ${state.cycleStartDay}일`]);
-  aoa.push(["선택 정산 월", getSelectedPeriodText()]);
-  aoa.push(["선택 팀", getSelectedTeamText()]);
-  aoa.push(["선택 라인", getSelectedLineText()]);
-  aoa.push(["정렬", getSelectedSortText()]);
-  aoa.push(["생산 기간", getDateRangeLabel(rows)]);
-  aoa.push(["중복 제거", `${formatNumber(state.duplicateRemovedCount)}건`]);
-  aoa.push([]);
-  aoa.push(state.headers);
-
-  for (const row of rows) {
-    aoa.push(row.values.map((value) => normalizeValue(value)));
-  }
-
-  const resultSheet = XLSX.utils.aoa_to_sheet(aoa);
-  resultSheet["!cols"] = state.headers.map((header, index) => {
-    const base = String(header).length + 6;
-    const longCol = index === PRODUCTION_VALUE_INDEX ? 30 : 14;
-    return { wch: Math.max(base, longCol) };
-  });
-
-  const stats = computeProductionStats(rows);
-  const summarySheet = XLSX.utils.aoa_to_sheet([
-    ["생성일시", new Date().toLocaleString("ko-KR")],
-    ["정산 시작일", `${state.cycleStartDay}일`],
-    ["행 수", rows.length],
-    ["생산 기간", getDateRangeLabel(rows)],
-    ["중복 제거", state.duplicateRemovedCount],
-    ["생산량 합계", stats.sum],
-    ["생산량 평균", stats.avg === null ? "" : stats.avg],
-  ]);
-
-  const monthSummaryAoa = [["정산 월", "데이터 행", "생산량 합계", "생산량 평균"]];
-  for (const summary of state.periodSummaries) {
-    monthSummaryAoa.push([
-      summary.label,
-      summary.rowCount,
-      summary.sum,
-      summary.avg === null ? "" : summary.avg,
-    ]);
-  }
-  const monthSummarySheet = XLSX.utils.aoa_to_sheet(monthSummaryAoa);
-
-  const teamSummaryAoa = [["팀", "데이터 행", "생산 기간", "생산량 합계", "생산량 평균"]];
-  for (const summary of state.teamSummaries) {
-    teamSummaryAoa.push([
-      summary.team,
-      summary.rowCount,
-      summary.rangeLabel,
-      summary.sum,
-      summary.avg === null ? "" : summary.avg,
-    ]);
-  }
-  const teamSummarySheet = XLSX.utils.aoa_to_sheet(teamSummaryAoa);
-
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, resultSheet, "추출결과");
-  XLSX.utils.book_append_sheet(workbook, summarySheet, "요약");
-  XLSX.utils.book_append_sheet(workbook, monthSummarySheet, "월별요약");
-  XLSX.utils.book_append_sheet(workbook, teamSummarySheet, "팀별요약");
-  XLSX.writeFile(workbook, fileName);
-
-  setStatus(`다운로드 완료: ${fileName}`);
-}
 function computeProductionStats(rows) {
   let sum = 0;
   let numericCount = 0;

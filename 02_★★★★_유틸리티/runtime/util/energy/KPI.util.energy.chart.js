@@ -547,6 +547,7 @@
             const ratioDenominatorOptions = getUtilDualRatioMetricOptionsHtml('production');
 
             const buildClearButton = (metricKey, rawValue, monthValue, extra = {}) => {
+                if (metricKey !== 'production') return '';
                 if (!datasetKey) return '';
                 if (!Number.isFinite(yearValue) || !Number.isFinite(monthValue)) return '';
                 const parsedValue = parseUtilAmount(rawValue);

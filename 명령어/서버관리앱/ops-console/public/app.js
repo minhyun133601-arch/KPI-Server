@@ -85,6 +85,17 @@ function setStatusTone(element, tone) {
     element.classList.add(tone);
   }
 }
+function sleep(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+function serverActionLabel(actionKey = '') {
+  return actionKey === 'server.recover' ? '복구' : '시작';
+}
+function isServerLifecycleCommand(commandKey = '') {
+  return commandKey === 'server.start' || commandKey === 'server.recover';
+}
 function getCommand(commandKey) {
   return commandRegistryCache.get(commandKey) || null;
 }
@@ -145,13 +156,21 @@ function renderStatus(overview) {
   $('opsHeaderRoot').title = overview.app.commandsRoot;
   renderScheduleStatus(overview.computerSchedule);
 
+  const serverAction = overview.serverAction || {};
+  const serverActionActive = Boolean(serverAction.active);
   const kpiOk = Boolean(overview.kpi.health?.ok);
-  $('kpiStatus').textContent = kpiOk ? '실행 중' : '중지';
+  $('kpiStatus').textContent = kpiOk
+    ? '실행 중'
+    : serverActionActive
+      ? `${serverActionLabel(serverAction.key)} 중`
+      : '중지';
   $('kpiSummary').textContent = kpiOk
     ? `${overview.kpi.port} 포트 / 로그인 필요`
-    : (overview.kpi.health?.error || '헬스 체크 실패');
-  setStatusTone($('kpiStatus'), kpiOk ? 'status-up' : 'status-down');
-  setTileTone('kpiTile', kpiOk ? 'ok' : 'down');
+    : serverActionActive
+      ? (serverAction.summary || '서버 준비 상태를 확인하는 중입니다.')
+      : (overview.kpi.health?.error || '헬스 체크 실패');
+  setStatusTone($('kpiStatus'), kpiOk ? 'status-up' : (serverActionActive ? 'status-warn' : 'status-down'));
+  setTileTone('kpiTile', kpiOk ? 'ok' : (serverActionActive ? 'warn' : 'down'));
 
   const postgresOk = Boolean(overview.postgres?.ok);
   $('postgresStatus').textContent = postgresOk ? '연결 가능' : '중지 또는 미설치';
@@ -205,10 +224,59 @@ function renderUsers(users, errorMessage = '') {
     `;
   }).join('');
 }
+function applyOverview(overview) {
+  renderStatus(overview);
+  renderUsers(overview.users, overview.usersError);
+  renderCommands(overview.commandRegistry || []);
+  return overview;
+}
+async function waitForKpiReady(command, options = {}) {
+  const timeoutMs = options.timeoutMs ?? 180000;
+  const pollMs = options.pollMs ?? 2000;
+  const expectedStartedAt = String(options.expectedStartedAt || '').trim();
+  const deadline = Date.now() + timeoutMs;
+  let lastOverview = null;
+
+  while (Date.now() < deadline) {
+    await sleep(pollMs);
+    try {
+      const overview = applyOverview(await fetchJson('/api/overview'));
+      lastOverview = overview;
+      const serverAction = overview.serverAction || {};
+      const isExpectedAction = Boolean(expectedStartedAt)
+        && serverAction.key === command.key
+        && serverAction.startedAt === expectedStartedAt;
+
+      if (isExpectedAction && !serverAction.active && serverAction.lastExitCode === 0 && overview.kpi?.health?.ok) {
+        return {
+          ok: true,
+          overview
+        };
+      }
+
+      if (isExpectedAction && !serverAction.active && serverAction.lastExitCode !== null && serverAction.lastExitCode !== 0) {
+        return {
+          ok: false,
+          overview,
+          error: `${command.title} 스크립트가 비정상 종료되었습니다. 서버 액션 로그를 확인해 주세요.`
+        };
+      }
+    } catch {
+      // Ignore transient polling failures while the server is starting.
+    }
+  }
+
+  return {
+    ok: false,
+    overview: lastOverview,
+    error: `${command.title} 후 서버 준비 상태를 아직 확인하지 못했습니다. 서버 액션 로그를 확인해 주세요.`
+  };
+}
 async function executeCommand(command, payload = {}, options = {}) {
   if (command.confirmMessage && !window.confirm(command.confirmMessage)) {
     return null;
   }
+  const shouldWaitForKpiReady = options.waitForKpiReady === true;
   setResult(`${command.title} 실행 중...`);
   const result = await fetchJson(`/api/actions/${command.key}`, {
     method: 'POST',
@@ -219,16 +287,33 @@ async function executeCommand(command, payload = {}, options = {}) {
     $('tablesOutput').textContent = result.output || '출력 없음';
   }
   setResult(result.summary || `${command.title} 완료`, result.output || '-');
-  await reloadOverview();
+  if (shouldWaitForKpiReady) {
+    const waitResult = await waitForKpiReady(command, {
+      timeoutMs: options.timeoutMs,
+      expectedStartedAt: result?.data?.serverAction?.startedAt
+    });
+    if (!waitResult.ok) {
+      setResult(waitResult.error || `${command.title} 상태 확인 실패`);
+    } else {
+      setResult(
+        command.key === 'server.recover'
+          ? '복구 재시작이 완료되었습니다.'
+          : 'KPI 서버가 준비되었습니다.'
+      );
+    }
+  } else {
+    await reloadOverview();
+  }
   if (typeof options.onSuccess === 'function') {
     options.onSuccess(result);
   }
   return result;
 }
-function buildInlineButton({ label, iconName, variant = 'secondary', onClick }) {
+function buildInlineButton({ label, iconName, variant = 'secondary', onClick, disabled = false }) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = variant === 'primary' ? 'primary-button' : 'secondary-button';
+  button.disabled = disabled;
   button.appendChild(createIcon(iconName, 'button-icon'));
   button.append(label);
   button.addEventListener('click', async () => {
@@ -520,15 +605,26 @@ function renderCardActions(overview = null) {
   }
 
   const serverRunning = Boolean(nextOverview?.kpi?.health?.ok);
+  const serverAction = nextOverview?.serverAction || {};
+  const serverActionActive = Boolean(serverAction.active);
   const serverCommand = getCommand(serverRunning ? 'server.stop' : 'server.start');
   if (serverCommand) {
     kpiActions.appendChild(buildInlineButton({
-      label: serverRunning ? '서버 닫기' : '서버 열기',
+      label: serverActionActive
+        ? `${serverActionLabel(serverAction.key)} 진행 중`
+        : (serverRunning ? '서버 닫기' : '서버 열기'),
       iconName: commandIconMap[serverCommand.key] || 'server',
       variant: serverRunning ? 'secondary' : 'primary',
+      disabled: serverActionActive,
       onClick: async () => {
         try {
-          await executeCommand(serverCommand);
+          await executeCommand(
+            serverCommand,
+            {},
+            isServerLifecycleCommand(serverCommand.key)
+              ? { waitForKpiReady: true, timeoutMs: 180000 }
+              : {}
+          );
         } catch (error) {
           setResult(`${serverCommand.title} 실패`, error.message);
         }
@@ -542,9 +638,13 @@ function renderCardActions(overview = null) {
       label: '복구',
       iconName: 'refresh',
       variant: 'secondary',
+      disabled: serverActionActive,
       onClick: async () => {
         try {
-          await executeCommand(recoverCommand);
+          await executeCommand(recoverCommand, {}, {
+            waitForKpiReady: true,
+            timeoutMs: 240000
+          });
         } catch (error) {
           setResult(`${recoverCommand.title} 실패`, error.message);
         }
@@ -745,11 +845,7 @@ function bindDragScrollTargets() {
   document.querySelectorAll('.drag-scroll').forEach(bindDragScroll);
 }
 async function reloadOverview() {
-  const overview = await fetchJson('/api/overview');
-  renderStatus(overview);
-  renderUsers(overview.users, overview.usersError);
-  renderCommands(overview.commandRegistry || []);
-  return overview;
+  return applyOverview(await fetchJson('/api/overview'));
 }
 async function reloadUsers() {
   try {

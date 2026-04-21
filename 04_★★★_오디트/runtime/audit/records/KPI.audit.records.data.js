@@ -1,12 +1,11 @@
         // ----------------------------------------------------------------
         // [Audit Lux]
         // ----------------------------------------------------------------
-        const AuditState = { filters: {}, printCache: {}, entryForm: {}, standardForm: {}, standardsOpen: {}, evidenceOpen: {}, evidenceSelected: {}, evidenceApplied: {}, evidenceCache: {}, luxPreviewRotation: {}, reportFilter: {}, legalFilter: {} };
+        const AuditState = { filters: {}, printCache: {}, entryForm: {}, standardForm: {}, standardsOpen: {}, evidenceOpen: {}, evidenceSelected: {}, evidenceApplied: {}, evidenceCache: {}, luxPreviewRotation: {}, legalFilter: {} };
         const AUDIT_LUX_BASE_YEAR = 2023;
         const AUDIT_LUX_EVIDENCE_MAX_BYTES = 25 * 1024 * 1024;
         const AUDIT_LUX_EVIDENCE_OWNER_DOMAIN = 'audit.lux.evidence';
         const AUDIT_LUX_EVIDENCE_STORAGE_FOLDER = ['Audit', '조도 스캔본'];
-        const AUDIT_MONTHLY_REPORT_FOLDER = '04_★★★_오디트/보고서/월간 실적 보고서/';
         const AUDIT_LEGAL_FACILITY_ALERT_DAYS = 90;
         const AUDIT_LEGAL_ORGANIZATION_LINKS = {
             '한국전기기술인협회': 'https://www.koema.or.kr',
@@ -25,118 +24,6 @@
             fire: { key: 'fire', label: '소방', icon: 'fa-fire-extinguisher', tone: 'fire' },
             other: { key: 'other', label: '승강기', icon: 'fa-up-down', tone: 'other' }
         };
-
-        function parseAuditReportDate(text) {
-            const str = String(text || '');
-            const match = str.match(/(\d{4})(\d{2})(\d{2})/);
-            if (!match) return null;
-            const year = Number(match[1]);
-            const month = Number(match[2]);
-            const day = Number(match[3]);
-            if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
-            if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-            const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            return { key, label: key };
-        }
-
-        function getAuditReportGroupLabel(raw, file) {
-            if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-                const explicit = raw.group || raw.folder || raw.category || raw.reportType || raw.type || raw.section;
-                if (explicit) {
-                    const label = String(explicit).trim();
-                    if (label) return label;
-                }
-            }
-            const path = String(file || '').replace(/\\/g, '/');
-            const segments = path.split('/').map(part => String(part || '').trim()).filter(Boolean);
-            const reportRoot = segments.findIndex(part => part === '보고서');
-            if (reportRoot >= 0 && segments[reportRoot + 1]) return segments[reportRoot + 1];
-            if (segments.length >= 2) return segments[segments.length - 2];
-            return '월간 실적보고서';
-        }
-
-        function normalizeAuditMonthlyReportItem(raw, index) {
-            const isObject = raw && typeof raw === 'object' && !Array.isArray(raw);
-            const file = isObject
-                ? String(raw.file || raw.path || '')
-                : String(raw || '');
-            const explicitPreviewFile = isObject
-                ? String(raw.previewFile || raw.preview || raw.pdf || raw.pdfFile || '')
-                : '';
-            const previewFile = explicitPreviewFile || (/\.pdf$/i.test(file) ? file : '');
-            const name = isObject
-                ? String(raw.name || raw.fileName || file.split('/').pop() || `보고서 ${index + 1}`)
-                : String(file.split('/').pop() || `보고서 ${index + 1}`);
-            const parsed = parseAuditReportDate(isObject ? (raw.updatedAt || raw.title || name) : name);
-            const dateKey = parsed?.key || '';
-            const dateLabel = parsed?.label || '-';
-            const title = isObject && raw.title ? String(raw.title) : (dateKey || name);
-            const groupLabel = getAuditReportGroupLabel(raw, file);
-            return {
-                id: String(isObject && raw.id ? raw.id : `audit-monthly-report-${index + 1}`),
-                file,
-                previewFile,
-                name,
-                title,
-                groupLabel,
-                dateKey,
-                dateLabel
-            };
-        }
-
-        function getAuditMonthlyReportItems() {
-            const fromPortalMonthly = Array.isArray(window.PortalData?.audit_monthly_report?.entries)
-                ? window.PortalData.audit_monthly_report.entries
-                : [];
-            const fromPortalAll = Array.isArray(window.PortalData?.audit_reports?.entries)
-                ? window.PortalData.audit_reports.entries
-                : [];
-            const source = fromPortalAll.length
-                ? fromPortalAll
-                : fromPortalMonthly;
-            const normalized = source
-                .map((item, index) => normalizeAuditMonthlyReportItem(item, index))
-                .filter(item => item.file);
-            const deduped = [];
-            const seen = new Set();
-            normalized.forEach(item => {
-                const key = String(item.file || '').toLowerCase();
-                if (!key || seen.has(key)) return;
-                seen.add(key);
-                deduped.push(item);
-            });
-            return deduped.sort((a, b) => {
-                    if (a.dateKey && b.dateKey && a.dateKey !== b.dateKey) {
-                        return b.dateKey.localeCompare(a.dateKey);
-                    }
-                    if (a.dateKey && !b.dateKey) return -1;
-                    if (!a.dateKey && b.dateKey) return 1;
-                    return String(a.name || '').localeCompare(String(b.name || ''), 'ko');
-                });
-        }
-
-        function getAuditReportFilterState(dataKey) {
-            if (!AuditState.reportFilter[dataKey]) {
-                AuditState.reportFilter[dataKey] = { year: '', month: '' };
-            }
-            return AuditState.reportFilter[dataKey];
-        }
-
-        function setAuditReportFilter(dataKey, field, value) {
-            const filter = getAuditReportFilterState(dataKey);
-            filter[field] = String(value || '').trim();
-        }
-
-        function applyAuditReportFilter(dataKey) {
-            const category = AppData?.audit?.categories?.find(cat => cat.dataKey === dataKey);
-            if (category) renderAuditContent(category);
-        }
-
-        function clearAuditReportFilter(dataKey) {
-            AuditState.reportFilter[dataKey] = { year: '', month: '' };
-            const category = AppData?.audit?.categories?.find(cat => cat.dataKey === dataKey);
-            if (category) renderAuditContent(category);
-        }
 
         function normalizeAuditDateText(value) {
             const text = String(value || '').trim();
@@ -341,52 +228,6 @@
             AuditState.legalFilter[dataKey] = { category: '', area: '', keyword: '', onlyNear: false, onlyOverdue: false };
             const category = AppData?.audit?.categories?.find(cat => cat.dataKey === dataKey);
             if (category) renderAuditContent(category);
-        }
-
-        function resolveAuditFileUrl(filePath) {
-            const path = String(filePath || '').trim();
-            if (!path) return '';
-            try {
-                return new URL(path, window.location.href).toString();
-            } catch (err) {
-                return encodeURI(path);
-            }
-        }
-
-        function openAuditMonthlyReport(encodedPath) {
-            const file = decodeURIComponent(encodedPath || '');
-            if (!file) return;
-            const url = resolveAuditFileUrl(file);
-            if (!url) return;
-            window.open(url, '_blank');
-        }
-
-        function openAuditMonthlyReportPreview(encodedPath) {
-            const file = decodeURIComponent(encodedPath || '');
-            if (!file) {
-                alert('등록된 PDF 미리보기 파일이 없습니다. 원본 다운로드를 사용해 주세요.');
-                return;
-            }
-            const url = resolveAuditFileUrl(file);
-            if (!url) return;
-            window.open(url, '_blank');
-        }
-
-        function downloadAuditMonthlyReport(encodedPath, encodedName) {
-            const file = decodeURIComponent(encodedPath || '');
-            if (!file) return;
-            const fallbackName = String(file.split('/').pop() || 'report');
-            const fileName = decodeURIComponent(encodedName || fallbackName) || fallbackName;
-            const url = resolveAuditFileUrl(file);
-            if (!url) return;
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = fileName;
-            anchor.target = '_blank';
-            anchor.rel = 'noopener';
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
         }
 
         const AuditServerWriteQueue = {};

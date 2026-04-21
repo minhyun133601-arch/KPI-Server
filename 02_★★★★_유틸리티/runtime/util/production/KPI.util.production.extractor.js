@@ -23,7 +23,7 @@
                     </div>
                     <div class="util-production-modal-body util-production-extractor-body">
                         <div class="util-production-extractor-tip">추출 완료 후 <strong>유틸리티 기입</strong> 버튼을 누르면 KPI 유틸리티 양식에 자동 반영됩니다.</div>
-                        <iframe class="util-production-extractor-frame" data-role="frame" src="02_★★★★_유틸리티/apps/production-extractor/생산량 추출.html?embed=1" title="유틸리티 기입" loading="lazy"></iframe>
+                        <iframe class="util-production-extractor-frame" data-role="frame" src="02_★★★★_유틸리티/apps/production-extractor/생산량 추출.html?embed=1&v=13" title="유틸리티 기입" loading="lazy"></iframe>
                         <div class="util-production-extractor-status" data-role="status">대기 중: 추출 실행 후 유틸리티 기입 버튼을 눌러주세요.</div>
                     </div>
                 </div>

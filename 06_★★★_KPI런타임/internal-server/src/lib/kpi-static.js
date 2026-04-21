@@ -7,7 +7,8 @@ import { injectPortalDataBootstrap } from './portal-bootstrap.js';
 const KPI_HTML_PATH = path.join(config.repoRoot, 'KPI.html');
 const KPI_STATIC_ALLOWED_ROOT_FILES = new Set([
   'KPI.html',
-  'style.css'
+  'style.css',
+  'favicon.ico'
 ]);
 const KPI_STATIC_FORBIDDEN_TOP_LEVEL = new Set([
   '.git',
@@ -23,6 +24,7 @@ const CONTENT_TYPE_BY_EXTENSION = new Map([
   ['.html', 'text/html; charset=utf-8'],
   ['.hwp', 'application/x-hwp'],
   ['.hwpx', 'application/x-hwp+zip'],
+  ['.ico', 'image/x-icon'],
   ['.jpeg', 'image/jpeg'],
   ['.jpg', 'image/jpeg'],
   ['.js', 'application/javascript; charset=utf-8'],

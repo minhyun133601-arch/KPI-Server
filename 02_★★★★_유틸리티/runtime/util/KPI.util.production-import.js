@@ -402,7 +402,9 @@
                 return false;
             }
             UTIL_PRODUCTION_DAILY_STATE.meta = UTIL_PRODUCTION_DAILY_STATE.meta || {};
-            UTIL_PRODUCTION_DAILY_STATE.meta.moduleKey = 'util_production_daily';
+            UTIL_PRODUCTION_DAILY_STATE.meta.moduleKey = 'util_production';
+            UTIL_PRODUCTION_DAILY_STATE.meta.recordKey = 'daily_state_v1';
+            UTIL_PRODUCTION_DAILY_STATE.meta.permissionKey = 'util.production.daily';
             UTIL_PRODUCTION_DAILY_STATE.meta.moduleName = '유틸리티 - 생산량 일별';
             UTIL_PRODUCTION_DAILY_STATE.meta.version = Number.isFinite(Number(UTIL_PRODUCTION_DAILY_STATE.meta.version))
                 ? Number(UTIL_PRODUCTION_DAILY_STATE.meta.version)

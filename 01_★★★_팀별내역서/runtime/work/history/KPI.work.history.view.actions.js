@@ -19,16 +19,45 @@
         isKpiRecord,
         ATTACHMENT_SLOT_KEYS,
         ATTACHMENT_SLOT_META,
+        WORK_HISTORY_ATTACHMENT_MAX_BYTES,
         getElement,
         getPayload,
         getRecordAttachment,
         flattenAttachmentSlots,
+        validateWorkHistoryAttachment,
         uploadPendingAttachments,
         deleteAttachmentsFromServer,
         savePayload,
         saveNow,
-        getRecordRuntimeConfig
+        getRecordRuntimeConfig,
+        buildExportScript
     } = history;
+
+    function getAttachmentValidationMessage(errorKey) {
+        if (errorKey === 'unsupported_type' || errorKey === 'attachment_pdf_only') {
+            return 'PDF, 엑셀, PPT, 워드, 한글 파일만 첨부할 수 있습니다.';
+        }
+        if (errorKey === 'file_too_large') {
+            const maxMb = Math.max(1, Math.round((Number(WORK_HISTORY_ATTACHMENT_MAX_BYTES) || 0) / (1024 * 1024)));
+            return `첨부 파일은 ${maxMb}MB 이하만 업로드할 수 있습니다.`;
+        }
+        return '첨부 파일을 다시 선택해 주세요.';
+    }
+
+    function getAttachmentInputId(slotKey) {
+        return String(slotKey || '').trim() === 'billing'
+            ? 'recordBillingAttachment'
+            : 'recordReportAttachment';
+    }
+
+    function openAttachmentPicker(slotKey) {
+        const normalizedSlotKey = ATTACHMENT_SLOT_KEYS.includes(String(slotKey || '').trim())
+            ? String(slotKey).trim()
+            : '';
+        if (!normalizedSlotKey) return;
+        const input = getElement(getAttachmentInputId(normalizedSlotKey));
+        input?.click?.();
+    }
 
     function bindEvents() {
         const root = view.getShadowRoot?.();
@@ -275,6 +304,11 @@
             }
             if (action === 'remove-pending-attachment') {
                 removePendingAttachment(actionTarget.dataset.slot || actionTarget.dataset.index);
+                return;
+            }
+            if (action === 'pick-attachment') {
+                openAttachmentPicker(actionTarget.dataset.slot || '');
+                return;
             }
         }
 
@@ -595,9 +629,11 @@
         if (!normalizedSlotKey || !files.length) return;
 
         const file = files[0];
-        const isPdf = /\.pdf$/i.test(String(file?.name || '')) || String(file?.type || '').trim() === 'application/pdf';
-        if (!isPdf) {
-            window.alert('PDF 파일만 첨부할 수 있습니다.');
+        const errorKey = typeof validateWorkHistoryAttachment === 'function'
+            ? validateWorkHistoryAttachment(file)
+            : '';
+        if (errorKey) {
+            window.alert(getAttachmentValidationMessage(errorKey));
             const input = getElement(normalizedSlotKey === 'billing' ? 'recordBillingAttachment' : 'recordReportAttachment');
             if (input) input.value = '';
             return;
@@ -616,9 +652,9 @@
             const meta = ATTACHMENT_SLOT_META[slotKey];
             const existing = state.formState.existingAttachments?.[slotKey] || null;
             const pending = state.formState.pendingFiles?.[slotKey] || null;
-            const isExistingPdf = existing
-                ? (/\.pdf$/i.test(String(existing.originalName || '')) || String(existing.mimeType || '').trim() === 'application/pdf')
-                : false;
+            const pickerButtonHtml = `
+                <button type="button" class="attachment-pick-btn" data-action="pick-attachment" data-slot="${slotKey}">파일 선택</button>
+            `;
             const itemHtml = pending
                 ? `
                     <div class="attachment-item pending">
@@ -631,7 +667,7 @@
                         </div>
                     </div>
                 `
-                : existing && isExistingPdf
+                : existing
                     ? `
                         <div class="attachment-item">
                             <div class="attachment-meta">
@@ -639,30 +675,20 @@
                                 <span class="attachment-size">${history.escapeHtml(view.formatFileSize(existing.size))}</span>
                             </div>
                             <div class="attachment-actions">
-                                <a class="btn btn-secondary btn-sm" href="${history.escapeAttribute(existing.previewUrl || existing.url || '#')}" target="_blank" rel="noopener">미리보기</a>
-                                <a class="btn btn-secondary btn-sm" href="${history.escapeAttribute(existing.downloadUrl || existing.url || existing.previewUrl || '#')}" target="_blank" rel="noopener">다운로드</a>
+                                <a class="btn btn-secondary btn-sm" href="${history.escapeAttribute(existing.downloadUrl || existing.url || existing.previewUrl || '#')}" download="${history.escapeAttribute(existing.originalName || 'attachment')}" target="_blank" rel="noopener">다운로드</a>
                                 <button type="button" class="btn btn-secondary btn-sm" data-action="remove-existing-attachment" data-slot="${slotKey}">제거</button>
                             </div>
                         </div>
                     `
-                    : existing
-                        ? `
-                            <div class="attachment-item">
-                                <div class="attachment-meta">
-                                    <span class="attachment-name">${history.escapeHtml(existing.originalName)}</span>
-                                    <span class="attachment-size">${history.escapeHtml(view.formatFileSize(existing.size))}</span>
-                                </div>
-                                <div class="attachment-actions">
-                                    <span class="attachment-empty">PDF만 지원됩니다.</span>
-                                    <button type="button" class="btn btn-secondary btn-sm" data-action="remove-existing-attachment" data-slot="${slotKey}">제거</button>
-                                </div>
-                            </div>
-                        `
-                    : '<div class="attachment-empty">첨부된 PDF가 없습니다.</div>';
+                    : '<div class="attachment-empty">첨부된 파일이 없습니다.</div>';
 
             return `
                 <div class="attachment-slot-group">
-                    <div class="attachment-slot-title">${history.escapeHtml(meta.label)}</div>
+                    <div class="attachment-slot-head">
+                        <div class="attachment-slot-title">${history.escapeHtml(meta.label)}</div>
+                        ${pickerButtonHtml}
+                    </div>
+                    <div class="attachment-slot-hint">PDF, 엑셀, PPT, 워드, 한글 문서 중 1건</div>
                     <div class="attachment-slot-body">${itemHtml}</div>
                 </div>
             `;
@@ -791,10 +817,11 @@
                 nextAttachmentSlots[slotKey] = uploadedAttachments[0] || null;
             } catch (error) {
                 console.error('[kpi] work history attachment upload failed', error);
-                if (String(error?.message || '') === 'attachment_pdf_only') {
-                    window.alert('PDF 파일만 첨부할 수 있습니다.');
+                const errorKey = String(error?.message || '').trim();
+                if (errorKey === 'attachment_pdf_only' || errorKey === 'unsupported_type' || errorKey === 'file_too_large') {
+                    window.alert(getAttachmentValidationMessage(errorKey));
                 } else {
-                    window.alert('첨부 PDF 업로드 중 오류가 발생했습니다.');
+                    window.alert('첨부 파일 업로드 중 오류가 발생했습니다.');
                 }
                 return false;
             }
@@ -918,10 +945,9 @@
     }
 
     function downloadBackupSnapshot() {
-        const fileName = `${DATA_KEY}_${view.buildTimestampLabel()}.json`;
-        const payload = normalizePayload(cloneJson(getPayload()));
-        const content = JSON.stringify(payload, null, 2);
-        const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+        const fileName = `data_${DATA_KEY}_${view.buildTimestampLabel()}.js`;
+        const content = buildExportScript(getPayload());
+        const blob = new Blob([content], { type: 'application/javascript;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = url;

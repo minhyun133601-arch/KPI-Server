@@ -2,19 +2,34 @@
         // ----------------------------------------------------------------
         // 유틸리티 데이터 - 전기
         // ----------------------------------------------------------------
-        const UTIL_ELECTRIC_DATA = (window.PortalData && window.PortalData.util_electric_data && window.PortalData.util_electric_data.teams)
-            ? window.PortalData.util_electric_data.teams
-            : [];
-        const UTIL_ELECTRIC_ENTRIES = [];
-        const UTIL_GAS_ENTRIES = [];
-        const UTIL_WASTE_ENTRIES = [];
-        const UTIL_PRODUCTION_ENTRIES = [];
+        const createUtilTeamData = (teams) => teams.map(name => ({ name, years: [] }));
         const UTIL_ELECTRIC_METERING_TEAM_MAP = Object.freeze({
             '1팀 1파트': 'team_01_01',
             '1팀 2파트': 'team_01_02',
             '2팀': 'team_02',
             '3팀': 'team_03'
         });
+        const UTIL_ELECTRIC_METERING_TEAM_NAME_BY_KEY = Object.freeze(
+            Object.entries(UTIL_ELECTRIC_METERING_TEAM_MAP).reduce((acc, [teamName, teamKey]) => {
+                acc[teamKey] = teamName;
+                return acc;
+            }, {})
+        );
+        const UTIL_ELECTRIC_METERING_TEAM_NAMES = Object.freeze(Object.keys(UTIL_ELECTRIC_METERING_TEAM_MAP));
+        const UTIL_GAS_METERING_TEAM_NAMES = Object.freeze([
+            '1팀 1파트 (LNG)',
+            '1팀 2파트 (LNG)',
+            '1팀 2파트 (LPG)',
+            '3팀 (LNG)'
+        ]);
+        const UTIL_WASTE_METERING_TEAM_NAMES = Object.freeze(['유산', '북정']);
+        const UTIL_ELECTRIC_DATA = createUtilTeamData(UTIL_ELECTRIC_METERING_TEAM_NAMES);
+        const UTIL_GAS_DATA = createUtilTeamData(UTIL_GAS_METERING_TEAM_NAMES);
+        const UTIL_WASTE_DATA = createUtilTeamData(UTIL_WASTE_METERING_TEAM_NAMES);
+        const UTIL_ELECTRIC_ENTRIES = [];
+        const UTIL_GAS_ENTRIES = [];
+        const UTIL_WASTE_ENTRIES = [];
+        const UTIL_PRODUCTION_ENTRIES = [];
         const UtilElectricMeteringSyncState = {
             bootstrapped: false,
             timerId: 0,
@@ -54,16 +69,20 @@
             return rows;
         }
 
-        function ensureUtilElectricTeamNode(teamName) {
-            let teamNode = UTIL_ELECTRIC_DATA.find(item => String(item?.name || '').trim() === teamName) || null;
+        function ensureUtilDatasetTeamNode(dataset, teamName) {
+            if (!Array.isArray(dataset)) return null;
+            const normalizedTeamName = String(teamName || '').trim();
+            if (!normalizedTeamName) return null;
+            let teamNode = dataset.find(item => String(item?.name || '').trim() === normalizedTeamName) || null;
             if (teamNode) return teamNode;
-            teamNode = { name: teamName, years: [] };
-            UTIL_ELECTRIC_DATA.push(teamNode);
+            teamNode = { name: normalizedTeamName, years: [] };
+            dataset.push(teamNode);
             return teamNode;
         }
 
-        function ensureUtilElectricYearNode(teamName, yearValue) {
-            const teamNode = ensureUtilElectricTeamNode(teamName);
+        function ensureUtilDatasetYearNode(dataset, teamName, yearValue) {
+            const teamNode = ensureUtilDatasetTeamNode(dataset, teamName);
+            if (!teamNode) return null;
             if (!Array.isArray(teamNode.years)) teamNode.years = [];
             let yearNode = teamNode.years.find(item => Number(item?.label) === Number(yearValue)) || null;
             if (!yearNode) {
@@ -99,14 +118,6 @@
             return numeric;
         }
 
-        function cloneUtilDatasetValue(value) {
-            try {
-                return JSON.parse(JSON.stringify(value ?? null));
-            } catch (error) {
-                return value ?? null;
-            }
-        }
-
         function setUtilMetricValue(row, key, value) {
             if (!row) return false;
             const nextValue = normalizeUtilMetricValue(value);
@@ -140,41 +151,106 @@
             return changed;
         }
 
-        function applyUtilElectricMeteringSnapshot(snapshot) {
-            const touchedYearNodes = new Set();
-            let changed = false;
-            if (!snapshot || typeof snapshot !== 'object' || !snapshot.teams) return false;
+        function buildUtilDatasetFromSnapshot(snapshot, defaultTeamNames, options = {}) {
+            const teamNames = Array.isArray(defaultTeamNames) ? defaultTeamNames : [];
+            const dataset = createUtilTeamData(teamNames);
+            if (!snapshot || typeof snapshot !== 'object' || !snapshot.teams || typeof snapshot.teams !== 'object') {
+                return dataset;
+            }
 
-            Object.entries(UTIL_ELECTRIC_METERING_TEAM_MAP).forEach(([teamName, teamKey]) => {
-                const teamSnapshot = snapshot.teams?.[teamKey];
+            const resolveTeamName = typeof options.resolveTeamName === 'function'
+                ? options.resolveTeamName
+                : ((teamKey) => teamKey);
+            const hasAdditionalMonthData = typeof options.hasAdditionalMonthData === 'function'
+                ? options.hasAdditionalMonthData
+                : (() => false);
+            const applyAdditionalMonthData = typeof options.applyAdditionalMonthData === 'function'
+                ? options.applyAdditionalMonthData
+                : null;
+
+            Object.entries(snapshot.teams).forEach(([teamKey, teamSnapshot]) => {
                 if (!teamSnapshot || typeof teamSnapshot !== 'object') return;
+                const teamName = String(resolveTeamName(teamKey, teamSnapshot) || '').trim();
+                if (!teamName) return;
 
                 Object.entries(teamSnapshot).forEach(([monthValue, monthData]) => {
                     const match = /^(\d{4})-(\d{2})$/.exec(String(monthValue || '').trim());
-                    if (!match) return;
+                    if (!match || !monthData || typeof monthData !== 'object') return;
+
+                    const usageValue = normalizeUtilMetricValue(monthData?.usage);
+                    const costValue = normalizeUtilMetricValue(monthData?.cost);
+                    if (usageValue === null && costValue === null && !hasAdditionalMonthData(monthData, teamName)) {
+                        return;
+                    }
+
                     const yearValue = Number(match[1]);
                     const monthNumber = Number(match[2]);
                     if (!Number.isFinite(yearValue) || !Number.isFinite(monthNumber)) return;
 
-                    const yearNode = ensureUtilElectricYearNode(teamName, yearValue);
+                    const yearNode = ensureUtilDatasetYearNode(dataset, teamName, yearValue);
+                    if (!yearNode) return;
                     const monthRow = ensureUtilMonthRow(yearNode.rows, monthNumber);
-                    touchedYearNodes.add(yearNode);
-                    changed = setUtilMetricValue(monthRow, 'usage', monthData?.usage) || changed;
-                    const nextCostValue = normalizeUtilMetricValue(monthData?.cost);
-                    if (nextCostValue !== null) {
-                        changed = setUtilMetricValue(monthRow, 'cost', nextCostValue) || changed;
+                    setUtilMetricValue(monthRow, 'usage', usageValue);
+                    setUtilMetricValue(monthRow, 'cost', costValue);
+                    if (applyAdditionalMonthData) {
+                        applyAdditionalMonthData(monthRow, monthData, teamName);
                     }
                 });
             });
 
-            touchedYearNodes.forEach((yearNode) => {
-                changed = recalculateUtilYearSummaryRows(yearNode.rows) || changed;
+            dataset.forEach((teamNode) => {
+                if (!Array.isArray(teamNode?.years)) {
+                    teamNode.years = [];
+                    return;
+                }
+                teamNode.years.sort((a, b) => Number(a?.label) - Number(b?.label));
+                teamNode.years.forEach((yearNode) => {
+                    if (!Array.isArray(yearNode?.rows)) {
+                        yearNode.rows = createDefaultUtilYearRows();
+                    }
+                    recalculateUtilYearSummaryRows(yearNode.rows);
+                });
             });
 
-            if (window.PortalData?.util_electric_data) {
-                window.PortalData.util_electric_data.teams = UTIL_ELECTRIC_DATA;
+            return dataset;
+        }
+
+        function replaceUtilDataset(target, nextDataset) {
+            if (!Array.isArray(target)) return false;
+            const nextValue = Array.isArray(nextDataset) ? nextDataset : [];
+            const previousSignature = JSON.stringify(target);
+            const nextSignature = JSON.stringify(nextValue);
+            if (previousSignature === nextSignature) return false;
+            target.splice(0, target.length, ...nextValue);
+            return true;
+        }
+
+        function refreshUtilAuthorityDerivedViews() {
+            const scope = document;
+            try {
+                const renderer = typeof window.renderUtilDualTabs === 'function'
+                    ? window.renderUtilDualTabs
+                    : (typeof renderUtilDualTabs === 'function' ? renderUtilDualTabs : null);
+                if (renderer) {
+                    renderer(scope);
+                }
+            } catch (error) {
+                console.error('Failed to refresh utility tabs after authority sync.', error);
             }
-            return changed;
+            try {
+                if (typeof refreshUtilViewsAfterDataMutation === 'function') {
+                    refreshUtilViewsAfterDataMutation(scope);
+                }
+            } catch (error) {
+                console.error('Failed to refresh utility analytics after authority sync.', error);
+            }
+        }
+
+        function applyUtilElectricMeteringSnapshot(snapshot) {
+            const nextDataset = buildUtilDatasetFromSnapshot(snapshot, UTIL_ELECTRIC_METERING_TEAM_NAMES, {
+                resolveTeamName: (teamKey) => UTIL_ELECTRIC_METERING_TEAM_NAME_BY_KEY[String(teamKey || '').trim()] || teamKey
+            });
+            return replaceUtilDataset(UTIL_ELECTRIC_DATA, nextDataset);
         }
 
         async function syncUtilElectricDataFromMetering(options = {}) {
@@ -196,6 +272,7 @@
 
                 if (changed) {
                     rebuildUtilEntryCollections();
+                    refreshUtilAuthorityDerivedViews();
                 }
 
                 return changed;
@@ -244,20 +321,6 @@
             queueUtilElectricDataSync({ force: true, delay: 0 });
         }
 
-        const createUtilTeamData = (teams) => teams.map(name => ({ name, years: [] }));
-        const UTIL_GAS_DATA = (window.PortalData && window.PortalData.util_gas_data && window.PortalData.util_gas_data.teams)
-            ? window.PortalData.util_gas_data.teams
-            : createUtilTeamData(['1팀 1파트 (LNG)', '1팀 2파트 (LNG)', '1팀 2파트 (LPG)', '3팀 (LNG)']);
-        const UTIL_GAS_METERING_TEAM_NAMES = Object.freeze([
-            '1팀 1파트 (LNG)',
-            '1팀 2파트 (LNG)',
-            '1팀 2파트 (LPG)',
-            '3팀 (LNG)'
-        ]);
-        const UTIL_WASTE_DATA = (window.PortalData && window.PortalData.util_wastewater_data && window.PortalData.util_wastewater_data.teams)
-            ? window.PortalData.util_wastewater_data.teams
-            : createUtilTeamData(['유산', '북정']);
-        const UTIL_WASTE_DATA_BASELINE = cloneUtilDatasetValue(UTIL_WASTE_DATA);
         const DEFAULT_UTIL_PRODUCTION_PERIOD = { startDay: 1 };
         const UTIL_PRODUCTION_ARCHIVE_DB_NAME = 'kpi-util-production';
         const UTIL_PRODUCTION_ARCHIVE_STORE = 'production_files';
@@ -289,11 +352,18 @@
                 : {};
             const apiBaseRaw = String(utilProduction.apiBase || runtimeConfig.apiBase || '/api').trim();
             const apiBase = apiBaseRaw.startsWith('/') ? apiBaseRaw : `/${apiBaseRaw.replace(/^\/+/, '')}`;
+            const endpointRaw = String(utilProduction.endpoint || '').trim();
+            const endpoint = /^https?:\/\//i.test(endpointRaw)
+                ? endpointRaw
+                : (endpointRaw
+                    ? (endpointRaw.startsWith('/') ? endpointRaw : `/${endpointRaw.replace(/^\/+/, '')}`)
+                    : '');
             return {
                 enabled: Boolean(utilProduction.enabled),
                 apiBase,
-                moduleKey: String(utilProduction.moduleKey || 'portal_data').trim() || 'portal_data',
-                recordKey: String(utilProduction.recordKey || 'util_production_daily').trim() || 'util_production_daily',
+                endpoint,
+                moduleKey: String(utilProduction.moduleKey || 'util_production').trim() || 'util_production',
+                recordKey: String(utilProduction.recordKey || 'daily_state_v1').trim() || 'daily_state_v1',
                 permissionKey: String(utilProduction.permissionKey || 'util.production.daily').trim() || 'util.production.daily',
                 readEnabled: Boolean(utilProduction.readEnabled),
                 writeEnabled: Boolean(utilProduction.writeEnabled),
@@ -340,6 +410,9 @@
 
         function buildUtilProductionServerRecordEndpoint() {
             const config = getUtilProductionServerRuntimeConfig();
+            if (config.endpoint) {
+                return config.endpoint;
+            }
             return `${config.apiBase.replace(/\/+$/, '')}/modules/${encodeURIComponent(config.moduleKey)}/records/${encodeURIComponent(config.recordKey)}`;
         }
 
@@ -354,6 +427,7 @@
         async function writeUtilProductionDailyStateToServer(stateSnapshot) {
             if (!supportsUtilProductionServerPersistence()) return false;
             const config = getUtilProductionServerRuntimeConfig();
+            const snapshot = cloneUtilProductionStateForServer(stateSnapshot);
             const response = await window.fetch(buildUtilProductionServerRecordEndpoint(), {
                 method: 'PUT',
                 headers: {
@@ -363,7 +437,8 @@
                 credentials: 'same-origin',
                 body: JSON.stringify({
                     permissionKey: config.permissionKey,
-                    payload: cloneUtilProductionStateForServer(stateSnapshot)
+                    payload: snapshot,
+                    state: snapshot
                 })
             });
 
@@ -431,66 +506,11 @@
             return Math.max(1, Math.min(31, Math.floor(num)));
         }
 
-        function ensureUtilGasTeamNode(teamName) {
-            let teamNode = UTIL_GAS_DATA.find(item => String(item?.name || '').trim() === teamName) || null;
-            if (teamNode) return teamNode;
-            teamNode = { name: teamName, years: [] };
-            UTIL_GAS_DATA.push(teamNode);
-            return teamNode;
-        }
-
-        function ensureUtilGasYearNode(teamName, yearValue) {
-            const teamNode = ensureUtilGasTeamNode(teamName);
-            if (!Array.isArray(teamNode.years)) teamNode.years = [];
-            let yearNode = teamNode.years.find(item => Number(item?.label) === Number(yearValue)) || null;
-            if (!yearNode) {
-                yearNode = { label: String(yearValue), rows: createDefaultUtilYearRows() };
-                teamNode.years.push(yearNode);
-                teamNode.years.sort((a, b) => Number(a?.label) - Number(b?.label));
-            }
-            if (!Array.isArray(yearNode.rows)) yearNode.rows = createDefaultUtilYearRows();
-            return yearNode;
-        }
-
         function applyUtilGasMeteringSnapshot(snapshot) {
-            const touchedYearNodes = new Set();
-            let changed = false;
-            if (!snapshot || typeof snapshot !== 'object' || !snapshot.teams) return false;
-
-            UTIL_GAS_METERING_TEAM_NAMES.forEach(teamName => {
-                const teamSnapshot = snapshot.teams?.[teamName];
-                if (!teamSnapshot || typeof teamSnapshot !== 'object') return;
-
-                Object.entries(teamSnapshot).forEach(([monthValue, monthData]) => {
-                    const match = /^(\d{4})-(\d{2})$/.exec(String(monthValue || '').trim());
-                    if (!match) return;
-                    if (!monthData || typeof monthData !== 'object') return;
-                    const usageValue = normalizeUtilMetricValue(monthData.usage);
-                    const nextCostValue = normalizeUtilMetricValue(monthData?.cost);
-                    if (usageValue === null && nextCostValue === null) return;
-
-                    const yearValue = Number(match[1]);
-                    const monthNumber = Number(match[2]);
-                    if (!Number.isFinite(yearValue) || !Number.isFinite(monthNumber)) return;
-
-                    const yearNode = ensureUtilGasYearNode(teamName, yearValue);
-                    const monthRow = ensureUtilMonthRow(yearNode.rows, monthNumber);
-                    touchedYearNodes.add(yearNode);
-                    changed = setUtilMetricValue(monthRow, 'usage', usageValue) || changed;
-                    if (nextCostValue !== null) {
-                        changed = setUtilMetricValue(monthRow, 'cost', nextCostValue) || changed;
-                    }
-                });
+            const nextDataset = buildUtilDatasetFromSnapshot(snapshot, UTIL_GAS_METERING_TEAM_NAMES, {
+                resolveTeamName: (teamName) => teamName
             });
-
-            touchedYearNodes.forEach((yearNode) => {
-                changed = recalculateUtilYearSummaryRows(yearNode.rows) || changed;
-            });
-
-            if (window.PortalData?.util_gas_data) {
-                window.PortalData.util_gas_data.teams = UTIL_GAS_DATA;
-            }
-            return changed;
+            return replaceUtilDataset(UTIL_GAS_DATA, nextDataset);
         }
 
         async function syncUtilGasDataFromMetering(options = {}) {
@@ -512,6 +532,7 @@
 
                 if (changed) {
                     rebuildUtilEntryCollections();
+                    refreshUtilAuthorityDerivedViews();
                 }
 
                 return changed;
@@ -560,37 +581,6 @@
             queueUtilGasDataSync({ force: true, delay: 0 });
         }
 
-        function resetUtilWasteDataToBaseline() {
-            const clonedBaseline = Array.isArray(UTIL_WASTE_DATA_BASELINE)
-                ? cloneUtilDatasetValue(UTIL_WASTE_DATA_BASELINE)
-                : [];
-            UTIL_WASTE_DATA.splice(0, UTIL_WASTE_DATA.length, ...(Array.isArray(clonedBaseline) ? clonedBaseline : []));
-            if (window.PortalData?.util_wastewater_data) {
-                window.PortalData.util_wastewater_data.teams = UTIL_WASTE_DATA;
-            }
-        }
-
-        function ensureUtilWasteTeamNode(teamName) {
-            let teamNode = UTIL_WASTE_DATA.find(item => String(item?.name || '').trim() === teamName) || null;
-            if (teamNode) return teamNode;
-            teamNode = { name: teamName, years: [] };
-            UTIL_WASTE_DATA.push(teamNode);
-            return teamNode;
-        }
-
-        function ensureUtilWasteYearNode(teamName, yearValue) {
-            const teamNode = ensureUtilWasteTeamNode(teamName);
-            if (!Array.isArray(teamNode.years)) teamNode.years = [];
-            let yearNode = teamNode.years.find(item => Number(item?.label) === Number(yearValue)) || null;
-            if (!yearNode) {
-                yearNode = { label: String(yearValue), rows: createDefaultUtilYearRows() };
-                teamNode.years.push(yearNode);
-                teamNode.years.sort((a, b) => Number(a?.label) - Number(b?.label));
-            }
-            if (!Array.isArray(yearNode.rows)) yearNode.rows = createDefaultUtilYearRows();
-            return yearNode;
-        }
-
         function setUtilWasteCostDetails(row, costs) {
             if (!row || !costs || typeof costs !== 'object') return false;
             let changed = false;
@@ -636,52 +626,16 @@
         }
 
         function applyUtilWasteMeteringSnapshot(snapshot) {
-            const previousSignature = JSON.stringify(UTIL_WASTE_DATA);
-            const touchedYearNodes = new Set();
-            resetUtilWasteDataToBaseline();
-            let changed = previousSignature !== JSON.stringify(UTIL_WASTE_DATA);
-            if (!snapshot || typeof snapshot !== 'object' || !snapshot.teams) return changed;
-
-            Object.entries(snapshot.teams).forEach(([teamName, teamSnapshot]) => {
-                if (!teamSnapshot || typeof teamSnapshot !== 'object') return;
-
-                Object.entries(teamSnapshot).forEach(([monthValue, monthData]) => {
-                    const match = /^(\d{4})-(\d{2})$/.exec(String(monthValue || '').trim());
-                    if (!match) return;
-                    if (!monthData || typeof monthData !== 'object') return;
-
-                    const usageValue = normalizeUtilMetricValue(monthData.usage);
-                    const nextCostValue = normalizeUtilMetricValue(monthData.cost);
-                    const nextCosts = monthData.costs && typeof monthData.costs === 'object'
-                        ? monthData.costs
-                        : null;
-                    if (usageValue === null && nextCostValue === null && !nextCosts) return;
-
-                    const yearValue = Number(match[1]);
-                    const monthNumber = Number(match[2]);
-                    if (!Number.isFinite(yearValue) || !Number.isFinite(monthNumber)) return;
-
-                    const yearNode = ensureUtilWasteYearNode(teamName, yearValue);
-                    const monthRow = ensureUtilMonthRow(yearNode.rows, monthNumber);
-                    touchedYearNodes.add(yearNode);
-                    changed = setUtilMetricValue(monthRow, 'usage', usageValue) || changed;
-                    if (nextCostValue !== null) {
-                        changed = setUtilMetricValue(monthRow, 'cost', nextCostValue) || changed;
+            const nextDataset = buildUtilDatasetFromSnapshot(snapshot, UTIL_WASTE_METERING_TEAM_NAMES, {
+                resolveTeamName: (teamName) => teamName,
+                hasAdditionalMonthData: (monthData) => Boolean(monthData?.costs && typeof monthData.costs === 'object'),
+                applyAdditionalMonthData: (monthRow, monthData) => {
+                    if (monthData?.costs && typeof monthData.costs === 'object') {
+                        setUtilWasteCostDetails(monthRow, monthData.costs);
                     }
-                    if (nextCosts) {
-                        changed = setUtilWasteCostDetails(monthRow, nextCosts) || changed;
-                    }
-                });
+                }
             });
-
-            touchedYearNodes.forEach((yearNode) => {
-                changed = recalculateUtilYearSummaryRows(yearNode.rows) || changed;
-            });
-
-            if (window.PortalData?.util_wastewater_data) {
-                window.PortalData.util_wastewater_data.teams = UTIL_WASTE_DATA;
-            }
-            return changed;
+            return replaceUtilDataset(UTIL_WASTE_DATA, nextDataset);
         }
 
         async function syncUtilWasteDataFromMetering(options = {}) {
@@ -703,6 +657,7 @@
 
                 if (changed) {
                     rebuildUtilEntryCollections();
+                    refreshUtilAuthorityDerivedViews();
                 }
 
                 return changed;
@@ -919,7 +874,9 @@
             const periodDefault = (source.periodDefault && typeof source.periodDefault === 'object') ? source.periodDefault : {};
             return {
                 meta: {
-                    moduleKey: 'util_production_daily',
+                    moduleKey: String(meta.moduleKey || 'util_production').trim() || 'util_production',
+                    recordKey: String(meta.recordKey || 'daily_state_v1').trim() || 'daily_state_v1',
+                    permissionKey: String(meta.permissionKey || 'util.production.daily').trim() || 'util.production.daily',
                     moduleName: '유틸리티 - 생산량 일별',
                     version: Number.isFinite(Number(meta.version)) ? Number(meta.version) : 3,
                     updatedAt: String(meta.updatedAt || new Date().toISOString())

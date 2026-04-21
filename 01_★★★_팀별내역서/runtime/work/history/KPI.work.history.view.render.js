@@ -227,8 +227,8 @@
         const billing = getRecordAttachment(record, 'billing');
         const report = getRecordAttachment(record, 'report');
         const attachmentLabel = billing && report
-            ? '청구서/보고서'
-            : (billing ? '청구서' : (report ? '보고서' : ''));
+            ? '청구서/보고자료'
+            : (billing ? '청구서' : (report ? '보고자료' : ''));
 
         if (attachmentLabel && workTitle) return `${importantPrefix}${attachmentLabel} · ${workTitle}`;
         if (attachmentLabel && categoryText) return `${importantPrefix}${attachmentLabel} · ${categoryText}`;
@@ -282,28 +282,16 @@
                 `;
             }
 
-            const nameValue = String(attachment.originalName || '');
-            const mimeType = String(attachment.mimeType || '').trim();
-            const isPdf = /\.pdf$/i.test(nameValue) || mimeType === 'application/pdf';
-            if (!isPdf) {
-                return `
-                    <div class="attachment-view-item">
-                        <span class="attachment-type-label">${escapeHtml(meta.label)}</span>
-                        <span class="attachment-empty">PDF만 지원됩니다.</span>
-                    </div>
-                `;
-            }
-
             const previewUrl = attachment.previewUrl || attachment.url || attachment.downloadUrl || '#';
             const downloadUrl = attachment.downloadUrl || attachment.url || previewUrl;
             return `
                 <div class="attachment-view-item">
                     <span class="attachment-type-label">${escapeHtml(meta.label)}</span>
                     <div class="attachment-view-meta">
-                        <a class="attachment-link" href="${escapeAttribute(previewUrl)}" target="_blank" rel="noopener">${escapeHtml(attachment.originalName)}</a>
+                        <span class="attachment-file-label">${escapeHtml(attachment.originalName)}</span>
                         <span class="attachment-view-actions">
-                            <a class="attachment-view-btn" href="${escapeAttribute(previewUrl)}" target="_blank" rel="noopener">미리보기</a>
-                            <a class="attachment-size" href="${escapeAttribute(downloadUrl)}" target="_blank" rel="noopener">${escapeHtml(view.formatFileSize(attachment.size))}</a>
+                            <a class="attachment-view-btn" href="${escapeAttribute(downloadUrl)}" download="${escapeAttribute(attachment.originalName || 'attachment')}" target="_blank" rel="noopener">다운로드</a>
+                            <span class="attachment-size">${escapeHtml(view.formatFileSize(attachment.size))}</span>
                         </span>
                     </div>
                 </div>

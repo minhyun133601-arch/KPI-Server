@@ -26,7 +26,7 @@
                     title: '작업 내역 기입',
                     icon: 'fa-clipboard-list',
                     color: '#2563eb',
-                    desc: '팀별내역서 작업내역 입력 화면 바로가기',
+                    desc: '팀별내역서 작업내역 입력 및 문서 첨부 화면 바로가기',
                     shortcutTarget: {
                         sectionId: 'work',
                         title: '작업내역',
@@ -45,19 +45,6 @@
                             설비 이력 카드 연결은 준비 중입니다.
                         </div>
                     `
-                },
-                {
-                    title: '보고서 관리',
-                    icon: 'fa-file-lines',
-                    color: '#0ea5e9',
-                    desc: '월간 실적 보고서 관리 화면 바로가기',
-                    shortcutTarget: {
-                        sectionId: 'audit',
-                        dataKey: 'audit_monthly_report',
-                        options: {
-                            keepSidebarCollapsed: true
-                        }
-                    }
                 }
             ]
         };

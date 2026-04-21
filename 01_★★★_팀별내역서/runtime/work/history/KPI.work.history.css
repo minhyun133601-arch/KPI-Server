@@ -1397,6 +1397,13 @@
     background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
+.attachment-slot-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
 .attachment-slot-title,
 .attachment-type-label {
     font-size: 11px;
@@ -1406,10 +1413,36 @@
     color: var(--primary-700);
 }
 
+.attachment-slot-hint {
+    font-size: 12px;
+    color: var(--gray-500);
+}
+
 .attachment-slot-body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+.attachment-pick-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 88px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--primary-200);
+    border-radius: 8px;
+    background: var(--primary-50);
+    color: var(--primary-800);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.attachment-pick-btn:hover {
+    background: var(--primary-100);
 }
 
 .attachment-name {
@@ -1430,6 +1463,14 @@
     color: var(--primary-800);
     text-decoration: none;
     font-weight: 600;
+}
+
+.attachment-file-label {
+    color: var(--primary-800);
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 0;
+    word-break: break-all;
 }
 
 .attachment-view-meta {
@@ -1478,6 +1519,24 @@
     text-align: center;
     background: var(--gray-50);
     font-size: 13px;
+}
+
+.attachment-inputs {
+    position: absolute;
+    inline-size: 0;
+    block-size: 0;
+    overflow: hidden;
+}
+
+.attachment-file-input {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .file-help {

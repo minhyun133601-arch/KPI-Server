@@ -356,29 +356,8 @@
         }
 
         function buildUtilDeleteItemOptions(datasetKey, teamName = '') {
-            const normalizedDatasetKey = String(datasetKey || '').trim();
-            const baseOptions = [
-                { key: 'usage', label: '사용량', metricKey: 'usage', wasteCostSubKeys: [] },
-                { key: 'cost', label: '비용', metricKey: 'cost', wasteCostSubKeys: [] },
-                { key: 'production', label: '생산량', metricKey: 'production', wasteCostSubKeys: [] }
-            ];
-            if (normalizedDatasetKey !== 'waste') return baseOptions;
-            const wasteCostOptions = getWasteCostModesByTeam(teamName)
-                .map(mode => {
-                    const subKey = String(mode?.key || '').trim();
-                    if (!subKey) return null;
-                    return {
-                        key: subKey === 'total' ? 'cost' : `cost:${subKey}`,
-                        label: stripUtilLabelUnitSuffix(mode?.label || '비용'),
-                        metricKey: 'cost',
-                        wasteCostSubKeys: [subKey]
-                    };
-                })
-                .filter(Boolean);
             return [
-                baseOptions[0],
-                ...wasteCostOptions,
-                baseOptions[2]
+                { key: 'production', label: '생산량', metricKey: 'production', wasteCostSubKeys: [] }
             ];
         }
 

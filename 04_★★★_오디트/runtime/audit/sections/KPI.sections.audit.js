@@ -1,33 +1,6 @@
 (function () {
     window.KpiSectionFactories = window.KpiSectionFactories || {};
 
-    function buildAuditReportCategory() {
-        return {
-            title: '보고서 관리',
-            icon: 'fa-file-lines',
-            color: '#0ea5e9',
-            desc: '월간 실적 보고서 관리 및 정리',
-            dataKey: 'audit_monthly_report',
-            navHidden: true,
-            fileName: '월간 실적 보고서/*.pptx',
-            content: `
-                <div class="grid gap-6">
-                    <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
-                        <h3 class="text-slate-800 font-semibold text-base">보고서 보관 가이드</h3>
-                        <ul class="mt-3 space-y-2 text-sm text-slate-600 list-disc pl-5">
-                            <li>정기 감사, 외부 점검, 내부 보고서를 유형별로 분류해 주세요.</li>
-                            <li>파일명에 날짜(YYYY-MM-DD)와 담당 팀명을 포함하면 찾기 쉽습니다.</li>
-                            <li>중요 보고서는 요약본을 함께 기록해 두세요.</li>
-                        </ul>
-                    </div>
-                    <div class="p-4 rounded-xl border border-dashed border-slate-200 bg-white text-slate-500 text-sm">
-                        여기에 보고서 링크, 요약, 첨부 파일 위치 등을 정리하세요.
-                    </div>
-                </div>
-            `
-        };
-    }
-
     window.KpiSectionFactories.audit = function buildAuditSection() {
         const AppData = {};
         AppData['audit'] = {
@@ -175,8 +148,7 @@
                             </div>
                         </div>
                     `
-                },
-                buildAuditReportCategory()
+                }
             ]
         };
         return AppData['audit'];

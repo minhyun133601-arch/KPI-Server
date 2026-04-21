@@ -12,6 +12,7 @@
         isImportantRecord,
         isReportRecord,
         state,
+        WORK_HISTORY_ATTACHMENT_ACCEPT,
         escapeHtml,
         escapeAttribute,
         getElement,
@@ -19,9 +20,9 @@
         setShadowHost
     } = history;
 
-    const CSS_PATH = '01_★★★_팀별내역서/runtime/work/history/KPI.work.history.css?v=242';
+    const CSS_PATH = '01_★★★_팀별내역서/runtime/work/history/KPI.work.history.css?v=243';
     const COMPANY_LOGO_SRC = '※_공용자산/로고.jpg';
-    const DEFAULT_SUBTITLE = '기간, 팀, 작업자, 업무내용, 첨부, 비용까지 기록하는 KPI 작업내역 화면';
+    const DEFAULT_SUBTITLE = '기간, 팀, 작업자, 업무내용, 첨부 문서, 비용까지 기록하는 KPI 작업내역 화면';
     const OVERVIEW_KEY = 'overview';
     const DRAG_SCROLL_THRESHOLD = 6;
     const HISTORY_MIN_DATE = '2024-01-01';
@@ -448,7 +449,7 @@
                             <ul>
                                 <li>기간, 팀, 작업자, 업무내용은 필수입니다.</li>
                                 <li>비용은 필요한 경우에만 입력합니다.</li>
-                                <li>첨부는 청구서 PDF 1건, 보고서 PDF 1건으로 구분됩니다.</li>
+                                <li>첨부는 청구서 1건, 보고자료 1건으로 구분되며 PDF·엑셀·PPT·워드·한글 문서를 올릴 수 있습니다.</li>
                             </ul>
                         </div>
 
@@ -520,22 +521,14 @@
                                 </div>
                             </div>
 
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="recordBillingAttachment">청구서 PDF</label>
-                                    <input type="file" id="recordBillingAttachment" accept=".pdf,application/pdf">
-                                    <div class="file-help">청구서 1건만 PDF로 첨부합니다.</div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="recordReportAttachment">보고서 PDF</label>
-                                    <input type="file" id="recordReportAttachment" accept=".pdf,application/pdf">
-                                    <div class="file-help">보고서 1건만 PDF로 첨부합니다.</div>
-                                </div>
-                            </div>
-
                             <div class="form-group">
                                 <label>첨부 파일</label>
+                                <div class="file-help">청구서와 보고자료 칸에서 각각 문서 1건씩 선택합니다.</div>
                                 <div class="attachment-list" id="attachmentList"></div>
+                                <div class="attachment-inputs" aria-hidden="true">
+                                    <input type="file" id="recordBillingAttachment" class="attachment-file-input" accept="${escapeAttribute(WORK_HISTORY_ATTACHMENT_ACCEPT || '')}" tabindex="-1">
+                                    <input type="file" id="recordReportAttachment" class="attachment-file-input" accept="${escapeAttribute(WORK_HISTORY_ATTACHMENT_ACCEPT || '')}" tabindex="-1">
+                                </div>
                             </div>
                         </form>
                     </div>

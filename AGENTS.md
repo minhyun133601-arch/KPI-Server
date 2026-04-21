@@ -1,5 +1,6 @@
 # AGENTS.md
 작성일 / Date: `2026-04-03`
+개정일 / Revised: `2026-04-21` — 사내망 단일-박스 맥락 반영 (A-41a, A-42a, A-55a 추가)
 
 > 이 문서는 KPI 저장소의 **AI 역할, 코드 생성 규약, 보안 기준, 테스트·완료 기준**을 정의하는 단일 기준 문서다.  
 > This document is the single source of truth for the KPI repository’s **AI role, code-generation contract, security baseline, and testing/completion gates**.
@@ -150,6 +151,14 @@ supporting_docs_only:
 - KR: 현재 저장소 구조는 강한 이유가 없는 한 유지한다. 새 영역은 거대한 기술 버킷보다 feature-first 경계를 선호한다.
 - EN: Preserve the current repository structure unless there is a strong reason to improve it. Prefer feature-first boundaries over giant technology buckets.
 
+### Directive A-30a
+- KR: 구조 개선이나 파일 이동이 필요할 때는 기능 기준 디렉터리와 의도가 드러나는 평이한 이름을 우선한다. 새 경로나 이동된 경로에 정렬용 숫자, 장식용 기호, 의미 없는 접두 규칙을 계속 늘리지 않는다.
+- EN: When restructuring or moving files, prefer feature-based directories and plain intent-revealing names. Do not keep expanding new or moved paths with ordering numbers, decorative symbols, or meaningless prefixes.
+
+### Directive A-30b
+- KR: legacy 경로를 바꿀 때는 한 번에 뒤집지 말고, 로더, 테스트, 문서를 같은 패치에서 함께 갱신하는 staged, reversible move로 진행한다.
+- EN: When changing legacy paths, do it as staged and reversible moves that update loaders, tests, and docs in the same patch instead of a single big-bang rewrite.
+
 ### Directive A-31
 - KR: transport/UI 계층은 얇아야 한다. 비즈니스 규칙은 controller, view, route, handler 안에 두지 않는다.
 - EN: Transport and UI layers MUST remain thin. Business rules MUST NOT live inside controllers, views, routes, or handlers.
@@ -188,9 +197,19 @@ supporting_docs_only:
 - KR: hard limit는 `파일 500 LOC`, `함수/메서드 80 LOC`, `클래스 300 LOC`다. 넘으면 분할하거나 이유를 문서화한다.
 - EN: The hard limits are `500 LOC per file`, `80 LOC per function/method`, and `300 LOC per class`. If exceeded, split the unit or document the reason.
 
+### Directive A-41a
+
+- KR: `06_★★★_KPI런타임/internal-server/src/scripts/one-shot/` 하위 일회성 migration/repair 스크립트는 A-41의 파일 500 LOC hard cap 대신 `800 LOC hard cap`을 적용한다. 조건: 스크립트 상단 주석 또는 commit body에 일회성 성격과 실행 후 archive 의도를 명시한다. 함수/메서드 80 LOC 및 클래스 300 LOC는 예외 없이 유지한다. 근거: 이 스크립트들은 장기 유지보수 surface가 아니라 procedural 성격이 강하므로, 인위 분할 비용이 리뷰 이득을 초과한다.
+- EN: Scripts under `06_★★★_KPI런타임/internal-server/src/scripts/one-shot/` apply an `800 LOC hard cap` per file instead of A-41's 500 LOC limit, provided the one-shot and archive-after-run nature is stated in a header comment or the commit body. Function/method (80 LOC) and class (300 LOC) limits remain unchanged. Rationale: these scripts are procedural and not long-term maintenance surface, so forced splitting costs more than it gains.
+
 ### Directive A-42
 - KR: KPI 활성 JS/HTML 로직 파일에는 별도 가드가 있다. soft cap은 `1,200줄`, hard guard는 `1,500줄`이다. 단, data-only JS와 CSS는 예외다.
 - EN: Active KPI JS/HTML logic files have a separate guard: soft cap `1,200 lines`, hard guard `1,500 lines`. Data-only JS and CSS are exempt.
+
+### Directive A-42a
+
+- KR: 아래 legacy orchestrator 파일들은 A-42 hard guard 1,500을 이미 초과한 상태로 grandfathered 예외로 인정한다. 조건은 **세 가지 모두**다. ① 신규 기능 추가 금지(버그 수정과 순수 추출만 허용), ② staged split이 진행 중이거나 split 계획이 `구조-문제점-진단.md` 같은 supporting doc에 명시되어 있음, ③ 각 split commit의 body에 **오케스트레이터 본체에서 제거된 라인 수**를 기록한다. 대상 파일: `02_★★★★_유틸리티/runtime/util/report/KPI.util.report.sheet.js`, `KPI.html` (shell 역할로 축소 중). 신규 생성 활성 로직 파일은 이 예외에 포함될 수 없으며 A-42가 그대로 적용된다. 위 allowlist에서 제거하려면 해당 파일을 A-42 기준선(1,500줄) 이하로 내린 뒤 동일 커밋에서 이 항목을 갱신한다.
+- EN: The following legacy orchestrator files are grandfathered exceptions that already exceed the A-42 hard guard of 1,500 lines. The exception is conditional on **all three** of: (1) no new feature additions (bug fixes and pure extractions only), (2) a staged split in progress or a split plan documented in a supporting doc such as `구조-문제점-진단.md`, and (3) each split commit MUST record the **net lines removed from the orchestrator body** in its commit body. Allowlist: `02_★★★★_유틸리티/runtime/util/report/KPI.util.report.sheet.js`, `KPI.html` (being reduced toward shell role). Newly created active logic files MUST NOT join this allowlist and remain bound by A-42. To remove a file from the allowlist, bring it under the 1,500-line threshold and update this directive in the same commit.
 
 ### Directive A-43
 - KR: 새 활성 로직 파일은 가능하면 `800줄` 안쪽을 목표로 한다.
@@ -205,8 +224,8 @@ supporting_docs_only:
 - EN: `06_★★★_KPI런타임/internal-server/src/server.js` MUST NOT become an infinite accumulation point for endpoints, bootstrap logic, static serving, and file/document handling; split by responsibility.
 
 ### Directive A-46
-- KR: `02_★★★★_유틸리티/apps/metering/app.js`는 대형 예외 파일이지만, 분할은 항상 `구조 분석 -> 분할 계획 -> 사용자 확인 -> 단계 실행` 순서를 따른다.
-- EN: `02_★★★★_유틸리티/apps/metering/app.js` is a large-file exception, but any split MUST follow `structure analysis -> split plan -> user confirmation -> staged execution`.
+- KR: `02_★★★★_유틸리티/apps/metering/app.js`는 역사적으로 대형이었던 오케스트레이터 파일이며, 추가 분할은 항상 `구조 분석 -> 분할 계획 -> 사용자 확인 -> 단계 실행` 순서를 따른다.
+- EN: `02_★★★★_유틸리티/apps/metering/app.js` is a historically large orchestrator file, and any further split MUST follow `structure analysis -> split plan -> user confirmation -> staged execution`.
 
 ## 6. Universal Code Contract / 공통 코드 계약
 
@@ -233,6 +252,11 @@ supporting_docs_only:
 ### Directive A-55
 - KR: schema를 바꾸면 migration과 rollback/recovery 메모를 같이 남긴다.
 - EN: Any schema change MUST ship with a migration and a rollback/recovery note.
+
+### Directive A-55a
+
+- KR: 사내망 단일-박스 운용 맥락에서 A-55의 rollback 메모는 다음 두 형태 중 하나로 충족한다. **형태 1**: 별도 `NNN_name.down.sql` 파일과 up/down 쌍 관리. **형태 2**: migration SQL 상단의 inline rollback 메모 + 직전 backup snapshot으로 복구하는 절차 참조. 다음 세 경우에는 형태 1이 필수다. ① 대규모 데이터 재구성(`ALTER TABLE ... DROP/TYPE change` 등), ② 되돌리기 어려운 destructive change(`DROP TABLE/COLUMN`, 돌이킬 수 없는 데이터 변환), ③ production 사용 중인 테이블의 non-nullable column 추가. 근거: 단일 박스에 정기 backup이 있는 환경에서는 backup-기반 복구가 대부분의 destructive 실수에 대해 가장 빠르고 안전한 경로다. rollback SQL 쌍은 위험한 변경에 한해 강제한다.
+- EN: In the internal single-box intranet context, A-55's rollback note MAY be satisfied by either **Form 1**: a dedicated `NNN_name.down.sql` file paired with the up-migration, or **Form 2**: an inline rollback memo at the top of the migration SQL plus a reference to restoring from the most recent backup snapshot. Form 1 is MANDATORY for: (a) large-scale data reshaping (`ALTER TABLE ... DROP`, type changes), (b) irreversible destructive changes (`DROP TABLE/COLUMN`, one-way data transforms), or (c) adding non-nullable columns to production-active tables. Rationale: on a single-box setup with routine backups, backup-based recovery is usually the fastest and safest path for destructive mistakes. Paired rollback SQL is enforced only where that path is insufficient.
 
 ### Directive A-56
 - KR: 환경변수는 한 곳에서 읽어 typed config 객체로 매핑한다. raw env lookup을 코드베이스 전체에 흩뿌리지 않는다.
@@ -299,6 +323,10 @@ supporting_docs_only:
 ### Directive A-78
 - KR: 기존 구조와 호환되는 한 작은 reversible patch를 우선한다.
 - EN: Prefer small, reversible patches as long as they remain compatible with the current structure.
+
+### Directive A-78a
+- KR: live KPI 프런트 자산을 이동하거나 이름을 바꿀 때는 `KPI.html`, metering bridge, bundle draft smoke, 관련 frontend smoke를 같은 단계에서 함께 맞춘다.
+- EN: When moving or renaming live KPI frontend assets, update `KPI.html`, the metering bridge, the bundle-draft smoke, and the relevant frontend smoke checks in the same step.
 
 ## 8. Python Service Hard Rules (Only When Explicitly Approved) / Python 서비스 하드 룰 (명시적으로 승인된 경우에만)
 

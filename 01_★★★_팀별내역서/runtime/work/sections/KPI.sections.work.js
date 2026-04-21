@@ -138,7 +138,7 @@
                     color: '#0f766e',
                     secondaryColor: '#14b8a6',
                     tint: '#ecfeff',
-                    desc: '기간별 작업자, 구분, 비용까지 기록하는 통합 작업내역 도구',
+                    desc: '기간별 작업자, 구분, 비용과 문서 첨부까지 기록하는 통합 작업내역 도구',
                     navHidden: true,
                     dataKey: 'work_history_records',
                     view: 'history_tool',

@@ -1,486 +1,409 @@
 (function registerUtilSheetReports() {
-    const UTIL_SHEET_CUTOFF = '2026-02';
-    const utilSheetNumberFormatter = new Intl.NumberFormat('ko-KR');
-    const UTIL_SHEET_DATASET_SPECS = {
-        gas: {
-            key: 'gas',
-            label: '가스비',
-            scopeKey: 'gas',
-            usageKey: 'gasUsage',
-            costKey: 'gasCost',
-            unitKey: 'gasUnit',
-            usageUnit: 'Nm3',
-            color: '#f97316'
-        },
-        electric: {
-            key: 'electric',
-            label: '전력비',
-            scopeKey: 'electric',
-            usageKey: 'electricUsage',
-            costKey: 'electricCost',
-            unitKey: 'electricUnit',
-            usageUnit: 'kWh',
-            color: '#2563eb'
-        }
-    };
-    const UTIL_SHEET_TYPE_SPECS = {
-        meter: {
-            key: 'meter',
-            title: '검침표',
-            description: '가스비 검침표와 전력비 검침표를 한 화면에서 전환합니다.',
-            buttonLabel: '이동'
-        },
-        analysis: {
-            key: 'analysis',
-            title: '분석표',
-            description: '가스비 분석표와 전력비 분석표를 한 화면에서 전환합니다.',
-            buttonLabel: '이동'
-        }
-    };
-    const UtilSheetReportState = {
-        meter: 'gas',
-        analysis: 'gas'
-    };
-    const UtilSheetReportMonthState = {
-        meter: '',
-        analysis: ''
-    };
-    const UtilSheetCompareState = {
-        meter: 'month',
-        analysis: 'month'
-    };
-    const UtilSheetMeterState = {
-        gasProductionKey: 'combined',
-        electricTeamKey: 'combined',
-        electricViewKey: 'meter'
-    };
-    const UtilSheetRuntimeState = {
-        gasMeteringPromise: null,
-        electricMeteringPromise: null,
-        electricDataSyncPromise: null,
-        electricDataSyncedOnce: false,
-        electricMeterStructureCache: null,
-        electricSnapshotRowsCache: null
-    };
-    const UtilSheetAnalysisState = {
-        gas: {
-            from: '',
-            to: '',
-            categoryKey: 'yusan',
-            showLabels: null,
-            ratioShowLabels: false,
-            inactiveFuels: {
-                lng: false,
-                lpg: false
-            },
-            unitKeys: {
-                lpgUsage: 'ton',
-                lngUsage: 'km3',
-                gasCost: 'million',
-                production: 'ton'
-            },
-            displayModes: {
-                lpgUsage: 'bar',
-                lngUsage: 'bar',
-                gasCost: 'line',
-                production: 'line'
-            },
-            ratioDisplayModes: {
-                'ratio-lpg': 'line',
-                'ratio-lng': 'line'
-            }
-        },
-        electric: {
-            from: '',
-            to: '',
-            teamKey: 'combined',
-            showLabels: null,
-            intensityShowLabels: null,
-            unitKeys: {
-                electricUsage: 'mwh',
-                electricCost: 'million',
-                production: 'ton',
-                electricIntensity: 'kwhkg'
-            },
-            displayModes: {
-                electricUsage: 'bar',
-                electricCost: 'line',
-                production: 'line',
-                electricIntensity: 'line'
-            }
-        }
-    };
-    const UtilSheetDetachedReportState = {
-        win: null
-    };
-    const UtilSheetAnalysisChartPopupState = {
-        win: null,
-        chartKey: '',
-        datasetKey: 'gas'
-    };
-    const UTIL_GAS_ANALYSIS_UNIT_OPTIONS = Object.freeze({
-        lpgUsage: Object.freeze([
-            { key: 'kg', label: 'kg', scale: 1, decimals: 0 },
-            { key: 'ton', label: '톤', scale: 1000, decimals: 1 }
-        ]),
-        lngUsage: Object.freeze([
-            { key: 'm3', label: 'm³', scale: 1, decimals: 0 },
-            { key: 'km3', label: '천m³', scale: 1000, decimals: 1 }
-        ]),
-        gasCost: Object.freeze([
-            { key: 'krw', label: '원', scale: 1, decimals: 0 },
-            { key: 'thousand', label: '천원', scale: 1000, decimals: 1 },
-            { key: 'million', label: '백만원', scale: 1000000, decimals: 1 }
-        ]),
-        production: Object.freeze([
-            { key: 'kg', label: 'kg', scale: 1, decimals: 0 },
-            { key: 'ton', label: '톤', scale: 1000, decimals: 1 }
-        ])
+    const utilReportSheetConfig = globalThis.KPIUtilReportSheetConfig;
+    if (!utilReportSheetConfig) {
+        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.js');
+    }
+    const {
+        UTIL_SHEET_CUTOFF,
+        utilSheetNumberFormatter,
+        UTIL_SHEET_DATASET_SPECS,
+        UTIL_SHEET_TYPE_SPECS,
+        UtilSheetReportState,
+        UtilSheetReportMonthState,
+        UtilSheetCompareState,
+        UtilSheetMeterState,
+        UtilSheetRuntimeState,
+        UtilSheetAnalysisState,
+        UtilSheetDetachedReportState,
+        UtilSheetAnalysisChartPopupState,
+        UTIL_GAS_ANALYSIS_UNIT_OPTIONS,
+        UTIL_GAS_ANALYSIS_DEFAULT_UNITS,
+        UTIL_GAS_ANALYSIS_DEFAULT_DISPLAY_MODES,
+        UTIL_GAS_ANALYSIS_RATIO_DEFAULT_DISPLAY_MODES,
+        UTIL_ELECTRIC_ANALYSIS_UNIT_OPTIONS,
+        UTIL_ELECTRIC_ANALYSIS_DEFAULT_UNITS,
+        UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_UNIT_OPTIONS,
+        UTIL_ELECTRIC_ANALYSIS_DEFAULT_DISPLAY_MODES,
+        UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_PREFIX,
+        UTIL_GAS_ANALYSIS_DISPLAY_OPTIONS,
+        UTIL_GAS_METER_FIELD_ORDER,
+        UTIL_GAS_METER_FIELD_LABELS,
+        UTIL_GAS_METER_LPG_FACTOR,
+        UTIL_GAS_METER_CORRECTION_TARGET_IDS,
+        UTIL_GAS_BILLING_SCOPE_KEYS,
+        UTIL_ELECTRIC_BILLING_DOCUMENT_DIRECTORY,
+        UTIL_GAS_BILLING_DOCUMENT_DIRECTORY,
+        UTIL_GAS_BILLING_ASSET_BASE_DIRECTORY,
+        UTIL_ELECTRIC_BILLING_SCOPE_LABELS,
+        UTIL_GAS_BILLING_SCOPE_LABELS,
+        UTIL_GAS_RATIO_CHART_COLORS,
+        UTIL_GAS_METER_FIELD_ICONS
+    } = utilReportSheetConfig;
+    const utilReportSheetOptions = globalThis.KPIUtilReportSheetOptions;
+    if (!utilReportSheetOptions) {
+        throw new Error('KPIUtilReportSheetOptions must load before KPI.util.report.sheet.js');
+    }
+    const {
+        UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS,
+        UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS,
+        UTIL_ELECTRIC_METER_TEAM_OPTIONS,
+        UTIL_ELECTRIC_METER_TOTAL_POWER_FIELD_ID,
+        UTIL_ELECTRIC_METER_ACTIVE_POWER_FIELD_IDS,
+        UTIL_ELECTRIC_METER_EXCLUDED_DETAIL_FIELD_IDS,
+        UTIL_ELECTRIC_METER_FIELD_LABEL_OVERRIDES,
+        UTIL_ELECTRIC_METER_TEAM_FALLBACK_FIELD_IDS,
+        UTIL_ELECTRIC_ALLOCATION_GROUPS,
+        UTIL_ELECTRIC_TEAM_FILTER_TO_SNAPSHOT_KEY,
+        UTIL_ELECTRIC_TEAM_SUMMARY_OPTIONS,
+        UTIL_ELECTRIC_TEAM_COLOR_META,
+        UTIL_ELECTRIC_BILLING_SUMMARY_FIELDS,
+        normalizeUtilElectricMeterTeamKey,
+        getUtilElectricMeterTeamOption,
+        normalizeUtilElectricAnalysisTeamKey,
+        getUtilElectricAnalysisTeamOption,
+        normalizeUtilGasAnalysisCategoryKey,
+        getUtilGasAnalysisCategoryOption,
+        normalizeUtilElectricMeterViewKey
+    } = utilReportSheetOptions;
+    const utilReportSheetBilling = globalThis.KPIUtilReportSheetBilling;
+    if (!utilReportSheetBilling) {
+        throw new Error('KPIUtilReportSheetBilling must load before KPI.util.report.sheet.js');
+    }
+    utilReportSheetBilling.setRuntimeAdapters({
+        getGasMeteringStore: () => getUtilGasMeteringStore(),
+        getElectricMeteringStore: () => getUtilElectricMeteringStore(),
+        getLocalAppStore: () => window.__LOCAL_APP_STORE__ || null,
+        isPlainObject: (value) => isUtilSheetPlainObject(value),
+        formatMonthLabel: (monthKey) => (
+            typeof formatUtilReportMonthLong === 'function'
+                ? formatUtilReportMonthLong(monthKey || '')
+                : String(monthKey || '')
+        )
     });
-    const UTIL_GAS_ANALYSIS_DEFAULT_UNITS = Object.freeze({
-        lpgUsage: 'ton',
-        lngUsage: 'km3',
-        gasCost: 'million',
-        production: 'ton'
+    const {
+        getUtilGasBillingSettlementEntries,
+        getUtilGasBillingScopeFields,
+        getUtilGasBillingDocuments,
+        getUtilElectricBillingDocuments,
+        isUtilGasBillingDocumentLeafRecord,
+        getUtilGasBillingDocument,
+        getUtilElectricBillingDocument,
+        normalizeUtilGasBillingDocumentRelativePath,
+        getUtilGasBillingDocumentFileNameFromPath,
+        buildUtilGasBillingDocumentRelativePath,
+        normalizeUtilGasBillingDocumentAssetRelativePath,
+        getUtilGasBillingDocumentMimeTypeFromFileName,
+        getUtilGasBillingDocumentMimeType,
+        isUtilGasBillingImageDocument,
+        buildUtilGasBillingDocumentDataUrl,
+        encodeUtilGasBillingDocumentRelativePath,
+        resolveUtilSheetAssetUrl,
+        resolveUtilGasBillingDocumentUrl,
+        resolveUtilGasBillingDocumentDownloadUrl,
+        resolveUtilGasBillingDocumentDescriptor,
+        resolveUtilElectricBillingDocumentDescriptor,
+        resolveUtilSheetBillingDocumentDescriptor,
+        buildUtilSheetBillingPreviewModalHtml,
+        resetUtilSheetBillingPreviewModal,
+        closeUtilSheetBillingPreview,
+        ensureUtilSheetBillingPreviewModal,
+        openUtilSheetBillingPreview
+    } = utilReportSheetBilling;
+    const utilReportSheetWindows = globalThis.KPIUtilReportSheetWindows;
+    if (!utilReportSheetWindows) {
+        throw new Error('KPIUtilReportSheetWindows must load before KPI.util.report.sheet.js');
+    }
+    const utilReportSheetModalActions = globalThis.KPIUtilReportSheetModalActions;
+    if (!utilReportSheetModalActions) {
+        throw new Error('KPIUtilReportSheetModalActions must load before KPI.util.report.sheet.js');
+    }
+    const utilReportSheetModalShell = globalThis.KPIUtilReportSheetModalShell;
+    if (!utilReportSheetModalShell) {
+        throw new Error('KPIUtilReportSheetModalShell must load before KPI.util.report.sheet.js');
+    }
+    const utilReportSheetModalRender = globalThis.KPIUtilReportSheetModalRender;
+    if (!utilReportSheetModalRender) {
+        throw new Error('KPIUtilReportSheetModalRender must load before KPI.util.report.sheet.js');
+    }
+    const utilReportSheetAnalysisElectricModel = globalThis.KPIUtilReportSheetAnalysisElectricModel;
+    if (!utilReportSheetAnalysisElectricModel) {
+        throw new Error('KPIUtilReportSheetAnalysisElectricModel must load before KPI.util.report.sheet.js');
+    }
+    utilReportSheetAnalysisElectricModel.setRuntimeAdapters({
+        getUtilElectricAnalysisTeamOption,
+        buildUtilSheetMonthBounds,
+        isUtilSheetSettledRow,
+        compareUtilSheetMonthKeys,
+        summarizeUtilSheetRows,
+        getUtilSheetAnalysisRangeState,
+        normalizeUtilSheetCompareKey,
+        normalizeUtilSheetAnalysisRange,
+        buildUtilSheetRangeMonthKeys,
+        buildUtilSheetRangeLabel,
+        shiftUtilSheetMonthKey,
+        getUtilSheetCompareLabel,
+        buildUtilGasAnalysisCompareSub,
+        formatUtilSheetQuantity,
+        formatUtilSheetSignedQuantity,
+        formatUtilSheetCost,
+        formatUtilSheetSignedCost,
+        getUtilElectricAnalysisUnitKey,
+        getUtilElectricAnalysisChartUnitLabel,
+        getUtilElectricAnalysisChartDecimals,
+        scaleUtilElectricAnalysisChartValue,
+        formatUtilSheetDecimal,
+        getUtilElectricAnalysisUnitOption,
+        formatUtilSheetPercent,
+        formatUtilSheetSignedPercentPoint,
+        getUtilElectricAnalysisDisplayMode,
+        getUtilElectricAnalysisUnitOptions,
+        buildUtilGasAnalysisSeriesLabel,
+        setUtilSheetAnalysisRangeState
     });
-    const UTIL_GAS_ANALYSIS_DEFAULT_DISPLAY_MODES = Object.freeze({
-        lpgUsage: 'bar',
-        lngUsage: 'bar',
-        gasCost: 'line',
-        production: 'line'
+    const {
+        buildUtilElectricAnalysisLineRatioSeries,
+        formatUtilElectricAnalysisLineMetricValue,
+        formatUtilElectricAnalysisSignedLineMetric,
+        resolveUtilElectricAnalysisPointValue,
+        buildUtilElectricAnalysisModel
+    } = utilReportSheetAnalysisElectricModel;
+    const utilReportSheetAnalysisGasModel = globalThis.KPIUtilReportSheetAnalysisGasModel;
+    if (!utilReportSheetAnalysisGasModel) {
+        throw new Error('KPIUtilReportSheetAnalysisGasModel must load before KPI.util.report.sheet.js');
+    }
+    utilReportSheetAnalysisGasModel.setRuntimeAdapters({
+        buildUtilSheetMonthBounds,
+        hasUtilGasMeteringStore,
+        normalizeUtilSheetCompareKey,
+        getUtilGasAnalysisCategoryOption,
+        normalizeUtilSheetAnalysisRange,
+        buildUtilSheetRangeMonthKeys,
+        buildUtilSheetRangeLabel,
+        buildUtilGasAnalysisMetricMap,
+        shiftUtilSheetMonthKey,
+        buildUtilElectricAnalysisLineRatioSeries,
+        getUtilGasAnalysisChartUnitLabel,
+        getUtilGasAnalysisChartDecimals,
+        isUtilGasAnalysisFuelInactive,
+        buildUtilGasAnalysisCompareSub,
+        formatUtilSheetQuantity,
+        formatUtilSheetSignedQuantity,
+        formatUtilSheetCost,
+        formatUtilSheetSignedCost,
+        buildUtilGasAnalysisCostModeText,
+        buildUtilGasAnalysisCombinedChart,
+        buildUtilGasAnalysisRangeTables,
+        buildUtilGasAnalysisRatioCombinedChartModel
     });
-    const UTIL_GAS_ANALYSIS_RATIO_DEFAULT_DISPLAY_MODES = Object.freeze({
-        'ratio-lpg': 'line',
-        'ratio-lng': 'line'
+    const {
+        buildUtilGasAnalysisModel
+    } = utilReportSheetAnalysisGasModel;
+    const utilReportSheetAnalysisRender = globalThis.KPIUtilReportSheetAnalysisRender;
+    if (!utilReportSheetAnalysisRender) {
+        throw new Error('KPIUtilReportSheetAnalysisRender must load before KPI.util.report.sheet.js');
+    }
+    utilReportSheetAnalysisRender.setRuntimeAdapters({
+        escapeUtilSheetHtml,
+        buildUtilGasAnalysisCombinedControlsHtml,
+        normalizeUtilSheetAnalysisDatasetKey,
+        getUtilSheetAnalysisShowLabels,
+        getUtilGasAnalysisRatioShowLabels,
+        buildUtilGasAnalysisSeriesControlHtml,
+        buildUtilGasAnalysisPopupOnlyControlHtml,
+        getUtilGasAnalysisInlineRatioTableKey,
+        buildUtilGasAnalysisFloatingTablePanelHtml,
+        buildUtilGasAnalysisCategorySelectHtml,
+        buildUtilElectricAnalysisTeamSelectHtml,
+        buildUtilSheetMonthOptionHtml
     });
-    const UTIL_ELECTRIC_ANALYSIS_UNIT_OPTIONS = Object.freeze({
-        electricUsage: Object.freeze([
-            { key: 'kwh', label: 'kWh', scale: 1, decimals: 0 },
-            { key: 'mwh', label: 'MWh', scale: 1000, decimals: 1 }
-        ]),
-        electricCost: Object.freeze([
-            { key: 'krw', label: '원', scale: 1, decimals: 0 },
-            { key: 'thousand', label: '천원', scale: 1000, decimals: 1 },
-            { key: 'million', label: '백만원', scale: 1000000, decimals: 1 }
-        ]),
-        production: Object.freeze([
-            { key: 'kg', label: 'kg', scale: 1, decimals: 0 },
-            { key: 'ton', label: 'ton', scale: 1000, decimals: 1 }
-        ]),
-        electricIntensity: Object.freeze([
-            { key: 'kwhkg', label: 'kWh/kg', scale: 1, decimals: 3 },
-            { key: 'kwhton', label: 'kWh/ton', scale: 0.001, decimals: 1 }
-        ])
+    const {
+        buildUtilGasAnalysisChartCardHtml,
+        buildUtilGasAnalysisChartCardHtmlV2,
+        buildUtilGasAnalysisRatioCombinedChartCardHtmlV2,
+        buildUtilSheetAnalysisSummaryGridHtml,
+        buildUtilGasAnalysisBodyHtmlV2,
+        buildUtilElectricAnalysisBodyHtmlV2,
+        buildUtilGasAnalysisBodyHtml
+    } = utilReportSheetAnalysisRender;
+    utilReportSheetModalRender.setRuntimeAdapters({
+        normalizeUtilSheetType,
+        resolveUtilSheetReportDatasetKey,
+        getUtilSheetPresentation,
+        normalizeUtilSheetCompareKey,
+        normalizeUtilGasMeterProductionKey,
+        normalizeUtilGasAnalysisCategoryKey,
+        normalizeUtilElectricMeterTeamKey,
+        normalizeUtilElectricAnalysisTeamKey,
+        normalizeUtilElectricMeterViewKey,
+        buildUtilSheetDatasetResult,
+        pruneUtilSheetDatasetToggles,
+        isUtilSheetCustomAnalysisDataset,
+        syncUtilSheetTypeButtons,
+        syncUtilSheetDatasetButtons,
+        syncUtilSheetCompareButtons,
+        escapeUtilSheetHtml,
+        syncUtilSheetAnalysisChartPopup: (...args) => utilReportSheetWindows.syncUtilSheetAnalysisChartPopup(...args),
+        syncUtilSheetDetachedReportWindow: (...args) => utilReportSheetWindows.syncUtilSheetDetachedReportWindow(...args),
+        syncUtilSheetReportWindowState: (...args) => utilReportSheetWindows.syncUtilSheetReportWindowState(...args),
+        ensureUtilElectricReportDataSync,
+        ensureUtilGasMeteringStore,
+        ensureUtilElectricMeteringStore,
+        getUtilSheetDetachedReportWindow: (...args) => utilReportSheetWindows.getUtilSheetDetachedReportWindow(...args),
+        getUtilElectricUtilitySnapshot,
+        hasUtilElectricMeteringStore,
+        buildUtilGasAnalysisModel,
+        normalizeUtilGasAnalysisFullscreenChartKey,
+        getUtilGasAnalysisInlineRatioTableKey,
+        buildUtilGasAnalysisBodyHtmlV2,
+        buildUtilSheetMemoSectionHtml,
+        buildUtilSheetCompareMeta,
+        buildUtilGasMeterComparisonModel,
+        resolveUtilSheetMemoItems,
+        bindUtilSheetAnalysisChartDragScroll: (...args) => utilReportSheetWindows.bindUtilSheetAnalysisChartDragScroll(...args),
+        bindUtilSheetAnalysisInlineTableDrag: (...args) => utilReportSheetWindows.bindUtilSheetAnalysisInlineTableDrag(...args),
+        buildUtilElectricAnalysisModel,
+        buildUtilElectricAnalysisBodyHtmlV2,
+        buildUtilElectricMeterComparisonModel,
+        buildUtilElectricMeterTeamDatasetResult,
+        buildUtilGasMeterSummaryItems,
+        buildUtilElectricMeterSummaryItems,
+        buildUtilSheetBadgesHtml,
+        buildUtilElectricMeterSummaryBlockHtml,
+        buildUtilGasMeterSummaryBlockHtml,
+        buildUtilSheetStatsHtml,
+        buildUtilGasMeterComparisonSectionHtml,
+        buildUtilElectricMeterComparisonSectionHtml,
+        buildUtilSheetMatrixHtml,
+        relocateUtilGasGuidanceNote
     });
-    const UTIL_ELECTRIC_ANALYSIS_DEFAULT_UNITS = Object.freeze({
-        electricUsage: 'mwh',
-        electricCost: 'million',
-        production: 'ton',
-        electricIntensity: 'kwhkg'
+    const {
+        rerenderUtilSheetReportModalIfActive,
+        renderUtilSheetReportModal
+    } = utilReportSheetModalRender;
+    utilReportSheetModalActions.setRuntimeAdapters({
+        normalizeUtilSheetCompareKey,
+        normalizeUtilSheetType,
+        resolveUtilSheetReportDatasetKey,
+        normalizeUtilGasMeterProductionKey,
+        normalizeUtilElectricMeterTeamKey,
+        normalizeUtilElectricAnalysisTeamKey,
+        normalizeUtilGasAnalysisCategoryKey,
+        normalizeUtilElectricMeterViewKey,
+        getUtilGasAnalysisInlineRatioTableKey,
+        normalizeUtilGasAnalysisFullscreenChartKey,
+        isUtilSheetCustomAnalysisDataset,
+        setUtilSheetAnalysisToMonth,
+        setUtilSheetAnalysisRangeState,
+        renderUtilSheetReportModal,
+        syncUtilSheetDetachedReportWindow: (...args) => utilReportSheetWindows.syncUtilSheetDetachedReportWindow(...args),
+        syncUtilSheetReportWindowState: (...args) => utilReportSheetWindows.syncUtilSheetReportWindowState(...args),
+        syncUtilSheetPanelSelection,
+        ensureUtilSheetReportModal: (...args) => utilReportSheetModalShell.ensureUtilSheetReportModal(...args),
+        ensureUtilGasMeteringStore,
+        getUtilSheetDetachedReportWindow: (...args) => utilReportSheetWindows.getUtilSheetDetachedReportWindow(...args),
+        closeUtilSheetDetachedReportWindow: (...args) => utilReportSheetWindows.closeUtilSheetDetachedReportWindow(...args),
+        closeUtilSheetAnalysisChartPopupWindow: (...args) => utilReportSheetWindows.closeUtilSheetAnalysisChartPopupWindow(...args),
+        openUtilSheetAnalysisChartPopup: (...args) => utilReportSheetWindows.openUtilSheetAnalysisChartPopup(...args),
+        closeUtilSheetBillingPreview
     });
-    const UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_UNIT_OPTIONS = Object.freeze([
-        Object.freeze({ key: 'percent', label: '%', scale: 1, decimals: 1 }),
-        Object.freeze({ key: 'kg', label: 'kg', scale: 1, decimals: 0 }),
-        Object.freeze({ key: 'ton', label: 'ton', scale: 1000, decimals: 1 })
-    ]);
-    const UTIL_ELECTRIC_ANALYSIS_DEFAULT_DISPLAY_MODES = Object.freeze({
-        electricUsage: 'bar',
-        electricCost: 'line',
-        production: 'line',
-        electricIntensity: 'line'
+    const {
+        applyUtilSheetCompareSelection,
+        applyUtilGasMeterProductionSelection,
+        applyUtilElectricMeterTeamSelection,
+        applyUtilElectricAnalysisTeamSelection,
+        applyUtilGasAnalysisCategorySelection,
+        applyUtilElectricMeterViewSelection,
+        setUtilGasAnalysisInlineTablePositionFromTrigger,
+        setUtilGasAnalysisChartFullscreen,
+        openUtilGasAnalysisChartModal,
+        openUtilGasAnalysisRatioTablePopup,
+        applyUtilGasAnalysisRangeSelection,
+        toggleUtilSheetReportExpanded,
+        openUtilSheetReportModal,
+        closeUtilSheetReportModal
+    } = utilReportSheetModalActions;
+    utilReportSheetModalShell.setRuntimeAdapters({
+        pruneUtilSheetDatasetToggles,
+        closeUtilSheetReportModal,
+        renderUtilSheetReportModal,
+        syncUtilSheetDetachedReportWindow: (...args) => utilReportSheetWindows.syncUtilSheetDetachedReportWindow(...args),
+        syncUtilSheetReportWindowState: (...args) => utilReportSheetWindows.syncUtilSheetReportWindowState(...args),
+        toggleUtilSheetReportExpanded,
+        getUtilSheetAlternateType,
+        getUtilSheetAlternateDatasetKey,
+        resolveUtilSheetReportDatasetKey,
+        normalizeUtilSheetCompareKey,
+        normalizeUtilSheetType,
+        openUtilGasAnalysisChartModal,
+        openUtilGasAnalysisRatioTablePopup,
+        openUtilSheetBillingPreview,
+        getUtilSheetActiveAnalysisDatasetKey,
+        setUtilSheetAnalysisDisplayMode,
+        applyUtilSheetCompareSelection,
+        applyUtilGasAnalysisCategorySelection,
+        applyUtilElectricMeterViewSelection,
+        setUtilGasAnalysisChartFullscreen,
+        resolveUtilSheetAnalysisLabelToggleContext,
+        setUtilSheetAnalysisShowLabels,
+        setUtilGasAnalysisRatioShowLabels,
+        setUtilGasAnalysisFuelInactive,
+        applyUtilGasAnalysisRangeSelection,
+        setUtilSheetAnalysisUnitKey,
+        applyUtilGasMeterProductionSelection,
+        applyUtilElectricMeterTeamSelection,
+        applyUtilElectricAnalysisTeamSelection,
+        isUtilSheetCustomAnalysisDataset,
+        setUtilSheetAnalysisToMonth,
+        syncUtilSheetPanelSelection
     });
-    const UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_PREFIX = 'productionLineRatio::';
-    const UTIL_GAS_ANALYSIS_DISPLAY_OPTIONS = Object.freeze([
-        { key: 'bar', label: '막대' },
-        { key: 'line', label: '선' },
-        { key: 'none', label: '표시없음' }
-    ]);
-    const UTIL_GAS_METER_FIELD_ORDER = Object.freeze([
-        'gas_field_01',
-        'gas_field_02',
-        'gas_field_03',
-        'gas_field_04',
-        'gas_field_05',
-        'gas_field_06'
-    ]);
-    const UTIL_GAS_METER_FIELD_LABELS = Object.freeze({
-        gas_field_01: '2팀 LNG 합계',
-        gas_field_02: '건조기(LPG)',
-        gas_field_03: '3톤보일러',
-        gas_field_04: 'DSI보일러',
-        gas_field_05: '관리동',
-        gas_field_06: '액상보일러'
+    const { ensureUtilSheetReportModal } = utilReportSheetModalShell;
+    utilReportSheetWindows.setRuntimeAdapters({
+        buildUtilSheetDetachedCompareToggleHtml,
+        normalizeUtilSheetCompareKey,
+        syncUtilSheetCompareButtons,
+        normalizeUtilSheetType,
+        isUtilSheetCustomAnalysisDataset,
+        getUtilSheetActiveAnalysisDatasetKey,
+        normalizeUtilGasAnalysisPopupKey,
+        parseUtilGasAnalysisRatioTablePopupKey,
+        getUtilGasAnalysisChartModelByKey,
+        getUtilGasAnalysisRatioTableByKey,
+        isUtilGasAnalysisChartRenderable,
+        buildUtilGasAnalysisRangeTableHtml,
+        buildUtilGasAnalysisRatioCombinedChartCardHtmlV2,
+        buildUtilGasAnalysisChartCardHtmlV2,
+        resolveUtilSheetAnalysisLabelToggleContext,
+        setUtilSheetAnalysisShowLabels,
+        renderUtilSheetReportModal,
+        openUtilGasAnalysisRatioTablePopup,
+        setUtilGasAnalysisRatioShowLabels,
+        setUtilGasAnalysisFuelInactive,
+        setUtilSheetAnalysisUnitKey,
+        setUtilSheetAnalysisDisplayMode,
+        applyUtilGasMeterProductionSelection,
+        applyUtilElectricMeterTeamSelection,
+        applyUtilElectricAnalysisTeamSelection,
+        applyUtilGasAnalysisCategorySelection,
+        applyUtilGasAnalysisRangeSelection,
+        applyUtilSheetCompareSelection,
+        applyUtilElectricMeterViewSelection,
+        openUtilSheetBillingPreview,
+        closeUtilSheetBillingPreview,
+        openUtilGasAnalysisChartModal
     });
-    const UTIL_GAS_METER_LPG_FACTOR = 3.35;
-    const UTIL_GAS_METER_CORRECTION_TARGET_IDS = new Set(['gas_field_03', 'gas_field_04', 'gas_field_06']);
-    const UTIL_GAS_BILLING_SCOPE_KEYS = Object.freeze({
-        bukjeong: 'gas_bukjeong',
-        yusanLng: 'yusan_lng',
-        yusanLpg: 'yusan_lpg'
-    });
-    const UTIL_ELECTRIC_BILLING_DOCUMENT_DIRECTORY = '전기 청구서';
-    const UTIL_GAS_BILLING_DOCUMENT_DIRECTORY = '가스 청구서';
-    const UTIL_GAS_BILLING_ASSET_BASE_DIRECTORY = '02_★★★★_유틸리티/apps/metering';
-    const UTIL_ELECTRIC_BILLING_SCOPE_LABELS = Object.freeze({
-        yusan: '유산',
-        bukjeong: '북정'
-    });
-    const UTIL_GAS_BILLING_SCOPE_LABELS = Object.freeze({
-        [UTIL_GAS_BILLING_SCOPE_KEYS.bukjeong]: '북정',
-        [UTIL_GAS_BILLING_SCOPE_KEYS.yusanLng]: 'LNG',
-        [UTIL_GAS_BILLING_SCOPE_KEYS.yusanLpg]: 'LPG'
-    });
-    const UTIL_GAS_RATIO_CHART_COLORS = Object.freeze([
-        '#ea580c',
-        '#2563eb',
-        '#16a34a',
-        '#7c3aed'
-    ]);
-    const UTIL_GAS_METER_FIELD_ICONS = Object.freeze({
-        gas_field_01: 'fa-fire-flame-curved',
-        gas_field_02: 'fa-fan',
-        gas_field_03: 'fa-fire-burner',
-        gas_field_04: 'fa-industry',
-        gas_field_05: 'fa-building',
-        gas_field_06: 'fa-oil-can'
-    });
-    const UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS = Object.freeze([
-        Object.freeze({
-            key: 'team_01_01',
-            label: '1팀 1파트',
-            reportTeamFilters: Object.freeze(['1팀 1파트']),
-            productionTeamNames: Object.freeze(['1팀 1파트'])
-        }),
-        Object.freeze({
-            key: 'team_01_02',
-            label: '1팀 2파트',
-            reportTeamFilters: Object.freeze(['1팀 2파트']),
-            productionTeamNames: Object.freeze(['1팀 2파트'])
-        }),
-        Object.freeze({
-            key: 'team_02',
-            label: '2팀',
-            reportTeamFilters: Object.freeze(['2팀']),
-            productionTeamNames: Object.freeze(['2팀'])
-        }),
-        Object.freeze({
-            key: 'team_03',
-            label: '3팀',
-            reportTeamFilters: Object.freeze(['3팀']),
-            productionTeamNames: Object.freeze(['3팀'])
-        }),
-        Object.freeze({
-            key: 'combined',
-            label: '합산',
-            reportTeamFilters: Object.freeze(['1팀 1파트', '1팀 2파트', '2팀', '3팀']),
-            productionTeamNames: Object.freeze(['1팀 1파트', '1팀 2파트', '2팀', '3팀'])
-        })
-    ]);
-    const UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS = Object.freeze([
-        Object.freeze({
-            key: 'team_01_01',
-            label: '1팀 1파트',
-            usageTeams: Object.freeze({
-                lng: Object.freeze(['1팀 1파트 (LNG)']),
-                lpg: Object.freeze([])
-            }),
-            productionTeamNames: Object.freeze(['1팀 1파트']),
-            ratioProductionTeamNames: Object.freeze({
-                lng: Object.freeze(['1팀 1파트']),
-                lpg: Object.freeze([])
-            }),
-            meterScopeKey: '',
-            includeBukjeongLngCost: true,
-            includeYusanLngCost: false,
-            showLpgCard: false
-        }),
-        Object.freeze({
-            key: 'team_01_02',
-            label: '1팀 2파트',
-            usageTeams: Object.freeze({
-                lng: Object.freeze(['1팀 2파트 (LNG)']),
-                lpg: Object.freeze(['1팀 2파트 (LPG)'])
-            }),
-            productionTeamNames: Object.freeze(['1팀 2파트']),
-            ratioProductionTeamNames: Object.freeze({
-                lng: Object.freeze(['1팀 2파트']),
-                lpg: Object.freeze(['1팀 2파트'])
-            }),
-            meterScopeKey: 'team_01_02',
-            includeBukjeongLngCost: false,
-            includeYusanLngCost: true,
-            showLpgCard: true
-        }),
-        Object.freeze({
-            key: 'team_03',
-            label: '3팀',
-            usageTeams: Object.freeze({
-                lng: Object.freeze(['3팀 (LNG)']),
-                lpg: Object.freeze([])
-            }),
-            productionTeamNames: Object.freeze(['3팀']),
-            ratioProductionTeamNames: Object.freeze({
-                lng: Object.freeze(['3팀']),
-                lpg: Object.freeze([])
-            }),
-            meterScopeKey: 'team_03',
-            includeBukjeongLngCost: false,
-            includeYusanLngCost: true,
-            showLpgCard: false
-        }),
-        Object.freeze({
-            key: 'yusan',
-            label: '유산',
-            selectLabel: '유산 (1팀 2파트 + 3팀 합산)',
-            usageTeams: Object.freeze({
-                lng: Object.freeze(['1팀 2파트 (LNG)', '3팀 (LNG)']),
-                lpg: Object.freeze(['1팀 2파트 (LPG)'])
-            }),
-            productionTeamNames: Object.freeze(['1팀 2파트', '3팀']),
-            ratioProductionTeamNames: Object.freeze({
-                lng: Object.freeze(['1팀 2파트', '3팀']),
-                lpg: Object.freeze(['1팀 2파트'])
-            }),
-            meterScopeKey: 'combined',
-            includeBukjeongLngCost: false,
-            includeYusanLngCost: true,
-            showLpgCard: true
-        }),
-        Object.freeze({
-            key: 'combined',
-            label: '합계',
-            usageTeams: Object.freeze({
-                lng: Object.freeze(['1팀 1파트 (LNG)', '1팀 2파트 (LNG)', '3팀 (LNG)']),
-                lpg: Object.freeze(['1팀 2파트 (LPG)'])
-            }),
-            productionTeamNames: Object.freeze(['1팀 1파트', '1팀 2파트', '3팀']),
-            ratioProductionTeamNames: Object.freeze({
-                lng: Object.freeze(['1팀 1파트', '1팀 2파트', '3팀']),
-                lpg: Object.freeze(['1팀 2파트'])
-            }),
-            meterScopeKey: 'combined',
-            includeBukjeongLngCost: true,
-            includeYusanLngCost: true,
-            showLpgCard: true
-        })
-    ]);
-    const UTIL_ELECTRIC_METER_TEAM_OPTIONS = Object.freeze([
-        Object.freeze({
-            key: 'team_01_02',
-            label: '1팀 2파트',
-            reportTeamFilters: Object.freeze(['1팀 2파트']),
-            productionTeamNames: Object.freeze(['1팀 2파트']),
-            detailTeamKeys: Object.freeze(['team_01_02'])
-        }),
-        Object.freeze({
-            key: 'team_02',
-            label: '2팀',
-            reportTeamFilters: Object.freeze(['2팀']),
-            productionTeamNames: Object.freeze(['2팀']),
-            detailTeamKeys: Object.freeze(['team_02'])
-        }),
-        Object.freeze({
-            key: 'team_03',
-            label: '3팀',
-            reportTeamFilters: Object.freeze(['3팀']),
-            productionTeamNames: Object.freeze(['3팀']),
-            detailTeamKeys: Object.freeze(['team_03'])
-        }),
-        Object.freeze({
-            key: 'combined',
-            label: '합산',
-            reportTeamFilters: Object.freeze(['1팀 2파트', '2팀', '3팀', '관리동']),
-            productionTeamNames: Object.freeze(['1팀 2파트', '2팀', '3팀']),
-            detailTeamKeys: Object.freeze(['team_01_02', 'team_02', 'team_03', 'team_04'])
-        })
-    ]);
-    const UTIL_ELECTRIC_METER_TOTAL_POWER_FIELD_ID = 'field_24';
-    const UTIL_ELECTRIC_METER_ACTIVE_POWER_FIELD_IDS = Object.freeze(['field_21', 'field_22', 'field_23']);
-    const UTIL_ELECTRIC_METER_EXCLUDED_DETAIL_FIELD_IDS = new Set([
-        'field_20',
-        'field_21',
-        'field_22',
-        'field_23',
-        'field_24',
-        'field_25',
-        'field_26',
-        'field_27'
-    ]);
-    const UTIL_ELECTRIC_METER_FIELD_LABEL_OVERRIDES = Object.freeze({
-        field_14: '2팀 컴프레셔',
-        field_15: '액상#1',
-        field_16: '액상#2',
-        field_24: '전력총량'
-    });
-    const UTIL_ELECTRIC_METER_TEAM_FALLBACK_FIELD_IDS = Object.freeze({
-        team_04: Object.freeze(['field_17', 'field_18', 'field_19', 'field_28'])
-    });
-    const UTIL_ELECTRIC_ALLOCATION_GROUPS = Object.freeze([
-        Object.freeze({ key: 'zone', label: '건조', caption: '배풍 + 송풍 + 건조', sourceIds: Object.freeze(['field_01', 'field_02', 'field_03']) }),
-        Object.freeze({ key: 'mixing', label: '조제', caption: '', sourceIds: Object.freeze(['field_04']) }),
-        Object.freeze({ key: 'loading', label: '자동적재', caption: '', sourceIds: Object.freeze(['field_05']) }),
-        Object.freeze({ key: 'clean', label: '청정', caption: '220v + 380v', sourceIds: Object.freeze(['field_08', 'field_09']) }),
-        Object.freeze({ key: 'compressor', label: '컴프레셔', caption: '220v + 380v', sourceIds: Object.freeze(['field_10', 'field_11']) }),
-        Object.freeze({ key: 'boiler3t', label: '3톤 보일러', caption: '', sourceIds: Object.freeze(['field_06']) }),
-        Object.freeze({ key: 'dsi', label: 'DSI 보일러', caption: '', sourceIds: Object.freeze(['field_07']) }),
-        Object.freeze({ key: 'smallpack', label: '소포장', caption: '', sourceIds: Object.freeze(['field_12']) }),
-        Object.freeze({ key: 'stick', label: '스틱', caption: '', sourceIds: Object.freeze(['field_13']) }),
-        Object.freeze({ key: 'team2Compressor', label: '2팀 컴프레셔', caption: '', sourceIds: Object.freeze(['field_14']) }),
-        Object.freeze({ key: 'liquid', label: '액상', caption: '액상#1 + 액상#2', sourceIds: Object.freeze(['field_15', 'field_16']) }),
-        Object.freeze({ key: 'office', label: '관리동', caption: '', sourceIds: Object.freeze(['field_17']) }),
-        Object.freeze({ key: 'hvac', label: '관리동 냉난방', caption: '', sourceIds: Object.freeze(['field_18']) }),
-        Object.freeze({ key: 'cafe', label: '카페', caption: '', sourceIds: Object.freeze(['field_19']) })
-    ]);
-    const UTIL_ELECTRIC_TEAM_FILTER_TO_SNAPSHOT_KEY = Object.freeze({
-        '1팀 2파트': 'team_01_02',
-        '2팀': 'team_02',
-        '3팀': 'team_03',
-        '관리동': 'team_04'
-    });
-    const UTIL_ELECTRIC_TEAM_SUMMARY_OPTIONS = (() => {
-        const officeLabel = Object.keys(UTIL_ELECTRIC_TEAM_FILTER_TO_SNAPSHOT_KEY).find(label => (
-            UTIL_ELECTRIC_TEAM_FILTER_TO_SNAPSHOT_KEY[label] === 'team_04'
-        )) || '관리동';
-        const baseTeamOptions = ['team_01_02', 'team_02', 'team_03'].map(teamKey => {
-            const baseOption = UTIL_ELECTRIC_METER_TEAM_OPTIONS.find(option => option.key === teamKey);
-            return Object.freeze({
-                key: baseOption?.key || teamKey,
-                label: baseOption?.label || teamKey,
-                reportTeamFilters: Array.isArray(baseOption?.reportTeamFilters) ? baseOption.reportTeamFilters : Object.freeze([]),
-                productionTeamNames: Array.isArray(baseOption?.productionTeamNames) ? baseOption.productionTeamNames : Object.freeze([])
-            });
-        });
-        return Object.freeze(baseTeamOptions.concat([
-            Object.freeze({
-                key: 'team_04',
-                label: officeLabel,
-                reportTeamFilters: Object.freeze([officeLabel]),
-                productionTeamNames: Object.freeze([])
-            })
-        ]));
-    })();
-    const UTIL_ELECTRIC_TEAM_COLOR_META = Object.freeze({
-        team_01_02: Object.freeze({ color: '#f59e0b', soft: '#fffbeb' }),
-        team_02: Object.freeze({ color: '#059669', soft: '#ecfdf5' }),
-        team_03: Object.freeze({ color: '#7c3aed', soft: '#f5f3ff' }),
-        team_04: Object.freeze({ color: '#dc2626', soft: '#fef2f2' }),
-        combined: Object.freeze({ color: '#0f172a', soft: '#f8fafc' })
-    });
-    const UTIL_ELECTRIC_BILLING_SUMMARY_FIELDS = Object.freeze([
-        Object.freeze({ key: 'base_charge', label: '기본요금' }),
-        Object.freeze({ key: 'power_charge', label: '전력량요금' }),
-        Object.freeze({ key: 'climate_environment_charge', label: '기후환경요금' }),
-        Object.freeze({ key: 'fuel_adjustment_charge', label: '연료비조정액' }),
-        Object.freeze({ key: 'lagging_power_factor_charge', label: '지상역률료' }),
-        Object.freeze({ key: 'operation_fee', label: '조작수수료' }),
-        Object.freeze({ key: 'internet_discount', label: '인터넷할인' }),
-        Object.freeze({ key: 'electricity_charge_total', label: '전기요금계' }),
-        Object.freeze({ key: 'vat', label: '부가가치세' }),
-        Object.freeze({ key: 'electric_power_fund', label: '전력기금' }),
-        Object.freeze({ key: 'tv_reception_fee', label: 'TV수신료' }),
-        Object.freeze({ key: 'rounding_adjustment', label: '원단위 절삭' }),
-        Object.freeze({ key: 'billing_amount', label: '청구금액' })
-    ]);
+    const {
+        getUtilSheetDetachedReportWindow,
+        closeUtilSheetDetachedReportWindow,
+        getUtilSheetAnalysisChartPopupWindow,
+        closeUtilSheetAnalysisChartPopupWindow,
+        syncUtilSheetDetachedReportWindow,
+        syncUtilSheetAnalysisChartPopup,
+        bindUtilSheetAnalysisChartDragScroll,
+        bindUtilSheetAnalysisInlineTableDrag,
+        openUtilSheetDetachedReportWindow,
+        openUtilSheetAnalysisChartPopup,
+        syncUtilSheetReportWindowState
+    } = utilReportSheetWindows;
 
     function escapeUtilSheetHtml(value) {
         if (typeof escapeHtml === 'function') return escapeHtml(value);
@@ -618,65 +541,8 @@
         });
     }
 
-    function applyUtilSheetCompareSelection(modal, compareKey) {
-        if (!modal) return;
-        const sheetType = normalizeUtilSheetType(modal.dataset.sheetType);
-        const normalizedCompareKey = normalizeUtilSheetCompareKey(compareKey);
-        modal.dataset.compareKey = normalizedCompareKey;
-        UtilSheetCompareState[sheetType] = normalizedCompareKey;
-        renderUtilSheetReportModal(modal);
-        syncUtilSheetDetachedReportWindow(modal);
-        syncUtilSheetReportWindowState(modal);
-        syncUtilSheetPanelSelection(sheetType, modal.dataset.datasetKey || UtilSheetReportState[sheetType] || 'gas');
-    }
-
     function normalizeUtilSheetDatasetKey(datasetKey) {
         return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
-    }
-
-    function normalizeUtilElectricMeterTeamKey(value = '') {
-        const normalizedValue = String(value || '').trim();
-        return UTIL_ELECTRIC_METER_TEAM_OPTIONS.some(option => option.key === normalizedValue)
-            ? normalizedValue
-            : 'combined';
-    }
-
-    function getUtilElectricMeterTeamOption(value = '') {
-        const normalizedKey = normalizeUtilElectricMeterTeamKey(value);
-        return UTIL_ELECTRIC_METER_TEAM_OPTIONS.find(option => option.key === normalizedKey)
-            || UTIL_ELECTRIC_METER_TEAM_OPTIONS[UTIL_ELECTRIC_METER_TEAM_OPTIONS.length - 1];
-    }
-
-    function normalizeUtilElectricAnalysisTeamKey(value = '') {
-        const normalizedValue = String(value || '').trim();
-        return UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS.some(option => option.key === normalizedValue)
-            ? normalizedValue
-            : 'combined';
-    }
-
-    function getUtilElectricAnalysisTeamOption(value = '') {
-        const normalizedKey = normalizeUtilElectricAnalysisTeamKey(value);
-        return UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS.find(option => option.key === normalizedKey)
-            || UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS[UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS.length - 1];
-    }
-
-    function normalizeUtilGasAnalysisCategoryKey(value = '') {
-        const normalizedValue = String(value || '').trim();
-        return UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS.some(option => option.key === normalizedValue)
-            ? normalizedValue
-            : 'yusan';
-    }
-
-    function getUtilGasAnalysisCategoryOption(value = '') {
-        const normalizedKey = normalizeUtilGasAnalysisCategoryKey(value);
-        return UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS.find(option => option.key === normalizedKey)
-            || UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS[UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS.length - 1];
-    }
-
-    function normalizeUtilElectricMeterViewKey(value = '') {
-        const normalizedValue = String(value || '').trim().toLowerCase();
-        if (normalizedValue === 'allocation' || normalizedValue === 'team') return normalizedValue;
-        return 'meter';
     }
 
     function getUtilSheetAllowedDatasetKeys(sheetType) {
@@ -1018,17 +884,6 @@
             });
         UtilSheetRuntimeState.electricDataSyncPromise = nextPromise;
         return nextPromise;
-    }
-
-    function rerenderUtilSheetReportModalIfActive(sheetType, datasetKey) {
-        const activeModal = document.getElementById('util-sheet-report-modal');
-        if (!activeModal) return;
-        if (!activeModal.classList.contains('is-open') && !getUtilSheetDetachedReportWindow()) return;
-        if (String(activeModal.dataset.sheetType || '') !== sheetType) return;
-        if (String(activeModal.dataset.datasetKey || '') !== datasetKey) return;
-        renderUtilSheetReportModal(activeModal);
-        syncUtilSheetDetachedReportWindow(activeModal);
-        syncUtilSheetReportWindowState(activeModal);
     }
 
     function buildUtilGasMeterFieldDefinitions() {
@@ -2776,274 +2631,6 @@
         `;
     }
 
-    function getUtilGasBillingSettlementEntries() {
-        const store = getUtilGasMeteringStore();
-        return isUtilSheetPlainObject(store?.billingSettlementEntries) ? store.billingSettlementEntries : {};
-    }
-
-    function getUtilGasBillingScopeFields(monthKey, scopeKey) {
-        const monthEntry = getUtilGasBillingSettlementEntries()?.[monthKey];
-        const scopeEntry = isUtilSheetPlainObject(monthEntry?.scopes?.[scopeKey])
-            ? monthEntry.scopes[scopeKey]
-            : null;
-        return isUtilSheetPlainObject(scopeEntry?.fields) ? scopeEntry.fields : {};
-    }
-
-    function getUtilGasBillingDocuments() {
-        const store = getUtilGasMeteringStore();
-        if (isUtilSheetPlainObject(store?.billingDocuments)) return store.billingDocuments;
-        return isUtilSheetPlainObject(window.__LOCAL_APP_STORE__?.billingDocuments)
-            ? window.__LOCAL_APP_STORE__.billingDocuments
-            : {};
-    }
-
-    function getUtilElectricBillingDocuments() {
-        const store = getUtilElectricMeteringStore();
-        if (isUtilSheetPlainObject(store?.billingDocuments)) return store.billingDocuments;
-        return isUtilSheetPlainObject(window.__LOCAL_APP_STORE__?.billingDocuments)
-            ? window.__LOCAL_APP_STORE__.billingDocuments
-            : {};
-    }
-
-    function isUtilGasBillingDocumentLeafRecord(rawDocument) {
-        if (!isUtilSheetPlainObject(rawDocument)) return false;
-        if (isUtilSheetPlainObject(rawDocument.scopes)) return false;
-        return Boolean(
-            String(rawDocument.fileName || '').trim()
-            || String(rawDocument.relativePath || '').trim()
-            || String(rawDocument.previewUrl || '').trim()
-            || String(rawDocument.downloadUrl || '').trim()
-            || String(rawDocument.base64Data || '').trim()
-        );
-    }
-
-    function getUtilGasBillingDocument(monthKey, scopeKey = '') {
-        const normalizedMonthKey = String(monthKey || '').trim();
-        const normalizedScopeKey = String(scopeKey || '').trim();
-        if (!normalizedMonthKey) return null;
-        const monthEntry = getUtilGasBillingDocuments()?.[normalizedMonthKey];
-        if (!isUtilSheetPlainObject(monthEntry)) return null;
-
-        const scopeSource = isUtilSheetPlainObject(monthEntry.scopes)
-            ? monthEntry.scopes
-            : monthEntry;
-        const scopedDocument = normalizedScopeKey && isUtilSheetPlainObject(scopeSource?.[normalizedScopeKey])
-            ? scopeSource[normalizedScopeKey]
-            : null;
-        if (scopedDocument) return scopedDocument;
-
-        if (!normalizedScopeKey && isUtilGasBillingDocumentLeafRecord(monthEntry)) {
-            return monthEntry;
-        }
-        return null;
-    }
-
-    function getUtilElectricBillingDocument(monthKey, scopeKey = '') {
-        const normalizedMonthKey = String(monthKey || '').trim();
-        const normalizedScopeKey = String(scopeKey || '').trim();
-        if (!normalizedMonthKey) return null;
-        const monthEntry = getUtilElectricBillingDocuments()?.[normalizedMonthKey];
-        if (!isUtilSheetPlainObject(monthEntry)) return null;
-
-        const scopeSource = isUtilSheetPlainObject(monthEntry.scopes)
-            ? monthEntry.scopes
-            : monthEntry;
-        const scopedDocument = normalizedScopeKey && isUtilSheetPlainObject(scopeSource?.[normalizedScopeKey])
-            ? scopeSource[normalizedScopeKey]
-            : null;
-        if (scopedDocument) return scopedDocument;
-
-        if (!normalizedScopeKey && isUtilGasBillingDocumentLeafRecord(monthEntry)) {
-            return monthEntry;
-        }
-        return null;
-    }
-
-    function normalizeUtilGasBillingDocumentRelativePath(relativePath = '') {
-        return String(relativePath || '')
-            .trim()
-            .replace(/\\/g, '/')
-            .split('/')
-            .filter(Boolean)
-            .join('/');
-    }
-
-    function getUtilGasBillingDocumentFileNameFromPath(relativePath = '') {
-        const normalizedPath = normalizeUtilGasBillingDocumentRelativePath(relativePath);
-        if (!normalizedPath) return '';
-        const rawFileName = normalizedPath.split('/').pop() || '';
-        try {
-            return decodeURIComponent(rawFileName);
-        } catch (error) {
-            void error;
-            return rawFileName;
-        }
-    }
-
-    function buildUtilGasBillingDocumentRelativePath(fileName = '') {
-        const normalizedFileName = String(fileName || '').trim();
-        if (!normalizedFileName) return '';
-        return `${UTIL_GAS_BILLING_DOCUMENT_DIRECTORY}/${normalizedFileName}`;
-    }
-
-    function normalizeUtilGasBillingDocumentAssetRelativePath(relativePath = '', fileName = '') {
-        const normalizedPath = normalizeUtilGasBillingDocumentRelativePath(relativePath)
-            || buildUtilGasBillingDocumentRelativePath(
-                String(fileName || '').trim() || getUtilGasBillingDocumentFileNameFromPath(relativePath)
-            );
-        if (!normalizedPath) return '';
-        if (normalizedPath.startsWith(`${UTIL_GAS_BILLING_ASSET_BASE_DIRECTORY}/`)) {
-            return normalizedPath;
-        }
-        return `${UTIL_GAS_BILLING_ASSET_BASE_DIRECTORY}/${normalizedPath}`;
-    }
-
-    function getUtilGasBillingDocumentMimeTypeFromFileName(fileName = '') {
-        const extension = String(fileName || '')
-            .trim()
-            .match(/\.[a-z0-9]{1,8}$/i)?.[0]
-            ?.toLowerCase();
-        const extensionMimeTypes = {
-            '.bmp': 'image/bmp',
-            '.gif': 'image/gif',
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.pdf': 'application/pdf',
-            '.png': 'image/png',
-            '.tif': 'image/tiff',
-            '.tiff': 'image/tiff',
-            '.webp': 'image/webp'
-        };
-        return extension ? extensionMimeTypes[extension] || '' : '';
-    }
-
-    function getUtilGasBillingDocumentMimeType(billingDocument) {
-        return String(billingDocument?.mimeType || '').trim()
-            || getUtilGasBillingDocumentMimeTypeFromFileName(
-                String(billingDocument?.fileName || '').trim()
-                || getUtilGasBillingDocumentFileNameFromPath(billingDocument?.relativePath)
-            )
-            || 'application/pdf';
-    }
-
-    function isUtilGasBillingImageDocument(billingDocument) {
-        const mimeType = getUtilGasBillingDocumentMimeType(billingDocument);
-        if (mimeType.startsWith('image/')) return true;
-        return /\.(bmp|gif|jpe?g|png|tiff?|webp)$/i.test(
-            String(billingDocument?.fileName || '').trim()
-                || getUtilGasBillingDocumentFileNameFromPath(billingDocument?.relativePath)
-        );
-    }
-
-    function buildUtilGasBillingDocumentDataUrl(billingDocument) {
-        const base64Data = String(billingDocument?.base64Data || '').trim();
-        if (!base64Data) return '';
-        return `data:${getUtilGasBillingDocumentMimeType(billingDocument)};base64,${base64Data}`;
-    }
-
-    function encodeUtilGasBillingDocumentRelativePath(relativePath = '') {
-        const normalizedPath = normalizeUtilGasBillingDocumentRelativePath(relativePath);
-        if (!normalizedPath) return '';
-        return normalizedPath
-            .split('/')
-            .map(segment => encodeURIComponent(segment))
-            .join('/');
-    }
-
-    function resolveUtilSheetAssetUrl(relativePath = '') {
-        const normalizedPath = String(relativePath || '').trim();
-        if (!normalizedPath) return '';
-        try {
-            return new URL(normalizedPath, window.location.href).href;
-        } catch (error) {
-            void error;
-            return normalizedPath;
-        }
-    }
-
-    function resolveUtilGasBillingDocumentUrl(billingDocument) {
-        if (!billingDocument) return '';
-        const previewUrl = String(billingDocument?.previewUrl || '').trim();
-        const downloadUrl = String(billingDocument?.downloadUrl || '').trim();
-        const hasServerDocument = Boolean(
-            String(billingDocument?.documentId || '').trim() || previewUrl || downloadUrl
-        );
-        const dataUrl = buildUtilGasBillingDocumentDataUrl(billingDocument);
-        if (!hasServerDocument && billingDocument?.savedToLocalDirectory === false && dataUrl) {
-            return dataUrl;
-        }
-        if (previewUrl) return previewUrl;
-        if (downloadUrl) return downloadUrl;
-        const relativeUrl = encodeUtilGasBillingDocumentRelativePath(
-            normalizeUtilGasBillingDocumentAssetRelativePath(
-                billingDocument?.relativePath,
-                billingDocument?.fileName
-            )
-        );
-        if (relativeUrl) return resolveUtilSheetAssetUrl(relativeUrl);
-        return dataUrl;
-    }
-
-    function resolveUtilGasBillingDocumentDownloadUrl(billingDocument) {
-        const dataUrl = buildUtilGasBillingDocumentDataUrl(billingDocument);
-        if (dataUrl) return dataUrl;
-        const downloadUrl = String(billingDocument?.downloadUrl || '').trim();
-        if (downloadUrl) return downloadUrl;
-        return resolveUtilGasBillingDocumentUrl(billingDocument);
-    }
-
-    function resolveUtilGasBillingDocumentDescriptor(monthKey, scopeKey = '') {
-        const normalizedMonthKey = String(monthKey || '').trim();
-        const normalizedScopeKey = String(scopeKey || '').trim();
-        const billingDocument = getUtilGasBillingDocument(normalizedMonthKey, normalizedScopeKey);
-        if (!billingDocument) return null;
-        const fileName = String(billingDocument?.fileName || '').trim()
-            || getUtilGasBillingDocumentFileNameFromPath(billingDocument?.relativePath);
-        const url = resolveUtilGasBillingDocumentUrl(billingDocument);
-        if (!fileName || !url) return null;
-        return {
-            monthKey: normalizedMonthKey,
-            scopeKey: normalizedScopeKey,
-            scopeLabel: UTIL_GAS_BILLING_SCOPE_LABELS[normalizedScopeKey] || '청구서',
-            fileName,
-            folderName: UTIL_GAS_BILLING_DOCUMENT_DIRECTORY,
-            mimeType: getUtilGasBillingDocumentMimeType(billingDocument),
-            isImage: isUtilGasBillingImageDocument(billingDocument),
-            url,
-            billingDocument
-        };
-    }
-
-    function resolveUtilElectricBillingDocumentDescriptor(monthKey, scopeKey = 'yusan') {
-        const normalizedMonthKey = String(monthKey || '').trim();
-        const normalizedScopeKey = String(scopeKey || '').trim() || 'yusan';
-        const billingDocument = getUtilElectricBillingDocument(normalizedMonthKey, normalizedScopeKey);
-        if (!billingDocument) return null;
-        const fileName = String(billingDocument?.fileName || '').trim()
-            || getUtilGasBillingDocumentFileNameFromPath(billingDocument?.relativePath);
-        const url = resolveUtilGasBillingDocumentUrl(billingDocument);
-        if (!fileName || !url) return null;
-        return {
-            datasetKey: 'electric',
-            monthKey: normalizedMonthKey,
-            scopeKey: normalizedScopeKey,
-            scopeLabel: UTIL_ELECTRIC_BILLING_SCOPE_LABELS[normalizedScopeKey] || '청구서',
-            fileName,
-            folderName: UTIL_ELECTRIC_BILLING_DOCUMENT_DIRECTORY,
-            mimeType: getUtilGasBillingDocumentMimeType(billingDocument),
-            isImage: isUtilGasBillingImageDocument(billingDocument),
-            url,
-            billingDocument
-        };
-    }
-
-    function resolveUtilSheetBillingDocumentDescriptor(datasetKey = 'gas', monthKey = '', scopeKey = '') {
-        if (String(datasetKey || '').trim() === 'electric') {
-            return resolveUtilElectricBillingDocumentDescriptor(monthKey, scopeKey || 'yusan');
-        }
-        return resolveUtilGasBillingDocumentDescriptor(monthKey, scopeKey);
-    }
-
     function getUtilGasMeterColumn(table, fieldId) {
         if (!Array.isArray(table?.columns)) return null;
         return table.columns.find(column => String(column?.id || '') === fieldId) || null;
@@ -3342,158 +2929,6 @@
                 </div>
             </aside>
         `;
-    }
-
-    function buildUtilSheetBillingPreviewModalHtml() {
-        return `
-            <div class="billing-preview-modal is-hidden" data-role="util-sheet-billing-preview-modal" aria-hidden="true">
-                <div class="billing-preview-backdrop" data-close-billing-preview="true"></div>
-                <section class="billing-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="utilSheetBillingPreviewTitle">
-                    <div class="billing-preview-head">
-                        <div class="billing-preview-copy">
-                            <p id="utilSheetBillingPreviewTitle" class="billing-preview-title" data-role="util-sheet-billing-preview-title">청구서 미리보기</p>
-                            <p class="billing-preview-meta" data-role="util-sheet-billing-preview-meta"></p>
-                        </div>
-                        <div class="billing-preview-actions">
-                            <button type="button" class="billing-preview-btn" data-role="util-sheet-billing-preview-download">다운</button>
-                            <button type="button" class="billing-preview-btn is-primary" data-role="util-sheet-billing-preview-close">닫기</button>
-                        </div>
-                    </div>
-                    <div class="billing-preview-body" data-role="util-sheet-billing-preview-body"></div>
-                </section>
-            </div>
-        `;
-    }
-
-    function resetUtilSheetBillingPreviewModal(modal) {
-        if (!modal) return;
-        const bodyEl = modal.querySelector('[data-role="util-sheet-billing-preview-body"]');
-        const titleEl = modal.querySelector('[data-role="util-sheet-billing-preview-title"]');
-        const metaEl = modal.querySelector('[data-role="util-sheet-billing-preview-meta"]');
-        if (bodyEl) bodyEl.innerHTML = '';
-        if (titleEl) titleEl.textContent = '청구서 미리보기';
-        if (metaEl) metaEl.textContent = '';
-        modal._billingPreviewDescriptor = null;
-    }
-
-    function closeUtilSheetBillingPreview(rootDoc = document, options = {}) {
-        const modal = rootDoc?.querySelector?.('[data-role="util-sheet-billing-preview-modal"]');
-        if (!modal) return;
-        const focusTarget = options.focusTarget || modal._billingPreviewFocusTarget || null;
-        modal.classList.add('is-hidden');
-        modal.setAttribute('aria-hidden', 'true');
-        resetUtilSheetBillingPreviewModal(modal);
-        modal._billingPreviewFocusTarget = null;
-        if (focusTarget?.focus) {
-            window.setTimeout(() => focusTarget.focus(), 0);
-        }
-    }
-
-    function ensureUtilSheetBillingPreviewModal(rootDoc = document) {
-        if (!rootDoc?.body) return null;
-        let modal = rootDoc.querySelector('[data-role="util-sheet-billing-preview-modal"]');
-        if (modal) return modal;
-        rootDoc.body.insertAdjacentHTML('beforeend', buildUtilSheetBillingPreviewModalHtml());
-        modal = rootDoc.querySelector('[data-role="util-sheet-billing-preview-modal"]');
-        if (!modal || modal.dataset.bound === 'true') return modal;
-        modal.dataset.bound = 'true';
-        modal.addEventListener('click', event => {
-            const closeButton = event.target.closest('[data-role="util-sheet-billing-preview-close"], [data-close-billing-preview="true"]');
-            if (closeButton) {
-                closeUtilSheetBillingPreview(rootDoc);
-                return;
-            }
-            const downloadButton = event.target.closest('[data-role="util-sheet-billing-preview-download"]');
-            if (!downloadButton) return;
-            const descriptor = modal._billingPreviewDescriptor || null;
-            if (!descriptor?.billingDocument) {
-                window.alert('다운할 청구서가 없습니다.');
-                return;
-            }
-            const downloadUrl = resolveUtilGasBillingDocumentDownloadUrl(descriptor.billingDocument);
-            if (!downloadUrl || !descriptor.fileName) {
-                window.alert('다운할 청구서가 없습니다.');
-                return;
-            }
-            const link = rootDoc.createElement('a');
-            link.href = downloadUrl;
-            link.download = descriptor.fileName;
-            link.rel = 'noopener noreferrer';
-            link.className = 'is-hidden';
-            rootDoc.body.appendChild(link);
-            link.click();
-            link.remove();
-        });
-        modal.addEventListener('keydown', event => {
-            if (event.key !== 'Escape') return;
-            event.preventDefault();
-            event.stopPropagation();
-            closeUtilSheetBillingPreview(rootDoc);
-        });
-        return modal;
-    }
-
-    function openUtilSheetBillingPreview(monthKey, scopeKey = '', options = {}) {
-        const descriptor = resolveUtilSheetBillingDocumentDescriptor(
-            options.datasetKey || 'gas',
-            monthKey,
-            scopeKey
-        );
-        if (!descriptor) {
-            window.alert('미리볼 청구서가 없습니다.');
-            return false;
-        }
-        const rootDoc = options.rootDoc || document;
-        const modal = ensureUtilSheetBillingPreviewModal(rootDoc);
-        if (!modal) return false;
-
-        resetUtilSheetBillingPreviewModal(modal);
-        modal._billingPreviewDescriptor = descriptor;
-        modal._billingPreviewFocusTarget = options.focusTarget || null;
-
-        const titleEl = modal.querySelector('[data-role="util-sheet-billing-preview-title"]');
-        const metaEl = modal.querySelector('[data-role="util-sheet-billing-preview-meta"]');
-        const bodyEl = modal.querySelector('[data-role="util-sheet-billing-preview-body"]');
-        if (!bodyEl) return false;
-
-        const monthLabel = typeof formatUtilReportMonthLong === 'function'
-            ? formatUtilReportMonthLong(descriptor.monthKey || '')
-            : String(descriptor.monthKey || '');
-        if (titleEl) titleEl.textContent = `${monthLabel} ${descriptor.scopeLabel} 청구서`;
-        if (metaEl) metaEl.textContent = `${descriptor.folderName} · ${descriptor.fileName}`;
-
-        const previewNode = descriptor.isImage
-            ? rootDoc.createElement('img')
-            : rootDoc.createElement('iframe');
-        previewNode.className = descriptor.isImage ? 'billing-preview-image' : 'billing-preview-frame';
-        previewNode.src = descriptor.url;
-        if (descriptor.isImage) {
-            previewNode.alt = descriptor.fileName;
-        } else {
-            previewNode.title = descriptor.fileName;
-        }
-        bodyEl.appendChild(previewNode);
-
-        modal.classList.remove('is-hidden');
-        modal.setAttribute('aria-hidden', 'false');
-
-        if (descriptor.scopeKey === UTIL_GAS_BILLING_SCOPE_KEYS.yusanLpg && !descriptor.isImage) {
-            requestAnimationFrame(() => {
-                const bw = bodyEl.clientWidth;
-                const bh = bodyEl.clientHeight;
-                if (bw <= 0 || bh <= 0) return;
-                previewNode.style.width = `${bh}px`;
-                previewNode.style.height = `${bw}px`;
-                previewNode.style.transform = 'rotate(90deg)';
-                previewNode.style.transformOrigin = 'center center';
-            });
-        }
-
-        const closeButton = modal.querySelector('[data-role="util-sheet-billing-preview-close"]');
-        if (closeButton?.focus) {
-            window.setTimeout(() => closeButton.focus(), 0);
-        }
-        return true;
     }
 
     function buildUtilGasMeterTableHtml(table, title, accentClass = '') {
@@ -4130,56 +3565,6 @@
                 ${buildUtilSheetAnalysisSummaryGridHtml(summaryItems)}
             </div>
         `;
-    }
-
-    function applyUtilGasMeterProductionSelection(modal, productionKey = 'combined') {
-        if (!modal) return;
-        const normalizedKey = normalizeUtilGasMeterProductionKey(productionKey);
-        modal.dataset.gasMeterProductionKey = normalizedKey;
-        UtilSheetMeterState.gasProductionKey = normalizedKey;
-        renderUtilSheetReportModal(modal);
-        syncUtilSheetDetachedReportWindow(modal);
-        syncUtilSheetReportWindowState(modal);
-    }
-
-    function applyUtilElectricMeterTeamSelection(modal, teamKey = 'combined') {
-        if (!modal) return;
-        const normalizedKey = normalizeUtilElectricMeterTeamKey(teamKey);
-        modal.dataset.electricMeterTeamKey = normalizedKey;
-        UtilSheetMeterState.electricTeamKey = normalizedKey;
-        renderUtilSheetReportModal(modal);
-        syncUtilSheetDetachedReportWindow(modal);
-        syncUtilSheetReportWindowState(modal);
-    }
-
-    function applyUtilElectricAnalysisTeamSelection(modal, teamKey = 'combined') {
-        if (!modal) return;
-        const normalizedKey = normalizeUtilElectricAnalysisTeamKey(teamKey);
-        modal.dataset.electricAnalysisTeamKey = normalizedKey;
-        UtilSheetAnalysisState.electric.teamKey = normalizedKey;
-        renderUtilSheetReportModal(modal);
-        syncUtilSheetDetachedReportWindow(modal);
-        syncUtilSheetReportWindowState(modal);
-    }
-
-    function applyUtilGasAnalysisCategorySelection(modal, categoryKey = 'yusan') {
-        if (!modal) return;
-        const normalizedKey = normalizeUtilGasAnalysisCategoryKey(categoryKey);
-        modal.dataset.gasAnalysisCategoryKey = normalizedKey;
-        UtilSheetAnalysisState.gas.categoryKey = normalizedKey;
-        renderUtilSheetReportModal(modal);
-        syncUtilSheetDetachedReportWindow(modal);
-        syncUtilSheetReportWindowState(modal);
-    }
-
-    function applyUtilElectricMeterViewSelection(modal, viewKey = 'meter') {
-        if (!modal) return;
-        const normalizedKey = normalizeUtilElectricMeterViewKey(viewKey);
-        modal.dataset.electricMeterViewKey = normalizedKey;
-        UtilSheetMeterState.electricViewKey = normalizedKey;
-        renderUtilSheetReportModal(modal);
-        syncUtilSheetDetachedReportWindow(modal);
-        syncUtilSheetReportWindowState(modal);
     }
 
     function renderUtilSheetPanel(panel) {
@@ -5585,1375 +4970,6 @@
         `;
     }
 
-    function buildUtilGasAnalysisModel(selectedMonthKey = '', compareKey = 'month') {
-        const spec = UTIL_SHEET_DATASET_SPECS.gas;
-        const bounds = buildUtilSheetMonthBounds('gas');
-        if (!spec || !bounds || typeof buildUtilReportMonthlyRows !== 'function') {
-            return {
-                hasData: false,
-                monthOptions: [],
-                range: { from: '', to: '' },
-                charts: [],
-                summaryItems: []
-            };
-        }
-        if (!hasUtilGasMeteringStore()) {
-            return {
-                hasData: false,
-                loading: true,
-                monthOptions: [],
-                range: { from: '', to: '' },
-                charts: [],
-                summaryItems: [],
-                message: '가스 검침 데이터를 불러오는 중입니다.'
-            };
-        }
-
-        const baseState = {
-            from: bounds.from,
-            to: bounds.to,
-            electricTeam: 'all',
-            gasTeam: 'all',
-            wasteTeam: 'all',
-            productionTeam: 'all',
-            categoryKey: 'cost',
-            selectedScopeKeys: [spec.scopeKey]
-        };
-        const fullResult = buildUtilReportMonthlyRows(baseState);
-        const fullRows = Array.isArray(fullResult?.rows) ? fullResult.rows : [];
-        const settledRows = fullRows.filter(row => isUtilSheetSettledRow(row, spec));
-        const monthOptions = settledRows.map(row => ({
-            value: row.monthKey,
-            label: typeof formatUtilReportMonthLong === 'function' ? formatUtilReportMonthLong(row.monthKey) : row.monthKey
-        }));
-        if (!monthOptions.length) {
-            return {
-                hasData: false,
-                monthOptions: [],
-                range: { from: '', to: '' },
-                charts: [],
-                summaryItems: []
-            };
-        }
-
-        const normalizedCompareKey = normalizeUtilSheetCompareKey(compareKey);
-        const categoryOption = getUtilGasAnalysisCategoryOption(UtilSheetAnalysisState.gas.categoryKey);
-        const fallbackTo = monthOptions.some(item => item.value === selectedMonthKey)
-            ? selectedMonthKey
-            : monthOptions[monthOptions.length - 1].value;
-        const range = normalizeUtilSheetAnalysisRange(
-            monthOptions,
-            UtilSheetAnalysisState.gas.from,
-            UtilSheetAnalysisState.gas.to,
-            fallbackTo
-        );
-        const rangeKeys = buildUtilSheetRangeMonthKeys(monthOptions, range.from, range.to);
-        const rangeLabel = buildUtilSheetRangeLabel(range.from, range.to);
-        const monthMetricMap = buildUtilGasAnalysisMetricMap(
-            monthOptions.map(item => item.value),
-            categoryOption
-        );
-        const usageMap = new Map(
-            monthOptions.map(item => {
-                const metric = monthMetricMap.get(item.value) || {};
-                return [item.value, {
-                    lpg: metric.lpgUsage,
-                    lng: metric.lngUsage
-                }];
-            })
-        );
-        const ratioUsageMap = new Map(
-            monthOptions.map(item => {
-                const metric = monthMetricMap.get(item.value) || {};
-                return [item.value, {
-                    lpg: metric.lpgUsage,
-                    lng: metric.lngUsage
-                }];
-            })
-        );
-        const productionMap = new Map(
-            monthOptions.map(item => {
-                const metric = monthMetricMap.get(item.value) || {};
-                return [item.value, {
-                    lpg: metric?.ratioProduction?.lpg,
-                    lng: metric?.ratioProduction?.lng
-                }];
-            })
-        );
-
-        const createPoint = (monthKey, value) => ({
-            key: monthKey,
-            monthKey,
-            label: typeof formatUtilReportMonthShort === 'function' ? formatUtilReportMonthShort(monthKey) : monthKey,
-            value: Number.isFinite(value) ? value : NaN
-        });
-        const buildCompareKey = monthKey => normalizedCompareKey === 'year'
-            ? shiftUtilSheetMonthKey(monthKey, -12)
-            : shiftUtilSheetMonthKey(monthKey, -1);
-        const buildQuantityTotal = (points, unit) => formatUtilSheetQuantity(
-            points.reduce((sum, point) => sum + (Number.isFinite(point?.value) ? point.value : 0), 0),
-            unit
-        );
-        const activeMonthKey = range.to;
-        const referenceMonthKey = buildCompareKey(activeMonthKey);
-        const activeMetric = monthMetricMap.get(activeMonthKey) || {};
-        const referenceMetric = monthMetricMap.get(referenceMonthKey) || {};
-        const compareLabel = normalizedCompareKey === 'year' ? '전년대비' : '전월대비';
-        const scopeMetaText = `범위 합계 · ${rangeLabel} · 기준 ${categoryOption.label}`;
-        const costMetaText = `${scopeMetaText} · ${buildUtilGasAnalysisCostModeText(categoryOption)}`;
-        const lineRatioSeries = buildUtilElectricAnalysisLineRatioSeries(
-            rangeKeys,
-            { productionTeamNames: categoryOption.productionTeamNames || [] },
-            activeMonthKey,
-            referenceMonthKey
-        );
-
-        const charts = [
-            categoryOption.showLpgCard ? {
-                key: 'lpgUsage',
-                title: 'LPG 사용량',
-                icon: 'fa-fire-flame-curved',
-                tone: 'gas',
-                metricLabel: getUtilGasAnalysisChartUnitLabel('lpgUsage'),
-                decimals: getUtilGasAnalysisChartDecimals('lpgUsage'),
-                color: '#f97316',
-                chartType: 'bar',
-                fuelKey: 'lpg',
-                allowInactiveToggle: true,
-                isInactive: isUtilGasAnalysisFuelInactive('lpg'),
-                points: rangeKeys.map(monthKey => createPoint(monthKey, usageMap.get(monthKey)?.lpg))
-            } : null,
-            {
-                key: 'lngUsage',
-                title: 'LNG 사용량',
-                icon: 'fa-fire-burner',
-                tone: 'usage',
-                metricLabel: getUtilGasAnalysisChartUnitLabel('lngUsage'),
-                decimals: getUtilGasAnalysisChartDecimals('lngUsage'),
-                color: '#2563eb',
-                chartType: 'bar',
-                fuelKey: 'lng',
-                allowInactiveToggle: true,
-                isInactive: isUtilGasAnalysisFuelInactive('lng'),
-                points: rangeKeys.map(monthKey => createPoint(monthKey, usageMap.get(monthKey)?.lng))
-            },
-            {
-                key: 'gasCost',
-                title: '금액',
-                icon: 'fa-coins',
-                tone: 'cost',
-                metricLabel: getUtilGasAnalysisChartUnitLabel('gasCost'),
-                decimals: getUtilGasAnalysisChartDecimals('gasCost'),
-                color: '#dc2626',
-                chartType: 'line',
-                lineWidth: 3.2,
-                points: rangeKeys.map(monthKey => createPoint(monthKey, monthMetricMap.get(monthKey)?.gasCost))
-            },
-            {
-                key: 'production',
-                title: '생산량',
-                icon: 'fa-industry',
-                tone: 'production',
-                metricLabel: getUtilGasAnalysisChartUnitLabel('production'),
-                decimals: getUtilGasAnalysisChartDecimals('production'),
-                color: '#16a34a',
-                chartType: 'line',
-                lineWidth: 3,
-                lineDash: '8 6',
-                points: rangeKeys.map(monthKey => createPoint(monthKey, monthMetricMap.get(monthKey)?.production))
-            }
-        ].filter(Boolean).map(chart => {
-            let valueText = '-';
-            let subText = `${compareLabel} 비교값 없음`;
-            let metaText = scopeMetaText;
-
-            if (chart.key === 'lpgUsage') {
-                valueText = buildQuantityTotal(chart.points, 'kg');
-                subText = buildUtilGasAnalysisCompareSub(
-                    compareLabel,
-                    activeMonthKey,
-                    formatUtilSheetSignedQuantity(
-                        Number(activeMetric?.lpgUsage) - Number(referenceMetric?.lpgUsage),
-                        'kg'
-                    )
-                );
-            } else if (chart.key === 'lngUsage') {
-                valueText = buildQuantityTotal(chart.points, 'Nm3');
-                subText = buildUtilGasAnalysisCompareSub(
-                    compareLabel,
-                    activeMonthKey,
-                    formatUtilSheetSignedQuantity(
-                        Number(activeMetric?.lngUsage) - Number(referenceMetric?.lngUsage),
-                        'Nm3'
-                    )
-                );
-            } else if (chart.key === 'gasCost') {
-                valueText = formatUtilSheetCost(
-                    chart.points.reduce((sum, point) => sum + (Number.isFinite(point?.value) ? point.value : 0), 0)
-                );
-                subText = buildUtilGasAnalysisCompareSub(
-                    compareLabel,
-                    activeMonthKey,
-                    formatUtilSheetSignedCost(Number(activeMetric?.gasCost) - Number(referenceMetric?.gasCost))
-                );
-                metaText = costMetaText;
-            } else if (chart.key === 'production') {
-                valueText = formatUtilSheetQuantity(
-                    chart.points.reduce((sum, point) => sum + (Number.isFinite(point?.value) ? point.value : 0), 0),
-                    'kg'
-                );
-                subText = buildUtilGasAnalysisCompareSub(
-                    compareLabel,
-                    activeMonthKey,
-                    formatUtilSheetSignedQuantity(Number(activeMetric?.production) - Number(referenceMetric?.production), 'kg')
-                );
-            }
-
-            return {
-                ...chart,
-                valueText,
-                subText,
-                metaText,
-                datasetLabel: '가스비 분석표',
-                teamLabel: chart.title,
-                from: range.from,
-                to: range.to
-            };
-        });
-
-        const combinedChart = buildUtilGasAnalysisCombinedChart(charts, rangeLabel);
-        const ratioTables = buildUtilGasAnalysisRangeTables(rangeKeys, ratioUsageMap, productionMap);
-        const ratioCombinedChart = buildUtilGasAnalysisRatioCombinedChartModel(ratioTables, rangeLabel, {
-            lineRatioSeries,
-            compareLabel,
-            activeMonthKey,
-            referenceMonthKey,
-            categoryLabel: categoryOption.label
-        });
-
-        UtilSheetAnalysisState.gas.from = range.from;
-        UtilSheetAnalysisState.gas.to = range.to;
-        UtilSheetAnalysisState.gas.categoryKey = categoryOption.key;
-
-        return {
-            hasData: true,
-            datasetKey: 'gas',
-            categoryOption,
-            range,
-            rangeLabel,
-            monthOptions,
-            compareLabel,
-            charts,
-            combinedChart,
-            ratioCombinedChart,
-            ratioTables,
-            summaryItems: charts.map(chart => ({
-                key: chart.key,
-                title: chart.title,
-                valueText: chart.valueText,
-                subText: chart.subText,
-                icon: chart.icon,
-                tone: chart.tone,
-                metaText: chart.metaText
-            }))
-        };
-    }
-
-    function buildUtilElectricAnalysisScopedRows(bounds, option) {
-        if (!bounds || !option || typeof buildUtilReportMonthlyRows !== 'function' || typeof getUtilReportMonthRange !== 'function') {
-            return [];
-        }
-        const reportTeamFilters = Array.isArray(option.reportTeamFilters)
-            ? Array.from(new Set(option.reportTeamFilters.map(teamName => String(teamName || '').trim()).filter(Boolean)))
-            : [];
-        const productionTeamNames = new Set(
-            Array.isArray(option.productionTeamNames)
-                ? option.productionTeamNames.map(teamName => String(teamName || '').trim()).filter(Boolean)
-                : []
-        );
-        if (!reportTeamFilters.length) return [];
-
-        const rowMaps = reportTeamFilters.map(teamName => {
-            const monthlyResult = buildUtilReportMonthlyRows({
-                from: bounds.from,
-                to: bounds.to,
-                electricTeam: teamName,
-                gasTeam: 'all',
-                wasteTeam: 'all',
-                productionTeam: productionTeamNames.has(teamName) ? teamName : 'all',
-                categoryKey: 'production',
-                selectedScopeKeys: ['electric']
-            });
-            const rows = Array.isArray(monthlyResult?.rows) ? monthlyResult.rows : [];
-            return new Map(rows.map(row => [String(row?.monthKey || '').trim(), row]));
-        });
-
-        return getUtilReportMonthRange(bounds.from, bounds.to).map(monthInfo => {
-            const monthKey = String(monthInfo?.key || '').trim();
-            let electricUsage = 0;
-            let electricCost = 0;
-            let production = 0;
-            let hasProduction = false;
-
-            rowMaps.forEach(rowMap => {
-                const row = rowMap.get(monthKey);
-                const usageValue = Number(row?.electricUsage);
-                const costValue = Number(row?.electricCost);
-                const productionValue = Number(row?.production);
-                if (Number.isFinite(usageValue)) electricUsage += usageValue;
-                if (Number.isFinite(costValue)) electricCost += costValue;
-                if (Number.isFinite(productionValue) && productionValue > 0) {
-                    production += productionValue;
-                    hasProduction = true;
-                }
-            });
-
-            const electricUnit = hasProduction && production > 0
-                ? electricCost / production
-                : null;
-            return {
-                monthKey,
-                year: Number(monthInfo?.year),
-                month: Number(monthInfo?.month),
-                electricUsage,
-                electricCost,
-                electricUnit,
-                production: hasProduction ? production : null,
-                totalCost: electricCost,
-                totalUnit: electricUnit
-            };
-        });
-    }
-
-    function buildUtilElectricAnalysisScopedDatasetResult(selectedMonthKey = '', teamKey = 'combined') {
-        const spec = UTIL_SHEET_DATASET_SPECS.electric;
-        const bounds = buildUtilSheetMonthBounds('electric');
-        const option = getUtilElectricAnalysisTeamOption(teamKey);
-        if (!spec || !bounds) {
-            return {
-                hasData: false,
-                bounds,
-                monthOptions: [],
-                activeMonthKey: '',
-                option
-            };
-        }
-
-        const allRows = buildUtilElectricAnalysisScopedRows(bounds, option);
-        const monthOptions = allRows
-            .filter(row => isUtilSheetSettledRow(row, spec))
-            .map(row => ({
-                value: row.monthKey,
-                label: typeof formatUtilReportMonthLong === 'function' ? formatUtilReportMonthLong(row.monthKey) : row.monthKey
-            }));
-        if (!monthOptions.length) {
-            return {
-                hasData: false,
-                bounds,
-                monthOptions: [],
-                activeMonthKey: '',
-                option
-            };
-        }
-
-        const allowedMonthSet = new Set(monthOptions.map(item => item.value));
-        const activeMonthKey = allowedMonthSet.has(selectedMonthKey)
-            ? selectedMonthKey
-            : monthOptions[monthOptions.length - 1].value;
-        const rows = allRows.filter(row => compareUtilSheetMonthKeys(row?.monthKey || '', activeMonthKey) <= 0);
-        if (!rows.length) {
-            return {
-                hasData: false,
-                bounds,
-                monthOptions,
-                activeMonthKey,
-                option
-            };
-        }
-
-        const latestRow = rows.find(row => row.monthKey === activeMonthKey) || rows[rows.length - 1] || null;
-        const latestIndex = latestRow ? rows.findIndex(row => row.monthKey === latestRow.monthKey) : -1;
-        const prevMonthRow = latestIndex > 0 ? rows[latestIndex - 1] : null;
-        const prevYearRow = latestRow
-            ? rows.find(row => row.year === latestRow.year - 1 && row.month === latestRow.month) || null
-            : null;
-        const currentYearRows = latestRow
-            ? rows.filter(row => row.year === latestRow.year && row.month <= latestRow.month)
-            : [];
-        const previousYearRows = latestRow
-            ? rows.filter(row => row.year === latestRow.year - 1 && row.month <= latestRow.month)
-            : [];
-        const currentYearSummary = summarizeUtilSheetRows(currentYearRows, spec);
-        const previousYearSummary = summarizeUtilSheetRows(previousYearRows, spec);
-        const latestUsage = Number.isFinite(latestRow?.[spec.usageKey]) ? latestRow[spec.usageKey] : null;
-        const latestCost = Number.isFinite(latestRow?.[spec.costKey]) ? latestRow[spec.costKey] : null;
-        const latestUnit = Number.isFinite(latestRow?.[spec.unitKey]) ? latestRow[spec.unitKey] : null;
-        const latestProduction = Number.isFinite(latestRow?.production) ? latestRow.production : null;
-        const prevMonthUsage = Number.isFinite(prevMonthRow?.[spec.usageKey]) ? prevMonthRow[spec.usageKey] : null;
-        const prevMonthCost = Number.isFinite(prevMonthRow?.[spec.costKey]) ? prevMonthRow[spec.costKey] : null;
-        const prevMonthProduction = Number.isFinite(prevMonthRow?.production) ? prevMonthRow.production : null;
-        const prevMonthUnit = Number.isFinite(prevMonthRow?.[spec.unitKey]) ? prevMonthRow[spec.unitKey] : null;
-        const prevYearUsage = Number.isFinite(prevYearRow?.[spec.usageKey]) ? prevYearRow[spec.usageKey] : null;
-        const prevYearCost = Number.isFinite(prevYearRow?.[spec.costKey]) ? prevYearRow[spec.costKey] : null;
-        const prevYearProduction = Number.isFinite(prevYearRow?.production) ? prevYearRow.production : null;
-        const prevYearUnit = Number.isFinite(prevYearRow?.[spec.unitKey]) ? prevYearRow[spec.unitKey] : null;
-
-        return {
-            hasData: true,
-            spec,
-            option,
-            bounds,
-            monthOptions,
-            activeMonthKey,
-            rows,
-            allRows,
-            latestRow,
-            prevMonthRow,
-            prevYearRow,
-            currentYearSummary,
-            previousYearSummary,
-            latestUsage,
-            latestCost,
-            latestUnit,
-            latestProduction,
-            latestMonthLabel: latestRow ? formatUtilReportMonthLong(latestRow.monthKey) : '-',
-            deltaUsageVsPrevMonth: Number.isFinite(latestUsage) && Number.isFinite(prevMonthUsage) ? latestUsage - prevMonthUsage : null,
-            deltaCostVsPrevMonth: Number.isFinite(latestCost) && Number.isFinite(prevMonthCost) ? latestCost - prevMonthCost : null,
-            deltaProductionVsPrevMonth: Number.isFinite(latestProduction) && Number.isFinite(prevMonthProduction) ? latestProduction - prevMonthProduction : null,
-            deltaUnitVsPrevMonth: Number.isFinite(latestUnit) && Number.isFinite(prevMonthUnit) ? latestUnit - prevMonthUnit : null,
-            deltaUsageVsPrevYear: Number.isFinite(latestUsage) && Number.isFinite(prevYearUsage) ? latestUsage - prevYearUsage : null,
-            deltaCostVsPrevYear: Number.isFinite(latestCost) && Number.isFinite(prevYearCost) ? latestCost - prevYearCost : null,
-            deltaProductionVsPrevYear: Number.isFinite(latestProduction) && Number.isFinite(prevYearProduction) ? latestProduction - prevYearProduction : null,
-            deltaUnitVsPrevYear: Number.isFinite(latestUnit) && Number.isFinite(prevYearUnit) ? latestUnit - prevYearUnit : null
-        };
-    }
-
-    function formatUtilElectricAnalysisIntensity(value, fallback = '-') {
-        const unitKey = getUtilElectricAnalysisUnitKey('electricIntensity');
-        const scaledValue = scaleUtilElectricAnalysisChartValue('electricIntensity', value, unitKey);
-        if (!Number.isFinite(scaledValue)) return fallback;
-        const decimals = getUtilElectricAnalysisChartDecimals('electricIntensity', unitKey);
-        const unitLabel = getUtilElectricAnalysisChartUnitLabel('electricIntensity', unitKey);
-        return `${formatUtilSheetDecimal(scaledValue, decimals)}${unitLabel}`;
-    }
-
-    function formatUtilElectricAnalysisSignedIntensity(value, fallback = '-') {
-        const unitKey = getUtilElectricAnalysisUnitKey('electricIntensity');
-        const scaledValue = scaleUtilElectricAnalysisChartValue('electricIntensity', value, unitKey);
-        if (!Number.isFinite(scaledValue)) return fallback;
-        const sign = scaledValue > 0 ? '+' : '';
-        const decimals = getUtilElectricAnalysisChartDecimals('electricIntensity', unitKey);
-        const unitLabel = getUtilElectricAnalysisChartUnitLabel('electricIntensity', unitKey);
-        return `${sign}${formatUtilSheetDecimal(scaledValue, decimals)}${unitLabel}`;
-    }
-
-    function resolveUtilElectricAnalysisPointValue(chart = {}, point = null, unitKey = '') {
-        if (isUtilElectricAnalysisLineRatioKey(chart?.key)) {
-            if (unitKey === 'kg' || unitKey === 'ton') {
-                return Number(point?.amountValue);
-            }
-            return Number(point?.ratioValue);
-        }
-        return Number(point?.value);
-    }
-
-    function formatUtilElectricAnalysisLineMetricValue(value, unitKey = 'percent', fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        if (unitKey === 'percent') {
-            return formatUtilSheetPercent(value, fallback);
-        }
-        const option = getUtilElectricAnalysisUnitOption(`${UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_PREFIX}metric`, unitKey);
-        const scale = Number(option?.scale) || 1;
-        const decimals = Number.isFinite(option?.decimals) ? option.decimals : 0;
-        const unitLabel = String(option?.label || unitKey || '').trim();
-        return `${formatUtilSheetDecimal(value / scale, decimals)}${unitLabel}`;
-    }
-
-    function formatUtilElectricAnalysisSignedLineMetric(value, unitKey = 'percent', fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        if (unitKey === 'percent') {
-            return formatUtilSheetSignedPercentPoint(value, fallback);
-        }
-        const option = getUtilElectricAnalysisUnitOption(`${UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_PREFIX}metric`, unitKey);
-        const scale = Number(option?.scale) || 1;
-        const decimals = Number.isFinite(option?.decimals) ? option.decimals : 0;
-        const unitLabel = String(option?.label || unitKey || '').trim();
-        const sign = value > 0 ? '+' : '';
-        return `${sign}${formatUtilSheetDecimal(value / scale, decimals)}${unitLabel}`;
-    }
-
-    function parseUtilElectricAnalysisProductionLineMetric(metricKey = '') {
-        const raw = String(metricKey || '').trim();
-        if (!raw.startsWith('생산라인::')) {
-            return {
-                raw,
-                teamName: '',
-                lineName: ''
-            };
-        }
-        const body = raw.slice('생산라인::'.length);
-        const parts = body.split('::');
-        return {
-            raw,
-            teamName: String(parts[0] || '').trim(),
-            lineName: String(parts.slice(1).join('::') || '').trim()
-        };
-    }
-
-    function getUtilElectricAnalysisLineRatioOrderRank(teamName = '', lineName = '') {
-        const normalizedTeamName = String(teamName || '').trim();
-        const normalizedLineName = String(lineName || '').trim();
-        const orderMap = {
-            '1팀 1파트': ['SD', 'MSD'],
-            '1팀 2파트': ['지대', 'ICA'],
-            '2팀': ['로터리·버티컬', '스틱'],
-            '3팀': ['Bottle', '기타']
-        };
-        const rank = orderMap[normalizedTeamName]?.findIndex(label => label === normalizedLineName);
-        return Number.isFinite(rank) && rank >= 0 ? rank : 99;
-    }
-
-    function getUtilElectricAnalysisLineRatioColor(teamName = '', lineName = '', index = 0) {
-        const lineColorMap = {
-            '1팀 1파트::SD': '#2563eb',
-            '1팀 1파트::MSD': '#ec4899',
-            '1팀 2파트::지대': '#f97316',
-            '1팀 2파트::ICA': '#14b8a6',
-            '2팀::로터리·버티컬': '#7c3aed',
-            '2팀::스틱': '#22c55e',
-            '3팀::Bottle': '#ef4444',
-            '3팀::기타': '#0ea5e9'
-        };
-        const normalizedKey = `${String(teamName || '').trim()}::${String(lineName || '').trim()}`;
-        if (lineColorMap[normalizedKey]) {
-            return lineColorMap[normalizedKey];
-        }
-        const fallbackPalette = ['#2563eb', '#ec4899', '#14b8a6', '#f97316', '#7c3aed', '#22c55e', '#ef4444', '#0ea5e9'];
-        return fallbackPalette[index % fallbackPalette.length];
-    }
-
-    function buildUtilElectricAnalysisLineRatioSeries(rangeKeys = [], teamOption = null, activeMonthKey = '', referenceMonthKey = '') {
-        const productionTeamNames = Array.isArray(teamOption?.productionTeamNames)
-            ? Array.from(new Set(teamOption.productionTeamNames.map(teamName => String(teamName || '').trim()).filter(Boolean)))
-            : [];
-        if (productionTeamNames.length !== 1) return [];
-        if (typeof buildUtilReportProductionProductMonthlyValueMap !== 'function') return [];
-        const teamName = productionTeamNames[0];
-        const lineNames = new Set();
-        const monthLineValueMap = new Map();
-
-        (Array.isArray(rangeKeys) ? rangeKeys : []).forEach(monthKey => {
-            const parsedMonth = typeof parseUtilMonthValue === 'function'
-                ? parseUtilMonthValue(monthKey)
-                : /^(\d{4})-(\d{2})$/.exec(String(monthKey || '').trim());
-            const yearValue = Number(parsedMonth?.year ?? parsedMonth?.[1]);
-            const monthValue = Number(parsedMonth?.month ?? parsedMonth?.[2]);
-            if (!Number.isFinite(yearValue) || !Number.isFinite(monthValue)) return;
-            const rawValueMap = buildUtilReportProductionProductMonthlyValueMap(yearValue, monthValue, teamName);
-            const lineValueMap = new Map();
-            Object.entries(rawValueMap || {}).forEach(([metricKey, rawValue]) => {
-                const value = Number(rawValue);
-                if (!Number.isFinite(value) || value <= 0) return;
-                const parsedMetric = parseUtilElectricAnalysisProductionLineMetric(metricKey);
-                const lineName = String(parsedMetric?.lineName || '').trim();
-                if (!lineName) return;
-                if (parsedMetric.teamName && parsedMetric.teamName !== teamName) return;
-                lineValueMap.set(lineName, (Number(lineValueMap.get(lineName)) || 0) + value);
-                lineNames.add(lineName);
-            });
-            monthLineValueMap.set(monthKey, lineValueMap);
-        });
-
-        const orderedLineNames = Array.from(lineNames).sort((left, right) => {
-            const rankDiff = getUtilElectricAnalysisLineRatioOrderRank(teamName, left) - getUtilElectricAnalysisLineRatioOrderRank(teamName, right);
-            if (rankDiff !== 0) return rankDiff;
-            return String(left || '').localeCompare(String(right || ''), 'ko');
-        });
-        if (!orderedLineNames.length) return [];
-
-        const createPoint = (monthKey, value) => ({
-            key: monthKey,
-            monthKey,
-            label: typeof formatUtilReportMonthShort === 'function' ? formatUtilReportMonthShort(monthKey) : monthKey,
-            value: Number.isFinite(value) ? value : NaN
-        });
-        const totalRangeAmount = Array.from(monthLineValueMap.values()).reduce((grandTotal, lineValueMap) => (
-            grandTotal + Array.from(lineValueMap.values()).filter(Number.isFinite).reduce((sum, value) => sum + value, 0)
-        ), 0);
-        const activeLineValueMap = monthLineValueMap.get(String(activeMonthKey || '').trim()) || new Map();
-        const activeTotalAmount = Array.from(activeLineValueMap.values()).filter(Number.isFinite).reduce((sum, value) => sum + value, 0);
-        const referenceLineValueMap = monthLineValueMap.get(String(referenceMonthKey || '').trim()) || new Map();
-        const referenceTotalAmount = Array.from(referenceLineValueMap.values()).filter(Number.isFinite).reduce((sum, value) => sum + value, 0);
-        return orderedLineNames.map((lineName, index) => ({
-            key: `${UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_PREFIX}${teamName}::${lineName}`,
-            title: lineName,
-            icon: 'fa-chart-pie',
-            tone: 'production',
-            metricLabel: '%',
-            decimals: 1,
-            color: getUtilElectricAnalysisLineRatioColor(teamName, lineName, index),
-            chartType: 'line',
-            lineWidth: 2.8,
-            totalAmount: Array.from(monthLineValueMap.values()).reduce((sum, lineValueMap) => (
-                sum + (Number(lineValueMap.get(lineName)) || 0)
-            ), 0),
-            totalRatio: totalRangeAmount > 0
-                ? (Array.from(monthLineValueMap.values()).reduce((sum, lineValueMap) => (
-                    sum + (Number(lineValueMap.get(lineName)) || 0)
-                ), 0) / totalRangeAmount) * 100
-                : null,
-            activeRatio: activeTotalAmount > 0 && Number.isFinite(Number(activeLineValueMap.get(lineName)))
-                ? (Number(activeLineValueMap.get(lineName)) / activeTotalAmount) * 100
-                : null,
-            activeAmount: Number.isFinite(Number(activeLineValueMap.get(lineName))) ? Number(activeLineValueMap.get(lineName)) : null,
-            referenceRatio: referenceTotalAmount > 0 && Number.isFinite(Number(referenceLineValueMap.get(lineName)))
-                ? (Number(referenceLineValueMap.get(lineName)) / referenceTotalAmount) * 100
-                : null,
-            referenceAmount: Number.isFinite(Number(referenceLineValueMap.get(lineName))) ? Number(referenceLineValueMap.get(lineName)) : null,
-            points: (Array.isArray(rangeKeys) ? rangeKeys : []).map(monthKey => {
-                const lineValueMap = monthLineValueMap.get(monthKey) || new Map();
-                const totalValue = Array.from(lineValueMap.values())
-                    .filter(Number.isFinite)
-                    .reduce((sum, value) => sum + value, 0);
-                const lineValue = Number(lineValueMap.get(lineName));
-                const ratioValue = totalValue > 0 && Number.isFinite(lineValue)
-                    ? (lineValue / totalValue) * 100
-                    : NaN;
-                return {
-                    ...createPoint(monthKey, ratioValue),
-                    ratioValue,
-                    amountValue: Number.isFinite(lineValue) ? lineValue : NaN
-                };
-            }),
-            deltaRatio: null,
-            deltaAmount: null
-        })).map(series => ({
-            ...series,
-            deltaRatio: Number.isFinite(series.activeRatio) && Number.isFinite(series.referenceRatio)
-                ? series.activeRatio - series.referenceRatio
-                : null,
-            deltaAmount: Number.isFinite(series.activeAmount) && Number.isFinite(series.referenceAmount)
-                ? series.activeAmount - series.referenceAmount
-                : null
-        }));
-    }
-
-    function buildUtilElectricAnalysisCombinedChart(charts = [], rangeLabel = '', options = {}) {
-        const baseCharts = Array.isArray(charts) ? charts.filter(chart => chart && Array.isArray(chart.points)) : [];
-        if (!baseCharts.length) return null;
-
-        const controlItems = baseCharts.map(chart => {
-            const unitKey = getUtilElectricAnalysisUnitKey(chart.key);
-            const displayMode = getUtilElectricAnalysisDisplayMode(chart.key);
-            const chartUnitLabel = getUtilElectricAnalysisChartUnitLabel(chart.key, unitKey) || String(chart?.metricLabel || '').trim();
-            const chartDecimals = getUtilElectricAnalysisChartDecimals(chart.key, unitKey);
-            const resolvedDecimals = Number.isFinite(chartDecimals) && chartDecimals > 0
-                ? chartDecimals
-                : (Number.isFinite(chart?.decimals) ? chart.decimals : 0);
-            return {
-                ...chart,
-                unitKey,
-                unitLabel: chartUnitLabel,
-                decimals: resolvedDecimals,
-                displayMode,
-                popupTableKey: chart.key,
-                unitOptions: chart.key === 'electricIntensity'
-                    ? []
-                    : getUtilElectricAnalysisUnitOptions(chart.key)
-            };
-        });
-        const visibleCharts = controlItems.filter(chart => chart.displayMode !== 'none' && Array.isArray(chart.points) && chart.points.length);
-
-        const series = visibleCharts.map(chart => ({
-            label: buildUtilGasAnalysisSeriesLabel({ title: chart.title, metricLabel: chart.unitLabel }),
-            color: chart.color,
-            decimals: Number.isFinite(chart?.decimals) ? chart.decimals : 0,
-            type: chart.displayMode,
-            lineWidth: chart.displayMode === 'line' ? chart.lineWidth : undefined,
-            lineDash: chart.displayMode === 'line' ? chart.lineDash : '',
-            seriesKey: chart.key,
-            points: chart.points.map(point => ({
-                key: point?.monthKey || point?.key || point?.label || '',
-                monthKey: point?.monthKey || point?.key || '',
-                label: point?.label || '',
-                value: scaleUtilElectricAnalysisChartValue(
-                    chart.key,
-                    resolveUtilElectricAnalysisPointValue(chart, point, chart.unitKey),
-                    chart.unitKey
-                )
-            }))
-        }));
-
-        const chartDataList = visibleCharts.map(chart => ({
-            datasetLabel: '',
-            teamLabel: chart.title,
-            metricLabel: chart.unitLabel,
-            legendLabel: buildUtilGasAnalysisSeriesLabel({ title: chart.title, metricLabel: chart.unitLabel }),
-            decimals: Number.isFinite(chart?.decimals) ? chart.decimals : 0,
-            chartType: chart.displayMode,
-            color: chart.color,
-            lineWidth: chart.displayMode === 'line' ? chart.lineWidth : undefined,
-            lineDash: chart.displayMode === 'line' ? chart.lineDash : '',
-            seriesKey: chart.key,
-            points: chart.points.map(point => {
-                const pointKey = point?.monthKey || point?.key || point?.label || '';
-                return {
-                    key: pointKey,
-                    monthKey: pointKey,
-                    label: typeof formatUtilReportMonthLong === 'function'
-                        ? formatUtilReportMonthLong(pointKey)
-                        : (point?.label || pointKey),
-                    value: scaleUtilElectricAnalysisChartValue(
-                        chart.key,
-                        resolveUtilElectricAnalysisPointValue(chart, point, chart.unitKey),
-                        chart.unitKey
-                    )
-                };
-            })
-        }));
-
-        const maxDecimals = visibleCharts.reduce((acc, chart) => Math.max(acc, Number.isFinite(chart?.decimals) ? chart.decimals : 0), 0);
-        return {
-            key: String(options?.key || 'combined').trim() || 'combined',
-            title: String(options?.title || '').trim() || '전기 사용량 · 금액 · 생산량',
-            icon: String(options?.icon || '').trim() || 'fa-chart-column',
-            tone: String(options?.tone || '').trim() || 'electric',
-            periodLabel: rangeLabel,
-            decimals: maxDecimals,
-            series,
-            chartDataList,
-            controlItems,
-            hasVisibleSeries: visibleCharts.length > 0
-        };
-    }
-
-    function buildUtilElectricAnalysisModel(selectedMonthKey = '', compareKey = 'month', teamKey = 'combined') {
-        const datasetResult = buildUtilElectricAnalysisScopedDatasetResult(selectedMonthKey, teamKey);
-        const spec = datasetResult?.spec || UTIL_SHEET_DATASET_SPECS.electric;
-        if (!datasetResult?.hasData || !spec) {
-            return {
-                hasData: false,
-                monthOptions: [],
-                range: { from: '', to: '' },
-                charts: [],
-                summaryItems: []
-            };
-        }
-
-        const monthOptions = Array.isArray(datasetResult.monthOptions) ? datasetResult.monthOptions : [];
-        const rangeState = getUtilSheetAnalysisRangeState('electric');
-        const normalizedCompareKey = normalizeUtilSheetCompareKey(compareKey);
-        const fallbackTo = monthOptions.some(item => item.value === selectedMonthKey)
-            ? selectedMonthKey
-            : monthOptions[monthOptions.length - 1].value;
-        const range = normalizeUtilSheetAnalysisRange(
-            monthOptions,
-            rangeState.from,
-            rangeState.to,
-            fallbackTo
-        );
-        const rangeKeys = buildUtilSheetRangeMonthKeys(monthOptions, range.from, range.to);
-        const rangeLabel = buildUtilSheetRangeLabel(range.from, range.to);
-        const rowMap = new Map((Array.isArray(datasetResult.allRows) ? datasetResult.allRows : []).map(row => [row.monthKey, row]));
-        const rangeRows = rangeKeys.map(monthKey => rowMap.get(monthKey)).filter(Boolean);
-        if (!rangeRows.length) {
-            return {
-                hasData: false,
-                monthOptions,
-                range,
-                rangeLabel,
-                charts: [],
-                summaryItems: [],
-                teamOption: datasetResult.option,
-                datasetResult
-            };
-        }
-
-        const createPoint = (monthKey, value) => ({
-            key: monthKey,
-            monthKey,
-            label: typeof formatUtilReportMonthShort === 'function' ? formatUtilReportMonthShort(monthKey) : monthKey,
-            value: Number.isFinite(value) ? value : NaN
-        });
-        const buildCompareMonthKey = monthKey => normalizedCompareKey === 'year'
-            ? shiftUtilSheetMonthKey(monthKey, -12)
-            : shiftUtilSheetMonthKey(monthKey, -1);
-        const sumValues = (rows, key) => rows.reduce((total, row) => total + (Number.isFinite(row?.[key]) ? row[key] : 0), 0);
-        const activeMonthKey = range.to;
-        const referenceMonthKey = buildCompareMonthKey(activeMonthKey);
-        const activeRow = rowMap.get(activeMonthKey) || null;
-        const referenceRow = rowMap.get(referenceMonthKey) || null;
-        const compareLabel = getUtilSheetCompareLabel(normalizedCompareKey);
-        const teamOption = datasetResult.option || getUtilElectricAnalysisTeamOption(teamKey);
-        const totalUsage = sumValues(rangeRows, 'electricUsage');
-        const totalCost = sumValues(rangeRows, 'electricCost');
-        const totalProduction = sumValues(rangeRows, 'production');
-        const totalIntensity = totalProduction > 0 ? totalUsage / totalProduction : null;
-        const activeIntensity = Number.isFinite(activeRow?.electricUsage) && Number.isFinite(activeRow?.production) && activeRow.production > 0
-            ? activeRow.electricUsage / activeRow.production
-            : null;
-        const referenceIntensity = Number.isFinite(referenceRow?.electricUsage) && Number.isFinite(referenceRow?.production) && referenceRow.production > 0
-            ? referenceRow.electricUsage / referenceRow.production
-            : null;
-        const intensityDelta = Number.isFinite(activeIntensity) && Number.isFinite(referenceIntensity)
-            ? activeIntensity - referenceIntensity
-            : null;
-
-        const charts = [
-            {
-                key: 'electricUsage',
-                title: '전기 사용량',
-                icon: 'fa-bolt',
-                tone: 'electric',
-                metricLabel: 'kWh',
-                decimals: 0,
-                color: '#f59e0b',
-                chartType: 'bar',
-                points: rangeKeys.map(monthKey => createPoint(monthKey, rowMap.get(monthKey)?.electricUsage)),
-                valueText: formatUtilSheetQuantity(totalUsage, 'kWh'),
-                subText: buildUtilGasAnalysisCompareSub(
-                    compareLabel,
-                    activeMonthKey,
-                    formatUtilSheetSignedQuantity(
-                        Number(activeRow?.electricUsage) - Number(referenceRow?.electricUsage),
-                        'kWh'
-                    )
-                )
-            },
-            {
-                key: 'electricCost',
-                title: '금액',
-                icon: 'fa-coins',
-                tone: 'cost',
-                metricLabel: '원',
-                decimals: 0,
-                color: '#dc2626',
-                chartType: 'line',
-                lineWidth: 3.2,
-                points: rangeKeys.map(monthKey => createPoint(monthKey, rowMap.get(monthKey)?.electricCost)),
-                valueText: formatUtilSheetCost(totalCost),
-                subText: buildUtilGasAnalysisCompareSub(
-                    compareLabel,
-                    activeMonthKey,
-                    formatUtilSheetSignedCost(Number(activeRow?.electricCost) - Number(referenceRow?.electricCost))
-                )
-            },
-            {
-                key: 'production',
-                title: '생산량',
-                icon: 'fa-industry',
-                tone: 'production',
-                metricLabel: 'kg',
-                decimals: 0,
-                color: '#16a34a',
-                chartType: 'line',
-                lineWidth: 3,
-                lineDash: '8 6',
-                points: rangeKeys.map(monthKey => createPoint(monthKey, rowMap.get(monthKey)?.production)),
-                valueText: formatUtilSheetQuantity(totalProduction, 'kg'),
-                subText: buildUtilGasAnalysisCompareSub(
-                    compareLabel,
-                    activeMonthKey,
-                    formatUtilSheetSignedQuantity(Number(activeRow?.production) - Number(referenceRow?.production), 'kg')
-                )
-            }
-        ];
-        const intensityBaseChart = {
-            key: 'electricIntensity',
-            title: '생산량 대비 전기 사용량',
-            icon: 'fa-gauge-high',
-            tone: 'electric',
-            metricLabel: 'kWh/kg',
-            decimals: 3,
-            color: '#111827',
-            chartType: 'line',
-            lineWidth: 3.2,
-            points: rangeKeys.map(monthKey => {
-                const row = rowMap.get(monthKey);
-                const intensityValue = Number.isFinite(row?.electricUsage) && Number.isFinite(row?.production) && row.production > 0
-                    ? row.electricUsage / row.production
-                    : NaN;
-                return createPoint(monthKey, intensityValue);
-            })
-        };
-        const combinedChart = buildUtilElectricAnalysisCombinedChart(charts, rangeLabel, {
-            key: 'combined',
-            title: '전기 사용량 · 금액 · 생산량',
-            icon: 'fa-chart-column',
-            tone: 'electric',
-            controlItems: []
-        });
-        const lineRatioSeries = teamOption?.key === 'combined'
-            ? []
-            : buildUtilElectricAnalysisLineRatioSeries(rangeKeys, teamOption, activeMonthKey, referenceMonthKey);
-        const intensityChart = buildUtilElectricAnalysisCombinedChart([intensityBaseChart].concat(lineRatioSeries), rangeLabel, {
-            key: 'electricIntensity',
-            title: '생산량 대비 전기 사용량',
-            icon: 'fa-gauge-high',
-            tone: 'electric',
-            controlItems: []
-        });
-        if (intensityChart) {
-            const intensityControlItems = Array.isArray(intensityChart.controlItems)
-                ? intensityChart.controlItems
-                : [];
-            const lineRatioSummaryItems = lineRatioSeries.map(series => ({
-                key: series.key,
-                title: series.title,
-                valueText: formatUtilSheetPercent(series.totalRatio),
-                secondaryLabelText: '생산량',
-                secondaryValueText: formatUtilSheetQuantity(series.totalAmount, 'kg'),
-                subText: buildUtilGasAnalysisCompareSub(
-                    compareLabel,
-                    activeMonthKey,
-                    formatUtilSheetSignedPercentPoint(series.deltaRatio)
-                ),
-                icon: 'fa-chart-pie',
-                tone: 'production',
-                metaText: ['범위 누적', rangeLabel, '기준 ' + teamOption.label].join(' · ')
-            }));
-            const resolvedLineRatioSummaryItems = lineRatioSummaryItems.map((item, index) => {
-                const series = lineRatioSeries[index] || null;
-                const unitKey = getUtilElectricAnalysisUnitKey(series?.key);
-                const isAmountMode = unitKey === 'kg' || unitKey === 'ton';
-                return {
-                    ...item,
-                    popupTableKey: series?.key || item?.popupTableKey || '',
-                    valueText: formatUtilElectricAnalysisLineMetricValue(
-                        isAmountMode ? series?.totalAmount : series?.totalRatio,
-                        unitKey
-                    ),
-                    secondaryLabelText: isAmountMode ? '%' : 'kg',
-                    secondaryValueText: isAmountMode
-                        ? formatUtilSheetPercent(series?.totalRatio)
-                        : formatUtilElectricAnalysisLineMetricValue(series?.totalAmount, 'kg'),
-                    subText: buildUtilGasAnalysisCompareSub(
-                        compareLabel,
-                        activeMonthKey,
-                        formatUtilElectricAnalysisSignedLineMetric(
-                            isAmountMode ? series?.deltaAmount : series?.deltaRatio,
-                            unitKey
-                        )
-                    )
-                };
-            });
-            intensityChart.summaryItems = [
-                {
-                    key: 'electricIntensity',
-                    title: intensityBaseChart.title,
-                    valueText: formatUtilElectricAnalysisIntensity(totalIntensity),
-                    subText: buildUtilGasAnalysisCompareSub(
-                        compareLabel,
-                        activeMonthKey,
-                        formatUtilElectricAnalysisSignedIntensity(intensityDelta)
-                    ),
-                    icon: 'fa-gauge-high',
-                    tone: 'electric',
-                    metaText: `범위 누적 · ${rangeLabel} · 기준 ${teamOption.label}`
-                }
-            ].concat(resolvedLineRatioSummaryItems);
-            intensityChart.summaryControlItems = intensityControlItems;
-        }
-        const summaryItems = [
-            {
-                key: 'electricUsage',
-                title: '전기 사용량',
-                valueText: formatUtilSheetQuantity(totalUsage, 'kWh'),
-                subText: charts[0].subText,
-                icon: 'fa-bolt',
-                tone: 'electric',
-                metaText: `범위 누적 · ${rangeLabel} · 기준 ${teamOption.label}`
-            },
-            {
-                key: 'electricCost',
-                title: '금액',
-                valueText: formatUtilSheetCost(totalCost),
-                subText: charts[1].subText,
-                icon: 'fa-coins',
-                tone: 'cost',
-                metaText: `범위 누적 · ${rangeLabel} · 기준 ${teamOption.label}`
-            },
-            {
-                key: 'production',
-                title: '생산량',
-                valueText: formatUtilSheetQuantity(totalProduction, 'kg'),
-                subText: charts[2].subText,
-                icon: 'fa-industry',
-                tone: 'production',
-                metaText: `범위 누적 · ${rangeLabel} · 기준 ${teamOption.label}`
-            }
-        ];
-
-        setUtilSheetAnalysisRangeState('electric', range.from, range.to);
-        UtilSheetAnalysisState.electric.teamKey = teamOption.key;
-
-        return {
-            hasData: true,
-            datasetKey: 'electric',
-            teamOption,
-            range,
-            rangeLabel,
-            monthOptions,
-            compareLabel,
-            charts: intensityChart ? [intensityChart] : [],
-            combinedChart,
-            summaryItems,
-            datasetResult
-        };
-    }
-
-    function buildUtilGasAnalysisChartCardHtml(chart, model) {
-        const isCombinedChart = chart?.key === 'combined' || Array.isArray(chart?.controlItems);
-        const hasVisibleSeries = isCombinedChart
-            ? (Array.isArray(chart?.chartDataList) && chart.chartDataList.length > 0)
-            : !!(Array.isArray(chart?.points) && chart.points.length);
-        const chartHtml = isCombinedChart
-            ? (!hasVisibleSeries
-                ? '<div class="util-sheet-empty">표시할 그래프가 없습니다. 시리즈를 선 또는 막대로 선택해 주세요.</div>'
-                : (typeof renderUtilIndependentBoundsMultiSeriesChart === 'function'
-                ? renderUtilIndependentBoundsMultiSeriesChart(chart.series, {
-                    chartTitle: chart.title,
-                    periodLabel: model.rangeLabel,
-                    inlinePeriodLegend: true,
-                    decimals: chart.decimals,
-                    showLabelToggle: true,
-                    showLabels: false,
-                    hideUnit: true,
-                    topCenterTitle: chart.title,
-                    axisXLabel: '월',
-                    showYearBands: false,
-                    maxXAxisLabels: 12,
-                    forceWidth: Math.max(860, (chart.series[0]?.points?.length || 0) * 62 + 260),
-                    height: 380
-                })
-                : '<div class="util-sheet-empty">그래프 렌더러를 찾지 못했습니다.</div>'))
-            : (typeof renderUtilTrendChart === 'function'
-                ? renderUtilTrendChart(chart.points, chart.metricLabel, {
-                    chartTitle: chart.title,
-                    periodLabel: model.rangeLabel,
-                    decimals: chart.decimals,
-                    chartType: chart.chartType || 'line',
-                    showTypeSelect: true,
-                    showLabelToggle: true,
-                    showLabels: false,
-                    axisXLabel: '월',
-                    axisYLabel: chart.metricLabel,
-                    forceWidth: Math.max(560, (chart.points.length * 58) + 180),
-                    height: 292
-                })
-                : '<div class="util-sheet-empty">그래프 렌더러를 찾지 못했습니다.</div>');
-        const controlsHtml = isCombinedChart ? buildUtilGasAnalysisCombinedControlsHtml(chart) : '';
-        const openButtonTitle = hasVisibleSeries
-            ? `${chart.title} 크게 보기`
-            : '표시할 시리즈가 없습니다.';
-
-        return `
-            <article class="util-sheet-analysis-chart-card${isCombinedChart ? ' is-combined' : ''}" data-tone="${escapeUtilSheetHtml(chart.tone || 'neutral')}">
-                <div class="util-sheet-analysis-chart-head">
-                    <div class="util-sheet-analysis-chart-title-wrap">
-                        <span class="util-sheet-analysis-chart-icon" aria-hidden="true"><i class="fa-solid ${escapeUtilSheetHtml(chart.icon || 'fa-chart-line')}"></i></span>
-                        <div>
-                            <div class="util-sheet-analysis-chart-title">${escapeUtilSheetHtml(chart.title)}</div>
-                            <div class="util-sheet-analysis-chart-sub">${escapeUtilSheetHtml(model.rangeLabel)}</div>
-                        </div>
-                    </div>
-                    <button type="button" class="util-sheet-analysis-chart-btn" data-role="util-sheet-analysis-open-chart" data-chart-key="${escapeUtilSheetHtml(chart.key)}" aria-label="${escapeUtilSheetHtml(openButtonTitle)}" title="${escapeUtilSheetHtml(openButtonTitle)}" ${hasVisibleSeries ? '' : 'disabled'}>
-                        <i class="fa-solid fa-up-right-and-down-left-from-center" aria-hidden="true"></i>
-                    </button>
-                </div>
-                ${controlsHtml}
-                <div class="util-sheet-analysis-chart-surface">
-                    <div class="util-report-chart-shell util-sheet-analysis-chart-frame theme-total" style="--util-chart-accent:${escapeUtilSheetHtml(chart.color || '#1d4ed8')};--util-chart-bar:${escapeUtilSheetHtml(chart.color || '#60a5fa')};">
-                        ${chartHtml}
-                    </div>
-                </div>
-            </article>
-        `;
-    }
-
-    function buildUtilGasAnalysisChartCardHtmlV2(chart, model, viewState = {}) {
-        const isCombinedChart = chart?.key === 'combined' || Array.isArray(chart?.controlItems);
-        const chartKey = String(chart?.key || '').trim();
-        const datasetKey = normalizeUtilSheetAnalysisDatasetKey(model?.datasetKey || 'gas');
-        const isFullscreenChart = viewState?.fullscreenChart === true
-            && String(viewState?.chartKey || '').trim() === chartKey;
-        const showChartLabels = getUtilSheetAnalysisShowLabels(datasetKey, chartKey, isFullscreenChart);
-        const hasVisibleSeries = isCombinedChart
-            ? (Array.isArray(chart?.chartDataList) && chart.chartDataList.length > 0)
-            : !!(Array.isArray(chart?.points) && chart.points.length);
-        const pointCount = isCombinedChart
-            ? Math.max(0, chart?.series?.[0]?.points?.length || 0)
-            : Math.max(0, chart?.points?.length || 0);
-        const labelToggleRole = datasetKey === 'electric'
-            ? (chartKey === 'electricIntensity'
-                ? 'util-sheet-analysis-electric-intensity-label-toggle'
-                : 'util-sheet-analysis-electric-combined-label-toggle')
-            : '';
-        const chartHtml = isCombinedChart
-            ? (!hasVisibleSeries
-                ? '<div class="util-sheet-empty">표시할 그래프가 없습니다. 시리즈를 선택해 주세요.</div>'
-                : (typeof renderUtilIndependentBoundsMultiSeriesChart === 'function'
-                    ? renderUtilIndependentBoundsMultiSeriesChart(chart.series, {
-                        mode: isFullscreenChart ? 'modal' : undefined,
-                        chartTitle: chart.title,
-                        periodLabel: model.rangeLabel,
-                        inlinePeriodLegend: true,
-                        decimals: chart.decimals,
-                        showLabelToggle: true,
-                        labelToggleRole: labelToggleRole || undefined,
-                        showLabels: showChartLabels,
-                        tightRange: true,
-                        tightPadding: 0.14,
-                        hideUnit: true,
-                        topCenterTitle: chart.title,
-                        axisXLabel: '월',
-                        showYearBands: false,
-                        maxXAxisLabels: isFullscreenChart ? Math.max(2, pointCount) : 12,
-                        forceWidth: isFullscreenChart
-                            ? Math.max(1260, pointCount * 88 + 340)
-                            : Math.max(860, pointCount * 62 + 260),
-                        height: isFullscreenChart ? 640 : 380
-                    })
-                    : '<div class="util-sheet-empty">그래프 렌더러를 찾지 못했습니다.</div>'))
-            : (typeof renderUtilTrendChart === 'function'
-                ? renderUtilTrendChart(chart.points, chart.metricLabel, {
-                    mode: isFullscreenChart ? 'modal' : undefined,
-                    chartTitle: chart.title,
-                    periodLabel: model.rangeLabel,
-                    decimals: chart.decimals,
-                    chartType: chart.chartType || 'line',
-                    showTypeSelect: false,
-                    showLabelToggle: true,
-                    showLabels: showChartLabels,
-                    tightRange: true,
-                    tightPadding: 0.14,
-                    axisXLabel: '월',
-                    axisYLabel: chart.metricLabel,
-                    maxXAxisLabels: isFullscreenChart ? Math.max(2, pointCount) : 12,
-                    forceWidth: isFullscreenChart
-                        ? Math.max(980, pointCount * 82 + 260)
-                        : Math.max(560, pointCount * 58 + 180),
-                    height: isFullscreenChart ? 520 : 292
-                })
-                : '<div class="util-sheet-empty">그래프 렌더러를 찾지 못했습니다.</div>');
-        const buttonTitle = hasVisibleSeries
-            ? (isFullscreenChart ? `${chart.title} 전체화면 종료` : `${chart.title} 전체화면`)
-            : '표시할 시리즈가 없습니다.';
-        const summaryBlockHtml = Array.isArray(chart?.summaryItems) && chart.summaryItems.length
-            ? buildUtilSheetAnalysisSummaryGridHtml(
-                chart.summaryItems,
-                Array.isArray(chart?.summaryControlItems) ? chart.summaryControlItems : chart.controlItems
-            )
-            : '';
-        const cardClassName = [
-            'util-sheet-analysis-chart-card',
-            isCombinedChart ? 'is-combined' : '',
-            isFullscreenChart ? 'is-fullscreen-target' : '',
-            viewState?.fullscreenChart === true && !isFullscreenChart ? 'is-fullscreen-hidden' : ''
-        ].filter(Boolean).join(' ');
-
-        return `
-            <article class="${escapeUtilSheetHtml(cardClassName)}" data-role="util-sheet-analysis-chart-card" data-analysis-chart-key="${escapeUtilSheetHtml(chartKey)}" data-tone="${escapeUtilSheetHtml(chart.tone || 'neutral')}">
-                <div class="util-sheet-analysis-chart-head">
-                    <div class="util-sheet-analysis-chart-title-wrap">
-                        <span class="util-sheet-analysis-chart-icon" aria-hidden="true"><i class="fa-solid ${escapeUtilSheetHtml(chart.icon || 'fa-chart-line')}"></i></span>
-                        <div>
-                            <div class="util-sheet-analysis-chart-title">${escapeUtilSheetHtml(chart.title)}</div>
-                            <div class="util-sheet-analysis-chart-sub">${escapeUtilSheetHtml(model.rangeLabel)}</div>
-                        </div>
-                    </div>
-                    <button type="button" class="util-sheet-analysis-chart-btn${isFullscreenChart ? ' is-active' : ''}" data-role="util-sheet-analysis-open-chart" data-chart-key="${escapeUtilSheetHtml(chartKey)}" aria-label="${escapeUtilSheetHtml(buttonTitle)}" title="${escapeUtilSheetHtml(buttonTitle)}" ${hasVisibleSeries ? '' : 'disabled'}>
-                        <i class="fa-solid ${isFullscreenChart ? 'fa-compress' : 'fa-expand'}" aria-hidden="true"></i>
-                    </button>
-                </div>
-                ${summaryBlockHtml}
-                <div class="util-sheet-analysis-chart-surface">
-                    <div class="util-report-chart-shell util-sheet-analysis-chart-frame theme-total" style="--util-chart-accent:${escapeUtilSheetHtml(chart.color || '#1d4ed8')};--util-chart-bar:${escapeUtilSheetHtml(chart.color || '#60a5fa')};">
-                        ${chartHtml}
-                    </div>
-                </div>
-            </article>
-        `;
-    }
-
-    function buildUtilGasAnalysisRatioCombinedChartCardHtmlV2(chart, model, viewState = {}) {
-        if (!chart) return '';
-        const chartKey = String(chart?.key || 'ratio-combined').trim();
-        const isFullscreenChart = viewState?.fullscreenChart === true
-            && String(viewState?.chartKey || '').trim() === chartKey;
-        const showLabels = getUtilGasAnalysisRatioShowLabels();
-        const hasVisibleSeries = Array.isArray(chart?.series) && chart.series.length > 0;
-        const pointCount = Math.max(0, chart?.controlItems?.[0]?.points?.length || chart?.series?.[0]?.points?.length || 0);
-        const chartHtml = !hasVisibleSeries
-            ? '<div class="util-sheet-empty">표시할 그래프가 없습니다. 시리즈를 선 또는 막대로 선택해 주세요.</div>'
-            : (typeof renderUtilIndependentBoundsMultiSeriesChart === 'function'
-                ? renderUtilIndependentBoundsMultiSeriesChart(chart.series, {
-                    mode: isFullscreenChart ? 'modal' : undefined,
-                    chartTitle: chart.title,
-                    periodLabel: model.rangeLabel,
-                    inlinePeriodLegend: true,
-                    decimals: chart.decimals,
-                    showLabelToggle: true,
-                    labelToggleRole: 'util-sheet-analysis-ratio-label-toggle',
-                    labelToggleText: '값 표시',
-                    showLabels,
-                    tightRange: true,
-                    tightPadding: 0.18,
-                    hideUnit: true,
-                    topCenterTitle: chart.title,
-                    axisXLabel: '월',
-                    showYearBands: false,
-                    maxXAxisLabels: isFullscreenChart ? Math.max(2, pointCount) : Math.min(12, Math.max(2, pointCount)),
-                    forceWidth: isFullscreenChart
-                        ? Math.max(1260, pointCount * 88 + 340)
-                        : Math.max(900, pointCount * 56 + 220),
-                    height: isFullscreenChart ? 640 : 300,
-                    rightPad: 28
-                })
-                : '<div class="util-sheet-empty">그래프 렌더러를 찾지 못했습니다.</div>');
-        const buttonTitle = hasVisibleSeries
-            ? (isFullscreenChart ? `${chart.title} 전체화면 종료` : `${chart.title} 전체화면`)
-            : '표시할 시리즈가 없습니다.';
-        const summaryBlockHtml = Array.isArray(chart?.summaryItems) && chart.summaryItems.length
-            ? buildUtilSheetAnalysisSummaryGridHtml(
-                chart.summaryItems,
-                Array.isArray(chart?.summaryControlItems) ? chart.summaryControlItems : chart.controlItems
-            )
-            : '';
-        const cardClassName = [
-            'util-sheet-analysis-chart-card',
-            'is-combined',
-            'is-ratio-combined',
-            isFullscreenChart ? 'is-fullscreen-target' : '',
-            viewState?.fullscreenChart === true && !isFullscreenChart ? 'is-fullscreen-hidden' : ''
-        ].filter(Boolean).join(' ');
-
-        return `
-            <article class="${escapeUtilSheetHtml(cardClassName)}" data-role="util-sheet-analysis-chart-card" data-analysis-chart-key="${escapeUtilSheetHtml(chartKey)}" data-tone="${escapeUtilSheetHtml(chart.tone || 'combined')}">
-                <div class="util-sheet-analysis-chart-head">
-                    <div class="util-sheet-analysis-chart-title-wrap">
-                        <span class="util-sheet-analysis-chart-icon" aria-hidden="true"><i class="fa-solid ${escapeUtilSheetHtml(chart.icon || 'fa-chart-line')}"></i></span>
-                        <div>
-                            <div class="util-sheet-analysis-chart-title">${escapeUtilSheetHtml(chart.title)}</div>
-                            <div class="util-sheet-analysis-chart-sub">두 소모량 값을 하나의 그래프에서 비교합니다.</div>
-                        </div>
-                    </div>
-                    <button type="button" class="util-sheet-analysis-chart-btn${isFullscreenChart ? ' is-active' : ''}" data-role="util-sheet-analysis-open-chart" data-chart-key="${escapeUtilSheetHtml(chartKey)}" aria-label="${escapeUtilSheetHtml(buttonTitle)}" title="${escapeUtilSheetHtml(buttonTitle)}" ${hasVisibleSeries ? '' : 'disabled'}>
-                        <i class="fa-solid ${isFullscreenChart ? 'fa-compress' : 'fa-expand'}" aria-hidden="true"></i>
-                    </button>
-                </div>
-                ${summaryBlockHtml}
-                <div class="util-sheet-analysis-chart-surface util-sheet-analysis-table-chart">
-                    <div class="util-report-chart-shell util-sheet-analysis-chart-frame util-sheet-analysis-table-chart-frame theme-total" style="--util-chart-accent:#2563eb;--util-chart-bar:#2563eb;">
-                        ${chartHtml}
-                    </div>
-                </div>
-            </article>
-        `;
-    }
-
-    function buildUtilGasAnalysisBodyHtmlV2(model, viewState = {}, modal = null) {
-        const sectionClassName = [
-            'util-sheet-section',
-            'util-sheet-analysis-section',
-            viewState?.fullscreenChart === true ? 'is-chart-fullscreen' : ''
-        ].filter(Boolean).join(' ');
-        const isRatioFullscreen = viewState?.fullscreenChart === true
-            && String(viewState?.chartKey || '').trim() === 'ratio-combined';
-        const inlineTableKey = viewState?.fullscreenChart === true
-            ? ''
-            : getUtilGasAnalysisInlineRatioTableKey(modal, viewState?.inlineTableKey || '');
-        const floatingTableHtml = inlineTableKey
-            ? buildUtilGasAnalysisFloatingTablePanelHtml(modal, model, inlineTableKey)
-            : '';
-        return `
-            <section class="${escapeUtilSheetHtml(sectionClassName)}" data-role="util-sheet-analysis-section">
-                <div class="util-sheet-section-head util-sheet-analysis-section-head">
-                    <div>
-                        <div class="util-sheet-section-title">가스비 분석표</div>
-                        <div class="util-sheet-section-sub">LPG 사용량, LNG 사용량, 금액, 생산량을 한 그래프에 넣어 비교합니다.</div>
-                    </div>
-                    <div class="util-sheet-analysis-toolbar">
-                        ${buildUtilGasAnalysisCategorySelectHtml(model?.categoryOption?.key || 'yusan')}
-                        <div class="util-sheet-analysis-range">
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-from" aria-label="가스비 분석 시작월">
-                                ${buildUtilSheetMonthOptionHtml(model.monthOptions, model.range.from)}
-                            </select>
-                            <span class="util-sheet-analysis-range-divider">~</span>
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-to" aria-label="가스비 분석 종료월">
-                                ${buildUtilSheetMonthOptionHtml(model.monthOptions, model.range.to)}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                ${floatingTableHtml}
-                <div data-role="util-sheet-analysis-summary-grid">
-                    ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, model.combinedChart?.controlItems)}
-                </div>
-                <div class="util-sheet-analysis-grid" data-role="util-sheet-analysis-grid">
-                    ${model.combinedChart
-                        ? buildUtilGasAnalysisChartCardHtmlV2(model.combinedChart, model, viewState)
-                        : model.charts.map(chart => buildUtilGasAnalysisChartCardHtmlV2(chart, model, viewState)).join('')}
-                </div>
-                ${model.ratioCombinedChart ? `
-                    <div class="util-sheet-analysis-table-stack${isRatioFullscreen ? ' is-ratio-chart-fullscreen' : ''}" data-role="util-sheet-analysis-table-stack">
-                        ${model.ratioCombinedChart ? buildUtilGasAnalysisRatioCombinedChartCardHtmlV2(model.ratioCombinedChart, model, viewState) : ''}
-                    </div>
-                ` : ''}
-            </section>
-        `;
-    }
-
-    function buildUtilElectricAnalysisBodyHtmlV2(model, viewState = {}, modal = null) {
-        const sectionClassName = [
-            'util-sheet-section',
-            'util-sheet-analysis-section',
-            viewState?.fullscreenChart === true ? 'is-chart-fullscreen' : ''
-        ].filter(Boolean).join(' ');
-        const inlineTableKey = viewState?.fullscreenChart === true
-            ? ''
-            : getUtilGasAnalysisInlineRatioTableKey(modal, viewState?.inlineTableKey || '');
-        const floatingTableHtml = inlineTableKey
-            ? buildUtilGasAnalysisFloatingTablePanelHtml(modal, model, inlineTableKey)
-            : '';
-        const controlItems = [
-            ...(Array.isArray(model?.combinedChart?.controlItems) ? model.combinedChart.controlItems : []),
-            ...(Array.isArray(model?.charts)
-                ? model.charts.flatMap(chart => Array.isArray(chart?.controlItems) ? chart.controlItems : [])
-                : [])
-        ];
-        return `
-            <section class="${escapeUtilSheetHtml(sectionClassName)}" data-role="util-sheet-analysis-section">
-                <div class="util-sheet-section-head util-sheet-analysis-section-head">
-                    <div>
-                        <div class="util-sheet-section-title">전기 분석표</div>
-                        <div class="util-sheet-section-sub">전기 사용량, 금액, 생산량, 생산량 대비 전기 사용량을 누적 기준으로 비교합니다.</div>
-                    </div>
-                    <div class="util-sheet-analysis-toolbar">
-                        ${buildUtilElectricAnalysisTeamSelectHtml(model?.teamOption?.key || 'combined')}
-                        <div class="util-sheet-analysis-range">
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-from" aria-label="전기 분석 시작월">
-                                ${buildUtilSheetMonthOptionHtml(model.monthOptions, model.range.from)}
-                            </select>
-                            <span class="util-sheet-analysis-range-divider">~</span>
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-to" aria-label="전기 분석 종료월">
-                                ${buildUtilSheetMonthOptionHtml(model.monthOptions, model.range.to)}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                ${floatingTableHtml}
-                <div data-role="util-sheet-analysis-summary-grid">
-                    ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, controlItems)}
-                </div>
-                <div class="util-sheet-analysis-grid" data-role="util-sheet-analysis-grid">
-                    ${model.combinedChart ? buildUtilGasAnalysisChartCardHtmlV2(model.combinedChart, model, viewState) : ''}
-                    ${Array.isArray(model.charts) ? model.charts.map(chart => buildUtilGasAnalysisChartCardHtmlV2(chart, model, viewState)).join('') : ''}
-                </div>
-            </section>
-        `;
-    }
-
     function buildUtilSheetMemoSectionHtml(insights = []) {
         const items = Array.isArray(insights)
             ? insights.filter(item => String(item || '').trim())
@@ -6970,78 +4986,6 @@
                 <ul class="util-sheet-note-list">
                     ${items.map(item => `<li>${escapeUtilSheetHtml(item)}</li>`).join('')}
                 </ul>
-            </section>
-        `;
-    }
-
-    function buildUtilSheetAnalysisSummaryGridHtml(summaryItems = [], controlItems = []) {
-        const items = Array.isArray(summaryItems)
-            ? summaryItems.filter(item => item && (item.title || item.valueText || item.secondaryValueText || item.subText || item.metaText))
-            : [];
-        const controlEntries = (Array.isArray(controlItems) ? controlItems : [])
-            .filter(item => item && item.key);
-        const controlMap = new Map(controlEntries.map(item => [String(item.key), item]));
-        const normalizedControlMap = new Map(
-            controlEntries.map(item => [String(item.key || '').trim().toLowerCase(), item])
-        );
-        if (!items.length) return '';
-        return `
-            <div class="util-sheet-analysis-summary-grid">
-                ${items.map(item => {
-                    const itemKey = String(item?.key || '').trim();
-                    const controlItem = controlMap.get(itemKey) || normalizedControlMap.get(itemKey.toLowerCase()) || null;
-                    const controlHtml = controlItem
-                        ? buildUtilGasAnalysisSeriesControlHtml(controlItem)
-                        : buildUtilGasAnalysisPopupOnlyControlHtml(item);
-                    return `
-                    <article class="util-sheet-analysis-summary-card" data-tone="${escapeUtilSheetHtml(item.tone || 'neutral')}">
-                        <div class="util-sheet-analysis-summary-head">
-                            <span class="util-sheet-analysis-summary-icon" aria-hidden="true"><i class="fa-solid ${escapeUtilSheetHtml(item.icon || 'fa-circle')}"></i></span>
-                            <span class="util-sheet-analysis-summary-label">${escapeUtilSheetHtml(item.title)}</span>
-                        </div>
-                        <div class="util-sheet-analysis-summary-value">${escapeUtilSheetHtml(item.valueText)}</div>
-                        ${item.secondaryValueText ? `<div class="util-sheet-analysis-summary-meta">${escapeUtilSheetHtml(item.secondaryLabelText || '금액')}</div>` : ''}
-                        ${item.secondaryValueText ? `<div class="util-sheet-analysis-summary-value">${escapeUtilSheetHtml(item.secondaryValueText)}</div>` : ''}
-                        ${item.metaText ? `<div class="util-sheet-analysis-summary-meta">${escapeUtilSheetHtml(item.metaText)}</div>` : ''}
-                        ${item.subText ? `<div class="util-sheet-analysis-summary-sub">${escapeUtilSheetHtml(item.subText)}</div>` : ''}
-                        ${controlHtml}
-                    </article>
-                `;
-                }).join('')}
-            </div>
-        `;
-    }
-
-    function buildUtilGasAnalysisBodyHtml(model) {
-        return `
-            <section class="util-sheet-section">
-                <div class="util-sheet-section-head util-sheet-analysis-section-head">
-                    <div>
-                        <div class="util-sheet-section-title">가스비 분석표</div>
-                        <div class="util-sheet-section-sub">LPG 사용량, LNG 사용량, 금액, 생산량을 한 그래프에서 함께 비교합니다.</div>
-                    </div>
-                    <div class="util-sheet-analysis-toolbar">
-                        ${buildUtilGasAnalysisCategorySelectHtml(model?.categoryOption?.key || 'yusan')}
-                        <div class="util-sheet-analysis-range">
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-from" aria-label="가스비 분석 시작월">
-                                ${buildUtilSheetMonthOptionHtml(model.monthOptions, model.range.from)}
-                            </select>
-                            <span class="util-sheet-analysis-range-divider">~</span>
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-to" aria-label="가스비 분석 종료월">
-                                ${buildUtilSheetMonthOptionHtml(model.monthOptions, model.range.to)}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, model.combinedChart?.controlItems)}
-                <div class="util-sheet-analysis-grid">
-                    ${model.combinedChart ? buildUtilGasAnalysisChartCardHtml(model.combinedChart, model) : model.charts.map(chart => buildUtilGasAnalysisChartCardHtml(chart, model)).join('')}
-                </div>
-                ${model.ratioCombinedChart ? `
-                    <div class="util-sheet-analysis-table-stack">
-                        ${model.ratioCombinedChart ? buildUtilGasAnalysisRatioCombinedChartCardHtmlV2(model.ratioCombinedChart, model, {}) : ''}
-                    </div>
-                ` : ''}
             </section>
         `;
     }
@@ -7092,23 +5036,6 @@
         };
     }
 
-    function setUtilGasAnalysisInlineTablePositionFromTrigger(modal, triggerEl) {
-        if (!modal || !triggerEl || typeof triggerEl.getBoundingClientRect !== 'function') return;
-        const sectionEl = modal.querySelector('[data-role="util-sheet-analysis-section"]');
-        if (!sectionEl || typeof sectionEl.getBoundingClientRect !== 'function') return;
-        const sectionRect = sectionEl.getBoundingClientRect();
-        const triggerRect = triggerEl.getBoundingClientRect();
-        if (!Number.isFinite(sectionRect.width) || sectionRect.width <= 0) return;
-        const panelWidth = Math.min(680, Math.max(280, sectionRect.width - 12));
-        const maxLeft = Math.max(0, sectionRect.width - panelWidth);
-        const desiredLeft = triggerRect.left - sectionRect.left;
-        const desiredTop = triggerRect.bottom - sectionRect.top + 8;
-        const clampedLeft = Math.min(maxLeft, Math.max(0, desiredLeft));
-        const clampedTop = Math.max(0, desiredTop);
-        modal.dataset.analysisInlineRatioTableX = String(Math.round(clampedLeft));
-        modal.dataset.analysisInlineRatioTableY = String(Math.round(clampedTop));
-    }
-
     function normalizeUtilGasAnalysisPopupKey(modal, popupKey = '') {
         const tableKey = parseUtilGasAnalysisRatioTablePopupKey(popupKey);
         if (tableKey) {
@@ -7142,68 +5069,6 @@
         return matchedKey || '';
     }
 
-    function setUtilGasAnalysisChartFullscreen(modal, chartKey = '', enabled = true) {
-        if (!modal) return false;
-        const nextChartKey = enabled ? normalizeUtilGasAnalysisFullscreenChartKey(modal, chartKey) : '';
-        const nextEnabled = enabled !== false && !!nextChartKey;
-        if (nextEnabled) {
-            const wasExpanded = modal.classList.contains('is-expanded');
-            modal.dataset.analysisFullscreenAutoExpanded = wasExpanded ? 'false' : 'true';
-            modal.classList.add('is-expanded');
-            modal.classList.add('is-analysis-chart-fullscreen');
-        } else {
-            if (modal.dataset.analysisFullscreenAutoExpanded === 'true') {
-                modal.classList.remove('is-expanded');
-            }
-            modal.classList.remove('is-analysis-chart-fullscreen');
-            modal.dataset.analysisFullscreenAutoExpanded = 'false';
-        }
-        modal.dataset.analysisFullscreen = nextEnabled ? 'true' : 'false';
-        modal.dataset.analysisFullscreenChartKey = nextEnabled ? nextChartKey : '';
-        return nextEnabled;
-    }
-
-    function openUtilGasAnalysisChartModal(modal, chartKey = '') {
-        openUtilSheetAnalysisChartPopup(modal, chartKey);
-    }
-
-    function openUtilGasAnalysisRatioTablePopup(modal, tableKey = '', triggerEl = null) {
-        if (!modal) return false;
-        const nextTableKey = getUtilGasAnalysisInlineRatioTableKey(modal, tableKey);
-        if (!nextTableKey) return false;
-        const currentTableKey = getUtilGasAnalysisInlineRatioTableKey(modal);
-        const shouldClose = currentTableKey === nextTableKey;
-        if (!shouldClose && triggerEl) {
-            setUtilGasAnalysisInlineTablePositionFromTrigger(modal, triggerEl);
-        }
-        setUtilGasAnalysisChartFullscreen(modal, '', false);
-        modal.dataset.analysisInlineRatioTableKey = shouldClose ? '' : nextTableKey;
-        closeUtilSheetAnalysisChartPopupWindow();
-        renderUtilSheetReportModal(modal);
-        syncUtilSheetDetachedReportWindow(modal);
-        syncUtilSheetReportWindowState(modal);
-        return true;
-    }
-
-    function applyUtilGasAnalysisRangeSelection(sourceRoot, modal) {
-        if (!sourceRoot || !modal) return;
-        const fromValue = String(sourceRoot.querySelector('[data-role="util-sheet-analysis-from"]')?.value || '').trim();
-        const toValue = String(sourceRoot.querySelector('[data-role="util-sheet-analysis-to"]')?.value || '').trim();
-        const datasetKey = resolveUtilSheetReportDatasetKey(
-            'analysis',
-            modal.dataset.datasetKey || UtilSheetReportState.analysis || 'gas'
-        );
-        setUtilSheetAnalysisRangeState(datasetKey, fromValue, toValue);
-        if (toValue) {
-            modal.dataset.monthKey = toValue;
-            UtilSheetReportMonthState.analysis = toValue;
-        }
-        renderUtilSheetReportModal(modal);
-        syncUtilSheetDetachedReportWindow(modal);
-        syncUtilSheetReportWindowState(modal);
-        syncUtilSheetPanelSelection('analysis', datasetKey);
-    }
-
     function syncUtilSheetPanelSelection(sheetType, datasetKey = '') {
         const normalizedSheetType = normalizeUtilSheetType(sheetType);
         const normalizedDatasetKey = resolveUtilSheetReportDatasetKey(
@@ -7233,1442 +5098,6 @@
         const guidance = container.querySelector('.util-sheet-gas-guidance');
         if (!stack || !guidance || guidance.parentElement === stack) return;
         stack.appendChild(guidance);
-    }
-
-    function getUtilSheetDetachedReportWindow() {
-        const popup = UtilSheetDetachedReportState.win;
-        if (popup && !popup.closed) return popup;
-        UtilSheetDetachedReportState.win = null;
-        return null;
-    }
-
-    function closeUtilSheetDetachedReportWindow() {
-        const popup = getUtilSheetDetachedReportWindow();
-        UtilSheetDetachedReportState.win = null;
-        if (!popup) return;
-        try {
-            popup.close();
-        } catch (_) {}
-    }
-
-    function getUtilSheetAnalysisChartPopupWindow() {
-        const popup = UtilSheetAnalysisChartPopupState.win;
-        if (popup && !popup.closed) return popup;
-        UtilSheetAnalysisChartPopupState.win = null;
-        return null;
-    }
-
-    function closeUtilSheetAnalysisChartPopupWindow() {
-        const popup = getUtilSheetAnalysisChartPopupWindow();
-        UtilSheetAnalysisChartPopupState.win = null;
-        UtilSheetAnalysisChartPopupState.chartKey = '';
-        if (!popup) return;
-        try {
-            popup.close();
-        } catch (_) {}
-    }
-
-    function getUtilSheetDetachedHeadAssetsHtml() {
-        return Array.from(document.head.querySelectorAll('style, link[rel="stylesheet"]'))
-            .map(node => node.outerHTML)
-            .join('');
-    }
-
-    function buildUtilSheetDetachedReportShellHtml() {
-        return `
-            <!doctype html>
-            <html lang="ko">
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>유틸리티 보고서</title>
-                ${getUtilSheetDetachedHeadAssetsHtml()}
-                <style>
-                    html, body { height: 100%; }
-                    body { margin: 0; overflow: hidden; background: #dbe4f3; color: #0f172a; }
-                    .util-sheet-report-detached-shell { height: 100vh; min-height: 100vh; display: grid; grid-template-rows: auto minmax(0, 1fr); background: #dbe4f3; }
-                    .util-sheet-report-detached-head { position: sticky; top: 0; z-index: 10; display: flex; align-items: flex-start; justify-content: space-between; gap: 0.9rem; padding: 14px 16px; border-bottom: 1px solid #bfdbfe; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12); cursor: grab; user-select: none; }
-                    .util-sheet-report-detached-head.is-window-dragging { cursor: grabbing; }
-                    .util-sheet-report-detached-copy { display: grid; gap: 0.2rem; min-width: 0; }
-                    .util-sheet-report-detached-kicker { font-size: 0.68rem; font-weight: 900; color: #1d4ed8; letter-spacing: 0.06em; text-transform: uppercase; }
-                    .util-sheet-report-detached-title { font-size: 1.04rem; font-weight: 900; color: #0f172a; }
-                    .util-sheet-report-detached-sub { font-size: 0.76rem; font-weight: 700; color: #475569; }
-                    .util-sheet-report-detached-note { font-size: 0.72rem; font-weight: 700; color: #64748b; line-height: 1.45; }
-                    .util-sheet-report-detached-actions { display: inline-flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
-                    .util-sheet-report-detached-btn { min-height: 34px; border: 1px solid #bfdbfe; background: rgba(255, 255, 255, 0.92); color: #1d4ed8; border-radius: 8px; padding: 0 12px; display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 800; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,0.72); }
-                    .util-sheet-report-detached-btn:hover { border-color: #60a5fa; background: #ffffff; }
-                    .util-sheet-report-detached-btn.is-close { border-color: #fecaca; color: #b91c1c; }
-                    .util-sheet-report-detached-btn.is-close:hover { border-color: #f87171; background: #fff1f2; }
-                    .util-sheet-report-detached-body { min-height: 0; overflow: auto; overscroll-behavior: contain; display: grid; gap: 0.8rem; padding: 14px; background: #f8fafc; }
-                    @media (min-width: 1400px) {
-                        .util-sheet-report-detached-body { padding: 16px; gap: 1rem; }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="util-sheet-report-detached-shell">
-                    <div class="util-sheet-report-detached-head">
-                        <div class="util-sheet-report-detached-copy">
-                            <div class="util-sheet-report-detached-kicker" data-role="util-sheet-report-detached-kicker">GAS REPORT</div>
-                            <div class="util-sheet-report-detached-title" data-role="util-sheet-report-detached-title">보고서</div>
-                            <div class="util-sheet-report-detached-sub" data-role="util-sheet-report-detached-sub">기준: -</div>
-                            <div class="util-sheet-report-detached-note">이 창은 별도 브라우저 창이라 다른 모니터로 옮겨 두고 계속 볼 수 있습니다.</div>
-                        </div>
-                        <div class="util-sheet-report-detached-actions">${buildUtilSheetDetachedCompareToggleHtml()}</div>
-                    </div>
-                    <div class="util-sheet-report-detached-body" data-role="util-sheet-report-detached-body">
-                        <div class="util-sheet-empty">보고서를 불러오는 중입니다.</div>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
-    }
-
-    function buildUtilSheetAnalysisChartPopupShellHtml() {
-        return `
-            <!doctype html>
-            <html lang="ko">
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>차트 전체화면</title>
-                ${getUtilSheetDetachedHeadAssetsHtml()}
-                <style>
-                    html, body { height: 100%; }
-                    body { margin: 0; overflow: hidden; background: #0f172a; color: #0f172a; }
-                    .util-sheet-analysis-chart-popup-shell { height: 100vh; min-height: 100vh; display: grid; grid-template-rows: auto minmax(0, 1fr); background: #e2e8f0; }
-                    .util-sheet-analysis-chart-popup-head { position: sticky; top: 0; z-index: 12; display: flex; align-items: flex-start; justify-content: space-between; gap: 0.9rem; padding: 14px 16px; border-bottom: 1px solid rgba(148, 163, 184, 0.45); background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16); }
-                    .util-sheet-analysis-chart-popup-copy { display: grid; gap: 0.2rem; min-width: 0; }
-                    .util-sheet-analysis-chart-popup-kicker { font-size: 0.68rem; font-weight: 900; color: #1d4ed8; letter-spacing: 0.06em; text-transform: uppercase; }
-                    .util-sheet-analysis-chart-popup-title { font-size: 1.08rem; font-weight: 900; color: #0f172a; }
-                    .util-sheet-analysis-chart-popup-sub { font-size: 0.76rem; font-weight: 700; color: #475569; }
-                    .util-sheet-analysis-chart-popup-actions { display: inline-flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
-                    .util-sheet-analysis-chart-popup-btn { min-height: 34px; border: 1px solid #bfdbfe; background: rgba(255, 255, 255, 0.94); color: #1d4ed8; border-radius: 8px; padding: 0 12px; display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 800; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,0.72); }
-                    .util-sheet-analysis-chart-popup-btn:hover { border-color: #60a5fa; background: #ffffff; }
-                    .util-sheet-analysis-chart-popup-btn.is-close { border-color: #fecaca; color: #b91c1c; }
-                    .util-sheet-analysis-chart-popup-btn.is-close:hover { border-color: #f87171; background: #fff1f2; }
-                    .util-sheet-analysis-chart-popup-body { min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 12px; background: #f8fafc; }
-                    .util-sheet-analysis-chart-popup-content { display: grid; min-height: calc(100vh - 88px); }
-                    .util-sheet-analysis-chart-popup-content .util-sheet-analysis-chart-card { min-height: calc(100vh - 112px); }
-                    .util-sheet-analysis-chart-popup-content .util-sheet-analysis-chart-surface { min-height: 0; flex: 1 1 auto; }
-                    .util-sheet-analysis-chart-popup-content .util-sheet-analysis-chart-frame { min-height: calc(100vh - 238px); height: calc(100vh - 238px); }
-                    .util-sheet-analysis-chart-popup-content .util-report-chart-shell { height: 100%; }
-                    .util-sheet-analysis-chart-popup-content .util-analytics-chart,
-                    .util-sheet-analysis-chart-popup-content .util-analytics-chart-canvas,
-                    .util-sheet-analysis-chart-popup-content .util-chart-scroll-shell { min-height: 100%; height: 100%; }
-                    .util-sheet-analysis-chart-popup-body .util-sheet-analysis-chart-surface,
-                    .util-sheet-analysis-chart-popup-body .util-analytics-chart-canvas { overscroll-behavior-x: contain; scrollbar-gutter: stable both-edges; }
-                    .util-sheet-analysis-chart-popup-body .util-analytics-chart-canvas { cursor: grab; touch-action: pan-x; }
-                    .util-sheet-analysis-chart-popup-body .util-analytics-chart-canvas.is-dragging { cursor: grabbing; }
-                    @media (min-width: 1400px) {
-                        .util-sheet-analysis-chart-popup-body { padding: 16px; }
-                        .util-sheet-analysis-chart-popup-content .util-sheet-analysis-chart-frame { min-height: calc(100vh - 252px); height: calc(100vh - 252px); }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="util-sheet-analysis-chart-popup-shell">
-                    <div class="util-sheet-analysis-chart-popup-head">
-                        <div class="util-sheet-analysis-chart-popup-copy">
-                            <div class="util-sheet-analysis-chart-popup-kicker">ANALYSIS CHART</div>
-                            <div class="util-sheet-analysis-chart-popup-title" data-role="util-sheet-analysis-chart-popup-title">차트 전체화면</div>
-                            <div class="util-sheet-analysis-chart-popup-sub" data-role="util-sheet-analysis-chart-popup-sub">그래프를 크게 보는 창입니다.</div>
-                        </div>
-                        <div class="util-sheet-analysis-chart-popup-actions">
-                            <button type="button" class="util-sheet-analysis-chart-popup-btn is-close" data-role="util-sheet-analysis-chart-popup-close">
-                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                <span>닫기</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="util-sheet-analysis-chart-popup-body" data-role="util-sheet-analysis-chart-popup-body">
-                        <div class="util-sheet-empty">차트를 불러오는 중입니다.</div>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
-    }
-
-    function syncUtilSheetDetachedReportWindow(modal) {
-        const popup = getUtilSheetDetachedReportWindow();
-        if (!popup || !modal) return;
-        try {
-            const kickerText = String(modal.querySelector('[data-role="util-sheet-report-kicker"]')?.textContent || 'GAS REPORT').trim();
-            const titleText = String(modal.querySelector('[data-role="util-sheet-report-title"]')?.textContent || '보고서').trim();
-            const subText = String(modal.querySelector('[data-role="util-sheet-report-sub"]')?.textContent || '기준: -').trim();
-            const bodyHtml = String(modal.querySelector('[data-role="util-sheet-report-body"]')?.innerHTML || '<div class="util-sheet-empty">표시할 보고서가 없습니다.</div>');
-            const compareKey = normalizeUtilSheetCompareKey(modal.dataset.compareKey || UtilSheetCompareState[String(modal.dataset.sheetType || 'meter').trim()] || 'month');
-            const kickerEl = popup.document.querySelector('[data-role="util-sheet-report-detached-kicker"]');
-            const titleEl = popup.document.querySelector('[data-role="util-sheet-report-detached-title"]');
-            const subEl = popup.document.querySelector('[data-role="util-sheet-report-detached-sub"]');
-            const bodyEl = popup.document.querySelector('[data-role="util-sheet-report-detached-body"]');
-            popup.document.title = titleText;
-            if (kickerEl) kickerEl.textContent = kickerText;
-            if (titleEl) titleEl.textContent = titleText;
-            if (subEl) subEl.textContent = subText;
-            if (bodyEl) {
-                bodyEl.innerHTML = bodyHtml;
-                bindUtilSheetAnalysisChartDragScroll(bodyEl);
-                bindUtilSheetAnalysisInlineTableDrag(bodyEl, modal);
-            }
-            syncUtilSheetCompareButtons(popup.document, '[data-role="util-sheet-report-detached-compare-select"]', compareKey);
-            bindUtilSheetDetachedReportWindowInteractions(popup);
-        } catch (error) {
-            if (popup.closed) {
-                UtilSheetDetachedReportState.win = null;
-            }
-        }
-    }
-
-    function maximizeUtilSheetAnalysisChartPopup(popup) {
-        if (!popup || popup.closed) return;
-        const screenWidth = Number(window?.screen?.availWidth) || Number(window?.screen?.width) || 1520;
-        const screenHeight = Number(window?.screen?.availHeight) || Number(window?.screen?.height) || 940;
-        try {
-            popup.moveTo(0, 0);
-        } catch (_) {}
-        try {
-            popup.resizeTo(screenWidth, screenHeight);
-        } catch (_) {}
-    }
-
-    function syncUtilSheetAnalysisChartPopup(modal) {
-        const popup = getUtilSheetAnalysisChartPopupWindow();
-        if (!popup) return;
-        if (!modal || normalizeUtilSheetType(modal.dataset.sheetType) !== 'analysis' || !isUtilSheetCustomAnalysisDataset(getUtilSheetActiveAnalysisDatasetKey(modal))) {
-            closeUtilSheetAnalysisChartPopupWindow();
-            return;
-        }
-        try {
-            const datasetKey = getUtilSheetActiveAnalysisDatasetKey(modal);
-            const normalizedPopupKey = normalizeUtilGasAnalysisPopupKey(
-                modal,
-                UtilSheetAnalysisChartPopupState.chartKey || 'combined'
-            );
-            const tableKey = parseUtilGasAnalysisRatioTablePopupKey(normalizedPopupKey);
-            const analysisModel = modal._utilSheetAnalysisModel;
-            const chart = tableKey ? { title: 'ratio-table' } : (normalizedPopupKey ? getUtilGasAnalysisChartModelByKey(modal, normalizedPopupKey) : null);
-            const table = tableKey ? getUtilGasAnalysisRatioTableByKey(modal, tableKey) : null;
-            const controlItem = tableKey
-                ? ((Array.isArray(analysisModel?.ratioCombinedChart?.controlItems) ? analysisModel.ratioCombinedChart.controlItems : [])
-                    .find(item => String(item?.key || '').trim() === `ratio-${tableKey}`) || null)
-                : null;
-            const titleEl = popup.document.querySelector('[data-role="util-sheet-analysis-chart-popup-title"]');
-            const subEl = popup.document.querySelector('[data-role="util-sheet-analysis-chart-popup-sub"]');
-            const bodyEl = popup.document.querySelector('[data-role="util-sheet-analysis-chart-popup-body"]');
-            if (!bodyEl || !analysisModel || !normalizedPopupKey || (!tableKey && (!chart || !isUtilGasAnalysisChartRenderable(chart))) || (tableKey && !table)) {
-                popup.document.title = '차트 전체화면';
-                if (titleEl) titleEl.textContent = '차트 전체화면';
-                if (subEl) subEl.textContent = '현재 선택한 그래프를 다시 열어 주세요.';
-                if (bodyEl) bodyEl.innerHTML = '<div class="util-sheet-empty">표시할 그래프가 없습니다.</div>';
-                return;
-            }
-            UtilSheetAnalysisChartPopupState.chartKey = normalizedPopupKey;
-            UtilSheetAnalysisChartPopupState.datasetKey = datasetKey;
-            const viewState = {
-                fullscreenChart: true,
-                chartKey: normalizedPopupKey
-            };
-            const scopeLabel = datasetKey === 'electric' ? '전기 분석' : '가스 분석';
-            const teamLabel = analysisModel?.teamOption?.label || analysisModel?.categoryOption?.label || '-';
-            const bodyHtml = tableKey
-                ? buildUtilGasAnalysisRangeTableHtml(table, controlItem, { hideDisplayModeControls: true })
-                : (normalizedPopupKey === 'ratio-combined'
-                    ? buildUtilGasAnalysisRatioCombinedChartCardHtmlV2(chart, analysisModel, viewState)
-                    : buildUtilGasAnalysisChartCardHtmlV2(chart, analysisModel, viewState));
-            const popupTitle = tableKey ? String(table?.title || 'ratio-table').trim() : String(chart?.title || 'chart').trim();
-            popup.document.title = `${popupTitle} - ${analysisModel.rangeLabel}`;
-            chart.title = popupTitle;
-            if (titleEl) titleEl.textContent = String(chart.title || '차트 전체화면').trim();
-            if (subEl) subEl.textContent = `${scopeLabel} / ${analysisModel.rangeLabel} / ${analysisModel.compareLabel} / 기준 ${teamLabel}`;
-            bodyEl.innerHTML = `
-                <div class="util-sheet-analysis-chart-popup-content">
-                    ${bodyHtml}
-                </div>
-            `;
-            bindUtilSheetAnalysisChartDragScroll(bodyEl);
-            bindUtilSheetAnalysisChartPopupInteractions(popup);
-        } catch (error) {
-            if (popup.closed) {
-                UtilSheetAnalysisChartPopupState.win = null;
-                UtilSheetAnalysisChartPopupState.chartKey = '';
-            }
-        }
-    }
-
-    function bindUtilSheetAnalysisChartDragScroll(root = document) {
-        const host = root && typeof root.querySelectorAll === 'function' ? root : document;
-        const candidates = Array.from(host.querySelectorAll('.util-sheet-analysis-chart-surface')).map(surface => (
-            surface.querySelector('.util-analytics-chart-canvas') || surface
-        ));
-        candidates.forEach(scrollEl => {
-            if (!scrollEl || scrollEl.dataset.analysisDragBound === 'true') return;
-            scrollEl.dataset.analysisDragBound = 'true';
-
-            let activePointerId = null;
-            let startX = 0;
-            let startScrollLeft = 0;
-
-            const endDrag = () => {
-                if (activePointerId === null) return;
-                activePointerId = null;
-                scrollEl.classList.remove('is-dragging');
-            };
-
-            const isInteractiveTarget = target => !!target?.closest?.(
-                'input, select, textarea, button, label, a, summary, details, [contenteditable], [data-role="util-chart-month-hit"]'
-            );
-
-            scrollEl.addEventListener('pointerdown', event => {
-                if (event.pointerType === 'mouse' && event.button !== 0) return;
-                if (isInteractiveTarget(event.target)) return;
-                if ((scrollEl.scrollWidth - scrollEl.clientWidth) <= 4) return;
-                activePointerId = event.pointerId;
-                startX = event.clientX;
-                startScrollLeft = scrollEl.scrollLeft;
-                scrollEl.classList.add('is-dragging');
-                if (typeof scrollEl.setPointerCapture === 'function') {
-                    try { scrollEl.setPointerCapture(activePointerId); } catch (error) {}
-                }
-            });
-
-            scrollEl.addEventListener('pointermove', event => {
-                if (activePointerId === null || event.pointerId !== activePointerId) return;
-                const diffX = event.clientX - startX;
-                const maxScrollLeft = Math.max(0, scrollEl.scrollWidth - scrollEl.clientWidth);
-                scrollEl.scrollLeft = Math.min(maxScrollLeft, Math.max(0, startScrollLeft - diffX));
-                if (Math.abs(diffX) > 2) event.preventDefault();
-            });
-
-            scrollEl.addEventListener('pointerup', event => {
-                if (event.pointerId !== activePointerId) return;
-                endDrag();
-            });
-            scrollEl.addEventListener('pointercancel', event => {
-                if (event.pointerId !== activePointerId) return;
-                endDrag();
-            });
-            scrollEl.addEventListener('lostpointercapture', endDrag);
-        });
-    }
-
-    function bindUtilSheetAnalysisInlineTableDrag(root = document, modal = null) {
-        const host = root && typeof root.querySelectorAll === 'function' ? root : document;
-        const activeModal = modal || document.getElementById('util-sheet-report-modal');
-        host.querySelectorAll('[data-role="util-sheet-analysis-inline-table-panel"]').forEach(panel => {
-            if (!panel || panel.dataset.inlineDragBound === 'true') return;
-            const handle = panel.querySelector('[data-role="util-sheet-analysis-inline-table-drag"]');
-            if (!handle) return;
-            panel.dataset.inlineDragBound = 'true';
-
-            let activePointerId = null;
-            let startLeft = 0;
-            let startTop = 0;
-            let startX = 0;
-            let startY = 0;
-            let parentRect = null;
-            let panelRect = null;
-
-            const finishDrag = () => {
-                if (activePointerId === null) return;
-                activePointerId = null;
-                panel.classList.remove('is-dragging');
-                handle.classList.remove('is-dragging');
-            };
-
-            handle.addEventListener('pointerdown', event => {
-                if (event.pointerType === 'mouse' && event.button !== 0) return;
-                const offsetParent = panel.offsetParent || panel.parentElement;
-                if (!offsetParent) return;
-                parentRect = offsetParent.getBoundingClientRect();
-                panelRect = panel.getBoundingClientRect();
-                activePointerId = event.pointerId;
-                startLeft = panelRect.left - parentRect.left;
-                startTop = panelRect.top - parentRect.top;
-                startX = event.clientX;
-                startY = event.clientY;
-                panel.style.left = `${startLeft}px`;
-                panel.style.top = `${startTop}px`;
-                panel.style.right = 'auto';
-                panel.classList.add('is-dragging');
-                handle.classList.add('is-dragging');
-                if (typeof handle.setPointerCapture === 'function') {
-                    try { handle.setPointerCapture(activePointerId); } catch (error) {}
-                }
-                event.preventDefault();
-            });
-
-            handle.addEventListener('pointermove', event => {
-                if (activePointerId === null || event.pointerId !== activePointerId || !parentRect || !panelRect) return;
-                const nextLeft = startLeft + (event.clientX - startX);
-                const nextTop = startTop + (event.clientY - startY);
-                const maxLeft = Math.max(0, parentRect.width - panelRect.width);
-                const maxTop = Math.max(0, parentRect.height - Math.min(panelRect.height, parentRect.height));
-                const clampedLeft = Math.min(maxLeft, Math.max(0, nextLeft));
-                const clampedTop = Math.min(maxTop, Math.max(0, nextTop));
-                panel.style.left = `${clampedLeft}px`;
-                panel.style.top = `${clampedTop}px`;
-                panel.style.right = 'auto';
-                if (activeModal) {
-                    activeModal.dataset.analysisInlineRatioTableX = String(Math.round(clampedLeft));
-                    activeModal.dataset.analysisInlineRatioTableY = String(Math.round(clampedTop));
-                }
-                event.preventDefault();
-            });
-
-            handle.addEventListener('pointerup', event => {
-                if (event.pointerId !== activePointerId) return;
-                finishDrag();
-            });
-            handle.addEventListener('pointercancel', event => {
-                if (event.pointerId !== activePointerId) return;
-                finishDrag();
-            });
-            handle.addEventListener('lostpointercapture', finishDrag);
-        });
-    }
-
-    function bindUtilSheetDetachedReportWindowDrag(popup) {
-        if (!popup || popup.__utilSheetDetachedDragBound) return;
-        popup.__utilSheetDetachedDragBound = true;
-
-        let activePointerId = null;
-        let startScreenX = 0;
-        let startScreenY = 0;
-        let headEl = null;
-
-        const isInteractiveTarget = target => !!target?.closest?.('button, input, select, textarea, label, a, summary, details, [contenteditable]');
-        const finishDrag = () => {
-            if (headEl) headEl.classList.remove('is-window-dragging');
-            activePointerId = null;
-            headEl = null;
-        };
-
-        popup.document.addEventListener('pointerdown', event => {
-            const nextHead = event.target?.closest?.('.util-sheet-report-detached-head');
-            if (!nextHead) return;
-            if (event.pointerType === 'mouse' && event.button !== 0) return;
-            if (isInteractiveTarget(event.target)) return;
-            activePointerId = event.pointerId;
-            startScreenX = event.screenX;
-            startScreenY = event.screenY;
-            headEl = nextHead;
-            headEl.classList.add('is-window-dragging');
-            if (typeof headEl.setPointerCapture === 'function') {
-                try { headEl.setPointerCapture(activePointerId); } catch (error) {}
-            }
-            event.preventDefault();
-        });
-
-        popup.document.addEventListener('pointermove', event => {
-            if (activePointerId === null || event.pointerId !== activePointerId) return;
-            const diffX = event.screenX - startScreenX;
-            const diffY = event.screenY - startScreenY;
-            startScreenX = event.screenX;
-            startScreenY = event.screenY;
-            if (!diffX && !diffY) return;
-            try {
-                popup.moveBy(diffX, diffY);
-            } catch (error) {}
-            event.preventDefault();
-        });
-
-        popup.document.addEventListener('pointerup', event => {
-            if (event.pointerId !== activePointerId) return;
-            finishDrag();
-        });
-        popup.document.addEventListener('pointercancel', event => {
-            if (event.pointerId !== activePointerId) return;
-            finishDrag();
-        });
-        popup.document.addEventListener('lostpointercapture', finishDrag, true);
-        popup.addEventListener('blur', finishDrag);
-    }
-
-    function bindUtilSheetAnalysisChartPopupInteractions(popup) {
-        if (!popup || popup.__utilSheetAnalysisChartPopupInteractionBound) return;
-        popup.__utilSheetAnalysisChartPopupInteractionBound = true;
-
-        popup.document.addEventListener('click', event => {
-            const closeButton = event.target?.closest?.('[data-role="util-sheet-analysis-chart-popup-close"]');
-            if (closeButton) {
-                closeUtilSheetAnalysisChartPopupWindow();
-                return;
-            }
-            const modal = document.getElementById('util-sheet-report-modal');
-            if (!modal) return;
-            const chartTypeButton = event.target?.closest?.('[data-role="util-sheet-analysis-series-type"]');
-            if (chartTypeButton) {
-                setUtilSheetAnalysisDisplayMode(
-                    getUtilSheetActiveAnalysisDatasetKey(modal),
-                    chartTypeButton.dataset.chartKey || '',
-                    chartTypeButton.dataset.chartType || 'bar'
-                );
-                renderUtilSheetReportModal(modal);
-                return;
-            }
-            const ratioTableButton = event.target?.closest?.('[data-role="util-sheet-analysis-open-ratio-table"]');
-            if (ratioTableButton) {
-                openUtilGasAnalysisRatioTablePopup(modal, ratioTableButton.dataset.tableKey || '', ratioTableButton);
-                return;
-            }
-            const chartButton = event.target?.closest?.('[data-role="util-sheet-analysis-open-chart"]');
-            if (chartButton) {
-                closeUtilSheetAnalysisChartPopupWindow();
-            }
-        });
-
-        popup.document.addEventListener('change', event => {
-            const modal = document.getElementById('util-sheet-report-modal');
-            if (!modal) return;
-            const labelToggleContext = resolveUtilSheetAnalysisLabelToggleContext(event.target, modal);
-            if (labelToggleContext?.toggleEl) {
-                setUtilSheetAnalysisShowLabels(
-                    labelToggleContext.datasetKey,
-                    labelToggleContext.chartKey,
-                    labelToggleContext.toggleEl.checked === true
-                );
-                renderUtilSheetReportModal(modal);
-                return;
-            }
-            const ratioLabelToggle = event.target.closest('[data-role="util-sheet-analysis-ratio-label-toggle"]');
-            if (ratioLabelToggle) {
-                setUtilGasAnalysisRatioShowLabels(ratioLabelToggle.checked === true);
-                renderUtilSheetReportModal(modal);
-                return;
-            }
-            const fuelInactiveToggle = event.target.closest('[data-role="util-sheet-analysis-fuel-inactive"]');
-            if (fuelInactiveToggle) {
-                setUtilGasAnalysisFuelInactive(fuelInactiveToggle.dataset.fuelKey || '', fuelInactiveToggle.checked === true);
-                renderUtilSheetReportModal(modal);
-                return;
-            }
-            const unitSelect = event.target.closest('[data-role="util-sheet-analysis-unit"]');
-            if (unitSelect) {
-                setUtilSheetAnalysisUnitKey(
-                    getUtilSheetActiveAnalysisDatasetKey(modal),
-                    unitSelect.dataset.chartKey || '',
-                    unitSelect.value || ''
-                );
-                renderUtilSheetReportModal(modal);
-            }
-        });
-
-        popup.document.addEventListener('keydown', event => {
-            if (event.key !== 'Escape') return;
-            event.preventDefault();
-            closeUtilSheetAnalysisChartPopupWindow();
-        });
-    }
-
-    function bindUtilSheetDetachedReportWindowInteractions(popup) {
-        if (!popup || popup.__utilSheetDetachedInteractionBound) return;
-        popup.__utilSheetDetachedInteractionBound = true;
-
-        popup.document.addEventListener('change', event => {
-            const labelToggleContext = resolveUtilSheetAnalysisLabelToggleContext(event.target, document.getElementById('util-sheet-report-modal'));
-            if (labelToggleContext?.toggleEl) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                setUtilSheetAnalysisShowLabels(
-                    labelToggleContext.datasetKey,
-                    labelToggleContext.chartKey,
-                    labelToggleContext.toggleEl.checked === true
-                );
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            const ratioLabelToggle = event.target?.closest?.('[data-role="util-sheet-analysis-ratio-label-toggle"]');
-            if (ratioLabelToggle) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                setUtilGasAnalysisRatioShowLabels(ratioLabelToggle.checked === true);
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            const productionSelect = event.target?.closest?.('[data-role="util-sheet-meter-production-select"]');
-            if (productionSelect) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                applyUtilGasMeterProductionSelection(modal, productionSelect.value || 'combined');
-                return;
-            }
-            const electricTeamSelect = event.target?.closest?.('[data-role="util-sheet-meter-electric-team-select"]');
-            if (electricTeamSelect) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                applyUtilElectricMeterTeamSelection(modal, electricTeamSelect.value || 'combined');
-                return;
-            }
-            const electricAnalysisTeamSelect = event.target?.closest?.('[data-role="util-sheet-analysis-electric-team-select"]');
-            if (electricAnalysisTeamSelect) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                applyUtilElectricAnalysisTeamSelection(modal, electricAnalysisTeamSelect.value || 'combined');
-                return;
-            }
-            const gasCategorySelect = event.target?.closest?.('[data-role="util-sheet-analysis-gas-category-select"]');
-            if (gasCategorySelect) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                applyUtilGasAnalysisCategorySelection(modal, gasCategorySelect.value || 'yusan');
-                return;
-            }
-            const fuelInactiveToggle = event.target?.closest?.('[data-role="util-sheet-analysis-fuel-inactive"]');
-            if (fuelInactiveToggle) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                setUtilGasAnalysisFuelInactive(fuelInactiveToggle.dataset.fuelKey || '', fuelInactiveToggle.checked === true);
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            const unitSelect = event.target?.closest?.('[data-role="util-sheet-analysis-unit"]');
-            if (unitSelect) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                setUtilSheetAnalysisUnitKey(
-                    getUtilSheetActiveAnalysisDatasetKey(modal),
-                    unitSelect.dataset.chartKey || '',
-                    unitSelect.value || ''
-                );
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            const rangeField = event.target?.closest?.('[data-role="util-sheet-analysis-from"], [data-role="util-sheet-analysis-to"]');
-            if (!rangeField) return;
-            const modal = document.getElementById('util-sheet-report-modal');
-            if (!modal) return;
-            applyUtilGasAnalysisRangeSelection(popup.document, modal);
-        });
-
-        popup.document.addEventListener('click', event => {
-            const inlineTableCloseButton = event.target?.closest?.('[data-role="util-sheet-analysis-inline-table-close"]');
-            if (inlineTableCloseButton) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                modal.dataset.analysisInlineRatioTableKey = '';
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            const compareButton = event.target?.closest?.('[data-role="util-sheet-report-detached-compare-select"]');
-            if (compareButton) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                applyUtilSheetCompareSelection(modal, compareButton.dataset.compareKey || 'month');
-                return;
-            }
-            const electricViewButton = event.target?.closest?.('[data-role="util-sheet-meter-electric-view-select"]');
-            if (electricViewButton) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                applyUtilElectricMeterViewSelection(modal, electricViewButton.dataset.viewKey || 'meter');
-                return;
-            }
-            const gasCategoryButton = event.target?.closest?.('[data-role="util-sheet-analysis-gas-category-select"][data-category-key]');
-            if (gasCategoryButton) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                applyUtilGasAnalysisCategorySelection(modal, gasCategoryButton.dataset.categoryKey || 'yusan');
-                return;
-            }
-            const billingPreviewButton = event.target?.closest?.('[data-role="util-sheet-billing-preview-toggle"]');
-            if (billingPreviewButton) {
-                openUtilSheetBillingPreview(
-                    billingPreviewButton.dataset.monthKey || '',
-                    billingPreviewButton.dataset.billingScopeKey || '',
-                    {
-                        datasetKey: billingPreviewButton.dataset.billingDatasetKey || 'gas',
-                        rootDoc: popup.document,
-                        focusTarget: billingPreviewButton
-                    }
-                );
-                return;
-            }
-            const chartTypeButton = event.target?.closest?.('[data-role="util-sheet-analysis-series-type"]');
-            if (chartTypeButton) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                setUtilSheetAnalysisDisplayMode(
-                    getUtilSheetActiveAnalysisDatasetKey(modal),
-                    chartTypeButton.dataset.chartKey || '',
-                    chartTypeButton.dataset.chartType || 'bar'
-                );
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            const ratioTableButton = event.target?.closest?.('[data-role="util-sheet-analysis-open-ratio-table"]');
-            if (ratioTableButton) {
-                const modal = document.getElementById('util-sheet-report-modal');
-                if (!modal) return;
-                openUtilGasAnalysisRatioTablePopup(modal, ratioTableButton.dataset.tableKey || '', ratioTableButton);
-                return;
-            }
-            const chartButton = event.target?.closest?.('[data-role="util-sheet-analysis-open-chart"]');
-            if (!chartButton) return;
-            const modal = document.getElementById('util-sheet-report-modal');
-            if (!modal) return;
-            openUtilGasAnalysisChartModal(modal, chartButton.dataset.chartKey || '');
-        });
-    }
-
-    function openUtilSheetDetachedReportWindow(modal) {
-        if (!modal) return false;
-        let popup = getUtilSheetDetachedReportWindow();
-        if (!popup) {
-            popup = window.open('', 'util-sheet-report-detached-window', 'popup=yes,width=1520,height=940,resizable=yes,scrollbars=yes');
-            if (!popup) {
-                window.alert('새창을 열 수 없습니다. 브라우저 팝업 차단을 확인해 주세요.');
-                return false;
-            }
-            popup.document.open();
-            popup.document.write(buildUtilSheetDetachedReportShellHtml());
-            popup.document.close();
-            bindUtilSheetDetachedReportWindowDrag(popup);
-            UtilSheetDetachedReportState.win = popup;
-            popup.addEventListener('beforeunload', () => {
-                if (UtilSheetDetachedReportState.win !== popup) return;
-                UtilSheetDetachedReportState.win = null;
-                const activeModal = document.getElementById('util-sheet-report-modal');
-                if (activeModal) syncUtilSheetReportWindowState(activeModal);
-            });
-        }
-        syncUtilSheetDetachedReportWindow(modal);
-        syncUtilSheetReportWindowState(modal);
-        if (popup.focus) popup.focus();
-        return true;
-    }
-
-    function openUtilSheetAnalysisChartPopup(modal, chartKey = '') {
-        if (!modal) return false;
-        const nextChartKey = normalizeUtilGasAnalysisPopupKey(modal, chartKey);
-        if (!nextChartKey) return false;
-        let popup = getUtilSheetAnalysisChartPopupWindow();
-        if (!popup) {
-            const screenWidth = Number(window?.screen?.availWidth) || Number(window?.screen?.width) || 1520;
-            const screenHeight = Number(window?.screen?.availHeight) || Number(window?.screen?.height) || 940;
-            popup = window.open(
-                '',
-                'util-sheet-analysis-chart-window',
-                `popup=yes,width=${screenWidth},height=${screenHeight},left=0,top=0,resizable=yes,scrollbars=yes`
-            );
-            if (!popup) {
-                window.alert('차트 팝업을 열 수 없습니다. 브라우저 팝업 차단을 확인해 주세요.');
-                return false;
-            }
-            popup.document.open();
-            popup.document.write(buildUtilSheetAnalysisChartPopupShellHtml());
-            popup.document.close();
-            UtilSheetAnalysisChartPopupState.win = popup;
-            popup.addEventListener('beforeunload', () => {
-                if (UtilSheetAnalysisChartPopupState.win !== popup) return;
-                UtilSheetAnalysisChartPopupState.win = null;
-                UtilSheetAnalysisChartPopupState.chartKey = '';
-            });
-        }
-        UtilSheetAnalysisChartPopupState.chartKey = nextChartKey;
-        UtilSheetAnalysisChartPopupState.datasetKey = getUtilSheetActiveAnalysisDatasetKey(modal);
-        syncUtilSheetAnalysisChartPopup(modal);
-        maximizeUtilSheetAnalysisChartPopup(popup);
-        if (popup.focus) popup.focus();
-        return true;
-    }
-
-    function syncUtilSheetReportWindowState(modal) {
-        if (!modal) return;
-        const detachButton = modal.querySelector('[data-role="util-sheet-report-detach"]');
-        const expandButton = modal.querySelector('[data-role="util-sheet-report-expand"]');
-        const expandIcon = modal.querySelector('[data-role="util-sheet-report-expand-icon"]');
-        const expandLabel = modal.querySelector('[data-role="util-sheet-report-expand-label"]');
-        const isDetached = !!getUtilSheetDetachedReportWindow();
-        const isExpanded = modal.classList.contains('is-expanded');
-        if (detachButton) {
-            const detachLabel = isDetached ? '새창 열림' : '새창';
-            detachButton.classList.toggle('is-active', isDetached);
-            detachButton.setAttribute('aria-label', detachLabel);
-            detachButton.setAttribute('title', detachLabel);
-        }
-        if (expandButton) {
-            const label = isExpanded ? '원래크기' : '전체화면';
-            expandButton.classList.toggle('is-active', isExpanded);
-            expandButton.setAttribute('aria-label', label);
-            expandButton.setAttribute('title', label);
-        }
-        if (expandIcon) {
-            expandIcon.className = `fa-solid ${isExpanded ? 'fa-compress' : 'fa-expand'}`;
-        }
-        if (expandLabel) {
-            expandLabel.textContent = isExpanded ? '원래크기' : '전체화면';
-        }
-    }
-
-    function toggleUtilSheetReportExpanded(modal) {
-        if (!modal) return;
-        const nextExpanded = !modal.classList.contains('is-expanded');
-        if (!nextExpanded && modal.classList.contains('is-analysis-chart-fullscreen')) {
-            modal.dataset.analysisFullscreen = 'false';
-            modal.dataset.analysisFullscreenChartKey = '';
-            modal.dataset.analysisFullscreenAutoExpanded = 'false';
-            modal.classList.remove('is-analysis-chart-fullscreen');
-            modal.classList.remove('is-expanded');
-            renderUtilSheetReportModal(modal);
-            syncUtilSheetDetachedReportWindow(modal);
-            syncUtilSheetReportWindowState(modal);
-            return;
-        }
-        modal.classList.toggle('is-expanded', nextExpanded);
-        syncUtilSheetReportWindowState(modal);
-    }
-
-    function ensureUtilSheetReportModal() {
-        let modal = document.getElementById('util-sheet-report-modal');
-        if (modal) return modal;
-        modal = document.createElement('div');
-        modal.id = 'util-sheet-report-modal';
-        modal.className = 'util-sheet-report-modal';
-        modal.tabIndex = -1;
-        modal.innerHTML = `
-            <div class="util-sheet-report-card" role="dialog" aria-modal="true" aria-label="유틸리티 보고서">
-                <div class="util-sheet-report-head">
-                    <div class="util-sheet-report-head-copy">
-                        <div class="util-sheet-report-head-kicker" data-role="util-sheet-report-kicker">GAS REPORT</div>
-                        <div class="util-sheet-report-head-title" data-role="util-sheet-report-title">보고서</div>
-                        <div class="util-sheet-report-head-sub" data-role="util-sheet-report-sub">기준: -</div>
-                    </div>
-                    <div class="util-sheet-report-head-actions">
-                        <div class="util-sheet-report-main-controls">
-                            <div class="util-sheet-toggle is-modal" data-role="util-sheet-modal-type-toggle">
-                                <button type="button" class="util-sheet-toggle-btn" data-role="util-sheet-modal-type-select" data-sheet-type="meter" aria-label="보고서 유형 전환">
-                                    <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
-                                    <span>검침표</span>
-                                </button>
-                            </div>
-                            <div class="util-sheet-toggle is-modal" data-role="util-sheet-modal-dataset-toggle">
-                                <button type="button" class="util-sheet-toggle-btn" data-role="util-sheet-modal-select" data-dataset-key="gas" aria-label="보고서 항목 전환">
-                                    <i class="fa-solid fa-fire-flame-curved" aria-hidden="true"></i>
-                                    <span>가스비</span>
-                                </button>
-                            </div>
-                            <div class="util-sheet-month-field is-modal">
-                                <select class="util-sheet-month-select" data-role="util-sheet-modal-month" aria-label="보고서 기준월"></select>
-                            </div>
-                            <div class="util-sheet-segment" data-role="util-sheet-modal-compare-toggle">
-                                <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-modal-compare-select" data-compare-key="month" aria-pressed="true">전월대비</button>
-                                <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-modal-compare-select" data-compare-key="year" aria-pressed="false">전년대비</button>
-                            </div>
-                        </div>
-                        <button type="button" class="work-btn" data-role="util-sheet-report-print">인쇄</button>
-                        <div class="util-sheet-report-window-actions">
-                            <button type="button" class="util-sheet-report-icon-btn" data-role="util-sheet-report-expand" aria-label="전체화면" title="전체화면">
-                                <i class="fa-solid fa-expand" data-role="util-sheet-report-expand-icon" aria-hidden="true"></i>
-                                <span data-role="util-sheet-report-expand-label">전체화면</span>
-                            </button>
-                            <button type="button" class="util-sheet-report-icon-btn is-close" data-role="util-sheet-report-close" aria-label="닫기" title="닫기">
-                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="util-sheet-report-body" data-role="util-sheet-report-body"></div>
-            </div>
-        `;
-        pruneUtilSheetDatasetToggles(modal);
-        modal.addEventListener('click', event => {
-            if (event.target === modal || event.target.closest('[data-role="util-sheet-report-close"]')) {
-                closeUtilSheetReportModal();
-                return;
-            }
-            if (event.target.closest('[data-role="util-sheet-analysis-inline-table-close"]')) {
-                modal.dataset.analysisInlineRatioTableKey = '';
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            if (event.target.closest('[data-role="util-sheet-report-print"]')) {
-                window.print();
-                return;
-            }
-            if (event.target.closest('[data-role="util-sheet-report-expand"]')) {
-                toggleUtilSheetReportExpanded(modal);
-                return;
-            }
-            const typeButton = event.target.closest('[data-role="util-sheet-modal-type-select"]');
-            if (typeButton) {
-                const nextSheetType = getUtilSheetAlternateType(modal.dataset.sheetType);
-                modal.dataset.sheetType = nextSheetType;
-                modal.dataset.datasetKey = resolveUtilSheetReportDatasetKey(
-                    nextSheetType,
-                    modal.dataset.datasetKey || UtilSheetReportState[nextSheetType]
-                );
-                modal.dataset.monthKey = String(UtilSheetReportMonthState[nextSheetType] || modal.dataset.monthKey || '').trim();
-                modal.dataset.compareKey = normalizeUtilSheetCompareKey(UtilSheetCompareState[nextSheetType] || modal.dataset.compareKey || 'month');
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                syncUtilSheetPanelSelection(nextSheetType, modal.dataset.datasetKey);
-                return;
-            }
-            const chartButton = event.target.closest('[data-role="util-sheet-analysis-open-chart"]');
-            if (chartButton) {
-                openUtilGasAnalysisChartModal(modal, chartButton.dataset.chartKey || '');
-                return;
-            }
-            const ratioTableButton = event.target.closest('[data-role="util-sheet-analysis-open-ratio-table"]');
-            if (ratioTableButton) {
-                openUtilGasAnalysisRatioTablePopup(modal, ratioTableButton.dataset.tableKey || '', ratioTableButton);
-                return;
-            }
-            const billingPreviewButton = event.target.closest('[data-role="util-sheet-billing-preview-toggle"]');
-            if (billingPreviewButton) {
-                openUtilSheetBillingPreview(
-                    billingPreviewButton.dataset.monthKey || '',
-                    billingPreviewButton.dataset.billingScopeKey || '',
-                    {
-                        datasetKey: billingPreviewButton.dataset.billingDatasetKey || 'gas',
-                        rootDoc: document,
-                        focusTarget: billingPreviewButton
-                    }
-                );
-                return;
-            }
-            const chartTypeButton = event.target.closest('[data-role="util-sheet-analysis-series-type"]');
-            if (chartTypeButton) {
-                setUtilSheetAnalysisDisplayMode(
-                    getUtilSheetActiveAnalysisDatasetKey(modal),
-                    chartTypeButton.dataset.chartKey || '',
-                    chartTypeButton.dataset.chartType || 'bar'
-                );
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            const datasetButton = event.target.closest('[data-role="util-sheet-modal-select"]');
-            if (datasetButton) {
-                const sheetType = normalizeUtilSheetType(modal.dataset.sheetType);
-                const nextDatasetKey = getUtilSheetAlternateDatasetKey(modal.dataset.datasetKey, sheetType);
-                modal.dataset.datasetKey = nextDatasetKey;
-                UtilSheetReportState[sheetType] = nextDatasetKey;
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                syncUtilSheetPanelSelection(sheetType, nextDatasetKey);
-                return;
-            }
-            const compareButton = event.target.closest('[data-role="util-sheet-modal-compare-select"]');
-            if (compareButton) {
-                applyUtilSheetCompareSelection(modal, compareButton.dataset.compareKey || 'month');
-                return;
-            }
-            const gasCategoryButton = event.target.closest('[data-role="util-sheet-analysis-gas-category-select"][data-category-key]');
-            if (gasCategoryButton) {
-                applyUtilGasAnalysisCategorySelection(modal, gasCategoryButton.dataset.categoryKey || 'yusan');
-                return;
-            }
-            const electricViewButton = event.target.closest('[data-role="util-sheet-meter-electric-view-select"]');
-            if (electricViewButton) {
-                applyUtilElectricMeterViewSelection(modal, electricViewButton.dataset.viewKey || 'meter');
-            }
-        });
-        modal.addEventListener('keydown', event => {
-            if (event.key === 'Escape') {
-                if (modal.classList.contains('is-analysis-chart-fullscreen')) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setUtilGasAnalysisChartFullscreen(modal, '', false);
-                    renderUtilSheetReportModal(modal);
-                    syncUtilSheetDetachedReportWindow(modal);
-                    syncUtilSheetReportWindowState(modal);
-                    return;
-                }
-                closeUtilSheetReportModal();
-            }
-        });
-        modal.addEventListener('change', event => {
-            const labelToggleContext = resolveUtilSheetAnalysisLabelToggleContext(event.target, modal);
-            if (labelToggleContext?.toggleEl) {
-                setUtilSheetAnalysisShowLabels(
-                    labelToggleContext.datasetKey,
-                    labelToggleContext.chartKey,
-                    labelToggleContext.toggleEl.checked === true
-                );
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            const ratioLabelToggle = event.target.closest('[data-role="util-sheet-analysis-ratio-label-toggle"]');
-            if (ratioLabelToggle) {
-                setUtilGasAnalysisRatioShowLabels(ratioLabelToggle.checked === true);
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            const fuelInactiveToggle = event.target.closest('[data-role="util-sheet-analysis-fuel-inactive"]');
-            if (fuelInactiveToggle) {
-                setUtilGasAnalysisFuelInactive(fuelInactiveToggle.dataset.fuelKey || '', fuelInactiveToggle.checked === true);
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            const rangeField = event.target.closest('[data-role="util-sheet-analysis-from"], [data-role="util-sheet-analysis-to"]');
-            if (rangeField) {
-                applyUtilGasAnalysisRangeSelection(modal, modal);
-                return;
-            }
-            const unitSelect = event.target.closest('[data-role="util-sheet-analysis-unit"]');
-            if (unitSelect) {
-                setUtilSheetAnalysisUnitKey(
-                    getUtilSheetActiveAnalysisDatasetKey(modal),
-                    unitSelect.dataset.chartKey || '',
-                    unitSelect.value || ''
-                );
-                renderUtilSheetReportModal(modal);
-                syncUtilSheetDetachedReportWindow(modal);
-                syncUtilSheetReportWindowState(modal);
-                return;
-            }
-            const productionSelect = event.target.closest('[data-role="util-sheet-meter-production-select"]');
-            if (productionSelect) {
-                applyUtilGasMeterProductionSelection(modal, productionSelect.value || 'combined');
-                return;
-            }
-            const electricTeamSelect = event.target.closest('[data-role="util-sheet-meter-electric-team-select"]');
-            if (electricTeamSelect) {
-                applyUtilElectricMeterTeamSelection(modal, electricTeamSelect.value || 'combined');
-                return;
-            }
-            const electricAnalysisTeamSelect = event.target.closest('[data-role="util-sheet-analysis-electric-team-select"]');
-            if (electricAnalysisTeamSelect) {
-                applyUtilElectricAnalysisTeamSelection(modal, electricAnalysisTeamSelect.value || 'combined');
-                return;
-            }
-            const gasCategorySelect = event.target.closest('[data-role="util-sheet-analysis-gas-category-select"]');
-            if (gasCategorySelect) {
-                applyUtilGasAnalysisCategorySelection(modal, gasCategorySelect.value || 'yusan');
-                return;
-            }
-            const monthSelect = event.target.closest('[data-role="util-sheet-modal-month"]');
-            if (!monthSelect) return;
-            const sheetType = normalizeUtilSheetType(modal.dataset.sheetType);
-            const datasetKey = resolveUtilSheetReportDatasetKey(
-                sheetType,
-                modal.dataset.datasetKey || UtilSheetReportState[sheetType] || 'gas'
-            );
-            const monthKey = String(monthSelect.value || '').trim();
-            modal.dataset.monthKey = monthKey;
-            UtilSheetReportMonthState[sheetType] = monthKey;
-            if (sheetType === 'analysis' && isUtilSheetCustomAnalysisDataset(datasetKey)) {
-                setUtilSheetAnalysisToMonth(datasetKey, monthKey);
-            }
-            renderUtilSheetReportModal(modal);
-            syncUtilSheetDetachedReportWindow(modal);
-            syncUtilSheetReportWindowState(modal);
-            syncUtilSheetPanelSelection(sheetType, datasetKey);
-        });
-        syncUtilSheetReportWindowState(modal);
-        document.body.appendChild(modal);
-        return modal;
-    }
-
-    function renderUtilSheetReportModal(modal) {
-        if (!modal) return;
-        const sheetType = normalizeUtilSheetType(modal.dataset.sheetType);
-        const datasetKey = resolveUtilSheetReportDatasetKey(sheetType, modal.dataset.datasetKey || UtilSheetReportState[sheetType] || 'gas');
-        const presentation = getUtilSheetPresentation(sheetType, datasetKey);
-        const selectedMonthKey = String(modal.dataset.monthKey || UtilSheetReportMonthState[sheetType] || '').trim();
-        const compareKey = normalizeUtilSheetCompareKey(modal.dataset.compareKey || UtilSheetCompareState[sheetType] || 'month');
-        const gasMeterProductionKey = normalizeUtilGasMeterProductionKey(
-            modal.dataset.gasMeterProductionKey || UtilSheetMeterState.gasProductionKey
-        );
-        const gasAnalysisCategoryKey = normalizeUtilGasAnalysisCategoryKey(
-            modal.dataset.gasAnalysisCategoryKey || UtilSheetAnalysisState.gas.categoryKey
-        );
-        const electricMeterTeamKey = normalizeUtilElectricMeterTeamKey(
-            modal.dataset.electricMeterTeamKey || UtilSheetMeterState.electricTeamKey
-        );
-        const electricAnalysisTeamKey = normalizeUtilElectricAnalysisTeamKey(
-            modal.dataset.electricAnalysisTeamKey || UtilSheetAnalysisState.electric.teamKey
-        );
-        const electricMeterViewKey = normalizeUtilElectricMeterViewKey(
-            modal.dataset.electricMeterViewKey || UtilSheetMeterState.electricViewKey
-        );
-        const datasetResult = buildUtilSheetDatasetResult(datasetKey, selectedMonthKey);
-        const spec = UTIL_SHEET_DATASET_SPECS[datasetKey] || UTIL_SHEET_DATASET_SPECS.gas;
-        const kickerEl = modal.querySelector('[data-role="util-sheet-report-kicker"]');
-        const titleEl = modal.querySelector('[data-role="util-sheet-report-title"]');
-        const subEl = modal.querySelector('[data-role="util-sheet-report-sub"]');
-        const bodyEl = modal.querySelector('[data-role="util-sheet-report-body"]');
-        const monthSelect = modal.querySelector('[data-role="util-sheet-modal-month"]');
-        const syncSupplementaryWindows = () => {
-            syncUtilSheetAnalysisChartPopup(modal);
-            syncUtilSheetDetachedReportWindow(modal);
-            syncUtilSheetReportWindowState(modal);
-        };
-        modal.dataset.sheetType = sheetType;
-        modal.dataset.datasetKey = datasetKey;
-        modal.dataset.compareKey = compareKey;
-        modal.dataset.gasMeterProductionKey = gasMeterProductionKey;
-        modal.dataset.gasAnalysisCategoryKey = gasAnalysisCategoryKey;
-        modal.dataset.electricMeterTeamKey = electricMeterTeamKey;
-        modal.dataset.electricAnalysisTeamKey = electricAnalysisTeamKey;
-        modal.dataset.electricMeterViewKey = electricMeterViewKey;
-        UtilSheetReportState[sheetType] = datasetKey;
-        UtilSheetMeterState.gasProductionKey = gasMeterProductionKey;
-        UtilSheetAnalysisState.gas.categoryKey = gasAnalysisCategoryKey;
-        UtilSheetMeterState.electricTeamKey = electricMeterTeamKey;
-        UtilSheetAnalysisState.electric.teamKey = electricAnalysisTeamKey;
-        UtilSheetMeterState.electricViewKey = electricMeterViewKey;
-        pruneUtilSheetDatasetToggles(modal);
-        const isCustomAnalysisView = sheetType === 'analysis' && isUtilSheetCustomAnalysisDataset(datasetKey);
-        if (!isCustomAnalysisView) {
-            modal.dataset.analysisFullscreen = 'false';
-            modal.dataset.analysisFullscreenChartKey = '';
-            modal.dataset.analysisFullscreenAutoExpanded = 'false';
-            modal.dataset.analysisInlineRatioTableKey = '';
-            modal.classList.remove('is-analysis-chart-fullscreen');
-        } else {
-            modal.classList.toggle('is-analysis-chart-fullscreen', modal.dataset.analysisFullscreen === 'true');
-        }
-
-        syncUtilSheetTypeButtons(modal, '[data-role="util-sheet-modal-type-select"]', sheetType);
-        syncUtilSheetDatasetButtons(modal, '[data-role="util-sheet-modal-select"]', datasetKey, sheetType);
-        syncUtilSheetCompareButtons(modal, '[data-role="util-sheet-modal-compare-select"]', compareKey);
-
-        if (monthSelect) {
-            const monthOptions = Array.isArray(datasetResult.monthOptions) ? datasetResult.monthOptions : [];
-            monthSelect.innerHTML = monthOptions.map(item => `
-                <option value="${escapeUtilSheetHtml(item.value)}">${escapeUtilSheetHtml(item.label)}</option>
-            `).join('');
-            monthSelect.disabled = !monthOptions.length;
-            if (datasetResult.activeMonthKey && monthOptions.some(item => item.value === datasetResult.activeMonthKey)) {
-                monthSelect.value = datasetResult.activeMonthKey;
-                modal.dataset.monthKey = datasetResult.activeMonthKey;
-                UtilSheetReportMonthState[sheetType] = datasetResult.activeMonthKey;
-            } else {
-                modal.dataset.monthKey = '';
-                UtilSheetReportMonthState[sheetType] = '';
-            }
-        }
-
-        if (kickerEl) kickerEl.textContent = presentation.kicker;
-        if (titleEl) titleEl.textContent = presentation.title;
-        if (!bodyEl) {
-            syncSupplementaryWindows();
-            return;
-        }
-        if (datasetKey === 'electric' && !UtilSheetRuntimeState.electricDataSyncedOnce) {
-            if (subEl) subEl.textContent = '기준: 전기 기입 데이터를 동기화하는 중';
-            bodyEl.innerHTML = '<div class="util-sheet-empty">전기 검침표 데이터를 정리하는 중입니다.</div>';
-            ensureUtilElectricReportDataSync().then(() => {
-                rerenderUtilSheetReportModalIfActive(sheetType, datasetKey);
-            });
-            syncUtilSheetDetachedReportWindow(modal);
-            syncUtilSheetReportWindowState(modal);
-            return;
-        }
-        modal._utilSheetAnalysisModel = null;
-        if (!datasetResult.hasData) {
-            if (subEl) subEl.textContent = '기준: 데이터 없음';
-            bodyEl.innerHTML = '<div class="util-sheet-empty">표시할 보고서를 준비하지 못했습니다.</div>';
-            return;
-        }
-        if (sheetType === 'analysis' && datasetKey === 'gas') {
-            const analysisModel = buildUtilGasAnalysisModel(selectedMonthKey || datasetResult.activeMonthKey, compareKey);
-            modal._utilSheetAnalysisModel = analysisModel;
-            if (analysisModel.loading) {
-                if (subEl) subEl.textContent = '기준: 가스 검침 데이터 불러오는 중';
-                bodyEl.innerHTML = `<div class="util-sheet-empty">${escapeUtilSheetHtml(analysisModel.message || '가스 검침 데이터를 불러오는 중입니다.')}</div>`;
-                ensureUtilGasMeteringStore().then(() => {
-                    const activeModal = document.getElementById('util-sheet-report-modal');
-                    if (!activeModal) return;
-                    if (!activeModal.classList.contains('is-open') && !getUtilSheetDetachedReportWindow()) return;
-                    if (String(activeModal.dataset.sheetType || '') !== sheetType) return;
-                    if (String(activeModal.dataset.datasetKey || '') !== datasetKey) return;
-                    renderUtilSheetReportModal(activeModal);
-                    syncUtilSheetDetachedReportWindow(activeModal);
-                    syncUtilSheetReportWindowState(activeModal);
-                });
-                syncSupplementaryWindows();
-                return;
-            }
-            if (!analysisModel.hasData) {
-                if (subEl) subEl.textContent = '기준: 데이터 없음';
-                bodyEl.innerHTML = '<div class="util-sheet-empty">표시할 분석표를 준비하지 못했습니다.</div>';
-                syncSupplementaryWindows();
-                return;
-            }
-            modal.dataset.monthKey = analysisModel.range.to;
-            UtilSheetReportMonthState[sheetType] = analysisModel.range.to;
-            if (monthSelect) monthSelect.value = analysisModel.range.to;
-            const analysisViewState = {
-                fullscreenChart: modal.dataset.analysisFullscreen === 'true',
-                chartKey: normalizeUtilGasAnalysisFullscreenChartKey(modal, modal.dataset.analysisFullscreenChartKey || 'combined'),
-                inlineTableKey: ''
-            };
-            if (!analysisViewState.fullscreenChart || !analysisViewState.chartKey) {
-                if (modal.dataset.analysisFullscreen === 'true' && modal.dataset.analysisFullscreenAutoExpanded === 'true') {
-                    modal.classList.remove('is-expanded');
-                }
-                modal.dataset.analysisFullscreen = 'false';
-                modal.dataset.analysisFullscreenChartKey = '';
-                modal.dataset.analysisFullscreenAutoExpanded = 'false';
-                modal.classList.remove('is-analysis-chart-fullscreen');
-                analysisViewState.fullscreenChart = false;
-                analysisViewState.chartKey = '';
-            } else {
-                modal.dataset.analysisFullscreenChartKey = analysisViewState.chartKey;
-                modal.classList.add('is-analysis-chart-fullscreen');
-            }
-            analysisViewState.inlineTableKey = analysisViewState.fullscreenChart
-                ? ''
-                : getUtilGasAnalysisInlineRatioTableKey(modal, modal.dataset.analysisInlineRatioTableKey || '');
-            modal.dataset.analysisInlineRatioTableKey = analysisViewState.inlineTableKey;
-            if (subEl) subEl.textContent = `범위 ${analysisModel.rangeLabel} / ${analysisModel.compareLabel} / 기준 ${analysisModel.categoryOption?.label || '합산'}`;
-            const analysisDatasetResult = buildUtilSheetDatasetResult(datasetKey, analysisModel.range.to);
-            const gasMeterComparisonModel = buildUtilGasMeterComparisonModel(analysisModel.range.to, compareKey);
-            const insights = resolveUtilSheetMemoItems(sheetType, datasetKey, analysisDatasetResult, compareKey, gasMeterComparisonModel);
-            if (gasMeterComparisonModel?.loading) {
-                ensureUtilGasMeteringStore().then(() => {
-                    const activeModal = document.getElementById('util-sheet-report-modal');
-                    if (!activeModal) return;
-                    if (!activeModal.classList.contains('is-open') && !getUtilSheetDetachedReportWindow()) return;
-                    if (String(activeModal.dataset.sheetType || '') !== sheetType) return;
-                    if (String(activeModal.dataset.datasetKey || '') !== datasetKey) return;
-                    renderUtilSheetReportModal(activeModal);
-                    syncUtilSheetDetachedReportWindow(activeModal);
-                    syncUtilSheetReportWindowState(activeModal);
-                });
-            }
-            bodyEl.innerHTML = `
-                ${buildUtilGasAnalysisBodyHtmlV2(analysisModel, analysisViewState, modal)}
-                ${analysisViewState.fullscreenChart ? '' : buildUtilSheetMemoSectionHtml(insights)}
-            `;
-            bindUtilSheetAnalysisChartDragScroll(bodyEl);
-            bindUtilSheetAnalysisInlineTableDrag(bodyEl, modal);
-            syncSupplementaryWindows();
-            return;
-        }
-
-        if (sheetType === 'analysis' && datasetKey === 'electric') {
-            const analysisModel = buildUtilElectricAnalysisModel(
-                selectedMonthKey || datasetResult.activeMonthKey,
-                compareKey,
-                electricAnalysisTeamKey
-            );
-            modal._utilSheetAnalysisModel = analysisModel;
-            if (!analysisModel.hasData) {
-                if (subEl) subEl.textContent = '기준: 데이터 없음';
-                bodyEl.innerHTML = '<div class="util-sheet-empty">표시할 분석 데이터를 준비하지 못했습니다.</div>';
-                syncSupplementaryWindows();
-                return;
-            }
-            modal.dataset.monthKey = analysisModel.range.to;
-            UtilSheetReportMonthState[sheetType] = analysisModel.range.to;
-            if (monthSelect) monthSelect.value = analysisModel.range.to;
-            const analysisViewState = {
-                fullscreenChart: modal.dataset.analysisFullscreen === 'true',
-                chartKey: normalizeUtilGasAnalysisFullscreenChartKey(modal, modal.dataset.analysisFullscreenChartKey || 'combined'),
-                inlineTableKey: ''
-            };
-            if (!analysisViewState.fullscreenChart || !analysisViewState.chartKey) {
-                if (modal.dataset.analysisFullscreen === 'true' && modal.dataset.analysisFullscreenAutoExpanded === 'true') {
-                    modal.classList.remove('is-expanded');
-                }
-                modal.dataset.analysisFullscreen = 'false';
-                modal.dataset.analysisFullscreenChartKey = '';
-                modal.dataset.analysisFullscreenAutoExpanded = 'false';
-                modal.classList.remove('is-analysis-chart-fullscreen');
-                analysisViewState.fullscreenChart = false;
-                analysisViewState.chartKey = '';
-            } else {
-                modal.dataset.analysisFullscreenChartKey = analysisViewState.chartKey;
-                modal.classList.add('is-analysis-chart-fullscreen');
-            }
-            if (subEl) subEl.textContent = `범위 ${analysisModel.rangeLabel} / ${analysisModel.compareLabel} / 기준 ${analysisModel.teamOption?.label || '합산'}`;
-            analysisViewState.inlineTableKey = analysisViewState.fullscreenChart
-                ? ''
-                : getUtilGasAnalysisInlineRatioTableKey(modal, modal.dataset.analysisInlineRatioTableKey || '');
-            modal.dataset.analysisInlineRatioTableKey = analysisViewState.inlineTableKey;
-            const analysisDatasetResult = analysisModel.datasetResult || buildUtilSheetDatasetResult(datasetKey, analysisModel.range.to);
-            const insights = resolveUtilSheetMemoItems(sheetType, datasetKey, analysisDatasetResult, compareKey, null);
-            bodyEl.innerHTML = `
-                ${buildUtilElectricAnalysisBodyHtmlV2(analysisModel, analysisViewState, modal)}
-                ${analysisViewState.fullscreenChart ? '' : buildUtilSheetMemoSectionHtml(insights)}
-            `;
-            bindUtilSheetAnalysisChartDragScroll(bodyEl);
-            bindUtilSheetAnalysisInlineTableDrag(bodyEl, modal);
-            syncSupplementaryWindows();
-            return;
-        }
-
-        const compareMeta = buildUtilSheetCompareMeta(datasetResult, compareKey);
-        const hasElectricSnapshot = Boolean(getUtilElectricUtilitySnapshot());
-        const hasElectricRuntimeReady = hasUtilElectricMeteringStore() || hasElectricSnapshot;
-        const gasMeterComparisonModel = sheetType === 'meter' && datasetKey === 'gas'
-            ? buildUtilGasMeterComparisonModel(datasetResult.activeMonthKey || selectedMonthKey, compareKey)
-            : null;
-        const electricMeterComparisonModel = sheetType === 'meter' && datasetKey === 'electric'
-            ? buildUtilElectricMeterComparisonModel(datasetResult.activeMonthKey || selectedMonthKey, compareKey, electricMeterTeamKey)
-            : null;
-        const electricTeamDatasetResult = sheetType === 'meter' && datasetKey === 'electric' && hasElectricRuntimeReady
-            ? buildUtilElectricMeterTeamDatasetResult(datasetResult.activeMonthKey || selectedMonthKey, electricMeterTeamKey)
-            : null;
-        const gasMeterSummaryItems = sheetType === 'meter' && datasetKey === 'gas'
-            ? buildUtilGasMeterSummaryItems(datasetResult, compareKey, gasMeterComparisonModel, gasMeterProductionKey)
-            : [];
-        const electricMeterSummaryItems = sheetType === 'meter' && datasetKey === 'electric'
-            ? (hasElectricRuntimeReady
-                ? buildUtilElectricMeterSummaryItems(datasetResult, compareKey, electricTeamDatasetResult)
-                : [])
-            : [];
-        const insights = resolveUtilSheetMemoItems(sheetType, datasetKey, datasetResult, compareKey, gasMeterComparisonModel);
-        if (subEl) subEl.textContent = `기준 ${datasetResult.latestMonthLabel} / ${compareMeta.label}`;
-        if (gasMeterComparisonModel?.loading) {
-            ensureUtilGasMeteringStore().then(() => {
-                const activeModal = document.getElementById('util-sheet-report-modal');
-                if (!activeModal) return;
-                if (!activeModal.classList.contains('is-open') && !getUtilSheetDetachedReportWindow()) return;
-                if (String(activeModal.dataset.sheetType || '') !== sheetType) return;
-                if (String(activeModal.dataset.datasetKey || '') !== datasetKey) return;
-                renderUtilSheetReportModal(activeModal);
-                syncUtilSheetDetachedReportWindow(activeModal);
-                syncUtilSheetReportWindowState(activeModal);
-            });
-        }
-        if (electricMeterComparisonModel?.loading) {
-            ensureUtilElectricMeteringStore().then(loaded => {
-                if (!loaded || !hasUtilElectricMeteringStore()) return;
-                const activeModal = document.getElementById('util-sheet-report-modal');
-                if (!activeModal) return;
-                if (!activeModal.classList.contains('is-open') && !getUtilSheetDetachedReportWindow()) return;
-                if (String(activeModal.dataset.sheetType || '') !== sheetType) return;
-                if (String(activeModal.dataset.datasetKey || '') !== datasetKey) return;
-                renderUtilSheetReportModal(activeModal);
-                syncUtilSheetDetachedReportWindow(activeModal);
-                syncUtilSheetReportWindowState(activeModal);
-            });
-        }
-
-        bodyEl.innerHTML = `
-            <section class="util-sheet-section is-hero">
-                <div class="util-sheet-badge-row">
-                    ${buildUtilSheetBadgesHtml(sheetType, datasetResult, compareKey)}
-                </div>
-                ${sheetType === 'meter' && datasetKey === 'gas' && gasMeterSummaryItems.length
-                    ? buildUtilGasMeterSummaryBlockHtml(gasMeterSummaryItems, gasMeterProductionKey)
-                    : sheetType === 'meter' && datasetKey === 'electric' && electricMeterSummaryItems.length
-                        ? buildUtilElectricMeterSummaryBlockHtml(electricMeterSummaryItems, electricMeterTeamKey)
-                    : `
-                        <div class="util-sheet-stat-grid">
-                            ${buildUtilSheetStatsHtml(sheetType, datasetResult, compareKey, gasMeterComparisonModel)}
-                        </div>
-                    `}
-            </section>
-            ${sheetType === 'meter' && datasetKey === 'gas'
-                ? buildUtilGasMeterComparisonSectionHtml(gasMeterComparisonModel)
-                : sheetType === 'meter' && datasetKey === 'electric'
-                    ? buildUtilElectricMeterComparisonSectionHtml(electricMeterComparisonModel, electricTeamDatasetResult, electricMeterViewKey)
-                    : ''}
-            ${sheetType === 'analysis' ? `
-                <section class="util-sheet-section">
-                    <div class="util-sheet-section-head">
-                        <div>
-                            <div class="util-sheet-section-title">원단위 연도 비교</div>
-                            <div class="util-sheet-section-sub">${escapeUtilSheetHtml(spec.label)} 원단위를 2월 기준 월까지만 같은 위치에서 비교할 수 있게 정리했습니다.</div>
-                        </div>
-                    </div>
-                    ${buildUtilSheetMatrixHtml(datasetResult)}
-                </section>
-            ` : ''}
-            ${true ? '' : `
-                <section class="util-sheet-section">
-                    <div class="util-sheet-section-head">
-                        <div>
-                            <div class="util-sheet-section-title">최근 월 추이</div>
-                            <div class="util-sheet-section-sub">최근 6개월 사용량, 비용, 생산량, 원단위를 정리했습니다.</div>
-                        </div>
-                    </div>
-                    ${buildUtilSheetRecentTableHtml(datasetResult)}
-                </section>
-            `}
-            ${buildUtilSheetMemoSectionHtml(insights)}
-        `;
-        if (sheetType === 'meter' && datasetKey === 'gas') {
-            relocateUtilGasGuidanceNote(bodyEl);
-        }
-        syncSupplementaryWindows();
-    }
-
-    function openUtilSheetReportModal(sheetType, datasetKey = '', monthKey = '', compareKey = 'month') {
-        const normalizedSheetType = normalizeUtilSheetType(sheetType);
-        const normalizedDatasetKey = resolveUtilSheetReportDatasetKey(
-            normalizedSheetType,
-            datasetKey || UtilSheetReportState[normalizedSheetType] || 'gas'
-        );
-        const modal = ensureUtilSheetReportModal();
-        closeUtilSheetDetachedReportWindow();
-        modal.dataset.sheetType = normalizedSheetType;
-        modal.dataset.datasetKey = normalizedDatasetKey;
-        modal.dataset.monthKey = String(monthKey || UtilSheetReportMonthState[normalizedSheetType] || '').trim();
-        modal.dataset.compareKey = normalizeUtilSheetCompareKey(compareKey || UtilSheetCompareState[normalizedSheetType] || 'month');
-        if (normalizedSheetType === 'analysis' && isUtilSheetCustomAnalysisDataset(normalizedDatasetKey) && modal.dataset.monthKey) {
-            setUtilSheetAnalysisToMonth(normalizedDatasetKey, modal.dataset.monthKey);
-        }
-        UtilSheetReportState[normalizedSheetType] = normalizedDatasetKey;
-        renderUtilSheetReportModal(modal);
-        syncUtilSheetDetachedReportWindow(modal);
-        modal.classList.add('is-open');
-        syncUtilSheetReportWindowState(modal);
-        requestAnimationFrame(() => modal.focus({ preventScroll: true }));
-        if (normalizedSheetType === 'meter' && normalizedDatasetKey === 'gas') {
-            ensureUtilGasMeteringStore().then(() => {
-                const activeModal = document.getElementById('util-sheet-report-modal');
-                if (!activeModal) return;
-                if (!activeModal.classList.contains('is-open') && !getUtilSheetDetachedReportWindow()) return;
-                if (String(activeModal.dataset.sheetType || '') !== normalizedSheetType) return;
-                if (String(activeModal.dataset.datasetKey || '') !== normalizedDatasetKey) return;
-                renderUtilSheetReportModal(activeModal);
-                syncUtilSheetDetachedReportWindow(activeModal);
-                syncUtilSheetReportWindowState(activeModal);
-            });
-        }
-    }
-
-    function closeUtilSheetReportModal() {
-        const modal = document.getElementById('util-sheet-report-modal');
-        if (!modal) return;
-        closeUtilSheetBillingPreview(document);
-        const popup = getUtilSheetDetachedReportWindow();
-        if (popup?.document) {
-            closeUtilSheetBillingPreview(popup.document);
-        }
-        closeUtilSheetDetachedReportWindow();
-        closeUtilSheetAnalysisChartPopupWindow();
-        modal.classList.remove('is-open');
-        modal.classList.remove('is-expanded');
-        modal.classList.remove('is-analysis-chart-fullscreen');
-        modal.dataset.analysisFullscreen = 'false';
-        modal.dataset.analysisFullscreenChartKey = '';
-        modal.dataset.analysisFullscreenAutoExpanded = 'false';
-        modal.dataset.analysisInlineRatioTableKey = '';
-        syncUtilSheetReportWindowState(modal);
     }
 
     function initUtilSheetReports(scope) {
@@ -8742,3 +5171,4 @@
     window.openUtilSheetReportModal = openUtilSheetReportModal;
     window.closeUtilSheetReportModal = closeUtilSheetReportModal;
 })();
+
