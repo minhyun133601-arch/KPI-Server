@@ -64,7 +64,7 @@ KPI-Server/
 | Playwright browser smoke | `http://127.0.0.1:3192` 에서 `open_internal` `headless 1 pass`, `headed 1 pass` (`sidebar toggle/reset`, `work mode toggle`, `analysis toggle`, `shortcut mount`, `consoleErrors/pageErrors/responseFailures 0`) |
 | 운영 surface reachability | `http://127.0.0.1:3100` 에서 `/api/bootstrap/status 200`, `/login 200` |
 | pre-commit | `.husky/pre-commit` 연결 완료 |
-| CI | `.github/workflows/kpi-internal-server-ci.yml` 이 로컬에는 `Windows 3100 검증 + Ubuntu 3192 open-mode browser smoke(headless -> headed 순차) + DB 5434` 기준으로 준비돼 있지만 현재 `git status` 상 untracked 이고, `gh api repos/minhyun133601-arch/KPI-Server/actions/workflows` 결과도 `0개`라 hosted run 시작 전 단계 |
+| CI | `.github/workflows/kpi-internal-server-ci.yml` 은 원격에 등록돼 `KPI Internal Server CI` workflow 가 활성화됐고 첫 hosted run 도 시작됐다. 다만 첫 run 은 `Run Prettier` 단계에서 workflow 줄바꿈 드리프트로 멈춰 browser-smoke 단계까지는 아직 못 갔다 |
 
 ### 3.2 핵심 파일 실측
 
@@ -121,7 +121,7 @@ KPI-Server/
 | 항목                                | 대응 Phase | 우선순위 |
 | ----------------------------------- | ---------- | -------- |
 | A. format gate 범위 제한            | Phase 1    | P0       |
-| B. 브라우저 E2E hosted CI workflow 미반영 | Phase 2    | P0       |
+| B. 브라우저 E2E hosted CI 첫 run 미통과 | Phase 2    | P0       |
 | C. CSS 중복과 소유권 잔재           | Phase 4    | P1       |
 | D. 운영 리허설 부재                 | Phase 5    | P2       |
 
@@ -146,12 +146,13 @@ KPI-Server/
 - 운영 포트 `3100`은 `/api/bootstrap/status` 와 `/login` reachability 를 재확인했다.
 - CI workflow 파일에는 `smoke:kpi-root -> smoke:kpi-browser -> smoke:kpi-browser:headed` open-mode 순차 경로와 `KPI_SERVER_PORT=3192`, DB `5434` 기준을 반영했다.
 - 최종 브라우저 검증은 `smoke:kpi-root -> smoke:kpi-browser -> smoke:kpi-browser:headed` 순차 재실행으로 다시 확인했다. `Playwright MCP` 는 계속 `Transport closed` 이고, 현재 fallback 은 로컬 Playwright 러너다.
-- 하지만 `.github/workflows/kpi-internal-server-ci.yml` 이 아직 git-tracked 상태가 아니고, 원격 저장소 Actions workflow 목록도 `0개`라 GitHub hosted runner 에서 첫 통과를 확인할 단계까지 아직 못 갔다.
+- `.github/workflows/kpi-internal-server-ci.yml` 은 이제 git-tracked 상태로 원격에 반영됐고, 원격 저장소 Actions workflow 목록에도 등록됐다.
+- 다만 첫 GitHub hosted run 은 `Run Prettier` 단계에서 `../../.github/workflows/kpi-internal-server-ci.yml` 포맷 드리프트로 실패했고, `browser-smoke` 잡까지는 아직 진입하지 못했다.
 - 이 단계는 workflow 파일만 단독으로 올리면 끝나는 게 아니다. 최소 안전 세트는 `workflow + package.json + package-lock.json + eslint/prettier 설정(.prettierignore 포함) + Playwright 설정 + browser smoke/verifier 스크립트` 묶음이다.
 
 왜 문제인가:
-- workflow 파일이 원격에 올라가 있지 않으면 hosted runner 자체가 시작되지 않는다.
-- 따라서 지금 병목은 `첫 run 대기`가 아니라 `workflow 파일을 git에 포함하고 원격에 반영해야 hosted run 을 시작할 수 있음`이다.
+- workflow 등록 단계는 끝났다.
+- 따라서 지금 병목은 `workflow 파일 반영`이 아니라 `첫 hosted run 의 Prettier 단계 통과 -> browser-smoke/headed smoke 실통과`다.
 
 ### [Phase 4 / P1] C. CSS 중복과 소유권 잔재
 
@@ -176,7 +177,7 @@ KPI-Server/
 | Phase | 우선순위 | 해야 할 일 | 끝나는 조건 |
 |---|---|---|---|
 | Phase 1 | P0 | source-wide format gate 확대 여부와 포맷 전용 커밋 전략 확정 | format baseline 범위와 source 적용 전략이 합의되고 검증된다 |
-| Phase 2 | P0 | workflow 파일을 git에 포함하고 원격에 반영한 뒤 GitHub Actions 첫 hosted run 에서 `lint` 와 `smoke:kpi-root -> smoke:kpi-browser -> smoke:kpi-browser:headed` 순차 통과 확인 | 브라우저 회귀선과 lint 가 로컬+CI 둘 다에서 실증된다 |
+| Phase 2 | P0 | 첫 hosted run 의 workflow 포맷 드리프트를 고치고 GitHub Actions 에서 `lint` 와 `smoke:kpi-root -> smoke:kpi-browser -> smoke:kpi-browser:headed` 순차 통과 확인 | 브라우저 회귀선과 lint 가 로컬+CI 둘 다에서 실증된다 |
 | Phase 4 | P1 | `app/styles/**/*` dedupe | CSS ownership 와 selector 중복이 줄어든다 |
 | Phase 5 | P2 | 백업/복구 리허설과 운영 체크리스트 | 실제 복구 절차가 문서만으로 재현 가능하다 |
 | Phase 6 | P3 | legacy 경로명 정리와 supporting status close-out | 장식 경로 rename 범위와 문서 drift 정리가 고정된다 |
@@ -193,7 +194,7 @@ KPI-Server/
 
 구조 분할 작업과 로컬 Playwright 브라우저 회귀선 추가는 1차 목표를 달성했다. 운영 포트 `3100`의 bootstrap/login surface 와 검증 포트 `3192`의 실제 브라우저 회귀선이 재확인됐고, `repositories / services / lib / routes` 기준 문구도 문서 사이에서 고정됐다. CI workflow 파일도 로컬 기준 `DB 5434 / 운영 3100 / 검증 3192` 와 맞춰 준비돼 있다. 하지만 원격 저장소에 Actions workflow 가 아직 `0개`이므로, 지금부터의 핵심은 `파일 쪼개기`가 아니라 `workflow 파일 반영 -> hosted CI 실증 -> 운영 기준 고정` 순서로 자동 검증 체계를 실제 GitHub 쪽까지 끌어올리는 일이다. 따라서 다음 문서와 실제 작업의 기준 우선순위는 아래 순서로 본다.
 
-1. workflow 단독이 아니라 최소 안전 세트를 git에 포함하고 원격에 반영
+1. workflow 줄바꿈 드리프트를 고치고 첫 hosted run 을 다시 통과시킴
 2. Playwright browser smoke / format / lint hosted run 확인
 3. format gate scope 확대 여부 확정
 4. CSS dedupe
