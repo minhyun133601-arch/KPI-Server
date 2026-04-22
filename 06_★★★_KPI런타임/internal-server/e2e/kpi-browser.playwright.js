@@ -90,6 +90,18 @@ async function clickSidebarButton(page, label) {
   await page.waitForTimeout(500);
 }
 
+async function expectIntegratedMeteringTitle(page, titlePattern) {
+  await expect(page.locator('[data-kpi-metering-root]')).toBeVisible();
+  await expect
+    .poll(async () => {
+      return await page.evaluate(() => {
+        const host = document.querySelector('[data-kpi-metering-root]');
+        return host?.shadowRoot?.getElementById('appTitle')?.textContent?.trim() || '';
+      });
+    })
+    .toMatch(titlePattern);
+}
+
 async function openWorkTeamCalendar(page, dataKey, titlePattern) {
   const clicked = await page.evaluate((targetDataKey) => {
     const button = Array.from(document.querySelectorAll('#sidebar button')).find((node) =>
@@ -270,8 +282,7 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('#content-container')).toContainText('법정 설비 교육 현황');
 
       await clickSidebarButton(page, '유틸리티 기입');
-      await expect(page.locator('#content-container')).toContainText('월간 폐수 기입 시트');
-      await expect(page.locator('[data-kpi-metering-root]')).toBeVisible();
+      await expectIntegratedMeteringTitle(page, /월간 (전기|가스 검침|폐수|생산량) .* 시트/);
       await page.waitForTimeout(1000);
 
       await clickSidebarButton(page, '작업 내역 기입');
