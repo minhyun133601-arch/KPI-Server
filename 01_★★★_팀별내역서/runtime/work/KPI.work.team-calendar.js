@@ -361,7 +361,7 @@
             const contentContainer = document.getElementById('content-container');
             const teamCategories = getWorkTeamCalendarCategories();
             const defaultDataKey = String(teamCategories[0]?.dataKey || category.dataKey || '').trim();
-            const preferredDataKey = String(WorkState.teamCalendarHubDataKey || category.dataKey || '').trim();
+            const preferredDataKey = String(options.teamDataKey || WorkState.teamCalendarHubDataKey || category.dataKey || '').trim();
             const activeDataKey = teamCategories.some(item => item?.dataKey === preferredDataKey)
                 ? preferredDataKey
                 : defaultDataKey;
