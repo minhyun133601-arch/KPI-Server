@@ -94,11 +94,6 @@ function createElementStub(overrides = {}) {
   };
 }
 
-function setBinding(context, bindingName, value) {
-  context[`__override_${bindingName}`] = value;
-  vm.runInContext(`${bindingName} = globalThis.__override_${bindingName};`, context);
-}
-
 function createEquipmentFieldCardStub(fieldKey) {
   return {
     dataset: {

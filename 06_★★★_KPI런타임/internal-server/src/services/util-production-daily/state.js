@@ -1,4 +1,4 @@
-import { DEFAULT_START_DAY, MODULE_KEY, MODULE_NAME, PERMISSION_KEY, RECORD_KEY } from './constants.js';
+import { MODULE_KEY, MODULE_NAME, PERMISSION_KEY, RECORD_KEY } from './constants.js';
 import {
   clampStartDay,
   isPlainObject,

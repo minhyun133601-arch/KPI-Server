@@ -1,4 +1,3 @@
-import { config } from '../../config.js';
 import { closePool } from '../../db/pool.js';
 import { initializeFileStorage } from '../../services/files.js';
 import { loadMeteringAuthorityStore, saveMeteringAuthorityStore } from '../../services/metering-authority.js';
