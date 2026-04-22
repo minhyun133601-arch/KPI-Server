@@ -85,7 +85,7 @@ async function requestText(client, url) {
 async function requestJson(client, url, options = {}) {
   const response = await client.request(url, options);
   const text = await response.text();
-  let json = null;
+  let json;
   try {
     json = text ? JSON.parse(text) : null;
   } catch {
@@ -103,6 +103,22 @@ async function requestStatus(client, url) {
   const response = await client.request(url);
   await response.arrayBuffer();
   return response.status;
+}
+
+async function collectPublicAssetFailures(client) {
+  const publicAssetUrls = [resolveUrl('/favicon.ico')];
+  const failures = [];
+  for (const url of publicAssetUrls) {
+    try {
+      const status = await requestStatus(client, url);
+      if (status !== 200) {
+        failures.push({ url, status });
+      }
+    } catch (error) {
+      failures.push({ url, status: 'ERR', error: error.message });
+    }
+  }
+  return failures;
 }
 
 function isLoginRequiredMode(bootstrapStatus) {
@@ -202,10 +218,10 @@ async function main() {
     throw new Error(`bootstrap_status_failed:${bootstrapStatus.status}`);
   }
 
+  const failures = await collectPublicAssetFailures(client);
   const authSummary = await loginIfNeeded(client, bootstrapStatus.json);
   const htmlSurface = await resolveHtmlSurface(client, bootstrapStatus.json, authSummary);
   const assetUrls = collectLocalAssetUrls(htmlSurface.htmlText);
-  const failures = [];
   for (const url of assetUrls) {
     try {
       const status = await requestStatus(client, url);

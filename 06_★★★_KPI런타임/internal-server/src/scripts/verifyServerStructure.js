@@ -1,4 +1,4 @@
-import fs from 'node:fs/promises';
+﻿import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,10 +34,7 @@ const frontendTrackedFiles = [
   path.join(repoRoot, '02_★★★★_유틸리티', 'runtime', 'util', 'report', 'KPI.util.report.sheet.js'),
 ];
 
-const frontendGrandfatheredAllowlist = new Set([
-  '02_★★★★_유틸리티/runtime/util/report/KPI.util.report.sheet.js',
-  'KPI.html',
-]);
+const frontendGrandfatheredAllowlist = new Set();
 
 async function collectSourceFiles(targetPath, predicate) {
   const stats = await fs.stat(targetPath);
@@ -146,7 +143,7 @@ async function main() {
   for (const filePath of frontendFiles.sort()) {
     const lineCount = countLines(await fs.readFile(filePath, 'utf8'));
     const relativePath = toRepoRelative(filePath);
-    if (relativePath.startsWith('01_★★★_팀별내역서/runtime/work/history/')) {
+    if (relativePath.startsWith('01_?끸쁾???蹂꾨궡??꽌/runtime/work/history/')) {
       if (lineCount > SERVER_HARD_FILE_LIMIT) {
         warnings.push(`${relativePath}: ${lineCount} lines (A-41 hard limit ${SERVER_HARD_FILE_LIMIT})`);
         continue;

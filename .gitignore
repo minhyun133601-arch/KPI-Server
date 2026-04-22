@@ -16,3 +16,7 @@
 !06_★★★_KPI런타임/internal-server/var/backups/.gitkeep
 !06_★★★_KPI런타임/internal-server/var/backups/file-storage/.gitkeep
 !06_★★★_KPI런타임/internal-server/var/backups/runtime-snapshots/.gitkeep
+
+# Local verification/runtime scratch
+.codex-run/
+**/internal-server/.codex-run/
