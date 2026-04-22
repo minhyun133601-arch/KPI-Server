@@ -21,7 +21,7 @@
             data: '#f8fafc',
             owner: '#f5f3ff'
         });
-        const COMPANY_LOGO_SRC = '※_공용자산/로고.jpg';
+        const COMPANY_LOGO_SRC = '/※_공용자산/로고.jpg';
         const DashboardHomeState = {
             sectionId: DASHBOARD_SECTION_ORDER[0]
         };
