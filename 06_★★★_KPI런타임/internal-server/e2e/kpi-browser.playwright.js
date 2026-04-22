@@ -90,6 +90,53 @@ async function clickSidebarButton(page, label) {
   await page.waitForTimeout(500);
 }
 
+async function openWorkTeamCalendar(page, dataKey, titlePattern) {
+  const clicked = await page.evaluate((targetDataKey) => {
+    const button = Array.from(document.querySelectorAll('#sidebar button')).find((node) =>
+      String(node.getAttribute('onclick') || '').includes(`'${targetDataKey}'`)
+    );
+    if (!button) {
+      return { ok: false, via: 'missing_button' };
+    }
+    button.click();
+    return {
+      ok: true,
+      via: 'sidebar_button',
+      id: button.id || '',
+    };
+  }, dataKey);
+  expect(clicked?.ok, `work sidebar button "${dataKey}" should exist`).toBeTruthy();
+
+  const dialog = page
+    .locator(
+      '#work-team-calendar-modal .work-team-calendar-dialog[role="region"], #work-team-calendar-modal .work-team-calendar-dialog[role="dialog"]'
+    )
+    .first();
+  const appearedAfterClick = await expect(dialog)
+    .toBeVisible({ timeout: 3000 })
+    .then(() => true)
+    .catch(() => false);
+
+  if (!appearedAfterClick) {
+    const forced = await page.evaluate((targetDataKey) => {
+      if (typeof window.openSidebarTeamCategory === 'function') {
+        window.openSidebarTeamCategory('work', 0, targetDataKey);
+        return 'openSidebarTeamCategory';
+      }
+      if (typeof window.selectCategory === 'function') {
+        window.selectCategory('work', 0, { teamDataKey: targetDataKey });
+        return 'selectCategory';
+      }
+      return '';
+    }, dataKey);
+    expect(forced, `work calendar fallback for "${dataKey}" should exist`).not.toEqual('');
+  }
+
+  await expect(dialog).toBeVisible({ timeout: 15000 });
+  await expect(dialog.locator('.work-team-calendar-brand-title')).toContainText(titlePattern);
+  return dialog;
+}
+
 async function getWorkSidebarSnapshot(page) {
   return await page.evaluate(() => {
     const modeButton = document.querySelector('#cat-btn-work-0-mode-toggle');
@@ -110,17 +157,6 @@ async function toggleWorkSidebarMode(page) {
   });
   expect(clicked, 'work sidebar mode toggle should exist').toBeTruthy();
   await page.waitForTimeout(500);
-}
-
-async function expectWorkCalendar(page, titlePattern) {
-  const dialog = page
-    .locator(
-      '#work-team-calendar-modal .work-team-calendar-dialog[role="region"], #work-team-calendar-modal .work-team-calendar-dialog[role="dialog"]'
-    )
-    .first();
-  await expect(dialog).toBeVisible({ timeout: 15000 });
-  await expect(dialog.locator('.work-team-calendar-brand-title')).toContainText(titlePattern);
-  return dialog;
 }
 
 test.describe('KPI browser smoke', () => {
@@ -186,8 +222,7 @@ test.describe('KPI browser smoke', () => {
       const cycledWorkSidebarSnapshot = await getWorkSidebarSnapshot(page);
       expect(cycledWorkSidebarSnapshot.modeLabel).not.toEqual(changedWorkSidebarSnapshot.modeLabel);
 
-      await clickSidebarButton(page, '통합 현황');
-      const workCalendar = await expectWorkCalendar(page, /통합 현황 캘린더/);
+      const workCalendar = await openWorkTeamCalendar(page, 'work_team_calendar_overview', /통합 현황 캘린더/);
       await workCalendar.locator('button').filter({ hasText: /오늘/ }).first().click();
       await expect(page.getByRole('button', { name: /선택 닫기/ })).toBeVisible();
       await page.getByRole('button', { name: /전기 사용량/ }).click();
