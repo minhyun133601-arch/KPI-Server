@@ -112,6 +112,13 @@ async function toggleWorkSidebarMode(page) {
   await page.waitForTimeout(500);
 }
 
+async function expectInlineWorkCalendar(page, titlePattern) {
+  const dialog = page.locator('#content-container .work-team-calendar-dialog[role="region"]').first();
+  await expect(dialog).toBeVisible({ timeout: 15000 });
+  await expect(dialog.locator('.work-team-calendar-brand-title')).toContainText(titlePattern);
+  return dialog;
+}
+
 test.describe('KPI browser smoke', () => {
   test('app navigation and modal interactions complete without browser/runtime errors', async ({ page, baseURL }) => {
     const bootstrapStatus = await resolveBootstrapStatus(page, baseURL);
@@ -176,7 +183,7 @@ test.describe('KPI browser smoke', () => {
       expect(cycledWorkSidebarSnapshot.modeLabel).not.toEqual(changedWorkSidebarSnapshot.modeLabel);
 
       await clickSidebarButton(page, '통합 현황');
-      await expect(page.getByRole('region', { name: /통합 현황 캘린더/ })).toBeVisible();
+      await expectInlineWorkCalendar(page, /통합 현황 캘린더/);
       await page.locator('#content-container button').filter({ hasText: /오늘/ }).first().click();
       await expect(page.getByRole('button', { name: /선택 닫기/ })).toBeVisible();
       await page.getByRole('button', { name: /전기 사용량/ }).click();
