@@ -91,24 +91,20 @@ export async function handleBillingDocumentUpload(context) {
   });
 }
 
+export function buildSharedStoreReadPayload(authorityState) {
+  return {
+    ok: true,
+    store: authorityState?.store ?? {},
+    meta: authorityState?.meta ?? null
+  };
+}
+
 export async function handleSharedStoreGet(context) {
   const { res, auth } = context;
   await assertOpenPermission(METERING_SHARED_STORE_PERMISSION_KEY, auth, 'read');
 
   const authorityState = await loadMeteringAuthorityStore();
-  if (!authorityState) {
-    sendJson(res, 404, {
-      ok: false,
-      error: 'not_found'
-    });
-    return;
-  }
-
-  sendJson(res, 200, {
-    ok: true,
-    store: authorityState.store || {},
-    meta: authorityState.meta || null
-  });
+  sendJson(res, 200, buildSharedStoreReadPayload(authorityState));
 }
 
 export async function handleSharedStorePut(context) {
