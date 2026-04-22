@@ -94,6 +94,21 @@ jobs:
       - name: Install Xvfb for headed browser smoke
         run: sudo apt-get update && sudo apt-get install -y xvfb
 
+      - name: Start KPI server (open mode)
+        run: |
+          nohup npm run start >/tmp/kpi-server-3192.stdout.log 2>/tmp/kpi-server-3192.stderr.log &
+          echo $! >/tmp/kpi-server-3192.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3192/api/bootstrap/status; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "KPI server failed to become ready on 3192"
+          cat /tmp/kpi-server-3192.stdout.log || true
+          cat /tmp/kpi-server-3192.stderr.log || true
+          exit 1
+
       - name: Verify KPI root static surface (open mode)
         run: npm run smoke:kpi-root
 
@@ -102,3 +117,17 @@ jobs:
 
       - name: Run Playwright browser smoke headed (open mode)
         run: xvfb-run -a npm run smoke:kpi-browser:headed
+
+      - name: Dump KPI server logs on failure
+        if: failure()
+        run: |
+          cat /tmp/kpi-server-3192.stdout.log || true
+          cat /tmp/kpi-server-3192.stderr.log || true
+
+      - name: Stop KPI server
+        if: always()
+        run: |
+          if [ -f /tmp/kpi-server-3192.pid ]; then
+            kill "$(cat /tmp/kpi-server-3192.pid)" || true
+          fi
+          pkill -f "node src/server.js" || true
