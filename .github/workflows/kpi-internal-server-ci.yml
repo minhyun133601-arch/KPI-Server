@@ -91,8 +91,8 @@ jobs:
       - name: Install Playwright Chromium
         run: npm run smoke:kpi-browser:install
 
-      - name: Install Xvfb for headed browser smoke
-        run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: Verify Xvfb availability for headed browser smoke
+        run: command -v xvfb-run
 
       - name: Start KPI server (open mode)
         run: |
