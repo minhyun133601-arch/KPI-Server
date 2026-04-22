@@ -3,8 +3,10 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
+const REPORT_ROOT = '../../../../02_\u2605\u2605\u2605\u2605_\uC720\uD2F8\uB9AC\uD2F0/runtime/util/report';
+
 const reportSheetOptionsSource = await fs.readFile(
-  new URL('../../../../02_★★★★_유틸리티/runtime/util/report/sheet/options.js', import.meta.url),
+  new URL(REPORT_ROOT + '/sheet/options.js', import.meta.url),
   'utf8'
 );
 const kpiHtml = await fs.readFile(
@@ -47,8 +49,8 @@ test('report sheet options register team/category registries and lookup helpers'
 });
 
 test('kpi html loads report sheet options before sheet.js', () => {
-  const optionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/options.js?v=036');
-  const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=036');
+  const optionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/options.js?v=053');
+  const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
 
   assert.ok(optionsIndex >= 0, 'report sheet options loader is missing');
   assert.ok(billingIndex > optionsIndex, 'report sheet options must load before report sheet billing');

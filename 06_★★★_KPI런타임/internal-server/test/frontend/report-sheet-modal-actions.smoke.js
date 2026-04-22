@@ -3,12 +3,14 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
+const REPORT_ROOT = '../../../../02_\u2605\u2605\u2605\u2605_\uC720\uD2F8\uB9AC\uD2F0/runtime/util/report';
+
 const reportSheetConfigSource = await fs.readFile(
-  new URL('../../../../02_★★★★_유틸리티/runtime/util/report/sheet/config.js', import.meta.url),
+  new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
 );
 const reportSheetModalActionsSource = await fs.readFile(
-  new URL('../../../../02_★★★★_유틸리티/runtime/util/report/sheet/modal/actions.js', import.meta.url),
+  new URL(REPORT_ROOT + '/sheet/modal/actions.js', import.meta.url),
   'utf8'
 );
 const kpiHtml = await fs.readFile(
@@ -187,8 +189,8 @@ test('report sheet modal actions registry updates compare and fullscreen state t
 });
 
 test('kpi html loads report sheet modal actions before sheet.js', () => {
-  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=036');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=036');
+  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=053');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=053');
 
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');
   assert.ok(modalShellIndex > modalActionsIndex, 'report sheet modal actions must load before report sheet modal shell');

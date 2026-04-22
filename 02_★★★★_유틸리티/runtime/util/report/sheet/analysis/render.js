@@ -12,11 +12,18 @@
         buildUtilGasAnalysisSeriesControlHtml: null,
         buildUtilGasAnalysisPopupOnlyControlHtml: null,
         getUtilGasAnalysisInlineRatioTableKey: null,
-        buildUtilGasAnalysisFloatingTablePanelHtml: null,
-        buildUtilGasAnalysisCategorySelectHtml: null,
-        buildUtilElectricAnalysisTeamSelectHtml: null,
-        buildUtilSheetMonthOptionHtml: null
+        buildUtilGasAnalysisFloatingTablePanelHtml: null
     };
+
+    const utilReportSheetControls = globalScope.KPIUtilReportSheetControls;
+    if (!utilReportSheetControls) {
+        throw new Error('KPIUtilReportSheetControls must load before KPI.util.report.sheet.analysis.render.js');
+    }
+    const {
+        buildUtilGasAnalysisCategorySelectHtml: buildGasAnalysisCategorySelectControlHtml,
+        buildUtilElectricAnalysisTeamSelectHtml: buildElectricAnalysisTeamSelectControlHtml,
+        buildUtilSheetMonthOptionHtml: buildMonthOptionControlHtml
+    } = utilReportSheetControls;
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
@@ -87,24 +94,15 @@
     }
 
     function buildGasAnalysisCategorySelectHtml(selectedKey = 'yusan') {
-        if (typeof runtime.buildUtilGasAnalysisCategorySelectHtml === 'function') {
-            return runtime.buildUtilGasAnalysisCategorySelectHtml(selectedKey);
-        }
-        return '';
+        return buildGasAnalysisCategorySelectControlHtml(selectedKey);
     }
 
     function buildElectricAnalysisTeamSelectHtml(selectedKey = 'combined') {
-        if (typeof runtime.buildUtilElectricAnalysisTeamSelectHtml === 'function') {
-            return runtime.buildUtilElectricAnalysisTeamSelectHtml(selectedKey);
-        }
-        return '';
+        return buildElectricAnalysisTeamSelectControlHtml(selectedKey);
     }
 
     function buildMonthOptionHtml(monthOptions, selectedValue = '') {
-        if (typeof runtime.buildUtilSheetMonthOptionHtml === 'function') {
-            return runtime.buildUtilSheetMonthOptionHtml(monthOptions, selectedValue);
-        }
-        return '';
+        return buildMonthOptionControlHtml(monthOptions, selectedValue);
     }
 
     function renderMultiSeriesChart(series, options = {}) {

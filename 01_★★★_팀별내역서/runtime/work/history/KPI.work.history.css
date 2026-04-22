@@ -1842,14 +1842,7 @@
     flex: 1;
 }
 
-.form-group label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--gray-700);
-    margin-bottom: 5px;
-}
-
+.form-group label,
 .form-group-label {
     display: block;
     font-size: 12px;

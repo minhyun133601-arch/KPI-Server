@@ -3,8 +3,18 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
+const REPORT_ROOT = '../../../../02_\u2605\u2605\u2605\u2605_\uC720\uD2F8\uB9AC\uD2F0/runtime/util/report';
+
+const reportSheetOptionsSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/sheet/options.js', import.meta.url),
+  'utf8'
+);
+const reportSheetControlsSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/sheet/controls.js', import.meta.url),
+  'utf8'
+);
 const reportSheetAnalysisRenderSource = await fs.readFile(
-  new URL('../../../../02_★★★★_유틸리티/runtime/util/report/sheet/analysis/render.js', import.meta.url),
+  new URL(REPORT_ROOT + '/sheet/analysis/render.js', import.meta.url),
   'utf8'
 );
 const kpiHtml = await fs.readFile(
@@ -33,6 +43,12 @@ function createAnalysisRenderContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(reportSheetOptionsSource, context, {
+    filename: 'KPI.util.report.sheet.options.js'
+  });
+  vm.runInContext(reportSheetControlsSource, context, {
+    filename: 'KPI.util.report.sheet.controls.js'
+  });
   vm.runInContext(reportSheetAnalysisRenderSource, context, {
     filename: 'KPI.util.report.sheet.analysis.render.js'
   });
@@ -41,7 +57,14 @@ function createAnalysisRenderContext() {
 
 test('report sheet analysis render registry builds fullscreen gas chart cards and gas/electric analysis bodies', () => {
   const context = createAnalysisRenderContext();
+  const controls = context.KPIUtilReportSheetControls;
   const analysisRender = context.KPIUtilReportSheetAnalysisRender;
+
+  controls.setRuntimeAdapters({
+    escapeUtilSheetHtml(value) {
+      return String(value ?? '').replace(/&/g, '&amp;');
+    },
+  });
 
   analysisRender.setRuntimeAdapters({
     escapeUtilSheetHtml(value) {
@@ -72,19 +95,6 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
     buildUtilGasAnalysisFloatingTablePanelHtml(modal, model, tableKey) {
       void modal;
       return `<aside class="floating-table" data-range="${String(model?.rangeLabel || '')}" data-key="${String(tableKey || '')}"></aside>`;
-    },
-    buildUtilGasAnalysisCategorySelectHtml(selectedKey) {
-      return `<select data-role="util-sheet-analysis-category"><option selected>${String(selectedKey || '')}</option></select>`;
-    },
-    buildUtilElectricAnalysisTeamSelectHtml(selectedKey) {
-      return `<select data-role="util-sheet-analysis-team"><option selected>${String(selectedKey || '')}</option></select>`;
-    },
-    buildUtilSheetMonthOptionHtml(monthOptions, selectedValue) {
-      return (Array.isArray(monthOptions) ? monthOptions : []).map((item) => {
-        const value = String(item?.value || '');
-        const selected = value === String(selectedValue || '') ? ' selected' : '';
-        return `<option value="${value}"${selected}>${String(item?.label || value)}</option>`;
-      }).join('');
     }
   });
 
@@ -99,11 +109,11 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
     ],
     range: { from: '2026-01', to: '2026-03' },
     summaryItems: [
-      { key: 'combined', title: '총 사용량', valueText: '120', tone: 'gas', icon: 'fa-fire', subText: '전월 대비 +5' }
+      { key: 'combined', title: 'Gas Total', valueText: '120', tone: 'gas', icon: 'fa-fire', subText: 'delta:+5' }
     ],
     combinedChart: {
       key: 'combined',
-      title: '가스 종합',
+      title: 'Gas Combined Chart',
       tone: 'gas',
       icon: 'fa-fire',
       color: '#2563eb',
@@ -115,7 +125,7 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
     charts: [],
     ratioCombinedChart: {
       key: 'ratio-combined',
-      title: '원단위 비교',
+      title: 'Gas Ratio Chart',
       tone: 'combined',
       icon: 'fa-scale-balanced',
       decimals: 2,
@@ -130,11 +140,11 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
     monthOptions: gasModel.monthOptions,
     range: gasModel.range,
     summaryItems: [
-      { key: 'electric-combined', title: '전기 사용량', valueText: '980', tone: 'electric', icon: 'fa-bolt' }
+      { key: 'electric-combined', title: 'Electric Total', valueText: '980', tone: 'electric', icon: 'fa-bolt' }
     ],
     combinedChart: {
       key: 'electricCombined',
-      title: '전기 종합',
+      title: 'Electric Combined Chart',
       tone: 'electric',
       icon: 'fa-bolt',
       color: '#0f766e',
@@ -146,12 +156,12 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
     charts: [
       {
         key: 'electricIntensity',
-        title: '원단위',
+        title: 'Electric Intensity',
         tone: 'electric',
         icon: 'fa-chart-line',
         color: '#0891b2',
         decimals: 2,
-        metricLabel: 'kWh/톤',
+        metricLabel: 'kWh/kg',
         points: [{ value: 1.2 }, { value: 1.3 }, { value: 1.1 }]
       }
     ]
@@ -176,20 +186,20 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
   assert.ok(fullscreenCardHtml.includes('is-fullscreen-target'));
   assert.ok(fullscreenCardHtml.includes('multi-series-chart'));
   assert.ok(fullscreenCardHtml.includes('data-mode="modal"'));
-  assert.ok(gasBodyHtml.includes('util-sheet-analysis-category'));
+  assert.ok(gasBodyHtml.includes('util-sheet-analysis-gas-category-select'));
   assert.ok(gasBodyHtml.includes('floating-table'));
   assert.ok(gasBodyHtml.includes('ratio-combined'));
   assert.ok(gasBodyHtml.includes('series-control'));
   assert.ok(gasBodyHtml.includes('util-sheet-analysis-table-stack'));
-  assert.ok(electricBodyHtml.includes('util-sheet-analysis-team'));
+  assert.ok(electricBodyHtml.includes('util-sheet-analysis-electric-team-select'));
   assert.ok(electricBodyHtml.includes('trend-chart'));
   assert.ok(electricBodyHtml.includes('multi-series-chart'));
 });
 
 test('kpi html loads report sheet analysis render between modal render and sheet.js', () => {
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=036');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=036');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=036');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=053');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=053');
 
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');
   assert.ok(analysisRenderIndex > modalRenderIndex, 'report sheet analysis render must load after report sheet modal render');

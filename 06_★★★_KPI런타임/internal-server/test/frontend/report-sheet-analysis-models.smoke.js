@@ -3,20 +3,22 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
+const REPORT_ROOT = '../../../../02_\u2605\u2605\u2605\u2605_\uC720\uD2F8\uB9AC\uD2F0/runtime/util/report';
+
 const reportSheetConfigSource = await fs.readFile(
-  new URL('../../../../02_★★★★_유틸리티/runtime/util/report/sheet/config.js', import.meta.url),
+  new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
 );
 const reportSheetAnalysisElectricChartModelSource = await fs.readFile(
-  new URL('../../../../02_★★★★_유틸리티/runtime/util/report/sheet/analysis/electric/chart-model.js', import.meta.url),
+  new URL(REPORT_ROOT + '/sheet/analysis/electric/chart-model.js', import.meta.url),
   'utf8'
 );
 const reportSheetAnalysisElectricModelSource = await fs.readFile(
-  new URL('../../../../02_★★★★_유틸리티/runtime/util/report/sheet/analysis/electric/model.js', import.meta.url),
+  new URL(REPORT_ROOT + '/sheet/analysis/electric/model.js', import.meta.url),
   'utf8'
 );
 const reportSheetAnalysisGasModelSource = await fs.readFile(
-  new URL('../../../../02_★★★★_유틸리티/runtime/util/report/sheet/analysis/gas/model.js', import.meta.url),
+  new URL(REPORT_ROOT + '/sheet/analysis/gas/model.js', import.meta.url),
   'utf8'
 );
 const kpiHtml = await fs.readFile(
@@ -86,16 +88,16 @@ function createAnalysisModelContext() {
   ]);
   const productionValueMap = {
     '2026-01': {
-      'A::라인1': 60,
-      'A::라인2': 40
+      'A::line1': 60,
+      'A::line2': 40
     },
     '2026-02': {
-      'A::라인1': 72,
-      'A::라인2': 36
+      'A::line1': 72,
+      'A::line2': 36
     },
     '2026-03': {
-      'A::라인1': 80,
-      'A::라인2': 40
+      'A::line1': 80,
+      'A::line2': 40
     }
   };
   const context = {
@@ -181,14 +183,14 @@ test('report sheet analysis model registries build electric and gas analysis mod
       if (String(teamKey || '').trim() === 'team-a') {
         return {
           key: 'team-a',
-          label: '압출 A',
+          label: 'Team A',
           reportTeamFilters: ['A'],
           productionTeamNames: ['A']
         };
       }
       return {
         key: 'combined',
-        label: '합산',
+        label: 'Combined',
         reportTeamFilters: ['A', 'B'],
         productionTeamNames: ['A', 'B']
       };
@@ -227,7 +229,7 @@ test('report sheet analysis model registries build electric and gas analysis mod
     },
     shiftUtilSheetMonthKey: shiftMonthKey,
     getUtilSheetCompareLabel(compareKey = 'month') {
-      return compareKey === 'year' ? '전년대비' : '전월대비';
+      return compareKey === 'year' ? 'year-compare' : 'month-compare';
     },
     buildUtilGasAnalysisCompareSub(compareLabel, monthKey, deltaText) {
       return `${compareLabel}:${monthKey}:${deltaText}`;
@@ -239,11 +241,11 @@ test('report sheet analysis model registries build electric and gas analysis mod
       return Number.isFinite(Number(value)) ? `${Number(value) >= 0 ? '+' : ''}${Number(value).toFixed(1)} ${unit}` : fallback;
     },
     formatUtilSheetCost(value, fallback = '-') {
-      return Number.isFinite(Number(value)) ? `${Math.round(Number(value)).toLocaleString('ko-KR')}원` : fallback;
+      return Number.isFinite(Number(value)) ? `${Math.round(Number(value)).toLocaleString('ko-KR')} KRW` : fallback;
     },
     formatUtilSheetSignedCost(value, fallback = '-') {
       return Number.isFinite(Number(value))
-        ? `${Number(value) >= 0 ? '+' : ''}${Math.round(Number(value)).toLocaleString('ko-KR')}원`
+        ? `${Number(value) >= 0 ? '+' : ''}${Math.round(Number(value)).toLocaleString('ko-KR')} KRW`
         : fallback;
     },
     getUtilElectricAnalysisUnitKey(chartKey = '') {
@@ -258,7 +260,7 @@ test('report sheet analysis model registries build electric and gas analysis mod
     getUtilElectricAnalysisChartUnitLabel(chartKey = '', unitKey = '') {
       const key = String(unitKey || chartKey || '').trim();
       if (key === 'kwh' || key === 'electricUsage') return 'kWh';
-      if (key === 'krw' || key === 'electricCost') return '원';
+      if (key === 'krw' || key === 'electricCost') return 'KRW';
       if (key === 'kg' || key === 'production') return 'kg';
       if (key === 'kwhkg' || key === 'electricIntensity') return 'kWh/kg';
       if (key === 'percent') return '%';
@@ -312,7 +314,7 @@ test('report sheet analysis model registries build electric and gas analysis mod
     getUtilGasAnalysisCategoryOption() {
       return {
         key: 'yusan',
-        label: '유산',
+        label: 'yusan',
         productionTeamNames: ['A'],
         showLpgCard: true
       };
@@ -341,7 +343,7 @@ test('report sheet analysis model registries build electric and gas analysis mod
     getUtilGasAnalysisChartUnitLabel(chartKey = '') {
       if (chartKey === 'lpgUsage') return 'kg';
       if (chartKey === 'lngUsage') return 'Nm3';
-      if (chartKey === 'gasCost') return '원';
+      if (chartKey === 'gasCost') return 'KRW';
       if (chartKey === 'production') return 'kg';
       return '';
     },
@@ -361,20 +363,20 @@ test('report sheet analysis model registries build electric and gas analysis mod
       return Number.isFinite(Number(value)) ? `${Number(value) >= 0 ? '+' : ''}${Number(value).toFixed(1)} ${unit}` : fallback;
     },
     formatUtilSheetCost(value, fallback = '-') {
-      return Number.isFinite(Number(value)) ? `${Math.round(Number(value)).toLocaleString('ko-KR')}원` : fallback;
+      return Number.isFinite(Number(value)) ? `${Math.round(Number(value)).toLocaleString('ko-KR')} KRW` : fallback;
     },
     formatUtilSheetSignedCost(value, fallback = '-') {
       return Number.isFinite(Number(value))
-        ? `${Number(value) >= 0 ? '+' : ''}${Math.round(Number(value)).toLocaleString('ko-KR')}원`
+        ? `${Number(value) >= 0 ? '+' : ''}${Math.round(Number(value)).toLocaleString('ko-KR')} KRW`
         : fallback;
     },
     buildUtilGasAnalysisCostModeText() {
-      return '원가 기준';
+      return 'cost-mode';
     },
     buildUtilGasAnalysisCombinedChart(charts = [], rangeLabel = '') {
       return {
         key: 'combined',
-        title: '가스 종합',
+        title: 'Gas Combined',
         periodLabel: rangeLabel,
         controlItems: charts,
         chartDataList: charts,
@@ -384,7 +386,7 @@ test('report sheet analysis model registries build electric and gas analysis mod
     buildUtilGasAnalysisRangeTables(rangeKeys = [], ratioUsageMap = new Map(), productionMap = new Map()) {
       return [{
         key: 'lpg',
-        title: 'LPG 비율',
+        title: 'LPG Ratio',
         tone: 'gas',
         months: rangeKeys,
         ratioUsageMap,
@@ -394,7 +396,7 @@ test('report sheet analysis model registries build electric and gas analysis mod
     buildUtilGasAnalysisRatioCombinedChartModel(ratioTables = [], rangeLabel = '', options = {}) {
       return {
         key: 'ratio-combined',
-        title: '가스 비율',
+        title: 'Gas Ratio',
         rangeLabel,
         controlItems: ratioTables.map((table) => ({ key: `ratio-${table.key}`, title: table.title })),
         series: options.lineRatioSeries || []
@@ -426,15 +428,17 @@ test('report sheet analysis model registries build electric and gas analysis mod
 });
 
 test('kpi html loads report sheet analysis model scripts before analysis render and sheet.js', () => {
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=036');
-  const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=036');
-  const electricModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/model.js?v=036');
-  const gasModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/gas/model.js?v=036');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=036');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=036');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=053');
+  const rangeRatioIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/range-ratio.js?v=053');
+  const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
+  const electricModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/model.js?v=053');
+  const gasModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/gas/model.js?v=053');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=053');
 
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');
-  assert.ok(electricChartModelIndex > modalRenderIndex, 'electric chart model must load after report sheet modal render');
+  assert.ok(rangeRatioIndex > modalRenderIndex, 'analysis range-ratio must load after report sheet modal render');
+  assert.ok(electricChartModelIndex > rangeRatioIndex, 'electric chart model must load after analysis range-ratio');
   assert.ok(electricModelIndex > electricChartModelIndex, 'electric analysis model must load after electric chart model');
   assert.ok(gasModelIndex > electricModelIndex, 'gas analysis model must load after electric analysis model');
   assert.ok(analysisRenderIndex > gasModelIndex, 'analysis render must load after analysis model registries');

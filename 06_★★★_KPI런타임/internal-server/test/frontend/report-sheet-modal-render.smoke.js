@@ -3,12 +3,14 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
+const REPORT_ROOT = '../../../../02_\u2605\u2605\u2605\u2605_\uC720\uD2F8\uB9AC\uD2F0/runtime/util/report';
+
 const reportSheetConfigSource = await fs.readFile(
-  new URL('../../../../02_★★★★_유틸리티/runtime/util/report/sheet/config.js', import.meta.url),
+  new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
 );
 const reportSheetModalRenderSource = await fs.readFile(
-  new URL('../../../../02_★★★★_유틸리티/runtime/util/report/sheet/modal/render.js', import.meta.url),
+  new URL(REPORT_ROOT + '/sheet/modal/render.js', import.meta.url),
   'utf8'
 );
 const kpiHtml = await fs.readFile(
@@ -317,10 +319,10 @@ test('report sheet modal render registry normalizes meter modal state and rerend
 });
 
 test('kpi html loads report sheet modal render between modal shell and sheet.js', () => {
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=036');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=036');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=036');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=036');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=053');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=053');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=053');
 
   assert.ok(modalShellIndex >= 0, 'report sheet modal shell loader is missing');
   assert.ok(modalRenderIndex > modalShellIndex, 'report sheet modal render must load after report sheet modal shell');
