@@ -17,7 +17,7 @@ jobs:
     defaults:
       run:
         shell: pwsh
-        working-directory: ./06_★★★_KPI런타임/internal-server
+        working-directory: ./kpi-runtime/internal-server
 
     steps:
       - name: Checkout
@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: ./06_★★★_KPI런타임/internal-server/package-lock.json
+          cache-dependency-path: ./kpi-runtime/internal-server/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -52,7 +52,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: ./06_★★★_KPI런타임/internal-server
+        working-directory: ./kpi-runtime/internal-server
     env:
       KPI_AUTH_ENABLED: "false"
       KPI_LOGIN_ENABLED: "false"
@@ -83,7 +83,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: ./06_★★★_KPI런타임/internal-server/package-lock.json
+          cache-dependency-path: ./kpi-runtime/internal-server/package-lock.json
 
       - name: Install dependencies
         run: npm ci

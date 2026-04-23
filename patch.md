@@ -25,3 +25,9 @@
 
 ### Notes / 메모
 - `patch.md`는 authority 문서가 아니라 patch 기록용 supporting 문서다.
+
+### Cleanup Update / 테스트 산출물 정리
+- 루트 `.codex-run/` 추적 스크래치 파일을 제거했다.
+- `test-results/.last-run.json`, `kpi-runtime/internal-server/var/playwright/.last-run.json`을 제거했다.
+- `kpi-runtime/internal-server/var/logs/readiness/`와 `var/tmp-*.log` 임시 검증 산출물을 제거했다.
+- `.gitignore`에 `.playwright-mcp/`, `test-results/`를 추가했다.

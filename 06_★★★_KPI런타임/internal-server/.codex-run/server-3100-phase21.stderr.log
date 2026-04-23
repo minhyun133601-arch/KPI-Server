@@ -1,2 +1,0 @@
-[kpi-internal-server] migration skipped or failed: connect ECONNREFUSED 127.0.0.1:5434
-[kpi-internal-server] session cleanup (startup) failed: connect ECONNREFUSED 127.0.0.1:5434

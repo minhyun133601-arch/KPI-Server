@@ -1,22 +1,24 @@
 # Legacy internal server runtime state
-작업내역/internal-server/data/*
-!작업내역/internal-server/data/.gitkeep
-작업내역/internal-server/files/*
-!작업내역/internal-server/files/.gitkeep
-작업내역/internal-server/logs/*
-!작업내역/internal-server/logs/.gitkeep
+work-log/internal-server/data/*
+!work-log/internal-server/data/.gitkeep
+work-log/internal-server/files/*
+!work-log/internal-server/files/.gitkeep
+work-log/internal-server/logs/*
+!work-log/internal-server/logs/.gitkeep
 
 # Active internal server runtime state
-06_★★★_KPI런타임/internal-server/.env
-06_★★★_KPI런타임/internal-server/var/*
-!06_★★★_KPI런타임/internal-server/var/.gitkeep
-!06_★★★_KPI런타임/internal-server/var/files/.gitkeep
-!06_★★★_KPI런타임/internal-server/var/logs/.gitkeep
-!06_★★★_KPI런타임/internal-server/var/migration-backups/.gitkeep
-!06_★★★_KPI런타임/internal-server/var/backups/.gitkeep
-!06_★★★_KPI런타임/internal-server/var/backups/file-storage/.gitkeep
-!06_★★★_KPI런타임/internal-server/var/backups/runtime-snapshots/.gitkeep
+kpi-runtime/internal-server/.env
+kpi-runtime/internal-server/var/*
+!kpi-runtime/internal-server/var/.gitkeep
+!kpi-runtime/internal-server/var/files/.gitkeep
+!kpi-runtime/internal-server/var/logs/.gitkeep
+!kpi-runtime/internal-server/var/migration-backups/.gitkeep
+!kpi-runtime/internal-server/var/backups/.gitkeep
+!kpi-runtime/internal-server/var/backups/file-storage/.gitkeep
+!kpi-runtime/internal-server/var/backups/runtime-snapshots/.gitkeep
 
 # Local verification/runtime scratch
 .codex-run/
 **/internal-server/.codex-run/
+.playwright-mcp/
+test-results/
