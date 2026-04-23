@@ -250,7 +250,7 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('#content-container')).toContainText('가스 사용량과 비용');
 
       await clickSidebarButton(page, '폐수');
-      await expect(page.locator('#content-container')).toContainText('폐수 발생 및 처리 데이터');
+      await expect(page.locator('#content-container')).toContainText('폐수 사용량과 비용');
 
       await clickSidebarButton(page, '분석');
       await expect(page.locator('#content-container')).toContainText('총괄 비율');

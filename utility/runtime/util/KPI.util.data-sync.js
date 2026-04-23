@@ -3,6 +3,56 @@
         // 유틸리티 데이터 - 전기
         // ----------------------------------------------------------------
         const createUtilTeamData = (teams) => teams.map(name => ({ name, years: [] }));
+
+        function cloneUtilDatasetValue(value) {
+            if (!Array.isArray(value)) return [];
+            try {
+                return JSON.parse(JSON.stringify(value));
+            } catch (error) {
+                return value.map(item => ({ ...item }));
+            }
+        }
+
+        function readLegacyUtilPortalTeams(recordKey, fallbackTeamNames = []) {
+            const portalData = isUtilPlainObject(window.PortalData) ? window.PortalData : {};
+            const record = isUtilPlainObject(portalData[recordKey]) ? portalData[recordKey] : {};
+            return Array.isArray(record.teams)
+                ? cloneUtilDatasetValue(record.teams)
+                : createUtilTeamData(fallbackTeamNames);
+        }
+
+        function writeLegacyUtilPortalTeams(recordKey, dataset) {
+            const key = String(recordKey || '').trim();
+            if (!key) return;
+            window.PortalData = isUtilPlainObject(window.PortalData) ? window.PortalData : {};
+            const previous = isUtilPlainObject(window.PortalData[key]) ? window.PortalData[key] : {};
+            window.PortalData[key] = {
+                ...previous,
+                teams: cloneUtilDatasetValue(dataset)
+            };
+        }
+
+        function hasUtilDatasetPayload(dataset) {
+            return (Array.isArray(dataset) ? dataset : []).some(teamNode =>
+                (Array.isArray(teamNode?.years) ? teamNode.years : []).some(yearNode =>
+                    (Array.isArray(yearNode?.rows) ? yearNode.rows : []).some(row => hasUtilEntryPayload(row))
+                )
+            );
+        }
+
+        function isEmptyUtilMeteringSnapshot(snapshot) {
+            if (!isUtilPlainObject(snapshot) || !isUtilPlainObject(snapshot.teams)) {
+                return true;
+            }
+            return !Object.values(snapshot.teams).some(teamSnapshot =>
+                isUtilPlainObject(teamSnapshot) && Object.keys(teamSnapshot).length > 0
+            );
+        }
+
+        function hasHydratedIntegratedMeteringStore() {
+            return isUtilPlainObject(window.__LOCAL_APP_STORE__);
+        }
+
         const UTIL_ELECTRIC_METERING_TEAM_MAP = Object.freeze({
             '1팀 1파트': 'team_01_01',
             '1팀 2파트': 'team_01_02',
@@ -25,7 +75,7 @@
         const UTIL_WASTE_METERING_TEAM_NAMES = Object.freeze(['유산', '북정']);
         const UTIL_ELECTRIC_DATA = createUtilTeamData(UTIL_ELECTRIC_METERING_TEAM_NAMES);
         const UTIL_GAS_DATA = createUtilTeamData(UTIL_GAS_METERING_TEAM_NAMES);
-        const UTIL_WASTE_DATA = createUtilTeamData(UTIL_WASTE_METERING_TEAM_NAMES);
+        const UTIL_WASTE_DATA = readLegacyUtilPortalTeams('util_wastewater_data', UTIL_WASTE_METERING_TEAM_NAMES);
         const UTIL_ELECTRIC_ENTRIES = [];
         const UTIL_GAS_ENTRIES = [];
         const UTIL_WASTE_ENTRIES = [];
@@ -626,6 +676,15 @@
         }
 
         function applyUtilWasteMeteringSnapshot(snapshot) {
+            if (
+                isEmptyUtilMeteringSnapshot(snapshot)
+                && !hasHydratedIntegratedMeteringStore()
+                && hasUtilDatasetPayload(UTIL_WASTE_DATA)
+            ) {
+                writeLegacyUtilPortalTeams('util_wastewater_data', UTIL_WASTE_DATA);
+                return false;
+            }
+
             const nextDataset = buildUtilDatasetFromSnapshot(snapshot, UTIL_WASTE_METERING_TEAM_NAMES, {
                 resolveTeamName: (teamName) => teamName,
                 hasAdditionalMonthData: (monthData) => Boolean(monthData?.costs && typeof monthData.costs === 'object'),
@@ -635,7 +694,9 @@
                     }
                 }
             });
-            return replaceUtilDataset(UTIL_WASTE_DATA, nextDataset);
+            const changed = replaceUtilDataset(UTIL_WASTE_DATA, nextDataset);
+            writeLegacyUtilPortalTeams('util_wastewater_data', UTIL_WASTE_DATA);
+            return changed;
         }
 
         async function syncUtilWasteDataFromMetering(options = {}) {

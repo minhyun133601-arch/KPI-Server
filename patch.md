@@ -31,3 +31,11 @@
 - `test-results/.last-run.json`, `kpi-runtime/internal-server/var/playwright/.last-run.json`을 제거했다.
 - `kpi-runtime/internal-server/var/logs/readiness/`와 `var/tmp-*.log` 임시 검증 산출물을 제거했다.
 - `.gitignore`에 `.playwright-mcp/`, `test-results/`를 추가했다.
+
+### Wastewater Utility Fallback / 폐수 유틸리티 fallback
+- `utility/runtime/util/KPI.util.data-sync.js` now restores initial waste utility rows from `PortalData.util_wastewater_data` when that legacy bootstrap record is present.
+- Empty metering snapshots no longer wipe visible waste utility data while `window.__LOCAL_APP_STORE__` has not been hydrated.
+- Added `kpi-runtime/internal-server/test/frontend/kpi-util-data-sync.smoke.js` to cover the fallback and the hydrated-empty-store clear path.
+- `utility/apps/metering/runtime/utility-snapshots.js` now resolves the effective hydrated store before collecting month keys, so non-mounted waste snapshots no longer collapse to `months: []`.
+- Added `kpi-runtime/internal-server/test/frontend/metering-utility-snapshot-hydration.smoke.js` to cover the stale `state.store` plus hydrated `loadStore()` case.
+- Updated `kpi-runtime/internal-server/e2e/kpi-browser.playwright.js` to assert the current waste utility screen copy after selecting the waste utility page.

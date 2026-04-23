@@ -30,7 +30,8 @@
 }
 
 function buildElectricUtilityDatasetSnapshot(store = state.store) {
-  const monthValues = collectElectricUtilitySnapshotMonthValues(store);
+  const effectiveStore = resolveDetachedSnapshotSourceStore(store);
+  const monthValues = collectElectricUtilitySnapshotMonthValues(effectiveStore);
   if (!monthValues.length) {
     return {
       months: [],
@@ -63,12 +64,13 @@ function buildElectricUtilityDatasetSnapshot(store = state.store) {
         teams,
       };
     },
-    store
+    effectiveStore
   );
 }
 
 function buildGasUtilityDatasetSnapshot(store = state.store) {
-  const monthValues = collectGasUtilitySnapshotMonthValues(store);
+  const effectiveStore = resolveDetachedSnapshotSourceStore(store);
+  const monthValues = collectGasUtilitySnapshotMonthValues(effectiveStore);
   if (!monthValues.length) {
     return {
       months: [],
@@ -126,12 +128,13 @@ function buildGasUtilityDatasetSnapshot(store = state.store) {
         teams,
       };
     },
-    store
+    effectiveStore
   );
 }
 
 function buildWasteUtilityDatasetSnapshot(store = state.store) {
-  const monthValues = collectWasteUtilitySnapshotMonthValues(store);
+  const effectiveStore = resolveDetachedSnapshotSourceStore(store);
+  const monthValues = collectWasteUtilitySnapshotMonthValues(effectiveStore);
   if (!monthValues.length) {
     return {
       months: [],
@@ -175,7 +178,7 @@ function buildWasteUtilityDatasetSnapshot(store = state.store) {
         teams,
       };
     },
-    store
+    effectiveStore
   );
 }
 
