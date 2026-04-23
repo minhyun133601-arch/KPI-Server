@@ -1,6 +1,6 @@
 # AGENTS.md
 작성일 / Date: `2026-04-03`
-개정일 / Revised: `2026-04-22` — 규정 hardening, 검증 게이트, 포트 제약 문맥 정비
+개정일 / Revised: `2026-04-23` — 진행/status 문서 제거, `patch.md` 패치 기록 도입, 실작업용 규칙 정비
 
 > 이 문서는 KPI 저장소의 **AI 역할, 코드 생성 규약, 보안 기준, 테스트·완료 기준**을 정의하는 단일 기준 문서다.  
 > This document is the single source of truth for the KPI repository’s **AI role, code-generation contract, security baseline, and testing/completion gates**.
@@ -18,12 +18,13 @@ owns:
   - "repo documentation language policy / 저장소 문서 언어 정책"
   - "maintainability, security, and change hygiene / 유지보수성·보안·변경 위생"
 not_own:
-  - "serverization roadmap or runtime rollout status / 서버화 로드맵 또는 런타임 롤아웃 상태"
+  - "delivery order or progress board / 실행 순서 또는 진행 현황 보드"
   - "network ACL, firewall, VLAN, DNS, reverse proxy exposure decision / 네트워크 ACL·방화벽·VLAN·DNS·리버스 프록시 노출 결정"
   - "IT-facing wording, request packaging, or handoff message / IT 전달 문구·요청 패키지·핸드오프 메시지"
 authority_set:
   - "AGENTS.md"
 supporting_docs_only:
+  - "patch history (`patch.md`)"
   - "legacy analyses"
   - "old prompts"
   - "archived reference material"
@@ -95,6 +96,10 @@ supporting_docs_only:
 - KR: 에이전트는 영리한 요령보다 **정확성, 보안, 유지보수성, 리뷰 가능성**을 우선하는 시니어 엔지니어처럼 행동해야 한다.
 - EN: The agent MUST act like a careful senior engineer who prioritizes **correctness, security, maintainability, and reviewability** over clever shortcuts.
 
+### Directive A-10a
+- KR: 에이전트는 장기 진행/status 문서를 운영하는 역할이 아니라, 현재 요청의 **실제 코드 변경, 검증, 기록**을 끝까지 처리하는 실작업 역할로 동작한다. 진행 흔적은 별도 진행 문서 대신 `patch.md`에 짧고 사실적으로 남긴다.
+- EN: The agent MUST behave as a hands-on delivery worker for the current request, not as a maintainer of long-lived progress or status documents. Progress history MUST be recorded briefly and factually in `patch.md` instead of separate progress docs.
+
 ### Directive A-11
 - KR: 작업 시작 전에는 이 문서, 저장소의 현재 문서, build/test 설정, CI 설정, 그리고 실제로 손댈 파일을 먼저 읽는다.
 - EN: Before editing, the agent MUST read this document, the repo’s current docs, build/test configuration, CI configuration, and the files that will actually be touched.
@@ -103,9 +108,17 @@ supporting_docs_only:
 - KR: 여러 모듈, 데이터 모델, 공개 동작을 건드리는 변경은 수정 전에 짧은 계획을 먼저 남긴다.
 - EN: Any change that touches multiple modules, data models, or public behavior MUST start with a short plan before editing.
 
+### Directive A-12a
+- KR: 현재 세션이 허용하고 관련 도구가 준비돼 있으면, 에이전트는 코드 탐색, 반복 점검, 브라우저 조작, 서버 상태 확인에 **서브에이전트와 MCP 세션을 적극 사용**해야 한다. 단, 현재 세션이 해당 기능을 지원하지 않거나 실패하면 가능한 기본 도구와 수동 절차로 즉시 대체하고, 어떤 대체 경로를 썼는지 최종 보고에 남긴다.
+- EN: When the current session permits it and the relevant tools are available, the agent MUST actively use **sub-agents and MCP sessions** for code exploration, repeated inspection, browser interaction, and server-state checks. If those capabilities are unavailable or fail in the current session, the agent MUST immediately fall back to the best available built-in tools or manual procedure and report the fallback path in the final handoff.
+
 ### Directive A-13
 - KR: 요청을 해결하는 가장 작은 coherent change를 우선한다. 관련 없는 구조 변경, 파일 이동, 이름 변경, 대량 추출은 금지한다.
 - EN: Prefer the smallest coherent change that solves the request. Unrelated structural changes, file moves, renames, or bulk extractions are prohibited.
+
+### Directive A-13a
+- KR: 다른 로컬 작업공간이나 별도 로컬 사본에서 수정해 가져오는 파일도 예외가 아니다. 에이전트는 그런 반입 파일을 이 저장소의 **경로 구조, 이름 규칙, 레이어 경계, 검증 게이트, 문서 규칙**에 맞게 재편한 뒤 patch 로 적용해야 하며, 외부 작업물의 임시 구조나 개인 규칙을 그대로 들여오지 않는다.
+- EN: Files modified in another local workspace or separate local copy are not an exception. The agent MUST reshape imported files to this repository's **path structure, naming rules, layering boundaries, verification gates, and documentation rules** before applying them as a patch, and MUST NOT bring in the external workspace's temporary structure or personal conventions unchanged.
 
 ### Directive A-14
 - KR: 질문보다 제안을 우선한다. 다만 **소유권, 데이터 의미, 구조, 보안 경계, 노출 범위**가 바뀌는 경우에는 질문해야 한다.
@@ -127,6 +140,10 @@ supporting_docs_only:
 - KR: 현재 대화가 포트를 덮어쓰지 않는 한, workflow, `package.json`, verifier, Playwright config 에 선언된 canonical 검증 포트/런타임 계약을 따른다. 저장소가 이미 선언한 검증 포트 세트가 있는데 임의 fallback 포트로 검증하거나 보고하는 행위는 금지한다.
 - EN: Unless the current conversation explicitly overrides ports, the agent MUST follow the canonical verification ports and runtime contract declared in the workflow, `package.json`, verifier scripts, and Playwright config. It is prohibited to verify or report against ad hoc fallback ports when the repo already declares a canonical verification port set.
 
+### Directive A-16c
+- KR: 현재 KPI 로컬 포트 계약은 `운영 3100`, `DB 5434`, `검증 3192` 세 개로 고정한다. 별도 시험/브라우저 검증이 필요하면 검증 포트는 `3192` 하나만 쓰고, 이미 `3192` 세션이 떠 있으면 재사용한다. 에이전트는 이 세 개 외의 임시 포트나 추가 검증 포트를 임의로 열거나 보고하지 않는다.
+- EN: The current KPI local port contract is fixed to three ports: `runtime 3100`, `DB 5434`, and `verification 3192`. If a separate test or browser-verification server is needed, the agent MUST use only verification port `3192`, and MUST reuse it when a `3192` session is already running. The agent MUST NOT open or report any extra ad hoc ports beyond this three-port contract.
+
 ## 3. Language and Communication Policy / 언어와 커뮤니케이션 정책
 
 ### Directive A-20
@@ -146,12 +163,12 @@ supporting_docs_only:
 - EN: Long documents do not need line-by-line full translation, but **core operating rules, risk boundaries, and prohibitions** MUST also appear in English.
 
 ### Directive A-23a
-- KR: 사용자의 명시적 요청이 없는 한 repo-owned authority/rules markdown는 `AGENTS.md` 하나만 유지한다. 추가 checklist, runbook, temporary note, helper prompt `*.md`는 만들지 않는다.
-- EN: Unless the user explicitly requests it, keep repo-owned authority/rules markdown limited to `AGENTS.md`. Do not create extra checklist, runbook, temporary-note, or helper-prompt `*.md` files.
+- KR: repo-owned authority/rules markdown는 `AGENTS.md` 하나만 유지한다. `patch.md`는 예외적으로 허용되는 **비권위 patch log** 이며, 그 외 checklist, runbook, temporary note, helper prompt `*.md`는 사용자의 명시적 요청 없이는 만들지 않는다.
+- EN: Keep repo-owned authority/rules markdown limited to `AGENTS.md`. `patch.md` is the only standing exception as a **non-authoritative patch log**; do not create other checklist, runbook, temporary-note, or helper-prompt `*.md` files without explicit user request.
 
 ### Directive A-23b
-- KR: 사용자의 명시 요청으로 `비전공자용.md`가 존재하는 동안, authority 규칙, 검증 명령/범위, 현재 런타임 제약, 또는 남은 작업 요약을 갱신하는 패치에는 `비전공자용.md`와 관련 supporting status 문서를 같은 패치에서 함께 갱신한다. supporting summary 사이에 상충된 상태 설명을 남기지 않는다. `비전공자용.md`는 supporting summary일 뿐 authority 문서는 아니다.
-- EN: While `비전공자용.md` exists by explicit user request, any patch that updates authority rules, verification commands or scope, current runtime constraints, or the remaining-work summary MUST update `비전공자용.md` and the related supporting status docs in the same patch. Supporting summaries MUST NOT disagree about current status. `비전공자용.md` is a supporting summary only and is not an authority document.
+- KR: `patch.md`는 repo root 에 두는 patch history 전용 supporting 문서다. authority 문서는 아니며, 코드나 저장소 소유 문서를 수정하는 패치에는 날짜, 요약, 변경 파일, 검증 결과를 같은 패치에서 함께 기록한다.
+- EN: `patch.md` is the repo-root supporting document dedicated to patch history. It is not an authority document, and any patch that changes code or repo-owned documentation MUST record the date, summary, changed files, and verification results in the same patch.
 
 ### Directive A-24
 - KR: 설명은 쉽게 하되 기준은 낮추지 않는다.
@@ -192,8 +209,8 @@ supporting_docs_only:
 - EN: Parsing/validation, business logic, persistence, and presentation MUST be separated.
 
 ### Directive A-36
-- KR: 이름은 의도를 드러내야 한다. `helper`, `manager`, `misc`, `temp`, `thing` 같은 모호한 이름은 피한다.
-- EN: Names MUST reveal intent. Vague names such as `helper`, `manager`, `misc`, `temp`, or `thing` SHOULD be avoided.
+- KR: 이름은 의도를 드러내야 한다. 새로 추가하거나 이름을 바꾸는 파일, 함수, 모듈, 변수에 `helper`, `manager`, `misc`, `temp`, `thing` 같은 모호한 이름을 사용하지 않는다.
+- EN: Names MUST reveal intent. New or renamed files, functions, modules, and variables MUST NOT use vague names such as `helper`, `manager`, `misc`, `temp`, or `thing`.
 
 ### Directive A-37
 - KR: Boolean 이름은 `is_`, `has_`, `can_`, `should_`처럼 predicate로 읽혀야 한다.
@@ -211,8 +228,13 @@ supporting_docs_only:
 
 ### Directive A-41a
 
-- KR: `06_★★★_KPI런타임/internal-server/src/scripts/one-shot/` 하위 일회성 migration/repair 스크립트에는 파일 hard cap `800 LOC`를 적용한다. 스크립트 상단 주석에는 일회성 성격과 실행 후 archive 의도를 남긴다. 함수/메서드 80 LOC 및 클래스 300 LOC는 예외 없이 유지한다.
-- EN: Scripts under `06_★★★_KPI런타임/internal-server/src/scripts/one-shot/` use a file hard cap of `800 LOC`. The header comment MUST state the one-shot nature and the archive-after-run intent. Function/method (80 LOC) and class (300 LOC) limits remain unchanged.
+- KR: `kpi-runtime/internal-server/src/scripts/one-shot/` 하위 일회성 migration/repair 스크립트에는 파일 hard cap `800 LOC`를 적용한다. 스크립트 상단 주석에는 일회성 성격과 실행 후 archive 의도를 남긴다. 함수/메서드 80 LOC 및 클래스 300 LOC는 예외 없이 유지한다.
+- EN: Scripts under `kpi-runtime/internal-server/src/scripts/one-shot/` use a file hard cap of `800 LOC`. The header comment MUST state the one-shot nature and the archive-after-run intent. Function/method (80 LOC) and class (300 LOC) limits remain unchanged.
+
+### Directive A-41b
+
+- KR: 현재 A-40/A-41의 **tracked legacy warning path** 는 비어 있어야 한다. split 대기 예외가 필요하면 path-scoped, zero-default 로 `AGENTS.md`, verifier, `patch.md`를 같은 패치에서 함께 갱신해야 한다. 해결된 경로를 계속 warning 으로 남겨 두지 않는다.
+- EN: The current A-40/A-41 **tracked legacy warning path** list MUST stay empty. If a pending split exception is needed, add it as a path-scoped, zero-default rule and update `AGENTS.md`, the verifier, and `patch.md` in the same patch. Resolved paths MUST NOT remain downgraded to warnings.
 
 ### Directive A-42
 - KR: KPI 활성 JS/HTML 로직 파일에는 별도 가드가 있다. soft cap은 `1,200줄`, hard guard는 `1,500줄`이다. 단, data-only JS와 CSS는 예외다.
@@ -223,17 +245,22 @@ supporting_docs_only:
 - KR: A-42 예외 allowlist 는 기본적으로 비어 있어야 한다. 예외가 필요하면 path-scoped, zero-default 로 추가하고, `AGENTS.md` 와 verifier 설정을 같은 패치에서 함께 갱신한다. supporting 문서나 commit body 에만 의존해 예외를 성립시키지 않는다.
 - EN: The A-42 exception allowlist MUST stay empty by default. If an exception is needed, add it as a path-scoped, zero-default rule and update `AGENTS.md` plus the verifier configuration in the same patch. An exception MUST NOT rely only on supporting docs or a commit body.
 
+### Directive A-42b
+
+- KR: 현재 A-42 **tracked legacy warning path** 목록은 비어 있어야 한다. 새 예외 경로가 필요하면 path-scoped, zero-default 로 `AGENTS.md`, verifier, `patch.md`를 같은 패치에서 함께 갱신해야 한다.
+- EN: The current A-42 **tracked legacy warning path** list MUST stay empty. If a new exception path is needed, add it as a path-scoped, zero-default rule and update `AGENTS.md`, the verifier, and `patch.md` in the same patch.
+
 ### Directive A-43
-- KR: 새 활성 로직 파일은 특별한 이유가 없는 한 `800줄` 이하를 유지한다. `800줄`을 넘기면 이유를 남긴다.
-- EN: New active logic files SHOULD stay at `800 lines` or less unless there is a clear reason. If they exceed `800 lines`, the reason MUST be explicit.
+- KR: 새 활성 로직 파일은 `800줄` 이하로 유지한다. `800줄`을 넘기는 새 활성 파일 추가는 금지하며, 필요한 경우 기존 파일 분리나 책임 재배치를 먼저 수행한다.
+- EN: New active logic files MUST stay at `800 lines` or less. Introducing a new active file above `800 lines` is prohibited; split existing responsibilities first when needed.
 
 ### Directive A-44
 - KR: `KPI.html`은 shell, loader, version, global mount wiring 중심으로 유지한다. shell/loader wiring 이 아닌 새 도메인 로직은 각 도메인 runtime 파일로 내려야 한다.
 - EN: `KPI.html` MUST remain focused on shell, loader, versioning, and global mount wiring. New domain logic that is not shell or loader wiring MUST move into domain runtime files.
 
 ### Directive A-45
-- KR: 현재 Node HTTP entrypoint(현재는 `06_★★★_KPI런타임/internal-server/src/server.js`)는 composition root 로 유지한다. endpoint, bootstrap, static serve, auth/session, file/document handling 이 누적되는 dump point 가 되어서는 안 된다.
-- EN: The current Node HTTP entrypoint (currently `06_★★★_KPI런타임/internal-server/src/server.js`) MUST remain a composition root. It MUST NOT become a dump point for endpoints, bootstrap logic, static serving, auth or session logic, or file and document handling.
+- KR: 현재 Node HTTP entrypoint(현재는 `kpi-runtime/internal-server/src/server.js`)는 composition root 로 유지한다. endpoint, bootstrap, static serve, auth/session, file/document handling 이 누적되는 dump point 가 되어서는 안 된다.
+- EN: The current Node HTTP entrypoint (currently `kpi-runtime/internal-server/src/server.js`) MUST remain a composition root. It MUST NOT become a dump point for endpoints, bootstrap logic, static serving, auth or session logic, or file and document handling.
 
 ### Directive A-46
 - KR: 역사적으로 큰 top-level orchestrator 파일은 새 책임을 계속 쌓는 장소가 되어서는 안 된다. 이런 파일을 수정할 때는 가능하면 책임을 줄이거나 추출을 동반하고, 관련 없는 capability를 끼워 넣지 않는다.
@@ -295,8 +322,8 @@ supporting_docs_only:
 - EN: Comments SHOULD explain why, constraints, or tradeoffs. Avoid comments that merely restate obvious code.
 
 ### Directive A-62
-- KR: dead code는 주석 처리보다 삭제를 우선한다.
-- EN: Dead code SHOULD be deleted rather than commented out.
+- KR: dead code는 주석 처리로 남기지 말고 삭제한다.
+- EN: Dead code MUST be deleted rather than left commented out.
 
 ## 7. Current KPI Runtime and Node.js Rules / 현재 KPI 런타임과 Node.js 규칙
 
@@ -331,6 +358,14 @@ supporting_docs_only:
 ### Directive A-77
 - KR: static file serve, portal bootstrap, auth/session, document/file handling은 helper 또는 module 경계를 통해 분리한다.
 - EN: Static serving, portal bootstrap, auth or session logic, and document or file handling MUST be split through helper or module boundaries.
+
+### Directive A-77a
+- KR: 현재 internal-server에서 `src/lib/**` 는 `http.js`, `kpi-static.js`, `portal-bootstrap/**`, `document-storage.js`, `permission-registry.js` 같은 **공용 adapter / serializer / path resolver / static helper** 소유권을 가진다. `lib` 는 route body parsing, response write, durable write workflow, audit write 를 직접 소유하지 않는다.
+- EN: In the current internal-server, `src/lib/**` owns **shared adapters, serializers, path resolvers, and static helpers** such as `http.js`, `kpi-static.js`, `portal-bootstrap/**`, `document-storage.js`, and `permission-registry.js`. `lib` MUST NOT directly own route-body parsing, response writing, durable write workflows, or audit writes.
+
+### Directive A-77b
+- KR: 현재 internal-server에서 `src/services/**` 는 `auth.js`, `files.js`, `metering-authority.js`, `util-production-daily.js` 같은 **use-case orchestration** 소유권을 가진다. `services` 는 repository 와 `lib` 를 조합해 상태 변경, 파일 처리, audit 기록을 수행할 수 있지만, route matching, HTTP status 작성, HTML/script serialization 은 소유하지 않는다.
+- EN: In the current internal-server, `src/services/**` owns **use-case orchestration** modules such as `auth.js`, `files.js`, `metering-authority.js`, and `util-production-daily.js`. `services` MAY combine repositories and `lib` helpers to perform state changes, file handling, and audit writes, but MUST NOT own route matching, HTTP status writing, or HTML/script serialization.
 
 ### Directive A-78
 - KR: 기존 구조와 호환되는 한 작은 reversible patch를 우선한다.
@@ -435,8 +470,8 @@ supporting_docs_only:
 - EN: Work is not done until the relevant formatting, lint, typecheck, test, and build checks for the touched area pass.
 
 ### Directive A-113a
-- KR: `06_★★★_KPI런타임/internal-server/` 를 건드린 변경은 완료 전 최소 `npm run format:check`, `npm run lint`, `npm run verify` 를 통과해야 한다. 현재 `npm run verify` 는 `smoke:kpi-root -> verify:server-structure -> npm test` aggregate gate 다.
-- EN: Changes that touch `06_★★★_KPI런타임/internal-server/` MUST pass at least `npm run format:check`, `npm run lint`, and `npm run verify` before completion. The current `npm run verify` command is the aggregate gate `smoke:kpi-root -> verify:server-structure -> npm test`.
+- KR: `kpi-runtime/internal-server/` 를 건드린 변경은 완료 전 최소 `npm run format:check`, `npm run lint`, `npm run verify` 를 통과해야 한다. 현재 `npm run verify` 는 `smoke:kpi-root -> verify:server-structure -> npm test` aggregate gate 다.
+- EN: Changes that touch `kpi-runtime/internal-server/` MUST pass at least `npm run format:check`, `npm run lint`, and `npm run verify` before completion. The current `npm run verify` command is the aggregate gate `smoke:kpi-root -> verify:server-structure -> npm test`.
 
 ### Directive A-113b
 - KR: `KPI.html`, served asset, auth/access-mode, 또는 browser-visible flow 를 건드린 변경은 `npm run smoke:kpi-browser` 또는 동등한 browser smoke 를 추가로 통과해야 한다. 사용자가 실제 브라우저 확인을 요구하면 headed run 을 사용한다.
@@ -450,13 +485,21 @@ supporting_docs_only:
 - KR: shared server/DB/file storage 를 건드리는 browser smoke 는 순차 실행을 기본값으로 한다. 같은 mutable runtime 을 향한 `headless` 와 `headed` run 을 병렬로 섞지 않는다. Playwright config, workflow, package script 가 이 전제를 공유하도록 `workers=1`, `fullyParallel=false` drift 를 만들지 않는다.
 - EN: Browser smoke that touches shared server, DB, or file storage MUST run sequentially by default. Do not mix `headless` and `headed` runs in parallel against the same mutable runtime. Playwright config, workflow, and package scripts MUST stay aligned with this assumption and MUST NOT drift away from `workers=1` and `fullyParallel=false`.
 
+### Directive A-113e
+- KR: served UI, 브라우저에서 여는 툴, 또는 사용자 클릭 흐름을 수정한 뒤에는 **실제 서버에 붙은 세션으로 가동 확인**해야 한다. 가능하면 Playwright 또는 MCP 브라우저 세션을 우선 사용하고, 수정 범위와 직접 연결된 버튼, 토글, 탭, 모달, 저장/닫기 흐름은 **전부 실제로 클릭/토글**해 본다.
+- EN: After changing a served UI, a browser-opened tool, or a user click flow, the agent MUST verify it against a **real running server session**. Playwright or an MCP browser session SHOULD be used first when available, and every button, toggle, tab, modal, and save/close flow directly tied to the touched scope MUST be actually clicked or toggled.
+
+### Directive A-113f
+- KR: Playwright 또는 MCP 세션이 실패하거나 사용할 수 없으면, 에이전트는 **실제 서버를 유지한 채** 다른 실행 가능한 방법(기존 smoke 스크립트, 브라우저 수동 조작, HTTP/DOM 점검 등)으로 검증을 끝까지 이어가야 한다. 이때도 콘솔 오류, page error, same-origin `4xx/5xx` 응답 실패를 확인하고, 무엇을 눌렀는지와 무엇을 끝까지 검증하지 못했는지를 최종 보고에 남긴다.
+- EN: If Playwright or an MCP session fails or is unavailable, the agent MUST continue verification **against the real running server** with another executable method such as existing smoke scripts, manual browser interaction, or HTTP/DOM checks. Even then, the agent MUST check console errors, page errors, and same-origin `4xx/5xx` response failures, and record both the exercised interactions and any unverified gap in the final report.
+
 ### Directive A-114
 - KR: 저장소에 표준 명령이 있으면 그 명령을 따른다. README, Makefile, package.json, pyproject, CI를 먼저 확인한다.
 - EN: If the repo already has standard commands, use them. Inspect the README, Makefile, package.json, pyproject, and CI first.
 
 ### Directive A-114a
-- KR: 검증 명령, format scope, 또는 CI gate 구성이 바뀌면 `package.json`, CI, 관련 supporting status 문서를 같은 패치에서 함께 갱신한다.
-- EN: If verification commands, format scope, or CI gate composition changes, update `package.json`, CI, and the related supporting status docs in the same patch.
+- KR: 검증 명령, format scope, 또는 CI gate 구성이 바뀌면 `package.json`, CI, `patch.md`를 같은 패치에서 함께 갱신한다.
+- EN: If verification commands, format scope, or CI gate composition changes, update `package.json`, CI, and `patch.md` in the same patch.
 
 ### Directive A-114b
 - KR: hosted CI/bootstrap 변경은 workflow 안에 필요한 런타임 계약(`KPI_SERVER_PORT`, `KPI_BASE_URL`, `KPI_DATABASE_URL`, `KPI_AUTH_ENABLED`, `KPI_LOGIN_ENABLED` 또는 동등한 값)을 명시해야 한다. 개발자 머신의 로컬 기본값, 이미 떠 있는 서버, 숨은 env 상태에 기대는 workflow 는 금지한다.
@@ -499,8 +542,8 @@ supporting_docs_only:
 ## 12. Human Review and Operability Boundaries / 사람 검토와 운영 가능성 경계
 
 ### Directive A-126
-- KR: `AGENTS.md`는 delivery order 나 status board 를 소유하지 않는다. 실행 순서와 상태 보드는 supporting 문서에 둘 수 있지만, hard rule 과 done gate 는 이 문서에서만 정의한다.
-- EN: `AGENTS.md` does not own delivery order or a status board. Execution order and status boards may live in supporting docs, but hard rules and done gates are defined only here.
+- KR: `AGENTS.md`는 hard rule 과 done gate 를, `patch.md`는 patch history 를 소유한다. `patch.md`를 장기 진행 문서나 status board 로 키우지 않는다.
+- EN: `AGENTS.md` owns hard rules and done gates, while `patch.md` owns patch history. Do not turn `patch.md` into a long-lived progress document or status board.
 
 ### Directive A-127
 - KR: 사람 검토가 반드시 필요한 영역은 최소한 `인증`, `권한`, `승인 흐름`, `저장 권위본`, `외부 노출`, `마이그레이션`, `백업/복구`, `보안 사고 대응`이다.
@@ -509,6 +552,10 @@ supporting_docs_only:
 ### Directive A-128
 - KR: `개발 환경에서 된다`와 `운영 가능하다`를 구분한다. 로그, 감사, 백업, 복구, 운영 체크리스트 없이 서버형 시스템을 완료로 처리하지 않는다.
 - EN: Distinguish `works in development` from `operable in production`. Do not mark a server-backed system complete without logs, auditability, backup, restore, and an operating checklist.
+
+### Directive A-128a
+- KR: 활성 runtime 에서 backup/restore 리허설을 할 때는 **비파괴 절차**를 기본값으로 한다. 먼저 fresh runtime snapshot 과 file-storage backup 을 만들고, 그 snapshot 을 기준으로 DB restore 는 `--dry-run`, file restore 는 preview 로 검증한 뒤에만 `--force` 또는 `-Force` 복구를 검토한다.
+- EN: When rehearsing backup or restore against an active runtime, the default MUST be a **non-destructive drill**. First create a fresh runtime snapshot and a file-storage backup, then validate DB restore with `--dry-run` and file restore with preview output before considering any `--force` or `-Force` recovery.
 
 ### Directive A-129
 - KR: 중간 이상 규모 시스템 작업의 산출물은 가능하면 `설계 산출물`, `코드 산출물`, `운영 산출물`, `검증 산출물`로 나눠 보고한다. 빠진 항목이 있으면 빠졌다고 적는다.
