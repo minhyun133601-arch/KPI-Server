@@ -1,240 +1,13 @@
         // ----------------------------------------------------------------
         // [Audit Lux]
         // ----------------------------------------------------------------
-        const AuditState = { filters: {}, printCache: {}, entryForm: {}, standardForm: {}, standardsOpen: {}, evidenceOpen: {}, evidenceSelected: {}, evidenceApplied: {}, evidenceCache: {}, luxPreviewRotation: {}, legalFilter: {} };
+        const AuditState = { filters: {}, printCache: {}, entryForm: {}, standardForm: {}, standardsOpen: {}, evidenceOpen: {}, evidenceSelected: {}, evidenceApplied: {}, evidenceCache: {}, luxPreviewRotation: {} };
         const AUDIT_LUX_BASE_YEAR = 2023;
         const AUDIT_LUX_EVIDENCE_MAX_BYTES = 25 * 1024 * 1024;
         const AUDIT_LUX_EVIDENCE_OWNER_DOMAIN = 'audit.lux.evidence';
         const AUDIT_LUX_EVIDENCE_STORAGE_FOLDER = ['Audit', '조도 스캔본'];
-        const AUDIT_LEGAL_FACILITY_ALERT_DAYS = 90;
-        const AUDIT_LEGAL_ORGANIZATION_LINKS = {
-            '한국전기기술인협회': 'https://www.koema.or.kr',
-            '한국소방안전원': 'https://www.kfsi.or.kr',
-            '한국에너지기술인협회': 'https://www.keea.or.kr',
-            '한국가스안전공사': 'https://www.kgs.or.kr',
-            '승강기교육센터': 'https://edu.koelsa.or.kr',
-            '한국환경보전협회': 'https://www.epa.or.kr'
-        };
-        const AUDIT_LEGAL_CATEGORY_ORDER = ['environment', 'electric', 'gasboiler', 'cooling', 'fire', 'other'];
-        const AUDIT_LEGAL_CATEGORY_META = {
-            environment: { key: 'environment', label: '환경', icon: 'fa-leaf', tone: 'environment' },
-            electric: { key: 'electric', label: '전기', icon: 'fa-bolt', tone: 'electric' },
-            gasboiler: { key: 'gasboiler', label: '가스 (보일러)', icon: 'fa-fire-flame-curved', tone: 'gasboiler' },
-            cooling: { key: 'cooling', label: '냉동기', icon: 'fa-snowflake', tone: 'cooling' },
-            fire: { key: 'fire', label: '소방', icon: 'fa-fire-extinguisher', tone: 'fire' },
-            other: { key: 'other', label: '승강기', icon: 'fa-up-down', tone: 'other' }
-        };
-
-        function normalizeAuditDateText(value) {
-            const text = String(value || '').trim();
-            if (!text || text === '-') return '-';
-            const match = text.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})$/);
-            if (!match) return text;
-            const year = Number(match[1]);
-            const month = Number(match[2]);
-            const day = Number(match[3]);
-            if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return text;
-            return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        }
-
-        function parseAuditDateText(value) {
-            const normalized = normalizeAuditDateText(value);
-            if (!normalized || normalized === '-') return null;
-            const parts = normalized.split('-').map(Number);
-            if (parts.length !== 3) return null;
-            const [year, month, day] = parts;
-            if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
-            const date = new Date(year, month - 1, day);
-            date.setHours(0, 0, 0, 0);
-            if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-            return date;
-        }
-
-        function normalizeAuditLegalFacilityEntry(raw, index) {
-            const item = raw && typeof raw === 'object' ? raw : {};
-            const cycleRaw = item.cycleYears ?? item.cycle ?? item.trainingCycle ?? item.periodYears ?? '-';
-            const cycleNum = Number(String(cycleRaw).replace(/[^\d.-]/g, ''));
-            return {
-                id: String(item.id || `audit-legal-facility-${index + 1}`),
-                area: String(item.area || item.group || item.section || '-'),
-                name: String(item.name || item.person || item.owner || '-'),
-                item: String(item.item || item.role || item.subject || '-'),
-                certificate: String(item.certificate || item.license || item.certification || '-'),
-                lastDate: normalizeAuditDateText(item.lastDate || item.lastTrainingDate || item.recentDate || '-'),
-                cycleYears: Number.isFinite(cycleNum) && cycleNum > 0 ? cycleNum : String(cycleRaw || '-'),
-                nextDate: normalizeAuditDateText(item.nextDate || item.nextTrainingDate || item.dueDate || '-'),
-                organization: String(item.organization || item.institute || item.agency || '-'),
-                organizationUrl: String(item.organizationUrl || item.orgUrl || item.url || item.site || item.homepage || '').trim(),
-                category: String(item.category || item.classification || item.groupType || item.type || '').trim()
-            };
-        }
-
-        function normalizeExternalUrl(url) {
-            const text = String(url || '').trim();
-            if (!text || text === '-') return '';
-            if (/^https?:\/\//i.test(text)) return text;
-            if (/^www\./i.test(text)) return `https://${text}`;
-            if (/^[a-z0-9.-]+\.[a-z]{2,}/i.test(text)) return `https://${text}`;
-            return '';
-        }
-
-        function resolveAuditLegalOrganizationUrl(name, explicitUrl) {
-            const explicit = normalizeExternalUrl(explicitUrl);
-            if (explicit) return explicit;
-            const orgName = String(name || '').trim();
-            if (!orgName || orgName === '-') return '';
-            if (AUDIT_LEGAL_ORGANIZATION_LINKS[orgName]) return AUDIT_LEGAL_ORGANIZATION_LINKS[orgName];
-            if (orgName.includes('전기기술인협회')) return AUDIT_LEGAL_ORGANIZATION_LINKS['한국전기기술인협회'];
-            if (orgName.includes('소방안전원')) return AUDIT_LEGAL_ORGANIZATION_LINKS['한국소방안전원'];
-            if (orgName.includes('에너지기술인협회')) return AUDIT_LEGAL_ORGANIZATION_LINKS['한국에너지기술인협회'];
-            if (orgName.includes('가스안전공사')) return AUDIT_LEGAL_ORGANIZATION_LINKS['한국가스안전공사'];
-            if (orgName.includes('승강기교육센터')) return AUDIT_LEGAL_ORGANIZATION_LINKS['승강기교육센터'];
-            if (orgName.includes('환경보전협회')) return AUDIT_LEGAL_ORGANIZATION_LINKS['한국환경보전협회'];
-            return '';
-        }
-
-        function normalizeAuditLegalCategoryKey(value) {
-            const text = String(value || '').trim().toLowerCase().replace(/\s+/g, '');
-            if (!text || text === '-') return '';
-            if (text.includes('환경')) return 'environment';
-            if (text.includes('전기')) return 'electric';
-            if (text.includes('가스') || text.includes('보일러')) return 'gasboiler';
-            if (text.includes('냉동')) return 'cooling';
-            if (text.includes('소방')) return 'fire';
-            if (text.includes('승강기') || text.includes('엘리베이터')) return 'other';
-            if (text.includes('그외') || text.includes('기타') || text.includes('other')) return 'other';
-            return '';
-        }
-
-        function inferAuditLegalCategoryKeyFromItem(itemName) {
-            const text = String(itemName || '').trim();
-            if (!text || text === '-') return 'other';
-            if (text.includes('수질') || text.includes('대기') || text.includes('환경')) return 'environment';
-            if (text.includes('전기')) return 'electric';
-            if (text.includes('가스') || text.includes('보일러') || text.includes('검사대상기기')) return 'gasboiler';
-            if (text.includes('냉동')) return 'cooling';
-            if (text.includes('소방')) return 'fire';
-            if (text.includes('승강기') || text.includes('엘리베이터')) return 'other';
-            return 'other';
-        }
-
-        function getAuditLegalCategoryMeta(itemName, explicitCategory) {
-            const explicitKey = normalizeAuditLegalCategoryKey(explicitCategory);
-            const inferredKey = inferAuditLegalCategoryKeyFromItem(itemName);
-            const key = explicitKey || inferredKey || 'other';
-            return AUDIT_LEGAL_CATEGORY_META[key] || AUDIT_LEGAL_CATEGORY_META.other;
-        }
-
-        function renderAuditLegalCategoryCell(categoryMeta) {
-            const meta = categoryMeta || AUDIT_LEGAL_CATEGORY_META.other;
-            return `<span class="audit-legal-item-badge ${meta.tone}"><i class="fa-solid ${meta.icon}"></i>${escapeHtml(meta.label)}</span>`;
-        }
-
-        function renderAuditLegalItemCell(itemName, categoryMeta) {
-            const meta = categoryMeta || getAuditLegalCategoryMeta(itemName, '');
-            const label = escapeHtml(itemName || '-');
-            return `<span class="audit-legal-item-badge ${meta.tone}"><i class="fa-solid ${meta.icon}"></i>${label}</span>`;
-        }
-
-        function summarizeAuditLegalAlertRows(rows, thresholdDays = AUDIT_LEGAL_FACILITY_ALERT_DAYS) {
-            let nearCount = 0;
-            let overdueCount = 0;
-            rows.forEach(entry => {
-                const daysLeft = entry.daysLeft;
-                if (!Number.isFinite(daysLeft)) return;
-                if (daysLeft < 0) overdueCount += 1;
-                else if (daysLeft <= thresholdDays) nearCount += 1;
-            });
-            return {
-                nearCount,
-                overdueCount,
-                alertCount: nearCount + overdueCount
-            };
-        }
-
-        function getAuditLegalFacilityEntries() {
-            const source = Array.isArray(window.PortalData?.audit_legal_facility?.entries)
-                ? window.PortalData.audit_legal_facility.entries
-                : [];
-            return source.map((entry, index) => normalizeAuditLegalFacilityEntry(entry, index));
-        }
-
-        function summarizeAuditLegalFacilityAlerts(entries, thresholdDays = AUDIT_LEGAL_FACILITY_ALERT_DAYS) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            let nearCount = 0;
-            let overdueCount = 0;
-            const enriched = entries.map(entry => {
-                const nextDateObj = parseAuditDateText(entry.nextDate);
-                if (!nextDateObj) return { ...entry, daysLeft: null };
-                const daysLeft = Math.floor((nextDateObj.getTime() - today.getTime()) / 86400000);
-                if (daysLeft < 0) overdueCount += 1;
-                else if (daysLeft <= thresholdDays) nearCount += 1;
-                return { ...entry, daysLeft };
-            });
-            return {
-                rows: enriched,
-                nearCount,
-                overdueCount,
-                alertCount: nearCount + overdueCount
-            };
-        }
-
-        function getAuditLegalFilterState(dataKey) {
-            if (!AuditState.legalFilter[dataKey]) {
-                AuditState.legalFilter[dataKey] = {
-                    category: '',
-                    area: '',
-                    keyword: '',
-                    onlyNear: false,
-                    onlyOverdue: false
-                };
-            }
-            if (!Object.prototype.hasOwnProperty.call(AuditState.legalFilter[dataKey], 'category')) {
-                AuditState.legalFilter[dataKey].category = '';
-            }
-            if (!Object.prototype.hasOwnProperty.call(AuditState.legalFilter[dataKey], 'area')) {
-                AuditState.legalFilter[dataKey].area = '';
-            }
-            if (!Object.prototype.hasOwnProperty.call(AuditState.legalFilter[dataKey], 'keyword')) {
-                AuditState.legalFilter[dataKey].keyword = '';
-            }
-            if (!Object.prototype.hasOwnProperty.call(AuditState.legalFilter[dataKey], 'onlyNear')) {
-                AuditState.legalFilter[dataKey].onlyNear = false;
-            }
-            if (!Object.prototype.hasOwnProperty.call(AuditState.legalFilter[dataKey], 'onlyOverdue')) {
-                AuditState.legalFilter[dataKey].onlyOverdue = false;
-            }
-            AuditState.legalFilter[dataKey].onlyNear = AuditState.legalFilter[dataKey].onlyNear === true || String(AuditState.legalFilter[dataKey].onlyNear).toLowerCase() === 'true';
-            AuditState.legalFilter[dataKey].onlyOverdue = AuditState.legalFilter[dataKey].onlyOverdue === true || String(AuditState.legalFilter[dataKey].onlyOverdue).toLowerCase() === 'true';
-            return AuditState.legalFilter[dataKey];
-        }
-
-        function setAuditLegalFilter(dataKey, field, value) {
-            const filter = getAuditLegalFilterState(dataKey);
-            if (field === 'onlyNear' || field === 'onlyOverdue') {
-                filter[field] = value === true || String(value || '').toLowerCase() === 'true';
-                return;
-            }
-            filter[field] = String(value || '').trim();
-        }
-
-        function applyAuditLegalFilter(dataKey) {
-            const category = AppData?.audit?.categories?.find(cat => cat.dataKey === dataKey);
-            if (category) renderAuditContent(category);
-        }
-
-        function clearAuditLegalFilter(dataKey) {
-            AuditState.legalFilter[dataKey] = { category: '', area: '', keyword: '', onlyNear: false, onlyOverdue: false };
-            const category = AppData?.audit?.categories?.find(cat => cat.dataKey === dataKey);
-            if (category) renderAuditContent(category);
-        }
-
         const AuditServerWriteQueue = {};
-        const AUDIT_PORTAL_DATA_ALIAS = Object.freeze({
-            audit_legal_facility: 'audit_regulation',
-            audit_regulation: 'audit_legal_facility'
-        });
+        const AUDIT_PORTAL_DATA_ALIAS = Object.freeze({});
 
         function cloneAuditDataPayload(value) {
             return JSON.parse(JSON.stringify(value || {}));
@@ -377,17 +150,6 @@
             if (!data.evidence.length && Array.isArray(portalPayload?.evidence)) {
                 data.evidence = cloneAuditDataPayload(portalPayload.evidence);
             }
-            if (dataKey === 'audit_legal_facility' || dataKey === 'audit_regulation') {
-                const hasMeaningfulContent = ['entries', 'standards', 'evidence', 'tabs', 'sections'].some((field) => Array.isArray(data[field]) && data[field].length > 0);
-                if (!String(data.meta?.sourceState || '').trim()) {
-                    data.meta = data.meta || {};
-                    data.meta.sourceState = hasMeaningfulContent ? 'active' : 'placeholder';
-                    data.meta.sourceLabel = hasMeaningfulContent ? '원본 반영됨' : '원본 미확보';
-                    data.meta.sourceMessage = hasMeaningfulContent
-                        ? '현재 데이터는 실제 기록이 반영된 상태입니다.'
-                        : '실제 규정 원본이 아직 확보되지 않아 임시 구조만 유지합니다.';
-                }
-            }
             return data;
         }
 
@@ -502,18 +264,6 @@
                 return false;
             }
             data.meta = data.meta || {};
-            if (dataKey === 'audit_legal_facility' || dataKey === 'audit_regulation') {
-                const hasMeaningfulContent = ['entries', 'standards', 'evidence', 'tabs', 'sections'].some((field) => Array.isArray(data[field]) && data[field].length > 0);
-                if (hasMeaningfulContent) {
-                    data.meta.sourceState = 'active';
-                    data.meta.sourceLabel = '원본 반영됨';
-                    data.meta.sourceMessage = '현재 데이터는 실제 기록이 반영된 상태입니다.';
-                } else if (!String(data.meta.sourceState || '').trim()) {
-                    data.meta.sourceState = 'placeholder';
-                    data.meta.sourceLabel = '원본 미확보';
-                    data.meta.sourceMessage = '실제 규정 원본이 아직 확보되지 않아 임시 구조만 유지합니다.';
-                }
-            }
             data.meta.updatedAt = new Date().toISOString();
             syncAuditPortalDataCache(dataKey, data);
             return queueAuditServerWrite(dataKey, data);

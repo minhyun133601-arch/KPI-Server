@@ -108,6 +108,46 @@ KPI-Server/
 - `AGENTS.md` is the authority doc. `patch.md` and `비전공자용.md` are supporting docs.
 - `node_modules/`, `kpi-runtime/internal-server/.codex-run/`, `kpi-runtime/internal-server/var/` are excluded from the main tree because they are dependencies or runtime artifacts.
 
+## 2026-04-24 - Audit Placeholder Navigation Cleanup / 오디트 placeholder 목차 정리
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+|-- audit/
+|   `-- runtime/audit/
+|       |-- KPI.audit.runtime.js
+|       |-- sections/KPI.sections.audit.js
+|       `-- records/
+|           |-- KPI.audit.records.data.js
+|           |-- KPI.audit.records.options.js
+|           `-- KPI.audit.records.render.js
+`-- kpi-runtime/internal-server/
+    `-- e2e/kpi-browser.playwright.js
+```
+
+### Summary / 요약
+- Removed the detailed `법정 설비` content from the audit UI and replaced it with a placeholder that clearly says `추후 추가예정`.
+- Added `안전 관리` as the third audit category so the audit 목차 now shows `조도 (Lux)`, `법정 설비`, `안전 관리`.
+- Marked the two unfinished audit categories as placeholders so they render lightweight notice cards and do not expose save actions.
+- Deleted the unused legal-facility render/filter helpers that were only supporting the removed detail table.
+- Updated the Playwright browser smoke to verify the two placeholder screens instead of the old legal-facility detail table.
+
+### Changed Files / 변경 파일
+- `patch.md`
+- `비전공자용.md`
+- `audit/runtime/audit/KPI.audit.runtime.js`
+- `audit/runtime/audit/sections/KPI.sections.audit.js`
+- `audit/runtime/audit/records/KPI.audit.records.data.js`
+- `audit/runtime/audit/records/KPI.audit.records.options.js`
+- `audit/runtime/audit/records/KPI.audit.records.render.js`
+- `kpi-runtime/internal-server/e2e/kpi-browser.playwright.js`
+
+### Verification / 검증
+- targeted Playwright check on `http://127.0.0.1:3192/` -> `pass`; `법정 설비`, `안전 관리` 모두 `추후 추가예정` placeholder 확인
+- `npm run smoke:kpi-browser` -> `fail`; existing unrelated metering title expectation `/월간 (전기|가스 검침|폐수|생산량) .* 시트/` did not match current title `월간 가스 검침 시트`
+
 ## 2026-04-24 - PostgreSQL Dump Backup Rule / PostgreSQL 전체 DB 백업 규칙
 
 ### Architecture Impact / 아키텍처 수정사항
