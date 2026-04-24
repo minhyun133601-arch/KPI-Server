@@ -477,6 +477,15 @@
                 if (historyCount === 1 && historyKpiCount === 1) return '';
                 return `<span class="work-team-calendar-day-summary">${escapeHtml(formatUtilNumber(historyCount, 0) + '건')}</span>`;
             }
+            function buildWorkTeamCalendarProductionCueHtml(count, totalAmount) {
+                const productionCount = Number(count || 0);
+                const productionTotalAmount = Number(totalAmount || 0);
+                if (productionCount <= 0) return '';
+                const productionLabel = productionTotalAmount > 0
+                    ? `${formatUtilNumber(productionTotalAmount, 0)}kg`
+                    : `${formatUtilNumber(productionCount, 0)}품목`;
+                return `<span class="work-team-calendar-day-summary">${escapeHtml(productionLabel)}</span>`;
+            }
             const weekdayHtml = WORK_DAY_LABELS.map(label => `<div class="work-team-calendar-weekday">${label}</div>`).join('');
             const dayCells = monthDates.map(date => {
                 const dateKey = formatDateKey(date);
@@ -498,12 +507,19 @@
                     hasHistory ? 'is-filled' : '',
                     isOffday ? 'is-offday' : ''
                 ].filter(Boolean).join(' ');
+                const productionCount = Number(productionSummary?.count || 0);
+                const totalAmount = Number(productionSummary?.totalAmount || 0);
+                const productionCueHtml = buildWorkTeamCalendarProductionCueHtml(productionCount, totalAmount);
+                const historyCueHtml = hasHistory
+                    ? buildWorkTeamCalendarHistoryCueHtml(historyCount, historyKpiCount)
+                    : '';
                 const flagParts = [];
                 if (inMonth && isLocked) {
                     flagParts.push(`<span class="work-team-calendar-day-flag">잠금</span>`);
-                } else if (inMonth && isOffday) {
-                    flagParts.push(`<span class="work-team-calendar-day-flag is-offday"><i class="fas fa-calendar-minus"></i>휴무</span>`);
                 } else {
+                    if (inMonth && isOffday) {
+                        flagParts.push(`<span class="work-team-calendar-day-flag is-offday"><i class="fas fa-calendar-minus"></i>휴무</span>`);
+                    }
                     if (inMonth && dateKey === todayKey) {
                         flagParts.push(`<span class="work-team-calendar-day-flag">오늘</span>`);
                     }
@@ -511,31 +527,31 @@
                         const kpiFlagLabel = historyKpiCount > 1 ? `${historyKpiPillLabel} ${formatUtilNumber(historyKpiCount, 0)}` : historyKpiPillLabel;
                         flagParts.push(`<span class="work-team-calendar-day-flag is-kpi">${escapeHtml(kpiFlagLabel)}</span>`);
                     }
+                    if (inMonth && isOffday) {
+                        if (productionCueHtml) {
+                            flagParts.push(productionCueHtml);
+                        }
+                        if (historyCueHtml) {
+                            flagParts.push(historyCueHtml);
+                        }
+                    }
                 }
-                const productionCount = Number(productionSummary?.count || 0);
-                const totalAmount = Number(productionSummary?.totalAmount || 0);
                 let cueHtml = '';
-                if (isOffday) {
-                    cueHtml = '';
-                } else if (productionCount > 0) {
-                    const productionLabel = totalAmount > 0
-                        ? `${formatUtilNumber(totalAmount, 0)}kg`
-                        : `${formatUtilNumber(productionCount, 0)}\uD488\uBAA9`;
-                    cueHtml = `<span class="work-team-calendar-day-summary">${escapeHtml(productionLabel)}</span>`;
-                } else if (hasHistory) {
-                    cueHtml = '';
+                if (!isOffday) {
+                    if (productionCueHtml) {
+                        cueHtml = productionCueHtml;
+                    } else if (isLocked) {
+                        cueHtml = `<span class="work-team-calendar-day-summary">\uAE30\uB85D \uC5C6\uC74C</span>`;
+                    }
+                    if (historyCueHtml) {
+                        if (productionCueHtml) {
+                            cueHtml = `${productionCueHtml}${historyCueHtml}`;
+                        } else {
+                            cueHtml = historyCueHtml;
+                        }
+                    }
                 } else if (isLocked) {
                     cueHtml = `<span class="work-team-calendar-day-summary">\uAE30\uB85D \uC5C6\uC74C</span>`;
-                }
-                if (!isOffday && hasHistory) {
-                    const historyCueHtml = buildWorkTeamCalendarHistoryCueHtml(historyCount, historyKpiCount);
-                    if (productionCount > 0) {
-                        const productionCueMatch = String(cueHtml || '').match(/^(<span class="work-team-calendar-day-summary">.*?<\/span>)/);
-                        const productionCueHtml = productionCueMatch ? productionCueMatch[1] : '';
-                        cueHtml = `${productionCueHtml}${historyCueHtml}`;
-                    } else {
-                        cueHtml = historyCueHtml;
-                    }
                 }
                 return `
                     <button type="button" class="${classes}" data-work-team-date="${inMonth ? escapeHtml(dateKey) : ''}" ${inMonth && !isLocked ? `onclick="workTeamCalendarSelectDate('${dateKey}', event)"` : 'disabled'}>

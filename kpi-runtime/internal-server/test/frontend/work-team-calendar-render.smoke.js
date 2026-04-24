@@ -69,9 +69,16 @@ function createModalElement() {
   };
 }
 
-function createContext() {
+function createContext(options = {}) {
   const modal = createModalElement();
   const editorState = { open: false, dateKey: '', manual: false };
+  const selectedDateKey = options.selectedDateKey || '2026-04-15';
+  const productionSummaryMap =
+    options.productionSummaryMap
+    || new Map([[selectedDateKey, { count: 0, totalAmount: 0, isOffday: false }]]);
+  const historySummaryMap =
+    options.historySummaryMap
+    || new Map([[selectedDateKey, { count: 0, kpiCount: 0 }]]);
   const utilitySummary = {
     electric: { usageText: '120 kWh', costText: '10000', canSelect: false, mode: 'all' },
     gas: { usageText: '55 Nm3', costText: '20000', canSelect: false, mode: 'all' },
@@ -146,10 +153,10 @@ function createContext() {
   overrideBinding(context, 'getWorkTeamCalendarActiveMonth', () => '2026-04');
   overrideBinding(context, 'getWorkTeamCalendarMonthOptions', () => ['2026-04']);
   overrideBinding(context, 'parseMonthKey', () => ({ year: 2026, monthIndex: 3 }));
-  overrideBinding(context, 'formatDateKey', () => '2026-04-15');
-  overrideBinding(context, 'getWorkTeamCalendarSelectedDate', () => '2026-04-15');
-  overrideBinding(context, 'getWorkTeamCalendarSelectedDateKeys', () => ['2026-04-15']);
-  overrideBinding(context, 'getWorkTeamCalendarPrimarySelectedDate', () => '2026-04-15');
+  overrideBinding(context, 'formatDateKey', () => selectedDateKey);
+  overrideBinding(context, 'getWorkTeamCalendarSelectedDate', () => selectedDateKey);
+  overrideBinding(context, 'getWorkTeamCalendarSelectedDateKeys', () => [selectedDateKey]);
+  overrideBinding(context, 'getWorkTeamCalendarPrimarySelectedDate', () => selectedDateKey);
   overrideBinding(context, 'isWorkTeamCalendarDateLocked', () => false);
   overrideBinding(context, 'isWorkTeamCalendarOverview', () => true);
   overrideBinding(context, 'getWorkTeamCalendarUtilityPopupMetric', () => '');
@@ -168,17 +175,9 @@ function createContext() {
   overrideBinding(context, 'renderWorkTeamCalendarAttachmentListHtml', () => '');
   overrideBinding(context, 'buildWorkTeamCalendarEntryTitle', () => '');
   overrideBinding(context, 'getWorkTeamCalendarAttachmentPreviewLabel', () => '');
-  overrideBinding(context, 'getMonthMatrix', () => [new Date('2026-04-15T00:00:00Z')]);
-  overrideBinding(
-    context,
-    'getWorkTeamCalendarProductionSummaryMap',
-    () => new Map([['2026-04-15', { count: 0, totalAmount: 0, isOffday: false }]])
-  );
-  overrideBinding(
-    context,
-    'getWorkTeamCalendarHistorySummaryMap',
-    () => new Map([['2026-04-15', { count: 0, kpiCount: 0 }]])
-  );
+  overrideBinding(context, 'getMonthMatrix', () => [new Date(`${selectedDateKey}T00:00:00Z`)]);
+  overrideBinding(context, 'getWorkTeamCalendarProductionSummaryMap', () => productionSummaryMap);
+  overrideBinding(context, 'getWorkTeamCalendarHistorySummaryMap', () => historySummaryMap);
   overrideBinding(context, 'getWorkTeamCalendarProductionGroups', () => []);
   overrideBinding(
     context,
@@ -220,6 +219,21 @@ test('work team calendar overview modal renders after split files are loaded tog
   });
   assert.match(modal.innerHTML, /work-team-calendar-utility-strip/);
   assert.match(modal.innerHTML, /work-team-calendar-grid/);
+});
+
+test('work team calendar offday cells keep production and history cues in the flag slot', () => {
+  const { context, modal } = createContext({
+    productionSummaryMap: new Map([['2026-04-15', { count: 2, totalAmount: 18, isOffday: true }]]),
+    historySummaryMap: new Map([['2026-04-15', { count: 3, kpiCount: 2 }]]),
+  });
+
+  context.renderWorkTeamCalendarModal();
+
+  assert.match(modal.innerHTML, /휴무/);
+  assert.match(modal.innerHTML, /오늘/);
+  assert.match(modal.innerHTML, /KPI 2/);
+  assert.match(modal.innerHTML, /18kg/);
+  assert.match(modal.innerHTML, /3건/);
 });
 
 test('work team calendar source does not keep stray equipUtilityChipHtml references', () => {

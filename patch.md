@@ -108,6 +108,43 @@ KPI-Server/
 - `AGENTS.md` is the authority doc. `patch.md` and `비전공자용.md` are supporting docs.
 - `node_modules/`, `kpi-runtime/internal-server/.codex-run/`, `kpi-runtime/internal-server/var/` are excluded from the main tree because they are dependencies or runtime artifacts.
 
+## 2026-04-24 - Server Delivery Revision 1 / 서버전달용 수정본 1
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+|-- team-report/
+|   `-- runtime/work/KPI.work.team-calendar.render.js
+`-- kpi-runtime/internal-server/
+    `-- test/frontend/work-team-calendar-render.smoke.js
+```
+
+### Summary / 요약
+- Imported `서버전달용_수정본/01_★★★_팀별내역서/runtime/work/KPI.work.team-calendar.js` was reviewed against the current split runtime instead of being copied wholesale.
+- Ported the valid render delta into `team-report/runtime/work/KPI.work.team-calendar.render.js`: offday cells now keep today's flag, KPI flag, and production/history summary cues in the flag slot when data exists.
+- Kept the current `options.teamDataKey` preference and did not import the external `preferredDataKey` regression.
+- Did not port `equipUtilityChipHtml` because the current repo has no live `window.KpiEquipView?.openFromWorkCalendar?.(...)` entrypoint, and the existing smoke guard expects no stray `equipUtilityChipHtml` references.
+- Updated `kpi-runtime/internal-server/test/frontend/work-team-calendar-render.smoke.js` to cover the offday cue behavior in the current split-file structure.
+
+### Changed Files / 변경 파일
+- `patch.md`
+- `비전공자용.md`
+- `team-report/runtime/work/KPI.work.team-calendar.render.js`
+- `kpi-runtime/internal-server/test/frontend/work-team-calendar-render.smoke.js`
+
+### Verification / 검증
+- `node --test test/frontend/work-team-calendar-render.smoke.js` → `pass (3/3)`
+- `npm run format:check` → `pass`
+- `npm run lint` → `pass`
+- `npm run verify` → `fail at test/frontend/metering-bundle-draft.smoke.js ("metering bundle draft keeps the current bridge source order")`
+- `npm run smoke:kpi-browser` → `pass`
+
+### Notes / 메모
+- The `npm run verify` failure is outside the touched work-team-calendar path and currently reports a bridge source-order mismatch in the metering bundle draft smoke.
+- This patch intentionally preserved the current split architecture and did not overwrite the repo with the external monolithic file.
+
 ## 2026-04-24
 
 ### Architecture Impact / 아키텍처 수정사항
