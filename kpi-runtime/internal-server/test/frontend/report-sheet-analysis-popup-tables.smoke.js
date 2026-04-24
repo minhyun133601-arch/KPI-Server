@@ -191,7 +191,7 @@ test('kpi html loads report sheet analysis popup tables after analysis render an
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
   const popupTablesIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/popup-tables.js?v=053');
   const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
 
   assert.ok(analysisRenderIndex >= 0, 'report sheet analysis render loader is missing');
   assert.ok(popupTablesIndex > analysisRenderIndex, 'report sheet analysis popup tables must load after analysis render');

@@ -6,7 +6,8 @@ const DATA_START_ROW = 4;
 const TEAM_VALUE_INDEX = 1;
 const LINE_VALUE_INDEX = 2;
 const PRODUCTION_VALUE_INDEX = 4;
-const PRODUCTION_DATE_OFFSET_DAYS = 1;
+const PRODUCTION_DATE_OFFSET_DAYS = 0;
+const FIXED_PERIOD_START_DAY = 1;
 
 const REQUIRED_HEADER_RULES = {
   A: [/생산일자/],
@@ -23,7 +24,7 @@ const state = {
   fileSummaries: [],
   periodSummaries: [],
   teamSummaries: [],
-  cycleStartDay: 15,
+  cycleStartDay: FIXED_PERIOD_START_DAY,
   selectedPeriod: "ALL",
   selectedTeam: "ALL",
   selectedLine: "ALL",
@@ -116,7 +117,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function cacheDom() {
   dom.fileInput = document.getElementById("fileInput");
-  dom.cycleStartDay = document.getElementById("cycleStartDay");
   dom.periodSelect = document.getElementById("periodSelect");
   dom.teamSelect = document.getElementById("teamSelect");
   dom.lineSelect = document.getElementById("lineSelect");
@@ -180,14 +180,12 @@ function simplifyEmbedControls() {
   dom.downloadFilteredBtn.style.display = "none";
   dom.downloadAllBtn.style.display = "none";
   dom.backBtn.style.display = "none";
-  dom.cycleStartDay.value = "15";
-  state.cycleStartDay = 15;
+  state.cycleStartDay = FIXED_PERIOD_START_DAY;
   if (dom.storedSection) dom.storedSection.style.display = "";
 }
 
 function bindEvents() {
   dom.extractBtn.addEventListener("click", handleExtract);
-  dom.cycleStartDay.addEventListener("change", handleCycleDayChange);
   dom.periodSelect.addEventListener("change", handlePeriodChange);
   dom.teamSelect.addEventListener("change", handleTeamChange);
   dom.lineSelect.addEventListener("change", handleLineChange);
@@ -241,7 +239,6 @@ function setBusy(isBusy) {
   dom.extractBtn.disabled = isBusy;
   dom.applyToKpiBtn.disabled = isBusy || state.rows.length === 0;
   dom.fileInput.disabled = isBusy;
-  dom.cycleStartDay.disabled = isBusy;
   dom.periodSelect.disabled = isBusy;
   dom.teamSelect.disabled = isBusy;
   dom.lineSelect.disabled = isBusy;
@@ -252,31 +249,6 @@ function setBusy(isBusy) {
   if (dom.storedStartDate) dom.storedStartDate.disabled = isBusy;
   if (dom.storedEndDate) dom.storedEndDate.disabled = isBusy;
   if (dom.storedTeamSelect) dom.storedTeamSelect.disabled = isBusy;
-}
-
-function handleCycleDayChange() {
-  state.cycleStartDay = sanitizeCycleDay(dom.cycleStartDay.value);
-  dom.cycleStartDay.value = String(state.cycleStartDay);
-  if (state.rows.length === 0) return;
-
-  for (const row of state.rows) {
-    if (!row.dateObj) {
-      row.periodKey = "NO_DATE";
-      row.periodLabel = "날짜 없음";
-      row.periodStart = null;
-      continue;
-    }
-    const periodInfo = getPeriodInfo(row.dateObj, state.cycleStartDay);
-    row.periodKey = periodInfo.key;
-    row.periodLabel = periodInfo.label;
-    row.periodStart = periodInfo.start;
-  }
-
-  buildPeriodSummaries();
-  populatePeriodOptions();
-  refreshDerivedViews();
-  renderAll();
-  setStatus(`정산 시작일 ${state.cycleStartDay}일 기준으로 다시 계산했습니다.`);
 }
 
 function handlePeriodChange() {
@@ -315,9 +287,6 @@ async function handleExtract() {
     setStatus("엑셀 파일을 먼저 선택해주세요.", true);
     return;
   }
-
-  state.cycleStartDay = sanitizeCycleDay(dom.cycleStartDay.value);
-  dom.cycleStartDay.value = String(state.cycleStartDay);
 
   setBusy(true);
   setStatus("엑셀 파일을 분석 중입니다...");
@@ -416,7 +385,7 @@ async function handleExtract() {
     setBusy(false);
   }
 }
-async function parseExcelFile(file, cycleStartDay) {
+async function parseExcelFile(file, cycleStartDay = FIXED_PERIOD_START_DAY) {
   return requireProductionParsingApi().parseExcelFile(
     getProductionParsingContext(),
     file,
@@ -436,16 +405,8 @@ function parseDateText(value) {
   return requireProductionParsingApi().parseDateText(value);
 }
 
-function sanitizeCycleDay(value) {
-  return requireProductionParsingApi().sanitizeCycleDay(value);
-}
-
-function getPeriodInfo(date, cycleStartDay) {
-  return requireProductionParsingApi().getPeriodInfo(
-    getProductionParsingContext(),
-    date,
-    cycleStartDay,
-  );
+function getPeriodInfo(date) {
+  return requireProductionParsingApi().getPeriodInfo(getProductionParsingContext(), date);
 }
 
 function formatYmd(date) {
@@ -1025,7 +986,7 @@ function handleApplyToKpi() {
   };
   try {
     window.parent.postMessage(payload, "*");
-    setStatus(`생산량 기입 요청: ${formatNumber(state.rows.length)}행 전송 완료`);
+    setStatus(`생산량 전체 교체 요청: ${formatNumber(state.rows.length)}행 전송 완료`);
   } catch (error) {
     const fallbackPayload = {
       ...payload,
@@ -1035,7 +996,7 @@ function handleApplyToKpi() {
       },
     };
     window.parent.postMessage(fallbackPayload, "*");
-    setStatus(`생산량 기입 요청: ${formatNumber(state.rows.length)}행 전송 완료`);
+    setStatus(`생산량 전체 교체 요청: ${formatNumber(state.rows.length)}행 전송 완료`);
   }
 }
 
@@ -1056,7 +1017,7 @@ function handleKpiImportResultMessage(event) {
     const failedNotice = failedFiles.length
       ? `, 형식 오류 제외 ${formatNumber(failedFiles.length)}개 (${failedFiles.join(", ")})`
       : "";
-    setStatus(`생산량 기입 완료: 추가 ${addedText}건, 중복 제외 ${skippedText}건${failedNotice}`);
+    setStatus(`생산량 기입 완료: 기존 생산량 비우고 ${addedText}건 기입, 중복 제외 ${skippedText}건${failedNotice}`);
     return;
   }
   const message = data.message ? String(data.message) : "생산량 기입에 실패했습니다.";

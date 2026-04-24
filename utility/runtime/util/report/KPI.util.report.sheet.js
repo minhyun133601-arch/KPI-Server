@@ -151,6 +151,18 @@
         getUtilGasProductionMetric,
         buildUtilGasAnalysisMetricMap
     } = utilReportSheetGasScopedMetrics;
+    const utilReportSheetGasRuntimeSync = globalThis.KPIUtilReportSheetGasRuntimeSync;
+    if (!utilReportSheetGasRuntimeSync) {
+        throw new Error('KPIUtilReportSheetGasRuntimeSync must load before KPI.util.report.sheet.js');
+    }
+    utilReportSheetGasRuntimeSync.setRuntimeAdapters({
+        syncUtilGasDataFromMetering: typeof globalThis.syncUtilGasDataFromMetering === 'function'
+            ? (...args) => globalThis.syncUtilGasDataFromMetering(...args)
+            : null
+    });
+    const {
+        ensureUtilGasReportDataSync
+    } = utilReportSheetGasRuntimeSync;
     utilReportSheetControls.setRuntimeAdapters({
         escapeUtilSheetHtml,
         normalizeUtilGasMeterProductionKey,
@@ -598,6 +610,7 @@
         syncUtilSheetDetachedReportWindow: (...args) => utilReportSheetWindows.syncUtilSheetDetachedReportWindow(...args),
         syncUtilSheetReportWindowState: (...args) => utilReportSheetWindows.syncUtilSheetReportWindowState(...args),
         ensureUtilElectricReportDataSync,
+        ensureUtilGasReportDataSync,
         ensureUtilGasMeteringStore,
         ensureUtilElectricMeteringStore,
         getUtilSheetDetachedReportWindow: (...args) => utilReportSheetWindows.getUtilSheetDetachedReportWindow(...args),

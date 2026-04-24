@@ -42,7 +42,7 @@ test('report sheet config registers the shared registry and default state', () =
   assert.equal(config.UTIL_ELECTRIC_BILLING_DOCUMENT_DIRECTORY, '\uC804\uAE30 \uCCAD\uAD6C\uC11C');
 });
 test('kpi html loads report sheet config before sheet.js', () => {
-  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=053');
+  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=054');
   const optionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/options.js?v=053');
   assert.ok(configIndex >= 0, 'report sheet config loader is missing');
   assert.ok(optionsIndex > configIndex, 'report sheet config must load before report sheet options');

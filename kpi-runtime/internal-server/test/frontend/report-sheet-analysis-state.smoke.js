@@ -113,10 +113,10 @@ test('report sheet analysis state registry normalizes analysis range and shared 
 });
 
 test('kpi html loads report sheet analysis state before analysis models and sheet.js', () => {
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=053');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
   const analysisStateIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/state.js?v=053');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
 
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');
   assert.ok(analysisStateIndex > modalRenderIndex, 'report sheet analysis state must load after modal render');

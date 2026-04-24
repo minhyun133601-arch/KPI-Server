@@ -26,6 +26,8 @@ const kpiHtml = await fs.readFile(
   'utf8'
 );
 
+const PRODUCTION_LINE_PREFIX = '\uc0dd\uc0b0\ub77c\uc778::';
+
 function createMonthKey(year, month) {
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}`;
 }
@@ -88,16 +90,16 @@ function createAnalysisModelContext() {
   ]);
   const productionValueMap = {
     '2026-01': {
-      'A::line1': 60,
-      'A::line2': 40
+      [`${PRODUCTION_LINE_PREFIX}A::line1`]: 60,
+      [`${PRODUCTION_LINE_PREFIX}A::line2`]: 40
     },
     '2026-02': {
-      'A::line1': 72,
-      'A::line2': 36
+      [`${PRODUCTION_LINE_PREFIX}A::line1`]: 72,
+      [`${PRODUCTION_LINE_PREFIX}A::line2`]: 36
     },
     '2026-03': {
-      'A::line1': 80,
-      'A::line2': 40
+      [`${PRODUCTION_LINE_PREFIX}A::line1`]: 80,
+      [`${PRODUCTION_LINE_PREFIX}A::line2`]: 40
     }
   };
   const context = {
@@ -413,6 +415,19 @@ test('report sheet analysis model registries build electric and gas analysis mod
   assert.ok(Array.isArray(electricModel.charts));
   assert.ok(Array.isArray(electricModel.charts[0]?.summaryItems));
   assert.ok(electricModel.charts[0].summaryItems.some((item) => item.key === 'electricIntensity'));
+  const electricLineControlItems = (electricModel.charts[0].summaryControlItems || [])
+    .filter((item) => String(item?.key || '').startsWith(lineRatioPrefix));
+  assert.equal(
+    electricLineControlItems.map((item) => String(item.title)).join(','),
+    'line1,line2',
+    'team-specific electric analysis must expose production line summary controls'
+  );
+  assert.equal(electricLineControlItems[0].points.find((point) => point.monthKey === '2026-03').amountValue, 80);
+  assert.equal(electricLineControlItems[1].points.find((point) => point.monthKey === '2026-03').amountValue, 40);
+  assert.ok(
+    electricModel.charts[0].series.some((series) => series.seriesKey === `${lineRatioPrefix}A::line1`),
+    'team-specific electric intensity chart must include production line series'
+  );
   assert.equal(config.UtilSheetAnalysisState.electric.teamKey, 'team-a');
   assert.equal(config.UtilSheetAnalysisState.electric.from, '2026-01');
   assert.equal(config.UtilSheetAnalysisState.electric.to, '2026-03');
@@ -428,13 +443,13 @@ test('report sheet analysis model registries build electric and gas analysis mod
 });
 
 test('kpi html loads report sheet analysis model scripts before analysis render and sheet.js', () => {
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=053');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
   const rangeRatioIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/range-ratio.js?v=053');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
   const electricModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/model.js?v=053');
   const gasModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/gas/model.js?v=053');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
 
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');
   assert.ok(rangeRatioIndex > modalRenderIndex, 'analysis range-ratio must load after report sheet modal render');

@@ -159,28 +159,10 @@
     return Math.min(31, Math.max(1, Math.floor(day)));
   }
 
-  function buildCycleDate(_context, year, monthIndex, cycleStartDay) {
-    const lastDay = new Date(year, monthIndex + 1, 0).getDate();
-    const day = Math.min(lastDay, cycleStartDay);
-    return new Date(year, monthIndex, day);
-  }
-
-  function getCyclePeriodStart(context, date, cycleStartDay) {
-    const cleanDate = stripTime(date);
-    const thisMonthStart = buildCycleDate(context, cleanDate.getFullYear(), cleanDate.getMonth(), cycleStartDay);
-    if (cleanDate >= thisMonthStart) return thisMonthStart;
-
-    const prevMonthDate = new Date(cleanDate.getFullYear(), cleanDate.getMonth() - 1, 1);
-    return buildCycleDate(context, prevMonthDate.getFullYear(), prevMonthDate.getMonth(), cycleStartDay);
-  }
-
-  function getPeriodInfo(context, date, cycleStartDay) {
-    const periodStart = getCyclePeriodStart(context, date, cycleStartDay);
-    const nextMonth = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 1);
-    const nextStart = buildCycleDate(context, nextMonth.getFullYear(), nextMonth.getMonth(), cycleStartDay);
-    const periodEnd = new Date(nextStart);
-    periodEnd.setDate(periodEnd.getDate() - 1);
-
+  function getPeriodInfo(_context, date, cycleStartDay) {
+    void cycleStartDay;
+    const periodStart = new Date(date.getFullYear(), date.getMonth(), 1);
+    const periodEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
     const key = `${periodStart.getFullYear()}-${String(periodStart.getMonth() + 1).padStart(2, "0")}`;
     const label = `${periodStart.getFullYear()}년 ${periodStart.getMonth() + 1}월 (${formatMd(periodStart)}~${formatMd(periodEnd)})`;
     return { key, label, start: periodStart };

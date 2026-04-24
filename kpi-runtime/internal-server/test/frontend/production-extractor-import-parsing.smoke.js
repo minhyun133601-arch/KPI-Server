@@ -47,6 +47,7 @@ test('production extractor import parsing registers the parsing API and date hel
   assert.equal(api.sanitizeCycleDay('99'), 31);
   assert.equal(api.sanitizeCycleDay('x'), 15);
   assert.equal(api.formatYmd(new Date(2026, 3, 10)), '2026-04-10');
+  assert.equal(api.getPeriodInfo({}, new Date(2026, 3, 10), 15).key, '2026-04');
   assert.equal(api.buildDateRangeLabel({}, null, null), '날짜 없음');
 });
 
@@ -118,7 +119,7 @@ test('production extractor import parsing parses workbook rows and normalizes te
       TEAM_VALUE_INDEX: 1,
       LINE_VALUE_INDEX: 2,
       PRODUCTION_VALUE_INDEX: 4,
-      PRODUCTION_DATE_OFFSET_DAYS: 1,
+      PRODUCTION_DATE_OFFSET_DAYS: 0,
       REQUIRED_HEADER_RULES: {
         A: [/생산일자/],
         B: [/팀/],
@@ -141,16 +142,16 @@ test('production extractor import parsing parses workbook rows and normalizes te
   );
 
   assert.equal(parsed.rows.length, 1);
-  assert.equal(parsed.rows[0].values[0], '2026-04-11');
+  assert.equal(parsed.rows[0].values[0], '2026-04-10');
   assert.equal(parsed.rows[0].values[1], '3팀');
-  assert.equal(parsed.rows[0].periodKey, '2026-03');
-  assert.equal(parsed.productionRangeLabel, '2026-04-11 ~ 2026-04-11');
+  assert.equal(parsed.rows[0].periodKey, '2026-04');
+  assert.equal(parsed.productionRangeLabel, '2026-04-10 ~ 2026-04-10');
 });
 
 test('production extractor html loads import parsing before export actions and app', () => {
-  const importParsingIndex = productionExtractorHtml.indexOf('runtime/import-parsing.js?v=13');
-  const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=13');
-  const appIndex = productionExtractorHtml.indexOf('app.js?v=13');
+  const importParsingIndex = productionExtractorHtml.indexOf('runtime/import-parsing.js?v=16');
+  const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=16');
+  const appIndex = productionExtractorHtml.indexOf('app.js?v=16');
 
   assert.ok(importParsingIndex >= 0, 'import parsing loader is missing');
   assert.ok(exportActionsIndex > importParsingIndex, 'export actions must load after import parsing');

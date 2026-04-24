@@ -228,9 +228,9 @@ test('report sheet modal shell registry creates the shared modal and routes type
 test('kpi html loads report sheet modal shell before modal render and sheet.js', () => {
   const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=053');
   const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=053');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=053');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
 
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');
   assert.ok(modalShellIndex > modalActionsIndex, 'report sheet modal shell must load after report sheet modal actions');

@@ -469,91 +469,12 @@
             ].join('|');
         }
 
-        function collectUtilProductionDailyEntryKeys() {
-            const keys = new Set();
-            (UTIL_PRODUCTION_DAILY_DATA || []).forEach(team => {
-                (team?.entries || []).forEach(entry => {
-                    const normalizedEntry = {
-                        ...entry,
-                        team: String(entry?.team ?? team?.name ?? '').trim()
-                    };
-                    const key = buildUtilProductionDailyEntryKey(normalizedEntry);
-                    if (!key) return;
-                    keys.add(key);
-                });
-            });
-            return keys;
-        }
-
-        function findUtilProductionDailyEntryByKey(dedupeKey) {
-            if (!dedupeKey) return null;
-            for (const team of (UTIL_PRODUCTION_DAILY_DATA || [])) {
-                for (const entry of (team?.entries || [])) {
-                    const normalizedEntry = {
-                        ...entry,
-                        team: String(entry?.team ?? team?.name ?? '').trim()
-                    };
-                    if (buildUtilProductionDailyEntryKey(normalizedEntry) === dedupeKey) return entry;
-                }
-            }
-            return null;
-        }
-
-        function normalizeUtilArchiveLookupByFileName(value) {
-            return String(value || '').trim().toLowerCase();
-        }
-
-        function resolveUtilProductionSourceArchiveId(row, sourceArchiveLookup = {}) {
-            const explicitArchiveId = String(row?.sourceArchiveId || '').trim();
-            if (explicitArchiveId) return explicitArchiveId;
-            const sourceFingerprint = String(
-                row?.sourceFingerprint
-                || row?.fingerprint
-                || row?.fileFingerprint
-                || ''
-            ).trim();
-            const sourceFileName = String(
-                row?.sourceFileName
-                || row?.fileName
-                || ''
-            ).trim();
-            const byFingerprint = sourceArchiveLookup?.byFingerprint || {};
-            const byFileName = sourceArchiveLookup?.byFileName || {};
-            if (sourceFingerprint && byFingerprint[sourceFingerprint]) {
-                return String(byFingerprint[sourceFingerprint]).trim();
-            }
-            const normalizedFileName = normalizeUtilArchiveLookupByFileName(sourceFileName);
-            if (normalizedFileName && byFileName[normalizedFileName]) {
-                return String(byFileName[normalizedFileName]).trim();
-            }
-            return '';
-        }
-
-        function filterUtilProductionRowsByArchiveLookup(rows, sourceArchiveLookup = {}) {
-            const linkedRows = [];
-            let excludedCount = 0;
-            (Array.isArray(rows) ? rows : []).forEach(row => {
-                const archiveId = resolveUtilProductionSourceArchiveId(row, sourceArchiveLookup);
-                if (!archiveId) {
-                    excludedCount += 1;
-                    return;
-                }
-                linkedRows.push({
-                    ...row,
-                    sourceArchiveId: archiveId
-                });
-            });
-            return { rows: linkedRows, excludedCount };
-        }
-
         function mergeUtilProductionExtractorRows(rows, options = {}) {
-            const existingKeys = collectUtilProductionDailyEntryKeys();
             const fallbackTeam = sanitizeUtilUploadTeamName(options?.fallbackTeam || UtilProductionBridgeState.activeTeam || '');
-            const sourceArchiveLookup = options?.sourceArchiveLookup || {};
-            let addedCount = 0;
             let skippedCount = 0;
             let patchedCount = 0;
             const addedTeamSet = new Set();
+            const pendingEntryMap = new Map();
             (rows || []).forEach(row => {
                 const rawDate = row?.date ?? row?.values?.[0] ?? '';
                 const parsedDate = parseUtilDateKey(rawDate);
@@ -565,14 +486,6 @@
                 const productName = String(row?.productName ?? row?.product ?? row?.itemName ?? row?.values?.[3] ?? '').trim();
                 const rawTeamName = String(row?.team ?? row?.teamName ?? row?.values?.[1] ?? '').trim();
                 const teamName = resolveUtilUploadTeamName(rawTeamName, fallbackTeam, `${lineName} ${productName}`, lineName);
-                const sourceFileName = String(row?.sourceFileName ?? row?.fileName ?? '').trim();
-                const sourceFingerprint = String(
-                    row?.sourceFingerprint
-                    || row?.fingerprint
-                    || row?.fileFingerprint
-                    || ''
-                ).trim();
-                const sourceArchiveId = resolveUtilProductionSourceArchiveId(row, sourceArchiveLookup);
                 const hasMetricValue = Number.isFinite(amount);
                 if (!parsedDate || !hasMetricValue || !teamName) {
                     skippedCount += 1;
@@ -587,55 +500,55 @@
                     lineName,
                     productName,
                     team: teamName,
-                    sourceArchiveId,
-                    sourceFingerprint,
-                    sourceFileName
+                    sourceArchiveId: '',
+                    sourceFingerprint: '',
+                    sourceFileName: ''
                 };
                 const dedupeKey = buildUtilProductionDailyEntryKey(entry);
                 if (!dedupeKey) {
                     skippedCount += 1;
                     return;
                 }
-                if (existingKeys.has(dedupeKey)) {
-                    const existingEntry = findUtilProductionDailyEntryByKey(dedupeKey);
-                    if (existingEntry) {
-                        let patched = false;
-                        if (Number.isFinite(moistureExcludedYield) && !Number.isFinite(parseUtilPercentAmount(existingEntry.moistureExcludedYield))) {
-                            existingEntry.moistureExcludedYield = moistureExcludedYield;
-                            patched = true;
-                        }
-                        if (Number.isFinite(equipmentCapa) && !Number.isFinite(parseUtilAmount(existingEntry.equipmentCapa))) {
-                            existingEntry.equipmentCapa = equipmentCapa;
-                            patched = true;
-                        }
-                        if (Number.isFinite(equipmentUtilization) && !Number.isFinite(parseUtilPercentAmount(existingEntry.equipmentUtilization))) {
-                            existingEntry.equipmentUtilization = equipmentUtilization;
-                            patched = true;
-                        }
-                        if (patched) {
-                            addedTeamSet.add(teamName);
-                            patchedCount += 1;
-                        } else {
-                            skippedCount += 1;
-                        }
+                if (pendingEntryMap.has(dedupeKey)) {
+                    const existingEntry = pendingEntryMap.get(dedupeKey);
+                    let patched = false;
+                    if (Number.isFinite(moistureExcludedYield) && !Number.isFinite(parseUtilPercentAmount(existingEntry?.moistureExcludedYield))) {
+                        existingEntry.moistureExcludedYield = moistureExcludedYield;
+                        patched = true;
+                    }
+                    if (Number.isFinite(equipmentCapa) && !Number.isFinite(parseUtilAmount(existingEntry?.equipmentCapa))) {
+                        existingEntry.equipmentCapa = equipmentCapa;
+                        patched = true;
+                    }
+                    if (Number.isFinite(equipmentUtilization) && !Number.isFinite(parseUtilPercentAmount(existingEntry?.equipmentUtilization))) {
+                        existingEntry.equipmentUtilization = equipmentUtilization;
+                        patched = true;
+                    }
+                    if (patched) {
+                        patchedCount += 1;
                     } else {
                         skippedCount += 1;
                     }
                     return;
                 }
-                const targetTeam = ensureUtilProductionDailyTeamRecord(teamName);
-                if (!targetTeam) {
-                    skippedCount += 1;
-                    return;
-                }
-                targetTeam.entries.push(entry);
-                existingKeys.add(dedupeKey);
-                addedCount += 1;
-                addedTeamSet.add(String(targetTeam?.name || teamName || '').trim());
+                pendingEntryMap.set(dedupeKey, entry);
+                addedTeamSet.add(teamName);
             });
-            if (addedCount > 0 || patchedCount > 0) {
+            const nextEntries = Array.from(pendingEntryMap.values());
+            const addedCount = nextEntries.length;
+            if (addedCount > 0) {
+                UTIL_PRODUCTION_DAILY_DATA.length = 0;
+                UTIL_PRODUCTION_ARCHIVE_META.length = 0;
+                nextEntries.forEach(entry => {
+                    const targetTeam = ensureUtilProductionDailyTeamRecord(entry.team);
+                    if (!targetTeam) return;
+                    targetTeam.entries.push(entry);
+                });
                 refreshUtilProductionDailyIndex();
                 persistUtilProductionDailyState();
+                if (typeof refreshUtilProductionArchiveCountBadges === 'function') {
+                    refreshUtilProductionArchiveCountBadges();
+                }
             }
             return {
                 addedCount,

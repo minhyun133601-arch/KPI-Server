@@ -281,8 +281,8 @@
 
   function exportRowsToXlsx(context, rows, fileName) {
     const aoa = [];
-    aoa.push(["추출 기준", `A/B/C/E/F 열, 날짜 +${context.PRODUCTION_DATE_OFFSET_DAYS}일 보정, 정산 시작일 ${context.state.cycleStartDay}일`]);
-    aoa.push(["선택 정산 월", context.getSelectedPeriodText()]);
+    aoa.push(["추출 기준", "A/B/C/E/F 열, 날짜 원본 그대로 사용, 월 기준 1일~말일 분류"]);
+    aoa.push(["선택 월", context.getSelectedPeriodText()]);
     aoa.push(["선택 팀", context.getSelectedTeamText()]);
     aoa.push(["선택 라인", context.getSelectedLineText()]);
     aoa.push(["정렬", context.getSelectedSortText()]);
@@ -305,7 +305,6 @@
     const stats = context.computeProductionStats(rows);
     const summarySheet = context.XLSX.utils.aoa_to_sheet([
       ["생성일시", new Date().toLocaleString("ko-KR")],
-      ["정산 시작일", `${context.state.cycleStartDay}일`],
       ["행 수", rows.length],
       ["생산 기간", context.getDateRangeLabel(rows)],
       ["중복 제거", context.state.duplicateRemovedCount],
@@ -313,7 +312,7 @@
       ["생산량 평균", stats.avg === null ? "" : stats.avg],
     ]);
 
-    const monthSummaryAoa = [["정산 월", "데이터 행", "생산량 합계", "생산량 평균"]];
+    const monthSummaryAoa = [["월", "데이터 행", "생산량 합계", "생산량 평균"]];
     for (const summary of context.state.periodSummaries) {
       monthSummaryAoa.push([
         summary.label,

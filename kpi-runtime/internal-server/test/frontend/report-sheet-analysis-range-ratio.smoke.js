@@ -160,7 +160,7 @@ test('kpi html loads report sheet analysis range-ratio between chart-controls an
   const chartControlsIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/chart-controls.js?v=053');
   const rangeRatioIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/range-ratio.js?v=053');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
 
   assert.ok(chartControlsIndex >= 0, 'report sheet analysis chart-controls loader is missing');
   assert.ok(rangeRatioIndex > chartControlsIndex, 'report sheet analysis range-ratio must load after chart-controls');

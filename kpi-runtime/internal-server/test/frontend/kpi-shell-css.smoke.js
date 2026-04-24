@@ -35,8 +35,8 @@ const styleEntries = [
     relativeSegments: ['work', 'work.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/metering/metering.css?v=057`,
-    manifestHref: './styles/metering/metering.css?v=057',
+    href: `${runtimeDirName}/app/styles/metering/metering.css?v=060`,
+    manifestHref: './styles/metering/metering.css?v=060',
     fileName: 'metering.css',
     relativeSegments: ['metering', 'metering.css'],
   },
@@ -104,4 +104,19 @@ test('split shell css keeps key selectors in the expected files', () => {
 
   assert.match(styleContents['audit.css'], /\.audit-panel\s*\{/);
   assert.match(styleContents['audit.css'], /\.print-sheet\s*\{/);
+});
+
+test('utility sheet report modal stays above the viewer layer', () => {
+  const viewerZIndexMatch = styleContents['shell-chrome.css'].match(/#viewer\s*\{[^}]*z-index:\s*(\d+)/s);
+  const modalZIndexMatch = styleContents['metering.css'].match(/\.util-sheet-report-modal\s*\{[^}]*z-index:\s*(\d+)/s);
+
+  assert.ok(viewerZIndexMatch, '#viewer z-index must stay explicit');
+  assert.ok(modalZIndexMatch, 'utility sheet report modal z-index must stay explicit');
+  assert.ok(Number(modalZIndexMatch[1]) > Number(viewerZIndexMatch[1]), 'utility sheet modal must render above #viewer');
+  assert.match(styleContents['metering.css'], /\.util-sheet-report-modal\.is-open\s*\{\s*display:\s*flex;/);
+  assert.match(styleContents['metering.css'], /\.util-sheet-report-modal\s*\{[^}]*align-items:\s*center;[^}]*justify-content:\s*center;[^}]*padding:\s*16px;/s);
+  assert.match(styleContents['metering.css'], /\.util-sheet-report-card\s*\{[^}]*width:\s*min\(1120px,\s*96vw\);[^}]*border-radius:\s*8px;/s);
+  assert.match(styleContents['metering.css'], /\.util-sheet-report-modal\.is-expanded\s+\.util-sheet-report-card\s*\{[^}]*width:\s*100vw;[^}]*height:\s*100dvh;/s);
+  assert.match(styleContents['metering.css'], /\.util-sheet-meter-summary-toolbar\s*\{/);
+  assert.match(styleContents['metering.css'], /\.util-sheet-inline-help\s*\{/);
 });

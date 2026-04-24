@@ -316,7 +316,7 @@ test('report sheet summary render registry builds badges, stats, compare, matrix
 test('kpi html loads report sheet summary render between analysis render and sheet.js', () => {
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
   const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
 
   assert.ok(analysisRenderIndex >= 0, 'report sheet analysis render loader is missing');
   assert.ok(summaryRenderIndex > analysisRenderIndex, 'report sheet summary render must load after report sheet analysis render');

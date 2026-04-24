@@ -59,6 +59,7 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
   const context = createAnalysisRenderContext();
   const controls = context.KPIUtilReportSheetControls;
   const analysisRender = context.KPIUtilReportSheetAnalysisRender;
+  const productionLineKey = 'productionLineRatio::A::line1';
 
   controls.setRuntimeAdapters({
     escapeUtilSheetHtml(value) {
@@ -163,6 +164,42 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
         decimals: 2,
         metricLabel: 'kWh/kg',
         points: [{ value: 1.2 }, { value: 1.3 }, { value: 1.1 }]
+      },
+      {
+        key: 'electricIntensity-lines',
+        title: 'Electric Intensity Lines',
+        tone: 'electric',
+        icon: 'fa-chart-line',
+        decimals: 1,
+        color: '#0891b2',
+        series: [{ seriesKey: productionLineKey, points: [{ value: 64.6 }, { value: 66.7 }, { value: 66.7 }] }],
+        chartDataList: [{ key: productionLineKey }],
+        controlItems: [{
+          key: productionLineKey,
+          title: 'Line 1',
+          unitOptions: [{ key: 'percent', label: '%' }],
+          unitKey: 'percent',
+          displayMode: 'line',
+          popupTableKey: productionLineKey
+        }],
+        summaryItems: [{
+          key: productionLineKey,
+          title: 'Line 1',
+          valueText: '64.6%',
+          secondaryLabelText: 'kg',
+          secondaryValueText: '212kg',
+          tone: 'production',
+          icon: 'fa-chart-pie',
+          popupTableKey: productionLineKey
+        }],
+        summaryControlItems: [{
+          key: productionLineKey,
+          title: 'Line 1',
+          unitOptions: [{ key: 'percent', label: '%' }],
+          unitKey: 'percent',
+          displayMode: 'line',
+          popupTableKey: productionLineKey
+        }]
       }
     ]
   };
@@ -194,12 +231,14 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
   assert.ok(electricBodyHtml.includes('util-sheet-analysis-electric-team-select'));
   assert.ok(electricBodyHtml.includes('trend-chart'));
   assert.ok(electricBodyHtml.includes('multi-series-chart'));
+  assert.ok(electricBodyHtml.includes(productionLineKey));
+  assert.ok(electricBodyHtml.includes('Line 1'));
 });
 
 test('kpi html loads report sheet analysis render between modal render and sheet.js', () => {
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=053');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
 
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');
   assert.ok(analysisRenderIndex > modalRenderIndex, 'report sheet analysis render must load after report sheet modal render');

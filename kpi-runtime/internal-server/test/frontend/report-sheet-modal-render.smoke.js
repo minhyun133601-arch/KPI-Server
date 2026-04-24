@@ -13,6 +13,10 @@ const reportSheetModalRenderSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/modal/render.js', import.meta.url),
   'utf8'
 );
+const reportSheetGasRuntimeSyncSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/sheet/gas/runtime-sync.js', import.meta.url),
+  'utf8'
+);
 const kpiHtml = await fs.readFile(
   new URL('../../../../KPI.html', import.meta.url),
   'utf8'
@@ -124,6 +128,30 @@ function createModalRenderContext() {
   });
   vm.runInContext(reportSheetModalRenderSource, context, {
     filename: 'KPI.util.report.sheet.modal-render.js',
+  });
+  return context;
+}
+
+function createGasRuntimeSyncContext() {
+  const context = {
+    console,
+    Array,
+    Object,
+    String,
+    Number,
+    Boolean,
+    Set,
+    Map,
+  };
+
+  context.window = context;
+  context.globalThis = context;
+  vm.createContext(context);
+  vm.runInContext(reportSheetConfigSource, context, {
+    filename: 'KPI.util.report.sheet.config.js',
+  });
+  vm.runInContext(reportSheetGasRuntimeSyncSource, context, {
+    filename: 'KPI.util.report.sheet.gas.runtime-sync.js',
   });
   return context;
 }
@@ -318,12 +346,124 @@ test('report sheet modal render registry normalizes meter modal state and rerend
   assert.equal(relocateCount, 2);
 });
 
-test('kpi html loads report sheet modal render between modal shell and sheet.js', () => {
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=053');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=053');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=053');
+test('report sheet modal render syncs gas data before showing no-data fallback', () => {
+  const context = createModalRenderContext();
+  const modalRender = context.KPIUtilReportSheetModalRender;
+  const config = context.KPIUtilReportSheetConfig;
+  const { modal, sub, body, monthSelect } = createModalHarness();
 
+  config.UtilSheetRuntimeState.gasDataSyncedOnce = false;
+  config.UtilSheetRuntimeState.gasDataSyncPromise = null;
+
+  let gasSyncCount = 0;
+  let detachedSyncCount = 0;
+  let windowStateSyncCount = 0;
+
+  modalRender.setRuntimeAdapters({
+    normalizeUtilSheetType(sheetType) {
+      return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+    },
+    resolveUtilSheetReportDatasetKey(sheetType, datasetKey) {
+      void sheetType;
+      return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+    },
+    getUtilSheetPresentation() {
+      return {
+        kicker: 'METER:GAS',
+        title: 'UTILITY SHEET REPORT',
+      };
+    },
+    normalizeUtilSheetCompareKey() {
+      return 'month';
+    },
+    normalizeUtilGasMeterProductionKey() {
+      return 'combined';
+    },
+    normalizeUtilGasAnalysisCategoryKey() {
+      return 'yusan';
+    },
+    normalizeUtilElectricMeterTeamKey() {
+      return 'combined';
+    },
+    normalizeUtilElectricAnalysisTeamKey() {
+      return 'combined';
+    },
+    normalizeUtilElectricMeterViewKey() {
+      return 'meter';
+    },
+    buildUtilSheetDatasetResult() {
+      return {
+        hasData: false,
+        monthOptions: [],
+        activeMonthKey: '',
+        latestMonthLabel: '',
+      };
+    },
+    syncUtilSheetTypeButtons() {},
+    syncUtilSheetDatasetButtons() {},
+    syncUtilSheetCompareButtons() {},
+    ensureUtilGasReportDataSync() {
+      gasSyncCount += 1;
+      config.UtilSheetRuntimeState.gasDataSyncedOnce = true;
+      return Promise.resolve({ changed: true });
+    },
+    syncUtilSheetDetachedReportWindow() {
+      detachedSyncCount += 1;
+    },
+    syncUtilSheetReportWindowState() {
+      windowStateSyncCount += 1;
+    },
+  });
+
+  modalRender.renderUtilSheetReportModal(modal);
+
+  assert.equal(gasSyncCount, 1);
+  assert.equal(monthSelect.disabled, true);
+  assert.ok(sub.textContent.includes('가스 검침 데이터'));
+  assert.ok(body.innerHTML.includes('가스 검침표 데이터를 정리하는 중입니다'));
+  assert.equal(detachedSyncCount, 1);
+  assert.equal(windowStateSyncCount, 1);
+});
+
+test('report sheet gas runtime sync forces one metering sync per report session', async () => {
+  const context = createGasRuntimeSyncContext();
+  const gasRuntimeSync = context.KPIUtilReportSheetGasRuntimeSync;
+  const config = context.KPIUtilReportSheetConfig;
+  const state = config.UtilSheetRuntimeState;
+
+  state.gasDataSyncedOnce = false;
+  state.gasDataSyncPromise = null;
+
+  let syncCount = 0;
+  gasRuntimeSync.setRuntimeAdapters({
+    syncUtilGasDataFromMetering(options) {
+      syncCount += 1;
+      assert.equal(options.force, true);
+      return Promise.resolve(true);
+    },
+  });
+
+  const firstResult = await gasRuntimeSync.ensureUtilGasReportDataSync();
+  const secondResult = await gasRuntimeSync.ensureUtilGasReportDataSync();
+
+  assert.equal(firstResult.changed, true);
+  assert.equal(secondResult.changed, false);
+  assert.equal(syncCount, 1);
+  assert.equal(state.gasDataSyncedOnce, true);
+  assert.equal(state.gasDataSyncPromise, null);
+});
+
+test('kpi html loads report sheet modal render between modal shell and sheet.js', () => {
+  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=054');
+  const gasScopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=053');
+  const gasRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/runtime-sync.js?v=054');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=053');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
+
+  assert.ok(configIndex >= 0, 'report sheet config loader is missing');
+  assert.ok(gasRuntimeSyncIndex > gasScopedMetricsIndex, 'gas runtime sync must load after gas scoped metrics');
   assert.ok(modalShellIndex >= 0, 'report sheet modal shell loader is missing');
   assert.ok(modalRenderIndex > modalShellIndex, 'report sheet modal render must load after report sheet modal shell');
   assert.ok(analysisRenderIndex > modalRenderIndex, 'report sheet analysis render must load after report sheet modal render');

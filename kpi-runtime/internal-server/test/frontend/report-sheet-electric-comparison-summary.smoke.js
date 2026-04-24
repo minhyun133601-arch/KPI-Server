@@ -300,7 +300,7 @@ test('kpi html loads electric runtime sync between electric table render and ele
   const electricMeterModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/meter-model.js?v=053');
   const electricComparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=053');
   const gasComparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/comparison-summary.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=053');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
 
   assert.ok(billingIndex >= 0, 'report sheet billing loader is missing');
   assert.ok(electricTableRenderIndex > billingIndex, 'electric table render must load after billing');

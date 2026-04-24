@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="kpi-runtime/app/styles/shell/dashboard.css?v=057">
     <link rel="stylesheet" href="kpi-runtime/app/styles/shell/shell-chrome.css?v=057">
     <link rel="stylesheet" href="kpi-runtime/app/styles/work/work.css?v=057">
-    <link rel="stylesheet" href="kpi-runtime/app/styles/metering/metering.css?v=057">
+    <link rel="stylesheet" href="kpi-runtime/app/styles/metering/metering.css?v=060">
     <link rel="stylesheet" href="kpi-runtime/app/styles/audit/audit.css?v=057">
 </head>
 <body>
@@ -24,7 +24,7 @@
         <div class="dashboard-shell">
             <aside class="dashboard-side">
                 <div class="dashboard-side-brand">
-                <span class="dashboard-version-badge">V446</span>
+                <span class="dashboard-version-badge">V454</span>
                 </div>
                 <div id="dashboard-side-nav" class="dashboard-side-nav">
                     <!-- JS로 홈 사이드 탭 렌더 -->
@@ -72,7 +72,7 @@
             <div class="viewer-header-leading">
                 <span class="viewer-header-brand-badge" aria-hidden="true"><i class="fas fa-clipboard-list"></i></span>
                 <span class="viewer-header-brand-text">공무환경팀 통합 관리문서</span>
-                <span class="viewer-version-badge">V446</span>
+                <span class="viewer-version-badge">V454</span>
             </div>
             <div class="viewer-header-actions">
                 <div id="global-save-dock" class="global-save-dock" aria-live="polite">
@@ -137,10 +137,10 @@
 
     <!-- 로직 스크립트 -->
     <script src="kpi-runtime/core/KPI.core.js"></script>
-    <script src="utility/runtime/util/KPI.util.data-sync.js?v=205"></script>
-    <script src="utility/runtime/util/KPI.util.production-import.js"></script>
+    <script src="utility/runtime/util/KPI.util.data-sync.js?v=206"></script>
+    <script src="utility/runtime/util/KPI.util.production-import.js?v=2"></script>
     <script src="utility/runtime/util/production/KPI.util.production.archive.js"></script>
-    <script src="utility/runtime/util/production/KPI.util.production.extractor.js?v=13"></script>
+    <script src="utility/runtime/util/production/KPI.util.production.extractor.js?v=14"></script>
     <script src="utility/runtime/util/production/KPI.util.production.dataset-tools.js"></script>
     <script src="utility/runtime/util/KPI.util.production-management.js"></script>
     <script src="utility/runtime/util/KPI.util.maintenance.js"></script>
@@ -175,7 +175,7 @@
     <script src="audit/runtime/audit/records/KPI.audit.records.render.js"></script>
     <script src="utility/runtime/util/energy/KPI.util.energy.dual.js"></script>
     <script src="utility/runtime/util/energy/KPI.util.energy.chart.js"></script>
-    <script src="utility/runtime/util/energy/KPI.util.energy.tabs.js?v=204"></script>
+    <script src="utility/runtime/util/energy/KPI.util.energy.tabs.js?v=206"></script>
     <script src="utility/runtime/util/energy/KPI.util.energy.renderers.js?v=332"></script>
     <script src="utility/runtime/util/energy/KPI.util.energy.modal.chart.js?v=332"></script>
     <script src="utility/runtime/util/report/KPI.util.report.state.js?v=335"></script>
@@ -195,7 +195,7 @@
     <script src="utility/runtime/util/report/KPI.util.report.secondary-modals.js"></script>
     <script src="utility/runtime/util/report/KPI.util.report.modal.render.js"></script>
     <script src="utility/runtime/util/report/KPI.util.report.panel.js"></script>
-    <script src="utility/runtime/util/report/sheet/config.js?v=053"></script>
+    <script src="utility/runtime/util/report/sheet/config.js?v=054"></script>
     <script src="utility/runtime/util/report/sheet/options.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/controls.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/billing.js?v=053"></script>
@@ -205,13 +205,14 @@
     <script src="utility/runtime/util/report/sheet/electric/comparison-summary.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/gas/comparison-summary.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/gas/scoped-metrics.js?v=053"></script>
+    <script src="utility/runtime/util/report/sheet/gas/runtime-sync.js?v=054"></script>
     <script src="utility/runtime/util/report/sheet/panel/runtime.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/panel/preview.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/windows/detached-interactions.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/windows.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/modal/actions.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/modal/shell.js?v=053"></script>
-    <script src="utility/runtime/util/report/sheet/modal/render.js?v=053"></script>
+    <script src="utility/runtime/util/report/sheet/modal/render.js?v=054"></script>
     <script src="utility/runtime/util/report/sheet/analysis/state.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/analysis/compare-select.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/analysis/chart-controls.js?v=053"></script>
@@ -222,7 +223,7 @@
     <script src="utility/runtime/util/report/sheet/analysis/render.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/analysis/popup-tables.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/summary/render.js?v=053"></script>
-    <script src="utility/runtime/util/report/KPI.util.report.sheet.js?v=053"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.sheet.js?v=054"></script>
     <script src="utility/runtime/util/energy/KPI.util.energy.tabs.override.js?v=012"></script>
     <script src="utility/runtime/util/analytics/KPI.util.analytics.js"></script>
     <script src="team-report/runtime/work/KPI.work.renderers.weekly-actions.js?v=1"></script>

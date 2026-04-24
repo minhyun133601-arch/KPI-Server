@@ -670,7 +670,10 @@
                         </div>
                         <div style="display:grid; gap:0.32rem;">
                             <div style="font-size:0.72rem; font-weight:800; color:#475569;">품목</div>
-                            ${buildUtilMetricToggleButtonsHtml(['all'], 'delete-item-toggle')}
+                            <div class="util-production-toggle-grid">
+                                <button type="button" class="util-production-toggle-btn is-active" aria-pressed="true" disabled>생산량</button>
+                            </div>
+                            <div style="font-size:0.72rem; color:#64748b;">사용량과 비용은 이 삭제 창에서 지우지 않습니다.</div>
                         </div>
                         <div style="display:flex; justify-content:flex-end; gap:0.4rem; margin-top:0.7rem;">
                             <button type="button" class="util-detail-btn" data-role="apply">삭제</button>
@@ -708,7 +711,6 @@
             const currentTeam = String(teamSelect?.value || '').trim();
             const currentFrom = String(fromSelect?.value || '').trim();
             const currentTo = String(toSelect?.value || '').trim();
-            const currentItems = String(modal.dataset.selectedItemKeys || '').trim();
             const datasetKey = preferredDataset || currentDataset || 'electric';
             const safeDataset = UTIL_DELETE_DATASET_OPTIONS.some(item => item.key === datasetKey) ? datasetKey : 'electric';
             modal.dataset.datasetKey = safeDataset;
@@ -760,12 +762,8 @@
                 toSelect.value = fromSelect.value;
             }
 
-            const preferredItemKeys = Array.isArray(options.preferredItemKeys)
-                ? options.preferredItemKeys
-                : (options.preferredItemKey ? [options.preferredItemKey] : currentItems);
-            const selectedItemKeys = normalizeUtilMetricSelectionKeys(preferredItemKeys, ['all']);
-            modal.dataset.selectedItemKeys = serializeUtilMetricSelectionKeys(selectedItemKeys);
-            syncUtilMetricToggleButtons(modal, selectedItemKeys, 'delete-item-toggle');
+            const selectedItemKeys = ['production'];
+            modal.dataset.selectedItemKeys = 'production';
 
             if (summaryEl) {
                 const selectedTeam = String(teamSelect?.value || '').trim();
@@ -790,10 +788,7 @@ function openUtilSelectiveDeleteModal(options = {}) {
                 preferredDataset: datasetKey,
                 preferredTeam: options.teamName,
                 preferredFrom: options.fromYm || defaultRange.fromYm,
-                preferredTo: options.toYm || defaultRange.toYm,
-                preferredItemKeys: Array.isArray(options.itemKeys)
-                    ? options.itemKeys
-                    : (options.itemKey ? [options.itemKey] : ['all'])
+                preferredTo: options.toYm || defaultRange.toYm
             });
 
             const resync = (nextOptions = {}) => {
@@ -814,15 +809,6 @@ function openUtilSelectiveDeleteModal(options = {}) {
                 }
                 resync();
             };
-            modal.querySelectorAll('[data-role="delete-item-toggle"]').forEach(button => {
-                button.onclick = () => {
-                    const current = String(modal.dataset.selectedItemKeys || '').trim();
-                    const next = toggleUtilMetricSelectionKeys(current, button.dataset.itemKey || '');
-                    modal.dataset.selectedItemKeys = serializeUtilMetricSelectionKeys(next);
-                    syncUtilMetricToggleButtons(modal, next, 'delete-item-toggle');
-                    resync();
-                };
-            });
             resync();
 
             if (applyButton) {
@@ -831,8 +817,8 @@ function openUtilSelectiveDeleteModal(options = {}) {
                     const teamName = String(teamSelect?.value || '').trim();
                     const fromYm = String(fromSelect?.value || '').trim();
                     const toYm = String(toSelect?.value || '').trim();
-                    const selectedItemKeys = normalizeUtilMetricSelectionKeys(modal.dataset.selectedItemKeys || 'none', []);
-                    const metricKeys = expandUtilMetricSelectionKeys(selectedItemKeys, []);
+                    const selectedItemKeys = ['production'];
+                    const metricKeys = ['production'];
                     if (!datasetKey || !teamName || !fromYm || !toYm || !metricKeys.length) {
                         alert('팀/기간/품목을 모두 선택해주세요.');
                         return;
@@ -841,8 +827,7 @@ function openUtilSelectiveDeleteModal(options = {}) {
                         alert('시작 기간은 종료 기간보다 늦을 수 없습니다.');
                         return;
                     }
-                    const includesCost = metricKeys.includes('cost');
-                    const wasteCostSubKeys = includesCost ? [] : [];
+                    const wasteCostSubKeys = [];
                     const selectedLabels = getUtilMetricSelectionLabels(selectedItemKeys).join(', ');
                     const confirmMessage = `${getUtilDatasetLabel(datasetKey)} / ${teamName}\n${fromYm} ~ ${toYm}\n품목: ${selectedLabels}\n삭제를 진행할까요?`;
                     const ok = confirm(confirmMessage);

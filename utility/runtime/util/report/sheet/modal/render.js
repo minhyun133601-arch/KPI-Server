@@ -39,6 +39,7 @@
         syncUtilSheetDetachedReportWindow: null,
         syncUtilSheetReportWindowState: null,
         ensureUtilElectricReportDataSync: null,
+        ensureUtilGasReportDataSync: null,
         ensureUtilGasMeteringStore: null,
         ensureUtilElectricMeteringStore: null,
         getUtilSheetDetachedReportWindow: null,
@@ -325,6 +326,20 @@
         }
 
         modal._utilSheetAnalysisModel = null;
+        if (
+            datasetKey === 'gas'
+            && !datasetResult.hasData
+            && !UtilSheetRuntimeState.gasDataSyncedOnce
+            && typeof runtime.ensureUtilGasReportDataSync === 'function'
+        ) {
+            if (subEl) subEl.textContent = '기준: 가스 검침 데이터를 불러오는 중';
+            bodyEl.innerHTML = '<div class="util-sheet-empty">가스 검침표 데이터를 정리하는 중입니다.</div>';
+            runtime.ensureUtilGasReportDataSync().then(() => {
+                rerenderUtilSheetReportModalIfActive(sheetType, datasetKey);
+            });
+            syncSupplementaryWindows(modal);
+            return;
+        }
         if (!datasetResult.hasData) {
             if (subEl) subEl.textContent = '기준: 데이터 없음';
             bodyEl.innerHTML = '<div class="util-sheet-empty">표시할 보고서를 준비하지 못했습니다.</div>';

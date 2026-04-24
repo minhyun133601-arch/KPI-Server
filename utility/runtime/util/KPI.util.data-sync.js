@@ -1066,7 +1066,7 @@
         const UTIL_PRODUCTION_UPLOAD_COLS = ['A', 'B', 'C', 'E', 'F'];
         const UTIL_PRODUCTION_UPLOAD_HEADER_ROW = 3;
         const UTIL_PRODUCTION_UPLOAD_DATA_START_ROW = 4;
-        const UTIL_PRODUCTION_UPLOAD_DATE_OFFSET_DAYS = 1;
+        const UTIL_PRODUCTION_UPLOAD_DATE_OFFSET_DAYS = 0;
         const UTIL_PRODUCTION_UPLOAD_HEADER_RULES = {
             A: [/생산일자/],
             B: [/팀/],

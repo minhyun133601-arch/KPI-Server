@@ -60,6 +60,8 @@
     };
     const UtilSheetRuntimeState = {
         gasMeteringPromise: null,
+        gasDataSyncPromise: null,
+        gasDataSyncedOnce: false,
         electricMeteringPromise: null,
         electricDataSyncPromise: null,
         electricDataSyncedOnce: false,

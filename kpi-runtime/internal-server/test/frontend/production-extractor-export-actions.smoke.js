@@ -108,13 +108,19 @@ test('production extractor export actions normalize stored bridge rows determini
 });
 
 test('production extractor html loads export actions before app and KPI bridge busts the embed cache', () => {
-  const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=13');
-  const appIndex = productionExtractorHtml.indexOf('app.js?v=13');
+  const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=16');
+  const appIndex = productionExtractorHtml.indexOf('app.js?v=16');
 
   assert.ok(exportActionsIndex >= 0, 'split runtime loader is missing');
   assert.ok(appIndex > exportActionsIndex, 'app.js must load after runtime/export-actions.js');
   assert.match(
     productionExtractorBridgeSource,
-    /production-extractor\.html\?embed=1&v=13/
+    /production-extractor\.html\?embed=1&v=16/
   );
+});
+
+test('production extractor export actions keep month-based export copy', () => {
+  assert.match(exportActionsSource, /날짜 원본 그대로 사용, 월 기준 1일~말일 분류/);
+  assert.match(exportActionsSource, /\["선택 월"/);
+  assert.doesNotMatch(exportActionsSource, /정산 시작일/);
 });
