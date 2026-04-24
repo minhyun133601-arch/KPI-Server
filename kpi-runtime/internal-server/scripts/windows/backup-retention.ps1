@@ -118,10 +118,12 @@ function Invoke-RetentionDelete {
 }
 
 $storageRoot = Get-ConfiguredStorageRoot -ServerDir $serverDir
+$postgresDumpPlan = Get-RetentionPlan -Root (Join-Path $storageRoot 'backups\postgres-dumps') -Type 'file'
 $runtimePlan = Get-RetentionPlan -Root (Join-Path $storageRoot 'backups\runtime-snapshots') -Type 'file'
 $fileStoragePlan = Get-RetentionPlan -Root (Join-Path $storageRoot 'backups\file-storage') -Type 'directory'
 
 if ($Force) {
+  Invoke-RetentionDelete -Plan $postgresDumpPlan
   Invoke-RetentionDelete -Plan $runtimePlan
   Invoke-RetentionDelete -Plan $fileStoragePlan
 }
@@ -131,6 +133,7 @@ if ($Force) {
   mode = if ($Force) { 'delete' } else { 'preview' }
   daysToKeep = $DaysToKeep
   keepLatest = $KeepLatest
+  postgresDumps = $postgresDumpPlan
   runtimeSnapshots = $runtimePlan
   fileStorage = $fileStoragePlan
 } | ConvertTo-Json -Depth 8

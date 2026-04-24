@@ -310,6 +310,16 @@ supporting_docs_only:
 - KR: 사내망 단일-박스 운용 맥락에서 A-55의 rollback 메모는 다음 두 형태 중 하나로 충족한다. **형태 1**: 별도 `NNN_name.down.sql` 파일과 up/down 쌍 관리. **형태 2**: migration SQL 상단의 inline rollback 메모 + 직전 backup snapshot으로 복구하는 절차 참조. 다음 세 경우에는 형태 1이 필수다. ① 대규모 데이터 재구성(`ALTER TABLE ... DROP/TYPE change` 등), ② 되돌리기 어려운 destructive change(`DROP TABLE/COLUMN`, 돌이킬 수 없는 데이터 변환), ③ production 사용 중인 테이블의 non-nullable column 추가. 근거: 단일 박스에 정기 backup이 있는 환경에서는 backup-기반 복구가 대부분의 destructive 실수에 대해 가장 빠르고 안전한 경로다. rollback SQL 쌍은 위험한 변경에 한해 강제한다.
 - EN: In the internal single-box intranet context, A-55's rollback note MAY be satisfied by either **Form 1**: a dedicated `NNN_name.down.sql` file paired with the up-migration, or **Form 2**: an inline rollback memo at the top of the migration SQL plus a reference to restoring from the most recent backup snapshot. Form 1 is MANDATORY for: (a) large-scale data reshaping (`ALTER TABLE ... DROP`, type changes), (b) irreversible destructive changes (`DROP TABLE/COLUMN`, one-way data transforms), or (c) adding non-nullable columns to production-active tables. Rationale: on a single-box setup with routine backups, backup-based recovery is usually the fastest and safest path for destructive mistakes. Paired rollback SQL is enforced only where that path is insufficient.
 
+### Directive A-55b
+
+- KR: 운영 DB 또는 운영에 준하는 로컬 DB에 대해 schema migration, 대량 import/replace, destructive repair, 권한/사용자/문서 저장소 변경을 실행하기 전에는 `npm run backup:postgres-dump` 또는 `scripts/windows/backup-postgres-dump.ps1`로 PostgreSQL 전체 custom-format dump를 먼저 남겨야 한다. 앱 JSON runtime snapshot만으로는 전체 DB 재해복구 기준을 충족한 것으로 보지 않는다.
+- EN: Before running a schema migration, bulk import/replace, destructive repair, or auth/user/document-storage change against production or production-like local DBs, create a full PostgreSQL custom-format dump with `npm run backup:postgres-dump` or `scripts/windows/backup-postgres-dump.ps1`. The app JSON runtime snapshot alone is not sufficient for full DB disaster recovery.
+
+### Directive A-55c
+
+- KR: DB 백업 파일은 `KPI_STORAGE_ROOT/backups/postgres-dumps/` 아래에 보관하고 저장소에 commit 하지 않는다. 전체 운영 백업은 `npm run backup:all`로 PostgreSQL dump, runtime snapshot, file-storage backup을 함께 생성하는 것을 기본값으로 한다. 활성 DB에 dump를 복원하는 작업은 사용자 명시 승인과 별도 복구 계획 없이 수행하지 않는다.
+- EN: DB dump files MUST be stored under `KPI_STORAGE_ROOT/backups/postgres-dumps/` and MUST NOT be committed to the repository. The default full operational backup is `npm run backup:all`, which creates a PostgreSQL dump, runtime snapshot, and file-storage backup together. Restoring a dump into an active DB MUST NOT be performed without explicit user approval and a separate recovery plan.
+
 ### Directive A-56
 - KR: 환경변수는 한 곳에서 읽어 typed config 객체로 매핑한다. raw env lookup을 코드베이스 전체에 흩뿌리지 않는다.
 - EN: Environment variables MUST be read in one place and mapped into typed config objects. Raw env lookups MUST NOT be scattered across the codebase.

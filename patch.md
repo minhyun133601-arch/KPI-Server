@@ -108,6 +108,44 @@ KPI-Server/
 - `AGENTS.md` is the authority doc. `patch.md` and `비전공자용.md` are supporting docs.
 - `node_modules/`, `kpi-runtime/internal-server/.codex-run/`, `kpi-runtime/internal-server/var/` are excluded from the main tree because they are dependencies or runtime artifacts.
 
+## 2026-04-24 - PostgreSQL Dump Backup Rule / PostgreSQL 전체 DB 백업 규칙
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- AGENTS.md
+|-- patch.md
+|-- 비전공자용.md
+`-- kpi-runtime/internal-server/
+    |-- package.json
+    `-- scripts/windows/
+        |-- backup-postgres-dump.ps1
+        |-- backup-all.ps1
+        `-- backup-retention.ps1
+```
+
+### Summary / 요약
+- Added an AGENTS rule requiring a full PostgreSQL custom-format dump before schema migrations, bulk import/replace, destructive repair, or auth/user/document-storage DB changes.
+- Added `npm run backup:postgres-dump`, which writes `pg_dump --format=custom` output under `KPI_STORAGE_ROOT/backups/postgres-dumps/` without printing DB credentials.
+- Added `npm run backup:all`, now covering PostgreSQL dump, runtime JSON snapshot, and file-storage backup together.
+- Extended backup retention preview/deletion to include PostgreSQL dump files.
+- Kept generated dump files out of Git; they live under `kpi-runtime/internal-server/var/prod/backups/postgres-dumps/` in this local environment.
+
+### Changed Files / 변경 파일
+- `AGENTS.md`
+- `patch.md`
+- `비전공자용.md`
+- `kpi-runtime/internal-server/package.json`
+- `kpi-runtime/internal-server/scripts/windows/backup-postgres-dump.ps1`
+- `kpi-runtime/internal-server/scripts/windows/backup-all.ps1`
+- `kpi-runtime/internal-server/scripts/windows/backup-retention.ps1`
+
+### Verification / 검증
+- `npm run backup:postgres-dump` -> `pass`; created `postgres-dump-20260424-160043.dump`, `848320` bytes
+- `npm run backup:all` -> `pass`; created PostgreSQL dump `postgres-dump-20260424-160058.dump`, runtime snapshot, and file-storage backup
+- `backup-retention.ps1` preview -> `pass`; PostgreSQL dump retention sees `2` dump files, `deleteCount: 0`
+- `git status --short -- kpi-runtime/internal-server/var/prod/backups/postgres-dumps` -> no tracked/untracked dump files
+
 ## 2026-04-24 - Cleanup Imported Reference Materials / 반입 참고자료 정리
 
 ### Architecture Impact / 아키텍처 수정사항

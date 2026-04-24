@@ -12,6 +12,8 @@
     "format:write": "prettier --write e2e/kpi-browser.playwright.js eslint.config.js playwright.config.js package.json ../../.github/workflows/kpi-internal-server-ci.yml",
     "lint": "eslint src test e2e playwright.config.js --max-warnings 0",
     "lint:fix": "eslint src test e2e playwright.config.js --fix",
+    "backup:all": "powershell -ExecutionPolicy Bypass -File scripts/windows/backup-all.ps1",
+    "backup:postgres-dump": "powershell -ExecutionPolicy Bypass -File scripts/windows/backup-postgres-dump.ps1",
     "backup:runtime-snapshot": "node src/scripts/backupRuntimeSnapshot.js",
     "cleanup:legacy-util-production-daily": "node src/scripts/cleanupLegacyUtilProductionDailyRecord.js",
     "db:migrate": "node src/scripts/migrate.js",
