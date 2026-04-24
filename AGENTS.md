@@ -1,6 +1,6 @@
 # AGENTS.md
 작성일 / Date: `2026-04-03`
-개정일 / Revised: `2026-04-23` — 진행/status 문서 제거, `patch.md` 패치 기록 도입, 실작업용 규칙 정비
+개정일 / Revised: `2026-04-24` — patch/비전공자용 아키텍처-first 기록 규칙 추가
 
 > 이 문서는 KPI 저장소의 **AI 역할, 코드 생성 규약, 보안 기준, 테스트·완료 기준**을 정의하는 단일 기준 문서다.  
 > This document is the single source of truth for the KPI repository’s **AI role, code-generation contract, security baseline, and testing/completion gates**.
@@ -25,6 +25,7 @@ authority_set:
   - "AGENTS.md"
 supporting_docs_only:
   - "patch history (`patch.md`)"
+  - "plain-language patch companion (`비전공자용.md`)"
   - "legacy analyses"
   - "old prompts"
   - "archived reference material"
@@ -163,12 +164,24 @@ supporting_docs_only:
 - EN: Long documents do not need line-by-line full translation, but **core operating rules, risk boundaries, and prohibitions** MUST also appear in English.
 
 ### Directive A-23a
-- KR: repo-owned authority/rules markdown는 `AGENTS.md` 하나만 유지한다. `patch.md`는 예외적으로 허용되는 **비권위 patch log** 이며, 그 외 checklist, runbook, temporary note, helper prompt `*.md`는 사용자의 명시적 요청 없이는 만들지 않는다.
-- EN: Keep repo-owned authority/rules markdown limited to `AGENTS.md`. `patch.md` is the only standing exception as a **non-authoritative patch log**; do not create other checklist, runbook, temporary-note, or helper-prompt `*.md` files without explicit user request.
+- KR: repo-owned authority/rules markdown는 `AGENTS.md` 하나만 유지한다. `patch.md`와 `비전공자용.md`는 예외적으로 허용되는 **비권위 supporting 문서**이며, 그 외 checklist, runbook, temporary note, helper prompt `*.md`는 사용자의 명시적 요청 없이는 만들지 않는다.
+- EN: Keep repo-owned authority/rules markdown limited to `AGENTS.md`. `patch.md` and `비전공자용.md` are the only standing **non-authoritative supporting docs** allowed by default; do not create other checklist, runbook, temporary-note, or helper-prompt `*.md` files without explicit user request.
 
 ### Directive A-23b
 - KR: `patch.md`는 repo root 에 두는 patch history 전용 supporting 문서다. authority 문서는 아니며, 코드나 저장소 소유 문서를 수정하는 패치에는 날짜, 요약, 변경 파일, 검증 결과를 같은 패치에서 함께 기록한다.
 - EN: `patch.md` is the repo-root supporting document dedicated to patch history. It is not an authority document, and any patch that changes code or repo-owned documentation MUST record the date, summary, changed files, and verification results in the same patch.
+
+### Directive A-23c
+- KR: `비전공자용.md`는 `patch.md`를 비전공자도 바로 이해할 수 있도록 쉬운 한국어로 풀어쓴 companion 문서다. authority 문서는 아니며, `patch.md`에 새 patch entry를 추가할 때는 같은 패치에서 같은 내용을 쉬운 말로 옮기고, 피할 수 없는 기술 용어에는 일상어 설명을 함께 붙인다.
+- EN: `비전공자용.md` is the plain-Korean companion that rewrites `patch.md` so non-technical readers can understand it directly. It is not an authority document, and every new patch entry added to `patch.md` MUST be mirrored in the same patch using easy language plus everyday explanations for unavoidable technical terms.
+
+### Directive A-23d
+- KR: `patch.md` 상단에는 저장소 폴더/문서 아키텍처 개요를 **트리(tree) 형태**로 둔다. 각 날짜 patch entry 는 첫 소제목을 `Architecture Impact / 아키텍처 수정사항`으로 시작하고, 그 패치가 건드린 경로, 레이어, 문서, 기능 영역을 가능하면 **작은 touched-path tree** 로 먼저 보여 준다.
+- EN: `patch.md` MUST keep the repo folder/document architecture overview near the top in a **tree-shaped view**. Each dated patch entry MUST start with `Architecture Impact` and, when practical, show the touched paths, layers, repo-owned docs, and feature areas first as a **small touched-path tree**.
+
+### Directive A-23e
+- KR: `비전공자용.md` 상단에는 같은 아키텍처 개요를 쉬운 한국어의 **트리 형태**로 둔다. 각 날짜 설명도 첫 소제목을 `이번 패치가 건드린 위치` 같은 쉬운 아키텍처 요약으로 시작하고, 기술 경로를 적을 때는 사람이 이해할 수 있는 설명을 같은 줄 또는 바로 아래에 붙인다.
+- EN: `비전공자용.md` MUST mirror the same architecture overview near the top in an easy-Korean **tree-shaped view**. Each dated explanation MUST also start with a plain-language architecture summary such as `이번 패치가 건드린 위치`, and any technical path mentioned there MUST include a human-readable explanation on the same line or immediately below it.
 
 ### Directive A-24
 - KR: 설명은 쉽게 하되 기준은 낮추지 않는다.
@@ -542,8 +555,8 @@ supporting_docs_only:
 ## 12. Human Review and Operability Boundaries / 사람 검토와 운영 가능성 경계
 
 ### Directive A-126
-- KR: `AGENTS.md`는 hard rule 과 done gate 를, `patch.md`는 patch history 를 소유한다. `patch.md`를 장기 진행 문서나 status board 로 키우지 않는다.
-- EN: `AGENTS.md` owns hard rules and done gates, while `patch.md` owns patch history. Do not turn `patch.md` into a long-lived progress document or status board.
+- KR: `AGENTS.md`는 hard rule 과 done gate 를, `patch.md`는 patch history 와 아키텍처 영향 요약을, `비전공자용.md`는 그 patch history 와 아키텍처의 쉬운 설명판을 소유한다. `patch.md`와 `비전공자용.md`를 장기 진행 문서나 status board 로 키우지 않는다.
+- EN: `AGENTS.md` owns hard rules and done gates, `patch.md` owns patch history plus architecture-impact summaries, and `비전공자용.md` owns the plain-language companion view of that history and architecture. Do not turn `patch.md` or `비전공자용.md` into long-lived progress documents or status boards.
 
 ### Directive A-127
 - KR: 사람 검토가 반드시 필요한 영역은 최소한 `인증`, `권한`, `승인 흐름`, `저장 권위본`, `외부 노출`, `마이그레이션`, `백업/복구`, `보안 사고 대응`이다.

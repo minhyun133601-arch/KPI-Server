@@ -1,9 +1,162 @@
 # patch.md
 작성일 / Date: `2026-04-23`
+개정일 / Revised: `2026-04-24`
 상태 / Status: `supporting material only`
 기준 문서 / Authority reference: `AGENTS.md`
 
+## Architecture First / 아키텍처 먼저 보기
+
+### Current Repo Tree / 현재 저장소 트리
+```text
+KPI-Server/
+|-- AGENTS.md
+|-- patch.md
+|-- 비전공자용.md
+|-- KPI.html
+|-- .github/
+|-- .husky/
+|-- shared-assets/
+|   `-- logo.jpg
+|-- kpi-runtime/
+|   |-- app/
+|   |   |-- KPI.app.js
+|   |   |-- KPI.app.navigation.js
+|   |   |-- KPI.app.global-save.js
+|   |   |-- KPI.app.viewer.js
+|   |   `-- styles/
+|   |       |-- audit/
+|   |       |-- metering/
+|   |       |-- shell/
+|   |       `-- work/
+|   |-- core/
+|   |   `-- KPI.core.js
+|   |-- sections/
+|   |   |-- KPI.section.builders.js
+|   |   |-- KPI.section.registry.js
+|   |   `-- KPI.sections.owner.js
+|   `-- internal-server/
+|       |-- package.json
+|       |-- src/
+|       |   |-- server.js
+|       |   |-- request-router.js
+|       |   |-- config.js
+|       |   |-- db/
+|       |   |-- routes/
+|       |   |-- services/
+|       |   |-- repositories/
+|       |   |-- lib/
+|       |   `-- scripts/
+|       |-- test/
+|       |-- e2e/
+|       |-- deploy/
+|       `-- scripts/windows/
+|-- utility/
+|   |-- apps/
+|   |   |-- metering/
+|   |   |   |-- app.js
+|   |   |   |-- billing/
+|   |   |   |-- calendar/
+|   |   |   |-- equipment/
+|   |   |   |-- runtime/
+|   |   |   |-- save/
+|   |   |   |-- team-monthly/
+|   |   |   |-- team-overview/
+|   |   |   `-- team-settlement/
+|   |   `-- production-extractor/
+|   |       |-- app.js
+|   |       |-- production-extractor.html
+|   |       `-- runtime/
+|   `-- runtime/
+|       `-- util/
+|           |-- KPI.util.runtime.js
+|           |-- KPI.util.data-sync.js
+|           |-- analytics/
+|           |-- energy/
+|           |-- integration/
+|           |-- production/
+|           |-- report/
+|           `-- sections/
+|-- team-report/
+|   |-- runtime/
+|   |   `-- work/
+|   |       |-- KPI.work.runtime.js
+|   |       |-- history/
+|   |       `-- sections/
+|   `-- work-log/
+|       `-- teams/
+|-- data-entry/
+|   `-- runtime/data/sections/
+|-- audit/
+|   `-- runtime/audit/
+|       |-- KPI.audit.runtime.js
+|       |-- records/
+|       `-- sections/
+|-- commands/
+|   |-- open-ops-console.cmd
+|   |-- close-ops-console.cmd
+|   `-- ops-console-app/
+|       |-- ops-console/
+|       |   |-- server.mjs
+|       |   |-- lib/
+|       |   `-- public/
+|       |-- scripts/
+|       `-- var/
+`-- work-log/
+```
+
+### Tree Notes / 트리 메모
+- `AGENTS.md` is the authority doc. `patch.md` and `비전공자용.md` are supporting docs.
+- `node_modules/`, `kpi-runtime/internal-server/.codex-run/`, `kpi-runtime/internal-server/var/` are excluded from the main tree because they are dependencies or runtime artifacts.
+
+## 2026-04-24
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- AGENTS.md
+|   `-- existing patch/companion rule reused
+|-- patch.md
+|   `-- 2026-04-24 entry updated for plain-language label change
+`-- 비전공자용.md
+    `-- English path labels now include Korean role descriptions
+```
+
+### Summary / 요약
+- 상단 아키텍처 설명을 문장 목록이 아니라 폴더를 한 번에 볼 수 있는 트리 형태로 바꿨다.
+- `patch.md`와 `비전공자용.md` 모두 "저장소 전체 트리"와 "이번 패치가 건드린 트리"가 먼저 보이도록 재편했다.
+- `AGENTS.md`에 앞으로도 두 문서가 tree-first 형식으로 유지되도록 규칙을 보강했다.
+- `비전공자용.md`에서는 영어 경로 옆에 한글 기능 설명을 추가해 비전공자도 역할을 바로 읽을 수 있게 했다.
+
+### Changed Files / 변경 파일
+- `AGENTS.md`
+- `patch.md`
+- `비전공자용.md`
+
+### Verification / 검증
+- `rg -n "Current Repo Tree|KPI-Server/|existing patch/companion rule reused|English path labels now include Korean role descriptions" patch.md` → `matched-expected-tree-sections`
+- `rg -n "저장소 트리 먼저 보기|KPI-Server/|공식 규칙 문서|쉬운 설명용 저장소 트리" 비전공자용.md` → `matched-expected-plain-tree-sections`
+- `rg -n "tree-shaped view|트리\\(tree\\) 형태|touched-path tree" AGENTS.md` → `matched-expected-tree-rules`
+- `rg -n "앱 시작점|요청 분기기|청구와 정산 기능|브라우저 시나리오 점검" 비전공자용.md` → `matched-expected-korean-role-labels`
+
+### Notes / 메모
+- 이 상단 아키텍처 설계도는 change tracking 용 supporting view 이며, authority 기준은 계속 `AGENTS.md`가 소유한다.
+
 ## 2026-04-23
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- AGENTS.md
+|-- patch.md
+|-- .gitignore
+|-- utility/
+|   |-- runtime/util/KPI.util.data-sync.js
+|   `-- apps/metering/runtime/utility-snapshots.js
+`-- kpi-runtime/internal-server/
+    |-- test/frontend/kpi-util-data-sync.smoke.js
+    |-- test/frontend/metering-utility-snapshot-hydration.smoke.js
+    `-- e2e/kpi-browser.playwright.js
+```
 
 ### Summary / 요약
 - 진행/status 정리 문서 3개를 제거했다.
@@ -14,6 +167,12 @@
 ### Changed Files / 변경 파일
 - `AGENTS.md`
 - `patch.md`
+- `.gitignore`
+- `utility/runtime/util/KPI.util.data-sync.js`
+- `utility/apps/metering/runtime/utility-snapshots.js`
+- `kpi-runtime/internal-server/test/frontend/kpi-util-data-sync.smoke.js`
+- `kpi-runtime/internal-server/test/frontend/metering-utility-snapshot-hydration.smoke.js`
+- `kpi-runtime/internal-server/e2e/kpi-browser.playwright.js`
 
 ### Removed Files / 삭제 파일
 - `구조-개선-실행-페이즈.md`
