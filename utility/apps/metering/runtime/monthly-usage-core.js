@@ -143,6 +143,96 @@ function calculateEquipmentGroupMonthlyUsage(equipmentIds) {
   return values.reduce((sum, value) => sum + value, 0);
 }
 
+function compareResidualMonthValues(leftMonthValue, rightMonthValue) {
+  if (typeof compareMonthValues === "function") {
+    return compareMonthValues(leftMonthValue, rightMonthValue);
+  }
+
+  return String(leftMonthValue || "").localeCompare(String(rightMonthValue || ""));
+}
+
+function shouldUseElectricTeamResidualOtherUsage(monthValue = state.currentMonth) {
+  if (isGasResourceType()) {
+    return false;
+  }
+
+  const normalizedMonth = normalizeMonthValue(monthValue);
+  const startMonth =
+    typeof ELECTRIC_OTHER_TEAM_RESIDUAL_START_MONTH === "undefined"
+      ? ""
+      : normalizeMonthValue(ELECTRIC_OTHER_TEAM_RESIDUAL_START_MONTH);
+  if (!normalizedMonth || !startMonth) {
+    return false;
+  }
+
+  return compareResidualMonthValues(normalizedMonth, startMonth) >= 0;
+}
+
+function getElectricOtherResidualTeamKeys() {
+  if (
+    typeof ELECTRIC_OTHER_RESIDUAL_TEAM_KEYS !== "undefined" &&
+    Array.isArray(ELECTRIC_OTHER_RESIDUAL_TEAM_KEYS)
+  ) {
+    return [...ELECTRIC_OTHER_RESIDUAL_TEAM_KEYS];
+  }
+  return typeof ELECTRIC_TOTAL_OVERVIEW_TEAM_KEYS !== "undefined" &&
+    Array.isArray(ELECTRIC_TOTAL_OVERVIEW_TEAM_KEYS)
+    ? [...ELECTRIC_TOTAL_OVERVIEW_TEAM_KEYS]
+    : [];
+}
+
+function calculateElectricTeamResidualAllocatedMonthlyUsage(monthValue = state.currentMonth) {
+  if (typeof getTeamMonthlyUsage !== "function") {
+    return null;
+  }
+
+  const values = getElectricOtherResidualTeamKeys()
+    .map((teamKey) =>
+      getTeamMonthlyUsage(teamKey, {
+        monthValue,
+        excludeOtherEquipment: true,
+      })
+    )
+    .filter((value) => Number.isFinite(value));
+
+  if (!values.length) {
+    return null;
+  }
+
+  return values.reduce((sum, value) => sum + value, 0);
+}
+
+function getOtherMonthlyUsageComputation(monthValue = state.currentMonth) {
+  if (isGasResourceType()) {
+    return null;
+  }
+
+  const totalPowerUsage = calculateTotalPowerMonthlyUsage();
+  if (!Number.isFinite(totalPowerUsage)) {
+    return null;
+  }
+
+  if (shouldUseElectricTeamResidualOtherUsage(monthValue)) {
+    const teamUsage = calculateElectricTeamResidualAllocatedMonthlyUsage(monthValue);
+    if (Number.isFinite(teamUsage)) {
+      return {
+        mode: "team_residual",
+        totalPowerUsage,
+        allocatedUsage: teamUsage,
+        otherUsage: totalPowerUsage - teamUsage,
+      };
+    }
+  }
+
+  const equipmentUsage = calculateEquipmentGroupMonthlyUsage(getEquipmentSummaryIds());
+  return {
+    mode: "equipment_residual",
+    totalPowerUsage,
+    allocatedUsage: equipmentUsage ?? 0,
+    otherUsage: totalPowerUsage - (equipmentUsage ?? 0),
+  };
+}
+
 function calculateOtherDailyUsage(dateString) {
   if (isGasResourceType()) {
     return null;
@@ -185,10 +275,9 @@ function calculateOtherMonthlyUsage() {
     return null;
   }
 
-  const totalPowerUsage = calculateTotalPowerMonthlyUsage();
-  if (totalPowerUsage !== null) {
-    const equipmentUsage = calculateEquipmentGroupMonthlyUsage(getEquipmentSummaryIds());
-    return totalPowerUsage - (equipmentUsage ?? 0);
+  const usageComputation = getOtherMonthlyUsageComputation();
+  if (usageComputation && Number.isFinite(usageComputation.otherUsage)) {
+    return usageComputation.otherUsage;
   }
 
   return calculateMonthlyUsageFromDailyResolver((dateString) =>

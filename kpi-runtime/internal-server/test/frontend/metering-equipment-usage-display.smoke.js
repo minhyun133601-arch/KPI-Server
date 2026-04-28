@@ -312,6 +312,24 @@ test('usage-display renders other and gas usage detail text', () => {
   assert.match(gasDetailText, /경계보정 detail/);
 });
 
+test('usage-display can reflect team-residual other usage computation', () => {
+  const context = createUsageDisplayContext();
+  context.getOtherMonthlyUsageComputation = function () {
+    return {
+      mode: 'team_residual',
+      totalPowerUsage: 100,
+      allocatedUsage: 60,
+      otherUsage: 40,
+    };
+  };
+
+  const otherDetailText = context.getEquipmentUsageDetailText('other_01');
+  assert.match(otherDetailText, /팀 배분 사용량 월 합계 60/);
+  assert.match(otherDetailText, /100/);
+  assert.match(otherDetailText, /60/);
+  assert.match(otherDetailText, /40/);
+});
+
 test('usage-display returns the missing-reading message when monthly usage is unavailable', () => {
   const context = createUsageDisplayContext();
 

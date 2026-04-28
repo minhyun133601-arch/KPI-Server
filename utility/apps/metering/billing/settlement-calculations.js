@@ -219,7 +219,6 @@ function deriveBillingSettlementElectricityChargeTotalFromBillingAmountValue(raw
     derivedValue += numericValue * sign;
   };
 
-  applyAdjustment("base_charge", -1);
   applyAdjustment("vat", -1);
   applyAdjustment("electric_power_fund", -1);
   applyAdjustment("tv_reception_fee", -1);

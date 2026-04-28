@@ -205,18 +205,127 @@ function getSelectedTeamCorrectedSummaryInfo() {
   };
 }
 
-function getTeamMonthlyUsage(teamKey, options = {}) {
-  if (supportsDirectTeamMonthlyUsage(teamKey)) {
-    return getDirectTeamMonthlyUsage(teamKey);
+function getElectricLiquidCompressorTeamUsageAdjustmentRule() {
+  if (typeof ELECTRIC_LIQUID_COMPRESSOR_TEAM_USAGE_ADJUSTMENT === "undefined") {
+    return null;
   }
 
-  const values = getTeamChargeEquipmentIdsExcludingSharedCompressor(teamKey, state.currentMonth, options)
+  return ELECTRIC_LIQUID_COMPRESSOR_TEAM_USAGE_ADJUSTMENT &&
+    typeof ELECTRIC_LIQUID_COMPRESSOR_TEAM_USAGE_ADJUSTMENT === "object"
+    ? ELECTRIC_LIQUID_COMPRESSOR_TEAM_USAGE_ADJUSTMENT
+    : null;
+}
+
+function normalizeElectricTeamUsageAdjustmentMonthValue(monthValue = state.currentMonth) {
+  const normalizedMonth =
+    typeof normalizeMonthValue === "function"
+      ? normalizeMonthValue(monthValue)
+      : String(monthValue || "").trim();
+  return /^\d{4}-\d{2}$/.test(normalizedMonth) ? normalizedMonth : "";
+}
+
+function compareElectricTeamUsageAdjustmentMonths(leftMonthValue, rightMonthValue) {
+  if (typeof compareMonthValues === "function") {
+    return compareMonthValues(leftMonthValue, rightMonthValue);
+  }
+
+  return String(leftMonthValue || "").localeCompare(String(rightMonthValue || ""));
+}
+
+function shouldApplyElectricLiquidCompressorTeamUsageAdjustment(
+  teamKey,
+  monthValue = state.currentMonth,
+  options = {}
+) {
+  if (isGasResourceType()) {
+    return false;
+  }
+
+  const rule = getElectricLiquidCompressorTeamUsageAdjustmentRule();
+  if (!rule || teamKey !== rule.teamKey) {
+    return false;
+  }
+
+  const normalizedMonth = normalizeElectricTeamUsageAdjustmentMonthValue(monthValue);
+  const startMonth = normalizeElectricTeamUsageAdjustmentMonthValue(rule.startMonth);
+  if (!normalizedMonth) {
+    return false;
+  }
+
+  if (startMonth && compareElectricTeamUsageAdjustmentMonths(normalizedMonth, startMonth) < 0) {
+    return false;
+  }
+
+  if (options.selectionOnly !== true) {
+    return true;
+  }
+
+  const selectedEquipmentIds = getTeamChargeEquipmentIdsExcludingSharedCompressor(
+    teamKey,
+    monthValue,
+    options
+  );
+  const fullEquipmentIds = getTeamChargeEquipmentIdsExcludingSharedCompressor(teamKey, monthValue);
+
+  return (
+    fullEquipmentIds.length > 0 &&
+    fullEquipmentIds.every((equipmentId) => selectedEquipmentIds.includes(equipmentId))
+  );
+}
+
+function calculateElectricLiquidCompressorTeamUsageAdjustment(
+  teamKey,
+  monthValue = state.currentMonth,
+  options = {}
+) {
+  if (!shouldApplyElectricLiquidCompressorTeamUsageAdjustment(teamKey, monthValue, options)) {
+    return null;
+  }
+
+  const rule = getElectricLiquidCompressorTeamUsageAdjustmentRule();
+  const deductionFactor = Number(rule?.deductionFactor);
+  if (!Number.isFinite(deductionFactor)) {
+    return null;
+  }
+
+  const sourceUsage = calculateEquipmentMonthlyUsage(rule.equipmentId, { monthValue });
+  const rawDifference = sourceUsage?.difference;
+  if (!Number.isFinite(rawDifference)) {
+    return null;
+  }
+
+  return rawDifference * deductionFactor;
+}
+
+function getTeamMonthlyUsage(teamKey, options = {}) {
+  const monthValue = options.monthValue || state.currentMonth;
+  if (supportsDirectTeamMonthlyUsage(teamKey)) {
+    return getDirectTeamMonthlyUsage(teamKey, monthValue);
+  }
+
+  const values = getTeamChargeEquipmentIdsExcludingSharedCompressor(teamKey, monthValue, options)
+    .filter((equipmentId) => {
+      if (options.excludeOtherEquipment !== true) {
+        return true;
+      }
+
+      return !isOtherEquipment(getEquipmentItem(equipmentId));
+    })
     .map((equipmentId) => calculateEquipmentMonthlyUsage(equipmentId).value)
     .filter((value) => value !== null);
-  const sharedUsage = calculateTeamSharedCompressorSettlementUsage(teamKey, state.currentMonth, options);
+  const sharedUsage = calculateTeamSharedCompressorSettlementUsage(teamKey, monthValue, options);
 
   if (Number.isFinite(sharedUsage)) {
     values.push(sharedUsage);
+  }
+
+  const liquidCompressorAdjustment = calculateElectricLiquidCompressorTeamUsageAdjustment(
+    teamKey,
+    monthValue,
+    options
+  );
+  if (Number.isFinite(liquidCompressorAdjustment)) {
+    values.push(-liquidCompressorAdjustment);
   }
 
   if (!values.length) {

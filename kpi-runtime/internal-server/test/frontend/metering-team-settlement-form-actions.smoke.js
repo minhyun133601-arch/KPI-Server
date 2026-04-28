@@ -202,6 +202,10 @@ function createTeamSettlementFormActionsContext(options = {}) {
       TEAM: 'team',
     },
     BILLING_SETTLEMENT_FIELD_KEYS: new Set(['power_charge', 'vat', 'unit_price', 'billing_amount']),
+    RESOURCE_TYPES: { ELECTRIC: 'electric', GAS: 'gas', WASTE: 'waste' },
+    isGasLpgBillingSettlementScope(scopeKey) {
+      return String(scopeKey ?? '') === 'gas_lpg';
+    },
     elements: {
       teamSettlementFields,
     },

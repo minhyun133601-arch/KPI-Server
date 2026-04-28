@@ -1,3 +1,30 @@
+function sanitizeBillingSettlementInputValue(rawValue, fieldKey, resourceType, scopeKey) {
+  const stringValue = String(rawValue ?? "");
+  const allowsDecimal =
+    resourceType === RESOURCE_TYPES.GAS &&
+    !isGasLpgBillingSettlementScope(scopeKey) &&
+    fieldKey === "calorific_value";
+  if (allowsDecimal) {
+    let decimalSeen = false;
+    return stringValue.replace(/[^\d.]/g, "").replace(/\./g, () => {
+      if (decimalSeen) {
+        return "";
+      }
+      decimalSeen = true;
+      return ".";
+    });
+  }
+  const allowsNegativeSign =
+    resourceType === RESOURCE_TYPES.ELECTRIC &&
+    fieldKey === "lagging_power_factor_charge";
+  if (allowsNegativeSign) {
+    const hasLeadingMinus = stringValue.trimStart().startsWith("-");
+    const digitsOnly = stringValue.replace(/[^\d]/g, "");
+    return hasLeadingMinus ? `-${digitsOnly}` : digitsOnly;
+  }
+  return stringValue.replace(/[^\d]/g, "");
+}
+
 function handleTeamSettlementFieldInput(event) {
   const input = event.target.closest("input[data-billing-settlement-field]");
   if (!input) {
@@ -16,10 +43,6 @@ function handleTeamSettlementFieldInput(event) {
     resourceType,
     scopeKey
   );
-  const zeroDefaultFieldKeys = getBillingSettlementZeroDefaultFieldKeys(
-    resourceType,
-    scopeKey
-  );
   if (!BILLING_SETTLEMENT_FIELD_KEYS.has(fieldKey)) {
     return;
   }
@@ -29,13 +52,23 @@ function handleTeamSettlementFieldInput(event) {
     return;
   }
 
+  const sanitizedInputValue = sanitizeBillingSettlementInputValue(
+    input.value,
+    fieldKey,
+    resourceType,
+    scopeKey
+  );
+  if (input.value !== sanitizedInputValue) {
+    input.value = sanitizedInputValue;
+  }
+
   const currentEntry = getBillingSettlementEntry(monthValue, scopeKey);
   const nextRawFields = {
     ...(currentEntry?.fields || {}),
   };
   const nextValue = normalizeBillingSettlementStoredValue(
     fieldKey,
-    input.value,
+    sanitizedInputValue,
     resourceType,
     scopeKey
   );
@@ -67,16 +100,7 @@ function handleTeamSettlementFieldInput(event) {
   updateDirtyState();
 
   if (!nextValue) {
-    if (zeroDefaultFieldKeys.includes(fieldKey) && nextFields[fieldKey]) {
-      input.value = formatBillingSettlementFieldDisplayValue(
-        fieldKey,
-        nextFields[fieldKey],
-        resourceType,
-        scopeKey
-      );
-    } else {
-      input.value = "";
-    }
+    input.value = "";
   } else {
     input.value = formatBillingSettlementFieldDisplayValue(
       fieldKey,

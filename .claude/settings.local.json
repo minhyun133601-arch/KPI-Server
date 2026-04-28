@@ -3,7 +3,12 @@
     "allow": [
       "Bash(find . -type f -name package.json -o -name requirements.txt -o -name pyproject.toml -o -name .env* -o -name docker* -o -name *.sql)",
       "Bash(find /c/Users/user/Desktop/KPI-kpi/kpi-runtime -type f -name *.js)",
-      "Bash(find /c/Users/user/Desktop/KPI-kpi/team-report -type f -name *.js)"
+      "Bash(find /c/Users/user/Desktop/KPI-kpi/team-report -type f -name *.js)",
+      "Bash(node --test test/frontend/metering-billing-settlement.smoke.js test/frontend/metering-team-settlement-form-actions.smoke.js)",
+      "Bash(node --test test/frontend/metering-billing-settlement-merge.smoke.js test/frontend/metering-billing-store-normalization.smoke.js test/frontend/metering-team-monthly.smoke.js test/frontend/metering-team-settlement-render.smoke.js test/frontend/metering-resource-meta.smoke.js test/frontend/metering-runtime-store-merge.smoke.js)",
+      "Bash(node --test test/frontend/metering-team-settlement-actions.smoke.js test/frontend/metering-team-settlement-attach-actions.smoke.js test/frontend/metering-team-settlement-document-actions.smoke.js test/frontend/metering-utility-snapshots.smoke.js test/frontend/metering-utility-snapshot-hydration.smoke.js test/frontend/metering-runtime-store-presets.smoke.js test/frontend/metering-runtime-store-normalization.smoke.js)",
+      "Bash(node --test test/frontend/metering-billing-settlement.smoke.js test/frontend/metering-team-settlement-form-actions.smoke.js test/frontend/metering-billing-settlement-merge.smoke.js test/frontend/metering-billing-store-normalization.smoke.js test/frontend/metering-team-monthly.smoke.js test/frontend/metering-team-settlement-render.smoke.js test/frontend/metering-resource-meta.smoke.js test/frontend/metering-runtime-store-merge.smoke.js test/frontend/metering-team-settlement-actions.smoke.js test/frontend/metering-team-settlement-attach-actions.smoke.js test/frontend/metering-team-settlement-document-actions.smoke.js)",
+      "Bash(node --test test/frontend/metering-runtime-monthly-usage-core.smoke.js test/frontend/metering-equipment-usage-display.smoke.js test/frontend/metering-team-overview.smoke.js test/frontend/metering-team-overview-selection-actions.smoke.js)"
     ]
   }
 }

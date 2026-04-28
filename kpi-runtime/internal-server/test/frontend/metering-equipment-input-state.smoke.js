@@ -264,7 +264,7 @@ function createEquipmentInputStateContext() {
       EQUIPMENT: 'equipment',
       TEAM: 'team',
     },
-    GAS_READING_VALIDATION_COMPARISON_EXCEPTIONS: new Set(),
+    READING_VALIDATION_COMPARISON_EXCEPTIONS: new Set(),
     state: {
       selectedDate: '2026-04-18',
       currentMonth: '2026-04',
@@ -442,6 +442,28 @@ test('equipment input state builds validation issues and syncs invalid field UI'
   assert.equal(harness.cards.get('field_01').classList.contains('is-invalid'), true);
   assert.equal(harness.inputs.get('field_03').title.includes('클 수 없습니다'), true);
   assert.equal(harness.inputs.get('field_02').getAttribute('aria-invalid'), 'false');
+});
+
+test('equipment input state skips configured pair comparisons for preserved historical anomalies', () => {
+  const harness = createEquipmentInputStateContext();
+  harness.context.READING_VALIDATION_COMPARISON_EXCEPTIONS.add(
+    'field_01|2026-04-18|2026-04-17'
+  );
+  harness.context.READING_VALIDATION_COMPARISON_EXCEPTIONS.add(
+    'field_03|2026-04-18|2026-04-19'
+  );
+
+  const issues = harness.context.getEquipmentReadingValidationIssuesForDate(
+    {
+      values: {
+        field_01: '12',
+        field_03: '30',
+      },
+    },
+    '2026-04-18'
+  );
+
+  assert.equal(issues.length, 0);
 });
 
 test('equipment input state exposes field selectors and menu open state', () => {

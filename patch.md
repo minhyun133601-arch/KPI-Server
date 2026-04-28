@@ -1,6 +1,6 @@
 # patch.md
 작성일 / Date: `2026-04-23`
-개정일 / Revised: `2026-04-24`
+개정일 / Revised: `2026-04-28`
 상태 / Status: `supporting material only`
 기준 문서 / Authority reference: `AGENTS.md`
 
@@ -107,6 +107,338 @@ KPI-Server/
 ### Tree Notes / 트리 메모
 - `AGENTS.md` is the authority doc. `patch.md` and `비전공자용.md` are supporting docs.
 - `node_modules/`, `kpi-runtime/internal-server/.codex-run/`, `kpi-runtime/internal-server/var/` are excluded from the main tree because they are dependencies or runtime artifacts.
+
+## 2026-04-28 - Electric Other Usage Switches To Team Residual From 2026-03 / 2026-03부터 전기 기타를 팀 배분 후 잔여분으로 계산
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+|-- utility/
+|   `-- apps/metering/
+|       |-- app.js
+|       |-- equipment/usage-display.js
+|       `-- runtime/
+|           |-- monthly-usage-core.js
+|           `-- team-usage-support.js
+`-- kpi-runtime/internal-server/
+    `-- test/frontend/
+        |-- metering-equipment-usage-display.smoke.js
+        `-- metering-runtime-monthly-usage-core.smoke.js
+```
+
+### Summary / 요약
+- Changed electric `other_01` monthly usage so, from `2026-03`, `기타` is no longer a pure equipment residual.
+- The new path first finishes team-side allocation, including shared-compressor settlement and the team 03 liquid-compressor deduction, and then computes `기타 = 전력총량 - 팀 배분 합계`.
+- Kept the change calculation-only. No PostgreSQL authority readings or monthly settlement source records were rewritten in this patch.
+
+### Changed Files / 변경 파일
+- `utility/apps/metering/app.js`
+- `utility/apps/metering/runtime/monthly-usage-core.js`
+- `utility/apps/metering/runtime/team-usage-support.js`
+- `utility/apps/metering/equipment/usage-display.js`
+- `kpi-runtime/internal-server/test/frontend/metering-runtime-monthly-usage-core.smoke.js`
+- `kpi-runtime/internal-server/test/frontend/metering-equipment-usage-display.smoke.js`
+- `patch.md`
+- `비전공자용.md`
+
+### Verification / 검증
+- `npm run smoke:metering-runtime-monthly-usage-core` -> `pass`
+- `npm run smoke:metering-equipment-usage-display` -> `pass`
+- `npm run smoke:metering-runtime-team-usage-support` -> `pass`
+- `npm run smoke:metering-runtime-monthly-summary-support` -> `pass`
+- `npm run smoke:metering-utility-snapshots` -> `pass`
+- `npm run smoke:metering-resource-summary` -> `pass`
+
+### Notes / 메모
+- The `기타` detail text now reflects the new meaning in monthly mode: it shows team-allocated monthly usage instead of the older equipment-sum wording when `team_residual` mode is active.
+- Daily `기타` calculation remains equipment-residual based; only monthly electric `기타` switches to the team-residual path from `2026-03`.
+
+## 2026-04-28 - Team 03 Liquid Compressor Deduction Rule / 3팀 합산에서 액상 컴프 x120 차감
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+|-- utility/
+|   `-- apps/metering/
+|       |-- app.js
+|       `-- runtime/team-usage-support.js
+`-- kpi-runtime/internal-server/
+    `-- test/frontend/
+        `-- metering-runtime-team-usage-support.smoke.js
+```
+
+### Summary / 요약
+- Added a special electric rule so `team_03` monthly usage subtracts the liquid-compressor raw monthly reading difference multiplied by `120`.
+- Kept the earlier shared-compressor logic unchanged for `team_01_02` and `team_02`: `액상 컴프` still joins their shared pool before the `72:28` split.
+- Scoped the new deduction to team-total calculation only, so no authority readings or equipment assignments were rewritten.
+
+### Changed Files / 변경 파일
+- `utility/apps/metering/app.js`
+- `utility/apps/metering/runtime/team-usage-support.js`
+- `kpi-runtime/internal-server/test/frontend/metering-runtime-team-usage-support.smoke.js`
+- `patch.md`
+- `비전공자용.md`
+
+### Verification / 검증
+- `npm run smoke:metering-runtime-team-usage-support` -> `pass`
+- `npm run smoke:metering-runtime-monthly-summary-support` -> `pass`
+- `npm run smoke:metering-team-overview-assigned-list` -> `pass`
+- March 2026 raw check -> `액상 컴프` difference `49.94`, deduction rule `49.94 x 120 = 5992.8`, display rounded `5993`
+- March 2026 team 03 usage check -> original `94945.4`, after deduction `88952.6`
+
+### Notes / 메모
+- The deduction is calculation-only and does not change billing amount logic in this patch.
+- The source-equipment chip totals for team 03 still reflect the physical equipment sums; only the team monthly aggregate gets the extra deduction.
+
+## 2026-04-28 - Shared Compressor Liquid Source From 2026-03 / 2026-03부터 액상 컴프를 공유 컴프에 포함
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+|-- utility/
+|   `-- apps/metering/
+|       |-- app.js
+|       `-- team-overview/charge-support.js
+|-- kpi-runtime/internal-server/
+|   |-- PostgreSQL app_module_records
+|   |   `-- util_metering:electric_v1
+|   `-- test/frontend/
+|       `-- metering-team-overview-charge-support.smoke.js
+```
+
+### Summary / 요약
+- Added `field_custom_1777335768709_08f3az` (`액상 컴프`) to the shared-compressor source pool as a standalone source that becomes active from `2026-03`.
+- Updated the electric authority data so the item now starts at `2026-03`, uses factor `50`, and has a baseline reading `0` on `2026-03-01`.
+- Kept the new source out of normal direct-team equipment assignment logic; it only joins the shared-compressor settlement sum.
+
+### Changed Files / 변경 파일
+- `utility/apps/metering/app.js`
+- `utility/apps/metering/team-overview/charge-support.js`
+- `kpi-runtime/internal-server/test/frontend/metering-team-overview-charge-support.smoke.js`
+- `patch.md`
+- `비전공자용.md`
+
+### Changed Data / 변경 데이터
+- `PostgreSQL app_module_records`
+- `util_metering:electric_v1`
+
+### Verification / 검증
+- `npm run backup:postgres-dump` -> `pass`, dump created at `var/prod/backups/postgres-dumps/postgres-dump-20260428-131159.dump`
+- `npm run smoke:metering-team-overview-charge-support` -> `pass`
+- `npm run smoke:metering-team-overview-assigned-list` -> `pass`
+- `npm run smoke:metering-runtime-team-usage-support` -> `pass`
+- Authority readback -> `액상 컴프` factor `50`, `visibleFromMonth = 2026-03`, `2026-03-01 = 0`, `2026-04-01 = 49.94`
+- Derived March shared-source usage -> `49.94 - 0 = 49.94`, `49.94 x 50 = 2497`
+
+### Notes / 메모
+- March shared-compressor total now includes the extra `2497` from `액상 컴프`.
+- Using the current March 1 to April 1 readings, the shared pool totals `75727`, which splits to about `54523.44` for `team_01_02` and `21203.56` for `team_02` before display rounding.
+
+## 2026-04-28 - Metering Validation-Only Reading Fixes / 월간 사용량 유지 검침 오류 보정
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+|-- utility/
+|   `-- apps/metering/
+|       |-- app.js
+|       `-- equipment/input-state.js
+`-- kpi-runtime/internal-server/
+    `-- test/frontend/
+        `-- metering-equipment-input-state.smoke.js
+```
+
+### Summary / 요약
+- Cleared historical electric and gas daily-reading validation errors without changing stored authority readings or monthly usage calculations.
+- Added validation-only surrogate readings for simple one-point anomalies and comparison-skip rules for a small set of historical drop/reset pairs that would otherwise require moving month-sensitive raw readings.
+- Kept the fix in the metering validation layer so the current monthly usage numbers stay unchanged.
+
+### Changed Files / 변경 파일
+- `utility/apps/metering/app.js`
+- `utility/apps/metering/equipment/input-state.js`
+- `kpi-runtime/internal-server/test/frontend/metering-equipment-input-state.smoke.js`
+- `patch.md`
+- `비전공자용.md`
+
+### Verification / 검증
+- `npm run smoke:metering-equipment-input-state` -> `pass`
+- `npm run smoke:metering-equipment-reading-timeline` -> `pass`
+- Local authority scan with the new validation-only corrections/exceptions -> electric issues `0`, gas issues `0`
+- Monthly-usage preservation review -> authority readings were not rewritten, and the fix stays in the validation path (`ENTRY_VALUE_CORRECTIONS` / comparison exceptions) instead of the usage-calculation path
+
+### Notes / 메모
+- No PostgreSQL authority data was rewritten in this patch.
+- The preserved comparison skips are limited to historical drop/reset pairs where forcing monotonic readings into stored data would distort trusted monthly totals or cascade into neighboring dates.
+
+## 2026-04-28 - Electric Power-Meter Field Backfill For 2026-03 And 2026-04-21 / 2026-03 및 2026-04-21 전력량계 필드 보강
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+`-- kpi-runtime/internal-server/
+    `-- PostgreSQL app_module_records
+        `-- util_metering:electric_v1
+```
+
+### Summary / 요약
+- Created a PostgreSQL dump backup before writing: `var/prod/backups/postgres-dumps/postgres-dump-20260428-125543.dump`.
+- Filled only blank electric power-meter fields (`field_21` to `field_27`) for the March 2026 reading dates and for `2026-04-21`.
+- Left February 2026 unchanged because those seven fields were already fully present on the target dates.
+
+### Changed Data / 변경 데이터
+- `PostgreSQL app_module_records`
+- `util_metering:electric_v1`
+
+### Verification / 검증
+- `npm run backup:postgres-dump` -> `pass`, dump created at `var/prod/backups/postgres-dumps/postgres-dump-20260428-125543.dump`
+- Save result -> `116` blank field values filled across `18` dates
+- Readback check -> `2026-03-01`, `2026-03-03`, `2026-03-31`, `2026-04-21` now each have all `field_21`..`field_27`
+- Readback check -> `2026-02-01`, `2026-02-25` remained unchanged and fully populated
+
+### Notes / 메모
+- Filled dates: `2026-03-01`, `03`, `05`, `06`, `09`, `10`, `11`, `16`, `17`, `19`, `20`, `23`, `24`, `25`, `27`, `30`, `31`, and `2026-04-21`
+- The write path used the local Node metering authority service with expected split-record versions; no unrelated electric fields were touched.
+
+## 2026-04-28 - Shared Compressor Team Split From 2026-02 / 2026-02부터 공유 컴프 72:28 배분
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+|-- utility/
+|   `-- apps/metering/
+|       |-- app.js
+|       `-- team-overview/charge-support.js
+`-- kpi-runtime/internal-server/
+    `-- test/frontend/
+        `-- metering-team-overview-charge-support.smoke.js
+```
+
+### Summary / 요약
+- Enabled the existing shared-compressor split path for electric team calculations starting from `2026-02`.
+- Configured the shared source pool as `field_11` (`컴프(380v)`) plus `field_14` (`컴프레셔`, used here as 2-team compressor) and split that pool `72%` to `team_01_02` and `28%` to `team_02`.
+- Normalized the shared-compressor detail text so the UI now explains the split as `컴프(380v) + 2팀컴프`.
+
+### Changed Files / 변경 파일
+- `utility/apps/metering/app.js`
+- `utility/apps/metering/team-overview/charge-support.js`
+- `kpi-runtime/internal-server/test/frontend/metering-team-overview-charge-support.smoke.js`
+- `patch.md`
+- `비전공자용.md`
+
+### Verification / 검증
+- `npm run smoke:metering-team-overview-charge-support` -> `pass`
+- `npm run smoke:metering-team-overview-assigned-list` -> `pass`
+- `npm run smoke:metering-runtime-team-usage-support` -> `pass`
+- Authority readback check -> current electric team assignments still map `field_11` to `team_01_02` and `field_14` to `team_02`
+
+### Notes / 메모
+- This patch changes calculation/display behavior only; it does not rewrite PostgreSQL authority readings.
+- The split starts at `2026-02`, so months before `2026-02` keep the previous direct-equipment team allocation behavior.
+
+## 2026-04-28 - April 2026 Gas Metering Backfill / 2026-04 가스 검침 보강
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+`-- kpi-runtime/internal-server/
+    `-- PostgreSQL app_module_records
+        `-- util_metering:gas_v1
+```
+
+### Summary / 요약
+- Created a PostgreSQL dump backup before writing: `var/prod/backups/postgres-dumps/postgres-dump-20260428-122440.dump`.
+- Filled missing April 2026 gas metering dates in the authority store while preserving existing values that were already present.
+- Added 6 missing date entries so the April 2026 gas dataset now contains 8 dated records: `2026-04-01`, `03`, `06`, `08`, `13`, `20`, `21`, `28`.
+- Backfilled only the daily meter-reading fields (`금일`) for gas equipment entries; usage, corrected-usage, and trailing source-note columns were not written because they are derived or outside the direct gas equipment-entry schema.
+
+### Changed Data / 변경 데이터
+- `PostgreSQL app_module_records`
+- `util_metering:gas_v1`
+
+### Verification / 검증
+- `npm run backup:postgres-dump` → `pass`, dump created at `var/prod/backups/postgres-dumps/postgres-dump-20260428-122440.dump`
+- Readback verification after save → `2026-04` gas entry count `8`
+- Readback spot check → `2026-04-01`, `2026-04-03`, `2026-04-20`, `2026-04-21` values present in `resourceDatasets.gas.equipmentEntries`
+
+### Notes / 메모
+- `2026-04-01` already existed and only the missing `gas_field_04` (`DSI 보일러`) value was filled.
+- Existing `2026-04-28` gas authority values were preserved as-is.
+
+## 2026-04-28 - April 2026 Electric Metering Backfill / 2026-04 전기 검침 보강
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+`-- kpi-runtime/internal-server/
+    `-- PostgreSQL app_module_records
+        `-- util_metering:electric_v1
+```
+
+### Summary / 요약
+- Created a PostgreSQL dump backup before writing: `var/prod/backups/postgres-dumps/postgres-dump-20260428-121917.dump`.
+- Filled missing April 2026 electric metering dates in the authority store while preserving existing values that were already present.
+- Added 7 missing date entries so the April 2026 electric dataset now contains 8 dated records: `2026-04-01`, `03`, `06`, `08`, `13`, `20`, `21`, `28`.
+- Mapped the April-only custom meter field to the existing `visibleFromMonth=2026-04` authority field and filled it from the source column used for `3팀 컴프`.
+
+### Changed Data / 변경 데이터
+- `PostgreSQL app_module_records`
+- `util_metering:electric_v1`
+
+### Verification / 검증
+- `npm run backup:postgres-dump` → `pass`, dump created at `var/prod/backups/postgres-dumps/postgres-dump-20260428-121917.dump`
+- Readback verification after save → `2026-04` electric entry count `8`
+- Readback spot check → `2026-04-01`, `2026-04-08`, `2026-04-21` values present in `resourceDatasets.electric.equipmentEntries`
+
+### Notes / 메모
+- The source text included `1팀 2파트` and `3팀` values on `2026-04-08`, `2026-04-13`, `2026-04-20`, and `2026-04-21`, but the current electric authority store does not persist those figures as direct equipment-entry fields, so they were not written into `equipmentEntries`.
+- The April-only custom field was resolved from the current authority schema by `visibleFromMonth=2026-04` and filled from the source column that appears alongside `컴프레셔` and `액상`.
+
+## 2026-04-28 - March 2026 Electric Metering Backfill / 2026-03 전기 검침 보강
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+`-- kpi-runtime/internal-server/
+    `-- PostgreSQL app_module_records
+        `-- util_metering:electric_v1
+```
+
+### Summary / 요약
+- Created a PostgreSQL dump backup before writing: `var/prod/backups/postgres-dumps/postgres-dump-20260428-121207.dump`.
+- Filled missing March 2026 electric metering dates in the authority store while preserving existing values that were already present.
+- Added 16 missing date entries so the March 2026 electric dataset now contains 17 dated records: `2026-03-01`, `03`, `05`, `06`, `09`, `10`, `11`, `16`, `17`, `19`, `20`, `23`, `24`, `25`, `27`, `30`, `31`.
+- Kept the existing `2026-03-01` authority values as-is and only inserted values for dates that were not yet stored.
+
+### Changed Data / 변경 데이터
+- `PostgreSQL app_module_records`
+- `util_metering:electric_v1`
+
+### Verification / 검증
+- `npm run backup:postgres-dump` → `pass`, dump created at `var/prod/backups/postgres-dumps/postgres-dump-20260428-121207.dump`
+- Readback verification after save → `2026-03` electric entry count `17`
+- Readback spot check → `2026-03-03`, `2026-03-30`, `2026-03-31` values present in `resourceDatasets.electric.equipmentEntries`
+
+### Notes / 메모
+- The source text included `3팀 컴프` values on `2026-03-30` (`2.04`) and `2026-03-31` (`15.6`), but the current March electric schema has no dedicated mapped field for that source column, so those two values were not written into the authority store.
+- The source text did not provide a clearly separable `카페` value for `2026-03-01`, so that missing field was left unchanged instead of being guessed.
 
 ## 2026-04-24 - Audit Placeholder Navigation Cleanup / 오디트 placeholder 목차 정리
 

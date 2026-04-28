@@ -30,11 +30,40 @@ function getSharedCompressorSettlementSourceIdsForTeam(teamKey) {
   return sourceIds.filter((equipmentId) => teamEquipmentIds.includes(equipmentId));
 }
 
-function getSharedCompressorSettlementSourceIds() {
-  const sourceIds = Object.keys(SHARED_COMPRESSOR_SETTLEMENT_SOURCE_IDS_BY_TEAM).flatMap((teamKey) =>
+function isSharedCompressorStandaloneSourceRuleActive(rule, monthValue = state.currentMonth) {
+  const equipmentId = String(rule?.equipmentId || "").trim();
+  const startMonth = normalizeMonthValue(rule?.startMonth);
+  const normalizedMonth = normalizeMonthValue(monthValue);
+
+  if (!equipmentId || !normalizedMonth) {
+    return false;
+  }
+
+  if (!startMonth) {
+    return true;
+  }
+
+  return compareMonthValues(normalizedMonth, startMonth) >= 0;
+}
+
+function getSharedCompressorSettlementStandaloneSourceIds(monthValue = state.currentMonth) {
+  if (!Array.isArray(SHARED_COMPRESSOR_SETTLEMENT_STANDALONE_SOURCE_RULES)) {
+    return [];
+  }
+
+  return SHARED_COMPRESSOR_SETTLEMENT_STANDALONE_SOURCE_RULES.filter((rule) =>
+    isSharedCompressorStandaloneSourceRuleActive(rule, monthValue)
+  )
+    .map((rule) => String(rule?.equipmentId || "").trim())
+    .filter(Boolean);
+}
+
+function getSharedCompressorSettlementSourceIds(monthValue = state.currentMonth) {
+  const teamSourceIds = Object.keys(SHARED_COMPRESSOR_SETTLEMENT_SOURCE_IDS_BY_TEAM).flatMap((teamKey) =>
     getSharedCompressorSettlementSourceIdsForTeam(teamKey)
   );
-  return [...new Set(sourceIds)];
+  const standaloneSourceIds = getSharedCompressorSettlementStandaloneSourceIds(monthValue);
+  return [...new Set([...teamSourceIds, ...standaloneSourceIds])];
 }
 
 function getTeamChargeEquipmentIdsExcludingSharedCompressor(
@@ -77,7 +106,7 @@ function calculateSharedCompressorSettlementUsageSum(monthValue = state.currentM
     return null;
   }
 
-  const values = getSharedCompressorSettlementSourceIds().map(
+  const values = getSharedCompressorSettlementSourceIds(monthValue).map(
     (equipmentId) => calculateEquipmentMonthlyUsage(equipmentId).value
   );
   return sumFiniteValues(values);
@@ -88,7 +117,7 @@ function calculateSharedCompressorSettlementVariableChargeSum(monthValue = state
     return null;
   }
 
-  const values = getSharedCompressorSettlementSourceIds().map((equipmentId) =>
+  const values = getSharedCompressorSettlementSourceIds(monthValue).map((equipmentId) =>
     calculateEquipmentVariableCharge(equipmentId, monthValue)
   );
   return sumFiniteValues(values);
@@ -99,7 +128,7 @@ function calculateSharedCompressorSettlementBaseChargeSum(monthValue = state.cur
     return null;
   }
 
-  const values = getSharedCompressorSettlementSourceIds().map((equipmentId) =>
+  const values = getSharedCompressorSettlementSourceIds(monthValue).map((equipmentId) =>
     calculateEquipmentBaseChargeAllocation(equipmentId, monthValue)
   );
   return sumFiniteValues(values);
@@ -172,9 +201,9 @@ function getTeamSharedCompressorSettlementDetailText(teamKey, monthValue = state
   }
 
   const parts = [
-    `컴프(380v) + 컴프레셔 합계 ${formatWholeNumber(totalUsage)} x 배분 ${formatUsageShare(
-      ratio
-    )} = ${formatWholeNumber(teamUsage)}`,
+    `공유 컴프 합계 ${formatWholeNumber(totalUsage)} x 배분 ${formatUsageShare(ratio)} = ${formatWholeNumber(
+      teamUsage
+    )}`,
   ];
 
   if (isBillingSettlementCompleted(monthValue)) {
@@ -191,7 +220,7 @@ function getTeamSharedCompressorSettlementDetailText(teamKey, monthValue = state
     const charge = calculateTeamSharedCompressorSettlementCharge(teamKey, monthValue);
 
     if (Number.isFinite(variableCharge)) {
-      parts.push(`사용량요금 ${formatSettlementAmount(variableCharge)}`);
+      parts.push(`사용요금 ${formatSettlementAmount(variableCharge)}`);
     }
 
     if (Number.isFinite(baseCharge)) {

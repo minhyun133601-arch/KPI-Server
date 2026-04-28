@@ -16,7 +16,22 @@ const LEGACY_STICK_FIELD_IDS = [
 ];
 const EQUIPMENT_TITLE_DOUBLE_CLICK_DELAY_MS = 320;
 const HISTORICAL_ENTRY_VALUE_FIXES = Object.freeze({});
-const ENTRY_VALUE_CORRECTIONS = Object.freeze({});
+// Validation-only surrogate readings for historical anomalies. Stored authority readings stay
+// untouched so monthly usage calculations do not move.
+const ENTRY_VALUE_CORRECTIONS = Object.freeze({
+  "2025-04-10": { field_05: "13768.4" },
+  "2025-04-18": { field_23: "7112.66" },
+  "2025-05-07": { field_03: "5031.5" },
+  "2025-05-12": { field_17: "65352.6" },
+  "2025-05-28": { field_17: "65613.1" },
+  "2025-06-09": { field_17: "65758.1" },
+  "2025-08-06": { field_03: "5205.3" },
+  "2025-08-26": { field_14: "24966.0" },
+  "2025-09-09": {
+    field_21: "6631.71",
+    field_24: "18983.44",
+  },
+});
 const LOCAL_FILE_HANDLE_DB_NAME = "monthly-electric-local-file";
 const LOCAL_FILE_HANDLE_STORE_NAME = "handles";
 const LOCAL_BILLING_DOCUMENT_DIRECTORY_HANDLE_KEY = "billing-document-directory";
@@ -148,6 +163,7 @@ const GAS_BILLING_SETTLEMENT_ZERO_DEFAULT_FIELD_KEYS = [
   "rounding_adjustment",
 ];
 const ELECTRIC_BILLING_SETTLEMENT_TOTAL_COMPONENTS = [
+  { key: "base_charge", sign: 1 },
   { key: "power_charge", sign: 1 },
   { key: "climate_environment_charge", sign: 1 },
   { key: "fuel_adjustment_charge", sign: 1 },
@@ -157,7 +173,6 @@ const ELECTRIC_BILLING_SETTLEMENT_TOTAL_COMPONENTS = [
 ];
 const BILLING_SETTLEMENT_TOTAL_COMPONENTS = ELECTRIC_BILLING_SETTLEMENT_TOTAL_COMPONENTS;
 const ELECTRIC_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS = [
-  { key: "base_charge", sign: 1 },
   { key: "electricity_charge_total", sign: 1 },
   { key: "vat", sign: 1 },
   { key: "electric_power_fund", sign: 1 },
@@ -179,10 +194,10 @@ const BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS =
   ELECTRIC_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS;
 const ELECTRIC_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
   electricity_charge_total:
-    "전력량요금 + 기후환경요금 + 연료비조정액 + 조작수수료 + 지상역률료 - 인터넷할인",
+    "기본요금 + 전력량요금 + 기후환경요금 + 연료비조정액 + 조작수수료 + 지상역률료 - 인터넷할인",
   unit_price: "전기요금계 ÷ 해당 월 전력총량",
   billing_amount:
-    "기본요금 + 전기요금계 + 부가가치세 + 전력기금 + TV수신료 - 원단위 절삭",
+    "전기요금계 + 부가가치세 + 전력기금 + TV수신료 - 원단위 절삭",
 });
 const GAS_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
   billed_quantity_mj: "해당 월 사용량 x 열량(MJ/Nm3)",
@@ -416,6 +431,12 @@ const ELECTRIC_TOTAL_OVERVIEW_TEAM_KEYS = Object.freeze([
   "team_03",
   "team_04",
 ]);
+const ELECTRIC_OTHER_RESIDUAL_TEAM_KEYS = Object.freeze([
+  "team_01_02",
+  "team_02",
+  "team_03",
+  "team_04",
+]);
 const GAS_TEAM_GROUPS = Object.freeze([
   { key: TEAM_01_01_KEY, label: "1팀 1파트", iconKey: "drying" },
   { key: GAS_YUSAN_LNG_TEAM_KEY, label: "1팀 2파트 LNG", iconKey: "drying" },
@@ -437,12 +458,36 @@ const ELECTRIC_TOTAL_SUMMARY_TEAM_KEYS = Object.freeze([
 
 const TEAM_AMOUNT_ADJUSTMENTS = Object.freeze({});
 
-const SHARED_COMPRESSOR_SETTLEMENT_START_MONTH = "9999-12";
+const SHARED_COMPRESSOR_SETTLEMENT_START_MONTH = "2026-02";
+const ELECTRIC_OTHER_TEAM_RESIDUAL_START_MONTH = "2026-03";
 const SHARED_COMPRESSOR_VIRTUAL_ID = "shared_compressor_total";
-const SHARED_COMPRESSOR_VIRTUAL_LABEL = "???? ??";
-const SHARED_COMPRESSOR_SETTLEMENT_RATIOS = Object.freeze({});
-const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_IDS_BY_TEAM = Object.freeze({});
-const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_ID_SET = new Set();
+const SHARED_COMPRESSOR_VIRTUAL_LABEL = "공유 컴프";
+const SHARED_COMPRESSOR_SETTLEMENT_RATIOS = Object.freeze({
+  team_01_02: 0.72,
+  team_02: 0.28,
+});
+const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_IDS_BY_TEAM = Object.freeze({
+  team_01_02: Object.freeze(["field_11"]),
+  team_02: Object.freeze(["field_14"]),
+});
+const SHARED_COMPRESSOR_SETTLEMENT_STANDALONE_SOURCE_RULES = Object.freeze([
+  Object.freeze({
+    equipmentId: "field_custom_1777335768709_08f3az",
+    startMonth: "2026-03",
+  }),
+]);
+const ELECTRIC_LIQUID_COMPRESSOR_TEAM_USAGE_ADJUSTMENT = Object.freeze({
+  teamKey: "team_03",
+  equipmentId: "field_custom_1777335768709_08f3az",
+  startMonth: "2026-03",
+  deductionFactor: 120,
+});
+const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_ID_SET = new Set(
+  [
+    ...Object.values(SHARED_COMPRESSOR_SETTLEMENT_SOURCE_IDS_BY_TEAM).flat(),
+    ...SHARED_COMPRESSOR_SETTLEMENT_STANDALONE_SOURCE_RULES.map((rule) => rule.equipmentId),
+  ].filter(Boolean)
+);
 
 const ICON_SVGS = {
   drying: `
@@ -720,7 +765,18 @@ const GAS_SETTLEMENT_SCOPE_TEAM_KEYS = Object.freeze({
 });
 const GAS_CORRECTION_TARGET_IDS = new Set(["gas_field_03", "gas_field_04", "gas_field_06"]);
 const GAS_CORRECTION_SOURCE_IDS = ["gas_field_03", "gas_field_04", "gas_field_06"];
-const GAS_READING_VALIDATION_COMPARISON_EXCEPTIONS = new Set();
+const READING_VALIDATION_COMPARISON_EXCEPTIONS = new Set([
+  "field_17|2025-07-08|2025-07-09",
+  "field_17|2025-07-09|2025-07-08",
+  "field_19|2025-08-05|2025-08-06",
+  "field_19|2025-08-06|2025-08-05",
+  "field_05|2025-09-23|2025-09-24",
+  "field_05|2025-09-24|2025-09-23",
+  "field_09|2025-09-23|2025-09-24",
+  "field_09|2025-09-24|2025-09-23",
+  "gas_field_05|2025-03-01|2025-03-03",
+  "gas_field_05|2025-03-03|2025-03-01",
+]);
 const GAS_MONTHLY_BOUNDARY_READING_OVERRIDES = Object.freeze({});
 const GAS_CORRECTION_MONTH_HINTS = Object.freeze({});
 const LEGACY_SHIFTED_GAS_ENTRY_START_DATE = "9999-12-31";

@@ -371,14 +371,13 @@ test('billing settlement derives electricity charge total from billing amount wh
 
   const derived = context.resolveBillingSettlementElectricityChargeTotalValue({
     billing_amount: '200',
-    base_charge: '50',
     vat: '10',
     electric_power_fund: '5',
     tv_reception_fee: '5',
     rounding_adjustment: '2',
   });
 
-  assert.equal(derived, 132);
+  assert.equal(derived, 182);
 });
 
 test('billing settlement resolves gas fields with calculated quantity, unit price, and billing amount', () => {
@@ -402,7 +401,6 @@ test('billing settlement resolves gas fields with calculated quantity, unit pric
 
   assert.deepEqual(fields, {
     power_charge: '100',
-    vat: '0',
     rounding_adjustment: '2',
     calorific_value: '43.211',
     billed_quantity_mj: '432.110',

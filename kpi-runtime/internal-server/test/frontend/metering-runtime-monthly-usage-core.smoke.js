@@ -217,3 +217,33 @@ test('runtime monthly usage core aggregates equipment and other-usage values', (
   assert.equal(context.calculateOtherCalendarDailyUsage('2026-04-01'), null);
   assert.equal(context.calculateOtherMonthlyUsage(), null);
 });
+
+test('runtime monthly usage core can switch electric other-usage to team residual mode from 2026-03', () => {
+  const context = createMonthlyUsageCoreContext();
+
+  context.state.currentMonth = '2026-03';
+  context.ELECTRIC_OTHER_TEAM_RESIDUAL_START_MONTH = '2026-03';
+  context.ELECTRIC_TOTAL_OVERVIEW_TEAM_KEYS = ['team_01_02', 'team_02', 'team_03', 'team_04'];
+  context.ELECTRIC_OTHER_RESIDUAL_TEAM_KEYS = ['team_01_02', 'team_02', 'team_03', 'team_04'];
+  context.getTeamMonthlyUsage = function (teamKey, options = {}) {
+    assert.equal(options.excludeOtherEquipment, true);
+    assert.equal(options.monthValue, '2026-03');
+
+    return (
+      {
+        team_01_02: 30,
+        team_02: 20,
+        team_03: 35,
+        team_04: 5,
+      }[teamKey] ?? null
+    );
+  };
+
+  assert.deepEqual(toPlainValue(context.getOtherMonthlyUsageComputation('2026-03')), {
+    mode: 'team_residual',
+    totalPowerUsage: 100,
+    allocatedUsage: 90,
+    otherUsage: 10,
+  });
+  assert.equal(context.calculateOtherMonthlyUsage(), 10);
+});

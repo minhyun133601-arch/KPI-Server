@@ -30,6 +30,7 @@ function createChargeSupportContext() {
   const monthlyUsageByEquipment = {
     shared_a: 10,
     shared_b: 30,
+    shared_liquid: 20,
     plain_a: 5,
     plain_b: 8,
     plain_c: 11,
@@ -38,6 +39,7 @@ function createChargeSupportContext() {
   const variableChargeByEquipment = {
     shared_a: 100,
     shared_b: 300,
+    shared_liquid: 70,
     plain_a: 50,
     plain_b: 80,
     plain_c: 110,
@@ -46,6 +48,7 @@ function createChargeSupportContext() {
   const baseChargeByEquipment = {
     shared_a: 40,
     shared_b: 160,
+    shared_liquid: 25,
     plain_a: 20,
     plain_b: 35,
     plain_c: 45,
@@ -77,7 +80,13 @@ function createChargeSupportContext() {
       team_04: ['shared_a'],
       team_05: ['shared_a', 'shared_b'],
     },
-    SHARED_COMPRESSOR_SETTLEMENT_SOURCE_ID_SET: new Set(['shared_a', 'shared_b']),
+    SHARED_COMPRESSOR_SETTLEMENT_STANDALONE_SOURCE_RULES: [
+      {
+        equipmentId: 'shared_liquid',
+        startMonth: '2026-05',
+      },
+    ],
+    SHARED_COMPRESSOR_SETTLEMENT_SOURCE_ID_SET: new Set(['shared_a', 'shared_b', 'shared_liquid']),
     SHARED_COMPRESSOR_VIRTUAL_ID: 'shared_compressor',
     getTeamCalendarSelection(teamKey) {
       return [...(calendarSelectionByTeam[teamKey] || [])];
@@ -182,31 +191,21 @@ test('charge-support dedupes shared sources and calculates shared totals with de
     Array.from(context.getSharedCompressorSettlementSourceIds()),
     ['shared_a', 'shared_b']
   );
+  assert.deepEqual(
+    Array.from(context.getSharedCompressorSettlementSourceIds('2026-05')),
+    ['shared_a', 'shared_b', 'shared_liquid']
+  );
   assert.equal(context.calculateSharedCompressorSettlementUsageSum(), 40);
   assert.equal(context.calculateSharedCompressorSettlementVariableChargeSum(), 400);
   assert.equal(context.calculateSharedCompressorSettlementBaseChargeSum(), 200);
+  assert.equal(context.calculateSharedCompressorSettlementUsageSum('2026-05'), 60);
   assert.equal(context.calculateTeamSharedCompressorSettlementUsage('team_04'), 10);
   assert.equal(context.calculateTeamSharedCompressorSettlementCharge('team_04'), 150);
-  assert.equal(
-    context.getTeamSharedCompressorSettlementChargeText('team_04'),
-    '금액 150'
-  );
-  assert.match(
-    context.getTeamSharedCompressorSettlementDetailText('team_04'),
-    /컴프\(380v\) \+ 컴프레셔 합계 40 x 배분 25.0% = 10/
-  );
-  assert.match(
-    context.getTeamSharedCompressorSettlementDetailText('team_04'),
-    /사용량요금 100/
-  );
-  assert.match(
-    context.getTeamSharedCompressorSettlementDetailText('team_04'),
-    /기본요금 배분 50/
-  );
-  assert.match(
-    context.getTeamSharedCompressorSettlementDetailText('team_04'),
-    /최종 금액 150/
-  );
+  assert.equal(context.getTeamSharedCompressorSettlementChargeText('team_04'), '금액 150');
+  assert.match(context.getTeamSharedCompressorSettlementDetailText('team_04'), /40 x 배분 25.0% = 10/);
+  assert.match(context.getTeamSharedCompressorSettlementDetailText('team_04'), /사용요금 100/);
+  assert.match(context.getTeamSharedCompressorSettlementDetailText('team_04'), /기본요금 배분 50/);
+  assert.match(context.getTeamSharedCompressorSettlementDetailText('team_04'), /최종 금액 150/);
 });
 
 test('charge-support respects shared compressor selection when selectionOnly is enabled', () => {
@@ -251,12 +250,6 @@ test('charge-support adds apportioned shared charges to team equipment sums', ()
   );
 
   context.__setBillingCompleted(false);
-  assert.match(
-    context.getTeamSharedCompressorSettlementDetailText('team_04'),
-    /컴프\(380v\) \+ 컴프레셔 합계 40 x 배분 25.0% = 10/
-  );
-  assert.doesNotMatch(
-    context.getTeamSharedCompressorSettlementDetailText('team_04'),
-    /최종 금액/
-  );
+  assert.match(context.getTeamSharedCompressorSettlementDetailText('team_04'), /40 x 배분 25.0% = 10/);
+  assert.doesNotMatch(context.getTeamSharedCompressorSettlementDetailText('team_04'), /최종 금액/);
 });

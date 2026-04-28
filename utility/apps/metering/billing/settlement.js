@@ -61,10 +61,6 @@ function resolveBillingSettlementFields(
     resourceType,
     scopeKey
   );
-  const zeroDefaultFieldKeys = getBillingSettlementZeroDefaultFieldKeys(
-    resourceType,
-    scopeKey
-  );
   const fields = {};
   const preservedElectricityChargeTotal = normalizeBillingSettlementInputValue(
     rawFields?.electricity_charge_total
@@ -98,14 +94,6 @@ function resolveBillingSettlementFields(
     }
   });
 
-  if (Object.keys(fields).length) {
-    zeroDefaultFieldKeys.forEach((fieldKey) => {
-      if (!normalizeBillingSettlementInputValue(fields[fieldKey])) {
-        fields[fieldKey] = "0";
-      }
-    });
-  }
-
   if (resourceType === RESOURCE_TYPES.ELECTRIC) {
     const electricityChargeTotal = calculateBillingSettlementElectricityChargeTotal(fields);
     if (electricityChargeTotal) {
@@ -132,12 +120,11 @@ function resolveBillingSettlementFields(
   }
 
   const billingAmount = calculateBillingSettlementBillingAmount(fields, scopeKey);
-  if (resourceType === RESOURCE_TYPES.GAS || resourceType === RESOURCE_TYPES.WASTE) {
-    if (billingAmount) {
-      fields.billing_amount = billingAmount;
-    } else if (preservedBillingAmount) {
-      fields.billing_amount = preservedBillingAmount;
-    }
+  const canCalculateBillingAmount =
+    resourceType !== RESOURCE_TYPES.ELECTRIC ||
+    Boolean(normalizeBillingSettlementInputValue(fields.electricity_charge_total));
+  if (billingAmount && canCalculateBillingAmount) {
+    fields.billing_amount = billingAmount;
   } else if (preservedBillingAmount) {
     fields.billing_amount = preservedBillingAmount;
   } else if (billingAmount) {
