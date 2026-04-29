@@ -487,3 +487,200 @@
             if (idx === null || startIdx === null || endIdx === null) return true;
             return idx >= startIdx && idx <= endIdx;
         }
+
+        function renderAuditLegalFacilityContent(category) {
+            const dataKey = category.dataKey;
+            const portalPayload = window.PortalData?.audit_legal_facility || window.PortalData?.audit_regulation || {};
+            const portalMeta = portalPayload.meta || {};
+            const sourceState = String(portalMeta.sourceState || portalMeta.state || '').trim().toLowerCase();
+            const sourceLabel = String(portalMeta.sourceLabel || portalMeta.status?.label || '').trim();
+            const sourceMessage = String(portalMeta.sourceMessage || portalMeta.status?.message || '').trim();
+            const filter = getAuditLegalFilterState(dataKey);
+            const entries = getAuditLegalFacilityEntries();
+            const summary = summarizeAuditLegalFacilityAlerts(entries, AUDIT_LEGAL_FACILITY_ALERT_DAYS);
+            const rowsWithCategory = summary.rows.map(entry => ({
+                ...entry,
+                categoryMeta: getAuditLegalCategoryMeta(entry.item, entry.category)
+            }));
+            const globalAlert = summarizeAuditLegalAlertRows(rowsWithCategory, AUDIT_LEGAL_FACILITY_ALERT_DAYS);
+            const categories = AUDIT_LEGAL_CATEGORY_ORDER
+                .filter(key => rowsWithCategory.some(item => item.categoryMeta.key === key))
+                .map(key => AUDIT_LEGAL_CATEGORY_META[key]);
+            const areas = Array.from(new Set(rowsWithCategory.map(item => String(item.area || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko'));
+
+            const keyword = String(filter.keyword || '').trim().toLowerCase();
+            const onlyNear = !!filter.onlyNear;
+            const onlyOverdue = !!filter.onlyOverdue;
+            const filteredRows = rowsWithCategory.filter(entry => {
+                if (filter.category && entry.categoryMeta.key !== filter.category) return false;
+                if (filter.area && entry.area !== filter.area) return false;
+                const daysLeft = entry.daysLeft;
+                const isOverdue = Number.isFinite(daysLeft) && daysLeft < 0;
+                const isNear = Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= AUDIT_LEGAL_FACILITY_ALERT_DAYS;
+                if (onlyNear || onlyOverdue) {
+                    const matchNear = onlyNear && isNear;
+                    const matchOverdue = onlyOverdue && isOverdue;
+                    if (!matchNear && !matchOverdue) return false;
+                }
+                if (keyword) {
+                    const hay = `${entry.categoryMeta.label || ''} ${entry.area || ''} ${entry.name || ''} ${entry.item || ''} ${entry.organization || ''}`.toLowerCase();
+                    if (!hay.includes(keyword)) return false;
+                }
+                return true;
+            });
+            const filteredAlert = summarizeAuditLegalAlertRows(filteredRows, AUDIT_LEGAL_FACILITY_ALERT_DAYS);
+            const now = new Date();
+            const todayLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const sourceBannerHtml = sourceState === 'placeholder'
+                ? `
+                    <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                        <div class="font-semibold">${escapeHtml(sourceLabel || '원본 미확보')}</div>
+                        <div class="mt-1">${escapeHtml(sourceMessage || '실제 규정 원본이 아직 확보되지 않아 임시 구조만 유지합니다.')}</div>
+                    </div>
+                `
+                : '';
+            const categoryOptions = ['<option value="">전체</option>']
+                .concat(categories.map(meta => `<option value="${meta.key}" ${filter.category === meta.key ? 'selected' : ''}>${escapeHtml(meta.label)}</option>`))
+                .join('');
+            const areaOptions = ['<option value="">전체</option>']
+                .concat(areas.map(area => `<option value="${escapeHtml(area)}" ${filter.area === area ? 'selected' : ''}>${escapeHtml(area)}</option>`))
+                .join('');
+
+            const rowsHtml = filteredRows.length ? filteredRows.map(entry => {
+                const daysLeft = entry.daysLeft;
+                const isOverdue = Number.isFinite(daysLeft) && daysLeft < 0;
+                const isNear = Number.isFinite(daysLeft) && daysLeft >= 0 && daysLeft <= AUDIT_LEGAL_FACILITY_ALERT_DAYS;
+                const rowClass = isOverdue ? 'is-overdue' : (isNear ? 'is-near' : '');
+                const categoryMeta = entry.categoryMeta || AUDIT_LEGAL_CATEGORY_META.other;
+                const orgUrl = resolveAuditLegalOrganizationUrl(entry.organization, entry.organizationUrl);
+                const organizationHtml = orgUrl
+                    ? `<a class="audit-legal-org-link" href="${escapeHtml(orgUrl)}" target="_blank" rel="noopener">${escapeHtml(entry.organization)}</a>`
+                    : escapeHtml(entry.organization);
+                let daysBadge = '<span class="audit-legal-days">-</span>';
+                if (Number.isFinite(daysLeft)) {
+                    if (daysLeft < 0) {
+                        daysBadge = `<span class="audit-legal-days is-overdue">경과 ${Math.abs(daysLeft)}일</span>`;
+                    } else if (daysLeft <= AUDIT_LEGAL_FACILITY_ALERT_DAYS) {
+                        daysBadge = `<span class="audit-legal-days is-near">D-${daysLeft}</span>`;
+                    } else {
+                        daysBadge = `<span class="audit-legal-days">D-${daysLeft}</span>`;
+                    }
+                }
+                return `
+                    <tr class="${rowClass}">
+                        <td>${renderAuditLegalCategoryCell(categoryMeta)}</td>
+                        <td>${escapeHtml(entry.name)}</td>
+                        <td>${escapeHtml(entry.area)}</td>
+                        <td>${renderAuditLegalItemCell(entry.item, categoryMeta)}</td>
+                        <td class="is-date">${escapeHtml(entry.lastDate)}</td>
+                        <td>${escapeHtml(String(entry.cycleYears))}${Number.isFinite(entry.cycleYears) ? '년' : ''}</td>
+                        <td class="is-date">${escapeHtml(entry.nextDate)} ${daysBadge}</td>
+                        <td>${organizationHtml}</td>
+                    </tr>
+                `;
+            }).join('') : `
+                <tr>
+                    <td colspan="8">
+                        <div class="audit-legal-empty">등록된 법정 설비 교육 데이터가 없습니다.</div>
+                    </td>
+                </tr>
+            `;
+
+            const alarmClass = sourceState === 'placeholder'
+                ? 'audit-legal-alarm is-safe'
+                : (globalAlert.alertCount > 0 ? 'audit-legal-alarm' : 'audit-legal-alarm is-safe');
+            const alarmText = sourceState === 'placeholder'
+                ? (sourceLabel || '원본 미확보')
+                : (globalAlert.alertCount > 0 ? `교육 알람 ${globalAlert.alertCount}건` : '교육 알람 없음');
+
+            const contentContainer = document.getElementById('content-container');
+            contentContainer.innerHTML = `
+                <div class="border-b pb-4 mb-6">
+                    <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-2 h-8 rounded-sm inline-block" style="background:${category.color || '#e11d48'};"></span>
+                        ${category.title}
+                    </h2>
+                    <p class="text-slate-500 mt-1 pl-4 text-sm">${category.desc || ''}</p>
+                </div>
+                <div class="audit-panel">
+                    <div class="audit-section">
+                        <div class="audit-section-header">
+                            <div class="audit-section-title">
+                                <span class="audit-section-icon"><i class="fa-solid fa-scale-balanced"></i></span>
+                                <span>법정 설비 교육 현황</span>
+                            </div>
+                            <div class="audit-filter-actions">
+                                <span class="${alarmClass}"><i class="fa-solid fa-bell"></i>${alarmText}</span>
+                            </div>
+                        </div>
+                        <div class="audit-section-body">
+                            <div class="audit-legal-wrap">
+                                ${sourceBannerHtml}
+                                <div class="audit-legal-filters">
+                                    <label class="audit-legal-filter-field">
+                                        <span class="audit-legal-filter-name">지역</span>
+                                        <select class="audit-select" onchange="setAuditLegalFilter('${dataKey}', 'area', this.value)">
+                                            ${areaOptions}
+                                        </select>
+                                    </label>
+                                    <label class="audit-legal-filter-field">
+                                        <span class="audit-legal-filter-name">분류</span>
+                                        <select class="audit-select" onchange="setAuditLegalFilter('${dataKey}', 'category', this.value)">
+                                            ${categoryOptions}
+                                        </select>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        class="audit-input"
+                                        value="${escapeHtml(filter.keyword || '')}"
+                                        placeholder="이름/항목/기관 검색"
+                                        oninput="setAuditLegalFilter('${dataKey}', 'keyword', this.value)"
+                                        onkeydown="if(event.key==='Enter'){applyAuditLegalFilter('${dataKey}');}"
+                                    />
+                                    <div class="audit-filter-actions">
+                                        <button class="work-btn audit-search-btn" onclick="applyAuditLegalFilter('${dataKey}')">
+                                            <i class="fas fa-magnifying-glass"></i>검색
+                                        </button>
+                                        <button class="work-btn" onclick="clearAuditLegalFilter('${dataKey}')">초기화</button>
+                                        <label class="audit-fail-toggle">
+                                            <input type="checkbox" ${filter.onlyNear ? 'checked' : ''} onchange="setAuditLegalFilter('${dataKey}', 'onlyNear', this.checked); applyAuditLegalFilter('${dataKey}')" />
+                                            <span>임박</span>
+                                        </label>
+                                        <label class="audit-fail-toggle">
+                                            <input type="checkbox" ${filter.onlyOverdue ? 'checked' : ''} onchange="setAuditLegalFilter('${dataKey}', 'onlyOverdue', this.checked); applyAuditLegalFilter('${dataKey}')" />
+                                            <span>경과</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="audit-legal-meta">
+                                    <span>기준일: ${todayLabel} · 우측 상단 알람 기준: ${AUDIT_LEGAL_FACILITY_ALERT_DAYS}일 이내</span>
+                                    <div class="audit-legal-summary">
+                                        <span class="audit-legal-chip">전체 ${summary.rows.length}건</span>
+                                        <span class="audit-legal-chip safe">검색 ${filteredRows.length}건</span>
+                                        <span class="audit-legal-chip warn">임박 ${filteredAlert.nearCount}건</span>
+                                        <span class="audit-legal-chip warn">경과 ${filteredAlert.overdueCount}건</span>
+                                    </div>
+                                </div>
+                                <div class="audit-legal-table-wrap">
+                                    <table class="audit-legal-table">
+                                        <thead>
+                                            <tr>
+                                                <th>분류</th>
+                                                <th>이름</th>
+                                                <th>지역</th>
+                                                <th>항목</th>
+                                                <th>최근 교육일</th>
+                                                <th>교육주기</th>
+                                                <th>다음 교육 예정일</th>
+                                                <th>교육기관</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>${rowsHtml}</tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }

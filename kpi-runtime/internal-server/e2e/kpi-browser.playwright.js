@@ -279,15 +279,10 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('#content-container')).toContainText('조도 입력');
 
       await clickSidebarButton(page, '법정 설비');
-      await expect(page.locator('#content-container')).toContainText('법정 설비');
-      await expect(page.locator('#content-container')).toContainText('추후 추가예정');
-
-      await clickSidebarButton(page, '안전 관리');
-      await expect(page.locator('#content-container')).toContainText('안전 관리');
-      await expect(page.locator('#content-container')).toContainText('추후 추가예정');
+      await expect(page.locator('#content-container')).toContainText('법정 설비 교육 현황');
 
       await clickSidebarButton(page, '유틸리티 기입');
-      await expectIntegratedMeteringTitle(page, /월간 (전기|가스 검침|폐수|생산량) .* 시트/);
+      await expectIntegratedMeteringTitle(page, /월간 (전기 기입|가스 검침|폐수 기입|생산량 기입) 시트/);
       await page.waitForTimeout(1000);
 
       await clickSidebarButton(page, '작업 내역 기입');

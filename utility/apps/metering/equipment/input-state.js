@@ -65,7 +65,7 @@ function getCurrentEquipmentReadingValidationIssues(formData = readEquipmentForm
 }
 
 function shouldSkipEquipmentReadingComparisonValidation(fieldKey, currentDateString, adjacentDateString) {
-  return READING_VALIDATION_COMPARISON_EXCEPTIONS.has(
+  return GAS_READING_VALIDATION_COMPARISON_EXCEPTIONS.has(
     `${fieldKey}|${currentDateString}|${adjacentDateString}`
   );
 }

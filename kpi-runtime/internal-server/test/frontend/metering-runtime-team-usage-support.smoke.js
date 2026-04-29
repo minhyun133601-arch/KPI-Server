@@ -26,12 +26,6 @@ function createTeamUsageSupportContext() {
     eq_share: 80,
     eq_other: 20,
     eq_normal: 40,
-    eq_team03_a: 9000,
-    eq_team03_b: 5000,
-    liquid_comp: {
-      value: 2497,
-      difference: 49.94,
-    },
   };
 
   const displayedMonthlyUsageMap = {
@@ -104,12 +98,6 @@ function createTeamUsageSupportContext() {
     GAS_LPG_CORRECTION_USAGE_FACTOR: 1.5,
     GAS_CORRECTION_TARGET_IDS: new Set(['gas_lng']),
     SHARED_COMPRESSOR_VIRTUAL_ID: 'shared_virtual',
-    ELECTRIC_LIQUID_COMPRESSOR_TEAM_USAGE_ADJUSTMENT: {
-      teamKey: 'team_03',
-      equipmentId: 'liquid_comp',
-      startMonth: '2026-03',
-      deductionFactor: 120,
-    },
     isGasResourceType(resourceType = currentResourceType) {
       return resourceType === 'gas';
     },
@@ -117,17 +105,8 @@ function createTeamUsageSupportContext() {
       return 1.2;
     },
     calculateEquipmentMonthlyUsage(equipmentId) {
-      const usage = equipmentMonthlyUsageMap[equipmentId];
-      if (usage && typeof usage === 'object' && !Array.isArray(usage)) {
-        return {
-          value: usage.value ?? null,
-          difference: usage.difference ?? null,
-        };
-      }
-
       return {
-        value: usage ?? null,
-        difference: null,
+        value: equipmentMonthlyUsageMap[equipmentId] ?? null,
       };
     },
     calculateDisplayedEquipmentMonthlyUsage(equipmentId) {
@@ -283,38 +262,6 @@ test('runtime team usage support resolves team monthly usage for direct and shar
   assert.equal(context.getTeamMonthlyUsage('team_a'), 120);
   assert.equal(context.getTeamCorrectedMonthlyUsage('team_b', { selectionOnly: true }), 45);
   assert.equal(context.getTeamCorrectedMonthlyUsage('team_c', { selectionOnly: true }), 50);
-});
-
-test('runtime team usage support subtracts liquid compressor x120 from electric team_03 total only', () => {
-  const context = createTeamUsageSupportContext();
-  context.__setResourceType('electric');
-
-  const originalGetTeamChargeEquipmentIdsExcludingSharedCompressor =
-    context.getTeamChargeEquipmentIdsExcludingSharedCompressor;
-  context.getTeamChargeEquipmentIdsExcludingSharedCompressor = function (
-    teamKey,
-    monthValue = '2026-04',
-    options = {}
-  ) {
-    if (teamKey === 'team_03') {
-      if (options.selectionOnly === true) {
-        return ['eq_team03_a', 'eq_team03_b'];
-      }
-
-      return ['eq_team03_a', 'eq_team03_b'];
-    }
-
-    return originalGetTeamChargeEquipmentIdsExcludingSharedCompressor(teamKey, monthValue, options);
-  };
-
-  assert.ok(
-    Math.abs(context.calculateElectricLiquidCompressorTeamUsageAdjustment('team_03') - 5992.8) < 1e-9
-  );
-  assert.ok(Math.abs(context.getTeamMonthlyUsage('team_03') - 8007.2) < 1e-9);
-  assert.ok(
-    Math.abs(context.getTeamMonthlyUsage('team_03', { selectionOnly: true }) - 8007.2) < 1e-9
-  );
-  assert.equal(context.getTeamMonthlyUsage('team_a'), 120);
 });
 
 test('runtime team usage support builds selected-team corrected summary info with gas factor label', () => {

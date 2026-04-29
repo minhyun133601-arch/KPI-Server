@@ -551,6 +551,7 @@
             sideNav.innerHTML = entries.map(entry => {
                 const isActive = entry.id === activeEntry?.id;
                 const navCategories = getSectionNavigationCategories(entry.section);
+                const shouldKeepDirectLaunchSubmenuVisible = entry.section?.directLaunch === true && navCategories.length > 0;
                 const actionIcon = entry.section?.directLaunch === true
                     ? 'fa-arrow-up-right-from-square'
                     : 'fa-chevron-right';
@@ -558,7 +559,7 @@
                     ? `openSection('${entry.id}')`
                     : `setDashboardSection('${entry.id}')`;
                 return `
-                    <div class="dashboard-tree-group${isActive ? ' active' : ''}" style="--section-color:${entry.accent}; --section-soft:${entry.softAccent};">
+                    <div class="dashboard-tree-group${isActive ? ' active' : ''}${shouldKeepDirectLaunchSubmenuVisible ? ' is-expanded' : ''}" style="--section-color:${entry.accent}; --section-soft:${entry.softAccent};">
                         <button type="button" class="dashboard-tree-main${isActive ? ' active' : ''}" onclick="${sectionAction}">
                             <span class="dashboard-tree-main-head">
                                 <span class="dashboard-side-button-icon"><i class="fas ${escapeDashboardHtml(entry.section.icon || 'fa-folder-open')}"></i></span>
@@ -1116,7 +1117,11 @@
                         if (isUtilityTeamSelectorSection) {
                             SidebarTreeState.expandedSections.work = true;
                         }
-                        const isExpanded = isUtilityTeamSelectorSection || SidebarTreeState.expandedSections[sectionEntry.id] === true;
+                        const renderableCategories = getSidebarRenderableCategories(sectionEntry);
+                        const shouldKeepDirectLaunchSubmenuVisible = sectionEntry.section?.directLaunch === true && renderableCategories.length > 0;
+                        const isExpanded = isUtilityTeamSelectorSection
+                            || SidebarTreeState.expandedSections[sectionEntry.id] === true
+                            || shouldKeepDirectLaunchSubmenuVisible;
                         const isActiveSection = selectedSectionId === sectionEntry.id;
                         const actionIcon = sectionEntry.section?.directLaunch === true
                             ? 'fa-arrow-up-right-from-square'
@@ -1134,7 +1139,7 @@
                                     <span class="sidebar-group-chevron"><i class="fas ${actionIcon}"></i></span>
                                 </button>
                                 <div class="sidebar-group-items">
-                                    ${getSidebarRenderableCategories(sectionEntry).map(({ category, index }) => {
+                                    ${renderableCategories.map(({ category, index }) => {
                                         const categoryColor = category.color || sectionEntry.accent;
                                         const isActiveCategory = isActiveSection && getNavigationSelectionCategoryIndex(sectionEntry.id) === index;
                                         const teamCategories = getSidebarTeamCategories(sectionEntry, category);

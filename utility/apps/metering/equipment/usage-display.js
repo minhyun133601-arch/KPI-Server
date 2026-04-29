@@ -82,18 +82,9 @@ function calculateDisplayedEquipmentMonthlyUsage(equipmentId) {
 function getEquipmentUsageDetailText(equipmentId) {
   const equipment = getEquipmentItem(equipmentId);
   if (isOtherEquipment(equipment)) {
-    const usageComputation =
-      typeof getOtherMonthlyUsageComputation === "function"
-        ? getOtherMonthlyUsageComputation()
-        : null;
-    const allocatedUsageLabel =
-      usageComputation?.mode === "team_residual"
-        ? "팀 배분 사용량 월 합계"
-        : "설비 사용량 월 합계";
-    const totalPowerUsage = usageComputation?.totalPowerUsage ?? calculateTotalPowerMonthlyUsage();
-    const equipmentUsage =
-      usageComputation?.allocatedUsage ?? calculateEquipmentGroupMonthlyUsage(getEquipmentSummaryIds());
-    const otherUsage = usageComputation?.otherUsage ?? calculateOtherMonthlyUsage();
+    const totalPowerUsage = calculateTotalPowerMonthlyUsage();
+    const equipmentUsage = calculateEquipmentGroupMonthlyUsage(getEquipmentSummaryIds());
+    const otherUsage = calculateOtherMonthlyUsage();
     const chargeDetailText = getEquipmentUsageChargeDetailText(equipmentId);
 
     if (totalPowerUsage === null) {
@@ -112,7 +103,7 @@ function getEquipmentUsageDetailText(equipmentId) {
       return chargeDetailText ? `${baseText}\n${chargeDetailText}` : baseText;
     }
 
-    const baseText = `전력총량 월 합계 ${formatWholeNumber(totalPowerUsage)} - ${allocatedUsageLabel} ${formatWholeNumber(
+    const baseText = `전력총량 월 합계 ${formatWholeNumber(totalPowerUsage)} - 설비 사용량 월 합계 ${formatWholeNumber(
       equipmentUsage ?? 0
     )} = 기타 ${formatWholeNumber(otherUsage ?? 0)}`;
     return chargeDetailText ? `${baseText}\n${chargeDetailText}` : baseText;

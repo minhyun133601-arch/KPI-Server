@@ -1,6 +1,6 @@
 # patch.md
 작성일 / Date: `2026-04-23`
-개정일 / Revised: `2026-04-28`
+개정일 / Revised: `2026-04-29`
 상태 / Status: `supporting material only`
 기준 문서 / Authority reference: `AGENTS.md`
 
@@ -107,6 +107,240 @@ KPI-Server/
 ### Tree Notes / 트리 메모
 - `AGENTS.md` is the authority doc. `patch.md` and `비전공자용.md` are supporting docs.
 - `node_modules/`, `kpi-runtime/internal-server/.codex-run/`, `kpi-runtime/internal-server/var/` are excluded from the main tree because they are dependencies or runtime artifacts.
+
+## 2026-04-29 - Owner Demo Clickable Preview Tabs / 오너 시연 클릭형 미리보기 탭
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+`-- kpi-runtime/
+    |-- sections/
+    |   `-- KPI.sections.owner.js
+    `-- internal-server/test/frontend/
+        `-- owner-section-demo.smoke.js
+```
+
+### Summary / 요약
+- Changed the owner demo workbench from disabled tab buttons to CSS-only clickable tabs for `서버 관리`, `계정 관리`, and `Repository Map`.
+- Added preview-only toggle switches in the server and account panels. They change visually in the browser but do not call APIs or persist data.
+- Kept destructive server, DB, backup, and account action buttons disabled so the demo remains presentation-only.
+- Set the Repository Map iframe to eager loading so the map is visible immediately when the demo tab is selected.
+
+### Changed Files / 변경 파일
+- `kpi-runtime/sections/KPI.sections.owner.js`
+- `kpi-runtime/internal-server/test/frontend/owner-section-demo.smoke.js`
+- `patch.md`
+- `비전공자용.md`
+
+### Verification / 검증
+- `node --check ../../kpi-runtime/sections/KPI.sections.owner.js` -> `pass`
+- `node --test test/frontend/owner-section-demo.smoke.js test/frontend/owner-demo-navigation.smoke.js` -> `pass (4/4)`
+- Live owner-demo interaction check on verification port `3192`: account tab became visible, a demo toggle changed from checked to unchecked, repository tab showed `/owner/repository-map?maxDepth=50&demo=1`, `tabCount=3`, `switchCount=6`, and all action buttons stayed disabled.
+
+### Notes / 메모
+- No script, fetch, storage mutation, or backend command was added to the owner demo content. The clickable behavior is HTML/CSS preview behavior only.
+
+## 2026-04-29 - Owner Repository Map Full Shell Reuse / 오너 리포지토리 맵 전체 화면 재사용
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+|-- commands/
+|   `-- ops-console-app/ops-console/public/
+|       `-- repository-map.js
+`-- kpi-runtime/internal-server/
+    |-- src/
+    |   |-- lib/owner-repository-map-page.js
+    |   |-- request-router.js
+    |   `-- routes/owner-routes.js
+    `-- test/routes/
+        `-- owner-repository-map-page.test.js
+```
+
+### Summary / 요약
+- Replaced the simplified owner-only Repository Map page with the full `commands/ops-console-app/ops-console/public/repository-map.html` shell from the Repository Map bundle.
+- Added `/owner/repository-map.js`, served through the owner route, so the owner page can reuse the same rich Repository Map client without exposing the whole `commands/` tree as KPI static content.
+- Updated the shared Repository Map client to call `/api/owner/repository-map?maxDepth=50` when it is loaded under `/owner/repository-map`, while keeping `/api/repository-map?maxDepth=50` for the ops-console page.
+- Added route-level tests to lock that the owner page uses the full shell, the owner script route, and the owner-only API endpoint.
+
+### Changed Files / 변경 파일
+- `commands/ops-console-app/ops-console/public/repository-map.js`
+- `kpi-runtime/internal-server/src/lib/owner-repository-map-page.js`
+- `kpi-runtime/internal-server/src/request-router.js`
+- `kpi-runtime/internal-server/src/routes/owner-routes.js`
+- `kpi-runtime/internal-server/test/routes/owner-repository-map-page.test.js`
+- `patch.md`
+- `비전공자용.md`
+
+### Verification / 검증
+- `node --test test/routes/owner-repository-map-page.test.js test/services/repository-map.test.js test/frontend/owner-section-demo.smoke.js` -> `pass (7/7)`
+- `node --check src/lib/owner-repository-map-page.js` -> `pass`
+- `node --check ../../commands/ops-console-app/ops-console/public/repository-map.js` -> `pass`
+- `node --check src/routes/owner-routes.js` -> `pass`
+- `node --check src/request-router.js` -> `pass`
+- Live check on verification port `3192`: `/owner/repository-map` returned HTTP `200`, used `/owner/repository-map.js`, the script used `/api/owner/repository-map?maxDepth=50`, and the browser rendered `606` tree nodes with `102` directories and `503` files.
+- `npm run format:check` -> `pass`
+- `npm run lint` -> `pass`
+- `npm run verify` -> `pass (436 tests)`
+- `KPI_AUTH_ENABLED=false KPI_LOGIN_ENABLED=false KPI_SERVER_PORT=3192 KPI_BASE_URL=http://127.0.0.1:3192 npm run smoke:kpi-browser` -> `pass`
+
+### Notes / 메모
+- The `commands/` tree is still not broadly exposed through KPI static serving. Only the owner-protected Repository Map page/script route reuses the ops-console map files.
+- Secret/env files, runtime artifacts, install outputs, private work-log content, and binary attachments remain excluded from the map.
+
+## 2026-04-29 - Owner Demo Navigation Visibility / 오너 시연 목차 표시 보강
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+`-- kpi-runtime/
+    |-- app/
+    |   |-- KPI.app.js
+    |   |-- KPI.app.navigation.js
+    |   |-- KPI.app.viewer.js
+    |   `-- styles/shell/dashboard.css
+    |-- sections/
+    |   `-- KPI.sections.owner.js
+    `-- internal-server/test/frontend/
+        |-- owner-demo-navigation.smoke.js
+        `-- owner-section-demo.smoke.js
+```
+
+### Summary / 요약
+- Kept the real `오너 전용` parent as a direct-launch popup entry, but now keeps its child navigation visible when it has renderable categories.
+- Updated both dashboard side navigation and viewer sidebar paths so `오너 전용 (시연)` appears directly under `오너 전용` for owner users.
+- Reused the parent owner visual identity for the demo child: `fa-shield-halved` and `#7c3aed`.
+- Added a frontend smoke guard that checks the direct-launch submenu visibility contract in the split and bundled navigation files.
+
+### Changed Files / 변경 파일
+- `kpi-runtime/app/KPI.app.js`
+- `kpi-runtime/app/KPI.app.navigation.js`
+- `kpi-runtime/app/KPI.app.viewer.js`
+- `kpi-runtime/app/styles/shell/dashboard.css`
+- `kpi-runtime/sections/KPI.sections.owner.js`
+- `kpi-runtime/internal-server/test/frontend/owner-demo-navigation.smoke.js`
+- `kpi-runtime/internal-server/test/frontend/owner-section-demo.smoke.js`
+- `patch.md`
+- `비전공자용.md`
+
+### Verification / 검증
+- `node --test test/frontend/owner-section-demo.smoke.js test/frontend/owner-demo-navigation.smoke.js` -> `pass (4/4)`
+- `npm run format:check` -> `pass`
+- `npm run lint` -> `pass`
+- `npm run verify` -> `pass (434 tests)`
+- `KPI_AUTH_ENABLED=false KPI_LOGIN_ENABLED=false KPI_SERVER_PORT=3192 KPI_BASE_URL=http://127.0.0.1:3192 npm run smoke:kpi-browser` -> `pass`
+- Live DOM check on verification port `3192` with an owner current-user bootstrap: sidebar `오너 전용` rendered as `sidebar-group is-expanded`, `오너 전용 (시연)` was visible, and clicking it opened the demo screen with `/owner/repository-map?maxDepth=50&demo=1`.
+
+### Notes / 메모
+- Open verification mode without a current user still hides `ownerOnly` UI by design. The DOM visibility check injected only the browser bootstrap current-user object as owner; it did not create or change any database account.
+
+## 2026-04-29 - Repository Map Full Path Recovery / 리포지토리 맵 전체 경로 복구
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+|-- commands/
+|   `-- ops-console-app/ops-console/public/
+|       `-- repository-map.js
+`-- kpi-runtime/
+    |-- sections/
+    |   `-- KPI.sections.owner.js
+    `-- internal-server/
+        |-- src/
+        |   |-- lib/owner-repository-map-page.js
+        |   |-- routes/owner-routes.js
+        |   `-- services/repository-map.js
+        `-- test/
+            |-- frontend/owner-section-demo.smoke.js
+            `-- services/repository-map.test.js
+```
+
+### Summary / 요약
+- Changed the repository-map scanner default depth from `7` to `50`, capped at `60`, so the owner map loads the full safe repository tree instead of a shallow partial tree.
+- Added root-path recovery: if an invalid source root is requested, the scanner falls back to the current repository root instead of returning an empty map.
+- Added `rootPath`, `requestedRoot`, and `rootFallback` to the repository-map API response so the UI can show which storage path was scanned.
+- Updated owner routes and owner repository-map page to request `maxDepth=50`.
+- Updated `오너 전용 (시연)` so its Repository Map area uses the same owner repository-map page through `/owner/repository-map?maxDepth=50&demo=1`.
+- Added an operations-console fallback tree that includes the `KPI-local.git` reference URL, so the Repository Map panel is not blank even if the live map API is unavailable.
+- Confirmed the provided reference repository `https://github.com/minhyun133601-arch/KPI-local.git` is the older local tree shape; this patch keeps the current serverized repo layout and uses that URL as a visible fallback reference rather than reverting the serverized paths.
+
+### Changed Files / 변경 파일
+- `commands/ops-console-app/ops-console/public/repository-map.js`
+- `kpi-runtime/sections/KPI.sections.owner.js`
+- `kpi-runtime/internal-server/src/lib/owner-repository-map-page.js`
+- `kpi-runtime/internal-server/src/routes/owner-routes.js`
+- `kpi-runtime/internal-server/src/services/repository-map.js`
+- `kpi-runtime/internal-server/test/frontend/owner-section-demo.smoke.js`
+- `kpi-runtime/internal-server/test/services/repository-map.test.js`
+- `patch.md`
+- `비전공자용.md`
+
+### Verification / 검증
+- `node --test test/services/repository-map.test.js` -> `pass`
+- `node --test test/frontend/owner-section-demo.smoke.js` -> `pass`
+- `node --check ../../commands/ops-console-app/ops-console/public/repository-map.js` -> `pass`
+- `node --check ../../kpi-runtime/sections/KPI.sections.owner.js` -> `pass`
+- `node --check src/lib/owner-repository-map-page.js` -> `pass`
+- Direct scanner check -> `ok`, `maxDepth=50`, root path `C:\Users\user\Desktop\KPI-Server`, directories `102`, files `501`
+- `npm run format:check` -> `pass`
+- `npm run lint` -> `pass`
+- `npm run verify` -> `pass` (`432` tests passed)
+- `npm run smoke:kpi-browser` on `KPI_SERVER_PORT=3192`, `KPI_BASE_URL=http://127.0.0.1:3192` -> `pass`
+- Direct `3192` owner map check -> `/api/owner/repository-map?maxDepth=50` returned `ok=true`, directories `102`, files `501`; `/owner/repository-map?maxDepth=50` returned HTTP `200`
+
+### Notes / 메모
+- The map still excludes secret/env files, runtime artifacts, install/build outputs, private work-log contents, and binary attachments.
+- The demo page now shares the same owner repository-map screen, so if the real map is visible, the owner demo shows the same map instead of a tiny hardcoded tree.
+
+## 2026-04-29 - Owner Console Static Demo Category / 오너 콘솔 정적 시연 목차
+
+### Architecture Impact / 아키텍처 수정사항
+```text
+KPI-Server/
+|-- patch.md
+|-- 비전공자용.md
+`-- kpi-runtime/
+    |-- sections/
+    |   `-- KPI.sections.owner.js
+    `-- internal-server/
+        |-- e2e/
+        |   `-- kpi-browser.playwright.js
+        `-- test/frontend/
+            `-- owner-section-demo.smoke.js
+```
+
+### Summary / 요약
+- Added an owner-only child navigation item named `오너 전용 (시연)` under the existing `오너 전용` section.
+- Kept the real owner console parent launch behavior unchanged, while the demo child has no `launchUrl` and renders only static preview HTML inside the KPI viewer.
+- Mirrored the visible shape of the current owner operations console: hero area, canonical port chips (`3100`, `5434`, `3192`), status cards, server/account/repository-map tabs, logs, DB tools, account table, and repository tree.
+- Disabled all demo buttons and avoided script/fetch/API calls so the screen is presentation-only and safe to show from another computer.
+- Ran `npm run format:write` because the repository formatter gate was already failing on `e2e/kpi-browser.playwright.js`; only Prettier formatting was applied there.
+
+### Changed Files / 변경 파일
+- `kpi-runtime/sections/KPI.sections.owner.js`
+- `kpi-runtime/internal-server/test/frontend/owner-section-demo.smoke.js`
+- `kpi-runtime/internal-server/e2e/kpi-browser.playwright.js`
+- `patch.md`
+- `비전공자용.md`
+
+### Verification / 검증
+- `node --test test/frontend/owner-section-demo.smoke.js` -> `pass`
+- `npm run format:check` -> initial failure on `e2e/kpi-browser.playwright.js`; after `npm run format:write`, rerun -> `pass`
+- `npm run lint` -> `pass`
+- `npm run verify` -> `pass` (`431` tests passed)
+- `npm run smoke:kpi-browser` on `KPI_SERVER_PORT=3192`, `KPI_BASE_URL=http://127.0.0.1:3192` -> first run failed because a CI example DB URL was forced; rerun using the local env DB settings on DB port `5434` -> `pass`
+
+### Notes / 메모
+- The demo screen intentionally does not prove owner command execution. It only proves that the owner-only feature shape can be shown inside the KPI UI.
+- User check URL for the current local runtime remains `http://127.0.0.1:3100/`; verification-only browser smoke used `http://127.0.0.1:3192/`.
 
 ## 2026-04-28 - Electric Other Usage Switches To Team Residual From 2026-03 / 2026-03부터 전기 기타를 팀 배분 후 잔여분으로 계산
 

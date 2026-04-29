@@ -60,7 +60,10 @@
                         </span>
                     </button>
                     ${sections.map(sectionEntry => {
-                        const isExpanded = SidebarTreeState.expandedSections[sectionEntry.id] === true;
+                        const renderableCategories = getSidebarRenderableCategories(sectionEntry);
+                        const shouldKeepDirectLaunchSubmenuVisible = sectionEntry.section?.directLaunch === true && renderableCategories.length > 0;
+                        const isExpanded = SidebarTreeState.expandedSections[sectionEntry.id] === true
+                            || shouldKeepDirectLaunchSubmenuVisible;
                         const isActiveSection = selectedSectionId === sectionEntry.id;
                         const actionIcon = sectionEntry.section?.directLaunch === true
                             ? 'fa-arrow-up-right-from-square'
@@ -78,7 +81,7 @@
                                     <span class="sidebar-group-chevron"><i class="fas ${actionIcon}"></i></span>
                                 </button>
                                 <div class="sidebar-group-items">
-                                    ${getSidebarRenderableCategories(sectionEntry).map(({ category, index }) => {
+                                    ${renderableCategories.map(({ category, index }) => {
                                         const categoryColor = category.color || sectionEntry.accent;
                                         const isActiveCategory = isActiveSection && getNavigationSelectionCategoryIndex(sectionEntry.id) === index;
                                         const teamCategories = getSidebarTeamCategories(sectionEntry, category);

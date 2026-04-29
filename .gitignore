@@ -8,6 +8,9 @@ work-log/internal-server/logs/*
 
 # Active internal server runtime state
 kpi-runtime/internal-server/.env
+kpi-runtime/internal-server/.env.*
+!kpi-runtime/internal-server/.env.example
+!kpi-runtime/internal-server/.env*.example
 kpi-runtime/internal-server/var/*
 !kpi-runtime/internal-server/var/.gitkeep
 !kpi-runtime/internal-server/var/files/.gitkeep
@@ -18,7 +21,15 @@ kpi-runtime/internal-server/var/*
 !kpi-runtime/internal-server/var/backups/runtime-snapshots/.gitkeep
 
 # Local verification/runtime scratch
+.env
+.env.*
+!.env.example
+!**/.env*.example
 .codex-run/
 **/internal-server/.codex-run/
 .playwright-mcp/
 test-results/
+*.log
+
+# Imported handoff folders are review inputs, not repo structure.
+kpi-server-repository-map-handoff/

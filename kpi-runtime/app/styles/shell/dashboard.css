@@ -1254,7 +1254,8 @@ body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; margi
             padding-left: 0.9rem;
             border-left: 1px solid #e2e8f0;
         }
-        .dashboard-tree-group.active .dashboard-tree-submenu {
+        .dashboard-tree-group.active .dashboard-tree-submenu,
+        .dashboard-tree-group.is-expanded .dashboard-tree-submenu {
             display: grid;
         }
         .dashboard-tree-subitem {
