@@ -272,6 +272,33 @@ const historyEntries = [
   {
     date: '2026-04-29',
     title: {
+      ko: '팀별내역서 헤더 도구 숨김과 팀 색 배지 정리',
+      en: 'Hid work-history header tools and aligned team badges to team colors',
+    },
+    summary: {
+      ko: '팀별내역서 작업내역 헤더의 보고 전용, 전체, 주간 뷰, 날짜 표시 묶음을 화면에서 숨기고, 통합현황과 상단 팀 탭에서 보이는 팀명 배지와 칩이 각 팀 색을 따르도록 조정했습니다.',
+      en: 'Hid the report-only, all, weekly-view, and date pills in the work-history header, then aligned visible team-name badges and tab chips to each team color.',
+    },
+    touched: [
+      'team-report/runtime/work/history/KPI.work.history.view.layout.js',
+      'team-report/runtime/work/history/KPI.work.history.css',
+      'KPI.html',
+      'kpi-runtime/internal-server/test/frontend/work-history-layout-templates.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/work-history-core.smoke.js',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --test kpi-runtime/internal-server/test/frontend/work-history-layout-templates.smoke.js kpi-runtime/internal-server/test/frontend/work-history-core.smoke.js',
+      'npm run lint',
+    ],
+    boundary: {
+      ko: '팀별내역서 화면의 표시 요소와 색상만 조정했습니다. 저장 구조, 데이터 경로, 검색과 필터 규칙은 바꾸지 않았습니다.',
+      en: 'Adjusted only visible work-history UI elements and colors. Did not change storage structure, data paths, or search and filter rules.',
+    },
+  },
+  {
+    date: '2026-04-29',
+    title: {
       ko: '데이터 참조 첫 화면 접힘과 module_key 토글 정리',
       en: 'Collapsed data-reference landing cards and moved module_key details behind a toggle',
     },

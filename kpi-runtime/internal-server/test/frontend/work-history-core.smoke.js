@@ -166,7 +166,7 @@ test('kpi html loads work history core split files before layout bootstrap', () 
   const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=217');
   const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=1');
   const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=1');
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=249');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=250');
 
   assert.ok(coreIndex >= 0, 'work history core loader is missing');
   assert.ok(recordsIndex > coreIndex, 'work history core records must load after core.js');

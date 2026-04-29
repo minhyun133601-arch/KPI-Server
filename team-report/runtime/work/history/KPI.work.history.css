@@ -2320,6 +2320,10 @@
     max-width: 100%;
 }
 
+.work-history-app .history-page-tools {
+    display: none;
+}
+
 .work-history-app .history-tool-pill {
     display: inline-flex;
     align-items: center;
@@ -2406,8 +2410,8 @@
 .work-history-app .tab-btn:hover,
 .work-history-app .tab-btn.active {
     transform: translateY(-2px);
-    border-color: rgba(59, 130, 246, 0.28);
-    box-shadow: 0 12px 28px rgba(33, 51, 84, 0.1);
+    border-color: var(--tab-accent);
+    box-shadow: 0 12px 28px var(--tab-shadow);
 }
 
 .work-history-app .tab-topline {
@@ -2417,10 +2421,12 @@
 
 .work-history-app .tab-kicker {
     padding: 3px 8px;
-    color: var(--history-muted);
+    color: var(--tab-accent-strong);
     font-size: 10px;
     font-weight: 900;
     letter-spacing: 0;
+    border-color: var(--tab-border);
+    background: rgba(255, 255, 255, 0.92);
 }
 
 .work-history-app .tab-icon-wrap {
@@ -2468,10 +2474,10 @@
 
 .work-history-app .tab-part {
     max-width: 100%;
-    border: 1px solid #edf2f7;
+    border: 1px solid var(--tab-border);
     border-radius: 999px;
-    background: #f8fafc;
-    color: #475467;
+    background: var(--tab-soft-bg);
+    color: var(--tab-accent-strong);
     font-size: 10px;
     font-weight: 800;
     padding: 3px 7px;
@@ -2696,9 +2702,46 @@
     min-height: 30px;
     padding: 0 10px;
     border-radius: 999px;
+    border: 1px solid transparent;
     background: #f2f6ff;
     color: #1d4ed8;
     font-weight: 900;
+}
+
+.work-history-app .team-badge.overview {
+    background: rgba(8, 145, 178, 0.12);
+    border-color: rgba(8, 145, 178, 0.2);
+    color: #0e7490;
+}
+
+.work-history-app .team-badge.team1part1 {
+    background: rgba(37, 99, 235, 0.12);
+    border-color: rgba(37, 99, 235, 0.2);
+    color: var(--team1part1-strong);
+}
+
+.work-history-app .team-badge.team1part2 {
+    background: rgba(245, 158, 11, 0.14);
+    border-color: rgba(245, 158, 11, 0.22);
+    color: var(--team1part2-strong);
+}
+
+.work-history-app .team-badge.team2 {
+    background: rgba(5, 150, 105, 0.12);
+    border-color: rgba(5, 150, 105, 0.2);
+    color: #047857;
+}
+
+.work-history-app .team-badge.team3 {
+    background: rgba(124, 58, 237, 0.12);
+    border-color: rgba(124, 58, 237, 0.2);
+    color: #5b21b6;
+}
+
+.work-history-app .team-badge.team4 {
+    background: rgba(220, 38, 38, 0.12);
+    border-color: rgba(220, 38, 38, 0.2);
+    color: #b91c1c;
 }
 
 .work-history-app .record-team-icon {

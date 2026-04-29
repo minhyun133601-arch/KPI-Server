@@ -108,7 +108,7 @@ test('work history layout templates registry exposes shell and modal builders', 
 });
 
 test('kpi html loads work history layout templates between layout and render', () => {
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=249');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=250');
   const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=249');
   const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=234');
 

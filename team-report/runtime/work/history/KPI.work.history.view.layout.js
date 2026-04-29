@@ -21,7 +21,7 @@
         isProductionReportWorkspace
     } = history;
 
-    const CSS_PATH = 'team-report/runtime/work/history/KPI.work.history.css?v=245';
+    const CSS_PATH = 'team-report/runtime/work/history/KPI.work.history.css?v=246';
     const COMPANY_LOGO_SRC = '/shared-assets/logo.jpg';
     const DEFAULT_TITLE = '작업 이력 기입';
     const DEFAULT_SUBTITLE = '기간, 팀, 작업자, 업무내용, 첨부 문서, 비용까지 기록하는 KPI 작업내역 화면';
