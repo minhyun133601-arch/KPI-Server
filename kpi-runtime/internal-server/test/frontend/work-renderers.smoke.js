@@ -409,7 +409,7 @@ test('kpi html loads work renderer split files before work runtime bootstrap', (
   const printIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.print.js?v=1');
   const monthlyPlanIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.monthly-plan.js?v=1');
   const renderersIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.js?v=1');
-  const workRuntimeIndex = kpiHtml.indexOf('runtime/work/KPI.work.runtime.js?v=227');
+  const workRuntimeIndex = kpiHtml.indexOf('runtime/work/KPI.work.runtime.js?v=228');
 
   assert.ok(weeklyActionsIndex >= 0, 'work renderer weekly actions loader is missing');
   assert.ok(printIndex > weeklyActionsIndex, 'work renderer print helper must load after weekly actions');

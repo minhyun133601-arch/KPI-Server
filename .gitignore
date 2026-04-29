@@ -33,3 +33,6 @@ test-results/
 
 # Imported handoff folders are review inputs, not repo structure.
 kpi-server-repository-map-handoff/
+
+# Nested local reference clone; keep it out of the parent repo.
+KPI-local/

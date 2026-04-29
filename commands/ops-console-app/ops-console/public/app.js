@@ -5,6 +5,7 @@ const actionHeader = {
 const TAB_SERVER = 'server';
 const TAB_DATA = 'data';
 const TAB_PREVIEW = 'preview';
+const TAB_REFERENCE = 'reference';
 const LANGUAGE_STORAGE_KEY = 'kpi.opsConsole.language';
 let overviewCache = null;
 let commandRegistryCache = new Map();
@@ -62,6 +63,7 @@ const i18n = {
     tabAriaLabel: '운영 콘솔 분류',
     serverTab: '서버 관리',
     accountTab: '계정 관리',
+    dataReferenceTab: '데이터 참조 경로',
     logsTitle: '로그 보기',
     logsSummary: '최근 로그 60줄을 바로 확인합니다.',
     serverActionsLog: '서버 액션',
@@ -86,6 +88,8 @@ const i18n = {
     sessionHeader: '세션',
     loading: '불러오는 중...',
     previewSummary: '현재 저장소 폴더 지도, 포트 경계, 변경 기록을 콘솔 안에서 확인합니다.',
+    dataReferenceTitle: '데이터 참조 경로',
+    dataReferenceSummary: '현재 입력 화면별 데이터가 어느 API, DB 레코드, 파일 저장소, 권한키를 거치는지 확인합니다.',
     openNewWindow: '새 창',
     scheduleModalEyebrow: 'COMPUTER SCHEDULE',
     closeButton: '닫기',
@@ -164,6 +168,7 @@ const i18n = {
     tabAriaLabel: 'Operations console sections',
     serverTab: 'Server',
     accountTab: 'Accounts',
+    dataReferenceTab: 'Data Paths',
     logsTitle: 'Logs',
     logsSummary: 'Read the latest 60 log lines directly.',
     serverActionsLog: 'Server actions',
@@ -188,6 +193,8 @@ const i18n = {
     sessionHeader: 'Session',
     loading: 'Loading...',
     previewSummary: 'Review the current repository folder map, port boundaries, and change history inside this console.',
+    dataReferenceTitle: 'Data Reference Paths',
+    dataReferenceSummary: 'Review which API, DB record, file store, and permission key each current input screen uses.',
     openNewWindow: 'New window',
     scheduleModalEyebrow: 'COMPUTER SCHEDULE',
     closeButton: 'Close',
@@ -753,18 +760,24 @@ function renderStaticIcons() {
   });
 }
 function syncRepositoryMapLanguage() {
-  const frame = $('repositoryMapFrame');
-  if (!frame) {
-    return;
-  }
-  const nextSrc = `/repository-map.html?lang=${currentLanguage}`;
-  if (frame.getAttribute('src') !== nextSrc) {
-    frame.setAttribute('src', nextSrc);
-  }
-  try {
-    frame.contentWindow?.postMessage({ type: 'kpi-ops-language', language: currentLanguage }, window.location.origin);
-  } catch {
-    // The frame is same-origin, but ignore transient reload timing.
+  const frames = [
+    { id: 'repositoryMapFrame', path: '/repository-map.html' },
+    { id: 'dataReferenceFrame', path: '/data-reference-map.html' }
+  ];
+  for (const { id, path } of frames) {
+    const frame = $(id);
+    if (!frame) {
+      continue;
+    }
+    const nextSrc = `${path}?lang=${currentLanguage}`;
+    if (frame.getAttribute('src') !== nextSrc) {
+      frame.setAttribute('src', nextSrc);
+    }
+    try {
+      frame.contentWindow?.postMessage({ type: 'kpi-ops-language', language: currentLanguage }, window.location.origin);
+    } catch {
+      // The frame is same-origin, but ignore transient reload timing.
+    }
   }
 }
 function applyLanguage() {
@@ -1072,7 +1085,7 @@ function renderCardActions(overview = null) {
 }
 function normalizeTabName(tabName = '') {
   const normalized = String(tabName || '').trim().toLowerCase();
-  if (normalized === TAB_DATA || normalized === TAB_PREVIEW) {
+  if (normalized === TAB_DATA || normalized === TAB_PREVIEW || normalized === TAB_REFERENCE) {
     return normalized;
   }
   return TAB_SERVER;
@@ -1095,6 +1108,9 @@ async function hydrateTab(tabName) {
     return;
   }
   if (normalized === TAB_PREVIEW) {
+    return;
+  }
+  if (normalized === TAB_REFERENCE) {
     return;
   }
   await loadTables();

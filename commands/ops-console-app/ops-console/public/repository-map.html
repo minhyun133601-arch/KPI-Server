@@ -57,11 +57,12 @@
     }
     h1,
     h2,
+    h3,
     p {
       margin: 0;
     }
     .page {
-      width: min(1500px, calc(100% - 32px));
+      width: min(1580px, calc(100% - 32px));
       margin: 24px auto;
     }
     .header {
@@ -86,7 +87,7 @@
       line-height: 1.1;
     }
     .subtitle {
-      max-width: 880px;
+      max-width: 940px;
       color: var(--muted);
       font-size: 0.98rem;
     }
@@ -152,9 +153,16 @@
     }
     .workspace {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 380px;
+      grid-template-columns: minmax(0, 1fr) 420px;
       gap: 14px;
       align-items: start;
+      margin-top: 14px;
+    }
+    .main-stack,
+    .side-stack {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
     }
     .panel {
       min-width: 0;
@@ -167,8 +175,10 @@
     }
     .panel.blue { border-top-color: var(--blue); }
     .panel.green { border-top-color: var(--green); }
+    .panel.violet { border-top-color: var(--violet); }
     .panel.amber { border-top-color: var(--amber); }
     .panel.rose { border-top-color: var(--rose); }
+    .panel.cyan { border-top-color: var(--cyan); }
     .panel-head {
       display: grid;
       gap: 4px;
@@ -340,33 +350,233 @@
       padding-left: 12px;
       border-left: 1px dashed var(--line-strong);
     }
-    .side-stack {
+    .mini-list,
+    .material-stack,
+    .policy-grid,
+    .history-stack,
+    .search-grid {
       display: grid;
-      gap: 14px;
+      gap: 10px;
     }
-    .mini-list {
+    .mini-item,
+    .material-card,
+    .policy-card,
+    .history-card,
+    .architecture-card,
+    .search-group,
+    .search-card {
       display: grid;
-      gap: 8px;
-    }
-    .mini-item {
-      display: grid;
-      gap: 3px;
+      gap: 6px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      padding: 8px 9px;
+      padding: 10px;
       background: #fff;
     }
-    .mini-title {
-      font-family: Consolas, "SFMono-Regular", monospace;
-      font-size: 0.82rem;
+    .mini-title,
+    .card-title,
+    .material-title,
+    .policy-title,
+    .history-title,
+    .search-card-title,
+    .search-group-title {
+      font-size: 0.88rem;
       font-weight: 850;
       word-break: break-word;
     }
+    .mini-title,
+    .card-title,
+    .material-title,
+    .search-card-title {
+      font-family: Consolas, "SFMono-Regular", monospace;
+    }
     .mini-text,
     .plain-list,
-    .event span {
+    .card-copy,
+    .material-copy,
+    .policy-text,
+    .history-summary,
+    .history-boundary,
+    .search-card-copy,
+    .toolbar-note {
       color: var(--muted);
       font-size: 0.8rem;
+    }
+    .toolbar-note {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      font-weight: 700;
+    }
+    .search-toolbar {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .search-toolbar-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px 14px;
+    }
+    .search-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .search-toggle input {
+      width: 16px;
+      height: 16px;
+      min-height: 16px;
+      margin: 0;
+    }
+    .search-hint {
+      color: var(--muted);
+      font-size: 0.76rem;
+      line-height: 1.5;
+    }
+    .search-hint code {
+      color: var(--text);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+    .architecture-screen-body {
+      display: grid;
+      gap: 14px;
+    }
+    .architecture-surface {
+      padding: 0;
+      overflow: hidden;
+    }
+    .architecture-surface > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      cursor: pointer;
+      list-style: none;
+    }
+    .architecture-surface > summary::-webkit-details-marker {
+      display: none;
+    }
+    .architecture-surface-summary {
+      min-width: 0;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .architecture-surface-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      min-height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 900;
+      line-height: 1;
+      transition: transform 160ms ease, color 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+    .architecture-surface[open] .architecture-surface-toggle {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+      color: var(--blue);
+      transform: rotate(90deg);
+    }
+    .architecture-surface-body {
+      display: grid;
+      gap: 14px;
+      padding: 0 14px 14px;
+      border-top: 1px solid var(--line);
+    }
+    .panel-disclosure {
+      padding: 0;
+      overflow: hidden;
+    }
+    .panel-disclosure > summary {
+      list-style: none;
+      cursor: pointer;
+    }
+    .panel-disclosure > summary::-webkit-details-marker {
+      display: none;
+    }
+    .panel-summary {
+      border-bottom: 0;
+    }
+    .panel-summary-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .panel-summary-copy {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+    .panel-summary-toggle,
+    .history-card-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      min-height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 900;
+      line-height: 1;
+      transition: transform 160ms ease, color 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+    .panel-disclosure[open] .panel-summary-toggle,
+    .history-card[open] .history-card-toggle {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+      color: var(--blue);
+      transform: rotate(90deg);
+    }
+    .panel-section-body {
+      border-top: 1px solid var(--line);
+    }
+    .search-group-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--line);
+    }
+    .search-group-list {
+      display: grid;
+      gap: 8px;
+    }
+    .search-card-kind,
+    .card-preview-label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .search-card-path {
+      color: var(--muted);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.74rem;
+      word-break: break-word;
+    }
+    .search-chip-row,
+    .card-preview-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
     }
     .plain-list {
       display: grid;
@@ -380,23 +590,178 @@
       font-family: Consolas, "SFMono-Regular", monospace;
       font-weight: 850;
     }
-    .event {
+    .architecture-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .architecture-card {
+      padding: 0;
+      overflow: hidden;
+    }
+    .architecture-card > summary {
+      display: grid;
+      gap: 10px;
+      padding: 10px;
+      cursor: pointer;
+      list-style: none;
+    }
+    .architecture-card > summary::-webkit-details-marker {
+      display: none;
+    }
+    .architecture-card-summary-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .architecture-card-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      min-height: 28px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-weight: 900;
+      line-height: 1;
+      transition: transform 160ms ease, color 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+    .architecture-card[open] .architecture-card-toggle {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+      color: var(--blue);
+      transform: rotate(90deg);
+    }
+    .architecture-card-body {
+      display: grid;
+      gap: 8px;
+      padding: 0 10px 10px;
+      border-top: 1px dashed var(--line);
+    }
+    .architecture-card.blue,
+    .policy-card.blue,
+    .search-card.blue { border-left: 4px solid var(--blue); }
+    .architecture-card.green,
+    .policy-card.green,
+    .search-card.green { border-left: 4px solid var(--green); }
+    .architecture-card.violet,
+    .policy-card.violet,
+    .search-card.violet { border-left: 4px solid var(--violet); }
+    .architecture-card.amber,
+    .policy-card.amber,
+    .search-card.amber { border-left: 4px solid var(--amber); }
+    .architecture-card.rose,
+    .policy-card.rose,
+    .search-card.rose { border-left: 4px solid var(--rose); }
+    .architecture-card.cyan,
+    .policy-card.cyan,
+    .search-card.cyan { border-left: 4px solid var(--cyan); }
+    .architecture-card.slate,
+    .policy-card.slate,
+    .search-card.slate { border-left: 4px solid var(--slate); }
+    .card-head,
+    .material-head {
       display: grid;
       gap: 4px;
-      padding: 9px 0;
-      border-bottom: 1px solid var(--line);
+      min-width: 0;
     }
-    .event:last-child {
-      border-bottom: 0;
-      padding-bottom: 0;
+    .card-path,
+    .material-path,
+    .history-label,
+    .material-kicker,
+    .policy-kicker {
+      font-size: 0.72rem;
     }
-    .event time {
+    .card-path,
+    .material-path {
+      color: var(--muted);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      word-break: break-word;
+    }
+    .material-kicker,
+    .policy-kicker,
+    .history-label {
+      color: var(--muted);
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .card-meta,
+    .material-meta,
+    .policy-chips,
+    .history-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .card-preview {
+      display: grid;
+      gap: 6px;
+      padding-top: 8px;
+      border-top: 1px dashed var(--line);
+    }
+    .history-card {
+      padding: 0;
+      overflow: hidden;
+    }
+    .history-card > summary {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      cursor: pointer;
+      list-style: none;
+    }
+    .history-card > summary::-webkit-details-marker {
+      display: none;
+    }
+    .history-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .history-date {
       color: var(--muted);
       font-size: 0.72rem;
       font-weight: 800;
     }
-    .event strong {
-      font-size: 0.9rem;
+    .history-head-copy {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+    .history-card-body {
+      display: grid;
+      gap: 8px;
+      padding: 0 10px 10px;
+      border-top: 1px dashed var(--line);
+    }
+    .history-section {
+      display: grid;
+      gap: 6px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+    }
+    .history-card-body .history-section:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+    .history-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 8px;
+      background: #f8fafc;
+      color: var(--text);
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.72rem;
+      font-weight: 800;
+      word-break: break-word;
     }
     .empty {
       border: 1px dashed var(--line-strong);
@@ -406,18 +771,32 @@
       background: #fff;
       font-weight: 700;
     }
-    @media (max-width: 1100px) {
-      .header,
+    @media (max-width: 1240px) {
       .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 1100px) {
+      .header {
         grid-template-columns: 1fr;
       }
       .header-tools {
         justify-items: stretch;
       }
+      .search-toolbar {
+        grid-template-columns: 1fr;
+      }
+      .search-toolbar-meta {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .architecture-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
     @media (max-width: 760px) {
       .page {
-        width: min(100% - 20px, 1500px);
+        width: min(100% - 20px, 1580px);
         margin: 12px auto;
       }
       .status-grid,
@@ -433,6 +812,9 @@
       .tree-wrap {
         max-height: none;
         min-height: 420px;
+      }
+      .architecture-grid {
+        grid-template-columns: 1fr;
       }
       .node-row {
         grid-template-columns: 22px minmax(0, 1fr);
@@ -450,7 +832,7 @@
       <div class="title-block">
         <div class="eyebrow" data-i18n="eyebrow">KPI Server</div>
         <h1 data-i18n="title">Repository Map</h1>
-        <p class="subtitle" data-i18n="subtitle">현재 저장소 안에 실제로 있는 폴더와 파일을 운영콘솔에서 전체 트리로 확인합니다.</p>
+        <p class="subtitle" data-i18n="subtitle">See the live tree, recent changes, and patch history in one place.</p>
       </div>
       <div class="header-tools">
         <div class="language-toggle" aria-label="Language">
@@ -471,59 +853,113 @@
       <div class="status-chip"><span class="status-label" data-i18n="generatedLabel">Generated</span><span class="status-value" data-stat="generated">-</span></div>
     </section>
 
+    <article class="panel violet architecture-screen">
+      <div class="panel-head">
+        <div class="panel-kicker" data-i18n="architectureKicker">repository blueprint</div>
+        <h2 data-i18n="architectureTitle">Total Architecture</h2>
+        <p class="live-source" data-i18n="architectureSubtitle">Search by feature, file, or patch history while scanning the full repository architecture.</p>
+      </div>
+      <div class="toolbar search-toolbar">
+        <input id="mapSearch" type="search" data-i18n-placeholder="searchPlaceholder" placeholder="Search features, files, or patch history" />
+        <div class="search-toolbar-meta">
+          <label class="search-toggle">
+            <input id="includeDescendantsToggle" type="checkbox" />
+            <span data-i18n="includeDescendantsLabel">Include child files and paths</span>
+          </label>
+          <span class="search-hint" data-i18n="searchHelp">Examples: area:kpi-runtime path:internal-server/src file:request-router.js history:owner status:dirty</span>
+        </div>
+      </div>
+      <details id="architectureSurface" class="panel-body architecture-screen-body architecture-surface">
+        <summary>
+          <span id="searchSummary" class="architecture-surface-summary" data-i18n="searchSummaryIdle">Search by feature, file path, or patch history.</span>
+          <span class="architecture-surface-toggle" aria-hidden="true">›</span>
+        </summary>
+        <div class="architecture-surface-body">
+          <div id="searchResults" class="search-grid" hidden></div>
+          <div id="architectureList" class="architecture-grid">
+            <div class="empty" data-i18n="loading">Loading repository map.</div>
+          </div>
+        </div>
+      </details>
+    </article>
+
     <section class="workspace">
-      <article class="panel blue">
-        <div class="panel-head">
-          <div class="panel-kicker" data-i18n="liveKicker">Live Repository Structure</div>
-          <h2 class="panel-title-row">
-            <span data-i18n="treeTitle">Current Tree</span>
-            <span class="source-chip" id="sourceChip" data-i18n="sourceChecking">checking</span>
-          </h2>
-          <p class="live-source" id="sourceText" data-i18n="sourceLoading">Loading the local owner-console repository map API.</p>
-        </div>
-        <div class="toolbar">
-          <input id="mapSearch" type="search" data-i18n-placeholder="searchPlaceholder" placeholder="파일 또는 폴더 검색" />
-          <button id="expandAllButton" type="button" data-i18n="expandAll">전체 펼침</button>
-          <button id="collapseAllButton" type="button" data-i18n="collapseAll">전체 접기</button>
-        </div>
-        <div id="treeRoot" class="tree-wrap" aria-live="polite">
-          <div class="empty" data-i18n="loading">저장소 지도를 불러오는 중입니다.</div>
-        </div>
-      </article>
+      <div class="main-stack">
+        <article class="panel blue">
+          <div class="panel-head">
+            <div class="panel-kicker" data-i18n="liveKicker">Live repository structure</div>
+            <h2 class="panel-title-row">
+              <span data-i18n="treeTitle">Current Tree</span>
+              <span class="source-chip" id="sourceChip" data-i18n="sourceChecking">checking</span>
+            </h2>
+            <p class="live-source" id="sourceText" data-i18n="sourceLoading">Loading the local ops-console repository map API.</p>
+          </div>
+          <div class="toolbar">
+            <div class="toolbar-note" data-i18n="treeFilterNote">The live tree follows the repository search above.</div>
+            <button id="expandAllButton" type="button" data-i18n="expandAll">Expand all</button>
+            <button id="collapseAllButton" type="button" data-i18n="collapseAll">Collapse all</button>
+          </div>
+          <div id="treeRoot" class="tree-wrap" aria-live="polite">
+            <div class="empty" data-i18n="loading">Loading repository map.</div>
+          </div>
+        </article>
+
+      </div>
 
       <aside class="side-stack">
         <article class="panel green">
-          <div class="panel-head">
-            <div class="panel-kicker" data-i18n="recentKicker">recent and changed</div>
-            <h2 data-i18n="recentTitle">Recent / Added / Modified</h2>
-          </div>
-          <div id="recentList" class="panel-body mini-list">
-            <div class="empty" data-i18n="loading">저장소 지도를 불러오는 중입니다.</div>
-          </div>
+          <details id="recentSurface" class="panel-disclosure">
+            <summary class="panel-head panel-summary">
+              <div class="panel-summary-row">
+                <div class="panel-summary-copy">
+                  <div class="panel-kicker" data-i18n="recentKicker">recent and changed</div>
+                  <h2 data-i18n="recentTitle">Recent / Added / Modified</h2>
+                </div>
+                <span class="panel-summary-toggle" aria-hidden="true">›</span>
+              </div>
+            </summary>
+            <div id="recentList" class="panel-body panel-section-body mini-list">
+              <div class="empty" data-i18n="loading">Loading repository map.</div>
+            </div>
+          </details>
         </article>
 
         <article class="panel rose">
-          <div class="panel-head">
-            <div class="panel-kicker" data-i18n="safetyKicker">safety boundary</div>
-            <h2 data-i18n="safetyTitle">Hidden from this map</h2>
-          </div>
-          <div class="panel-body">
-            <ul class="plain-list">
-              <li><code>.env*</code> <span data-i18n="hideEnv">비밀값 파일</span></li>
-              <li><code>var/</code>, <code>logs</code>, <code>*.dump</code> <span data-i18n="hideRuntime">런타임 결과물</span></li>
-              <li><code>node_modules/</code>, <code>dist/</code>, <code>coverage/</code> <span data-i18n="hideGenerated">설치/빌드 산출물</span></li>
-              <li><code>work-log</code>, <code>team-report/work-log/teams</code> <span data-i18n="hidePrivate">개인 업무 내용</span></li>
-              <li><code>*.pdf</code>, <code>*.xlsx</code>, <code>*.jpg</code> <span data-i18n="hideAttachments">첨부파일과 바이너리</span></li>
-            </ul>
-          </div>
+          <details id="safetySurface" class="panel-disclosure">
+            <summary class="panel-head panel-summary">
+              <div class="panel-summary-row">
+                <div class="panel-summary-copy">
+                  <div class="panel-kicker" data-i18n="safetyKicker">safety boundary</div>
+                  <h2 data-i18n="safetyTitle">Hidden from this map</h2>
+                </div>
+                <span class="panel-summary-toggle" aria-hidden="true">›</span>
+              </div>
+            </summary>
+            <div class="panel-body panel-section-body">
+              <ul class="plain-list">
+                <li><code>.env*</code> <span data-i18n="hideEnv">secret files</span></li>
+                <li><code>var/</code>, <code>logs</code>, <code>*.dump</code> <span data-i18n="hideRuntime">runtime artifacts</span></li>
+                <li><code>node_modules/</code>, <code>dist/</code>, <code>coverage/</code> <span data-i18n="hideGenerated">install and build outputs</span></li>
+                <li><code>work-log</code>, <code>team-report/work-log/teams</code> <span data-i18n="hidePrivate">private work contents</span></li>
+                <li><code>*.pdf</code>, <code>*.xlsx</code>, <code>*.jpg</code> <span data-i18n="hideAttachments">attachments and binary files</span></li>
+              </ul>
+            </div>
+          </details>
         </article>
 
         <article class="panel amber">
-          <div class="panel-head">
-            <div class="panel-kicker" data-i18n="historyKicker">records</div>
-            <h2 data-i18n="historyTitle">Change history</h2>
-          </div>
-          <div id="historyList" class="panel-body"></div>
+          <details id="historySurface" class="panel-disclosure">
+            <summary class="panel-head panel-summary">
+              <div class="panel-summary-row">
+                <div class="panel-summary-copy">
+                  <div class="panel-kicker" data-i18n="historyKicker">records</div>
+                  <h2 data-i18n="historyTitle">Change history</h2>
+                </div>
+                <span class="panel-summary-toggle" aria-hidden="true">›</span>
+              </div>
+            </summary>
+            <div id="historyList" class="panel-body panel-section-body history-stack"></div>
+          </details>
         </article>
       </aside>
     </section>

@@ -13,8 +13,10 @@ export const PERMISSION_KEYS = Object.freeze({
   WORK_PERSON_SHIN_JUNGRAE: 'work.person.shin_jungrae',
   WORK_PERSON_LEE_HYOSEOK: 'work.person.lee_hyoseok',
   WORK_PERSON_KIM_MINHYUN: 'work.person.kim_minhyun',
+  DATA_EQUIPMENT_HISTORY: 'data.equipment_history',
   AUDIT_LUX: 'audit.lux',
-  AUDIT_REGULATION: 'audit.regulation'
+  AUDIT_REGULATION: 'audit.regulation',
+  AUDIT_LEGAL_FACILITY: 'audit.legal_facility'
 });
 
 const WORK_PERMISSION_KEY_BY_DATA_KEY = Object.freeze({
@@ -30,6 +32,7 @@ const WORK_PERMISSION_KEY_BY_DATA_KEY = Object.freeze({
 
 const AUDIT_PERMISSION_KEY_BY_DATA_KEY = Object.freeze({
   audit_lux: PERMISSION_KEYS.AUDIT_LUX,
+  audit_legal_facility: PERMISSION_KEYS.AUDIT_LEGAL_FACILITY,
   audit_regulation: PERMISSION_KEYS.AUDIT_REGULATION
 });
 

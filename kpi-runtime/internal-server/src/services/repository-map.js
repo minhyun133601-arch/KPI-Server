@@ -6,7 +6,9 @@ const DEFAULT_MAX_DEPTH = 50;
 const MAX_DEPTH_LIMIT = 60;
 const RECENT_LIMIT = 30;
 const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_LINE_COUNT_BYTES = 2 * 1024 * 1024;
 const ALLOWED_DOTFILES = new Set(['.github', '.gitignore', '.gitattributes']);
+const LINE_COUNT_EXTENSIONS = new Set(['.cmd', '.css', '.html', '.js', '.json', '.md', '.mjs', '.ps1', '.txt', '.yml', '.yaml']);
 const EXCLUDED_NAMES = new Set([
   '.git',
   '.claude',
@@ -19,54 +21,16 @@ const EXCLUDED_NAMES = new Set([
   'dist',
   'kpi-server-repository-map-handoff',
   'node_modules',
+  'patch.md',
   'var',
   '비전공자용.md',
 ]);
-
-const EXCLUDED_PREFIXES = [
-  'commands/ops-console-app/var',
-  'commands/var',
-  'kpi-server-repository-map-handoff',
-  'kpi-runtime/internal-server/node_modules',
-  'kpi-runtime/internal-server/var',
-];
+const EXCLUDED_PREFIXES = ['KPI-local', 'commands/ops-console-app/var', 'commands/var', 'kpi-server-repository-map-handoff', 'kpi-runtime/internal-server/node_modules', 'kpi-runtime/internal-server/var'];
 
 const PRIVATE_CONTENT_PREFIXES = ['work-log/', 'team-report/work-log/teams/'];
 const EXCLUDED_EXTENSIONS = new Set([
-  '.7z',
-  '.bak',
-  '.backup',
-  '.bmp',
-  '.cer',
-  '.crt',
-  '.csv',
-  '.db',
-  '.doc',
-  '.docx',
-  '.dump',
-  '.gif',
-  '.heic',
-  '.jpeg',
-  '.jpg',
-  '.key',
-  '.log',
-  '.p12',
-  '.pdf',
-  '.pem',
-  '.pfx',
-  '.pid',
-  '.png',
-  '.ppt',
-  '.pptx',
-  '.rar',
-  '.sqlite',
-  '.sqlite3',
-  '.tsv',
-  '.webp',
-  '.xls',
-  '.xlsm',
-  '.xlsx',
-  '.zip',
+  '.7z', '.bak', '.backup', '.bmp', '.cer', '.crt', '.csv', '.db', '.doc', '.docx', '.dump', '.gif', '.heic', '.jpeg', '.jpg', '.key', '.log',
+  '.p12', '.pdf', '.pem', '.pfx', '.pid', '.png', '.ppt', '.pptx', '.rar', '.sqlite', '.sqlite3', '.tsv', '.webp', '.xls', '.xlsm', '.xlsx', '.zip',
 ]);
 const TOP_LEVEL_META = new Map([
   ['AGENTS.md', { tone: 'slate', label: 'rules', desc: 'AI work authority' }],
@@ -95,7 +59,6 @@ export function isRepositoryMapExcluded(relativePath = '', name = '') {
   const basename = String(name || segments.at(-1) || '').trim();
   if (!basename) return false;
   if (isEnvLikeName(basename)) return true;
-  if (basename === '비전공자용.md') return false;
   if (EXCLUDED_NAMES.has(basename)) return true;
   if (basename.startsWith('.') && !ALLOWED_DOTFILES.has(basename)) return true;
   if (EXCLUDED_EXTENSIONS.has(path.extname(basename).toLowerCase())) return true;
@@ -174,6 +137,17 @@ function getRecentLabel(mtimeMs = 0, now = Date.now()) {
   return '';
 }
 
+function readLineCount(filePath, size = 0) {
+  const basename = path.basename(filePath).toLowerCase();
+  if (!LINE_COUNT_EXTENSIONS.has(path.extname(basename)) && basename !== '.gitattributes' && basename !== '.gitignore') return null;
+  if (size > MAX_LINE_COUNT_BYTES) return null;
+  try {
+    return fs.readFileSync(filePath, 'utf8').split(/\r?\n/).length;
+  } catch {
+    return null;
+  }
+}
+
 function classifyNode(relativePath = '', type = 'file') {
   const topSegment = normalizeRelativePath(relativePath).split('/').filter(Boolean)[0] || '';
   const meta = TOP_LEVEL_META.get(relativePath) || TOP_LEVEL_META.get(topSegment) || {};
@@ -188,6 +162,7 @@ function createNode(rootDir, filePath, context) {
   const relativePath = toScanRelative(rootDir, filePath);
   const stat = fs.statSync(filePath);
   const type = stat.isDirectory() ? 'directory' : 'file';
+  const size = type === 'file' ? stat.size : 0;
   const git = context.gitStatus.get(relativePath) || null;
   const classification = classifyNode(relativePath, type);
   const recentLabel = type === 'file' ? getRecentLabel(stat.mtimeMs, context.now) : '';
@@ -199,7 +174,8 @@ function createNode(rootDir, filePath, context) {
     tone: classification.tone,
     label: classification.label,
     desc: classification.desc,
-    size: type === 'file' ? stat.size : 0,
+    size,
+    lines: type === 'file' ? readLineCount(filePath, size) : null,
     updatedAt: stat.mtime.toISOString(),
     recentLabel,
     status: git?.status || '',

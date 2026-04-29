@@ -19,10 +19,15 @@
         getRecordCategoryGroupLabel,
         isKpiRecord,
         isImportantRecord,
+        isProductionReportWorkspace,
         getRecordTagLabels,
         escapeHtml,
         escapeAttribute
     } = history;
+
+    function isProductionWorkspace() {
+        return typeof isProductionReportWorkspace === 'function' && isProductionReportWorkspace();
+    }
 
     function getAllRecords() {
         const payload = getPayload();
@@ -105,7 +110,7 @@
             .join(' ');
         const remarks = String(record?.remarks || '').trim();
         if (tagPrefix && remarks) return `${tagPrefix} ${remarks}`;
-        return tagPrefix || remarks || '입력된 비고가 없습니다.';
+        return tagPrefix || remarks || (isProductionWorkspace() ? '입력된 보고 메모가 없습니다.' : '입력된 비고가 없습니다.');
     }
 
     function buildSearchHaystack(record) {
@@ -144,7 +149,7 @@
         const records = getFilteredOverviewRecords();
         container.innerHTML = records.length
             ? records.map(record => buildRecordCard(record, true)).join('')
-            : view.renderEmptyState('조건에 맞는 작업내역이 없습니다.');
+            : view.renderEmptyState(view.getEmptyStateMessage?.() || '조건에 맞는 작업내역이 없습니다.');
     }
 
     function renderTeam(team) {
@@ -153,13 +158,19 @@
         const records = getFilteredTeamRecords(team);
         container.innerHTML = records.length
             ? records.map(record => buildRecordCard(record, false)).join('')
-            : view.renderEmptyState('조건에 맞는 작업내역이 없습니다.');
+            : view.renderEmptyState(view.getEmptyStateMessage?.() || '조건에 맞는 작업내역이 없습니다.');
     }
 
     function buildRecordCard(record, showTeam) {
         const team = record.team || record._team;
         const info = getRecordTeamInfo(record);
         const summaryTitle = getRecordSummaryTitle(record);
+        const isProductionReport = isProductionWorkspace();
+        const summaryTitleLabel = isProductionReport ? '보고 제목' : '제목';
+        const contentSectionTitle = isProductionReport ? '보고 내용' : '업무내용';
+        const remarksSectionTitle = isProductionReport ? '보고 메모' : '비고';
+        const attachmentSectionTitle = isProductionReport ? '보고 첨부' : '첨부 문서';
+        const emptyContentText = isProductionReport ? '입력된 보고 내용이 없습니다.' : '입력된 업무내용이 없습니다.';
         void showTeam;
         return `
             <details class="report-card ${escapeHtml(info.class || '')}">
@@ -174,7 +185,7 @@
                                 </span>
                             </div>
                             <div class="record-summary-field record-summary-title">
-                                <span class="record-summary-label">제목</span>
+                                <span class="record-summary-label">${summaryTitleLabel}</span>
                                 <span class="record-summary-value" title="${escapeAttribute(summaryTitle)}">${highlightText(escapeHtml(summaryTitle))}</span>
                             </div>
                             <div class="record-summary-field record-summary-date">
@@ -200,15 +211,15 @@
                             <div class="report-section-content">${view.buildSummaryContent(record)}</div>
                         </div>
                         <div class="report-section attachment-section">
-                            <div class="report-section-title"><span class="section-icon">${view.getSectionIconSvg('attachment')}</span>첨부 문서</div>
+                            <div class="report-section-title"><span class="section-icon">${view.getSectionIconSvg('attachment')}</span>${attachmentSectionTitle}</div>
                             <div class="report-section-content attachment-view-list">${view.buildAttachmentLinks(record)}</div>
                         </div>
                         <div class="report-section record-content">
-                            <div class="report-section-title"><span class="section-icon">${view.getSectionIconSvg('work')}</span>업무내용</div>
-                            <div class="report-section-content">${highlightText(escapeHtml(record.workContent) || '입력된 업무내용이 없습니다.')}</div>
+                            <div class="report-section-title"><span class="section-icon">${view.getSectionIconSvg('work')}</span>${contentSectionTitle}</div>
+                            <div class="report-section-content">${highlightText(escapeHtml(record.workContent) || emptyContentText)}</div>
                         </div>
                         <div class="report-section remarks">
-                            <div class="report-section-title"><span class="section-icon">${view.getSectionIconSvg('remarks')}</span>비고</div>
+                            <div class="report-section-title"><span class="section-icon">${view.getSectionIconSvg('remarks')}</span>${remarksSectionTitle}</div>
                             <div class="report-section-content">${escapeHtml(buildRecordRemarkText(record))}</div>
                         </div>
                     </div>

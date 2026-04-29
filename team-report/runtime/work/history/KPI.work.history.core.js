@@ -100,6 +100,8 @@
     const RECORD_CATEGORY_OPTIONS = Object.freeze(
         RECORD_CATEGORY_GROUP_ORDER.flatMap(groupKey => RECORD_CATEGORY_GROUPS[groupKey]?.categories || [])
     );
+    const DEFAULT_WORKSPACE_MODE = 'default';
+    const PRODUCTION_REPORT_WORKSPACE_MODE = 'production-report';
 
     const state = history.state || {
         loaded: false,
@@ -122,9 +124,15 @@
             },
             removedAttachments: []
         },
-        toastTimer: null
+        toastTimer: null,
+        workspaceMode: DEFAULT_WORKSPACE_MODE,
+        workspaceTitle: '',
+        workspaceSubtitle: ''
     };
     if (typeof state.currentCategoryFilter !== 'string') state.currentCategoryFilter = '';
+    if (typeof state.workspaceMode !== 'string') state.workspaceMode = DEFAULT_WORKSPACE_MODE;
+    if (typeof state.workspaceTitle !== 'string') state.workspaceTitle = '';
+    if (typeof state.workspaceSubtitle !== 'string') state.workspaceSubtitle = '';
 
     const writeState = history.writeState || {
         timer: null,
@@ -198,6 +206,46 @@
             : createFallbackPayload();
     }
 
+    function getWorkspaceMode() {
+        return state.workspaceMode === PRODUCTION_REPORT_WORKSPACE_MODE
+            ? PRODUCTION_REPORT_WORKSPACE_MODE
+            : DEFAULT_WORKSPACE_MODE;
+    }
+
+    function isProductionReportWorkspace() {
+        return getWorkspaceMode() === PRODUCTION_REPORT_WORKSPACE_MODE;
+    }
+
+    function getFixedCategoryFilter() {
+        return isProductionReportWorkspace() ? '보고' : '';
+    }
+
+    function applyWorkspaceOptions(options = {}) {
+        const requestedMode = String(options.workspaceMode || '').trim();
+        const nextMode = requestedMode === PRODUCTION_REPORT_WORKSPACE_MODE
+            ? PRODUCTION_REPORT_WORKSPACE_MODE
+            : DEFAULT_WORKSPACE_MODE;
+        const modeChanged = getWorkspaceMode() !== nextMode;
+        state.workspaceMode = nextMode;
+        state.workspaceTitle = String(options.workspaceTitle || '').trim();
+        state.workspaceSubtitle = String(options.workspaceSubtitle || '').trim();
+
+        if (modeChanged) {
+            state.currentKeyword = '';
+            state.currentTeam = 'overview';
+            if (nextMode === DEFAULT_WORKSPACE_MODE) {
+                state.currentCategoryFilter = '';
+            }
+        }
+
+        const fixedCategoryFilter = getFixedCategoryFilter();
+        if (fixedCategoryFilter) {
+            state.currentCategoryFilter = fixedCategoryFilter;
+        }
+
+        return nextMode;
+    }
+
     // Record normalization and storage helpers are split into sibling runtime files.
     function loadData() {
         if (state.loaded && state.payload) return state.payload;
@@ -265,6 +313,8 @@
         ATTACHMENT_SLOT_META,
         WORK_HISTORY_ATTACHMENT_MAX_BYTES,
         WORK_HISTORY_ATTACHMENT_ACCEPT,
+        DEFAULT_WORKSPACE_MODE,
+        PRODUCTION_REPORT_WORKSPACE_MODE,
         getElement,
         queryAll,
         setShadowHost,
@@ -273,7 +323,11 @@
         loadData,
         getPayload,
         replacePayload,
-        getTeamRecords
+        getTeamRecords,
+        getWorkspaceMode,
+        isProductionReportWorkspace,
+        getFixedCategoryFilter,
+        applyWorkspaceOptions
     });
 
     window.KpiWorkHistory = history;

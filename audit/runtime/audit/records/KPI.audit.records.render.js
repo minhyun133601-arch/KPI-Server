@@ -1,12 +1,16 @@
         function renderAuditContent(category) {
             const dataKey = category.dataKey;
-            if (dataKey === 'audit_legal_facility') {
-                renderAuditLegalFacilityContent(category);
+            if (category?.isPlaceholder === true) {
+                renderAuditPlaceholderContent(category);
                 return;
             }
             const data = getAuditData(dataKey, category.title);
             if (isAuditLuxDataKey(dataKey)) {
                 renderAuditLuxWorkspace(category, data);
+                return;
+            }
+            if (isAuditLegalFacilityDataKey(dataKey)) {
+                renderAuditLegalFacilityPreview(category, data);
                 return;
             }
             const filter = getAuditFilterState(dataKey);
@@ -873,6 +877,28 @@
             const category = AppData?.audit?.categories?.find(cat => cat.dataKey === dataKey);
             setLastModified(category?.title || 'Audit');
             if (category) renderAuditContent(category);
+        }
+
+        function renderAuditPlaceholderContent(category) {
+            const contentContainer = document.getElementById('content-container');
+            if (!contentContainer) return;
+            const placeholderHtml = String(category?.content || '').trim() || `
+                <div class="p-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-600">
+                    추후 추가예정입니다.
+                </div>
+            `;
+            contentContainer.innerHTML = `
+                <div class="border-b pb-4 mb-6">
+                    <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                        <span class="w-2 h-8 rounded-sm inline-block" style="background:${category.color || '#94a3b8'};"></span>
+                        ${escapeHtml(category.title || '오디트')}
+                    </h2>
+                    <p class="text-slate-500 mt-1 pl-4 text-sm">${escapeHtml(category.desc || '추후 추가예정')}</p>
+                </div>
+                <div class="audit-panel">
+                    ${placeholderHtml}
+                </div>
+            `;
         }
 
         function removeAuditEntry(dataKey, index) {

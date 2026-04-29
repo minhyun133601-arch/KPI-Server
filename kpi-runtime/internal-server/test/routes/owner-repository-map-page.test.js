@@ -26,10 +26,20 @@ test('owner repository map page reuses the full operations-console map shell', a
   assert.equal(response.statusCode, 200);
   assert.match(response.headers['Content-Type'], /text\/html/);
   assert.match(response.body, /id="treeRoot"/);
+  assert.match(response.body, /id="searchResults"/);
+  assert.match(response.body, /id="architectureSurface"/);
+  assert.match(response.body, /id="includeDescendantsToggle"/);
+  assert.match(response.body, /id="architectureList"/);
+  assert.match(response.body, /id="recentSurface"/);
+  assert.match(response.body, /id="safetySurface"/);
+  assert.match(response.body, /id="historySurface"/);
   assert.match(response.body, /id="recentList"/);
   assert.match(response.body, /data-i18n="historyTitle"/);
   assert.match(response.body, /src="\/owner\/repository-map\.js"/);
   assert.doesNotMatch(response.body, /src="\/repository-map\.js"/);
+  assert.doesNotMatch(response.body, /id="inventoryList"/);
+  assert.doesNotMatch(response.body, /id="materialsList"/);
+  assert.doesNotMatch(response.body, /id="policyList"/);
 });
 
 test('owner repository map script switches to the owner-only API when served under owner route', async () => {

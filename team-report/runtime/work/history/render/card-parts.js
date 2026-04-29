@@ -11,9 +11,14 @@
         KPI_FLAG_LABEL,
         KPI_FLAG_PILL_LABEL,
         isImportantRecord,
+        isProductionReportWorkspace,
         escapeHtml,
         escapeAttribute
     } = history;
+
+    function isProductionWorkspace() {
+        return typeof isProductionReportWorkspace === 'function' && isProductionReportWorkspace();
+    }
 
     function buildSummaryContent(record) {
         const info = view.getRecordTeamInfo(record);
@@ -21,16 +26,25 @@
             ? getRecordCategoryGroupLabel(record)
             : '';
         const categoryText = view.getRecordCategoryText(record);
-        const items = [
-            ['작업 팀', info.name],
-            ['구분', categoryGroupText || '-'],
-            ['카테고리', categoryText || '-'],
-            ['실적 표시', isImportantRecord(record) ? KPI_FLAG_LABEL : '-'],
-            ['작업자', view.formatAssigneeText(record) || '미입력'],
-            ['기간', view.formatDateRange(record.startDate, record.endDate)],
-            ['종료예정일', view.formatDateKorean(record.plannedEndDate)],
-            ['비용', view.formatCurrency(record.cost)]
-        ];
+        const items = isProductionWorkspace()
+            ? [
+                ['보고 팀', info.name],
+                ['보고 구분', categoryGroupText || '보고'],
+                ['작성자', view.formatAssigneeText(record) || '미입력'],
+                ['기간', view.formatDateRange(record.startDate, record.endDate)],
+                ['종료예정일', view.formatDateKorean(record.plannedEndDate)],
+                ['비용', view.formatCurrency(record.cost)]
+            ]
+            : [
+                ['작업 팀', info.name],
+                ['구분', categoryGroupText || '-'],
+                ['카테고리', categoryText || '-'],
+                ['실적 표시', isImportantRecord(record) ? KPI_FLAG_LABEL : '-'],
+                ['작업자', view.formatAssigneeText(record) || '미입력'],
+                ['기간', view.formatDateRange(record.startDate, record.endDate)],
+                ['종료예정일', view.formatDateKorean(record.plannedEndDate)],
+                ['비용', view.formatCurrency(record.cost)]
+            ];
         return `
             <div class="summary-grid">
                 ${items.map(([label, value]) => `
@@ -44,7 +58,10 @@
     }
 
     function buildAttachmentLinks(record) {
-        const items = ATTACHMENT_SLOT_KEYS.map((slotKey) => {
+        const slotKeys = typeof view.getVisibleAttachmentSlotKeys === 'function'
+            ? view.getVisibleAttachmentSlotKeys()
+            : ATTACHMENT_SLOT_KEYS;
+        const items = slotKeys.map((slotKey) => {
             const meta = ATTACHMENT_SLOT_META[slotKey];
             const attachment = getRecordAttachment(record, slotKey);
             if (!attachment) {

@@ -1,6 +1,6 @@
 # AGENTS.md
 작성일 / Date: `2026-04-03`
-개정일 / Revised: `2026-04-24` — patch/비전공자용 아키텍처-first 기록 규칙 추가
+개정일 / Revised: `2026-04-29` — Repository Map 기록 일원화, Data Reference 최신 경로 원칙, KPI-local 참고본 경계 추가
 
 > 이 문서는 KPI 저장소의 **AI 역할, 코드 생성 규약, 보안 기준, 테스트·완료 기준**을 정의하는 단일 기준 문서다.  
 > This document is the single source of truth for the KPI repository’s **AI role, code-generation contract, security baseline, and testing/completion gates**.
@@ -24,8 +24,8 @@ not_own:
 authority_set:
   - "AGENTS.md"
 supporting_docs_only:
-  - "patch history (`patch.md`)"
-  - "plain-language patch companion (`비전공자용.md`)"
+  - "ops console Repository Map (`commands/ops-console-app/ops-console/public/repository-map.html`)"
+  - "ops console Data Reference Paths (`commands/ops-console-app/ops-console/public/data-reference-map.html`)"
   - "legacy analyses"
   - "old prompts"
   - "archived reference material"
@@ -91,6 +91,20 @@ supporting_docs_only:
 - KR: 저장소 안에 남아 있는 handoff, audit, legacy 문서는 supporting material로만 읽고, 기준 판단은 `AGENTS.md`로 한다.
 - EN: Treat handoff, audit, and legacy docs left in the repo as supporting material only; base decisions on `AGENTS.md`.
 
+## 1a. Nested Reference Boundary / 중첩 참고본 경계
+
+### Directive A-09a
+- KR: repo root 아래의 `KPI-local/`은 현재 저장소에 흡수하기 위한 **참고용 중첩 clone** 이다. 현재 저장소의 활성 작업트리, 권위 문서, 검증 대상은 이 루트 저장소이며 `KPI-local/` 자체가 아니다.
+- EN: `KPI-local/` under the repo root is a **nested reference clone** used for comparison and absorption. The active worktree, authority surface, and verification target are this root repository, not `KPI-local/` itself.
+
+### Directive A-09b
+- KR: 사용자가 현재 대화에서 명시적으로 지시하지 않는 한 `KPI-local/` 안의 파일, Git 설정, commit history, remote 상태를 수정하지 않는다. 현재 저장소의 상위 Git에서도 `KPI-local/`을 추적하지 않도록 유지한다.
+- EN: Unless the user explicitly asks in the current conversation, do not modify files, Git settings, commit history, or remote state inside `KPI-local/`. Keep `KPI-local/` untracked by the parent Git of this repository.
+
+### Directive A-09c
+- KR: `KPI-local/`에서 규칙이나 파일을 가져올 때는 이 저장소의 **포트 계약(`3100`, `3192`, `5434`)**, 경로 구조, 검증 게이트, 문서 규칙에 맞게 재편한다. 실험본 전용 포트, 실험본 전용 Git 흐름, 실험본 전용 안전문구를 그대로 복사하지 않는다.
+- EN: When absorbing rules or files from `KPI-local/`, reshape them to this repository’s **port contract (`3100`, `3192`, `5434`)**, path structure, verification gates, and documentation rules. Do not copy experiment-only ports, experiment-only Git flow, or experiment-only safety wording verbatim.
+
 ## 2. AI Role and Working Posture / AI 역할과 작업 태도
 
 ### Directive A-10
@@ -98,8 +112,8 @@ supporting_docs_only:
 - EN: The agent MUST act like a careful senior engineer who prioritizes **correctness, security, maintainability, and reviewability** over clever shortcuts.
 
 ### Directive A-10a
-- KR: 에이전트는 장기 진행/status 문서를 운영하는 역할이 아니라, 현재 요청의 **실제 코드 변경, 검증, 기록**을 끝까지 처리하는 실작업 역할로 동작한다. 진행 흔적은 별도 진행 문서 대신 `patch.md`에 짧고 사실적으로 남긴다.
-- EN: The agent MUST behave as a hands-on delivery worker for the current request, not as a maintainer of long-lived progress or status documents. Progress history MUST be recorded briefly and factually in `patch.md` instead of separate progress docs.
+- KR: 에이전트는 장기 진행/status 문서를 운영하는 역할이 아니라, 현재 요청의 **실제 코드 변경, 검증, 기록**을 끝까지 처리하는 실작업 역할로 동작한다. 사용자가 볼 변경 이력은 별도 진행 문서 대신 운영콘솔 Repository Map에 짧고 사실적으로 남긴다.
+- EN: The agent MUST behave as a hands-on delivery worker for the current request, not as a maintainer of long-lived progress or status documents. User-facing change history MUST be recorded briefly and factually in the ops console Repository Map instead of separate progress docs.
 
 ### Directive A-11
 - KR: 작업 시작 전에는 이 문서, 저장소의 현재 문서, build/test 설정, CI 설정, 그리고 실제로 손댈 파일을 먼저 읽는다.
@@ -164,24 +178,32 @@ supporting_docs_only:
 - EN: Long documents do not need line-by-line full translation, but **core operating rules, risk boundaries, and prohibitions** MUST also appear in English.
 
 ### Directive A-23a
-- KR: repo-owned authority/rules markdown는 `AGENTS.md` 하나만 유지한다. `patch.md`와 `비전공자용.md`는 예외적으로 허용되는 **비권위 supporting 문서**이며, 그 외 checklist, runbook, temporary note, helper prompt `*.md`는 사용자의 명시적 요청 없이는 만들지 않는다.
-- EN: Keep repo-owned authority/rules markdown limited to `AGENTS.md`. `patch.md` and `비전공자용.md` are the only standing **non-authoritative supporting docs** allowed by default; do not create other checklist, runbook, temporary-note, or helper-prompt `*.md` files without explicit user request.
+- KR: repo-owned authority/rules markdown는 `AGENTS.md` 하나만 유지한다. 장기 patch log, 쉬운 설명 companion, checklist, runbook, temporary note, helper prompt `*.md`는 사용자의 명시적 요청 없이는 만들지 않는다.
+- EN: Keep repo-owned authority/rules markdown limited to `AGENTS.md`. Do not create long-lived patch logs, plain-language companions, checklists, runbooks, temporary notes, or helper-prompt `*.md` files without explicit user request.
 
 ### Directive A-23b
-- KR: `patch.md`는 repo root 에 두는 patch history 전용 supporting 문서다. authority 문서는 아니며, 코드나 저장소 소유 문서를 수정하는 패치에는 날짜, 요약, 변경 파일, 검증 결과를 같은 패치에서 함께 기록한다.
-- EN: `patch.md` is the repo-root supporting document dedicated to patch history. It is not an authority document, and any patch that changes code or repo-owned documentation MUST record the date, summary, changed files, and verification results in the same patch.
+- KR: 사용자에게 보여줄 폴더 지도, 변경 이력, 쉬운 설명, 검증 맥락은 운영콘솔 Repository Map에 흡수한다. 이 화면은 authority 문서가 아니며, 코드나 저장소 소유 문서를 수정하는 패치에는 날짜, 요약, 변경 파일/영역, 검증 결과를 필요한 범위에서 함께 갱신한다.
+- EN: User-facing folder maps, change history, plain-language notes, and verification context belong in the ops console Repository Map. This screen is not an authority document, and patches that change code or repo-owned documentation should update the date, summary, changed files or areas, and verification results there when relevant.
 
 ### Directive A-23c
-- KR: `비전공자용.md`는 `patch.md`를 비전공자도 바로 이해할 수 있도록 쉬운 한국어로 풀어쓴 companion 문서다. authority 문서는 아니며, `patch.md`에 새 patch entry를 추가할 때는 같은 패치에서 같은 내용을 쉬운 말로 옮기고, 피할 수 없는 기술 용어에는 일상어 설명을 함께 붙인다.
-- EN: `비전공자용.md` is the plain-Korean companion that rewrites `patch.md` so non-technical readers can understand it directly. It is not an authority document, and every new patch entry added to `patch.md` MUST be mirrored in the same patch using easy language plus everyday explanations for unavoidable technical terms.
+- KR: `patch.md`와 `비전공자용.md`는 이 저장소의 standing 문서가 아니다. 필요한 설명은 Repository Map의 한국어/영어 보기 안에 합치고, 삭제된 문서를 되살리거나 새로 만들지 않는다.
+- EN: `patch.md` and `비전공자용.md` are not standing documents in this repository. Put necessary explanation into the Repository Map’s Korean and English views, and do not recreate or revive those removed documents.
 
 ### Directive A-23d
-- KR: `patch.md` 상단에는 저장소 폴더/문서 아키텍처 개요를 **트리(tree) 형태**로 둔다. 각 날짜 patch entry 는 첫 소제목을 `Architecture Impact / 아키텍처 수정사항`으로 시작하고, 그 패치가 건드린 경로, 레이어, 문서, 기능 영역을 가능하면 **작은 touched-path tree** 로 먼저 보여 준다.
-- EN: `patch.md` MUST keep the repo folder/document architecture overview near the top in a **tree-shaped view**. Each dated patch entry MUST start with `Architecture Impact` and, when practical, show the touched paths, layers, repo-owned docs, and feature areas first as a **small touched-path tree**.
+- KR: Repository Map에는 저장소 폴더/문서 아키텍처 개요를 트리 또는 지도 형태로 두고, 변경 이력은 가능하면 건드린 경로, 레이어, 문서, 기능 영역을 먼저 알 수 있게 적는다.
+- EN: The Repository Map should keep the repo folder and document architecture overview in a tree or map-shaped view, and change-history entries should make touched paths, layers, docs, and feature areas visible first when practical.
 
 ### Directive A-23e
-- KR: `비전공자용.md` 상단에는 같은 아키텍처 개요를 쉬운 한국어의 **트리 형태**로 둔다. 각 날짜 설명도 첫 소제목을 `이번 패치가 건드린 위치` 같은 쉬운 아키텍처 요약으로 시작하고, 기술 경로를 적을 때는 사람이 이해할 수 있는 설명을 같은 줄 또는 바로 아래에 붙인다.
-- EN: `비전공자용.md` MUST mirror the same architecture overview near the top in an easy-Korean **tree-shaped view**. Each dated explanation MUST also start with a plain-language architecture summary such as `이번 패치가 건드린 위치`, and any technical path mentioned there MUST include a human-readable explanation on the same line or immediately below it.
+- KR: Repository Map은 한국어와 영어 보기 모드를 지원해야 한다. 비전공자도 이해해야 하는 설명은 별도 markdown companion이 아니라 이 화면의 쉬운 문장으로 제공한다.
+- EN: The Repository Map MUST support Korean and English viewing modes. Plain-language explanations for non-technical readers belong in this screen, not in a separate markdown companion.
+
+### Directive A-23f
+- KR: Repository Map의 실시간 트리는 안전 제외 규칙을 거친 저장소 폴더/파일, 파일·폴더 수정일, 파일별 짧은 용도, `전체 펼침 / 전체 접기` 조작을 보여줘야 한다. 코드나 저장소 소유 문서를 바꾸는 패치는 Repository Map 변경 이력에 날짜, 건드린 경로/영역, 변경 파일, 개인정보·운영 안전 영향, 검증 결과를 함께 남긴다.
+- EN: The Repository Map live tree MUST show repository folders and files after safety exclusions, file and folder modified dates, short per-file purposes, and `Expand all / Collapse all` controls. Patches that change code or repo-owned documentation MUST add a Repository Map history entry with date, touched paths or areas, changed files, privacy or operational safety impact, and verification results.
+
+### Directive A-23g
+- KR: 데이터 저장/참조 경로가 바뀌는 패치는 운영콘솔 Data Reference Paths를 같은 패치에서 최신 상태로 갱신해야 한다. 여기에는 `module_key`, `record_key`, `permission_key`, `app_documents`의 `ownerDomain`/`fileCategory`, `KPI_STORAGE_ROOT/files` 폴더 규칙, 전용 DB 테이블, 저장 API/라우트, 공유/전용/저장 미연결 상태 변경이 포함된다. Data Reference Paths는 최신 데이터 흐름만 보여주는 화면이며 패치 로그나 변경 이력을 쌓지 않는다. 데이터 경로 변경에 대한 패치 로그와 검증 기록은 Repository Map 변경 이력에만 남긴다.
+- EN: Patches that change data storage or reference paths MUST update the ops console Data Reference Paths in the same patch. This includes changes to `module_key`, `record_key`, `permission_key`, `app_documents` `ownerDomain`/`fileCategory`, `KPI_STORAGE_ROOT/files` folder rules, dedicated DB tables, storage APIs/routes, and shared/dedicated/no-persistence status. Data Reference Paths is a latest-state data-flow surface only; it MUST NOT accumulate patch logs or change history. Patch logs and verification notes for data-path changes belong only in Repository Map history.
 
 ### Directive A-24
 - KR: 설명은 쉽게 하되 기준은 낮추지 않는다.
@@ -246,8 +268,8 @@ supporting_docs_only:
 
 ### Directive A-41b
 
-- KR: 현재 A-40/A-41의 **tracked legacy warning path** 는 비어 있어야 한다. split 대기 예외가 필요하면 path-scoped, zero-default 로 `AGENTS.md`, verifier, `patch.md`를 같은 패치에서 함께 갱신해야 한다. 해결된 경로를 계속 warning 으로 남겨 두지 않는다.
-- EN: The current A-40/A-41 **tracked legacy warning path** list MUST stay empty. If a pending split exception is needed, add it as a path-scoped, zero-default rule and update `AGENTS.md`, the verifier, and `patch.md` in the same patch. Resolved paths MUST NOT remain downgraded to warnings.
+- KR: 현재 A-40/A-41의 **tracked legacy warning path** 는 비어 있어야 한다. split 대기 예외가 필요하면 path-scoped, zero-default 로 `AGENTS.md`, verifier, 필요 시 Repository Map을 같은 패치에서 함께 갱신해야 한다. 해결된 경로를 계속 warning 으로 남겨 두지 않는다.
+- EN: The current A-40/A-41 **tracked legacy warning path** list MUST stay empty. If a pending split exception is needed, add it as a path-scoped, zero-default rule and update `AGENTS.md`, the verifier, and the Repository Map when relevant in the same patch. Resolved paths MUST NOT remain downgraded to warnings.
 
 ### Directive A-42
 - KR: KPI 활성 JS/HTML 로직 파일에는 별도 가드가 있다. soft cap은 `1,200줄`, hard guard는 `1,500줄`이다. 단, data-only JS와 CSS는 예외다.
@@ -260,8 +282,8 @@ supporting_docs_only:
 
 ### Directive A-42b
 
-- KR: 현재 A-42 **tracked legacy warning path** 목록은 비어 있어야 한다. 새 예외 경로가 필요하면 path-scoped, zero-default 로 `AGENTS.md`, verifier, `patch.md`를 같은 패치에서 함께 갱신해야 한다.
-- EN: The current A-42 **tracked legacy warning path** list MUST stay empty. If a new exception path is needed, add it as a path-scoped, zero-default rule and update `AGENTS.md`, the verifier, and `patch.md` in the same patch.
+- KR: 현재 A-42 **tracked legacy warning path** 목록은 비어 있어야 한다. 새 예외 경로가 필요하면 path-scoped, zero-default 로 `AGENTS.md`, verifier, 필요 시 Repository Map을 같은 패치에서 함께 갱신해야 한다.
+- EN: The current A-42 **tracked legacy warning path** list MUST stay empty. If a new exception path is needed, add it as a path-scoped, zero-default rule and update `AGENTS.md`, the verifier, and the Repository Map when relevant in the same patch.
 
 ### Directive A-43
 - KR: 새 활성 로직 파일은 `800줄` 이하로 유지한다. `800줄`을 넘기는 새 활성 파일 추가는 금지하며, 필요한 경우 기존 파일 분리나 책임 재배치를 먼저 수행한다.
@@ -521,8 +543,8 @@ supporting_docs_only:
 - EN: If the repo already has standard commands, use them. Inspect the README, Makefile, package.json, pyproject, and CI first.
 
 ### Directive A-114a
-- KR: 검증 명령, format scope, 또는 CI gate 구성이 바뀌면 `package.json`, CI, `patch.md`를 같은 패치에서 함께 갱신한다.
-- EN: If verification commands, format scope, or CI gate composition changes, update `package.json`, CI, and `patch.md` in the same patch.
+- KR: 검증 명령, format scope, 또는 CI gate 구성이 바뀌면 `package.json`, CI, 그리고 사용자에게 보여줄 변경 이력이 필요한 경우 Repository Map을 같은 패치에서 함께 갱신한다.
+- EN: If verification commands, format scope, or CI gate composition changes, update `package.json`, CI, and the Repository Map when user-facing change history is needed in the same patch.
 
 ### Directive A-114b
 - KR: hosted CI/bootstrap 변경은 workflow 안에 필요한 런타임 계약(`KPI_SERVER_PORT`, `KPI_BASE_URL`, `KPI_DATABASE_URL`, `KPI_AUTH_ENABLED`, `KPI_LOGIN_ENABLED` 또는 동등한 값)을 명시해야 한다. 개발자 머신의 로컬 기본값, 이미 떠 있는 서버, 숨은 env 상태에 기대는 workflow 는 금지한다.
@@ -565,8 +587,8 @@ supporting_docs_only:
 ## 12. Human Review and Operability Boundaries / 사람 검토와 운영 가능성 경계
 
 ### Directive A-126
-- KR: `AGENTS.md`는 hard rule 과 done gate 를, `patch.md`는 patch history 와 아키텍처 영향 요약을, `비전공자용.md`는 그 patch history 와 아키텍처의 쉬운 설명판을 소유한다. `patch.md`와 `비전공자용.md`를 장기 진행 문서나 status board 로 키우지 않는다.
-- EN: `AGENTS.md` owns hard rules and done gates, `patch.md` owns patch history plus architecture-impact summaries, and `비전공자용.md` owns the plain-language companion view of that history and architecture. Do not turn `patch.md` or `비전공자용.md` into long-lived progress documents or status boards.
+- KR: `AGENTS.md`는 hard rule 과 done gate 를 소유하고, 운영콘솔 Repository Map은 사용자가 보는 폴더 지도, 변경 이력, 쉬운 설명, 검증 맥락을 소유한다. Repository Map을 장기 진행 status board 로 키우지 않는다.
+- EN: `AGENTS.md` owns hard rules and done gates, and the ops console Repository Map owns the user-facing folder map, change history, plain-language notes, and verification context. Do not turn the Repository Map into a long-lived progress status board.
 
 ### Directive A-127
 - KR: 사람 검토가 반드시 필요한 영역은 최소한 `인증`, `권한`, `승인 흐름`, `저장 권위본`, `외부 노출`, `마이그레이션`, `백업/복구`, `보안 사고 대응`이다.
@@ -602,6 +624,9 @@ supporting_docs_only:
 ## 14. Easy English Companion / 쉬운 영어 요약
 
 - This file controls how the AI works, how code should be structured, how tests/security should be enforced, and when work is truly done.
+- User-facing history, folder maps, and plain-language explanation belong in the Repository Map, not in separate patch-log markdown files.
+- The nested `KPI-local/` clone is a read-only reference by default and must stay out of the parent Git unless the user explicitly asks otherwise.
+- When absorbing from `KPI-local/`, keep this repository’s port contract: runtime `3100`, verification `3192`, and DB `5434`.
 - It does **not** control the server rollout plan or the IT handoff wording.
 - Keep the current live Node-based KPI server stable unless the user explicitly approves a different path.
 - For new Python services, use async endpoints, Pydantic v2, repository-based persistence, migrations, and pytest verification.
