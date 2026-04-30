@@ -220,6 +220,8 @@ function createSaveValidationContext(options = {}) {
     getCurrentEquipmentReadingValidationIssues() {
       return [];
     },
+    clearEquipmentFieldValidationSuppression() {},
+    clearQuickEntryFieldValidationSuppression() {},
     syncSelectedDateHeaderStatus() {},
     renderEquipmentItemCount() {},
     syncQuickEntryMenu() {},
@@ -349,6 +351,20 @@ test('updateActionState disables save button while validation issues exist', () 
   assert.equal(context.elements.quickEntryToggleBtn.disabled, false);
   assert.equal(context.elements.entryCompleteCheckbox.disabled, false);
   assert.equal(context.elements.deleteEntryBtn.disabled, false);
+});
+
+test('updateActionState syncs the quick-entry menu without recursive state refresh', () => {
+  const context = createSaveValidationContext();
+  const syncCalls = [];
+
+  setBinding(context, 'isDirty', () => true);
+  setBinding(context, 'syncQuickEntryMenu', (options = {}) => {
+    syncCalls.push({ ...options });
+  });
+
+  context.updateActionState();
+
+  assert.deepEqual(syncCalls, [{ skipStateRefresh: true }]);
 });
 
 test('saveCurrentEquipmentEntry persists entry, snapshot, and update event', () => {

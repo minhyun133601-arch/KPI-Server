@@ -3,6 +3,14 @@ const QUICK_ENTRY_POPUP_RESOURCE_TYPES = Object.freeze([
   RESOURCE_TYPES.GAS,
 ]);
 
+function canUseMeteringQuickEntryPopup() {
+  if (typeof isMeteringQuickEntryPopupEnabled === "function") {
+    return Boolean(isMeteringQuickEntryPopupEnabled());
+  }
+
+  return true;
+}
+
 function isQuickEntryPopupSupportedResource(resourceType = getCurrentResourceType()) {
   return isElectricResourceType(resourceType) || isGasResourceType(resourceType);
 }
@@ -135,7 +143,7 @@ function ensureQuickEntryPopupScaffold() {
   const searchInput = mountDocument.createElement("input");
   searchInput.type = "search";
   searchInput.className = "quick-entry-popup-search-input";
-  searchInput.placeholder = "전기/가스 설비 검색";
+  searchInput.placeholder = "설비명 검색: 전기/가스 전체";
   searchInput.setAttribute("autocomplete", "off");
   searchInput.setAttribute("spellcheck", "false");
   searchInput.setAttribute("data-quick-entry-search-input", "true");
@@ -182,7 +190,7 @@ function ensureQuickEntryPopupScaffold() {
     title.textContent = "전기/가스 설비 기입";
   }
   if (subtitle) {
-    subtitle.textContent = "줄단위 입력 대신 설비를 찾아 바로 값을 넣으세요.";
+    subtitle.textContent = "전기와 가스를 한 화면에 최대한 많이 펼쳐두고, 설비명만 찾아 바로 값을 넣으세요.";
   }
   dragBar?.classList.add("quick-entry-legacy");
   elements.quickEntryTextarea?.classList.add("quick-entry-legacy");
@@ -226,14 +234,23 @@ function syncQuickEntryPopupFrame() {
   }
 }
 
-function syncQuickEntryMenu() {
+function syncQuickEntryMenu(options = {}) {
+  const { skipStateRefresh = false } = options;
   if (!elements.quickEntryWrap || !elements.quickEntryToggleBtn || !elements.quickEntryMenu) {
     return;
   }
 
   const isEquipmentMode = getCurrentMode() === MODES.EQUIPMENT;
   const isSupportedResource = isQuickEntryPopupSupportedResource();
-  const canOpen = isEquipmentMode && isSupportedResource && Boolean(state.selectedDate);
+  const isFeatureEnabled = canUseMeteringQuickEntryPopup();
+  const canOpen =
+    isFeatureEnabled && isEquipmentMode && isSupportedResource && Boolean(state.selectedDate);
+
+  if (!isFeatureEnabled && state.openQuickEntryMenu) {
+    state.openQuickEntryMenu = false;
+    resetQuickEntryDraft();
+  }
+
   const isOpen = state.openQuickEntryMenu && canOpen;
   const portalRoot = getMountPortalRoot();
 
@@ -256,8 +273,15 @@ function syncQuickEntryMenu() {
       syncQuickEntryPopupValidationStates?.();
     }
   } else {
+    clearQuickEntryFieldValidationSuppression?.();
     if (elements.quickEntryMenu.parentNode === portalRoot) {
       elements.quickEntryWrap.appendChild(elements.quickEntryMenu);
+    }
+    syncQuickEntryPopupValidationStates?.();
+    syncEquipmentReadingValidationStates?.();
+    if (!skipStateRefresh) {
+      updateDirtyState?.();
+      updateActionState?.();
     }
   }
 }
@@ -307,6 +331,7 @@ function syncQuickEntryCounter() {
 
 function toggleQuickEntryMenu() {
   if (
+    !canUseMeteringQuickEntryPopup() ||
     getCurrentMode() !== MODES.EQUIPMENT ||
     !state.selectedDate ||
     !isQuickEntryPopupSupportedResource()

@@ -11,6 +11,14 @@ const equipmentQuickEntrySource = await fs.readFile(
   new URL('../../../../utility/apps/metering/equipment/quick-entry.js', import.meta.url),
   'utf8'
 );
+const meteringStylesSource = await fs.readFile(
+  new URL('../../../../utility/apps/metering/styles.css', import.meta.url),
+  'utf8'
+);
+const meteringEmbeddedStylesSource = await fs.readFile(
+  new URL('../../../../utility/apps/metering/embedded.css', import.meta.url),
+  'utf8'
+);
 
 function createClassList(initialTokens = []) {
   const tokens = new Set(initialTokens);
@@ -296,6 +304,7 @@ function createQuickEntryContext() {
   let autosaveCalls = 0;
   let restSyncCalls = 0;
   let validationSyncCalls = 0;
+  const suppressedQuickEntryValidationKeys = new Set();
 
   const context = {
     console,
@@ -362,6 +371,32 @@ function createQuickEntryContext() {
     },
     normalizeResourceType(value) {
       return String(value || '').trim().toLowerCase() === 'gas' ? 'gas' : 'electric';
+    },
+    getSuppressedQuickEntryValidationFieldKeys(resourceType) {
+      const normalizedResourceType = context.normalizeResourceType(resourceType);
+      const fieldKeys = new Set();
+      suppressedQuickEntryValidationKeys.forEach((key) => {
+        const [candidateResourceType = '', candidateFieldKey = ''] = String(key).split('::');
+        if (candidateResourceType === normalizedResourceType && candidateFieldKey) {
+          fieldKeys.add(candidateFieldKey);
+        }
+      });
+      return fieldKeys;
+    },
+    suppressQuickEntryFieldValidation(resourceType, fieldKey) {
+      suppressedQuickEntryValidationKeys.add(
+        `${context.normalizeResourceType(resourceType)}::${String(fieldKey || '').trim()}`
+      );
+    },
+    clearQuickEntryFieldValidationSuppression(resourceType = '', fieldKey = '') {
+      if (!resourceType && !fieldKey) {
+        suppressedQuickEntryValidationKeys.clear();
+        return;
+      }
+
+      suppressedQuickEntryValidationKeys.delete(
+        `${context.normalizeResourceType(resourceType)}::${String(fieldKey || '').trim()}`
+      );
     },
     getCurrentResourceType() {
       return context.normalizeResourceType(context.state.store.resourceType);
@@ -434,6 +469,13 @@ function createQuickEntryContext() {
     getEquipmentInputPlaceholder(fieldKey) {
       return `이전 ${fieldKey}`;
     },
+    getEquipmentPreviousReadingMeta(fieldKey) {
+      return {
+        text: `이전값 ${fieldKey} (04.17)`,
+        valueText: fieldKey,
+        dateText: '04.17',
+      };
+    },
     getEntryDayStatus(entry) {
       return entry?.dayStatus || '';
     },
@@ -451,7 +493,10 @@ function createQuickEntryContext() {
     getCurrentEntryDayStatus() {
       return '';
     },
-    getEquipmentReadingValidationIssuesForDate(formData) {
+    getEquipmentReadingValidationIssuesForDate(formData, _dateString, options = {}) {
+      if (options.skipFieldKeys?.has('gas-a')) {
+        return [];
+      }
       if (formData?.values?.['gas-a'] === '9') {
         return [{ fieldKey: 'gas-a', message: '가스 값 확인' }];
       }
@@ -541,6 +586,20 @@ test('quick-entry popup opens from the existing button and focuses the search in
   assert.equal(getHostStateActive(), true);
 });
 
+test('quick-entry popup skipStateRefresh option prevents closed-menu state recursion', () => {
+  const { context, getDirtyStateCalls, getActionStateCalls } = createQuickEntryContext();
+
+  context.syncQuickEntryMenu({ skipStateRefresh: true });
+
+  assert.equal(getDirtyStateCalls(), 0);
+  assert.equal(getActionStateCalls(), 0);
+
+  context.syncQuickEntryMenu();
+
+  assert.equal(getDirtyStateCalls(), 1);
+  assert.equal(getActionStateCalls(), 1);
+});
+
 test('quick-entry popup renders electric and gas equipment rows together', () => {
   const { context } = createQuickEntryContext();
 
@@ -552,6 +611,18 @@ test('quick-entry popup renders electric and gas equipment rows together', () =>
 
   assert.equal(popupRows.length, 3);
   assert.equal(
+    context.getQuickEntryPopupBody().querySelectorAll('[data-quick-entry-popup-section]').length,
+    2
+  );
+  assert.equal(
+    context
+      .getQuickEntryPopupBody()
+      .querySelectorAll('[data-quick-entry-popup-grid]')
+      .map((node) => node.className)
+      .every((className) => className.includes('is-dense-entry-grid')),
+    true
+  );
+  assert.equal(
     context
       .getQuickEntryPopupBody()
       .querySelectorAll('[data-quick-entry-resource-count]')
@@ -559,6 +630,27 @@ test('quick-entry popup renders electric and gas equipment rows together', () =>
       .join('|'),
     '1/2 입력|1/1 입력'
   );
+  assert.equal(
+    context.getQuickEntryPopupBody().querySelectorAll('[data-quick-entry-popup-previous]').length,
+    0
+  );
+  assert.equal(
+    popupRows[0].children[0].children[1].textContent.includes('소수점'),
+    true
+  );
+});
+
+test('quick-entry popup CSS uses a dense fullscreen grid instead of large row cards', () => {
+  [meteringStylesSource, meteringEmbeddedStylesSource].forEach((source) => {
+    assert.match(source, /\.quick-entry-popup-panel\s*\{[\s\S]*width:\s*min\(1720px,\s*100%\)/);
+    assert.match(source, /\.quick-entry-popup-panel\s*\{[\s\S]*min-height:\s*calc\(100vh - clamp\(16px,\s*2\.8vw,\s*32px\)\)/);
+    assert.match(source, /\.quick-entry-popup-body\s*\{[\s\S]*overflow:\s*hidden/);
+    assert.match(source, /\.quick-entry-popup-row-list\s*\{[\s\S]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(172px,\s*1fr\)\)/);
+    assert.match(source, /\.quick-entry-popup-row\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(74px,\s*94px\)/);
+    assert.match(source, /\.quick-entry-popup-row-title\s*\{[\s\S]*white-space:\s*nowrap/);
+    assert.doesNotMatch(source, /\.quick-entry-popup-row-meta\.has-previous-value/);
+    assert.doesNotMatch(source, /\.field-card-previous\s*\{/);
+  });
 });
 
 test('quick-entry popup updates the active resource form and autosave pipeline', () => {
@@ -604,4 +696,30 @@ test('quick-entry popup stores non-active resource values directly in that datas
   );
   assert.equal(getDirtyStateCalls(), 1);
   assert.equal(getActionStateCalls(), 1);
+});
+
+test('quick-entry popup suppresses transient validation while typing and restores it on blur', () => {
+  const { context, getValidationSyncCalls, getDirtyStateCalls, getActionStateCalls } =
+    createQuickEntryContext();
+
+  context.toggleQuickEntryMenu();
+
+  const gasInput = findPopupFieldInput(context, 'gas', 'gas-a');
+  gasInput.value = '9';
+
+  context.handleQuickEntryPopupFieldInput({ target: gasInput });
+
+  const gasRow = gasInput.closest('[data-quick-entry-popup-row]');
+  const gasMessage = gasRow.querySelector('[data-quick-entry-popup-message]');
+  assert.equal(gasRow.classList.contains('is-invalid'), false);
+  assert.equal(gasMessage.classList.contains('is-hidden'), true);
+
+  gasInput.dispatch('blur');
+
+  assert.equal(gasRow.classList.contains('is-invalid'), true);
+  assert.equal(gasMessage.classList.contains('is-hidden'), false);
+  assert.equal(gasMessage.textContent, '가스 값 확인');
+  assert.equal(getValidationSyncCalls(), 1);
+  assert.equal(getDirtyStateCalls(), 2);
+  assert.equal(getActionStateCalls(), 2);
 });

@@ -164,13 +164,16 @@ function saveCurrentEquipmentEntry(options = {}) {
   }
 
   clearEquipmentLocalAutosaveTimer();
+  clearEquipmentFieldValidationSuppression?.();
+  clearQuickEntryFieldValidationSuppression?.();
 
   finalizeEquipmentInputDisplays();
   autofillInactiveEquipmentInputsOnComplete();
 
-  const validationIssues = getCurrentEquipmentReadingValidationIssues();
+  const validationIssues = resolveEquipmentValidationIssues();
   if (validationIssues.length && !allowValidationIssues) {
     syncEquipmentReadingValidationStates();
+    syncQuickEntryPopupValidationStates?.();
     updateDirtyState();
     updateActionState();
     return false;
@@ -259,7 +262,16 @@ function resolveEquipmentValidationIssues() {
 
 function isQuickEntryPopupEnabledForCurrentResource() {
   const currentResourceType = normalizeText(getCurrentResourceType?.() || "").toLowerCase();
-  return currentResourceType === "electric" || currentResourceType === "gas";
+  const isSupportedResource = currentResourceType === "electric" || currentResourceType === "gas";
+  if (!isSupportedResource) {
+    return false;
+  }
+
+  if (typeof isMeteringQuickEntryPopupEnabled === "function") {
+    return Boolean(isMeteringQuickEntryPopupEnabled());
+  }
+
+  return true;
 }
 
 
@@ -313,7 +325,7 @@ function updateActionState() {
 
   applyEquipmentEntryLockState();
   renderEquipmentItemCount();
-  syncQuickEntryMenu();
+  syncQuickEntryMenu({ skipStateRefresh: true });
 
   if (getCurrentMode() !== MODES.EQUIPMENT) {
     return;

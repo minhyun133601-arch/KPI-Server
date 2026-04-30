@@ -590,7 +590,7 @@
                                 ${utilitySummaryHtmlResolved}
                             </div>
                             <div class="work-team-calendar-meta">
-                                ${typeof renderWorkSaveStatusBadge === 'function' ? renderWorkSaveStatusBadge(dataKey) : `<span class="work-autosave work-save-status is-idle" data-work-save-status="${escapeHtml(dataKey)}">자동 저장 대기</span>`}
+                                ${typeof renderWorkSaveStatusBadge === 'function' ? renderWorkSaveStatusBadge(dataKey) : `<span class="work-autosave work-save-status is-idle" data-work-save-status="${escapeHtml(dataKey)}"></span>`}
                             </div>
                         </div>
                     </div>

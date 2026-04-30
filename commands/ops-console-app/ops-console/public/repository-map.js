@@ -272,6 +272,218 @@ const historyEntries = [
   {
     date: '2026-04-30',
     title: {
+      ko: '유틸리티 기입 quick-entry 팝업 제거',
+      en: 'Retired the utility entry quick-entry popup launcher',
+    },
+    summary: {
+      ko: '데이터 관리 > 유틸리티 기입 화면에서 `기입` 버튼으로 열리던 전기·가스 quick-entry 전체화면 팝업을 사용자 요청대로 비활성화했습니다. 기존 날짜 선택, 설비 카드 입력, 저장, 기존 전체화면 토글은 그대로 두고, quick-entry launcher와 그 열기 경로만 닫았습니다.',
+      en: 'Disabled the electric and gas quick-entry fullscreen popup that used to open from the `기입` button in Data Management > Utility Entry. The existing date selection, equipment-card entry, save flow, and normal fullscreen toggle stay in place; only the quick-entry launcher and its open path were retired.',
+    },
+    touched: [
+      'utility/apps/metering/runtime/resource-ui.js',
+      'utility/apps/metering/equipment/quick-entry-ui.js',
+      'utility/apps/metering/save/persistence.js',
+      'kpi-runtime/internal-server/test/frontend/metering-resource-ui.smoke.js',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --check utility/apps/metering/runtime/resource-ui.js utility/apps/metering/equipment/quick-entry-ui.js utility/apps/metering/save/persistence.js kpi-runtime/internal-server/test/frontend/metering-resource-ui.smoke.js commands/ops-console-app/ops-console/public/repository-map.js',
+      'node --test kpi-runtime/internal-server/test/frontend/metering-resource-ui.smoke.js kpi-runtime/internal-server/test/frontend/metering-save-validation.smoke.js kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js',
+      'Playwright served UI check on http://127.0.0.1:3192/: utility entry keeps the normal equipment form and no longer shows the quick-entry popup launcher',
+      'git diff --check',
+    ],
+    boundary: {
+      ko: '유틸리티 기입의 quick-entry 팝업 노출만 제거했습니다. 저장 payload, module_key, record_key, permission_key, 저장 API, DB schema, 파일 저장 경로는 바꾸지 않았습니다.',
+      en: 'Removed only the utility-entry quick-entry popup exposure. Did not change saved payloads, module keys, record keys, permission keys, storage APIs, DB schema, or file storage paths.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
+      ko: '유틸리티 기입 새로고침 fallback 원인 수정',
+      en: 'Fixed the utility entry refresh fallback boot failure',
+    },
+    summary: {
+      ko: '검증 포트 3192에서 유틸리티 기입을 실제 재현해 보니, 새로고침 안내 문구는 부팅 중 `updateActionState()`와 `syncQuickEntryMenu()`가 서로 다시 호출하는 상호 재귀 때문에 뜨고 있었습니다. quick-entry 메뉴 동기화에 `skipStateRefresh` 옵션을 추가하고, action 상태 갱신에서는 그 옵션으로 호출하도록 바꿔 초기 렌더에서도 더 이상 최대 호출 스택 초과가 나지 않게 고쳤습니다.',
+      en: 'Reproduced the utility entry failure on verification port 3192 and confirmed the refresh fallback came from mutual recursion between `updateActionState()` and `syncQuickEntryMenu()` during boot. Added a `skipStateRefresh` option to quick-entry menu syncing and used it from action-state updates so the initial render no longer overflows the call stack.',
+    },
+    touched: [
+      'utility/apps/metering/equipment/quick-entry-ui.js',
+      'utility/apps/metering/save/persistence.js',
+      'kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/metering-save-validation.smoke.js',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --test kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js kpi-runtime/internal-server/test/frontend/metering-save-validation.smoke.js',
+      'Playwright repro on http://127.0.0.1:3192 with a temporary admin user after PostgreSQL dump backup',
+      'git diff --check',
+    ],
+    boundary: {
+      ko: '유틸리티 기입 quick-entry 메뉴 상태 갱신 경로와 관련 스모크 테스트만 조정했습니다. 저장 payload, module_key, record_key, permission_key, 저장 API, DB schema, 파일 저장 경로는 바꾸지 않았습니다.',
+      en: 'Adjusted only the utility entry quick-entry menu state-refresh path and the related smoke tests. Did not change saved payloads, module keys, record keys, permission keys, storage APIs, DB schema, or file storage paths.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
+      ko: '입력·검증 유사 오류 저장소 전수 점검 보고서 추가',
+      en: 'Added a repository-wide input-validation audit report',
+    },
+    summary: {
+      ko: '저장소 전반의 입력 이벤트, 숫자 파싱, 실패 표시, 0 falsy 취급 패턴을 전수 검색해 `work-log/2026-04-30-input-validation-risk-audit.md` 보고서를 추가했습니다. 에너지 패널의 확정적 0/falsy 버그 1건, 감사 화면의 입력 중 즉시 실패 표시 2건, 설비 이력의 조용한 0 정규화 1건을 정리했고, 팀 직접기입·팀정산·작업이력 비용 입력처럼 현재는 같은 문제로 보지 않은 경로도 함께 기록했습니다.',
+      en: 'Searched the repository for input-event, numeric-parsing, fail-badge, and zero-as-falsy patterns, then added `work-log/2026-04-30-input-validation-risk-audit.md`. The report records one confirmed zero/falsy bug in the energy panels, two in-progress fail-highlighting risks in audit screens, one silent zero-coercion risk in equipment history, and the nearby input paths that were scanned but are currently not the same class of issue.',
+    },
+    touched: [
+      'work-log/2026-04-30-input-validation-risk-audit.md',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --check commands/ops-console-app/ops-console/public/repository-map.js',
+      'git diff --check',
+    ],
+    boundary: {
+      ko: '보고서와 Repository Map 기록만 추가했습니다. 런타임 동작, 저장 데이터, module_key, record_key, permission_key, 저장 API, DB schema, 파일 저장 경로는 바꾸지 않았습니다.',
+      en: 'Added only the report and Repository Map history. Did not change runtime behavior, saved data, module keys, record keys, permission keys, storage APIs, DB schema, or file storage paths.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
+      ko: '유틸리티 기입의 이전값 녹색 표시 제거와 입력 중 오류 완화',
+      en: 'Removed utility entry previous-value badges and softened in-progress validation',
+    },
+    summary: {
+      ko: '유틸리티 관리 전기·가스 기입 화면에서 입력칸 아래에 붙던 이전값 녹색 배지와 기입 팝업의 녹색 이전값 메타를 제거했습니다. 대신 입력칸 placeholder는 유지하고, 0 같은 중간 입력값을 치는 동안에는 즉시 오류가 튀지 않도록 검증을 잠시 억제한 뒤 blur나 저장 시점에는 전체 검증이 다시 걸리도록 정리했습니다.',
+      en: 'Removed the green previous-value badges under utility electric and gas entry fields plus the green previous-value meta inside the quick-entry popup. The input placeholders remain, and transient typing states such as entering 0 no longer raise immediate errors while the field is still being edited; full validation still runs again on blur and save.',
+    },
+    touched: [
+      'utility/apps/metering/equipment/render.js',
+      'utility/apps/metering/equipment/input-state.js',
+      'utility/apps/metering/equipment/interactions.js',
+      'utility/apps/metering/equipment/quick-entry.js',
+      'utility/apps/metering/equipment/quick-entry-ui.js',
+      'utility/apps/metering/runtime/bootstrap.js',
+      'utility/apps/metering/runtime/entry-ui.js',
+      'utility/apps/metering/save/persistence.js',
+      'utility/apps/metering/styles.css',
+      'utility/apps/metering/embedded.css',
+      'kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/metering-equipment-input-state.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/metering-runtime-entry-ui.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/metering-save-validation.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/metering-runtime-bootstrap.smoke.js',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --check utility/apps/metering/equipment/render.js utility/apps/metering/equipment/input-state.js utility/apps/metering/equipment/interactions.js utility/apps/metering/equipment/quick-entry.js utility/apps/metering/equipment/quick-entry-ui.js utility/apps/metering/runtime/bootstrap.js utility/apps/metering/runtime/entry-ui.js utility/apps/metering/save/persistence.js',
+      'node --test kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js kpi-runtime/internal-server/test/frontend/metering-equipment-input-state.smoke.js kpi-runtime/internal-server/test/frontend/metering-runtime-entry-ui.smoke.js kpi-runtime/internal-server/test/frontend/metering-save-validation.smoke.js kpi-runtime/internal-server/test/frontend/metering-runtime-bootstrap.smoke.js',
+      'git diff --check',
+    ],
+    boundary: {
+      ko: '유틸리티 기입 UI의 이전값 표시와 검증 타이밍만 조정했습니다. 저장 payload, module_key, record_key, permission_key, 저장 API, DB schema, 파일 저장 경로는 바꾸지 않았습니다.',
+      en: 'Changed only the utility entry previous-value display and validation timing. Did not change saved payloads, module keys, record keys, permission keys, storage APIs, DB schema, or file storage paths.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
+      ko: '유틸리티 이전값 상시 표시와 캘린더 idle 문구 제거',
+      en: 'Show utility previous values persistently and remove idle calendar save text',
+    },
+    summary: {
+      ko: '유틸리티 전기/가스 설비 기입에서 이전값이 placeholder로만 보이던 문제를 보완해, 일반 설비 카드와 전체화면 기입 팝업에 이전값 배지를 별도로 보여주도록 바꿨습니다. 작업 캘린더의 실제 저장 동작은 유지하되, 저장 이벤트가 없을 때 표시되던 idle 대기 문구는 빈 배지로 숨겼습니다.',
+      en: 'Changed utility electric/gas equipment entry so previous readings are shown as persistent badges in both normal equipment cards and the fullscreen quick-entry popup instead of only as placeholders. Kept work-calendar save behavior intact while hiding the idle “waiting for autosave” text when there is no active save event.',
+    },
+    touched: [
+      'utility/apps/metering/runtime/entry-ui.js',
+      'utility/apps/metering/equipment/render.js',
+      'utility/apps/metering/equipment/quick-entry.js',
+      'utility/apps/metering/styles.css',
+      'utility/apps/metering/embedded.css',
+      'utility/runtime/util/analytics/KPI.util.analytics.js',
+      'team-report/runtime/work/KPI.work.renderers.js',
+      'team-report/runtime/work/KPI.work.renderers.monthly-plan.js',
+      'team-report/runtime/work/KPI.work.team-calendar.render.js',
+      'kpi-runtime/app/styles/work/work.css',
+      'kpi-runtime/internal-server/test/frontend/metering-runtime-entry-ui.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/work-save-status.smoke.js',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --check on changed utility metering, work calendar, test, and Repository Map JS files',
+      'node --test kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js kpi-runtime/internal-server/test/frontend/metering-runtime-entry-ui.smoke.js kpi-runtime/internal-server/test/frontend/work-save-status.smoke.js kpi-runtime/internal-server/test/frontend/work-renderers.smoke.js kpi-runtime/internal-server/test/frontend/work-team-calendar-render.smoke.js',
+      'cd kpi-runtime/internal-server && npm run lint',
+      'cd kpi-runtime/internal-server && npm test',
+      'git diff --check',
+    ],
+    boundary: {
+      ko: '표시 메타와 idle 문구만 바꿨습니다. 전기/가스 입력 저장값, 자동저장 상태 전이, module_key, record_key, permission_key, 저장 API, DB schema, 파일 저장 경로는 변경하지 않았습니다.',
+      en: 'Changed only display metadata and idle text. Did not change electric/gas persisted values, autosave state transitions, module keys, record keys, permission keys, storage APIs, DB schema, or file storage paths.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
+      ko: 'Data Reference 선택 노드와 상세 설명 접힘 배치',
+      en: 'Moved Data Reference selection nodes above the blueprint as collapsed panels',
+    },
+    summary: {
+      ko: 'Data Reference 설계도 안쪽에 있던 선택용 기능 노드들을 설계도 위의 접힘 패널로 옮기고, 선택한 흐름의 긴 상세 설명도 기본 닫힘 패널로 감쌌습니다. 필요할 때만 선택 노드나 설명을 열고, 평소에는 메인 아키텍처 설계도를 더 넓게 볼 수 있게 정리했습니다.',
+      en: 'Moved the selectable feature nodes out of the Data Reference blueprint and into a collapsed panel above it, and wrapped the selected-flow detail explanation in a collapsed panel. Users can open selection or explanation only when needed while keeping the main architecture blueprint clearer by default.',
+    },
+    touched: [
+      'commands/ops-console-app/ops-console/public/data-reference-map.html',
+      'commands/ops-console-app/ops-console/public/data-reference-map.js',
+      'kpi-runtime/internal-server/test/frontend/ops-console-data-reference.smoke.js',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --check commands/ops-console-app/ops-console/public/data-reference-map.js commands/ops-console-app/ops-console/public/repository-map.js kpi-runtime/internal-server/test/frontend/ops-console-data-reference.smoke.js',
+      'node --test kpi-runtime/internal-server/test/frontend/ops-console-data-reference.smoke.js',
+      'cd kpi-runtime/internal-server && npm run lint',
+      'cd kpi-runtime/internal-server && npm test',
+      'Headless Playwright served UI check on http://127.0.0.1:3215/data-reference-map.html: selector and detail panels start collapsed, selector nodes render above the blueprint, and node selection still updates the active flow',
+    ],
+    boundary: {
+      ko: '표시 배치와 접힘 동작만 바꿨습니다. module_key, record_key, permission_key, DB schema, 저장 API, KPI_STORAGE_ROOT/files 폴더 규칙은 변경하지 않았습니다.',
+      en: 'Changed only display placement and collapsed-panel behavior. Did not change module keys, record keys, permission keys, DB schema, storage APIs, or KPI_STORAGE_ROOT/files folder rules.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
+      ko: '유틸리티 전기/가스 기입 팝업 고밀도 그리드 전환',
+      en: 'Converted utility electric/gas entry popup to a dense fullscreen grid',
+    },
+    summary: {
+      ko: '유틸리티 관리의 전기/가스 설비 기입 팝업을 큰 카드형 행 대신 한 화면에 더 많은 설비가 보이는 고밀도 입력 그리드로 바꿨습니다. 팝업은 화면을 더 꽉 쓰고, 전기와 가스를 좌우 섹션으로 동시에 보여주며, 설비명 검색 후 작은 입력 셀에서 바로 값을 넣을 수 있게 정리했습니다.',
+      en: 'Changed the utility-management electric/gas equipment entry popup from large card rows to a dense fullscreen input grid. The popup uses more of the screen, shows electric and gas sections together, and lets users search equipment names then enter values in compact cells.',
+    },
+    touched: [
+      'utility/apps/metering/equipment/quick-entry-ui.js',
+      'utility/apps/metering/equipment/quick-entry.js',
+      'utility/apps/metering/styles.css',
+      'utility/apps/metering/embedded.css',
+      'kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --check utility/apps/metering/equipment/quick-entry-ui.js utility/apps/metering/equipment/quick-entry.js kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js commands/ops-console-app/ops-console/public/repository-map.js',
+      'node --test kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js',
+      'cd kpi-runtime/internal-server && npm run lint',
+      'cd kpi-runtime/internal-server && npm test',
+      'Headless Playwright served UI check on http://127.0.0.1:3192/: quick-entry popup rendered electric and gas together as dense fullscreen grids',
+    ],
+    boundary: {
+      ko: '표시 밀도와 팝업 레이아웃만 바꿨습니다. 전기/가스 저장 데이터, module_key, record_key, 저장 API, DB schema, 파일 저장 경로는 변경하지 않았습니다.',
+      en: 'Changed only display density and popup layout. Did not change electric/gas stored data, module keys, record keys, storage APIs, DB schema, or file storage paths.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
       ko: 'Data Reference 개발자형 데이터 흐름도 정리',
       en: 'Converted Data Reference into a developer-style data flow diagram',
     },

@@ -104,10 +104,12 @@ function getQuickEntryPopupValidationIssues(dateString = state.selectedDate) {
 
   getQuickEntryPopupResourceTypes().forEach((resourceType) => {
     const draftEntry = getQuickEntryPopupDraftEntry(resourceType, dateString);
+    const suppressedFieldKeys = getSuppressedQuickEntryValidationFieldKeys(resourceType);
     const resourceIssues =
       runWithQuickEntryResourceContext(resourceType, () =>
         getEquipmentReadingValidationIssuesForDate(draftEntry, dateString, {
           allowAnyMode: true,
+          skipFieldKeys: suppressedFieldKeys,
         })
       ) || [];
 
@@ -167,10 +169,11 @@ function createQuickEntryPopupRow(resourceType, item) {
   title.textContent = getEquipmentDisplayLabel(item);
 
   const meta = mountDocument.createElement("p");
+  const fieldHint = getQuickEntryPopupFieldHint(resourceType, item.id);
+  const decimalDigits = getQuickEntryPopupFieldDecimalDigits(resourceType, item.id);
+  const shouldReuseHint = fieldHint && !fieldHint.startsWith("이전 ");
   meta.className = "quick-entry-popup-row-meta";
-  meta.textContent =
-    getQuickEntryPopupFieldHint(resourceType, item.id) ||
-    `소수점 ${getQuickEntryPopupFieldDecimalDigits(resourceType, item.id)}자리`;
+  meta.textContent = shouldReuseHint ? fieldHint : `소수점 ${decimalDigits}자리`;
 
   copy.append(title, meta);
 
@@ -186,13 +189,14 @@ function createQuickEntryPopupRow(resourceType, item) {
   input.setAttribute("data-quick-entry-popup-field", "true");
   input.dataset.resourceType = resourceType;
   input.dataset.fieldKey = item.id;
-  input.placeholder = getQuickEntryPopupFieldHint(resourceType, item.id);
+  input.placeholder = fieldHint;
 
   const message = mountDocument.createElement("p");
   message.className = "quick-entry-popup-row-message";
   message.setAttribute("data-quick-entry-popup-message", "true");
 
   input.addEventListener("input", handleQuickEntryPopupFieldInput);
+  input.addEventListener("blur", handleQuickEntryPopupFieldBlur);
   input.addEventListener("keydown", handleQuickEntryPopupFieldKeydown);
 
   control.append(input, message);
@@ -226,7 +230,8 @@ function renderQuickEntryPopupBody() {
     renderedSectionCount += 1;
 
     const section = mountDocument.createElement("section");
-    section.className = "quick-entry-popup-section";
+    section.className = "quick-entry-popup-section is-dense-entry-section";
+    section.setAttribute("data-quick-entry-popup-section", resourceType);
     section.dataset.resourceType = resourceType;
 
     const sectionHead = mountDocument.createElement("div");
@@ -252,7 +257,8 @@ function renderQuickEntryPopupBody() {
     sectionHead.append(sectionTitleRow, sectionCount);
 
     const rowList = mountDocument.createElement("div");
-    rowList.className = "quick-entry-popup-row-list";
+    rowList.className = "quick-entry-popup-row-list is-dense-entry-grid";
+    rowList.setAttribute("data-quick-entry-popup-grid", resourceType);
 
     matchedItems.forEach((item) => {
       rowList.appendChild(createQuickEntryPopupRow(resourceType, item));
@@ -364,6 +370,7 @@ function handleQuickEntryPopupFieldInput(event) {
 
   const resourceType = normalizeResourceType(input.dataset.resourceType);
   const fieldKey = input.dataset.fieldKey || "";
+  suppressQuickEntryFieldValidation(resourceType, fieldKey);
   const decimalDigits = getQuickEntryPopupFieldDecimalDigits(resourceType, fieldKey);
   const normalizedValue = sanitizeEquipmentInputValue(input.value, {
     maxFractionDigits: decimalDigits,
@@ -387,6 +394,21 @@ function handleQuickEntryPopupFieldInput(event) {
   syncQuickEntryCounter();
   syncQuickEntryPopupSectionCounts();
   syncQuickEntryPopupValidationStates();
+  updateDirtyState();
+  updateActionState();
+}
+
+function handleQuickEntryPopupFieldBlur(event) {
+  const input = event.target?.closest?.("input[data-quick-entry-popup-field]");
+  if (!input) {
+    return;
+  }
+
+  const resourceType = normalizeResourceType(input.dataset.resourceType);
+  const fieldKey = input.dataset.fieldKey || "";
+  clearQuickEntryFieldValidationSuppression(resourceType, fieldKey);
+  syncQuickEntryPopupValidationStates();
+  syncEquipmentReadingValidationStates();
   updateDirtyState();
   updateActionState();
 }

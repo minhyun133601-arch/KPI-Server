@@ -66,6 +66,11 @@ const messages = {
     serverBoundaryLabel: 'server boundary',
     hubTitle: 'KPI Data Hub',
     hubCopy: '아래 기능 노드를 누르면 메인라인 다이어그램과 상세 저장 경로가 함께 바뀝니다.',
+    flowSelectorTitle: '기능 선택 노드',
+    flowSelectorCopy: '설계도 위에서 필요한 기능만 열어 선택합니다. 닫아두면 메인 설계도만 크게 볼 수 있습니다.',
+    flowSelectorToggle: '기능 노드 열기/닫기',
+    selectedDetailTitle: '선택한 흐름 상세',
+    selectedDetailCopy: 'UI, API, 저장 위치 같은 설명은 필요할 때만 열어 확인합니다.',
     selectedFlowLabel: 'selected flow',
     storageTargetsLabel: 'storage targets',
     moduleRecordsTitle: 'module_key / record_key 레이어',
@@ -137,6 +142,11 @@ const messages = {
     serverBoundaryLabel: 'server boundary',
     hubTitle: 'KPI Data Hub',
     hubCopy: 'Click a feature node below to update the mainline diagram and exact storage details.',
+    flowSelectorTitle: 'Feature Selection Nodes',
+    flowSelectorCopy: 'Open this panel only when you need to select a feature; keep it closed to focus on the main blueprint.',
+    flowSelectorToggle: 'Open or close feature nodes',
+    selectedDetailTitle: 'Selected Flow Details',
+    selectedDetailCopy: 'Open only when you need the UI, API, and storage-path explanation.',
     selectedFlowLabel: 'selected flow',
     storageTargetsLabel: 'storage targets',
     moduleRecordsTitle: 'module_key / record_key layer',
@@ -1001,14 +1011,12 @@ function renderFlowHub(flows, selectedId) {
   }).join('');
 
   return `
-    <aside class="architecture-hub">
-      <div class="hub-core">
-        <span>${escapeHtml(t('hubTitle'))}</span>
-        <strong>${escapeHtml(t('centerNode'))}</strong>
-      </div>
+    <div class="selector-hub-intro">
+      <span>${escapeHtml(t('hubTitle'))}</span>
+      <strong>${escapeHtml(t('centerNode'))}</strong>
       <p>${escapeHtml(t('hubCopy'))}</p>
+    </div>
       <div class="hub-flow-grid">${buttons}</div>
-    </aside>
   `;
 }
 
@@ -1016,7 +1024,6 @@ function renderArchitectureWeb(flows) {
   const lineContainer = document.querySelector('#webLines');
   const nodeContainer = document.querySelector('#webNodes');
   const selectedFlow = getSelectedFlow();
-  const selectedId = selectedFlow?.id || '';
   if (!lineContainer || !nodeContainer) return;
 
   lineContainer.innerHTML = '';
@@ -1060,7 +1067,6 @@ function renderArchitectureWeb(flows) {
           <div class="storage-target-grid">${storageTargets}</div>
         </section>
       </section>
-      ${renderFlowHub(flows, selectedId)}
     </div>
   `;
 }
@@ -1081,15 +1087,7 @@ function renderMiniFlowList(flows) {
     container.innerHTML = `<div class="empty">${escapeHtml(t('noResults'))}</div>`;
     return;
   }
-  container.innerHTML = flows.map((flow) => `
-    <button
-      class="mini-flow-button ${flow.id === state.selectedFlowId ? 'is-active' : ''}"
-      type="button"
-      data-flow-id="${escapeHtml(flow.id)}"
-    >
-      ${escapeHtml(pickText(flow.title))}
-    </button>
-  `).join('');
+  container.innerHTML = renderFlowHub(flows, state.selectedFlowId);
 }
 
 function renderFlows() {

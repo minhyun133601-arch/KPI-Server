@@ -496,6 +496,22 @@ test('equipment input state toggles inactive fields and preserves manual values'
   assert.equal(harness.toggles.get('field_02').getAttribute('aria-pressed'), 'false');
 });
 
+test('equipment input state can suppress transient validation for actively edited fields', () => {
+  const harness = createEquipmentInputStateContext();
+
+  harness.context.suppressEquipmentFieldValidation('field_01');
+  const suppressedIssues = harness.context.getCurrentEquipmentReadingValidationIssues();
+  assert.equal(suppressedIssues.length, 1);
+  assert.equal(suppressedIssues[0].fieldKey, 'field_03');
+
+  harness.context.clearEquipmentFieldValidationSuppression('field_01');
+  assert.equal(harness.context.getCurrentEquipmentReadingValidationIssues().length, 2);
+
+  harness.context.suppressEquipmentFieldValidation('field_01');
+  harness.context.clearEquipmentFieldValidationSuppression();
+  assert.equal(harness.context.getCurrentEquipmentReadingValidationIssues().length, 2);
+});
+
 test('equipment input state keeps status inheritance and stored entry status consistent', () => {
   const harness = createEquipmentInputStateContext();
   const dateEntry = harness.context.state.store.equipmentEntries['2026-04-16'];

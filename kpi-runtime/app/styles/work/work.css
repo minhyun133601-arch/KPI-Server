@@ -48,6 +48,7 @@
         .work-autosave { font-size: 0.75rem; color: #64748b; }
         .work-save-status { display: inline-flex; align-items: center; width: max-content; max-width: 100%; min-height: 26px; padding: 4px 9px; border-radius: 999px; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; font-weight: 800; line-height: 1.2; }
         .work-save-status::before { content: ""; width: 7px; height: 7px; margin-right: 6px; border-radius: 999px; background: currentColor; opacity: 0.72; }
+        .work-save-status.is-idle:empty { display: none; }
         .work-save-status.is-pending { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
         .work-save-status.is-saved { border-color: #bbf7d0; background: #f0fdf4; color: #15803d; }
         .work-save-status.is-failed { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }

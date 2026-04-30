@@ -456,9 +456,7 @@
             }
             if (status.state === 'failed') return '서버 저장 실패 - 다음 입력 때 다시 시도됩니다.';
             if (status.state === 'blocked') return '서버 저장 불가';
-            const runtime = getWorkServerRuntimeConfig(dataKey);
-            const canWrite = window.KpiRuntime?.canUseServerWrite?.(runtime?.writeEnabled === true) === true;
-            return canWrite ? '자동 저장 대기' : '서버 저장 대기';
+            return '';
         }
 
         function setWorkSaveStatus(dataKey, state, message = '', token = null) {

@@ -34,6 +34,10 @@ test('ops console exposes a separate data-reference tab beside Repository Map', 
   assert.match(mapHtml, /id="architectureWeb"/);
   assert.match(mapHtml, /id="webLines"/);
   assert.match(mapHtml, /id="webNodes"/);
+  assert.match(mapHtml, /id="flowSelectorPanel"/);
+  assert.match(mapHtml, /class="flow-selector-panel"/);
+  assert.match(mapHtml, /id="flowDetailDisclosure"/);
+  assert.match(mapHtml, /class="flow-detail-disclosure"/);
   assert.match(mapHtml, /id="flowDetail"/);
   assert.match(mapHtml, /id="flowList"/);
   assert.match(mapHtml, /id="moduleRecordToggle"/);
@@ -47,8 +51,10 @@ test('ops console exposes a separate data-reference tab beside Repository Map', 
   assert.match(mapHtml, /\.server-boundary-card/);
   assert.match(mapHtml, /\.database-cylinder/);
   assert.match(mapHtml, /\.hub-flow-node/);
+  assert.match(mapHtml, /\.flow-selector-summary/);
+  assert.match(mapHtml, /\.flow-detail-summary/);
   assert.match(mapHtml, /data-i18n="moduleRecordToggleLabel"/);
-  assert.match(mapHtml, /class="mini-flow-list"/);
+  assert.match(mapHtml, /class="flow-selector-body"/);
   assert.match(mapSource, /const dataFlows = \[/);
   assert.match(mapSource, /const sharedStorageGroups = \[/);
   assert.match(mapSource, /const appModuleRecordGroups = \[/);
@@ -62,6 +68,7 @@ test('ops console exposes a separate data-reference tab beside Repository Map', 
   assert.match(mapSource, /function renderModuleRecordLayer\(\)/);
   assert.match(mapSource, /showModuleRecords: false/);
   assert.match(mapSource, /server-boundary-card/);
+  assert.match(mapSource, /selector-hub-intro/);
   assert.match(mapSource, /storage-target-grid/);
   assert.match(mapSource, /hub-flow-node/);
   assert.match(mapSource, /<details class="shared-group-card/);

@@ -398,6 +398,18 @@ test('resource ui applies team mode and refreshes visible sections', async () =>
   assert.equal(context.elements.quickEntryWrap.classList.contains('is-hidden'), true);
 });
 
+test('resource ui keeps the retired quick-entry launcher hidden in equipment mode', () => {
+  const context = createResourceUiContext({
+    resourceType: 'electric',
+    mode: 'equipment',
+  });
+
+  context.renderModeUI();
+
+  assert.equal(context.isMeteringQuickEntryPopupEnabled(), false);
+  assert.equal(context.elements.quickEntryWrap.classList.contains('is-hidden'), true);
+});
+
 test('resource ui resolves waste and unsupported resources to the correct initial mode', () => {
   const wasteContext = createResourceUiContext({
     resourceType: 'waste',

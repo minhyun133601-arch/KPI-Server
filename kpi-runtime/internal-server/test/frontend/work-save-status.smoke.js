@@ -109,7 +109,11 @@ test('work save status badge tracks pending, saved, and failed autosave states',
     },
   }));
 
-  assert.match(context.renderWorkSaveStatusBadge('work_demo'), /data-work-save-status="work_demo"/);
+  const idleBadge = context.renderWorkSaveStatusBadge('work_demo');
+  assert.match(idleBadge, /data-work-save-status="work_demo"/);
+  assert.equal(context.getWorkSaveStatusText('work_demo'), '');
+  assert.doesNotMatch(idleBadge, /자동 저장 대기|서버 저장 대기/);
+
   const saved = await context.saveWorkData('work_demo', { weeks: [] });
 
   assert.equal(saved, true);
@@ -137,4 +141,5 @@ test('work css defines autosave status states', () => {
   assert.match(workCssSource, /\.work-save-status\.is-saved/);
   assert.match(workCssSource, /\.work-save-status\.is-failed/);
   assert.match(workCssSource, /\.work-save-status\.is-blocked/);
+  assert.match(workCssSource, /\.work-save-status\.is-idle:empty/);
 });
