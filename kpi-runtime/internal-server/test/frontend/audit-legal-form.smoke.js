@@ -89,3 +89,13 @@ test('audit legal facility preview renders registration form and extended column
   assert.match(html, /boiler-01-202607-cert/);
   assert.match(html, /<th>위치<\/th>/);
 });
+
+test('audit legal facility submit waits for record save and cleans uploaded files on failure', () => {
+  assert.match(legalAssetsSource, /async function deleteUploadedFilesFromRecord/);
+  assert.match(legalAssetsSource, /DELETE/);
+  assert.match(legalSource, /await Promise\.resolve\(saveAuditData\('audit_legal_facility', nextData\)\)/);
+  assert.match(legalSource, /deleteUploadedFilesFromRecord/);
+  assert.match(legalSource, /서버 저장이 완료되지 않아 법정설비 등록을 취소했습니다/);
+  assert.doesNotMatch(legalSource, /Server write permission is required/);
+  assert.doesNotMatch(legalSource, /File upload failed/);
+});

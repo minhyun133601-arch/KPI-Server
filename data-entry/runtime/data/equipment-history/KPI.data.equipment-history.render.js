@@ -314,17 +314,43 @@
             return false;
         }
 
-        if (canSaveToServer) await api.uploadEquipmentHistoryDraftAssets?.(draft);
-        const record = api.buildRecordFromDraft(draft);
-        if (!record.name) {
-            window.alert('설비명을 입력해 주세요.');
-            return false;
+        const previousPayload = JSON.parse(JSON.stringify(data || {}));
+        const previousDocumentIds = api.collectEquipmentHistoryDraftDocumentIds?.(draft) || [];
+        let record = null;
+        let nextPayload = null;
+        try {
+            if (canSaveToServer) await api.uploadEquipmentHistoryDraftAssets?.(draft);
+            record = api.buildRecordFromDraft(draft);
+            if (!record.name) {
+                window.alert('설비명을 입력해 주세요.');
+                return false;
+            }
+
+            const existingItems = api.normalizeEquipmentItems(data).filter((item) => item.id !== record.id);
+            nextPayload = {
+                ...JSON.parse(JSON.stringify(data || {})),
+                equipmentList: [record, ...existingItems],
+            };
+            if (canSaveToServer) {
+                const savedPayload = await api.saveEquipmentHistoryPayload?.(nextPayload);
+                if (!savedPayload) throw new Error('equipment_history_payload_save_failed');
+                nextPayload = savedPayload;
+            }
+        } catch (error) {
+            if (canSaveToServer) {
+                try {
+                    await api.deleteEquipmentHistoryUploadedDraftAssets?.(draft, previousDocumentIds);
+                } catch (cleanupError) {
+                    console.warn('[kpi] equipment history uploaded asset cleanup failed', cleanupError);
+                }
+            }
+            if (window.PortalData) window.PortalData.data_equipment_history_card = previousPayload;
+            throw error;
         }
 
-        const existingItems = api.normalizeEquipmentItems(data).filter((item) => item.id !== record.id);
-        data.equipmentList = [record, ...existingItems];
-        if (window.PortalData) window.PortalData.data_equipment_history_card = data;
-        if (canSaveToServer) await api.saveEquipmentHistoryPayload?.(data);
+        Object.keys(data || {}).forEach((key) => delete data[key]);
+        Object.assign(data, nextPayload);
+        if (window.PortalData) window.PortalData.data_equipment_history_card = nextPayload;
 
         state.selectedId = record.id;
         state.draft = api.createDraft(record);

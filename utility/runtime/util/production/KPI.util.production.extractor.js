@@ -130,6 +130,13 @@
                     return;
                 }
                 if (data.type !== 'kpi-production-extracted') return;
+                const rollbackSnapshot = {
+                    dailyData: JSON.parse(JSON.stringify(UTIL_PRODUCTION_DAILY_DATA || [])),
+                    archiveMeta: JSON.parse(JSON.stringify(UTIL_PRODUCTION_ARCHIVE_META || [])),
+                    stateMeta: JSON.parse(JSON.stringify(UTIL_PRODUCTION_DAILY_STATE?.meta || {})),
+                    periodDefault: JSON.parse(JSON.stringify(UTIL_PRODUCTION_DAILY_STATE?.periodDefault || {})),
+                    startDay: UtilProductionState.startDay
+                };
                 try {
                     const rows = Array.isArray(data.rows) ? data.rows : [];
                     const rawFailedFiles = Array.isArray(data?.meta?.failedFiles) ? data.meta.failedFiles : [];
@@ -150,8 +157,14 @@
                         fallbackTeam: UtilProductionBridgeState.activeTeam
                     });
                     const archiveResult = { savedCount: 0, failedCount: 0, unsupported: false };
+                    let saved = true;
                     if (startDayChanged && result.addedCount === 0 && result.patchedCount === 0) {
-                        persistUtilProductionDailyState();
+                        saved = await Promise.resolve(persistUtilProductionDailyState());
+                    } else if (result.savePromise && typeof result.savePromise.then === 'function') {
+                        saved = await result.savePromise;
+                    }
+                    if (saved !== true) {
+                        throw new Error('서버 저장이 완료되지 않았습니다.');
                     }
                     const failedNotice = failedFileNames.length
                         ? `, 형식 오류 제외 ${failedFileNames.length.toLocaleString('ko-KR')}개 (${failedFileNames.join(', ')})`
@@ -186,6 +199,18 @@
                         }, window.location.origin || `${window.location.protocol}//${window.location.host}`);
                     }
                 } catch (error) {
+                    UTIL_PRODUCTION_DAILY_DATA.length = 0;
+                    rollbackSnapshot.dailyData.forEach(item => UTIL_PRODUCTION_DAILY_DATA.push(item));
+                    UTIL_PRODUCTION_ARCHIVE_META.length = 0;
+                    rollbackSnapshot.archiveMeta.forEach(item => UTIL_PRODUCTION_ARCHIVE_META.push(item));
+                    UtilProductionState.startDay = rollbackSnapshot.startDay;
+                    UTIL_PRODUCTION_DAILY_STATE.meta = rollbackSnapshot.stateMeta;
+                    UTIL_PRODUCTION_DAILY_STATE.periodDefault = rollbackSnapshot.periodDefault;
+                    UTIL_PRODUCTION_DAILY_STATE.teams = UTIL_PRODUCTION_DAILY_DATA;
+                    UTIL_PRODUCTION_DAILY_STATE.archives = UTIL_PRODUCTION_ARCHIVE_META;
+                    if (window.PortalData) window.PortalData.util_production_daily = UTIL_PRODUCTION_DAILY_STATE;
+                    if (typeof refreshUtilProductionDailyIndex === 'function') refreshUtilProductionDailyIndex();
+                    if (typeof refreshUtilProductionArchiveCountBadges === 'function') refreshUtilProductionArchiveCountBadges();
                     const message = `기입 실패: ${error?.message || '알 수 없는 오류'}`;
                     setUtilProductionExtractorStatus(message, true);
                     if (event.source && typeof event.source.postMessage === 'function') {

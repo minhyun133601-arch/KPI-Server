@@ -111,6 +111,29 @@
         return documentRecordToPayload(payload.document, originalName);
     }
 
+    async function deleteLegalFacilityDocument(documentId) {
+        const normalizedDocumentId = normalizeText(documentId);
+        if (!normalizedDocumentId || typeof fetch !== 'function') return true;
+        const response = await fetch(`/api/files/${encodeURIComponent(normalizedDocumentId)}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        });
+        if (response.status === 404) return true;
+        if (!response.ok) throw new Error(`http_${response.status}`);
+        return true;
+    }
+
+    async function deleteUploadedFilesFromRecord(record) {
+        const documentIds = [
+            normalizeText(record?.imageDocumentId),
+            normalizeText(record?.documentId),
+        ].filter(Boolean);
+        for (const documentId of Array.from(new Set(documentIds))) {
+            await deleteLegalFacilityDocument(documentId);
+        }
+        return true;
+    }
+
     function renderEntryAssetFields() {
         return `
             <div class="audit-legal-entry-assets">
@@ -157,6 +180,7 @@
         canWrite,
         renderEntryAssetFields,
         attachFilesToRecord,
+        deleteUploadedFilesFromRecord,
         escapeHtml,
     });
 })();

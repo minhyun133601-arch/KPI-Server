@@ -270,6 +270,203 @@ Object.assign(messages.en, {
 
 const historyEntries = [
   {
+    date: '2026-04-30',
+    title: {
+      ko: 'Data Reference 개발자형 데이터 흐름도 정리',
+      en: 'Converted Data Reference into a developer-style data flow diagram',
+    },
+    summary: {
+      ko: 'Repository Map 옆 Data Reference 화면에서 축 카드와 공유 묶음 카드처럼 자잘하게 보이던 영역을 걷어내고, 선택한 기능의 UI, Client Runtime, Single Instance KPI Server, Persistence 흐름을 레이어 박스, dashed server boundary, DB/file cylinder, KPI Data Hub 노드로 보여주도록 재구성했습니다.',
+      en: 'Removed the small axis and shared-group card clutter from the Data Reference screen beside Repository Map, and rebuilt the view as a developer-style architecture diagram with UI, Client Runtime, Single Instance KPI Server, Persistence layers, a dashed server boundary, DB/file cylinders, and KPI Data Hub nodes.',
+    },
+    touched: [
+      'commands/ops-console-app/ops-console/public/data-reference-map.html',
+      'commands/ops-console-app/ops-console/public/data-reference-map.js',
+      'kpi-runtime/internal-server/test/frontend/ops-console-data-reference.smoke.js',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --check commands/ops-console-app/ops-console/public/data-reference-map.js commands/ops-console-app/ops-console/public/repository-map.js',
+      'node --test kpi-runtime/internal-server/test/frontend/ops-console-data-reference.smoke.js',
+      'cd kpi-runtime/internal-server && npm run lint',
+      'cd kpi-runtime/internal-server && npm test',
+      'Headless Playwright served UI check on http://127.0.0.1:3215/data-reference-map.html',
+    ],
+    boundary: {
+      ko: '표현 구조만 바꿨습니다. module_key, record_key, permission_key, DB schema, 저장 API, KPI_STORAGE_ROOT/files 폴더 규칙은 변경하지 않았고, 별도 장기 보고서 문서는 남기지 않았습니다.',
+      en: 'Changed presentation only. Did not change module keys, record keys, permission keys, DB schema, storage APIs, or KPI_STORAGE_ROOT/files folder rules, and did not leave a separate long-lived report document.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
+      ko: '작업 자동저장과 팀 캘린더 첨부 저장 확정 보강',
+      en: 'Hardened work autosave status and team-calendar attachment persistence',
+    },
+    summary: {
+      ko: '입력 위험 점검 보고서의 남은 R-08/R-09 범위를 보완했습니다. 주간·월간·팀 캘린더 자동저장에 pending/saved/failed/blocked 상태 배지를 붙이고, 팀 캘린더 첨부 추가·삭제는 서버 record 저장 성공을 확인한 뒤 파일 정리와 화면 확정을 진행하도록 바꿨습니다.',
+      en: 'Completed the remaining R-08/R-09 scope from the input-risk audit. Weekly, monthly, and team-calendar autosaves now expose pending, saved, failed, and blocked status badges, and team-calendar attachment add/remove flows now confirm record persistence before file cleanup or UI finalization.',
+    },
+    touched: [
+      'KPI.html',
+      'kpi-runtime/app/KPI.app.shell.css',
+      'kpi-runtime/app/styles/work/work.css',
+      'utility/runtime/util/analytics/KPI.util.analytics.js',
+      'team-report/runtime/work/KPI.work.shared.js',
+      'team-report/runtime/work/KPI.work.renderers.js',
+      'team-report/runtime/work/KPI.work.renderers.monthly-plan.js',
+      'team-report/runtime/work/KPI.work.team-calendar.render.js',
+      'team-report/runtime/work/KPI.work.team-calendar.draft-actions.js',
+      'kpi-runtime/internal-server/test/frontend/work-save-status.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/work-renderers.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/work-team-calendar-render.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/kpi-shell-css.smoke.js',
+      'work-log/input-entry-risk-audit-2026-04-30.md',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --check on changed work autosave and smoke-test JS files',
+      'node --test kpi-runtime/internal-server/test/frontend/work-save-status.smoke.js kpi-runtime/internal-server/test/frontend/work-renderers.smoke.js kpi-runtime/internal-server/test/frontend/work-team-calendar-render.smoke.js kpi-runtime/internal-server/test/frontend/work-production.smoke.js kpi-runtime/internal-server/test/frontend/work-shared.smoke.js kpi-runtime/internal-server/test/frontend/kpi-shell-css.smoke.js',
+      'git diff --check on changed work autosave files',
+      'npm run lint',
+      'npm test',
+    ],
+    boundary: {
+      ko: '기존 함수 공개 이름, 데이터 key, DB schema, 파일 저장 폴더는 유지했습니다. 자동저장 상태 표시, 저장 실패 표시, 팀 캘린더 첨부 저장/삭제 순서와 실패 복구만 조정했습니다.',
+      en: 'Kept existing public function names, data keys, DB schema, and file storage folders. Changed only autosave status display, failed-save visibility, and team-calendar attachment save/delete ordering plus failure recovery.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
+      ko: '고위험 입력·기입 저장 확정 흐름 보강',
+      en: 'Hardened high-risk entry save confirmation flows',
+    },
+    summary: {
+      ko: '입력 위험 점검 보고서의 고위험 항목 중 생산량 엑셀 반입, 감사 법정설비 등록, 감사 조도 일괄입력·증빙 교체, 설비이력카드 첨부 저장을 먼저 보완했습니다. 성공 표시는 서버 저장 완료 뒤로 미루고, 저장 실패 시 optimistic 화면 반영이나 새 첨부 orphan을 되돌리도록 했습니다.',
+      en: 'Addressed the high-risk items from the input-risk report first: production Excel import, audit legal-facility registration, audit lux batch and evidence replacement, and equipment-history asset saves. Success is now reported after server persistence, and failed saves roll back optimistic UI state or newly uploaded orphan assets.',
+    },
+    touched: [
+      'utility/runtime/util/production/KPI.util.production.extractor.js',
+      'utility/runtime/util/KPI.util.production-import.js',
+      'audit/runtime/audit/records/KPI.audit.records.legal.js',
+      'audit/runtime/audit/records/KPI.audit.records.legal.assets.js',
+      'audit/runtime/audit/records/KPI.audit.records.render.js',
+      'audit/runtime/audit/records/KPI.audit.records.data.js',
+      'audit/runtime/audit/records/KPI.audit.records.lux-workspace.js',
+      'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js',
+      'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js',
+      'kpi-runtime/internal-server/src/routes/file-routes.js',
+      'kpi-runtime/internal-server/test/frontend/production-extractor-export-actions.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/audit-legal-form.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/audit-lux-save.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/equipment-history-render.smoke.js',
+      'work-log/input-entry-risk-audit-2026-04-30.md',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --check on changed runtime, route, and smoke-test JS files',
+      'node --test kpi-runtime/internal-server/test/frontend/production-extractor-export-actions.smoke.js kpi-runtime/internal-server/test/frontend/audit-legal-form.smoke.js kpi-runtime/internal-server/test/frontend/audit-lux-save.smoke.js kpi-runtime/internal-server/test/frontend/equipment-history-render.smoke.js',
+      'node --test kpi-runtime/internal-server/test/frontend/production-extractor-import-parsing.smoke.js kpi-runtime/internal-server/test/frontend/util-production-replace-import.smoke.js kpi-runtime/internal-server/test/frontend/util-production-upload-offset.smoke.js',
+      'git diff --check on changed entry-risk files',
+    ],
+    boundary: {
+      ko: '사용자 입력 화면의 의미와 저장 위치는 유지했습니다. 함수 공개 이름과 module_key, record_key, DB schema, 파일 저장 폴더는 바꾸지 않았고, 저장 완료 판정·실패 rollback·서버 파일 검증만 보강했습니다.',
+      en: 'Kept user-facing entry meaning and storage locations intact. Did not change public function names, module keys, record keys, DB schema, or file storage folders; only strengthened save confirmation, failure rollback, and server file validation.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
+      ko: '입력·기입 저장 위험 점검 보고서 작성',
+      en: 'Added the input-entry save-risk audit report',
+    },
+    summary: {
+      ko: '유틸리티 전기·가스 기입과 같은 입력값 유실, 서버 저장 미확정, 첨부 orphan 위험이 생길 수 있는 기입·첨부·엑셀 반입 흐름을 코드 기준으로 점검하고 work-log 보고서로 정리했습니다.',
+      en: 'Reviewed entry, attachment, and Excel-import flows that can create utility-entry-like input loss, unconfirmed server saves, or orphaned attachments, then recorded the findings in a work-log report.',
+    },
+    touched: [
+      'work-log/input-entry-risk-audit-2026-04-30.md',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+      'utility/apps/metering',
+      'utility/apps/production-extractor',
+      'utility/runtime/util',
+      'audit/runtime/audit/records',
+      'data-entry/runtime/data/equipment-history',
+      'team-report/runtime/work',
+      'kpi-runtime/internal-server/src/routes/file-routes.js',
+    ],
+    verification: [
+      'node --check commands/ops-console-app/ops-console/public/repository-map.js',
+      'git diff --check -- work-log/input-entry-risk-audit-2026-04-30.md commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    boundary: {
+      ko: '보고서와 Repository Map 변경 이력만 추가했습니다. 런타임 코드, DB schema, module_key, record_key, 저장 API, 권한 경계는 바꾸지 않았습니다.',
+      en: 'Added only the report and Repository Map history entry. Did not change runtime code, DB schema, module keys, record keys, storage APIs, or permission boundaries.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
+      ko: '유틸리티 기입을 전기/가스 통합 전체화면 팝업으로 전환',
+      en: 'Switched utility entry to a shared fullscreen electric and gas popup',
+    },
+    summary: {
+      ko: '기존 줄단위 textarea 일괄기입을 화면에서 빼고, 기존 기입 버튼이 전기와 가스 설비를 한 번에 보여주는 검색형 전체화면 팝업을 열도록 바꿨습니다. 현재 리소스 입력칸과 다른 리소스 저장 draft를 함께 다루도록 스냅샷 비교를 넓혀서, 팝업에서 전기와 가스를 같이 수정해도 저장 버튼과 오류 상태가 즉시 반영되게 맞췄습니다.',
+      en: 'Removed the line-by-line textarea batch-entry flow from the visible UI and turned the existing entry button into a searchable fullscreen popup that shows both electric and gas equipment at once. Snapshot comparison now includes the active form plus the other resource draft so save-state and validation feedback react immediately when both resources are edited in the popup.',
+    },
+    touched: [
+      'utility/apps/metering/equipment/quick-entry-ui.js',
+      'utility/apps/metering/equipment/quick-entry.js',
+      'utility/apps/metering/save/persistence.js',
+      'utility/apps/metering/runtime/resource-ui.js',
+      'utility/apps/metering/styles.css',
+      'utility/apps/metering/embedded.css',
+      'kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/metering-save-validation.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/metering-resource-ui.smoke.js',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --check utility/apps/metering/equipment/quick-entry-ui.js utility/apps/metering/equipment/quick-entry.js utility/apps/metering/save/persistence.js utility/apps/metering/runtime/resource-ui.js',
+      'node --test kpi-runtime/internal-server/test/frontend/metering-equipment-quick-entry.smoke.js kpi-runtime/internal-server/test/frontend/metering-save-validation.smoke.js kpi-runtime/internal-server/test/frontend/metering-resource-ui.smoke.js kpi-runtime/internal-server/test/frontend/metering-runtime-bootstrap.smoke.js kpi-runtime/internal-server/test/frontend/metering-fullscreen-popup.smoke.js kpi-runtime/internal-server/test/frontend/metering-runtime-mount-dom.smoke.js',
+      'npm run lint',
+    ],
+    boundary: {
+      ko: '유틸리티 기입 UI, 설비 draft 비교, 저장 전 dirty/validation 판정만 조정했습니다. DB schema, module_key, 문서 저장 경로, 권한 경계는 바꾸지 않았습니다.',
+      en: 'Adjusted only the utility-entry UI, equipment draft comparison, and dirty or validation checks before save. Did not change DB schema, module keys, document storage paths, or permission boundaries.',
+    },
+  },
+  {
+    date: '2026-04-30',
+    title: {
+      ko: '유틸리티 전체화면 토글 때 기입값이 비는 문제 보정',
+      en: 'Preserved utility entry drafts across fullscreen toggles',
+    },
+    summary: {
+      ko: '유틸리티 기입 화면이 전체화면 진입/해제 중 입력 패널을 다시 그릴 때 설비 입력값이 빈 상태로 덮이던 흐름을 막기 위해, 토글 직전에 draft를 상태로 먼저 동기화하고 다시 그린 뒤 현재 entry 값을 폼에 다시 주입하도록 바꿨습니다. 팀 모드 수동 저장도 저장 직전에 pending draft를 먼저 반영하도록 보강했습니다.',
+      en: 'Stopped the utility entry screen from wiping equipment inputs during fullscreen enter and exit by syncing drafts into state before the rerender, then restoring the current entry back into the rebuilt form. Team-mode manual save now also flushes pending draft inputs before saving.',
+    },
+    touched: [
+      'utility/apps/metering/save/persistence.js',
+      'utility/apps/metering/save/store-sync.js',
+      'utility/apps/metering/fullscreen/popup.js',
+      'kpi-runtime/internal-server/test/frontend/metering-save-validation.smoke.js',
+      'kpi-runtime/internal-server/test/frontend/metering-fullscreen-popup.smoke.js',
+      'commands/ops-console-app/ops-console/public/repository-map.js',
+    ],
+    verification: [
+      'node --check utility/apps/metering/save/persistence.js utility/apps/metering/save/store-sync.js utility/apps/metering/fullscreen/popup.js commands/ops-console-app/ops-console/public/repository-map.js',
+      'node --test kpi-runtime/internal-server/test/frontend/metering-save-validation.smoke.js kpi-runtime/internal-server/test/frontend/metering-fullscreen-popup.smoke.js kpi-runtime/internal-server/test/frontend/metering-resource-ui.smoke.js',
+      'npm run lint',
+      'Headless Playwright check on http://127.0.0.1:3192/: utility input value remained after fullscreen enter and exit',
+    ],
+    boundary: {
+      ko: '유틸리티 기입 화면의 draft sync, 전체화면 rerender, 수동 저장 직전 반영 흐름만 조정했습니다. DB schema, module_key, 문서 저장 경로, 권한 경계는 바꾸지 않았습니다.',
+      en: 'Adjusted only utility-entry draft syncing, fullscreen rerender behavior, and pre-save flush timing. Did not change DB schema, module keys, document storage paths, or permission boundaries.',
+    },
+  },
+  {
     date: '2026-04-29',
     title: {
       ko: '팀별내역서 헤더 도구 숨김과 팀 색 배지 정리',

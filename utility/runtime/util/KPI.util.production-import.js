@@ -536,6 +536,7 @@
             });
             const nextEntries = Array.from(pendingEntryMap.values());
             const addedCount = nextEntries.length;
+            let savePromise = Promise.resolve(true);
             if (addedCount > 0) {
                 UTIL_PRODUCTION_DAILY_DATA.length = 0;
                 UTIL_PRODUCTION_ARCHIVE_META.length = 0;
@@ -545,7 +546,7 @@
                     targetTeam.entries.push(entry);
                 });
                 refreshUtilProductionDailyIndex();
-                persistUtilProductionDailyState();
+                savePromise = Promise.resolve(persistUtilProductionDailyState());
                 if (typeof refreshUtilProductionArchiveCountBadges === 'function') {
                     refreshUtilProductionArchiveCountBadges();
                 }
@@ -554,7 +555,8 @@
                 addedCount,
                 skippedCount,
                 patchedCount,
-                addedTeams: Array.from(addedTeamSet).filter(Boolean)
+                addedTeams: Array.from(addedTeamSet).filter(Boolean),
+                savePromise
             };
         }
 

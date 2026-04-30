@@ -535,6 +535,16 @@
             const input = form.querySelector(`[data-audit-legal-input="${key}"]`);
             if (input) input.value = value || '';
         }
+        function cloneAuditLegalData(value) {
+            return JSON.parse(JSON.stringify(value || {}));
+        }
+        function restoreAuditLegalData(data, snapshot) {
+            Object.keys(data || {}).forEach((key) => delete data[key]);
+            Object.assign(data, cloneAuditLegalData(snapshot));
+            if (window.PortalData) {
+                window.PortalData.audit_legal_facility = cloneAuditLegalData(snapshot);
+            }
+        }
         function applyAuditLegalPreset(form, itemType) {
             const preset = getAuditLegalCategoryPreset(itemType);
             Object.entries(preset).forEach(([key, value]) => setAuditLegalInputValue(form, key, value));
@@ -576,19 +586,41 @@
                     return;
                 }
                 if (window.KpiAuditLegalAssets?.canWrite?.() !== true) {
-                    window.alert('Server write permission is required.');
+                    window.alert('서버 저장 권한이 있어야 법정설비를 등록할 수 있습니다.');
                     return;
                 }
                 try {
                     savedRecord = await (window.KpiAuditLegalAssets?.attachFilesToRecord?.(record, form) || Promise.resolve(record));
                 } catch (error) {
                     console.warn('[kpi] audit legal facility attachment upload failed', error);
-                    window.alert('File upload failed.');
+                    window.alert('첨부 파일을 저장하지 못했습니다.');
                     return;
                 }
-                data.facilities = Array.isArray(data.facilities) ? data.facilities : [];
-                data.facilities.unshift(savedRecord);
-                if (typeof saveAuditData === 'function') saveAuditData('audit_legal_facility', data);
+                const previousData = cloneAuditLegalData(data);
+                const nextData = cloneAuditLegalData(data);
+                nextData.facilities = Array.isArray(nextData.facilities) ? nextData.facilities : [];
+                nextData.facilities.unshift(savedRecord);
+                let saved = false;
+                try {
+                    saved = typeof saveAuditData === 'function'
+                        ? await Promise.resolve(saveAuditData('audit_legal_facility', nextData))
+                        : false;
+                } catch (saveError) {
+                    console.warn('[kpi] audit legal facility save failed', saveError);
+                    saved = false;
+                }
+                if (saved !== true) {
+                    restoreAuditLegalData(data, previousData);
+                    try {
+                        await (window.KpiAuditLegalAssets?.deleteUploadedFilesFromRecord?.(savedRecord) || Promise.resolve(true));
+                    } catch (cleanupError) {
+                        console.warn('[kpi] audit legal facility attachment cleanup failed', cleanupError);
+                    }
+                    window.alert('서버 저장이 완료되지 않아 법정설비 등록을 취소했습니다.');
+                    return;
+                }
+                Object.keys(data || {}).forEach((key) => delete data[key]);
+                Object.assign(data, nextData);
                 renderAuditLegalFacilityPreview(category, data);
             });
             form.querySelector('[data-audit-legal-input="itemType"]')?.addEventListener('change', (event) => {

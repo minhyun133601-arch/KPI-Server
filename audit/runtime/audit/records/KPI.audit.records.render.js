@@ -795,7 +795,7 @@
             }
         }
 
-        function saveAuditLuxBatchEntries(dataKey) {
+        async function saveAuditLuxBatchEntries(dataKey) {
             if (!isAuditLuxDataKey(dataKey)) return;
             const entryForm = getAuditEntryFormState(dataKey);
             const year = Number(entryForm.year);
@@ -803,6 +803,7 @@
             const team = String(entryForm.team || '').trim();
             if (!year || !quarter || !team) return;
             const data = getAuditData(dataKey);
+            const previousData = cloneAuditDataPayload(data);
             const batchRows = getAuditLuxBatchRows(dataKey);
             if (!batchRows.length) return;
             const noteEl = document.getElementById(`audit-note-${dataKey}`);
@@ -831,7 +832,24 @@
                 return acc;
             }, []);
             data.entries = preservedEntries.concat(nextEntries);
-            if (!saveAuditData(dataKey, data)) return;
+            let saved = false;
+            try {
+                saved = await Promise.resolve(saveAuditData(dataKey, data));
+            } catch (error) {
+                console.warn('[kpi] audit lux batch save failed', dataKey, error);
+                saved = false;
+            }
+            if (saved !== true) {
+                Object.keys(data || {}).forEach((key) => delete data[key]);
+                Object.assign(data, previousData);
+                if (typeof syncAuditPortalDataCache === 'function') {
+                    syncAuditPortalDataCache(dataKey, previousData);
+                } else if (window.PortalData) {
+                    window.PortalData[dataKey] = cloneAuditDataPayload(previousData);
+                }
+                alert('조도 일괄 입력을 서버에 저장하지 못했습니다. 입력값은 확정하지 않았습니다.');
+                return;
+            }
             entryForm.note = appliedNote;
             entryForm.batchValues = {};
             entryForm.batchShouldFocus = false;

@@ -596,6 +596,7 @@
                 throw new Error('invalid_target');
             }
             const data = getAuditData(dataKey, dataKey);
+            const previousData = cloneAuditDataPayload(data);
             const currentEvidence = getAuditLuxYearEvidenceItem(dataKey, targetYear, normalizedTeam);
             const uploaded = await uploadAuditLuxEvidenceToServer(dataKey, targetYear, normalizedTeam, file);
             const nextEvidence = (Array.isArray(data.evidence) ? data.evidence : [])
@@ -606,7 +607,28 @@
                 if (yearDiff !== 0) return yearDiff;
                 return String(a?.team || '').localeCompare(String(b?.team || ''), 'ko');
             });
-            await saveAuditData(dataKey, data);
+            let saved = false;
+            try {
+                saved = await Promise.resolve(saveAuditData(dataKey, data));
+            } catch (error) {
+                console.warn('[kpi] audit evidence record save failed', dataKey, error);
+                saved = false;
+            }
+            if (saved !== true) {
+                Object.keys(data || {}).forEach((key) => delete data[key]);
+                Object.assign(data, previousData);
+                if (typeof syncAuditPortalDataCache === 'function') {
+                    syncAuditPortalDataCache(dataKey, previousData);
+                } else if (window.PortalData) {
+                    window.PortalData[dataKey] = cloneAuditDataPayload(previousData);
+                }
+                try {
+                    await deleteAuditEvidenceFromServer(uploaded);
+                } catch (cleanupError) {
+                    console.warn('[kpi] audit evidence cleanup failed', uploaded.documentId, cleanupError);
+                }
+                throw new Error('audit_lux_evidence_record_save_failed');
+            }
             if (currentEvidence?.documentId && currentEvidence.documentId !== uploaded.documentId) {
                 try {
                     await deleteAuditEvidenceFromServer(currentEvidence);

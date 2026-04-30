@@ -152,3 +152,11 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.ok(!record.detailInfo.some((item) => item.label === '담당'));
   assert.ok(record.detailInfo.some((item) => item.label === '제조사' && item.value === '샘플 제조사'));
 });
+
+test('equipment-history save confirms payload persistence before publishing uploaded assets', () => {
+  assert.match(storageSource, /async function deleteEquipmentHistoryUploadedDraftAssets/);
+  assert.match(storageSource, /collectEquipmentHistoryDraftDocumentIds/);
+  assert.match(renderSource, /const savedPayload = await api\.saveEquipmentHistoryPayload\?\.\(nextPayload\)/);
+  assert.match(renderSource, /deleteEquipmentHistoryUploadedDraftAssets\?\.\(draft, previousDocumentIds\)/);
+  assert.match(renderSource, /Object\.assign\(data, nextPayload\)/);
+});

@@ -6,6 +6,7 @@ import { assertOpenPermission, normalizeText, parseBody, serializePermissionKey 
 
 const DOCUMENT_ATTACHMENT_OWNER_DOMAINS = new Set([
   'audit.legal_facility',
+  'audit.lux.evidence',
   'data.equipment_history',
   'work.history',
   'work.team_calendar'
@@ -87,7 +88,21 @@ function isImageUploadCategory(fileCategory) {
   return /^(photo|image|images?)$/i.test(String(fileCategory || '').trim());
 }
 
-function hasAllowedUploadType({ fileCategory, extension, mimeType }) {
+function isAuditLuxEvidenceUpload({ ownerDomain, fileCategory }) {
+  return ownerDomain === 'audit.lux.evidence'
+    && /^evidence$/i.test(String(fileCategory || '').trim());
+}
+
+function isPdfUploadType({ extension, mimeType }) {
+  return extension === '.pdf' || mimeType === 'application/pdf';
+}
+
+function hasAllowedUploadType({ ownerDomain, fileCategory, extension, mimeType }) {
+  if (isAuditLuxEvidenceUpload({ ownerDomain, fileCategory })) {
+    return DOCUMENT_IMAGE_ALLOWED_EXTENSIONS.has(extension)
+      || DOCUMENT_IMAGE_ALLOWED_MIME_TYPES.has(mimeType)
+      || isPdfUploadType({ extension, mimeType });
+  }
   if (isImageUploadCategory(fileCategory)) {
     return DOCUMENT_IMAGE_ALLOWED_EXTENSIONS.has(extension) || DOCUMENT_IMAGE_ALLOWED_MIME_TYPES.has(mimeType);
   }
@@ -101,7 +116,12 @@ function validateUploadPolicy({ ownerDomain, fileCategory, originalName, mimeTyp
 
   const normalizedExt = path.extname(String(originalName || '')).toLowerCase();
   const normalizedMimeType = String(mimeType || '').trim().toLowerCase();
-  if (!hasAllowedUploadType({ fileCategory, extension: normalizedExt, mimeType: normalizedMimeType })) {
+  if (!hasAllowedUploadType({
+    ownerDomain,
+    fileCategory,
+    extension: normalizedExt,
+    mimeType: normalizedMimeType
+  })) {
     throw new Error('unsupported_type');
   }
 

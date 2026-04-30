@@ -1,8 +1,8 @@
 const messages = {
   ko: {
     eyebrow: 'data architecture',
-    title: '데이터 참조 경로',
-    subtitle: '현재 구현된 입력 화면이 어떤 런타임, API, DB 레코드, 파일 저장소, 권한키를 거쳐 저장되는지 정리합니다.',
+    title: 'KPI 데이터 흐름도',
+    subtitle: '입력 화면에서 런타임, API/서비스 경계, DB와 파일 저장소까지 이어지는 실제 저장 흐름만 아키텍처 형태로 정리합니다.',
     axisModuleLabel: 'axis 1',
     axisModuleTitle: 'JSON 본문 저장',
     axisModuleCopy: '대부분의 화면 본문은 PostgreSQL app_module_records의 module_key + record_key로 저장됩니다.',
@@ -24,10 +24,10 @@ const messages = {
     permissionLabel: '권한키',
     sourceLabel: '핵심 코드 경로',
     statusLabel: '현재 상태',
-    webKicker: 'clickable architecture web',
-    webTitle: '데이터 흐름 거미줄',
-    webCopy: '가운데 KPI 데이터 허브에서 각 입력 화면과 저장 축이 어떻게 이어지는지 보여줍니다. 기능 노드를 누르면 오른쪽 상세 정보가 바뀝니다.',
-    centerNode: 'KPI 데이터 허브',
+    webKicker: 'developer architecture',
+    webTitle: 'KPI 데이터 흐름 아키텍처',
+    webCopy: '기능을 선택하면 실제 구현 흐름을 UI, Runtime, Single Instance API/Service, Persistence 레이어로 펼쳐 보여줍니다.',
+    centerNode: 'KPI Runtime Core',
     moduleAxisNode: 'app_module_records',
     documentsAxisNode: 'app_documents + files',
     dedicatedAxisNode: '전용 테이블',
@@ -52,11 +52,28 @@ const messages = {
     graphFlagAsset: '이미지/첨부',
     graphFlagDedicated: '전용테이블',
     graphFlagNoStorage: '미연결',
+    stageUser: '사용자 인터페이스',
+    stageClient: 'Client Runtime',
+    stageServer: 'Single Instance KPI Server',
+    stagePersistence: 'Persistence',
+    requestLabel: 'request',
+    runtimeBridgeLabel: '런타임 / 브릿지',
+    apiBoundaryLabel: 'API / Service / Repository',
+    databaseLabel: '데이터베이스',
+    fileStorageLabel: '파일 저장소',
+    noPersistenceLabel: '저장 미연결',
+    exactPathLabel: '정확한 저장 경로는 오른쪽 상세 패널 기준',
+    serverBoundaryLabel: 'server boundary',
+    hubTitle: 'KPI Data Hub',
+    hubCopy: '아래 기능 노드를 누르면 메인라인 다이어그램과 상세 저장 경로가 함께 바뀝니다.',
+    selectedFlowLabel: 'selected flow',
+    storageTargetsLabel: 'storage targets',
+    moduleRecordsTitle: 'module_key / record_key 레이어',
   },
   en: {
     eyebrow: 'data architecture',
-    title: 'Data Reference Paths',
-    subtitle: 'Documents how the implemented input screens flow through runtime code, APIs, DB records, file storage, and permission keys.',
+    title: 'KPI Data Flow Map',
+    subtitle: 'Shows the implemented save path from input screens through runtime code, API/service boundaries, DB records, and file storage.',
     axisModuleLabel: 'axis 1',
     axisModuleTitle: 'JSON payload storage',
     axisModuleCopy: 'Most screen payloads are stored in PostgreSQL app_module_records by module_key + record_key.',
@@ -78,10 +95,10 @@ const messages = {
     permissionLabel: 'Permission key',
     sourceLabel: 'Key source paths',
     statusLabel: 'Current status',
-    webKicker: 'clickable architecture web',
-    webTitle: 'Data Flow Web',
-    webCopy: 'Shows how each input screen connects from the KPI data hub to storage axes. Click a feature node to change the detail panel.',
-    centerNode: 'KPI Data Hub',
+    webKicker: 'developer architecture',
+    webTitle: 'KPI Data Flow Architecture',
+    webCopy: 'Select a feature to expand the implemented flow across UI, Runtime, Single Instance API/Service, and Persistence layers.',
+    centerNode: 'KPI Runtime Core',
     moduleAxisNode: 'app_module_records',
     documentsAxisNode: 'app_documents + files',
     dedicatedAxisNode: 'Dedicated tables',
@@ -106,6 +123,23 @@ const messages = {
     graphFlagAsset: 'image/files',
     graphFlagDedicated: 'tables',
     graphFlagNoStorage: 'not wired',
+    stageUser: 'User Interface',
+    stageClient: 'Client Runtime',
+    stageServer: 'Single Instance KPI Server',
+    stagePersistence: 'Persistence',
+    requestLabel: 'request',
+    runtimeBridgeLabel: 'Runtime / bridge',
+    apiBoundaryLabel: 'API / Service / Repository',
+    databaseLabel: 'Database',
+    fileStorageLabel: 'File Storage',
+    noPersistenceLabel: 'No persistence',
+    exactPathLabel: 'Exact paths are listed in the detail panel',
+    serverBoundaryLabel: 'server boundary',
+    hubTitle: 'KPI Data Hub',
+    hubCopy: 'Click a feature node below to update the mainline diagram and exact storage details.',
+    selectedFlowLabel: 'selected flow',
+    storageTargetsLabel: 'storage targets',
+    moduleRecordsTitle: 'module_key / record_key layer',
   },
 };
 
@@ -839,12 +873,143 @@ function renderFlowCard(flow) {
   `;
 }
 
-function renderLine(from, to, options = {}) {
-  const classes = [
-    options.active ? 'is-active' : '',
-    options.muted ? 'is-muted' : '',
-  ].filter(Boolean).join(' ');
-  return `<line class="${classes}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"></line>`;
+function normalizeItems(items = []) {
+  return (Array.isArray(items) ? items : [items])
+    .map(pickText)
+    .map((item) => String(item || '').trim())
+    .filter(Boolean);
+}
+
+function takeItems(items = [], limit = 3) {
+  return normalizeItems(items).slice(0, limit);
+}
+
+function renderInlineCodeList(items = []) {
+  const list = takeItems(items, 4)
+    .map((item) => `<code>${escapeHtml(item)}</code>`)
+    .join('');
+  return list || `<span class="architecture-muted">${escapeHtml(t('exactPathLabel'))}</span>`;
+}
+
+function renderArchitectureArrow() {
+  return `
+    <div class="architecture-arrow" aria-hidden="true">
+      <span></span>
+    </div>
+  `;
+}
+
+function renderLayerBox(kicker, title, bodyItems, extraClass = '') {
+  return `
+    <section class="architecture-layer ${escapeHtml(extraClass)}">
+      <span class="layer-kicker">${escapeHtml(kicker)}</span>
+      <strong>${escapeHtml(title)}</strong>
+      <div class="layer-code-list">${renderInlineCodeList(bodyItems)}</div>
+    </section>
+  `;
+}
+
+function getSelectedRuntimeItems(flow) {
+  const runtimeItems = takeItems(flow.runtime, 4);
+  const nonApiItems = runtimeItems.filter((item) => !item.startsWith('/api/'));
+  return nonApiItems.length ? nonApiItems : runtimeItems;
+}
+
+function getSelectedApiItems(flow) {
+  const apiItems = normalizeItems(flow.runtime).filter((item) => item.startsWith('/api/'));
+  return apiItems.length ? apiItems : takeItems(flow.runtime, 2);
+}
+
+function getStorageTargets(flow) {
+  const groups = new Set(flow?.sharedGroups || []);
+  if (groups.has('no-storage')) {
+    return [{
+      type: 'none',
+      title: t('noPersistenceLabel'),
+      items: normalizeItems(flow.storage),
+    }];
+  }
+
+  const targets = [];
+  if (groups.has('portal-data') || groups.has('work-runtime') || groups.has('util-metering')) {
+    targets.push({
+      type: 'database',
+      title: t('moduleAxisNode'),
+      items: normalizeItems(flow.storage),
+    });
+  }
+  if (groups.has('dedicated-tables')) {
+    targets.push({
+      type: 'database',
+      title: t('dedicatedAxisNode'),
+      items: normalizeItems(flow.storage),
+    });
+  }
+  if (groups.has('app-documents')) {
+    targets.push({
+      type: 'files',
+      title: t('documentsAxisNode'),
+      items: normalizeItems(flow.assets),
+    });
+  }
+  return targets.length ? targets : [{
+    type: 'database',
+    title: t('storageTargetsLabel'),
+    items: normalizeItems(flow.storage),
+  }];
+}
+
+function renderStorageTarget(target) {
+  const className = target.type === 'files'
+    ? 'filesystem-cylinder'
+    : target.type === 'none'
+      ? 'no-storage-cylinder'
+      : 'database-cylinder';
+  const label = target.type === 'files'
+    ? t('fileStorageLabel')
+    : target.type === 'none'
+      ? t('noPersistenceLabel')
+      : t('databaseLabel');
+  return `
+    <article class="storage-target ${escapeHtml(target.type)}">
+      <div class="${className}">
+        <span>${escapeHtml(label)}</span>
+      </div>
+      <strong>${escapeHtml(target.title)}</strong>
+      <div class="layer-code-list">${renderInlineCodeList(target.items)}</div>
+    </article>
+  `;
+}
+
+function renderFlowHub(flows, selectedId) {
+  const buttons = flows.map((flow) => {
+    const isActive = flow.id === selectedId;
+    const flags = getFlowFlags(flow)
+      .map((flag) => `<span class="node-flag">${escapeHtml(flag)}</span>`)
+      .join('');
+    return `
+      <button
+        class="hub-flow-node ${flow.tone || 'slate'} ${isActive ? 'is-active' : ''}"
+        type="button"
+        data-flow-id="${escapeHtml(flow.id)}"
+      >
+        <span class="node-kicker">${escapeHtml(flow.id)}</span>
+        <span class="node-title">${escapeHtml(pickText(flow.title))}</span>
+        <span class="node-flags">${flags}</span>
+      </button>
+    `;
+  }).join('');
+
+  return `
+    <aside class="architecture-hub">
+      <div class="hub-core">
+        <span>${escapeHtml(t('hubTitle'))}</span>
+        <strong>${escapeHtml(t('centerNode'))}</strong>
+      </div>
+      <p>${escapeHtml(t('hubCopy'))}</p>
+      <div class="hub-flow-grid">${buttons}</div>
+    </aside>
+  `;
 }
 
 function renderArchitectureWeb(flows) {
@@ -852,54 +1017,51 @@ function renderArchitectureWeb(flows) {
   const nodeContainer = document.querySelector('#webNodes');
   const selectedFlow = getSelectedFlow();
   const selectedId = selectedFlow?.id || '';
-  const center = { x: 50, y: 50 };
-  const axisById = new Map(graphAxes.map((axis) => [axis.id, axis]));
+  if (!lineContainer || !nodeContainer) return;
 
-  const lines = [];
-  for (const flow of flows) {
-    const layout = getFlowLayout(flow);
-    const isActive = flow.id === selectedId;
-    lines.push(renderLine(center, layout, { active: isActive, muted: !isActive && selectedId }));
-    for (const axisId of layout.axes || []) {
-      const axis = axisById.get(axisId);
-      if (!axis) continue;
-      lines.push(renderLine(layout, axis, { active: isActive, muted: !isActive && selectedId }));
-    }
+  lineContainer.innerHTML = '';
+  if (!flows.length || !selectedFlow) {
+    nodeContainer.innerHTML = `<div class="empty">${escapeHtml(t('noResults'))}</div>`;
+    return;
   }
 
-  const axisNodes = graphAxes.map((axis) => `
-    <div class="web-node axis" style="--x:${axis.x}%; --y:${axis.y}%;">
-      ${escapeHtml(t(axis.titleKey))}
-    </div>
-  `).join('');
+  const selectedUiItems = takeItems(selectedFlow.ui, 3);
+  const runtimeItems = getSelectedRuntimeItems(selectedFlow);
+  const apiItems = getSelectedApiItems(selectedFlow);
+  const storageTargets = getStorageTargets(selectedFlow)
+    .map(renderStorageTarget)
+    .join('');
 
-  const flowNodes = dataFlows.map((flow) => {
-    const layout = getFlowLayout(flow);
-    const isVisible = flows.some((item) => item.id === flow.id);
-    const isActive = flow.id === selectedId;
-    const flags = getFlowFlags(flow)
-      .map((flag) => `<span class="node-flag">${escapeHtml(flag)}</span>`)
-      .join('');
-    return `
-      <button
-        class="web-node flow ${isActive ? 'is-active' : ''} ${!isVisible ? 'is-hidden' : ''} ${selectedId && !isActive ? 'is-muted' : ''}"
-        style="--x:${layout.x}%; --y:${layout.y}%;"
-        type="button"
-        data-flow-id="${escapeHtml(flow.id)}"
-      >
-        <span class="node-kicker">${escapeHtml(flow.id)}</span>
-        <span class="node-title">${escapeHtml(pickText(flow.title))}</span>
-        <span class="node-meta">${escapeHtml((flow.permissions || []).map(pickText).filter(Boolean).join(' / '))}</span>
-        <span class="node-flags">${flags}</span>
-      </button>
-    `;
-  }).join('');
-
-  lineContainer.innerHTML = lines.join('');
   nodeContainer.innerHTML = `
-    <div class="web-node center" style="--x:50%; --y:50%;">${escapeHtml(t('centerNode'))}</div>
-    ${axisNodes}
-    ${flowNodes}
+    <div class="architecture-diagram">
+      <section class="architecture-mainline">
+        <div class="request-marker">${escapeHtml(t('requestLabel'))}</div>
+        ${renderLayerBox(t('stageUser'), pickText(selectedFlow.title), selectedUiItems, 'user-layer')}
+        ${renderArchitectureArrow()}
+        ${renderLayerBox(t('stageClient'), t('runtimeBridgeLabel'), runtimeItems, 'client-layer')}
+        ${renderArchitectureArrow()}
+        <section class="server-boundary-card">
+          <span class="boundary-label">${escapeHtml(t('serverBoundaryLabel'))}</span>
+          <strong>${escapeHtml(t('stageServer'))}</strong>
+          <div class="server-module-grid">
+            <article>
+              <span>${escapeHtml(t('apiBoundaryLabel'))}</span>
+              <div class="layer-code-list">${renderInlineCodeList(apiItems)}</div>
+            </article>
+            <article>
+              <span>${escapeHtml(t('permissionLabel'))}</span>
+              <div class="layer-code-list">${renderInlineCodeList(selectedFlow.permissions)}</div>
+            </article>
+          </div>
+        </section>
+        ${renderArchitectureArrow()}
+        <section class="persistence-stage">
+          <span class="layer-kicker">${escapeHtml(t('stagePersistence'))}</span>
+          <div class="storage-target-grid">${storageTargets}</div>
+        </section>
+      </section>
+      ${renderFlowHub(flows, selectedId)}
+    </div>
   `;
 }
 

@@ -377,10 +377,12 @@ test('work renderers split files render weekly and monthly content after loading
   context.renderWorkContent(context.weeklyCategory);
   assert.match(contentContainer.innerHTML, /work-week-meta/);
   assert.match(contentContainer.innerHTML, /workExport\('work_demo'\)/);
+  assert.match(contentContainer.innerHTML, /data-work-save-status="work_demo"/);
 
   context.renderWorkContent(context.monthlyCategory);
   assert.match(contentContainer.innerHTML, /month-panel/);
   assert.match(contentContainer.innerHTML, /printMonthlyReport\('work_monthly_plan'\)/);
+  assert.match(contentContainer.innerHTML, /data-work-save-status="work_monthly_plan"/);
 });
 
 test('work renderers export helper downloads a js bootstrap payload', async () => {

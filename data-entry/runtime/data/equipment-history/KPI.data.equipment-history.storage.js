@@ -158,6 +158,63 @@
         return draft;
     }
 
+    function collectEquipmentHistoryDraftDocumentIds(draft) {
+        const documentIds = [];
+        const photoDocumentId = String(draft?.photoDocumentId || '').trim();
+        if (photoDocumentId) documentIds.push(photoDocumentId);
+        api.asList(draft?.documents).forEach((row) => {
+            const documentId = String(row?.documentId || '').trim();
+            if (documentId) documentIds.push(documentId);
+        });
+        return Array.from(new Set(documentIds));
+    }
+
+    async function deleteEquipmentHistoryDocument(documentId) {
+        const normalizedDocumentId = String(documentId || '').trim();
+        if (!normalizedDocumentId || typeof fetch !== 'function') return true;
+        const response = await fetch(`/api/files/${encodeURIComponent(normalizedDocumentId)}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        });
+        if (response.status === 404) return true;
+        if (!response.ok) throw new Error(`http_${response.status}`);
+        return true;
+    }
+
+    function clearDeletedEquipmentHistoryDraftReferences(draft, deletedDocumentIds) {
+        const deletedSet = new Set(deletedDocumentIds);
+        if (deletedSet.has(String(draft?.photoDocumentId || '').trim())) {
+            draft.photoDocumentId = '';
+            draft.photoPreviewUrl = '';
+            draft.photoDownloadUrl = '';
+            draft.photoStorageRelPath = '';
+            draft.photoName = '';
+        }
+        api.asList(draft?.documents).forEach((row) => {
+            if (!deletedSet.has(String(row?.documentId || '').trim())) return;
+            row.documentId = '';
+            row.fileName = '';
+            row.originalName = '';
+            row.mimeType = '';
+            row.storageRelPath = '';
+            row.previewUrl = '';
+            row.downloadUrl = '';
+        });
+    }
+
+    async function deleteEquipmentHistoryUploadedDraftAssets(draft, previousDocumentIds = []) {
+        const previousSet = new Set((previousDocumentIds || []).map((item) => String(item || '').trim()).filter(Boolean));
+        const nextDocumentIds = collectEquipmentHistoryDraftDocumentIds(draft)
+            .filter((documentId) => !previousSet.has(documentId));
+        const deletedDocumentIds = [];
+        for (const documentId of nextDocumentIds) {
+            await deleteEquipmentHistoryDocument(documentId);
+            deletedDocumentIds.push(documentId);
+        }
+        clearDeletedEquipmentHistoryDraftReferences(draft, deletedDocumentIds);
+        return true;
+    }
+
     async function saveEquipmentHistoryPayload(payload) {
         const runtime = getRuntimeConfig();
         if (!runtime || !canSaveEquipmentHistoryToServer()) return false;
@@ -195,6 +252,8 @@
         getEquipmentHistoryRuntimeConfig: getRuntimeConfig,
         canSaveEquipmentHistoryToServer,
         uploadEquipmentHistoryDraftAssets,
+        collectEquipmentHistoryDraftDocumentIds,
+        deleteEquipmentHistoryUploadedDraftAssets,
         saveEquipmentHistoryPayload,
         getEquipmentPhotoPreviewUrl,
     });

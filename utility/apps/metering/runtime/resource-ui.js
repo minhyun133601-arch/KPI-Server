@@ -104,6 +104,8 @@ function renderModeUI() {
   const supportsTeamMode = supportsTeamModeForCurrentResource();
   const supportsEquipmentMode = supportsEquipmentModeForResource();
   const supportsEquipmentEditing = supportsEquipmentEditingForCurrentResource();
+  const supportsQuickEntryPopup =
+    (isElectricResourceType() || isGasResourceType()) && supportsEquipmentMode && isEquipmentMode;
 
   if (!isEquipmentMode && state.openQuickEntryMenu) {
     state.openQuickEntryMenu = false;
@@ -144,7 +146,7 @@ function renderModeUI() {
   elements.teamSaveBtn?.classList.toggle("is-hidden", !supportsTeamMode || !isTeamMode);
   elements.quickEntryWrap?.classList.toggle(
     "is-hidden",
-    !supportsEquipmentMode || !isEquipmentMode
+    !supportsQuickEntryPopup
   );
 
   syncEquipmentFullscreenUI();

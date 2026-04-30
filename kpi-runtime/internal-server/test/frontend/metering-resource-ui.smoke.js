@@ -180,6 +180,9 @@ function createResourceUiContext(options = {}) {
     getCurrentResourceType() {
       return context.normalizeResourceType(context.state.store.resourceType);
     },
+    isElectricResourceType(resourceType = context.getCurrentResourceType()) {
+      return context.normalizeResourceType(resourceType) === 'electric';
+    },
     isGasResourceType(resourceType = context.getCurrentResourceType()) {
       return context.normalizeResourceType(resourceType) === 'gas';
     },
