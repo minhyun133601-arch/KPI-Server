@@ -8,8 +8,12 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
 
 const layoutPath = path.join(repoRoot, 'team-report', 'runtime', 'work', 'history', 'KPI.work.history.view.layout.js');
+const workspaceCopyPath = path.join(repoRoot, 'team-report', 'runtime', 'work', 'history', 'layout', 'workspace-copy.js');
+const formattersPath = path.join(repoRoot, 'team-report', 'runtime', 'work', 'history', 'layout', 'formatters.js');
 const templatesPath = path.join(repoRoot, 'team-report', 'runtime', 'work', 'history', 'layout', 'templates.js');
 const layoutSource = await fs.readFile(layoutPath, 'utf8');
+const workspaceCopySource = await fs.readFile(workspaceCopyPath, 'utf8');
+const formattersSource = await fs.readFile(formattersPath, 'utf8');
 const templatesSource = await fs.readFile(templatesPath, 'utf8');
 const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
 
@@ -79,6 +83,8 @@ function createContext(options = {}) {
   context.KpiWorkHistory = history;
   vm.createContext(context);
   vm.runInContext(layoutSource, context, { filename: 'KPI.work.history.view.layout.js' });
+  vm.runInContext(workspaceCopySource, context, { filename: 'layout/workspace-copy.js' });
+  vm.runInContext(formattersSource, context, { filename: 'layout/formatters.js' });
   vm.runInContext(templatesSource, context, { filename: 'layout/templates.js' });
   return context;
 }
@@ -109,11 +115,15 @@ test('work history layout templates registry exposes shell and modal builders', 
 
 test('kpi html loads work history layout templates between layout and render', () => {
   const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=250');
+  const workspaceCopyIndex = kpiHtml.indexOf('runtime/work/history/layout/workspace-copy.js?v=1');
+  const formattersIndex = kpiHtml.indexOf('runtime/work/history/layout/formatters.js?v=1');
   const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=249');
   const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=234');
 
   assert.ok(layoutIndex >= 0, 'work history layout loader is missing');
-  assert.ok(templatesIndex > layoutIndex, 'work history layout templates must load after layout.js');
+  assert.ok(workspaceCopyIndex > layoutIndex, 'work history workspace copy must load after layout.js');
+  assert.ok(formattersIndex > workspaceCopyIndex, 'work history formatters must load after workspace copy');
+  assert.ok(templatesIndex > formattersIndex, 'work history layout templates must load after formatter helpers');
   assert.ok(renderIndex > templatesIndex, 'work history render must load after layout templates');
 });
 

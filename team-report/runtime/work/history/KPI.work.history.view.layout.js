@@ -5,16 +5,9 @@
     const view = history.view || (history.view = {});
     const {
         TEAM_KEYS,
-        TeamInfo,
-        RECORD_CATEGORY_OPTIONS,
-        RECORD_CATEGORY_GROUP_ORDER,
-        RECORD_CATEGORY_GROUPS,
         isImportantRecord,
         isReportRecord,
         state,
-        WORK_HISTORY_ATTACHMENT_ACCEPT,
-        escapeHtml,
-        escapeAttribute,
         getElement,
         queryAll,
         setShadowHost,
@@ -23,13 +16,6 @@
 
     const CSS_PATH = 'team-report/runtime/work/history/KPI.work.history.css?v=246';
     const COMPANY_LOGO_SRC = '/shared-assets/logo.jpg';
-    const DEFAULT_TITLE = '작업 이력 기입';
-    const DEFAULT_SUBTITLE = '기간, 팀, 작업자, 업무내용, 첨부 문서, 비용까지 기록하는 KPI 작업내역 화면';
-    const DEFAULT_DELETE_MESSAGE = '이 작업내역을 삭제하시겠습니까?';
-    const DEFAULT_DELETE_SUB_MESSAGE = '삭제 후에는 복구되지 않습니다.';
-    const PRODUCTION_REPORT_TITLE = '생산 본부 실적보고';
-    const PRODUCTION_REPORT_SUBTITLE = '1팀 1파트부터 공무환경팀까지 실적 보고서만 작성하고 조회하는 보고 전용 화면';
-    const PRODUCTION_REPORT_DELETE_MESSAGE = '이 실적 보고서를 삭제하시겠습니까?';
     const OVERVIEW_KEY = 'overview';
     const DRAG_SCROLL_THRESHOLD = 6;
     const HISTORY_MIN_DATE = '2024-01-01';
@@ -67,8 +53,8 @@
         team4: {
             kicker: 'TEAM 4',
             title: '공무환경팀',
-            desc: '폐수 · 전체 · 기타',
-            tags: ['폐수', '전체', '기타']
+            desc: '용수 및 공장 기타',
+            tags: ['용수', '공장', '기타']
         }
     });
 
@@ -132,146 +118,8 @@
         return typeof isProductionReportWorkspace === 'function' && isProductionReportWorkspace();
     }
 
-    function getWorkspaceTitle(category = null) {
-        if (isProductionWorkspace()) {
-            return state.workspaceTitle || PRODUCTION_REPORT_TITLE;
-        }
-        return category?.title ? `팀별내역서 ${category.title}` : DEFAULT_TITLE;
-    }
-
-    function getWorkspaceSubtitle(category = null) {
-        if (isProductionWorkspace()) {
-            return state.workspaceSubtitle || PRODUCTION_REPORT_SUBTITLE;
-        }
-        return category?.desc || DEFAULT_SUBTITLE;
-    }
-
-    function getAddRecordLabel() {
-        return isProductionWorkspace() ? '보고 작성' : '내역 추가';
-    }
-
-    function getRecordModalTitle(isEdit = false) {
-        if (isProductionWorkspace()) {
-            return isEdit ? '실적 보고서 수정' : '실적 보고서 작성';
-        }
-        return isEdit ? '작업내역 수정' : '작업내역 추가';
-    }
-
-    function getRecordSaveButtonLabel() {
-        return isProductionWorkspace() ? '보고서 저장' : '저장';
-    }
-
-    function getDeleteModalMessage() {
-        return isProductionWorkspace() ? PRODUCTION_REPORT_DELETE_MESSAGE : DEFAULT_DELETE_MESSAGE;
-    }
-
-    function getDeleteModalSubMessage() {
-        return DEFAULT_DELETE_SUB_MESSAGE;
-    }
-
-    function getEmptyStateMessage() {
-        return isProductionWorkspace() ? '작성된 실적 보고서가 없습니다.' : '조건에 맞는 작업내역이 없습니다.';
-    }
-
-    function updateTitleState(category) {
-        const rootEl = getElement('work-history-root');
-        const titleEl = getElement('history-title');
-        const subtitleEl = getElement('history-subtitle');
-        const workspacePillEl = getElement('history-workspace-pill');
-        const categoryRow = getElement('recordCategoryRow');
-        const modalTitleEl = getElement('modalTitle');
-        const workContentLabelEl = getElement('recordWorkContentLabel');
-        const remarksLabelEl = getElement('recordRemarksLabel');
-        const attachmentLabelEl = getElement('recordAttachmentLabel');
-        const attachmentHelpEl = getElement('recordAttachmentHelp');
-        const workContentInput = getElement('recordWorkContent');
-        const remarksInput = getElement('recordRemarks');
-        const saveButtonEl = getElement('recordSaveButton');
-        const deleteTitleEl = getElement('deleteModalTitle');
-        const deleteMessageEl = getElement('deleteModalMessage');
-        const deleteSubMessageEl = getElement('deleteModalSubMessage');
-        const guideRequiredEl = getElement('recordGuideItemRequired');
-        const guideCostEl = getElement('recordGuideItemCost');
-        const guideAttachmentEl = getElement('recordGuideItemAttachment');
-        const isProductionReport = isProductionWorkspace();
-
-        if (rootEl) {
-            rootEl.classList.toggle('is-production-report-workspace', isProductionReport);
-            rootEl.dataset.workspaceMode = isProductionReport ? 'production-report' : 'default';
-        }
-        if (titleEl) {
-            titleEl.textContent = getWorkspaceTitle(category);
-        }
-        if (subtitleEl) {
-            subtitleEl.textContent = getWorkspaceSubtitle(category);
-        }
-        if (workspacePillEl) {
-            workspacePillEl.hidden = !isProductionReport;
-        }
-        if (categoryRow) {
-            categoryRow.hidden = isProductionReport;
-        }
-        if (modalTitleEl) {
-            modalTitleEl.textContent = getRecordModalTitle(false);
-        }
-        if (workContentLabelEl) {
-            workContentLabelEl.textContent = isProductionReport ? '보고 제목 / 핵심 내용' : '제목';
-        }
-        if (remarksLabelEl) {
-            remarksLabelEl.textContent = isProductionReport ? '보고 메모' : '비고';
-        }
-        if (attachmentLabelEl) {
-            attachmentLabelEl.textContent = isProductionReport ? '보고 첨부' : '첨부 파일';
-        }
-        if (attachmentHelpEl) {
-            attachmentHelpEl.textContent = isProductionReport
-                ? '보고자료 문서 1건을 선택합니다.'
-                : '청구서와 보고자료 칸에서 각각 문서 1건씩 선택합니다.';
-        }
-        if (workContentInput) {
-            workContentInput.placeholder = isProductionReport
-                ? '실적 보고 제목과 핵심 내용을 적습니다.'
-                : '작업 제목 또는 핵심 내용을 적습니다.';
-        }
-        if (remarksInput) {
-            remarksInput.placeholder = isProductionReport
-                ? '실적 수치, 특이사항, 후속 메모를 적습니다.'
-                : '특이사항, 후속 메모, 참고 내용을 적습니다.';
-        }
-        if (saveButtonEl) {
-            saveButtonEl.textContent = getRecordSaveButtonLabel();
-        }
-        if (deleteTitleEl) {
-            deleteTitleEl.textContent = isProductionReport ? '보고 삭제 확인' : '삭제 확인';
-        }
-        if (deleteMessageEl) {
-            deleteMessageEl.textContent = getDeleteModalMessage();
-        }
-        if (deleteSubMessageEl) {
-            deleteSubMessageEl.textContent = getDeleteModalSubMessage();
-        }
-        if (guideRequiredEl) {
-            guideRequiredEl.textContent = isProductionReport
-                ? '기간, 팀, 작성자, 보고 내용은 필수입니다.'
-                : '기간, 팀, 작업자, 업무내용은 필수입니다.';
-        }
-        if (guideCostEl) {
-            guideCostEl.textContent = isProductionReport
-                ? '비용은 실적 보고에 필요한 경우에만 입력합니다.'
-                : '비용은 필요한 경우에만 입력합니다.';
-        }
-        if (guideAttachmentEl) {
-            guideAttachmentEl.textContent = isProductionReport
-                ? '실적 보고 화면에서는 보고자료 문서 1건만 첨부할 수 있습니다.'
-                : '첨부는 청구서 1건, 보고자료 1건으로 구분되며 PDF·엑셀·PPT·워드·한글 문서를 올릴 수 있습니다.';
-        }
-        queryAll('[data-role="add-record-label"]').forEach((node) => {
-            node.textContent = getAddRecordLabel();
-        });
-    }
-
     function initDateFilterLimits() {
-        const today = todayInputValue();
+        const today = typeof view.todayInputValue === 'function' ? view.todayInputValue() : '';
         const minDate = HISTORY_MIN_DATE;
         queryAll('.date-range-selector input[type="date"]').forEach(input => {
             input.max = today;
@@ -341,77 +189,9 @@
         view.updateSearchCount?.();
     }
 
-    function todayInputValue() {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const date = String(today.getDate()).padStart(2, '0');
-        return `${year}-${month}-${date}`;
-    }
-
-    function formatAssigneeText(record, separator = ', ') {
-        const assignees = Array.isArray(record?.assignees)
-            ? record.assignees.filter(Boolean)
-            : history.normalizeAssignees(record?.assignee || record?.worker || '');
-        return assignees.join(separator);
-    }
-
-    function formatDateRange(startDate, endDate) {
-        if (!startDate && !endDate) return '기간 미입력';
-        if (startDate && endDate && startDate === endDate) return formatDateKorean(startDate);
-        return `${formatDateKorean(startDate)} ~ ${formatDateKorean(endDate)}`;
-    }
-
-    function formatDateKorean(dateString) {
-        if (!dateString) return '-';
-        const date = new Date(dateString);
-        if (Number.isNaN(date.getTime())) return '-';
-        return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
-    }
-
-    function formatCurrency(cost) {
-        if (cost === null || cost === undefined || cost === '') return '자체처리';
-        return `${Number(cost).toLocaleString('ko-KR')}원`;
-    }
-
-    function formatFileSize(bytes) {
-        if (!bytes) return '저장됨';
-        if (bytes < 1024) return `${bytes}B`;
-        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
-        return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
-    }
-
-    function formatCostInputValue(value) {
-        if (value === null || value === undefined || value === '') return '';
-        const digits = String(value).replace(/[^\d]/g, '');
-        if (!digits) return '';
-        return Number(digits).toLocaleString('ko-KR');
-    }
-
-    function buildTimestampLabel() {
-        const now = new Date();
-        return [
-            now.getFullYear(),
-            String(now.getMonth() + 1).padStart(2, '0'),
-            String(now.getDate()).padStart(2, '0'),
-            '_',
-            String(now.getHours()).padStart(2, '0'),
-            String(now.getMinutes()).padStart(2, '0'),
-            String(now.getSeconds()).padStart(2, '0')
-        ].join('');
-    }
-
-    function escapeRegExp(text) {
-        return String(text || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-
     Object.assign(view, {
         CSS_PATH,
         COMPANY_LOGO_SRC,
-        DEFAULT_SUBTITLE,
-        DEFAULT_TITLE,
-        PRODUCTION_REPORT_TITLE,
-        PRODUCTION_REPORT_SUBTITLE,
         OVERVIEW_KEY,
         DRAG_SCROLL_THRESHOLD,
         TAB_META,
@@ -421,26 +201,8 @@
         syncViewportLayout,
         renderShell,
         isProductionWorkspace,
-        getWorkspaceTitle,
-        getWorkspaceSubtitle,
-        getAddRecordLabel,
-        getRecordModalTitle,
-        getRecordSaveButtonLabel,
-        getDeleteModalMessage,
-        getDeleteModalSubMessage,
-        getEmptyStateMessage,
-        updateTitleState,
         initDateFilterLimits,
         updateHeaderSummary,
-        minInputValue,
-        todayInputValue,
-        formatAssigneeText,
-        formatDateRange,
-        formatDateKorean,
-        formatCurrency,
-        formatFileSize,
-        formatCostInputValue,
-        buildTimestampLabel,
-        escapeRegExp
+        minInputValue
     });
 })();
