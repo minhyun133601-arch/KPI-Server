@@ -92,6 +92,8 @@ function createDataSyncContext(options = {}) {
       'globalThis.__testExports = {',
       '  getWasteData: () => UTIL_WASTE_DATA,',
       '  syncUtilWasteDataFromMetering,',
+      '  normalizeUtilMetricValue,',
+      '  parseUtilAmount,',
       '};',
     ].join('\n'),
     context,
@@ -141,6 +143,23 @@ test('util data sync accepts empty wastewater snapshot after metering store hydr
     ]
   );
   assert.equal(context.__getRebuildCount(), 1);
+});
+
+test('util data sync locks numeric normalization for blanks strings decimals negatives and nulls', () => {
+  const context = createDataSyncContext();
+  const { normalizeUtilMetricValue, parseUtilAmount } = context.__testExports;
+
+  assert.equal(normalizeUtilMetricValue(''), null);
+  assert.equal(normalizeUtilMetricValue(null), null);
+  assert.equal(normalizeUtilMetricValue('42.75'), 42.75);
+  assert.equal(normalizeUtilMetricValue(-1), null);
+  assert.equal(normalizeUtilMetricValue('not-a-number'), null);
+
+  assert.equal(parseUtilAmount(' 1,234.50 kg'), 1234.5);
+  assert.equal(parseUtilAmount('-7.25'), -7.25);
+  assert.equal(parseUtilAmount(''), null);
+  assert.equal(parseUtilAmount(null), null);
+  assert.equal(parseUtilAmount('not-a-number'), null);
 });
 
 test('util data sync browser adapter loads before data sync runtime', () => {

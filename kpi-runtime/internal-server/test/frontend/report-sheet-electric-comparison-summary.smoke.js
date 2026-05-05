@@ -300,6 +300,43 @@ test('report sheet electric comparison summary registry builds electric billing 
   assert.match(html, /data-view-toggle=\"meter\"/);
   assert.match(html, /data-billing-dataset-key=\"electric\"/);
   assert.match(html, /data-billing-scope-key=\"yusan\"/);
+
+  const allocationSummary = registry.buildUtilElectricAllocationSummaryModel(model, {
+    option: { key: 'combined', label: '\uD569\uC0B0' },
+    latestCost: 17750,
+  });
+  assert.deepEqual(
+    allocationSummary.columns.map((column) => ({
+      key: column.key,
+      usage: column.usage,
+      share: column.share,
+      cost: column.cost,
+      compareCost: column.compareCost,
+    })),
+    [
+      {
+        key: 'production',
+        usage: 90,
+        share: 0.9,
+        cost: 15975,
+        compareCost: 444,
+      },
+      {
+        key: 'other',
+        usage: 10,
+        share: 0.1,
+        cost: 1775,
+        compareCost: -444,
+      },
+      {
+        key: 'total',
+        usage: 100,
+        share: 1,
+        cost: 17750,
+        compareCost: 0,
+      },
+    ]
+  );
 });
 
 test('kpi html loads electric runtime sync between electric table render and electric meter model', () => {

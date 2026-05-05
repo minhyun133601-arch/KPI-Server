@@ -121,6 +121,33 @@ function createUsageCalculationContext() {
         endReading: 30,
       },
     ],
+    [
+      'gas_total:2026-06',
+      {
+        startDate: '2026-06-01',
+        endDate: '2026-07-01',
+        startReading: 100,
+        endReading: 225,
+      },
+    ],
+    [
+      'gas_source_1:2026-06',
+      {
+        startDate: '2026-06-01',
+        endDate: '2026-07-01',
+        startReading: 10,
+        endReading: 70,
+      },
+    ],
+    [
+      'gas_source_2:2026-06',
+      {
+        startDate: '2026-06-01',
+        endDate: '2026-07-01',
+        startReading: 40,
+        endReading: 80,
+      },
+    ],
   ]);
 
   let currentResourceType = 'electric';
@@ -230,10 +257,10 @@ function createUsageCalculationContext() {
       return excludedDates.has(`${equipmentId}:${dateString}`);
     },
     getTeamUsagePeriod(monthValue) {
-      return monthValue === '2026-04'
+      return monthValue === '2026-04' || monthValue === '2026-06'
         ? {
-            startDate: '2026-04-01',
-            endDate: '2026-05-01',
+            startDate: `${monthValue}-01`,
+            endDate: monthValue === '2026-04' ? '2026-05-01' : '2026-07-01',
           }
         : null;
     },
@@ -407,6 +434,13 @@ test('usage calculation resolves monthly usage base and monthly gas correction f
     }
   );
   assert.equal(context.calculateGasCorrectionFactorForMonth('2026-04'), 1.2);
+});
+
+test('usage calculation locks monthly gas correction factor numeric ratio', () => {
+  const context = createUsageCalculationContext();
+  context.__setResourceType('gas');
+
+  assert.equal(context.calculateGasCorrectionFactorForMonth('2026-06'), 1.25);
 });
 
 test('usage calculation returns explicit nulls for missing windows and invalid months', () => {

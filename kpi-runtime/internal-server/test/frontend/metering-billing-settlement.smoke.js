@@ -528,6 +528,18 @@ test('billing settlement calculation helpers preserve zero totals and reject inv
     ),
     '0'
   );
+  assert.equal(
+    context.calculateBillingSettlementSignedTotalValue(
+      {},
+      [
+        { key: 'missing_charge', sign: 1 },
+        { key: 'missing_discount', sign: -1 },
+      ]
+    ),
+    null
+  );
+  assert.equal(context.calculateBillingSettlementSignedTotal({}, []), '');
+  assert.equal(context.calculateBillingSettlementBillingAmountValue({}, 'default'), null);
 });
 
 test('billing settlement records normalize scoped entries and expose the month range', () => {
