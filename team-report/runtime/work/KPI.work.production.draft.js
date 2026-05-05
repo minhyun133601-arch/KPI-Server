@@ -1,4 +1,8 @@
-﻿        function renderWorkTeamCalendarSelectedMembersHtml(members) {
+        const workProductionDraftBrowser = typeof KpiWorkBrowserAdapter !== 'undefined'
+            ? KpiWorkBrowserAdapter
+            : null;
+
+        function renderWorkTeamCalendarSelectedMembersHtml(members) {
             const list = Array.isArray(members) ? members : [];
             if (!list.length) {
                 return '<span class="work-team-calendar-selected-empty">담당자 미선택</span>';
@@ -58,10 +62,11 @@
         let workEntryHandleDbPromise = null;
 
         function openWorkEntryHandleDb() {
-            if (!('indexedDB' in window)) return Promise.resolve(null);
+            const indexedDb = workProductionDraftBrowser?.getIndexedDB?.();
+            if (!indexedDb) return Promise.resolve(null);
             if (workEntryHandleDbPromise) return workEntryHandleDbPromise;
             workEntryHandleDbPromise = new Promise((resolve, reject) => {
-                const request = window.indexedDB.open(WORK_ENTRY_HANDLE_DB_NAME, 1);
+                const request = indexedDb.open(WORK_ENTRY_HANDLE_DB_NAME, 1);
                 request.onupgradeneeded = () => {
                     const db = request.result;
                     if (!db.objectStoreNames.contains(WORK_ENTRY_HANDLE_STORE_NAME)) {
@@ -130,11 +135,12 @@
                 return handle;
             }
             if (options.prompt !== true) return null;
-            if (!('showDirectoryPicker' in window)) {
+            const showDirectoryPicker = workProductionDraftBrowser?.getShowDirectoryPicker?.();
+            if (typeof showDirectoryPicker !== 'function') {
                 throw new Error('현재 브라우저는 폴더 직접 저장을 지원하지 않습니다.');
             }
             alert('처음 한 번 현재 3월 작업 폴더를 선택하면, 그 안의 작업내역 폴더에 자동 저장됩니다.');
-            handle = await window.showDirectoryPicker({ mode: 'readwrite', id: 'kpi-work-entry-root' });
+            handle = await showDirectoryPicker({ mode: 'readwrite', id: 'kpi-work-entry-root' });
             if (!handle || !await verifyWorkEntryHandlePermission(handle, true)) {
                 throw new Error('작업내역 폴더에 대한 쓰기 권한이 필요합니다.');
             }

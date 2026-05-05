@@ -2,6 +2,7 @@ const ERROR_STATUS_CODES = new Map([
   ['unauthorized', 401],
   ['forbidden', 403],
   ['invalid_credentials', 401],
+  ['login_rate_limited', 429],
   ['owner_already_exists', 409],
   ['body_too_large', 413],
   ['invalid_json', 400],

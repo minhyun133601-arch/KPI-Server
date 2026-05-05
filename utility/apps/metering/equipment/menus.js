@@ -1,3 +1,21 @@
+function getEquipmentMenuBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function alertEquipmentMenuUser(message) {
+  const adapter = getEquipmentMenuBrowserAdapter();
+  if (typeof adapter?.alert === "function") {
+    adapter.alert(message);
+  }
+}
+
+function setEquipmentMenuTimeout(callback, delay = 0) {
+  const adapter = getEquipmentMenuBrowserAdapter();
+  return typeof adapter?.setTimeout === "function" ? adapter.setTimeout(callback, delay) : null;
+}
+
 function resetEquipmentAddDraft() {
   if (elements.equipmentItemNameInput) {
     elements.equipmentItemNameInput.value = "";
@@ -68,7 +86,7 @@ function toggleEquipmentAddMenu() {
     elements.equipmentOrderList.innerHTML = "";
     syncEquipmentOrderMenu();
     syncEquipmentAddMenu();
-    window.setTimeout(() => {
+    setEquipmentMenuTimeout(() => {
       elements.equipmentItemNameInput?.focus();
     }, 0);
     return;
@@ -209,7 +227,7 @@ function handleAddEquipmentItem() {
 
   const duplicated = hasEquipmentLabelConflict(label);
   if (duplicated) {
-    window.alert("이미 등록된 설비입니다.");
+    alertEquipmentMenuUser("이미 등록된 설비입니다.");
     elements.equipmentItemNameInput?.focus();
     elements.equipmentItemNameInput?.select();
     return;
@@ -222,7 +240,7 @@ function handleAddEquipmentItem() {
   const nextFactor = rawFactorText ? Number.parseFloat(rawFactorText) : defaultFactor;
 
   if (!Number.isFinite(nextFactor) || nextFactor < 0) {
-    window.alert(`${getUsageFactorLabel()}은 0 이상의 숫자만 입력할 수 있습니다.`);
+    alertEquipmentMenuUser(`${getUsageFactorLabel()}은 0 이상의 숫자만 입력할 수 있습니다.`);
     elements.equipmentItemFactorInput?.focus();
     elements.equipmentItemFactorInput?.select();
     return;

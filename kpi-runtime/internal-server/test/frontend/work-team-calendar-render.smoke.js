@@ -26,6 +26,7 @@ assert.ok(teamCalendarPath, 'work team calendar source is missing');
 
 const workDir = path.dirname(teamCalendarPath);
 const teamCalendarSourcePaths = [
+  path.join(workDir, 'KPI.work.browser-adapter.js'),
   teamCalendarPath,
   path.join(workDir, 'KPI.work.team-calendar.selection.js'),
   path.join(workDir, 'KPI.work.team-calendar.draft-actions.js'),
@@ -40,6 +41,15 @@ const teamCalendarSources = await Promise.all(
 );
 
 const combinedTeamCalendarSource = teamCalendarSources.map((entry) => entry.source).join('\n');
+const teamCalendarSource = teamCalendarSources.find(
+  (entry) => entry.filename === 'KPI.work.team-calendar.js'
+)?.source || '';
+const teamCalendarRenderSource = teamCalendarSources.find(
+  (entry) => entry.filename === 'KPI.work.team-calendar.render.js'
+)?.source || '';
+const teamCalendarDraftActionsSource = teamCalendarSources.find(
+  (entry) => entry.filename === 'KPI.work.team-calendar.draft-actions.js'
+)?.source || '';
 
 function overrideBinding(context, name, value) {
   const overrideKey = `__override_${name}`;
@@ -89,6 +99,8 @@ function createContext(options = {}) {
   };
   const context = {
     console,
+    openedWindows: [],
+    timeoutCallbacks: 0,
     Date,
     JSON,
     Math,
@@ -137,6 +149,16 @@ function createContext(options = {}) {
       },
     },
     alert() {},
+    open(url, target, features) {
+      const opened = { url, target, features };
+      this.openedWindows.push(opened);
+      return opened;
+    },
+    setTimeout(callback) {
+      this.timeoutCallbacks += 1;
+      callback();
+      return this.timeoutCallbacks;
+    },
   };
   context.window = context;
   context.globalThis = context;
@@ -239,6 +261,34 @@ test('work team calendar offday cells keep production and history cues in the fl
 
 test('work team calendar source does not keep stray equipUtilityChipHtml references', () => {
   assert.doesNotMatch(combinedTeamCalendarSource, /\bequipUtilityChipHtml\b/);
+});
+
+test('work team calendar render reads history globals through the browser adapter', () => {
+  assert.doesNotMatch(teamCalendarRenderSource, /window\.KpiWorkHistory/);
+});
+
+test('work team calendar draft actions route popup and portal globals through the browser adapter', () => {
+  const { context } = createContext();
+  const adapter = context.KpiWorkBrowserAdapter;
+
+  assert.doesNotMatch(teamCalendarDraftActionsSource, /window\./);
+  assert.deepEqual(adapter.writePortalData('work_team_calendar_team1_part1', { ok: true }), { ok: true });
+  assert.deepEqual(context.PortalData.work_team_calendar_team1_part1, { ok: true });
+  assert.deepEqual(adapter.openWindow('/preview', '_blank', 'noopener'), {
+    url: '/preview',
+    target: '_blank',
+    features: 'noopener',
+  });
+  assert.equal(adapter.setWindowTimeout(() => {}, 30000), 1);
+});
+
+test('work team calendar modal bind flags route through the browser adapter', () => {
+  const { context } = createContext();
+  const adapter = context.KpiWorkBrowserAdapter;
+
+  assert.doesNotMatch(teamCalendarSource, /window\./);
+  assert.equal(adapter.setRootFlag('__workTeamCalendarEscBound', true), true);
+  assert.equal(adapter.getRootFlag('__workTeamCalendarEscBound'), true);
 });
 
 test('work team calendar attachment actions confirm server save before destructive file cleanup', () => {

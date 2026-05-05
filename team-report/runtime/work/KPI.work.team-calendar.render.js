@@ -1,3 +1,7 @@
+        const workTeamCalendarRenderBrowser = typeof KpiWorkBrowserAdapter !== 'undefined'
+            ? KpiWorkBrowserAdapter
+            : null;
+
         function renderWorkTeamCalendarInlineContent(category, headerHtml, options = {}) {
             const contentContainer = document.getElementById('content-container');
             const teamCategories = getWorkTeamCalendarCategories();
@@ -66,11 +70,8 @@
                 if (typeof isWorkTeamCalendarHistoryKpi === 'function') {
                     return isWorkTeamCalendarHistoryKpi(record);
                 }
-                if (typeof window.KpiWorkHistory?.isImportantRecord === 'function') {
-                    return window.KpiWorkHistory.isImportantRecord(record);
-                }
-                if (typeof window.KpiWorkHistory?.isKpiRecord === 'function') {
-                    return window.KpiWorkHistory.isKpiRecord(record);
+                if (workTeamCalendarRenderBrowser) {
+                    return workTeamCalendarRenderBrowser.isHistoryImportantRecord(record);
                 }
                 return String(record?.category || '').trim() === 'KPI'
                     || String(record?.categoryGroup || record?.categoryType || '').trim() === 'report';
@@ -81,8 +82,8 @@
             const selectedHistoryKpiCount = hasSelectedEntryContent
                 ? selectedHistoryRecords.filter(isHistoryKpiRecord).length
                 : 0;
-            const historyKpiLabel = window.KpiWorkHistory?.IMPORTANT_FLAG_LABEL || '★';
-            const historyKpiPillLabel = window.KpiWorkHistory?.IMPORTANT_FLAG_PILL_LABEL || '★';
+            const historyKpiLabel = workTeamCalendarRenderBrowser?.getHistoryImportantFlagLabel?.() || '\u2605';
+            const historyKpiPillLabel = workTeamCalendarRenderBrowser?.getHistoryImportantPillLabel?.() || '\u2605';
             const selectedHistoryCostSummary = hasSelectedEntryContent && typeof getWorkTeamCalendarHistoryCostSummary === 'function'
                 ? getWorkTeamCalendarHistoryCostSummary(selectedHistoryRecords)
                 : { totalCost: 0, costText: '-' };

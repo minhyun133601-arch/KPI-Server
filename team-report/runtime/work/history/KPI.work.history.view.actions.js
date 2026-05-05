@@ -1,5 +1,6 @@
 (function initKpiWorkHistoryViewActions() {
-    const history = window.KpiWorkHistory;
+    const browser = KpiWorkHistoryBrowserAdapter;
+    const history = KpiWorkHistoryBrowserAdapter.getHistory();
     if (!history) return;
 
     const view = history.view || (history.view = {});
@@ -20,7 +21,7 @@
         root.addEventListener('keydown', handleRootKeydown, true);
         if (!state.viewportResizeBound) {
             state.viewportResizeBound = true;
-            window.addEventListener('resize', handleWindowResize);
+            browser.addWindowEventListener('resize', handleWindowResize);
         }
         if (!state.fullscreenChangeBound) {
             state.fullscreenChangeBound = true;

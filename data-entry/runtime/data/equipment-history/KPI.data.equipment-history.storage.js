@@ -1,5 +1,6 @@
 (function () {
-    const api = window.KpiDataEquipmentHistory || (window.KpiDataEquipmentHistory = {});
+    const browser = KpiDataEquipmentHistoryBrowserAdapter;
+    const api = browser.getApi();
     const DATA_KEY = 'data_equipment_history_card';
     const OWNER_DOMAIN = 'data.equipment_history';
     const PHOTO_CATEGORY = 'photo';
@@ -10,7 +11,7 @@
     }
 
     function getRuntimeConfig() {
-        const dataRuntime = window.__KPI_SERVER_RUNTIME_CONFIG__?.data;
+        const dataRuntime = browser.getDataRuntimeConfig();
         const record = dataRuntime?.records?.[DATA_KEY];
         const assets = dataRuntime?.assets?.equipmentHistory || {};
         if (!dataRuntime || dataRuntime.enabled !== true || !record) return null;
@@ -31,9 +32,9 @@
 
     function canSaveEquipmentHistoryToServer() {
         const runtime = getRuntimeConfig();
-        return window.KpiRuntime?.canUseServerWrite?.(runtime?.writeEnabled === true) === true
+        return browser.canUseServerWrite(runtime?.writeEnabled === true)
             && runtime?.assetWriteEnabled === true
-            && typeof fetch === 'function';
+            && browser.hasFetch();
     }
 
     function readFileAsBase64(file) {
@@ -82,7 +83,7 @@
         const mimeType = String(file.type || 'application/octet-stream').trim() || 'application/octet-stream';
         const base64Data = await readFileAsBase64(file);
         const equipmentName = getEquipmentName(draft);
-        const response = await fetch(`${runtime.apiBase.replace(/\/+$/, '')}/files/base64`, {
+        const response = await browser.fetch(`${runtime.apiBase.replace(/\/+$/, '')}/files/base64`, {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
@@ -171,8 +172,8 @@
 
     async function deleteEquipmentHistoryDocument(documentId) {
         const normalizedDocumentId = String(documentId || '').trim();
-        if (!normalizedDocumentId || typeof fetch !== 'function') return true;
-        const response = await fetch(`/api/files/${encodeURIComponent(normalizedDocumentId)}`, {
+        if (!normalizedDocumentId || !browser.hasFetch()) return true;
+        const response = await browser.fetch(`/api/files/${encodeURIComponent(normalizedDocumentId)}`, {
             method: 'DELETE',
             credentials: 'same-origin',
         });
@@ -221,10 +222,9 @@
         const nextPayload = cloneJson(payload);
         nextPayload.meta = nextPayload.meta || {};
         nextPayload.meta.updatedAt = new Date().toISOString();
-        window.PortalData = window.PortalData || {};
-        window.PortalData[DATA_KEY] = cloneJson(nextPayload);
+        browser.writePortalPayload(DATA_KEY, nextPayload);
 
-        const response = await fetch(`${runtime.apiBase.replace(/\/+$/, '')}/modules/${encodeURIComponent(runtime.moduleKey)}/records/${encodeURIComponent(runtime.recordKey)}`, {
+        const response = await browser.fetch(`${runtime.apiBase.replace(/\/+$/, '')}/modules/${encodeURIComponent(runtime.moduleKey)}/records/${encodeURIComponent(runtime.recordKey)}`, {
             method: 'PUT',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
@@ -238,7 +238,7 @@
             throw new Error(result?.error || `http_${response.status}`);
         }
         if (result?.record?.payload) {
-            window.PortalData[DATA_KEY] = cloneJson(result.record.payload);
+            browser.writePortalPayload(DATA_KEY, result.record.payload);
             return result.record.payload;
         }
         return nextPayload;

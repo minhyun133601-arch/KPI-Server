@@ -6,9 +6,11 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
+const adapterPath = path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.section.factory-adapter.js');
 const sectionPath = path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.production-report.js');
 const sectionRegistryPath = path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.section.registry.js');
 const popupPath = path.join(repoRoot, 'kpi-runtime', 'sections', 'monthly-performance-report-popup.html');
+const adapterSource = await fs.readFile(adapterPath, 'utf8');
 const sectionSource = await fs.readFile(sectionPath, 'utf8');
 const sectionRegistrySource = await fs.readFile(sectionRegistryPath, 'utf8');
 const popupSource = await fs.readFile(popupPath, 'utf8');
@@ -18,6 +20,9 @@ function loadProductionReportSection() {
   const context = {
     window: {},
   };
+  vm.runInNewContext(adapterSource, context, {
+    filename: adapterPath,
+  });
   vm.runInNewContext(sectionSource, context, {
     filename: sectionPath,
   });
@@ -59,10 +64,14 @@ test('monthly performance popup contains team selectors and metric placeholders'
 });
 
 test('kpi html and registry wire the production report section before the section registry bootstraps', () => {
+  const adapterIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.factory-adapter.js?v=1');
   const sectionIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.production-report.js?v=1');
   const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=1');
 
+  assert.ok(adapterIndex >= 0, 'section factory adapter loader is missing');
   assert.ok(sectionIndex >= 0, 'production report section loader is missing');
+  assert.ok(sectionIndex > adapterIndex, 'production report section must load after section factory adapter');
   assert.ok(registryIndex > sectionIndex, 'section registry must load after the production report section');
   assert.match(sectionRegistrySource, /'work', 'util', 'audit', 'data', 'productionReport', 'owner'/);
+  assert.doesNotMatch(sectionRegistrySource, /window\.KpiSectionFactories/);
 });

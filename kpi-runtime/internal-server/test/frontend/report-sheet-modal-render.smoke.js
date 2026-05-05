@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
@@ -123,6 +127,9 @@ function createModalRenderContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js',
   });
@@ -147,6 +154,9 @@ function createGasRuntimeSyncContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js',
   });
@@ -161,6 +171,9 @@ test('report sheet modal render registry normalizes meter modal state and rerend
   const modalRender = context.KPIUtilReportSheetModalRender;
   const config = context.KPIUtilReportSheetConfig;
   const { modal, kicker, title, sub, body, monthSelect } = createModalHarness();
+
+  assert.doesNotMatch(reportSheetModalRenderSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetModalRenderSource, /KPIUtilReportRuntimeAdapter/);
 
   context.document.getElementById = (id) => (id === 'util-sheet-report-modal' ? modal : null);
 
@@ -454,6 +467,7 @@ test('report sheet gas runtime sync forces one metering sync per report session'
 });
 
 test('kpi html loads report sheet modal render between modal shell and sheet.js', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=054');
   const gasScopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=053');
   const gasRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/runtime-sync.js?v=054');
@@ -462,9 +476,11 @@ test('kpi html loads report sheet modal render between modal shell and sheet.js'
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(configIndex >= 0, 'report sheet config loader is missing');
   assert.ok(gasRuntimeSyncIndex > gasScopedMetricsIndex, 'gas runtime sync must load after gas scoped metrics');
   assert.ok(modalShellIndex >= 0, 'report sheet modal shell loader is missing');
+  assert.ok(modalRenderIndex > adapterIndex, 'report sheet modal render must load after report runtime adapter');
   assert.ok(modalRenderIndex > modalShellIndex, 'report sheet modal render must load after report sheet modal shell');
   assert.ok(analysisRenderIndex > modalRenderIndex, 'report sheet analysis render must load after report sheet modal render');
   assert.ok(sheetIndex > analysisRenderIndex, 'report sheet must load after report sheet analysis render');

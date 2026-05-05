@@ -1,12 +1,19 @@
-(function registerUtilReportSheetAnalysisGasModel(globalScope) {
-    if (globalScope.KPIUtilReportSheetAnalysisGasModel) {
+(function registerUtilReportSheetAnalysisGasModel() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/analysis/gas/model.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetAnalysisGasModel')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.analysis.gas.model.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.analysis.gas.model.js'
+    );
 
     const {
         UTIL_SHEET_DATASET_SPECS,
@@ -35,12 +42,15 @@
         buildUtilGasAnalysisCostModeText: null,
         buildUtilGasAnalysisCombinedChart: null,
         buildUtilGasAnalysisRangeTables: null,
-        buildUtilGasAnalysisRatioCombinedChartModel: null
+        buildUtilGasAnalysisRatioCombinedChartModel: null,
+        buildUtilReportMonthlyRows: null,
+        formatUtilReportMonthLong: null,
+        formatUtilReportMonthShort: null
     };
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetAnalysisGasModel;
+        return api;
     }
 
     function buildMonthBounds(datasetKey = 'gas') {
@@ -200,7 +210,7 @@
     function buildUtilGasAnalysisModel(selectedMonthKey = '', compareKey = 'month') {
         const spec = UTIL_SHEET_DATASET_SPECS.gas;
         const bounds = buildMonthBounds('gas');
-        if (!spec || !bounds || typeof globalScope.buildUtilReportMonthlyRows !== 'function') {
+        if (!spec || !bounds || typeof runtime.buildUtilReportMonthlyRows !== 'function') {
             return {
                 hasData: false,
                 monthOptions: [],
@@ -231,12 +241,12 @@
             categoryKey: 'cost',
             selectedScopeKeys: [spec.scopeKey]
         };
-        const fullResult = globalScope.buildUtilReportMonthlyRows(baseState);
+        const fullResult = runtime.buildUtilReportMonthlyRows(baseState);
         const fullRows = Array.isArray(fullResult?.rows) ? fullResult.rows : [];
         const settledRows = fullRows.filter(row => Boolean(row?.monthKey));
         const monthOptions = settledRows.map(row => ({
             value: row.monthKey,
-            label: typeof globalScope.formatUtilReportMonthLong === 'function' ? globalScope.formatUtilReportMonthLong(row.monthKey) : row.monthKey
+            label: typeof runtime.formatUtilReportMonthLong === 'function' ? runtime.formatUtilReportMonthLong(row.monthKey) : row.monthKey
         }));
         if (!monthOptions.length) {
             return {
@@ -296,7 +306,7 @@
         const createPoint = (monthKey, value) => ({
             key: monthKey,
             monthKey,
-            label: typeof globalScope.formatUtilReportMonthShort === 'function' ? globalScope.formatUtilReportMonthShort(monthKey) : monthKey,
+            label: typeof runtime.formatUtilReportMonthShort === 'function' ? runtime.formatUtilReportMonthShort(monthKey) : monthKey,
             value: Number.isFinite(value) ? value : NaN
         });
         const buildCompareKey = monthKey => normalizedCompareKey === 'year'
@@ -471,8 +481,10 @@
         };
     }
 
-    globalScope.KPIUtilReportSheetAnalysisGasModel = Object.freeze({
+    const api = Object.freeze({
         setRuntimeAdapters,
         buildUtilGasAnalysisModel
     });
-})(typeof window !== 'undefined' ? window : globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetAnalysisGasModel', api);
+})();

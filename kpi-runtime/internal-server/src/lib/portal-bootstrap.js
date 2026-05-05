@@ -68,11 +68,13 @@ export async function buildPortalDataBootstrapScript(auth, canAccessPermission) 
     : '';
 
   return [
-    `window.__KPI_SERVER_RUNTIME_CONFIG__ = ${serializedRuntimeConfig};`,
-    'window.PortalData = window.PortalData || {};',
-    `Object.assign(window.PortalData, ${serializedPortalData});`,
-    `window.__KPI_PORTAL_DATA_BOOTSTRAP__ = ${serializedMeta};`,
+    '(function bootstrapPortalData(root) {',
+    `root.__KPI_SERVER_RUNTIME_CONFIG__ = ${serializedRuntimeConfig};`,
+    'root.PortalData = root.PortalData || {};',
+    `Object.assign(root.PortalData, ${serializedPortalData});`,
+    `root.__KPI_PORTAL_DATA_BOOTSTRAP__ = ${serializedMeta};`,
     warningLine,
+    '})(this);',
     '',
   ].join('\n');
 }

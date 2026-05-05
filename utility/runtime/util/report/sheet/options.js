@@ -1,5 +1,12 @@
-(function registerUtilReportSheetOptions(globalScope) {
-    if (globalScope.KPIUtilReportSheetOptions) {
+(function registerUtilReportSheetOptions() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/options.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetOptions')) {
         return;
     }
 
@@ -286,7 +293,7 @@
         return 'meter';
     }
 
-    globalScope.KPIUtilReportSheetOptions = {
+    const api = {
         UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS,
         UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS,
         UTIL_ELECTRIC_METER_TEAM_OPTIONS,
@@ -308,4 +315,6 @@
         getUtilGasAnalysisCategoryOption,
         normalizeUtilElectricMeterViewKey
     };
-})(typeof window !== 'undefined' ? window : globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetOptions', api);
+})();

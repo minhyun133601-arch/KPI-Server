@@ -1,3 +1,40 @@
+        function getUtilReportModalRuntimeAdapter() {
+            return typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+                ? KPIUtilReportRuntimeAdapter
+                : null;
+        }
+
+        function getUtilReportModalRootFlag(name) {
+            const adapter = getUtilReportModalRuntimeAdapter();
+            return typeof adapter?.getRootFlag === 'function' && adapter.getRootFlag(name);
+        }
+
+        function setUtilReportModalRootFlag(name, value = true) {
+            const adapter = getUtilReportModalRuntimeAdapter();
+            return typeof adapter?.setRootFlag === 'function'
+                ? adapter.setRootFlag(name, value)
+                : null;
+        }
+
+        function addUtilReportModalGlobalListener(type, listener, options) {
+            const adapter = getUtilReportModalRuntimeAdapter();
+            return typeof adapter?.addEventListener === 'function'
+                ? adapter.addEventListener(type, listener, options)
+                : false;
+        }
+
+        function printUtilReportModal() {
+            const adapter = getUtilReportModalRuntimeAdapter();
+            return typeof adapter?.print === 'function' && adapter.print();
+        }
+
+        function requestUtilReportModalAnimationFrame(callback) {
+            const adapter = getUtilReportModalRuntimeAdapter();
+            return typeof adapter?.requestAnimationFrame === 'function'
+                ? adapter.requestAnimationFrame(callback)
+                : null;
+        }
+
         function bindUtilReportModalControls(modal) {
             if (!modal) return;
             bindUtilReportInlineInsightControls(modal);
@@ -52,7 +89,7 @@
                 }
                 const printBtn = event.target.closest('[data-role="util-report-modal-print"]');
                 if (printBtn) {
-                    window.print();
+                    printUtilReportModal();
                     return;
                 }
                 const builderOpenBtn = event.target.closest('[data-role="util-report-builder-open"]');
@@ -406,9 +443,9 @@
                 if (event.target === modal) closeUtilReportModal();
             });
 
-            if (!window.__utilReportModalEscapeBound) {
-                window.__utilReportModalEscapeBound = true;
-                window.addEventListener('keydown', event => {
+            if (!getUtilReportModalRootFlag('__utilReportModalEscapeBound')) {
+                setUtilReportModalRootFlag('__utilReportModalEscapeBound', true);
+                addUtilReportModalGlobalListener('keydown', event => {
                     if (event.key !== 'Escape') return;
                     const builderVizModal = document.getElementById('util-report-builder-viz-modal');
                     if (builderVizModal && builderVizModal.classList.contains('is-open')) {
@@ -426,9 +463,9 @@
                 });
             }
 
-            if (!window.__utilReportChartResizeBound) {
-                window.__utilReportChartResizeBound = true;
-                window.addEventListener('resize', () => {
+            if (!getUtilReportModalRootFlag('__utilReportChartResizeBound')) {
+                setUtilReportModalRootFlag('__utilReportChartResizeBound', true);
+                addUtilReportModalGlobalListener('resize', () => {
                     const opened = document.getElementById('util-report-modal');
                     if (!opened || !opened.classList.contains('is-open')) return;
                     renderUtilReportModal(UtilReportState.lastResult || runUtilReportFromState({ renderModal: false }));
@@ -448,7 +485,7 @@
             renderUtilReportModal(UtilReportState.lastResult);
             modal.classList.add('is-open');
             document.body.style.overflow = 'hidden';
-            requestAnimationFrame(() => {
+            requestUtilReportModalAnimationFrame(() => {
                 if (!modal.classList.contains('is-open')) return;
                 renderUtilReportModal(UtilReportState.lastResult);
             });

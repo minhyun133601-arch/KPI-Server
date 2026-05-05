@@ -1,3 +1,11 @@
+        const utilEnergyChartBrowser = typeof KpiUtilEnergyBrowserAdapter !== 'undefined'
+            ? KpiUtilEnergyBrowserAdapter
+            : null;
+
+        function useUtilEnergyChartRootFlag(flagName) {
+            return utilEnergyChartBrowser?.useRootFlag?.(flagName) === true;
+        }
+
         function renderUtilEnergyChart(panel) {
             if (!panel) return;
             const fromVal = panel.querySelector('[data-role="energy-chart-from"]')?.value;
@@ -9,10 +17,14 @@
                 panel.querySelector('[data-role="energy-chart-display-decimals"]')?.value,
                 UtilEnergyState.displayDecimals
             );
-            const electricFactor = parseUtilInputNumber(panel.querySelector('[data-role="energy-chart-electric-factor"]')) || UtilEnergyState.electricFactor;
-            const gasLNG = parseUtilInputNumber(panel.querySelector('[data-role="energy-chart-lng-factor"]')) || UtilEnergyState.gasLNG;
-            const gasLPG = parseUtilInputNumber(panel.querySelector('[data-role="energy-chart-lpg-factor"]')) || UtilEnergyState.gasLPG;
-            const toeFactor = parseUtilInputNumber(panel.querySelector('[data-role="energy-chart-toe-factor"]')) || UtilEnergyState.toeFactor;
+            const resolveChartInputNumber = (role, fallback) => {
+                const parsed = parseUtilInputNumber(panel.querySelector(`[data-role="${role}"]`));
+                return Number.isFinite(parsed) ? parsed : fallback;
+            };
+            const electricFactor = resolveChartInputNumber('energy-chart-electric-factor', UtilEnergyState.electricFactor);
+            const gasLNG = resolveChartInputNumber('energy-chart-lng-factor', UtilEnergyState.gasLNG);
+            const gasLPG = resolveChartInputNumber('energy-chart-lpg-factor', UtilEnergyState.gasLPG);
+            const toeFactor = resolveChartInputNumber('energy-chart-toe-factor', UtilEnergyState.toeFactor);
 
             UtilEnergyState.chartMetric = metric;
             UtilEnergyState.chartElectricTeam = electricTeam;
@@ -258,8 +270,7 @@
             });
         }
 
-        if (!window.__utilDualDecimalsPopoverBound) {
-            window.__utilDualDecimalsPopoverBound = true;
+        if (useUtilEnergyChartRootFlag('__utilDualDecimalsPopoverBound')) {
             document.addEventListener('click', () => {
                 closeUtilDualDecimalsPopovers(document);
             });
@@ -272,8 +283,7 @@
             });
         }
 
-        if (!window.__utilActionMenuBound) {
-            window.__utilActionMenuBound = true;
+        if (useUtilEnergyChartRootFlag('__utilActionMenuBound')) {
             document.addEventListener('click', event => {
                 const target = event?.target;
                 if (target && typeof target.closest === 'function' && target.closest('[data-util-action-menu]')) return;

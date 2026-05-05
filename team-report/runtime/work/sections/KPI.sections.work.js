@@ -1,6 +1,5 @@
 (function () {
-    window.KpiSectionFactories = window.KpiSectionFactories || {};
-    window.KpiSectionFactories.work = function buildWorkSection() {
+    KpiSectionFactoryAdapter.registerFactory('work', function buildWorkSection() {
         const AppData = {};
         const teamCategories = [
             {
@@ -147,5 +146,5 @@
             ]
         };
         return AppData['work'];
-    };
+    });
 })();

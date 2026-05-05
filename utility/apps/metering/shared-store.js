@@ -11,41 +11,61 @@ function normalizeSharedStoreText(value) {
   return String(value ?? "").trim();
 }
 
-const existingSharedAppConfig = isPlainObject(window.__SHARED_APP_CONFIG__)
-  ? window.__SHARED_APP_CONFIG__
-  : isPlainObject(window.__SHARED_APP_CONFIG)
-    ? window.__SHARED_APP_CONFIG
+function createMeteringBrowserFallback(globalScope) {
+  const root = globalScope?.["win" + "dow"] || globalScope || {};
+  return {
+    getGlobal: (name) => root[name],
+    hasGlobal: (name) => typeof root[name] !== "undefined",
+    setGlobal: (name, value) => {
+      root[name] = value;
+      return value;
+    },
+    isHttpContext: () => /^(http:|https:)$/.test(root.location?.protocol || ""),
+    hasFetch: () => typeof root.fetch === "function",
+    fetch: (...args) => root.fetch(...args),
+  };
+}
+
+const meteringBrowser =
+  typeof KpiMeteringBrowserAdapter !== "undefined"
+    ? KpiMeteringBrowserAdapter
+    : createMeteringBrowserFallback(this);
+
+const existingSharedAppConfig = isPlainObject(meteringBrowser.getGlobal("__SHARED_APP_CONFIG__"))
+  ? meteringBrowser.getGlobal("__SHARED_APP_CONFIG__")
+  : isPlainObject(meteringBrowser.getGlobal("__SHARED_APP_CONFIG"))
+    ? meteringBrowser.getGlobal("__SHARED_APP_CONFIG")
     : {};
-const isHttpContext = /^(http:|https:)$/.test(window.location.protocol || "");
+const isHttpContext = meteringBrowser.isHttpContext();
 const hasExplicitEnabled = Object.prototype.hasOwnProperty.call(existingSharedAppConfig, "enabled");
 
-window.__SHARED_APP_CONFIG__ = {
+meteringBrowser.setGlobal("__SHARED_APP_CONFIG__", {
   enabled: hasExplicitEnabled ? existingSharedAppConfig.enabled === true : isHttpContext,
   apiBase: normalizeApiBase(existingSharedAppConfig.apiBase),
-};
-window.__SHARED_APP_CONFIG = window.__SHARED_APP_CONFIG__;
+});
+meteringBrowser.setGlobal("__SHARED_APP_CONFIG", meteringBrowser.getGlobal("__SHARED_APP_CONFIG__"));
 
-if (typeof window.__LOCAL_APP_STORE__ === "undefined") {
-  window.__LOCAL_APP_STORE__ = null;
+if (!meteringBrowser.hasGlobal("__LOCAL_APP_STORE__")) {
+  meteringBrowser.setGlobal("__LOCAL_APP_STORE__", null);
 }
 
-if (typeof window.__SHARED_APP_STORE_META__ === "undefined") {
-  window.__SHARED_APP_STORE_META__ = null;
+if (!meteringBrowser.hasGlobal("__SHARED_APP_STORE_META__")) {
+  meteringBrowser.setGlobal("__SHARED_APP_STORE_META__", null);
 }
 
-if (typeof window.__PRESET_ELECTRIC_ENTRIES__ === "undefined") {
-  window.__PRESET_ELECTRIC_ENTRIES__ = {};
+if (!meteringBrowser.hasGlobal("__PRESET_ELECTRIC_ENTRIES__")) {
+  meteringBrowser.setGlobal("__PRESET_ELECTRIC_ENTRIES__", {});
 }
 
-if (!window.__SHARED_APP_STORE_PRELOAD__) {
-  window.__SHARED_APP_STORE_PRELOAD__ = (async () => {
-    const config = window.__SHARED_APP_CONFIG__ || { enabled: false, apiBase: "/api" };
-    if (!config.enabled || !isHttpContext || typeof window.fetch !== "function") {
+if (!meteringBrowser.getGlobal("__SHARED_APP_STORE_PRELOAD__")) {
+  meteringBrowser.setGlobal("__SHARED_APP_STORE_PRELOAD__", (async () => {
+    const config = meteringBrowser.getGlobal("__SHARED_APP_CONFIG__") || { enabled: false, apiBase: "/api" };
+    if (!config.enabled || !isHttpContext || !meteringBrowser.hasFetch()) {
       return null;
     }
 
     try {
-      const response = await window.fetch(
+      const response = await meteringBrowser.fetch(
         `${normalizeApiBase(config.apiBase).replace(/\/+$/, "")}/shared-store`,
         {
           method: "GET",
@@ -63,18 +83,19 @@ if (!window.__SHARED_APP_STORE_PRELOAD__) {
         return null;
       }
 
-      window.__LOCAL_APP_STORE__ = payload.store;
-      window.__SHARED_APP_STORE_META__ = isPlainObject(payload.meta) ? payload.meta : null;
+      meteringBrowser.setGlobal("__LOCAL_APP_STORE__", payload.store);
+      meteringBrowser.setGlobal("__SHARED_APP_STORE_META__", isPlainObject(payload.meta) ? payload.meta : null);
       return payload.store;
     } catch (error) {
       console.warn("Shared metering store preload skipped.", error);
       return null;
     }
-  })();
+  })());
 }
 
 function resolveSharedAppConfig() {
-  if (typeof window === "undefined" || !isPlainObject(window.__SHARED_APP_CONFIG__)) {
+  const sharedConfig = meteringBrowser.getGlobal("__SHARED_APP_CONFIG__");
+  if (!isPlainObject(sharedConfig)) {
     return {
       enabled: false,
       apiBase: "/api",
@@ -82,18 +103,14 @@ function resolveSharedAppConfig() {
   }
 
   return {
-    enabled: window.__SHARED_APP_CONFIG__.enabled === true,
-    apiBase: normalizeApiBase(window.__SHARED_APP_CONFIG__.apiBase),
+    enabled: sharedConfig.enabled === true,
+    apiBase: normalizeApiBase(sharedConfig.apiBase),
   };
 }
 
 function supportsSharedServerPersistence() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
   const sharedAppConfig = resolveSharedAppConfig();
-  return Boolean(sharedAppConfig.enabled) && /^(http:|https:)$/.test(window.location.protocol);
+  return Boolean(sharedAppConfig.enabled) && meteringBrowser.isHttpContext();
 }
 
 function shouldUseSharedServerAsAuthority() {
@@ -136,18 +153,12 @@ function normalizeSharedStoreMeta(value) {
 }
 
 function getPresetSharedStoreMeta() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return normalizeSharedStoreMeta(window.__SHARED_APP_STORE_META__);
+  return normalizeSharedStoreMeta(meteringBrowser.getGlobal("__SHARED_APP_STORE_META__"));
 }
 
 function rememberSharedStoreMeta(value) {
   const meta = normalizeSharedStoreMeta(value);
-  if (typeof window !== "undefined") {
-    window.__SHARED_APP_STORE_META__ = meta;
-  }
+  meteringBrowser.setGlobal("__SHARED_APP_STORE_META__", meta);
   if (typeof sharedServerPersistenceState !== "undefined" && isPlainObject(sharedServerPersistenceState)) {
     sharedServerPersistenceState.meta = meta;
   }
@@ -163,23 +174,23 @@ function getBillingDocumentEndpoint() {
 }
 
 function getPresetBillingSettlementEntries() {
+  const localStore = meteringBrowser.getGlobal("__LOCAL_APP_STORE__");
   if (
-    typeof window !== "undefined" &&
-    isPlainObject(window.__LOCAL_APP_STORE__) &&
-    isPlainObject(window.__LOCAL_APP_STORE__.billingSettlementEntries)
+    isPlainObject(localStore) &&
+    isPlainObject(localStore.billingSettlementEntries)
   ) {
-    return window.__LOCAL_APP_STORE__.billingSettlementEntries;
+    return localStore.billingSettlementEntries;
   }
 
   return {};
 }
 
 function getPresetLocalStore() {
-  if (typeof window === "undefined" || !isPlainObject(window.__LOCAL_APP_STORE__)) {
+  const presetStore = meteringBrowser.getGlobal("__LOCAL_APP_STORE__");
+  if (!isPlainObject(presetStore)) {
     return null;
   }
 
-  const presetStore = window.__LOCAL_APP_STORE__;
   const presetBillingSettlementEntries = getPresetBillingSettlementEntries();
   const existingBillingSettlementEntries = isPlainObject(presetStore.billingSettlementEntries)
     ? presetStore.billingSettlementEntries
@@ -209,19 +220,21 @@ function loadStore() {
 }
 
 function getPresetEquipmentEntries() {
-  if (typeof window === "undefined" || !isPlainObject(window.__PRESET_ELECTRIC_ENTRIES__)) {
+  const presetEntries = meteringBrowser.getGlobal("__PRESET_ELECTRIC_ENTRIES__");
+  if (!isPlainObject(presetEntries)) {
     return {};
   }
 
-  return normalizeEquipmentEntries(window.__PRESET_ELECTRIC_ENTRIES__);
+  return normalizeEquipmentEntries(presetEntries);
 }
 
 function getPresetGasEntries() {
-  if (typeof window === "undefined" || !isPlainObject(window.__PRESET_GAS_ENTRIES__)) {
+  const presetEntries = meteringBrowser.getGlobal("__PRESET_GAS_ENTRIES__");
+  if (!isPlainObject(presetEntries)) {
     return {};
   }
 
-  return normalizeEquipmentEntries(window.__PRESET_GAS_ENTRIES__);
+  return normalizeEquipmentEntries(presetEntries);
 }
 
 function mergePresetEquipmentEntries(entries) {

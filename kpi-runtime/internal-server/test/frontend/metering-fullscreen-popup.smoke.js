@@ -9,6 +9,8 @@ const fullscreenPopupSource = await fs.readFile(
   resolveMeteringBundleSourceUrl('fullscreen/popup.js'),
   'utf8'
 );
+const browserAdapterSource = await fs.readFile(resolveMeteringBundleSourceUrl('runtime/browser-adapter.js'), 'utf8');
+const directBrowserGlobalPattern = new RegExp(String.raw`\b(?:window\.|global` + `This)\b`);
 
 function setBinding(context, bindingName, value) {
   context[`__override_${bindingName}`] = value;
@@ -49,6 +51,9 @@ function createFullscreenPopupContext(options = {}) {
     updateActionState: 0,
     requestFullscreen: 0,
     exitFullscreen: 0,
+    alerts: [],
+    openWindows: [],
+    timeouts: [],
   };
 
   const documentStub = {
@@ -78,8 +83,15 @@ function createFullscreenPopupContext(options = {}) {
     Promise,
     document: documentStub,
     window: {
-      alert() {},
+      alert(message) {
+        calls.alerts.push(String(message));
+      },
+      open(url, target, features) {
+        calls.openWindows.push({ url, target, features });
+        return options.popupWindow === undefined ? null : options.popupWindow;
+      },
       setTimeout(handler) {
+        calls.timeouts.push(0);
         if (typeof handler === 'function') {
           handler();
         }
@@ -117,6 +129,9 @@ function createFullscreenPopupContext(options = {}) {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(browserAdapterSource, context, {
+    filename: 'runtime/browser-adapter.js',
+  });
   vm.runInContext(fullscreenPopupSource, context, {
     filename: 'fullscreen/popup.js',
   });
@@ -152,9 +167,11 @@ function createFullscreenPopupContext(options = {}) {
   setBinding(context, 'renderSummary', () => {
     calls.renderSummary += 1;
   });
-  setBinding(context, 'closeCalendarPopupWindow', () => {
-    calls.closeCalendarPopupWindow += 1;
-  });
+  if (!options.preserveCloseCalendarPopupWindow) {
+    setBinding(context, 'closeCalendarPopupWindow', () => {
+      calls.closeCalendarPopupWindow += 1;
+    });
+  }
   setBinding(context, 'restoreEquipmentFormData', (formData, dayStatus) => {
     calls.restoreEquipmentFormData.push({
       formData: JSON.parse(JSON.stringify(formData)),
@@ -182,6 +199,11 @@ function createFullscreenPopupContext(options = {}) {
   };
 }
 
+test('fullscreen popup keeps browser globals behind the metering adapter', () => {
+  assert.doesNotMatch(fullscreenPopupSource, directBrowserGlobalPattern);
+  assert.match(fullscreenPopupSource, /KpiMeteringBrowserAdapter/);
+});
+
 test('fullscreen popup syncs current drafts before entering fullscreen', async () => {
   const { context, calls, documentStub, panelForm } = createFullscreenPopupContext();
 
@@ -201,6 +223,23 @@ test('fullscreen popup syncs current drafts before entering fullscreen', async (
   assert.equal(calls.renderCalendar, 1);
   assert.equal(calls.renderTeamMode, 1);
   assert.equal(calls.renderSummary, 1);
+});
+
+test('fullscreen popup routes blocked popup warning through the metering adapter', async () => {
+  const { context, calls } = createFullscreenPopupContext();
+  setBinding(context, 'shouldUseCalendarPopup', () => true);
+
+  await context.enterFormFullscreenMode();
+
+  assert.equal(context.state.isEquipmentFullscreen, false);
+  assert.deepEqual(calls.openWindows, [
+    {
+      url: '',
+      target: 'monthly-electricity-calendar',
+      features: 'popup=yes,width=920,height=980,resizable=yes,scrollbars=yes',
+    },
+  ]);
+  assert.deepEqual(calls.alerts, ['달력 창을 열 수 없습니다. 팝업 차단을 확인해 주세요.']);
 });
 
 test('fullscreen popup syncs current drafts before exiting fullscreen', async () => {
@@ -224,4 +263,27 @@ test('fullscreen popup syncs current drafts before exiting fullscreen', async ()
   assert.equal(calls.renderCalendar, 1);
   assert.equal(calls.renderTeamMode, 1);
   assert.equal(calls.renderSummary, 1);
+});
+
+test('fullscreen popup resets calendar close state through the metering adapter timer', () => {
+  const popupWindow = {
+    closed: false,
+    closeCalls: 0,
+    close() {
+      this.closeCalls += 1;
+    },
+  };
+  const { context, calls } = createFullscreenPopupContext({
+    popupWindow,
+    preserveCloseCalendarPopupWindow: true,
+  });
+  context.__override_popupWindow = popupWindow;
+  vm.runInContext('equipmentFullscreenSession.calendarWindow = globalThis.__override_popupWindow;', context);
+
+  context.closeCalendarPopupWindow();
+
+  assert.equal(popupWindow.closeCalls, 1);
+  assert.equal(vm.runInContext('equipmentFullscreenSession.calendarWindow', context), null);
+  assert.deepEqual(calls.timeouts, [0]);
+  assert.equal(vm.runInContext('equipmentFullscreenSession.isClosingCalendarWindow', context), false);
 });

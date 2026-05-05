@@ -12,6 +12,12 @@ export function normalizeExpectedVersion(value) {
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
+/**
+ * Parses JSON request bodies under the global body-size guard.
+ *
+ * Keep request parsing here so route handlers receive plain data and services do
+ * not need to know about Node stream details.
+ */
 export async function parseBody(req) {
   return readJsonBody(req, config.maxJsonBodyBytes);
 }
@@ -61,6 +67,12 @@ export async function canAccessPermission(user, permissionKey, accessType) {
   }
 }
 
+/**
+ * Shared object-level permission gate for module, file, and authority routes.
+ *
+ * UI visibility is never treated as authorization; every sensitive read/write
+ * should pass a permission key through this server-side check.
+ */
 export async function assertOpenPermission(permissionKey, auth, accessType = 'read') {
   const normalizedPermissionKey = serializePermissionKey(permissionKey);
   if (!config.authEnabled) return true;
@@ -68,12 +80,19 @@ export async function assertOpenPermission(permissionKey, auth, accessType = 're
   return true;
 }
 
+/**
+ * Writes the session cookie using the runtime security flags.
+ *
+ * SameSite=Lax is the baseline CSRF guard for this first-party app; Secure is
+ * enabled only when the deployment confirms an HTTPS front door.
+ */
 export function writeAuthCookie(res, rawToken, expiresAt) {
   res.setHeader(
     'Set-Cookie',
     buildCookie(config.cookieName, rawToken, {
       path: '/',
       sameSite: 'Lax',
+      secure: config.cookieSecure,
       maxAge: Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000))
     })
   );
@@ -85,6 +104,7 @@ export function clearAuthCookie(res) {
     buildCookie(config.cookieName, '', {
       path: '/',
       sameSite: 'Lax',
+      secure: config.cookieSecure,
       maxAge: 0
     })
   );

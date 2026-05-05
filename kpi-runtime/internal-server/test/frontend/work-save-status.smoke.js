@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
 const sharedSource = await fs.readFile(path.join(repoRoot, 'team-report/runtime/work/KPI.work.shared.js'), 'utf8');
+const workBrowserAdapterSource = await fs.readFile(path.join(repoRoot, 'team-report/runtime/work/KPI.work.browser-adapter.js'), 'utf8');
 const analyticsSource = await fs.readFile(path.join(repoRoot, 'utility/runtime/util/analytics/KPI.util.analytics.js'), 'utf8');
 const workCssSource = await fs.readFile(path.join(repoRoot, 'kpi-runtime/app/styles/work/work.css'), 'utf8');
 
@@ -97,9 +98,17 @@ function createContext(fetchImpl) {
   context.globalThis = context;
   vm.createContext(context);
   vm.runInContext(sharedSource, context, { filename: 'KPI.work.shared.js' });
+  vm.runInContext(workBrowserAdapterSource, context, { filename: 'KPI.work.browser-adapter.js' });
   vm.runInContext(analyticsSource, context, { filename: 'KPI.util.analytics.js' });
   return { context, statusElement };
 }
+
+test('work analytics routes browser globals through the work browser adapter', () => {
+  assert.doesNotMatch(analyticsSource, /(?:^|[^\w])window\.|globalThis/);
+  assert.match(analyticsSource, /KpiWorkBrowserAdapter/);
+  assert.match(workBrowserAdapterSource, /ensureRootObject/);
+  assert.match(workBrowserAdapterSource, /fetchResource/);
+});
 
 test('work save status badge tracks pending, saved, and failed autosave states', async () => {
   const { context, statusElement } = createContext(async () => ({

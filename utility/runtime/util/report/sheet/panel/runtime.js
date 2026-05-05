@@ -1,12 +1,19 @@
-(function registerUtilReportSheetPanelRuntime(globalScope) {
-    if (globalScope.KPIUtilReportSheetPanelRuntime) {
+(function registerUtilReportSheetPanelRuntime() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/panel/runtime.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetPanelRuntime')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.panel.runtime.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.panel.runtime.js'
+    );
 
     const {
         UTIL_SHEET_DATASET_SPECS,
@@ -25,7 +32,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetPanelRuntime;
+        return api;
     }
 
     function escapeHtml(value) {
@@ -222,7 +229,7 @@
     }
 
     function syncUtilSheetPanelSelection(sheetType, datasetKey = '') {
-        const doc = globalScope.document;
+        const doc = runtimeAdapter.getDocument();
         if (!doc?.querySelectorAll) return;
 
         const normalizedSheetType = normalizeUtilSheetType(sheetType);
@@ -260,7 +267,7 @@
     }
 
     function initUtilSheetReports(scope) {
-        const root = scope || globalScope.document;
+        const root = scope || runtimeAdapter.getDocument();
         if (!root?.querySelectorAll) return;
 
         root.querySelectorAll('[data-role="util-sheet-panel"]').forEach(panel => {
@@ -325,8 +332,9 @@
             if (openButton && openButton.dataset.bound !== 'true') {
                 openButton.dataset.bound = 'true';
                 openButton.addEventListener('click', () => {
-                    if (typeof runtime.closeUtilActionMenus === 'function' && globalScope.document) {
-                        runtime.closeUtilActionMenus(globalScope.document);
+                    const doc = runtimeAdapter.getDocument();
+                    if (typeof runtime.closeUtilActionMenus === 'function' && doc) {
+                        runtime.closeUtilActionMenus(doc);
                     }
                     if (typeof runtime.openUtilSheetReportModal === 'function') {
                         runtime.openUtilSheetReportModal(panel.dataset.sheetType, panel.dataset.datasetKey, panel.dataset.monthKey, panel.dataset.compareKey);
@@ -340,7 +348,7 @@
         });
     }
 
-    globalScope.KPIUtilReportSheetPanelRuntime = {
+    const api = {
         setRuntimeAdapters,
         normalizeUtilSheetCompareKey,
         normalizeUtilSheetType,
@@ -362,4 +370,6 @@
         relocateUtilGasGuidanceNote,
         initUtilSheetReports
     };
-})(globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetPanelRuntime', api);
+})();

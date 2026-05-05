@@ -1,4 +1,8 @@
-﻿        const WORK_TEAM_CALENDAR_HISTORY_TEAM_MAP = Object.freeze({
+        const workProductionHistoryBrowser = typeof KpiWorkBrowserAdapter !== 'undefined'
+            ? KpiWorkBrowserAdapter
+            : null;
+
+        const WORK_TEAM_CALENDAR_HISTORY_TEAM_MAP = Object.freeze({
             work_team_calendar_team1_part1: 'team1part1',
             work_team_calendar_team1_part2: 'team1part2',
             work_team_calendar_team2: 'team2',
@@ -19,7 +23,7 @@
         }
 
         function getWorkTeamCalendarHistoryModule() {
-            return window.KpiWorkHistory || null;
+            return workProductionHistoryBrowser?.getHistory?.() || null;
         }
 
         function getWorkTeamCalendarHistoryView() {
@@ -43,7 +47,7 @@
             if (typeof history?.getPayload === 'function') {
                 return history.getPayload();
             }
-            const rawPayload = window.PortalData?.work_history_records;
+            const rawPayload = workProductionHistoryBrowser?.readPortalData?.('work_history_records');
             if (typeof history?.normalizePayload === 'function') {
                 return history.normalizePayload(rawPayload);
             }

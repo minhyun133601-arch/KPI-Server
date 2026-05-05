@@ -1,12 +1,19 @@
-(function registerUtilReportSheetGasComparisonSummary(globalScope) {
-    if (globalScope.KPIUtilReportSheetGasComparisonSummary) {
+(function registerUtilReportSheetGasComparisonSummary() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/gas/comparison-summary.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetGasComparisonSummary')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.gas.comparison-summary.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.gas.comparison-summary.js'
+    );
 
     const {
         utilSheetNumberFormatter,
@@ -28,7 +35,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetGasComparisonSummary;
+        return api;
     }
 
     function escapeHtml(value) {
@@ -470,11 +477,12 @@
         `;
     }
 
-    globalScope.KPIUtilReportSheetGasComparisonSummary = Object.freeze({
+    const api = Object.freeze({
         setRuntimeAdapters,
         getUtilGasMeterColumn,
         sumUtilGasMeterColumnValues,
         buildUtilGasBillingSummaryModel,
         buildUtilGasMeterComparisonSectionHtml
     });
-})(typeof window !== 'undefined' ? window : globalThis);
+    runtimeAdapter.exportApi('KPIUtilReportSheetGasComparisonSummary', api);
+})();

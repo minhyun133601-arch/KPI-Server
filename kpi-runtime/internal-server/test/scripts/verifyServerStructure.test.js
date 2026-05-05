@@ -11,7 +11,7 @@ import {
 test('verifyServerStructure tracks the expanded work runtime files', () => {
   const trackedRelativeSuffixes = frontendTrackedFiles.map((entry) => entry.replaceAll('\\', '/'));
 
-  assert.equal(frontendTrackedFiles.length, 29);
+  assert.equal(frontendTrackedFiles.length, 32);
   assert.ok(
     trackedRelativeSuffixes.some((entry) => entry.endsWith('/runtime/work/KPI.work.team-calendar.js'))
   );
@@ -70,6 +70,16 @@ test('verifyServerStructure tracks the expanded work runtime files', () => {
   );
   assert.ok(
     trackedRelativeSuffixes.some((entry) =>
+      entry.endsWith('/runtime/work/history/KPI.work.history.browser-adapter.js')
+    )
+  );
+  assert.ok(
+    trackedRelativeSuffixes.some((entry) =>
+      entry.endsWith('/runtime/work/history/KPI.work.history.core.config.js')
+    )
+  );
+  assert.ok(
+    trackedRelativeSuffixes.some((entry) =>
       entry.endsWith('/runtime/work/history/KPI.work.history.core.records.js')
     )
   );
@@ -91,6 +101,11 @@ test('verifyServerStructure tracks the expanded work runtime files', () => {
   assert.ok(
     trackedRelativeSuffixes.some((entry) =>
       entry.endsWith('/runtime/work/history/KPI.work.history.view.actions.document.js')
+    )
+  );
+  assert.ok(
+    trackedRelativeSuffixes.some((entry) =>
+      entry.endsWith('/runtime/work/history/layout/workspace-state.js')
     )
   );
 });

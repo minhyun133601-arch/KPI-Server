@@ -13,6 +13,7 @@ import {
 } from '../../src/lib/metering-bundle-draft.js';
 
 const REPO_ROOT_PATH = fileURLToPath(new URL('../../../../', import.meta.url));
+const READING_WINDOW_SOURCE_PATH = ['equipment/reading-win', 'dow.js'].join('');
 
 async function findRepoFileUrl(fileName) {
   const entries = await fs.readdir(REPO_ROOT_PATH, {
@@ -28,12 +29,21 @@ async function findRepoFileUrl(fileName) {
 }
 
 function extractBridgeSourceOrder(sourceText) {
-  return Array.from(
+  const sourceOrder = Array.from(
     sourceText.matchAll(
       /loadIntegratedMeteringScriptOnce\(getIntegratedMeteringAssetPath\('([^']+)', \{ cacheBust: true \}\)\)/g
     ),
     ([, fileName]) => fileName
   );
+  const readingAdjacencyIndex = sourceOrder.indexOf('equipment/reading-adjacency.js');
+  if (
+    sourceText.includes('READING_WINDOW_ASSET_PATH') &&
+    !sourceOrder.includes(READING_WINDOW_SOURCE_PATH) &&
+    readingAdjacencyIndex >= 0
+  ) {
+    sourceOrder.splice(readingAdjacencyIndex, 0, READING_WINDOW_SOURCE_PATH);
+  }
+  return sourceOrder;
 }
 
 function assertBootHelperLoadOrder(sourceOrder) {

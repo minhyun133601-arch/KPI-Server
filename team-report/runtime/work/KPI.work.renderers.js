@@ -1,3 +1,7 @@
+        const workRenderersBrowser = typeof KpiWorkBrowserAdapter !== 'undefined'
+            ? KpiWorkBrowserAdapter
+            : null;
+
         function renderWorkContent(category, contextOrOptions = {}) {
             const context = contextOrOptions && typeof contextOrOptions === 'object'
                 ? contextOrOptions
@@ -20,7 +24,7 @@
                 </div>
             `;
             if (category.view === 'history_tool') {
-                window.KpiWorkHistory?.render?.(category, context);
+                workRenderersBrowser?.renderHistory?.(category, context);
                 return;
             }
             const dataKey = category.dataKey;

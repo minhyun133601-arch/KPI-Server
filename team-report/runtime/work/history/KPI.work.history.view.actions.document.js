@@ -1,5 +1,6 @@
 (function initKpiWorkHistoryViewActionDocument() {
-    const history = window.KpiWorkHistory;
+    const browser = KpiWorkHistoryBrowserAdapter;
+    const history = KpiWorkHistoryBrowserAdapter.getHistory();
     if (!history) return;
 
     const view = history.view || (history.view = {});
@@ -64,7 +65,7 @@
             ? validateWorkHistoryAttachment(file)
             : '';
         if (errorKey) {
-            window.alert(getAttachmentValidationMessage(errorKey));
+            browser.alert(getAttachmentValidationMessage(errorKey));
             const input = getElement(getAttachmentInputId(normalizedSlotKey));
             if (input) input.value = '';
             return;
@@ -152,7 +153,7 @@
 
     async function exportAllData() {
         const runtimeConfig = getRecordRuntimeConfig();
-        const serverWritable = window.KpiRuntime?.canUseServerWrite?.(runtimeConfig?.writeEnabled === true) === true;
+        const serverWritable = browser.canUseServerWrite(runtimeConfig?.writeEnabled === true);
 
         if (!serverWritable) {
             showToast(isProductionWorkspace()

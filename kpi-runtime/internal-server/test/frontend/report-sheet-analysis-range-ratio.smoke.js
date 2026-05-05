@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const runtimeAdapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
@@ -34,6 +38,9 @@ function createRangeRatioContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(runtimeAdapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js',
   });
@@ -44,6 +51,9 @@ function createRangeRatioContext() {
 }
 
 test('report sheet analysis range-ratio registry builds tables, chart html, and combined model', () => {
+  assert.doesNotMatch(reportSheetAnalysisRangeRatioSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetAnalysisRangeRatioSource, /KPIUtilReportRuntimeAdapter/);
+
   const context = createRangeRatioContext();
   const registry = context.KPIUtilReportSheetAnalysisRangeRatio;
 
@@ -157,12 +167,15 @@ test('report sheet analysis range-ratio registry builds tables, chart html, and 
 });
 
 test('kpi html loads report sheet analysis range-ratio between chart-controls and electric chart model', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const chartControlsIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/chart-controls.js?v=053');
   const rangeRatioIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/range-ratio.js?v=053');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(chartControlsIndex >= 0, 'report sheet analysis chart-controls loader is missing');
+  assert.ok(rangeRatioIndex > adapterIndex, 'report sheet analysis range-ratio must load after report runtime adapter');
   assert.ok(rangeRatioIndex > chartControlsIndex, 'report sheet analysis range-ratio must load after chart-controls');
   assert.ok(electricChartModelIndex > rangeRatioIndex, 'report sheet analysis range-ratio must load before electric chart model');
   assert.ok(sheetIndex > electricChartModelIndex, 'report sheet analysis range-ratio must load before sheet.js');

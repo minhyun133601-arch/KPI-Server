@@ -1,4 +1,16 @@
-﻿        function renderUtilDualTabs(scope) {
+        const utilEnergyTabsBrowser = typeof KpiUtilDataSyncBrowserAdapter !== 'undefined'
+            ? KpiUtilDataSyncBrowserAdapter
+            : null;
+
+        function addUtilEnergyTabsEventListener(type, listener, options) {
+            utilEnergyTabsBrowser?.addEventListener?.(type, listener, options);
+        }
+
+        function hasUtilEnergyTabsSpreadsheetApi() {
+            return Boolean(utilEnergyTabsBrowser?.getSpreadsheetApi?.());
+        }
+
+        function renderUtilDualTabs(scope) {
             const root = scope || document;
             root.querySelectorAll('[data-util-dual]').forEach(wrapper => {
                 const key = wrapper.dataset.utilDual;
@@ -276,7 +288,7 @@
 
                 if (!combinedSection.dataset.productionDataUpdatedBound) {
                     combinedSection.dataset.productionDataUpdatedBound = 'true';
-                    window.addEventListener('util-production-data-updated', () => {
+                    addUtilEnergyTabsEventListener('util-production-data-updated', () => {
                         const activeTeam = combinedSection.dataset.activeTeam || data[0]?.name || '';
                         renderTeam(activeTeam);
                         syncProductionControlState();
@@ -379,7 +391,7 @@
                         if (productionUploadButton && productionUploadInput) {
                             productionUploadButton.addEventListener('click', () => {
                                 closeActionMenu();
-                                if (!window.XLSX) {
+                                if (!hasUtilEnergyTabsSpreadsheetApi()) {
                                     alert('엑셀 라이브러리 로드 실패: 네트워크 상태를 확인해주세요.');
                                     return;
                                 }

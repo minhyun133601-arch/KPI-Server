@@ -7,6 +7,10 @@ const productionImportSource = await fs.readFile(
   new URL('../../../../utility/runtime/util/KPI.util.production-import.js', import.meta.url),
   'utf8'
 );
+const dataSyncAdapterSource = await fs.readFile(
+  new URL('../../../../utility/runtime/util/KPI.util.data-sync.browser-adapter.js', import.meta.url),
+  'utf8'
+);
 
 function parseDateKey(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || '').trim());
@@ -118,6 +122,7 @@ function createProductionImportContext() {
   vm.createContext(context);
   vm.runInContext(
     [
+      dataSyncAdapterSource,
       productionImportSource,
       'globalThis.__testExports = {',
       '  mergeUtilProductionExtractorRows,',
@@ -131,6 +136,15 @@ function createProductionImportContext() {
   context.__getQueuedWriteCount = () => queuedWriteCount;
   return context;
 }
+
+test('production import source routes browser globals through the data-sync adapter', () => {
+  assert.doesNotMatch(productionImportSource, /window\./);
+  assert.doesNotMatch(productionImportSource, /globalThis/);
+  assert.doesNotMatch(productionImportSource, /\bXLSX\./);
+  assert.match(productionImportSource, /KpiUtilDataSyncBrowserAdapter/);
+  assert.match(productionImportSource, /getUtilProductionImportSpreadsheetApi/);
+  assert.match(productionImportSource, /writePortalRecord\?\.\('util_production_daily'/);
+});
 
 test('production import merge replaces existing rows and clears archive metadata while deduping incoming rows', () => {
   const context = createProductionImportContext();

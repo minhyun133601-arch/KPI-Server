@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const comparisonSummarySource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/gas/comparison-summary.js', import.meta.url),
   'utf8'
@@ -52,6 +56,9 @@ function createComparisonSummaryContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js'
+  });
   vm.runInContext(comparisonSummarySource, context, {
     filename: 'KPI.util.report.sheet.gas.comparison-summary.js'
   });
@@ -62,6 +69,8 @@ test('report sheet gas comparison summary registry builds billing summary and co
   const context = createComparisonSummaryContext();
   const registry = context.KPIUtilReportSheetGasComparisonSummary;
 
+  assert.doesNotMatch(comparisonSummarySource, /globalThis|window\.|globalScope/);
+  assert.match(comparisonSummarySource, /KPIUtilReportRuntimeAdapter/);
   assert.ok(registry, 'report sheet gas comparison summary registry is missing');
 
   registry.setRuntimeAdapters({
@@ -151,13 +160,16 @@ test('report sheet gas comparison summary registry builds billing summary and co
 });
 
 test('kpi html loads gas comparison summary before gas scoped metrics and before sheet.js', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
   const comparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/comparison-summary.js?v=053');
   const scopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=053');
   const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=053');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(billingIndex >= 0, 'report sheet billing loader is missing');
+  assert.ok(comparisonIndex > adapterIndex, 'gas comparison summary must load after report runtime adapter');
   assert.ok(comparisonIndex > billingIndex, 'gas comparison summary must load after billing');
   assert.ok(scopedMetricsIndex > comparisonIndex, 'gas scoped metrics must load after gas comparison summary');
   assert.ok(panelRuntimeIndex > scopedMetricsIndex, 'panel runtime must load after gas scoped metrics');

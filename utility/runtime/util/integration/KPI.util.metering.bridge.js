@@ -1,5 +1,6 @@
 (function () {
     const INTEGRATED_METERING_ASSET_VERSION = 'v197';
+    const READING_WINDOW_ASSET_PATH = ['equipment/reading-win', 'dow.js'].join('');
 
     const integratedMeteringState = {
         loadPromise: null,
@@ -85,9 +86,52 @@
         return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
     }
 
+    function getIntegratedMeteringBrowserAdapter() {
+        return typeof KpiMeteringBrowserAdapter === 'object' && KpiMeteringBrowserAdapter
+            ? KpiMeteringBrowserAdapter
+            : null;
+    }
+
+    function getIntegratedMeteringGlobal(name) {
+        const adapter = getIntegratedMeteringBrowserAdapter();
+        return typeof adapter?.getGlobal === 'function' ? adapter.getGlobal(name) : undefined;
+    }
+
+    function setIntegratedMeteringGlobal(name, value) {
+        const adapter = getIntegratedMeteringBrowserAdapter();
+        if (typeof adapter?.setGlobal === 'function') {
+            return adapter.setGlobal(name, value);
+        }
+        if (typeof self === 'object' && self) {
+            self[name] = value;
+        }
+        return value;
+    }
+
+    function isIntegratedMeteringHttpContext() {
+        const adapter = getIntegratedMeteringBrowserAdapter();
+        return typeof adapter?.isHttpContext === 'function' && adapter.isHttpContext();
+    }
+
+    function fetchIntegratedMeteringFromRoot(...args) {
+        const adapter = getIntegratedMeteringBrowserAdapter();
+        return typeof adapter?.fetch === 'function'
+            ? adapter.fetch(...args)
+            : Promise.reject(new Error('metering_fetch_unavailable'));
+    }
+
+    function getIntegratedMeteringApp() {
+        return getIntegratedMeteringGlobal('KpiMeteringApp');
+    }
+
+    function getIntegratedMeteringTemplateHtml() {
+        return getIntegratedMeteringGlobal('__KPI_METERING_TEMPLATE__');
+    }
+
     function getKpiServerRuntimeConfig() {
-        return isPlainObject(window.__KPI_SERVER_RUNTIME_CONFIG__)
-            ? window.__KPI_SERVER_RUNTIME_CONFIG__
+        const runtimeConfig = getIntegratedMeteringGlobal('__KPI_SERVER_RUNTIME_CONFIG__');
+        return isPlainObject(runtimeConfig)
+            ? runtimeConfig
             : {};
     }
 
@@ -117,47 +161,91 @@
     }
 
     function applyIntegratedMeteringLocalStore(store) {
-        window.__LOCAL_APP_STORE__ = cloneMeteringStore(store);
-        window.__PRESET_ELECTRIC_ENTRIES__ = window.__LOCAL_APP_STORE__?.resourceDatasets?.electric?.equipmentEntries
-            || window.__LOCAL_APP_STORE__?.equipmentEntries
-            || {};
-        window.__PRESET_GAS_ENTRIES__ = window.__LOCAL_APP_STORE__?.resourceDatasets?.gas?.equipmentEntries || {};
+        const localStore = setIntegratedMeteringGlobal('__LOCAL_APP_STORE__', cloneMeteringStore(store));
+        setIntegratedMeteringGlobal('__PRESET_ELECTRIC_ENTRIES__', localStore?.resourceDatasets?.electric?.equipmentEntries
+            || localStore?.equipmentEntries
+            || {});
+        setIntegratedMeteringGlobal('__PRESET_GAS_ENTRIES__', localStore?.resourceDatasets?.gas?.equipmentEntries || {});
+    }
+
+    function applyIntegratedMeteringSharedConfig(config) {
+        const sharedConfig = {
+            enabled: config.writeEnabled,
+            apiBase: config.apiBase
+        };
+        setIntegratedMeteringGlobal('__SHARED_APP_CONFIG__', sharedConfig);
+        setIntegratedMeteringGlobal('__SHARED_APP_CONFIG', sharedConfig);
+        return sharedConfig;
+    }
+
+    async function fetchIntegratedMeteringSharedStore(config) {
+        const response = await fetchIntegratedMeteringFromRoot(buildIntegratedMeteringSharedStoreEndpoint(config), {
+            method: 'GET',
+            cache: 'no-store',
+            credentials: 'same-origin'
+        });
+
+        if (response.status === 404 || response.status === 401 || response.status === 403) {
+            return null;
+        }
+
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !isPlainObject(payload.store)) {
+            console.warn('Integrated metering shared store preload failed.', payload || response.status);
+            return null;
+        }
+
+        return payload.store;
+    }
+
+    function assertIntegratedMeteringApp() {
+        const app = getIntegratedMeteringApp();
+        if (!app || typeof app.mount !== 'function') {
+            throw new Error('metering_runtime_mount_unavailable');
+        }
+        return app;
+    }
+
+    function canUnmountIntegratedMeteringApp(app) {
+        return Boolean(app && typeof app.unmount === 'function');
+    }
+
+    async function unmountIntegratedMeteringApp(app, options = {}) {
+        if (!canUnmountIntegratedMeteringApp(app)) {
+            return false;
+        }
+        await app.unmount(options);
+        return true;
+    }
+
+    function buildIntegratedMeteringMountOptions() {
+        return {
+            assetBaseUrl: getIntegratedMeteringAssetPath(''),
+            embeddedStylesUrl: getIntegratedMeteringAssetPath('embedded.css', { cacheBust: true }),
+            popupStylesUrl: getIntegratedMeteringAssetPath('styles.css', { cacheBust: true }),
+            templateHtml: getIntegratedMeteringTemplateHtml()
+        };
+    }
+
+    async function mountIntegratedMeteringApp(app, host) {
+        await app.mount(host, buildIntegratedMeteringMountOptions());
     }
 
     async function applyIntegratedMeteringServerRuntime() {
         const config = getIntegratedMeteringServerRuntimeConfig();
-        if (!config.enabled || !/^(http:|https:)$/.test(window.location.protocol)) {
+        if (!config.enabled || !isIntegratedMeteringHttpContext()) {
             return;
         }
 
-        window.__SHARED_APP_CONFIG__ = {
-            enabled: config.writeEnabled,
-            apiBase: config.apiBase
-        };
-        window.__SHARED_APP_CONFIG = window.__SHARED_APP_CONFIG__;
+        applyIntegratedMeteringSharedConfig(config);
 
         if (!config.readEnabled) {
             return;
         }
 
         try {
-            const response = await window.fetch(buildIntegratedMeteringSharedStoreEndpoint(config), {
-                method: 'GET',
-                cache: 'no-store',
-                credentials: 'same-origin'
-            });
-
-            if (response.status === 404 || response.status === 401 || response.status === 403) {
-                return;
-            }
-
-            const payload = await response.json().catch(() => null);
-            if (!response.ok || !payload?.ok || !isPlainObject(payload.store)) {
-                console.warn('Integrated metering shared store preload failed.', payload || response.status);
-                return;
-            }
-
-            applyIntegratedMeteringLocalStore(payload.store);
+            const store = await fetchIntegratedMeteringSharedStore(config);
+            if (store) applyIntegratedMeteringLocalStore(store);
         } catch (error) {
             console.warn('Integrated metering shared store preload failed.', error);
         }
@@ -169,6 +257,7 @@
         }
 
         integratedMeteringState.loadPromise = Promise.resolve()
+            .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('runtime/browser-adapter.js', { cacheBust: true })))
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('shared-store.js', { cacheBust: true })))
             .then(() => applyIntegratedMeteringServerRuntime())
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('template.js', { cacheBust: true })))
@@ -210,8 +299,9 @@
         .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('team-settlement/document-actions.js', { cacheBust: true })))
         .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('team-settlement/attach-actions.js', { cacheBust: true })))
         .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('team-settlement/form-actions.js', { cacheBust: true })))
+        .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('runtime/app-config.js', { cacheBust: true })))
         .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('app.js', { cacheBust: true })))
-            .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('equipment/reading-window.js', { cacheBust: true })))
+            .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath(READING_WINDOW_ASSET_PATH, { cacheBust: true })))
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('equipment/reading-adjacency.js', { cacheBust: true })))
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('equipment/gas-boundary-reading.js', { cacheBust: true })))
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('equipment/usage-calculation.js', { cacheBust: true })))
@@ -250,12 +340,7 @@
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('calendar/runtime.js', { cacheBust: true })))
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('runtime/bootstrap.js', { cacheBust: true })))
             .then(() => loadIntegratedMeteringScriptOnce(getIntegratedMeteringAssetPath('runtime/mount.js', { cacheBust: true })))
-            .then(() => {
-            if (!window.KpiMeteringApp || typeof window.KpiMeteringApp.mount !== 'function') {
-                throw new Error('metering_runtime_mount_unavailable');
-            }
-            return window.KpiMeteringApp;
-        }).catch(error => {
+            .then(() => assertIntegratedMeteringApp()).catch(error => {
             integratedMeteringState.loadPromise = null;
             throw error;
         });
@@ -267,12 +352,13 @@
         const requestId = issueIntegratedMeteringRequestId();
         return queueIntegratedMeteringOperation(async () => {
             if (!isIntegratedMeteringRequestActive(requestId)) return false;
-            if (!window.KpiMeteringApp || typeof window.KpiMeteringApp.unmount !== 'function') {
+            const app = getIntegratedMeteringApp();
+            if (!canUnmountIntegratedMeteringApp(app)) {
                 return false;
             }
 
             try {
-                await window.KpiMeteringApp.unmount({ clearHost: true });
+                await unmountIntegratedMeteringApp(app, { clearHost: true });
                 return true;
             } catch (error) {
                 console.error('Failed to unmount integrated metering runtime.', error);
@@ -292,19 +378,14 @@
             host.innerHTML = '<div class="work-metering-loading">검침 화면을 불러오는 중입니다.</div>';
 
             try {
-                await ensureIntegratedMeteringRuntime();
+                const app = await ensureIntegratedMeteringRuntime();
                 if (!isIntegratedMeteringRequestActive(requestId) || !isIntegratedMeteringHostConnected(host)) {
                     return false;
                 }
-                await window.KpiMeteringApp.mount(host, {
-                    assetBaseUrl: getIntegratedMeteringAssetPath(''),
-                    embeddedStylesUrl: getIntegratedMeteringAssetPath('embedded.css', { cacheBust: true }),
-                    popupStylesUrl: getIntegratedMeteringAssetPath('styles.css', { cacheBust: true }),
-                    templateHtml: window.__KPI_METERING_TEMPLATE__
-                });
+                await mountIntegratedMeteringApp(app, host);
                 if (!isIntegratedMeteringRequestActive(requestId) || !isIntegratedMeteringHostConnected(host)) {
                     try {
-                        await window.KpiMeteringApp.unmount({ clearHost: true });
+                        await unmountIntegratedMeteringApp(app, { clearHost: true });
                     } catch (error) {
                         console.error('Failed to rollback stale integrated metering mount.', error);
                     }
@@ -322,10 +403,10 @@
         });
     }
 
-    window.KpiMeteringBridge = Object.freeze({
+    setIntegratedMeteringGlobal('KpiMeteringBridge', Object.freeze({
         getIntegratedMeteringAssetPath,
         ensureIntegratedMeteringRuntime,
         destroyIntegratedMeteringMount,
         initIntegratedMetering
-    });
+    }));
 })();

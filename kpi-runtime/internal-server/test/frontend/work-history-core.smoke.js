@@ -26,11 +26,10 @@ assert.ok(corePath, 'work history core source is missing');
 
 const historyDir = path.dirname(corePath);
 const coreSourcePaths = [
+  path.join(historyDir, 'KPI.work.history.browser-adapter.js'),
+  path.join(historyDir, 'KPI.work.history.core.config.js'),
   corePath,
   path.join(historyDir, 'KPI.work.history.core.records.js'),
-  path.join(historyDir, 'KPI.work.history.core.attachments.js'),
-  path.join(historyDir, 'KPI.work.history.core.payload.js'),
-  path.join(historyDir, 'KPI.work.history.core.storage.attachments.js'),
   path.join(historyDir, 'KPI.work.history.core.storage.js'),
 ];
 
@@ -162,23 +161,27 @@ test('work history core split files expose normalized payload and storage hooks 
   assert.equal(payload.teams.team1part1[0].categoryGroup, 'report');
   assert.equal(payload.teams.team1part1[0].attachments.length, 1);
   assert.equal(payload.teams.team1part1[0].reportAttachment.originalName, 'report.pdf');
-  assert.match(history.buildExportScript(payload), /window\.PortalData\.work_history_records/);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(context.KpiWorkHistoryBrowserAdapter.readPortalData('work_history_records'))),
+    JSON.parse(JSON.stringify(payload))
+  );
+  assert.match(history.buildExportScript(payload), /target\.PortalData\.work_history_records/);
+  assert.doesNotMatch(history.buildExportScript(payload), /window\.PortalData/);
 });
 
 test('kpi html loads work history core split files before layout bootstrap', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
+  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=1');
   const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=217');
   const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=1');
-  const attachmentsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.attachments.js?v=1');
-  const payloadIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.payload.js?v=1');
-  const storageAttachmentsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.attachments.js?v=1');
   const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=1');
   const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=250');
 
-  assert.ok(coreIndex >= 0, 'work history core loader is missing');
+  assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
+  assert.ok(configIndex >= 0, 'work history core config loader is missing');
+  assert.ok(configIndex > adapterIndex, 'work history core config must load after browser adapter');
+  assert.ok(coreIndex > configIndex, 'work history core must load after core config');
   assert.ok(recordsIndex > coreIndex, 'work history core records must load after core.js');
-  assert.ok(attachmentsIndex > recordsIndex, 'work history attachment normalization must load after core records');
-  assert.ok(payloadIndex > attachmentsIndex, 'work history payload runtime must load after attachment normalization');
-  assert.ok(storageAttachmentsIndex > payloadIndex, 'work history attachment persistence must load after payload runtime');
-  assert.ok(storageIndex > storageAttachmentsIndex, 'work history core storage must load after attachment persistence');
+  assert.ok(storageIndex > recordsIndex, 'work history core storage must load after core records');
   assert.ok(layoutIndex > storageIndex, 'work history layout must load after core split files');
 });

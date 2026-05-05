@@ -1,0 +1,327 @@
+.equipment-add-submit {
+  border: none;
+  border-radius: 999px;
+  padding: 9px 12px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.equipment-add-submit:hover {
+  transform: translateY(-1px);
+}
+
+.equipment-order-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.equipment-order-draft {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.equipment-order-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.equipment-order-action {
+  border: none;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(16, 33, 42, 0.08);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, opacity 0.18s ease;
+}
+
+.equipment-order-action:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(15, 139, 141, 0.14);
+}
+
+.equipment-order-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.equipment-order-list {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.equipment-order-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(240, 247, 246, 0.84);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, color 0.18s ease;
+}
+
+.equipment-order-option:hover,
+.equipment-order-option.is-selected {
+  background: rgba(225, 240, 238, 0.96);
+}
+
+.equipment-order-option.is-selected {
+  color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(15, 139, 141, 0.2);
+}
+
+.equipment-order-option-index {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.equipment-order-option-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.equipment-order-option-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 7px;
+}
+
+.equipment-order-option-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.entry-delete-toggle {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, opacity 0.18s ease;
+}
+
+.entry-delete-toggle:hover {
+  transform: translateY(-1px);
+  background: rgba(180, 35, 24, 0.14);
+}
+
+.entry-delete-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+.entry-save-toggle {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(15, 139, 141, 0.12);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, opacity 0.18s ease;
+}
+
+.entry-save-toggle:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(15, 139, 141, 0.18);
+}
+
+.entry-save-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
+
+.save-status {
+  display: none;
+}
+
+.save-status.is-dirty {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.save-status.is-error {
+  color: var(--danger);
+}
+
+.mode-section.is-hidden,
+.is-hidden {
+  display: none !important;
+}
+
+.mode-section {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  min-height: 0;
+}
+
+#equipmentFieldsSection.is-drag-scrolling,
+#equipmentFieldsSection.is-drag-scrolling .field-card,
+#equipmentFieldsSection.is-drag-scrolling .field-title {
+  cursor: grabbing;
+}
+
+#equipmentFieldsSection.is-drag-scrolling,
+#equipmentFieldsSection.is-drag-scrolling * {
+  user-select: none;
+}
+
+.category-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 9px;
+  flex-shrink: 0;
+  background: rgba(16, 33, 42, 0.08);
+  color: var(--muted);
+}
+
+.category-icon svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 1.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.category-icon[data-icon-kind="drying"] {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.category-icon[data-icon-kind="packaging"] {
+  color: #0f766e;
+  background: rgba(15, 139, 141, 0.16);
+}
+
+.category-icon[data-icon-kind="liquid"] {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.14);
+}
+
+.category-icon[data-icon-kind="building"] {
+  color: #475569;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.category-icon[data-icon-kind="power_active"] {
+  color: #a16207;
+  background: rgba(250, 204, 21, 0.22);
+}
+
+.category-icon[data-icon-kind="power_reactive"] {
+  color: #7c3aed;
+  background: rgba(167, 139, 250, 0.18);
+}
+
+.category-icon[data-icon-kind="resource_electric"] {
+  color: #a16207;
+  background: rgba(250, 204, 21, 0.18);
+}
+
+.category-icon[data-icon-kind="resource_gas"] {
+  color: #2563eb;
+  background: rgba(59, 130, 246, 0.16);
+}
+
+.icon-label-copy-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-title-copy.has-trailing-icon,
+.team-picker-option-text.has-trailing-icon,
+.team-assigned-chip-text.has-trailing-icon,
+.equipment-order-option-text.has-trailing-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.equipment-resource-badge-icon {
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.equipment-resource-badge-icon svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 2;
+}
+
+.field-category-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
+}
+
+.team-total-icon,
+.team-board-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+}
+
+.team-picker-icon,
+.team-assigned-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 7px;
+}

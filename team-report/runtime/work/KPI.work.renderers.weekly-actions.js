@@ -1,3 +1,7 @@
+        const workRenderersWeeklyActionsBrowser = typeof KpiWorkBrowserAdapter !== 'undefined'
+            ? KpiWorkBrowserAdapter
+            : null;
+
         function rerenderWorkCategory(dataKey) {
             const category = getWorkCategory(dataKey);
             if (category) renderWorkContent(category);
@@ -15,13 +19,7 @@
             const normalizedKey = String(dataKey || '').trim();
             if (!normalizedKey) return '';
             const payload = cloneWorkExportPayload(data);
-            return [
-                '(function bootstrapWorkPortalData(){',
-                '    window.PortalData = window.PortalData || {};',
-                `    window.PortalData[${JSON.stringify(normalizedKey)}] = ${JSON.stringify(payload, null, 4)};`,
-                '})();',
-                ''
-            ].join('\n');
+            return workRenderersWeeklyActionsBrowser?.buildPortalDataBootstrapScript?.(normalizedKey, payload) || '';
         }
 
         function getWorkExportFileName(dataKey) {

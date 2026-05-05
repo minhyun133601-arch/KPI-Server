@@ -1,3 +1,16 @@
+function getTeamSettlementDocumentActionsBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function alertTeamSettlementDocumentAction(message) {
+  const adapter = getTeamSettlementDocumentActionsBrowserAdapter();
+  if (typeof adapter?.alert === "function") {
+    adapter.alert(message);
+  }
+}
+
 function getCurrentMonthBillingDocument() {
   const monthValue = normalizeMonthValue(state.currentMonth);
   const scopeKey = getCurrentBillingSettlementScope();
@@ -10,7 +23,7 @@ function handleTeamSettlementPreviewClick(event) {
   const monthValue = normalizeMonthValue(state.currentMonth);
   const billingDocument = getCurrentMonthBillingDocument();
   if (!monthValue || !billingDocument) {
-    window.alert("미리볼 청구서가 없습니다.");
+    alertTeamSettlementDocumentAction("미리볼 청구서가 없습니다.");
     return;
   }
 
@@ -24,7 +37,7 @@ function handleTeamSettlementOpenClick(event) {
   const monthValue = normalizeMonthValue(state.currentMonth);
   const billingDocument = getCurrentMonthBillingDocument();
   if (!monthValue || !billingDocument) {
-    window.alert("다운할 청구서가 없습니다.");
+    alertTeamSettlementDocumentAction("다운할 청구서가 없습니다.");
     return;
   }
 

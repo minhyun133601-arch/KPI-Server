@@ -1,3 +1,14 @@
+function getQuickEntryBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function setQuickEntryTimeout(callback, delay = 0) {
+  const adapter = getQuickEntryBrowserAdapter();
+  return typeof adapter?.setTimeout === "function" ? adapter.setTimeout(callback, delay) : null;
+}
+
 function cloneQuickEntryPopupEntry(entry) {
   return {
     values: { ...(entry?.values || {}) },
@@ -508,7 +519,7 @@ function revealQuickEntryMatchedField(fieldKey) {
   card.classList.remove("is-quick-entry-highlight");
   void card.offsetWidth;
   card.classList.add("is-quick-entry-highlight");
-  window.setTimeout(() => {
+  setQuickEntryTimeout(() => {
     card.classList.remove("is-quick-entry-highlight");
   }, QUICK_ENTRY_HIGHLIGHT_DURATION);
 }

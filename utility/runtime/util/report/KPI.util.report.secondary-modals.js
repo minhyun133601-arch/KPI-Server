@@ -1,3 +1,28 @@
+        function getUtilReportSecondaryRuntimeAdapter() {
+            return typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+                ? KPIUtilReportRuntimeAdapter
+                : null;
+        }
+
+        function getUtilReportSecondaryRootFlag(name) {
+            const adapter = getUtilReportSecondaryRuntimeAdapter();
+            return typeof adapter?.getRootFlag === 'function' && adapter.getRootFlag(name);
+        }
+
+        function setUtilReportSecondaryRootFlag(name, value = true) {
+            const adapter = getUtilReportSecondaryRuntimeAdapter();
+            return typeof adapter?.setRootFlag === 'function'
+                ? adapter.setRootFlag(name, value)
+                : null;
+        }
+
+        function addUtilReportSecondaryGlobalListener(type, listener, options) {
+            const adapter = getUtilReportSecondaryRuntimeAdapter();
+            return typeof adapter?.addEventListener === 'function'
+                ? adapter.addEventListener(type, listener, options)
+                : false;
+        }
+
         function closeUtilReportGraphModal(keepBodyLock = false) {
             const modal = document.getElementById('util-report-graph-modal');
             if (!modal) return;
@@ -221,9 +246,9 @@
                 renderUtilReportYoYModal(result);
             });
 
-            if (!window.__utilReportYoYModalEscapeBound) {
-                window.__utilReportYoYModalEscapeBound = true;
-                window.addEventListener('keydown', event => {
+            if (!getUtilReportSecondaryRootFlag('__utilReportYoYModalEscapeBound')) {
+                setUtilReportSecondaryRootFlag('__utilReportYoYModalEscapeBound', true);
+                addUtilReportSecondaryGlobalListener('keydown', event => {
                     if (event.key !== 'Escape') return;
                     const opened = document.getElementById('util-report-yoy-modal');
                     if (!opened || !opened.classList.contains('is-open')) return;
@@ -376,4 +401,3 @@
                 document.body.style.overflow = '';
             }
         }
-

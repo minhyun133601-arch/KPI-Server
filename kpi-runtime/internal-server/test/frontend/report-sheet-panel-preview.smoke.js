@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
@@ -46,6 +50,9 @@ function createPanelPreviewContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js',
   });

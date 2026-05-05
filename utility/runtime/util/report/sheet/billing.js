@@ -1,12 +1,19 @@
-(function registerUtilReportSheetBilling(globalScope) {
-    if (globalScope.KPIUtilReportSheetBilling) {
+(function registerUtilReportSheetBilling() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/billing.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetBilling')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.billing.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.billing.js'
+    );
 
     const {
         UTIL_GAS_BILLING_SCOPE_KEYS,
@@ -27,7 +34,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetBilling;
+        return api;
     }
 
     function isPlainObject(value) {
@@ -41,7 +48,33 @@
         if (typeof runtime.getLocalAppStore === 'function') {
             return runtime.getLocalAppStore() || null;
         }
-        return globalScope.__LOCAL_APP_STORE__ || null;
+        return runtimeAdapter.getLocalAppStore();
+    }
+
+    function getDocument() {
+        return runtimeAdapter.getDocument();
+    }
+
+    function getLocationHref() {
+        return String(runtimeAdapter.getRootValue('location')?.href || '');
+    }
+
+    function notify(message) {
+        runtimeAdapter.alert(message);
+    }
+
+    function scheduleTimeout(callback) {
+        if (runtimeAdapter.setTimeout(callback, 0) !== null) {
+            return;
+        }
+        callback();
+    }
+
+    function scheduleFrame(callback) {
+        if (runtimeAdapter.requestAnimationFrame(callback) !== null) {
+            return;
+        }
+        scheduleTimeout(callback);
     }
 
     function getUtilGasBillingSettlementEntries() {
@@ -228,7 +261,7 @@
         const normalizedPath = String(relativePath || '').trim();
         if (!normalizedPath) return '';
         try {
-            return new URL(normalizedPath, globalScope.location?.href || '').href;
+            return new URL(normalizedPath, getLocationHref()).href;
         } catch (error) {
             void error;
             return normalizedPath;
@@ -350,7 +383,7 @@
         modal._billingPreviewDescriptor = null;
     }
 
-    function closeUtilSheetBillingPreview(rootDoc = globalScope.document, options = {}) {
+    function closeUtilSheetBillingPreview(rootDoc = getDocument(), options = {}) {
         const modal = rootDoc?.querySelector?.('[data-role="util-sheet-billing-preview-modal"]');
         if (!modal) return;
         const focusTarget = options.focusTarget || modal._billingPreviewFocusTarget || null;
@@ -359,11 +392,11 @@
         resetUtilSheetBillingPreviewModal(modal);
         modal._billingPreviewFocusTarget = null;
         if (focusTarget?.focus) {
-            (globalScope.setTimeout || setTimeout)(() => focusTarget.focus(), 0);
+            scheduleTimeout(() => focusTarget.focus());
         }
     }
 
-    function ensureUtilSheetBillingPreviewModal(rootDoc = globalScope.document) {
+    function ensureUtilSheetBillingPreviewModal(rootDoc = getDocument()) {
         if (!rootDoc?.body) return null;
         let modal = rootDoc.querySelector('[data-role="util-sheet-billing-preview-modal"]');
         if (modal) return modal;
@@ -381,12 +414,12 @@
             if (!downloadButton) return;
             const descriptor = modal._billingPreviewDescriptor || null;
             if (!descriptor?.billingDocument) {
-                globalScope.alert?.('다운할 청구서가 없습니다.');
+                notify('다운할 청구서가 없습니다.');
                 return;
             }
             const downloadUrl = resolveUtilGasBillingDocumentDownloadUrl(descriptor.billingDocument);
             if (!downloadUrl || !descriptor.fileName) {
-                globalScope.alert?.('다운할 청구서가 없습니다.');
+                notify('다운할 청구서가 없습니다.');
                 return;
             }
             const link = rootDoc.createElement('a');
@@ -414,10 +447,10 @@
             scopeKey
         );
         if (!descriptor) {
-            globalScope.alert?.('미리볼 청구서가 없습니다.');
+            notify('미리볼 청구서가 없습니다.');
             return false;
         }
-        const rootDoc = options.rootDoc || globalScope.document;
+        const rootDoc = options.rootDoc || getDocument();
         const modal = ensureUtilSheetBillingPreviewModal(rootDoc);
         if (!modal) return false;
 
@@ -452,8 +485,7 @@
         modal.setAttribute('aria-hidden', 'false');
 
         if (descriptor.scopeKey === UTIL_GAS_BILLING_SCOPE_KEYS.yusanLpg && !descriptor.isImage) {
-            const scheduleFrameResize = globalScope.requestAnimationFrame || ((callback) => (globalScope.setTimeout || setTimeout)(callback, 0));
-            scheduleFrameResize(() => {
+            scheduleFrame(() => {
                 const bw = bodyEl.clientWidth;
                 const bh = bodyEl.clientHeight;
                 if (bw <= 0 || bh <= 0) return;
@@ -466,12 +498,12 @@
 
         const closeButton = modal.querySelector('[data-role="util-sheet-billing-preview-close"]');
         if (closeButton?.focus) {
-            (globalScope.setTimeout || setTimeout)(() => closeButton.focus(), 0);
+            scheduleTimeout(() => closeButton.focus());
         }
         return true;
     }
 
-    globalScope.KPIUtilReportSheetBilling = {
+    const api = {
         setRuntimeAdapters,
         getUtilGasBillingSettlementEntries,
         getUtilGasBillingScopeFields,
@@ -501,4 +533,6 @@
         ensureUtilSheetBillingPreviewModal,
         openUtilSheetBillingPreview
     };
-})(typeof window !== 'undefined' ? window : globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetBilling', api);
+})();

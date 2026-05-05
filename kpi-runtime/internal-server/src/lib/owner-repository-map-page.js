@@ -10,7 +10,9 @@ const REPOSITORY_MAP_PUBLIC_DIR = path.join(
   'public'
 );
 const REPOSITORY_MAP_HTML_PATH = path.join(REPOSITORY_MAP_PUBLIC_DIR, 'repository-map.html');
-const REPOSITORY_MAP_SCRIPT_PATH = path.join(REPOSITORY_MAP_PUBLIC_DIR, 'repository-map.js');
+const REPOSITORY_MAP_DATA_PATH = path.join(REPOSITORY_MAP_PUBLIC_DIR, 'repository-map-data.js');
+const REPOSITORY_MAP_HISTORY_DIR = path.join(REPOSITORY_MAP_PUBLIC_DIR, 'repository-map-history');
+const HISTORY_SCRIPT_NAME_PATTERN = /^\d{4}-\d{2}\.js$/;
 
 function sendText(res, contentType, bodyText) {
   const body = Buffer.from(bodyText, 'utf8');
@@ -23,10 +25,15 @@ function sendText(res, contentType, bodyText) {
 }
 
 function rewriteOwnerScriptSource(html) {
-  return String(html || '').replace(
-    '<script src="/repository-map.js" defer></script>',
-    '<script src="/owner/repository-map.js" defer></script>'
-  );
+  return String(html || '')
+    .replace(
+      /<script\s+src="(?:\.\/|\/)?repository-map-data\.js"([^>]*)><\/script>/,
+      '<script src="/owner/repository-map-data.js"$1></script>'
+    )
+    .replace(
+      /<script\s+src="(?:\.\/|\/)?repository-map\.js"([^>]*)><\/script>/,
+      '<script src="/owner/repository-map.js"$1></script>'
+    );
 }
 
 export async function sendOwnerRepositoryMapPage(res) {
@@ -35,6 +42,29 @@ export async function sendOwnerRepositoryMapPage(res) {
 }
 
 export async function sendOwnerRepositoryMapScript(res) {
-  const script = await fs.readFile(REPOSITORY_MAP_SCRIPT_PATH, 'utf8');
+  let script = '';
+  try {
+    script = await fs.readFile(REPOSITORY_MAP_DATA_PATH, 'utf8');
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      throw error;
+    }
+  }
+  sendText(res, 'application/javascript; charset=utf-8', script);
+}
+
+export async function sendOwnerRepositoryMapHistoryScript(res, fileName) {
+  const safeFileName = String(fileName || '').trim();
+  if (!HISTORY_SCRIPT_NAME_PATTERN.test(safeFileName)) {
+    const body = Buffer.from('not_found', 'utf8');
+    res.writeHead(404, {
+      'Cache-Control': 'no-store',
+      'Content-Length': body.length,
+      'Content-Type': 'text/plain; charset=utf-8',
+    });
+    res.end(body);
+    return;
+  }
+  const script = await fs.readFile(path.join(REPOSITORY_MAP_HISTORY_DIR, safeFileName), 'utf8');
   sendText(res, 'application/javascript; charset=utf-8', script);
 }

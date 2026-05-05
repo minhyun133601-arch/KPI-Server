@@ -1,19 +1,26 @@
-(function registerUtilReportSheetElectricMeterModel(globalScope) {
-    if (globalScope.KPIUtilReportSheetElectricMeterModel) {
+(function registerUtilReportSheetElectricMeterModel() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/electric/meter-model.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetElectricMeterModel')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.electric.meter-model.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.electric.meter-model.js'
+    );
     const {
         UtilSheetRuntimeState
     } = utilReportSheetConfig;
-    const utilReportSheetOptions = globalScope.KPIUtilReportSheetOptions;
-    if (!utilReportSheetOptions) {
-        throw new Error('KPIUtilReportSheetOptions must load before KPI.util.report.sheet.electric.meter-model.js');
-    }
+    const utilReportSheetOptions = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetOptions',
+        'KPI.util.report.sheet.electric.meter-model.js'
+    );
     const {
         UTIL_ELECTRIC_METER_TOTAL_POWER_FIELD_ID,
         UTIL_ELECTRIC_METER_ACTIVE_POWER_FIELD_IDS,
@@ -41,7 +48,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetElectricMeterModel;
+        return api;
     }
 
     function getElectricMeteringStore() {
@@ -214,9 +221,10 @@
 
     function buildUtilElectricMeterTimelineMap(fieldDefs) {
         const store = getElectricMeteringStore();
+        const presetElectricEntries = runtimeAdapter.getRootValue('__PRESET_ELECTRIC_ENTRIES__');
         const entries = isPlainObject(store?.equipmentEntries)
             ? store.equipmentEntries
-            : (isPlainObject(globalScope.__PRESET_ELECTRIC_ENTRIES__) ? globalScope.__PRESET_ELECTRIC_ENTRIES__ : {});
+            : (isPlainObject(presetElectricEntries) ? presetElectricEntries : {});
         const sortedDates = Object.keys(entries).sort();
         const timelineMap = new Map(fieldDefs.map(field => [field.id, []]));
         const previousValueMap = new Map();
@@ -708,7 +716,7 @@
         };
     }
 
-    globalScope.KPIUtilReportSheetElectricMeterModel = Object.freeze({
+    const api = Object.freeze({
         setRuntimeAdapters,
         buildUtilElectricMeterFieldDefinitions,
         getUtilElectricMeterStructure,
@@ -718,4 +726,5 @@
         buildUtilElectricMeterTeamDatasetResult,
         buildUtilElectricMeterComparisonModel
     });
-})(globalThis);
+    runtimeAdapter.exportApi('KPIUtilReportSheetElectricMeterModel', api);
+})();

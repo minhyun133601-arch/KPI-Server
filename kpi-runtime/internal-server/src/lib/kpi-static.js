@@ -24,8 +24,7 @@ const KPI_STATIC_FORBIDDEN_TOP_LEVEL = new Set([
   '.claude',
   '.codex',
   'node_modules',
-  'skills',
-  '※_개발시스템'
+  'skills'
 ]);
 const CONTENT_TYPE_BY_EXTENSION = new Map([
   ['.css', 'text/css; charset=utf-8'],

@@ -1,3 +1,19 @@
+function getBillingDocumentPathBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function hasBillingDocumentPathGlobal(name) {
+  const adapter = getBillingDocumentPathBrowserAdapter();
+  return typeof adapter?.hasGlobal === "function" && adapter.hasGlobal(name);
+}
+
+function setBillingDocumentPathGlobal(name, value) {
+  const adapter = getBillingDocumentPathBrowserAdapter();
+  return typeof adapter?.setGlobal === "function" ? adapter.setGlobal(name, value) : value;
+}
+
 function getBillingDocumentExtension(fileName, mimeType) {
   const normalizedExtension = String(fileName || "")
     .trim()
@@ -129,8 +145,10 @@ function encodeBillingDocumentRelativePath(relativePath) {
     .join("/");
 }
 
-if (typeof globalThis.getBillingDocumentResourceLabel !== "function") {
-  globalThis.getBillingDocumentResourceLabel = function getBillingDocumentResourceLabel(
+if (!hasBillingDocumentPathGlobal("getBillingDocumentResourceLabel")) {
+  setBillingDocumentPathGlobal(
+    "getBillingDocumentResourceLabel",
+    function getBillingDocumentResourceLabel(
     resourceType = getCurrentResourceType()
   ) {
     if (isGasResourceType(resourceType)) {
@@ -142,11 +160,14 @@ if (typeof globalThis.getBillingDocumentResourceLabel !== "function") {
     }
 
     return "전기";
-  };
+  }
+  );
 }
 
-if (typeof globalThis.getBillingDocumentLabel !== "function") {
-  globalThis.getBillingDocumentLabel = function getBillingDocumentLabel(
+if (!hasBillingDocumentPathGlobal("getBillingDocumentLabel")) {
+  setBillingDocumentPathGlobal(
+    "getBillingDocumentLabel",
+    function getBillingDocumentLabel(
     monthValue = state.currentMonth,
     resourceType = getCurrentResourceType(),
     scopeKey = ""
@@ -166,7 +187,8 @@ if (typeof globalThis.getBillingDocumentLabel !== "function") {
       ? [monthLabel, scopeLabel].filter(Boolean).join(" ")
       : [monthLabel, resourceLabel, scopeLabel].filter(Boolean).join(" ");
     return label || resourceLabel;
-  };
+  }
+  );
 }
 
 function buildBillingDocumentFileName(

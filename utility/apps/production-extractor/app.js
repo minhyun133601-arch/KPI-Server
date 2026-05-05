@@ -1,4 +1,4 @@
-﻿"use strict";
+"use strict";
 
 const TARGET_COLS = ["A", "B", "C", "E", "F"];
 const HEADER_ROW = 3;
@@ -16,6 +16,7 @@ const REQUIRED_HEADER_RULES = {
   E: [/품명/],
   F: [/생산량/],
 };
+const browser = typeof ProductionExtractorBrowserAdapter !== "undefined" ? ProductionExtractorBrowserAdapter : null;
 
 const state = {
   headers: TARGET_COLS.map((col) => `${col}열`),
@@ -39,7 +40,7 @@ const state = {
 
 const dom = {};
 function requireProductionParsingApi() {
-  const api = window.KPIProductionExtractorImportParsing;
+  const api = browser?.getImportParsingApi?.();
   if (api) return api;
   throw new Error("KPIProductionExtractorImportParsing is not loaded.");
 }
@@ -60,14 +61,14 @@ function getProductionParsingContext() {
 }
 
 function requireProductionExportActionsApi() {
-  const api = window.KPIProductionExtractorExportActions;
+  const api = browser?.getExportActionsApi?.();
   if (api) return api;
   throw new Error("KPIProductionExtractorExportActions is not loaded.");
 }
 
 function getProductionExportActionsContext() {
   return {
-    window,
+    browserWindow: browser?.getWindowContext?.() || null,
     document,
     XLSX,
     state,
@@ -98,12 +99,12 @@ const EMBED_DATA_SECTION_IDS = [
 ];
 const isEmbedMode = (() => {
   try {
-    const params = new URLSearchParams(window.location.search || "");
+    const params = new URLSearchParams(browser?.getLocationSearch?.() || "");
     if (params.get("embed") === "1") return true;
   } catch (error) {
     // no-op
   }
-  return window.self !== window.top;
+  return browser?.isEmbeddedWindow?.() === true;
 })();
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -197,7 +198,7 @@ function bindEvents() {
   dom.backBtn.addEventListener("click", handleBack);
   dom.downloadStoredBtn?.addEventListener("click", handleDownloadStoredRows);
   dom.refreshStoredBtn?.addEventListener("click", () => refreshStoredRowsFromParent(true));
-  window.addEventListener("message", handleKpiImportResultMessage);
+  browser?.addMessageListener?.(handleKpiImportResultMessage);
 
   dom.fileInput.addEventListener("change", () => {
     const count = dom.fileInput.files.length;
@@ -223,11 +224,10 @@ function isEditableTarget(target) {
 }
 
 function handleBack() {
-  if (isEmbedMode && window.parent && window.parent !== window) {
-    window.parent.postMessage({ type: "kpi-production-close" }, "*");
+  if (isEmbedMode && browser?.requestParentClose?.() === true) {
     return;
   }
-  if (window.history.length > 1) window.history.back();
+  if (browser?.canGoBack?.() === true) browser?.goBack?.();
 }
 
 function setStatus(message, isError = false) {
@@ -385,529 +385,6 @@ async function handleExtract() {
     setBusy(false);
   }
 }
-async function parseExcelFile(file, cycleStartDay = FIXED_PERIOD_START_DAY) {
-  return requireProductionParsingApi().parseExcelFile(
-    getProductionParsingContext(),
-    file,
-    cycleStartDay,
-  );
-}
-
-function deduplicateRows(rows) {
-  return requireProductionParsingApi().deduplicateRows(getProductionParsingContext(), rows);
-}
-
-function normalizeValue(value) {
-  return requireProductionParsingApi().normalizeValue(value);
-}
-
-function parseDateText(value) {
-  return requireProductionParsingApi().parseDateText(value);
-}
-
-function getPeriodInfo(date) {
-  return requireProductionParsingApi().getPeriodInfo(getProductionParsingContext(), date);
-}
-
-function formatYmd(date) {
-  return requireProductionParsingApi().formatYmd(date);
-}
-
-function buildDateRangeLabel(minDate, maxDate) {
-  return requireProductionParsingApi().buildDateRangeLabel(
-    getProductionParsingContext(),
-    minDate,
-    maxDate,
-  );
-}
-
-function getDateRangeLabel(rows) {
-  return requireProductionParsingApi().getDateRangeLabel(getProductionParsingContext(), rows);
-}
-
-function compareRowsByFallback(a, b) {
-  const teamDiff = String(a.teamKey).localeCompare(String(b.teamKey), "ko");
-  if (teamDiff !== 0) return teamDiff;
-
-  const lineDiff = String(a.lineKey).localeCompare(String(b.lineKey), "ko");
-  if (lineDiff !== 0) return lineDiff;
-
-  const fileDiff = String(a.fileName).localeCompare(String(b.fileName), "ko");
-  if (fileDiff !== 0) return fileDiff;
-
-  const sheetDiff = String(a.sheetName || "").localeCompare(String(b.sheetName || ""), "ko");
-  if (sheetDiff !== 0) return sheetDiff;
-
-  return a.rowNumber - b.rowNumber;
-}
-
-function compareRowsByDateAsc(a, b) {
-  if (a.dateObj && b.dateObj) {
-    const diff = a.dateObj - b.dateObj;
-    if (diff !== 0) return diff;
-  } else if (!a.dateObj && b.dateObj) {
-    return 1;
-  } else if (a.dateObj && !b.dateObj) {
-    return -1;
-  }
-  return compareRowsByFallback(a, b);
-}
-
-function compareRowsByDateDesc(a, b) {
-  if (a.dateObj && b.dateObj) {
-    const diff = b.dateObj - a.dateObj;
-    if (diff !== 0) return diff;
-  } else if (!a.dateObj && b.dateObj) {
-    return 1;
-  } else if (a.dateObj && !b.dateObj) {
-    return -1;
-  }
-  return compareRowsByFallback(a, b);
-}
-
-function compareRowsBySort(a, b, sortKey) {
-  switch (sortKey) {
-    case "date_desc":
-      return compareRowsByDateDesc(a, b);
-    case "team_asc": {
-      const teamDiff = String(a.teamKey).localeCompare(String(b.teamKey), "ko");
-      if (teamDiff !== 0) return teamDiff;
-      return compareRowsByDateAsc(a, b);
-    }
-    case "line_asc": {
-      const lineDiff = String(a.lineKey).localeCompare(String(b.lineKey), "ko");
-      if (lineDiff !== 0) return lineDiff;
-      return compareRowsByDateAsc(a, b);
-    }
-    case "amount_desc": {
-      const aValue = parseProductionValue(a.values[PRODUCTION_VALUE_INDEX]);
-      const bValue = parseProductionValue(b.values[PRODUCTION_VALUE_INDEX]);
-      const aNum = aValue === null ? Number.NEGATIVE_INFINITY : aValue;
-      const bNum = bValue === null ? Number.NEGATIVE_INFINITY : bValue;
-      const diff = bNum - aNum;
-      if (diff !== 0) return diff;
-      return compareRowsByDateAsc(a, b);
-    }
-    case "date_asc":
-    default:
-      return compareRowsByDateAsc(a, b);
-  }
-}
-
-function sortRows(rows) {
-  return [...rows].sort((a, b) => compareRowsBySort(a, b, state.sortKey));
-}
-function buildPeriodSummaries() {
-  const periodMap = new Map();
-  for (const row of state.rows) {
-    if (!periodMap.has(row.periodKey)) {
-      periodMap.set(row.periodKey, {
-        key: row.periodKey,
-        label: row.periodLabel,
-        startTime: row.periodStart ? row.periodStart.getTime() : Number.MAX_SAFE_INTEGER,
-        rowCount: 0,
-        sum: 0,
-        numericCount: 0,
-      });
-    }
-    const target = periodMap.get(row.periodKey);
-    target.rowCount += 1;
-    const numericValue = parseProductionValue(row.values[PRODUCTION_VALUE_INDEX]);
-    if (numericValue !== null) {
-      target.sum += numericValue;
-      target.numericCount += 1;
-    }
-  }
-
-  state.periodSummaries = Array.from(periodMap.values())
-    .sort((a, b) => a.startTime - b.startTime)
-    .map((summary) => ({
-      ...summary,
-      avg: summary.numericCount > 0 ? summary.sum / summary.numericCount : null,
-    }));
-}
-
-function populatePeriodOptions() {
-  const periodMap = new Map();
-  for (const row of state.rows) {
-    if (!periodMap.has(row.periodKey)) {
-      periodMap.set(row.periodKey, {
-        label: row.periodLabel,
-        startTime: row.periodStart ? row.periodStart.getTime() : Number.MAX_SAFE_INTEGER,
-      });
-    }
-  }
-
-  const periods = Array.from(periodMap.entries()).sort((a, b) => a[1].startTime - b[1].startTime);
-  const previousSelected = state.selectedPeriod;
-
-  dom.periodSelect.innerHTML = "";
-  const allOption = document.createElement("option");
-  allOption.value = "ALL";
-  allOption.textContent = "전체";
-  dom.periodSelect.appendChild(allOption);
-
-  for (const [key, info] of periods) {
-    const option = document.createElement("option");
-    option.value = key;
-    option.textContent = info.label;
-    dom.periodSelect.appendChild(option);
-  }
-
-  const exists = previousSelected === "ALL" || periodMap.has(previousSelected);
-  state.selectedPeriod = exists ? previousSelected : "ALL";
-  dom.periodSelect.value = state.selectedPeriod;
-}
-
-function populateTeamOptions() {
-  const teams = Array.from(
-    new Set(state.rows.map((row) => String(row.teamKey || "팀 없음"))),
-  ).sort((a, b) => a.localeCompare(b, "ko"));
-
-  const previousSelected = state.selectedTeam;
-  dom.teamSelect.innerHTML = "";
-
-  const allOption = document.createElement("option");
-  allOption.value = "ALL";
-  allOption.textContent = "전체 팀";
-  dom.teamSelect.appendChild(allOption);
-
-  for (const team of teams) {
-    const option = document.createElement("option");
-    option.value = team;
-    option.textContent = team;
-    dom.teamSelect.appendChild(option);
-  }
-
-  const exists = previousSelected === "ALL" || teams.includes(previousSelected);
-  state.selectedTeam = exists ? previousSelected : "ALL";
-  dom.teamSelect.value = state.selectedTeam;
-}
-
-function populateLineOptions() {
-  const lines = Array.from(
-    new Set(state.rows.map((row) => String(row.lineKey || "라인 없음"))),
-  ).sort((a, b) => a.localeCompare(b, "ko"));
-
-  const previousSelected = state.selectedLine;
-  dom.lineSelect.innerHTML = "";
-
-  const allOption = document.createElement("option");
-  allOption.value = "ALL";
-  allOption.textContent = "전체 라인";
-  dom.lineSelect.appendChild(allOption);
-
-  for (const line of lines) {
-    const option = document.createElement("option");
-    option.value = line;
-    option.textContent = line;
-    dom.lineSelect.appendChild(option);
-  }
-
-  const exists = previousSelected === "ALL" || lines.includes(previousSelected);
-  state.selectedLine = exists ? previousSelected : "ALL";
-  dom.lineSelect.value = state.selectedLine;
-}
-
-function matchesPeriodLineAndSearch(row) {
-  const matchPeriod = state.selectedPeriod === "ALL" || row.periodKey === state.selectedPeriod;
-  if (!matchPeriod) return false;
-
-  const matchLine = state.selectedLine === "ALL" || row.lineKey === state.selectedLine;
-  if (!matchLine) return false;
-
-  if (state.search.length === 0) return true;
-
-  return row.values
-    .map((value) => String(value ?? "").toLowerCase())
-    .join(" ")
-    .includes(state.search);
-}
-
-function refreshTeamSummaries() {
-  const rows = state.rows.filter(matchesPeriodLineAndSearch);
-  const teamMap = new Map();
-
-  for (const row of rows) {
-    const key = String(row.teamKey || "팀 없음");
-    if (!teamMap.has(key)) {
-      teamMap.set(key, {
-        team: key,
-        rowCount: 0,
-        sum: 0,
-        numericCount: 0,
-        minDate: null,
-        maxDate: null,
-      });
-    }
-
-    const target = teamMap.get(key);
-    target.rowCount += 1;
-
-    if (row.dateObj) {
-      if (!target.minDate || row.dateObj < target.minDate) target.minDate = row.dateObj;
-      if (!target.maxDate || row.dateObj > target.maxDate) target.maxDate = row.dateObj;
-    }
-
-    const numeric = parseProductionValue(row.values[PRODUCTION_VALUE_INDEX]);
-    if (numeric !== null) {
-      target.sum += numeric;
-      target.numericCount += 1;
-    }
-  }
-
-  state.teamSummaries = Array.from(teamMap.values())
-    .map((summary) => ({
-      ...summary,
-      avg: summary.numericCount > 0 ? summary.sum / summary.numericCount : null,
-      rangeLabel: buildDateRangeLabel(summary.minDate, summary.maxDate),
-    }))
-    .sort((a, b) => a.team.localeCompare(b.team, "ko"));
-}
-
-function refreshFilteredRows() {
-  const filtered = state.rows.filter((row) => {
-    if (!matchesPeriodLineAndSearch(row)) return false;
-    if (state.selectedTeam !== "ALL" && row.teamKey !== state.selectedTeam) return false;
-    return true;
-  });
-  state.filteredRows = sortRows(filtered);
-}
-
-function refreshDerivedViews() {
-  refreshTeamSummaries();
-  refreshFilteredRows();
-}
-
-function renderAll() {
-  renderMetrics();
-  renderCurrentPeriod();
-  renderPeriodSummary();
-  renderTeamSummary();
-  renderTable();
-  renderFileSummary();
-  renderDownloadButtons();
-}
-
-function getSelectedPeriodText() {
-  return state.selectedPeriod === "ALL"
-    ? "전체"
-    : dom.periodSelect.selectedOptions[0]?.textContent || "전체";
-}
-
-function getSelectedTeamText() {
-  return state.selectedTeam === "ALL"
-    ? "전체 팀"
-    : dom.teamSelect.selectedOptions[0]?.textContent || state.selectedTeam;
-}
-
-function getSelectedLineText() {
-  return state.selectedLine === "ALL"
-    ? "전체 라인"
-    : dom.lineSelect.selectedOptions[0]?.textContent || state.selectedLine;
-}
-
-function getSelectedSortText() {
-  return dom.sortSelect.selectedOptions[0]?.textContent || "날짜 오름차순";
-}
-
-function renderMetrics() {
-  const currentStats = computeProductionStats(state.filteredRows);
-
-  dom.metricFiles.textContent = String(state.fileSummaries.length);
-  dom.metricRowsAll.textContent = formatNumber(state.rows.length);
-  dom.metricRowsFiltered.textContent = formatNumber(state.filteredRows.length);
-  dom.metricPeriod.textContent = getSelectedPeriodText();
-  dom.metricTeam.textContent = getSelectedTeamText();
-  dom.metricLine.textContent = getSelectedLineText();
-  dom.metricSum.textContent = formatNumber(currentStats.sum);
-  dom.metricAvg.textContent = currentStats.avg === null ? "-" : formatNumber(currentStats.avg);
-  dom.metricDateRange.textContent = state.dateRangeLabel;
-  dom.metricDedup.textContent = formatNumber(state.duplicateRemovedCount);
-}
-
-function renderCurrentPeriod() {
-  const periodText = getSelectedPeriodText();
-  const teamText = getSelectedTeamText();
-  const lineText = getSelectedLineText();
-  const sortText = getSelectedSortText();
-  dom.currentPeriodLabel.textContent = `현재 보기: ${periodText} / ${teamText} / ${lineText} / ${sortText}`;
-}
-function renderPeriodSummary() {
-  dom.periodSummaryBody.innerHTML = "";
-
-  if (state.periodSummaries.length === 0) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.className = "empty";
-    td.colSpan = 4;
-    td.textContent = "추출 실행 후 월별 요약이 표시됩니다.";
-    tr.appendChild(td);
-    dom.periodSummaryBody.appendChild(tr);
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-  for (const summary of state.periodSummaries) {
-    const tr = document.createElement("tr");
-    if (state.selectedPeriod !== "ALL" && state.selectedPeriod === summary.key) {
-      tr.classList.add("active-period");
-    }
-
-    const cells = [
-      summary.label,
-      formatNumber(summary.rowCount),
-      formatNumber(summary.sum),
-      summary.avg === null ? "-" : formatNumber(summary.avg),
-    ];
-
-    for (const value of cells) {
-      const td = document.createElement("td");
-      td.textContent = value;
-      tr.appendChild(td);
-    }
-    fragment.appendChild(tr);
-  }
-
-  dom.periodSummaryBody.appendChild(fragment);
-}
-
-function renderTeamSummary() {
-  dom.teamSummaryBody.innerHTML = "";
-
-  if (state.teamSummaries.length === 0) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.className = "empty";
-    td.colSpan = 5;
-    td.textContent = "조건에 맞는 팀 요약 데이터가 없습니다.";
-    tr.appendChild(td);
-    dom.teamSummaryBody.appendChild(tr);
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-  for (const summary of state.teamSummaries) {
-    const tr = document.createElement("tr");
-    if (state.selectedTeam !== "ALL" && state.selectedTeam === summary.team) {
-      tr.classList.add("active-period");
-    }
-
-    const cells = [
-      summary.team,
-      formatNumber(summary.rowCount),
-      summary.rangeLabel,
-      formatNumber(summary.sum),
-      summary.avg === null ? "-" : formatNumber(summary.avg),
-    ];
-
-    for (const value of cells) {
-      const td = document.createElement("td");
-      td.textContent = value;
-      tr.appendChild(td);
-    }
-    fragment.appendChild(tr);
-  }
-
-  dom.teamSummaryBody.appendChild(fragment);
-}
-
-function renderTable() {
-  dom.tableHeader.innerHTML = "";
-  dom.tableBody.innerHTML = "";
-
-  if (state.rows.length === 0) {
-    const th = document.createElement("th");
-    th.textContent = "데이터 없음";
-    dom.tableHeader.appendChild(th);
-
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.className = "empty";
-    td.textContent = "추출 실행 후 데이터가 표시됩니다.";
-    tr.appendChild(td);
-    dom.tableBody.appendChild(tr);
-    return;
-  }
-
-  for (const header of state.headers) {
-    const th = document.createElement("th");
-    th.textContent = header;
-    dom.tableHeader.appendChild(th);
-  }
-
-  if (state.filteredRows.length === 0) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.className = "empty";
-    td.colSpan = state.headers.length;
-    td.textContent = "선택한 조건에 맞는 데이터가 없습니다.";
-    tr.appendChild(td);
-    dom.tableBody.appendChild(tr);
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-  for (const row of state.filteredRows) {
-    const tr = document.createElement("tr");
-    for (const value of row.values) {
-      const td = document.createElement("td");
-      td.textContent = String(value ?? "");
-      tr.appendChild(td);
-    }
-    fragment.appendChild(tr);
-  }
-  dom.tableBody.appendChild(fragment);
-}
-
-function renderFileSummary() {
-  if (state.fileSummaries.length === 0) {
-    dom.fileSummary.className = "file-summary empty";
-    dom.fileSummary.textContent = "아직 처리된 파일이 없습니다.";
-    return;
-  }
-
-  dom.fileSummary.className = "file-summary";
-  dom.fileSummary.innerHTML = "";
-
-  const fragment = document.createDocumentFragment();
-  for (const summary of state.fileSummaries) {
-    const card = document.createElement("article");
-    card.className = "summary-card";
-
-    const title = document.createElement("h3");
-    title.textContent = summary.fileName;
-    card.appendChild(title);
-
-    const sheetRow = document.createElement("p");
-    sheetRow.className = "summary-row";
-    sheetRow.innerHTML = `<span>분석 시트</span><strong>${formatNumber(summary.sheetCount)}개</strong>`;
-    card.appendChild(sheetRow);
-
-    const periodRow = document.createElement("p");
-    periodRow.className = "summary-row";
-    periodRow.innerHTML = `<span>생산 기간</span><strong>${escapeHtml(summary.productionRangeLabel)}</strong>`;
-    card.appendChild(periodRow);
-
-    const countRow = document.createElement("p");
-    countRow.className = "summary-row";
-    countRow.innerHTML = `<span>추출 행 수</span><strong>${formatNumber(summary.rowCount)}</strong>`;
-    card.appendChild(countRow);
-
-    fragment.appendChild(card);
-  }
-
-  dom.fileSummary.appendChild(fragment);
-}
-
-function renderDownloadButtons() {
-  const hasAnyData = state.rows.length > 0;
-  const hasFilteredData = state.filteredRows.length > 0;
-  dom.applyToKpiBtn.disabled = !hasAnyData;
-  dom.downloadAllBtn.disabled = !hasAnyData;
-  dom.downloadFilteredBtn.disabled = !hasFilteredData;
-}
-
 function buildKpiBridgeRows() {
   const fileMetaMap = buildSourceFileMetaMap();
   return state.rows.map((row) => ({
@@ -964,7 +441,7 @@ function handleApplyToKpi() {
     setStatus("생산량 기입 대상이 없습니다.", true);
     return;
   }
-  if (!window.parent || window.parent === window) {
+  if (browser?.canPostToParent?.() !== true) {
     setStatus("KPI 연동 화면에서만 생산량 기입이 가능합니다.", true);
     return;
   }
@@ -985,7 +462,7 @@ function handleApplyToKpi() {
     },
   };
   try {
-    window.parent.postMessage(payload, "*");
+    browser?.postToParent?.(payload, "*");
     setStatus(`생산량 전체 교체 요청: ${formatNumber(state.rows.length)}행 전송 완료`);
   } catch (error) {
     const fallbackPayload = {
@@ -995,7 +472,7 @@ function handleApplyToKpi() {
         sourceFiles: [],
       },
     };
-    window.parent.postMessage(fallbackPayload, "*");
+    browser?.postToParent?.(fallbackPayload, "*");
     setStatus(`생산량 전체 교체 요청: ${formatNumber(state.rows.length)}행 전송 완료`);
   }
 }
@@ -1053,59 +530,6 @@ function downloadAllRows() {
   return requireProductionExportActionsApi().downloadAllRows(
     getProductionExportActionsContext(),
   );
-}
-
-function computeProductionStats(rows) {
-  let sum = 0;
-  let numericCount = 0;
-  for (const row of rows) {
-    const numeric = parseProductionValue(row.values[PRODUCTION_VALUE_INDEX]);
-    if (numeric === null) continue;
-    sum += numeric;
-    numericCount += 1;
-  }
-  return {
-    sum,
-    avg: numericCount > 0 ? sum / numericCount : null,
-    numericCount,
-  };
-}
-
-function parseProductionValue(value) {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (value === null || value === undefined) return null;
-
-  const text = String(value).trim();
-  if (text === "") return null;
-
-  const cleaned = text.replaceAll(",", "");
-  const match = cleaned.match(/-?\d+(?:\.\d+)?/);
-  if (!match) return null;
-
-  const numeric = Number(match[0]);
-  return Number.isFinite(numeric) ? numeric : null;
-}
-
-function formatNumber(value) {
-  if (value === null || value === undefined || !Number.isFinite(value)) return "-";
-  if (Number.isInteger(value)) return value.toLocaleString("ko-KR");
-
-  const rounded = Math.round(value * 100) / 100;
-  if (Number.isInteger(rounded)) return rounded.toLocaleString("ko-KR");
-
-  return rounded.toLocaleString("ko-KR", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  });
-}
-
-function escapeHtml(text) {
-  return String(text)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
 }
 
 function clearExtractedState() {

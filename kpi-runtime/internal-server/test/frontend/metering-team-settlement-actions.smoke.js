@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 import { resolveMeteringBundleSourceUrl } from '../../src/lib/metering-bundle-draft.js';
 
+const adapterSource = await fs.readFile(
+  resolveMeteringBundleSourceUrl('runtime/browser-adapter.js'),
+  'utf8'
+);
 const teamSettlementActionsSource = await fs.readFile(
   resolveMeteringBundleSourceUrl('team-settlement/actions.js'),
   'utf8'
@@ -101,6 +105,9 @@ function createTeamSettlementActionsContext(options = {}) {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'metering/runtime/browser-adapter.js',
+  });
   vm.runInContext(teamSettlementActionsSource, context, {
     filename: 'team-settlement/actions.js',
   });
@@ -186,4 +193,9 @@ test('team settlement actions fall back to the attach button when no editable fi
   assert.deepEqual(calls.timeouts, [0]);
   assert.equal(editableField.focusCount, 0);
   assert.equal(attachButton.focusCount, 1);
+});
+
+test('team settlement actions route browser prompts and timers through the adapter', () => {
+  assert.doesNotMatch(teamSettlementActionsSource, /window\./);
+  assert.match(teamSettlementActionsSource, /KpiMeteringBrowserAdapter/);
 });

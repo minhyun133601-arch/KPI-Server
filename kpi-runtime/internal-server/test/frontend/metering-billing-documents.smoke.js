@@ -7,6 +7,10 @@ const billingDocumentPathsSource = await fs.readFile(
   new URL('../../../../utility/apps/metering/billing/document-paths.js', import.meta.url),
   'utf8'
 );
+const browserAdapterSource = await fs.readFile(
+  new URL('../../../../utility/apps/metering/runtime/browser-adapter.js', import.meta.url),
+  'utf8'
+);
 const billingDocumentsSource = await fs.readFile(
   new URL('../../../../utility/apps/metering/billing/documents.js', import.meta.url),
   'utf8'
@@ -18,6 +22,7 @@ const billingDirectoryPersistenceSource = await fs.readFile(
   ),
   'utf8'
 );
+const directBrowserGlobalPattern = new RegExp(String.raw`\b(?:window\.|global` + `This)\b`);
 const billingDocumentStorageSource = await fs.readFile(
   new URL('../../../../utility/apps/metering/billing/document-storage.js', import.meta.url),
   'utf8'
@@ -39,6 +44,11 @@ function createBillingDocumentContext(options = {}) {
   const alerts = [];
   const sharedStorePayloads = [];
   const fetchCalls = [];
+  const browserCalls = {
+    addedEvents: [],
+    removedEvents: [],
+    timeouts: [],
+  };
   const resourceType = options.resourceType || 'electric';
   const currentScopeKey = options.currentScopeKey || 'default';
   const supportsScopedBilling = Boolean(options.supportsScopedBilling);
@@ -68,9 +78,14 @@ function createBillingDocumentContext(options = {}) {
       alert(message) {
         alerts.push(String(message));
       },
-      addEventListener() {},
-      removeEventListener() {},
-      setTimeout(callback) {
+      addEventListener(type, handler, eventOptions) {
+        browserCalls.addedEvents.push({ type, handler, options: eventOptions });
+      },
+      removeEventListener(type, handler, eventOptions) {
+        browserCalls.removedEvents.push({ type, handler, options: eventOptions });
+      },
+      setTimeout(callback, delay) {
+        browserCalls.timeouts.push({ delay });
         if (typeof callback === 'function') {
           callback();
         }
@@ -170,6 +185,9 @@ function createBillingDocumentContext(options = {}) {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(browserAdapterSource, context, {
+    filename: 'runtime/browser-adapter.js',
+  });
   vm.runInContext(billingDocumentPathsSource, context, {
     filename: 'billing/document-paths.js',
   });
@@ -183,6 +201,7 @@ function createBillingDocumentContext(options = {}) {
   return {
     context,
     alerts,
+    browserCalls,
     sharedStorePayloads,
     fetchCalls,
   };
@@ -220,15 +239,15 @@ function createBillingDirectoryPersistenceContext(options = {}) {
       alert(message) {
         alerts.push(String(message));
       },
-      showDirectoryPicker:
-        options.showDirectoryPicker ||
-        (async () => ({
+      showDirectoryPicker: Object.prototype.hasOwnProperty.call(options, 'showDirectoryPicker')
+        ? options.showDirectoryPicker
+        : async () => ({
           name: `${resourceType}-billing-documents`,
           requestPermission: async () => 'granted',
           getDirectoryHandle() {
             return Promise.reject(new Error('unused'));
           },
-        })),
+        }),
     },
     normalizeText(value) {
       return String(value ?? '').trim();
@@ -302,6 +321,9 @@ function createBillingDirectoryPersistenceContext(options = {}) {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(browserAdapterSource, context, {
+    filename: 'runtime/browser-adapter.js',
+  });
   vm.runInContext(billingDirectoryPersistenceSource, context, {
     filename: 'billing/directory-persistence.js',
   });
@@ -311,6 +333,110 @@ function createBillingDirectoryPersistenceContext(options = {}) {
     alerts,
   };
 }
+
+test('billing document paths keep browser globals behind the metering adapter', () => {
+  assert.doesNotMatch(billingDocumentPathsSource, directBrowserGlobalPattern);
+  assert.match(billingDocumentPathsSource, /KpiMeteringBrowserAdapter/);
+});
+
+test('billing document storage keeps browser globals behind the metering adapter', () => {
+  assert.doesNotMatch(billingDocumentStorageSource, directBrowserGlobalPattern);
+  assert.match(billingDocumentStorageSource, /KpiMeteringBrowserAdapter/);
+});
+
+test('billing directory persistence keeps browser globals behind the metering adapter', () => {
+  assert.doesNotMatch(billingDirectoryPersistenceSource, directBrowserGlobalPattern);
+  assert.match(billingDirectoryPersistenceSource, /KpiMeteringBrowserAdapter/);
+});
+
+test('billing directory persistence detects file-handle support through the browser adapter', () => {
+  const fileHarness = createBillingDirectoryPersistenceContext();
+  const httpHarness = createBillingDirectoryPersistenceContext({ protocol: 'http:' });
+  const missingPickerHarness = createBillingDirectoryPersistenceContext({
+    showDirectoryPicker: null,
+  });
+
+  assert.equal(fileHarness.context.supportsPersistedLocalFileHandle(), true);
+  assert.equal(fileHarness.context.supportsBillingDocumentDirectoryPersistence(), true);
+  assert.equal(httpHarness.context.supportsPersistedLocalFileHandle(), false);
+  assert.equal(httpHarness.context.supportsBillingDocumentDirectoryPersistence(), false);
+  assert.equal(missingPickerHarness.context.supportsPersistedLocalFileHandle(), true);
+  assert.equal(missingPickerHarness.context.supportsBillingDocumentDirectoryPersistence(), false);
+});
+
+test('billing document file picker resolves focus checks through the browser adapter', async () => {
+  const harness = createBillingDocumentContext();
+  const selectedFile = { name: 'invoice.pdf', type: 'application/pdf' };
+  let changeHandler = null;
+  harness.context.createDetachedElement = () => ({
+    type: '',
+    accept: '',
+    tabIndex: -1,
+    className: '',
+    files: [selectedFile],
+    remove() {},
+    click() {},
+    setAttribute() {},
+    addEventListener(type, handler) {
+      if (type === 'change') {
+        changeHandler = handler;
+      }
+    },
+  });
+
+  const filePromise = harness.context.requestBillingDocumentFile();
+  assert.equal(typeof changeHandler, 'function');
+  assert.equal(harness.browserCalls.addedEvents.length, 1);
+  harness.browserCalls.addedEvents[0].handler();
+
+  assert.equal(await filePromise, selectedFile);
+  assert.deepEqual(
+    toPlain(harness.browserCalls.addedEvents.map(({ type, options }) => ({ type, options }))),
+    [{ type: 'focus', options: { once: true } }]
+  );
+  assert.deepEqual(
+    harness.browserCalls.removedEvents.map(({ type }) => type),
+    ['focus']
+  );
+  assert.deepEqual(harness.browserCalls.timeouts, [{ delay: 300 }]);
+});
+
+test('billing document file picker alerts non-pdf selections through the browser adapter', async () => {
+  const harness = createBillingDocumentContext();
+  const selectedFile = { name: 'invoice.txt', type: 'text/plain' };
+  let changeHandler = null;
+  harness.context.createDetachedElement = () => ({
+    type: '',
+    accept: '',
+    tabIndex: -1,
+    className: '',
+    files: [selectedFile],
+    remove() {},
+    click() {
+      changeHandler();
+    },
+    setAttribute() {},
+    addEventListener(type, handler) {
+      if (type === 'change') {
+        changeHandler = handler;
+      }
+    },
+  });
+
+  const result = await harness.context.requestBillingDocumentFile();
+
+  assert.equal(result, null);
+  assert.equal(harness.alerts.length, 1);
+  assert.match(harness.alerts[0], /PDF/);
+  assert.deepEqual(
+    toPlain(harness.browserCalls.addedEvents.map(({ type, options }) => ({ type, options }))),
+    [{ type: 'focus', options: { once: true } }]
+  );
+  assert.deepEqual(
+    harness.browserCalls.removedEvents.map(({ type }) => type),
+    ['focus']
+  );
+});
 
 test('billing document path helpers keep stable file names and relative path candidates', () => {
   const harness = createBillingDocumentContext();

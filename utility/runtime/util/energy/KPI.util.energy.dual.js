@@ -79,9 +79,17 @@
         }
 
         function parseUtilInputNumber(el) {
-            if (!el) return 0;
-            const parsed = parseUtilNumericValue(el.value);
-            return parsed === null ? 0 : parsed;
+            if (!el) return null;
+            return parseUtilNumericValue(el.value);
+        }
+
+        function resolveUtilInputNumber(el, fallback = 0) {
+            const parsed = parseUtilInputNumber(el);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        }
+
+        function setUtilEnergyStateNumber(key, value) {
+            if (Number.isFinite(value)) UtilEnergyState[key] = value;
         }
 
         function buildUtilEnergyMonthOptions() {
@@ -273,9 +281,9 @@
             const toSelect = panel.querySelector('[data-role="energy-link-to"]');
             if (toSelect) UtilEnergyState.to = toSelect.value || UtilEnergyState.to;
             const lngInput = panel.querySelector('[data-role="energy-link-lng-factor"]');
-            if (lngInput) UtilEnergyState.gasLNG = parseUtilInputNumber(lngInput) || UtilEnergyState.gasLNG;
+            if (lngInput) setUtilEnergyStateNumber('gasLNG', parseUtilInputNumber(lngInput));
             const lpgInput = panel.querySelector('[data-role="energy-link-lpg-factor"]');
-            if (lpgInput) UtilEnergyState.gasLPG = parseUtilInputNumber(lpgInput) || UtilEnergyState.gasLPG;
+            if (lpgInput) setUtilEnergyStateNumber('gasLPG', parseUtilInputNumber(lpgInput));
             const displayDecimalsSelect = panel.querySelector('[data-role="energy-display-decimals"]');
             if (displayDecimalsSelect) {
                 UtilEnergyState.displayDecimals = normalizeUtilEnergyDecimals(displayDecimalsSelect.value, UtilEnergyState.displayDecimals);
@@ -523,21 +531,23 @@
             const hasInput = [kwhInput, gasInput, electricCostInput, gasCostInput]
                 .some(el => el && String(el.value ?? '').trim() !== '');
 
-            const electricKwh = parseUtilInputNumber(kwhInput);
+            const electricKwh = resolveUtilInputNumber(kwhInput, 0);
             const electricFactorInput = panel.querySelector('[data-role="electric-factor"]');
-            const electricFactor = parseUtilInputNumber(electricFactorInput) || 0;
-            const gasAmount = parseUtilInputNumber(gasInput);
-            const gasFactor = parseUtilInputNumber(panel.querySelector('[data-role="gas-factor"]')) || 0;
-            const electricCost = parseUtilInputNumber(electricCostInput);
-            const gasCost = parseUtilInputNumber(gasCostInput);
-            const toeFactor = parseUtilInputNumber(toeFactorInput) || UTIL_ENERGY_DEFAULTS.toeMJ;
+            const electricFactorInputValue = parseUtilInputNumber(electricFactorInput);
+            const electricFactor = Number.isFinite(electricFactorInputValue) ? electricFactorInputValue : 0;
+            const gasAmount = resolveUtilInputNumber(gasInput, 0);
+            const gasFactor = resolveUtilInputNumber(panel.querySelector('[data-role="gas-factor"]'), 0);
+            const electricCost = resolveUtilInputNumber(electricCostInput, 0);
+            const gasCost = resolveUtilInputNumber(gasCostInput, 0);
+            const toeFactorInputValue = parseUtilInputNumber(toeFactorInput);
+            const toeFactor = Number.isFinite(toeFactorInputValue) ? toeFactorInputValue : UTIL_ENERGY_DEFAULTS.toeMJ;
             const displayDecimals = normalizeUtilEnergyDecimals(
                 panel.querySelector('[data-role="energy-display-decimals"]')?.value,
                 UtilEnergyState.displayDecimals
             );
 
-            UtilEnergyState.electricFactor = electricFactor || UtilEnergyState.electricFactor;
-            UtilEnergyState.toeFactor = toeFactor || UtilEnergyState.toeFactor;
+            setUtilEnergyStateNumber('electricFactor', electricFactorInputValue);
+            setUtilEnergyStateNumber('toeFactor', toeFactorInputValue);
             UtilEnergyState.displayDecimals = displayDecimals;
 
             const electricMJ = electricKwh * electricFactor;

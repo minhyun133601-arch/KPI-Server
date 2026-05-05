@@ -1,45 +1,31 @@
         // ----------------------------------------------------------------
-        // [\uC571 \uB85C\uC9C1]
+        // [앱 로직]
         // ----------------------------------------------------------------
 
-        const KpiRuntime = window.KpiRuntime;
+        const browser = typeof KpiAppBrowserAdapter !== 'undefined'
+            ? KpiAppBrowserAdapter
+            : null;
+        const KpiRuntime = browser?.getRuntime?.() || null;
         let activeRenderContext = null;
         let globalSaveRefreshTimer = null;
         const GlobalSaveUiState = {
             busy: false,
             activeAction: null,
             providerKey: '',
-            message: '\uD604\uC7AC \uD654\uBA74\uC740 \uC800\uC7A5 \uB300\uC0C1\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.',
+            message: '현재 화면은 저장 대상이 없습니다.',
             tone: ''
         };
-        const OWNER_RECORDS_TAB_KEYS = Object.freeze({
-            LOGIN: 'login',
-            USERS: 'users'
-        });
-        const OwnerRecordsState = {
-            isOwner: false,
-            loading: false,
-            loaded: false,
-            activeTab: OWNER_RECORDS_TAB_KEYS.USERS,
-            loginHistory: [],
-            users: [],
-            errorMessage: '',
-            mountRoot: null
-        };
-        const RuntimeAuthState = {
-            busy: false
-        };
         const GLOBAL_RECENT_UPDATE_STORAGE_KEY = 'kpi:global-recent-update';
-        const DASHBOARD_SECTION_ORDER = ['work', 'util', 'equip', 'audit', 'data', 'owner'];
+        const DASHBOARD_SECTION_ORDER = ['work', 'util', 'audit', 'data', 'productionReport', 'owner'];
         const DASHBOARD_SECTION_SOFT = Object.freeze({
             util: '#fff7ed',
             work: '#ecfdf5',
-            equip: '#eff6ff',
+            productionReport: '#e8f1f8',
             audit: '#fef2f2',
             data: '#f8fafc',
             owner: '#f5f3ff'
         });
-        const COMPANY_LOGO_SRC = '/\u203B_\uACF5\uC6A9\uC790\uC0B0/\uB85C\uACE0.jpg';
+        const COMPANY_LOGO_SRC = '/shared-assets/logo.jpg';
         const DashboardHomeState = {
             sectionId: DASHBOARD_SECTION_ORDER[0]
         };
@@ -47,22 +33,25 @@
             expandedSections: {
                 work: true,
                 util: false,
-                equip: false,
                 audit: false,
                 data: false,
+                productionReport: false,
                 owner: false
             }
         };
         const ViewerLayoutState = {
             sidebarCollapsed: false
         };
+        const RuntimeAuthState = {
+            busy: false
+        };
         const NavigationSelectionState = {
-            sectionId: DashboardHomeState.sectionId,
+            sectionId: '',
             categoryIndex: -1,
             teamDataKey: ''
         };
         let activeCategoryIndex = -1;
-        window.__KPI_GLOBAL_SAVE_SHELL__ = true;
+        browser?.markGlobalSaveShell?.();
 
         function escapeDashboardHtml(value) {
             return String(value ?? '')
@@ -108,7 +97,8 @@
         }
 
         function getNavigationSelectionSectionId() {
-            return getDashboardSectionKey(NavigationSelectionState.sectionId || DashboardHomeState.sectionId);
+            const normalized = String(NavigationSelectionState.sectionId || '').trim();
+            return normalized ? getDashboardSectionKey(normalized) : '';
         }
 
         function getNavigationSelectionCategoryIndex(sectionId = '') {
@@ -124,7 +114,8 @@
         }
 
         function setNavigationSelection(sectionId = '', categoryIndex = -1, options = {}) {
-            const normalizedSectionId = getDashboardSectionKey(sectionId);
+            const rawSectionId = String(sectionId || '').trim();
+            const normalizedSectionId = rawSectionId ? getDashboardSectionKey(rawSectionId) : '';
             NavigationSelectionState.sectionId = normalizedSectionId;
             NavigationSelectionState.categoryIndex = Number.isFinite(Number(categoryIndex)) ? Number(categoryIndex) : -1;
             NavigationSelectionState.teamDataKey = String(options.teamDataKey || '').trim();
@@ -152,7 +143,7 @@
 
         function getStoredGlobalRecentUpdateRecord() {
             try {
-                const raw = window.localStorage?.getItem?.(GLOBAL_RECENT_UPDATE_STORAGE_KEY);
+                const raw = browser?.getStorageItem?.(GLOBAL_RECENT_UPDATE_STORAGE_KEY);
                 if (!raw) return null;
                 const parsed = JSON.parse(raw);
                 const savedAt = String(parsed?.savedAt || '').trim();
@@ -174,7 +165,7 @@
             const savedAt = String(record?.savedAt || '').trim();
             if (!parseDashboardDate(savedAt)) return;
             try {
-                window.localStorage?.setItem?.(GLOBAL_RECENT_UPDATE_STORAGE_KEY, JSON.stringify({
+                browser?.setStorageItem?.(GLOBAL_RECENT_UPDATE_STORAGE_KEY, JSON.stringify({
                     savedAt,
                     providerKey: String(record?.providerKey || '').trim(),
                     sectionId: String(record?.sectionId || '').trim(),
@@ -214,7 +205,7 @@
         function syncDashboardLastModified() {
             const target = document.getElementById('last-modified-text');
             if (!target) return;
-            target.textContent = `理쒖쥌 ?섏젙: ${formatDashboardDateTime(getLatestRecentUpdateValue())}`;
+            target.textContent = `최종 수정: ${formatDashboardDateTime(getLatestRecentUpdateValue())}`;
         }
 
         function getRuntimeCurrentUser() {
@@ -232,15 +223,12 @@
             ) {
                 return false;
             }
-            const protocol = String(window.location.protocol || '').trim().toLowerCase();
+            const locationMeta = browser?.getLocationMeta?.() || {};
+            const protocol = String(locationMeta.protocol || '').trim().toLowerCase();
             if (protocol === 'file:') return true;
             if (!/^(http:|https:)$/.test(protocol)) return false;
-            const hostname = String(window.location.hostname || '').trim().toLowerCase();
+            const hostname = String(locationMeta.hostname || '').trim().toLowerCase();
             return hostname === 'localhost' || hostname === '127.0.0.1';
-        }
-
-        function canShowOwnerWorkspace(user = null) {
-            return hasOwnerRole(user) || isLocalDashboardPreviewMode();
         }
 
         function hasOwnerRole(user = null) {

@@ -1,5 +1,8 @@
 (function () {
-    const api = window.KpiAuditLegalAssets || (window.KpiAuditLegalAssets = {});
+    const browser = typeof KpiAuditRecordsBrowserAdapter !== 'undefined'
+        ? KpiAuditRecordsBrowserAdapter
+        : null;
+    const api = browser?.ensureLegalAssetsApi?.() || {};
     const OWNER_DOMAIN = 'audit.legal_facility';
     const IMAGE_CATEGORY = 'photo';
     const ATTACHMENT_CATEGORY = 'attachment';
@@ -18,7 +21,7 @@
     }
 
     function getRuntimeConfig() {
-        const auditRuntime = window.__KPI_SERVER_RUNTIME_CONFIG__?.audit;
+        const auditRuntime = browser?.getAuditRuntimeConfig?.();
         const record = auditRuntime?.records?.audit_legal_facility;
         const assets = auditRuntime?.assets?.legalFacility || {};
         if (!auditRuntime || auditRuntime.enabled !== true || !record) return null;
@@ -34,8 +37,8 @@
 
     function canWrite() {
         const runtime = getRuntimeConfig();
-        return window.KpiRuntime?.canUseServerWrite?.(runtime?.writeEnabled === true) === true
-            && typeof fetch === 'function';
+        return browser?.canUseServerWrite?.(runtime?.writeEnabled === true) === true
+            && browser?.hasFetch?.() === true;
     }
 
     function readFileAsBase64(file) {
@@ -81,7 +84,7 @@
         const originalName = buildUploadName(file, facilityName, label);
         const mimeType = normalizeText(file?.type || 'application/octet-stream') || 'application/octet-stream';
         const base64Data = await readFileAsBase64(file);
-        const response = await fetch(`${runtime.apiBase.replace(/\/+$/, '')}/files/base64`, {
+        const response = await browser.fetch(`${runtime.apiBase.replace(/\/+$/, '')}/files/base64`, {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
@@ -113,8 +116,8 @@
 
     async function deleteLegalFacilityDocument(documentId) {
         const normalizedDocumentId = normalizeText(documentId);
-        if (!normalizedDocumentId || typeof fetch !== 'function') return true;
-        const response = await fetch(`/api/files/${encodeURIComponent(normalizedDocumentId)}`, {
+        if (!normalizedDocumentId || browser?.hasFetch?.() !== true) return true;
+        const response = await browser.fetch(`/api/files/${encodeURIComponent(normalizedDocumentId)}`, {
             method: 'DELETE',
             credentials: 'same-origin',
         });

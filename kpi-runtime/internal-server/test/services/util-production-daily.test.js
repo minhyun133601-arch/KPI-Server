@@ -111,3 +111,95 @@ test('buildStatePayload groups rows by team and derives archive summary', () => 
   assert.deepEqual(payload.archives[0].teams, ['A조', 'B조']);
   assert.deepEqual(payload.archives[0].yearMonths, ['2026-04']);
 });
+
+test('buildStatePayload filters invalid production rows before grouping', () => {
+  const payload = buildStatePayload(
+    { period_start_day: 1, version: 1, updated_at: '2026-04-01T00:00:00.000Z' },
+    [
+      { production_date: '2026-04-01', team_name: 'A조', amount: '0' },
+      { production_date: '2026-02-31', team_name: 'A조', amount: '10' },
+      { production_date: '2026-04-02', team_name: '', amount: '10' },
+      { production_date: '2026-04-03', team_name: 'B조', amount: 'bad' },
+    ],
+    []
+  );
+
+  assert.deepEqual(payload.teams.map((team) => team.name), ['A조']);
+  assert.equal(payload.teams[0].entries.length, 1);
+  assert.equal(payload.teams[0].entries[0].amount, 0);
+});
+
+test('buildStatePayload sorts grouped entries by date line product and amount', () => {
+  const payload = buildStatePayload(
+    { period_start_day: 1, version: 1, updated_at: '2026-04-01T00:00:00.000Z' },
+    [
+      { production_date: '2026-04-02', team_name: 'A조', line_name: '2호기', product_name: 'B', amount: '3' },
+      { production_date: '2026-04-01', team_name: 'A조', line_name: '2호기', product_name: 'B', amount: '2' },
+      { production_date: '2026-04-01', team_name: 'A조', line_name: '1호기', product_name: 'C', amount: '2' },
+      { production_date: '2026-04-01', team_name: 'A조', line_name: '1호기', product_name: 'A', amount: '2' },
+      { production_date: '2026-04-01', team_name: 'A조', line_name: '1호기', product_name: 'A', amount: '1' },
+    ],
+    []
+  );
+
+  assert.deepEqual(
+    payload.teams[0].entries.map((entry) => `${entry.date}/${entry.lineName}/${entry.productName}/${entry.amount}`),
+    [
+      '2026-04-01/1호기/A/1',
+      '2026-04-01/1호기/A/2',
+      '2026-04-01/1호기/C/2',
+      '2026-04-01/2호기/B/2',
+      '2026-04-02/2호기/B/3',
+    ]
+  );
+});
+
+test('buildStatePayload derives archive summaries by fingerprint or file name fallback', () => {
+  const payload = buildStatePayload(
+    { period_start_day: 1, version: 1, updated_at: '2026-04-01T00:00:00.000Z' },
+    [
+      {
+        production_date: '2026-03-31',
+        team_name: 'B조',
+        amount: '10',
+        source_fingerprint: 'same-fingerprint',
+      },
+      {
+        production_date: '2026-04-01',
+        team_name: 'A조',
+        amount: '20',
+        source_file_name: 'Daily.xlsx',
+      },
+    ],
+    [
+      { id: 'by-fingerprint', file_name: 'other.xlsx', fingerprint: 'same-fingerprint', saved_at: '2026-01-01T00:00:00.000Z' },
+      { id: 'by-file', file_name: 'daily.xlsx', saved_at: '2026-01-02T00:00:00.000Z' },
+    ]
+  );
+
+  assert.deepEqual(payload.archives[0].teams, ['B조']);
+  assert.deepEqual(payload.archives[0].yearMonths, ['2026-03']);
+  assert.deepEqual(payload.archives[1].teams, ['A조']);
+  assert.deepEqual(payload.archives[1].yearMonths, ['2026-04']);
+});
+
+test('normalizeStateSnapshot accepts zero production aliases and sorts archives by saved time', () => {
+  const snapshot = normalizeStateSnapshot({
+    teams: [
+      {
+        name: 'A조',
+        entries: [
+          { date: '2026-04-01', teamName: 'A조', production: '0' },
+          { date: '2026-04-02', teamName: 'A조', value: '5' },
+        ],
+      },
+    ],
+    archives: [
+      { id: 'old', fileName: 'old.xlsx', savedAt: '2026-04-01T00:00:00.000Z' },
+      { id: 'new', fileName: 'new.xlsx', savedAt: '2026-04-02T00:00:00.000Z' },
+    ],
+  });
+
+  assert.deepEqual(snapshot.entries.map((entry) => entry.amount), [0, 5]);
+  assert.deepEqual(snapshot.archives.map((archive) => archive.id), ['new', 'old']);
+});

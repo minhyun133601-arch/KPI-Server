@@ -1,15 +1,54 @@
+function getBillingDirectoryPersistenceBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function getBillingDirectoryPersistenceGlobal(name) {
+  const adapter = getBillingDirectoryPersistenceBrowserAdapter();
+  return typeof adapter?.getGlobal === "function" ? adapter.getGlobal(name) : undefined;
+}
+
+function hasBillingDirectoryPersistenceGlobal(name) {
+  const adapter = getBillingDirectoryPersistenceBrowserAdapter();
+  return typeof adapter?.hasGlobal === "function" && adapter.hasGlobal(name);
+}
+
+function getBillingDirectoryPersistenceProtocol() {
+  const adapter = getBillingDirectoryPersistenceBrowserAdapter();
+  return typeof adapter?.getLocationProtocol === "function"
+    ? adapter.getLocationProtocol()
+    : "";
+}
+
+function getBillingDirectoryPicker() {
+  const adapter = getBillingDirectoryPersistenceBrowserAdapter();
+  const rootPicker = getBillingDirectoryPersistenceGlobal("showDirectoryPicker");
+  const picker =
+    typeof adapter?.showDirectoryPicker === "function" && typeof rootPicker === "function"
+      ? adapter.showDirectoryPicker
+      : rootPicker;
+  return typeof picker === "function" ? picker : null;
+}
+
+function alertBillingDirectoryPersistenceUser(message) {
+  const adapter = getBillingDirectoryPersistenceBrowserAdapter();
+  if (typeof adapter?.alert === "function") {
+    adapter.alert(message);
+  }
+}
+
 function supportsPersistedLocalFileHandle() {
   return (
-    typeof window !== "undefined" &&
-    window.location.protocol === "file:" &&
-    "indexedDB" in window
+    getBillingDirectoryPersistenceProtocol() === "file:" &&
+    hasBillingDirectoryPersistenceGlobal("indexedDB")
   );
 }
 
 function supportsBillingDocumentDirectoryPersistence() {
   return (
     supportsPersistedLocalFileHandle() &&
-    typeof window.showDirectoryPicker === "function"
+    Boolean(getBillingDirectoryPicker())
   );
 }
 
@@ -22,7 +61,10 @@ function openLocalFileHandleDatabase() {
     let didSettle = false;
 
     try {
-      const request = window.indexedDB.open(LOCAL_FILE_HANDLE_DB_NAME, 1);
+      const request = getBillingDirectoryPersistenceGlobal("indexedDB").open(
+        LOCAL_FILE_HANDLE_DB_NAME,
+        1
+      );
       request.onupgradeneeded = () => {
         const database = request.result;
         if (!database.objectStoreNames.contains(LOCAL_FILE_HANDLE_STORE_NAME)) {
@@ -237,7 +279,7 @@ async function promptBillingDocumentDirectoryHandle(
 
   let selectedDirectoryHandle = null;
   try {
-    selectedDirectoryHandle = await window.showDirectoryPicker();
+    selectedDirectoryHandle = await getBillingDirectoryPicker()();
   } catch (error) {
     if (error?.name === "AbortError") {
       return null;
@@ -251,7 +293,9 @@ async function promptBillingDocumentDirectoryHandle(
     resourceType
   );
   if (!billingDirectoryHandle) {
-    window.alert(`${getBillingDocumentDirectoryName(resourceType)} 폴더를 선택해 주세요.`);
+    alertBillingDirectoryPersistenceUser(
+      `${getBillingDocumentDirectoryName(resourceType)} 폴더를 선택해 주세요.`
+    );
     return null;
   }
 

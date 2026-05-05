@@ -1,0 +1,509 @@
+.team-builder {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(248, 251, 250, 0.9);
+  border: 1px solid rgba(16, 33, 42, 0.06);
+}
+
+.team-builder-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.equipment-toolbar {
+  margin-bottom: 18px;
+}
+
+.equipment-toolbar-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.equipment-count-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.equipment-toolbar-copy .mini-label,
+.equipment-toolbar-copy .team-builder-count {
+  margin: 0;
+}
+
+.equipment-day-count {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.equipment-toolbar-actions,
+.team-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.equipment-toolbar-actions {
+  width: min(460px, 100%);
+}
+
+.equipment-toolbar .equipment-add-menu {
+  left: auto;
+  right: 0;
+}
+
+.equipment-toolbar .entry-add {
+  flex: 1;
+}
+
+.equipment-toolbar .entry-add-toggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.equipment-toolbar .equipment-add-menu,
+.equipment-toolbar .equipment-add-menu.is-hidden {
+  position: static;
+  z-index: auto;
+  min-width: 0;
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.equipment-toolbar .equipment-add-fields {
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) 84px;
+  gap: 10px;
+}
+
+.equipment-toolbar .equipment-add-input {
+  min-height: 52px;
+  padding: 14px 16px;
+  border-radius: 16px;
+}
+
+.equipment-toolbar .equipment-add-submit {
+  min-width: 76px;
+  min-height: 52px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: rgba(16, 33, 42, 0.08);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.equipment-toolbar .equipment-add-submit:hover {
+  background: rgba(15, 139, 141, 0.12);
+  color: var(--accent-strong);
+}
+
+.team-toolbar .team-builder-head {
+  align-items: flex-start;
+}
+
+.team-toolbar .team-builder-text {
+  margin: 0;
+}
+
+.team-builder-text {
+  margin-top: 0;
+  font-size: 0.86rem;
+}
+
+.team-settlement-section {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(16, 33, 42, 0.06);
+}
+
+.team-settlement-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.team-settlement-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.team-settlement-file {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.team-settlement-attach-btn,
+.team-settlement-complete-btn {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.team-settlement-attach-btn {
+  border: 1px solid rgba(16, 33, 42, 0.12);
+  background: rgba(16, 33, 42, 0.04);
+  color: var(--text);
+}
+
+.team-settlement-attach-btn:hover:not(:disabled) {
+  background: rgba(16, 33, 42, 0.08);
+  border-color: rgba(16, 33, 42, 0.18);
+}
+
+.team-settlement-complete-btn {
+  border: 1px solid rgba(15, 139, 141, 0.18);
+  background: rgba(15, 139, 141, 0.08);
+  color: var(--accent-strong);
+}
+
+.team-settlement-complete-btn:hover:not(:disabled) {
+  background: rgba(15, 139, 141, 0.14);
+  border-color: rgba(15, 139, 141, 0.28);
+}
+
+.team-settlement-complete-btn.is-completed {
+  background: rgba(32, 113, 80, 0.12);
+  border-color: rgba(32, 113, 80, 0.2);
+  color: #207150;
+}
+
+.team-settlement-attach-btn:disabled,
+.team-settlement-complete-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.billing-preview-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: grid;
+  place-items: center;
+  padding: clamp(8px, 1.6vw, 18px);
+}
+
+.billing-preview-modal.is-hidden {
+  display: none;
+}
+
+.billing-preview-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(9, 24, 31, 0.58);
+  backdrop-filter: blur(6px);
+}
+
+.billing-preview-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(1320px, calc(100vw - 16px));
+  height: min(94vh, 1040px);
+  max-height: calc(100vh - 16px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px;
+  border-radius: 24px;
+  background: rgba(255, 252, 247, 0.98);
+  box-shadow: 0 24px 72px rgba(0, 0, 0, 0.28);
+}
+
+.billing-preview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.billing-preview-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.billing-preview-title,
+.billing-preview-meta {
+  margin: 0;
+}
+
+.billing-preview-title {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.billing-preview-meta {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.billing-preview-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#billingDocumentPreviewOpenBtn {
+  display: none !important;
+}
+
+.billing-preview-body {
+  min-height: 0;
+  height: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(16, 33, 42, 0.04);
+  border: 1px solid rgba(16, 33, 42, 0.08);
+  display: grid;
+  place-items: center;
+}
+
+.billing-preview-frame,
+.billing-preview-image {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  display: block;
+  border: 0;
+  background: #ffffff;
+}
+
+.billing-preview-image {
+  object-fit: contain;
+}
+
+.billing-preview-empty {
+  margin: 0;
+  padding: 24px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+
+.team-settlement-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.team-settlement-scope-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.team-settlement-scope-chip {
+  appearance: none;
+  border: 1px solid rgba(16, 63, 71, 0.12);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.team-settlement-scope-chip:hover {
+  transform: translateY(-1px);
+  background: rgba(15, 139, 141, 0.08);
+  border-color: rgba(15, 139, 141, 0.18);
+  color: var(--accent-strong);
+}
+
+.team-settlement-scope-chip.is-active {
+  background: rgba(15, 139, 141, 0.14);
+  border-color: rgba(15, 139, 141, 0.24);
+  color: var(--accent-strong);
+  box-shadow: 0 0 0 1px rgba(15, 139, 141, 0.08);
+}
+
+.team-settlement-status {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(208, 86, 39, 0.08);
+  color: #8d4726;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.team-settlement-group {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(246, 249, 248, 0.92);
+  border: 1px solid rgba(16, 33, 42, 0.06);
+}
+
+.team-settlement-group.is-auto {
+  background:
+    linear-gradient(135deg, rgba(15, 139, 141, 0.12), rgba(245, 168, 75, 0.12)),
+    rgba(255, 255, 255, 0.96);
+  border-color: rgba(15, 139, 141, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(15, 139, 141, 0.08);
+}
+
+.team-settlement-group-label {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.team-settlement-group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.team-settlement-field {
+  display: grid;
+  gap: 6px;
+}
+
+.team-settlement-field.is-auto .team-settlement-label {
+  color: var(--accent-strong);
+}
+
+.team-settlement-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.team-settlement-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.team-settlement-formula-toggle {
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(15, 139, 141, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.team-settlement-formula-toggle:hover {
+  border-color: rgba(15, 139, 141, 0.36);
+  background: rgba(15, 139, 141, 0.08);
+}
+
+.team-settlement-formula-toggle.is-open {
+  border-color: rgba(15, 139, 141, 0.4);
+  background: rgba(15, 139, 141, 0.14);
+}
+
+.team-settlement-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid rgba(16, 33, 42, 0.1);
+  border-radius: 14px;
+  background: rgba(248, 251, 250, 0.92);
+  color: var(--text);
+  font: inherit;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.team-settlement-input.is-auto {
+  border-color: rgba(15, 139, 141, 0.22);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.team-settlement-input:focus {
+  outline: none;
+  border-color: rgba(15, 139, 141, 0.34);
+  box-shadow: 0 0 0 3px rgba(15, 139, 141, 0.1);
+  background: #ffffff;
+}
+
+.team-settlement-formula {
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 139, 141, 0.12);
+  border-radius: 12px;
+  background: rgba(15, 139, 141, 0.06);
+  color: var(--text);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.team-builder-actions {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  width: min(460px, 100%);
+}
+
+.team-builder-count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+}

@@ -4,12 +4,28 @@ const HOST_STATE_CLASS_NAMES = Object.freeze([
   "is-equipment-panel-scroll-mode",
 ]);
 
+function getMountDomBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function getMountDomLocationHref() {
+  const adapter = getMountDomBrowserAdapter();
+  return typeof adapter?.getLocationHref === "function" ? adapter.getLocationHref() : "";
+}
+
+function isGlobalSaveShellEnabled() {
+  const adapter = getMountDomBrowserAdapter();
+  return typeof adapter?.getGlobal === "function" && adapter.getGlobal("__KPI_GLOBAL_SAVE_SHELL__") === true;
+}
+
 const runtimeContext = {
   hostElement: null,
   mountRoot: null,
   portalRoot: null,
   document: document,
-  assetBaseUrl: window.location.href,
+  assetBaseUrl: getMountDomLocationHref(),
   popupStylesUrl: "",
   cleanupHandlers: [],
 };
@@ -80,7 +96,7 @@ function resolveRuntimeAssetUrl(relativePath) {
   }
 
   try {
-    return new URL(normalizedPath, runtimeContext.assetBaseUrl || window.location.href).href;
+    return new URL(normalizedPath, runtimeContext.assetBaseUrl || getMountDomLocationHref()).href;
   } catch (error) {
     return normalizedPath;
   }
@@ -245,7 +261,7 @@ function ensureManualSaveButtons() {
     return;
   }
 
-  if (window.__KPI_GLOBAL_SAVE_SHELL__ === true) {
+  if (isGlobalSaveShellEnabled()) {
     queryWithinMountRoot("#saveEntryBtn")?.remove();
     queryWithinMountRoot("#teamSaveBtn")?.remove();
     return;

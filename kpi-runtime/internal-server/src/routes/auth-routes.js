@@ -142,7 +142,7 @@ function buildLoginPageHtml(nextPath) {
         if (!response.ok || !payload.ok) {
           throw new Error(payload.error || 'login_failed');
         }
-        window.location.replace(nextPath);
+        location.replace(nextPath);
       } catch (error) {
         errorMessage.textContent = error.message === 'invalid_credentials'
           ? 'Invalid username or password.'

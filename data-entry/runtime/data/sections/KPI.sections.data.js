@@ -1,6 +1,5 @@
 (function () {
-    window.KpiSectionFactories = window.KpiSectionFactories || {};
-    window.KpiSectionFactories.data = function buildDataSection() {
+    KpiSectionFactoryAdapter.registerFactory('data', function buildDataSection() {
         const AppData = {};
         AppData.data = {
             id: 'data',
@@ -49,5 +48,5 @@
             ]
         };
         return AppData.data;
-    };
+    });
 })();

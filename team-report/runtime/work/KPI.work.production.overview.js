@@ -1,4 +1,4 @@
-﻿        function getWorkTeamCalendarUtilitySummary(dataKey, monthKey) {
+        function getWorkTeamCalendarUtilitySummary(dataKey, monthKey) {
             const parsed = parseMonthKey(monthKey);
             const normalizedDataKey = String(dataKey || '').trim();
             const emptyGas = { usageText: '-', costText: '-', detailRows: [], availableModes: [], canSelect: false, mode: getWorkTeamCalendarGasMode(dataKey) };

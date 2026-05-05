@@ -1,12 +1,19 @@
-(function registerUtilReportSheetModalActions(globalScope) {
-    if (globalScope.KPIUtilReportSheetModalActions) {
+(function registerUtilReportSheetModalActions() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/modal/actions.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetModalActions')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.modal-actions.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.modal-actions.js'
+    );
 
     const {
         UtilSheetCompareState,
@@ -45,7 +52,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetModalActions;
+        return api;
     }
 
     function normalizeCompareKey(compareKey = 'month') {
@@ -83,7 +90,7 @@
     }
 
     function getDocument() {
-        return globalScope.document || null;
+        return runtimeAdapter.getDocument();
     }
 
     function getReportModal() {
@@ -100,8 +107,7 @@
     }
 
     function requestFrame(callback) {
-        if (typeof globalScope.requestAnimationFrame === 'function') {
-            globalScope.requestAnimationFrame(callback);
+        if (runtimeAdapter.requestAnimationFrame(callback) !== null) {
             return;
         }
         callback();
@@ -352,7 +358,7 @@
         }
     }
 
-    globalScope.KPIUtilReportSheetModalActions = {
+    const api = {
         setRuntimeAdapters,
         applyUtilSheetCompareSelection,
         applyUtilGasMeterProductionSelection,
@@ -369,4 +375,6 @@
         openUtilSheetReportModal,
         closeUtilSheetReportModal
     };
-})(typeof window !== 'undefined' ? window : globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetModalActions', api);
+})();

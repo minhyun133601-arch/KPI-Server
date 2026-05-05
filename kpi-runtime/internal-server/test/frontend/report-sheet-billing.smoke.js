@@ -4,6 +4,10 @@ import test from 'node:test';
 import vm from 'node:vm';
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 const GAS_BILLING_FOLDER = '\uAC00\uC2A4 \uCCAD\uAD6C\uC11C';
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
@@ -37,6 +41,9 @@ function createReportSheetBillingContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js',
   });
@@ -48,6 +55,10 @@ function createReportSheetBillingContext() {
 test('report sheet billing registry resolves scoped gas billing descriptors from runtime adapters', () => {
   const context = createReportSheetBillingContext();
   const billing = context.KPIUtilReportSheetBilling;
+
+  assert.doesNotMatch(reportSheetBillingSource, /globalThis|window\.|globalScope|__LOCAL_APP_STORE__/);
+  assert.match(reportSheetBillingSource, /KPIUtilReportRuntimeAdapter/);
+
   billing.setRuntimeAdapters({
     getGasMeteringStore() {
       return {
@@ -95,8 +106,11 @@ test('report sheet billing registry resolves scoped gas billing descriptors from
   assert.ok(String(descriptor?.url || '').includes('apps/metering/%EA%B0%80%EC%8A%A4%20%EC%B2%AD%EA%B5%AC%EC%84%9C/lng-2026-04.pdf'));
 });
 test('kpi html loads report sheet billing before sheet.js', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
   const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=053');
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(billingIndex >= 0, 'report sheet billing loader is missing');
+  assert.ok(billingIndex > adapterIndex, 'report sheet billing must load after report runtime adapter');
   assert.ok(windowsIndex > billingIndex, 'report sheet billing must load before report sheet windows');
 });

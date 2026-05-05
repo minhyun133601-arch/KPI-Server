@@ -1,12 +1,19 @@
-(function registerUtilReportSheetControls(globalScope) {
-    if (globalScope.KPIUtilReportSheetControls) {
+(function registerUtilReportSheetControls() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/controls.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetControls')) {
         return;
     }
 
-    const utilReportSheetOptions = globalScope.KPIUtilReportSheetOptions;
-    if (!utilReportSheetOptions) {
-        throw new Error('KPIUtilReportSheetOptions must load before KPI.util.report.sheet.controls.js');
-    }
+    const utilReportSheetOptions = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetOptions',
+        'KPI.util.report.sheet.controls.js'
+    );
 
     const {
         UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS,
@@ -26,7 +33,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetControls;
+        return api;
     }
 
     function escapeHtml(value) {
@@ -133,7 +140,7 @@
         `).join('');
     }
 
-    globalScope.KPIUtilReportSheetControls = {
+    const api = {
         setRuntimeAdapters,
         buildUtilGasMeterProductionSelectHtml,
         buildUtilElectricMeterTeamSelectHtml,
@@ -142,4 +149,6 @@
         buildUtilElectricMeterViewToggleHtml,
         buildUtilSheetMonthOptionHtml
     };
-})(globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetControls', api);
+})();

@@ -1,3 +1,26 @@
+function getEquipmentItemEditingBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function alertEquipmentItemEditingUser(message) {
+  const adapter = getEquipmentItemEditingBrowserAdapter();
+  if (typeof adapter?.alert === "function") {
+    adapter.alert(message);
+  }
+}
+
+function confirmEquipmentItemEditingUser(message) {
+  const adapter = getEquipmentItemEditingBrowserAdapter();
+  return typeof adapter?.confirm === "function" ? adapter.confirm(message) : false;
+}
+
+function promptEquipmentItemEditingUser(message, defaultValue = "") {
+  const adapter = getEquipmentItemEditingBrowserAdapter();
+  return typeof adapter?.prompt === "function" ? adapter.prompt(message, defaultValue) : null;
+}
+
 function closeEquipmentManageMenu() {
   state.openEquipmentManageKey = "";
   syncEquipmentManageMenus();
@@ -33,12 +56,12 @@ function handleDeleteEquipmentItem(fieldKey) {
 
   const deleteDate = state.selectedDate;
   if (!deleteDate) {
-    window.alert("삭제 날짜를 먼저 선택해 주세요.");
+    alertEquipmentItemEditingUser("삭제 날짜를 먼저 선택해 주세요.");
     return;
   }
 
   const { restUntilDate, hiddenFromDate } = getEquipmentStatusCarryUntilDate(deleteDate);
-  const confirmed = window.confirm(
+  const confirmed = confirmEquipmentItemEditingUser(
     hiddenFromDate
       ? `"${getEquipmentDisplayLabel(targetItem)}" 설비를 ${formatShortDate(deleteDate)}부터 비활성으로 두고 ${formatShortDate(
           hiddenFromDate
@@ -75,19 +98,22 @@ function handleRenameEquipmentItem(fieldKey) {
 
   closeEquipmentManageMenu();
 
-  const promptedLabel = window.prompt("설비명을 수정하세요.", getEquipmentDisplayLabel(targetItem));
+  const promptedLabel = promptEquipmentItemEditingUser(
+    "설비명을 수정하세요.",
+    getEquipmentDisplayLabel(targetItem)
+  );
   if (promptedLabel === null) {
     return;
   }
 
   const nextLabel = getEquipmentDisplayLabel(normalizeText(promptedLabel));
   if (!nextLabel) {
-    window.alert("설비명은 비워 둘 수 없습니다.");
+    alertEquipmentItemEditingUser("설비명은 비워 둘 수 없습니다.");
     return;
   }
 
   if (hasEquipmentLabelConflict(nextLabel, fieldKey)) {
-    window.alert("이미 등록된 설비명입니다.");
+    alertEquipmentItemEditingUser("이미 등록된 설비명입니다.");
     return;
   }
 
@@ -123,20 +149,23 @@ function handleUpdateEquipmentFactor(fieldKey) {
     getDefaultUsageFactorByLabel(targetItem.label)
   );
   const usageFactorLabel = getUsageFactorLabel();
-  const promptedFactor = window.prompt(`${usageFactorLabel}를 수정하세요.`, String(currentFactor));
+  const promptedFactor = promptEquipmentItemEditingUser(
+    `${usageFactorLabel}를 수정하세요.`,
+    String(currentFactor)
+  );
   if (promptedFactor === null) {
     return;
   }
 
   const normalizedPrompt = promptedFactor.replace(/,/g, "").trim();
   if (!normalizedPrompt) {
-    window.alert(`${usageFactorLabel}는 비워 둘 수 없습니다.`);
+    alertEquipmentItemEditingUser(`${usageFactorLabel}는 비워 둘 수 없습니다.`);
     return;
   }
 
   const nextFactor = Number.parseFloat(normalizedPrompt);
   if (!Number.isFinite(nextFactor) || nextFactor < 0) {
-    window.alert(`${usageFactorLabel}는 0 이상의 숫자만 입력할 수 있습니다.`);
+    alertEquipmentItemEditingUser(`${usageFactorLabel}는 0 이상의 숫자만 입력할 수 있습니다.`);
     return;
   }
 
@@ -164,7 +193,7 @@ function handleUpdateEquipmentDecimalDigits(fieldKey) {
   closeEquipmentManageMenu();
 
   const currentDigits = getEquipmentDecimalDigits(fieldKey);
-  const promptedDigits = window.prompt(
+  const promptedDigits = promptEquipmentItemEditingUser(
     `소수점 자리를 수정하세요. (0-${EQUIPMENT_INPUT_FRACTION_DIGITS})`,
     String(currentDigits)
   );
@@ -174,13 +203,15 @@ function handleUpdateEquipmentDecimalDigits(fieldKey) {
 
   const normalizedPrompt = promptedDigits.trim();
   if (!normalizedPrompt) {
-    window.alert("소수점 자리는 비워 둘 수 없습니다.");
+    alertEquipmentItemEditingUser("소수점 자리는 비워 둘 수 없습니다.");
     return;
   }
 
   const nextDigits = normalizeEquipmentDecimalDigits(normalizedPrompt, null);
   if (nextDigits === null || String(nextDigits) !== normalizedPrompt) {
-    window.alert(`소수점 자리는 0부터 ${EQUIPMENT_INPUT_FRACTION_DIGITS}까지의 정수만 입력할 수 있습니다.`);
+    alertEquipmentItemEditingUser(
+      `소수점 자리는 0부터 ${EQUIPMENT_INPUT_FRACTION_DIGITS}까지의 정수만 입력할 수 있습니다.`
+    );
     return;
   }
 
@@ -221,7 +252,7 @@ function handleUpdateEquipmentReadingAdjustment(fieldKey) {
   closeEquipmentManageMenu();
 
   const currentAdjustment = getEquipmentReadingAdjustment(targetItem);
-  const promptedAdjustmentValue = window.prompt(
+  const promptedAdjustmentValue = promptEquipmentItemEditingUser(
     "보정값을 입력하세요. 예: 10000, -10000. 비우면 해제됩니다.",
     currentAdjustment ? String(currentAdjustment.value) : ""
   );
@@ -234,7 +265,7 @@ function handleUpdateEquipmentReadingAdjustment(fieldKey) {
     normalizedAdjustmentPrompt === "" ? 0 : Number.parseFloat(normalizedAdjustmentPrompt);
 
   if (normalizedAdjustmentPrompt && !Number.isFinite(nextAdjustmentValue)) {
-    window.alert("보정값은 숫자만 입력할 수 있습니다.");
+    alertEquipmentItemEditingUser("보정값은 숫자만 입력할 수 있습니다.");
     return;
   }
 
@@ -245,7 +276,7 @@ function handleUpdateEquipmentReadingAdjustment(fieldKey) {
 
   let nextStartDate = "";
   if (!shouldClearAdjustment) {
-    const promptedStartDate = window.prompt(
+    const promptedStartDate = promptEquipmentItemEditingUser(
       "보정 시작일을 입력하세요. 예: 2025-07-01",
       getSuggestedEquipmentReadingAdjustmentStartDate(targetItem)
     );
@@ -255,7 +286,7 @@ function handleUpdateEquipmentReadingAdjustment(fieldKey) {
 
     nextStartDate = normalizeEquipmentReadingAdjustmentStartDate(promptedStartDate);
     if (!nextStartDate) {
-      window.alert("보정 시작일은 YYYY-MM-DD 형식으로 입력해 주세요.");
+      alertEquipmentItemEditingUser("보정 시작일은 YYYY-MM-DD 형식으로 입력해 주세요.");
       return;
     }
   }

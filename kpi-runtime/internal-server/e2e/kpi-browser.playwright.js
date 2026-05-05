@@ -107,6 +107,14 @@ async function clickSidebarButton(page, label) {
   await page.waitForTimeout(500);
 }
 
+async function fillEquipmentDetailItem(page, label, value) {
+  await page.locator('[data-equipment-add-row="detailInfo"]').click();
+  const rows = page.locator('.data-equipment-detail-item');
+  const row = rows.last();
+  await row.locator('[data-equipment-row-section="detailInfo"][data-equipment-field="label"]').fill(label);
+  await row.locator('[data-equipment-row-section="detailInfo"][data-equipment-field="value"]').fill(value);
+}
+
 async function expectIntegratedMeteringTitle(page, titlePattern) {
   await expect(page.locator('[data-kpi-metering-root]')).toBeVisible();
   await expect
@@ -342,30 +350,18 @@ test.describe('KPI browser smoke', () => {
       await clickSidebarButton(page, '설비 이력 카드');
       await expect(page.locator('#content-container')).toContainText('설비 현황');
       await expect(page.locator('.data-equipment-page')).toBeVisible();
-      await expect(page.locator('#content-container')).toContainText('등록된 설비 카드가 없습니다.');
+      await expect(page.locator('#content-container')).toContainText(/등록된 설비 카드가 없습니다.|샘플 혼합기 A/);
       await page.getByRole('button', { name: '설비 이력 카드 작성' }).click();
       await expect(page.locator('[data-equipment-form]')).toBeVisible();
-      await page.locator('[data-equipment-field="equipmentCode"]').fill('EQ-MIX-001');
       await page.locator('[data-equipment-field="team"]').fill('생산1팀');
-      await page.locator('[data-equipment-field="group"]').fill('혼합 공정');
-      await page.locator('[data-equipment-field="owner"]').fill('작업자 A');
       await page.locator('[data-equipment-field="name"]').fill('샘플 혼합기 A');
-      await page.locator('[data-equipment-field="line"]').fill('라인 알파');
       await page.locator('[data-equipment-field="process"]').fill('혼합');
-      await page.locator('[data-equipment-field="production"]').fill('2,680 kg');
-      await page.locator('[data-equipment-field="plan"]').fill('3,000 kg / 일');
       await page.locator('[data-equipment-field="rate"]').fill('88');
-      await page.locator('[data-equipment-field="lastCheck"]').fill('2026.04.29');
-      await page.locator('[data-equipment-field="nextCheck"]').fill('2026.05.29');
-      await page.locator('[data-equipment-add-row="detailInfo"]').click();
-      await page
-        .locator('[data-equipment-row-section="detailInfo"][data-equipment-field="label"]')
-        .first()
-        .fill('제조사');
-      await page
-        .locator('[data-equipment-row-section="detailInfo"][data-equipment-field="value"]')
-        .first()
-        .fill('샘플 제조사');
+      await fillEquipmentDetailItem(page, '설비코드', 'EQ-MIX-001');
+      await fillEquipmentDetailItem(page, '공정 구분', '혼합 공정');
+      await fillEquipmentDetailItem(page, '생산라인', '라인 알파');
+      await fillEquipmentDetailItem(page, '담당', '작업자 A');
+      await fillEquipmentDetailItem(page, '제조사', '샘플 제조사');
       await page
         .locator('[data-equipment-row-section="maintenanceHistory"][data-equipment-field="date"]')
         .first()
@@ -390,10 +386,6 @@ test.describe('KPI browser smoke', () => {
         .locator('[data-equipment-row-section="documents"][data-equipment-field="title"]')
         .first()
         .fill('점검 보고서');
-      await page
-        .locator('[data-equipment-row-section="documents"][data-equipment-field="attachmentKey"]')
-        .first()
-        .fill('eq-mix-001-report');
       await page.getByRole('button', { name: '설비 카드 저장' }).click();
       await expect(page.locator('#content-container')).toContainText('작성 내용이 설비 현황 보드에 반영되었습니다.');
       await page.getByRole('button', { name: '설비 현황' }).click();

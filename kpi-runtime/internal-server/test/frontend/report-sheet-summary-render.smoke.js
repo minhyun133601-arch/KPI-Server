@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetOptionsSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/options.js', import.meta.url),
   'utf8'
@@ -37,6 +41,9 @@ function createSummaryRenderContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetOptionsSource, context, {
     filename: 'KPI.util.report.sheet.options.js',
   });
@@ -53,6 +60,9 @@ test('report sheet summary render registry builds badges, stats, compare, matrix
   const context = createSummaryRenderContext();
   const controls = context.KPIUtilReportSheetControls;
   const summaryRender = context.KPIUtilReportSheetSummaryRender;
+
+  assert.doesNotMatch(reportSheetSummaryRenderSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetSummaryRenderSource, /KPIUtilReportRuntimeAdapter/);
 
   controls.setRuntimeAdapters({
     escapeUtilSheetHtml(value) {
@@ -314,11 +324,14 @@ test('report sheet summary render registry builds badges, stats, compare, matrix
 });
 
 test('kpi html loads report sheet summary render between analysis render and sheet.js', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
   const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=053');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(analysisRenderIndex >= 0, 'report sheet analysis render loader is missing');
+  assert.ok(summaryRenderIndex > adapterIndex, 'report sheet summary render must load after report runtime adapter');
   assert.ok(summaryRenderIndex > analysisRenderIndex, 'report sheet summary render must load after report sheet analysis render');
   assert.ok(sheetIndex > summaryRenderIndex, 'report sheet must load after report sheet summary render');
 });

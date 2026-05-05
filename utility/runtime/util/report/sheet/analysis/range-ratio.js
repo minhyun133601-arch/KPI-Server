@@ -1,12 +1,19 @@
-(function registerUtilReportSheetAnalysisRangeRatio(globalScope) {
-    if (globalScope.KPIUtilReportSheetAnalysisRangeRatio) {
+(function registerUtilReportSheetAnalysisRangeRatio() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/analysis/range-ratio.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetAnalysisRangeRatio')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.analysis.range-ratio.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.analysis.range-ratio.js'
+    );
 
     const {
         UTIL_GAS_RATIO_CHART_COLORS
@@ -31,7 +38,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetAnalysisRangeRatio;
+        return api;
     }
 
     function compareMonthKeys(left = '', right = '') {
@@ -435,10 +442,12 @@
         };
     }
 
-    globalScope.KPIUtilReportSheetAnalysisRangeRatio = {
+    const api = Object.freeze({
         setRuntimeAdapters,
         buildUtilGasAnalysisRangeTables,
         buildUtilGasAnalysisRangeChartHtml,
         buildUtilGasAnalysisRatioCombinedChartModel
-    };
-})(globalThis);
+    });
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetAnalysisRangeRatio', api);
+})();

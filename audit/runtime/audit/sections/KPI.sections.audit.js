@@ -1,7 +1,5 @@
 (function () {
-    window.KpiSectionFactories = window.KpiSectionFactories || {};
-
-    window.KpiSectionFactories.audit = function buildAuditSection() {
+    KpiSectionFactoryAdapter.registerFactory('audit', function buildAuditSection() {
         const AppData = {};
         AppData.audit = {
             id: 'audit',
@@ -77,5 +75,5 @@
             ]
         };
         return AppData.audit;
-    };
+    });
 })();

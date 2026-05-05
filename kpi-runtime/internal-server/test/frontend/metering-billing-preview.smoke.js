@@ -7,6 +7,10 @@ const billingDocumentPathsSource = await fs.readFile(
   new URL('../../../../utility/apps/metering/billing/document-paths.js', import.meta.url),
   'utf8'
 );
+const browserAdapterSource = await fs.readFile(
+  new URL('../../../../utility/apps/metering/runtime/browser-adapter.js', import.meta.url),
+  'utf8'
+);
 const billingDocumentsSource = await fs.readFile(
   new URL('../../../../utility/apps/metering/billing/documents.js', import.meta.url),
   'utf8'
@@ -31,9 +35,13 @@ function createClassList(initialNames = []) {
   };
 }
 
-function createBillingPreviewContext() {
+const directBrowserGlobalPattern = new RegExp(String.raw`\b(?:window\.|global` + `This)\b`);
+
+function createBillingPreviewContext(options = {}) {
   const alerts = [];
   const appendedNodes = [];
+  const openWindows = [];
+  const timeouts = [];
   let focusedCount = 0;
 
   const context = {
@@ -95,10 +103,14 @@ function createBillingPreviewContext() {
       alert(message) {
         alerts.push(String(message));
       },
-      open() {
-        return null;
+      open(url, target, features) {
+        openWindows.push({ url, target, features });
+        return Object.prototype.hasOwnProperty.call(options, "openResult")
+          ? options.openResult
+          : null;
       },
-      setTimeout(callback) {
+      setTimeout(callback, delay) {
+        timeouts.push({ delay });
         callback();
         return 1;
       },
@@ -157,6 +169,9 @@ function createBillingPreviewContext() {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(browserAdapterSource, context, {
+    filename: "runtime/browser-adapter.js",
+  });
   vm.runInContext(billingDocumentPathsSource, context, {
     filename: "billing/document-paths.js",
   });
@@ -171,11 +186,18 @@ function createBillingPreviewContext() {
     context,
     alerts,
     appendedNodes,
+    openWindows,
+    timeouts,
     getFocusedCount() {
       return focusedCount;
     },
   };
 }
+
+test("billing preview runtime keeps browser globals behind the metering adapter", () => {
+  assert.doesNotMatch(billingDocumentPreviewSource, directBrowserGlobalPattern);
+  assert.match(billingDocumentPreviewSource, /KpiMeteringBrowserAdapter/);
+});
 
 test("billing preview runtime resolves inline data URL for unsynced local documents", () => {
   const { context } = createBillingPreviewContext();
@@ -218,7 +240,7 @@ test("billing preview runtime builds descriptor and infers image preview metadat
 });
 
 test("billing preview runtime opens and closes preview modal with populated metadata", () => {
-  const { context, getFocusedCount } = createBillingPreviewContext();
+  const { context, getFocusedCount, timeouts } = createBillingPreviewContext();
 
   context.openBillingDocumentPreview(
     "2026-04",
@@ -254,7 +276,34 @@ test("billing preview runtime opens and closes preview modal with populated meta
   assert.equal(context.elements.billingDocumentPreviewTitle.textContent, "청구서 미리보기");
   assert.equal(context.elements.billingDocumentPreviewMeta.textContent, "");
   assert.equal(context.billingDocumentPreviewState.billingDocument, null);
+  assert.deepEqual(timeouts, [{ delay: 0 }]);
   assert.equal(getFocusedCount(), 1);
+});
+
+test("billing preview runtime opens documents through the browser adapter", () => {
+  const popup = { closed: false };
+  const { context, openWindows, appendedNodes } = createBillingPreviewContext({
+    openResult: popup,
+  });
+
+  const opened = context.openBillingDocumentInNewTab(
+    {
+      fileName: "2026-04.pdf",
+      previewUrl: "https://files.local/preview.pdf",
+      mimeType: "application/pdf",
+    },
+    "electric"
+  );
+
+  assert.equal(opened, true);
+  assert.deepEqual(openWindows, [
+    {
+      url: "https://files.local/preview.pdf",
+      target: "_blank",
+      features: "noopener,noreferrer",
+    },
+  ]);
+  assert.equal(appendedNodes.length, 0);
 });
 
 test("billing preview runtime downloads document through a temporary anchor", () => {

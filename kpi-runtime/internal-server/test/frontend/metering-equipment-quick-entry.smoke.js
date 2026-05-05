@@ -3,6 +3,10 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
+const browserAdapterSource = await fs.readFile(
+  new URL('../../../../utility/apps/metering/runtime/browser-adapter.js', import.meta.url),
+  'utf8'
+);
 const equipmentQuickEntryUiSource = await fs.readFile(
   new URL('../../../../utility/apps/metering/equipment/quick-entry-ui.js', import.meta.url),
   'utf8'
@@ -11,14 +15,77 @@ const equipmentQuickEntrySource = await fs.readFile(
   new URL('../../../../utility/apps/metering/equipment/quick-entry.js', import.meta.url),
   'utf8'
 );
-const meteringStylesSource = await fs.readFile(
-  new URL('../../../../utility/apps/metering/styles.css', import.meta.url),
-  'utf8'
+
+const CSS_IMPORT_PATTERN = /@import\s+url\("([^"]+)"\);/g;
+const EXPECTED_STYLE_IMPORTS = [
+  './styles/base.css',
+  './styles/calendar.css',
+  './styles/entry-quick.css',
+  './styles/equipment-controls.css',
+  './styles/equipment-fields.css',
+  './styles/team-settlement.css',
+  './styles/team-totals.css',
+  './styles/team-boards.css',
+  './styles/team-assignment.css',
+  './styles/fullscreen-popup.css',
+  './styles/responsive.css',
+];
+const EXPECTED_EMBEDDED_STYLE_IMPORTS = [
+  './embedded/base.css',
+  './embedded/calendar.css',
+  './embedded/entry-quick.css',
+  './embedded/equipment-controls.css',
+  './embedded/equipment-fields.css',
+  './embedded/team-settlement.css',
+  './embedded/team-totals.css',
+  './embedded/team-boards.css',
+  './embedded/team-assignment.css',
+  './embedded/fullscreen-popup.css',
+  './embedded/responsive.css',
+];
+
+function stripCssImportVersion(href) {
+  return String(href || '').split('?')[0];
+}
+
+function countCssLines(source) {
+  return String(source || '').split(/\r?\n/).filter((line, index, lines) => {
+    return index < lines.length - 1 || line.length > 0;
+  }).length;
+}
+
+async function readCssManifestWithImports(fileName, manifestUrl) {
+  const manifestSource = await fs.readFile(manifestUrl, 'utf8');
+  const importHrefs = [...manifestSource.matchAll(CSS_IMPORT_PATTERN)].map((match) => match[1]);
+  const importedSources = await Promise.all(
+    importHrefs.map(async (href) => {
+      const importUrl = new URL(stripCssImportVersion(href), manifestUrl);
+      return {
+        fileName: stripCssImportVersion(href),
+        source: await fs.readFile(importUrl, 'utf8'),
+      };
+    })
+  );
+
+  return {
+    fileName,
+    manifestSource,
+    importHrefs,
+    importedSources,
+    combinedSource: [manifestSource, ...importedSources.map((entry) => entry.source)].join('\n'),
+  };
+}
+
+const meteringStylesBundle = await readCssManifestWithImports(
+  'styles.css',
+  new URL('../../../../utility/apps/metering/styles.css', import.meta.url)
 );
-const meteringEmbeddedStylesSource = await fs.readFile(
-  new URL('../../../../utility/apps/metering/embedded.css', import.meta.url),
-  'utf8'
+const meteringEmbeddedStylesBundle = await readCssManifestWithImports(
+  'embedded.css',
+  new URL('../../../../utility/apps/metering/embedded.css', import.meta.url)
 );
+const meteringStylesSource = meteringStylesBundle.combinedSource;
+const meteringEmbeddedStylesSource = meteringEmbeddedStylesBundle.combinedSource;
 
 function createClassList(initialTokens = []) {
   const tokens = new Set(initialTokens);
@@ -527,6 +594,9 @@ function createQuickEntryContext() {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(browserAdapterSource, context, {
+    filename: 'runtime/browser-adapter.js',
+  });
   vm.runInContext(equipmentQuickEntryUiSource, context, {
     filename: 'equipment/quick-entry-ui.js',
   });
@@ -560,6 +630,13 @@ function createQuickEntryContext() {
     },
   };
 }
+
+test('quick-entry popup hosts keep browser globals behind the metering adapter', () => {
+  assert.doesNotMatch(equipmentQuickEntryUiSource, /\b(?:window\.|globalThis)\b/);
+  assert.doesNotMatch(equipmentQuickEntrySource, /\b(?:window\.|globalThis)\b/);
+  assert.match(equipmentQuickEntryUiSource, /KpiMeteringBrowserAdapter/);
+  assert.match(equipmentQuickEntrySource, /KpiMeteringBrowserAdapter/);
+});
 
 function findPopupFieldInput(context, resourceType, fieldKey) {
   return context
@@ -650,6 +727,19 @@ test('quick-entry popup CSS uses a dense fullscreen grid instead of large row ca
     assert.match(source, /\.quick-entry-popup-row-title\s*\{[\s\S]*white-space:\s*nowrap/);
     assert.doesNotMatch(source, /\.quick-entry-popup-row-meta\.has-previous-value/);
     assert.doesNotMatch(source, /\.field-card-previous\s*\{/);
+  });
+});
+
+test('metering popup CSS manifests keep split chunks below the work-log threshold', () => {
+  [
+    { bundle: meteringStylesBundle, expectedImports: EXPECTED_STYLE_IMPORTS },
+    { bundle: meteringEmbeddedStylesBundle, expectedImports: EXPECTED_EMBEDDED_STYLE_IMPORTS },
+  ].forEach(({ bundle, expectedImports }) => {
+    assert.deepEqual(bundle.importHrefs.map(stripCssImportVersion), expectedImports);
+    assert.ok(countCssLines(bundle.manifestSource) < 800, `${bundle.fileName} manifest is too large`);
+    bundle.importedSources.forEach(({ fileName, source }) => {
+      assert.ok(countCssLines(source) < 800, `${fileName} has ${countCssLines(source)} lines`);
+    });
   });
 });
 

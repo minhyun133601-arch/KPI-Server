@@ -356,4 +356,4 @@
     sanitizeCycleDay,
     validateTemplateHeaders,
   };
-})(window);
+})(this);

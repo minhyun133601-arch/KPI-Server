@@ -1,12 +1,19 @@
-(function registerUtilReportSheetElectricTableRender(globalScope) {
-    if (globalScope.KPIUtilReportSheetElectricTableRender) {
+(function registerUtilReportSheetElectricTableRender() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/electric/table-render.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetElectricTableRender')) {
         return;
     }
 
-    const utilReportSheetOptions = globalScope.KPIUtilReportSheetOptions;
-    if (!utilReportSheetOptions) {
-        throw new Error('KPIUtilReportSheetOptions must load before KPI.util.report.sheet.electric.table-render.js');
-    }
+    const utilReportSheetOptions = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetOptions',
+        'KPI.util.report.sheet.electric.table-render.js'
+    );
 
     const {
         UTIL_ELECTRIC_TEAM_COLOR_META
@@ -20,7 +27,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetElectricTableRender;
+        return api;
     }
 
     function escapeHtml(value) {
@@ -235,7 +242,7 @@
     }
 
 
-    globalScope.KPIUtilReportSheetElectricTableRender = Object.freeze({
+    const api = Object.freeze({
         setRuntimeAdapters,
         getUtilElectricTeamColorMeta,
         buildUtilElectricTeamColumnFlags,
@@ -247,4 +254,5 @@
         buildUtilElectricMeterDetailDisclosureHtml,
         buildUtilElectricSummaryTableHtml
     });
-})(typeof window !== 'undefined' ? window : globalThis);
+    runtimeAdapter.exportApi('KPIUtilReportSheetElectricTableRender', api);
+})();

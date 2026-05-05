@@ -1,3 +1,28 @@
+function getBillingDocumentPreviewBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function alertBillingDocumentPreviewUser(message) {
+  const adapter = getBillingDocumentPreviewBrowserAdapter();
+  if (typeof adapter?.alert === "function") {
+    adapter.alert(message);
+  }
+}
+
+function openBillingDocumentPreviewWindow(url = "", target = "_blank", features = "") {
+  const adapter = getBillingDocumentPreviewBrowserAdapter();
+  return typeof adapter?.openWindow === "function"
+    ? adapter.openWindow(url, target, features)
+    : null;
+}
+
+function setBillingDocumentPreviewTimeout(callback, delay = 0) {
+  const adapter = getBillingDocumentPreviewBrowserAdapter();
+  return typeof adapter?.setTimeout === "function" ? adapter.setTimeout(callback, delay) : null;
+}
+
 function isImageBillingDocument(billingDocument) {
   const mimeType = getBillingDocumentMimeType(billingDocument);
   if (mimeType.startsWith("image/")) {
@@ -101,7 +126,7 @@ function downloadBillingDocument(
   const descriptor = resolveBillingDocumentDescriptor(billingDocument, monthValue, resourceType);
   const downloadUrl = resolveBillingDocumentDownloadUrl(billingDocument, resourceType);
   if (!descriptor?.fileName || !downloadUrl) {
-    window.alert("다운할 청구서가 없습니다.");
+    alertBillingDocumentPreviewUser("다운할 청구서가 없습니다.");
     return false;
   }
 
@@ -123,11 +148,15 @@ function openBillingDocumentInNewTab(billingDocument, resourceType = getCurrentR
     resourceType
   );
   if (!descriptor?.url) {
-    window.alert("열 청구서가 없습니다.");
+    alertBillingDocumentPreviewUser("열 청구서가 없습니다.");
     return false;
   }
 
-  const popup = window.open(descriptor.url, "_blank", "noopener,noreferrer");
+  const popup = openBillingDocumentPreviewWindow(
+    descriptor.url,
+    "_blank",
+    "noopener,noreferrer"
+  );
   if (popup) {
     return true;
   }
@@ -169,7 +198,7 @@ function closeBillingDocumentPreview(options = {}) {
   billingDocumentPreviewState.billingDocument = null;
 
   if (focusTarget?.focus) {
-    window.setTimeout(() => focusTarget.focus(), 0);
+    setBillingDocumentPreviewTimeout(() => focusTarget.focus(), 0);
   }
 }
 
@@ -181,7 +210,7 @@ function openBillingDocumentPreview(
 ) {
   const descriptor = resolveBillingDocumentDescriptor(billingDocument, monthValue, resourceType);
   if (!descriptor || !elements.billingDocumentPreviewModal || !elements.billingDocumentPreviewBody) {
-    window.alert("미리볼 청구서가 없습니다.");
+    alertBillingDocumentPreviewUser("미리볼 청구서가 없습니다.");
     return;
   }
 

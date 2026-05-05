@@ -1,5 +1,12 @@
-(function registerUtilReportSheetWindowDetachedInteractions(globalScope) {
-    if (globalScope.KPIUtilReportSheetWindowDetachedInteractions) {
+(function registerUtilReportSheetWindowDetachedInteractions() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/windows/detached-interactions.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetWindowDetachedInteractions')) {
         return;
     }
 
@@ -27,7 +34,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetWindowDetachedInteractions;
+        return api;
     }
 
     function getReportModal() {
@@ -265,9 +272,11 @@
         });
     }
 
-    globalScope.KPIUtilReportSheetWindowDetachedInteractions = {
+    const api = {
         setRuntimeAdapters,
         bindUtilSheetDetachedReportWindowDrag,
         bindUtilSheetDetachedReportWindowInteractions
     };
-})(typeof window !== 'undefined' ? window : globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetWindowDetachedInteractions', api);
+})();

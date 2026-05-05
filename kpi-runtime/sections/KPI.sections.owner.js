@@ -6,8 +6,7 @@
         return `http://${OPS_CONSOLE_HOST}:${OPS_CONSOLE_DEFAULT_PORT}/#server`;
     }
 
-    window.KpiSectionFactories = window.KpiSectionFactories || {};
-    window.KpiSectionFactories.owner = function buildOwnerSection() {
+    KpiSectionFactoryAdapter.registerFactory('owner', function buildOwnerSection() {
         return {
             id: 'owner',
             name: '운영 콘솔',
@@ -23,5 +22,5 @@
             launchWindowHeight: 980,
             categories: []
         };
-    };
+    });
 })();

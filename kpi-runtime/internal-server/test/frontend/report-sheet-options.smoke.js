@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetOptionsSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/options.js', import.meta.url),
   'utf8'
@@ -29,6 +33,9 @@ function createReportSheetOptionsContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetOptionsSource, context, {
     filename: 'KPI.util.report.sheet.options.js',
   });
@@ -40,6 +47,8 @@ test('report sheet options register team/category registries and lookup helpers'
   const options = context.KPIUtilReportSheetOptions;
 
   assert.ok(options, 'report sheet options registry is missing');
+  assert.doesNotMatch(reportSheetOptionsSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetOptionsSource, /KPIUtilReportRuntimeAdapter/);
   assert.equal(options.UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS.length, 5);
   assert.equal(options.UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS.length, 5);
   assert.equal(options.normalizeUtilElectricMeterTeamKey('team_02'), 'team_02');
@@ -49,9 +58,12 @@ test('report sheet options register team/category registries and lookup helpers'
 });
 
 test('kpi html loads report sheet options before sheet.js', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const optionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/options.js?v=053');
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(optionsIndex >= 0, 'report sheet options loader is missing');
+  assert.ok(optionsIndex > adapterIndex, 'report sheet options must load after the runtime adapter');
   assert.ok(billingIndex > optionsIndex, 'report sheet options must load before report sheet billing');
 });

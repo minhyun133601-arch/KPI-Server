@@ -99,3 +99,65 @@ test('metering helpers normalize payload and expected versions', () => {
   assert.equal(meta.version, 4);
   assert.deepEqual(resolveExpectedRecordVersions(null, 7), { shared_store_v1: 7 });
 });
+
+test('metering authority falls back invalid resource type to electric', () => {
+  const payloadByRecordKey = buildPayloadByRecordKey({
+    resourceType: 'steam',
+    manualSaveHistory: 'invalid',
+    mode: 'electric-mode',
+  });
+
+  assert.equal(payloadByRecordKey.ui_state_v1.resourceType, 'electric');
+  assert.deepEqual(payloadByRecordKey.ui_state_v1.manualSaveHistory, []);
+  assert.equal(payloadByRecordKey.electric_v1.mode, 'electric-mode');
+});
+
+test('metering authority rejects invalid meta versions and sanitizes record versions', () => {
+  assert.equal(normalizeSharedStoreMeta({ version: -1 }), null);
+  assert.equal(normalizeSharedStoreMeta({ version: 'abc' }), null);
+
+  const meta = normalizeSharedStoreMeta({
+    version: '5',
+    recordVersions: {
+      electric_v1: '4',
+      gas_v1: -1,
+      '': 2,
+      waste_v1: 'bad',
+    },
+  });
+
+  assert.deepEqual(meta.recordVersions, { electric_v1: 4 });
+});
+
+test('metering authority uses legacy resource fallback when split payload is empty', () => {
+  const state = createMeteringAuthorityState([
+    {
+      record_key: 'shared_store_v1',
+      version: 2,
+      payload: {
+        resourceDatasets: {
+          gas: { mode: 'legacy-gas' },
+        },
+      },
+    },
+    {
+      record_key: 'gas_v1',
+      version: 3,
+      payload: null,
+    },
+  ]);
+
+  assert.equal(state.hasSplit, true);
+  assert.equal(state.store.resourceDatasets.gas.mode, 'legacy-gas');
+  assert.equal(state.meta.recordVersions.gas_v1, 3);
+});
+
+test('metering expected record versions prefer sanitized object before legacy fallback', () => {
+  assert.deepEqual(resolveExpectedRecordVersions({
+    electric_v1: '2',
+    gas_v1: -1,
+    empty: '',
+  }, 7), { electric_v1: 2 });
+  assert.deepEqual(resolveExpectedRecordVersions({ gas_v1: 'bad' }, 7), { shared_store_v1: 7 });
+  assert.equal(resolveExpectedRecordVersions(null, 'bad'), null);
+});

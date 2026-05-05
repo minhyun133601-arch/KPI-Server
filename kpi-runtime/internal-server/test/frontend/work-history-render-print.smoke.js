@@ -26,8 +26,10 @@ const viewPath = await findFile(repoRoot, 'KPI.work.history.view.js');
 assert.ok(renderPath, 'work history render source is missing');
 assert.ok(viewPath, 'work history view bootstrap source is missing');
 
+const adapterPath = path.join(path.dirname(renderPath), 'KPI.work.history.browser-adapter.js');
 const cardPartsPath = path.join(path.dirname(renderPath), 'render', 'card-parts.js');
 const printPath = path.join(path.dirname(renderPath), 'render', 'print.js');
+const adapterSource = await fs.readFile(adapterPath, 'utf8');
 const renderSource = await fs.readFile(renderPath, 'utf8');
 const cardPartsSource = await fs.readFile(cardPartsPath, 'utf8');
 const printSource = await fs.readFile(printPath, 'utf8');
@@ -168,6 +170,7 @@ function createContext() {
   context.open = () => fakeWindow;
   context.alert = () => {};
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, { filename: 'KPI.work.history.browser-adapter.js' });
   vm.runInContext(renderSource, context, { filename: 'KPI.work.history.view.render.js' });
   vm.runInContext(cardPartsSource, context, { filename: 'render/card-parts.js' });
   vm.runInContext(printSource, context, { filename: 'render/print.js' });
@@ -214,6 +217,7 @@ test('work history render print registry exposes print helpers and bootstrap sna
 });
 
 test('kpi html loads work history render print between render and view bootstrap', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
   const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=234');
   const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=234');
   const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=233');
@@ -223,7 +227,9 @@ test('kpi html loads work history render print between render and view bootstrap
   const documentIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.document.js?v=2');
   const viewIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.js');
 
+  assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(renderIndex >= 0, 'work history render loader is missing');
+  assert.ok(renderIndex > adapterIndex, 'work history render must load after browser adapter');
   assert.ok(cardPartsIndex > renderIndex, 'work history card parts loader must load after render.js');
   assert.ok(printIndex > cardPartsIndex, 'work history print loader must load after render card parts');
   assert.ok(actionsIndex > printIndex, 'work history actions must load after render print');

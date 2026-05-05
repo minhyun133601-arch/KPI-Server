@@ -1,5 +1,5 @@
 (function initKpiWorkHistoryViewActionSearch() {
-    const history = window.KpiWorkHistory;
+    const history = KpiWorkHistoryBrowserAdapter.getHistory();
     if (!history) return;
 
     const view = history.view || (history.view = {});

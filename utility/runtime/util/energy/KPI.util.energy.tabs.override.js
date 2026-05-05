@@ -1,3 +1,20 @@
+        const utilEnergyTabsOverrideBrowser = typeof KpiUtilEnergyBrowserAdapter !== 'undefined'
+            ? KpiUtilEnergyBrowserAdapter
+            : null;
+
+        function exposeUtilEnergyTabsOverrideApi(api) {
+            return utilEnergyTabsOverrideBrowser?.exposeApi?.(api) || api;
+        }
+
+        function getUtilEnergyTabsOverrideRenderer(fallback = null) {
+            return utilEnergyTabsOverrideBrowser?.getRenderUtilDualTabs?.(fallback)
+                || (typeof fallback === 'function' ? fallback : null);
+        }
+
+        function setUtilEnergyTabsOverrideRenderer(renderer) {
+            return utilEnergyTabsOverrideBrowser?.setRenderUtilDualTabs?.(renderer) || null;
+        }
+
         const UTIL_SIDEBAR_SELECTOR_KEYS = Object.freeze({
             team1Part1: 'work_team_calendar_team1_part1',
             team1Part2: 'work_team_calendar_team1_part2',
@@ -11,9 +28,9 @@
             overview: 'work_team_calendar_overview'
         });
 
-        const originalRenderUtilDualTabs = typeof window.renderUtilDualTabs === 'function'
-            ? window.renderUtilDualTabs
-            : (typeof renderUtilDualTabs === 'function' ? renderUtilDualTabs : null);
+        const originalRenderUtilDualTabs = getUtilEnergyTabsOverrideRenderer(
+            typeof renderUtilDualTabs === 'function' ? renderUtilDualTabs : null
+        );
         const utilSidebarSelectionState = {
             gasTeamView: 'total'
         };
@@ -389,9 +406,11 @@
             return false;
         }
 
-        window.getUtilSidebarSelectionWorkDataKey = getUtilSidebarSelectionWorkDataKey;
-        window.applyUtilSidebarSelectionToCurrentView = applyUtilSidebarSelectionToCurrentView;
-        window.applyUtilReportTeamToUtilitySelection = applyUtilReportTeamToUtilitySelection;
+        exposeUtilEnergyTabsOverrideApi({
+            getUtilSidebarSelectionWorkDataKey,
+            applyUtilSidebarSelectionToCurrentView,
+            applyUtilReportTeamToUtilitySelection
+        });
 
         function renderUtilDualTabsWithSidebarSelection(scope) {
             const root = scope || document;
@@ -479,7 +498,7 @@
         }
 
         if (typeof originalRenderUtilDualTabs === 'function') {
-            window.renderUtilDualTabs = renderUtilDualTabsWithSidebarSelection;
+            setUtilEnergyTabsOverrideRenderer(renderUtilDualTabsWithSidebarSelection);
             renderUtilDualTabs = renderUtilDualTabsWithSidebarSelection;
         }
 

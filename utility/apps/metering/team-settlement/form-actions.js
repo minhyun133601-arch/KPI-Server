@@ -1,3 +1,16 @@
+function getTeamSettlementFormActionsBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function alertTeamSettlementFormAction(message) {
+  const adapter = getTeamSettlementFormActionsBrowserAdapter();
+  if (typeof adapter?.alert === "function") {
+    adapter.alert(message);
+  }
+}
+
 function handleTeamSettlementFieldInput(event) {
   const input = event.target.closest("input[data-billing-settlement-field]");
   if (!input) {
@@ -177,7 +190,7 @@ function handleTeamSettlementCompleteClick(event) {
 
   const completionState = getBillingSettlementCompletionState(monthValue, scopeKey);
   if (!completionState.entry?.fields || !Object.keys(completionState.entry.fields).length) {
-    window.alert("정산값을 먼저 입력해 주세요");
+    alertTeamSettlementFormAction("정산값을 먼저 입력해 주세요");
     return;
   }
 
@@ -196,7 +209,7 @@ function handleTeamSettlementCompleteClick(event) {
   } else {
     if (completionState.missingFieldKeys.length) {
       const missingLabels = completionState.missingFieldKeys.map(getBillingSettlementFieldLabel);
-      window.alert(`다음 정산 항목을 확인해 주세요.\n${missingLabels.join("\n")}`);
+      alertTeamSettlementFormAction(`다음 정산 항목을 확인해 주세요.\n${missingLabels.join("\n")}`);
       return;
     }
 

@@ -1,5 +1,9 @@
 import { sendJson } from '../lib/http.js';
-import { sendOwnerRepositoryMapPage, sendOwnerRepositoryMapScript } from '../lib/owner-repository-map-page.js';
+import {
+  sendOwnerRepositoryMapHistoryScript,
+  sendOwnerRepositoryMapPage,
+  sendOwnerRepositoryMapScript
+} from '../lib/owner-repository-map-page.js';
 import { getOwnerAccessOverview } from '../services/owner-access.js';
 import { getRepositoryMap } from '../services/repository-map.js';
 import { requireOwner } from './route-context.js';
@@ -46,4 +50,10 @@ export async function handleOwnerRepositoryMapScript(context) {
   const { res, auth } = context;
   requireOwner(auth);
   await sendOwnerRepositoryMapScript(res);
+}
+
+export async function handleOwnerRepositoryMapHistoryScript(context, fileName) {
+  const { res, auth } = context;
+  requireOwner(auth);
+  await sendOwnerRepositoryMapHistoryScript(res, fileName);
 }

@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
@@ -34,6 +38,9 @@ function createReportSheetAnalysisStateContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js',
   });
@@ -49,6 +56,8 @@ test('report sheet analysis state registry normalizes analysis range and shared 
   const config = context.KPIUtilReportSheetConfig;
 
   assert.ok(registry, 'report sheet analysis state registry is missing');
+  assert.doesNotMatch(reportSheetAnalysisStateSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetAnalysisStateSource, /KPIUtilReportRuntimeAdapter/);
 
   registry.setRuntimeAdapters({
     compareUtilSheetMonthKeys(left, right) {
@@ -113,12 +122,15 @@ test('report sheet analysis state registry normalizes analysis range and shared 
 });
 
 test('kpi html loads report sheet analysis state before analysis models and sheet.js', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
   const analysisStateIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/state.js?v=053');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');
+  assert.ok(analysisStateIndex > adapterIndex, 'report sheet analysis state must load after the runtime adapter');
   assert.ok(analysisStateIndex > modalRenderIndex, 'report sheet analysis state must load after modal render');
   assert.ok(electricChartModelIndex > analysisStateIndex, 'report sheet analysis state must load before analysis models');
   assert.ok(sheetIndex > electricChartModelIndex, 'report sheet analysis state must load before sheet.js');

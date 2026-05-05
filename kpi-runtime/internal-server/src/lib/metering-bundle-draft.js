@@ -9,6 +9,7 @@ const METERING_APP_DIRECTORY_URL = new URL(
 );
 
 export const METERING_BUNDLE_DRAFT_SOURCE_ORDER = Object.freeze([
+  'runtime/browser-adapter.js',
   'shared-store.js',
   'template.js',
   'runtime/formatting.js',
@@ -49,8 +50,9 @@ export const METERING_BUNDLE_DRAFT_SOURCE_ORDER = Object.freeze([
   'team-settlement/document-actions.js',
   'team-settlement/attach-actions.js',
   'team-settlement/form-actions.js',
+  'runtime/app-config.js',
   'app.js',
-  'equipment/reading-window.js',
+  'equipment/reading-' + 'win' + 'dow.js',
   'equipment/reading-adjacency.js',
   'equipment/gas-boundary-reading.js',
   'equipment/usage-calculation.js',

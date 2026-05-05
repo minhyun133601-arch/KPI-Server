@@ -1,0 +1,140 @@
+.team-empty-state {
+  display: grid;
+  gap: 10px;
+  padding: 34px 24px;
+  text-align: center;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px dashed rgba(16, 33, 42, 0.12);
+}
+
+.team-empty-state strong {
+  font-size: 1rem;
+}
+
+.primary-button,
+.secondary-button {
+  appearance: none;
+  border: none;
+  border-radius: 16px;
+  padding: 14px 18px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.primary-button {
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  box-shadow: 0 14px 24px rgba(15, 95, 115, 0.24);
+}
+
+.secondary-button {
+  color: var(--text);
+  background: rgba(16, 33, 42, 0.08);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+body.is-equipment-fullscreen {
+  overflow: hidden;
+}
+
+body.is-equipment-fullscreen .app-shell {
+  width: min(100% - 24px, 1880px);
+  height: calc(100vh - 24px);
+  margin: 12px auto;
+  padding-bottom: 0;
+}
+
+body.is-equipment-fullscreen .hero-card,
+body.is-equipment-fullscreen .panel-calendar {
+  display: none !important;
+}
+
+body.is-equipment-fullscreen .workspace {
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-top: 0;
+  height: 100%;
+}
+
+body.is-equipment-fullscreen .panel-form {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 24px;
+}
+
+body.is-equipment-fullscreen #entryForm {
+  flex: 1;
+  min-height: 0;
+}
+
+body.is-equipment-fullscreen .entry-order {
+  display: none !important;
+}
+
+body.is-equipment-fullscreen .mode-section {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 8px;
+  padding-bottom: 8px;
+  scrollbar-gutter: stable;
+}
+
+body.is-equipment-fullscreen .fields-grid {
+  align-content: start;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.panel-form:fullscreen {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  border-radius: 0;
+  padding: 22px 24px;
+}
+
+body.calendar-popup-body {
+  min-height: 100vh;
+  padding: 14px;
+}
+
+body.calendar-popup-body::before {
+  opacity: 0.28;
+}
+
+.calendar-popup-shell {
+  min-height: calc(100vh - 28px);
+}
+
+.calendar-popup-panel {
+  position: static;
+  top: auto;
+  min-height: calc(100vh - 28px);
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+}
+
+.calendar-popup-panel .panel-head,
+.calendar-popup-panel .weekday-row {
+  flex-shrink: 0;
+}
+
+.calendar-popup-panel .calendar-grid {
+  flex: 1;
+  min-height: 0;
+  grid-auto-rows: minmax(0, 1fr);
+}

@@ -1,3 +1,23 @@
+function getMeteringRuntimeBootstrapBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function addMeteringRuntimeGlobalEventListener(...args) {
+  const adapter = getMeteringRuntimeBootstrapBrowserAdapter();
+  if (typeof adapter?.addEventListener === "function") {
+    adapter.addEventListener(...args);
+  }
+}
+
+function removeMeteringRuntimeGlobalEventListener(...args) {
+  const adapter = getMeteringRuntimeBootstrapBrowserAdapter();
+  if (typeof adapter?.removeEventListener === "function") {
+    adapter.removeEventListener(...args);
+  }
+}
+
 function init() {
   resolveElements();
   assertMountReady();
@@ -123,7 +143,7 @@ function bindEvents() {
   mountDocument.addEventListener("pointermove", handleEquipmentSectionDragScrollMove);
   mountDocument.addEventListener("pointerup", handleEquipmentSectionDragScrollEnd);
   mountDocument.addEventListener("pointercancel", handleEquipmentSectionDragScrollEnd);
-  window.addEventListener("beforeunload", handleBeforeUnload);
+  addMeteringRuntimeGlobalEventListener("beforeunload", handleBeforeUnload);
   registerRuntimeCleanup(() => mountDocument.removeEventListener("click", handleDocumentClick));
   registerRuntimeCleanup(() =>
     mountDocument.removeEventListener("fullscreenchange", handleDocumentFullscreenChange)
@@ -141,5 +161,7 @@ function bindEvents() {
   registerRuntimeCleanup(() =>
     mountDocument.removeEventListener("pointercancel", handleEquipmentSectionDragScrollEnd)
   );
-  registerRuntimeCleanup(() => window.removeEventListener("beforeunload", handleBeforeUnload));
+  registerRuntimeCleanup(() =>
+    removeMeteringRuntimeGlobalEventListener("beforeunload", handleBeforeUnload)
+  );
 }

@@ -1,3 +1,26 @@
+function getTeamSettlementAttachActionsBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function alertTeamSettlementAttachAction(message) {
+  const adapter = getTeamSettlementAttachActionsBrowserAdapter();
+  if (typeof adapter?.alert === "function") {
+    adapter.alert(message);
+  }
+}
+
+function confirmTeamSettlementAttachAction(message) {
+  const adapter = getTeamSettlementAttachActionsBrowserAdapter();
+  return typeof adapter?.confirm === "function" ? adapter.confirm(message) : false;
+}
+
+function setTeamSettlementAttachActionTimeout(callback, delay = 0) {
+  const adapter = getTeamSettlementAttachActionsBrowserAdapter();
+  return typeof adapter?.setTimeout === "function" ? adapter.setTimeout(callback, delay) : null;
+}
+
 async function handleTeamSettlementAttachClick(event) {
   event?.preventDefault();
 
@@ -13,13 +36,13 @@ async function handleTeamSettlementAttachClick(event) {
   const scopeKey = getCurrentBillingSettlementScope(resourceType);
   getBillingSettlementScopeTitle(scopeKey, resourceType);
   if (!monthValue) {
-    window.alert("기입 년월을 먼저 선택해 주세요.");
+    alertTeamSettlementAttachAction("기입 년월을 먼저 선택해 주세요.");
     syncEquipmentFullscreenUI();
     return;
   }
 
   if (isElectricResourceType(resourceType) && calculateTotalPowerMonthlyUsage() === null) {
-    window.alert("전력총량이 계산되어야 정산을 열 수 있습니다.");
+    alertTeamSettlementAttachAction("전력총량이 계산되어야 정산을 열 수 있습니다.");
     syncEquipmentFullscreenUI();
     return;
   }
@@ -28,7 +51,7 @@ async function handleTeamSettlementAttachClick(event) {
   closeBillingDocumentPreview();
   const existingBillingDocument = getBillingDocumentForMonth(monthValue, scopeKey);
   if (existingBillingDocument) {
-    const confirmed = window.confirm(`"${existingBillingDocument.fileName}" 첨부를 삭제할까요?`);
+    const confirmed = confirmTeamSettlementAttachAction(`"${existingBillingDocument.fileName}" 첨부를 삭제할까요?`);
     if (!confirmed) {
       syncEquipmentFullscreenUI();
       return;
@@ -45,7 +68,7 @@ async function handleTeamSettlementAttachClick(event) {
       state.cleanStatusText = `${getBillingDocumentLabel(monthValue, resourceType, scopeKey)} 첨부 삭제 완료`;
       updateDirtyState();
       renderTeamMode();
-      window.setTimeout(() => elements.teamSettlementAttachBtn?.focus(), 0);
+      setTeamSettlementAttachActionTimeout(() => elements.teamSettlementAttachBtn?.focus(), 0);
     } catch (error) {
       console.error("Billing document delete failed.", error);
       const message = "청구서 삭제에 실패했습니다. 다시 시도해 주세요.";
@@ -53,7 +76,7 @@ async function handleTeamSettlementAttachClick(event) {
         elements.saveStatus.textContent = message;
         elements.saveStatus.classList.add("is-dirty", "is-error");
       }
-      window.alert(message);
+      alertTeamSettlementAttachAction(message);
     } finally {
       state.isBillingDocumentUploading = false;
       syncEquipmentFullscreenUI();
@@ -103,7 +126,7 @@ async function handleTeamSettlementAttachClick(event) {
   } catch (error) {
     console.error("Billing document upload failed.", error);
     if (String(error?.message || "") === "billing_document_pdf_only") {
-      window.alert("PDF 파일만 첨부할 수 있습니다.");
+      alertTeamSettlementAttachAction("PDF 파일만 첨부할 수 있습니다.");
       return;
     }
     const message = "청구서 저장에 실패했습니다. 다시 시도해 주세요.";
@@ -111,7 +134,7 @@ async function handleTeamSettlementAttachClick(event) {
       elements.saveStatus.textContent = message;
       elements.saveStatus.classList.add("is-dirty", "is-error");
     }
-    window.alert(message);
+    alertTeamSettlementAttachAction(message);
   } finally {
     state.isBillingDocumentUploading = false;
     syncEquipmentFullscreenUI();
@@ -137,7 +160,7 @@ async function handleTeamSettlementDirectoryConnectClick(event) {
     state.loadedSnapshot = createFormSnapshot();
     updateDirtyState();
     renderTeamMode();
-    window.setTimeout(() => {
+    setTeamSettlementAttachActionTimeout(() => {
       elements.teamSettlementAttachBtn?.focus();
     }, 0);
   } catch (error) {
@@ -147,6 +170,6 @@ async function handleTeamSettlementDirectoryConnectClick(event) {
       elements.saveStatus.textContent = message;
       elements.saveStatus.classList.add("is-dirty", "is-error");
     }
-    window.alert(message);
+    alertTeamSettlementAttachAction(message);
   }
 }

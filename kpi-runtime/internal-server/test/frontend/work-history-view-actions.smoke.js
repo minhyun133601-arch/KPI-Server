@@ -26,6 +26,7 @@ assert.ok(actionsPath, 'work history actions shell source is missing');
 
 const historyDir = path.dirname(actionsPath);
 const splitSourcePaths = [
+  path.join(historyDir, 'KPI.work.history.browser-adapter.js'),
   actionsPath,
   path.join(historyDir, 'KPI.work.history.view.actions.search.js'),
   path.join(historyDir, 'KPI.work.history.view.actions.record.js'),

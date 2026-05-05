@@ -9,7 +9,5 @@
         `;
     }
 
-    window.KpiSectionBuilders = Object.freeze({
-        buildWorkDataEntryContent
-    });
+    KpiSectionFactoryAdapter.registerBuilder('buildWorkDataEntryContent', buildWorkDataEntryContent);
 })();

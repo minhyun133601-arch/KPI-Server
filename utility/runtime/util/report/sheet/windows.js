@@ -1,16 +1,29 @@
-(function registerUtilReportSheetWindows(globalScope) {
-    if (globalScope.KPIUtilReportSheetWindows) {
+(function registerUtilReportSheetWindows() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before KPI.util.report.sheet.windows.js');
+    }
+
+    const getApi = typeof runtimeAdapter.getApi === 'function'
+        ? name => runtimeAdapter.getApi(name)
+        : () => null;
+    if (getApi('KPIUtilReportSheetWindows')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.windows.js');
+    const requireApi = typeof runtimeAdapter.requireApi === 'function'
+        ? (name, consumer) => runtimeAdapter.requireApi(name, consumer)
+        : null;
+    if (!requireApi) {
+        throw new Error('KPIUtilReportRuntimeAdapter.requireApi must load before KPI.util.report.sheet.windows.js');
     }
-    const utilReportSheetWindowDetachedInteractions = globalScope.KPIUtilReportSheetWindowDetachedInteractions;
-    if (!utilReportSheetWindowDetachedInteractions) {
-        throw new Error('KPIUtilReportSheetWindowDetachedInteractions must load before KPI.util.report.sheet.windows.js');
-    }
+    const utilReportSheetConfig = requireApi('KPIUtilReportSheetConfig', 'KPI.util.report.sheet.windows.js');
+    const utilReportSheetWindowDetachedInteractions = requireApi(
+        'KPIUtilReportSheetWindowDetachedInteractions',
+        'KPI.util.report.sheet.windows.js'
+    );
 
     const {
         UtilSheetCompareState,
@@ -76,11 +89,29 @@
             openUtilGasAnalysisRatioTablePopup: (...args) => runtime.openUtilGasAnalysisRatioTablePopup?.(...args),
             openUtilGasAnalysisChartModal: (...args) => runtime.openUtilGasAnalysisChartModal?.(...args)
         });
-        return globalScope.KPIUtilReportSheetWindows;
+        return getApi('KPIUtilReportSheetWindows');
     }
 
     function getDocument() {
-        return globalScope.document || null;
+        return typeof runtimeAdapter.getDocument === 'function' ? runtimeAdapter.getDocument() : null;
+    }
+
+    function getScreenSize() {
+        return typeof runtimeAdapter.getScreenSize === 'function'
+            ? runtimeAdapter.getScreenSize()
+            : {};
+    }
+
+    function openBrowserWindow(url = '', target = '', features = '') {
+        return typeof runtimeAdapter.openWindow === 'function'
+            ? runtimeAdapter.openWindow(url, target, features)
+            : null;
+    }
+
+    function showBrowserAlert(message) {
+        return typeof runtimeAdapter.alert === 'function'
+            ? runtimeAdapter.alert(message)
+            : false;
     }
 
     function getReportModal() {
@@ -311,8 +342,9 @@
 
     function maximizeUtilSheetAnalysisChartPopup(popup) {
         if (!popup || popup.closed) return;
-        const screenWidth = Number(globalScope?.screen?.availWidth) || Number(globalScope?.screen?.width) || 1520;
-        const screenHeight = Number(globalScope?.screen?.availHeight) || Number(globalScope?.screen?.height) || 940;
+        const screenSize = getScreenSize();
+        const screenWidth = Number(screenSize.availWidth) || Number(screenSize.width) || 1520;
+        const screenHeight = Number(screenSize.availHeight) || Number(screenSize.height) || 940;
         try {
             popup.moveTo(0, 0);
         } catch (error) {
@@ -419,7 +451,7 @@
     function bindUtilSheetAnalysisChartDragScroll(root = null) {
         const host = root && typeof root.querySelectorAll === 'function'
             ? root
-            : (getDocument() || globalScope.document);
+            : getDocument();
         if (!host || typeof host.querySelectorAll !== 'function') return;
         const candidates = Array.from(host.querySelectorAll('.util-sheet-analysis-chart-surface')).map(surface => (
             surface.querySelector('.util-analytics-chart-canvas') || surface
@@ -675,9 +707,9 @@
         if (!modal) return false;
         let popup = getUtilSheetDetachedReportWindow();
         if (!popup) {
-            popup = globalScope.open('', 'util-sheet-report-detached-window', 'popup=yes,width=1520,height=940,resizable=yes,scrollbars=yes');
+            popup = openBrowserWindow('', 'util-sheet-report-detached-window', 'popup=yes,width=1520,height=940,resizable=yes,scrollbars=yes');
             if (!popup) {
-                globalScope.alert('팝업 창을 열 수 없습니다. 브라우저 팝업 차단을 확인해 주세요.');
+                showBrowserAlert('팝업 창을 열 수 없습니다. 브라우저 팝업 차단을 확인해 주세요.');
                 return false;
             }
             popup.document.open();
@@ -706,15 +738,16 @@
         if (!nextChartKey) return false;
         let popup = getUtilSheetAnalysisChartPopupWindow();
         if (!popup) {
-            const screenWidth = Number(globalScope?.screen?.availWidth) || Number(globalScope?.screen?.width) || 1520;
-            const screenHeight = Number(globalScope?.screen?.availHeight) || Number(globalScope?.screen?.height) || 940;
-            popup = globalScope.open(
+            const screenSize = getScreenSize();
+            const popupWidth = Number(screenSize.availWidth) || Number(screenSize.width) || 1520;
+            const popupHeight = Number(screenSize.availHeight) || Number(screenSize.height) || 940;
+            popup = openBrowserWindow(
                 '',
                 'util-sheet-analysis-chart-window',
-                `popup=yes,width=${screenWidth},height=${screenHeight},left=0,top=0,resizable=yes,scrollbars=yes`
+                `popup=yes,width=${popupWidth},height=${popupHeight},left=0,top=0,resizable=yes,scrollbars=yes`
             );
             if (!popup) {
-                globalScope.alert('차트 팝업을 열 수 없습니다. 브라우저 팝업 차단을 확인해 주세요.');
+                showBrowserAlert('차트 팝업을 열 수 없습니다. 브라우저 팝업 차단을 확인해 주세요.');
                 return false;
             }
             popup.document.open();
@@ -765,7 +798,7 @@
         }
     }
 
-    globalScope.KPIUtilReportSheetWindows = {
+    const api = {
         setRuntimeAdapters,
         getUtilSheetDetachedReportWindow,
         closeUtilSheetDetachedReportWindow,
@@ -786,4 +819,5 @@
         openUtilSheetAnalysisChartPopup,
         syncUtilSheetReportWindowState
     };
-})(typeof window !== 'undefined' ? window : globalThis);
+    runtimeAdapter.exportApi('KPIUtilReportSheetWindows', api);
+})();

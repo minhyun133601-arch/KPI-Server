@@ -10,6 +10,10 @@ const boardInteractionsSource = await fs.readFile(
   ),
   'utf8'
 );
+const browserAdapterSource = await fs.readFile(
+  new URL('../../../../utility/apps/metering/runtime/browser-adapter.js', import.meta.url),
+  'utf8'
+);
 
 function createMockElement(tagName = 'div') {
   return {
@@ -125,17 +129,15 @@ function createBoardInteractionsContext() {
     Set,
     RegExp,
     Promise,
+    setTimeout(callback) {
+      callback();
+      return 1;
+    },
     TEAM_GROUPS: [{ key: 'team_a' }, { key: 'team_b' }],
     state,
     document: {
       createElement(tagName) {
         return createMockElement(tagName);
-      },
-    },
-    window: {
-      setTimeout(callback) {
-        callback();
-        return 1;
       },
     },
     selectTeamCalendar(teamKey) {
@@ -230,11 +232,18 @@ function createBoardInteractionsContext() {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(browserAdapterSource, context, {
+    filename: 'metering/runtime/browser-adapter.js',
+  });
   vm.runInContext(boardInteractionsSource, context, {
     filename: 'team-overview/board-interactions.js',
   });
   return context;
 }
+
+test('board interactions host keeps browser globals behind the metering adapter', () => {
+  assert.doesNotMatch(boardInteractionsSource, /\b(?:window\.|globalThis)\b/);
+});
 
 test('board interactions route picker toggle, calendar selector, and board selection clicks', () => {
   const context = createBoardInteractionsContext();

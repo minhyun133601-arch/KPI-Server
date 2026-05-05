@@ -127,7 +127,8 @@
         }
 
         function downloadUtilMetricExportXlsx(rows, options = {}) {
-            if (!window.XLSX) throw new Error('엑셀 라이브러리 로드 실패');
+            const spreadsheetApi = getUtilMaintenanceSpreadsheetApi();
+            if (!spreadsheetApi) throw new Error('엑셀 라이브러리 로드 실패');
             const datasetKey = String(options.datasetKey || '').trim();
             const datasetLabel = getUtilDatasetLabel(datasetKey);
             const selectedItemKeys = normalizeUtilMetricSelectionKeys(
@@ -268,7 +269,7 @@
                 ...(includeCost && isWasteDetailedCostExport ? wasteCostDetailModes.map(() => ({ wch: 18 })) : []),
                 ...(includeProduction ? [{ wch: 14 }] : [])
             ];
-            const dataSheet = XLSX.utils.aoa_to_sheet(sheetRows);
+            const dataSheet = spreadsheetApi.utils.aoa_to_sheet(sheetRows);
             dataSheet['!cols'] = dataSheetCols;
 
             const summaryRows = [
@@ -294,13 +295,13 @@
             if (includeProduction) {
                 summaryRows.push(['생산량 합계', formatExportMetricValue('production', productionTotal)]);
             }
-            const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, dataSheet, '추출데이터');
-            XLSX.utils.book_append_sheet(workbook, summarySheet, '요약');
+            const summarySheet = spreadsheetApi.utils.aoa_to_sheet(summaryRows);
+            const workbook = spreadsheetApi.utils.book_new();
+            spreadsheetApi.utils.book_append_sheet(workbook, dataSheet, '추출데이터');
+            spreadsheetApi.utils.book_append_sheet(workbook, summarySheet, '요약');
             const periodToken = `${sanitizeUtilExportFileToken(fromYm)}-${sanitizeUtilExportFileToken(toYm)}`;
             const fileName = `유틸리티추출_${periodToken}_${sanitizeUtilExportFileToken(teamName)}_${sanitizeUtilExportFileToken(itemLabel)}.xlsx`;
-            XLSX.writeFile(workbook, fileName);
+            spreadsheetApi.writeFile(workbook, fileName);
             return fileName;
         }
 
@@ -437,7 +438,7 @@
             const downloadBtn = modal.querySelector('[data-role="download"]');
             if (downloadBtn) {
                 downloadBtn.onclick = () => {
-                    if (!window.XLSX) {
+                    if (!getUtilMaintenanceSpreadsheetApi()) {
                         alert('엑셀 라이브러리 로드 실패: 네트워크 상태를 확인해주세요.');
                         return;
                     }

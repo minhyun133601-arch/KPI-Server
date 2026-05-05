@@ -1,5 +1,6 @@
 (function () {
-    const api = window.KpiDataEquipmentHistory || (window.KpiDataEquipmentHistory = {});
+    const browser = KpiDataEquipmentHistoryBrowserAdapter;
+    const api = browser.getApi();
 
     function renderMaintenanceRows(rows) {
         const list = api.asList(rows);
@@ -43,7 +44,8 @@
 
     function renderBoardCard(item) {
         const statusMeta = item.statusMeta || api.getEquipmentStatus(item.status);
-        const rate = Math.max(0, Math.min(Number(item.rate) || 0, 100));
+        const rateValue = Number(item.rate);
+        const rate = Number.isFinite(rateValue) ? Math.max(0, Math.min(rateValue, 100)) : 0;
         const toneClassName = statusMeta.tone === 'check' ? 'is-check' : statusMeta.tone === 'stop' ? 'is-stop' : '';
         return `
             <article class="data-equipment-board-card ${toneClassName}" style="--rate:${rate}%">
@@ -302,15 +304,15 @@
 
     async function saveDraft(data, state) {
         const draft = state.draft || api.createDraft();
-        const recordForValidation = api.buildRecordFromDraft(draft);
-        if (!recordForValidation.name) {
-            window.alert('설비명을 입력해 주세요.');
+        const validationErrors = api.getEquipmentHistoryDraftValidationErrors?.(draft) || [];
+        if (validationErrors.length) {
+            browser.alert(validationErrors[0].message);
             return false;
         }
         const canSaveToServer = api.canSaveEquipmentHistoryToServer?.() === true;
         const hasPendingAssets = Boolean(draft.photoFile) || api.asList(draft.documents).some((row) => row?.pendingFile);
         if (!canSaveToServer && hasPendingAssets) {
-            window.alert('서버 저장 권한이 있어야 첨부 파일을 저장할 수 있습니다.');
+            browser.alert('서버 저장 권한이 있어야 첨부 파일을 저장할 수 있습니다.');
             return false;
         }
 
@@ -322,7 +324,7 @@
             if (canSaveToServer) await api.uploadEquipmentHistoryDraftAssets?.(draft);
             record = api.buildRecordFromDraft(draft);
             if (!record.name) {
-                window.alert('설비명을 입력해 주세요.');
+                browser.alert('설비명을 입력해 주세요.');
                 return false;
             }
 
@@ -344,13 +346,13 @@
                     console.warn('[kpi] equipment history uploaded asset cleanup failed', cleanupError);
                 }
             }
-            if (window.PortalData) window.PortalData.data_equipment_history_card = previousPayload;
+            browser.writePortalPayload('data_equipment_history_card', previousPayload);
             throw error;
         }
 
         Object.keys(data || {}).forEach((key) => delete data[key]);
         Object.assign(data, nextPayload);
-        if (window.PortalData) window.PortalData.data_equipment_history_card = nextPayload;
+        browser.writePortalPayload('data_equipment_history_card', nextPayload);
 
         state.selectedId = record.id;
         state.draft = api.createDraft(record);
@@ -382,7 +384,7 @@
 
     function bindEvents(root, redraw, state, data) {
         root.querySelectorAll('[data-equipment-history-print]').forEach((button) => {
-            button.addEventListener('click', () => window.print());
+            button.addEventListener('click', () => browser.print());
         });
 
         root.querySelectorAll('[data-equipment-view-action]').forEach((button) => {
@@ -415,7 +417,7 @@
                 if (await saveDraft(data, state)) redraw();
             } catch (error) {
                 console.warn('[kpi] equipment history save failed', error);
-                window.alert('저장에 실패했습니다.');
+                browser.alert('저장에 실패했습니다.');
             }
         });
 

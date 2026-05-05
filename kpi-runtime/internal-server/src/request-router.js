@@ -7,7 +7,13 @@ import { handleBootstrapStatus, handleHealth, handlePortalDataBootstrap } from '
 import { handleDocumentDelete, handleDocumentDownload, handleDocumentMeta, handleDocumentView, handleUploadBase64File } from './routes/file-routes.js';
 import { handleKpiRoute } from './routes/kpi-routes.js';
 import { handleGetModuleRecord, handleUpsertModuleRecord } from './routes/module-routes.js';
-import { handleOwnerAccessOverview, handleOwnerRepositoryMap, handleOwnerRepositoryMapPage, handleOwnerRepositoryMapScript } from './routes/owner-routes.js';
+import {
+  handleOwnerAccessOverview,
+  handleOwnerRepositoryMap,
+  handleOwnerRepositoryMapHistoryScript,
+  handleOwnerRepositoryMapPage,
+  handleOwnerRepositoryMapScript
+} from './routes/owner-routes.js';
 import { getRouteErrorStatusCode } from './routes/route-errors.js';
 import { handleBillingDocumentUpload, handleSharedStoreGet, handleSharedStorePut } from './routes/shared-store-routes.js';
 import { handleUtilProductionDailyGet, handleUtilProductionDailyPut } from './routes/util-production-routes.js';
@@ -16,6 +22,13 @@ function createRouteKey(method, pathName) {
   return `${method} ${pathName}`;
 }
 
+/**
+ * Builds the per-request handoff object shared by all route modules.
+ *
+ * The router resolves URL/method/auth once, then passes this context to a thin
+ * route handler. Domain decisions should happen after this layer in services or
+ * repositories, not in route matching.
+ */
 async function createRouteContext(req, res) {
   const url = getRequestUrl(req);
   return {
@@ -42,6 +55,7 @@ const EXACT_ROUTE_HANDLERS = new Map([
   ['GET /owner/repository-map', handleOwnerRepositoryMapPage],
   ['GET /owner/repository-map/', handleOwnerRepositoryMapPage],
   ['GET /owner/repository-map.js', handleOwnerRepositoryMapScript],
+  ['GET /owner/repository-map-data.js', handleOwnerRepositoryMapScript],
   ['GET /api/admin/users', handleListUsers],
   ['POST /api/admin/users', handleCreateUser],
   [`GET ${PORTAL_DATA_BOOTSTRAP_PATH}`, handlePortalDataBootstrap],
@@ -88,6 +102,11 @@ const DYNAMIC_ROUTE_MATCHERS = [
     method: 'GET',
     pattern: /^\/api\/files\/([0-9a-f-]+)\/view$/,
     handle: (context, match) => handleDocumentView(context, match[1])
+  },
+  {
+    method: 'GET',
+    pattern: /^\/owner\/repository-map-history\/(\d{4}-\d{2}\.js)$/,
+    handle: (context, match) => handleOwnerRepositoryMapHistoryScript(context, match[1])
   }
 ];
 
@@ -104,6 +123,11 @@ function matchDynamicRoute(context) {
 
 export { getRouteErrorStatusCode };
 
+/**
+ * Dispatches one HTTP request through exact routes, dynamic routes, then the KPI
+ * static/runtime surface. Unmatched requests return JSON 404 so callers can
+ * distinguish routing misses from service errors.
+ */
 export async function routeRequest(req, res) {
   const context = await createRouteContext(req, res);
   const exactHandler = EXACT_ROUTE_HANDLERS.get(createRouteKey(context.method, context.pathName));

@@ -1,0 +1,280 @@
+.team-total-card-accent .team-picker {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.team-total-card-accent .team-picker-draft,
+.team-total-card-accent .team-picker-empty {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.team-total-card-accent .team-picker-option {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.team-total-card-accent .team-picker-option:hover,
+.team-total-card-accent .team-picker-option.is-selected {
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+.team-assigned-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.team-assigned-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 4px 4px 10px;
+  border-radius: 999px;
+  background: rgba(240, 247, 246, 0.9);
+  border: 1px solid rgba(16, 33, 42, 0.06);
+  cursor: pointer;
+}
+
+.team-assigned-chip.is-active {
+  background: rgba(15, 139, 141, 0.12);
+  border-color: rgba(15, 139, 141, 0.22);
+}
+
+.team-assigned-chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  max-width: 100%;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.team-assigned-chip-toggle[aria-pressed="true"] .team-assigned-chip-value {
+  color: #0f5f73;
+}
+
+.team-assigned-chip-toggle[aria-pressed="true"] .team-assigned-chip-share {
+  color: #0f5f73;
+}
+
+.team-assigned-chip-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 150px;
+  min-width: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.team-assigned-chip-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-assigned-chip-metrics {
+  display: grid;
+  gap: 1px;
+  justify-items: end;
+  min-width: 0;
+}
+
+.team-assigned-chip-value {
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.team-assigned-chip-share {
+  color: rgba(15, 95, 115, 0.8);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.team-assigned-chip-charge {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.team-assigned-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 999px;
+  padding: 0;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.team-assigned-chip-remove:hover {
+  background: rgba(180, 35, 24, 0.14);
+}
+
+.team-assigned-chip-direct {
+  padding-right: 12px;
+}
+
+.team-assigned-chip-direct-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: text;
+}
+
+.team-assigned-chip-direct-input {
+  width: 104px;
+  min-width: 0;
+  border: 1px solid rgba(15, 95, 115, 0.18);
+  border-radius: 10px;
+  padding: 7px 10px;
+  background: #ffffff;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.team-assigned-chip-direct-input:focus {
+  outline: none;
+  border-color: rgba(15, 95, 115, 0.34);
+  box-shadow: 0 0 0 3px rgba(15, 95, 115, 0.12);
+}
+
+.team-assigned-empty,
+.team-empty-state p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.team-assigned-empty {
+  padding: 10px 2px;
+}
+
+.team-direct-usage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(240, 247, 246, 0.84);
+  border: 1px solid rgba(16, 33, 42, 0.06);
+}
+
+.team-direct-usage-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.team-direct-usage-label {
+  color: var(--text);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.team-direct-usage-hint {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.team-direct-usage-input {
+  width: 132px;
+  min-width: 0;
+  border: 1px solid rgba(15, 95, 115, 0.16);
+  border-radius: 12px;
+  padding: 9px 11px;
+  background: #ffffff;
+  color: var(--accent-strong);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.team-direct-usage-input:focus {
+  outline: none;
+  border-color: rgba(15, 95, 115, 0.34);
+  box-shadow: 0 0 0 3px rgba(15, 95, 115, 0.12);
+}
+
+.team-total-card-accent .team-assigned-chip {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.team-total-card-accent .team-assigned-chip.is-active {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.team-total-card-accent .team-assigned-chip-value {
+  color: #ffffff;
+}
+
+.team-total-card-accent .team-assigned-chip-share {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.team-total-card-accent .team-assigned-chip-charge {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.team-total-card-accent .team-assigned-chip-remove {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.team-total-card-accent .team-assigned-chip-remove:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.team-total-card-accent .team-assigned-chip-direct-input {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+.team-total-card-accent .team-assigned-chip-direct-input:focus {
+  border-color: rgba(255, 255, 255, 0.46);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16);
+}
+
+.team-total-card-accent .team-assigned-empty {
+  color: rgba(255, 255, 255, 0.78);
+}

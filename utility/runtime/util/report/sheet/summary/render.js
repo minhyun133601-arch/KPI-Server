@@ -1,5 +1,12 @@
-(function registerUtilReportSheetSummaryRender(globalScope) {
-    if (globalScope.KPIUtilReportSheetSummaryRender) {
+(function registerUtilReportSheetSummaryRender() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/summary/render.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetSummaryRender')) {
         return;
     }
 
@@ -32,10 +39,10 @@
         formatUtilSheetSignedUnit: null
     };
 
-    const utilReportSheetControls = globalScope.KPIUtilReportSheetControls;
-    if (!utilReportSheetControls) {
-        throw new Error('KPIUtilReportSheetControls must load before KPI.util.report.sheet.summary.render.js');
-    }
+    const utilReportSheetControls = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetControls',
+        'KPI.util.report.sheet.summary.render.js'
+    );
     const {
         buildUtilGasMeterProductionSelectHtml: buildGasMeterProductionSelectControlHtml,
         buildUtilElectricMeterTeamSelectHtml: buildElectricMeterTeamSelectControlHtml
@@ -43,7 +50,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetSummaryRender;
+        return api;
     }
 
     function escapeHtml(value) {
@@ -726,7 +733,7 @@
         `;
     }
 
-    globalScope.KPIUtilReportSheetSummaryRender = Object.freeze({
+    const api = Object.freeze({
         setRuntimeAdapters,
         buildUtilSheetCompareMeta,
         resolveUtilSheetMemoItems,
@@ -741,4 +748,5 @@
         buildUtilSheetRecentTableHtml,
         buildUtilSheetMemoSectionHtml
     });
-})(typeof globalThis !== 'undefined' ? globalThis : window);
+    runtimeAdapter.exportApi('KPIUtilReportSheetSummaryRender', api);
+})();

@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
@@ -105,6 +109,9 @@ function createModalShellContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js',
   });
@@ -119,6 +126,8 @@ test('report sheet modal shell registry creates the shared modal and routes type
   const modalShell = context.KPIUtilReportSheetModalShell;
   const config = context.KPIUtilReportSheetConfig;
 
+  assert.doesNotMatch(reportSheetModalShellSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetModalShellSource, /KPIUtilReportRuntimeAdapter/);
   config.UtilSheetReportMonthState.analysis = '2026-05';
   config.UtilSheetCompareState.analysis = 'year';
 
@@ -226,13 +235,16 @@ test('report sheet modal shell registry creates the shared modal and routes type
 });
 
 test('kpi html loads report sheet modal shell before modal render and sheet.js', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=053');
   const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=053');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');
+  assert.ok(modalShellIndex > adapterIndex, 'report sheet modal shell must load after report runtime adapter');
   assert.ok(modalShellIndex > modalActionsIndex, 'report sheet modal shell must load after report sheet modal actions');
   assert.ok(modalRenderIndex > modalShellIndex, 'report sheet modal render must load after report sheet modal shell');
   assert.ok(analysisRenderIndex > modalRenderIndex, 'report sheet analysis render must load after report sheet modal render');

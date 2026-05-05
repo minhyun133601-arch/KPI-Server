@@ -1,5 +1,12 @@
-(function registerUtilReportSheetAnalysisCompareSelect(globalScope) {
-    if (globalScope.KPIUtilReportSheetAnalysisCompareSelect) {
+(function registerUtilReportSheetAnalysisCompareSelect() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/analysis/compare-select.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetAnalysisCompareSelect')) {
         return;
     }
 
@@ -12,7 +19,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetAnalysisCompareSelect;
+        return api;
     }
 
     function formatMonthShort(monthKey = '') {
@@ -97,10 +104,12 @@
         };
     }
 
-    globalScope.KPIUtilReportSheetAnalysisCompareSelect = {
+    const api = {
         setRuntimeAdapters,
         buildUtilGasAnalysisCostModeText,
         buildUtilGasAnalysisCompareSub,
         resolveUtilSheetAnalysisLabelToggleContext
     };
-})(globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetAnalysisCompareSelect', api);
+})();

@@ -1,12 +1,19 @@
-(function registerUtilReportSheetModalRender(globalScope) {
-    if (globalScope.KPIUtilReportSheetModalRender) {
+(function registerUtilReportSheetModalRender() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/modal/render.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetModalRender')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.modal-render.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.modal-render.js'
+    );
 
     const {
         UTIL_SHEET_DATASET_SPECS,
@@ -73,11 +80,11 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetModalRender;
+        return api;
     }
 
     function getDocument() {
-        return globalScope.document || null;
+        return runtimeAdapter.getDocument();
     }
 
     function normalizeSheetType(sheetType = 'meter') {
@@ -540,9 +547,11 @@
         syncSupplementaryWindows(modal);
     }
 
-    globalScope.KPIUtilReportSheetModalRender = Object.freeze({
+    const api = Object.freeze({
         setRuntimeAdapters,
         rerenderUtilSheetReportModalIfActive,
         renderUtilSheetReportModal
     });
-})(typeof globalThis !== 'undefined' ? globalThis : window);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetModalRender', api);
+})();

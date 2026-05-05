@@ -1,8 +1,18 @@
-(function registerUtilReportSheetGasRuntimeSync() {
-    const utilReportSheetConfig = globalThis.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.gas.runtime-sync.js');
-    }
+(function registerUtilReportSheetGasRuntimeSync(globalScope) {
+    const runtimeAdapter = globalScope.KPIUtilReportRuntimeAdapter;
+    const requireApi = runtimeAdapter?.requireApi || ((name, consumer) => {
+        const api = globalScope[name];
+        if (!api) throw new Error(`${name} must load before ${consumer}`);
+        return api;
+    });
+    const exportApi = runtimeAdapter?.exportApi || ((name, api) => {
+        globalScope[name] = api;
+        return api;
+    });
+    const utilReportSheetConfig = requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.gas.runtime-sync.js'
+    );
     const { UtilSheetRuntimeState } = utilReportSheetConfig;
 
     const runtime = {
@@ -41,8 +51,8 @@
         return nextPromise;
     }
 
-    globalThis.KPIUtilReportSheetGasRuntimeSync = {
+    exportApi('KPIUtilReportSheetGasRuntimeSync', {
         setRuntimeAdapters,
         ensureUtilGasReportDataSync
-    };
-})();
+    });
+})(this);

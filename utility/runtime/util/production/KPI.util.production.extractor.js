@@ -1,3 +1,23 @@
+        const utilProductionExtractorBrowser = typeof KpiUtilDataSyncBrowserAdapter !== 'undefined'
+            ? KpiUtilDataSyncBrowserAdapter
+            : null;
+
+        function addUtilProductionExtractorEventListener(type, listener, options) {
+            utilProductionExtractorBrowser?.addEventListener?.(type, listener, options);
+        }
+
+        function postUtilProductionExtractorMessage(target, message) {
+            return utilProductionExtractorBrowser?.postMessage?.(target, message) === true;
+        }
+
+        function useUtilProductionExtractorRootFlag(flagName) {
+            return utilProductionExtractorBrowser?.useRootFlag?.(flagName) === true;
+        }
+
+        function writeExistingUtilProductionPortalRecord(recordKey, value) {
+            return utilProductionExtractorBrowser?.writeExistingPortalRecord?.(recordKey, value) || null;
+        }
+
         function setUtilProductionExtractorStatus(message, isError = false) {
             const modal = document.getElementById('util-production-extractor-modal');
             if (!modal) return;
@@ -34,8 +54,7 @@
             const closeBtn = modal.querySelector('[data-role="close"]');
             if (closeBtn) closeBtn.addEventListener('click', () => closeUtilProductionExtractorModal());
             document.body.appendChild(modal);
-            if (!window.__utilProductionExtractorEscBound) {
-                window.__utilProductionExtractorEscBound = true;
+            if (useUtilProductionExtractorRootFlag('__utilProductionExtractorEscBound')) {
                 document.addEventListener('keydown', evt => {
                     if (evt.key !== 'Escape') return;
                     closeUtilProductionExtractorModal();
@@ -58,9 +77,8 @@
             modal.classList.add('is-open');
         }
 
-        if (!window.__utilProductionBridgeBound) {
-            window.__utilProductionBridgeBound = true;
-            window.addEventListener('message', async event => {
+        if (useUtilProductionExtractorRootFlag('__utilProductionBridgeBound')) {
+            addUtilProductionExtractorEventListener('message', async event => {
                 const data = event?.data;
                 const modal = document.getElementById('util-production-extractor-modal');
                 if (!modal) return;
@@ -73,7 +91,6 @@
                 }
                 if (data.type === 'kpi-production-stored-data-request') {
                     const requestId = String(data.requestId || '').trim();
-                    if (!event.source || typeof event.source.postMessage !== 'function') return;
                     try {
                         const teamSet = new Set();
                         const rowMap = new Map();
@@ -110,22 +127,22 @@
                             return String(a.productName || '').localeCompare(String(b.productName || ''), 'ko');
                         });
                         const teams = Array.from(teamSet).filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko'));
-                        event.source.postMessage({
+                        postUtilProductionExtractorMessage(event.source, {
                             type: 'kpi-production-stored-data-response',
                             requestId,
                             ok: true,
                             rows,
                             teams
-                        }, window.location.origin || `${window.location.protocol}//${window.location.host}`);
+                        });
                     } catch (error) {
-                        event.source.postMessage({
+                        postUtilProductionExtractorMessage(event.source, {
                             type: 'kpi-production-stored-data-response',
                             requestId,
                             ok: false,
                             rows: [],
                             teams: [],
                             message: String(error?.message || '기입 데이터 조회 실패')
-                        }, window.location.origin || `${window.location.protocol}//${window.location.host}`);
+                        });
                     }
                     return;
                 }
@@ -185,19 +202,17 @@
                     if (typeof setLastModified === 'function' && (result.addedCount > 0 || startDayChanged)) {
                         setLastModified('유틸리티 관리');
                     }
-                    if (event.source && typeof event.source.postMessage === 'function') {
-                        event.source.postMessage({
-                            type: 'kpi-production-import-result',
-                            ok: true,
-                            addedCount: result.addedCount,
-                            skippedCount: result.skippedCount,
-                            failedFiles,
-                            archivedCount: 0,
-                            archiveFailedCount: 0,
-                            archiveUnsupported: false,
-                            unlinkedExcludedCount: 0
-                        }, window.location.origin || `${window.location.protocol}//${window.location.host}`);
-                    }
+                    postUtilProductionExtractorMessage(event.source, {
+                        type: 'kpi-production-import-result',
+                        ok: true,
+                        addedCount: result.addedCount,
+                        skippedCount: result.skippedCount,
+                        failedFiles,
+                        archivedCount: 0,
+                        archiveFailedCount: 0,
+                        archiveUnsupported: false,
+                        unlinkedExcludedCount: 0
+                    });
                 } catch (error) {
                     UTIL_PRODUCTION_DAILY_DATA.length = 0;
                     rollbackSnapshot.dailyData.forEach(item => UTIL_PRODUCTION_DAILY_DATA.push(item));
@@ -208,18 +223,16 @@
                     UTIL_PRODUCTION_DAILY_STATE.periodDefault = rollbackSnapshot.periodDefault;
                     UTIL_PRODUCTION_DAILY_STATE.teams = UTIL_PRODUCTION_DAILY_DATA;
                     UTIL_PRODUCTION_DAILY_STATE.archives = UTIL_PRODUCTION_ARCHIVE_META;
-                    if (window.PortalData) window.PortalData.util_production_daily = UTIL_PRODUCTION_DAILY_STATE;
+                    writeExistingUtilProductionPortalRecord('util_production_daily', UTIL_PRODUCTION_DAILY_STATE);
                     if (typeof refreshUtilProductionDailyIndex === 'function') refreshUtilProductionDailyIndex();
                     if (typeof refreshUtilProductionArchiveCountBadges === 'function') refreshUtilProductionArchiveCountBadges();
                     const message = `기입 실패: ${error?.message || '알 수 없는 오류'}`;
                     setUtilProductionExtractorStatus(message, true);
-                    if (event.source && typeof event.source.postMessage === 'function') {
-                        event.source.postMessage({
-                            type: 'kpi-production-import-result',
-                            ok: false,
-                            message
-                        }, window.location.origin || `${window.location.protocol}//${window.location.host}`);
-                    }
+                    postUtilProductionExtractorMessage(event.source, {
+                        type: 'kpi-production-import-result',
+                        ok: false,
+                        message
+                    });
                 }
             });
         }
@@ -392,8 +405,7 @@
                 closeBtn.addEventListener('click', () => closeUtilProductionDetailModal());
             }
             document.body.appendChild(modal);
-            if (!window.__utilProductionDetailEscBound) {
-                window.__utilProductionDetailEscBound = true;
+            if (useUtilProductionExtractorRootFlag('__utilProductionDetailEscBound')) {
                 document.addEventListener('keydown', evt => {
                     if (evt.key !== 'Escape') return;
                     closeUtilProductionDetailModal();

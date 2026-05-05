@@ -151,9 +151,13 @@ test('production extractor import parsing parses workbook rows and normalizes te
 test('production extractor html loads import parsing before export actions and app', () => {
   const importParsingIndex = productionExtractorHtml.indexOf('runtime/import-parsing.js?v=16');
   const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=16');
+  const viewModelIndex = productionExtractorHtml.indexOf('runtime/view-model.js?v=1');
+  const renderIndex = productionExtractorHtml.indexOf('runtime/render.js?v=1');
   const appIndex = productionExtractorHtml.indexOf('app.js?v=16');
 
   assert.ok(importParsingIndex >= 0, 'import parsing loader is missing');
   assert.ok(exportActionsIndex > importParsingIndex, 'export actions must load after import parsing');
-  assert.ok(appIndex > exportActionsIndex, 'app.js must load after split runtime files');
+  assert.ok(viewModelIndex > exportActionsIndex, 'view model split must load after export actions');
+  assert.ok(renderIndex > viewModelIndex, 'render split must load after the view model split');
+  assert.ok(appIndex > renderIndex, 'app.js must load after split runtime files');
 });

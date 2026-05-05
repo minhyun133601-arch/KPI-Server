@@ -1,12 +1,12 @@
         function getUtilSidebarReportShortcutTeam(itemKey = '') {
             const normalizedItemKey = normalizeUtilReportBuilderItemKey(itemKey || UtilReportState.builderItemKey || 'electric');
             const directSection = document.querySelector(`[data-util-dual="${normalizedItemKey}"] [data-util-dual-section="combined"]`);
-            const activeTeam = String(directSection?.dataset?.activeTeam || '').trim();
+            const activeTeam = String(directSection?.dataset?.reportTeam || directSection?.dataset?.activeTeam || '').trim();
             if (activeTeam) return activeTeam;
-            if (normalizedItemKey === 'electric') return UtilReportState.electricTeam === 'all' ? '\uC804\uCCB4' : (UtilReportState.electricTeam || '\uC804\uCCB4');
-            if (normalizedItemKey === 'gas') return UtilReportState.gasTeam === 'all' ? '\uC804\uCCB4' : (UtilReportState.gasTeam || '\uC804\uCCB4');
-            if (normalizedItemKey === 'waste') return UtilReportState.wasteTeam === 'all' ? '\uC804\uCCB4' : (UtilReportState.wasteTeam || '\uC804\uCCB4');
-            return UtilReportBuilderVizState.team || '\uC804\uCCB4';
+            if (normalizedItemKey === 'electric') return UtilReportState.electricTeam === 'all' ? '전체' : (UtilReportState.electricTeam || '전체');
+            if (normalizedItemKey === 'gas') return UtilReportState.gasTeam === 'all' ? '전체' : (UtilReportState.gasTeam || '전체');
+            if (normalizedItemKey === 'waste') return UtilReportState.wasteTeam === 'all' ? '전체' : (UtilReportState.wasteTeam || '전체');
+            return UtilReportBuilderVizState.team || '전체';
         }
 
         function openUtilSidebarReportShortcut(itemKey = '') {
@@ -18,9 +18,82 @@
             openUtilReportBuilderModal(normalizedItemKey, getUtilSidebarReportShortcutTeam(normalizedItemKey));
         }
 
+        function getActiveUtilityTeamSelectorItemKey() {
+            if (getNavigationSelectionSectionId() !== 'util') return '';
+            const categoryIndex = getNavigationSelectionCategoryIndex('util');
+            const category = Array.isArray(AppData?.util?.categories) ? AppData.util.categories[categoryIndex] : null;
+            const itemKey = String(category?.reportShortcutKey || '').trim().toLowerCase();
+            return ['electric', 'gas', 'waste'].includes(itemKey) ? itemKey : '';
+        }
+
         function getSidebarTeamCategories(sectionEntry, category = null) {
             if (sectionEntry?.id !== 'work' || category?.view !== 'team_calendar') return [];
+            if (typeof getWorkTeamCalendarCategoryList === 'function') {
+                const teamCategories = getWorkTeamCalendarCategoryList();
+                const activeUtilityItemKey = getActiveUtilityTeamSelectorItemKey();
+                if (!activeUtilityItemKey) return teamCategories;
+                const currentMode = typeof getWorkTeamCalendarMode === 'function'
+                    ? getWorkTeamCalendarMode()
+                    : 'detail';
+                const visibleKeys = typeof getWorkTeamCalendarUtilityVisibleDataKeys === 'function'
+                    ? getWorkTeamCalendarUtilityVisibleDataKeys(currentMode, activeUtilityItemKey)
+                    : ['work_team_calendar_team1_part1', 'work_team_calendar_team1_part2', 'work_team_calendar_team2', 'work_team_calendar_team3', 'work_team_calendar_overview'];
+                return teamCategories
+                    .filter((teamCategory) => visibleKeys.includes(String(teamCategory?.dataKey || '').trim()))
+                    .map((teamCategory) => {
+                        if (String(teamCategory?.dataKey || '').trim() !== 'work_team_calendar_overview') {
+                            return teamCategory;
+                        }
+                        return {
+                            ...teamCategory,
+                            title: '통합',
+                            processLabel: '통합',
+                            processTag: '통합'
+                        };
+                    });
+            }
             return Array.isArray(sectionEntry.section?.teamCategories) ? sectionEntry.section.teamCategories : [];
+        }
+
+        function getSidebarTeamModeToggleHtml(sectionEntry, category = null, categoryIndex = -1) {
+            if (sectionEntry?.id !== 'work' || category?.view !== 'team_calendar') return '';
+            if (getActiveUtilityTeamSelectorItemKey() === 'waste') return '';
+            const modeMeta = typeof getWorkTeamCalendarModeMeta === 'function'
+                ? getWorkTeamCalendarModeMeta()
+                : { mode: 'detail', label: '\uD300\uBCC4', nextLabel: '\uACF5\uC815\uBCC4' };
+            const buttonClass = modeMeta.mode === 'group'
+                ? ' is-group'
+                : (modeMeta.mode === 'process' ? ' is-process' : '');
+            const label = `${modeMeta.label} \uBAA8\uB4DC, ${modeMeta.nextLabel} \uBCF4\uAE30\uB85C \uC804\uD658`;
+            return `
+                <div class="sidebar-mode-toggle-row">
+                    <button
+                        type="button"
+                        class="sidebar-mode-toggle-button${buttonClass}"
+                        onclick="toggleSidebarWorkTeamMode()"
+                        aria-label="${escapeDashboardHtml(label)}"
+                        title="${escapeDashboardHtml(label)}"
+                        data-mode="${escapeDashboardHtml(modeMeta.mode || 'detail')}"
+                        id="cat-btn-${sectionEntry.id}-${categoryIndex}-mode-toggle"
+                    >
+                        <i class="fas fa-right-left" aria-hidden="true"></i>
+                        <span class="sidebar-mode-toggle-text">${escapeDashboardHtml(modeMeta.label || '\uD300\uBCC4')}</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        function toggleSidebarWorkTeamMode() {
+            if (typeof toggleWorkTeamCalendarDisplayMode !== 'function') return;
+            const activeUtilityItemKey = getActiveUtilityTeamSelectorItemKey();
+            const targetDataKey = toggleWorkTeamCalendarDisplayMode();
+            if (
+                activeUtilityItemKey
+                && targetDataKey
+                && browser?.canApplyUtilSidebarSelection?.() === true
+            ) {
+                browser?.applyUtilSidebarSelectionToCurrentView?.(activeUtilityItemKey, targetDataKey);
+            }
         }
 
         function getActiveSidebarTeamDataKey(sectionId = '', categoryIndex = -1) {
@@ -37,6 +110,15 @@
         }
 
         function openSidebarTeamCategory(sectionId, categoryIndex = 0, teamDataKey = '') {
+            const activeUtilityItemKey = getActiveUtilityTeamSelectorItemKey();
+            if (
+                sectionId === 'work'
+                && activeUtilityItemKey
+                && browser?.canApplyUtilSidebarSelection?.() === true
+            ) {
+                const handled = browser?.applyUtilSidebarSelectionToCurrentView?.(activeUtilityItemKey, teamDataKey);
+                if (handled) return;
+            }
             selectCategory(sectionId, categoryIndex, {
                 teamDataKey: String(teamDataKey || '').trim()
             });
@@ -51,18 +133,26 @@
             if (!sidebar) return;
             const sections = ensureSidebarTreeState(getDashboardSections());
             const selectedSectionId = getNavigationSelectionSectionId();
+            const activeUtilityItemKey = getActiveUtilityTeamSelectorItemKey();
+            const utilitySelectedTeamDataKey = activeUtilityItemKey
+                ? String(browser?.getUtilSidebarSelectionWorkDataKey?.(activeUtilityItemKey) || '').trim()
+                : '';
             sidebar.innerHTML = `
                 <div class="sidebar-tree-shell">
-                    <button id="viewer-sidebar-toggle" type="button" class="sidebar-group-toggle sidebar-viewer-toggle" onclick="toggleViewerSidebar()" aria-label="\uB2EB\uAE30" title="\uB2EB\uAE30" aria-pressed="false">
+                    <button id="viewer-sidebar-toggle" type="button" class="sidebar-group-toggle sidebar-viewer-toggle" onclick="toggleViewerSidebar()" aria-label="닫기" title="닫기" aria-pressed="false">
                         <span class="sidebar-group-toggle-main">
                             <span class="sidebar-group-icon"><i class="fas fa-angles-left" aria-hidden="true"></i></span>
-                            <span id="viewer-sidebar-toggle-label" class="sidebar-group-label">\uB2EB\uAE30</span>
                         </span>
                     </button>
                     ${sections.map(sectionEntry => {
+                        const isUtilityTeamSelectorSection = sectionEntry.id === 'work' && !!activeUtilityItemKey;
+                        if (isUtilityTeamSelectorSection) {
+                            SidebarTreeState.expandedSections.work = true;
+                        }
                         const renderableCategories = getSidebarRenderableCategories(sectionEntry);
                         const shouldKeepDirectLaunchSubmenuVisible = sectionEntry.section?.directLaunch === true && renderableCategories.length > 0;
-                        const isExpanded = SidebarTreeState.expandedSections[sectionEntry.id] === true
+                        const isExpanded = isUtilityTeamSelectorSection
+                            || SidebarTreeState.expandedSections[sectionEntry.id] === true
                             || shouldKeepDirectLaunchSubmenuVisible;
                         const isActiveSection = selectedSectionId === sectionEntry.id;
                         const actionIcon = sectionEntry.section?.directLaunch === true
@@ -91,16 +181,19 @@
                                                 <div class="sidebar-category-branch">
                                                     ${teamCategories.map((teamCategory, teamIndex) => {
                                                         const teamColor = teamCategory.color || categoryColor;
-                                                        const isActiveTeam = isActiveCategory && activeTeamDataKey === String(teamCategory.dataKey || '').trim();
+                                                        const teamDataKey = String(teamCategory.dataKey || '').trim();
+                                                        const isActiveTeam = (isActiveCategory && activeTeamDataKey === teamDataKey)
+                                                            || (sectionEntry.id === 'work' && utilitySelectedTeamDataKey === teamDataKey);
                                                         return `
                                                             <button type="button" class="sidebar-item sidebar-item-nested sidebar-item-team${isActiveTeam ? ' active' : ''}" style="--cat-color:${teamColor};" onclick="openSidebarTeamCategory('${sectionEntry.id}', ${index}, '${teamCategory.dataKey}')" id="cat-btn-${sectionEntry.id}-${index}-team-${teamIndex}"${isActiveTeam ? ' aria-current="page"' : ''}>
                                                                 <span class="sidebar-item-main">
                                                                     <i class="fas ${escapeDashboardHtml(teamCategory.icon || 'fa-layer-group')} w-5 text-center"></i>
-                                                                    <span>${escapeDashboardHtml(teamCategory.title || `\uD300 ${teamIndex + 1}`)}</span>
+                                                                    <span>${escapeDashboardHtml(teamCategory.title || `팀 ${teamIndex + 1}`)}</span>
                                                                 </span>
                                                             </button>
                                                         `;
                                                     }).join('')}
+                                                    ${getSidebarTeamModeToggleHtml(sectionEntry, category, index)}
                                                 </div>
                                             `;
                                         }
@@ -109,7 +202,7 @@
                                                 <button type="button" class="sidebar-item sidebar-item-nested${isActiveCategory ? ' active' : ''}" style="--cat-color:${categoryColor};" onclick="selectCategory('${sectionEntry.id}', ${index}, { __allowLaunch: true })" id="cat-btn-${sectionEntry.id}-${index}"${isActiveCategory ? ' aria-current="page"' : ''}>
                                                     <span class="sidebar-item-main">
                                                         <i class="fas ${escapeDashboardHtml(category.icon || 'fa-folder')} w-5 text-center"></i>
-                                                        <span>${escapeDashboardHtml(category.title || `\uD56D\uBAA9 ${index + 1}`)}</span>
+                                                        <span>${escapeDashboardHtml(category.title || `항목 ${index + 1}`)}</span>
                                                     </span>
                                                 </button>
                                             </div>
@@ -119,6 +212,21 @@
                             </div>
                         `;
                     }).join('')}
+                    <div class="sidebar-reset-row">
+                        <button
+                            type="button"
+                            class="sidebar-item sidebar-item-nested sidebar-item-reset"
+                            onclick="resetSidebarNavigation()"
+                            id="viewer-sidebar-reset"
+                            aria-label="목차 초기화"
+                            title="목차 초기화"
+                        >
+                            <span class="sidebar-item-main">
+                                <i class="fas fa-rotate-left w-5 text-center" aria-hidden="true"></i>
+                                <span>목차 초기화</span>
+                            </span>
+                        </button>
+                    </div>
                 </div>
             `;
             syncViewerSidebarUi();
@@ -127,11 +235,11 @@
         function getViewerSidebarToggleMeta(isCollapsed = ViewerLayoutState.sidebarCollapsed === true) {
             return isCollapsed
                 ? {
-                    label: '\uC5F4\uAE30',
+                    label: '열기',
                     icon: 'fa-angles-right'
                 }
                 : {
-                    label: '\uB2EB\uAE30',
+                    label: '닫기',
                     icon: 'fa-angles-left'
                 };
         }
@@ -152,15 +260,15 @@
             if (icon) {
                 icon.className = `fas ${meta.icon}`;
             }
-            const label = document.getElementById('viewer-sidebar-toggle-label');
-            if (label) {
-                label.textContent = meta.label;
-            }
         }
 
         function toggleViewerSidebar() {
             ViewerLayoutState.sidebarCollapsed = !ViewerLayoutState.sidebarCollapsed;
             syncViewerSidebarUi();
+        }
+
+        function resetSidebarNavigation() {
+            goHome();
         }
 
         function setViewerContentMode(mode = 'default') {
@@ -179,12 +287,21 @@
         }
 
         function buildCategoryPopupFeatures(category = null) {
-            const availableWidth = Number(window.screen?.availWidth) || Number(window.outerWidth) || 1600;
-            const availableHeight = Number(window.screen?.availHeight) || Number(window.outerHeight) || 1000;
-            const hostLeft = Number(window.screenX ?? window.screenLeft ?? 0) || 0;
-            const hostTop = Number(window.screenY ?? window.screenTop ?? 0) || 0;
-            const hostWidth = Number(window.outerWidth) || availableWidth;
-            const hostHeight = Number(window.outerHeight) || availableHeight;
+            const {
+                availableWidth,
+                availableHeight,
+                hostLeft,
+                hostTop,
+                hostWidth,
+                hostHeight
+            } = browser?.getWindowPlacement?.() || {
+                availableWidth: 1600,
+                availableHeight: 1000,
+                hostLeft: 0,
+                hostTop: 0,
+                hostWidth: 1600,
+                hostHeight: 1000
+            };
             const popupWidth = parseLaunchDimension(category?.launchWindowWidth, Math.min(1540, availableWidth), 1040, Math.max(1040, availableWidth));
             const popupHeight = parseLaunchDimension(category?.launchWindowHeight, Math.min(980, availableHeight), 760, Math.max(760, availableHeight));
             const popupLeft = hostLeft + Math.max(24, Math.round((hostWidth - popupWidth) / 2));
@@ -206,7 +323,7 @@
             const launchTarget = String(category?.launchTarget || '').trim().toLowerCase();
             const launchWindowName = String(category?.launchWindowName || '').trim();
             if (launchTarget === 'popup') {
-                const popupWindow = window.open(
+                const popupWindow = browser?.openWindow?.(
                     launchUrl,
                     launchWindowName || 'kpi-owner-ops-console',
                     buildCategoryPopupFeatures(category)
@@ -220,15 +337,15 @@
                     return true;
                 }
             }
-            const nextWindow = window.open(launchUrl, '_blank', 'noopener,noreferrer');
+            const nextWindow = browser?.openWindow?.(launchUrl, '_blank', 'noopener,noreferrer');
             if (!nextWindow) {
-                window.location.assign(launchUrl);
+                browser?.assignLocation?.(launchUrl);
                 return false;
             }
             return true;
         }
 
-        window.KpiOpenOwnerToolWindow = function openOwnerToolWindow(launchUrl = '', launchTitle = '', launchWindowName = 'kpi-owner-ops-console') {
+        browser?.exposeOwnerToolWindow?.(function openOwnerToolWindow(launchUrl = '', launchTitle = '', launchWindowName = 'kpi-owner-ops-console') {
             return openCategoryLaunch({
                 title: String(launchTitle || '').trim(),
                 launchUrl: String(launchUrl || '').trim(),
@@ -237,15 +354,23 @@
                 launchWindowWidth: 1540,
                 launchWindowHeight: 980
             });
-        };
+        });
 
         function selectCategory(dataId, index, options = {}) {
-            void window.KpiMeteringBridge?.destroyIntegratedMeteringMount?.();
+            void browser?.destroyIntegratedMeteringMount?.();
             const data = AppData[dataId];
             if (!data || !Array.isArray(data.categories) || !data.categories[index]) return;
             const category = data.categories[index];
-            const navSectionId = getDashboardSectionKey(options.__navSectionId || dataId);
-            const navCategoryIndex = Number.isFinite(Number(options.__navCategoryIndex)) ? Number(options.__navCategoryIndex) : index;
+            const utilityItemKey = dataId === 'util'
+                ? String(category?.reportShortcutKey || '').trim().toLowerCase()
+                : '';
+            const requestedNavSectionId = String(options.__navSectionId || dataId || '').trim();
+            const navSectionId = getDashboardSections().some((entry) => entry.id === requestedNavSectionId)
+                ? requestedNavSectionId
+                : '';
+            const navCategoryIndex = navSectionId
+                ? (Number.isFinite(Number(options.__navCategoryIndex)) ? Number(options.__navCategoryIndex) : index)
+                : -1;
             const navTeamDataKey = String(options.__navTeamDataKey || options.teamDataKey || '').trim();
             const shortcut = options.__skipShortcut === true ? null : resolveCategoryShortcut(category);
             if (shortcut) {
@@ -282,6 +407,12 @@
             activeSectionId = dataId;
             activeCategoryIndex = index;
             SidebarTreeState.expandedSections[dataId] = options.keepSidebarCollapsed === true ? false : true;
+            if (['electric', 'gas', 'waste'].includes(utilityItemKey)) {
+                SidebarTreeState.expandedSections.work = true;
+                if (utilityItemKey === 'waste' && typeof applyWorkTeamCalendarMode === 'function') {
+                    applyWorkTeamCalendarMode('group');
+                }
+            }
             activeRenderContext = renderContext;
             renderDashboardSideNav();
             const activeTeamDataKey = options.teamDataKey
@@ -325,6 +456,12 @@
             // Util/equip follow-up initialization is owned by the domain runtime files.
             KpiRuntime?.runSectionInitializers?.(dataId, renderContext);
             KpiRuntime?.runViewChangeHandlers?.(renderContext);
+            if (
+                ['electric', 'gas', 'waste'].includes(utilityItemKey)
+                && browser?.canSyncUtilReportBuilderVizPopup?.() === true
+            ) {
+                browser?.syncUtilReportBuilderVizPopupFromSelection?.(utilityItemKey);
+            }
             mainScroll.scrollTop = 0;
             scheduleGlobalSaveUiRefresh({ forceDefault: true });
         }

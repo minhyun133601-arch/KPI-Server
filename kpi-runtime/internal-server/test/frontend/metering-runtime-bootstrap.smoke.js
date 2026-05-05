@@ -9,6 +9,10 @@ const runtimeBootstrapSource = await fs.readFile(
   resolveMeteringBundleSourceUrl('runtime/bootstrap.js'),
   'utf8'
 );
+const browserAdapterSource = await fs.readFile(
+  resolveMeteringBundleSourceUrl('runtime/browser-adapter.js'),
+  'utf8'
+);
 
 const ELEMENT_TARGET_KEYS = [
   'electricResourceBtn',
@@ -286,6 +290,9 @@ function createRuntimeBootstrapContext(options = {}) {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(browserAdapterSource, context, {
+    filename: 'runtime/browser-adapter.js',
+  });
   vm.runInContext(runtimeBootstrapSource, context, {
     filename: 'runtime/bootstrap.js',
   });
@@ -298,6 +305,11 @@ function createRuntimeBootstrapContext(options = {}) {
     windowTarget,
   };
 }
+
+test('runtime bootstrap host keeps browser globals behind the metering adapter', () => {
+  assert.doesNotMatch(runtimeBootstrapSource, /\b(?:window\.|globalThis)\b/);
+  assert.match(runtimeBootstrapSource, /KpiMeteringBrowserAdapter/);
+});
 
 test('runtime bootstrap init orchestrates store load and initial month apply', () => {
   const { context, calls } = createRuntimeBootstrapContext();

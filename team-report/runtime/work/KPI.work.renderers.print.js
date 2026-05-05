@@ -1,3 +1,7 @@
+        const workRenderersPrintBrowser = typeof KpiWorkBrowserAdapter !== 'undefined'
+            ? KpiWorkBrowserAdapter
+            : null;
+
         function triggerWorkPrintPreview(mode, html) {
             const sheet = document.getElementById('print-sheet');
             if (!sheet) return false;
@@ -5,7 +9,7 @@
             sheet.innerHTML = html;
             document.documentElement.classList.add('printing');
             setTimeout(() => {
-                window.print();
+                workRenderersPrintBrowser?.printWindow?.();
                 setTimeout(() => {
                     document.documentElement.classList.remove('printing');
                 }, 500);

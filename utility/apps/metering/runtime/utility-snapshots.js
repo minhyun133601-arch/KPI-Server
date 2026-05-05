@@ -1,4 +1,4 @@
-﻿function buildElectricMonthlyTeamSnapshot(monthValue, store = state.store) {
+function buildElectricMonthlyTeamSnapshot(monthValue, store = state.store) {
   const normalizedMonth = normalizeMonthValue(monthValue);
   if (!normalizedMonth) {
     return null;

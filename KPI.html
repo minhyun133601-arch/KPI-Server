@@ -126,9 +126,12 @@
     <!-- Print sheet -->
     <div id="print-sheet" class="print-sheet"></div>
 
+    <script src="kpi-runtime/app/boot/KPI.boot.manifest.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="kpi-runtime/demo/KPI.demo-data.browser-adapter.js?v=1"></script>
     <script src="kpi-runtime/demo/KPI.demo-data.js?v=7"></script>
     <script src="utility/runtime/util/integration/KPI.util.metering.bridge.js?v=197"></script>
+    <script src="kpi-runtime/sections/KPI.section.factory-adapter.js?v=1"></script>
     <script src="kpi-runtime/sections/KPI.section.builders.js?v=215"></script>
     <script src="team-report/runtime/work/sections/KPI.sections.work.js?v=231"></script>
     <script src="utility/runtime/util/sections/KPI.sections.util.js?v=241"></script>
@@ -139,23 +142,32 @@
     <script src="kpi-runtime/sections/KPI.section.registry.js?v=1"></script>
 
     <!-- 로직 스크립트 -->
+    <script src="kpi-runtime/core/KPI.core.browser-adapter.js?v=1"></script>
     <script src="kpi-runtime/core/KPI.core.js"></script>
+    <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=1"></script>
     <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=1"></script>
     <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=1"></script>
     <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=1"></script>
     <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=1"></script>
     <script src="data-entry/runtime/data/KPI.data.runtime.js?v=3"></script>
+    <script src="utility/runtime/util/KPI.util.data-sync.browser-adapter.js?v=1"></script>
     <script src="utility/runtime/util/KPI.util.data-sync.js?v=206"></script>
+    <script src="utility/runtime/util/KPI.util.data-sync.production.js?v=1"></script>
     <script src="utility/runtime/util/KPI.util.production-import.js?v=2"></script>
     <script src="utility/runtime/util/production/KPI.util.production.extractor.js?v=14"></script>
     <script src="utility/runtime/util/production/KPI.util.production.dataset-tools.js"></script>
     <script src="utility/runtime/util/KPI.util.production-management.js"></script>
+    <script src="utility/runtime/util/KPI.util.maintenance.browser-adapter.js?v=1"></script>
     <script src="utility/runtime/util/KPI.util.maintenance.js"></script>
+    <script src="utility/runtime/util/KPI.util.maintenance.delete.js?v=1"></script>
+    <script src="utility/runtime/util/KPI.util.maintenance.config.js?v=1"></script>
+    <script src="utility/runtime/util/KPI.util.maintenance.export.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.shared.js?v=239"></script>
     <script src="team-report/runtime/work/KPI.work.shared.team-calendar.categories.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.shared.team-calendar.state.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.shared.team-calendar.summary.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.production.js?v=238"></script>
+    <script src="team-report/runtime/work/KPI.work.browser-adapter.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.production.history.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.production.overview.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.production.draft.js?v=1"></script>
@@ -163,15 +175,13 @@
     <script src="team-report/runtime/work/KPI.work.team-calendar.selection.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.team-calendar.draft-actions.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.team-calendar.render.js?v=1"></script>
+    <script src="team-report/runtime/work/history/KPI.work.history.browser-adapter.js?v=1"></script>
+    <script src="team-report/runtime/work/history/KPI.work.history.core.config.js?v=1"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.core.js?v=217"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.core.records.js?v=1"></script>
-    <script src="team-report/runtime/work/history/KPI.work.history.core.attachments.js?v=1"></script>
-    <script src="team-report/runtime/work/history/KPI.work.history.core.payload.js?v=1"></script>
-    <script src="team-report/runtime/work/history/KPI.work.history.core.storage.attachments.js?v=1"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.core.storage.js?v=1"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.view.layout.js?v=250"></script>
-    <script src="team-report/runtime/work/history/layout/workspace-copy.js?v=1"></script>
-    <script src="team-report/runtime/work/history/layout/formatters.js?v=1"></script>
+    <script src="team-report/runtime/work/history/layout/workspace-state.js?v=1"></script>
     <script src="team-report/runtime/work/history/layout/templates.js?v=249"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.view.render.js?v=234"></script>
     <script src="team-report/runtime/work/history/render/card-parts.js?v=234"></script>
@@ -181,32 +191,63 @@
     <script src="team-report/runtime/work/history/KPI.work.history.view.actions.record.js?v=2"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.view.actions.document.js?v=2"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.view.js"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.browser-adapter.js?v=1"></script>
     <script src="audit/runtime/audit/records/KPI.audit.records.data.js"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.quarter.js?v=1"></script>
     <script src="audit/runtime/audit/records/KPI.audit.records.options.js"></script>
-    <script src="audit/runtime/audit/records/KPI.audit.records.lux-workspace.js?v=291"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.ui-actions.js?v=1"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.lux-data.js?v=1"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.evidence.js?v=1"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.lux-detached-preview.js?v=1"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.lux-preview-actions.js?v=1"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.lux-alerts.js?v=1"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.lux-fullscreen.js?v=1"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.lux-workspace.js?v=292"></script>
     <script src="audit/runtime/audit/records/KPI.audit.records.legal.assets.js?v=1"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.legal.form.js?v=1"></script>
     <script src="audit/runtime/audit/records/KPI.audit.records.legal.js?v=2"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.batch-actions.js?v=1"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.standard-actions.js?v=1"></script>
+    <script src="audit/runtime/audit/records/KPI.audit.records.util-format.js?v=1"></script>
     <script src="audit/runtime/audit/records/KPI.audit.records.render.js?v=2"></script>
+    <script src="utility/runtime/util/energy/KPI.util.energy.browser-adapter.js?v=1"></script>
     <script src="utility/runtime/util/energy/KPI.util.energy.dual.js"></script>
     <script src="utility/runtime/util/energy/KPI.util.energy.chart.js"></script>
     <script src="utility/runtime/util/energy/KPI.util.energy.tabs.js?v=206"></script>
+    <script src="utility/runtime/util/energy/KPI.util.energy.trend-chart.js?v=333"></script>
+    <script src="utility/runtime/util/energy/KPI.util.energy.segmented-chart.js?v=333"></script>
+    <script src="utility/runtime/util/energy/KPI.util.energy.multi-series-chart.js?v=333"></script>
     <script src="utility/runtime/util/energy/KPI.util.energy.renderers.js?v=332"></script>
+    <script src="utility/runtime/util/energy/KPI.util.energy.report-composition.js?v=333"></script>
     <script src="utility/runtime/util/energy/KPI.util.energy.modal.chart.js?v=332"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.runtime-adapter.js?v=341"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.state.options.js?v=340"></script>
     <script src="utility/runtime/util/report/KPI.util.report.state.js?v=335"></script>
     <script src="utility/runtime/util/report/KPI.util.report.builder.sync.js?v=334"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.composition-state.js?v=340"></script>
     <script src="utility/runtime/util/report/KPI.util.report.formatters.js"></script>
     <script src="utility/runtime/util/report/KPI.util.report.filters.js?v=333"></script>
     <script src="utility/runtime/util/report/KPI.util.report.deltas.js"></script>
     <script src="utility/runtime/util/report/KPI.util.report.production.js?v=334"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.production-preview.js?v=339"></script>
     <script src="utility/runtime/util/report/KPI.util.report.runner.js?v=331"></script>
     <script src="utility/runtime/util/report/KPI.util.report.tables.js"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.table-interactions.js?v=339"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.detached.styles.js?v=339"></script>
     <script src="utility/runtime/util/report/KPI.util.report.detached.js?v=338"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.builder-viz-popup.js?v=339"></script>
     <script src="utility/runtime/util/report/KPI.util.report.modal.base.js?v=331"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.builder.electric-combined-chart.js?v=339"></script>
     <script src="utility/runtime/util/report/KPI.util.report.builder.charts.js?v=334"></script>
     <script src="utility/runtime/util/report/KPI.util.report.builder.state.js?v=333"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.builder.data-model.js?v=339"></script>
     <script src="utility/runtime/util/report/KPI.util.report.builder.tables.js?v=334"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.builder.comparison-tables.js?v=339"></script>
     <script src="utility/runtime/util/report/KPI.util.report.builder.modal.js?v=334"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.graph-modal.js?v=339"></script>
     <script src="utility/runtime/util/report/KPI.util.report.secondary-modals.js"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.modal.chart-section.js?v=340"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.modal.composition-overview.js?v=340"></script>
     <script src="utility/runtime/util/report/KPI.util.report.modal.render.js"></script>
     <script src="utility/runtime/util/report/KPI.util.report.panel.js"></script>
     <script src="utility/runtime/util/report/sheet/config.js?v=054"></script>
@@ -217,12 +258,14 @@
     <script src="utility/runtime/util/report/sheet/electric/runtime-sync.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/electric/meter-model.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/electric/comparison-summary.js?v=053"></script>
+    <script src="utility/runtime/util/report/sheet/gas/meter-model.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/gas/comparison-summary.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/gas/scoped-metrics.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/gas/runtime-sync.js?v=054"></script>
     <script src="utility/runtime/util/report/sheet/panel/runtime.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/panel/preview.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/windows/detached-interactions.js?v=053"></script>
+    <script src="utility/runtime/util/report/sheet/windows/shells.js?v=1"></script>
     <script src="utility/runtime/util/report/sheet/windows.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/modal/actions.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/modal/shell.js?v=053"></script>
@@ -237,7 +280,7 @@
     <script src="utility/runtime/util/report/sheet/analysis/render.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/analysis/popup-tables.js?v=053"></script>
     <script src="utility/runtime/util/report/sheet/summary/render.js?v=053"></script>
-    <script src="utility/runtime/util/report/sheet/metering-runtime.js?v=1"></script>
+    <script src="utility/runtime/util/report/KPI.util.report.sheet.helpers.js?v=340"></script>
     <script src="utility/runtime/util/report/KPI.util.report.sheet.js?v=054"></script>
     <script src="utility/runtime/util/energy/KPI.util.energy.tabs.override.js?v=012"></script>
     <script src="utility/runtime/util/analytics/KPI.util.analytics.js"></script>
@@ -245,9 +288,17 @@
     <script src="team-report/runtime/work/KPI.work.renderers.print.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.renderers.monthly-plan.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.renderers.js?v=1"></script>
+    <script src="utility/runtime/util/KPI.util.runtime.browser-adapter.js?v=1"></script>
     <script src="utility/runtime/util/KPI.util.runtime.js?v=207"></script>
     <script src="audit/runtime/audit/KPI.audit.runtime.js"></script>
     <script src="team-report/runtime/work/KPI.work.runtime.js?v=228"></script>
+    <script src="kpi-runtime/app/KPI.app.browser-adapter.js?v=1"></script>
+    <script src="kpi-runtime/app/KPI.app.shared.js?v=1"></script>
+    <script src="kpi-runtime/app/KPI.app.auth-owner.js?v=1"></script>
+    <script src="kpi-runtime/app/KPI.app.navigation.js?v=1"></script>
+    <script src="kpi-runtime/app/KPI.app.global-save.js?v=1"></script>
+    <script src="kpi-runtime/app/KPI.app.viewer.js?v=1"></script>
     <script src="kpi-runtime/app/KPI.app.js?v=250"></script>
+    <script src="kpi-runtime/app/boot/KPI.boot.loader.js?v=1"></script>
 </body>
 </html>

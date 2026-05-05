@@ -1,5 +1,5 @@
 (function () {
-    const api = window.KpiDataEquipmentHistory || (window.KpiDataEquipmentHistory = {});
+    const api = KpiDataEquipmentHistoryBrowserAdapter.getApi();
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -19,9 +19,17 @@
     }
 
     function parseRate(value) {
-        const match = String(value ?? '').match(/(\d+(?:\.\d+)?)/);
+        const raw = normalizeText(value).replace(/,/g, '');
+        const match = raw.match(/^(\d+(?:\.\d+)?)\s*%?$/);
         if (!match) return 0;
         return Math.max(0, Math.min(Number(match[1]) || 0, 100));
+    }
+
+    function formatRateValue(value) {
+        if (value === null || value === undefined || value === '') return '';
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return '';
+        return `${numeric}%`;
     }
 
     function getInfoValue(items, labels, fallback = '') {
@@ -122,7 +130,7 @@
             { label: '설비명', value: equipment?.name || '' },
             { label: '관리팀', value: equipment?.team || '' },
             { label: '공정', value: equipment?.process || equipment?.group || '' },
-            { label: '가동률', value: equipment?.rate ? `${equipment.rate}%` : '' },
+            { label: '가동률', value: formatRateValue(equipment?.rate) },
         ];
     }
 
@@ -131,7 +139,7 @@
             { label: '설비명', value: equipment?.name || '' },
             { label: '관리팀', value: equipment?.team || '' },
             { label: '공정', value: equipment?.process || equipment?.group || '' },
-            { label: '가동률', value: equipment?.rate ? `${equipment.rate}%` : '' },
+            { label: '가동률', value: formatRateValue(equipment?.rate) },
         ];
     }
 
@@ -140,6 +148,7 @@
         asList,
         normalizeText,
         parseRate,
+        formatRateValue,
         getInfoValue,
         getEquipmentStatus,
         normalizeEquipmentItems,

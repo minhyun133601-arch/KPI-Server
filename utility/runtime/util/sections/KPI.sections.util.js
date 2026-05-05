@@ -1,8 +1,7 @@
 (function () {
-    const { buildWorkDataEntryContent } = window.KpiSectionBuilders || {};
+    const buildWorkDataEntryContent = KpiSectionFactoryAdapter.getBuilder('buildWorkDataEntryContent');
 
-    window.KpiSectionFactories = window.KpiSectionFactories || {};
-    window.KpiSectionFactories.util = function buildUtilSection() {
+    KpiSectionFactoryAdapter.registerFactory('util', function buildUtilSection() {
         const AppData = {};
 
         AppData.util = {
@@ -194,5 +193,5 @@
         };
 
         return AppData.util;
-    };
+    });
 })();

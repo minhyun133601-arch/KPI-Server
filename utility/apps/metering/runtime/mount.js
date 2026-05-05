@@ -1,3 +1,29 @@
+function getMeteringRuntimeMountBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function getMeteringRuntimeMountGlobal(name) {
+  const adapter = getMeteringRuntimeMountBrowserAdapter();
+  return typeof adapter?.getGlobal === "function" ? adapter.getGlobal(name) : undefined;
+}
+
+function setMeteringRuntimeMountGlobal(name, value) {
+  const adapter = getMeteringRuntimeMountBrowserAdapter();
+  return typeof adapter?.setGlobal === "function" ? adapter.setGlobal(name, value) : value;
+}
+
+function getMeteringRuntimeMountLocationHref() {
+  const adapter = getMeteringRuntimeMountBrowserAdapter();
+  return typeof adapter?.getLocationHref === "function" ? adapter.getLocationHref() : "";
+}
+
+function getSharedMeteringStorePreload() {
+  const preload = getMeteringRuntimeMountGlobal("__SHARED_APP_STORE_PRELOAD__");
+  return preload && typeof preload.then === "function" ? preload : null;
+}
+
 function renderInitFailureState() {
   if (elements.heroText) {
     elements.heroText.textContent = "로컬 초기화에 문제가 있어 기본 상태로 열지 못했습니다.";
@@ -43,13 +69,10 @@ function resetBootState() {
 }
 
 async function bootMountedApp() {
-  if (
-    typeof window !== "undefined" &&
-    window.__SHARED_APP_STORE_PRELOAD__ &&
-    typeof window.__SHARED_APP_STORE_PRELOAD__.then === "function"
-  ) {
+  const sharedStorePreload = getSharedMeteringStorePreload();
+  if (sharedStorePreload) {
     try {
-      await window.__SHARED_APP_STORE_PRELOAD__;
+      await sharedStorePreload;
     } catch (error) {
       console.warn("Shared metering store preload failed before boot.", error);
     }
@@ -97,7 +120,7 @@ async function unmountIntegratedMetering(options = {}) {
   runtimeContext.portalRoot = null;
   runtimeContext.hostElement = null;
   runtimeContext.document = document;
-  runtimeContext.assetBaseUrl = window.location.href;
+  runtimeContext.assetBaseUrl = getMeteringRuntimeMountLocationHref();
   runtimeContext.popupStylesUrl = "";
   elements = {};
 }
@@ -129,12 +152,14 @@ function renderIntegratedMountHost(hostElement, options = {}) {
     normalizeText(options.assetBaseUrl) ||
     normalizeText(options.baseUrl) ||
     runtimeContext.assetBaseUrl ||
-    window.location.href;
+    getMeteringRuntimeMountLocationHref();
   const normalizedTemplateAssetBaseUrl = /\/$/.test(runtimeAssetBaseUrl)
     ? runtimeAssetBaseUrl
     : `${runtimeAssetBaseUrl}/`;
   // Keep the compiled template working even if the runtime folder name changes.
-  const templateMarkup = String(options.templateHtml || window.__KPI_METERING_TEMPLATE__ || "")
+  const templateMarkup = String(
+    options.templateHtml || getMeteringRuntimeMountGlobal("__KPI_METERING_TEMPLATE__") || ""
+  )
     .trim()
     .replaceAll("utility/검침/", normalizedTemplateAssetBaseUrl);
   const embeddedStylesUrl =
@@ -182,7 +207,9 @@ async function mountIntegratedMetering(hostElement, options = {}) {
   runtimeContext.portalRoot = mountRoot;
   runtimeContext.document = hostElement.ownerDocument || document;
   runtimeContext.assetBaseUrl =
-    normalizeText(options.assetBaseUrl) || normalizeText(options.baseUrl) || window.location.href;
+    normalizeText(options.assetBaseUrl) ||
+    normalizeText(options.baseUrl) ||
+    getMeteringRuntimeMountLocationHref();
   runtimeContext.popupStylesUrl =
     normalizeText(options.popupStylesUrl) || resolveRuntimeAssetUrl("styles.css");
   await bootMountedApp();
@@ -191,7 +218,7 @@ async function mountIntegratedMetering(hostElement, options = {}) {
   };
 }
 
-window.KpiMeteringApp = {
+setMeteringRuntimeMountGlobal("KpiMeteringApp", {
   mount: mountIntegratedMetering,
   unmount: (options) => unmountIntegratedMetering(options),
   manualSave: (options) => performManualSave(options),
@@ -199,4 +226,4 @@ window.KpiMeteringApp = {
   getElectricUtilityDatasetSnapshot: () => buildElectricUtilityDatasetSnapshot(),
   getGasUtilityDatasetSnapshot: () => buildGasUtilityDatasetSnapshot(),
   getWasteUtilityDatasetSnapshot: () => buildWasteUtilityDatasetSnapshot(),
-};
+});

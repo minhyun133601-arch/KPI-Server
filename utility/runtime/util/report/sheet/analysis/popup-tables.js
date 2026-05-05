@@ -1,5 +1,12 @@
-(function registerUtilReportSheetAnalysisPopupTables(globalScope) {
-    if (globalScope.KPIUtilReportSheetAnalysisPopupTables) {
+(function registerUtilReportSheetAnalysisPopupTables() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/analysis/popup-tables.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetAnalysisPopupTables')) {
         return;
     }
 
@@ -24,7 +31,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetAnalysisPopupTables;
+        return api;
     }
 
     function escapeHtml(value) {
@@ -452,7 +459,7 @@
         return Array.isArray(chart.points) && chart.points.some(point => Number.isFinite(point?.value));
     }
 
-    globalScope.KPIUtilReportSheetAnalysisPopupTables = {
+    const api = Object.freeze({
         setRuntimeAdapters,
         buildUtilGasAnalysisRangeTableHtml,
         getUtilElectricAnalysisAllControlItems,
@@ -469,5 +476,7 @@
         normalizeUtilGasAnalysisPopupKey,
         isUtilGasAnalysisChartRenderable,
         normalizeUtilGasAnalysisFullscreenChartKey
-    };
-})(globalThis);
+    });
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetAnalysisPopupTables', api);
+})();

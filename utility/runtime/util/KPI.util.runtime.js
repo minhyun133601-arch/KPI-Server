@@ -1,5 +1,8 @@
 (function registerUtilRuntime() {
-    const runtime = window.KpiRuntime;
+    const browser = typeof KpiUtilRuntimeBrowserAdapter !== 'undefined'
+        ? KpiUtilRuntimeBrowserAdapter
+        : null;
+    const runtime = browser?.getRuntime?.();
     if (!runtime) return;
 
     runtime.registerSectionInitializer('util', ({ category, container }) => {
@@ -18,7 +21,7 @@
             openUtilReportModal(result);
         }
 
-        void window.KpiMeteringBridge?.initIntegratedMetering?.(container);
+        void browser?.initIntegratedMetering?.(container);
     });
 
     runtime.registerBootTask('util-electric-metering-sync', () => {
@@ -38,8 +41,8 @@
 
         const meteringHost = context.container?.querySelector?.('[data-kpi-metering-root]');
         const meteringMounted = !!(meteringHost && meteringHost.shadowRoot);
-        if (meteringMounted && window.KpiMeteringApp && typeof window.KpiMeteringApp.manualSave === 'function') {
-            const meteringRuntime = window.__KPI_SERVER_RUNTIME_CONFIG__?.metering;
+        if (meteringMounted && browser?.canManualSaveMetering?.() === true) {
+            const meteringRuntime = browser?.getMeteringRuntimeConfig?.();
             const canWrite = runtime.canUseServerWrite(meteringRuntime?.writeEnabled === true);
             return {
                 priority: 120,
@@ -52,7 +55,7 @@
                     : '서버 기록이 가능한 환경에서만 검침 데이터를 저장할 수 있습니다.',
                 perform: ({ trigger } = {}) => {
                     if (!canWrite) return false;
-                    return window.KpiMeteringApp.manualSave({ trigger });
+                    return browser?.performMeteringManualSave?.({ trigger });
                 }
             };
         }

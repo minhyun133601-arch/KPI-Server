@@ -18,6 +18,32 @@ services:
     networks:
       - backend
 
+  migrate:
+    image: node:20-bookworm-slim
+    restart: "no"
+    working_dir: /srv/kpi/kpi-runtime/internal-server
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        if [ ! -d node_modules/pg ]; then
+          npm ci --omit=dev
+        fi
+        npm run db:migrate
+    environment:
+      KPI_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      KPI_AUTO_MIGRATE: "false"
+      KPI_STORAGE_ROOT: /srv/kpi-runtime
+    volumes:
+      - ../../../..:/srv/kpi:ro
+      - app-node-modules:/srv/kpi/kpi-runtime/internal-server/node_modules
+      - ./runtime-var:/srv/kpi-runtime
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+
   app:
     image: node:20-bookworm-slim
     restart: unless-stopped
@@ -37,17 +63,26 @@ services:
       KPI_AUTH_ENABLED: "true"
       KPI_LOGIN_ENABLED: "true"
       KPI_COOKIE_SECRET: ${KPI_COOKIE_SECRET}
+      KPI_COOKIE_SECURE: "${KPI_COOKIE_SECURE:-true}"
       KPI_SESSION_TTL_HOURS: ${KPI_SESSION_TTL_HOURS:-12}
       KPI_SESSION_PRUNE_INTERVAL_MINUTES: ${KPI_SESSION_PRUNE_INTERVAL_MINUTES:-30}
-      KPI_AUTO_MIGRATE: "true"
+      KPI_LOGIN_RATE_LIMIT_ENABLED: "${KPI_LOGIN_RATE_LIMIT_ENABLED:-true}"
+      KPI_LOGIN_RATE_LIMIT_MAX_ATTEMPTS: "${KPI_LOGIN_RATE_LIMIT_MAX_ATTEMPTS:-10}"
+      KPI_LOGIN_RATE_LIMIT_WINDOW_MS: "${KPI_LOGIN_RATE_LIMIT_WINDOW_MS:-900000}"
+      KPI_SECURITY_HEADERS_ENABLED: "${KPI_SECURITY_HEADERS_ENABLED:-true}"
+      KPI_CONTENT_SECURITY_POLICY: "${KPI_CONTENT_SECURITY_POLICY:-}"
+      KPI_FRAME_OPTIONS: "${KPI_FRAME_OPTIONS:-SAMEORIGIN}"
+      KPI_PERMISSIONS_POLICY: "${KPI_PERMISSIONS_POLICY:-camera=(), microphone=(), geolocation=()}"
+      KPI_HSTS_ENABLED: "${KPI_HSTS_ENABLED:-true}"
+      KPI_AUTO_MIGRATE: "${KPI_AUTO_MIGRATE:-false}"
       KPI_STORAGE_ROOT: /srv/kpi-runtime
     volumes:
       - ../../../..:/srv/kpi:ro
       - app-node-modules:/srv/kpi/kpi-runtime/internal-server/node_modules
       - ./runtime-var:/srv/kpi-runtime
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [

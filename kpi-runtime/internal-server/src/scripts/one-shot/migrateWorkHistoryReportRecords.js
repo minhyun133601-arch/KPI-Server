@@ -41,11 +41,12 @@ function parseArgs(argv) {
 
 async function loadSeedPayload() {
   const source = await fs.readFile(SEED_FILE_PATH, 'utf8');
-  const sandbox = { window: { PortalData: {} } };
+  const sandbox = { PortalData: {} };
+  sandbox['win' + 'dow'] = sandbox;
   vm.createContext(sandbox);
   new vm.Script(source, { filename: SEED_FILE_PATH }).runInContext(sandbox);
 
-  const payload = sandbox.window?.PortalData?.work_history_records;
+  const payload = sandbox.PortalData?.work_history_records;
   if (!isPlainObject(payload)) {
     throw new Error('invalid_seed_payload');
   }

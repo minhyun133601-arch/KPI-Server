@@ -1,12 +1,19 @@
-(function registerUtilReportSheetModalShell(globalScope) {
-    if (globalScope.KPIUtilReportSheetModalShell) {
+(function registerUtilReportSheetModalShell() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/modal/shell.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetModalShell')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.modal-shell.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.modal-shell.js'
+    );
 
     const {
         UtilSheetCompareState,
@@ -51,7 +58,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetModalShell;
+        return api;
     }
 
     function rerenderAndSync(modal) {
@@ -128,7 +135,7 @@
     }
 
     function ensureUtilSheetReportModal() {
-        const doc = globalScope.document || null;
+        const doc = runtimeAdapter.getDocument();
         if (!doc || typeof doc.getElementById !== 'function' || typeof doc.createElement !== 'function') {
             return null;
         }
@@ -204,9 +211,7 @@
                 return;
             }
             if (findClosest(target, '[data-role="util-sheet-report-print"]')) {
-                if (typeof globalScope.print === 'function') {
-                    globalScope.print();
-                }
+                runtimeAdapter.print();
                 return;
             }
             if (findClosest(target, '[data-role="util-sheet-report-expand"]')) {
@@ -392,8 +397,9 @@
         return modal;
     }
 
-    globalScope.KPIUtilReportSheetModalShell = Object.freeze({
+    const api = Object.freeze({
         setRuntimeAdapters,
         ensureUtilSheetReportModal
     });
-})(typeof globalThis !== 'undefined' ? globalThis : window);
+    runtimeAdapter.exportApi('KPIUtilReportSheetModalShell', api);
+})();

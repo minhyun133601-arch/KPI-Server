@@ -1,3 +1,15 @@
+const meteringStoreSyncBrowser =
+  typeof KpiMeteringBrowserAdapter !== "undefined"
+    ? KpiMeteringBrowserAdapter
+    : {
+        getGlobal: () => undefined,
+        setGlobal: (name, value) => {
+          return value;
+        },
+        fetch: (...args) => fetch(...args),
+        getStoreUpdateTargets: () => [],
+      };
+
 function getManualSaveContextLabel() {
   if (getCurrentMode() === MODES.TEAM) {
     const monthValue = normalizeMonthValue(state.currentMonth);
@@ -25,8 +37,14 @@ async function waitForQueuedPersistence() {
 async function writeStoreToSharedServer() {
   syncActiveResourceDatasetToStore(state.store);
   return writeStorePayloadToSharedServer(state.store).then((writeResult) => {
-    window.__LOCAL_APP_STORE__ = JSON.parse(JSON.stringify(state.store));
-    window.__PRESET_ELECTRIC_ENTRIES__ = getElectricPresetEntriesForStore(window.__LOCAL_APP_STORE__);
+    const localStore = meteringStoreSyncBrowser.setGlobal(
+      "__LOCAL_APP_STORE__",
+      JSON.parse(JSON.stringify(state.store))
+    );
+    meteringStoreSyncBrowser.setGlobal(
+      "__PRESET_ELECTRIC_ENTRIES__",
+      getElectricPresetEntriesForStore(localStore)
+    );
     sharedServerPersistenceState.lastErrorMessage = "";
     return writeResult;
   });
@@ -49,7 +67,7 @@ async function writeStorePayloadToSharedServer(store) {
     ? currentMeta.recordVersions
     : null;
 
-  const response = await window.fetch(getSharedStoreEndpoint(), {
+  const response = await meteringStoreSyncBrowser.fetch(getSharedStoreEndpoint(), {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -168,8 +186,14 @@ function persistStore(options = {}) {
   const { skipSharedServerWrite = false } = options;
   syncActiveResourceDatasetToStore(state.store);
   clearEquipmentReadingTimelineCaches();
-  window.__LOCAL_APP_STORE__ = JSON.parse(JSON.stringify(state.store));
-  window.__PRESET_ELECTRIC_ENTRIES__ = getElectricPresetEntriesForStore(window.__LOCAL_APP_STORE__);
+  const localStore = meteringStoreSyncBrowser.setGlobal(
+    "__LOCAL_APP_STORE__",
+    JSON.parse(JSON.stringify(state.store))
+  );
+  meteringStoreSyncBrowser.setGlobal(
+    "__PRESET_ELECTRIC_ENTRIES__",
+    getElectricPresetEntriesForStore(localStore)
+  );
   notifyKpiMeteringStoreUpdated();
   if (!skipSharedServerWrite && ENABLE_SHARED_SERVER_WRITE) {
     queueSharedStoreWrite();
@@ -193,30 +217,8 @@ function dispatchKpiMeteringStoreUpdatedEvent(targetWindow) {
 }
 
 function notifyKpiMeteringStoreUpdated() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
   try {
-    const targetWindows = [window];
-
-    try {
-      if (window.parent && window.parent !== window && !targetWindows.includes(window.parent)) {
-        targetWindows.push(window.parent);
-      }
-    } catch (error) {
-      console.warn("Failed to access parent window for metering update notification.", error);
-    }
-
-    try {
-      if (window.top && window.top !== window && !targetWindows.includes(window.top)) {
-        targetWindows.push(window.top);
-      }
-    } catch (error) {
-      console.warn("Failed to access top window for metering update notification.", error);
-    }
-
-    targetWindows.forEach((targetWindow) => {
+    meteringStoreSyncBrowser.getStoreUpdateTargets().forEach((targetWindow) => {
       dispatchKpiMeteringStoreUpdatedEvent(targetWindow);
     });
   } catch (error) {

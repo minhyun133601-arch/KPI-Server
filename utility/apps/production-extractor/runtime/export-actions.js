@@ -100,9 +100,14 @@
     return raw.replace(/[\\/:*?"<>|]/g, "_");
   }
 
+  function getBrowserWindow(context) {
+    return context.browserWindow || null;
+  }
+
   function requestStoredRowsViaBridge(context) {
     return new Promise((resolve, reject) => {
-      if (!context.window.parent || context.window.parent === context.window) {
+      const browserWindow = getBrowserWindow(context);
+      if (!browserWindow?.parent || browserWindow.parent === browserWindow) {
         reject(new Error("KPI 연동 화면에서만 조회할 수 있습니다."));
         return;
       }
@@ -115,7 +120,7 @@
 
       const cleanup = () => {
         globalScope.clearTimeout(timeout);
-        context.window.removeEventListener("message", onMessage);
+        browserWindow.removeEventListener("message", onMessage);
       };
 
       const onMessage = (event) => {
@@ -133,9 +138,9 @@
         });
       };
 
-      context.window.addEventListener("message", onMessage);
+      browserWindow.addEventListener("message", onMessage);
       try {
-        context.window.parent.postMessage(
+        browserWindow.parent.postMessage(
           {
             type: "kpi-production-stored-data-request",
             requestId,
@@ -168,7 +173,8 @@
 
   function initializeStoredExportPanel(context) {
     if (!context.dom.storedSection) return;
-    if (!context.window.parent || context.window.parent === context.window) {
+    const browserWindow = getBrowserWindow(context);
+    if (!browserWindow?.parent || browserWindow.parent === browserWindow) {
       if (context.dom.downloadStoredBtn) context.dom.downloadStoredBtn.disabled = true;
       if (context.dom.refreshStoredBtn) context.dom.refreshStoredBtn.disabled = true;
       return;
@@ -214,7 +220,8 @@
   }
 
   async function handleDownloadStoredRows(context) {
-    if (!context.window.parent || context.window.parent === context.window) {
+    const browserWindow = getBrowserWindow(context);
+    if (!browserWindow?.parent || browserWindow.parent === browserWindow) {
       context.setStatus("KPI 연동 화면에서만 기입데이터 추출이 가능합니다.", true);
       return;
     }
@@ -375,4 +382,4 @@
     normalizeStoredRowsPayload,
     normalizeStoredTeamList,
   };
-})(window);
+})(this);

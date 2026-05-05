@@ -22,6 +22,29 @@ const equipmentFullscreenSession = {
   isClosingCalendarWindow: false,
 };
 
+function getEquipmentFullscreenBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function alertEquipmentFullscreenUser(message) {
+  const adapter = getEquipmentFullscreenBrowserAdapter();
+  if (typeof adapter?.alert === "function") {
+    adapter.alert(message);
+  }
+}
+
+function openEquipmentFullscreenWindow(url = "", target = "_blank", features = "") {
+  const adapter = getEquipmentFullscreenBrowserAdapter();
+  return typeof adapter?.openWindow === "function" ? adapter.openWindow(url, target, features) : null;
+}
+
+function setEquipmentFullscreenTimeout(callback, delay = 0) {
+  const adapter = getEquipmentFullscreenBrowserAdapter();
+  return typeof adapter?.setTimeout === "function" ? adapter.setTimeout(callback, delay) : null;
+}
+
 function getEquipmentFullscreenButtonMarkup(isActive) {
   return isActive
     ? EQUIPMENT_FULLSCREEN_BUTTON_ICONS.exit
@@ -132,7 +155,7 @@ function ensureCalendarPopupWindow() {
     return activePopup;
   }
 
-  const popupWindow = window.open(
+  const popupWindow = openEquipmentFullscreenWindow(
     "",
     "monthly-electricity-calendar",
     "popup=yes,width=920,height=980,resizable=yes,scrollbars=yes"
@@ -293,7 +316,7 @@ function closeCalendarPopupWindow() {
   }
 
   equipmentFullscreenSession.calendarWindow = null;
-  window.setTimeout(() => {
+  setEquipmentFullscreenTimeout(() => {
     equipmentFullscreenSession.isClosingCalendarWindow = false;
   }, 0);
 }
@@ -324,7 +347,7 @@ async function enterFormFullscreenMode() {
     popupWindow = ensureCalendarPopupWindow();
   }
   if (shouldUseCalendarPopup() && !popupWindow) {
-    window.alert("달력 창을 열 수 없습니다. 팝업 차단을 확인해 주세요.");
+    alertEquipmentFullscreenUser("달력 창을 열 수 없습니다. 팝업 차단을 확인해 주세요.");
     return;
   }
 

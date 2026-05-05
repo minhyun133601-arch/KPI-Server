@@ -42,6 +42,23 @@ export function normalizeDateKey(value) {
   if (month < 1 || month > 12 || day < 1 || day > 31) {
     return '';
   }
+  const maxDayByMonth = [
+    31,
+    year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0) ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ];
+  if (day > maxDayByMonth[month - 1]) {
+    return '';
+  }
   return `${match[1]}-${match[2]}-${match[3]}`;
 }
 
@@ -77,7 +94,7 @@ export function buildEntryDedupeKey(entry) {
   const date = normalizeDateKey(entry?.date);
   const amount = canonicalizeMetric(entry?.amount);
   const teamKey = normalizeTeamName(entry?.teamName).toLowerCase();
-  if (!date || !amount || !teamKey) {
+  if (!date || amount === '' || !teamKey) {
     return '';
   }
   return [

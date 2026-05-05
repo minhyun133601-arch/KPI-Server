@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetAnalysisCompareSelectSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/analysis/compare-select.js', import.meta.url),
   'utf8'
@@ -30,6 +34,9 @@ function createCompareSelectContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetAnalysisCompareSelectSource, context, {
     filename: 'KPI.util.report.sheet.analysis.compare-select.js',
   });
@@ -41,6 +48,8 @@ test('report sheet analysis compare/select registry resolves compare text and la
   const registry = context.KPIUtilReportSheetAnalysisCompareSelect;
 
   assert.ok(registry, 'report sheet analysis compare/select registry is missing');
+  assert.doesNotMatch(reportSheetAnalysisCompareSelectSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetAnalysisCompareSelectSource, /KPIUtilReportRuntimeAdapter/);
 
   const inactiveFuels = { lng: false, lpg: false };
   registry.setRuntimeAdapters({

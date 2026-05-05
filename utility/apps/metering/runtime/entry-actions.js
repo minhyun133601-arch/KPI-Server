@@ -1,3 +1,14 @@
+function getMeteringRuntimeEntryActionsBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function confirmMeteringRuntimeEntryAction(message) {
+  const adapter = getMeteringRuntimeEntryActionsBrowserAdapter();
+  return typeof adapter?.confirm === "function" ? adapter.confirm(message) : false;
+}
+
 function handleClearCurrentEntry() {
   if (getCurrentMode() !== MODES.EQUIPMENT || !state.selectedDate) {
     return;
@@ -8,7 +19,7 @@ function handleClearCurrentEntry() {
     return;
   }
 
-  if (!window.confirm("삭제하시겠습니까?")) {
+  if (!confirmMeteringRuntimeEntryAction("삭제하시겠습니까?")) {
     return;
   }
 

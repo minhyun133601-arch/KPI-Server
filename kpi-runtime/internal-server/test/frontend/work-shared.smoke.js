@@ -30,6 +30,7 @@ const sharedSourcePaths = [
   path.join(workDir, 'KPI.work.shared.team-calendar.categories.js'),
   path.join(workDir, 'KPI.work.shared.team-calendar.state.js'),
   path.join(workDir, 'KPI.work.shared.team-calendar.summary.js'),
+  path.join(workDir, 'KPI.work.browser-adapter.js'),
 ];
 
 const sharedSources = await Promise.all(
@@ -38,6 +39,9 @@ const sharedSources = await Promise.all(
     source: await fs.readFile(targetPath, 'utf8'),
   }))
 );
+const sharedStateSource = sharedSources.find(
+  (entry) => entry.filename === 'KPI.work.shared.team-calendar.state.js'
+)?.source || '';
 
 const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
 
@@ -324,6 +328,15 @@ test('work shared draft and summary helpers keep draft state readable after the 
   assert.match(metricLine, /수율/);
   assert.match(metricLine, /CAPA/);
   assert.match(metricLine, /가동률/);
+});
+
+test('work shared team calendar state reads runtime globals through the browser adapter', () => {
+  const { context } = createContext();
+
+  assert.equal(typeof context.KpiWorkBrowserAdapter.getWorkRuntimeConfig, 'function');
+  assert.equal(typeof context.KpiWorkBrowserAdapter.getRootFlag, 'function');
+  assert.doesNotMatch(sharedStateSource, /window\./);
+  assert.doesNotMatch(sharedStateSource, /globalThis/);
 });
 
 test('kpi html loads shared split files before production bootstrap', () => {

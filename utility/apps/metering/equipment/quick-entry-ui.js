@@ -3,6 +3,17 @@ const QUICK_ENTRY_POPUP_RESOURCE_TYPES = Object.freeze([
   RESOURCE_TYPES.GAS,
 ]);
 
+function getQuickEntryUiBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function setQuickEntryUiTimeout(callback, delay = 0) {
+  const adapter = getQuickEntryUiBrowserAdapter();
+  return typeof adapter?.setTimeout === "function" ? adapter.setTimeout(callback, delay) : null;
+}
+
 function canUseMeteringQuickEntryPopup() {
   if (typeof isMeteringQuickEntryPopupEnabled === "function") {
     return Boolean(isMeteringQuickEntryPopupEnabled());
@@ -357,7 +368,7 @@ function toggleQuickEntryMenu() {
     syncEquipmentOrderMenu();
     resetQuickEntryDraft();
     syncQuickEntryMenu();
-    window.setTimeout(() => {
+    setQuickEntryUiTimeout(() => {
       getQuickEntryPopupSearchInput()?.focus();
       getQuickEntryPopupSearchInput()?.select?.();
     }, 0);

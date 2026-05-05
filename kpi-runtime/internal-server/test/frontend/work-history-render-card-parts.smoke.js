@@ -24,7 +24,9 @@ async function findFile(startDir, basename) {
 const renderPath = await findFile(repoRoot, 'KPI.work.history.view.render.js');
 assert.ok(renderPath, 'work history render source is missing');
 
+const adapterPath = path.join(path.dirname(renderPath), 'KPI.work.history.browser-adapter.js');
 const cardPartsPath = path.join(path.dirname(renderPath), 'render', 'card-parts.js');
+const adapterSource = await fs.readFile(adapterPath, 'utf8');
 const renderSource = await fs.readFile(renderPath, 'utf8');
 const cardPartsSource = await fs.readFile(cardPartsPath, 'utf8');
 const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
@@ -128,6 +130,7 @@ function createContext() {
   context.globalThis = context;
   context.KpiWorkHistory = history;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, { filename: 'KPI.work.history.browser-adapter.js' });
   vm.runInContext(renderSource, context, { filename: 'KPI.work.history.view.render.js' });
   vm.runInContext(cardPartsSource, context, { filename: 'render/card-parts.js' });
   return context;
@@ -160,11 +163,14 @@ test('work history render card parts registry exposes summary, attachment, compa
 });
 
 test('kpi html loads work history render card parts between render and print', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
   const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=234');
   const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=234');
   const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=233');
 
+  assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(renderIndex >= 0, 'work history render loader is missing');
+  assert.ok(renderIndex > adapterIndex, 'work history render must load after browser adapter');
   assert.ok(cardPartsIndex > renderIndex, 'work history card parts loader must load after render.js');
   assert.ok(printIndex > cardPartsIndex, 'work history print loader must load after render card parts');
 });

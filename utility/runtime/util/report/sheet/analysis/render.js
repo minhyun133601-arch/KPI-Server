@@ -1,5 +1,12 @@
-(function registerUtilReportSheetAnalysisRender(globalScope) {
-    if (globalScope.KPIUtilReportSheetAnalysisRender) {
+(function registerUtilReportSheetAnalysisRender() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/analysis/render.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetAnalysisRender')) {
         return;
     }
 
@@ -12,13 +19,15 @@
         buildUtilGasAnalysisSeriesControlHtml: null,
         buildUtilGasAnalysisPopupOnlyControlHtml: null,
         getUtilGasAnalysisInlineRatioTableKey: null,
-        buildUtilGasAnalysisFloatingTablePanelHtml: null
+        buildUtilGasAnalysisFloatingTablePanelHtml: null,
+        renderUtilIndependentBoundsMultiSeriesChart: null,
+        renderUtilTrendChart: null
     };
 
-    const utilReportSheetControls = globalScope.KPIUtilReportSheetControls;
-    if (!utilReportSheetControls) {
-        throw new Error('KPIUtilReportSheetControls must load before KPI.util.report.sheet.analysis.render.js');
-    }
+    const utilReportSheetControls = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetControls',
+        'KPI.util.report.sheet.analysis.render.js'
+    );
     const {
         buildUtilGasAnalysisCategorySelectHtml: buildGasAnalysisCategorySelectControlHtml,
         buildUtilElectricAnalysisTeamSelectHtml: buildElectricAnalysisTeamSelectControlHtml,
@@ -27,7 +36,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetAnalysisRender;
+        return api;
     }
 
     function escapeHtml(value) {
@@ -106,15 +115,15 @@
     }
 
     function renderMultiSeriesChart(series, options = {}) {
-        if (typeof globalScope.renderUtilIndependentBoundsMultiSeriesChart === 'function') {
-            return globalScope.renderUtilIndependentBoundsMultiSeriesChart(series, options);
+        if (typeof runtime.renderUtilIndependentBoundsMultiSeriesChart === 'function') {
+            return runtime.renderUtilIndependentBoundsMultiSeriesChart(series, options);
         }
         return '<div class="util-sheet-empty">그래프 렌더러를 찾지 못했습니다.</div>';
     }
 
     function renderTrendChart(points, metricLabel, options = {}) {
-        if (typeof globalScope.renderUtilTrendChart === 'function') {
-            return globalScope.renderUtilTrendChart(points, metricLabel, options);
+        if (typeof runtime.renderUtilTrendChart === 'function') {
+            return runtime.renderUtilTrendChart(points, metricLabel, options);
         }
         return '<div class="util-sheet-empty">그래프 렌더러를 찾지 못했습니다.</div>';
     }
@@ -533,7 +542,7 @@
         `;
     }
 
-    globalScope.KPIUtilReportSheetAnalysisRender = Object.freeze({
+    const api = Object.freeze({
         setRuntimeAdapters,
         buildUtilGasAnalysisChartCardHtml,
         buildUtilGasAnalysisChartCardHtmlV2,
@@ -543,4 +552,6 @@
         buildUtilElectricAnalysisBodyHtmlV2,
         buildUtilGasAnalysisBodyHtml
     });
-})(typeof window !== 'undefined' ? window : globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetAnalysisRender', api);
+})();

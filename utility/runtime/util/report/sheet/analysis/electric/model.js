@@ -1,22 +1,29 @@
-(function registerUtilReportSheetAnalysisElectricModel(globalScope) {
-    if (globalScope.KPIUtilReportSheetAnalysisElectricModel) {
+(function registerUtilReportSheetAnalysisElectricModel() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/analysis/electric/model.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetAnalysisElectricModel')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.analysis.electric.model.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.analysis.electric.model.js'
+    );
 
     const {
         UTIL_SHEET_DATASET_SPECS,
         UtilSheetAnalysisState
     } = utilReportSheetConfig;
 
-    const utilReportSheetAnalysisElectricChartModel = globalScope.KPIUtilReportSheetAnalysisElectricChartModel;
-    if (!utilReportSheetAnalysisElectricChartModel) {
-        throw new Error('KPIUtilReportSheetAnalysisElectricChartModel must load before KPI.util.report.sheet.analysis.electric.model.js');
-    }
+    const utilReportSheetAnalysisElectricChartModel = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetAnalysisElectricChartModel',
+        'KPI.util.report.sheet.analysis.electric.model.js'
+    );
 
     const runtime = {
         getUtilElectricAnalysisTeamOption: null,
@@ -47,13 +54,17 @@
         getUtilElectricAnalysisDisplayMode: null,
         getUtilElectricAnalysisUnitOptions: null,
         buildUtilGasAnalysisSeriesLabel: null,
-        setUtilSheetAnalysisRangeState: null
+        setUtilSheetAnalysisRangeState: null,
+        buildUtilReportMonthlyRows: null,
+        getUtilReportMonthRange: null,
+        formatUtilReportMonthLong: null,
+        formatUtilReportMonthShort: null
     };
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
         utilReportSheetAnalysisElectricChartModel.setRuntimeAdapters(adapters);
-        return globalScope.KPIUtilReportSheetAnalysisElectricModel;
+        return api;
     }
 
     function getElectricTeamOption(teamKey = 'combined') {
@@ -269,7 +280,7 @@
 
 
     function buildUtilElectricAnalysisScopedRows(bounds, option) {
-        if (!bounds || !option || typeof globalScope.buildUtilReportMonthlyRows !== 'function' || typeof globalScope.getUtilReportMonthRange !== 'function') {
+        if (!bounds || !option || typeof runtime.buildUtilReportMonthlyRows !== 'function' || typeof runtime.getUtilReportMonthRange !== 'function') {
             return [];
         }
         const reportTeamFilters = Array.isArray(option.reportTeamFilters)
@@ -283,7 +294,7 @@
         if (!reportTeamFilters.length) return [];
 
         const rowMaps = reportTeamFilters.map(teamName => {
-            const monthlyResult = globalScope.buildUtilReportMonthlyRows({
+            const monthlyResult = runtime.buildUtilReportMonthlyRows({
                 from: bounds.from,
                 to: bounds.to,
                 electricTeam: teamName,
@@ -297,7 +308,7 @@
             return new Map(rows.map(row => [String(row?.monthKey || '').trim(), row]));
         });
 
-        return globalScope.getUtilReportMonthRange(bounds.from, bounds.to).map(monthInfo => {
+        return runtime.getUtilReportMonthRange(bounds.from, bounds.to).map(monthInfo => {
             const monthKey = String(monthInfo?.key || '').trim();
             let electricUsage = 0;
             let electricCost = 0;
@@ -353,7 +364,7 @@
             .filter(row => isSettledRow(row, spec))
             .map(row => ({
                 value: row.monthKey,
-                label: typeof globalScope.formatUtilReportMonthLong === 'function' ? globalScope.formatUtilReportMonthLong(row.monthKey) : row.monthKey
+                label: typeof runtime.formatUtilReportMonthLong === 'function' ? runtime.formatUtilReportMonthLong(row.monthKey) : row.monthKey
             }));
         if (!monthOptions.length) {
             return {
@@ -425,8 +436,8 @@
             latestCost,
             latestUnit,
             latestProduction,
-            latestMonthLabel: latestRow && typeof globalScope.formatUtilReportMonthLong === 'function'
-                ? globalScope.formatUtilReportMonthLong(latestRow.monthKey)
+            latestMonthLabel: latestRow && typeof runtime.formatUtilReportMonthLong === 'function'
+                ? runtime.formatUtilReportMonthLong(latestRow.monthKey)
                 : '-',
             deltaUsageVsPrevMonth: Number.isFinite(latestUsage) && Number.isFinite(prevMonthUsage) ? latestUsage - prevMonthUsage : null,
             deltaCostVsPrevMonth: Number.isFinite(latestCost) && Number.isFinite(prevMonthCost) ? latestCost - prevMonthCost : null,
@@ -514,7 +525,7 @@
         const createPoint = (monthKey, value) => ({
             key: monthKey,
             monthKey,
-            label: typeof globalScope.formatUtilReportMonthShort === 'function' ? globalScope.formatUtilReportMonthShort(monthKey) : monthKey,
+            label: typeof runtime.formatUtilReportMonthShort === 'function' ? runtime.formatUtilReportMonthShort(monthKey) : monthKey,
             value: Number.isFinite(value) ? value : NaN
         });
         const buildCompareMonthKey = monthKey => normalizedCompareKey === 'year'
@@ -744,7 +755,7 @@
         };
     }
 
-    globalScope.KPIUtilReportSheetAnalysisElectricModel = Object.freeze({
+    const api = Object.freeze({
         setRuntimeAdapters,
         formatUtilElectricAnalysisIntensity,
         formatUtilElectricAnalysisSignedIntensity,
@@ -760,4 +771,6 @@
         buildUtilElectricAnalysisCombinedChart,
         buildUtilElectricAnalysisModel
     });
-})(typeof window !== 'undefined' ? window : globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetAnalysisElectricModel', api);
+})();

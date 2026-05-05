@@ -28,13 +28,13 @@ test('repository map excludes runtime, secret, attachment, and handoff paths', (
   try {
     createFile(path.join(rootDir, 'AGENTS.md'), '# rules\n## policy');
     createFile(path.join(rootDir, 'patch.md'), '# patch history');
-    createFile(path.join(rootDir, '비전공자용.md'), '# easy patch history');
-    createFile(path.join(rootDir, 'KPI-local/AGENTS.md'), '# nested clone rules');
+    createFile(path.join(rootDir, 'private-notes.md'), '# private notes');
+    createFile(path.join(rootDir, 'reference-clone/AGENTS.md'), '# nested clone rules');
     createFile(path.join(rootDir, 'utility/runtime/util/app.js'), 'export {};\nconsole.log(1);');
     createFile(path.join(rootDir, '.env.local'), 'secret=true');
     createFile(path.join(rootDir, 'kpi-runtime/internal-server/var/logs/server.log'), 'secret');
     createFile(path.join(rootDir, 'node_modules/pkg/index.js'), 'module.exports = {};');
-    createFile(path.join(rootDir, 'kpi-server-repository-map-handoff/source/repository-map.mjs'), 'export {};');
+    createFile(path.join(rootDir, 'repository-map-handoff/source/repository-map.mjs'), 'export {};');
     createFile(path.join(rootDir, 'work-log/private.txt'), 'private');
     createFile(path.join(rootDir, 'team-report/work-log/teams/team1/.gitkeep'), '');
     createFile(path.join(rootDir, 'team-report/work-log/teams/team1/private.txt'), 'private');
@@ -50,14 +50,16 @@ test('repository map excludes runtime, secret, attachment, and handoff paths', (
     assert.ok(paths.includes('AGENTS.md'));
     assert.ok(paths.includes('utility/runtime/util/app.js'));
     assert.equal(nodes.get('AGENTS.md')?.lines, 2);
+    assert.equal(nodes.get('AGENTS.md')?.labelKo, '규칙');
+    assert.equal(nodes.get('AGENTS.md')?.descKo, 'AI 작업 기준 문서');
     assert.equal(nodes.get('utility/runtime/util/app.js')?.lines, 2);
     assert.ok(!paths.includes('patch.md'));
-    assert.ok(!paths.includes('비전공자용.md'));
-    assert.ok(!paths.includes('KPI-local/AGENTS.md'));
+    assert.ok(!paths.includes('private-notes.md'));
+    assert.ok(!paths.includes('reference-clone/AGENTS.md'));
     assert.ok(!paths.includes('.env.local'));
     assert.ok(!paths.includes('kpi-runtime/internal-server/var/logs/server.log'));
     assert.ok(!paths.includes('node_modules/pkg/index.js'));
-    assert.ok(!paths.includes('kpi-server-repository-map-handoff/source/repository-map.mjs'));
+    assert.ok(!paths.includes('repository-map-handoff/source/repository-map.mjs'));
     assert.ok(!paths.includes('work-log/private.txt'));
     assert.ok(!paths.includes('team-report/work-log/teams/team1/.gitkeep'));
     assert.ok(!paths.includes('team-report/work-log/teams/team1/private.txt'));
@@ -70,10 +72,10 @@ test('repository map excludes runtime, secret, attachment, and handoff paths', (
 test('repository map exclusion predicate handles exact names and prefixes', () => {
   assert.equal(isRepositoryMapExcluded('.env.production.local'), true);
   assert.equal(isRepositoryMapExcluded('commands/ops-console-app/var/log.txt'), true);
-  assert.equal(isRepositoryMapExcluded('kpi-server-repository-map-handoff/KPI-SERVER-HANDOFF.txt'), true);
+  assert.equal(isRepositoryMapExcluded('repository-map-handoff/KPI-SERVER-HANDOFF.txt'), true);
   assert.equal(isRepositoryMapExcluded('patch.md'), true);
-  assert.equal(isRepositoryMapExcluded('비전공자용.md'), true);
-  assert.equal(isRepositoryMapExcluded('KPI-local/AGENTS.md'), true);
+  assert.equal(isRepositoryMapExcluded('private-notes.md'), true);
+  assert.equal(isRepositoryMapExcluded('reference-clone/AGENTS.md'), true);
 });
 
 test('repository map falls back to the configured repo root when requested root is missing', () => {

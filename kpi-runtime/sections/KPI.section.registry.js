@@ -2,7 +2,7 @@
     const SECTION_ORDER = ['work', 'util', 'audit', 'data', 'productionReport', 'owner'];
 
     function registerSections(AppData) {
-        const factories = window.KpiSectionFactories || {};
+        const factories = KpiSectionFactoryAdapter.getFactories();
         SECTION_ORDER.forEach(sectionKey => {
             const factory = factories[sectionKey];
             if (typeof factory === 'function') {
@@ -12,7 +12,7 @@
         return AppData;
     }
 
-    window.KpiSectionRegistry = Object.freeze({
+    KpiSectionFactoryAdapter.setRegistry(Object.freeze({
         registerSections
-    });
+    }));
 })();

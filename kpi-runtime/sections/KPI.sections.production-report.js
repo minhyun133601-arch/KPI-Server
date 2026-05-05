@@ -1,6 +1,5 @@
 (function () {
-    window.KpiSectionFactories = window.KpiSectionFactories || {};
-    window.KpiSectionFactories.productionReport = function buildProductionReportSection() {
+    KpiSectionFactoryAdapter.registerFactory('productionReport', function buildProductionReportSection() {
         return {
             id: 'productionReport',
             name: '월간 실적보고',
@@ -15,5 +14,5 @@
             launchWindowHeight: 920,
             categories: []
         };
-    };
+    });
 })();

@@ -97,7 +97,7 @@ function Ensure-PostgresStarted {
     return
   }
 
-  & $pgCtlPath -D $postgresDataDir -l $postgresLogFile -o "-p $postgresPort" start | Out-Null
+  & $pgCtlPath -D $postgresDataDir -l $postgresLogFile -o "-p $postgresPort" start
   $startExitCode = $LASTEXITCODE
   if ($startExitCode -eq 0) {
     return
@@ -138,13 +138,19 @@ function Invoke-Psql {
 
   $env:PGPASSWORD = $postgresPassword
   try {
-    & $psqlPath `
+    $output = & $psqlPath `
       -v ON_ERROR_STOP=1 `
       -h 127.0.0.1 `
       -p $postgresPort `
       -U $postgresSuperuser `
       -d $Database `
-      -tAc $Sql
+      -tAc $Sql 2>&1
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+      $message = ($output | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+      throw "psql failed with exit code $exitCode. $message"
+    }
+    return (($output | ForEach-Object { [string]$_ }) -join [Environment]::NewLine)
   } finally {
     Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
   }

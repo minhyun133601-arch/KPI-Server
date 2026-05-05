@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const runtimeAdapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetAnalysisPopupTablesSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/analysis/popup-tables.js', import.meta.url),
   'utf8'
@@ -30,6 +34,9 @@ function createPopupTablesContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(runtimeAdapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetAnalysisPopupTablesSource, context, {
     filename: 'KPI.util.report.sheet.analysis.popup-tables.js',
   });
@@ -90,6 +97,9 @@ function createRuntimeAdapters() {
 }
 
 test('report sheet analysis popup tables registry resolves range/metric popup helpers', () => {
+  assert.doesNotMatch(reportSheetAnalysisPopupTablesSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetAnalysisPopupTablesSource, /KPIUtilReportRuntimeAdapter/);
+
   const context = createPopupTablesContext();
   const registry = context.KPIUtilReportSheetAnalysisPopupTables;
 
@@ -188,12 +198,15 @@ test('report sheet analysis popup tables registry resolves range/metric popup he
 });
 
 test('kpi html loads report sheet analysis popup tables after analysis render and before summary render', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
   const popupTablesIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/popup-tables.js?v=053');
   const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=053');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(analysisRenderIndex >= 0, 'report sheet analysis render loader is missing');
+  assert.ok(popupTablesIndex > adapterIndex, 'report sheet analysis popup tables must load after report runtime adapter');
   assert.ok(popupTablesIndex > analysisRenderIndex, 'report sheet analysis popup tables must load after analysis render');
   assert.ok(summaryRenderIndex > popupTablesIndex, 'report sheet analysis popup tables must load before summary render');
   assert.ok(sheetIndex > summaryRenderIndex, 'report sheet analysis popup tables must load before sheet.js');

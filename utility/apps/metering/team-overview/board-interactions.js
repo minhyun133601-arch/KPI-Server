@@ -1,4 +1,15 @@
-﻿function handleTeamBoardClick(event) {
+function getTeamOverviewBoardInteractionsBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function setTeamOverviewBoardInteractionTimeout(callback, delay = 0) {
+  const adapter = getTeamOverviewBoardInteractionsBrowserAdapter();
+  return typeof adapter?.setTimeout === "function" ? adapter.setTimeout(callback, delay) : null;
+}
+
+function handleTeamBoardClick(event) {
   if (
     event.target.closest(".team-direct-usage") ||
     event.target.closest("[data-direct-team-usage-display]") ||
@@ -101,7 +112,7 @@ function handleTeamDirectUsageDisplayDoubleClick(event) {
   display.hidden = true;
   chip.appendChild(input);
 
-  window.setTimeout(() => {
+  setTeamOverviewBoardInteractionTimeout(() => {
     input.focus();
     input.setSelectionRange(0, input.value.length);
   }, 0);

@@ -1,5 +1,12 @@
-(function registerUtilReportSheetConfig(globalScope) {
-    if (globalScope.KPIUtilReportSheetConfig) {
+(function registerUtilReportSheetConfig() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/config.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetConfig')) {
         return;
     }
 
@@ -251,7 +258,7 @@
         gas_field_06: 'fa-oil-can'
     });
 
-    globalScope.KPIUtilReportSheetConfig = {
+    const api = {
         UTIL_SHEET_CUTOFF,
         utilSheetNumberFormatter,
         UTIL_SHEET_DATASET_SPECS,
@@ -287,4 +294,5 @@
         UTIL_GAS_RATIO_CHART_COLORS,
         UTIL_GAS_METER_FIELD_ICONS
     };
-})(typeof window !== 'undefined' ? window : globalThis);
+    runtimeAdapter.exportApi('KPIUtilReportSheetConfig', api);
+})();

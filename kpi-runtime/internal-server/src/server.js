@@ -3,6 +3,7 @@ import { config, runtimePaths } from './config.js';
 import { runMigrations } from './db/migrate.js';
 import { closePool } from './db/pool.js';
 import { sendJson } from './lib/http.js';
+import { applySecurityHeaders } from './lib/security-headers.js';
 import { pruneExpiredSessions } from './repositories/sessions.js';
 import { initializeFileStorage } from './services/files.js';
 import { getRouteErrorStatusCode, routeRequest } from './request-router.js';
@@ -20,6 +21,14 @@ async function runSessionCleanup(tag = 'scheduled') {
   }
 }
 
+/**
+ * Composition root for the internal server process.
+ *
+ * Startup owns process-wide concerns only: storage directories, optional release
+ * migration, session cleanup, security headers, request dispatch, and shutdown.
+ * Route matching, auth decisions, persistence, and document policy stay in
+ * their own modules so this file remains explainable as the entrypoint.
+ */
 async function start() {
   await initializeFileStorage();
 
@@ -52,6 +61,7 @@ async function start() {
 
   const server = http.createServer(async (req, res) => {
     try {
+      applySecurityHeaders(res);
       await routeRequest(req, res);
     } catch (error) {
       sendJson(res, getRouteErrorStatusCode(error), {

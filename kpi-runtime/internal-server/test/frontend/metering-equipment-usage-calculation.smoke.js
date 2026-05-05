@@ -342,6 +342,30 @@ test('usage calculation resolves gas correction factor for daily and calendar mo
   const context = createUsageCalculationContext();
   context.__setResourceType('gas');
 
+  assert.deepEqual(
+    toPlainJson(context.calculateEquipmentDailyUsageBase('gas_source_1', '2026-04-10')),
+    {
+      value: 30,
+      difference: 30,
+      factor: 1,
+      startDate: '2026-04-09',
+      endDate: '2026-04-10',
+      startReading: 50,
+      endReading: 80,
+    }
+  );
+  assert.deepEqual(
+    toPlainJson(context.calculateEquipmentCalendarDailyUsageBase('gas_source_1', '2026-04-10')),
+    {
+      value: 30,
+      difference: 30,
+      factor: 1,
+      startDate: '2026-04-09',
+      endDate: '2026-04-10',
+      startReading: 50,
+      endReading: 80,
+    }
+  );
   assert.equal(context.calculateGasCorrectionFactorForDate('2026-04-10'), 1);
   assert.equal(
     context.calculateGasCorrectionFactorForDate('2026-04-10', { calendarMode: true }),
@@ -383,4 +407,38 @@ test('usage calculation resolves monthly usage base and monthly gas correction f
     }
   );
   assert.equal(context.calculateGasCorrectionFactorForMonth('2026-04'), 1.2);
+});
+
+test('usage calculation returns explicit nulls for missing windows and invalid months', () => {
+  const context = createUsageCalculationContext();
+
+  assert.deepEqual(
+    toPlainJson(context.calculateEquipmentDailyUsageBase('electric_01', '2026-04-30')),
+    {
+      value: null,
+      difference: null,
+      factor: 2,
+      startDate: '2026-04-30',
+      endDate: '2026-05-01',
+      startReading: null,
+      endReading: null,
+    }
+  );
+  assert.deepEqual(
+    toPlainJson(context.calculateEquipmentMonthlyUsageBase('electric_01', { monthValue: 'invalid' })),
+    {
+      value: null,
+      difference: null,
+      factor: 2,
+      startDate: '',
+      endDate: '',
+      startReading: null,
+      endReading: null,
+      daysCount: 0,
+    }
+  );
+
+  context.__setResourceType('gas');
+  assert.equal(context.calculateGasCorrectionFactorForDate('2026-04-30'), null);
+  assert.equal(context.calculateGasCorrectionFactorForMonth('2026-05'), null);
 });

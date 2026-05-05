@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
 const legalAssetsPath = path.join(repoRoot, 'audit/runtime/audit/records/KPI.audit.records.legal.assets.js');
 const legalPath = path.join(repoRoot, 'audit/runtime/audit/records/KPI.audit.records.legal.js');
+const legalFormPath = path.join(repoRoot, 'audit/runtime/audit/records/KPI.audit.records.legal.form.js');
 const legalAssetsSource = await fs.readFile(legalAssetsPath, 'utf8');
+const legalFormSource = await fs.readFile(legalFormPath, 'utf8');
 const legalSource = await fs.readFile(legalPath, 'utf8');
 
 function escapeHtml(value) {
@@ -34,16 +36,58 @@ function buildLegalRenderer() {
       return id === 'content-container' ? contentContainer : null;
     },
   };
+  const portalData = {};
+  const alertUser = () => {};
   const window = {
-    alert() {},
+    alert: alertUser,
+    PortalData: portalData,
+  };
+  const legalAssetsApi = {};
+  const adapter = {
+    ensureLegalAssetsApi() {
+      return legalAssetsApi;
+    },
+    getLegalAssetsApi() {
+      return legalAssetsApi;
+    },
+    getAuditRuntimeConfig() {
+      return {
+        enabled: true,
+        apiBase: '/api',
+        records: {
+          audit_legal_facility: {
+            permissionKey: 'audit:legal',
+            writeEnabled: true,
+          },
+        },
+        assets: {
+          legalFacility: {
+            writeEnabled: true,
+          },
+        },
+      };
+    },
+    canUseServerWrite(writeEnabled) {
+      return writeEnabled === true;
+    },
+    hasFetch() {
+      return true;
+    },
+    fetch: async () => ({ ok: true, json: async () => ({}) }),
+    writePortalPayload(dataKey, data) {
+      portalData[dataKey] = JSON.parse(JSON.stringify(data || {}));
+      return portalData[dataKey];
+    },
+    alert: alertUser,
   };
   const factory = new Function(
     'escapeHtml',
     'document',
     'window',
-    `${legalAssetsSource}\n${legalSource}\nreturn { renderAuditLegalFacilityPreview };`
+    'KpiAuditRecordsBrowserAdapter',
+    `${legalAssetsSource}\n${legalFormSource}\n${legalSource}\nreturn { renderAuditLegalFacilityPreview };`
   );
-  const renderer = factory(escapeHtml, document, window);
+  const renderer = factory(escapeHtml, document, window, adapter);
   return { ...renderer, contentContainer };
 }
 
@@ -93,9 +137,10 @@ test('audit legal facility preview renders registration form and extended column
 test('audit legal facility submit waits for record save and cleans uploaded files on failure', () => {
   assert.match(legalAssetsSource, /async function deleteUploadedFilesFromRecord/);
   assert.match(legalAssetsSource, /DELETE/);
-  assert.match(legalSource, /await Promise\.resolve\(saveAuditData\('audit_legal_facility', nextData\)\)/);
-  assert.match(legalSource, /deleteUploadedFilesFromRecord/);
-  assert.match(legalSource, /서버 저장이 완료되지 않아 법정설비 등록을 취소했습니다/);
+  assert.match(legalFormSource, /await Promise\.resolve\(saveAuditData\('audit_legal_facility', nextData\)\)/);
+  assert.match(legalFormSource, /deleteUploadedFilesFromRecord/);
+  assert.match(legalFormSource, /서버 저장이 완료되지 않아 법정설비 등록을 취소했습니다/);
+  assert.doesNotMatch(legalSource, /function bindAuditLegalEntryEvents/);
   assert.doesNotMatch(legalSource, /Server write permission is required/);
   assert.doesNotMatch(legalSource, /File upload failed/);
 });

@@ -9,6 +9,8 @@ const runtimeMountDomSource = await fs.readFile(
   resolveMeteringBundleSourceUrl('runtime/mount-dom.js'),
   'utf8'
 );
+const browserAdapterSource = await fs.readFile(resolveMeteringBundleSourceUrl('runtime/browser-adapter.js'), 'utf8');
+const directBrowserGlobalPattern = new RegExp(String.raw`\b(?:window\.|global` + `This)\b`);
 
 function createClassList(initialNames = []) {
   const names = new Set(initialNames);
@@ -193,6 +195,9 @@ function createMountDomContext(options = {}) {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(browserAdapterSource, context, {
+    filename: 'runtime/browser-adapter.js',
+  });
   vm.runInContext(runtimeMountDomSource, context, {
     filename: 'runtime/mount-dom.js',
   });
@@ -254,6 +259,11 @@ function registerRequiredMountElements(registry, document) {
   panelHeadActions.appendChild(registry.query('#teamModeBtn'));
   panelHeadActions.appendChild(registry.query('#equipmentModeBtn'));
 }
+
+test('runtime mount dom keeps browser globals behind the metering adapter', () => {
+  assert.doesNotMatch(runtimeMountDomSource, directBrowserGlobalPattern);
+  assert.match(runtimeMountDomSource, /KpiMeteringBrowserAdapter/);
+});
 
 test('runtime mount dom exposes mount context helpers and flushes cleanup handlers', () => {
   const { context, errors, hostElement, portalRoot, document } = createMountDomContext();

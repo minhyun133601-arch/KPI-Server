@@ -1,3 +1,7 @@
+        const workTeamCalendarDraftBrowser = typeof KpiWorkBrowserAdapter !== 'undefined'
+            ? KpiWorkBrowserAdapter
+            : null;
+
         function cloneWorkTeamCalendarPayload(value) {
             if (typeof cloneWorkDataPayload === 'function') return cloneWorkDataPayload(value);
             return JSON.parse(JSON.stringify(value || {}));
@@ -10,8 +14,8 @@
             if (typeof WorkCache !== 'undefined') WorkCache[dataKey] = data;
             if (typeof syncWorkPortalDataCache === 'function') {
                 syncWorkPortalDataCache(dataKey, data);
-            } else if (window.PortalData) {
-                window.PortalData[dataKey] = cloneWorkTeamCalendarPayload(data);
+            } else {
+                workTeamCalendarDraftBrowser?.writePortalData?.(dataKey, cloneWorkTeamCalendarPayload(data));
             }
         }
 
@@ -333,7 +337,7 @@
                 alert('첨부 파일을 열 수 없습니다.');
                 return;
             }
-            const opened = window.open(url, '_blank', 'noopener,noreferrer');
+            const opened = workTeamCalendarDraftBrowser?.openWindow?.(url, '_blank', 'noopener,noreferrer');
             if (!opened) {
                 const anchor = document.createElement('a');
                 anchor.href = url;
@@ -342,6 +346,6 @@
                 anchor.click();
             }
             if (!target.assetId && !target.documentId && target.storage !== 'server') {
-                window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+                workTeamCalendarDraftBrowser?.setWindowTimeout?.(() => URL.revokeObjectURL(url), 30000);
             }
         }

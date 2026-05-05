@@ -484,6 +484,52 @@ test('billing settlement support resolves resource scope and numeric helpers fro
   assert.equal(context.isBillingSettlementCompleted('2026-04', 'default'), true);
 });
 
+test('billing settlement calculation helpers preserve zero totals and reject invalid input', () => {
+  const { context } = createBillingSettlementContext({
+    resourceType: 'electric',
+    usageBaseValue: 25,
+  });
+
+  assert.equal(
+    context.calculateBillingSettlementElectricityChargeTotal({
+      energy_charge: '0',
+      fuel_adjustment: '0',
+    }),
+    '0'
+  );
+  assert.equal(
+    context.calculateBillingSettlementElectricityChargeTotal({
+      energy_charge: 'not-a-number',
+      fuel_adjustment: '',
+    }),
+    ''
+  );
+  assert.equal(
+    context.calculateBillingSettlementUnitPrice(
+      {
+        electricity_charge_total: '0',
+      },
+      '2026-04',
+      'default'
+    ),
+    '0'
+  );
+  assert.equal(
+    context.calculateBillingSettlementBillingAmount(
+      {
+        electricity_charge_total: '0',
+        base_charge: '0',
+        vat: '0',
+        electric_power_fund: '0',
+        tv_reception_fee: '0',
+        rounding_adjustment: '0',
+      },
+      'default'
+    ),
+    '0'
+  );
+});
+
 test('billing settlement records normalize scoped entries and expose the month range', () => {
   const { context } = createBillingSettlementContext({
     resourceType: 'electric',

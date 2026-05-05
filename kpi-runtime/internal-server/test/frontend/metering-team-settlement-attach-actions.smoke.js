@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 import { resolveMeteringBundleSourceUrl } from '../../src/lib/metering-bundle-draft.js';
 
+const adapterSource = await fs.readFile(
+  resolveMeteringBundleSourceUrl('runtime/browser-adapter.js'),
+  'utf8'
+);
 const teamSettlementAttachActionsSource = await fs.readFile(
   resolveMeteringBundleSourceUrl('team-settlement/attach-actions.js'),
   'utf8'
@@ -211,6 +215,9 @@ function createTeamSettlementAttachActionsContext(options = {}) {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'metering/runtime/browser-adapter.js',
+  });
   vm.runInContext(teamSettlementAttachActionsSource, context, {
     filename: 'team-settlement/attach-actions.js',
   });
@@ -380,4 +387,9 @@ test('team settlement attach actions alert when directory connection fails', asy
   assert.deepEqual(calls.alerts, ['청구서 폴더 연결에 실패했습니다. 다시 시도해 주세요.']);
   assert.equal(saveStatus.textContent, '청구서 폴더 연결에 실패했습니다. 다시 시도해 주세요.');
   assert.deepEqual(saveStatus.classList.toArray().sort(), ['is-dirty', 'is-error']);
+});
+
+test('team settlement attach actions route prompts and timers through the adapter', () => {
+  assert.doesNotMatch(teamSettlementAttachActionsSource, /window\./);
+  assert.match(teamSettlementAttachActionsSource, /KpiMeteringBrowserAdapter/);
 });

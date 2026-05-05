@@ -25,7 +25,7 @@ if ($LASTEXITCODE -eq 0 -or (Test-PostgresReady)) {
   exit 0
 }
 
-& $pgCtlPath -D $postgresDataDir -l $postgresLogFile -o "-p $postgresPort" start | Out-Null
+& $pgCtlPath -D $postgresDataDir -l $postgresLogFile -o "-p $postgresPort" start
 $startExitCode = $LASTEXITCODE
 if ($startExitCode -ne 0 -and (Test-PostgresReady)) {
   Write-Warning "pg_ctl start returned exit code $startExitCode, but PostgreSQL is already accepting connections on port $postgresPort."

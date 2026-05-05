@@ -1,4 +1,16 @@
-        function parseUtilExcelDate(cell, fallbackValue) {
+        const utilProductionImportBrowser = typeof KpiUtilDataSyncBrowserAdapter !== 'undefined'
+            ? KpiUtilDataSyncBrowserAdapter
+            : null;
+
+        function getUtilProductionImportSpreadsheetApi() {
+            return utilProductionImportBrowser?.getSpreadsheetApi?.() || null;
+        }
+
+        function getUtilProductionImportServerRuntime() {
+            return utilProductionImportBrowser?.getUtilityServerRuntime?.() || null;
+        }
+
+        function parseUtilExcelDate(cell, fallbackValue, spreadsheetApi = getUtilProductionImportSpreadsheetApi()) {
             if (cell) {
                 if (cell.v instanceof Date) {
                     const normalizedDate = normalizeUtilExcelJsDate(cell.v);
@@ -6,7 +18,7 @@
                     return new Date(cell.v.getFullYear(), cell.v.getMonth(), cell.v.getDate());
                 }
                 if (typeof cell.v === 'number' && (isUtilDateFormattedCell(cell) || isUtilLikelyExcelDateSerial(cell.v))) {
-                    const parsed = XLSX.SSF.parse_date_code(cell.v);
+                    const parsed = spreadsheetApi?.SSF?.parse_date_code?.(cell.v);
                     if (parsed) {
                         const date = new Date(parsed.y, parsed.m - 1, parsed.d);
                         if (date.getFullYear() >= 1990 && date.getFullYear() <= 2100) return date;
@@ -68,8 +80,10 @@
         }
 
         async function parseUtilProductionExcelFile(file, fallbackTeamName) {
+            const spreadsheetApi = getUtilProductionImportSpreadsheetApi();
+            if (!spreadsheetApi) throw new Error('엑셀 라이브러리 로드 실패');
             const buffer = await file.arrayBuffer();
-            const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+            const workbook = spreadsheetApi.read(buffer, { type: 'array', cellDates: true });
             if (!Array.isArray(workbook.SheetNames) || !workbook.SheetNames.length) {
                 throw new Error(`[${file.name}] 시트가 없습니다.`);
             }
@@ -89,13 +103,13 @@
                 );
                 if (rawHeaders.every(header => header === '')) return;
                 validateUtilProductionUploadHeaders(file.name, sheetName, rawHeaders);
-                const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1:A1');
+                const range = spreadsheetApi.utils.decode_range(worksheet['!ref'] || 'A1:A1');
                 const lastRow = range.e.r + 1;
                 for (let rowNumber = UTIL_PRODUCTION_UPLOAD_DATA_START_ROW; rowNumber <= lastRow; rowNumber += 1) {
                     const values = UTIL_PRODUCTION_UPLOAD_COLS.map(col => getUtilExcelCellDisplayValue(worksheet, `${col}${rowNumber}`));
                     if (!hasUtilUploadData(values)) continue;
                     const dateCell = worksheet[`A${rowNumber}`];
-                    const parsedDate = parseUtilExcelDate(dateCell, values[0]);
+                    const parsedDate = parseUtilExcelDate(dateCell, values[0], spreadsheetApi);
                     const dateObj = applyUtilDateOffset(parsedDate, UTIL_PRODUCTION_UPLOAD_DATE_OFFSET_DAYS);
                     const amount = parseUtilAmount(values[4]);
                     const hasMetricValue = Number.isFinite(amount);
@@ -394,11 +408,12 @@
         };
 
         function persistUtilProductionDailyState() {
-            if (!window.KpiUtilityServerRuntime || typeof window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite !== 'function') {
+            const serverRuntime = getUtilProductionImportServerRuntime();
+            if (!serverRuntime || typeof serverRuntime.queueUtilProductionDailyServerWrite !== 'function') {
                 return false;
             }
-            if (typeof window.KpiUtilityServerRuntime.supportsUtilProductionServerPersistence === 'function'
-                && !window.KpiUtilityServerRuntime.supportsUtilProductionServerPersistence()) {
+            if (typeof serverRuntime.supportsUtilProductionServerPersistence === 'function'
+                && !serverRuntime.supportsUtilProductionServerPersistence()) {
                 return false;
             }
             UTIL_PRODUCTION_DAILY_STATE.meta = UTIL_PRODUCTION_DAILY_STATE.meta || {};
@@ -423,12 +438,8 @@
             UTIL_PRODUCTION_ARCHIVE_META.length = 0;
             UTIL_PRODUCTION_ARCHIVE_META.push(...normalizedArchives);
             UTIL_PRODUCTION_DAILY_STATE.archives = UTIL_PRODUCTION_ARCHIVE_META;
-            window.PortalData = window.PortalData || {};
-            window.PortalData.util_production_daily = UTIL_PRODUCTION_DAILY_STATE;
-            if (window.KpiUtilityServerRuntime && typeof window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite === 'function') {
-                return window.KpiUtilityServerRuntime.queueUtilProductionDailyServerWrite(UTIL_PRODUCTION_DAILY_STATE);
-            }
-            return false;
+            utilProductionImportBrowser?.writePortalRecord?.('util_production_daily', UTIL_PRODUCTION_DAILY_STATE);
+            return utilProductionImportBrowser?.queueUtilProductionDailyServerWrite?.(UTIL_PRODUCTION_DAILY_STATE) || false;
         }
 
         function refreshUtilProductionDailyIndex() {

@@ -1,3 +1,21 @@
+function getEquipmentInteractionsBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function setEquipmentInteractionTimeout(callback, delay = 0) {
+  const adapter = getEquipmentInteractionsBrowserAdapter();
+  return typeof adapter?.setTimeout === "function" ? adapter.setTimeout(callback, delay) : null;
+}
+
+function clearEquipmentInteractionTimeout(timeoutId) {
+  const adapter = getEquipmentInteractionsBrowserAdapter();
+  if (typeof adapter?.clearTimeout === "function") {
+    adapter.clearTimeout(timeoutId);
+  }
+}
+
 function handleEquipmentFieldInput(event) {
   if (!event.target.matches("input[data-field-key]")) {
     return;
@@ -69,7 +87,7 @@ function handleEquipmentFieldKeydown(event) {
 
 function clearPendingEquipmentTitleClickSelection() {
   if (equipmentTitleInteractionState.clickTimeoutId) {
-    window.clearTimeout(equipmentTitleInteractionState.clickTimeoutId);
+    clearEquipmentInteractionTimeout(equipmentTitleInteractionState.clickTimeoutId);
     equipmentTitleInteractionState.clickTimeoutId = 0;
   }
 }
@@ -86,7 +104,7 @@ function scheduleEquipmentTitleClickSelection(fieldKey, event) {
     metaKey: Boolean(event?.metaKey),
   };
 
-  equipmentTitleInteractionState.clickTimeoutId = window.setTimeout(() => {
+  equipmentTitleInteractionState.clickTimeoutId = setEquipmentInteractionTimeout(() => {
     equipmentTitleInteractionState.clickTimeoutId = 0;
     toggleSelectedEquipment(fieldKey, selectionEvent);
   }, EQUIPMENT_TITLE_DOUBLE_CLICK_DELAY_MS);

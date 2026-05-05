@@ -53,16 +53,16 @@
 
         function getDefaultGlobalSaveStatus(action) {
             if (!getDashboardHiddenState()) {
-                return '\uB300\uC2DC\uBCF4\uB4DC\uC5D0\uC11C\uB294 \uC800\uC7A5 \uC791\uC5C5\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.';
+                return '대시보드에서는 저장 작업이 없습니다.';
             }
             if (!action) {
-                return '\uD604\uC7AC \uD654\uBA74\uC740 \uC800\uC7A5 \uB300\uC0C1\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.';
+                return '현재 화면은 저장 대상이 없습니다.';
             }
-            return action.statusText || '\uD604\uC7AC \uD654\uBA74 \uB370\uC774\uD130\uB97C \uC911\uC559 \uC11C\uBC84\uC5D0 \uC800\uC7A5\uD569\uB2C8\uB2E4.';
+            return action.statusText || '현재 화면 데이터를 중앙 서버에 저장합니다.';
         }
 
         function getDefaultGlobalSaveButtonLabel(action) {
-            return action?.buttonLabel || '\uC800\uC7A5';
+            return action?.buttonLabel || '저장';
         }
 
         function resolveGlobalSaveAction() {
@@ -89,9 +89,9 @@
             button.classList.toggle('is-error', !GlobalSaveUiState.busy && GlobalSaveUiState.tone === 'error');
             button.setAttribute('aria-disabled', button.disabled ? 'true' : 'false');
             buttonLabel.textContent = GlobalSaveUiState.busy
-                ? '\uC800\uC7A5 \uC911...'
+                ? '저장 중...'
                 : getDefaultGlobalSaveButtonLabel(action);
-            button.title = action?.title || GlobalSaveUiState.message || '\uC800\uC7A5';
+            button.title = action?.title || GlobalSaveUiState.message || '저장';
             status.textContent = GlobalSaveUiState.message;
             status.classList.toggle('is-success', GlobalSaveUiState.tone === 'success');
             status.classList.toggle('is-error', GlobalSaveUiState.tone === 'error');
@@ -140,7 +140,7 @@
             GlobalSaveUiState.busy = true;
             GlobalSaveUiState.activeAction = action;
             GlobalSaveUiState.providerKey = String(action.providerKey || '');
-            GlobalSaveUiState.message = '\uC911\uC559 \uC11C\uBC84\uC5D0 \uC800\uC7A5 \uC911\uC785\uB2C8\uB2E4...';
+            GlobalSaveUiState.message = '중앙 서버에 저장 중입니다...';
             GlobalSaveUiState.tone = '';
             renderGlobalSaveUi();
 
@@ -158,7 +158,7 @@
                     providerKey: action.providerKey,
                     sectionId: activeSectionId,
                     categoryTitle: activeRenderContext?.category?.title || '',
-                    label: action.historyLabel || action.buttonLabel || action.label || '\uC800\uC7A5',
+                    label: action.historyLabel || action.buttonLabel || action.label || '저장',
                     trigger: options.trigger || 'manual'
                 });
                 persistGlobalRecentUpdateRecord(savedRecord);
@@ -166,23 +166,21 @@
                     ? new Date(savedRecord.savedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
                     : '';
                 GlobalSaveUiState.message = savedTime
-                    ? `\uC800\uC7A5\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. ${savedTime}`
-                    : '\uC800\uC7A5\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.';
+                    ? `저장이 완료되었습니다. ${savedTime}`
+                    : '저장이 완료되었습니다.';
                 GlobalSaveUiState.tone = '';
-                successAlertMessage = '\uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.';
+                successAlertMessage = '저장되었습니다.';
                 return true;
             } catch (error) {
                 console.error('KPI global save failed.', error);
-                GlobalSaveUiState.message = action.errorMessage || '\uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.';
+                GlobalSaveUiState.message = action.errorMessage || '저장에 실패했습니다.';
                 GlobalSaveUiState.tone = 'error';
                 return false;
             } finally {
                 GlobalSaveUiState.busy = false;
                 if (successAlertMessage) {
                     resetGlobalSaveUiToDefault();
-                    if (typeof window.alert === 'function') {
-                        window.alert(successAlertMessage);
-                    }
+                    browser?.showAlert?.(successAlertMessage);
                 } else {
                     renderGlobalSaveUi();
                 }
@@ -190,8 +188,8 @@
         }
 
         function bindGlobalSaveButton() {
-            if (window.__globalSaveButtonListener) return;
-            window.__globalSaveButtonListener = true;
+            if (browser?.getFlag?.('__globalSaveButtonListener')) return;
+            browser?.setFlag?.('__globalSaveButtonListener');
             const { button } = getGlobalSaveElements();
             button?.addEventListener('click', () => {
                 void triggerGlobalSave({ trigger: 'button' });
@@ -199,9 +197,9 @@
         }
 
         function bindGlobalSaveHotkey() {
-            if (window.__globalSaveHotkeyListener) return;
-            window.__globalSaveHotkeyListener = true;
-            window.addEventListener('keydown', evt => {
+            if (browser?.getFlag?.('__globalSaveHotkeyListener')) return;
+            browser?.setFlag?.('__globalSaveHotkeyListener');
+            browser?.addWindowEventListener?.('keydown', evt => {
                 if (evt.defaultPrevented) return;
                 if (evt.altKey || evt.shiftKey) return;
                 if (!(evt.ctrlKey || evt.metaKey)) return;
@@ -213,24 +211,24 @@
         }
 
         function bindGlobalSaveRefreshHooks() {
-            if (window.__globalSaveRefreshHooks) return;
-            window.__globalSaveRefreshHooks = true;
+            if (browser?.getFlag?.('__globalSaveRefreshHooks')) return;
+            browser?.setFlag?.('__globalSaveRefreshHooks');
             const schedule = () => scheduleGlobalSaveUiRefresh();
             document.addEventListener('click', schedule, true);
             document.addEventListener('input', schedule, true);
             document.addEventListener('change', schedule, true);
             document.addEventListener('focusin', schedule, true);
-            window.addEventListener('kpi:metering-store-updated', schedule);
-            window.addEventListener('util-production-data-updated', schedule);
-            window.addEventListener('storage', event => {
+            browser?.addWindowEventListener?.('kpi:metering-store-updated', schedule);
+            browser?.addWindowEventListener?.('util-production-data-updated', schedule);
+            browser?.addWindowEventListener?.('storage', event => {
                 if (String(event?.key || '') !== GLOBAL_RECENT_UPDATE_STORAGE_KEY) return;
                 schedule();
             });
         }
 
         function bindBackspaceGoHomeHotkey() {
-            if (window.__backspaceGoHomeListener) return;
-            window.__backspaceGoHomeListener = true;
+            if (browser?.getFlag?.('__backspaceGoHomeListener')) return;
+            browser?.setFlag?.('__backspaceGoHomeListener');
             document.addEventListener('keydown', evt => {
                 if (evt.key !== 'Backspace') return;
                 if (evt.defaultPrevented) return;

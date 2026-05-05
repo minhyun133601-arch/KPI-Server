@@ -1,5 +1,6 @@
 (function registerWorkRuntime() {
-    const runtime = window.KpiRuntime;
+    const browser = typeof KpiWorkBrowserAdapter !== 'undefined' ? KpiWorkBrowserAdapter : null;
+    const runtime = browser?.getRuntime?.();
     if (!runtime) return;
 
     function buildWorkHistorySaveProvider(context = {}) {
@@ -7,25 +8,24 @@
         if (!isSupportedSection) return null;
         if (context.category?.view !== 'history_tool') return null;
 
-        const runtimeConfig = window.KpiWorkHistory?.getRecordRuntimeConfig?.() || null;
-        const serverWritable = runtime.canUseServerWrite(runtimeConfig?.writeEnabled === true);
+        const serverWritable = browser?.canUseHistoryServerWrite?.() === true;
         const saveTitle = '작업이력 저장';
         const statusText = !serverWritable
             ? '서버 기록이 가능한 환경에서만 작업이력을 저장할 수 있습니다.'
-            : (window.KpiWorkHistory?.isRecordModalOpen?.()
+            : (browser?.isHistoryRecordModalOpen?.()
                 ? '현재 입력 중인 작업이력을 포함해 서버에 저장합니다.'
                 : '현재 작업이력 전체를 서버에 저장합니다.');
 
         return {
             priority: 120,
-            canSave: serverWritable && typeof window.KpiWorkHistory?.performPrimarySave === 'function',
+            canSave: serverWritable && browser?.canPerformHistoryPrimarySave?.() === true,
             buttonLabel: '저장',
             historyLabel: saveTitle,
             title: saveTitle,
             statusText,
             perform: async () => {
                 if (!serverWritable) return false;
-                const result = await window.KpiWorkHistory?.performPrimarySave?.();
+                const result = await browser?.performHistoryPrimarySave?.();
                 if (result !== false && typeof setLastModified === 'function') {
                     setLastModified(
                         context.category?.title
@@ -70,6 +70,6 @@
     });
 
     runtime.registerShortcutCloser('work-history', () => {
-        window.KpiWorkHistory?.closeOverlays?.();
+        browser?.closeHistoryOverlays?.();
     });
 })();

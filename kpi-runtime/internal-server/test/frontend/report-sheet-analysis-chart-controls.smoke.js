@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
@@ -34,6 +38,9 @@ function createChartControlsContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js',
   });
@@ -48,6 +55,8 @@ test('report sheet analysis chart controls registry builds labels charts and pop
   const registry = context.KPIUtilReportSheetAnalysisChartControls;
 
   assert.ok(registry, 'report sheet analysis chart controls registry is missing');
+  assert.doesNotMatch(reportSheetAnalysisChartControlsSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetAnalysisChartControlsSource, /KPIUtilReportRuntimeAdapter/);
 
   registry.setRuntimeAdapters({
     escapeUtilSheetHtml(value) {
@@ -153,12 +162,15 @@ test('report sheet analysis chart controls registry builds labels charts and pop
 });
 
 test('kpi html loads report sheet analysis chart controls between compare-select and electric chart model', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const compareSelectIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/compare-select.js?v=053');
   const chartControlsIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/chart-controls.js?v=053');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(compareSelectIndex >= 0, 'report sheet analysis compare-select loader is missing');
+  assert.ok(chartControlsIndex > adapterIndex, 'report sheet analysis chart controls must load after the runtime adapter');
   assert.ok(chartControlsIndex > compareSelectIndex, 'report sheet analysis chart controls must load after compare-select');
   assert.ok(electricChartModelIndex > chartControlsIndex, 'report sheet analysis chart controls must load before electric chart model');
   assert.ok(sheetIndex > electricChartModelIndex, 'report sheet analysis chart controls must load before sheet.js');

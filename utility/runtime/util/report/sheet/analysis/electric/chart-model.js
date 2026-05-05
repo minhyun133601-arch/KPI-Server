@@ -1,11 +1,18 @@
-(function registerUtilReportSheetAnalysisElectricChartModel(globalScope) {
-    if (globalScope.KPIUtilReportSheetAnalysisElectricChartModel) {
+(function registerUtilReportSheetAnalysisElectricChartModel() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/analysis/electric/chart-model.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetAnalysisElectricChartModel')) {
         return;
     }
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.analysis.electric.chart-model.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.analysis.electric.chart-model.js'
+    );
     const {
         UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_PREFIX
     } = utilReportSheetConfig;
@@ -20,11 +27,15 @@
         formatUtilSheetSignedPercentPoint: null,
         getUtilElectricAnalysisDisplayMode: null,
         getUtilElectricAnalysisUnitOptions: null,
-        buildUtilGasAnalysisSeriesLabel: null
+        buildUtilGasAnalysisSeriesLabel: null,
+        buildUtilReportProductionProductMonthlyValueMap: null,
+        parseUtilMonthValue: null,
+        formatUtilReportMonthShort: null,
+        formatUtilReportMonthLong: null
     };
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetAnalysisElectricChartModel;
+        return api;
     }
     function getElectricUnitKey(chartKey = '') {
         if (typeof runtime.getUtilElectricAnalysisUnitKey === 'function') {
@@ -186,19 +197,19 @@
             ? Array.from(new Set(teamOption.productionTeamNames.map(teamName => String(teamName || '').trim()).filter(Boolean)))
             : [];
         if (productionTeamNames.length !== 1) return [];
-        if (typeof globalScope.buildUtilReportProductionProductMonthlyValueMap !== 'function') return [];
+        if (typeof runtime.buildUtilReportProductionProductMonthlyValueMap !== 'function') return [];
         const teamName = productionTeamNames[0];
         const lineNames = new Set();
         const monthLineValueMap = new Map();
 
         (Array.isArray(rangeKeys) ? rangeKeys : []).forEach(monthKey => {
-            const parsedMonth = typeof globalScope.parseUtilMonthValue === 'function'
-                ? globalScope.parseUtilMonthValue(monthKey)
+            const parsedMonth = typeof runtime.parseUtilMonthValue === 'function'
+                ? runtime.parseUtilMonthValue(monthKey)
                 : /^(\d{4})-(\d{2})$/.exec(String(monthKey || '').trim());
             const yearValue = Number(parsedMonth?.year ?? parsedMonth?.[1]);
             const monthValue = Number(parsedMonth?.month ?? parsedMonth?.[2]);
             if (!Number.isFinite(yearValue) || !Number.isFinite(monthValue)) return;
-            const rawValueMap = globalScope.buildUtilReportProductionProductMonthlyValueMap(yearValue, monthValue, teamName);
+            const rawValueMap = runtime.buildUtilReportProductionProductMonthlyValueMap(yearValue, monthValue, teamName);
             const lineValueMap = new Map();
             Object.entries(rawValueMap || {}).forEach(([metricKey, rawValue]) => {
                 const value = Number(rawValue);
@@ -223,7 +234,7 @@
         const createPoint = (monthKey, value) => ({
             key: monthKey,
             monthKey,
-            label: typeof globalScope.formatUtilReportMonthShort === 'function' ? globalScope.formatUtilReportMonthShort(monthKey) : monthKey,
+            label: typeof runtime.formatUtilReportMonthShort === 'function' ? runtime.formatUtilReportMonthShort(monthKey) : monthKey,
             value: Number.isFinite(value) ? value : NaN
         });
         const totalRangeAmount = Array.from(monthLineValueMap.values()).reduce((grandTotal, lineValueMap) => (
@@ -349,8 +360,8 @@
                 return {
                     key: pointKey,
                     monthKey: pointKey,
-                    label: typeof globalScope.formatUtilReportMonthLong === 'function'
-                        ? globalScope.formatUtilReportMonthLong(pointKey)
+                    label: typeof runtime.formatUtilReportMonthLong === 'function'
+                        ? runtime.formatUtilReportMonthLong(pointKey)
                         : (point?.label || pointKey),
                     value: scaleElectricChartValue(
                         chart.key,
@@ -374,7 +385,9 @@
             controlItems,
             hasVisibleSeries: visibleCharts.length > 0
         };
-    }    globalScope.KPIUtilReportSheetAnalysisElectricChartModel = Object.freeze({
+    }
+
+    const api = Object.freeze({
         setRuntimeAdapters,
         resolveUtilElectricAnalysisPointValue,
         formatUtilElectricAnalysisLineMetricValue,
@@ -385,4 +398,6 @@
         buildUtilElectricAnalysisLineRatioSeries,
         buildUtilElectricAnalysisCombinedChart
     });
-})(typeof window !== 'undefined' ? window : globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetAnalysisElectricChartModel', api);
+})();

@@ -15,6 +15,10 @@ const productionExtractorBridgeSource = await fs.readFile(
   new URL('../../../../utility/runtime/util/production/KPI.util.production.extractor.js', import.meta.url),
   'utf8'
 );
+const dataSyncAdapterSource = await fs.readFile(
+  new URL('../../../../utility/runtime/util/KPI.util.data-sync.browser-adapter.js', import.meta.url),
+  'utf8'
+);
 
 function createExportActionsContext() {
   const context = {
@@ -48,11 +52,21 @@ test('production extractor export actions registers a window API with the split 
   const context = createExportActionsContext();
   const api = context.KPIProductionExtractorExportActions;
 
+  assert.doesNotMatch(exportActionsSource, /context\.window|window\./);
   assert.equal(typeof api?.initializeStoredExportPanel, 'function');
   assert.equal(typeof api?.refreshStoredRowsFromParent, 'function');
   assert.equal(typeof api?.handleDownloadStoredRows, 'function');
   assert.equal(typeof api?.downloadFilteredRows, 'function');
   assert.equal(typeof api?.downloadAllRows, 'function');
+});
+
+test('production extractor bridge routes browser globals through the data-sync adapter', () => {
+  assert.doesNotMatch(productionExtractorBridgeSource, /window\./);
+  assert.doesNotMatch(productionExtractorBridgeSource, /globalThis/);
+  assert.match(productionExtractorBridgeSource, /KpiUtilDataSyncBrowserAdapter/);
+  assert.match(productionExtractorBridgeSource, /useUtilProductionExtractorRootFlag/);
+  assert.match(productionExtractorBridgeSource, /postUtilProductionExtractorMessage/);
+  assert.match(productionExtractorBridgeSource, /writeExistingUtilProductionPortalRecord/);
 });
 
 test('production extractor export actions normalize stored bridge rows deterministically', () => {
@@ -109,10 +123,14 @@ test('production extractor export actions normalize stored bridge rows determini
 
 test('production extractor html loads export actions before app and KPI bridge busts the embed cache', () => {
   const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=16');
+  const viewModelIndex = productionExtractorHtml.indexOf('runtime/view-model.js?v=1');
+  const renderIndex = productionExtractorHtml.indexOf('runtime/render.js?v=1');
   const appIndex = productionExtractorHtml.indexOf('app.js?v=16');
 
   assert.ok(exportActionsIndex >= 0, 'split runtime loader is missing');
-  assert.ok(appIndex > exportActionsIndex, 'app.js must load after runtime/export-actions.js');
+  assert.ok(viewModelIndex > exportActionsIndex, 'view model split must load after runtime/export-actions.js');
+  assert.ok(renderIndex > viewModelIndex, 'render split must load after the view model split');
+  assert.ok(appIndex > renderIndex, 'app.js must load after split runtime files');
   assert.match(
     productionExtractorBridgeSource,
     /production-extractor\.html\?embed=1&v=16/
@@ -214,6 +232,9 @@ function createProductionBridgeContext(savePromise) {
     if (type === 'message') messageHandler = handler;
   };
   vm.createContext(context);
+  vm.runInContext(dataSyncAdapterSource, context, {
+    filename: 'KPI.util.data-sync.browser-adapter.js',
+  });
   vm.runInContext(productionExtractorBridgeSource, context, {
     filename: 'KPI.util.production.extractor.js',
   });

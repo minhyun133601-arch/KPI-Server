@@ -1,5 +1,5 @@
 (function () {
-    const api = window.KpiDataEquipmentHistory || (window.KpiDataEquipmentHistory = {});
+    const api = KpiDataEquipmentHistoryBrowserAdapter.getApi();
 
     const BASIC_FIELDS = [
         { key: 'name', label: '설비명', placeholder: '설비명을 입력하세요.' },
@@ -70,7 +70,7 @@
             status: api.normalizeText(source.status || '운영중'),
             production: api.normalizeText(source.production),
             plan: api.normalizeText(source.plan),
-            rate: source.rate ? String(source.rate) : '',
+            rate: source.rate === null || source.rate === undefined || source.rate === '' ? '' : String(source.rate),
             lastCheck: api.normalizeText(source.lastCheck),
             nextCheck: api.normalizeText(source.nextCheck),
             team: api.normalizeText(source.team),
@@ -102,12 +102,34 @@
         return items.map((item) => ({ label: item.label, value: api.normalizeText(item.value) }));
     }
 
+    function parseDraftRate(value) {
+        const raw = api.normalizeText(value).replace(/,/g, '');
+        if (!raw) return { isValid: true, value: 0 };
+        const match = raw.match(/^(\d+(?:\.\d+)?)\s*%?$/);
+        if (!match) return { isValid: false, value: 0 };
+        const numeric = Number(match[1]);
+        if (!Number.isFinite(numeric)) return { isValid: false, value: 0 };
+        return { isValid: true, value: Math.max(0, Math.min(numeric, 100)) };
+    }
+
+    function getEquipmentHistoryDraftValidationErrors(draft) {
+        const normalized = createDraft(draft);
+        const errors = [];
+        if (!normalized.name) {
+            errors.push({ field: 'name', message: '\uC124\uBE44\uBA85\uC744 \uC785\uB825\uD574 \uC8FC\uC138\uC694.' });
+        }
+        if (!parseDraftRate(normalized.rate).isValid) {
+            errors.push({ field: 'rate', message: '\uAC00\uB3D9\uB960\uC740 0\uBD80\uD130 100\uAE4C\uC9C0\uC758 \uC22B\uC790\uB85C \uC785\uB825\uD574 \uC8FC\uC138\uC694.' });
+        }
+        return errors;
+    }
+
     function mergeDetailInfoRows(normalized) {
         const systemRows = [
             { label: '설비명', value: normalized.name },
             { label: '관리팀', value: normalized.team },
             { label: '공정', value: normalized.process },
-            { label: '가동률', value: normalized.rate ? `${normalized.rate}%` : '' },
+            { label: '가동률', value: normalized.rate !== '' ? `${parseDraftRate(normalized.rate).value}%` : '' },
         ].filter((row) => row.value);
 
         const customRows = removeBlankRows(normalized.detailInfo, DETAIL_ITEM_FIELDS);
@@ -125,7 +147,7 @@
     function buildRecordFromDraft(draft) {
         const normalized = createDraft(draft);
         const id = normalized.id || makeEquipmentId(normalized);
-        const rate = Math.max(0, Math.min(Number(normalized.rate) || 0, 100));
+        const rate = parseDraftRate(normalized.rate).value;
         const detailInfo = mergeDetailInfoRows(normalized);
         const documents = removeBlankRows(normalized.documents, DOCUMENT_SAVE_FIELDS)
             .map(({ pendingFile, attachmentKey, ...row }) => row);
@@ -278,6 +300,7 @@
         createBlankDocumentRow,
         createBlankDetailRow,
         createDraft,
+        getEquipmentHistoryDraftValidationErrors,
         buildRecordFromDraft,
         renderFieldGrid,
         renderDetailItems,

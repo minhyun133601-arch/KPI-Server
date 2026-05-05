@@ -1,40 +1,36 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
 
-async function readRepoFile(...segments) {
-  return fs.readFile(path.join(repoRoot, ...segments), 'utf8');
+function readRepoFile(...segments) {
+  return readFile(path.join(repoRoot, ...segments), 'utf8');
 }
 
-test('repository map architecture surface and cards render as collapsed details sections', async () => {
-  const [htmlSource, scriptSource] = await Promise.all([
+test('repository map follows the demo data and monthly history structure', async () => {
+  const [htmlSource, dataSource, mayHistorySource, aprilHistorySource] = await Promise.all([
     readRepoFile('commands', 'ops-console-app', 'ops-console', 'public', 'repository-map.html'),
-    readRepoFile('commands', 'ops-console-app', 'ops-console', 'public', 'repository-map.js'),
+    readRepoFile('commands', 'ops-console-app', 'ops-console', 'public', 'repository-map-data.js'),
+    readRepoFile('commands', 'ops-console-app', 'ops-console', 'public', 'repository-map-history', '2026-05.js'),
+    readRepoFile('commands', 'ops-console-app', 'ops-console', 'public', 'repository-map-history', '2026-04.js'),
   ]);
 
-  assert.match(htmlSource, /id="architectureSurface"/);
-  assert.match(htmlSource, /id="includeDescendantsToggle"/);
-  assert.match(htmlSource, /\.search-toolbar-meta/);
-  assert.match(htmlSource, /\.architecture-surface > summary/);
-  assert.match(htmlSource, /\.architecture-surface-body/);
-  assert.match(htmlSource, /\.architecture-card > summary/);
-  assert.match(htmlSource, /\.architecture-card-body/);
-  assert.match(htmlSource, /\.architecture-card\[open\] \.architecture-card-toggle/);
+  assert.match(htmlSource, /<script src="\/repository-map-data\.js"><\/script>/);
+  assert.match(htmlSource, /window\.KPI_REPOSITORY_MAP_STATIC_TREE/);
+  assert.match(htmlSource, /window\.KPI_REPOSITORY_MAP_HISTORY_FILES/);
+  assert.match(htmlSource, /function loadHistoryScripts\(\)/);
+  assert.doesNotMatch(htmlSource, /repository-map\.config\.js/);
+  assert.doesNotMatch(htmlSource, /ops-map\.browser-adapter\.js/);
 
-  assert.match(scriptSource, /const searchScopeKeys = \['area', 'path', 'file', 'history', 'recent', 'status'\]/);
-  assert.match(scriptSource, /const searchScopeAliases = \{/);
-  assert.match(scriptSource, /includeDescendants: false/);
-  assert.match(scriptSource, /function updateParsedQuery\(\)/);
-  assert.match(scriptSource, /const surface = document\.querySelector\('#architectureSurface'\)/);
-  assert.match(scriptSource, /container\.hidden = true;/);
-  assert.match(scriptSource, /if \(surface\) surface\.open = true;/);
-  assert.match(scriptSource, /state\.includeDescendants = Boolean\(event\.target\.checked\);/);
-  assert.match(scriptSource, /<details class="architecture-card \$\{card\.tone\}">/);
-  assert.match(scriptSource, /<summary class="architecture-card-summary">/);
-  assert.match(scriptSource, /<div class="architecture-card-body">/);
-  assert.doesNotMatch(scriptSource, /<details class="architecture-card \$\{card\.tone\}" open>/);
+  assert.match(dataSource, /KPI_REPOSITORY_MAP_STATIC_TREE/);
+  assert.match(dataSource, /KPI_REPOSITORY_MAP_HISTORY_FILES/);
+  assert.match(dataSource, /\/repository-map-history\/2026-05\.js/);
+  assert.match(dataSource, /\/repository-map-history\/2026-04\.js/);
+  assert.doesNotMatch(dataSource, /2026-05-04\.js/);
+
+  assert.match(mayHistorySource, /KPI_REPOSITORY_MAP_DAILY_HISTORY/);
+  assert.match(aprilHistorySource, /KPI_REPOSITORY_MAP_DAILY_HISTORY/);
 });

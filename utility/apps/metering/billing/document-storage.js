@@ -1,3 +1,35 @@
+function getBillingDocumentStorageBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function alertBillingDocumentStorageUser(message) {
+  const adapter = getBillingDocumentStorageBrowserAdapter();
+  if (typeof adapter?.alert === "function") {
+    adapter.alert(message);
+  }
+}
+
+function setBillingDocumentStorageTimeout(callback, delay = 0) {
+  const adapter = getBillingDocumentStorageBrowserAdapter();
+  return typeof adapter?.setTimeout === "function" ? adapter.setTimeout(callback, delay) : null;
+}
+
+function addBillingDocumentStorageRootEventListener(...args) {
+  const adapter = getBillingDocumentStorageBrowserAdapter();
+  if (typeof adapter?.addEventListener === "function") {
+    adapter.addEventListener(...args);
+  }
+}
+
+function removeBillingDocumentStorageRootEventListener(...args) {
+  const adapter = getBillingDocumentStorageBrowserAdapter();
+  if (typeof adapter?.removeEventListener === "function") {
+    adapter.removeEventListener(...args);
+  }
+}
+
 function requestBillingDocumentFile() {
   return new Promise((resolve) => {
     const input = createDetachedElement("input");
@@ -10,7 +42,7 @@ function requestBillingDocumentFile() {
     let settled = false;
 
     const cleanup = () => {
-      window.removeEventListener("focus", handleWindowFocus);
+      removeBillingDocumentStorageRootEventListener("focus", handleWindowFocus);
       input.remove();
     };
 
@@ -22,7 +54,7 @@ function requestBillingDocumentFile() {
       settled = true;
       cleanup();
       if (file && !isPdfBillingFile(file)) {
-        window.alert("PDF 파일만 첨부할 수 있습니다.");
+        alertBillingDocumentStorageUser("PDF 파일만 첨부할 수 있습니다.");
         resolve(null);
         return;
       }
@@ -30,7 +62,7 @@ function requestBillingDocumentFile() {
     };
 
     const handleWindowFocus = () => {
-      window.setTimeout(() => {
+      setBillingDocumentStorageTimeout(() => {
         finish(input.files?.[0] || null);
       }, 300);
     };
@@ -44,7 +76,7 @@ function requestBillingDocumentFile() {
     );
 
     document.body.appendChild(input);
-    window.addEventListener("focus", handleWindowFocus, { once: true });
+    addBillingDocumentStorageRootEventListener("focus", handleWindowFocus, { once: true });
     input.click();
   });
 }
@@ -219,39 +251,4 @@ function uploadBillingDocument(
         return payload.document || {};
       });
   });
-}
-
-async function deleteBillingDocumentFromSharedServer(billingDocument) {
-  const documentId = normalizeText(billingDocument?.documentId);
-  if (!supportsSharedServerPersistence() || !documentId) {
-    return false;
-  }
-
-  const sharedAppConfig = resolveSharedAppConfig();
-  const response = await window.fetch(
-    `${sharedAppConfig.apiBase.replace(/\/+$/, "")}/files/${encodeURIComponent(documentId)}`,
-    {
-      method: "DELETE",
-      cache: "no-store",
-      credentials: "same-origin",
-    }
-  );
-
-  if (!response.ok && response.status !== 404) {
-    throw new Error(`billing_document_delete_failed:${response.status}`);
-  }
-
-  return true;
-}
-
-async function deleteBillingDocumentStorage(
-  billingDocument,
-  resourceType = getCurrentResourceType()
-) {
-  const documentId = normalizeText(billingDocument?.documentId);
-  if (documentId) {
-    return deleteBillingDocumentFromSharedServer(billingDocument);
-  }
-
-  return deleteBillingDocumentFromLocalDirectory(billingDocument, resourceType);
 }

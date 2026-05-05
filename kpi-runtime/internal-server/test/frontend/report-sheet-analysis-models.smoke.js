@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
@@ -156,6 +160,9 @@ function createAnalysisModelContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js'
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js'
   });
@@ -180,6 +187,12 @@ test('report sheet analysis model registries build electric and gas analysis mod
   const lineRatioPrefix = config.UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_PREFIX;
 
   assert.ok(electricChartModelRegistry);
+  assert.doesNotMatch(reportSheetAnalysisElectricChartModelSource, /globalThis|window\.|globalScope/);
+  assert.doesNotMatch(reportSheetAnalysisElectricModelSource, /globalThis|window\.|globalScope/);
+  assert.doesNotMatch(reportSheetAnalysisGasModelSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetAnalysisElectricChartModelSource, /KPIUtilReportRuntimeAdapter/);
+  assert.match(reportSheetAnalysisElectricModelSource, /KPIUtilReportRuntimeAdapter/);
+  assert.match(reportSheetAnalysisGasModelSource, /KPIUtilReportRuntimeAdapter/);
   electricModelRegistry.setRuntimeAdapters({
     getUtilElectricAnalysisTeamOption(teamKey = 'combined') {
       if (String(teamKey || '').trim() === 'team-a') {
@@ -297,6 +310,12 @@ test('report sheet analysis model registries build electric and gas analysis mod
     buildUtilGasAnalysisSeriesLabel({ title = '', metricLabel = '' } = {}) {
       return `${title} (${metricLabel})`;
     },
+    buildUtilReportMonthlyRows: context.buildUtilReportMonthlyRows,
+    getUtilReportMonthRange: context.getUtilReportMonthRange,
+    formatUtilReportMonthLong: context.formatUtilReportMonthLong,
+    formatUtilReportMonthShort: context.formatUtilReportMonthShort,
+    buildUtilReportProductionProductMonthlyValueMap: context.buildUtilReportProductionProductMonthlyValueMap,
+    parseUtilMonthValue: context.parseUtilMonthValue,
     setUtilSheetAnalysisRangeState(datasetKey = 'electric', fromValue = '', toValue = '') {
       config.UtilSheetAnalysisState[datasetKey].from = fromValue;
       config.UtilSheetAnalysisState[datasetKey].to = toValue;
@@ -403,7 +422,10 @@ test('report sheet analysis model registries build electric and gas analysis mod
         controlItems: ratioTables.map((table) => ({ key: `ratio-${table.key}`, title: table.title })),
         series: options.lineRatioSeries || []
       };
-    }
+    },
+    buildUtilReportMonthlyRows: context.buildUtilReportMonthlyRows,
+    formatUtilReportMonthLong: context.formatUtilReportMonthLong,
+    formatUtilReportMonthShort: context.formatUtilReportMonthShort
   });
 
   const electricModel = electricModelRegistry.buildUtilElectricAnalysisModel('2026-03', 'month', 'team-a');
@@ -443,6 +465,7 @@ test('report sheet analysis model registries build electric and gas analysis mod
 });
 
 test('kpi html loads report sheet analysis model scripts before analysis render and sheet.js', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
   const rangeRatioIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/range-ratio.js?v=053');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
@@ -451,7 +474,9 @@ test('kpi html loads report sheet analysis model scripts before analysis render 
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');
+  assert.ok(electricChartModelIndex > adapterIndex, 'analysis model registries must load after the runtime adapter');
   assert.ok(rangeRatioIndex > modalRenderIndex, 'analysis range-ratio must load after report sheet modal render');
   assert.ok(electricChartModelIndex > rangeRatioIndex, 'electric chart model must load after analysis range-ratio');
   assert.ok(electricModelIndex > electricChartModelIndex, 'electric analysis model must load after electric chart model');

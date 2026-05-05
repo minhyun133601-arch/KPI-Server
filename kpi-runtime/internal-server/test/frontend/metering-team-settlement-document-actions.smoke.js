@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 import { resolveMeteringBundleSourceUrl } from '../../src/lib/metering-bundle-draft.js';
 
+const adapterSource = await fs.readFile(
+  resolveMeteringBundleSourceUrl('runtime/browser-adapter.js'),
+  'utf8'
+);
 const teamSettlementDocumentActionsSource = await fs.readFile(
   resolveMeteringBundleSourceUrl('team-settlement/document-actions.js'),
   'utf8'
@@ -61,6 +65,9 @@ function createTeamSettlementDocumentActionsContext(options = {}) {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'metering/runtime/browser-adapter.js',
+  });
   vm.runInContext(teamSettlementDocumentActionsSource, context, {
     filename: 'team-settlement/document-actions.js',
   });
@@ -143,4 +150,9 @@ test('team settlement document actions download the current month billing docume
       resourceType: 'gas',
     },
   ]);
+});
+
+test('team settlement document actions route alerts through the adapter', () => {
+  assert.doesNotMatch(teamSettlementDocumentActionsSource, /window\./);
+  assert.match(teamSettlementDocumentActionsSource, /KpiMeteringBrowserAdapter/);
 });

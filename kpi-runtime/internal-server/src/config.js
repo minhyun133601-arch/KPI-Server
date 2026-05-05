@@ -35,11 +35,21 @@ function readInt(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function readPositiveInt(value, fallback) {
+  const parsed = readInt(value, fallback);
+  return parsed > 0 ? parsed : fallback;
+}
+
 function readBoolean(value, fallback = true) {
   if (value === undefined || value === null || String(value).trim() === '') {
     return fallback;
   }
   return String(value).toLowerCase() !== 'false';
+}
+
+function readOptionalString(value) {
+  const trimmed = String(value || '').trim();
+  return trimmed || null;
 }
 
 function resolveEnvFilePath(raw) {
@@ -96,9 +106,20 @@ export const config = {
   loginEnabled: readBoolean(process.env.KPI_LOGIN_ENABLED),
   cookieName: 'kpi_session',
   cookieSecret: process.env.KPI_COOKIE_SECRET || 'change-this-before-production',
+  cookieSecure: readBoolean(process.env.KPI_COOKIE_SECURE, false),
   sessionTtlHours: readInt(process.env.KPI_SESSION_TTL_HOURS, 12),
   sessionPruneIntervalMinutes: readInt(process.env.KPI_SESSION_PRUNE_INTERVAL_MINUTES, 30),
-  autoMigrate: readBoolean(process.env.KPI_AUTO_MIGRATE),
+  autoMigrate: readBoolean(process.env.KPI_AUTO_MIGRATE, false),
+  loginRateLimitEnabled: readBoolean(process.env.KPI_LOGIN_RATE_LIMIT_ENABLED, true),
+  loginRateLimitMaxAttempts: readPositiveInt(process.env.KPI_LOGIN_RATE_LIMIT_MAX_ATTEMPTS, 10),
+  loginRateLimitWindowMs: readPositiveInt(process.env.KPI_LOGIN_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
+  securityHeadersEnabled: readBoolean(process.env.KPI_SECURITY_HEADERS_ENABLED, true),
+  contentSecurityPolicy: readOptionalString(process.env.KPI_CONTENT_SECURITY_POLICY),
+  frameOptions: readOptionalString(process.env.KPI_FRAME_OPTIONS) || 'SAMEORIGIN',
+  permissionsPolicy:
+    readOptionalString(process.env.KPI_PERMISSIONS_POLICY) ||
+    'camera=(), microphone=(), geolocation=()',
+  strictTransportSecurityEnabled: readBoolean(process.env.KPI_HSTS_ENABLED, false),
   storageRoot: normalizeStorageRoot(process.env.KPI_STORAGE_ROOT),
   maxJsonBodyBytes: 30 * 1024 * 1024
 };

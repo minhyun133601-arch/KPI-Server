@@ -1,5 +1,6 @@
 (function initKpiWorkHistoryViewRenderPrint() {
-    const history = window.KpiWorkHistory;
+    const browser = KpiWorkHistoryBrowserAdapter;
+    const history = KpiWorkHistoryBrowserAdapter.getHistory();
     if (!history) return;
 
     const view = history.view || (history.view = {});
@@ -27,9 +28,9 @@
             ? '전체 팀 작업내역'
             : `${TeamInfo[state.currentTeam].name} 작업내역`;
         const dateLabel = buildPrintFilterLabel(state.currentTeam === view.OVERVIEW_KEY ? view.OVERVIEW_KEY : state.currentTeam);
-        const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=900');
+        const printWindow = browser.openPopup('', '_blank', 'noopener,noreferrer,width=1200,height=900');
         if (!printWindow) {
-            window.alert('팝업 허용 후 다시 시도해주세요.');
+            browser.alert('팝업 허용 후 다시 시도해주세요.');
             return;
         }
 

@@ -6,13 +6,18 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
+const adapterPath = path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.section.factory-adapter.js');
 const ownerSectionPath = path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.owner.js');
+const adapterSource = await fs.readFile(adapterPath, 'utf8');
 const ownerSectionSource = await fs.readFile(ownerSectionPath, 'utf8');
 
 function loadOwnerSection() {
   const context = {
     window: {},
   };
+  vm.runInNewContext(adapterSource, context, {
+    filename: adapterPath,
+  });
   vm.runInNewContext(ownerSectionSource, context, {
     filename: ownerSectionPath,
   });
@@ -39,4 +44,5 @@ test('owner section stays as a thin ops-console popup launcher', () => {
   assert.doesNotMatch(ownerSectionSource, /owner-demo-/);
   assert.doesNotMatch(ownerSectionSource, /data-owner-/);
   assert.doesNotMatch(ownerSectionSource, /<iframe/i);
+  assert.doesNotMatch(ownerSectionSource, /window\.KpiSectionFactories/);
 });

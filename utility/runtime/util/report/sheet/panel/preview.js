@@ -327,4 +327,4 @@
         buildUtilSheetPreviewModel,
         renderUtilSheetPanel
     };
-})(window);
+})(this);

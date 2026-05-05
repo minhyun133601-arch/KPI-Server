@@ -9,6 +9,10 @@ const runtimeEntryActionsSource = await fs.readFile(
   resolveMeteringBundleSourceUrl('runtime/entry-actions.js'),
   'utf8'
 );
+const browserAdapterSource = await fs.readFile(
+  resolveMeteringBundleSourceUrl('runtime/browser-adapter.js'),
+  'utf8'
+);
 
 function createMockInput(fieldKey, value = '') {
   return {
@@ -124,6 +128,9 @@ function createRuntimeEntryActionsContext(options = {}) {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(browserAdapterSource, context, {
+    filename: 'runtime/browser-adapter.js',
+  });
   vm.runInContext(runtimeEntryActionsSource, context, {
     filename: 'runtime/entry-actions.js',
   });
@@ -135,6 +142,11 @@ function createRuntimeEntryActionsContext(options = {}) {
     equipmentInputs,
   };
 }
+
+test('runtime entry actions host keeps browser globals behind the metering adapter', () => {
+  assert.doesNotMatch(runtimeEntryActionsSource, /\b(?:window\.|globalThis)\b/);
+  assert.match(runtimeEntryActionsSource, /KpiMeteringBrowserAdapter/);
+});
 
 test('runtime entry actions resets the equipment form and syncs derived UI state', () => {
   const { context, calls, equipmentInputs } = createRuntimeEntryActionsContext();

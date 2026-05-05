@@ -35,6 +35,12 @@ async function resolveModuleRecordPermissionKey(moduleKey, recordKey, existingRe
   return readStoredPermissionKey(loadedRecord);
 }
 
+/**
+ * Reads one module record after resolving its permission key.
+ *
+ * This route layer owns HTTP status and auth gating only; the repository owns DB
+ * access and the service layer owns write semantics.
+ */
 export async function handleGetModuleRecord(context, moduleKey, recordKey) {
   const { res, auth, url } = context;
   void url;
@@ -57,6 +63,12 @@ export async function handleGetModuleRecord(context, moduleKey, recordKey) {
   });
 }
 
+/**
+ * Writes one module record through optimistic version checking.
+ *
+ * Version conflicts return the current record metadata as HTTP 409 so browser
+ * runtimes can reload instead of silently overwriting another user's save.
+ */
 export async function handleUpsertModuleRecord(context, moduleKey, recordKey) {
   const { req, res, auth } = context;
   const body = await parseBody(req);

@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
@@ -48,6 +52,9 @@ function createElectricMeterModelContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js'
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js'
   });
@@ -64,6 +71,8 @@ test('report sheet electric meter model registry builds electric comparison mode
   const context = createElectricMeterModelContext();
   const registry = context.KPIUtilReportSheetElectricMeterModel;
 
+  assert.doesNotMatch(electricMeterModelSource, /globalThis|window\.|globalScope/);
+  assert.match(electricMeterModelSource, /KPIUtilReportRuntimeAdapter/);
   assert.ok(registry, 'report sheet electric meter model registry is missing');
 
   registry.setRuntimeAdapters({
@@ -202,13 +211,16 @@ test('report sheet electric meter model registry builds electric comparison mode
 });
 
 test('kpi html loads electric meter model after electric runtime sync and before electric comparison summary', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const tableRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/table-render.js?v=053');
   const runtimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/runtime-sync.js?v=053');
   const meterModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/meter-model.js?v=053');
   const comparisonSummaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=053');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(tableRenderIndex >= 0, 'report sheet electric table render loader is missing');
+  assert.ok(meterModelIndex > adapterIndex, 'report sheet electric meter model must load after report runtime adapter');
   assert.ok(runtimeSyncIndex > tableRenderIndex, 'report sheet electric runtime sync must load after electric table render');
   assert.ok(meterModelIndex > runtimeSyncIndex, 'report sheet electric meter model must load after electric runtime sync');
   assert.ok(comparisonSummaryIndex > meterModelIndex, 'report sheet electric comparison summary must load after electric meter model');

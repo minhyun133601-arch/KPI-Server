@@ -1,9 +1,27 @@
+function getSavePersistenceBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function setSavePersistenceTimeout(callback, delay = 0) {
+  const adapter = getSavePersistenceBrowserAdapter();
+  return typeof adapter?.setTimeout === "function" ? adapter.setTimeout(callback, delay) : null;
+}
+
+function clearSavePersistenceTimeout(timeoutId) {
+  const adapter = getSavePersistenceBrowserAdapter();
+  if (typeof adapter?.clearTimeout === "function") {
+    adapter.clearTimeout(timeoutId);
+  }
+}
+
 function clearEquipmentLocalAutosaveTimer() {
   if (!equipmentLocalAutosaveTimer) {
     return;
   }
 
-  window.clearTimeout(equipmentLocalAutosaveTimer);
+  clearSavePersistenceTimeout(equipmentLocalAutosaveTimer);
   equipmentLocalAutosaveTimer = 0;
 }
 
@@ -148,7 +166,7 @@ function scheduleEquipmentLocalAutosave() {
   }
 
   clearEquipmentLocalAutosaveTimer();
-  equipmentLocalAutosaveTimer = window.setTimeout(() => {
+  equipmentLocalAutosaveTimer = setSavePersistenceTimeout(() => {
     equipmentLocalAutosaveTimer = 0;
     saveEquipmentEntryDraftToLocalStore();
   }, 900);
@@ -452,5 +470,4 @@ function createFormSnapshot() {
     dayStatus: getCurrentEntryDayStatus(),
   });
 }
-
 

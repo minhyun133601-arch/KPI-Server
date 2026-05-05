@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -6,964 +6,565 @@
   <title>KPI Server Repository Map</title>
   <style>
     :root {
-      color-scheme: light;
       --bg: #f6f8fb;
       --surface: #ffffff;
-      --surface-soft: #f9fbff;
       --line: #d8e0ec;
-      --line-strong: #aeb9ca;
       --text: #172033;
       --muted: #5f6b7c;
       --blue: #2563eb;
-      --green: #16834a;
+      --green: #16803c;
       --violet: #7c3aed;
-      --amber: #b86b00;
-      --rose: #c02658;
-      --cyan: #008da6;
-      --slate: #64748b;
       --radius: 8px;
-      --shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
-      font-family: "Segoe UI", "Noto Sans KR", sans-serif;
     }
-    * { box-sizing: border-box; }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.45;
+      font-family: "Noto Sans KR", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.5;
     }
-    button,
-    input {
+
+    .page {
+      width: min(1180px, calc(100% - 28px));
+      margin: 24px auto;
+      display: grid;
+      gap: 14px;
+    }
+
+    header,
+    .panel {
       border: 1px solid var(--line);
       border-radius: var(--radius);
       background: var(--surface);
-      color: var(--text);
-      font: inherit;
     }
-    button {
-      min-height: 34px;
-      padding: 6px 10px;
-      font-weight: 800;
-      cursor: pointer;
+
+    header {
+      display: grid;
+      gap: 8px;
+      padding: 18px;
+      border-top: 4px solid var(--blue);
     }
-    button:hover {
-      border-color: var(--blue);
+
+    .eyebrow {
       color: var(--blue);
+      font-size: 0.75rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
-    input {
-      width: 100%;
-      min-height: 38px;
-      padding: 8px 10px;
-    }
+
     h1,
     h2,
     h3,
     p {
       margin: 0;
     }
-    .page {
-      width: min(1580px, calc(100% - 32px));
-      margin: 24px auto;
-    }
-    .header {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 20px;
-      align-items: start;
-      margin-bottom: 16px;
-    }
-    .title-block {
-      display: grid;
-      gap: 8px;
-    }
-    .eyebrow {
-      color: var(--blue);
-      font-size: 0.78rem;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
+
     h1 {
-      font-size: 2rem;
-      line-height: 1.1;
+      font-size: clamp(1.7rem, 3vw, 2.4rem);
+      letter-spacing: 0;
     }
-    .subtitle {
-      max-width: 940px;
+
+    .subtitle,
+    .panel-copy,
+    .role,
+    .history-detail {
       color: var(--muted);
-      font-size: 0.98rem;
     }
-    .header-tools {
-      display: grid;
-      gap: 10px;
-      justify-items: end;
+
+    .nav-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
     }
-    .language-toggle {
-      display: inline-flex;
-      width: fit-content;
-      gap: 4px;
+
+    .nav-row a,
+    button {
+      min-height: 34px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: var(--surface);
-      padding: 4px;
+      background: #fff;
+      color: var(--text);
+      padding: 7px 10px;
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 850;
+      text-decoration: none;
+      cursor: pointer;
     }
-    .language-button {
-      min-height: 30px;
-      border: 0;
-      background: transparent;
-      color: var(--muted);
-      font-size: 0.76rem;
-    }
-    .language-button.is-active {
-      background: #eff6ff;
+
+    .nav-row a:hover,
+    button:hover {
+      border-color: var(--blue);
       color: var(--blue);
     }
-    .status-grid {
+
+    .layout {
       display: grid;
-      grid-template-columns: repeat(4, minmax(118px, 1fr));
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-    .status-chip {
-      min-width: 0;
-      border: 1px solid var(--line);
-      border-left: 4px solid var(--blue);
-      border-radius: var(--radius);
-      background: var(--surface);
-      padding: 9px 10px;
-      box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
-    }
-    .status-chip.green { border-left-color: var(--green); }
-    .status-chip.amber { border-left-color: var(--amber); }
-    .status-chip.violet { border-left-color: var(--violet); }
-    .status-chip.rose { border-left-color: var(--rose); }
-    .status-chip.cyan { border-left-color: var(--cyan); }
-    .status-label {
-      display: block;
-      color: var(--muted);
-      font-size: 0.72rem;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-    .status-value {
-      display: block;
-      margin-top: 2px;
-      font-family: Consolas, "SFMono-Regular", monospace;
-      font-size: 0.88rem;
-      font-weight: 800;
-      word-break: break-word;
-    }
-    .workspace {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 420px;
+      grid-template-columns: minmax(0, 1.28fr) minmax(320px, 0.72fr);
       gap: 14px;
       align-items: start;
-      margin-top: 14px;
     }
-    .main-stack,
-    .side-stack {
-      display: grid;
-      gap: 14px;
-      min-width: 0;
-    }
+
     .panel {
-      min-width: 0;
-      border: 1px solid var(--line);
-      border-top: 4px solid var(--slate);
-      border-radius: var(--radius);
-      background: var(--surface);
-      box-shadow: var(--shadow);
       overflow: hidden;
+      border-top: 4px solid var(--green);
     }
-    .panel.blue { border-top-color: var(--blue); }
-    .panel.green { border-top-color: var(--green); }
-    .panel.violet { border-top-color: var(--violet); }
-    .panel.amber { border-top-color: var(--amber); }
-    .panel.rose { border-top-color: var(--rose); }
-    .panel.cyan { border-top-color: var(--cyan); }
+
+    .panel.history-panel {
+      border-top-color: var(--violet);
+    }
+
     .panel-head {
       display: grid;
       gap: 4px;
-      padding: 13px 14px 10px;
+      padding: 14px 16px;
       border-bottom: 1px solid var(--line);
-      background: var(--surface-soft);
+      background: #f9fbff;
     }
-    .panel-kicker {
-      color: var(--muted);
-      font-size: 0.72rem;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-    .panel h2 {
+
+    .panel-title {
       font-size: 1rem;
-      line-height: 1.25;
+      font-weight: 900;
     }
-    .panel-title-row {
+
+    .body {
+      padding: 14px 16px 16px;
+    }
+
+    .status-row {
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
+      gap: 6px;
+      margin-bottom: 10px;
     }
-    .source-chip {
+
+    .badge {
       display: inline-flex;
       align-items: center;
       min-height: 22px;
       border: 1px solid var(--line);
       border-radius: 999px;
+      background: #fff;
+      color: var(--muted);
       padding: 2px 8px;
-      background: #fff;
-      color: var(--muted);
       font-size: 0.72rem;
-      font-weight: 850;
-    }
-    .live-source {
-      color: var(--muted);
-      font-size: 0.78rem;
-      font-weight: 700;
-    }
-    .panel-body {
-      padding: 12px 14px 14px;
-    }
-    .toolbar {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto auto;
-      gap: 8px;
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--line);
-      background: #ffffff;
-    }
-    .tree-wrap {
-      max-height: calc(100vh - 300px);
-      min-height: 520px;
-      overflow: auto;
-      padding: 12px 14px 16px;
-    }
-    .tree-node {
-      margin: 0 0 6px;
-    }
-    details.tree-node > summary {
-      list-style: none;
-      cursor: pointer;
-    }
-    details.tree-node > summary::-webkit-details-marker {
-      display: none;
-    }
-    .node-row {
-      display: grid;
-      grid-template-columns: 22px minmax(0, 1fr) auto;
-      gap: 8px;
-      align-items: center;
-      min-height: 34px;
-      border: 1px solid var(--line);
-      border-left: 4px solid var(--slate);
-      border-radius: var(--radius);
-      background: #fff;
-      padding: 6px 8px 6px 6px;
-    }
-    .tree-node.blue > summary .node-row,
-    .tree-node.blue.leaf .node-row { border-left-color: var(--blue); }
-    .tree-node.green > summary .node-row,
-    .tree-node.green.leaf .node-row { border-left-color: var(--green); }
-    .tree-node.violet > summary .node-row,
-    .tree-node.violet.leaf .node-row { border-left-color: var(--violet); }
-    .tree-node.amber > summary .node-row,
-    .tree-node.amber.leaf .node-row { border-left-color: var(--amber); }
-    .tree-node.rose > summary .node-row,
-    .tree-node.rose.leaf .node-row { border-left-color: var(--rose); }
-    .tree-node.cyan > summary .node-row,
-    .tree-node.cyan.leaf .node-row { border-left-color: var(--cyan); }
-    .node-glyph {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 18px;
-      height: 18px;
-      border-radius: 5px;
-      background: #edf2f7;
-      color: var(--muted);
-      font-family: Consolas, "SFMono-Regular", monospace;
-      font-size: 0.75rem;
       font-weight: 900;
-    }
-    details[open] > summary .node-glyph {
-      background: #eff6ff;
-      color: var(--blue);
-    }
-    .node-main {
-      min-width: 0;
-      display: grid;
-      gap: 2px;
-    }
-    .node-name {
-      font-family: Consolas, "SFMono-Regular", monospace;
-      font-size: 0.85rem;
-      font-weight: 850;
-      word-break: break-word;
-    }
-    .node-name-line {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      align-items: center;
-      min-width: 0;
-    }
-    .node-purpose {
-      color: var(--muted);
-      font-size: 0.74rem;
-      font-weight: 750;
-    }
-    .node-path {
-      color: var(--muted);
-      font-family: Consolas, "SFMono-Regular", monospace;
-      font-size: 0.72rem;
-      word-break: break-word;
-    }
-    .node-meta {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      gap: 4px;
-    }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      min-height: 20px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 2px 7px;
-      background: #f8fafc;
-      color: var(--muted);
-      font-size: 0.7rem;
-      font-weight: 800;
       white-space: nowrap;
     }
-    .badge.status {
-      border-color: #fecdd3;
-      background: #fff1f2;
-      color: var(--rose);
-    }
-    .badge.updated {
+
+    .badge.live {
       border-color: #bfdbfe;
       background: #eff6ff;
       color: #1d4ed8;
     }
-    .children {
-      margin: 6px 0 0 18px;
+
+    .badge.patch {
+      border-color: #ddd6fe;
+      background: #f5f3ff;
+      color: #6d28d9;
+    }
+
+    .badge.data {
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+      color: #15803d;
+    }
+
+    .tree,
+    .tree ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .tree ul {
+      margin: 5px 0 3px 16px;
       padding-left: 12px;
-      border-left: 1px dashed var(--line-strong);
+      border-left: 1px solid var(--line);
     }
-    .mini-list,
-    .material-stack,
-    .policy-grid,
-    .history-stack,
-    .search-grid {
-      display: grid;
-      gap: 10px;
+
+    .tree li {
+      padding: 5px 0;
     }
-    .mini-item,
-    .material-card,
-    .policy-card,
-    .history-card,
-    .architecture-card,
-    .search-group,
-    .search-card {
-      display: grid;
-      gap: 6px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: 10px;
-      background: #fff;
-    }
-    .mini-title,
-    .card-title,
-    .material-title,
-    .policy-title,
-    .history-title,
-    .search-card-title,
-    .search-group-title {
-      font-size: 0.88rem;
-      font-weight: 850;
-      word-break: break-word;
-    }
-    .mini-title,
-    .card-title,
-    .material-title,
-    .search-card-title {
-      font-family: Consolas, "SFMono-Regular", monospace;
-    }
-    .mini-text,
-    .plain-list,
-    .card-copy,
-    .material-copy,
-    .policy-text,
-    .history-summary,
-    .history-boundary,
-    .search-card-copy,
-    .toolbar-note {
-      color: var(--muted);
-      font-size: 0.8rem;
-    }
-    .toolbar-note {
-      display: inline-flex;
-      align-items: center;
-      min-height: 34px;
-      font-weight: 700;
-    }
-    .search-toolbar {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .search-toolbar-meta {
+
+    .tree-actions {
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px 14px;
+      gap: 6px;
+      margin-bottom: 10px;
     }
-    .search-toggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--muted);
-      font-size: 0.8rem;
-      font-weight: 700;
-    }
-    .search-toggle input {
-      width: 16px;
-      height: 16px;
-      min-height: 16px;
-      margin: 0;
-    }
-    .search-hint {
-      color: var(--muted);
+
+    .tree-actions button {
+      min-height: 30px;
+      padding: 5px 9px;
       font-size: 0.76rem;
-      line-height: 1.5;
     }
-    .search-hint code {
-      color: var(--text);
-      font-family: Consolas, "SFMono-Regular", monospace;
-      font-size: 0.75rem;
-      font-weight: 800;
-    }
-    .architecture-screen-body {
+
+    .tree-row {
       display: grid;
-      gap: 14px;
-    }
-    .architecture-surface {
-      padding: 0;
-      overflow: hidden;
-    }
-    .architecture-surface > summary {
-      display: flex;
+      grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 12px 14px;
-      cursor: pointer;
-      list-style: none;
-    }
-    .architecture-surface > summary::-webkit-details-marker {
-      display: none;
-    }
-    .architecture-surface-summary {
+      gap: 10px;
       min-width: 0;
-      color: var(--muted);
-      font-size: 0.8rem;
-      font-weight: 700;
     }
-    .architecture-surface-toggle {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 28px;
-      min-height: 28px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--surface-soft);
-      color: var(--muted);
-      font-size: 0.95rem;
-      font-weight: 900;
-      line-height: 1;
-      transition: transform 160ms ease, color 160ms ease, border-color 160ms ease, background 160ms ease;
+
+    .tree-label {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px;
+      min-width: 0;
     }
-    .architecture-surface[open] .architecture-surface-toggle {
+
+    .tree-toggle {
+      flex: 0 0 auto;
+      width: 24px;
+      min-width: 24px;
+      min-height: 24px;
       border-color: #bfdbfe;
       background: #eff6ff;
       color: var(--blue);
-      transform: rotate(90deg);
-    }
-    .architecture-surface-body {
-      display: grid;
-      gap: 14px;
-      padding: 0 14px 14px;
-      border-top: 1px solid var(--line);
-    }
-    .panel-disclosure {
       padding: 0;
-      overflow: hidden;
-    }
-    .panel-disclosure > summary {
-      list-style: none;
-      cursor: pointer;
-    }
-    .panel-disclosure > summary::-webkit-details-marker {
-      display: none;
-    }
-    .panel-summary {
-      border-bottom: 0;
-    }
-    .panel-summary-row {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .panel-summary-copy {
-      display: grid;
-      gap: 4px;
-      min-width: 0;
-    }
-    .panel-summary-toggle,
-    .history-card-toggle {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 28px;
-      min-height: 28px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--surface-soft);
-      color: var(--muted);
-      font-size: 0.95rem;
-      font-weight: 900;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 0.78rem;
       line-height: 1;
-      transition: transform 160ms ease, color 160ms ease, border-color 160ms ease, background 160ms ease;
     }
-    .panel-disclosure[open] .panel-summary-toggle,
-    .history-card[open] .history-card-toggle {
-      border-color: #bfdbfe;
-      background: #eff6ff;
-      color: var(--blue);
-      transform: rotate(90deg);
+
+    .tree-toggle[aria-expanded="true"]::before {
+      content: "v";
     }
-    .panel-section-body {
-      border-top: 1px solid var(--line);
+
+    .tree-toggle[aria-expanded="false"]::before {
+      content: ">";
     }
-    .search-group-head {
+
+    .tree-leaf {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding-bottom: 8px;
-      border-bottom: 1px dashed var(--line);
-    }
-    .search-group-list {
-      display: grid;
-      gap: 8px;
-    }
-    .search-card-kind,
-    .card-preview-label {
-      color: var(--muted);
-      font-size: 0.72rem;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-    .search-card-path {
-      color: var(--muted);
-      font-family: Consolas, "SFMono-Regular", monospace;
-      font-size: 0.74rem;
-      word-break: break-word;
-    }
-    .search-chip-row,
-    .card-preview-row {
-      display: flex;
-      flex-wrap: wrap;
+      align-items: baseline;
       gap: 6px;
+      min-width: 0;
     }
-    .plain-list {
-      display: grid;
-      gap: 7px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
+
+    .tree-children {
+      margin: 5px 0 3px 16px;
+      padding-left: 12px;
+      border-left: 1px solid var(--line);
     }
-    .plain-list code {
-      color: var(--text);
+
+    .path {
       font-family: Consolas, "SFMono-Regular", monospace;
-      font-weight: 850;
-    }
-    .architecture-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 10px;
-    }
-    .architecture-card {
-      padding: 0;
-      overflow: hidden;
-    }
-    .architecture-card > summary {
-      display: grid;
-      gap: 10px;
-      padding: 10px;
-      cursor: pointer;
-      list-style: none;
-    }
-    .architecture-card > summary::-webkit-details-marker {
-      display: none;
-    }
-    .architecture-card-summary-row {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .architecture-card-toggle {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 28px;
-      min-height: 28px;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--surface-soft);
-      color: var(--muted);
-      font-size: 0.95rem;
       font-weight: 900;
-      line-height: 1;
-      transition: transform 160ms ease, color 160ms ease, border-color 160ms ease, background 160ms ease;
+      overflow-wrap: anywhere;
     }
-    .architecture-card[open] .architecture-card-toggle {
-      border-color: #bfdbfe;
-      background: #eff6ff;
-      color: var(--blue);
-      transform: rotate(90deg);
+
+    .role {
+      font-size: 0.84rem;
+      font-weight: 650;
     }
-    .architecture-card-body {
+
+    .history-list {
       display: grid;
-      gap: 8px;
-      padding: 0 10px 10px;
-      border-top: 1px dashed var(--line);
-    }
-    .architecture-card.blue,
-    .policy-card.blue,
-    .search-card.blue { border-left: 4px solid var(--blue); }
-    .architecture-card.green,
-    .policy-card.green,
-    .search-card.green { border-left: 4px solid var(--green); }
-    .architecture-card.violet,
-    .policy-card.violet,
-    .search-card.violet { border-left: 4px solid var(--violet); }
-    .architecture-card.amber,
-    .policy-card.amber,
-    .search-card.amber { border-left: 4px solid var(--amber); }
-    .architecture-card.rose,
-    .policy-card.rose,
-    .search-card.rose { border-left: 4px solid var(--rose); }
-    .architecture-card.cyan,
-    .policy-card.cyan,
-    .search-card.cyan { border-left: 4px solid var(--cyan); }
-    .architecture-card.slate,
-    .policy-card.slate,
-    .search-card.slate { border-left: 4px solid var(--slate); }
-    .card-head,
-    .material-head {
-      display: grid;
-      gap: 4px;
-      min-width: 0;
-    }
-    .card-path,
-    .material-path,
-    .history-label,
-    .material-kicker,
-    .policy-kicker {
-      font-size: 0.72rem;
-    }
-    .card-path,
-    .material-path {
-      color: var(--muted);
-      font-family: Consolas, "SFMono-Regular", monospace;
-      word-break: break-word;
-    }
-    .material-kicker,
-    .policy-kicker,
-    .history-label {
-      color: var(--muted);
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-    .card-meta,
-    .material-meta,
-    .policy-chips,
-    .history-chip-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-    .card-preview {
-      display: grid;
-      gap: 6px;
-      padding-top: 8px;
-      border-top: 1px dashed var(--line);
-    }
-    .history-card {
-      padding: 0;
-      overflow: hidden;
-    }
-    .history-card > summary {
-      display: grid;
-      gap: 8px;
-      padding: 10px;
-      cursor: pointer;
-      list-style: none;
-    }
-    .history-card > summary::-webkit-details-marker {
-      display: none;
-    }
-    .history-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
       gap: 10px;
     }
-    .history-date {
-      color: var(--muted);
-      font-size: 0.72rem;
-      font-weight: 800;
-    }
-    .history-head-copy {
-      display: grid;
-      gap: 4px;
-      min-width: 0;
-    }
-    .history-card-body {
-      display: grid;
-      gap: 8px;
-      padding: 0 10px 10px;
-      border-top: 1px dashed var(--line);
-    }
-    .history-section {
+
+    .history-entry {
       display: grid;
       gap: 6px;
-      padding-top: 10px;
-      border-top: 1px dashed var(--line);
-    }
-    .history-card-body .history-section:first-child {
-      padding-top: 0;
-      border-top: 0;
-    }
-    .history-chip {
-      display: inline-flex;
-      align-items: center;
-      min-height: 22px;
       border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 2px 8px;
-      background: #f8fafc;
-      color: var(--text);
-      font-family: Consolas, "SFMono-Regular", monospace;
-      font-size: 0.72rem;
-      font-weight: 800;
-      word-break: break-word;
-    }
-    .empty {
-      border: 1px dashed var(--line-strong);
+      border-left: 4px solid var(--violet);
       border-radius: var(--radius);
-      padding: 14px;
-      color: var(--muted);
+      padding: 11px 12px;
       background: #fff;
+    }
+
+    .history-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .history-entry h3 {
+      font-size: 0.95rem;
+      letter-spacing: 0;
+    }
+
+    .history-entry p,
+    .history-detail {
+      font-size: 0.82rem;
+    }
+
+    .feedback {
+      color: var(--muted);
+      font-size: 0.84rem;
       font-weight: 700;
     }
-    @media (max-width: 1240px) {
-      .workspace {
+
+    @media (max-width: 880px) {
+      .layout {
         grid-template-columns: 1fr;
-      }
-    }
-    @media (max-width: 1100px) {
-      .header {
-        grid-template-columns: 1fr;
-      }
-      .header-tools {
-        justify-items: stretch;
-      }
-      .search-toolbar {
-        grid-template-columns: 1fr;
-      }
-      .search-toolbar-meta {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .architecture-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-    @media (max-width: 760px) {
-      .page {
-        width: min(100% - 20px, 1580px);
-        margin: 12px auto;
-      }
-      .status-grid,
-      .toolbar {
-        grid-template-columns: 1fr;
-      }
-      .language-toggle {
-        width: 100%;
-      }
-      .language-button {
-        flex: 1 1 0;
-      }
-      .tree-wrap {
-        max-height: none;
-        min-height: 420px;
-      }
-      .architecture-grid {
-        grid-template-columns: 1fr;
-      }
-      .node-row {
-        grid-template-columns: 22px minmax(0, 1fr);
-      }
-      .node-meta {
-        grid-column: 2;
-        justify-content: flex-start;
       }
     }
   </style>
 </head>
 <body>
   <main class="page">
-    <header class="header">
-      <div class="title-block">
-        <div class="eyebrow" data-i18n="eyebrow">KPI Server</div>
-        <h1 data-i18n="title">Repository Map</h1>
-        <p class="subtitle" data-i18n="subtitle">See the live tree, recent changes, and patch history in one place.</p>
-      </div>
-      <div class="header-tools">
-        <div class="language-toggle" aria-label="Language">
-          <button class="language-button is-active" type="button" data-language="ko" aria-pressed="true">한국어</button>
-          <button class="language-button" type="button" data-language="en" aria-pressed="false">English</button>
-        </div>
-      </div>
+    <header>
+      <div class="eyebrow">KPI Server</div>
+      <h1>Repository Map</h1>
+      <p class="subtitle">폴더 구조와 날짜별 패치 이력만 보여주는 저장소 지도입니다. DB/Storage와 데이터 흐름은 Data Path 탭에서 관리합니다.</p>
+      <nav class="nav-row" aria-label="Repository map links">
+        <a href="/data-reference-map.html">Data Path</a>
+        <button id="refreshButton" type="button">Refresh folder map</button>
+      </nav>
     </header>
 
-    <section class="status-grid" aria-label="Current repository status">
-      <div class="status-chip"><span class="status-label" data-i18n="runtimePort">Runtime</span><span class="status-value">3100 / login</span></div>
-      <div class="status-chip green"><span class="status-label" data-i18n="opsPort">Ops console</span><span class="status-value">3215-3218</span></div>
-      <div class="status-chip amber"><span class="status-label" data-i18n="dbPort">DB</span><span class="status-value">5434</span></div>
-      <div class="status-chip violet"><span class="status-label" data-i18n="verifyPort">Verification</span><span class="status-value">3192</span></div>
-      <div class="status-chip cyan"><span class="status-label" data-i18n="directoriesLabel">Directories</span><span class="status-value" data-stat="directories">-</span></div>
-      <div class="status-chip cyan"><span class="status-label" data-i18n="filesLabel">Files</span><span class="status-value" data-stat="files">-</span></div>
-      <div class="status-chip rose"><span class="status-label" data-i18n="changedLabel">Git changes</span><span class="status-value" data-stat="dirty">-</span></div>
-      <div class="status-chip"><span class="status-label" data-i18n="generatedLabel">Generated</span><span class="status-value" data-stat="generated">-</span></div>
-    </section>
-
-    <article class="panel violet architecture-screen">
-      <div class="panel-head">
-        <div class="panel-kicker" data-i18n="architectureKicker">repository blueprint</div>
-        <h2 data-i18n="architectureTitle">Total Architecture</h2>
-        <p class="live-source" data-i18n="architectureSubtitle">Search by feature, file, or patch history while scanning the full repository architecture.</p>
-      </div>
-      <div class="toolbar search-toolbar">
-        <input id="mapSearch" type="search" data-i18n-placeholder="searchPlaceholder" placeholder="Search features, files, or patch history" />
-        <div class="search-toolbar-meta">
-          <label class="search-toggle">
-            <input id="includeDescendantsToggle" type="checkbox" />
-            <span data-i18n="includeDescendantsLabel">Include child files and paths</span>
-          </label>
-          <span class="search-hint" data-i18n="searchHelp">Examples: area:kpi-runtime path:internal-server/src file:request-router.js history:owner status:dirty</span>
+    <section class="layout">
+      <article class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Folder Structure</h2>
+          <p class="panel-copy">Live owner-console API를 우선 사용하고, API가 없으면 정적 구조를 표시합니다.</p>
         </div>
-      </div>
-      <details id="architectureSurface" class="panel-body architecture-screen-body architecture-surface">
-        <summary>
-          <span id="searchSummary" class="architecture-surface-summary" data-i18n="searchSummaryIdle">Search by feature, file path, or patch history.</span>
-          <span class="architecture-surface-toggle" aria-hidden="true">›</span>
-        </summary>
-        <div class="architecture-surface-body">
-          <div id="searchResults" class="search-grid" hidden></div>
-          <div id="architectureList" class="architecture-grid">
-            <div class="empty" data-i18n="loading">Loading repository map.</div>
+        <div class="body">
+          <div class="status-row">
+            <span id="sourceBadge" class="badge live">loading</span>
+            <span class="badge data">Repository tab only</span>
           </div>
+          <div class="tree-actions" aria-label="Folder tree controls">
+            <button id="expandAllButton" type="button">Expand all</button>
+            <button id="collapseAllButton" type="button">Collapse all</button>
+          </div>
+          <div id="treeFeedback" class="feedback">Loading repository map.</div>
+          <div id="treeHost"></div>
         </div>
-      </details>
-    </article>
+      </article>
 
-    <section class="workspace">
-      <div class="main-stack">
-        <article class="panel blue">
-          <div class="panel-head">
-            <div class="panel-kicker" data-i18n="liveKicker">Live repository structure</div>
-            <h2 class="panel-title-row">
-              <span data-i18n="treeTitle">Current Tree</span>
-              <span class="source-chip" id="sourceChip" data-i18n="sourceChecking">checking</span>
-            </h2>
-            <p class="live-source" id="sourceText" data-i18n="sourceLoading">Loading the local ops-console repository map API.</p>
-          </div>
-          <div class="toolbar">
-            <div class="toolbar-note" data-i18n="treeFilterNote">The live tree follows the repository search above.</div>
-            <button id="expandAllButton" type="button" data-i18n="expandAll">Expand all</button>
-            <button id="collapseAllButton" type="button" data-i18n="collapseAll">Collapse all</button>
-          </div>
-          <div id="treeRoot" class="tree-wrap" aria-live="polite">
-            <div class="empty" data-i18n="loading">Loading repository map.</div>
-          </div>
-        </article>
-
-      </div>
-
-      <aside class="side-stack">
-        <article class="panel green">
-          <details id="recentSurface" class="panel-disclosure">
-            <summary class="panel-head panel-summary">
-              <div class="panel-summary-row">
-                <div class="panel-summary-copy">
-                  <div class="panel-kicker" data-i18n="recentKicker">recent and changed</div>
-                  <h2 data-i18n="recentTitle">Recent / Added / Modified</h2>
-                </div>
-                <span class="panel-summary-toggle" aria-hidden="true">›</span>
-              </div>
-            </summary>
-            <div id="recentList" class="panel-body panel-section-body mini-list">
-              <div class="empty" data-i18n="loading">Loading repository map.</div>
-            </div>
-          </details>
-        </article>
-
-        <article class="panel rose">
-          <details id="safetySurface" class="panel-disclosure">
-            <summary class="panel-head panel-summary">
-              <div class="panel-summary-row">
-                <div class="panel-summary-copy">
-                  <div class="panel-kicker" data-i18n="safetyKicker">safety boundary</div>
-                  <h2 data-i18n="safetyTitle">Hidden from this map</h2>
-                </div>
-                <span class="panel-summary-toggle" aria-hidden="true">›</span>
-              </div>
-            </summary>
-            <div class="panel-body panel-section-body">
-              <ul class="plain-list">
-                <li><code>.env*</code> <span data-i18n="hideEnv">secret files</span></li>
-                <li><code>var/</code>, <code>logs</code>, <code>*.dump</code> <span data-i18n="hideRuntime">runtime artifacts</span></li>
-                <li><code>node_modules/</code>, <code>dist/</code>, <code>coverage/</code> <span data-i18n="hideGenerated">install and build outputs</span></li>
-                <li><code>work-log</code>, <code>team-report/work-log/teams</code> <span data-i18n="hidePrivate">private work contents</span></li>
-                <li><code>*.pdf</code>, <code>*.xlsx</code>, <code>*.jpg</code> <span data-i18n="hideAttachments">attachments and binary files</span></li>
-              </ul>
-            </div>
-          </details>
-        </article>
-
-        <article class="panel amber">
-          <details id="historySurface" class="panel-disclosure">
-            <summary class="panel-head panel-summary">
-              <div class="panel-summary-row">
-                <div class="panel-summary-copy">
-                  <div class="panel-kicker" data-i18n="historyKicker">records</div>
-                  <h2 data-i18n="historyTitle">Change history</h2>
-                </div>
-                <span class="panel-summary-toggle" aria-hidden="true">›</span>
-              </div>
-            </summary>
-            <div id="historyList" class="panel-body panel-section-body history-stack"></div>
-          </details>
-        </article>
+      <aside class="panel history-panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Patch History</h2>
+          <p class="panel-copy">하루 단위 공개 이력만 기록합니다.</p>
+        </div>
+        <div class="body">
+          <div id="historyHost" class="history-list"></div>
+        </div>
       </aside>
     </section>
   </main>
-  <script src="/repository-map.js" defer></script>
+
+  <script src="/repository-map-data.js"></script>
+  <script>
+    const staticTree = window.KPI_REPOSITORY_MAP_STATIC_TREE || [];
+    const historyFiles = window.KPI_REPOSITORY_MAP_HISTORY_FILES || [];
+    let historyLoadError = '';
+    const isOwnerPage = window.location.pathname.startsWith('/owner/repository-map');
+    const ownerMapApiBasePath = isOwnerPage ? '/api/owner/repository-map' : '/api/repository-map';
+    const sourceBadge = document.getElementById('sourceBadge');
+    const treeFeedback = document.getElementById('treeFeedback');
+    const treeHost = document.getElementById('treeHost');
+    const historyHost = document.getElementById('historyHost');
+    const expandAllButton = document.getElementById('expandAllButton');
+    const collapseAllButton = document.getElementById('collapseAllButton');
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function normalizeLiveNode(node) {
+      return {
+        path: node?.path || node?.name || '',
+        role: node?.descKo || node?.desc || node?.labelKo || node?.label || '',
+        children: Array.isArray(node?.children) ? node.children.map(normalizeLiveNode) : [],
+      };
+    }
+
+    function shouldShowNodeRole(node, depth) {
+      return Boolean(node?.role) && depth <= 1;
+    }
+
+    function renderTree(nodes, depth = 0) {
+      const items = (Array.isArray(nodes) ? nodes : []).map((node) => {
+        const hasChildren = Array.isArray(node.children) && node.children.length;
+        const isOpen = depth === 0;
+        const role = shouldShowNodeRole(node, depth) ? node.role : '';
+        const row = `
+          <div class="tree-label">
+            <span class="path">${escapeHtml(node.path)}</span>
+            ${role ? `<span class="role">${escapeHtml(role)}</span>` : ''}
+          </div>
+        `;
+        if (hasChildren) {
+          const toggleLabel = `Toggle ${node.path}`;
+          return `
+            <li>
+              <div class="tree-row tree-branch-row">
+                ${row}
+                <button class="tree-toggle" type="button" aria-expanded="${isOpen ? 'true' : 'false'}" aria-label="${escapeHtml(toggleLabel)}"></button>
+              </div>
+              <div class="tree-children" ${isOpen ? '' : 'hidden'}>
+                ${renderTree(node.children, depth + 1)}
+              </div>
+            </li>
+          `;
+        }
+        return `
+          <li>
+            <div class="tree-leaf">${row}</div>
+          </li>
+        `;
+      }).join('');
+      return `<ul class="tree">${items}</ul>`;
+    }
+
+    function setTreeOpenState(isOpen) {
+      treeHost.querySelectorAll('.tree-toggle').forEach((toggle) => {
+        toggle.setAttribute('aria-expanded', String(Boolean(isOpen)));
+        const children = toggle.closest('li')?.querySelector(':scope > .tree-children');
+        if (children) children.hidden = !isOpen;
+      });
+    }
+
+    function toggleTreeBranch(toggle) {
+      const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!isOpen));
+      const children = toggle.closest('li')?.querySelector(':scope > .tree-children');
+      if (children) children.hidden = isOpen;
+    }
+
+    function renderHistory() {
+      const dailyHistory = window.KPI_REPOSITORY_MAP_DAILY_HISTORY || [];
+      if (!dailyHistory.length) {
+        const message = historyLoadError || 'No monthly patch history loaded.';
+        historyHost.innerHTML = `<div class="feedback">${escapeHtml(message)}</div>`;
+        return;
+      }
+      historyHost.innerHTML = dailyHistory.map((entry) => `
+        <article class="history-entry">
+          <div class="history-meta">
+            <span class="badge live">${escapeHtml(entry.date)}</span>
+            <span class="badge patch">${escapeHtml(entry.tag)}</span>
+          </div>
+          <h3>${escapeHtml(entry.title)}</h3>
+          <p>${escapeHtml(entry.summary)}</p>
+          <div class="history-detail">${escapeHtml(entry.detail)}</div>
+        </article>
+      `).join('');
+    }
+
+    function resolveHistoryScriptPath(sourcePath) {
+      const normalizedPath = String(sourcePath || '').trim();
+      if (isOwnerPage && normalizedPath.startsWith('/repository-map-history/')) {
+        return normalizedPath.replace('/repository-map-history/', '/owner/repository-map-history/');
+      }
+      return normalizedPath;
+    }
+
+    function loadScript(sourcePath) {
+      return new Promise((resolve, reject) => {
+        const normalizedPath = resolveHistoryScriptPath(sourcePath);
+        if (!normalizedPath) {
+          resolve();
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = normalizedPath;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`Failed to load ${normalizedPath}`));
+        document.head.appendChild(script);
+      });
+    }
+
+    async function loadHistoryScripts() {
+      for (const sourcePath of historyFiles) {
+        await loadScript(sourcePath);
+      }
+    }
+
+    function getRepositoryMapEndpoints() {
+      const host = String(window.location.hostname || '').trim();
+      const port = isOwnerPage ? '3100' : '3215';
+      return Array.from(new Set([
+        host ? `http://${host}:${port}${ownerMapApiBasePath}` : '',
+        `http://127.0.0.1:${port}${ownerMapApiBasePath}`,
+        `http://localhost:${port}${ownerMapApiBasePath}`,
+        'http://127.0.0.1:3215/api/repository-map',
+        'http://localhost:3215/api/repository-map',
+        'http://127.0.0.1:3100/api/owner/repository-map',
+        'http://localhost:3100/api/owner/repository-map',
+      ].filter(Boolean)));
+    }
+
+    async function fetchRepositoryMap() {
+      const errors = [];
+      for (const endpoint of getRepositoryMapEndpoints()) {
+        try {
+          const response = await fetch(endpoint, { cache: 'no-store' });
+          const payload = await response.json();
+          if (response.ok && payload?.ok === true && payload.tree) {
+            return { endpoint, tree: [normalizeLiveNode(payload.tree)] };
+          }
+          errors.push(`${endpoint}: ${payload?.error || response.status}`);
+        } catch (error) {
+          errors.push(`${endpoint}: ${error.message}`);
+        }
+      }
+      throw new Error(errors.join(' / '));
+    }
+
+    async function loadTree() {
+      sourceBadge.textContent = 'loading';
+      treeFeedback.textContent = 'Loading repository map.';
+      try {
+        const result = await fetchRepositoryMap();
+        sourceBadge.textContent = 'live';
+        treeFeedback.textContent = `Loaded from ${result.endpoint}`;
+        treeHost.innerHTML = renderTree(result.tree);
+      } catch (error) {
+        sourceBadge.textContent = 'static';
+        treeFeedback.textContent = 'Live API unavailable. Showing static repository structure.';
+        treeHost.innerHTML = renderTree(staticTree);
+      }
+    }
+
+    document.getElementById('refreshButton')?.addEventListener('click', () => {
+      void loadTree();
+    });
+
+    treeHost.addEventListener('click', (event) => {
+      const toggle = event.target.closest('.tree-toggle');
+      if (!toggle) return;
+      toggleTreeBranch(toggle);
+    });
+
+    expandAllButton?.addEventListener('click', () => {
+      setTreeOpenState(true);
+    });
+
+    collapseAllButton?.addEventListener('click', () => {
+      setTreeOpenState(false);
+    });
+
+    async function initialize() {
+      try {
+        await loadHistoryScripts();
+      } catch (error) {
+        historyLoadError = error.message;
+      }
+      renderHistory();
+      await loadTree();
+    }
+
+    void initialize();
+  </script>
 </body>
 </html>

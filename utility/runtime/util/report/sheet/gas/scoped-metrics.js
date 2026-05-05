@@ -1,5 +1,12 @@
-(function registerUtilReportSheetGasScopedMetrics(globalScope) {
-    if (globalScope.KPIUtilReportSheetGasScopedMetrics) {
+(function registerUtilReportSheetGasScopedMetrics() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/gas/scoped-metrics.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetGasScopedMetrics')) {
         return;
     }
 
@@ -73,7 +80,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetGasScopedMetrics;
+        return api;
     }
 
     function getGasEntries() {
@@ -404,7 +411,7 @@
         return metricMap;
     }
 
-    globalScope.KPIUtilReportSheetGasScopedMetrics = Object.freeze({
+    const api = Object.freeze({
         setRuntimeAdapters,
         getUtilGasAnalysisProductionStartDay,
         getUtilGasMeterProductionOptions,
@@ -420,4 +427,5 @@
         getUtilGasAnalysisBukjeongBillingAmount,
         buildUtilGasAnalysisMetricMap
     });
-})(globalThis);
+    runtimeAdapter.exportApi('KPIUtilReportSheetGasScopedMetrics', api);
+})();

@@ -26,6 +26,7 @@ assert.ok(renderersPath, 'work renderers source is missing');
 
 const workDir = path.dirname(renderersPath);
 const renderSourcePaths = [
+  path.join(workDir, 'KPI.work.browser-adapter.js'),
   path.join(workDir, 'KPI.work.renderers.weekly-actions.js'),
   path.join(workDir, 'KPI.work.renderers.print.js'),
   path.join(workDir, 'KPI.work.renderers.monthly-plan.js'),
@@ -38,6 +39,11 @@ const renderSources = await Promise.all(
     source: await fs.readFile(targetPath, 'utf8'),
   }))
 );
+const renderersSource = renderSources.find((entry) => entry.filename === 'KPI.work.renderers.js')?.source || '';
+const weeklyActionsSource = renderSources.find(
+  (entry) => entry.filename === 'KPI.work.renderers.weekly-actions.js'
+)?.source || '';
+const printSource = renderSources.find((entry) => entry.filename === 'KPI.work.renderers.print.js')?.source || '';
 
 const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
 
@@ -355,7 +361,7 @@ function createContext() {
     vm.runInContext(source, context, { filename });
   });
 
-  return { context, contentContainer, printSheet, clickedAnchors };
+  return { context, contentContainer, printSheet, clickedAnchors, localUrls };
 }
 
 test('work renderers split files expose weekly, monthly, and print helpers together', () => {
@@ -386,7 +392,7 @@ test('work renderers split files render weekly and monthly content after loading
 });
 
 test('work renderers export helper downloads a js bootstrap payload', async () => {
-  const { context, clickedAnchors } = createContext();
+  const { context, clickedAnchors, localUrls } = createContext();
 
   const didExport = await context.workExport('work_demo');
 
@@ -394,6 +400,13 @@ test('work renderers export helper downloads a js bootstrap payload', async () =
   assert.equal(clickedAnchors.length, 1);
   assert.match(clickedAnchors[0].download, /work_demo/);
   assert.match(clickedAnchors[0].href, /^blob:/);
+  assert.equal(localUrls.length, 1);
+  assert.doesNotMatch(weeklyActionsSource, /window\./);
+  assert.equal(typeof context.KpiWorkBrowserAdapter.buildPortalDataBootstrapScript, 'function');
+  const bootstrapScript = await localUrls[0].text();
+  assert.match(bootstrapScript, /\(function bootstrapWorkPortalData\(\)\{/);
+  assert.match(bootstrapScript, /window\.PortalData = window\.PortalData \|\| \{\};/);
+  assert.match(bootstrapScript, /window\.PortalData\["work_demo"\]/);
 });
 
 test('work renderers print helper populates the print sheet and triggers print', () => {
@@ -406,16 +419,31 @@ test('work renderers print helper populates the print sheet and triggers print',
   assert.equal(context.printCalls, 1);
 });
 
+test('work renderers print helper uses the browser adapter for print access', () => {
+  const { context } = createContext();
+
+  assert.equal(typeof context.KpiWorkBrowserAdapter.printWindow, 'function');
+  assert.doesNotMatch(printSource, /window\./);
+});
+
+test('work renderers route history rendering through the browser adapter', () => {
+  assert.doesNotMatch(renderersSource, /window\.KpiWorkHistory/);
+});
+
 test('kpi html loads work renderer split files before work runtime bootstrap', () => {
   const weeklyActionsIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.weekly-actions.js?v=1');
   const printIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.print.js?v=1');
   const monthlyPlanIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.monthly-plan.js?v=1');
+  const adapterIndex = kpiHtml.indexOf('runtime/work/KPI.work.browser-adapter.js?v=1');
   const renderersIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.js?v=1');
   const workRuntimeIndex = kpiHtml.indexOf('runtime/work/KPI.work.runtime.js?v=228');
 
+  assert.ok(adapterIndex >= 0, 'work browser adapter loader is missing');
   assert.ok(weeklyActionsIndex >= 0, 'work renderer weekly actions loader is missing');
+  assert.ok(weeklyActionsIndex > adapterIndex, 'work renderer weekly actions must load after browser adapter');
   assert.ok(printIndex > weeklyActionsIndex, 'work renderer print helper must load after weekly actions');
   assert.ok(monthlyPlanIndex > printIndex, 'work renderer monthly plan must load after print helper');
+  assert.ok(renderersIndex > adapterIndex, 'work renderers shell must load after browser adapter');
   assert.ok(renderersIndex > monthlyPlanIndex, 'work renderers shell must load after split helpers');
   assert.ok(workRuntimeIndex > renderersIndex, 'work runtime bootstrap must load after work renderers');
 });

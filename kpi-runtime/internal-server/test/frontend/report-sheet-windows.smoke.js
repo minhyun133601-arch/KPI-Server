@@ -3,12 +3,20 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
 );
 const reportSheetWindowDetachedInteractionsSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/windows/detached-interactions.js', import.meta.url),
+  'utf8'
+);
+const reportSheetWindowShellsSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/sheet/windows/shells.js', import.meta.url),
   'utf8'
 );
 const reportSheetWindowsSource = await fs.readFile(
@@ -39,6 +47,8 @@ function createHeadDocument() {
   };
 }
 function createReportSheetWindowsContext() {
+  const alerts = [];
+  const openedWindows = [];
   const context = {
     console,
     Intl,
@@ -50,8 +60,11 @@ function createReportSheetWindowsContext() {
     Set,
     Map,
     document: createHeadDocument(),
-    alert() {},
-    open() {
+    alert(message) {
+      alerts.push(message);
+    },
+    open(url, target, features) {
+      openedWindows.push({ url, target, features });
       return null;
     },
     screen: {
@@ -60,15 +73,23 @@ function createReportSheetWindowsContext() {
       width: 1920,
       height: 1080,
     },
+    __alerts: alerts,
+    __openedWindows: openedWindows,
   };
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js',
   });
   vm.runInContext(reportSheetWindowDetachedInteractionsSource, context, {
     filename: 'KPI.util.report.sheet.window.detached-interactions.js',
+  });
+  vm.runInContext(reportSheetWindowShellsSource, context, {
+    filename: 'KPI.util.report.sheet.window.shells.js',
   });
   vm.runInContext(reportSheetWindowsSource, context, {
     filename: 'KPI.util.report.sheet.windows.js',
@@ -77,7 +98,14 @@ function createReportSheetWindowsContext() {
 }
 test('report sheet windows registry builds detached/chart shells and closes detached state safely', () => {
   const context = createReportSheetWindowsContext();
+  assert.doesNotMatch(reportSheetWindowDetachedInteractionsSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetWindowDetachedInteractionsSource, /KPIUtilReportRuntimeAdapter/);
+  assert.doesNotMatch(reportSheetWindowShellsSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetWindowShellsSource, /KPIUtilReportRuntimeAdapter/);
+  assert.doesNotMatch(reportSheetWindowsSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetWindowsSource, /KPIUtilReportRuntimeAdapter/);
   assert.ok(context.KPIUtilReportSheetWindowDetachedInteractions);
+  assert.ok(context.KPIUtilReportSheetWindowShells);
   const windows = context.KPIUtilReportSheetWindows;
   const config = context.KPIUtilReportSheetConfig;
   windows.setRuntimeAdapters({
@@ -104,13 +132,22 @@ test('report sheet windows registry builds detached/chart shells and closes deta
   windows.closeUtilSheetDetachedReportWindow();
   assert.equal(config.UtilSheetDetachedReportState.win, null);
   assert.equal(fakePopup.closeCalled, true);
+  assert.equal(windows.openUtilSheetDetachedReportWindow({}), false);
+  assert.deepEqual(context.__openedWindows[0], {
+    url: '',
+    target: 'util-sheet-report-detached-window',
+    features: 'popup=yes,width=1520,height=940,resizable=yes,scrollbars=yes',
+  });
+  assert.equal(context.__alerts.length, 1);
 });
 test('kpi html loads report sheet windows before sheet.js', () => {
   const detachedInteractionIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows/detached-interactions.js?v=053');
+  const shellIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows/shells.js?v=1');
   const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=053');
   const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=053');
   assert.ok(detachedInteractionIndex >= 0, 'report sheet detached interaction loader is missing');
+  assert.ok(shellIndex > detachedInteractionIndex, 'report sheet window shells must load after detached interactions');
   assert.ok(windowsIndex >= 0, 'report sheet windows loader is missing');
-  assert.ok(windowsIndex > detachedInteractionIndex, 'report sheet windows must load after detached interactions');
+  assert.ok(windowsIndex > shellIndex, 'report sheet windows must load after shell templates');
   assert.ok(modalActionsIndex > windowsIndex, 'report sheet windows must load before report sheet modal actions');
 });

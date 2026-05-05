@@ -1,12 +1,19 @@
-(function registerUtilReportSheetAnalysisChartControls(globalScope) {
-    if (globalScope.KPIUtilReportSheetAnalysisChartControls) {
+(function registerUtilReportSheetAnalysisChartControls() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/analysis/chart-controls.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetAnalysisChartControls')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.analysis.chart-controls.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.analysis.chart-controls.js'
+    );
 
     const {
         UTIL_GAS_ANALYSIS_DISPLAY_OPTIONS
@@ -26,7 +33,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetAnalysisChartControls;
+        return api;
     }
 
     function escapeHtml(value) {
@@ -295,7 +302,7 @@
         `;
     }
 
-    globalScope.KPIUtilReportSheetAnalysisChartControls = {
+    const api = {
         setRuntimeAdapters,
         buildUtilGasAnalysisSeriesLabel,
         buildUtilGasAnalysisCombinedChart,
@@ -304,4 +311,6 @@
         buildUtilGasAnalysisPopupOnlyControlHtml,
         buildUtilGasAnalysisRatioTableControlHtml
     };
-})(globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetAnalysisChartControls', api);
+})();

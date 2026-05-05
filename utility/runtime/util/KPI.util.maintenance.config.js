@@ -105,4 +105,3 @@
             waste: { key: 'waste', label: '폐수', metrics: UTIL_ANALYTICS_DATASETS.waste.metrics, entries: UTIL_ANALYTICS_DATASETS.waste.entries, costModesByTeam: getWasteCostModesByTeam }
         };
         const UTIL_CHART_COLORS = ['#0f172a', '#2563eb', '#ef4444', '#16a34a', '#f59e0b', '#7c3aed'];
-

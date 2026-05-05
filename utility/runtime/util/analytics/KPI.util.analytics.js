@@ -335,9 +335,11 @@
                 </table>
             `;
             document.documentElement.classList.add('printing');
-            setTimeout(() => {
-                window.print();
-                setTimeout(() => {
+            const browserAdapter = getWorkBrowserAdapter();
+            const setTimer = browserAdapter?.setWindowTimeout?.bind(browserAdapter) || setTimeout;
+            setTimer(() => {
+                browserAdapter?.printWindow?.();
+                setTimer(() => {
                     document.documentElement.classList.remove('printing');
                 }, 500);
             }, 100);
@@ -406,6 +408,13 @@
         }
 
         const WorkServerWriteQueue = {};
+        const WorkSaveStatusFallback = {};
+
+        function getWorkBrowserAdapter() {
+            return typeof KpiWorkBrowserAdapter === 'object' && KpiWorkBrowserAdapter
+                ? KpiWorkBrowserAdapter
+                : null;
+        }
 
         function cloneWorkDataPayload(value) {
             return JSON.parse(JSON.stringify(value || {}));
@@ -413,8 +422,8 @@
 
         function getWorkSaveStatusRegistry() {
             if (typeof WorkSaveStatusState !== 'undefined') return WorkSaveStatusState;
-            window.__KPI_WORK_SAVE_STATUS_STATE__ = window.__KPI_WORK_SAVE_STATUS_STATE__ || {};
-            return window.__KPI_WORK_SAVE_STATUS_STATE__;
+            return getWorkBrowserAdapter()?.ensureRootObject?.('__KPI_WORK_SAVE_STATUS_STATE__')
+                || WorkSaveStatusFallback;
         }
 
         function getWorkSaveStatus(dataKey) {
@@ -537,7 +546,7 @@
         }
 
         function getWorkServerRuntimeConfig(dataKey) {
-            const runtime = window.__KPI_SERVER_RUNTIME_CONFIG__?.work;
+            const runtime = getWorkBrowserAdapter()?.getWorkRuntimeConfig?.();
             if (!runtime || runtime.enabled !== true) return null;
             const normalizedKey = String(dataKey || '').trim();
             const records = runtime.records && typeof runtime.records === 'object'
@@ -557,13 +566,13 @@
         }
 
         function syncWorkPortalDataCache(dataKey, data) {
-            window.PortalData = window.PortalData || {};
-            window.PortalData[dataKey] = cloneWorkDataPayload(data);
+            getWorkBrowserAdapter()?.writePortalData?.(dataKey, cloneWorkDataPayload(data));
         }
 
         function queueWorkServerWrite(dataKey, data) {
             const runtime = getWorkServerRuntimeConfig(dataKey);
-            if (!(window.KpiRuntime?.canUseServerWrite?.(runtime?.writeEnabled === true))) return Promise.resolve(false);
+            const browserAdapter = getWorkBrowserAdapter();
+            if (!(browserAdapter?.canUseServerWrite?.(runtime?.writeEnabled === true))) return Promise.resolve(false);
 
             const queueState = WorkServerWriteQueue[dataKey] || (WorkServerWriteQueue[dataKey] = {
                 timer: null,
@@ -574,18 +583,20 @@
             queueState.payload = cloneWorkDataPayload(data);
 
             if (queueState.timer) {
-                clearTimeout(queueState.timer);
+                browserAdapter.clearWindowTimeout?.(queueState.timer);
             }
 
             queueState.flushPromise = new Promise((resolve) => {
-                queueState.timer = setTimeout(() => {
+                const setTimer = browserAdapter.setWindowTimeout?.bind(browserAdapter) || setTimeout;
+                queueState.timer = setTimer(() => {
                     const payload = cloneWorkDataPayload(queueState.payload);
                     queueState.timer = null;
                     queueState.writeChain = Promise.resolve(queueState.writeChain)
                         .catch(() => false)
                         .then(async () => {
                             try {
-                                const response = await fetch(`${runtime.apiBase}/modules/${encodeURIComponent(runtime.moduleKey)}/records/${encodeURIComponent(runtime.recordKey || dataKey)}`, {
+                                const requestAdapter = getWorkBrowserAdapter();
+                                const response = await requestAdapter.fetchResource(`${runtime.apiBase}/modules/${encodeURIComponent(runtime.moduleKey)}/records/${encodeURIComponent(runtime.recordKey || dataKey)}`, {
                                     method: 'PUT',
                                     credentials: 'same-origin',
                                     headers: {
@@ -606,14 +617,14 @@
                                     syncWorkPortalDataCache(dataKey, result.record.payload);
                                     WorkCache[dataKey] = result.record.payload;
                                 }
-                                window.__KPI_WORK_SAVE_LAST_ERROR__ = null;
+                                requestAdapter.setRootValue?.('__KPI_WORK_SAVE_LAST_ERROR__', null);
                                 return true;
                             } catch (error) {
-                                window.__KPI_WORK_SAVE_LAST_ERROR__ = {
+                                getWorkBrowserAdapter()?.setRootValue?.('__KPI_WORK_SAVE_LAST_ERROR__', {
                                     dataKey,
                                     message: String(error?.message || 'work_server_write_failed'),
                                     savedAt: new Date().toISOString()
-                                };
+                                });
                                 console.warn('[kpi] work server write failed', dataKey, error);
                                 return false;
                             }
@@ -637,13 +648,15 @@
             let data = null;
             const serverRuntime = getWorkServerRuntimeConfig(dataKey);
             const serverReadBlocked = !!(serverRuntime && serverRuntime.readEnabled !== true);
-            const hasServerPayload = !!(serverRuntime && serverRuntime.readEnabled === true && window.PortalData && Object.prototype.hasOwnProperty.call(window.PortalData, dataKey));
+            const browserAdapter = getWorkBrowserAdapter();
+            const hasServerPayload = !!(serverRuntime && serverRuntime.readEnabled === true && browserAdapter?.hasPortalData?.(dataKey));
 
             if (hasServerPayload) {
-                data = cloneWorkDataPayload(window.PortalData[dataKey]);
+                data = cloneWorkDataPayload(browserAdapter.readPortalData(dataKey));
             }
-            if (!data && !serverReadBlocked && window.PortalData && window.PortalData[dataKey]) {
-                data = cloneWorkDataPayload(window.PortalData[dataKey]);
+            const portalPayload = browserAdapter?.readPortalData?.(dataKey);
+            if (!data && !serverReadBlocked && portalPayload) {
+                data = cloneWorkDataPayload(portalPayload);
             }
             if (!data) {
                 data = {
@@ -664,7 +677,7 @@
 
         function saveWorkData(dataKey, data) {
             const serverRuntime = getWorkServerRuntimeConfig(dataKey);
-            if (!(window.KpiRuntime?.canUseServerWrite?.(serverRuntime?.writeEnabled === true))) {
+            if (!(getWorkBrowserAdapter()?.canUseServerWrite?.(serverRuntime?.writeEnabled === true))) {
                 setWorkSaveStatus(dataKey, 'blocked', '서버 저장 불가');
                 return false;
             }

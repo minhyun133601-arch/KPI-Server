@@ -1,0 +1,224 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import test from 'node:test';
+import vm from 'node:vm';
+import { fileURLToPath } from 'node:url';
+
+const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
+const adapterPath = path.join(repoRoot, 'kpi-runtime/app/KPI.app.browser-adapter.js');
+const appPath = path.join(repoRoot, 'kpi-runtime/app/KPI.app.js');
+const splitSourcePaths = [
+  'kpi-runtime/app/KPI.app.shared.js',
+  'kpi-runtime/app/KPI.app.auth-owner.js',
+  'kpi-runtime/app/KPI.app.navigation.js',
+  'kpi-runtime/app/KPI.app.global-save.js',
+  'kpi-runtime/app/KPI.app.viewer.js',
+];
+const adapterSource = await fs.readFile(adapterPath, 'utf8');
+const appSource = await fs.readFile(appPath, 'utf8');
+const splitSources = await Promise.all(
+  splitSourcePaths.map(async sourcePath => ({
+    sourcePath,
+    source: await fs.readFile(path.join(repoRoot, sourcePath), 'utf8'),
+  }))
+);
+const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
+const manifestSource = await fs.readFile(
+  path.join(repoRoot, 'kpi-runtime/app/boot/KPI.boot.manifest.js'),
+  'utf8'
+);
+
+function normalizeSource(source) {
+  return String(source || '').replace(/[?#].*$/, '').replace(/^\/+/, '');
+}
+
+function readScriptSources() {
+  return Array.from(kpiHtml.matchAll(/<script src="([^"]+)"/g)).map(match => normalizeSource(match[1]));
+}
+
+function loadManifestScripts() {
+  const context = { ['global' + 'This']: {} };
+  context['global' + 'This'] = context;
+  vm.createContext(context);
+  vm.runInContext(manifestSource, context, { filename: 'KPI.boot.manifest.js' });
+  return Array.from(context.KPI_BOOT_MANIFEST.groups, group =>
+    Array.from(group.scripts, script => normalizeSource(script))
+  ).flat();
+}
+
+function assertScriptOrder(sources, before, after) {
+  const beforeIndex = sources.indexOf(before);
+  const afterIndex = sources.indexOf(after);
+
+  assert.ok(beforeIndex >= 0, `${before} loader is missing`);
+  assert.ok(afterIndex > beforeIndex, `${after} must load after ${before}`);
+}
+
+function createContext(options = {}) {
+  const storage = new Map([['recent', '{"ok":true}']]);
+  const state = {
+    alerts: [],
+    assignedUrls: [],
+    replacedUrls: [],
+    events: [],
+    opened: [],
+    destroyed: 0,
+    sidebarCalls: [],
+    syncedItems: [],
+  };
+  const context = {
+    ['global' + 'This']: null,
+    window: null,
+    KpiRuntime: { name: 'runtime' },
+    localStorage: {
+      getItem(key) {
+        return storage.get(key) || null;
+      },
+      setItem(key, value) {
+        storage.set(key, value);
+      },
+    },
+    location: {
+      protocol: 'http:',
+      hostname: '127.0.0.1',
+      replace(url) {
+        state.replacedUrls.push(url);
+      },
+      assign(url) {
+        state.assignedUrls.push(url);
+      },
+    },
+    alert(message) {
+      state.alerts.push(message);
+    },
+    addEventListener(type, listener, listenerOptions) {
+      state.events.push({ type, listener, listenerOptions });
+    },
+    KpiMeteringBridge: {
+      destroyIntegratedMeteringMount() {
+        state.destroyed += 1;
+      },
+    },
+    applyUtilSidebarSelectionToCurrentView(itemKey, teamDataKey) {
+      state.sidebarCalls.push({ itemKey, teamDataKey });
+      return true;
+    },
+    getUtilSidebarSelectionWorkDataKey(itemKey) {
+      return `${itemKey}:team`;
+    },
+    screen: {
+      availWidth: 1200,
+      availHeight: 900,
+    },
+    outerWidth: 1000,
+    outerHeight: 700,
+    screenX: 40,
+    screenY: 50,
+    open(url, target, features) {
+      const opened = { url, target, features, focused: false };
+      state.opened.push(opened);
+      return {
+        focus() {
+          opened.focused = true;
+        },
+      };
+    },
+    syncUtilReportBuilderVizPopupFromSelection(itemKey) {
+      state.syncedItems.push(itemKey);
+    },
+  };
+  context.window = options.withWindow === false ? null : context;
+  context['global' + 'This'] = context;
+  vm.createContext(context);
+  vm.runInContext(adapterSource, context, { filename: 'KPI.app.browser-adapter.js' });
+  return { context, state, storage };
+}
+
+test('app browser adapter wraps runtime storage location events popups and bridges', () => {
+  const { context, state, storage } = createContext();
+  const adapter = context.KpiAppBrowserAdapter;
+
+  assert.equal(adapter.getRuntime()?.name, 'runtime');
+  adapter.markGlobalSaveShell();
+  assert.equal(context.__KPI_GLOBAL_SAVE_SHELL__, true);
+
+  assert.equal(adapter.getStorageItem('recent'), '{"ok":true}');
+  adapter.setStorageItem('next', 'saved');
+  assert.equal(storage.get('next'), 'saved');
+
+  assert.equal(adapter.getLocationMeta().protocol, 'http:');
+  assert.equal(adapter.getLocationMeta().hostname, '127.0.0.1');
+  adapter.replaceLocation('/login');
+  adapter.assignLocation('/fallback');
+  assert.deepEqual(state.replacedUrls, ['/login']);
+  assert.deepEqual(state.assignedUrls, ['/fallback']);
+
+  adapter.showAlert('saved');
+  adapter.addWindowEventListener('keydown', () => {}, true);
+  assert.deepEqual(state.alerts, ['saved']);
+  assert.equal(state.events[0]?.type, 'keydown');
+
+  adapter.destroyIntegratedMeteringMount();
+  assert.equal(state.destroyed, 1);
+  assert.equal(adapter.canApplyUtilSidebarSelection(), true);
+  assert.equal(adapter.applyUtilSidebarSelectionToCurrentView('electric', 'team1'), true);
+  assert.deepEqual(state.sidebarCalls, [{ itemKey: 'electric', teamDataKey: 'team1' }]);
+  assert.equal(adapter.getUtilSidebarSelectionWorkDataKey('electric'), 'electric:team');
+
+  const placement = adapter.getWindowPlacement();
+  assert.equal(placement.availableWidth, 1200);
+  assert.equal(placement.availableHeight, 900);
+  assert.equal(placement.hostLeft, 40);
+  assert.equal(placement.hostTop, 50);
+  assert.equal(placement.hostWidth, 1000);
+  assert.equal(placement.hostHeight, 700);
+  assert.equal(adapter.openWindow('/owner', '_blank', 'noopener')?.focus instanceof Function, true);
+  assert.deepEqual(state.opened[0], {
+    url: '/owner',
+    target: '_blank',
+    features: 'noopener',
+    focused: false,
+  });
+
+  adapter.exposeOwnerToolWindow(() => true);
+  assert.equal(typeof context.KpiOpenOwnerToolWindow, 'function');
+  assert.equal(adapter.canSyncUtilReportBuilderVizPopup(), true);
+  adapter.syncUtilReportBuilderVizPopupFromSelection('gas');
+  assert.deepEqual(state.syncedItems, ['gas']);
+});
+
+test('app browser adapter registers on the root object when no window object exists', () => {
+  const { context } = createContext({ withWindow: false });
+  assert.equal(context.KpiAppBrowserAdapter.getRuntime()?.name, 'runtime');
+});
+
+test('kpi html and boot manifest load app browser adapter and split hosts before app bootstrap', () => {
+  const adapterScript = 'kpi-runtime/app/KPI.app.browser-adapter.js';
+  const appScript = 'kpi-runtime/app/KPI.app.js';
+  const expectedOrder = [adapterScript, ...splitSourcePaths, appScript];
+
+  const htmlSources = readScriptSources();
+  const manifestScripts = loadManifestScripts();
+
+  for (let index = 0; index < expectedOrder.length - 1; index += 1) {
+    assertScriptOrder(htmlSources, expectedOrder[index], expectedOrder[index + 1]);
+    assertScriptOrder(manifestScripts, expectedOrder[index], expectedOrder[index + 1]);
+  }
+});
+
+test('app bootstrap host uses the browser adapter for direct global access', () => {
+  assert.doesNotMatch(appSource, /window\./);
+  assert.doesNotMatch(appSource, new RegExp('global' + 'This'));
+});
+
+test('app split source files route browser globals through the browser adapter', () => {
+  for (const { sourcePath, source } of splitSources) {
+    assert.doesNotMatch(source, /window\./, `${sourcePath} should not use window directly`);
+    assert.doesNotMatch(source, new RegExp('global' + 'This'), `${sourcePath} should not use globalThis directly`);
+  }
+
+  const sharedSource = splitSources.find(entry => entry.sourcePath.endsWith('KPI.app.shared.js'))?.source || '';
+  assert.match(sharedSource, /const browser = typeof KpiAppBrowserAdapter !== 'undefined'/);
+  assert.match(sharedSource, /browser\?\.markGlobalSaveShell\?\.\(\)/);
+});

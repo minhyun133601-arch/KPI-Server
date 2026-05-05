@@ -3,6 +3,10 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
+const browserAdapterSource = await fs.readFile(
+  new URL('../../../../utility/apps/metering/runtime/browser-adapter.js', import.meta.url),
+  'utf8'
+);
 const savePersistenceSource = await fs.readFile(
   new URL('../../../../utility/apps/metering/save/persistence.js', import.meta.url),
   'utf8'
@@ -302,6 +306,9 @@ function createSaveValidationContext(options = {}) {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(browserAdapterSource, context, {
+    filename: 'runtime/browser-adapter.js',
+  });
   vm.runInContext(savePersistenceSource, context, {
     filename: 'save/persistence.js',
   });
@@ -314,6 +321,11 @@ function createSaveValidationContext(options = {}) {
   context.__eventLog = eventLog;
   return context;
 }
+
+test('save persistence keeps browser globals behind the metering adapter', () => {
+  assert.doesNotMatch(savePersistenceSource, /\b(?:window\.|globalThis)\b/);
+  assert.match(savePersistenceSource, /KpiMeteringBrowserAdapter/);
+});
 
 test('updateDirtyState shows validation summary and error classes', () => {
   const context = createSaveValidationContext();

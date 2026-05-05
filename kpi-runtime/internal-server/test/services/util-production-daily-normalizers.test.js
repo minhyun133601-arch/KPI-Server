@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { normalizeDateKey } from '../../src/services/util-production-daily/normalizers.js';
+import {
+  buildArchiveFingerprint,
+  buildEntryDedupeKey,
+  normalizeArchiveMeta,
+  normalizeArchiveTeams,
+  normalizeArchiveYearMonths,
+  normalizeArchiveYears,
+  normalizeDateKey,
+  normalizeEntry,
+  normalizeNumber,
+} from '../../src/services/util-production-daily/normalizers.js';
 import { buildStatePayload } from '../../src/services/util-production-daily/state.js';
 
 function formatLocalDate(date) {
@@ -16,6 +26,88 @@ test('normalizeDateKey preserves the local calendar day for Date values', () => 
   const localMidnight = new Date(2024, 0, 2);
 
   assert.equal(normalizeDateKey(localMidnight), formatLocalDate(localMidnight));
+});
+
+test('normalizeNumber handles grouped blank and invalid production values', () => {
+  assert.equal(normalizeNumber(' 1,234.50 '), 1234.5);
+  assert.equal(normalizeNumber(0), 0);
+  assert.equal(normalizeNumber(''), null);
+  assert.equal(normalizeNumber('not-a-number'), null);
+});
+
+test('normalizeDateKey rejects impossible calendar dates', () => {
+  assert.equal(normalizeDateKey('2026-02-31'), '');
+  assert.equal(normalizeDateKey('2024-02-29'), '2024-02-29');
+  assert.equal(normalizeDateKey('2025-02-29'), '');
+  assert.equal(normalizeDateKey('2026-13-01'), '');
+});
+
+test('buildEntryDedupeKey normalizes team whitespace parentheses and explicit zero', () => {
+  const baseEntry = {
+    date: '2026-04-01',
+    teamName: ' A팀 (야간) ',
+    lineName: ' 1 호기 ',
+    productName: ' 제품 A ',
+    amount: 0,
+  };
+
+  assert.equal(
+    buildEntryDedupeKey(baseEntry),
+    buildEntryDedupeKey({
+      ...baseEntry,
+      teamName: 'A팀',
+      lineName: '1 호기',
+      productName: '제품 A',
+      amount: '0',
+    })
+  );
+});
+
+test('normalizeEntry preserves production and value aliases including zero', () => {
+  const productionEntry = normalizeEntry({
+    date: '2026-04-01',
+    team: 'A팀',
+    line: '1호기',
+    product: '제품A',
+    production: '0',
+  });
+  const valueEntry = normalizeEntry({
+    date: '2026-04-02',
+    teamName: 'B팀',
+    lineNm: '2호기',
+    itemName: '제품B',
+    value: '12.5',
+    yieldRate: '9.5',
+    equipmentCapacity: '20',
+    utilizationRate: '62.5',
+  });
+
+  assert.equal(productionEntry.amount, 0);
+  assert.equal(valueEntry.amount, 12.5);
+  assert.equal(valueEntry.moistureExcludedYield, 9.5);
+  assert.equal(valueEntry.equipmentCapa, 20);
+  assert.equal(valueEntry.equipmentUtilization, 62.5);
+});
+
+test('normalizeArchiveMeta builds stable lowercase fingerprint and server storage fallback', () => {
+  const archive = normalizeArchiveMeta({
+    fileName: 'Daily.XLSX',
+    size: '1024',
+    lastModified: '200',
+    documentId: 'doc-1',
+    savedAt: new Date('2026-04-03T00:00:00.000Z'),
+  });
+
+  assert.equal(buildArchiveFingerprint('Daily.XLSX', '1024', '200'), 'daily.xlsx|1024|200');
+  assert.equal(archive.fingerprint, 'daily.xlsx|1024|200');
+  assert.equal(archive.storage, 'server');
+  assert.equal(archive.documentId, 'doc-1');
+});
+
+test('archive year month and team normalizers dedupe and sort deterministically', () => {
+  assert.deepEqual(normalizeArchiveYears([2026, '2025', 1800, 2026]), [2026, 2025]);
+  assert.deepEqual(normalizeArchiveYearMonths(['2026-04', 'bad', '2026-03', '2026-04']), ['2026-04', '2026-03']);
+  assert.deepEqual(normalizeArchiveTeams(['B팀', 'A팀', 'B팀', '']), ['A팀', 'B팀']);
 });
 
 test('buildStatePayload keeps database date rows on the same local calendar day', () => {

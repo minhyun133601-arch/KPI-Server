@@ -1,5 +1,8 @@
 (function registerAuditRuntime() {
-    const runtime = window.KpiRuntime;
+    const auditRuntimeBrowser = typeof KpiAuditRecordsBrowserAdapter !== 'undefined'
+        ? KpiAuditRecordsBrowserAdapter
+        : null;
+    const runtime = auditRuntimeBrowser?.getRuntime?.() || null;
     if (!runtime) return;
 
     function getAuditSaveCapability(dataKey) {

@@ -1,363 +1,17 @@
-const actionHeader = {
-  'X-KPI-Ops-Request': 'true',
-  'Content-Type': 'application/json'
-};
-const TAB_SERVER = 'server';
-const TAB_DATA = 'data';
-const TAB_PREVIEW = 'preview';
-const TAB_REFERENCE = 'reference';
-const LANGUAGE_STORAGE_KEY = 'kpi.opsConsole.language';
+import { actionHeader, commandIconMap, commandLabelMap, commandText, compactDescriptionMap, i18n, iconMap, LANGUAGE_STORAGE_KEY, serverSummaryTranslations, TAB_DATA, TAB_PREVIEW, TAB_REFERENCE, TAB_SERVER } from './app.config.js';
+import { bindDragScroll } from './app.drag-scroll.js';
+import { OpsConsoleAppBrowserAdapter } from './app.browser-adapter.js';
+import { createOpsFormBuilders } from './app.form-actions.js';
+
+const opsBrowser = OpsConsoleAppBrowserAdapter;
 let overviewCache = null;
 let commandRegistryCache = new Map();
-const iconMap = { monitor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="12" rx="2"></rect><path d="M8 19.5h8"></path><path d="M12 16.5v3"></path></svg>', server: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="6" rx="2"></rect><rect x="4" y="14" width="16" height="6" rx="2"></rect><path d="M8 7h.01M8 17h.01M16 7h2M16 17h2"></path></svg>', database: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7" ry="3.5"></ellipse><path d="M5 5.5v6c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-6"></path><path d="M5 11.5v6c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-6"></path></svg>', clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 7.5v5l3 2"></path></svg>', power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v8"></path><path d="M6.5 6.5a8 8 0 1 0 11 0"></path></svg>', stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>', refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 5v5h-5"></path><path d="M4 19v-5h5"></path><path d="M18 10a6.5 6.5 0 0 0-11-2L4 10"></path><path d="M6 14a6.5 6.5 0 0 0 11 2l3-2"></path></svg>', user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5.5 19a6.5 6.5 0 0 1 13 0"></path></svg>', key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="3"></circle><path d="M10.5 13.5 19 5l2 2-1.5 1.5 1 1L18 12l-1-1-1.5 1.5"></path></svg>', trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7h15"></path><path d="M9 4.5h6"></path><path d="M7 7l1 12h8l1-12"></path></svg>', folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5h6l2 2h9v7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Z"></path></svg>', terminal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2"></rect><path d="m7.5 9 3 3-3 3"></path><path d="M12.5 15h4"></path></svg>', tools: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 7 3-3 3 3-3 3"></path><path d="M17 7 8 16"></path><path d="m5 13 6 6"></path><path d="M4 20h4"></path></svg>', list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path><circle cx="5" cy="6" r="1"></circle><circle cx="5" cy="12" r="1"></circle><circle cx="5" cy="18" r="1"></circle></svg>', table: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 10h16M10 5v14"></path></svg>', spark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8Z"></path><path d="m19 15 .8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8Z"></path></svg>' };
-const commandIconMap = { 'server.start': 'power', 'server.stop': 'stop', 'server.recover': 'refresh', 'startup.register': 'clock', 'startup.unregister': 'clock', 'system.scheduleShutdown': 'clock', 'account.bootstrapOwner': 'user', 'account.createEmployee': 'user', 'account.resetPassword': 'key', 'account.deleteUser': 'trash', 'db.listTables': 'table', 'db.openConsole': 'terminal', 'filesystem.openCommandsFolder': 'folder', 'filesystem.openLogsFolder': 'folder' };
-const commandLabelMap = {
-  'server.start': '실행',
-  'server.stop': '중지',
-  'server.recover': '복구',
-  'startup.register': '등록',
-  'startup.unregister': '해제',
-  'system.scheduleShutdown': '예약',
-  'account.bootstrapOwner': '생성',
-  'account.createEmployee': '생성',
-  'account.resetPassword': '변경',
-  'account.deleteUser': '삭제',
-  'db.listTables': '불러오기',
-  'db.openConsole': '열기',
-  'filesystem.openCommandsFolder': '열기',
-  'filesystem.openLogsFolder': '열기'
-};
-const compactDescriptionMap = {
-  'server.start': '현재 서버 스택을 올립니다.',
-  'server.stop': '서버와 PostgreSQL을 순서대로 종료합니다.',
-  'server.recover': '실행 중인 흔적을 정리하고 다시 올립니다.',
-  'startup.register': '현재 사용자 로그인 시 자동으로 서버를 올립니다.',
-  'startup.unregister': '현재 사용자 자동실행을 해제합니다.',
-  'system.scheduleShutdown': '시작 또는 종료 시간을 예약합니다.',
-  'db.listTables': '테이블 이름만 바로 확인합니다.',
-  'db.openConsole': 'psql 콘솔 창을 엽니다.',
-  'filesystem.openCommandsFolder': 'commands 폴더를 엽니다.',
-  'filesystem.openLogsFolder': '로그 폴더를 엽니다.'
-};
-const i18n = {
-  ko: {
-    documentTitle: 'KPI 운영 콘솔',
-    heroEyebrow: 'KPI OPERATIONS COMMANDS',
-    heroTitle: 'KPI 운영 콘솔',
-    heroSummary: 'KPI 서버, DB, 계정 작업을 현재 저장소 포트 기준으로 관리합니다.',
-    metaRuntime: 'KPI 런타임 3100',
-    metaDb: 'DB 5434',
-    metaConsole: '운영 콘솔',
-    refreshButton: '상태 새로고침',
-    openKpiButton: 'KPI 로그인 열기',
-    scheduleLabel: '컴퓨터 예약',
-    kpiLabel: 'KPI 런타임 3100',
-    postgresLabel: 'PostgreSQL 5434',
-    startupLabel: '부팅 자동실행',
-    resultLabel: '최근 결과',
-    checking: '확인 중',
-    scheduleInitialSummary: '시작 / 종료 예약 상태',
-    startupSummary: '현재 사용자 시작프로그램',
-    resultIdle: '대기 중',
-    resultIdleMeta: '아직 실행한 작업이 없습니다.',
-    tabAriaLabel: '운영 콘솔 분류',
-    serverTab: '서버 관리',
-    accountTab: '계정 관리',
-    dataReferenceTab: '데이터 참조 경로',
-    logsTitle: '로그 보기',
-    logsSummary: '최근 로그 60줄을 바로 확인합니다.',
-    serverActionsLog: '서버 액션',
-    logOutputIdle: '로그를 선택해 주세요.',
-    toolsTitle: 'DB / 도구',
-    toolsSummary: 'DB 콘솔과 운영 보조 작업을 처리합니다.',
-    tablesTitle: 'DB 테이블',
-    tablesSummary: '테이블 목록을 이 화면에서 바로 확인합니다.',
-    loadButton: '불러오기',
-    tablesOutputIdle: '아직 불러오지 않았습니다.',
-    accountTitle: '계정 관리',
-    accountSummary: '오너, 직원 계정과 비밀번호 작업을 처리합니다.',
-    usersTitle: '사용자 현황',
-    usersSummary: '현재 DB에 등록된 계정 상태를 확인합니다.',
-    userCountLabel: '총 사용자',
-    sessionCountLabel: '활성 세션',
-    reloadUsersButton: '사용자 목록 새로고침',
-    userIdHeader: '아이디',
-    displayNameHeader: '표시 이름',
-    roleHeader: '역할',
-    lastAccessHeader: '최근 접속',
-    sessionHeader: '세션',
-    loading: '불러오는 중...',
-    previewSummary: '현재 저장소 폴더 지도, 포트 경계, 변경 기록을 콘솔 안에서 확인합니다.',
-    dataReferenceTitle: '데이터 참조 경로',
-    dataReferenceSummary: '현재 입력 화면별 데이터가 어느 API, DB 레코드, 파일 저장소, 권한키를 거치는지 확인합니다.',
-    openNewWindow: '새 창',
-    scheduleModalEyebrow: 'COMPUTER SCHEDULE',
-    closeButton: '닫기',
-    done: '완료',
-    none: '없음',
-    active: '활성',
-    noSchedule: '예약 없음',
-    bothSchedule: '시작·종료 예약',
-    scheduleStatus: '{kind} 예약',
-    scheduleNoneSummary: '시작 / 종료 예약 없음',
-    scheduleSummary: '{kind} {time}',
-    startKind: '시작',
-    shutdownKind: '종료',
-    running: '실행 중',
-    stopped: '중지',
-    actionInProgress: '{action} 중',
-    portLogin: '{port} 포트 / 로그인 필요',
-    serverPreparing: '서버 준비 상태를 확인하는 중입니다.',
-    healthFailed: '헬스 체크 실패',
-    postgresReady: '연결 가능',
-    postgresDown: '중지 또는 미설치',
-    startupRegistered: '등록됨',
-    startupUnregistered: '미등록',
-    userUnit: '{count}명',
-    sessionUnit: '{count}개',
-    noUsers: '사용자가 없습니다.',
-    commandRunning: '{title} 실행 중...',
-    commandDone: '{title} 완료',
-    scriptFailed: '{title} 실패',
-    scriptAbnormalExit: '{title} 스크립트가 비정상 종료되었습니다. 서버 액션 로그를 확인해 주세요.',
-    kpiReadyTimeout: '{title} 후 서버 준비 상태를 아직 확인하지 못했습니다. 서버 액션 로그를 확인해 주세요.',
-    recoveryDone: '복구 재시작이 완료되었습니다.',
-    kpiReady: 'KPI 서버가 준비되었습니다.',
-    scheduleNotLoaded: '예약 설정을 아직 불러오지 못했습니다.',
-    closeLabel: '닫기',
-    openLabel: '열기',
-    scheduleSettings: '예약 설정',
-    serverClose: '서버 닫기',
-    serverOpen: '서버 열기',
-    recover: '복구',
-    startupRegister: '자동실행 등록',
-    startupUnregister: '자동실행 해제',
-    serverStartAction: '시작',
-    recoverAction: '복구',
-    tablesLoading: '불러오는 중...',
-    noOutput: '출력 없음',
-    logEmpty: '로그 파일이 비어 있습니다.',
-    usersReloaded: '사용자 목록을 새로고침했습니다.',
-    usersReloadFailed: '사용자 목록 새로고침 실패',
-    tablesLoaded: 'DB 테이블 목록을 불러왔습니다.',
-    tablesFailed: 'DB 테이블 목록 조회 실패',
-    statusRefreshed: '상태를 새로고침했습니다.',
-    loginUrlUnknown: 'KPI 로그인 URL을 아직 알 수 없습니다.',
-    initialLoadFailed: '초기 로드 실패'
-  },
-  en: {
-    documentTitle: 'KPI Operations Console',
-    heroEyebrow: 'KPI OPERATIONS COMMANDS',
-    heroTitle: 'KPI Operations Console',
-    heroSummary: 'Manage KPI runtime, database, and account tasks using this repository port contract.',
-    metaRuntime: 'KPI runtime 3100',
-    metaDb: 'DB 5434',
-    metaConsole: 'Ops console',
-    refreshButton: 'Refresh status',
-    openKpiButton: 'Open KPI login',
-    scheduleLabel: 'Computer schedule',
-    kpiLabel: 'KPI runtime 3100',
-    postgresLabel: 'PostgreSQL 5434',
-    startupLabel: 'Startup autorun',
-    resultLabel: 'Latest result',
-    checking: 'Checking',
-    scheduleInitialSummary: 'Start / shutdown schedule status',
-    startupSummary: 'Current user Startup folder',
-    resultIdle: 'Waiting',
-    resultIdleMeta: 'No task has run yet.',
-    tabAriaLabel: 'Operations console sections',
-    serverTab: 'Server',
-    accountTab: 'Accounts',
-    dataReferenceTab: 'Data Paths',
-    logsTitle: 'Logs',
-    logsSummary: 'Read the latest 60 log lines directly.',
-    serverActionsLog: 'Server actions',
-    logOutputIdle: 'Select a log.',
-    toolsTitle: 'DB / Tools',
-    toolsSummary: 'Run DB console and local operations helpers.',
-    tablesTitle: 'DB tables',
-    tablesSummary: 'View table names directly in this console.',
-    loadButton: 'Load',
-    tablesOutputIdle: 'Not loaded yet.',
-    accountTitle: 'Account management',
-    accountSummary: 'Handle owner, staff account, and password tasks.',
-    usersTitle: 'Users',
-    usersSummary: 'Check account state currently registered in the DB.',
-    userCountLabel: 'Users',
-    sessionCountLabel: 'Active sessions',
-    reloadUsersButton: 'Reload users',
-    userIdHeader: 'ID',
-    displayNameHeader: 'Display name',
-    roleHeader: 'Role',
-    lastAccessHeader: 'Last access',
-    sessionHeader: 'Session',
-    loading: 'Loading...',
-    previewSummary: 'Review the current repository folder map, port boundaries, and change history inside this console.',
-    dataReferenceTitle: 'Data Reference Paths',
-    dataReferenceSummary: 'Review which API, DB record, file store, and permission key each current input screen uses.',
-    openNewWindow: 'New window',
-    scheduleModalEyebrow: 'COMPUTER SCHEDULE',
-    closeButton: 'Close',
-    done: 'Done',
-    none: 'None',
-    active: 'Active',
-    noSchedule: 'No schedule',
-    bothSchedule: 'Start and shutdown scheduled',
-    scheduleStatus: '{kind} scheduled',
-    scheduleNoneSummary: 'No start / shutdown schedule',
-    scheduleSummary: '{kind} {time}',
-    startKind: 'Start',
-    shutdownKind: 'Shutdown',
-    running: 'Running',
-    stopped: 'Stopped',
-    actionInProgress: '{action} in progress',
-    portLogin: 'Port {port} / login required',
-    serverPreparing: 'Checking server readiness.',
-    healthFailed: 'Health check failed',
-    postgresReady: 'Available',
-    postgresDown: 'Stopped or not installed',
-    startupRegistered: 'Registered',
-    startupUnregistered: 'Not registered',
-    userUnit: '{count}',
-    sessionUnit: '{count}',
-    noUsers: 'No users.',
-    commandRunning: 'Running {title}...',
-    commandDone: '{title} complete',
-    scriptFailed: '{title} failed',
-    scriptAbnormalExit: '{title} script exited abnormally. Check the server action log.',
-    kpiReadyTimeout: 'Server readiness was not confirmed after {title}. Check the server action log.',
-    recoveryDone: 'Recovery restart is complete.',
-    kpiReady: 'KPI server is ready.',
-    scheduleNotLoaded: 'Schedule settings are not loaded yet.',
-    closeLabel: 'Close',
-    openLabel: 'Open',
-    scheduleSettings: 'Schedule',
-    serverClose: 'Stop server',
-    serverOpen: 'Start server',
-    recover: 'Recover',
-    startupRegister: 'Register autorun',
-    startupUnregister: 'Remove autorun',
-    serverStartAction: 'Start',
-    recoverAction: 'Recover',
-    tablesLoading: 'Loading...',
-    noOutput: 'No output',
-    logEmpty: 'Log file is empty.',
-    usersReloaded: 'Users reloaded.',
-    usersReloadFailed: 'User reload failed',
-    tablesLoaded: 'DB table list loaded.',
-    tablesFailed: 'DB table list failed',
-    statusRefreshed: 'Status refreshed.',
-    loginUrlUnknown: 'KPI login URL is not available yet.',
-    initialLoadFailed: 'Initial load failed'
-  }
-};
-const commandText = {
-  en: {
-    labels: {
-      'server.start': 'Run',
-      'server.stop': 'Stop',
-      'server.recover': 'Recover',
-      'startup.register': 'Register',
-      'startup.unregister': 'Remove',
-      'system.scheduleShutdown': 'Schedule',
-      'account.bootstrapOwner': 'Create',
-      'account.createEmployee': 'Create',
-      'account.resetPassword': 'Change',
-      'account.deleteUser': 'Delete',
-      'db.listTables': 'Load',
-      'db.openConsole': 'Open',
-      'filesystem.openCommandsFolder': 'Open',
-      'filesystem.openLogsFolder': 'Open'
-    },
-    titles: {
-      'server.start': 'Start KPI server',
-      'server.stop': 'Stop KPI server',
-      'server.recover': 'Recover KPI server',
-      'startup.register': 'Register KPI autorun',
-      'startup.unregister': 'Remove KPI autorun',
-      'account.bootstrapOwner': 'Create owner',
-      'account.createEmployee': 'Create staff account',
-      'account.resetPassword': 'Reset password',
-      'account.deleteUser': 'Delete user',
-      'db.listTables': 'View DB tables',
-      'db.openConsole': 'Open DB console',
-      'filesystem.openCommandsFolder': 'Open commands folder',
-      'filesystem.openLogsFolder': 'Open logs folder',
-      'system.scheduleShutdown': 'Schedule computer start / shutdown'
-    },
-    descriptions: {
-      'server.start': 'Start the 3100 KPI runtime and 5434 PostgreSQL for this repository.',
-      'server.stop': 'Stop the KPI server and PostgreSQL in order.',
-      'server.recover': 'Clean stale runtime state under safe conditions, then start it again.',
-      'startup.register': 'Start the KPI server when the current user logs in.',
-      'startup.unregister': 'Remove the current user autorun entry.',
-      'account.bootstrapOwner': 'Create the first owner account locally.',
-      'account.createEmployee': 'Create a new account with viewer as the default role.',
-      'account.resetPassword': 'Set a new password for the selected user.',
-      'account.deleteUser': 'Delete a non-owner account.',
-      'db.listTables': 'Show table names in this screen.',
-      'db.openConsole': 'Open a psql console in a new PowerShell window.',
-      'filesystem.openCommandsFolder': 'Open the existing commands folder in Explorer.',
-      'filesystem.openLogsFolder': 'Open the internal-server log folder in Explorer.',
-      'system.scheduleShutdown': 'Schedule a start or shutdown time. Start uses sleep/hibernate wake behavior.'
-    },
-    fields: {
-      'account.bootstrapOwner.username': { label: 'Owner ID', placeholder: 'owner' },
-      'account.bootstrapOwner.displayName': { label: 'Owner display name', placeholder: 'KPI Owner' },
-      'account.bootstrapOwner.password': { label: 'Password' },
-      'account.createEmployee.username': { label: 'Staff ID', placeholder: 'staff-01' },
-      'account.createEmployee.displayName': { label: 'Staff display name', placeholder: 'Staff name' },
-      'account.createEmployee.password': { label: 'Password' },
-      'account.createEmployee.roles': { label: 'Role' },
-      'account.resetPassword.username': { label: 'Target ID' },
-      'account.resetPassword.password': { label: 'New password' },
-      'account.deleteUser.username': { label: 'User ID to delete' },
-      'account.deleteUser.confirmText': { label: 'Confirmation text', placeholder: 'DELETE' },
-      'system.scheduleShutdown.actionType': { label: 'Schedule type' },
-      'system.scheduleShutdown.timeText': { label: 'Scheduled time', placeholder: '22:00' }
-    },
-    options: {
-      'system.scheduleShutdown.actionType.start': 'Start',
-      'system.scheduleShutdown.actionType.shutdown': 'Shutdown'
-    },
-    confirmMessages: {
-      'server.stop': 'Stop the KPI server and local PostgreSQL.',
-      'server.recover': 'Recover and restart the KPI server.',
-      'account.deleteUser': 'Delete this user account.'
-    }
-  }
-};
-const serverSummaryTranslations = {
-  en: {
-    '이미 서버 작업이 진행 중입니다.': 'A server task is already running.',
-    'KPI 서버 시작 요청을 보냈습니다.': 'KPI server start was requested.',
-    'KPI 서버와 로컬 PostgreSQL 종료 요청이 완료되었습니다.': 'KPI server and local PostgreSQL stop request completed.',
-    '복구 재시작 요청을 보냈습니다.': 'Recovery restart was requested.',
-    '복구 재시작이 완료되었습니다.': 'Recovery restart is complete.',
-    'KPI 서버가 준비되었습니다.': 'KPI server is ready.',
-    '로그인 자동실행 등록이 완료되었습니다.': 'Login autorun registration is complete.',
-    '로그인 자동실행 해제가 완료되었습니다.': 'Login autorun removal is complete.',
-    '오너 생성이 완료되었습니다.': 'Owner creation is complete.',
-    '직원 계정 생성이 완료되었습니다.': 'Staff account creation is complete.',
-    '비밀번호 재설정이 완료되었습니다.': 'Password reset is complete.',
-    '사용자 삭제가 완료되었습니다.': 'User deletion is complete.',
-    'DB 콘솔 창을 열었습니다.': 'DB console window was opened.',
-    'commands 폴더를 열었습니다.': 'Commands folder was opened.',
-    '로그 폴더를 열었습니다.': 'Logs folder was opened.',
-    '컴퓨터 시작 예약이 완료되었습니다.': 'Computer start schedule is complete.',
-    '컴퓨터 종료 예약이 완료되었습니다.': 'Computer shutdown schedule is complete.'
-  }
-};
 let currentLanguage = readInitialLanguage();
 function $(id) {
   return document.getElementById(id);
 }
 function readInitialLanguage() {
-  try {
-    return localStorage.getItem(LANGUAGE_STORAGE_KEY) === 'en' ? 'en' : 'ko';
-  } catch {
-    return 'ko';
-  }
+  return opsBrowser.readStorageValue(LANGUAGE_STORAGE_KEY) === 'en' ? 'en' : 'ko';
 }
 function t(key, values = {}) {
   const dictionary = i18n[currentLanguage] || i18n.ko;
@@ -367,11 +21,7 @@ function t(key, values = {}) {
 }
 function setLanguage(language) {
   currentLanguage = language === 'en' ? 'en' : 'ko';
-  try {
-    localStorage.setItem(LANGUAGE_STORAGE_KEY, currentLanguage);
-  } catch {
-    // Ignore storage failures in locked-down browser contexts.
-  }
+  opsBrowser.writeStorageValue(LANGUAGE_STORAGE_KEY, currentLanguage);
   applyLanguage();
 }
 function getCommandLanguageMap(section) {
@@ -440,7 +90,7 @@ function setTileTone(id, tone) {
   if (tone) element.classList.add(`status-tone-${tone}`);
 }
 async function fetchJson(url, options = {}) {
-  const response = await fetch(url, options);
+  const response = await opsBrowser.fetch(url, options);
   const payload = await response.json();
   if (!response.ok || payload.ok === false) {
     throw new Error(payload.error || payload.summary || `request_failed:${response.status}`);
@@ -454,9 +104,7 @@ function setStatusTone(element, tone) {
   }
 }
 function sleep(ms) {
-  return new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
+  return opsBrowser.delay(ms);
 }
 function serverActionLabel(actionKey = '') {
   return actionKey === 'server.recover' ? t('recoverAction') : t('serverStartAction');
@@ -642,7 +290,7 @@ async function waitForKpiReady(command, options = {}) {
 }
 async function executeCommand(command, payload = {}, options = {}) {
   const confirmMessage = commandConfirmMessage(command);
-  if (confirmMessage && !window.confirm(confirmMessage)) {
+  if (confirmMessage && !opsBrowser.confirm(confirmMessage)) {
     return null;
   }
   const shouldWaitForKpiReady = options.waitForKpiReady === true;
@@ -774,7 +422,7 @@ function syncRepositoryMapLanguage() {
       frame.setAttribute('src', nextSrc);
     }
     try {
-      frame.contentWindow?.postMessage({ type: 'kpi-ops-language', language: currentLanguage }, window.location.origin);
+      opsBrowser.postLanguageToFrame(frame, currentLanguage);
     } catch {
       // The frame is same-origin, but ignore transient reload timing.
     }
@@ -801,170 +449,23 @@ function applyLanguage() {
     renderCommands(overviewCache.commandRegistry || []);
   }
 }
+let opsFormBuilders = null;
+function getOpsFormBuilders() {
+  if (!opsFormBuilders) {
+    opsFormBuilders = createOpsFormBuilders({ $, buildField, commandIconMap, commandLabel, commandTitle, compactDescription, createIcon, executeCommand, getCommand, localizeField, setResult, t });
+  }
+  return opsFormBuilders;
+}
 function closeScheduleModal() {
-  $('scheduleModal').hidden = true;
-  document.body.classList.remove('modal-open');
+  getOpsFormBuilders().closeScheduleModal();
 }
 function openScheduleModal() {
-  const command = getCommand('system.scheduleShutdown');
-  if (!command) {
-    setResult(t('scheduleNotLoaded'));
-    return;
-  }
-  $('scheduleModalTitle').textContent = commandTitle(command);
-  $('scheduleModalDescription').textContent = compactDescription(command);
-  const form = $('scheduleModalForm');
-  form.innerHTML = '';
-  const groupedFields = [];
-  const localizedFields = (command.fields || []).map((field) => localizeField(command, field));
-  for (let index = 0; index < localizedFields.length; index += 2) {
-    groupedFields.push(localizedFields.slice(index, index + 2));
-  }
-  for (const group of groupedFields) {
-    const row = document.createElement('div');
-    row.className = 'field-row';
-    if (group.length === 1) {
-      row.classList.add('field-row-single');
-    }
-    for (const field of group) {
-      const label = document.createElement('label');
-      const labelText = document.createElement('span');
-      labelText.textContent = field.label;
-      label.appendChild(labelText);
-      label.appendChild(buildField(field));
-      row.appendChild(label);
-    }
-    form.appendChild(row);
-  }
-  const actions = document.createElement('div');
-  actions.className = 'form-actions';
-  const closeButton = document.createElement('button');
-  closeButton.type = 'button';
-  closeButton.className = 'secondary-button';
-  closeButton.textContent = t('closeLabel');
-  closeButton.addEventListener('click', closeScheduleModal);
-  const submitButton = document.createElement('button');
-  submitButton.type = 'submit';
-  submitButton.className = 'primary-button';
-  submitButton.textContent = commandLabel(command);
-  actions.append(closeButton, submitButton);
-  form.appendChild(actions);
-  form.onsubmit = async (event) => {
-    event.preventDefault();
-    const payload = {};
-    for (const field of localizedFields) {
-      const value = form.elements[field.name]?.value ?? '';
-      payload[field.name] = String(value).trim();
-    }
-    submitButton.disabled = true;
-    closeButton.disabled = true;
-    try {
-      const result = await executeCommand(command, payload, {
-        onSuccess: () => {
-          closeScheduleModal();
-        }
-      });
-      if (result) {
-        form.reset();
-      }
-    } catch (error) {
-      setResult(t('scriptFailed', { title: commandTitle(command) }), error.message);
-    } finally {
-      submitButton.disabled = false;
-      closeButton.disabled = false;
-    }
-  };
-  $('scheduleModal').hidden = false;
-  document.body.classList.add('modal-open');
+  getOpsFormBuilders().openScheduleModal();
 }
 function buildFormItem(command) {
-  const wrapper = document.createElement('details');
-  wrapper.className = 'form-disclosure';
-  const summary = document.createElement('summary');
-  const summaryText = document.createElement('div');
-  summaryText.className = 'form-summary-text';
-  const summaryHead = document.createElement('div');
-  summaryHead.className = 'action-copy-head';
-  summaryHead.appendChild(createIcon(commandIconMap[command.key] || 'spark', 'action-icon'));
-  const title = document.createElement('strong');
-  title.textContent = commandTitle(command);
-  summaryHead.appendChild(title);
-  summaryText.appendChild(summaryHead);
-  const description = document.createElement('span');
-  description.textContent = compactDescription(command);
-  summaryText.appendChild(description);
-  const toggle = document.createElement('span');
-  toggle.className = 'form-summary-toggle';
-  toggle.textContent = t('openLabel');
-  summary.appendChild(summaryText);
-  summary.appendChild(toggle);
-  wrapper.appendChild(summary);
-  const body = document.createElement('div');
-  body.className = 'form-body';
-  const form = document.createElement('form');
-  form.className = 'field-grid';
-  const groupedFields = [];
-  const localizedFields = (command.fields || []).map((field) => localizeField(command, field));
-  for (let index = 0; index < localizedFields.length; index += 2) {
-    groupedFields.push(localizedFields.slice(index, index + 2));
-  }
-  for (const group of groupedFields) {
-    const row = document.createElement('div');
-    row.className = 'field-row';
-    if (group.length === 1) {
-      row.classList.add('field-row-single');
-    }
-    for (const field of group) {
-      const label = document.createElement('label');
-      const labelText = document.createElement('span');
-      labelText.textContent = field.label;
-      label.appendChild(labelText);
-      label.appendChild(buildField(field));
-      row.appendChild(label);
-    }
-    form.appendChild(row);
-  }
-  const actions = document.createElement('div');
-  actions.className = 'form-actions';
-  const button = document.createElement('button');
-  button.type = 'submit';
-  button.className = command.key.includes('delete') ? 'secondary-button' : 'primary-button';
-  button.textContent = commandLabel(command);
-  actions.appendChild(button);
-  form.appendChild(actions);
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    button.disabled = true;
-    const payload = {};
-    for (const field of localizedFields) {
-      const value = form.elements[field.name]?.value ?? '';
-      payload[field.name] = String(value).trim();
-    }
-    try {
-      const result = await executeCommand(command, payload, {
-        onSuccess: () => {
-          form.reset();
-          wrapper.open = false;
-        }
-      });
-      if (!result) {
-        return;
-      }
-    } catch (error) {
-      setResult(t('scriptFailed', { title: commandTitle(command) }), error.message);
-    } finally {
-      button.disabled = false;
-    }
-  });
-  body.appendChild(form);
-  wrapper.appendChild(body);
-  const syncToggleLabel = () => {
-    toggle.textContent = wrapper.open ? t('closeLabel') : t('openLabel');
-  };
-  wrapper.addEventListener('toggle', syncToggleLabel);
-  syncToggleLabel();
-  return wrapper;
+  return getOpsFormBuilders().buildFormItem(command);
 }
+
 function renderCommands(commands) {
   const accountActions = $('accountActions');
   const toolActions = $('toolActions');
@@ -1091,15 +592,15 @@ function normalizeTabName(tabName = '') {
   return TAB_SERVER;
 }
 function getRequestedTab() {
-  const hash = String(window.location.hash || '').replace(/^#/, '').trim().toLowerCase();
+  const hash = opsBrowser.getLocationHash().replace(/^#/, '').trim().toLowerCase();
   return normalizeTabName(hash);
 }
 function syncTabHash(tabName) {
   const normalized = normalizeTabName(tabName);
-  if (window.location.hash === `#${normalized}`) {
+  if (opsBrowser.getLocationHash() === `#${normalized}`) {
     return;
   }
-  history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${normalized}`);
+  opsBrowser.replaceLocationHash(normalized);
 }
 async function hydrateTab(tabName) {
   const normalized = normalizeTabName(tabName);
@@ -1129,141 +630,6 @@ function activateTab(tabName, options = {}) {
   if (options.hydrate !== false) {
     void hydrateTab(normalized);
   }
-}
-function bindDragScroll(element) {
-  if (element.dataset.dragBound === 'true') {
-    return;
-  }
-  element.dataset.dragBound = 'true';
-  const dragThreshold = 4;
-  const dragSpeed = 1.45;
-  const edgeZone = 28;
-  const edgeBoostMax = 18;
-  let active = false;
-  let dragging = false;
-  let pointerId = null;
-  let activePointerType = 'mouse';
-  let startX = 0;
-  let startY = 0;
-  let scrollLeft = 0;
-  let scrollTop = 0;
-  let lastClientX = 0;
-  let lastClientY = 0;
-  let edgeFrame = 0;
-  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-  const edgeDelta = (position, min, max) => {
-    if (position < min + edgeZone) {
-      const ratio = (min + edgeZone - position) / edgeZone;
-      return -Math.ceil(clamp(ratio, 0, 1) * edgeBoostMax);
-    }
-    if (position > max - edgeZone) {
-      const ratio = (position - (max - edgeZone)) / edgeZone;
-      return Math.ceil(clamp(ratio, 0, 1) * edgeBoostMax);
-    }
-    return 0;
-  };
-  const stopEdgeScroll = () => {
-    if (!edgeFrame) {
-      return;
-    }
-    cancelAnimationFrame(edgeFrame);
-    edgeFrame = 0;
-  };
-  const runEdgeScroll = () => {
-    if (!(active && dragging)) {
-      edgeFrame = 0;
-      return;
-    }
-    const rect = element.getBoundingClientRect();
-    const extraX = edgeDelta(lastClientX, rect.left, rect.right);
-    const extraY = edgeDelta(lastClientY, rect.top, rect.bottom);
-    if (extraX || extraY) {
-      scrollLeft += extraX;
-      scrollTop += extraY;
-      element.scrollLeft += extraX;
-      element.scrollTop += extraY;
-    }
-    edgeFrame = requestAnimationFrame(runEdgeScroll);
-  };
-  const ensureEdgeScroll = () => {
-    if (!edgeFrame) {
-      edgeFrame = requestAnimationFrame(runEdgeScroll);
-    }
-  };
-  const stop = () => {
-    if (!active) {
-      return;
-    }
-    active = false;
-    dragging = false;
-    pointerId = null;
-    stopEdgeScroll();
-    element.classList.remove('is-dragging');
-  };
-  const start = (clientX, clientY, nextPointerId = null, nextPointerType = 'mouse') => {
-    active = true;
-    dragging = false;
-    pointerId = nextPointerId;
-    activePointerType = nextPointerType || 'mouse';
-    startX = clientX;
-    startY = clientY;
-    scrollLeft = element.scrollLeft;
-    scrollTop = element.scrollTop;
-    lastClientX = clientX;
-    lastClientY = clientY;
-  };
-  const move = (clientX, clientY, event) => {
-    if (!active) {
-      return;
-    }
-    lastClientX = clientX;
-    lastClientY = clientY;
-    const deltaX = clientX - startX;
-    const deltaY = clientY - startY;
-
-    if (!dragging && (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold)) {
-      dragging = true;
-      element.classList.add('is-dragging');
-    }
-
-    if (!dragging) {
-      return;
-    }
-
-    event.preventDefault();
-    const direction = activePointerType === 'touch' ? -1 : 1;
-    element.scrollLeft = scrollLeft + (deltaX * dragSpeed * direction);
-    element.scrollTop = scrollTop + (deltaY * dragSpeed * direction);
-    ensureEdgeScroll();
-  };
-  element.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0 && event.pointerType !== 'touch') {
-      return;
-    }
-    start(event.clientX, event.clientY, event.pointerId, event.pointerType);
-    if (typeof element.setPointerCapture === 'function') {
-      element.setPointerCapture(event.pointerId);
-    }
-    event.preventDefault();
-  });
-  element.addEventListener('pointermove', (event) => {
-    if (pointerId !== null && event.pointerId !== pointerId) {
-      return;
-    }
-    move(event.clientX, event.clientY, event);
-  });
-  const finishPointer = (event) => {
-    if (pointerId !== null && event.pointerId !== pointerId) {
-      return;
-    }
-    stop();
-  };
-  element.addEventListener('pointerup', finishPointer);
-  element.addEventListener('pointercancel', finishPointer);
-  element.addEventListener('lostpointercapture', stop);
-  element.addEventListener('dragstart', (event) => {
-    event.preventDefault();
-  });
 }
 function bindDragScrollTargets() {
   document.querySelectorAll('.drag-scroll').forEach(bindDragScroll);
@@ -1321,7 +687,7 @@ function bindStaticEvents() {
       setResult(t('loginUrlUnknown'));
       return;
     }
-    window.open(url, '_blank', 'noopener,noreferrer');
+    opsBrowser.openWindow(url, '_blank', 'noopener,noreferrer');
   });
   document.querySelectorAll('[data-language]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -1344,12 +710,12 @@ function bindStaticEvents() {
       closeScheduleModal();
     }
   });
-  window.addEventListener('keydown', (event) => {
+  opsBrowser.addGlobalEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !$('scheduleModal').hidden) {
       closeScheduleModal();
     }
   });
-  window.addEventListener('hashchange', () => {
+  opsBrowser.addGlobalEventListener('hashchange', () => {
     activateTab(getRequestedTab(), { syncHash: false });
   });
 }
@@ -1366,4 +732,3 @@ async function bootstrap() {
 bootstrap().catch((error) => {
   setResult(t('initialLoadFailed'), error.message);
 });
-

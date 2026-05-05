@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 import { resolveMeteringBundleSourceUrl } from '../../src/lib/metering-bundle-draft.js';
 
+const adapterSource = await fs.readFile(
+  resolveMeteringBundleSourceUrl('runtime/browser-adapter.js'),
+  'utf8'
+);
 const teamSettlementFormActionsSource = await fs.readFile(
   resolveMeteringBundleSourceUrl('team-settlement/form-actions.js'),
   'utf8'
@@ -297,6 +301,9 @@ function createTeamSettlementFormActionsContext(options = {}) {
 
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'metering/runtime/browser-adapter.js',
+  });
   vm.runInContext(teamSettlementFormActionsSource, context, {
     filename: 'team-settlement/form-actions.js',
   });
@@ -470,4 +477,9 @@ test('team settlement form actions clear completion and rerender the team mode',
   assert.equal(calls.updateDirtyState, 1);
   assert.equal(calls.renderTeamMode, 1);
   assert.equal(state.cleanStatusText, '정산 완료 해제를 반영했습니다. 저장해 주세요.');
+});
+
+test('team settlement form actions route alerts through the adapter', () => {
+  assert.doesNotMatch(teamSettlementFormActionsSource, /window\./);
+  assert.match(teamSettlementFormActionsSource, /KpiMeteringBrowserAdapter/);
 });

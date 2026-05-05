@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetOptionsSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/options.js', import.meta.url),
   'utf8'
@@ -33,6 +37,9 @@ function createReportSheetControlsContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetOptionsSource, context, {
     filename: 'KPI.util.report.sheet.options.js',
   });
@@ -47,6 +54,8 @@ test('report sheet controls registry builds select, toggle, and month option htm
   const controls = context.KPIUtilReportSheetControls;
 
   assert.ok(controls, 'report sheet controls registry is missing');
+  assert.doesNotMatch(reportSheetControlsSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetControlsSource, /KPIUtilReportRuntimeAdapter/);
 
   controls.setRuntimeAdapters({
     escapeUtilSheetHtml(value) {

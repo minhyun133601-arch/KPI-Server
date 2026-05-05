@@ -1,3 +1,14 @@
+        const auditOptionsBrowser = typeof KpiAuditRecordsBrowserAdapter !== 'undefined'
+            ? KpiAuditRecordsBrowserAdapter
+            : null;
+
+        function getAuditOptionsData(dataKey) {
+            if (typeof getAuditData === 'function') {
+                return getAuditData(dataKey, '');
+            }
+            return auditOptionsBrowser?.getPortalPayload?.(dataKey) || {};
+        }
+
         function getQuarterOptions(yearStart, yearEnd, selected, placeholder) {
             const options = [`<option value="">${escapeHtml(placeholder || '전체')}</option>`];
             for (let y = yearStart; y <= yearEnd; y += 1) {
@@ -86,9 +97,7 @@
         }
 
         function getAuditFilterSourceItems(dataKey) {
-            const data = typeof getAuditData === 'function'
-                ? getAuditData(dataKey, '')
-                : (window.PortalData?.[dataKey] || {});
+            const data = getAuditOptionsData(dataKey);
             const standards = Array.isArray(data?.standards) ? data.standards : [];
             const entries = Array.isArray(data?.entries) ? data.entries : [];
             return standards.concat(entries).filter(item => item && typeof item === 'object');
@@ -125,9 +134,7 @@
 
         function getAuditLuxEntryTeams(dataKey, year = null, quarter = null) {
             if (!isAuditLuxDataKey(dataKey)) return getEquipTeams();
-            const data = typeof getAuditData === 'function'
-                ? getAuditData(dataKey, '')
-                : (window.PortalData?.[dataKey] || {});
+            const data = getAuditOptionsData(dataKey);
             const targetYear = Number.isFinite(Number(year)) ? Number(year) : null;
             const targetQuarter = Number.isFinite(Number(quarter)) ? Number(quarter) : null;
             const teams = new Set();
@@ -216,9 +223,7 @@
                 const now = getAuditCurrentQuarterInfo();
                 return buildQuarterKeyRange(makeQuarterKey(2023, 1), makeQuarterKey(now.year, now.quarter));
             }
-            const data = typeof getAuditData === 'function'
-                ? getAuditData(dataKey, '')
-                : (window.PortalData?.[dataKey] || {});
+            const data = getAuditOptionsData(dataKey);
             return Array.from(new Set(
                 (Array.isArray(data?.entries) ? data.entries : [])
                     .map(entry => makeQuarterKey(entry.year, entry.quarter))
@@ -303,9 +308,7 @@
             const entryForm = getAuditEntryFormState(dataKey);
             const team = String(entryForm.team || '').trim();
             if (!team || !entryForm.year || !entryForm.quarter) return [];
-            const data = typeof getAuditData === 'function'
-                ? getAuditData(dataKey, '')
-                : (window.PortalData?.[dataKey] || {});
+            const data = getAuditOptionsData(dataKey);
             const standards = (Array.isArray(data?.standards) ? data.standards : [])
                 .filter(item => String(item?.team || '').trim() === team);
             const entryMap = new Map();

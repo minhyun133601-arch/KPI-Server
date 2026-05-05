@@ -1,3 +1,9 @@
+        function getWorkTeamCalendarStateBrowser() {
+            return typeof KpiWorkBrowserAdapter !== 'undefined'
+                ? KpiWorkBrowserAdapter
+                : null;
+        }
+
         function formatWorkTeamCalendarMonthOptionLabel(monthKey) {
             const parsed = parseMonthKey(monthKey);
             if (!parsed) return monthKey || '';
@@ -90,13 +96,14 @@
         }
 
         function ensureWorkTeamCalendarDateRolloverWatcher() {
-            if (window.__workTeamCalendarDateRolloverWatcher) return;
-            window.__workTeamCalendarDateRolloverWatcher = true;
+            const browser = getWorkTeamCalendarStateBrowser();
+            if (browser?.getRootFlag?.('__workTeamCalendarDateRolloverWatcher')) return;
+            browser?.setRootFlag?.('__workTeamCalendarDateRolloverWatcher', true);
             const schedule = () => {
                 const now = new Date();
                 const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 2, 0);
                 const delay = Math.max(1000, next.getTime() - now.getTime());
-                window.setTimeout(() => {
+                browser?.setWindowTimeout?.(() => {
                     const modal = document.getElementById('work-team-calendar-modal');
                     if (modal?.classList.contains('is-open')) {
                         renderWorkTeamCalendarModal();
@@ -153,7 +160,7 @@
         }
 
         function getWorkAttachmentServerRuntimeConfig(dataKey) {
-            const runtime = window.__KPI_SERVER_RUNTIME_CONFIG__?.work;
+            const runtime = getWorkTeamCalendarStateBrowser()?.getWorkRuntimeConfig?.();
             if (!runtime || runtime.enabled !== true) return null;
             const record = typeof getWorkServerRuntimeConfig === 'function'
                 ? getWorkServerRuntimeConfig(dataKey)

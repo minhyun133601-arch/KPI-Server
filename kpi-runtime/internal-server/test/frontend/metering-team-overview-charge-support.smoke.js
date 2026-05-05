@@ -175,6 +175,18 @@ test('charge-support filters shared compressor source equipment and preserves te
   );
 });
 
+test('charge-support keeps assigned equipment untouched before shared compressor settlement starts', () => {
+  const context = createChargeSupportContext();
+
+  assert.equal(context.getSharedCompressorSettlementRatio('team_04', '2026-03'), null);
+  assert.deepEqual(
+    context.getTeamChargeEquipmentIdsExcludingSharedCompressor('team_04', '2026-03'),
+    ['shared_a', 'plain_a']
+  );
+  assert.equal(context.calculateSharedCompressorSettlementUsageSum('2026-03'), null);
+  assert.equal(context.calculateTeamSharedCompressorSettlementUsage('team_04', '2026-03'), null);
+});
+
 test('charge-support dedupes shared sources and calculates shared totals with detail text', () => {
   const context = createChargeSupportContext();
 

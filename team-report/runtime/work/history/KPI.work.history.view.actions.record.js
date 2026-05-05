@@ -1,5 +1,6 @@
 (function initKpiWorkHistoryViewActionRecord() {
-    const history = window.KpiWorkHistory;
+    const browser = KpiWorkHistoryBrowserAdapter;
+    const history = KpiWorkHistoryBrowserAdapter.getHistory();
     if (!history) return;
 
     const view = history.view || (history.view = {});
@@ -169,43 +170,43 @@
             .filter(Boolean);
 
         if (!startDate || !endDate) {
-            window.alert('작업 기간을 입력해 주세요.');
+            browser.alert('작업 기간을 입력해 주세요.');
             return false;
         }
         if (startDate < minDate || endDate < minDate) {
-            window.alert('작업내역 검색필터의 날짜는 2024-01-01부터 선택할 수 있습니다.');
+            browser.alert('작업내역 검색필터의 날짜는 2024-01-01부터 선택할 수 있습니다.');
             return false;
         }
         if (startDate > today || endDate > today) {
-            window.alert('작업내역 검색필터의 날짜는 오늘까지만 선택할 수 있습니다.');
+            browser.alert('작업내역 검색필터의 날짜는 오늘까지만 선택할 수 있습니다.');
             return false;
         }
         if (endDate > view.todayInputValue()) {
-            window.alert('작업 종료일은 오늘 날짜까지만 입력할 수 있습니다.');
+            browser.alert('작업 종료일은 오늘 날짜까지만 입력할 수 있습니다.');
             return false;
         }
         if (endDate < startDate) {
-            window.alert('작업 종료일이 시작일보다 빠를 수는 없습니다.');
+            browser.alert('작업 종료일이 시작일보다 빠를 수는 없습니다.');
             return false;
         }
         if (!TeamInfo[targetTeam]) {
-            window.alert('작업 팀을 선택해 주세요.');
+            browser.alert('작업 팀을 선택해 주세요.');
             return false;
         }
         if (!assignees.length) {
-            window.alert('작업자를 입력해 주세요.');
+            browser.alert('작업자를 입력해 주세요.');
             return false;
         }
         if (!normalizedCategoryGroup) {
-            window.alert('구분을 선택해 주세요.');
+            browser.alert('구분을 선택해 주세요.');
             return false;
         }
         if (requiresCategory && (!normalizedCategory || !categoryOptionValues.includes(normalizedCategory) || (!isAllowedRecordCategory(normalizedCategory) && normalizedCategory !== category))) {
-            window.alert('세부 카테고리를 선택해 주세요.');
+            browser.alert('세부 카테고리를 선택해 주세요.');
             return false;
         }
         if (!workContent) {
-            window.alert('업무내용을 입력해 주세요.');
+            browser.alert('업무내용을 입력해 주세요.');
             return false;
         }
 
@@ -228,9 +229,9 @@
                 console.error('[kpi] work history attachment upload failed', error);
                 const errorKey = String(error?.message || '').trim();
                 if (errorKey === 'attachment_pdf_only' || errorKey === 'unsupported_type' || errorKey === 'file_too_large') {
-                    window.alert(view.getAttachmentValidationMessage?.(errorKey) || '첨부 파일을 다시 선택해 주세요.');
+                    browser.alert(view.getAttachmentValidationMessage?.(errorKey) || '첨부 파일을 다시 선택해 주세요.');
                 } else {
-                    window.alert('첨부 파일 업로드 중 오류가 발생했습니다.');
+                    browser.alert('첨부 파일 업로드 중 오류가 발생했습니다.');
                 }
                 return false;
             }

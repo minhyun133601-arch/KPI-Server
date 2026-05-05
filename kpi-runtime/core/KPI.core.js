@@ -1,5 +1,11 @@
         const AppData = {};
         let activeSectionId = null;
+        const coreBrowser = typeof KpiCoreBrowserAdapter === 'object' && KpiCoreBrowserAdapter
+            ? KpiCoreBrowserAdapter
+            : null;
+        if (!coreBrowser) {
+            throw new Error('KpiCoreBrowserAdapter must load before KPI.core.js');
+        }
 
         const KpiRuntimeState = {
             sectionRenderers: Object.create(null),
@@ -173,7 +179,7 @@
         }
 
         function getServerRuntimeConfig() {
-            const runtimeConfig = window.__KPI_SERVER_RUNTIME_CONFIG__;
+            const runtimeConfig = coreBrowser.getServerRuntimeConfig();
             if (!runtimeConfig || typeof runtimeConfig !== 'object') return null;
             return runtimeConfig;
         }
@@ -184,15 +190,15 @@
                 runtimeConfig
                 && runtimeConfig.enabled === true
                 && String(runtimeConfig.source || '').trim() === 'internal_server'
-                && /^(http:|https:)$/.test(window.location.protocol || '')
+                && /^(http:|https:)$/.test(coreBrowser.getLocationProtocol())
             );
         }
 
         function canUseServerWrite(writeEnabled) {
-            return hasServerAuthority() && writeEnabled === true && typeof window.fetch === 'function';
+            return hasServerAuthority() && writeEnabled === true && coreBrowser.hasFetch();
         }
 
-        window.KpiRuntime = Object.freeze({
+        coreBrowser.exposeRuntime(Object.freeze({
             registerSectionRenderer,
             getSectionRenderer,
             registerSectionInitializer,
@@ -214,6 +220,6 @@
             getServerRuntimeConfig,
             hasServerAuthority,
             canUseServerWrite
-        });
+        }));
 
-        window.KpiSectionRegistry.registerSections(AppData);
+        coreBrowser.registerSections(AppData);

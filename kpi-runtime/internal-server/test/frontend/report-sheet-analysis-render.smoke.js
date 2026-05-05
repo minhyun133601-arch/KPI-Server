@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetOptionsSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/options.js', import.meta.url),
   'utf8'
@@ -43,6 +47,9 @@ function createAnalysisRenderContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js'
+  });
   vm.runInContext(reportSheetOptionsSource, context, {
     filename: 'KPI.util.report.sheet.options.js'
   });
@@ -56,6 +63,9 @@ function createAnalysisRenderContext() {
 }
 
 test('report sheet analysis render registry builds fullscreen gas chart cards and gas/electric analysis bodies', () => {
+  assert.doesNotMatch(reportSheetAnalysisRenderSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetAnalysisRenderSource, /KPIUtilReportRuntimeAdapter/);
+
   const context = createAnalysisRenderContext();
   const controls = context.KPIUtilReportSheetControls;
   const analysisRender = context.KPIUtilReportSheetAnalysisRender;
@@ -96,7 +106,9 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
     buildUtilGasAnalysisFloatingTablePanelHtml(modal, model, tableKey) {
       void modal;
       return `<aside class="floating-table" data-range="${String(model?.rangeLabel || '')}" data-key="${String(tableKey || '')}"></aside>`;
-    }
+    },
+    renderUtilIndependentBoundsMultiSeriesChart: context.renderUtilIndependentBoundsMultiSeriesChart,
+    renderUtilTrendChart: context.renderUtilTrendChart
   });
 
   const gasModel = {
@@ -236,11 +248,14 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
 });
 
 test('kpi html loads report sheet analysis render between modal render and sheet.js', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');
+  assert.ok(analysisRenderIndex > adapterIndex, 'report sheet analysis render must load after report runtime adapter');
   assert.ok(analysisRenderIndex > modalRenderIndex, 'report sheet analysis render must load after report sheet modal render');
   assert.ok(sheetIndex > analysisRenderIndex, 'report sheet must load after report sheet analysis render');
 });

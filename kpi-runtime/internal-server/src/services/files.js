@@ -3,6 +3,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { runtimePaths } from '../config.js';
 import { resolveDocumentStorage } from '../lib/document-storage.js';
+import { validateDocumentUploadPolicy } from '../lib/document-upload-policy.js';
 import { ensureDir } from '../lib/fs.js';
 import { appendAuditLog } from '../repositories/audit-log.js';
 import { createDocumentRecord, deleteDocumentById, findDocumentById } from '../repositories/documents.js';
@@ -33,6 +34,13 @@ export async function initializeFileStorage() {
   await ensureDir(runtimePaths.logsRoot);
 }
 
+/**
+ * Persists a browser-uploaded document through the managed storage boundary.
+ *
+ * The service validates domain-specific upload policy before writing bytes,
+ * chooses a safe server-side path, creates the DB record, and appends an audit
+ * log entry. Route handlers should not bypass this function for managed files.
+ */
 export async function saveBase64Document({
   actorUserId,
   permissionKey,
@@ -44,6 +52,14 @@ export async function saveBase64Document({
   base64Data,
   metadata
 }) {
+  validateDocumentUploadPolicy({
+    ownerDomain,
+    fileCategory,
+    originalName,
+    mimeType,
+    base64Data
+  });
+
   const binary = Buffer.from(String(base64Data || ''), 'base64');
   if (!binary.length) {
     throw new Error('empty_file_payload');
@@ -114,6 +130,12 @@ export async function getDocumentFile(documentId) {
   };
 }
 
+/**
+ * Deletes the file payload and matching DB record as one service operation.
+ *
+ * Missing files are tolerated so metadata cleanup can still finish, but the DB
+ * delete and audit log remain the source of truth for the user-visible result.
+ */
 export async function deleteDocument({ actorUserId, documentId }) {
   const loaded = await getDocumentFile(documentId);
   if (!loaded) return null;

@@ -1,10 +1,15 @@
 (function bootstrapKpiDemoData() {
+    const browser = typeof KpiDemoDataBrowserAdapter === 'object' && KpiDemoDataBrowserAdapter
+        ? KpiDemoDataBrowserAdapter
+        : null;
+    if (!browser) {
+        throw new Error('KpiDemoDataBrowserAdapter must load before KPI.demo-data.js');
+    }
+
     const UPDATED_AT = '2026-04-26T06:00:00.000Z';
-    function isPlainObject(value) { return !!value && typeof value === 'object' && !Array.isArray(value); }
     function clone(value) { return JSON.parse(JSON.stringify(value)); }
     function setPortalDataDefault(key, payload) {
-        window.PortalData = isPlainObject(window.PortalData) ? window.PortalData : {};
-        if (!Object.prototype.hasOwnProperty.call(window.PortalData, key)) window.PortalData[key] = clone(payload);
+        browser.setPortalDataDefault(key, clone(payload));
     }
 
     setPortalDataDefault('audit_legal_facility', {
@@ -62,5 +67,5 @@
         documents: []
     });
 
-    window.__KPI_DEMO_DATA__ = Object.freeze({ enabled: true, scope: ['audit_legal_facility', 'data_equipment_history_card'], updatedAt: UPDATED_AT, note: 'Local screen defaults only. No company records are included.' });
+    browser.setRootValue('__KPI_DEMO_DATA__', Object.freeze({ enabled: true, scope: ['audit_legal_facility', 'data_equipment_history_card'], updatedAt: UPDATED_AT, note: 'Local screen defaults only. No company records are included.' }));
 })();

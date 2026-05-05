@@ -1,31 +1,33 @@
-﻿(function registerUtilSheetReports() {
-    const utilReportSheetConfig = globalThis.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.js');
-    }
+(function registerUtilSheetReports(globalScope) {
+    const runtimeAdapter = globalScope.KPIUtilReportRuntimeAdapter;
+    const requireApi = runtimeAdapter?.requireApi || ((name, consumer) => {
+        const api = globalScope[name];
+        if (!api) throw new Error(`${name} must load before ${consumer}`);
+        return api;
+    });
+    const getFunction = runtimeAdapter?.getFunction || ((name) => {
+        const fn = globalScope[name];
+        return typeof fn === 'function' ? (...args) => fn.apply(globalScope, args) : null;
+    });
+    const getLocalAppStore = runtimeAdapter?.getLocalAppStore
+        ? () => runtimeAdapter.getLocalAppStore()
+        : () => globalScope.__LOCAL_APP_STORE__ || null;
+    const ensureIntegratedMeteringRuntime = runtimeAdapter?.ensureIntegratedMeteringRuntime
+        ? () => runtimeAdapter.ensureIntegratedMeteringRuntime()
+        : null;
+    const exportApi = runtimeAdapter?.exportApi || ((name, api) => {
+        globalScope[name] = api;
+        return api;
+    });
+    const syncUtilGasDataFromMetering = getFunction('syncUtilGasDataFromMetering');
+    const syncUtilElectricDataFromMetering = getFunction('syncUtilElectricDataFromMetering');
+
+    const utilReportSheetConfig = requireApi('KPIUtilReportSheetConfig', 'KPI.util.report.sheet.js');
     const {
-        utilSheetNumberFormatter,
-        UTIL_SHEET_DATASET_SPECS,
-        UTIL_SHEET_TYPE_SPECS,
         UtilSheetReportState,
-        UtilSheetReportMonthState,
-        UtilSheetCompareState,
-        UtilSheetMeterState,
-        UtilSheetDetachedReportState,
-        UtilSheetAnalysisChartPopupState,
         UTIL_GAS_BILLING_SCOPE_KEYS,
-        UTIL_ELECTRIC_BILLING_DOCUMENT_DIRECTORY,
-        UTIL_GAS_BILLING_DOCUMENT_DIRECTORY,
-        UTIL_GAS_BILLING_ASSET_BASE_DIRECTORY,
-        UTIL_ELECTRIC_BILLING_SCOPE_LABELS,
-        UTIL_GAS_BILLING_SCOPE_LABELS,
-        UTIL_GAS_RATIO_CHART_COLORS,
-        UTIL_GAS_METER_FIELD_ICONS
     } = utilReportSheetConfig;
-    const utilReportSheetOptions = globalThis.KPIUtilReportSheetOptions;
-    if (!utilReportSheetOptions) {
-        throw new Error('KPIUtilReportSheetOptions must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetOptions = requireApi('KPIUtilReportSheetOptions', 'KPI.util.report.sheet.js');
     const {
         UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS,
         UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS,
@@ -48,50 +50,12 @@
         getUtilGasAnalysisCategoryOption,
         normalizeUtilElectricMeterViewKey
     } = utilReportSheetOptions;
-    const utilReportSheetControls = globalThis.KPIUtilReportSheetControls;
-    if (!utilReportSheetControls) {
-        throw new Error('KPIUtilReportSheetControls must load before KPI.util.report.sheet.js');
-    }
-    const utilReportSheetMeteringRuntime = globalThis.KPIUtilReportSheetMeteringRuntime;
-    if (!utilReportSheetMeteringRuntime) {
-        throw new Error('KPIUtilReportSheetMeteringRuntime must load before KPI.util.report.sheet.js');
-    }
-    utilReportSheetMeteringRuntime.setRuntimeAdapters({
-        isUtilSheetPlainObject,
-        parseUtilGasMeterNumber,
-        normalizeUtilGasMeterDate,
-        compareUtilSheetMonthKeys,
-        shiftUtilSheetMonthKey: (...args) => shiftUtilSheetMonthKey(...args),
-        normalizeUtilSheetCompareKey: (...args) => normalizeUtilSheetCompareKey(...args),
-        parseUtilMonthValue: (...args) => parseUtilMonthValue(...args),
-        getUtilSheetEntries: (...args) => getUtilSheetEntries(...args),
-        buildUtilMonthOptions: typeof buildUtilMonthOptions === 'function'
-            ? (...args) => buildUtilMonthOptions(...args)
-            : null,
-        buildUtilGasBillingSummaryModel: (...args) => buildUtilGasBillingSummaryModel(...args),
-        getUtilGasMeterColumn: (...args) => getUtilGasMeterColumn(...args)
-    });
-    const {
-        getUtilMeteringDataset,
-        ensureUtilMeteringDataset,
-        getUtilGasMeteringStore,
-        hasUtilGasMeteringStore,
-        ensureUtilGasMeteringStore,
-        buildUtilGasMeterFieldDefinitions,
-        buildUtilGasMeterTimelineMap,
-        buildUtilGasMeterMonthTable,
-        buildUtilGasMeterComparisonModel,
-        buildUtilGasAnalysisUsageMap,
-        buildUtilSheetMonthBounds
-    } = utilReportSheetMeteringRuntime;
-    const utilReportSheetBilling = globalThis.KPIUtilReportSheetBilling;
-    if (!utilReportSheetBilling) {
-        throw new Error('KPIUtilReportSheetBilling must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetControls = requireApi('KPIUtilReportSheetControls', 'KPI.util.report.sheet.js');
+    const utilReportSheetBilling = requireApi('KPIUtilReportSheetBilling', 'KPI.util.report.sheet.js');
     utilReportSheetBilling.setRuntimeAdapters({
         getGasMeteringStore: () => getUtilGasMeteringStore(),
         getElectricMeteringStore: () => getUtilElectricMeteringStore(),
-        getLocalAppStore: () => window.__LOCAL_APP_STORE__ || null,
+        getLocalAppStore,
         isPlainObject: (value) => isUtilSheetPlainObject(value),
         formatMonthLabel: (monthKey) => (
             typeof formatUtilReportMonthLong === 'function'
@@ -128,10 +92,22 @@
         ensureUtilSheetBillingPreviewModal,
         openUtilSheetBillingPreview
     } = utilReportSheetBilling;
-    const utilReportSheetGasComparisonSummary = globalThis.KPIUtilReportSheetGasComparisonSummary;
-    if (!utilReportSheetGasComparisonSummary) {
-        throw new Error('KPIUtilReportSheetGasComparisonSummary must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetGasMeterModel = requireApi('KPIUtilReportSheetGasMeterModel', 'KPI.util.report.sheet.js');
+    const {
+        parseUtilGasMeterNumber,
+        normalizeUtilGasMeterDate,
+        getUtilMeteringDataset,
+        ensureUtilMeteringDataset,
+        getUtilGasMeteringStore,
+        hasUtilGasMeteringStore,
+        ensureUtilGasMeteringStore,
+        buildUtilGasMeterFieldDefinitions,
+        buildUtilGasMeterTimelineMap,
+        buildUtilGasMeterMonthTable,
+        buildUtilGasMeterComparisonModel,
+        buildUtilGasAnalysisUsageMap
+    } = utilReportSheetGasMeterModel;
+    const utilReportSheetGasComparisonSummary = requireApi('KPIUtilReportSheetGasComparisonSummary', 'KPI.util.report.sheet.js');
     utilReportSheetGasComparisonSummary.setRuntimeAdapters({
         escapeUtilSheetHtml,
         formatUtilSheetCost,
@@ -147,10 +123,16 @@
         buildUtilGasBillingSummaryModel,
         buildUtilGasMeterComparisonSectionHtml
     } = utilReportSheetGasComparisonSummary;
-    const utilReportSheetGasScopedMetrics = globalThis.KPIUtilReportSheetGasScopedMetrics;
-    if (!utilReportSheetGasScopedMetrics) {
-        throw new Error('KPIUtilReportSheetGasScopedMetrics must load before KPI.util.report.sheet.js');
-    }
+    utilReportSheetGasMeterModel.setRuntimeAdapters({
+        getLocalAppStore,
+        ensureIntegratedMeteringRuntime,
+        isUtilSheetPlainObject,
+        shiftUtilSheetMonthKey: (...args) => shiftUtilSheetMonthKey(...args),
+        normalizeUtilSheetCompareKey: (...args) => normalizeUtilSheetCompareKey(...args),
+        buildUtilGasBillingSummaryModel: (...args) => buildUtilGasBillingSummaryModel(...args),
+        getUtilGasMeterColumn: (...args) => getUtilGasMeterColumn(...args)
+    });
+    const utilReportSheetGasScopedMetrics = requireApi('KPIUtilReportSheetGasScopedMetrics', 'KPI.util.report.sheet.js');
     utilReportSheetGasScopedMetrics.setRuntimeAdapters({
         getUtilGasBillingScopeKeys: () => UTIL_GAS_BILLING_SCOPE_KEYS,
         getUtilGasAnalysisCategoryOption,
@@ -177,14 +159,9 @@
         getUtilGasProductionMetric,
         buildUtilGasAnalysisMetricMap
     } = utilReportSheetGasScopedMetrics;
-    const utilReportSheetGasRuntimeSync = globalThis.KPIUtilReportSheetGasRuntimeSync;
-    if (!utilReportSheetGasRuntimeSync) {
-        throw new Error('KPIUtilReportSheetGasRuntimeSync must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetGasRuntimeSync = requireApi('KPIUtilReportSheetGasRuntimeSync', 'KPI.util.report.sheet.js');
     utilReportSheetGasRuntimeSync.setRuntimeAdapters({
-        syncUtilGasDataFromMetering: typeof globalThis.syncUtilGasDataFromMetering === 'function'
-            ? (...args) => globalThis.syncUtilGasDataFromMetering(...args)
-            : null
+        syncUtilGasDataFromMetering
     });
     const {
         ensureUtilGasReportDataSync
@@ -197,17 +174,12 @@
     const {
         buildUtilElectricMeterViewToggleHtml
     } = utilReportSheetControls;
-    const utilReportSheetElectricRuntimeSync = globalThis.KPIUtilReportSheetElectricRuntimeSync;
-    if (!utilReportSheetElectricRuntimeSync) {
-        throw new Error('KPIUtilReportSheetElectricRuntimeSync must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetElectricRuntimeSync = requireApi('KPIUtilReportSheetElectricRuntimeSync', 'KPI.util.report.sheet.js');
     utilReportSheetElectricRuntimeSync.setRuntimeAdapters({
         getUtilMeteringDataset,
         ensureUtilMeteringDataset,
         isUtilSheetPlainObject,
-        syncUtilElectricDataFromMetering: typeof globalThis.syncUtilElectricDataFromMetering === 'function'
-            ? (...args) => globalThis.syncUtilElectricDataFromMetering(...args)
-            : null
+        syncUtilElectricDataFromMetering
     });
     const {
         getUtilElectricMeteringStore,
@@ -216,10 +188,7 @@
         getUtilElectricUtilitySnapshot,
         ensureUtilElectricReportDataSync
     } = utilReportSheetElectricRuntimeSync;
-    const utilReportSheetElectricMeterModel = globalThis.KPIUtilReportSheetElectricMeterModel;
-    if (!utilReportSheetElectricMeterModel) {
-        throw new Error('KPIUtilReportSheetElectricMeterModel must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetElectricMeterModel = requireApi('KPIUtilReportSheetElectricMeterModel', 'KPI.util.report.sheet.js');
     utilReportSheetElectricMeterModel.setRuntimeAdapters({
         getUtilElectricMeteringStore: () => getUtilElectricMeteringStore(),
         hasUtilElectricMeteringStore: () => hasUtilElectricMeteringStore(),
@@ -244,13 +213,10 @@
         buildUtilElectricMeterTeamDatasetResult,
         buildUtilElectricMeterComparisonModel
     } = utilReportSheetElectricMeterModel;
-    const utilReportSheetElectricComparisonSummary = globalThis.KPIUtilReportSheetElectricComparisonSummary;
-    if (!utilReportSheetElectricComparisonSummary) {
-        throw new Error('KPIUtilReportSheetElectricComparisonSummary must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetElectricComparisonSummary = requireApi('KPIUtilReportSheetElectricComparisonSummary', 'KPI.util.report.sheet.js');
     utilReportSheetElectricComparisonSummary.setRuntimeAdapters({
         getUtilElectricMeteringStore: () => getUtilElectricMeteringStore(),
-        getLocalAppStore: () => window.__LOCAL_APP_STORE__ || null,
+        getLocalAppStore,
         isUtilSheetPlainObject,
         parseUtilGasMeterNumber: (...args) => parseUtilGasMeterNumber(...args),
         buildUtilElectricMeterTeamDatasetResult,
@@ -272,10 +238,7 @@
         buildUtilElectricBillingSummaryModel,
         buildUtilElectricMeterComparisonSectionHtml
     } = utilReportSheetElectricComparisonSummary;
-    const utilReportSheetPanelRuntime = globalThis.KPIUtilReportSheetPanelRuntime;
-    if (!utilReportSheetPanelRuntime) {
-        throw new Error('KPIUtilReportSheetPanelRuntime must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetPanelRuntime = requireApi('KPIUtilReportSheetPanelRuntime', 'KPI.util.report.sheet.js');
     const {
         normalizeUtilSheetCompareKey,
         normalizeUtilSheetType,
@@ -294,10 +257,7 @@
         relocateUtilGasGuidanceNote,
         initUtilSheetReports
     } = utilReportSheetPanelRuntime;
-    const utilReportSheetPanelPreview = globalThis.KPIUtilReportSheetPanelPreview;
-    if (!utilReportSheetPanelPreview) {
-        throw new Error('KPIUtilReportSheetPanelPreview must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetPanelPreview = requireApi('KPIUtilReportSheetPanelPreview', 'KPI.util.report.sheet.js');
     utilReportSheetPanelPreview.setRuntimeAdapters({
         escapeUtilSheetHtml,
         buildUtilSheetMonthBounds,
@@ -315,26 +275,11 @@
         escapeUtilSheetHtml,
         renderUtilSheetPanel
     });
-    const utilReportSheetWindows = globalThis.KPIUtilReportSheetWindows;
-    if (!utilReportSheetWindows) {
-        throw new Error('KPIUtilReportSheetWindows must load before KPI.util.report.sheet.js');
-    }
-    const utilReportSheetModalActions = globalThis.KPIUtilReportSheetModalActions;
-    if (!utilReportSheetModalActions) {
-        throw new Error('KPIUtilReportSheetModalActions must load before KPI.util.report.sheet.js');
-    }
-    const utilReportSheetModalShell = globalThis.KPIUtilReportSheetModalShell;
-    if (!utilReportSheetModalShell) {
-        throw new Error('KPIUtilReportSheetModalShell must load before KPI.util.report.sheet.js');
-    }
-    const utilReportSheetModalRender = globalThis.KPIUtilReportSheetModalRender;
-    if (!utilReportSheetModalRender) {
-        throw new Error('KPIUtilReportSheetModalRender must load before KPI.util.report.sheet.js');
-    }
-    const utilReportSheetAnalysisState = globalThis.KPIUtilReportSheetAnalysisState;
-    if (!utilReportSheetAnalysisState) {
-        throw new Error('KPIUtilReportSheetAnalysisState must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetWindows = requireApi('KPIUtilReportSheetWindows', 'KPI.util.report.sheet.js');
+    const utilReportSheetModalActions = requireApi('KPIUtilReportSheetModalActions', 'KPI.util.report.sheet.js');
+    const utilReportSheetModalShell = requireApi('KPIUtilReportSheetModalShell', 'KPI.util.report.sheet.js');
+    const utilReportSheetModalRender = requireApi('KPIUtilReportSheetModalRender', 'KPI.util.report.sheet.js');
+    const utilReportSheetAnalysisState = requireApi('KPIUtilReportSheetAnalysisState', 'KPI.util.report.sheet.js');
     utilReportSheetAnalysisState.setRuntimeAdapters({
         compareUtilSheetMonthKeys,
         formatUtilReportMonthShort,
@@ -379,10 +324,7 @@
         setUtilSheetAnalysisDisplayMode,
         getUtilSheetActiveAnalysisDatasetKey
     } = utilReportSheetAnalysisState;
-    const utilReportSheetAnalysisCompareSelect = globalThis.KPIUtilReportSheetAnalysisCompareSelect;
-    if (!utilReportSheetAnalysisCompareSelect) {
-        throw new Error('KPIUtilReportSheetAnalysisCompareSelect must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetAnalysisCompareSelect = requireApi('KPIUtilReportSheetAnalysisCompareSelect', 'KPI.util.report.sheet.js');
     utilReportSheetAnalysisCompareSelect.setRuntimeAdapters({
         formatUtilReportMonthShort,
         getUtilGasAnalysisCategoryOption,
@@ -394,10 +336,7 @@
         buildUtilGasAnalysisCompareSub,
         resolveUtilSheetAnalysisLabelToggleContext
     } = utilReportSheetAnalysisCompareSelect;
-    const utilReportSheetAnalysisChartControls = globalThis.KPIUtilReportSheetAnalysisChartControls;
-    if (!utilReportSheetAnalysisChartControls) {
-        throw new Error('KPIUtilReportSheetAnalysisChartControls must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetAnalysisChartControls = requireApi('KPIUtilReportSheetAnalysisChartControls', 'KPI.util.report.sheet.js');
     utilReportSheetAnalysisChartControls.setRuntimeAdapters({
         escapeUtilSheetHtml,
         formatUtilReportMonthLong,
@@ -417,10 +356,7 @@
         buildUtilGasAnalysisPopupOnlyControlHtml,
         buildUtilGasAnalysisRatioTableControlHtml
     } = utilReportSheetAnalysisChartControls;
-    const utilReportSheetAnalysisRangeRatio = globalThis.KPIUtilReportSheetAnalysisRangeRatio;
-    if (!utilReportSheetAnalysisRangeRatio) {
-        throw new Error('KPIUtilReportSheetAnalysisRangeRatio must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetAnalysisRangeRatio = requireApi('KPIUtilReportSheetAnalysisRangeRatio', 'KPI.util.report.sheet.js');
     utilReportSheetAnalysisRangeRatio.setRuntimeAdapters({
         compareUtilSheetMonthKeys,
         formatUtilReportMonthShort,
@@ -441,10 +377,7 @@
         buildUtilGasAnalysisRangeTables,
         buildUtilGasAnalysisRatioCombinedChartModel
     } = utilReportSheetAnalysisRangeRatio;
-    const utilReportSheetAnalysisElectricModel = globalThis.KPIUtilReportSheetAnalysisElectricModel;
-    if (!utilReportSheetAnalysisElectricModel) {
-        throw new Error('KPIUtilReportSheetAnalysisElectricModel must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetAnalysisElectricModel = requireApi('KPIUtilReportSheetAnalysisElectricModel', 'KPI.util.report.sheet.js');
     utilReportSheetAnalysisElectricModel.setRuntimeAdapters({
         getUtilElectricAnalysisTeamOption,
         buildUtilSheetMonthBounds,
@@ -474,7 +407,13 @@
         getUtilElectricAnalysisDisplayMode,
         getUtilElectricAnalysisUnitOptions,
         buildUtilGasAnalysisSeriesLabel,
-        setUtilSheetAnalysisRangeState
+        setUtilSheetAnalysisRangeState,
+        buildUtilReportMonthlyRows,
+        getUtilReportMonthRange,
+        formatUtilReportMonthLong,
+        formatUtilReportMonthShort,
+        buildUtilReportProductionProductMonthlyValueMap,
+        parseUtilMonthValue
     });
     const {
         buildUtilElectricAnalysisLineRatioSeries,
@@ -483,10 +422,7 @@
         resolveUtilElectricAnalysisPointValue,
         buildUtilElectricAnalysisModel
     } = utilReportSheetAnalysisElectricModel;
-    const utilReportSheetAnalysisGasModel = globalThis.KPIUtilReportSheetAnalysisGasModel;
-    if (!utilReportSheetAnalysisGasModel) {
-        throw new Error('KPIUtilReportSheetAnalysisGasModel must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetAnalysisGasModel = requireApi('KPIUtilReportSheetAnalysisGasModel', 'KPI.util.report.sheet.js');
     utilReportSheetAnalysisGasModel.setRuntimeAdapters({
         buildUtilSheetMonthBounds,
         hasUtilGasMeteringStore,
@@ -509,15 +445,15 @@
         buildUtilGasAnalysisCostModeText,
         buildUtilGasAnalysisCombinedChart,
         buildUtilGasAnalysisRangeTables,
-        buildUtilGasAnalysisRatioCombinedChartModel
+        buildUtilGasAnalysisRatioCombinedChartModel,
+        buildUtilReportMonthlyRows,
+        formatUtilReportMonthLong,
+        formatUtilReportMonthShort
     });
     const {
         buildUtilGasAnalysisModel
     } = utilReportSheetAnalysisGasModel;
-    const utilReportSheetAnalysisPopupTables = globalThis.KPIUtilReportSheetAnalysisPopupTables;
-    if (!utilReportSheetAnalysisPopupTables) {
-        throw new Error('KPIUtilReportSheetAnalysisPopupTables must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetAnalysisPopupTables = requireApi('KPIUtilReportSheetAnalysisPopupTables', 'KPI.util.report.sheet.js');
     utilReportSheetAnalysisPopupTables.setRuntimeAdapters({
         escapeUtilSheetHtml,
         buildUtilGasAnalysisRatioTableControlHtml,
@@ -547,10 +483,7 @@
         isUtilGasAnalysisChartRenderable,
         normalizeUtilGasAnalysisFullscreenChartKey
     } = utilReportSheetAnalysisPopupTables;
-    const utilReportSheetAnalysisRender = globalThis.KPIUtilReportSheetAnalysisRender;
-    if (!utilReportSheetAnalysisRender) {
-        throw new Error('KPIUtilReportSheetAnalysisRender must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetAnalysisRender = requireApi('KPIUtilReportSheetAnalysisRender', 'KPI.util.report.sheet.js');
     utilReportSheetAnalysisRender.setRuntimeAdapters({
         escapeUtilSheetHtml,
         buildUtilGasAnalysisCombinedControlsHtml,
@@ -560,7 +493,9 @@
         buildUtilGasAnalysisSeriesControlHtml,
         buildUtilGasAnalysisPopupOnlyControlHtml,
         getUtilGasAnalysisInlineRatioTableKey,
-        buildUtilGasAnalysisFloatingTablePanelHtml
+        buildUtilGasAnalysisFloatingTablePanelHtml,
+        renderUtilIndependentBoundsMultiSeriesChart: getFunction('renderUtilIndependentBoundsMultiSeriesChart'),
+        renderUtilTrendChart: getFunction('renderUtilTrendChart')
     });
     const {
         buildUtilGasAnalysisChartCardHtml,
@@ -571,10 +506,7 @@
         buildUtilElectricAnalysisBodyHtmlV2,
         buildUtilGasAnalysisBodyHtml
     } = utilReportSheetAnalysisRender;
-    const utilReportSheetSummaryRender = globalThis.KPIUtilReportSheetSummaryRender;
-    if (!utilReportSheetSummaryRender) {
-        throw new Error('KPIUtilReportSheetSummaryRender must load before KPI.util.report.sheet.js');
-    }
+    const utilReportSheetSummaryRender = requireApi('KPIUtilReportSheetSummaryRender', 'KPI.util.report.sheet.js');
     utilReportSheetSummaryRender.setRuntimeAdapters({
         escapeUtilSheetHtml,
         normalizeUtilSheetCompareKey,
@@ -800,174 +732,7 @@
         syncUtilSheetReportWindowState
     } = utilReportSheetWindows;
 
-    function escapeUtilSheetHtml(value) {
-        if (typeof escapeHtml === 'function') return escapeHtml(value);
-        return String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    function compareUtilSheetMonthKeys(a, b) {
-        const parsedA = parseUtilMonthValue(a);
-        const parsedB = parseUtilMonthValue(b);
-        if (!parsedA && !parsedB) return 0;
-        if (!parsedA) return -1;
-        if (!parsedB) return 1;
-        return (parsedA.year * 100 + parsedA.month) - (parsedB.year * 100 + parsedB.month);
-    }
-
-    function formatUtilSheetInteger(value, fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        return utilSheetNumberFormatter.format(Math.round(value));
-    }
-
-    function formatUtilSheetCost(value, fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        return `${utilSheetNumberFormatter.format(Math.round(value))}원`;
-    }
-
-    function formatUtilSheetDecimal(value, decimals = 2, fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        return Number(value).toLocaleString('ko-KR', {
-            minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals
-        });
-    }
-
-    function formatUtilSheetSignedInteger(value, fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        const sign = value > 0 ? '+' : '';
-        return `${sign}${utilSheetNumberFormatter.format(Math.round(value))}`;
-    }
-
-    function formatUtilSheetSignedCost(value, fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        const sign = value > 0 ? '+' : '';
-        return `${sign}${utilSheetNumberFormatter.format(Math.round(value))}원`;
-    }
-
-    function formatUtilSheetUnit(value, fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        return `${Number(value).toFixed(1)}원/kg`;
-    }
-
-    function formatUtilSheetSignedUnit(value, fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        const sign = value > 0 ? '+' : '';
-        return `${sign}${Number(value).toFixed(1)}원/kg`;
-    }
-
-    function formatUtilSheetPercent(value, fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        return `${Number(value).toFixed(1)}%`;
-    }
-
-    function formatUtilSheetRatio(value, digits = 3, fallback = '') {
-        if (!Number.isFinite(value)) return fallback;
-        return Number(value).toFixed(digits);
-    }
-
-    function calculateUtilSheetPercentDelta(currentValue, referenceValue) {
-        if (!Number.isFinite(currentValue) || !Number.isFinite(referenceValue) || referenceValue === 0) return null;
-        return ((currentValue - referenceValue) / referenceValue) * 100;
-    }
-
-    function formatUtilSheetSignedPercent(value, fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        const sign = value > 0 ? '+' : '';
-        return `${sign}${Number(value).toFixed(1)}%`;
-    }
-
-    function formatUtilSheetSignedPercentPoint(value, fallback = '-') {
-        if (!Number.isFinite(value)) return fallback;
-        const sign = value > 0 ? '+' : '';
-        return `${sign}${Number(value).toFixed(1)}%p`;
-    }
-
-    function getUtilSheetEntries(datasetKey) {
-        if (datasetKey === 'gas') return Array.isArray(UTIL_GAS_ENTRIES) ? UTIL_GAS_ENTRIES : [];
-        if (datasetKey === 'electric') return Array.isArray(UTIL_ELECTRIC_ENTRIES) ? UTIL_ELECTRIC_ENTRIES : [];
-        return [];
-    }
-
-    function isUtilSheetSettledRow(row, spec) {
-        if (!row || !spec) return false;
-        const hasCost = Number.isFinite(row?.[spec.costKey]);
-        const hasProduction = Number.isFinite(row?.production) && row.production > 0;
-        return hasCost && hasProduction;
-    }
-
-    function appendUtilSheetUnit(text, unit) {
-        return text === '-' ? text : `${text}${unit}`;
-    }
-
-    function formatUtilSheetQuantity(value, unit, fallback = '-') {
-        return appendUtilSheetUnit(formatUtilSheetInteger(value, fallback), unit);
-    }
-
-    function formatUtilSheetSignedQuantity(value, unit, fallback = '-') {
-        return appendUtilSheetUnit(formatUtilSheetSignedInteger(value, fallback), unit);
-    }
-
-    function buildUtilSheetCompareSub(compareMeta, formattedDelta) {
-        return formattedDelta === '-'
-            ? `${compareMeta.label} ${compareMeta.referenceLabel}`
-            : `${compareMeta.label} ${formattedDelta} · ${compareMeta.referenceLabel}`;
-    }
-
-    function isUtilSheetPlainObject(value) {
-        return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-    }
-
-    function shiftUtilSheetMonthKey(monthKey, offset = 0) {
-        const parsed = parseUtilMonthValue(monthKey);
-        if (!parsed || !Number.isFinite(offset)) return '';
-        const shifted = new Date(parsed.year, parsed.month - 1 + offset, 1);
-        return `${shifted.getFullYear()}-${String(shifted.getMonth() + 1).padStart(2, '0')}`;
-    }
-
-    function parseUtilGasMeterNumber(value) {
-        if (value === null || value === undefined || value === '') return null;
-        const parsed = Number.parseFloat(String(value).replace(/,/g, ''));
-        return Number.isFinite(parsed) ? parsed : null;
-    }
-
-    function normalizeUtilGasMeterDate(value) {
-        const text = String(value || '').trim();
-        return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : '';
-    }
-
-    function summarizeUtilSheetRows(rows, spec) {
-        const summary = rows.reduce((acc, row) => {
-            acc.usage += Number.isFinite(row?.[spec.usageKey]) ? row[spec.usageKey] : 0;
-            acc.cost += Number.isFinite(row?.[spec.costKey]) ? row[spec.costKey] : 0;
-            if (Number.isFinite(row?.production) && row.production > 0) acc.production += row.production;
-            return acc;
-        }, {
-            usage: 0,
-            cost: 0,
-            production: 0
-        });
-        summary.unit = summary.production > 0 ? summary.cost / summary.production : null;
-        return summary;
-    }
-
-    function getUtilSheetEntryMonthKey(entry) {
-        const year = Number(entry?.year);
-        const month = Number(entry?.month);
-        if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return '';
-        return `${year}-${String(month).padStart(2, '0')}`;
-    }
-
-    function isUtilSheetGasLpgTeam(teamName = '') {
-        return /LPG/iu.test(String(teamName || '').trim());
-    }
-
-    window.initUtilSheetReports = initUtilSheetReports;
-    window.openUtilSheetReportModal = openUtilSheetReportModal;
-    window.closeUtilSheetReportModal = closeUtilSheetReportModal;
-})();
-
+    exportApi('initUtilSheetReports', initUtilSheetReports);
+    exportApi('openUtilSheetReportModal', openUtilSheetReportModal);
+    exportApi('closeUtilSheetReportModal', closeUtilSheetReportModal);
+})(this);

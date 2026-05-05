@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
@@ -42,6 +46,9 @@ function createModalActionsContext() {
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js',
   });
@@ -55,6 +62,10 @@ test('report sheet modal actions registry updates compare and fullscreen state t
   const context = createModalActionsContext();
   const modalActions = context.KPIUtilReportSheetModalActions;
   const config = context.KPIUtilReportSheetConfig;
+
+  assert.doesNotMatch(reportSheetModalActionsSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetModalActionsSource, /KPIUtilReportRuntimeAdapter/);
+
   const modal = {
     dataset: {
       sheetType: 'analysis',
@@ -189,9 +200,12 @@ test('report sheet modal actions registry updates compare and fullscreen state t
 });
 
 test('kpi html loads report sheet modal actions before sheet.js', () => {
+  const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=053');
   const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=053');
 
+  assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');
+  assert.ok(modalActionsIndex > adapterIndex, 'report sheet modal actions must load after report runtime adapter');
   assert.ok(modalShellIndex > modalActionsIndex, 'report sheet modal actions must load before report sheet modal shell');
 });

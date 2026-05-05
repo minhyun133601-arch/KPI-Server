@@ -13,6 +13,11 @@ import {
   replaceUserRoles,
   upsertUserPermission
 } from '../repositories/users.js';
+import {
+  assertLoginRateLimit,
+  clearLoginRateLimit,
+  recordFailedLoginAttempt
+} from './auth-login-rate-limit.js';
 
 const ADMIN_ROLES = new Set(['owner', 'admin']);
 const OWNER_ROLE = 'owner';
@@ -128,15 +133,20 @@ export async function setUserPermission({ actorUserId, userId, permissionKey, ca
 }
 
 export async function login({ username, password, ipAddress, userAgent }) {
+  assertLoginRateLimit({ username, ipAddress });
+
   const user = await findUserByUsername(username);
   if (!user || !user.is_active) {
+    recordFailedLoginAttempt({ username, ipAddress });
     throw new Error('invalid_credentials');
   }
 
   const valid = await verifyPassword(password, user.password_hash);
   if (!valid) {
+    recordFailedLoginAttempt({ username, ipAddress });
     throw new Error('invalid_credentials');
   }
+  clearLoginRateLimit({ username, ipAddress });
 
   const rawToken = randomToken(32);
   const tokenHash = sha256(`${rawToken}:${config.cookieSecret}`);

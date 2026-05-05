@@ -3,10 +3,15 @@ import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
 
+const browserAdapterSource = await fs.readFile(
+  new URL('../../../../utility/apps/metering/runtime/browser-adapter.js', import.meta.url),
+  'utf8'
+);
 const equipmentItemEditingSource = await fs.readFile(
   new URL('../../../../utility/apps/metering/equipment/item-editing.js', import.meta.url),
   'utf8'
 );
+const directBrowserGlobalPattern = new RegExp(String.raw`\b(?:window\.|global` + `This)\b`);
 
 function createEditingContext(options = {}) {
   const itemsById = {
@@ -214,6 +219,10 @@ function createEditingContext(options = {}) {
     },
   });
 
+  context.globalThis = context;
+  vm.runInContext(browserAdapterSource, context, {
+    filename: 'runtime/browser-adapter.js',
+  });
   vm.runInContext(equipmentItemEditingSource, context);
 
   return {
@@ -238,6 +247,11 @@ function createEditingContext(options = {}) {
     },
   };
 }
+
+test('equipment item editing keeps browser dialogs behind the metering adapter', () => {
+  assert.doesNotMatch(equipmentItemEditingSource, directBrowserGlobalPattern);
+  assert.match(equipmentItemEditingSource, /KpiMeteringBrowserAdapter/);
+});
 
 test('equipment item delete smoke removes future entries and refreshes state once', () => {
   const harness = createEditingContext();

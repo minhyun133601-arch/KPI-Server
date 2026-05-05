@@ -1,12 +1,19 @@
-(function registerUtilReportSheetAnalysisState(globalScope) {
-    if (globalScope.KPIUtilReportSheetAnalysisState) {
+(function registerUtilReportSheetAnalysisState() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/analysis/state.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetAnalysisState')) {
         return;
     }
 
-    const utilReportSheetConfig = globalScope.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.analysis.state.js');
-    }
+    const utilReportSheetConfig = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.analysis.state.js'
+    );
 
     const {
         UtilSheetAnalysisState,
@@ -30,7 +37,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetAnalysisState;
+        return api;
     }
 
     function compareMonthKeys(left, right) {
@@ -375,7 +382,7 @@
         );
     }
 
-    globalScope.KPIUtilReportSheetAnalysisState = {
+    const api = {
         setRuntimeAdapters,
         buildUtilSheetRangeLabel,
         normalizeUtilSheetAnalysisRange,
@@ -424,4 +431,6 @@
         setUtilSheetAnalysisDisplayMode,
         getUtilSheetActiveAnalysisDatasetKey
     };
-})(typeof window !== 'undefined' ? window : globalThis);
+
+    runtimeAdapter.exportApi('KPIUtilReportSheetAnalysisState', api);
+})();

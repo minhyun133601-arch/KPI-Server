@@ -5,6 +5,10 @@ import vm from 'node:vm';
 
 const REPORT_ROOT = '../../../../utility/runtime/util/report';
 
+const adapterSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runtime-adapter.js', import.meta.url),
+  'utf8'
+);
 const reportSheetConfigSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/config.js', import.meta.url),
   'utf8'
@@ -18,7 +22,7 @@ const kpiHtml = await fs.readFile(
   'utf8'
 );
 
-function createPanelRuntimeContext() {
+function createPanelRuntimeContext(options = {}) {
   const context = {
     console,
     Intl,
@@ -29,11 +33,15 @@ function createPanelRuntimeContext() {
     Boolean,
     Set,
     Map,
+    document: options.document || null,
   };
 
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
   vm.runInContext(reportSheetConfigSource, context, {
     filename: 'KPI.util.report.sheet.config.js',
   });
@@ -48,6 +56,8 @@ test('report sheet panel runtime registry normalizes compare and dataset helpers
   const registry = context.KPIUtilReportSheetPanelRuntime;
 
   assert.ok(registry, 'report sheet panel runtime registry is missing');
+  assert.doesNotMatch(reportSheetPanelRuntimeSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetPanelRuntimeSource, /KPIUtilReportRuntimeAdapter/);
 
   registry.setRuntimeAdapters({
     escapeUtilSheetHtml(value) {
@@ -71,6 +81,71 @@ test('report sheet panel runtime registry normalizes compare and dataset helpers
   const presentation = registry.getUtilSheetPresentation('analysis', 'electric');
   assert.equal(presentation.iconClass, 'fa-bolt');
   assert.ok(typeof presentation.title === 'string' && presentation.title.length > 0);
+});
+
+test('report sheet panel runtime initializes panels through the report adapter document boundary', () => {
+  let openButtonHandler = null;
+  const openButton = {
+    dataset: {},
+    addEventListener(type, listener) {
+      if (type === 'click') openButtonHandler = listener;
+    },
+    click() {
+      openButtonHandler?.();
+    },
+  };
+  const panel = {
+    dataset: {
+      sheetType: 'meter',
+      datasetKey: 'electric',
+      monthKey: '2026-03',
+      compareKey: 'year',
+    },
+    querySelectorAll(selector) {
+      if (
+        selector === '[data-role="util-sheet-type-select"]' ||
+        selector === '[data-role="util-sheet-select"]'
+      ) {
+        return [];
+      }
+      return [];
+    },
+    querySelector(selector) {
+      if (selector === '[data-role="util-sheet-month"]') return null;
+      if (selector === '[data-role="util-sheet-open"]') return openButton;
+      return null;
+    },
+  };
+  const documentRef = {
+    querySelectorAll(selector) {
+      return selector === '[data-role="util-sheet-panel"]' ? [panel] : [];
+    },
+  };
+  const context = createPanelRuntimeContext({ document: documentRef });
+  const registry = context.KPIUtilReportSheetPanelRuntime;
+  const renderedPanels = [];
+  const closedDocs = [];
+  const modalArgs = [];
+
+  registry.setRuntimeAdapters({
+    renderUtilSheetPanel(targetPanel) {
+      renderedPanels.push(targetPanel);
+    },
+    closeUtilActionMenus(doc) {
+      closedDocs.push(doc);
+    },
+    openUtilSheetReportModal(...args) {
+      modalArgs.push(args);
+    },
+  });
+
+  registry.initUtilSheetReports();
+  assert.deepEqual(renderedPanels, [panel]);
+  assert.equal(openButton.dataset.bound, 'true');
+
+  openButton.click();
+  assert.deepEqual(closedDocs, [documentRef]);
+  assert.deepEqual(modalArgs, [['meter', 'electric', '2026-03', 'year']]);
 });
 
 test('kpi html loads report sheet panel runtime before panel preview and windows', () => {

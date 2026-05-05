@@ -1,12 +1,19 @@
-(function registerUtilReportSheetElectricComparisonSummary(globalScope) {
-    if (globalScope.KPIUtilReportSheetElectricComparisonSummary) {
+(function registerUtilReportSheetElectricComparisonSummary() {
+    const runtimeAdapter = typeof KPIUtilReportRuntimeAdapter === 'object' && KPIUtilReportRuntimeAdapter
+        ? KPIUtilReportRuntimeAdapter
+        : null;
+    if (!runtimeAdapter) {
+        throw new Error('KPIUtilReportRuntimeAdapter must load before sheet/electric/comparison-summary.js');
+    }
+
+    if (runtimeAdapter.getApi('KPIUtilReportSheetElectricComparisonSummary')) {
         return;
     }
 
-    const utilReportSheetOptions = globalScope.KPIUtilReportSheetOptions;
-    if (!utilReportSheetOptions) {
-        throw new Error('KPIUtilReportSheetOptions must load before KPI.util.report.sheet.electric.comparison-summary.js');
-    }
+    const utilReportSheetOptions = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetOptions',
+        'KPI.util.report.sheet.electric.comparison-summary.js'
+    );
 
     const {
         UTIL_ELECTRIC_ALLOCATION_GROUPS,
@@ -15,10 +22,10 @@
         normalizeUtilElectricMeterViewKey,
         getUtilElectricMeterTeamOption
     } = utilReportSheetOptions;
-    const utilReportSheetElectricTableRender = globalScope.KPIUtilReportSheetElectricTableRender;
-    if (!utilReportSheetElectricTableRender) {
-        throw new Error('KPIUtilReportSheetElectricTableRender must load before KPI.util.report.sheet.electric.comparison-summary.js');
-    }
+    const utilReportSheetElectricTableRender = runtimeAdapter.requireApi(
+        'KPIUtilReportSheetElectricTableRender',
+        'KPI.util.report.sheet.electric.comparison-summary.js'
+    );
 
     const runtime = {
         getUtilElectricMeteringStore: null,
@@ -43,7 +50,7 @@
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
-        return globalScope.KPIUtilReportSheetElectricComparisonSummary;
+        return api;
     }
 
     function getElectricMeteringStore() {
@@ -724,7 +731,7 @@
         `;
     }
 
-    globalScope.KPIUtilReportSheetElectricComparisonSummary = Object.freeze({
+    const api = Object.freeze({
         setRuntimeAdapters,
         getUtilElectricBillingScopeEntry,
         getUtilElectricBillingFields,
@@ -737,4 +744,5 @@
         buildUtilElectricBillingSummaryModel,
         buildUtilElectricMeterComparisonSectionHtml
     });
-})(typeof window !== 'undefined' ? window : globalThis);
+    runtimeAdapter.exportApi('KPIUtilReportSheetElectricComparisonSummary', api);
+})();

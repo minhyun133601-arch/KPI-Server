@@ -1,3 +1,20 @@
+        const workTeamCalendarBrowser = typeof KpiWorkBrowserAdapter !== 'undefined'
+            ? KpiWorkBrowserAdapter
+            : null;
+        const workTeamCalendarModalRootFlags = {};
+
+        function getWorkTeamCalendarModalRootFlag(key) {
+            const adapterValue = workTeamCalendarBrowser?.getRootFlag?.(key);
+            return typeof adapterValue === 'undefined'
+                ? workTeamCalendarModalRootFlags[key]
+                : adapterValue;
+        }
+
+        function setWorkTeamCalendarModalRootFlag(key, value) {
+            workTeamCalendarModalRootFlags[key] = value;
+            return workTeamCalendarBrowser?.setRootFlag?.(key, value) ?? workTeamCalendarModalRootFlags[key];
+        }
+
         function selectWorkTeamCalendarSingle(memberName, options = {}) {
             const dataKey = options.dataKey || WorkState.teamCalendarModal;
             if (!dataKey) return false;
@@ -216,8 +233,8 @@
             modal.addEventListener('click', event => {
                 if (event.target === modal) return;
             });
-            if (!window.__workTeamCalendarEscBound) {
-                window.__workTeamCalendarEscBound = true;
+            if (!getWorkTeamCalendarModalRootFlag('__workTeamCalendarEscBound')) {
+                setWorkTeamCalendarModalRootFlag('__workTeamCalendarEscBound', true);
                 document.addEventListener('keydown', event => {
                     if (!document.getElementById('work-team-calendar-modal')?.classList.contains('is-open')) return;
                     if (event.key === 'Escape') {
@@ -267,8 +284,8 @@
                     }
                 });
             }
-            if (!window.__workTeamCalendarFullscreenBound) {
-                window.__workTeamCalendarFullscreenBound = true;
+            if (!getWorkTeamCalendarModalRootFlag('__workTeamCalendarFullscreenBound')) {
+                setWorkTeamCalendarModalRootFlag('__workTeamCalendarFullscreenBound', true);
                 document.addEventListener('fullscreenchange', () => {
                     syncWorkTeamCalendarFullscreenUi();
                 });

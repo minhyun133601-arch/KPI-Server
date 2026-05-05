@@ -1,8 +1,18 @@
-(function registerUtilReportSheetElectricRuntimeSync() {
-    const utilReportSheetConfig = globalThis.KPIUtilReportSheetConfig;
-    if (!utilReportSheetConfig) {
-        throw new Error('KPIUtilReportSheetConfig must load before KPI.util.report.sheet.electric.runtime-sync.js');
-    }
+(function registerUtilReportSheetElectricRuntimeSync(globalScope) {
+    const runtimeAdapter = globalScope.KPIUtilReportRuntimeAdapter;
+    const requireApi = runtimeAdapter?.requireApi || ((name, consumer) => {
+        const api = globalScope[name];
+        if (!api) throw new Error(`${name} must load before ${consumer}`);
+        return api;
+    });
+    const exportApi = runtimeAdapter?.exportApi || ((name, api) => {
+        globalScope[name] = api;
+        return api;
+    });
+    const utilReportSheetConfig = requireApi(
+        'KPIUtilReportSheetConfig',
+        'KPI.util.report.sheet.electric.runtime-sync.js'
+    );
     const { UtilSheetRuntimeState } = utilReportSheetConfig;
 
     const runtime = {
@@ -34,7 +44,10 @@
     }
 
     function getUtilElectricUtilitySnapshot() {
-        const getter = globalThis.KpiMeteringApp?.getElectricUtilityDatasetSnapshot;
+        if (typeof runtimeAdapter?.getElectricUtilityDatasetSnapshot === 'function') {
+            return runtimeAdapter.getElectricUtilityDatasetSnapshot(runtime.isUtilSheetPlainObject);
+        }
+        const getter = globalScope.KpiMeteringApp?.getElectricUtilityDatasetSnapshot;
         if (typeof getter !== 'function') return null;
         try {
             const snapshot = getter();
@@ -76,12 +89,12 @@
         return nextPromise;
     }
 
-    globalThis.KPIUtilReportSheetElectricRuntimeSync = {
+    exportApi('KPIUtilReportSheetElectricRuntimeSync', {
         setRuntimeAdapters,
         getUtilElectricMeteringStore,
         hasUtilElectricMeteringStore,
         ensureUtilElectricMeteringStore,
         getUtilElectricUtilitySnapshot,
         ensureUtilElectricReportDataSync
-    };
-})();
+    });
+})(this);
