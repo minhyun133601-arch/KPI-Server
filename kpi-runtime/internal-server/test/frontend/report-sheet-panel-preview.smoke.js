@@ -188,6 +188,67 @@ test('report sheet panel preview registry builds dataset result and renders mont
   assert.equal(noteEl.hidden, true);
 });
 
+test('report sheet panel preview keeps empty electric and gas panels quiet', () => {
+  const context = createPanelPreviewContext();
+  const controls = context.KPIUtilReportSheetControls;
+  const panelRuntime = context.KPIUtilReportSheetPanelRuntime;
+  const panelPreview = context.KPIUtilReportSheetPanelPreview;
+
+  controls.setRuntimeAdapters({
+    escapeUtilSheetHtml(value) {
+      return String(value ?? '').replace(/&/g, '&amp;');
+    },
+    normalizeUtilGasMeterProductionKey(value) {
+      return value === 'bukjeong' ? 'bukjeong' : 'combined';
+    },
+    getUtilGasMeterProductionOptions() {
+      return [
+        { key: 'combined', label: 'combined' },
+      ];
+    },
+  });
+
+  panelRuntime.setRuntimeAdapters({
+    escapeUtilSheetHtml(value) {
+      return String(value ?? '').replace(/&/g, '&amp;');
+    },
+  });
+
+  panelPreview.setRuntimeAdapters({
+    escapeUtilSheetHtml(value) {
+      return String(value ?? '').replace(/&/g, '&amp;');
+    },
+    buildUtilSheetMonthBounds() {
+      return { from: '2026-02', to: '2026-04' };
+    },
+    buildUtilReportMonthlyRows() {
+      return {
+        rows: [],
+        rangeLabel: 'empty',
+      };
+    },
+    isUtilSheetSettledRow() {
+      return true;
+    },
+  });
+
+  for (const datasetKey of ['electric', 'gas']) {
+    const { panel, previewEl, noteEl, monthSelect } = createPanelStub();
+    panel.dataset.datasetKey = datasetKey;
+
+    panelPreview.renderUtilSheetPanel(panel);
+
+    assert.equal(monthSelect.disabled, true);
+    assert.equal(previewEl.innerHTML, '');
+    assert.equal(previewEl.hidden, true);
+    assert.equal(noteEl.textContent, '');
+    assert.equal(noteEl.hidden, true);
+  }
+
+  assert.doesNotMatch(reportSheetPanelPreviewSource, /데이터 준비 중/);
+  assert.doesNotMatch(reportSheetPanelPreviewSource, /표시 가능한 월간 데이터가 없습니다/);
+});
+
 test('kpi html loads report sheet panel preview after panel runtime and before windows', () => {
   const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=053');
   const panelPreviewIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/preview.js?v=053');

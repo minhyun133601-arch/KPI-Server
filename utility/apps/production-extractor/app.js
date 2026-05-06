@@ -463,7 +463,7 @@ function handleApplyToKpi() {
   };
   try {
     browser?.postToParent?.(payload, "*");
-    setStatus(`생산량 전체 교체 요청: ${formatNumber(state.rows.length)}행 전송 완료`);
+    setStatus(`생산량 추가 기입 요청: ${formatNumber(state.rows.length)}행 전송 완료`);
   } catch (error) {
     const fallbackPayload = {
       ...payload,
@@ -473,7 +473,7 @@ function handleApplyToKpi() {
       },
     };
     browser?.postToParent?.(fallbackPayload, "*");
-    setStatus(`생산량 전체 교체 요청: ${formatNumber(state.rows.length)}행 전송 완료`);
+    setStatus(`생산량 추가 기입 요청: ${formatNumber(state.rows.length)}행 전송 완료`);
   }
 }
 
@@ -494,7 +494,7 @@ function handleKpiImportResultMessage(event) {
     const failedNotice = failedFiles.length
       ? `, 형식 오류 제외 ${formatNumber(failedFiles.length)}개 (${failedFiles.join(", ")})`
       : "";
-    setStatus(`생산량 기입 완료: 기존 생산량 비우고 ${addedText}건 기입, 중복 제외 ${skippedText}건${failedNotice}`);
+    setStatus(`생산량 기입 완료: 기존 생산량 유지, 신규 ${addedText}건 추가, 중복 제외 ${skippedText}건${failedNotice}`);
     return;
   }
   const message = data.message ? String(data.message) : "생산량 기입에 실패했습니다.";

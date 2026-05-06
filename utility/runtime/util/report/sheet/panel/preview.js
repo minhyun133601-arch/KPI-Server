@@ -232,7 +232,7 @@
         if (!result.hasData) {
             return {
                 hasData: false,
-                note: '표시 가능한 월간 데이터가 없습니다.',
+                note: '',
                 previewItems: [],
                 result
             };
@@ -289,15 +289,6 @@
             noteEl.hidden = true;
         }
         if (!model.hasData) {
-            if (previewEl) {
-                previewEl.innerHTML = '<div class="util-report-kpi"><div class="util-report-kpi-label">안내</div><div class="util-report-kpi-value">데이터 준비 중</div></div>';
-                previewEl.hidden = false;
-            }
-            if (noteEl) {
-                const noteText = String(model.note || '').trim();
-                noteEl.textContent = noteText;
-                noteEl.hidden = !noteText;
-            }
             return;
         }
 

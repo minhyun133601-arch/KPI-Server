@@ -697,6 +697,18 @@
             return '전체';
         }
 
+        function isUtilReportBlankProductionLineName(rawLineName = '') {
+            const normalized = normalizeUtilDedupeText(rawLineName).replace(/\s+/g, '');
+            return !normalized
+                || normalized === '-'
+                || normalized === '없음'
+                || normalized === '미입력'
+                || normalized === '라인없음'
+                || normalized === '라인미지정'
+                || normalized === 'na'
+                || normalized === 'n/a';
+        }
+
         function normalizeUtilReportProductionLineBucket(teamName, rawLineName = '', rawProductName = '') {
             const sourceTeam = normalizeUtilReportProductionSourceTeamName(teamName);
             const lineName = String(rawLineName || '').trim();
@@ -706,6 +718,7 @@
             const mergedTokenLower = mergedToken.toLowerCase();
 
             if (sourceTeam === '1팀 1파트') {
+                if (isUtilReportBlankProductionLineName(lineName)) return 'MSD';
                 if (mergedTokenLower.includes('msd')) return 'MSD';
                 if (mergedTokenLower.includes('sd')) return 'SD';
             }

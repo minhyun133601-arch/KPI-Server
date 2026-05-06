@@ -50,7 +50,37 @@ function loadBuildDeltaPair() {
   return fn;
 }
 
+function loadProductionLineBucket() {
+  const blankLineSource = extractFunctionSource(
+    deltasSource,
+    'isUtilReportBlankProductionLineName'
+  );
+  const bucketSource = extractFunctionSource(
+    deltasSource,
+    'normalizeUtilReportProductionLineBucket'
+  );
+  const wrapped = `(function () {
+    function normalizeUtilDedupeText(value) {
+      return String(value ?? '').trim().replace(/\\s+/g, ' ').toLowerCase();
+    }
+    function normalizeUtilReportProductionSourceTeamName(teamName) {
+      return String(teamName || '').trim();
+    }
+    ${blankLineSource}
+    ${bucketSource}
+    return normalizeUtilReportProductionLineBucket;
+  })()`;
+  const fn = vm.runInThisContext(wrapped, {
+    filename: 'KPI.util.report.deltas.production-line.extract.js',
+  });
+  if (typeof fn !== 'function') {
+    throw new Error('normalizeUtilReportProductionLineBucket did not load as function');
+  }
+  return fn;
+}
+
 const buildDeltaPair = loadBuildDeltaPair();
+const normalizeProductionLineBucket = loadProductionLineBucket();
 
 test('extraction sentinel: deltas.js still defines buildUtilReportDeltaPairFromSeries with delta/prev rate formula', () => {
   assert.match(
@@ -63,6 +93,13 @@ test('extraction sentinel: deltas.js still defines buildUtilReportDeltaPairFromS
     /prev\s*!==\s*0\s*\?\s*\(\s*delta\s*\/\s*prev\s*\)\s*\*\s*100\s*:\s*null/,
     'rate formula `prev !== 0 ? (delta / prev) * 100 : null` must be preserved'
   );
+});
+
+test('1팀 1파트 production line bucket treats blank or MSD line names as MSD', () => {
+  assert.equal(normalizeProductionLineBucket('1팀 1파트', '', '일반 품목'), 'MSD');
+  assert.equal(normalizeProductionLineBucket('1팀 1파트', '라인 없음', '일반 품목'), 'MSD');
+  assert.equal(normalizeProductionLineBucket('1팀 1파트', 'MSD 건조', '일반 품목'), 'MSD');
+  assert.equal(normalizeProductionLineBucket('1팀 1파트', 'S/D 건조', '일반 품목'), 'SD');
 });
 
 test('empty series -> both mom and yoy are null', () => {

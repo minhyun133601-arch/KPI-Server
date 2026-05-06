@@ -42,9 +42,9 @@
                         </div>
                     </div>
                     <div class="util-production-modal-body util-production-extractor-body">
-                        <div class="util-production-extractor-tip">추출 완료 후 <strong>유틸리티 기입</strong> 버튼을 누르면 기존 생산량을 모두 비우고 새 파일 기준으로 다시 기입합니다.</div>
+                        <div class="util-production-extractor-tip">추출 완료 후 <strong>유틸리티 기입</strong> 버튼을 누르면 기존 생산량은 유지하고 중복 행만 제외해 새 파일 행을 추가합니다.</div>
                         <iframe class="util-production-extractor-frame" data-role="frame" src="utility/apps/production-extractor/production-extractor.html?embed=1&v=16" title="유틸리티 기입" loading="lazy"></iframe>
-                        <div class="util-production-extractor-status" data-role="status">대기 중: 추출 실행 후 유틸리티 기입 버튼을 누르면 기존 생산량이 새 파일 기준으로 교체됩니다.</div>
+                        <div class="util-production-extractor-status" data-role="status">대기 중: 추출 실행 후 유틸리티 기입 버튼을 누르면 기존 생산량은 유지하고 중복 행만 제외해 추가합니다.</div>
                     </div>
                 </div>
             `;
@@ -73,7 +73,7 @@
             const modal = ensureUtilProductionExtractorModal();
             UtilProductionBridgeState.activeTeam = String(teamName || '').trim();
             UtilProductionBridgeState.onApplied = typeof onApplied === 'function' ? onApplied : null;
-            setUtilProductionExtractorStatus('대기 중: 추출 실행 후 유틸리티 기입 버튼을 누르면 기존 생산량이 새 파일 기준으로 교체됩니다.');
+            setUtilProductionExtractorStatus('대기 중: 추출 실행 후 유틸리티 기입 버튼을 누르면 기존 생산량은 유지하고 중복 행만 제외해 추가합니다.');
             modal.classList.add('is-open');
         }
 
@@ -189,7 +189,7 @@
                     const patchedNotice = result.patchedCount > 0
                         ? `, 수율/CAPA/가동률 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
                         : '';
-                    const statusText = `기입 완료: 기존 생산량 비우고 ${result.addedCount.toLocaleString('ko-KR')}건 기입, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`;
+                    const statusText = `기입 완료: 기존 생산량 유지, 신규 ${result.addedCount.toLocaleString('ko-KR')}건 추가, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`;
                     setUtilProductionExtractorStatus(statusText, result.addedCount === 0 && result.patchedCount === 0);
                     if (typeof UtilProductionBridgeState.onApplied === 'function') {
                         UtilProductionBridgeState.onApplied({

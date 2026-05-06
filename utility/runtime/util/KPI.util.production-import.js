@@ -120,9 +120,10 @@
                     const moistureExcludedYield = parseUtilPercentAmount(getUtilExcelCellDisplayValue(worksheet, `N${rowNumber}`));
                     const equipmentCapa = parseUtilAmount(getUtilExcelCellDisplayValue(worksheet, `V${rowNumber}`));
                     const equipmentUtilization = parseUtilPercentAmount(getUtilExcelCellDisplayValue(worksheet, `W${rowNumber}`));
-                    const lineName = String(lineValue || '').trim();
+                    const rawLineName = String(lineValue || '').trim();
                     const productName = String(productValue || '').trim();
-                    const resolvedTeam = resolveUtilUploadTeamName(teamValue, fallbackTeamName, `${lineName} ${productName}`, lineName);
+                    const resolvedTeam = resolveUtilUploadTeamName(teamValue, fallbackTeamName, `${rawLineName} ${productName}`, rawLineName);
+                    const lineName = normalizeUtilProductionStoredLineName(resolvedTeam, rawLineName);
                     rows.push({
                         date: formatUtilYmd(dateObj),
                         team: String(resolvedTeam || fallbackTeamName || teamValue || '').trim(),
@@ -231,6 +232,30 @@
                 return '';
             }
             return text;
+        }
+
+        function isUtilProductionBlankLineName(lineName = '') {
+            const normalized = normalizeUtilDedupeText(lineName).replace(/\s+/g, '');
+            return !normalized
+                || normalized === '-'
+                || normalized === '없음'
+                || normalized === '미입력'
+                || normalized === '라인없음'
+                || normalized === '라인미지정'
+                || normalized === 'na'
+                || normalized === 'n/a';
+        }
+
+        function normalizeUtilProductionStoredLineName(teamName = '', rawLineName = '') {
+            const lineName = String(rawLineName || '').trim();
+            if (canonicalizeUtilTeamName(teamName) !== '1팀1파트') return lineName;
+            const lineToken = normalizeUtilDedupeText(lineName)
+                .replace(/\s+/g, '')
+                .replace(/[^a-z0-9가-힣]/gi, '')
+                .toLowerCase();
+            if (isUtilProductionBlankLineName(lineName)) return 'MSD';
+            if (lineToken.includes('msd') || lineToken.includes('북정')) return 'MSD';
+            return lineName;
         }
 
         function shouldForceTeam3ForProduction(rawTeamName, contextText = '', lineName = '') {
@@ -484,8 +509,29 @@
             const fallbackTeam = sanitizeUtilUploadTeamName(options?.fallbackTeam || UtilProductionBridgeState.activeTeam || '');
             let skippedCount = 0;
             let patchedCount = 0;
+            let addedCount = 0;
             const addedTeamSet = new Set();
             const pendingEntryMap = new Map();
+
+            (UTIL_PRODUCTION_DAILY_DATA || []).forEach(teamRecord => {
+                const fallbackExistingTeam = String(teamRecord?.name || '').trim();
+                (Array.isArray(teamRecord?.entries) ? teamRecord.entries : []).forEach(existingEntry => {
+                    const parsedDate = parseUtilDateKey(existingEntry?.date);
+                    const amount = parseUtilAmount(existingEntry?.amount ?? existingEntry?.production ?? existingEntry?.value);
+                    const teamName = sanitizeUtilUploadTeamName(existingEntry?.team ?? existingEntry?.teamName ?? fallbackExistingTeam);
+                    if (!parsedDate || !Number.isFinite(amount) || !teamName) return;
+                    const normalizedEntry = {
+                        ...existingEntry,
+                        date: formatUtilDailyDateKey(parsedDate),
+                        amount,
+                        team: teamName
+                    };
+                    const dedupeKey = buildUtilProductionDailyEntryKey(normalizedEntry);
+                    if (!dedupeKey || pendingEntryMap.has(dedupeKey)) return;
+                    pendingEntryMap.set(dedupeKey, normalizedEntry);
+                });
+            });
+
             (rows || []).forEach(row => {
                 const rawDate = row?.date ?? row?.values?.[0] ?? '';
                 const parsedDate = parseUtilDateKey(rawDate);
@@ -493,10 +539,11 @@
                 const moistureExcludedYield = parseUtilPercentAmount(row?.moistureExcludedYield ?? row?.moistureFreeYield ?? row?.yieldExcludingMoisture ?? row?.yieldRate);
                 const equipmentCapa = parseUtilAmount(row?.equipmentCapa ?? row?.capa ?? row?.equipmentCapacity);
                 const equipmentUtilization = parseUtilPercentAmount(row?.equipmentUtilization ?? row?.operationRate ?? row?.equipmentRate ?? row?.utilizationRate);
-                const lineName = String(row?.lineName ?? row?.line ?? row?.values?.[2] ?? '').trim();
+                const rawLineName = String(row?.lineName ?? row?.line ?? row?.values?.[2] ?? '').trim();
                 const productName = String(row?.productName ?? row?.product ?? row?.itemName ?? row?.values?.[3] ?? '').trim();
                 const rawTeamName = String(row?.team ?? row?.teamName ?? row?.values?.[1] ?? '').trim();
-                const teamName = resolveUtilUploadTeamName(rawTeamName, fallbackTeam, `${lineName} ${productName}`, lineName);
+                const teamName = resolveUtilUploadTeamName(rawTeamName, fallbackTeam, `${rawLineName} ${productName}`, rawLineName);
+                const lineName = normalizeUtilProductionStoredLineName(teamName, rawLineName);
                 const hasMetricValue = Number.isFinite(amount);
                 if (!parsedDate || !hasMetricValue || !teamName) {
                     skippedCount += 1;
@@ -544,13 +591,12 @@
                 }
                 pendingEntryMap.set(dedupeKey, entry);
                 addedTeamSet.add(teamName);
+                addedCount += 1;
             });
             const nextEntries = Array.from(pendingEntryMap.values());
-            const addedCount = nextEntries.length;
             let savePromise = Promise.resolve(true);
-            if (addedCount > 0) {
+            if (addedCount > 0 || patchedCount > 0) {
                 UTIL_PRODUCTION_DAILY_DATA.length = 0;
-                UTIL_PRODUCTION_ARCHIVE_META.length = 0;
                 nextEntries.forEach(entry => {
                     const targetTeam = ensureUtilProductionDailyTeamRecord(entry.team);
                     if (!targetTeam) return;

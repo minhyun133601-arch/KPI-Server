@@ -426,7 +426,7 @@
                                     const patchedNotice = result.patchedCount > 0
                                         ? `\n수율/CAPA/가동률 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
                                         : '';
-                                    alert(`기입 완료: 기존 생산량 비우고 ${result.addedCount.toLocaleString('ko-KR')}건 기입, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`);
+                                    alert(`기입 완료: 기존 생산량 유지, 신규 ${result.addedCount.toLocaleString('ko-KR')}건 추가, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`);
                                 } catch (error) {
                                     alert(`기입 실패: ${error?.message || '알 수 없는 오류'}`);
                                 } finally {

@@ -146,24 +146,31 @@ test('production import source routes browser globals through the data-sync adap
   assert.match(productionImportSource, /writePortalRecord\?\.\('util_production_daily'/);
 });
 
-test('production import merge replaces existing rows and clears archive metadata while deduping incoming rows', () => {
+test('production import merge keeps existing rows and archive metadata while deduping incoming rows', () => {
   const context = createProductionImportContext();
 
   const result = context.__testExports.mergeUtilProductionExtractorRows([
     {
       date: '2026-05-01',
       team: '1팀 1파트',
-      lineName: '1호기',
+      lineName: 'MSD 건조',
       productName: '제품A',
       amount: 50,
     },
     {
       date: '2026-05-01',
       team: '1팀 1파트',
-      lineName: '1호기',
+      lineName: 'MSD 건조',
       productName: '제품A',
       amount: 50,
       moistureExcludedYield: 98,
+    },
+    {
+      date: '2026-05-02',
+      team: '1팀 1파트',
+      lineName: '',
+      productName: '제품C',
+      amount: 70,
     },
     {
       date: '2026-05-02',
@@ -176,20 +183,26 @@ test('production import merge replaces existing rows and clears archive metadata
 
   const teams = JSON.parse(JSON.stringify(context.__testExports.getTeams()));
 
-  assert.equal(result.addedCount, 2);
+  assert.equal(result.addedCount, 3);
   assert.equal(result.skippedCount, 0);
   assert.equal(result.patchedCount, 1);
   assert.deepEqual(result.addedTeams, ['1팀 1파트', '2팀']);
   assert.deepEqual(
     teams.map((team) => team.name),
-    ['1팀 1파트', '2팀']
+    ['기존팀', '1팀 1파트', '2팀']
   );
   assert.equal(teams[0].entries.length, 1);
-  assert.equal(teams[0].entries[0].amount, 50);
-  assert.equal(teams[0].entries[0].moistureExcludedYield, 98);
-  assert.equal(teams[0].entries[0].sourceFileName, '');
-  assert.equal(teams[1].entries.length, 1);
-  assert.equal(teams[1].entries[0].amount, 60);
-  assert.equal(context.__testExports.getArchives().length, 0);
+  assert.equal(teams[0].entries[0].amount, 10);
+  assert.equal(teams[0].entries[0].sourceFileName, 'old.xlsx');
+  assert.equal(teams[1].entries.length, 2);
+  assert.equal(teams[1].entries[0].amount, 50);
+  assert.equal(teams[1].entries[0].lineName, 'MSD');
+  assert.equal(teams[1].entries[0].moistureExcludedYield, 98);
+  assert.equal(teams[1].entries[0].sourceFileName, '');
+  assert.equal(teams[1].entries[1].amount, 70);
+  assert.equal(teams[1].entries[1].lineName, 'MSD');
+  assert.equal(teams[2].entries.length, 1);
+  assert.equal(teams[2].entries[0].amount, 60);
+  assert.equal(context.__testExports.getArchives().length, 1);
   assert.equal(context.__getQueuedWriteCount(), 1);
 });

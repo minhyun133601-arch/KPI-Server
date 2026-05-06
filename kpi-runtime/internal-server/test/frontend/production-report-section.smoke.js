@@ -50,17 +50,36 @@ test('monthly performance report section is separate from work-history reports',
   assert.doesNotMatch(sectionSource, /history_tool/);
 });
 
-test('monthly performance popup contains team selectors and metric placeholders', () => {
-  assert.match(popupSource, /월간 실적보고/);
-  assert.match(popupSource, /data-team-tab="team1part1"/);
-  assert.match(popupSource, /data-team-tab="team1part2"/);
-  assert.match(popupSource, /data-team-tab="team2"/);
-  assert.match(popupSource, /data-team-tab="team3"/);
-  assert.match(popupSource, /data-team-tab="team4"/);
-  assert.match(popupSource, /생산량/);
-  assert.match(popupSource, /수율/);
-  assert.match(popupSource, /노무비/);
-  assert.match(popupSource, /작업이력의 작업내역\/보고서 기록은 이 화면의 원천 데이터로 사용하지 않습니다/);
+test('monthly performance popup renders one utility analysis table with electric gas toggle', () => {
+  assert.match(popupSource, /공무환경팀 월간 실적보고/);
+  assert.match(popupSource, /유틸리티 분석표/);
+  assert.match(popupSource, /전기 분석표/);
+  assert.match(popupSource, /가스비 분석표/);
+  assert.match(popupSource, /data-report-utility-button="electric"/);
+  assert.match(popupSource, /data-report-utility-button="gas"/);
+  assert.match(popupSource, /data-report-analysis-panel="electric"/);
+  assert.match(popupSource, /data-report-analysis-panel="gas"/);
+  assert.doesNotMatch(popupSource, /data-report-export/);
+  assert.doesNotMatch(popupSource, /downloadStandaloneReport/);
+  assert.doesNotMatch(popupSource, /buildStandaloneHtml/);
+  assert.match(popupSource, /data-report-chart-modal/);
+  assert.match(popupSource, /data-report-chart-open/);
+  assert.match(popupSource, /data-report-range-from/);
+  assert.match(popupSource, /data-report-range-to/);
+  assert.match(popupSource, /util-sheet-analysis-chart-card/);
+  assert.match(popupSource, /util-sheet-analysis-series-controls/);
+  assert.match(popupSource, /전기 사용량 · 금액 · 생산량/);
+  assert.match(popupSource, /LNG\/LPG 사용량 · 금액 · 생산량/);
+  assert.match(popupSource, /이번달 특이사항/);
+  assert.match(popupSource, /1팀 1파트 생산량이 전월 대비 12\.4% 증가/);
+  assert.doesNotMatch(popupSource, /폐수 분석표/);
+  assert.doesNotMatch(popupSource, /폐수 처리량/);
+  assert.doesNotMatch(popupSource, /data-report-chart="waste"/);
+  assert.doesNotMatch(popupSource, /report-chart-grid/);
+  assert.doesNotMatch(popupSource, /같은 월 기준으로 비교/);
+  assert.doesNotMatch(popupSource, /인쇄/);
+  assert.doesNotMatch(popupSource, /data-team-tab=/);
+  assert.doesNotMatch(popupSource, /data-team-panel=/);
 });
 
 test('kpi html and registry wire the production report section before the section registry bootstraps', () => {
