@@ -26,15 +26,7 @@ function Convert-ToAbsolutePath {
 function Get-EnvFilePaths {
   param([string]$ServerDir)
 
-  $candidatePaths = @()
-  if ($env:KPI_ENV_FILE) {
-    $candidatePaths += if ([System.IO.Path]::IsPathRooted($env:KPI_ENV_FILE)) {
-      $env:KPI_ENV_FILE
-    } else {
-      Join-Path $ServerDir $env:KPI_ENV_FILE
-    }
-  }
-  $candidatePaths += @(
+  $candidatePaths = @(
     (Join-Path $ServerDir '.env.production.local'),
     (Join-Path $ServerDir '.env.development.local'),
     (Join-Path $ServerDir '.env')

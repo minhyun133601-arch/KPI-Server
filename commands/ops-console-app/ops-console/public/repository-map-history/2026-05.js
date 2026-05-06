@@ -1,6 +1,13 @@
 ((root) => {
   const entries = [
     {
+      date: '2026-05-06',
+      tag: 'runtime/env',
+      title: 'KPI Server env 파일 직접값 런타임 정리',
+      summary: '중앙 런타임 초기화, 시작, 백업, 복구 스크립트가 외부 secret 폴더나 file-path secret indirection 대신 clone 내부 .env.production.local의 직접 값을 읽도록 정리했습니다.',
+      detail: '개인정보 영향: 실제 비밀번호는 출력하거나 커밋하지 않았고 .env, .env.*.local, var/ ignore 경계는 유지했습니다. 검증 기준: health, DB 접속, 로그인 API, 백업/복구 preview, git check-ignore, git diff --check.',
+    },
+    {
       date: '2026-05-05',
       tag: 'refactor/split',
       title: '대형 런타임 split refactor 완료',

@@ -397,7 +397,7 @@ function startInternalServerProcess() {
     windowsHide: true,
     env: {
       ...process.env,
-      KPI_ENV_FILE: envFilePath
+      KPI_RUNTIME_ENV: 'production'
     }
   });
   child.unref();

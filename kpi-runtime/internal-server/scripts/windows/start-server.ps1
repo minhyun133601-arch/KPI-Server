@@ -65,29 +65,28 @@ function Resolve-EnvFilePath {
   )
 
   if ($EnvFile) {
-    $candidate = if ([System.IO.Path]::IsPathRooted($EnvFile)) { $EnvFile } else { Join-Path $ServerDir $EnvFile }
-    if (-not (Test-Path $candidate)) {
-      throw "Requested env file was not found: $candidate"
+    throw 'The -EnvFile override is no longer supported. Copy the portable env file to .env.production.local, .env.development.local, or .env inside kpi-runtime/internal-server.'
+  }
+
+  $candidatePaths = switch ($Environment) {
+    'Development' { @((Join-Path $ServerDir '.env.development.local'), (Join-Path $ServerDir '.env')) }
+    'Production' { @((Join-Path $ServerDir '.env.production.local'), (Join-Path $ServerDir '.env')) }
+    default {
+      @(
+        (Join-Path $ServerDir '.env.production.local'),
+        (Join-Path $ServerDir '.env.development.local'),
+        (Join-Path $ServerDir '.env')
+      )
     }
-    return (Resolve-Path $candidate).Path
   }
 
-  $preferred = switch ($Environment) {
-    'Development' { Join-Path $ServerDir '.env.development.local' }
-    'Production' { Join-Path $ServerDir '.env.production.local' }
-    default { Join-Path $ServerDir '.env' }
+  foreach ($candidatePath in $candidatePaths) {
+    if (Test-Path $candidatePath) {
+      return (Resolve-Path $candidatePath).Path
+    }
   }
 
-  if (Test-Path $preferred) {
-    return (Resolve-Path $preferred).Path
-  }
-
-  $fallback = Join-Path $ServerDir '.env'
-  if (Test-Path $fallback) {
-    return (Resolve-Path $fallback).Path
-  }
-
-  throw "No env file was found. Create $preferred or $fallback first."
+  throw 'No env file was found. Copy the portable env file to .env.production.local, .env.development.local, or .env inside kpi-runtime/internal-server.'
 }
 
 function Read-EnvMap {
@@ -144,9 +143,16 @@ if ($listener) {
   Start-Sleep -Seconds 1
 }
 
-$previousEnvFile = $env:KPI_ENV_FILE
+$previousRuntimeEnvironment = $env:KPI_RUNTIME_ENV
 try {
-  $env:KPI_ENV_FILE = $resolvedEnvFile
+  if ($Environment -eq 'Production') {
+    $env:KPI_RUNTIME_ENV = 'production'
+  } elseif ($Environment -eq 'Development') {
+    $env:KPI_RUNTIME_ENV = 'development'
+  } else {
+    Remove-Item Env:KPI_RUNTIME_ENV -ErrorAction SilentlyContinue
+  }
+
   $process = Start-Process `
     -FilePath $nodeExecutablePath `
     -ArgumentList 'src/server.js' `
@@ -156,10 +162,10 @@ try {
     -RedirectStandardOutput $stdout `
     -RedirectStandardError $stderr
 } finally {
-  if ($null -eq $previousEnvFile) {
-    Remove-Item Env:KPI_ENV_FILE -ErrorAction SilentlyContinue
+  if ($null -eq $previousRuntimeEnvironment) {
+    Remove-Item Env:KPI_RUNTIME_ENV -ErrorAction SilentlyContinue
   } else {
-    $env:KPI_ENV_FILE = $previousEnvFile
+    $env:KPI_RUNTIME_ENV = $previousRuntimeEnvironment
   }
 }
 

@@ -52,23 +52,31 @@ function readOptionalString(value) {
   return trimmed || null;
 }
 
-function resolveEnvFilePath(raw) {
-  const trimmed = String(raw || '').trim();
-  if (!trimmed) return null;
-  return path.isAbsolute(trimmed) ? trimmed : path.resolve(projectRoot, trimmed);
+function normalizeRuntimeEnvironment(raw) {
+  const normalized = String(raw || '').trim().toLowerCase();
+  if (normalized === 'prod' || normalized === 'production') {
+    return 'production';
+  }
+  if (normalized === 'dev' || normalized === 'development') {
+    return 'development';
+  }
+  return '';
 }
 
 function resolveDefaultEnvFilePath() {
-  const explicitEnvFilePath = resolveEnvFilePath(process.env.KPI_ENV_FILE);
-  if (explicitEnvFilePath) {
-    return explicitEnvFilePath;
-  }
+  const runtimeEnvironment = normalizeRuntimeEnvironment(
+    process.env.KPI_RUNTIME_ENV || process.env.NODE_ENV
+  );
 
-  const candidatePaths = [
-    path.join(projectRoot, '.env.production.local'),
-    path.join(projectRoot, '.env.development.local'),
-    path.join(projectRoot, '.env')
-  ];
+  const candidatePaths = runtimeEnvironment === 'production'
+    ? [path.join(projectRoot, '.env.production.local'), path.join(projectRoot, '.env')]
+    : runtimeEnvironment === 'development'
+      ? [path.join(projectRoot, '.env.development.local'), path.join(projectRoot, '.env')]
+      : [
+          path.join(projectRoot, '.env.production.local'),
+          path.join(projectRoot, '.env.development.local'),
+          path.join(projectRoot, '.env')
+        ];
 
   for (const candidatePath of candidatePaths) {
     if (fs.existsSync(candidatePath)) {

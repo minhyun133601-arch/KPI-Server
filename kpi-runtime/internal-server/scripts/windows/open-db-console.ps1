@@ -15,23 +15,22 @@ function Resolve-EnvFilePath {
   )
 
   if ($RequestedEnvFile) {
-    $candidate = if ([System.IO.Path]::IsPathRooted($RequestedEnvFile)) {
-      $RequestedEnvFile
-    } else {
-      Join-Path $ServerDir $RequestedEnvFile
-    }
-    if (-not (Test-Path $candidate)) {
-      throw "Requested env file was not found: $candidate"
-    }
-    return (Resolve-Path $candidate).Path
+    throw 'The -EnvFile override is no longer supported. Copy the portable env file to .env.production.local, .env.development.local, or .env inside kpi-runtime/internal-server.'
   }
 
-  $defaultPath = Join-Path $ServerDir '.env.production.local'
-  if (Test-Path $defaultPath) {
-    return (Resolve-Path $defaultPath).Path
+  $candidatePaths = @(
+    (Join-Path $ServerDir '.env.production.local'),
+    (Join-Path $ServerDir '.env.development.local'),
+    (Join-Path $ServerDir '.env')
+  )
+
+  foreach ($candidatePath in $candidatePaths) {
+    if (Test-Path $candidatePath) {
+      return (Resolve-Path $candidatePath).Path
+    }
   }
 
-  throw "Env file was not found: $defaultPath"
+  throw 'Env file was not found. Copy the portable env file to .env.production.local, .env.development.local, or .env inside kpi-runtime/internal-server.'
 }
 
 function Read-EnvMap {
