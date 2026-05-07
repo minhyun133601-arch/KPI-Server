@@ -275,9 +275,36 @@
             display: grid;
             gap: 12px;
         }
+        .data-equipment-detail-groups {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 12px;
+            align-items: start;
+        }
+        .data-equipment-detail-group {
+            display: grid;
+            gap: 8px;
+            min-width: 0;
+        }
+        .data-equipment-detail-group-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            padding-bottom: 2px;
+        }
+        .data-equipment-detail-group-head strong {
+            min-width: 0;
+            color: #34476c;
+            font-size: 0.88rem;
+            font-weight: 900;
+        }
         .data-equipment-detail-table th:first-child,
         .data-equipment-detail-table td:first-child {
             width: 28%;
+        }
+        .data-equipment-detail-group .data-equipment-edit-table {
+            min-width: 0;
         }
         .data-equipment-edit-grid label,
         .data-equipment-note-field {

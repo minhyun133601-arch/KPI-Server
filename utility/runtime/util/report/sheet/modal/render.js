@@ -184,6 +184,17 @@
         }
     }
 
+    function syncSheetExtractButton(modal, sheetType = 'meter') {
+        const extractButton = modal?.querySelector?.('[data-role="util-sheet-report-print"]');
+        if (!extractButton) return;
+        const canExtract = sheetType === 'meter' || sheetType === 'analysis';
+        extractButton.hidden = !canExtract;
+        extractButton.disabled = !canExtract;
+        extractButton.textContent = '추출';
+        extractButton.setAttribute?.('aria-label', sheetType === 'analysis' ? '분석표 추출' : '검침표 추출');
+        extractButton.setAttribute?.('title', sheetType === 'analysis' ? '분석표 추출' : '검침표 추출');
+    }
+
     function rerenderUtilSheetReportModalIfActive(sheetType, datasetKey) {
         const doc = getDocument();
         if (!doc || typeof doc.getElementById !== 'function') return;
@@ -266,6 +277,7 @@
         UtilSheetMeterState.electricTeamKey = electricMeterTeamKey;
         UtilSheetAnalysisState.electric.teamKey = electricAnalysisTeamKey;
         UtilSheetMeterState.electricViewKey = electricMeterViewKey;
+        syncSheetExtractButton(modal, sheetType);
 
         if (typeof runtime.pruneUtilSheetDatasetToggles === 'function') {
             runtime.pruneUtilSheetDatasetToggles(modal);

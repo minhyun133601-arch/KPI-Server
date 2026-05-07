@@ -18,8 +18,7 @@
     const {
         UtilSheetCompareState,
         UtilSheetReportState,
-        UtilSheetReportMonthState,
-        UtilSheetAnalysisState
+        UtilSheetReportMonthState
     } = utilReportSheetConfig;
 
     const runtime = {
@@ -52,18 +51,13 @@
         applyUtilGasMeterProductionSelection: null,
         applyUtilElectricMeterTeamSelection: null,
         applyUtilElectricAnalysisTeamSelection: null,
+        normalizeUtilElectricMeterViewKey: null,
+        buildUtilElectricMeterComparisonModel: null,
+        buildUtilElectricMeterTeamDatasetResult: null,
+        buildUtilElectricMeterComparisonSectionHtml: null,
         isUtilSheetCustomAnalysisDataset: null,
         setUtilSheetAnalysisToMonth: null,
-        syncUtilSheetPanelSelection: null,
-        getUtilSheetAnalysisRangeState: null,
-        setUtilSheetAnalysisRangeState: null,
-        buildUtilGasAnalysisModel: null,
-        buildUtilElectricAnalysisModel: null,
-        buildUtilGasAnalysisBodyHtmlV2: null,
-        buildUtilElectricAnalysisBodyHtmlV2: null,
-        getUtilGasAnalysisInlineTableEntry: null,
-        buildUtilGasAnalysisRangeTableHtml: null,
-        buildUtilGasAnalysisMetricTableHtml: null
+        syncUtilSheetPanelSelection: null
     };
 
     function setRuntimeAdapters(adapters = {}) {
@@ -133,9 +127,28 @@
         return resolveDatasetKey('analysis', modal?.dataset?.datasetKey || UtilSheetReportState.analysis || 'gas');
     }
 
+    function normalizeElectricMeterViewKey(viewKey = 'meter') {
+        if (typeof runtime.normalizeUtilElectricMeterViewKey === 'function') {
+            return runtime.normalizeUtilElectricMeterViewKey(viewKey);
+        }
+        const normalized = String(viewKey || '').trim();
+        if (normalized === 'allocation' || normalized === 'team') return normalized;
+        return 'meter';
+    }
+
     function findClosest(target, selector) {
         if (!target || typeof target.closest !== 'function') return null;
         return target.closest(selector);
+    }
+
+    function syncPanelSelection(sheetType, datasetKey) {
+        if (typeof runtime.syncUtilSheetPanelSelection === 'function') {
+            runtime.syncUtilSheetPanelSelection(sheetType, datasetKey);
+        }
+    }
+
+    function getTextContent(root, selector, fallback = '') {
+        return String(root?.querySelector?.(selector)?.textContent || fallback || '').trim();
     }
 
     function escapeHtml(value) {
@@ -147,1131 +160,1602 @@
             .replace(/'/g, '&#39;');
     }
 
-    function safeJsonForHtml(value) {
-        try {
-            return JSON.stringify(value)
-                .replace(/</g, '\\u003c')
-                .replace(/>/g, '\\u003e')
-                .replace(/&/g, '\\u0026');
-        } catch (error) {
-            void error;
-            return '{}';
-        }
+    function getStylesheetHref(node) {
+        const attrValue = typeof node?.getAttribute === 'function'
+            ? String(node.getAttribute('href') || '').trim()
+            : '';
+        if (attrValue) return attrValue;
+        const html = String(node?.outerHTML || '');
+        const match = /\shref=(["'])(.*?)\1/i.exec(html) || /\shref=([^\s>]+)/i.exec(html);
+        return String(match?.[2] || match?.[1] || '').trim();
     }
 
-    function getTextContent(root, selector, fallback = '') {
-        return String(root?.querySelector?.(selector)?.textContent || fallback || '').trim();
+    function shouldKeepExtractStylesheetLink(node) {
+        const href = getStylesheetHref(node);
+        if (!href) return false;
+        return /^(?:https?:)?\/\//i.test(href) || /^data:/i.test(href);
     }
 
-    function sanitizeFileToken(value = '') {
-        const token = String(value || '')
-            .trim()
-            .replace(/[\\/:*?"<>|]+/g, '_')
-            .replace(/\s+/g, '_')
-            .replace(/_+/g, '_')
-            .replace(/^_+|_+$/g, '');
-        return token || 'utility-report';
-    }
-
-    function buildTemplateKey(fromValue = '', toValue = '') {
-        return `${String(fromValue || '').trim()}__${String(toValue || '').trim()}`;
-    }
-
-    function getDocumentStylesHtml(doc) {
-        if (!doc) return '';
-        const styleBlocks = [];
-        const inlineStyles = typeof doc.querySelectorAll === 'function'
-            ? Array.from(doc.querySelectorAll('style')).map(node => node?.outerHTML || '').filter(Boolean)
+    function getHeadAssetsHtml() {
+        const doc = runtimeAdapter.getDocument();
+        const head = doc?.head;
+        const linkedAssets = head && typeof head.querySelectorAll === 'function'
+            ? Array.from(head.querySelectorAll('link[rel="stylesheet"]'))
+                .filter(shouldKeepExtractStylesheetLink)
+                .map(node => String(node?.outerHTML || ''))
+                .filter(Boolean)
             : [];
-        styleBlocks.push(...inlineStyles);
-        const stylesheetCss = [];
-        Array.from(doc.styleSheets || []).forEach(sheet => {
-            try {
-                const rules = Array.from(sheet?.cssRules || []);
-                if (rules.length) {
-                    stylesheetCss.push(rules.map(rule => rule.cssText || '').filter(Boolean).join('\n'));
+        const styleSheets = Array.from(doc?.styleSheets || []);
+        const inlineStyleBlocks = styleSheets
+            .map(sheet => {
+                try {
+                    return Array.from(sheet?.cssRules || [])
+                        .map(rule => String(rule?.cssText || ''))
+                        .filter(Boolean)
+                        .join('\n');
+                } catch (error) {
+                    void error;
+                    return '';
                 }
-            } catch (error) {
-                void error;
-            }
-        });
-        if (stylesheetCss.length) {
-            styleBlocks.push(`<style data-util-sheet-export-source="document-styles">\n${stylesheetCss.join('\n')}\n</style>`);
-        } else if (typeof doc.querySelectorAll === 'function') {
-            Array.from(doc.querySelectorAll('link[rel="stylesheet"]')).forEach(node => {
-                if (node?.outerHTML) styleBlocks.push(node.outerHTML);
-            });
-        }
-        return styleBlocks.join('\n');
-    }
-
-    function buildExportTemplateSubText(model = {}) {
-        const parts = [];
-        if (model.rangeLabel) parts.push(`범위 ${model.rangeLabel}`);
-        if (model.compareLabel) parts.push(model.compareLabel);
-        const basisLabel = String(model.categoryOption?.label || model.teamOption?.label || '').trim();
-        if (basisLabel) parts.push(`기준 ${basisLabel}`);
-        return parts.join(' / ');
-    }
-
-    function collectExportPopupTableKeys(model = {}) {
-        const keys = new Set();
-        const addKey = key => {
-            const normalized = String(key || '').trim();
-            if (normalized) keys.add(normalized);
-        };
-        const addControlItems = items => {
-            (Array.isArray(items) ? items : []).forEach(item => {
-                addKey(item?.popupTableKey || item?.key);
-            });
-        };
-        addControlItems(model.combinedChart?.controlItems);
-        addControlItems(model.ratioCombinedChart?.controlItems);
-        (Array.isArray(model.charts) ? model.charts : []).forEach(chart => {
-            addKey(chart?.popupTableKey || chart?.key);
-            addControlItems(chart?.controlItems);
-            addControlItems(chart?.summaryControlItems);
-        });
-        (Array.isArray(model.summaryItems) ? model.summaryItems : []).forEach(item => {
-            addKey(item?.popupTableKey || item?.key);
-        });
-        return Array.from(keys);
-    }
-
-    function buildExportPopupTables(datasetKey = '', model = {}) {
-        if (
-            typeof runtime.getUtilGasAnalysisInlineTableEntry !== 'function'
-            || typeof runtime.buildUtilGasAnalysisRangeTableHtml !== 'function'
-            || typeof runtime.buildUtilGasAnalysisMetricTableHtml !== 'function'
-        ) {
-            return {};
-        }
-        const tempModal = {
-            dataset: {
-                sheetType: 'analysis',
-                datasetKey: String(datasetKey || model.datasetKey || '').trim()
-            },
-            _utilSheetAnalysisModel: model
-        };
-        return collectExportPopupTableKeys(model).reduce((acc, tableKey) => {
-            const entry = runtime.getUtilGasAnalysisInlineTableEntry(tempModal, tableKey);
-            if (!entry?.table) return acc;
-            const tableHtml = entry.kind === 'ratio'
-                ? runtime.buildUtilGasAnalysisRangeTableHtml(entry.table, entry.controlItem, { hideDisplayModeControls: true })
-                : runtime.buildUtilGasAnalysisMetricTableHtml(entry.table);
-            if (tableHtml) acc[String(tableKey).trim().toLowerCase()] = tableHtml;
-            return acc;
-        }, {});
-    }
-
-    function collectExportControlItems(model = {}) {
-        const itemMap = new Map();
-        const addItems = items => {
-            (Array.isArray(items) ? items : []).forEach(item => {
-                const key = String(item?.key || '').trim();
-                if (!key || itemMap.has(key)) return;
-                itemMap.set(key, item);
-            });
-        };
-        addItems(model.combinedChart?.controlItems);
-        addItems(model.ratioCombinedChart?.controlItems);
-        (Array.isArray(model.charts) ? model.charts : []).forEach(chart => {
-            addItems(chart?.controlItems);
-            addItems(chart?.summaryControlItems);
-        });
-        return Array.from(itemMap.values());
-    }
-
-    function collectExportFuelItems(model = {}) {
-        const fuelMap = new Map();
-        (Array.isArray(model.charts) ? model.charts : []).forEach(chart => {
-            const fuelKey = String(chart?.fuelKey || '').trim();
-            if (!fuelKey || fuelMap.has(fuelKey)) return;
-            fuelMap.set(fuelKey, {
-                fuelKey,
-                isInactive: chart?.isInactive === true
-            });
-        });
-        return Array.from(fuelMap.values());
-    }
-
-    function collectExportSelectValues(bodyHtml = '', dataRole = '') {
-        const role = String(dataRole || '').trim();
-        if (!role) return [];
-        const escapedRole = role.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const selectPattern = new RegExp(`<select\\b(?=[^>]*\\bdata-role=["']${escapedRole}["'])[^>]*>([\\s\\S]*?)<\\/select>`, 'i');
-        const optionPattern = /<option\b[^>]*\bvalue=(["'])(.*?)\1[^>]*>/gi;
-        const selectBody = selectPattern.exec(String(bodyHtml || ''))?.[1] || '';
-        const values = [];
-        let optionMatch = optionPattern.exec(selectBody);
-        while (optionMatch) {
-            const value = String(optionMatch[2] || '').trim();
-            if (value && !values.includes(value)) values.push(value);
-            optionMatch = optionPattern.exec(selectBody);
-        }
-        return values;
-    }
-
-    function cloneExportState(value) {
-        try {
-            return JSON.parse(JSON.stringify(value || {}));
-        } catch (error) {
-            void error;
-            return {};
-        }
-    }
-
-    function restoreExportAnalysisState(datasetKey = '', snapshot = {}) {
-        const normalizedDatasetKey = String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
-        const target = UtilSheetAnalysisState?.[normalizedDatasetKey];
-        if (!target || typeof target !== 'object') return;
-        Object.keys(target).forEach(key => {
-            delete target[key];
-        });
-        Object.assign(target, cloneExportState(snapshot));
-    }
-
-    function buildExportInteractionVariants(datasetKey = '', model = {}, modal = null, currentBodyHtml = '') {
-        const normalizedDatasetKey = String(datasetKey || model.datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
-        const baseStateSnapshot = cloneExportState(UtilSheetAnalysisState?.[normalizedDatasetKey]);
-        const compareKey = normalizeCompareKey(modal?.dataset?.compareKey || 'month');
-        const teamKey = String(modal?.dataset?.electricAnalysisTeamKey || model?.teamOption?.key || 'combined').trim() || 'combined';
-        const range = {
-            from: String(model?.range?.from || '').trim(),
-            to: String(model?.range?.to || '').trim()
-        };
-        const variants = {};
-        const controlItems = collectExportControlItems(model);
-        const fuelItems = collectExportFuelItems(model);
-        const comboDimensions = [];
-
-        const pushComboDimension = (values = [], tokenBuilder = null, apply = null, priority = 10) => {
-            if (typeof tokenBuilder !== 'function' || typeof apply !== 'function') return;
-            const uniqueValues = values
-                .map(value => String(value ?? '').trim())
+            })
+            .filter(Boolean)
+            .map(cssText => `<style>${cssText}</style>`);
+        const hasFontAwesome = linkedAssets.some(html => /font-awesome|fontawesome/i.test(html))
+            || inlineStyleBlocks.some(html => /Font Awesome/i.test(html));
+        const fontAwesomeLink = hasFontAwesome
+            ? ''
+            : '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">';
+        const styleTags = head && typeof head.querySelectorAll === 'function'
+            ? Array.from(head.querySelectorAll('style'))
+                .map(node => String(node?.outerHTML || ''))
                 .filter(Boolean)
-                .filter((value, index, list) => list.indexOf(value) === index);
-            if (!uniqueValues.length) return;
-            comboDimensions.push({
-                values: uniqueValues,
-                tokenBuilder,
-                apply,
-                priority: Number(priority) || 10
-            });
-        };
-
-        const buildModel = (options = {}) => {
-            if (typeof runtime.setUtilSheetAnalysisRangeState === 'function') {
-                runtime.setUtilSheetAnalysisRangeState(normalizedDatasetKey, range.from, range.to);
-            }
-            return normalizedDatasetKey === 'electric'
-                ? (typeof runtime.buildUtilElectricAnalysisModel === 'function'
-                    ? runtime.buildUtilElectricAnalysisModel(
-                        range.to,
-                        compareKey,
-                        String(options.teamKey || UtilSheetAnalysisState?.electric?.teamKey || teamKey).trim() || 'combined'
-                    )
-                    : null)
-                : (typeof runtime.buildUtilGasAnalysisModel === 'function'
-                    ? runtime.buildUtilGasAnalysisModel(range.to, compareKey)
-                    : null);
-        };
-        const addVariant = (key, nextModel) => {
-            if (!key || !nextModel?.hasData || variants[key]) return;
-            const template = buildExportBodyTemplate(normalizedDatasetKey, nextModel, modal);
-            variants[key] = {
-                key,
-                rangeLabel: template.rangeLabel,
-                subText: template.subText,
-                bodyHtml: template.bodyHtml,
-                popupTables: template.popupTables
-            };
-        };
-        const buildComboVariantKey = changes => {
-            const tokens = (Array.isArray(changes) ? changes : [])
-                .map(change => change?.token)
-                .map(token => String(token || '').trim())
-                .filter(Boolean)
-                .sort();
-            return tokens.length ? `combo:${tokens.join('|')}` : '';
-        };
-        const restoreBaseState = () => {
-            restoreExportAnalysisState(normalizedDatasetKey, baseStateSnapshot);
-            if (typeof runtime.setUtilSheetAnalysisRangeState === 'function') {
-                runtime.setUtilSheetAnalysisRangeState(normalizedDatasetKey, range.from, range.to);
-            }
-            controlItems.forEach(item => {
-                const chartKey = String(item?.key || '').trim();
-                if (!chartKey) return;
-                if (typeof runtime.setUtilSheetAnalysisUnitKey === 'function' && item?.unitKey) {
-                    runtime.setUtilSheetAnalysisUnitKey(normalizedDatasetKey, chartKey, item.unitKey);
-                }
-                if (typeof runtime.setUtilSheetAnalysisDisplayMode === 'function' && item?.displayMode) {
-                    runtime.setUtilSheetAnalysisDisplayMode(normalizedDatasetKey, chartKey, item.displayMode);
-                }
-            });
-            if (normalizedDatasetKey === 'gas') {
-                fuelItems.forEach(item => {
-                    if (typeof runtime.setUtilGasAnalysisFuelInactive === 'function') {
-                        runtime.setUtilGasAnalysisFuelInactive(item.fuelKey, item.isInactive);
-                    }
-                });
-            }
-        };
-
-        if (!range.from || !range.to) return variants;
-
-        controlItems.forEach(item => {
-            const chartKey = String(item?.key || '').trim();
-            if (!chartKey) return;
-            const baseUnitKey = String(item?.unitKey || '').trim();
-            const unitValues = (Array.isArray(item?.unitOptions) ? item.unitOptions : [])
-                .map(option => String(option?.key || '').trim())
-                .filter(unitKey => unitKey && unitKey !== baseUnitKey);
-            pushComboDimension(
-                typeof runtime.setUtilSheetAnalysisUnitKey === 'function' ? unitValues : [],
-                value => `unit:${chartKey}:${value}`,
-                value => runtime.setUtilSheetAnalysisUnitKey(normalizedDatasetKey, chartKey, value),
-                20
-            );
-            (Array.isArray(item?.unitOptions) ? item.unitOptions : []).forEach(option => {
-                const unitKey = String(option?.key || '').trim();
-                if (!unitKey || unitKey === baseUnitKey) return;
-                if (typeof runtime.setUtilSheetAnalysisUnitKey !== 'function') return;
-                restoreBaseState();
-                runtime.setUtilSheetAnalysisUnitKey(normalizedDatasetKey, chartKey, unitKey);
-                addVariant(`unit:${chartKey}:${unitKey}`, buildModel());
-            });
-            const baseDisplayMode = String(item?.displayMode || '').trim();
-            pushComboDimension(
-                typeof runtime.setUtilSheetAnalysisDisplayMode === 'function'
-                    ? ['bar', 'line', 'none'].filter(displayMode => displayMode !== baseDisplayMode)
-                    : [],
-                value => `display:${chartKey}:${value}`,
-                value => runtime.setUtilSheetAnalysisDisplayMode(normalizedDatasetKey, chartKey, value),
-                30
-            );
-            ['bar', 'line', 'none'].forEach(displayMode => {
-                if (displayMode === baseDisplayMode) return;
-                if (typeof runtime.setUtilSheetAnalysisDisplayMode !== 'function') return;
-                restoreBaseState();
-                runtime.setUtilSheetAnalysisDisplayMode(normalizedDatasetKey, chartKey, displayMode);
-                addVariant(`display:${chartKey}:${displayMode}`, buildModel());
-            });
-        });
-
-        if (typeof runtime.setUtilSheetAnalysisShowLabels === 'function') {
-            const labelChartKeys = normalizedDatasetKey === 'electric'
-                ? ['combined', 'electricIntensity']
-                : ['combined'];
-            labelChartKeys.forEach(chartKey => {
-                const baseLabelValue = normalizedDatasetKey === 'electric'
-                    ? (baseStateSnapshot?.[chartKey === 'electricIntensity' ? 'intensityShowLabels' : 'showLabels'] === true)
-                    : (baseStateSnapshot?.showLabels === true);
-                pushComboDimension(
-                    [true, false]
-                        .map(value => String(value))
-                        .filter(value => value !== String(baseLabelValue)),
-                    value => `labels:${chartKey}:${value}`,
-                    value => runtime.setUtilSheetAnalysisShowLabels(normalizedDatasetKey, chartKey, value === 'true'),
-                    40
-                );
-                [true, false].forEach(showLabels => {
-                    restoreBaseState();
-                    runtime.setUtilSheetAnalysisShowLabels(normalizedDatasetKey, chartKey, showLabels);
-                    addVariant(`labels:${chartKey}:${showLabels}`, buildModel());
-                });
-            });
-        }
-
-        if (normalizedDatasetKey === 'gas') {
-            const baseCategoryKey = String(baseStateSnapshot?.categoryKey || model?.categoryOption?.key || '').trim();
-            const categoryValues = collectExportSelectValues(currentBodyHtml, 'util-sheet-analysis-gas-category-select')
-                .filter(categoryKey => categoryKey !== baseCategoryKey);
-            pushComboDimension(
-                categoryValues,
-                value => `category:${value}`,
-                value => {
-                    if (UtilSheetAnalysisState?.gas) {
-                        UtilSheetAnalysisState.gas.categoryKey = value;
-                    }
-                },
-                0
-            );
-            categoryValues.forEach(categoryKey => {
-                if (!categoryKey || categoryKey === baseCategoryKey) return;
-                restoreBaseState();
-                if (UtilSheetAnalysisState?.gas) {
-                    UtilSheetAnalysisState.gas.categoryKey = categoryKey;
-                }
-                addVariant(`category:${categoryKey}`, buildModel());
-            });
-            if (typeof runtime.setUtilGasAnalysisRatioShowLabels === 'function') {
-                const baseRatioLabelValue = baseStateSnapshot?.ratioShowLabels === true;
-                pushComboDimension(
-                    [true, false]
-                        .map(value => String(value))
-                        .filter(value => value !== String(baseRatioLabelValue)),
-                    value => `ratioLabels:${value}`,
-                    value => runtime.setUtilGasAnalysisRatioShowLabels(value === 'true'),
-                    50
-                );
-                [true, false].forEach(showLabels => {
-                    restoreBaseState();
-                    runtime.setUtilGasAnalysisRatioShowLabels(showLabels);
-                    addVariant(`ratioLabels:${showLabels}`, buildModel());
-                });
-            }
-            fuelItems.forEach(item => {
-                pushComboDimension(
-                    typeof runtime.setUtilGasAnalysisFuelInactive === 'function'
-                        ? [true, false]
-                            .map(value => String(value))
-                            .filter(value => value !== String(item.isInactive))
-                        : [],
-                    value => `inactive:${item.fuelKey}:${value}`,
-                    value => runtime.setUtilGasAnalysisFuelInactive(item.fuelKey, value === 'true'),
-                    10
-                );
-                [true, false].forEach(inactive => {
-                    if (inactive === item.isInactive || typeof runtime.setUtilGasAnalysisFuelInactive !== 'function') return;
-                    restoreBaseState();
-                    runtime.setUtilGasAnalysisFuelInactive(item.fuelKey, inactive);
-                    addVariant(`inactive:${item.fuelKey}:${inactive}`, buildModel());
-                });
-            });
-        } else {
-            const baseTeamKey = String(baseStateSnapshot?.teamKey || model?.teamOption?.key || teamKey).trim();
-            const teamValues = collectExportSelectValues(currentBodyHtml, 'util-sheet-analysis-electric-team-select')
-                .filter(nextTeamKey => nextTeamKey !== baseTeamKey);
-            pushComboDimension(
-                teamValues,
-                value => `team:${value}`,
-                value => {
-                    if (UtilSheetAnalysisState?.electric) {
-                        UtilSheetAnalysisState.electric.teamKey = value;
-                    }
-                },
-                0
-            );
-            teamValues.forEach(nextTeamKey => {
-                if (!nextTeamKey || nextTeamKey === baseTeamKey) return;
-                restoreBaseState();
-                if (UtilSheetAnalysisState?.electric) {
-                    UtilSheetAnalysisState.electric.teamKey = nextTeamKey;
-                }
-                addVariant(`team:${nextTeamKey}`, buildModel({ teamKey: nextTeamKey }));
-            });
-        }
-
-        comboDimensions.sort((left, right) => left.priority - right.priority);
-        let comboVariantCount = 0;
-        const maxComboVariantCount = 160;
-        const addComboVariant = changes => {
-            if (comboVariantCount >= maxComboVariantCount) return;
-            const key = buildComboVariantKey(changes);
-            if (!key || variants[key]) return;
-            restoreBaseState();
-            changes.forEach(change => {
-                if (typeof change?.apply === 'function') {
-                    change.apply(change.value);
-                }
-            });
-            addVariant(key, buildModel());
-            comboVariantCount += 1;
-        };
-        const buildComboChange = (dimension, value) => ({
-            token: dimension.tokenBuilder(value),
-            value,
-            apply: dimension.apply
-        });
-        comboDimensions.forEach(dimension => {
-            dimension.values.forEach(value => addComboVariant([buildComboChange(dimension, value)]));
-        });
-        const walkComboVariants = (startIndex = 0, changes = []) => {
-            if (comboVariantCount >= maxComboVariantCount) return true;
-            if (changes.length >= 3) return false;
-            for (let dimensionIndex = startIndex; dimensionIndex < comboDimensions.length; dimensionIndex += 1) {
-                const dimension = comboDimensions[dimensionIndex];
-                for (let valueIndex = 0; valueIndex < dimension.values.length; valueIndex += 1) {
-                    const nextChanges = [...changes, buildComboChange(dimension, dimension.values[valueIndex])];
-                    if (nextChanges.length >= 2) {
-                        addComboVariant(nextChanges);
-                    }
-                    if (comboVariantCount >= maxComboVariantCount) return true;
-                    if (walkComboVariants(dimensionIndex + 1, nextChanges)) return true;
-                }
-            }
-            return false;
-        };
-        walkComboVariants();
-
-        restoreBaseState();
-        return variants;
+            : [];
+        return [fontAwesomeLink, ...linkedAssets, ...styleTags, ...inlineStyleBlocks]
+            .filter(Boolean)
+            .join('\n');
     }
 
-    function buildExportBodyTemplate(datasetKey = '', model = {}, modal = null) {
-        const tempModal = {
-            dataset: {
-                sheetType: 'analysis',
-                datasetKey: String(datasetKey || model.datasetKey || '').trim()
-            },
-            _utilSheetAnalysisModel: model
-        };
-        const bodyHtml = datasetKey === 'electric'
-            ? (typeof runtime.buildUtilElectricAnalysisBodyHtmlV2 === 'function'
-                ? runtime.buildUtilElectricAnalysisBodyHtmlV2(model, {}, tempModal)
-                : '')
-            : (typeof runtime.buildUtilGasAnalysisBodyHtmlV2 === 'function'
-                ? runtime.buildUtilGasAnalysisBodyHtmlV2(model, {}, tempModal)
-                : '');
-        const fromValue = String(model?.range?.from || '').trim();
-        const toValue = String(model?.range?.to || '').trim();
-        const key = buildTemplateKey(fromValue, toValue);
-        return {
-            key,
-            from: fromValue,
-            to: toValue,
-            rangeLabel: String(model?.rangeLabel || '').trim(),
-            subText: buildExportTemplateSubText(model),
-            bodyHtml,
-            popupTables: buildExportPopupTables(datasetKey, model)
-        };
-    }
-
-    function buildAnalysisExportTemplates(modal, currentBodyHtml = '') {
-        const sheetType = normalizeSheetType(modal?.dataset?.sheetType || 'meter');
-        const datasetKey = resolveDatasetKey(sheetType, modal?.dataset?.datasetKey || '');
-        const currentModel = modal?._utilSheetAnalysisModel || null;
-        const currentRange = currentModel?.range || {};
-        const currentKey = buildTemplateKey(currentRange.from, currentRange.to);
-        const templates = {};
-        if (sheetType !== 'analysis' || !currentModel?.hasData || !currentKey.trim()) {
-            const fallbackKey = currentKey || 'current__current';
-            templates[fallbackKey] = {
-                key: fallbackKey,
-                from: String(currentRange.from || '').trim(),
-                to: String(currentRange.to || '').trim(),
-                rangeLabel: String(currentModel?.rangeLabel || '').trim(),
-                subText: buildExportTemplateSubText(currentModel || {}),
-                bodyHtml: currentBodyHtml,
-                popupTables: buildExportPopupTables(datasetKey, currentModel || {})
-            };
-            return { templates, currentKey: fallbackKey, completeRangeSet: false };
-        }
-
-        const monthOptions = Array.isArray(currentModel.monthOptions) ? currentModel.monthOptions : [];
-        const originalRange = {
-            from: String(currentRange.from || '').trim(),
-            to: String(currentRange.to || '').trim()
-        };
-        const compareKey = normalizeCompareKey(modal.dataset.compareKey || 'month');
-        const teamKey = String(modal.dataset.electricAnalysisTeamKey || currentModel?.teamOption?.key || 'combined').trim() || 'combined';
-        const canBuildRangeTemplates = typeof runtime.setUtilSheetAnalysisRangeState === 'function'
-            && (datasetKey === 'gas' || datasetKey === 'electric')
-            && (datasetKey !== 'gas' || typeof runtime.buildUtilGasAnalysisModel === 'function')
-            && (datasetKey !== 'electric' || typeof runtime.buildUtilElectricAnalysisModel === 'function')
-            && (datasetKey !== 'gas' || typeof runtime.buildUtilGasAnalysisBodyHtmlV2 === 'function')
-            && (datasetKey !== 'electric' || typeof runtime.buildUtilElectricAnalysisBodyHtmlV2 === 'function');
-
-        const addTemplate = (fromValue, toValue) => {
-            const from = String(fromValue || '').trim();
-            const to = String(toValue || '').trim();
-            const key = buildTemplateKey(from, to);
-            if (!from || !to || templates[key]) return;
-            if (!canBuildRangeTemplates) {
-                if (key === currentKey) {
-                    templates[key] = buildExportBodyTemplate(datasetKey, currentModel, modal);
-                }
-                return;
-            }
-            runtime.setUtilSheetAnalysisRangeState(datasetKey, from, to);
-            const model = datasetKey === 'electric'
-                ? runtime.buildUtilElectricAnalysisModel(to, compareKey, teamKey)
-                : runtime.buildUtilGasAnalysisModel(to, compareKey);
-            if (!model?.hasData) return;
-            templates[key] = buildExportBodyTemplate(datasetKey, model, modal);
-        };
-
-        const optionValues = monthOptions.map(item => String(item?.value || '').trim()).filter(Boolean);
-        const maxTemplateCount = 220;
-        const fullCombinationCount = (optionValues.length * (optionValues.length + 1)) / 2;
-        if (optionValues.length && fullCombinationCount <= maxTemplateCount) {
-            optionValues.forEach((fromValue, fromIndex) => {
-                optionValues.slice(fromIndex).forEach(toValue => addTemplate(fromValue, toValue));
-            });
-        } else if (optionValues.length) {
-            const currentFromIndex = Math.max(0, optionValues.indexOf(originalRange.from));
-            const currentToIndex = Math.max(currentFromIndex, optionValues.indexOf(originalRange.to));
-            optionValues.forEach((toValue, toIndex) => {
-                if (toIndex >= currentFromIndex) addTemplate(originalRange.from, toValue);
-            });
-            optionValues.forEach((fromValue, fromIndex) => {
-                if (fromIndex <= currentToIndex) addTemplate(fromValue, originalRange.to);
-            });
-        }
-        addTemplate(originalRange.from, originalRange.to);
-        if (templates[currentKey]) {
-            templates[currentKey] = {
-                ...templates[currentKey],
-                bodyHtml: currentBodyHtml || templates[currentKey].bodyHtml,
-                popupTables: buildExportPopupTables(datasetKey, currentModel),
-                variants: buildExportInteractionVariants(
-                    datasetKey,
-                    currentModel,
-                    modal,
-                    currentBodyHtml || templates[currentKey].bodyHtml
-                )
-            };
-        }
-        if (canBuildRangeTemplates) {
-            runtime.setUtilSheetAnalysisRangeState(datasetKey, originalRange.from, originalRange.to);
-        }
-        return {
-            templates,
-            currentKey,
-            completeRangeSet: Boolean(optionValues.length && fullCombinationCount <= maxTemplateCount)
-        };
-    }
-
-    function buildStandaloneExportScript() {
-        return [
-            '(function bindUtilSheetStandaloneExport() {',
-            '    const dataEl = document.getElementById("util-sheet-export-data");',
-            '    const data = dataEl ? JSON.parse(dataEl.textContent || "{}") : {};',
-            '    const bodyEl = document.querySelector("[data-role=\\"util-sheet-export-body\\"]");',
-            '    const popup = document.querySelector("[data-role=\\"util-sheet-export-popup\\"]");',
-            '    const popupTitle = popup ? popup.querySelector("[data-role=\\"util-sheet-export-popup-title\\"]") : null;',
-            '    const popupBody = popup ? popup.querySelector("[data-role=\\"util-sheet-export-popup-body\\"]") : null;',
-            '    const templateKeys = data.templates || {};',
-            '    let activeKey = data.currentKey || "";',
-            '    let activeVariantKey = "";',
-            '    let activeVariantTokens = new Map();',
-            '    let baseControlValues = new Map();',
-            '    function normalizeKey(fromValue, toValue) { return String(fromValue || "").trim() + "__" + String(toValue || "").trim(); }',
-            '    function getBaseTemplate() { return templateKeys[activeKey] || templateKeys[data.currentKey] || {}; }',
-            '    function getActiveTemplate() {',
-            '        const template = getBaseTemplate();',
-            '        return (activeVariantKey && template.variants && template.variants[activeVariantKey]) || template;',
-            '    }',
-            '    function setBaseControlValue(key, value) {',
-            '        const normalizedKey = String(key || "").trim();',
-            '        if (!normalizedKey) return;',
-            '        baseControlValues.set(normalizedKey, String(value ?? "").trim());',
-            '    }',
-            '    function captureBaseControlValues() {',
-            '        baseControlValues = new Map();',
-            '        if (!bodyEl) return;',
-            '        const categorySelect = bodyEl.querySelector("[data-role=\\"util-sheet-analysis-gas-category-select\\"]");',
-            '        if (categorySelect) setBaseControlValue("category", categorySelect.value);',
-            '        const teamSelect = bodyEl.querySelector("[data-role=\\"util-sheet-analysis-electric-team-select\\"]");',
-            '        if (teamSelect) setBaseControlValue("team", teamSelect.value);',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-unit\\"]").forEach(function (select) {',
-            '            const chartKey = String(select.dataset.chartKey || "").trim();',
-            '            if (chartKey) setBaseControlValue("unit:" + chartKey, select.value);',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-series-type\\"].is-active, [data-role=\\"util-sheet-analysis-series-type\\"][aria-pressed=\\"true\\"]").forEach(function (button) {',
-            '            const chartKey = String(button.dataset.chartKey || "").trim();',
-            '            if (chartKey) setBaseControlValue("display:" + chartKey, button.dataset.chartType || "");',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-chart-label-toggle], [data-role=\\"util-sheet-analysis-electric-combined-label-toggle\\"], [data-role=\\"util-sheet-analysis-electric-intensity-label-toggle\\"]").forEach(function (toggle) {',
-            '            const card = toggle.closest("[data-analysis-chart-key]");',
-            '            const role = String(toggle.getAttribute("data-role") || "").trim();',
-            '            const chartKey = String(card?.dataset?.analysisChartKey || (role === "util-sheet-analysis-electric-intensity-label-toggle" ? "electricIntensity" : "combined") || "combined").trim();',
-            '            setBaseControlValue("labels:" + chartKey, toggle.checked === true);',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-ratio-label-toggle\\"]").forEach(function (toggle) {',
-            '            setBaseControlValue("ratioLabels", toggle.checked === true);',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-fuel-inactive\\"]").forEach(function (toggle) {',
-            '            const fuelKey = String(toggle.dataset.fuelKey || "").trim();',
-            '            if (fuelKey) setBaseControlValue("inactive:" + fuelKey, toggle.checked === true);',
-            '        });',
-            '    }',
-            '    function rememberVariantToken(controlKey, value, token) {',
-            '        const normalizedKey = String(controlKey || "").trim();',
-            '        if (!normalizedKey) return;',
-            '        const normalizedValue = String(value ?? "").trim();',
-            '        if (baseControlValues.has(normalizedKey) && baseControlValues.get(normalizedKey) === normalizedValue) {',
-            '            activeVariantTokens.delete(normalizedKey);',
-            '            return;',
-            '        }',
-            '        activeVariantTokens.set(normalizedKey, String(token || "").trim());',
-            '    }',
-            '    function buildComboVariantKey() {',
-            '        const tokens = Array.from(activeVariantTokens.values()).map(function (token) { return String(token || "").trim(); }).filter(Boolean).sort();',
-            '        return tokens.length ? "combo:" + tokens.join("|") : "";',
-            '    }',
-            '    function applyVariantWithToken(controlKey, value, token, legacyKey) {',
-            '        rememberVariantToken(controlKey, value, token);',
-            '        const comboKey = buildComboVariantKey();',
-            '        if (comboKey && applyVariant(comboKey)) return true;',
-            '        if (applyVariant(legacyKey)) {',
-            '            activeVariantTokens = new Map();',
-            '            rememberVariantToken(controlKey, value, token);',
-            '            return true;',
-            '        }',
-            '        return false;',
-            '    }',
-            '    function getSelectedRange() {',
-            '        const fromSelect = bodyEl ? bodyEl.querySelector("[data-role=\\"util-sheet-analysis-from\\"]") : null;',
-            '        const toSelect = bodyEl ? bodyEl.querySelector("[data-role=\\"util-sheet-analysis-to\\"]") : null;',
-            '        return { from: fromSelect ? fromSelect.value : "", to: toSelect ? toSelect.value : "", fromSelect, toSelect };',
-            '    }',
-            '    function syncHeader(template) {',
-            '        if (!template) return;',
-            '        document.querySelectorAll("[data-role=\\"util-sheet-export-range-label\\"]").forEach(function (node) { node.textContent = template.rangeLabel || ""; });',
-            '        document.querySelectorAll("[data-role=\\"util-sheet-report-sub\\"], [data-role=\\"util-sheet-export-sub\\"]").forEach(function (node) { node.textContent = template.subText || data.subText || ""; });',
-            '    }',
-            '    function closePopup() {',
-            '        if (!popup) return;',
-            '        popup.classList.remove("is-open");',
-            '        popup.setAttribute("aria-hidden", "true");',
-            '        if (popupBody) popupBody.innerHTML = "";',
-            '    }',
-            '    function openPopup(title, html) {',
-            '        if (!popup || !popupBody) return;',
-            '        if (popupTitle) popupTitle.textContent = title || "상세 보기";',
-            '        popupBody.innerHTML = html || "";',
-            '        popup.classList.add("is-open");',
-            '        popup.setAttribute("aria-hidden", "false");',
-            '        bindDragScroll(popupBody);',
-            '    }',
-            '    function bindDragScroll(root) {',
-            '        const host = root && typeof root.querySelectorAll === "function" ? root : document;',
-            '        if (!host || typeof host.querySelectorAll !== "function") return;',
-            '        const resolveScrollableChartElement = function (candidate) {',
-            '            const surface = candidate?.closest?.(".util-sheet-analysis-chart-surface");',
-            '            if (surface && (surface.scrollWidth - surface.clientWidth) > 4) return surface;',
-            '            const canvas = candidate?.closest?.(".util-analytics-chart-canvas") || candidate?.querySelector?.(".util-analytics-chart-canvas");',
-            '            if (canvas && (canvas.scrollWidth - canvas.clientWidth) > 4) return canvas;',
-            '            return surface || canvas || candidate || null;',
-            '        };',
-            '        Array.from(host.querySelectorAll(".util-sheet-analysis-chart-surface, .util-analytics-chart-canvas")).forEach(function (candidate) {',
-            '            const scrollEl = resolveScrollableChartElement(candidate);',
-            '            if (!scrollEl || scrollEl.dataset.analysisDragBound === "true") return;',
-            '            scrollEl.dataset.analysisDragBound = "true";',
-            '            let activePointerId = null;',
-            '            let startX = 0;',
-            '            let startScrollLeft = 0;',
-            '            const finish = function () {',
-            '                if (activePointerId === null) return;',
-            '                activePointerId = null;',
-            '                scrollEl.classList.remove("is-dragging");',
-            '            };',
-            '            const isInteractive = function (target) {',
-            '                return !!target?.closest?.("input, select, textarea, button, label, a, summary, details, [contenteditable]");',
-            '            };',
-            '            scrollEl.addEventListener("pointerdown", function (event) {',
-            '                if (event.pointerType === "mouse" && event.button !== 0) return;',
-            '                if (isInteractive(event.target)) return;',
-            '                if ((scrollEl.scrollWidth - scrollEl.clientWidth) <= 4) return;',
-            '                activePointerId = event.pointerId;',
-            '                startX = event.clientX;',
-            '                startScrollLeft = scrollEl.scrollLeft;',
-            '                scrollEl.classList.add("is-dragging");',
-            '                if (typeof scrollEl.setPointerCapture === "function") {',
-            '                    try { scrollEl.setPointerCapture(activePointerId); } catch (error) {}',
-            '                }',
-            '            });',
-            '            scrollEl.addEventListener("pointermove", function (event) {',
-            '                if (activePointerId === null || event.pointerId !== activePointerId) return;',
-            '                const diffX = event.clientX - startX;',
-            '                const maxScrollLeft = Math.max(0, scrollEl.scrollWidth - scrollEl.clientWidth);',
-            '                scrollEl.scrollLeft = Math.min(maxScrollLeft, Math.max(0, startScrollLeft - diffX));',
-            '                if (Math.abs(diffX) > 2) event.preventDefault();',
-            '            });',
-            '            scrollEl.addEventListener("pointerup", function (event) { if (event.pointerId === activePointerId) finish(); });',
-            '            scrollEl.addEventListener("pointercancel", function (event) { if (event.pointerId === activePointerId) finish(); });',
-            '            scrollEl.addEventListener("lostpointercapture", finish);',
-            '        });',
-            '    }',
-            '    function applyVariant(variantKey) {',
-            '        const template = getBaseTemplate();',
-            '        const variant = template.variants && template.variants[variantKey];',
-            '        if (!variant || !variant.bodyHtml || !bodyEl) return false;',
-            '        activeVariantKey = variantKey;',
-            '        bodyEl.innerHTML = variant.bodyHtml;',
-            '        syncHeader(variant);',
-            '        bindBodyInteractions();',
-            '        return true;',
-            '    }',
-            '    function bindBodyInteractions() {',
-            '        if (!bodyEl) return;',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-from\\"], [data-role=\\"util-sheet-analysis-to\\"]").forEach(function (select) {',
-            '            select.addEventListener("change", function () {',
-            '                const range = getSelectedRange();',
-            '                const key = normalizeKey(range.from, range.to);',
-            '                const template = templateKeys[key];',
-            '                if (!template) {',
-            '                    alert("이 범위는 추출 파일에 포함되지 않았습니다. 원본 분석표에서 범위를 맞춘 뒤 다시 추출해 주세요.");',
-            '                    const activeTemplate = templateKeys[activeKey] || templateKeys[data.currentKey];',
-            '                    if (activeTemplate) {',
-            '                        if (range.fromSelect) range.fromSelect.value = activeTemplate.from || range.fromSelect.value;',
-            '                        if (range.toSelect) range.toSelect.value = activeTemplate.to || range.toSelect.value;',
-            '                    }',
-            '                    return;',
-            '                }',
-            '                activeKey = key;',
-            '                activeVariantKey = "";',
-            '                activeVariantTokens = new Map();',
-            '                bodyEl.innerHTML = template.bodyHtml || "";',
-            '                syncHeader(template);',
-            '                captureBaseControlValues();',
-            '                bindBodyInteractions();',
-            '            });',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-open-chart\\"]").forEach(function (button) {',
-            '            button.addEventListener("click", function () {',
-            '                const card = button.closest("[data-role=\\"util-sheet-analysis-chart-card\\"], .util-sheet-analysis-chart-card");',
-            '                if (!card) return;',
-            '                const title = card.querySelector(".util-sheet-analysis-chart-title")?.textContent || "그래프";',
-            '                const clone = card.cloneNode(true);',
-            '                clone.querySelectorAll("[data-role=\\"util-sheet-analysis-open-chart\\"]").forEach(function (node) { node.remove(); });',
-            '                openPopup(title, clone.outerHTML);',
-            '            });',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-open-ratio-table\\"]").forEach(function (button) {',
-            '            button.addEventListener("click", function () {',
-            '                const template = getActiveTemplate();',
-            '                const tableKey = String(button.dataset.tableKey || "").trim().toLowerCase();',
-            '                const tableHtml = template.popupTables && template.popupTables[tableKey];',
-            '                if (tableHtml) {',
-            '                    openPopup("상세표", tableHtml);',
-            '                    return;',
-            '                }',
-            '                const card = button.closest(".util-sheet-analysis-summary-card, [data-role=\\"util-sheet-analysis-chart-card\\"], .util-sheet-analysis-chart-card");',
-            '                if (card) openPopup("상세 보기", card.cloneNode(true).outerHTML);',
-            '            });',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-unit\\"]").forEach(function (select) {',
-            '            select.addEventListener("change", function () {',
-            '                const chartKey = String(select.dataset.chartKey || "").trim();',
-            '                if (!chartKey) return;',
-            '                const value = String(select.value || "").trim();',
-            '                const token = "unit:" + chartKey + ":" + value;',
-            '                applyVariantWithToken("unit:" + chartKey, value, token, token);',
-            '            });',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-gas-category-select\\"]").forEach(function (select) {',
-            '            select.addEventListener("change", function () {',
-            '                const value = String(select.value || "").trim();',
-            '                const token = "category:" + value;',
-            '                applyVariantWithToken("category", value, token, token);',
-            '            });',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-electric-team-select\\"]").forEach(function (select) {',
-            '            select.addEventListener("change", function () {',
-            '                const value = String(select.value || "").trim();',
-            '                const token = "team:" + value;',
-            '                applyVariantWithToken("team", value, token, token);',
-            '            });',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-series-type\\"]").forEach(function (button) {',
-            '            button.addEventListener("click", function (event) {',
-            '                event.preventDefault();',
-            '                const chartKey = String(button.dataset.chartKey || "").trim();',
-            '                const chartType = String(button.dataset.chartType || "").trim();',
-            '                if (!chartKey || !chartType) return;',
-            '                const token = "display:" + chartKey + ":" + chartType;',
-            '                if (!applyVariantWithToken("display:" + chartKey, chartType, token, token)) {',
-            '                    button.closest(".util-sheet-analysis-series-mode")?.querySelectorAll("[data-role=\\"util-sheet-analysis-series-type\\"]").forEach(function (node) {',
-            '                        node.classList.toggle("is-active", node === button);',
-            '                        node.setAttribute("aria-pressed", node === button ? "true" : "false");',
-            '                    });',
-            '                }',
-            '            });',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-chart-label-toggle], [data-role=\\"util-sheet-analysis-electric-combined-label-toggle\\"], [data-role=\\"util-sheet-analysis-electric-intensity-label-toggle\\"]").forEach(function (toggle) {',
-            '            toggle.addEventListener("change", function () {',
-            '                const card = toggle.closest("[data-analysis-chart-key]");',
-            '                const role = String(toggle.getAttribute("data-role") || "").trim();',
-            '                const chartKey = String(card?.dataset?.analysisChartKey || (role === "util-sheet-analysis-electric-intensity-label-toggle" ? "electricIntensity" : "combined") || "combined").trim();',
-            '                const value = String(toggle.checked === true);',
-            '                const token = "labels:" + chartKey + ":" + value;',
-            '                applyVariantWithToken("labels:" + chartKey, value, token, token);',
-            '            });',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-ratio-label-toggle\\"]").forEach(function (toggle) {',
-            '            toggle.addEventListener("change", function () {',
-            '                const value = String(toggle.checked === true);',
-            '                const token = "ratioLabels:" + value;',
-            '                applyVariantWithToken("ratioLabels", value, token, token);',
-            '            });',
-            '        });',
-            '        bodyEl.querySelectorAll("[data-role=\\"util-sheet-analysis-fuel-inactive\\"]").forEach(function (toggle) {',
-            '            toggle.addEventListener("change", function () {',
-            '                const fuelKey = String(toggle.dataset.fuelKey || "").trim();',
-            '                if (fuelKey) {',
-            '                    const value = String(toggle.checked === true);',
-            '                    const token = "inactive:" + fuelKey + ":" + value;',
-            '                    applyVariantWithToken("inactive:" + fuelKey, value, token, token);',
-            '                }',
-            '            });',
-            '        });',
-            '        bindDragScroll(bodyEl);',
-            '    }',
-            '    document.addEventListener("click", function (event) {',
-            '        if (event.target?.closest?.("[data-role=\\"util-sheet-export-popup-close\\"]")) closePopup();',
-            '        if (event.target === popup) closePopup();',
-            '    });',
-            '    document.addEventListener("keydown", function (event) { if (event.key === "Escape") closePopup(); });',
-            '    syncHeader(templateKeys[activeKey] || templateKeys[data.currentKey]);',
-            '    captureBaseControlValues();',
-            '    bindBodyInteractions();',
-            '})();'
-        ].join('\n');
-    }
-
-    function buildStandaloneExportStyles() {
+    function getExtractIconFallbackCss() {
         return `
-            <style>
-                body.util-sheet-export-page {
-                    margin: 0;
-                    min-height: 100vh;
-                    background: #f3f7fb;
-                    color: #172033;
-                    font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif;
-                }
-                .util-sheet-export-shell {
-                    width: min(1400px, calc(100vw - 32px));
-                    margin: 18px auto 28px;
-                }
-                .util-sheet-export-head {
-                    display: flex;
-                    justify-content: space-between;
-                    gap: 18px;
-                    align-items: flex-end;
-                    margin-bottom: 14px;
-                    padding: 18px 20px;
-                    border: 1px solid #d9e2ef;
-                    border-radius: 8px;
-                    background: #fff;
-                    box-shadow: 0 18px 42px rgba(18, 33, 58, 0.10);
-                }
-                .util-sheet-export-kicker {
-                    color: #155e95;
-                    font-size: 12px;
-                    font-weight: 900;
-                }
-                .util-sheet-export-title {
-                    margin-top: 6px;
-                    font-size: 28px;
-                    font-weight: 950;
-                    line-height: 1.18;
-                }
-                .util-sheet-export-sub {
-                    margin-top: 6px;
-                    color: #667085;
-                    font-size: 13px;
-                    font-weight: 800;
-                }
-                .util-sheet-export-actions {
-                    display: flex;
-                    gap: 8px;
-                    align-items: center;
-                    color: #667085;
-                    font-size: 12px;
-                    font-weight: 800;
-                    text-align: right;
-                }
-                .util-sheet-export-body {
-                    min-width: 0;
-                }
-                .util-sheet-export-body .util-sheet-analysis-chart-surface,
-                .util-sheet-export-popup-body .util-sheet-analysis-chart-surface,
-                .util-sheet-export-body .util-analytics-chart-canvas,
-                .util-sheet-export-popup-body .util-analytics-chart-canvas {
-                    cursor: grab;
-                    touch-action: pan-x;
-                    overscroll-behavior-x: contain;
-                    scrollbar-gutter: stable both-edges;
-                }
-                .util-sheet-export-body .util-sheet-analysis-chart-surface.is-dragging,
-                .util-sheet-export-popup-body .util-sheet-analysis-chart-surface.is-dragging,
-                .util-sheet-export-body .util-analytics-chart-canvas.is-dragging,
-                .util-sheet-export-popup-body .util-analytics-chart-canvas.is-dragging {
-                    cursor: grabbing;
-                }
-                .util-sheet-export-popup {
-                    position: fixed;
-                    inset: 0;
-                    z-index: 10000;
-                    display: none;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 22px;
-                    background: rgba(15, 23, 42, 0.62);
-                }
-                .util-sheet-export-popup.is-open {
-                    display: flex;
-                }
-                .util-sheet-export-popup-card {
-                    width: min(1280px, calc(100vw - 44px));
-                    max-height: calc(100vh - 44px);
-                    overflow: auto;
-                    border-radius: 8px;
-                    background: #fff;
-                    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
-                }
-                .util-sheet-export-popup-head {
-                    position: sticky;
-                    top: 0;
-                    z-index: 1;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 14px 16px;
-                    border-bottom: 1px solid #e7edf6;
-                    background: #fff;
-                }
-                .util-sheet-export-popup-title {
-                    font-size: 16px;
-                    font-weight: 950;
-                }
-                .util-sheet-export-popup-close {
-                    width: 34px;
-                    height: 34px;
-                    border: 1px solid #d9e2ef;
-                    border-radius: 6px;
-                    background: #fff;
-                    cursor: pointer;
-                    font-size: 18px;
-                    font-weight: 900;
-                }
-                .util-sheet-export-popup-body {
-                    padding: 16px;
-                }
-                .util-sheet-export-popup-body .util-sheet-analysis-chart-card {
-                    min-height: calc(100vh - 140px);
-                }
-                @media print {
-                    .util-sheet-export-actions,
-                    .util-sheet-export-popup {
-                        display: none !important;
-                    }
-                    .util-sheet-export-shell {
-                        width: auto;
-                        margin: 0;
-                    }
-                    .util-sheet-export-head {
-                        box-shadow: none;
-                    }
-                }
-            </style>
+            .util-sheet-meter-extract-page .fa-solid,
+            .util-sheet-meter-extract-page .fas {
+                font-family: inherit !important;
+                font-weight: 900;
+                line-height: 1;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 1em;
+            }
+            .util-sheet-meter-extract-page .fa-solid::before,
+            .util-sheet-meter-extract-page .fas::before { display: inline-block; text-align: center; }
+            .util-sheet-meter-extract-page .fa-chart-line::before { content: "⌁"; }
+            .util-sheet-meter-extract-page .fa-chart-column::before,
+            .util-sheet-meter-extract-page .fa-chart-bar::before { content: "▥"; }
+            .util-sheet-meter-extract-page .fa-chart-pie::before { content: "◔"; }
+            .util-sheet-meter-extract-page .fa-fire::before,
+            .util-sheet-meter-extract-page .fa-fire-flame-curved::before,
+            .util-sheet-meter-extract-page .fa-fire-burner::before { content: "△"; }
+            .util-sheet-meter-extract-page .fa-bolt::before { content: "ϟ"; }
+            .util-sheet-meter-extract-page .fa-coins::before,
+            .util-sheet-meter-extract-page .fa-won-sign::before { content: "₩"; }
+            .util-sheet-meter-extract-page .fa-industry::before { content: "▦"; }
+            .util-sheet-meter-extract-page .fa-gauge-high::before { content: "◜"; }
+            .util-sheet-meter-extract-page .fa-scale-balanced::before { content: "⚖"; }
+            .util-sheet-meter-extract-page .fa-table-cells-large::before,
+            .util-sheet-meter-extract-page .fa-table::before { content: "▦"; }
+            .util-sheet-meter-extract-page .fa-file-lines::before { content: "▤"; }
+            .util-sheet-meter-extract-page .fa-expand::before,
+            .util-sheet-meter-extract-page .fa-up-right-and-down-left-from-center::before { content: "⛶"; }
+            .util-sheet-meter-extract-page .fa-compress::before { content: "⛶"; }
+            .util-sheet-meter-extract-page .fa-xmark::before { content: "×"; }
+            .util-sheet-meter-extract-page .fa-oil-can::before { content: "◒"; }
+            .util-sheet-meter-extract-page .fa-fan::before { content: "✣"; }
+            .util-sheet-meter-extract-page .fa-circle::before { content: "●"; }
+            .util-sheet-meter-extract-page .fa-layer-group::before { content: "▣"; }
+            .util-sheet-meter-extract-page .fa-calendar-days::before { content: "□"; }
+            .util-sheet-meter-extract-page .fa-list::before { content: "☰"; }
+            .util-sheet-meter-extract-page .fa-filter::before { content: "▽"; }
+            .util-sheet-meter-extract-page .fa-people-group::before { content: "◇"; }
+            .util-sheet-meter-extract-page .fa-arrow-up-right-from-square::before { content: "↗"; }
         `;
     }
 
-    function buildUtilSheetStandaloneExportHtml(modal) {
-        const doc = runtimeAdapter.getDocument();
-        const bodyEl = modal?.querySelector?.('[data-role="util-sheet-report-body"]') || null;
-        if (!doc || !modal || !bodyEl) return null;
-        const title = getTextContent(modal, '[data-role="util-sheet-report-title"]', '유틸리티 분석표');
-        const kicker = getTextContent(modal, '[data-role="util-sheet-report-kicker"]', 'UTILITY REPORT');
-        const subText = getTextContent(modal, '[data-role="util-sheet-report-sub"]', '');
-        const bodyHtml = bodyEl.innerHTML || '';
-        if (!bodyHtml.trim()) return null;
-        const exportTemplates = buildAnalysisExportTemplates(modal, bodyHtml);
-        const data = {
-            title,
-            kicker,
-            subText,
-            sheetType: normalizeSheetType(modal.dataset.sheetType || 'analysis'),
-            datasetKey: resolveDatasetKey('analysis', modal.dataset.datasetKey || ''),
-            currentKey: exportTemplates.currentKey,
-            completeRangeSet: exportTemplates.completeRangeSet,
-            templates: exportTemplates.templates
-        };
-        return [
-            '<!doctype html>',
-            '<html lang="ko">',
-            '<head>',
-            '<meta charset="UTF-8">',
-            '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
-            `<title>${escapeHtml(title)} - 추출</title>`,
-            getDocumentStylesHtml(doc),
-            buildStandaloneExportStyles(),
-            '</head>',
-            '<body class="util-sheet-export-page">',
-            '<main class="util-sheet-export-shell">',
-            '<header class="util-sheet-export-head">',
-            '<div>',
-            `<div class="util-sheet-export-kicker">${escapeHtml(kicker)}</div>`,
-            `<div class="util-sheet-export-title">${escapeHtml(title)}</div>`,
-            `<div class="util-sheet-export-sub" data-role="util-sheet-export-sub">${escapeHtml(subText)}</div>`,
-            '</div>',
-            '<div class="util-sheet-export-actions">',
-            '<span>독립 추출 파일</span>',
-            '<span data-role="util-sheet-export-range-label"></span>',
-            '</div>',
-            '</header>',
-            `<section class="util-sheet-export-body" data-role="util-sheet-export-body">${bodyHtml}</section>`,
-            '</main>',
-            '<div class="util-sheet-export-popup" data-role="util-sheet-export-popup" aria-hidden="true">',
-            '<div class="util-sheet-export-popup-card" role="dialog" aria-modal="true" aria-label="상세 보기">',
-            '<div class="util-sheet-export-popup-head">',
-            '<div class="util-sheet-export-popup-title" data-role="util-sheet-export-popup-title">상세 보기</div>',
-            '<button type="button" class="util-sheet-export-popup-close" data-role="util-sheet-export-popup-close" aria-label="닫기">×</button>',
-            '</div>',
-            '<div class="util-sheet-export-popup-body" data-role="util-sheet-export-popup-body"></div>',
-            '</div>',
-            '</div>',
-            `<script type="application/json" id="util-sheet-export-data">${safeJsonForHtml(data)}</script>`,
-            `<script>${buildStandaloneExportScript()}</script>`,
-            '</body>',
-            '</html>'
-        ].join('\n');
+    function syncFormControlState(source, clone) {
+        const sourceControls = Array.from(source?.querySelectorAll?.('input, textarea, select') || []);
+        const cloneControls = Array.from(clone?.querySelectorAll?.('input, textarea, select') || []);
+        sourceControls.forEach((sourceControl, index) => {
+            const cloneControl = cloneControls[index];
+            if (!cloneControl) return;
+            const tagName = String(sourceControl?.tagName || cloneControl?.tagName || '').toLowerCase();
+            if (tagName === 'select') {
+                cloneControl.value = sourceControl.value;
+                const sourceOptions = Array.from(sourceControl?.options || []);
+                const cloneOptions = Array.from(cloneControl?.options || []);
+                cloneOptions.forEach((option, optionIndex) => {
+                    option.selected = Boolean(sourceOptions[optionIndex]?.selected);
+                    if (option.selected) {
+                        option.setAttribute?.('selected', 'selected');
+                    } else {
+                        option.removeAttribute?.('selected');
+                    }
+                });
+                return;
+            }
+            if (sourceControl?.type === 'checkbox' || sourceControl?.type === 'radio') {
+                cloneControl.checked = sourceControl.checked === true;
+                if (cloneControl.checked) {
+                    cloneControl.setAttribute?.('checked', 'checked');
+                } else {
+                    cloneControl.removeAttribute?.('checked');
+                }
+                return;
+            }
+            cloneControl.value = sourceControl.value;
+            cloneControl.setAttribute?.('value', sourceControl.value || '');
+        });
     }
 
-    function downloadUtilSheetStandaloneExport(modal) {
-        const doc = runtimeAdapter.getDocument();
-        const BlobConstructor = runtimeAdapter.getRootValue('Blob');
-        const urlApi = runtimeAdapter.getRootValue('URL') || runtimeAdapter.getRootValue('webkitURL');
-        if (!doc || typeof doc.createElement !== 'function' || !BlobConstructor || !urlApi?.createObjectURL) {
-            runtimeAdapter.alert('이 브라우저에서는 추출 파일을 만들 수 없습니다.');
-            return false;
+    function buildElectricMeterExtractViewsHtml(modal) {
+        const datasetKey = resolveDatasetKey('meter', modal?.dataset?.datasetKey || UtilSheetReportState.meter || 'gas');
+        if (datasetKey !== 'electric') return '';
+        if (
+            typeof runtime.buildUtilElectricMeterComparisonModel !== 'function'
+            || typeof runtime.buildUtilElectricMeterTeamDatasetResult !== 'function'
+            || typeof runtime.buildUtilElectricMeterComparisonSectionHtml !== 'function'
+        ) {
+            return '';
         }
-        let html = null;
-        try {
-            html = buildUtilSheetStandaloneExportHtml(modal);
-        } catch (error) {
-            const consoleApi = runtimeAdapter.getRootValue('console');
-            consoleApi?.error?.('[KPI] analysis export failed', error?.message || error);
-            runtimeAdapter.alert('분석표 추출 중 오류가 발생했습니다. 화면을 새로고침한 뒤 다시 시도해 주세요.');
-            return false;
-        }
-        if (!html) {
-            runtimeAdapter.alert('추출할 분석표 데이터가 없습니다.');
-            return false;
-        }
-        const title = getTextContent(modal, '[data-role="util-sheet-report-title"]', '유틸리티_분석표');
+        const monthKey = String(modal?.dataset?.monthKey || UtilSheetReportMonthState.meter || '').trim();
+        const compareKey = normalizeCompareKey(modal?.dataset?.compareKey || UtilSheetCompareState.meter || 'month');
+        const teamKey = String(modal?.dataset?.electricMeterTeamKey || '').trim() || 'combined';
+        const activeViewKey = normalizeElectricMeterViewKey(modal?.dataset?.electricMeterViewKey || 'meter');
+        const comparisonModel = runtime.buildUtilElectricMeterComparisonModel(monthKey, compareKey, teamKey);
+        const teamDatasetResult = runtime.buildUtilElectricMeterTeamDatasetResult(monthKey, teamKey);
+        const viewKeys = ['meter', 'allocation', 'team'];
+        const viewsHtml = viewKeys.map(viewKey => {
+            const viewHtml = runtime.buildUtilElectricMeterComparisonSectionHtml(comparisonModel, teamDatasetResult, viewKey);
+            return `
+                <div class="util-sheet-electric-extract-view" data-role="util-sheet-electric-extract-view" data-view-key="${escapeHtml(viewKey)}"${viewKey === activeViewKey ? '' : ' hidden'}>
+                    ${viewHtml}
+                </div>
+            `;
+        }).join('');
+        return `
+            <div class="util-sheet-electric-extract-views" data-role="util-sheet-electric-extract-views" data-active-view="${escapeHtml(activeViewKey)}">
+                ${viewsHtml}
+            </div>
+        `;
+    }
+
+    function injectElectricMeterExtractViews(modal, clone, sheetType = 'meter') {
+        const normalizedSheetType = normalizeSheetType(sheetType || modal?.dataset?.sheetType);
+        const datasetKey = resolveDatasetKey(normalizedSheetType, modal?.dataset?.datasetKey || UtilSheetReportState[normalizedSheetType] || 'gas');
+        if (normalizedSheetType !== 'meter' || datasetKey !== 'electric') return false;
+        const body = clone?.querySelector?.('[data-role="util-sheet-report-body"]');
+        if (!body) return false;
+        const viewsHtml = buildElectricMeterExtractViewsHtml(modal);
+        if (!viewsHtml) return false;
+        const heroHtml = String(body.querySelector?.('.util-sheet-section.is-hero')?.outerHTML || '');
+        const memoHtml = String(body.querySelector?.('.util-sheet-memo-section')?.outerHTML || '');
+        body.innerHTML = `${heroHtml}${viewsHtml}${memoHtml}`;
+        return true;
+    }
+
+    function buildVisibleReportCardHtml(modal, sheetType = 'meter') {
+        const normalizedSheetType = normalizeSheetType(sheetType || modal?.dataset?.sheetType);
+        if (normalizedSheetType !== 'meter' && normalizedSheetType !== 'analysis') return '';
+        const card = modal?.querySelector?.('.util-sheet-report-card') || modal;
+        if (!card || typeof card.cloneNode !== 'function') return '';
+        const clone = card.cloneNode(true);
+        syncFormControlState(card, clone);
+        injectElectricMeterExtractViews(modal, clone, normalizedSheetType);
+        const datasetKey = resolveDatasetKey(normalizedSheetType, modal?.dataset?.datasetKey || UtilSheetReportState[normalizedSheetType] || 'gas');
+        Array.from(clone?.querySelectorAll?.(
+            [
+                '[data-role="util-sheet-report-sub"]',
+                '[data-role="util-sheet-report-kicker"]',
+                '.util-sheet-report-main-controls',
+                '[data-role="util-sheet-report-print"]',
+                '[data-role="util-sheet-report-close"]',
+                '[data-role="util-sheet-report-expand"]',
+                '[data-role="util-sheet-billing-preview-toggle"]',
+                normalizedSheetType === 'meter' && datasetKey === 'electric' ? '' : '[data-role="util-sheet-meter-electric-view-toggle"]',
+                '.util-sheet-meter-summary-toolbar',
+                normalizedSheetType === 'analysis' ? '.util-sheet-analysis-toolbar' : ''
+            ].filter(Boolean).join(', ')
+        ) || []).forEach(node => node?.remove?.());
+        Array.from(clone?.querySelectorAll?.('[id]') || []).forEach(node => node?.removeAttribute?.('id'));
+        return String(clone?.outerHTML || '');
+    }
+
+    function buildExtractFileName(modal) {
+        const datasetKey = resolveDatasetKey('meter', modal?.dataset?.datasetKey || UtilSheetReportState.meter || 'gas');
+        const monthKey = String(modal?.dataset?.monthKey || UtilSheetReportMonthState.meter || 'current')
+            .trim()
+            .replace(/[^0-9a-zA-Z_-]+/g, '-')
+            .replace(/^-+|-+$/g, '') || 'current';
+        return `utility-meter-${datasetKey}-${monthKey}.html`;
+    }
+
+    function buildAnalysisExtractFileName(modal) {
+        const datasetKey = resolveDatasetKey('analysis', modal?.dataset?.datasetKey || UtilSheetReportState.analysis || 'gas');
         const model = modal?._utilSheetAnalysisModel || {};
-        const rangeToken = model?.range?.from && model?.range?.to
-            ? `${model.range.from}_${model.range.to}`
-            : String(modal?.dataset?.monthKey || '').trim();
-        const fileName = `${sanitizeFileToken(title)}_${sanitizeFileToken(rangeToken || 'current')}.html`;
-        const blob = new BlobConstructor([html], { type: 'text/html;charset=utf-8' });
+        const fromKey = String(model?.range?.from || '').trim();
+        const toKey = String(model?.range?.to || modal?.dataset?.monthKey || UtilSheetReportMonthState.analysis || 'current').trim();
+        const rangeKey = `${fromKey || 'from'}-${toKey || 'current'}`
+            .replace(/[^0-9a-zA-Z_-]+/g, '-')
+            .replace(/^-+|-+$/g, '') || 'current';
+        return `utility-analysis-${datasetKey}-${rangeKey}.html`;
+    }
+
+    function stringifyExtractJson(value) {
+        return JSON.stringify(value ?? null)
+            .replace(/</g, '\\u003c')
+            .replace(/>/g, '\\u003e')
+            .replace(/&/g, '\\u0026')
+            .replace(/\u2028/g, '\\u2028')
+            .replace(/\u2029/g, '\\u2029');
+    }
+
+    function downloadHtmlFile(fileName, html) {
+        const doc = runtimeAdapter.getDocument();
+        const BlobCtor = runtimeAdapter.getRootValue('Blob');
+        const urlApi = runtimeAdapter.getRootValue('URL') || runtimeAdapter.getRootValue('webkitURL');
+        if (
+            !doc?.body
+            || typeof doc.createElement !== 'function'
+            || typeof BlobCtor !== 'function'
+            || typeof urlApi?.createObjectURL !== 'function'
+        ) {
+            return false;
+        }
+
+        const blob = new BlobCtor([html], { type: 'text/html;charset=utf-8' });
         const url = urlApi.createObjectURL(blob);
         const link = doc.createElement('a');
         link.href = url;
         link.download = fileName;
         link.style.display = 'none';
-        doc.body?.appendChild?.(link);
+        doc.body.appendChild(link);
         link.click?.();
         link.remove?.();
-        runtimeAdapter.setTimeout(() => {
+        const revoke = () => {
             if (typeof urlApi.revokeObjectURL === 'function') {
                 urlApi.revokeObjectURL(url);
             }
-        }, 1000);
+        };
+        if (runtimeAdapter.setTimeout(revoke, 1000) === null) {
+            revoke();
+        }
         return true;
     }
 
-    function syncPanelSelection(sheetType, datasetKey) {
-        if (typeof runtime.syncUtilSheetPanelSelection === 'function') {
-            runtime.syncUtilSheetPanelSelection(sheetType, datasetKey);
+    function openHtmlPreview(html) {
+        const popup = runtimeAdapter.openWindow('', '_blank', 'width=1280,height=900');
+        const popupDoc = popup?.document;
+        if (!popupDoc || typeof popupDoc.open !== 'function' || typeof popupDoc.write !== 'function' || typeof popupDoc.close !== 'function') {
+            return false;
         }
+        popupDoc.open();
+        popupDoc.write(html);
+        popupDoc.close();
+        popup?.focus?.();
+        return true;
+    }
+
+    function buildAnalysisExtractRuntimeScript(model = {}, datasetKey = 'gas') {
+        const payloadJson = stringifyExtractJson({
+            datasetKey,
+            model
+        });
+        const runtimeSource = function utilSheetAnalysisExtractRuntime() {
+            const rootScope = this || {};
+            const payload = rootScope.__UTIL_SHEET_ANALYSIS_EXTRACT__ || {};
+            const model = payload.model || {};
+            const state = { unitKeys: {}, displayModes: {}, labelModes: {} };
+            const dirtyChartKeys = {};
+            const originalChartFrames = {};
+
+            function escapeHtml(value) {
+                return String(value ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function finite(value) {
+                const number = Number(value);
+                return Number.isFinite(number) ? number : NaN;
+            }
+
+            function formatNumber(value, decimals = 0) {
+                const number = finite(value);
+                if (!Number.isFinite(number)) return '-';
+                const digits = Math.max(0, Math.min(4, Number.isFinite(Number(decimals)) ? Number(decimals) : 0));
+                return number.toLocaleString('ko-KR', {
+                    maximumFractionDigits: digits,
+                    minimumFractionDigits: digits > 0 ? Math.min(digits, 3) : 0
+                });
+            }
+
+            function escapeSelector(value) {
+                if (rootScope.CSS && typeof rootScope.CSS.escape === 'function') {
+                    return rootScope.CSS.escape(String(value || ''));
+                }
+                return String(value || '').replace(/["\\]/g, '\\$&');
+            }
+
+            function allCharts() {
+                return [
+                    model.combinedChart,
+                    ...(Array.isArray(model.charts) ? model.charts : []),
+                    model.ratioCombinedChart
+                ].filter(chart => chart && chart.key);
+            }
+
+            function allControlItems() {
+                return allCharts().flatMap(chart => (
+                    Array.isArray(chart.controlItems) ? chart.controlItems : []
+                ));
+            }
+
+            function getUnitOption(item, unitKey) {
+                const options = Array.isArray(item?.unitOptions) ? item.unitOptions : [];
+                return options.find(option => option?.key === unitKey)
+                    || options.find(option => option?.key === item?.unitKey)
+                    || {
+                        key: unitKey || item?.unitKey || '',
+                        label: item?.unitLabel || item?.metricLabel || '',
+                        scale: 1,
+                        decimals: Number.isFinite(Number(item?.decimals)) ? Number(item.decimals) : 0
+                    };
+            }
+
+            function getUsageProductionRatioKeys(seriesKey = '') {
+                const normalizedKey = String(seriesKey || '').trim();
+                if (normalizedKey === 'electricIntensity') {
+                    return { numeratorKey: 'electricUsage', denominatorKey: 'production' };
+                }
+                if (normalizedKey === 'ratio-lpg') {
+                    return { numeratorKey: 'lpgUsage', denominatorKey: 'production' };
+                }
+                if (normalizedKey === 'ratio-lng') {
+                    return { numeratorKey: 'lngUsage', denominatorKey: 'production' };
+                }
+                return null;
+            }
+
+            function findControlItemByKey(seriesKey = '') {
+                const normalizedKey = String(seriesKey || '').trim();
+                if (!normalizedKey) return null;
+                return allControlItems().find(item => String(item?.key || '').trim() === normalizedKey) || null;
+            }
+
+            function getSelectedUnitOption(seriesKey = '') {
+                const controlItem = findControlItemByKey(seriesKey);
+                if (!controlItem) return null;
+                const unitKey = state.unitKeys[seriesKey] || controlItem.unitKey || '';
+                return getUnitOption(controlItem, unitKey);
+            }
+
+            function resolveUsageProductionRatioDecimals(item, numeratorOption, denominatorOption) {
+                if (Number.isFinite(Number(item?.decimals))) return Number(item.decimals);
+                const numeratorDecimals = Number(numeratorOption?.decimals);
+                const denominatorDecimals = Number(denominatorOption?.decimals);
+                if (String(denominatorOption?.key || '').trim() === 'ton') return 1;
+                if (Number.isFinite(numeratorDecimals) || Number.isFinite(denominatorDecimals)) {
+                    return Math.max(1, Math.min(4, (Number.isFinite(numeratorDecimals) ? numeratorDecimals : 0) + 3));
+                }
+                return 3;
+            }
+
+            function getEffectiveUnitOption(item, unitKey) {
+                const ratioKeys = getUsageProductionRatioKeys(item?.key);
+                if (!ratioKeys) return getUnitOption(item, unitKey);
+                const numeratorOption = getSelectedUnitOption(ratioKeys.numeratorKey) || { key: '', label: item?.metricLabel || '', scale: 1, decimals: 0 };
+                const denominatorOption = getSelectedUnitOption(ratioKeys.denominatorKey) || { key: 'kg', label: 'kg', scale: 1, decimals: 0 };
+                const numeratorLabel = String(numeratorOption?.label || item?.unitLabel || item?.metricLabel || '').trim();
+                const denominatorLabel = String(denominatorOption?.label || 'kg').trim();
+                return {
+                    key: `${numeratorOption?.key || ''}/${denominatorOption?.key || ''}`,
+                    label: [numeratorLabel, denominatorLabel].filter(Boolean).join('/'),
+                    scale: 1,
+                    decimals: resolveUsageProductionRatioDecimals(item, numeratorOption, denominatorOption)
+                };
+            }
+
+            function scaleUsageProductionRatioValue(item, value) {
+                const ratioKeys = getUsageProductionRatioKeys(item?.key);
+                const baseValue = finite(value);
+                if (!ratioKeys || !Number.isFinite(baseValue)) return baseValue;
+                const numeratorOption = getSelectedUnitOption(ratioKeys.numeratorKey) || {};
+                const denominatorOption = getSelectedUnitOption(ratioKeys.denominatorKey) || {};
+                const numeratorScale = Number(numeratorOption?.scale) || 1;
+                const denominatorScale = Number(denominatorOption?.scale) || 1;
+                return baseValue * denominatorScale / numeratorScale;
+            }
+
+            function resolvePointValue(item, point, unitKey, sourcePoint = null) {
+                if (getUsageProductionRatioKeys(item?.key)) {
+                    const sourceRatioValue = finite(sourcePoint?.ratioValue);
+                    const pointRatioValue = finite(point?.ratioValue);
+                    const sourcePointValue = finite(sourcePoint?.value);
+                    const pointValue = finite(point?.value);
+                    const raw = String(item?.key || '').trim() === 'electricIntensity'
+                        ? (Number.isFinite(pointRatioValue)
+                            ? pointRatioValue
+                            : (Number.isFinite(pointValue) ? pointValue : (Number.isFinite(sourceRatioValue) ? sourceRatioValue : sourcePointValue)))
+                        : (Number.isFinite(sourceRatioValue)
+                            ? sourceRatioValue
+                            : (Number.isFinite(pointRatioValue) ? pointRatioValue : (Number.isFinite(sourcePointValue) ? sourcePointValue : pointValue)));
+                    return scaleUsageProductionRatioValue(item, raw);
+                }
+                const option = getUnitOption(item, unitKey);
+                const scale = Number(option?.scale) || 1;
+                let raw = NaN;
+                const sourcePointValue = finite(sourcePoint?.value);
+                const amountValue = finite(point?.amountValue);
+                const ratioValue = finite(point?.ratioValue);
+                if ((unitKey === 'kg' || unitKey === 'ton') && Number.isFinite(amountValue)) {
+                    raw = amountValue;
+                } else if (Number.isFinite(ratioValue) && (String(item?.key || '').includes('ratio') || String(unitKey || '') === 'percent')) {
+                    raw = ratioValue;
+                } else if (Number.isFinite(sourcePointValue)) {
+                    const sourceOption = getUnitOption(item, item?.unitKey || '');
+                    const sourceScale = Number(sourceOption?.scale) || 1;
+                    raw = sourcePointValue * sourceScale;
+                } else if (Number.isFinite(finite(point?.value))) {
+                    raw = finite(point.value);
+                } else if (Number.isFinite(amountValue)) {
+                    raw = amountValue;
+                }
+                return Number.isFinite(raw) ? raw / scale : NaN;
+            }
+
+            function getPointKey(point) {
+                return String(point?.monthKey || point?.key || point?.label || '').trim();
+            }
+
+            function findSourceSeries(chart, item, index) {
+                const sourceSeriesList = Array.isArray(chart?.series) ? chart.series : [];
+                if (!sourceSeriesList.length) return null;
+                const itemKey = String(item?.key || '').trim();
+                const keyedMatch = itemKey
+                    ? sourceSeriesList.find(series => String(series?.seriesKey || series?.key || '').trim() === itemKey)
+                    : null;
+                if (keyedMatch) return keyedMatch;
+                const hasSeriesKeys = sourceSeriesList.some(series => String(series?.seriesKey || series?.key || '').trim());
+                return hasSeriesKeys ? null : (sourceSeriesList[index] || null);
+            }
+
+            function findSourcePoint(sourceSeries, point, index) {
+                const sourcePoints = Array.isArray(sourceSeries?.points) ? sourceSeries.points : [];
+                if (!sourcePoints.length) return null;
+                const pointKey = getPointKey(point);
+                const keyedMatch = pointKey
+                    ? sourcePoints.find(sourcePoint => getPointKey(sourcePoint) === pointKey)
+                    : null;
+                return keyedMatch || sourcePoints[index] || null;
+            }
+
+            function findControlItemChart(controlItem) {
+                const itemKey = String(controlItem?.key || '').trim().toLowerCase();
+                if (!itemKey) return null;
+                return allCharts().find(chart => (
+                    (Array.isArray(chart?.controlItems) ? chart.controlItems : []).some(item => (
+                        item === controlItem
+                        || String(item?.key || '').trim().toLowerCase() === itemKey
+                    ))
+                )) || null;
+            }
+
+            function findExplicitUnitOption(item, unitKey) {
+                const options = Array.isArray(item?.unitOptions) ? item.unitOptions : [];
+                return options.find(option => option?.key === unitKey)
+                    || options.find(option => option?.key === item?.unitKey)
+                    || null;
+            }
+
+            function resolveSeriesDecimals(item, unitKey, sourceSeries, chart) {
+                if (getUsageProductionRatioKeys(item?.key)) {
+                    const unitOption = getEffectiveUnitOption(item, unitKey);
+                    if (Number.isFinite(Number(unitOption?.decimals))) return Number(unitOption.decimals);
+                }
+                const unitOption = findExplicitUnitOption(item, unitKey);
+                if (Number.isFinite(Number(unitOption?.decimals))) return Number(unitOption.decimals);
+                if (Number.isFinite(Number(item?.decimals))) return Number(item.decimals);
+                if (Number.isFinite(Number(sourceSeries?.decimals))) return Number(sourceSeries.decimals);
+                if (Number.isFinite(Number(chart?.decimals))) return Number(chart.decimals);
+                return String(item?.key || '').trim().startsWith('ratio-') ? 3 : 0;
+            }
+
+            function buildSeries(chart) {
+                return (Array.isArray(chart?.controlItems) ? chart.controlItems : [])
+                    .map((item, index) => {
+                        const unitKey = state.unitKeys[item.key] || item.unitKey || '';
+                        const unitOption = getEffectiveUnitOption(item, unitKey);
+                        const displayMode = state.displayModes[item.key] || item.displayMode || item.chartType || 'bar';
+                        const sourceSeries = findSourceSeries(chart, item, index);
+                        const decimals = resolveSeriesDecimals(item, unitKey, sourceSeries, chart);
+                        return {
+                            key: item.key || `series-${index}`,
+                            seriesKey: item.key || `series-${index}`,
+                            label: `${item.title || item.label || `항목 ${index + 1}`}${unitOption?.label ? ` (${unitOption.label})` : ''}`,
+                            color: item.color || ['#2563eb', '#dc2626', '#16a34a', '#f97316'][index % 4],
+                            type: displayMode === 'line' ? 'line' : (displayMode === 'none' ? 'none' : 'bar'),
+                            decimals,
+                            lineDash: item.lineDash || '',
+                            lineWidth: Number.isFinite(Number(item?.lineWidth)) ? Number(item.lineWidth) : 3,
+                            points: (Array.isArray(item.points) ? item.points : []).map((point, pointIndex) => ({
+                                key: point?.monthKey || point?.key || point?.label || '',
+                                label: point?.label || point?.monthKey || point?.key || '',
+                                value: resolvePointValue(item, point, unitKey, findSourcePoint(sourceSeries, point, pointIndex))
+                            }))
+                        };
+                    })
+                    .filter(item => item.type !== 'none' && item.points.length);
+            }
+
+            function getAxisBounds(values, options = {}) {
+                const validValues = (Array.isArray(values) ? values : []).filter(Number.isFinite);
+                if (!validValues.length) return { min: 0, max: 1 };
+                let min = Math.min(...validValues);
+                let max = Math.max(...validValues);
+                if (min === max) {
+                    const offset = Math.max(1, Math.abs(max) * 0.12);
+                    min -= offset;
+                    max += offset;
+                }
+                const tightRange = options.tightRange !== false;
+                const paddingRatio = Number.isFinite(Number(options.tightPadding)) ? Number(options.tightPadding) : 0.16;
+                const padding = (max - min) * (tightRange ? paddingRatio : 0.08);
+                min -= padding;
+                max += padding;
+                if (min > 0 && options.includeZero !== false && tightRange !== true) min = 0;
+                if (max < 0 && options.includeZero !== false && tightRange !== true) max = 0;
+                if (min === max) max = min + 1;
+                return { min, max };
+            }
+
+            function getPointYear(point, fallbackLabel = '') {
+                const raw = String(point?.monthKey || point?.key || fallbackLabel || '').trim();
+                const match = /^(20\d{2}|19\d{2})/.exec(raw);
+                return match ? match[1] : '';
+            }
+
+            function buildPointAttrs(point, fallbackLabel = '', options = {}) {
+                const monthKey = String(point?.monthKey || point?.key || '').trim();
+                const label = String(point?.label || fallbackLabel || '').trim();
+                const seriesKey = String(options?.seriesKey || '').trim();
+                return [
+                    monthKey ? `data-util-chart-month-key="${escapeHtml(monthKey)}"` : '',
+                    label ? `data-util-chart-month-label="${escapeHtml(label)}"` : '',
+                    seriesKey ? `data-util-chart-series-key="${escapeHtml(seriesKey)}"` : ''
+                ].filter(Boolean).join(' ');
+            }
+
+            function normalizeChartType(chartType = '') {
+                const normalized = String(chartType || '').trim().toLowerCase();
+                return normalized === 'bar' ? 'bar' : 'line';
+            }
+
+            function renderIndependentBoundsMultiSeriesChart(seriesList, options = {}) {
+                const isModal = options.mode === 'modal';
+                const frameExtraHeight = Number.isFinite(options.frameExtraHeight) ? Number(options.frameExtraHeight) : (isModal ? 176 : 92);
+                const showLabels = options.showLabels === true && options.tooltipOnly !== true;
+                const hideHeader = options.hideHeader === true;
+                const hideUnit = options.hideUnit === true;
+                const axisXLabel = String(options.axisXLabel || '').trim();
+                const chartTitle = options.chartTitle || '통합 그래프';
+                const topCenterTitle = options.topCenterTitle
+                    ? `<div class="util-analytics-chart-top-title">${escapeHtml(options.topCenterTitle)}</div>`
+                    : '';
+                const periodLabel = String(options.periodLabel || '').trim();
+                const inlinePeriodLegend = options.inlinePeriodLegend === true;
+                const palette = ['#2563eb', '#dc2626', '#16a34a', '#f97316', '#7c3aed', '#0891b2'];
+                const filteredSeries = (Array.isArray(seriesList) ? seriesList : [])
+                    .filter(item => item && Array.isArray(item.points) && item.points.length)
+                    .map((item, index) => ({
+                        ...item,
+                        label: String(item.label || `그래프 ${index + 1}`).trim(),
+                        color: item.color || palette[index % palette.length],
+                        type: normalizeChartType(item.type || 'line'),
+                        decimals: Number.isFinite(Number(item.decimals))
+                            ? Number(item.decimals)
+                            : (Number.isFinite(Number(options.decimals)) ? Number(options.decimals) : 0),
+                        lineWidth: Number.isFinite(Number(item.lineWidth)) ? Number(item.lineWidth) : 3
+                    }));
+                if (!filteredSeries.length) {
+                    return '<div class="util-sheet-empty">표시할 그래프가 없습니다. 막대 또는 선을 선택해 주세요.</div>';
+                }
+                const labels = filteredSeries[0].points.map(point => point?.label || '');
+                const pointCount = labels.length;
+                if (!pointCount) {
+                    return '<div class="util-sheet-empty">표시할 그래프 데이터가 없습니다.</div>';
+                }
+
+                const pointSpacing = Number.isFinite(Number(options.pointSpacing)) ? Number(options.pointSpacing) : (isModal ? 86 : 64);
+                const minWidth = Number.isFinite(Number(options.minWidth)) ? Number(options.minWidth) : 900;
+                const forcedWidth = Number(options.forceWidth);
+                const width = Number.isFinite(forcedWidth) && forcedWidth > 0
+                    ? Math.floor(forcedWidth)
+                    : Math.max(minWidth, pointCount * pointSpacing);
+                const height = Number.isFinite(Number(options.height))
+                    ? Math.floor(Number(options.height))
+                    : (isModal ? 560 : 360);
+                const chartInlineStyle = [
+                    `--chart-width:${width}px`,
+                    `--chart-height:${height}px`,
+                    `min-height:${height + frameExtraHeight}px`,
+                    'width:100%',
+                    'min-width:100%',
+                    'max-width:100%'
+                ].join(';');
+                const canvasInlineStyle = ' style="width:100%;max-width:100%;overflow-x:auto;overflow-y:visible;"';
+                const pad = {
+                    left: Number.isFinite(Number(options.leftPad)) ? Number(options.leftPad) : (isModal ? 72 : 56),
+                    right: Number.isFinite(Number(options.rightPad)) ? Number(options.rightPad) : (isModal ? 44 : 26),
+                    top: Number.isFinite(Number(options.topPad)) ? Number(options.topPad) : (isModal ? 30 : 28),
+                    bottom: Number.isFinite(Number(options.bottomPad))
+                        ? Number(options.bottomPad)
+                        : (axisXLabel ? (isModal ? 118 : 68) : (isModal ? 86 : 54))
+                };
+                const plotW = width - pad.left - pad.right;
+                const plotH = height - pad.top - pad.bottom;
+                const xStep = pointCount > 1 ? plotW / (pointCount - 1) : 0;
+                const mapX = index => pad.left + (pointCount > 1 ? xStep * index : plotW / 2);
+                const axisOptionsBySeries = options.perSeriesAxisOptions && typeof options.perSeriesAxisOptions === 'object'
+                    ? options.perSeriesAxisOptions
+                    : {};
+                const defaultAxisOptions = {
+                    tightRange: options.tightRange !== false,
+                    tightPadding: Number.isFinite(Number(options.tightPadding)) ? Number(options.tightPadding) : 0.16,
+                    ...(options.seriesAxisOptions || {})
+                };
+                const series = filteredSeries.map(item => {
+                    const values = item.points
+                        .map(point => finite(point?.value))
+                        .filter(Number.isFinite);
+                    const axisOptions = {
+                        ...defaultAxisOptions,
+                        ...((axisOptionsBySeries[item.seriesKey || item.key] && typeof axisOptionsBySeries[item.seriesKey || item.key] === 'object')
+                            ? axisOptionsBySeries[item.seriesKey || item.key]
+                            : {})
+                    };
+                    const bounds = values.length ? getAxisBounds(values, axisOptions) : { min: 0, max: 1 };
+                    const minVal = Number.isFinite(Number(bounds?.min)) ? Number(bounds.min) : 0;
+                    const maxVal = Number.isFinite(Number(bounds?.max)) ? Number(bounds.max) : 1;
+                    const valueRange = maxVal - minVal || 1;
+                    const baseValue = minVal <= 0 && maxVal >= 0 ? 0 : minVal;
+                    return {
+                        ...item,
+                        minVal,
+                        maxVal,
+                        valueRange,
+                        baseValue,
+                        baseY: pad.top + ((maxVal - baseValue) / valueRange) * plotH,
+                        mapY(value) {
+                            return pad.top + ((maxVal - value) / valueRange) * plotH;
+                        }
+                    };
+                });
+
+                const tickCount = Number.isFinite(Number(options.tickCount)) ? Math.max(2, Math.floor(Number(options.tickCount))) : 4;
+                const gridLines = Array.from({ length: tickCount + 1 }).map((_, index) => {
+                    const y = pad.top + (plotH * index / tickCount);
+                    return `<line class="util-analytics-chart-grid" x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" />`;
+                }).join('');
+                const showYearBands = options.showYearBands !== false;
+                const yearGroups = [];
+                let currentYear = null;
+                let yearStart = 0;
+                filteredSeries[0].points.forEach((point, index) => {
+                    const year = getPointYear(point, point?.label || '');
+                    if (year !== currentYear) {
+                        if (currentYear !== null) yearGroups.push({ year: currentYear, start: yearStart, end: index - 1 });
+                        currentYear = year;
+                        yearStart = index;
+                    }
+                });
+                if (currentYear !== null) yearGroups.push({ year: currentYear, start: yearStart, end: pointCount - 1 });
+                const yearBands = showYearBands ? yearGroups.map(group => {
+                    const left = group.start === 0 ? pad.left : (mapX(group.start - 1) + mapX(group.start)) / 2;
+                    const right = group.end === pointCount - 1 ? width - pad.right : (mapX(group.end) + mapX(group.end + 1)) / 2;
+                    const sepLine = group.start === 0 ? '' : `<line class="util-analytics-chart-year-sep" x1="${left}" y1="${pad.top}" x2="${left}" y2="${pad.top + plotH}" />`;
+                    const yearLabel = group.year ? `<text class="util-analytics-chart-year" x="${(left + right) / 2}" y="${pad.top + 16}" text-anchor="middle">${escapeHtml(group.year)}</text>` : '';
+                    return `${sepLine}${yearLabel}`;
+                }).join('') : '';
+
+                const barSeries = series.filter(item => item.type === 'bar');
+                const lineSeries = series.filter(item => item.type !== 'bar');
+                const barGroupWidth = xStep > 0 ? Math.min(isModal ? 56 : 42, xStep * 0.74) : (isModal ? 36 : 28);
+                const barWidth = barSeries.length ? Math.max(10, Math.min(isModal ? 24 : 18, barGroupWidth / barSeries.length)) : 0;
+                const resolveBarLeft = (seriesIndex, pointIndex) => {
+                    const xCenter = mapX(pointIndex);
+                    const totalWidth = barWidth * Math.max(1, barSeries.length);
+                    return xCenter - (totalWidth / 2) + (seriesIndex * barWidth);
+                };
+                const barRects = barSeries.map((item, seriesIndex) => item.points.map((point, pointIndex) => {
+                    const value = finite(point?.value);
+                    if (!Number.isFinite(value)) return '';
+                    const left = resolveBarLeft(seriesIndex, pointIndex);
+                    const y = item.mapY(value);
+                    const rectTop = Math.min(item.baseY, y);
+                    const rectHeight = Math.abs(item.baseY - y);
+                    if (rectHeight <= 0.5) return '';
+                    const pointAttrs = buildPointAttrs(point, point?.label || '', { seriesKey: item.seriesKey || item.key });
+                    const tooltipLabel = `${item.label} · ${point?.label || ''} · ${formatNumber(value, item.decimals)}`;
+                    return `<rect x="${left}" y="${rectTop}" width="${barWidth}" height="${rectHeight}" rx="6" ry="6" fill="${escapeHtml(item.color)}" opacity="0.86" stroke="rgba(15, 23, 42, 0.12)" stroke-width="0.8" ${pointAttrs}><title>${escapeHtml(tooltipLabel)}</title></rect>`;
+                }).join('')).join('');
+                const linePaths = lineSeries.map(item => {
+                    let path = '';
+                    let startNew = true;
+                    item.points.forEach((point, pointIndex) => {
+                        const value = finite(point?.value);
+                        if (!Number.isFinite(value)) {
+                            startNew = true;
+                            return;
+                        }
+                        const x = mapX(pointIndex);
+                        const y = item.mapY(value);
+                        path += startNew ? `M ${x} ${y}` : ` L ${x} ${y}`;
+                        startNew = false;
+                    });
+                    const dash = item.lineDash ? ` stroke-dasharray="${escapeHtml(item.lineDash)}"` : '';
+                    return `<path class="util-analytics-chart-line" d="${path}" stroke="${escapeHtml(item.color)}" stroke-width="${item.lineWidth}" fill="none"${dash}></path>`;
+                }).join('');
+                const linePoints = lineSeries.map(item => item.points.map((point, pointIndex) => {
+                    const value = finite(point?.value);
+                    if (!Number.isFinite(value)) return '';
+                    const x = mapX(pointIndex);
+                    const y = item.mapY(value);
+                    const pointAttrs = buildPointAttrs(point, point?.label || '', { seriesKey: item.seriesKey || item.key });
+                    const tooltipLabel = `${item.label} · ${point?.label || ''} · ${formatNumber(value, item.decimals)}`;
+                    return `<circle class="util-analytics-chart-point" cx="${x}" cy="${y}" r="4" style="fill:${escapeHtml(item.color)}" ${pointAttrs}><title>${escapeHtml(tooltipLabel)}</title></circle>`;
+                }).join('')).join('');
+                const barLabels = showLabels ? barSeries.map((item, seriesIndex) => item.points.map((point, pointIndex) => {
+                    const value = finite(point?.value);
+                    if (!Number.isFinite(value)) return '';
+                    const x = resolveBarLeft(seriesIndex, pointIndex) + (barWidth / 2);
+                    const y = item.mapY(value);
+                    const labelY = Math.max(pad.top + 12, Math.min(item.baseY, y) - 6);
+                    const pointAttrs = buildPointAttrs(point, point?.label || '', { seriesKey: item.seriesKey || item.key });
+                    return `<text class="util-analytics-chart-value" x="${x}" y="${labelY}" text-anchor="middle" style="fill:${escapeHtml(item.color)}" ${pointAttrs}>${formatNumber(value, item.decimals)}</text>`;
+                }).join('')).join('') : '';
+                const lineLabels = showLabels ? lineSeries.map((item, seriesIndex) => item.points.map((point, pointIndex) => {
+                    const value = finite(point?.value);
+                    if (!Number.isFinite(value)) return '';
+                    const x = mapX(pointIndex);
+                    const y = item.mapY(value);
+                    const offset = seriesIndex % 2 === 0 ? -10 : 16;
+                    const labelY = Math.max(pad.top + 12, Math.min(pad.top + plotH - 6, y + offset));
+                    const pointAttrs = buildPointAttrs(point, point?.label || '', { seriesKey: item.seriesKey || item.key });
+                    return `<text class="util-analytics-chart-value" x="${x}" y="${labelY}" text-anchor="middle" style="fill:${escapeHtml(item.color)}" ${pointAttrs}>${formatNumber(value, item.decimals)}</text>`;
+                }).join('')).join('') : '';
+                const maxXAxisLabels = Number.isFinite(Number(options.maxXAxisLabels)) ? Math.max(2, Math.floor(Number(options.maxXAxisLabels))) : (isModal ? 12 : 6);
+                const labelEvery = Math.max(1, Math.ceil(pointCount / maxXAxisLabels));
+                const xAxisLabelY = height - (isModal ? 48 : 20);
+                const axisTitleY = height - (isModal ? 22 : 8);
+                const xLabels = filteredSeries[0].points.map((point, pointIndex) => {
+                    if (pointIndex !== 0 && pointIndex !== pointCount - 1 && pointIndex % labelEvery !== 0) return '';
+                    const xBase = mapX(pointIndex);
+                    const isFirst = pointIndex === 0;
+                    const isLast = pointIndex === pointCount - 1;
+                    const edgeOffset = isModal ? 10 : 6;
+                    const x = isFirst ? xBase + edgeOffset : (isLast ? xBase - edgeOffset : xBase);
+                    const anchor = isFirst ? 'start' : (isLast ? 'end' : 'middle');
+                    const pointAttrs = buildPointAttrs(point, point?.label || '');
+                    return `<text class="util-analytics-chart-label" x="${x}" y="${xAxisLabelY}" text-anchor="${anchor}" ${pointAttrs}>${escapeHtml(point?.label || '')}</text>`;
+                }).join('');
+                const monthHitZones = filteredSeries[0].points.map((point, pointIndex) => {
+                    const pointAttrs = buildPointAttrs(point, point?.label || '');
+                    if (!pointAttrs) return '';
+                    const left = pointIndex === 0 ? pad.left : (mapX(pointIndex - 1) + mapX(pointIndex)) / 2;
+                    const right = pointIndex === pointCount - 1 ? width - pad.right : (mapX(pointIndex) + mapX(pointIndex + 1)) / 2;
+                    const rectWidth = Math.max(0, right - left);
+                    if (rectWidth <= 0.5 || plotH <= 0.5) return '';
+                    return `<rect x="${left}" y="${pad.top}" width="${rectWidth}" height="${plotH}" fill="rgba(0, 0, 0, 0.001)" ${pointAttrs}></rect>`;
+                }).join('');
+                const legend = filteredSeries.map(item => `<span><i style="background:${escapeHtml(item.color)}"></i>${escapeHtml(item.label)}</span>`).join('');
+                const legendClassName = `util-analytics-chart-legend${inlinePeriodLegend ? ' util-analytics-chart-legend-inline' : ''}`;
+                const periodBadge = periodLabel ? `<span class="util-analytics-chart-period">${escapeHtml(periodLabel)}</span>` : '';
+                const chartMeta = inlinePeriodLegend
+                    ? ((periodBadge || legend)
+                        ? `<div class="util-analytics-chart-meta-row">${periodBadge}${legend ? `<div class="${legendClassName}">${legend}</div>` : ''}</div>`
+                        : '')
+                    : `${periodBadge ? `<div class="util-analytics-chart-meta-row">${periodBadge}</div>` : ''}${legend ? `<div class="${legendClassName}">${legend}</div>` : ''}`;
+                const rangeMeta = `
+                    <div class="util-analytics-chart-meta-row">
+                        ${series.map(item => `<span class="util-analytics-chart-period">${escapeHtml(`${item.label} ${formatNumber(item.minVal, item.decimals)} ~ ${formatNumber(item.maxVal, item.decimals)}`)}</span>`).join('')}
+                    </div>
+                `;
+                const axisTitleXPos = Math.max(10, pad.left - 120);
+                const axisTitleXText = axisXLabel
+                    ? `<text class="util-analytics-chart-axis-title" x="${axisTitleXPos}" y="${axisTitleY}" text-anchor="start">${escapeHtml(axisXLabel)}</text>`
+                    : '';
+                const labelToggleText = String(options.labelToggleText || '').trim() || '레이블';
+
+                return `
+                    <div class="util-analytics-chart ${isModal ? 'is-modal' : ''}" style="${chartInlineStyle}">
+                        ${hideHeader ? '' : `
+                        <div class="util-analytics-chart-head">
+                            <div class="util-analytics-chart-head-left">
+                                <span class="util-analytics-chart-title"><i class="fa-solid fa-chart-line"></i> ${escapeHtml(chartTitle)}</span>
+                                ${options.showLabelToggle ? `
+                                    <div class="util-analytics-chart-controls">
+                                        <label class="util-analytics-chart-checkbox">
+                                            <input type="checkbox" data-chart-label-toggle ${showLabels ? 'checked' : ''} />
+                                            ${escapeHtml(labelToggleText)}
+                                        </label>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            ${hideUnit ? '' : `<span class="util-analytics-chart-unit">${escapeHtml(options.unitLabel || '')}</span>`}
+                        </div>`}
+                        ${topCenterTitle}
+                        ${chartMeta}
+                        ${rangeMeta}
+                        <div class="util-analytics-chart-canvas"${canvasInlineStyle}>
+                            <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="width:${width}px;height:${height}px;display:block;overflow:visible;" role="img" aria-label="${escapeHtml(chartTitle)}">
+                                ${yearBands}
+                                ${gridLines}
+                                ${monthHitZones}
+                                ${barRects}
+                                ${barLabels}
+                                ${linePaths}
+                                ${linePoints}
+                                ${lineLabels}
+                                ${xLabels}
+                                ${axisTitleXText}
+                            </svg>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function renderChart(chart, card) {
+                const frame = card?.querySelector?.('.util-sheet-analysis-chart-frame');
+                if (!chart || !frame) return;
+                const series = buildSeries(chart);
+                const chartKey = String(chart.key || '').trim();
+                const showLabels = state.labelModes[chartKey] === true;
+                const fullscreen = card.classList.contains('is-extract-fullscreen');
+                const pointCount = Math.max(0, series?.[0]?.points?.length || 0);
+                frame.innerHTML = renderIndependentBoundsMultiSeriesChart(series, {
+                    mode: fullscreen ? 'modal' : undefined,
+                    chartTitle: chart.title,
+                    periodLabel: model.rangeLabel,
+                    inlinePeriodLegend: true,
+                    decimals: chart.decimals,
+                    showLabelToggle: true,
+                    showLabels,
+                    tightRange: true,
+                    tightPadding: chart.key === 'ratio-combined' ? 0.18 : 0.16,
+                    hideUnit: true,
+                    topCenterTitle: chart.title,
+                    axisXLabel: '\uC6D4',
+                    showYearBands: false,
+                    maxXAxisLabels: fullscreen ? Math.max(2, pointCount) : 12,
+                    forceWidth: fullscreen
+                        ? Math.max(1260, pointCount * 88 + 340)
+                        : Math.max(chart.key === 'ratio-combined' ? 900 : 860, pointCount * 62 + 260),
+                    height: fullscreen ? 640 : (chart.key === 'ratio-combined' ? 300 : 380),
+                    rightPad: chart.key === 'ratio-combined' ? 28 : undefined
+                });
+                bindAnalysisChartDragScroll(frame);
+            }
+
+            function getAffectedSeriesKeys(seriesKey = '') {
+                const normalizedKey = String(seriesKey || '').trim();
+                const affected = new Set(normalizedKey ? [normalizedKey] : []);
+                if (normalizedKey === 'electricUsage' || normalizedKey === 'production') affected.add('electricIntensity');
+                if (normalizedKey === 'lpgUsage' || normalizedKey === 'production') affected.add('ratio-lpg');
+                if (normalizedKey === 'lngUsage' || normalizedKey === 'production') affected.add('ratio-lng');
+                return affected;
+            }
+
+            function renderAffectedCharts(seriesKey) {
+                const affectedSeriesKeys = getAffectedSeriesKeys(seriesKey);
+                allCharts().forEach(chart => {
+                    const controls = Array.isArray(chart.controlItems) ? chart.controlItems : [];
+                    if (seriesKey && !controls.some(item => affectedSeriesKeys.has(String(item?.key || '').trim()))) return;
+                    dirtyChartKeys[String(chart.key || '')] = true;
+                    document.querySelectorAll(`[data-analysis-chart-key="${escapeSelector(String(chart.key))}"]`)
+                        .forEach(card => renderChart(chart, card));
+                });
+            }
+
+            function setModeButtonState(seriesKey) {
+                document.querySelectorAll('[data-role="util-sheet-analysis-series-type"]').forEach(button => {
+                    if (button.dataset.chartKey !== seriesKey) return;
+                    const active = button.dataset.chartType === state.displayModes[seriesKey];
+                    button.classList.toggle('is-active', active);
+                    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+                });
+            }
+
+            function setUnitSelectState(seriesKey) {
+                document.querySelectorAll('[data-role="util-sheet-analysis-unit"]').forEach(select => {
+                    if (select.dataset.chartKey === seriesKey) select.value = state.unitKeys[seriesKey] || '';
+                });
+            }
+
+            function resolveChartKeyFromTarget(target) {
+                const card = target?.closest?.('[data-analysis-chart-key]');
+                return String(card?.dataset?.analysisChartKey || '').trim() || 'combined';
+            }
+
+            function captureOriginalChartFrames() {
+                document.querySelectorAll('[data-analysis-chart-key]').forEach(card => {
+                    const chartKey = String(card?.dataset?.analysisChartKey || '').trim();
+                    const frame = card?.querySelector?.('.util-sheet-analysis-chart-frame');
+                    if (!chartKey || !frame) return;
+                    originalChartFrames[chartKey] = frame.innerHTML || '';
+                });
+            }
+
+            function restoreOriginalChartFrame(card) {
+                const chartKey = String(card?.dataset?.analysisChartKey || '').trim();
+                const frame = card?.querySelector?.('.util-sheet-analysis-chart-frame');
+                if (!chartKey || !frame || typeof originalChartFrames[chartKey] !== 'string') return false;
+                frame.innerHTML = originalChartFrames[chartKey];
+                bindAnalysisChartDragScroll(frame);
+                return true;
+            }
+
+            function getChartDragScrollTargets(root = null) {
+                const host = root && typeof root.querySelectorAll === 'function' ? root : document;
+                if (!host || typeof host.querySelectorAll !== 'function') return [];
+                const candidates = Array.from(host.querySelectorAll(
+                    '.util-sheet-analysis-chart-surface, .util-sheet-analysis-chart-frame, .util-analytics-chart-canvas'
+                )).map(surface => (
+                    surface.classList?.contains?.('util-analytics-chart-canvas')
+                        ? surface
+                        : (surface.querySelector?.('.util-analytics-chart-canvas') || surface)
+                )).filter(Boolean);
+                return Array.from(new Set(candidates));
+            }
+
+            function bindAnalysisChartDragScroll(root = null) {
+                getChartDragScrollTargets(root).forEach(scrollEl => {
+                    if (!scrollEl || scrollEl.dataset.analysisExtractDragBound === 'true') return;
+                    scrollEl.dataset.analysisExtractDragBound = 'true';
+                    let activePointerId = null;
+                    let startX = 0;
+                    let startScrollLeft = 0;
+
+                    const scrollDocument = scrollEl.ownerDocument || document;
+
+                    const settleEdgeScroll = () => {
+                        const maxScrollLeft = Math.max(0, scrollEl.scrollWidth - scrollEl.clientWidth);
+                        if (maxScrollLeft > 0 && scrollEl.scrollLeft >= maxScrollLeft - 32) {
+                            scrollEl.scrollLeft = maxScrollLeft;
+                        } else if (scrollEl.scrollLeft <= 32) {
+                            scrollEl.scrollLeft = 0;
+                        }
+                    };
+
+                    const endDrag = () => {
+                        if (activePointerId === null) return;
+                        if (scrollDocument && typeof scrollDocument.removeEventListener === 'function') {
+                            scrollDocument.removeEventListener('pointermove', handlePointerMove);
+                            scrollDocument.removeEventListener('pointerup', handlePointerEnd);
+                            scrollDocument.removeEventListener('pointercancel', handlePointerEnd);
+                        }
+                        activePointerId = null;
+                        scrollEl.classList.remove('is-dragging');
+                        settleEdgeScroll();
+                        if (typeof requestAnimationFrame === 'function') {
+                            requestAnimationFrame(settleEdgeScroll);
+                        }
+                    };
+
+                    const handlePointerMove = event => {
+                        if (activePointerId === null || event.pointerId !== activePointerId) return;
+                        const diffX = event.clientX - startX;
+                        const maxScrollLeft = Math.max(0, scrollEl.scrollWidth - scrollEl.clientWidth);
+                        const rect = typeof scrollEl.getBoundingClientRect === 'function'
+                            ? scrollEl.getBoundingClientRect()
+                            : null;
+                        let nextScrollLeft = Math.min(maxScrollLeft, Math.max(0, startScrollLeft - diffX));
+                        if (rect && diffX < 0 && event.clientX <= rect.left) {
+                            nextScrollLeft = maxScrollLeft;
+                        } else if (rect && diffX > 0 && event.clientX >= rect.right) {
+                            nextScrollLeft = 0;
+                        }
+                        if (maxScrollLeft > 0 && nextScrollLeft >= maxScrollLeft - 24) {
+                            nextScrollLeft = maxScrollLeft;
+                        } else if (nextScrollLeft <= 24) {
+                            nextScrollLeft = 0;
+                        }
+                        scrollEl.scrollLeft = nextScrollLeft;
+                        if (Math.abs(diffX) > 2 && event.cancelable) event.preventDefault();
+                    };
+
+                    const handlePointerEnd = event => {
+                        if (event.pointerId !== activePointerId) return;
+                        endDrag();
+                    };
+
+                    const isInteractiveTarget = target => !!target?.closest?.(
+                        'input, select, textarea, button, label, a, summary, details, [contenteditable]'
+                    );
+
+                    scrollEl.addEventListener('pointerdown', event => {
+                        if (event.pointerType === 'mouse' && event.button !== 0) return;
+                        if (isInteractiveTarget(event.target)) return;
+                        if ((scrollEl.scrollWidth - scrollEl.clientWidth) <= 4) return;
+                        activePointerId = event.pointerId;
+                        startX = event.clientX;
+                        startScrollLeft = scrollEl.scrollLeft;
+                        scrollEl.classList.add('is-dragging');
+                        if (typeof scrollEl.setPointerCapture === 'function') {
+                            try {
+                                scrollEl.setPointerCapture(activePointerId);
+                            } catch (error) {
+                                void error;
+                            }
+                        }
+                        if (scrollDocument && typeof scrollDocument.addEventListener === 'function') {
+                            scrollDocument.addEventListener('pointermove', handlePointerMove, { passive: false });
+                            scrollDocument.addEventListener('pointerup', handlePointerEnd);
+                            scrollDocument.addEventListener('pointercancel', handlePointerEnd);
+                        }
+                    });
+
+                    scrollEl.addEventListener('pointermove', handlePointerMove);
+                    scrollEl.addEventListener('pointerup', handlePointerEnd);
+                    scrollEl.addEventListener('pointercancel', handlePointerEnd);
+                    scrollEl.addEventListener('lostpointercapture', endDrag);
+                    scrollEl.addEventListener('dragstart', event => event.preventDefault());
+                });
+            }
+
+            function getMonthTableRowUnitLabel(row, table, controlItem, kind) {
+                if (kind === 'ratio' && getUsageProductionRatioKeys(controlItem?.key)) {
+                    return getEffectiveUnitOption(controlItem, state.unitKeys[controlItem.key] || controlItem.unitKey || '')?.label || '';
+                }
+                return row?.unitLabel || table?.unitLabel || controlItem?.unitLabel || '';
+            }
+
+            function getMonthTableCellValue(cell, controlItem, kind) {
+                if (kind === 'ratio' && getUsageProductionRatioKeys(controlItem?.key)) {
+                    return scaleUsageProductionRatioValue(controlItem, cell);
+                }
+                return finite(cell);
+            }
+
+            function getMonthTableCellDecimals(row, table, controlItem, kind) {
+                if (kind === 'ratio' && getUsageProductionRatioKeys(controlItem?.key)) {
+                    const unitOption = getEffectiveUnitOption(controlItem, state.unitKeys[controlItem.key] || controlItem.unitKey || '');
+                    return Number.isFinite(Number(unitOption?.decimals)) ? Number(unitOption.decimals) : 3;
+                }
+                return Number.isFinite(Number(row?.decimals)) ? Number(row.decimals) : (kind === 'ratio' ? 3 : Number(table?.decimals || controlItem?.decimals || 0));
+            }
+
+            function buildMonthTableHtml(table, controlItem, kind) {
+                const monthHeaders = Array.from({ length: 12 }, (_, index) => `<th>${index + 1}월</th>`).join('');
+                const rows = Array.isArray(table?.rows) ? table.rows : [];
+                const tableTitle = table?.title || controlItem?.title || '표';
+                const tableSub = kind === 'ratio'
+                    ? '유틸리티 기입 사용량을 생산량으로 나눈 값입니다.'
+                    : '현재 차트 값을 월별 표로 펼친 값입니다.';
+                const rowsHtml = rows.map(row => `
+                    <tr>
+                        <th>
+                            <div class="util-sheet-analysis-table-row-title">${escapeHtml(String(row.year || '').slice(-2))}年 ${escapeHtml(row.label || tableTitle)}</div>
+                            <div class="util-sheet-analysis-table-row-unit">(${escapeHtml(getMonthTableRowUnitLabel(row, table, controlItem, kind))})</div>
+                        </th>
+                        ${(Array.isArray(row.cells) ? row.cells : []).map(cell => {
+                            const value = getMonthTableCellValue(cell, controlItem, kind);
+                            const decimals = getMonthTableCellDecimals(row, table, controlItem, kind);
+                            return `<td class="${Number.isFinite(value) ? 'is-strong' : 'is-empty'}">${Number.isFinite(value) ? escapeHtml(formatNumber(value, decimals)) : ''}</td>`;
+                        }).join('')}
+                    </tr>
+                `).join('');
+                return `
+                    <article class="util-sheet-analysis-table-card" data-tone="${escapeHtml(table?.tone || table?.key || controlItem?.tone || 'neutral')}">
+                        <div class="util-sheet-analysis-table-head">
+                            <div class="util-sheet-analysis-table-title">${escapeHtml(tableTitle)}</div>
+                            <div class="util-sheet-analysis-table-sub">${escapeHtml(tableSub)}</div>
+                        </div>
+                        <div class="util-sheet-table-wrap">
+                            <table class="util-sheet-table util-sheet-analysis-table">
+                                <thead>
+                                    <tr>
+                                        <th>구분</th>
+                                        ${monthHeaders}
+                                    </tr>
+                                </thead>
+                                <tbody>${rowsHtml}</tbody>
+                            </table>
+                        </div>
+                    </article>
+                `;
+            }
+
+            function buildMetricTableModel(controlItem, sourceChart = null) {
+                const item = controlItem || null;
+                const points = Array.isArray(item?.points) ? item.points : [];
+                if (!item?.key || !points.length) return null;
+                const unitKey = state.unitKeys[item.key] || item.unitKey || '';
+                const unitOption = getEffectiveUnitOption(item, unitKey);
+                const monthKeys = points.map(point => String(point?.monthKey || point?.key || '').trim()).filter(Boolean);
+                const activeMonthSet = new Set(monthKeys);
+                const chartControlItems = Array.isArray(sourceChart?.controlItems) ? sourceChart.controlItems : [];
+                const itemIndex = Math.max(0, chartControlItems.findIndex(candidate => (
+                    candidate === item
+                    || String(candidate?.key || '').trim() === String(item?.key || '').trim()
+                )));
+                const sourceSeries = findSourceSeries(sourceChart, item, itemIndex);
+                const pointMap = new Map(points.map((point, pointIndex) => [
+                    String(point?.monthKey || point?.key || '').trim(),
+                    {
+                        point,
+                        sourcePoint: findSourcePoint(sourceSeries, point, pointIndex)
+                    }
+                ]));
+                const years = Array.from(new Set(monthKeys
+                    .map(monthKey => Number.parseInt(monthKey.slice(0, 4), 10))
+                    .filter(Number.isFinite))).sort((left, right) => left - right);
+                return {
+                    key: item.key,
+                    title: item.title || item.label || '표',
+                    tone: item.tone || 'neutral',
+                    unitLabel: unitOption?.label || item.unitLabel || item.metricLabel || '',
+                    decimals: Number.isFinite(Number(unitOption?.decimals)) ? Number(unitOption.decimals) : Number(item.decimals || 0),
+                    rows: years.map(year => ({
+                        year,
+                        label: item.title || item.label || '',
+                        unitLabel: unitOption?.label || item.unitLabel || item.metricLabel || '',
+                        decimals: Number.isFinite(Number(unitOption?.decimals)) ? Number(unitOption.decimals) : Number(item.decimals || 0),
+                        cells: Array.from({ length: 12 }, (_, index) => {
+                            const monthKey = `${year}-${String(index + 1).padStart(2, '0')}`;
+                            if (!activeMonthSet.has(monthKey)) return null;
+                            const pointEntry = pointMap.get(monthKey);
+                            return resolvePointValue(item, pointEntry?.point, unitKey, pointEntry?.sourcePoint);
+                        })
+                    }))
+                };
+            }
+
+            function resolveTableEntry(tableKey) {
+                const normalizedKey = String(tableKey || '').trim().toLowerCase();
+                if (!normalizedKey) return null;
+                const ratioTable = (Array.isArray(model.ratioTables) ? model.ratioTables : [])
+                    .find(table => String(table?.key || '').trim().toLowerCase() === normalizedKey) || null;
+                if (ratioTable) {
+                    const controlItem = (Array.isArray(model.ratioCombinedChart?.controlItems) ? model.ratioCombinedChart.controlItems : [])
+                        .find(item => String(item?.key || '').trim().toLowerCase() === `ratio-${normalizedKey}`) || null;
+                    return { kind: 'ratio', table: ratioTable, controlItem };
+                }
+                const item = allControlItems().find(control => (
+                    String(control?.key || '').trim().toLowerCase() === normalizedKey
+                    || String(control?.popupTableKey || '').trim().toLowerCase() === normalizedKey
+                ));
+                const metricTable = buildMetricTableModel(item, findControlItemChart(item));
+                return metricTable ? { kind: 'metric', table: metricTable, controlItem: item } : null;
+            }
+
+            function positionDataTablePanel(panel, triggerButton, host) {
+                if (
+                    !panel
+                    || !triggerButton
+                    || !host
+                    || typeof triggerButton.getBoundingClientRect !== 'function'
+                    || typeof host.getBoundingClientRect !== 'function'
+                ) {
+                    return;
+                }
+                const hostRect = host.getBoundingClientRect();
+                const triggerRect = triggerButton.getBoundingClientRect();
+                if (!Number.isFinite(Number(hostRect.width)) || Number(hostRect.width) <= 0) return;
+                const panelWidth = Math.min(680, Math.max(280, Number(hostRect.width) - 12));
+                const maxLeft = Math.max(0, Number(hostRect.width) - panelWidth);
+                const desiredLeft = Number(triggerRect.left) - Number(hostRect.left);
+                const desiredTop = Number(triggerRect.bottom) - Number(hostRect.top) + 8;
+                const clampedLeft = Math.min(maxLeft, Math.max(0, desiredLeft));
+                const clampedTop = Math.max(0, desiredTop);
+                panel.style.left = `${Math.round(clampedLeft)}px`;
+                panel.style.top = `${Math.round(clampedTop)}px`;
+                panel.style.right = 'auto';
+            }
+
+            function bindDataTableDrag(panel) {
+                if (!panel || panel.dataset.inlineDragBound === 'true') return;
+                const handle = panel.querySelector('[data-role="util-sheet-analysis-inline-table-drag"]');
+                if (!handle) return;
+                panel.dataset.inlineDragBound = 'true';
+                let activePointerId = null;
+                let startLeft = 0;
+                let startTop = 0;
+                let startX = 0;
+                let startY = 0;
+                let parentRect = null;
+
+                const finishDrag = () => {
+                    if (activePointerId === null) return;
+                    activePointerId = null;
+                    panel.classList.remove('is-dragging');
+                    handle.classList.remove('is-dragging');
+                };
+
+                handle.addEventListener('pointerdown', event => {
+                    if (event.pointerType === 'mouse' && event.button !== 0) return;
+                    const offsetParent = panel.offsetParent || panel.parentElement;
+                    if (!offsetParent || typeof offsetParent.getBoundingClientRect !== 'function') return;
+                    parentRect = offsetParent.getBoundingClientRect();
+                    const panelRect = panel.getBoundingClientRect();
+                    activePointerId = event.pointerId;
+                    startLeft = panelRect.left - parentRect.left;
+                    startTop = panelRect.top - parentRect.top;
+                    startX = event.clientX;
+                    startY = event.clientY;
+                    panel.style.left = `${startLeft}px`;
+                    panel.style.top = `${startTop}px`;
+                    panel.style.right = 'auto';
+                    panel.classList.add('is-dragging');
+                    handle.classList.add('is-dragging');
+                    if (typeof handle.setPointerCapture === 'function') {
+                        try {
+                            handle.setPointerCapture(activePointerId);
+                        } catch (error) {
+                            void error;
+                        }
+                    }
+                    event.preventDefault();
+                });
+
+                handle.addEventListener('pointermove', event => {
+                    if (activePointerId === null || event.pointerId !== activePointerId) return;
+                    const nextLeft = Math.max(0, startLeft + (event.clientX - startX));
+                    const nextTop = Math.max(0, startTop + (event.clientY - startY));
+                    panel.style.left = `${nextLeft}px`;
+                    panel.style.top = `${nextTop}px`;
+                    panel.style.right = 'auto';
+                    event.preventDefault();
+                });
+
+                handle.addEventListener('pointerup', event => {
+                    if (event.pointerId !== activePointerId) return;
+                    finishDrag();
+                });
+                handle.addEventListener('pointercancel', event => {
+                    if (event.pointerId !== activePointerId) return;
+                    finishDrag();
+                });
+                handle.addEventListener('lostpointercapture', finishDrag);
+            }
+
+            function buildDataTablePanelBodyHtml(tableEntry) {
+                return `
+                    <div class="util-sheet-analysis-inline-table-panel-body">
+                        <div class="util-sheet-analysis-inline-table-toolbar">
+                            <button type="button" class="util-sheet-analysis-inline-table-handle" data-role="util-sheet-analysis-inline-table-drag" aria-label="???대룞" title="???대룞">
+                                <i class="fa-solid fa-grip-lines" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="util-sheet-analysis-inline-table-close" data-role="util-sheet-analysis-inline-table-close" aria-label="???リ린" title="???リ린"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                        </div>
+                        ${buildMonthTableHtml(tableEntry.table, tableEntry.controlItem, tableEntry.kind)}
+                    </div>
+                `;
+            }
+
+            function refreshOpenDataTables() {
+                document.querySelectorAll('[data-role="util-sheet-analysis-inline-table-panel"]').forEach(panel => {
+                    const tableEntry = resolveTableEntry(panel.getAttribute('data-table-key') || panel.dataset.tableKey || '');
+                    if (!tableEntry?.table) return;
+                    panel.innerHTML = buildDataTablePanelBodyHtml(tableEntry);
+                    panel.dataset.inlineDragBound = '';
+                    bindDataTableDrag(panel);
+                });
+            }
+
+            function openDataTable(tableKey, triggerButton) {
+                const tableEntry = resolveTableEntry(tableKey);
+                if (!tableEntry?.table) return;
+                document.querySelectorAll('[data-role="util-sheet-analysis-inline-table-panel"]').forEach(panel => panel.remove());
+                const panel = document.createElement('div');
+                panel.className = 'util-sheet-analysis-inline-table-panel';
+                panel.setAttribute('data-role', 'util-sheet-analysis-inline-table-panel');
+                panel.setAttribute('data-table-key', String(tableKey || ''));
+                panel.innerHTML = `
+                    <div class="util-sheet-analysis-inline-table-panel-body">
+                        <div class="util-sheet-analysis-inline-table-toolbar">
+                            <button type="button" class="util-sheet-analysis-inline-table-handle" data-role="util-sheet-analysis-inline-table-drag" aria-label="표 이동" title="표 이동">
+                                <i class="fa-solid fa-grip-lines" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="util-sheet-analysis-inline-table-close" data-role="util-sheet-analysis-inline-table-close" aria-label="표 닫기" title="표 닫기"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                        </div>
+                        ${buildMonthTableHtml(tableEntry.table, tableEntry.controlItem, tableEntry.kind)}
+                    </div>
+                `;
+                const host = triggerButton?.closest?.('[data-role="util-sheet-analysis-section"]')
+                    || document.querySelector('[data-role="util-sheet-analysis-section"]')
+                    || document.body;
+                positionDataTablePanel(panel, triggerButton, host);
+                host.appendChild(panel);
+                bindDataTableDrag(panel);
+            }
+
+            function initializeState() {
+                allControlItems().forEach(item => {
+                    state.unitKeys[item.key] = item.unitKey || '';
+                    state.displayModes[item.key] = item.displayMode || item.chartType || 'bar';
+                });
+                document.querySelectorAll('[data-role="util-sheet-analysis-unit"]').forEach(select => {
+                    const seriesKey = select.dataset.chartKey || '';
+                    if (!seriesKey) return;
+                    state.unitKeys[seriesKey] = select.value || state.unitKeys[seriesKey] || '';
+                });
+                document.querySelectorAll('[data-role="util-sheet-analysis-series-type"]').forEach(button => {
+                    const seriesKey = button.dataset.chartKey || '';
+                    if (!seriesKey) return;
+                    const active = button.classList.contains('is-active') || button.getAttribute('aria-pressed') === 'true';
+                    if (active) {
+                        state.displayModes[seriesKey] = button.dataset.chartType || state.displayModes[seriesKey] || 'bar';
+                    }
+                });
+                allCharts().forEach(chart => {
+                    const card = document.querySelector(`[data-analysis-chart-key="${escapeSelector(String(chart.key))}"]`);
+                    const checked = card?.querySelector?.('[data-chart-label-toggle], [data-role="util-sheet-analysis-ratio-label-toggle"], [data-role="util-sheet-analysis-electric-combined-label-toggle"], [data-role="util-sheet-analysis-electric-intensity-label-toggle"]')?.checked === true;
+                    state.labelModes[chart.key] = checked;
+                });
+            }
+
+            document.addEventListener('click', event => {
+                const target = event.target;
+                const modeButton = target?.closest?.('[data-role="util-sheet-analysis-series-type"]');
+                if (modeButton) {
+                    const seriesKey = modeButton.dataset.chartKey || '';
+                    state.displayModes[seriesKey] = modeButton.dataset.chartType || 'bar';
+                    setModeButtonState(seriesKey);
+                    renderAffectedCharts(seriesKey);
+                    return;
+                }
+                const fullscreenButton = target?.closest?.('[data-role="util-sheet-analysis-open-chart"]');
+                if (fullscreenButton) {
+                    const card = fullscreenButton.closest('[data-analysis-chart-key]');
+                    if (!card) return;
+                    const chartKey = String(card.dataset.analysisChartKey || '').trim();
+                    const active = !card.classList.contains('is-extract-fullscreen');
+                    document.querySelectorAll('.is-extract-fullscreen').forEach(node => node.classList.remove('is-extract-fullscreen'));
+                    document.body.classList.toggle('util-sheet-analysis-extract-fullscreen', active);
+                    card.classList.toggle('is-extract-fullscreen', active);
+                    if (!dirtyChartKeys[chartKey]) return;
+                    if (!active && !dirtyChartKeys[chartKey] && restoreOriginalChartFrame(card)) return;
+                    renderChart(allCharts().find(chart => chart.key === chartKey), card);
+                    return;
+                }
+                const tableButton = target?.closest?.('[data-role="util-sheet-analysis-open-ratio-table"]');
+                if (tableButton) {
+                    openDataTable(tableButton.dataset.tableKey || '', tableButton);
+                    return;
+                }
+                if (target?.closest?.('[data-role="util-sheet-analysis-inline-table-close"]')) {
+                    target.closest('[data-role="util-sheet-analysis-inline-table-panel"]')?.remove();
+                }
+            });
+
+            document.addEventListener('change', event => {
+                const target = event.target;
+                const unitSelect = target?.closest?.('[data-role="util-sheet-analysis-unit"]');
+                if (unitSelect) {
+                    const seriesKey = unitSelect.dataset.chartKey || '';
+                    state.unitKeys[seriesKey] = unitSelect.value || '';
+                    setUnitSelectState(seriesKey);
+                    renderAffectedCharts(seriesKey);
+                    refreshOpenDataTables();
+                    return;
+                }
+                const labelToggle = target?.closest?.('[data-chart-label-toggle], [data-role="util-sheet-analysis-ratio-label-toggle"], [data-role="util-sheet-analysis-electric-combined-label-toggle"], [data-role="util-sheet-analysis-electric-intensity-label-toggle"]');
+                if (labelToggle) {
+                    const chartKey = resolveChartKeyFromTarget(labelToggle);
+                    state.labelModes[chartKey] = labelToggle.checked === true;
+                    dirtyChartKeys[chartKey] = true;
+                    const chart = allCharts().find(item => item.key === chartKey);
+                    document.querySelectorAll(`[data-analysis-chart-key="${escapeSelector(chartKey)}"]`).forEach(card => renderChart(chart, card));
+                }
+            });
+
+            captureOriginalChartFrames();
+            initializeState();
+            bindAnalysisChartDragScroll(document);
+        };
+        return `
+            <script type="application/json" id="util-sheet-analysis-extract-data">${payloadJson}</script>
+            <script>
+                this.__UTIL_SHEET_ANALYSIS_EXTRACT__ = ${payloadJson};
+                (${runtimeSource})();
+            </script>
+        `;
+    }
+
+    function buildMeterExtractRuntimeScript(datasetKey = 'gas') {
+        if (datasetKey !== 'electric') return '';
+        const runtimeSource = function utilSheetElectricMeterExtractRuntime() {
+            function normalizeViewKey(viewKey) {
+                const normalized = String(viewKey || '').trim();
+                return normalized === 'allocation' || normalized === 'team' ? normalized : 'meter';
+            }
+
+            function setActiveView(shell, viewKey) {
+                if (!shell) return;
+                const activeViewKey = normalizeViewKey(viewKey || shell.dataset.activeView || 'meter');
+                shell.dataset.activeView = activeViewKey;
+                shell.querySelectorAll('[data-role="util-sheet-electric-extract-view"]').forEach(view => {
+                    const isActive = view.dataset.viewKey === activeViewKey;
+                    view.hidden = !isActive;
+                    view.toggleAttribute?.('hidden', !isActive);
+                });
+                shell.querySelectorAll('[data-role="util-sheet-meter-electric-view-select"]').forEach(button => {
+                    const isActive = button.dataset.viewKey === activeViewKey;
+                    button.classList.toggle('is-active', isActive);
+                    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                });
+            }
+
+            document.addEventListener('click', event => {
+                const button = event.target?.closest?.('[data-role="util-sheet-meter-electric-view-select"]');
+                if (!button) return;
+                const shell = button.closest('[data-role="util-sheet-electric-extract-views"]')
+                    || document.querySelector('[data-role="util-sheet-electric-extract-views"]');
+                setActiveView(shell, button.dataset.viewKey || 'meter');
+            });
+
+            document.querySelectorAll('[data-role="util-sheet-electric-extract-views"]').forEach(shell => {
+                setActiveView(shell, shell.dataset.activeView || 'meter');
+            });
+        };
+        return `<script>(${runtimeSource})();</script>`;
+    }
+
+    function buildMeterExtractDocumentHtml(modal, reportCardHtml = '') {
+        const title = getTextContent(modal, '[data-role="util-sheet-report-title"]', '검침표');
+        const datasetKey = resolveDatasetKey('meter', modal?.dataset?.datasetKey || UtilSheetReportState.meter || 'gas');
+        const datasetLabel = datasetKey === 'electric' ? '전력비' : '가스';
+        return `
+            <!doctype html>
+            <html lang="ko">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>${escapeHtml(datasetLabel)} 검침표 추출</title>
+                ${getHeadAssetsHtml()}
+                <style>
+                    html, body { min-height: 100%; height: auto !important; overflow-x: auto !important; overflow-y: auto !important; }
+                    body { margin: 0; background: #ffffff; color: #0f172a; }
+                    .util-sheet-meter-extract-page { min-height: 100vh; height: auto !important; padding: 24px; background: #ffffff; overflow: visible !important; }
+                    .util-sheet-meter-extract-head { display: grid; gap: 4px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #dbe4f3; }
+                    .util-sheet-meter-extract-kicker { font-size: 12px; font-weight: 900; color: #2563eb; letter-spacing: 0.08em; text-transform: uppercase; }
+                    .util-sheet-meter-extract-title { font-size: 22px; font-weight: 900; color: #0f172a; }
+                    .util-sheet-meter-extract-sub { font-size: 13px; font-weight: 700; color: #475569; }
+                    .util-sheet-meter-extract-body { display: block; overflow: visible !important; }
+                    .util-sheet-meter-extract-body .util-sheet-report-card { width: min(1440px, calc(100vw - 48px)); height: auto !important; min-height: 0 !important; max-height: none !important; margin: 0 auto; box-shadow: none; overflow: visible !important; flex: none !important; }
+                    .util-sheet-meter-extract-body .util-sheet-report-head { position: static; }
+                    .util-sheet-meter-extract-body .util-sheet-report-body { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; flex: none !important; }
+                    .util-sheet-meter-extract-body .util-sheet-section,
+                    .util-sheet-meter-extract-body .util-sheet-meter-table-stack { height: auto !important; max-height: none !important; overflow: visible !important; }
+                    .util-sheet-meter-extract-body .util-sheet-table-wrap { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; }
+                    .util-sheet-meter-extract-body .util-sheet-meter-table-card { box-shadow: none; }
+                    .util-sheet-meter-extract-body .util-sheet-report-window-actions:empty { display: none; }
+                    .util-sheet-meter-extract-body [data-role="util-sheet-billing-preview-toggle"] { display: none !important; }
+                    .util-sheet-meter-extract-body .util-sheet-electric-extract-view[hidden] { display: none !important; }
+                    ${getExtractIconFallbackCss()}
+                    @media print {
+                        .util-sheet-meter-extract-page { padding: 0; }
+                        .util-sheet-meter-extract-head { break-after: avoid; }
+                    }
+                </style>
+            </head>
+            <body>
+                <main class="util-sheet-meter-extract-page">
+                    <header class="util-sheet-meter-extract-head">
+                        <div class="util-sheet-meter-extract-kicker">${escapeHtml(datasetLabel)} METER EXTRACT</div>
+                        <div class="util-sheet-meter-extract-title">${escapeHtml(title)}</div>
+                    </header>
+                    <section class="util-sheet-meter-extract-body">
+                        ${reportCardHtml}
+                    </section>
+                </main>
+                ${buildMeterExtractRuntimeScript(datasetKey)}
+            </body>
+            </html>
+        `;
+    }
+
+    function buildAnalysisExtractDocumentHtml(modal, reportCardHtml = '') {
+        const title = getTextContent(modal, '[data-role="util-sheet-report-title"]', '분석표');
+        const datasetKey = resolveDatasetKey('analysis', modal?.dataset?.datasetKey || UtilSheetReportState.analysis || 'gas');
+        const datasetLabel = datasetKey === 'electric' ? '전력비' : '가스';
+        const model = modal?._utilSheetAnalysisModel || {};
+        return `
+            <!doctype html>
+            <html lang="ko">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>${escapeHtml(datasetLabel)} 분석표 추출</title>
+                ${getHeadAssetsHtml()}
+                <style>
+                    html, body { min-height: 100%; height: auto !important; overflow-x: auto !important; overflow-y: auto !important; }
+                    body { margin: 0; background: #ffffff; color: #0f172a; }
+                    .util-sheet-meter-extract-page { min-height: 100vh; height: auto !important; padding: 24px; background: #ffffff; overflow: visible !important; }
+                    .util-sheet-meter-extract-head { display: grid; gap: 4px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #dbe4f3; }
+                    .util-sheet-meter-extract-kicker { font-size: 12px; font-weight: 900; color: #2563eb; letter-spacing: 0.08em; text-transform: uppercase; }
+                    .util-sheet-meter-extract-title { font-size: 22px; font-weight: 900; color: #0f172a; }
+                    .util-sheet-meter-extract-body { display: block; overflow: visible !important; }
+                    .util-sheet-meter-extract-body .util-sheet-report-card { width: min(1440px, calc(100vw - 48px)); height: auto !important; min-height: 0 !important; max-height: none !important; margin: 0 auto; box-shadow: none; overflow: visible !important; flex: none !important; }
+                    .util-sheet-meter-extract-body .util-sheet-report-head { position: static; }
+                    .util-sheet-meter-extract-body .util-sheet-report-body { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; flex: none !important; }
+                    .util-sheet-meter-extract-body .util-sheet-section,
+                    .util-sheet-meter-extract-body .util-sheet-analysis-section,
+                    .util-sheet-meter-extract-body .util-sheet-analysis-grid,
+                    .util-sheet-meter-extract-body .util-sheet-analysis-table-stack { height: auto !important; max-height: none !important; overflow: visible !important; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-section { position: relative; }
+                    .util-sheet-meter-extract-body .util-sheet-table-wrap,
+                    .util-sheet-meter-extract-body .util-analytics-chart-canvas { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; overscroll-behavior-x: contain; scrollbar-gutter: stable both-edges; cursor: grab; touch-action: pan-x; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart.is-modal { width: 100% !important; min-width: 100% !important; max-width: 100% !important; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart-canvas { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart [data-role="util-chart-month-hit"] { cursor: grab; }
+                    .util-sheet-meter-extract-body .util-analytics-chart-canvas.is-dragging { cursor: grabbing; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart-canvas.is-dragging [data-role="util-chart-month-hit"] { cursor: grabbing; }
+                    .util-sheet-analysis-extract-fullscreen { overflow: hidden !important; }
+                    .util-sheet-analysis-chart-card.is-extract-fullscreen { position: fixed !important; inset: 12px !important; z-index: 9999 !important; max-height: calc(100vh - 24px) !important; overflow: auto !important; background: #ffffff !important; box-shadow: 0 24px 80px rgba(15, 23, 42, 0.34) !important; }
+                    .util-sheet-analysis-chart-card.is-extract-fullscreen .util-sheet-analysis-chart-frame { min-height: 760px; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-panel { position: absolute; top: 4.35rem; right: 0.35rem; z-index: 10000; width: min(680px, calc(100% - 0.7rem)); max-width: 100%; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-panel-body { max-height: min(58vh, 640px); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-toolbar { position: sticky; top: 0; background: #ffffff; z-index: 1; }
+                    .util-sheet-meter-extract-body [data-role="util-sheet-billing-preview-toggle"],
+                    .util-sheet-meter-extract-body .util-sheet-analysis-toolbar { display: none !important; }
+                    ${getExtractIconFallbackCss()}
+                    @media print {
+                        .util-sheet-meter-extract-page { padding: 0; }
+                        .util-sheet-meter-extract-head { break-after: avoid; }
+                    }
+                </style>
+            </head>
+            <body>
+                <main class="util-sheet-meter-extract-page">
+                    <header class="util-sheet-meter-extract-head">
+                        <div class="util-sheet-meter-extract-kicker">${escapeHtml(datasetLabel)} ANALYSIS EXTRACT</div>
+                        <div class="util-sheet-meter-extract-title">${escapeHtml(title)}</div>
+                    </header>
+                    <section class="util-sheet-meter-extract-body">
+                        ${reportCardHtml}
+                    </section>
+                </main>
+                ${buildAnalysisExtractRuntimeScript(model, datasetKey)}
+            </body>
+            </html>
+        `;
+    }
+
+    function openUtilSheetReportExtract(modal) {
+        const sheetType = normalizeSheetType(modal?.dataset?.sheetType);
+        if (sheetType !== 'meter' && sheetType !== 'analysis') return false;
+        const reportCardHtml = buildVisibleReportCardHtml(modal, sheetType);
+        if (!reportCardHtml) {
+            runtimeAdapter.alert('추출할 보고서 화면이 없습니다.');
+            return false;
+        }
+        const html = sheetType === 'analysis'
+            ? buildAnalysisExtractDocumentHtml(modal, reportCardHtml)
+            : buildMeterExtractDocumentHtml(modal, reportCardHtml);
+        const fileName = sheetType === 'analysis'
+            ? buildAnalysisExtractFileName(modal)
+            : buildExtractFileName(modal);
+        if (downloadHtmlFile(fileName, html)) {
+            return true;
+        }
+        if (!openHtmlPreview(html)) {
+            runtimeAdapter.alert('HTML 추출 파일을 만들 수 없습니다. 브라우저 다운로드 설정을 확인해 주세요.');
+            return false;
+        }
+        return true;
     }
 
     function ensureUtilSheetReportModal() {
@@ -1317,7 +1801,7 @@
                                 <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-modal-compare-select" data-compare-key="year" aria-pressed="false">전년대비</button>
                             </div>
                         </div>
-                        <button type="button" class="work-btn" data-role="util-sheet-report-export">추출</button>
+                        <button type="button" class="work-btn" data-role="util-sheet-report-print" aria-label="검침표 추출" title="검침표 추출">추출</button>
                         <div class="util-sheet-report-window-actions">
                             <button type="button" class="util-sheet-report-icon-btn" data-role="util-sheet-report-expand" aria-label="전체화면" title="전체화면">
                                 <i class="fa-solid fa-expand" data-role="util-sheet-report-expand-icon" aria-hidden="true"></i>
@@ -1350,8 +1834,8 @@
                 rerenderAndSync(modal);
                 return;
             }
-            if (findClosest(target, '[data-role="util-sheet-report-export"]')) {
-                downloadUtilSheetStandaloneExport(modal);
+            if (findClosest(target, '[data-role="util-sheet-report-print"]')) {
+                openUtilSheetReportExtract(modal);
                 return;
             }
             if (findClosest(target, '[data-role="util-sheet-report-expand"]')) {

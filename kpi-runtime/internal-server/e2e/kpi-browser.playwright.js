@@ -108,23 +108,23 @@ async function clickSidebarButton(page, label) {
   await page.waitForTimeout(500);
 }
 
-async function fillEquipmentDetailItem(page, label, value) {
-  const rows = page.locator('.data-equipment-detail-table tbody tr');
+async function fillEquipmentDetailItem(page, label, value, section = 'equipmentSpecs') {
+  const rows = page.locator(`[data-equipment-detail-group="${section}"] .data-equipment-detail-table tbody tr`);
   const rowCount = await rows.count();
   for (let index = 0; index < rowCount; index += 1) {
     const row = rows.nth(index);
-    const labelInput = row.locator('[data-equipment-row-section="detailInfo"][data-equipment-field="label"]');
+    const labelInput = row.locator(`[data-equipment-row-section="${section}"][data-equipment-field="label"]`);
     if (!(await labelInput.inputValue()).trim()) {
       await labelInput.fill(label);
-      const valueInput = row.locator('[data-equipment-row-section="detailInfo"][data-equipment-field="value"]');
+      const valueInput = row.locator(`[data-equipment-row-section="${section}"][data-equipment-field="value"]`);
       await valueInput.fill(value);
       return;
     }
   }
-  await page.locator('[data-equipment-add-row="detailInfo"]').click();
-  const row = page.locator('.data-equipment-detail-table tbody tr').last();
-  await row.locator('[data-equipment-row-section="detailInfo"][data-equipment-field="label"]').fill(label);
-  await row.locator('[data-equipment-row-section="detailInfo"][data-equipment-field="value"]').fill(value);
+  await page.locator(`[data-equipment-add-row="${section}"]`).click();
+  const row = page.locator(`[data-equipment-detail-group="${section}"] .data-equipment-detail-table tbody tr`).last();
+  await row.locator(`[data-equipment-row-section="${section}"][data-equipment-field="label"]`).fill(label);
+  await row.locator(`[data-equipment-row-section="${section}"][data-equipment-field="value"]`).fill(value);
 }
 
 async function expectIntegratedMeteringTitle(page, titlePattern) {
@@ -447,20 +447,28 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('[data-equipment-photo-revert]')).toBeVisible();
       await page.locator('[data-equipment-photo-revert]').click();
       await expect(page.locator('[data-equipment-history-photo-input]')).toBeAttached();
-      const firstDetailRow = page.locator('.data-equipment-detail-table tbody tr').first();
+      const specsGroup = page.locator('[data-equipment-detail-group="equipmentSpecs"]');
+      const otherGroup = page.locator('[data-equipment-detail-group="otherInfo"]');
+      await expect(specsGroup).toBeVisible();
+      await expect(otherGroup).toBeVisible();
+      const specsBox = await specsGroup.boundingBox();
+      const otherBox = await otherGroup.boundingBox();
+      expect(specsBox?.x ?? 0).toBeLessThan(otherBox?.x ?? 0);
+      expect(Math.abs((specsBox?.width ?? 0) - (otherBox?.width ?? 0))).toBeLessThanOrEqual(2);
+      const firstDetailRow = specsGroup.locator('.data-equipment-detail-table tbody tr').first();
       const firstDetailLabel = firstDetailRow.locator(
-        '[data-equipment-row-section="detailInfo"][data-equipment-field="label"]'
+        '[data-equipment-row-section="equipmentSpecs"][data-equipment-field="label"]'
       );
       const firstDetailValue = firstDetailRow.locator(
-        '[data-equipment-row-section="detailInfo"][data-equipment-field="value"]'
+        '[data-equipment-row-section="equipmentSpecs"][data-equipment-field="value"]'
       );
       await firstDetailLabel.fill('베어링');
       await firstDetailValue.fill('6204');
-      await page.locator('[data-equipment-remove-row="detailInfo"][data-equipment-row-index="0"]').click();
+      await page.locator('[data-equipment-remove-row="equipmentSpecs"][data-equipment-row-index="0"]').click();
       await expect(firstDetailLabel).toHaveValue('');
       await expect(firstDetailValue).toHaveValue('');
-      await page.locator('[data-equipment-add-row="detailInfo"]').click();
-      await expect(page.locator('.data-equipment-detail-table tbody tr')).toHaveCount(2);
+      await page.locator('[data-equipment-add-row="equipmentSpecs"]').click();
+      await expect(specsGroup.locator('.data-equipment-detail-table tbody tr')).toHaveCount(2);
       await fillEquipmentDetailItem(page, '설비코드', 'EQ-MIX-001');
       await fillEquipmentDetailItem(page, '생산라인', '라인 알파');
       await fillEquipmentDetailItem(page, '제조사', '샘플 제조사');

@@ -203,11 +203,8 @@
                     <article class="data-equipment-card data-equipment-detail-card">
                         <h3 class="data-equipment-section-title">
                             상세 정보
-                            <button type="button" class="data-equipment-add-row" data-equipment-add-row="detailInfo">
-                                <i class="fas fa-plus"></i><span>행 추가</span>
-                            </button>
                         </h3>
-                        ${api.renderDetailItems(draft.detailInfo)}
+                        ${api.renderDetailGroups(draft.detailGroups)}
                     </article>
                     <div class="data-equipment-bottom-grid">
                         <article class="data-equipment-card data-equipment-history-card">
@@ -397,8 +394,26 @@
         });
     }
 
+    function getDraftDetailGroupRows(state, section) {
+        if (!api.isEquipmentHistoryDetailGroupSection?.(section)) return null;
+        if (!state.draft) state.draft = api.createDraft();
+        if (!state.draft.detailGroups || typeof state.draft.detailGroups !== 'object') {
+            state.draft.detailGroups = api.createDraft(state.draft).detailGroups;
+        }
+        if (!Array.isArray(state.draft.detailGroups[section])) {
+            state.draft.detailGroups[section] = [api.createBlankDetailRow()];
+        }
+        return state.draft.detailGroups[section];
+    }
+
     function ensureDraftSectionRow(state, section, index) {
         if (!state.draft) state.draft = api.createDraft();
+        const detailGroupRows = getDraftDetailGroupRows(state, section);
+        if (detailGroupRows) {
+            if (!Number.isInteger(index) || index < 0) return null;
+            while (detailGroupRows.length <= index) detailGroupRows.push(api.createBlankDetailRow());
+            return detailGroupRows[index];
+        }
         const rows = state.draft[section];
         if (!Array.isArray(rows) || !Number.isInteger(index) || index < 0) return null;
         while (rows.length <= index) {
@@ -427,6 +442,11 @@
 
     function addDraftRow(state, section) {
         if (!state.draft) state.draft = api.createDraft();
+        const detailGroupRows = getDraftDetailGroupRows(state, section);
+        if (detailGroupRows) {
+            detailGroupRows.push(api.createBlankDetailRow());
+            return;
+        }
         if (section === 'detailInfo') {
             state.draft.detailInfo.push(api.createBlankDetailRow());
             return;
@@ -439,6 +459,17 @@
     }
 
     function removeDraftRow(state, section, index) {
+        const detailGroupRows = getDraftDetailGroupRows(state, section);
+        if (detailGroupRows) {
+            if (!Number.isInteger(index)) return;
+            while (detailGroupRows.length <= index) detailGroupRows.push(api.createBlankDetailRow());
+            if (detailGroupRows.length <= 1) {
+                detailGroupRows[index] = api.createBlankDetailRow();
+                return;
+            }
+            detailGroupRows.splice(index, 1);
+            return;
+        }
         if (section === 'detailInfo') {
             if (!state.draft) state.draft = api.createDraft();
             const detailRows = state.draft.detailInfo;

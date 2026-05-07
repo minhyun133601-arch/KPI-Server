@@ -104,6 +104,13 @@ test('report sheet windows registry builds detached/chart shells and closes deta
   assert.match(reportSheetWindowShellsSource, /KPIUtilReportRuntimeAdapter/);
   assert.doesNotMatch(reportSheetWindowsSource, /globalThis|window\.|globalScope/);
   assert.match(reportSheetWindowsSource, /KPIUtilReportRuntimeAdapter/);
+  assert.match(reportSheetWindowsSource, /const clampedTop = Math\.max\(0, nextTop\);/);
+  assert.doesNotMatch(reportSheetWindowsSource, /parentRect\.height - Math\.min\(panelRect\.height, parentRect\.height\)/);
+  assert.match(reportSheetWindowsSource, /let nextScrollLeft = Math\.min\(maxScrollLeft, Math\.max\(0, startScrollLeft - diffX\)\);/);
+  assert.match(reportSheetWindowsSource, /scrollDocument\.addEventListener\('pointermove', handlePointerMove, \{ passive: false \}\);/);
+  assert.match(reportSheetWindowsSource, /nextScrollLeft >= maxScrollLeft - 24/);
+  assert.match(reportSheetWindowsSource, /typeof requestAnimationFrame === 'function'/);
+  assert.doesNotMatch(reportSheetWindowsSource, /input, select, textarea, button, label, a, summary, details, \[contenteditable\], \[data-role="util-chart-month-hit"\]/);
   assert.ok(context.KPIUtilReportSheetWindowDetachedInteractions);
   assert.ok(context.KPIUtilReportSheetWindowShells);
   const windows = context.KPIUtilReportSheetWindows;
@@ -143,7 +150,7 @@ test('report sheet windows registry builds detached/chart shells and closes deta
 test('kpi html loads report sheet windows before sheet.js', () => {
   const detachedInteractionIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows/detached-interactions.js?v=053');
   const shellIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows/shells.js?v=1');
-  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=053');
+  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=057');
   const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=053');
   assert.ok(detachedInteractionIndex >= 0, 'report sheet detached interaction loader is missing');
   assert.ok(shellIndex > detachedInteractionIndex, 'report sheet window shells must load after detached interactions');

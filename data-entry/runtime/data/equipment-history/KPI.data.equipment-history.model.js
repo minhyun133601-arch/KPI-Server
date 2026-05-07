@@ -91,9 +91,23 @@
         }));
     }
 
+    function normalizeDetailGroups(item) {
+        const groups = item?.detailGroups && typeof item.detailGroups === 'object' ? item.detailGroups : {};
+        const hasGroupedRows = Array.isArray(item?.equipmentSpecs)
+            || Array.isArray(item?.otherInfo)
+            || Array.isArray(groups.equipmentSpecs)
+            || Array.isArray(groups.otherInfo);
+        if (!hasGroupedRows) return null;
+        return {
+            equipmentSpecs: asList(item?.equipmentSpecs || groups.equipmentSpecs),
+            otherInfo: asList(item?.otherInfo || groups.otherInfo),
+        };
+    }
+
     function normalizeEquipmentItem(item, index) {
         const operationInfo = asList(item?.operationInfo);
         const detailInfo = asList(item?.detailInfo);
+        const detailGroups = normalizeDetailGroups(item);
         const statusMeta = getEquipmentStatus(item?.status);
         const rawTeam = item?.team || item?.department || getInfoValue(detailInfo, ['관리팀', '관리부서', '부서']);
         const team = normalizeEquipmentHistoryTeamName(rawTeam || item?.teamDataKey);
@@ -125,6 +139,7 @@
             photoName: normalizeText(item?.photoName),
             operationInfo,
             detailInfo,
+            detailGroups,
             maintenanceHistory: asList(item?.maintenanceHistory),
             documents: normalizeDocuments(item?.documents),
         };

@@ -177,7 +177,12 @@
 
     function setUtilGasAnalysisInlineTablePositionFromTrigger(modal, triggerEl) {
         if (!modal || !triggerEl || typeof triggerEl.getBoundingClientRect !== 'function') return;
-        const sectionEl = modal.querySelector('[data-role="util-sheet-analysis-section"]');
+        const triggerSectionEl = typeof triggerEl.closest === 'function'
+            ? triggerEl.closest('[data-role="util-sheet-analysis-section"]')
+            : null;
+        const sectionEl = triggerSectionEl && typeof triggerSectionEl.getBoundingClientRect === 'function'
+            ? triggerSectionEl
+            : modal.querySelector('[data-role="util-sheet-analysis-section"]');
         if (!sectionEl || typeof sectionEl.getBoundingClientRect !== 'function') return;
         const sectionRect = sectionEl.getBoundingClientRect();
         const triggerRect = triggerEl.getBoundingClientRect();
@@ -228,15 +233,11 @@
             ? runtime.getUtilGasAnalysisInlineRatioTableKey(modal, tableKey)
             : '';
         if (!nextTableKey) return false;
-        const currentTableKey = typeof runtime.getUtilGasAnalysisInlineRatioTableKey === 'function'
-            ? runtime.getUtilGasAnalysisInlineRatioTableKey(modal)
-            : '';
-        const shouldClose = currentTableKey === nextTableKey;
-        if (!shouldClose && triggerEl) {
+        if (triggerEl) {
             setUtilGasAnalysisInlineTablePositionFromTrigger(modal, triggerEl);
         }
         setUtilGasAnalysisChartFullscreen(modal, '', false);
-        modal.dataset.analysisInlineRatioTableKey = shouldClose ? '' : nextTableKey;
+        modal.dataset.analysisInlineRatioTableKey = nextTableKey;
         if (typeof runtime.closeUtilSheetAnalysisChartPopupWindow === 'function') {
             runtime.closeUtilSheetAnalysisChartPopupWindow();
         }

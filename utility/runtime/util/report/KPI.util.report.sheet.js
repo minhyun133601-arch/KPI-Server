@@ -474,10 +474,8 @@
     });
     const {
         buildUtilGasAnalysisRangeTableHtml,
-        getUtilGasAnalysisInlineTableEntry,
         getUtilGasAnalysisInlineRatioTableKey,
         buildUtilGasAnalysisFloatingTablePanelHtml,
-        buildUtilGasAnalysisMetricTableHtml,
         getUtilGasAnalysisChartModelByKey,
         parseUtilGasAnalysisRatioTablePopupKey,
         getUtilGasAnalysisRatioTableByKey,
@@ -681,18 +679,13 @@
         applyUtilGasMeterProductionSelection,
         applyUtilElectricMeterTeamSelection,
         applyUtilElectricAnalysisTeamSelection,
+        normalizeUtilElectricMeterViewKey,
+        buildUtilElectricMeterComparisonModel,
+        buildUtilElectricMeterTeamDatasetResult,
+        buildUtilElectricMeterComparisonSectionHtml,
         isUtilSheetCustomAnalysisDataset,
         setUtilSheetAnalysisToMonth,
-        syncUtilSheetPanelSelection,
-        getUtilSheetAnalysisRangeState,
-        setUtilSheetAnalysisRangeState,
-        buildUtilGasAnalysisModel,
-        buildUtilElectricAnalysisModel,
-        buildUtilGasAnalysisBodyHtmlV2,
-        buildUtilElectricAnalysisBodyHtmlV2,
-        getUtilGasAnalysisInlineTableEntry,
-        buildUtilGasAnalysisRangeTableHtml,
-        buildUtilGasAnalysisMetricTableHtml
+        syncUtilSheetPanelSelection
     });
     const { ensureUtilSheetReportModal } = utilReportSheetModalShell;
     utilReportSheetWindows.setRuntimeAdapters({

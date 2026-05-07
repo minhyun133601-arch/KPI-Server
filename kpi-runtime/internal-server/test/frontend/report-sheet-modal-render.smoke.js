@@ -61,6 +61,15 @@ function createModalHarness() {
     value: '',
     disabled: false,
   };
+  const extractButton = {
+    attrs: {},
+    disabled: false,
+    hidden: false,
+    textContent: '',
+    setAttribute(name, value) {
+      this.attrs[name] = value;
+    },
+  };
 
   const modal = {
     dataset: {
@@ -91,6 +100,8 @@ function createModalHarness() {
           return body;
         case '[data-role="util-sheet-modal-month"]':
           return monthSelect;
+        case '[data-role="util-sheet-report-print"]':
+          return extractButton;
         default:
           return null;
       }
@@ -104,6 +115,7 @@ function createModalHarness() {
     sub,
     body,
     monthSelect,
+    extractButton,
   };
 }
 
@@ -170,7 +182,7 @@ test('report sheet modal render registry normalizes meter modal state and rerend
   const context = createModalRenderContext();
   const modalRender = context.KPIUtilReportSheetModalRender;
   const config = context.KPIUtilReportSheetConfig;
-  const { modal, kicker, title, sub, body, monthSelect } = createModalHarness();
+  const { modal, kicker, title, sub, body, monthSelect, extractButton } = createModalHarness();
 
   assert.doesNotMatch(reportSheetModalRenderSource, /globalThis|window\.|globalScope/);
   assert.match(reportSheetModalRenderSource, /KPIUtilReportRuntimeAdapter/);
@@ -332,6 +344,10 @@ test('report sheet modal render registry normalizes meter modal state and rerend
   assert.ok(monthSelect.innerHTML.includes('2026-04'));
   assert.equal(monthSelect.value, '2026-04');
   assert.equal(monthSelect.disabled, false);
+  assert.equal(extractButton.hidden, false);
+  assert.equal(extractButton.disabled, false);
+  assert.equal(extractButton.textContent, '추출');
+  assert.equal(extractButton.attrs['aria-label'], '검침표 추출');
   assert.ok(body.innerHTML.includes('summary-1'));
   assert.ok(body.innerHTML.includes('compare-block'));
   assert.ok(body.innerHTML.includes('memo-1'));
@@ -438,6 +454,55 @@ test('report sheet modal render syncs gas data before showing no-data fallback',
   assert.equal(windowStateSyncCount, 1);
 });
 
+test('report sheet modal render enables extraction for analysis sheets', () => {
+  const context = createModalRenderContext();
+  const modalRender = context.KPIUtilReportSheetModalRender;
+  const config = context.KPIUtilReportSheetConfig;
+  const { modal, extractButton, body } = createModalHarness();
+
+  config.UtilSheetRuntimeState.gasDataSyncedOnce = true;
+  modal.dataset.sheetType = 'analysis';
+  modal.dataset.datasetKey = 'gas';
+
+  modalRender.setRuntimeAdapters({
+    normalizeUtilSheetType(sheetType) {
+      return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+    },
+    resolveUtilSheetReportDatasetKey(sheetType, datasetKey) {
+      void sheetType;
+      return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+    },
+    getUtilSheetPresentation() {
+      return {
+        kicker: 'ANALYSIS:GAS',
+        title: 'UTILITY ANALYSIS REPORT',
+      };
+    },
+    normalizeUtilSheetCompareKey() {
+      return 'month';
+    },
+    buildUtilSheetDatasetResult() {
+      return {
+        hasData: false,
+        monthOptions: [],
+        activeMonthKey: '',
+        latestMonthLabel: '',
+      };
+    },
+    syncUtilSheetTypeButtons() {},
+    syncUtilSheetDatasetButtons() {},
+    syncUtilSheetCompareButtons() {},
+  });
+
+  modalRender.renderUtilSheetReportModal(modal);
+
+  assert.equal(extractButton.hidden, false);
+  assert.equal(extractButton.disabled, false);
+  assert.equal(extractButton.textContent, '추출');
+  assert.equal(extractButton.attrs.title, '분석표 추출');
+  assert.ok(body.innerHTML.includes('표시할 보고서를 준비하지 못했습니다'));
+});
+
 test('report sheet gas runtime sync forces one metering sync per report session', async () => {
   const context = createGasRuntimeSyncContext();
   const gasRuntimeSync = context.KPIUtilReportSheetGasRuntimeSync;
@@ -471,9 +536,9 @@ test('kpi html loads report sheet modal render between modal shell and sheet.js'
   const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=054');
   const gasScopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=053');
   const gasRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/runtime-sync.js?v=054');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=053');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=059');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=054');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');

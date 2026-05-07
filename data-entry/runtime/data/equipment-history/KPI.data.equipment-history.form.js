@@ -22,6 +22,41 @@
         { key: 'value', label: '내용', placeholder: '내용을 입력하세요.' },
     ];
 
+    const DETAIL_GROUP_KEYS = ['equipmentSpecs', 'otherInfo'];
+
+    const DETAIL_GROUP_LABELS = Object.freeze({
+        equipmentSpecs: '\uC124\uBE44 \uC2A4\uD399',
+        otherInfo: '\uADF8 \uC678 \uC815\uBCF4',
+    });
+
+    const DETAIL_SPEC_LABEL_KEYWORDS = [
+        '\uC81C\uC870\uC0AC',
+        '\uC81C\uC791\uC0AC',
+        '\uBAA8\uB378',
+        '\uD615\uC2DD',
+        '\uADDC\uACA9',
+        '\uC0AC\uC591',
+        '\uC6A9\uB7C9',
+        '\uC804\uC555',
+        '\uC804\uB958',
+        '\uB3D9\uB825',
+        '\uCD9C\uB825',
+        '\uC18D\uB3C4',
+        '\uC555\uB825',
+        '\uC628\uB3C4',
+        '\uC7AC\uC9C8',
+        '\uCE58\uC218',
+        '\uC911\uB7C9',
+        '\uC124\uBE44\uCF54\uB4DC',
+        '\uCF54\uB4DC',
+        '\uC2DC\uB9AC\uC5BC',
+        '\uC81C\uC870\uBC88\uD638',
+        'model',
+        'serial',
+        's/n',
+        'spec',
+    ];
+
     const SYSTEM_DETAIL_LABELS = new Set([
         '\uC124\uBE44\uBA85',
         '\uAD00\uB9AC\uD300',
@@ -125,10 +160,66 @@
         return SYSTEM_DETAIL_LABELS.has(api.normalizeText(row?.label));
     }
 
+    function isEquipmentHistoryDetailGroupSection(section) {
+        return DETAIL_GROUP_KEYS.includes(api.normalizeText(section));
+    }
+
+    function normalizeDetailInfoRows(rows) {
+        return normalizeOptionalRows(rows, createBlankDetailRow)
+            .filter((row) => !isSystemDetailInfoRow(row));
+    }
+
+    function isEquipmentSpecDetailRow(row) {
+        const label = api.normalizeText(row?.label).toLowerCase();
+        return DETAIL_SPEC_LABEL_KEYWORDS.some((keyword) => label.includes(keyword.toLowerCase()));
+    }
+
+    function splitLegacyDetailInfoRows(rows) {
+        const groups = { equipmentSpecs: [], otherInfo: [] };
+        normalizeDetailInfoRows(rows).forEach((row) => {
+            const groupKey = isEquipmentSpecDetailRow(row) ? 'equipmentSpecs' : 'otherInfo';
+            groups[groupKey].push(row);
+        });
+        return groups;
+    }
+
+    function getDetailGroupSource(source, groupKey) {
+        if (source?.detailGroups && typeof source.detailGroups === 'object') {
+            return source.detailGroups[groupKey];
+        }
+        return source?.[groupKey];
+    }
+
+    function normalizeEquipmentHistoryDetailGroups(source = {}) {
+        const hasGroupedRows = DETAIL_GROUP_KEYS.some((groupKey) => Array.isArray(getDetailGroupSource(source, groupKey)));
+        const groupedRows = hasGroupedRows
+            ? {
+                equipmentSpecs: normalizeDetailInfoRows(getDetailGroupSource(source, 'equipmentSpecs')),
+                otherInfo: normalizeDetailInfoRows(getDetailGroupSource(source, 'otherInfo')),
+            }
+            : splitLegacyDetailInfoRows(source.detailInfo);
+
+        return DETAIL_GROUP_KEYS.reduce((result, groupKey) => {
+            result[groupKey] = normalizeRows(groupedRows[groupKey], createBlankDetailRow);
+            return result;
+        }, {});
+    }
+
+    function removeBlankDetailGroupRows(detailGroups) {
+        return DETAIL_GROUP_KEYS.reduce((result, groupKey) => {
+            result[groupKey] = removeBlankRows(api.asList(detailGroups?.[groupKey]), DETAIL_ITEM_FIELDS);
+            return result;
+        }, {});
+    }
+
+    function flattenDetailGroupRows(detailGroups) {
+        return DETAIL_GROUP_KEYS.flatMap((groupKey) => api.asList(detailGroups?.[groupKey]));
+    }
+
     function createDraft(equipment = null) {
         const source = equipment || {};
-        const editableDetailInfo = normalizeOptionalRows(source.detailInfo, createBlankDetailRow)
-            .filter((row) => !isSystemDetailInfoRow(row));
+        const detailGroups = normalizeEquipmentHistoryDetailGroups(source);
+        const editableDetailInfo = removeBlankRows(flattenDetailGroupRows(detailGroups), DETAIL_ITEM_FIELDS);
         return {
             id: api.normalizeText(source.id),
             equipmentCode: api.normalizeText(source.equipmentCode || source.id),
@@ -154,6 +245,7 @@
             photoStorageRelPath: api.normalizeText(source.photoStorageRelPath),
             photoName: api.normalizeText(source.photoName),
             detailInfo: editableDetailInfo,
+            detailGroups,
             maintenanceHistory: normalizeRows(source.maintenanceHistory, createBlankMaintenanceRow),
             documents: normalizeRows(source.documents, createBlankDocumentRow),
         };
@@ -220,7 +312,7 @@
         return errors;
     }
 
-    function mergeDetailInfoRows(normalized) {
+    function mergeDetailInfoRows(normalized, detailGroups) {
         const systemRows = [
             { label: '설비명', value: normalized.name },
             { label: '관리팀', value: normalized.team },
@@ -228,7 +320,7 @@
             { label: '가동률', value: normalized.rate !== '' ? `${parseDraftRate(normalized.rate).value}%` : '' },
         ].filter((row) => row.value);
 
-        const customRows = removeBlankRows(normalized.detailInfo, DETAIL_ITEM_FIELDS);
+        const customRows = removeBlankRows(flattenDetailGroupRows(detailGroups || normalized.detailGroups), DETAIL_ITEM_FIELDS);
         const usedLabels = new Set(systemRows.map((row) => api.normalizeText(row.label)));
         const dedupedCustomRows = customRows.filter((row) => {
             const label = api.normalizeText(row.label);
@@ -244,7 +336,8 @@
         const normalized = createDraft(draft);
         const id = normalized.id || makeEquipmentId(normalized);
         const rate = parseDraftRate(normalized.rate).value;
-        const detailInfo = mergeDetailInfoRows(normalized);
+        const detailGroups = removeBlankDetailGroupRows(normalized.detailGroups);
+        const detailInfo = mergeDetailInfoRows(normalized, detailGroups);
         const teamDataKey = normalized.teamDataKey || resolveEquipmentHistoryTeamDataKey(normalized.team);
         const documents = removeBlankRows(normalized.documents, DOCUMENT_SAVE_FIELDS)
             .map(({ pendingFile, attachmentKey, ...row }) => row);
@@ -274,6 +367,7 @@
             photoName: normalized.photoName,
             operationInfo: buildInfo(OPERATION_FIELDS.map((field) => ({ label: field.label, value: normalized[field.key] }))),
             detailInfo,
+            detailGroups,
             maintenanceHistory: removeBlankRows(normalized.maintenanceHistory, MAINTENANCE_FIELDS),
             documents,
         };
@@ -317,7 +411,8 @@
         `;
     }
 
-    function renderDetailItems(rows) {
+    function renderDetailItems(rows, sectionKey = 'detailInfo') {
+        const section = api.normalizeText(sectionKey) || 'detailInfo';
         const source = api.asList(rows);
         const list = source.length ? source : [createBlankDetailRow()];
 
@@ -335,11 +430,11 @@
                             <tr>
                                 ${DETAIL_ITEM_FIELDS.map((field) => `
                                     <td>
-                                        ${renderInput(field, row?.[field.key] || '', `data-equipment-row-section="detailInfo" data-equipment-row-index="${rowIndex}"`)}
+                                        ${renderInput(field, row?.[field.key] || '', `data-equipment-row-section="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}"`)}
                                     </td>
                                 `).join('')}
                                 <td>
-                                    <button type="button" class="data-equipment-row-remove data-equipment-detail-remove" data-equipment-remove-row="detailInfo" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml('\uD56D\uBAA9 \uC0AD\uC81C')}">
+                                    <button type="button" class="data-equipment-row-remove data-equipment-detail-remove" data-equipment-remove-row="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml('\uD56D\uBAA9 \uC0AD\uC81C')}">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </td>
@@ -347,6 +442,25 @@
                         `).join('')}
                     </tbody>
                 </table>
+            </div>
+        `;
+    }
+
+    function renderDetailGroups(detailGroups) {
+        const groups = normalizeEquipmentHistoryDetailGroups({ detailGroups });
+        return `
+            <div class="data-equipment-detail-groups">
+                ${DETAIL_GROUP_KEYS.map((groupKey) => `
+                    <section class="data-equipment-detail-group" data-equipment-detail-group="${api.escapeHtml(groupKey)}">
+                        <div class="data-equipment-detail-group-head">
+                            <strong>${api.escapeHtml(DETAIL_GROUP_LABELS[groupKey])}</strong>
+                            <button type="button" class="data-equipment-add-row" data-equipment-add-row="${api.escapeHtml(groupKey)}">
+                                <i class="fas fa-plus"></i><span>${api.escapeHtml('\uD589 \uCD94\uAC00')}</span>
+                            </button>
+                        </div>
+                        ${renderDetailItems(groups[groupKey], groupKey)}
+                    </section>
+                `).join('')}
             </div>
         `;
     }
@@ -423,6 +537,8 @@
         OPERATION_FIELDS,
         PHOTO_INFO_FIELDS,
         DETAIL_ITEM_FIELDS,
+        DETAIL_GROUP_KEYS,
+        DETAIL_GROUP_LABELS,
         MAINTENANCE_FIELDS,
         DOCUMENT_FIELDS,
         DOCUMENT_SAVE_FIELDS,
@@ -430,6 +546,8 @@
         EQUIPMENT_HISTORY_TEAM_DATA_KEY_MAP,
         resolveEquipmentHistoryTeamDataKey,
         normalizeEquipmentHistoryTeamName,
+        isEquipmentHistoryDetailGroupSection,
+        normalizeEquipmentHistoryDetailGroups,
         createBlankMaintenanceRow,
         createBlankDocumentRow,
         createBlankDetailRow,
@@ -443,6 +561,7 @@
         renderFieldControl,
         renderFieldGrid,
         renderDetailItems,
+        renderDetailGroups,
         renderEditableTable,
         renderDocumentEditableTable,
     });

@@ -42,6 +42,18 @@
             const height = Number.isFinite(options.height)
                 ? Math.floor(options.height)
                 : (isModal ? 560 : 360);
+            const scrollWithinCanvas = options.scrollWithinCanvas === true;
+            const chartInlineStyle = [
+                `--chart-width:${width}px`,
+                `--chart-height:${height}px`,
+                `min-height:${height + frameExtraHeight}px`,
+                scrollWithinCanvas ? 'width:100%' : '',
+                scrollWithinCanvas ? 'min-width:100%' : '',
+                scrollWithinCanvas ? 'max-width:100%' : ''
+            ].filter(Boolean).join(';');
+            const canvasInlineStyle = scrollWithinCanvas
+                ? ' style="width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;"'
+                : '';
             const pad = {
                 left: Number.isFinite(options.leftPad) ? Number(options.leftPad) : (isModal ? 72 : 56),
                 right: Number.isFinite(options.rightPad) ? Number(options.rightPad) : (isModal ? 44 : 26),
@@ -272,7 +284,7 @@
                 : ' data-chart-label-toggle';
 
             return `
-                <div class="util-analytics-chart ${isModal ? 'is-modal' : ''}" style="--chart-width:${width}px; --chart-height:${height}px; min-height:${height + frameExtraHeight}px;">
+                <div class="util-analytics-chart ${isModal ? 'is-modal' : ''}" style="${chartInlineStyle}">
                     ${hideHeader ? '' : `
                     <div class="util-analytics-chart-head">
                         <div class="util-analytics-chart-head-left">
@@ -291,7 +303,7 @@
                     ${topCenterTitle}
                     ${chartMeta}
                     ${rangeMeta}
-                    <div class="util-analytics-chart-canvas">
+                    <div class="util-analytics-chart-canvas"${canvasInlineStyle}>
                         <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="width:${width}px;height:${height}px;display:block;overflow:visible;" role="img" aria-label="${escapeHtml(chartTitle)}">
                             ${yearBands}
                             ${gridLines}

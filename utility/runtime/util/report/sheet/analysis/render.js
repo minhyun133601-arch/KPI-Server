@@ -149,6 +149,7 @@
                     showYearBands: false,
                     maxXAxisLabels: 12,
                     forceWidth: Math.max(860, (chart.series[0]?.points?.length || 0) * 62 + 260),
+                    scrollWithinCanvas: true,
                     height: 380
                 }))
             : renderTrendChart(chart.points, chart.metricLabel, {
@@ -162,6 +163,7 @@
                 axisXLabel: '월',
                 axisYLabel: chart.metricLabel,
                 forceWidth: Math.max(560, (chart.points.length * 58) + 180),
+                scrollWithinCanvas: true,
                 height: 292
             });
         const controlsHtml = isCombinedChart ? buildGasAnalysisCombinedControlsHtml(chart) : '';
@@ -233,6 +235,7 @@
                     forceWidth: isFullscreenChart
                         ? Math.max(1260, pointCount * 88 + 340)
                         : Math.max(860, pointCount * 62 + 260),
+                    scrollWithinCanvas: true,
                     height: isFullscreenChart ? 640 : 380
                 }))
             : renderTrendChart(chart.points, chart.metricLabel, {
@@ -252,6 +255,7 @@
                 forceWidth: isFullscreenChart
                     ? Math.max(980, pointCount * 82 + 260)
                     : Math.max(560, pointCount * 58 + 180),
+                scrollWithinCanvas: true,
                 height: isFullscreenChart ? 520 : 292
             });
         const buttonTitle = hasVisibleSeries
@@ -324,6 +328,7 @@
                 forceWidth: isFullscreenChart
                     ? Math.max(1260, pointCount * 88 + 340)
                     : Math.max(900, pointCount * 56 + 220),
+                scrollWithinCanvas: true,
                 height: isFullscreenChart ? 640 : 300,
                 rightPad: 28
             });

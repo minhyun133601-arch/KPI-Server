@@ -144,9 +144,9 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
 test('kpi html loads equipment-history modules before the data runtime bridge', () => {
   const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=2');
   const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=3');
-  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=8');
+  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=9');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=2');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=11');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=12');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=3');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -234,6 +234,14 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.doesNotMatch(detailTableHtml, /data-equipment-row-index="1"/);
   assert.doesNotMatch(detailTableHtml, /data-equipment-detail-pad/);
   assert.doesNotMatch(detailTableHtml, /data-equipment-detail-cell/);
+  const groupedDetailTableHtml = api.renderDetailGroups(api.createDraft().detailGroups);
+  assert.match(groupedDetailTableHtml, /data-equipment-detail-groups/);
+  assert.match(groupedDetailTableHtml, /data-equipment-detail-group="equipmentSpecs"/);
+  assert.match(groupedDetailTableHtml, /data-equipment-detail-group="otherInfo"/);
+  assert.match(groupedDetailTableHtml, /data-equipment-add-row="equipmentSpecs"/);
+  assert.match(groupedDetailTableHtml, /data-equipment-add-row="otherInfo"/);
+  assert.match(groupedDetailTableHtml, /data-equipment-remove-row="equipmentSpecs"/);
+  assert.match(groupedDetailTableHtml, /data-equipment-remove-row="otherInfo"/);
 
   assert.doesNotMatch(renderSource, /설비 운영 정보/);
   assert.doesNotMatch(renderSource, /data-equipment-identity-stack/);
@@ -243,6 +251,8 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-photo-info-card/);
   assert.match(renderSource, /api\.renderFieldGrid\(api\.PHOTO_INFO_FIELDS/);
   assert.match(dataCssSource, /grid-template-columns:\s*minmax\(0,\s*3fr\)\s*minmax\(260px,\s*1fr\)/);
+  assert.match(dataCssSource, /data-equipment-detail-groups[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-bottom-grid,\s*[\r\n\s]*\.data-equipment-detail-groups/);
   assert.match(dataCssSource, /data-equipment-detail-table th:first-child/);
   assert.match(dataCssSource, /width:\s*28%/);
   assert.match(dataCssSource, /object-fit:\s*contain/);
@@ -254,7 +264,8 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-title-room/);
   assert.match(renderSource, /data-equipment-title-name/);
   assert.match(renderSource, /function renderStatusToggle/);
-  assert.match(renderSource, /data-equipment-add-row="detailInfo"/);
+  assert.match(renderSource, /api\.renderDetailGroups\(draft\.detailGroups\)/);
+  assert.match(formSource, /data-equipment-add-row="\$\{api\.escapeHtml\(groupKey\)\}"/);
   assert.doesNotMatch(renderSource, /handleDetailCellKeydown/);
   assert.doesNotMatch(renderSource, /equipmentDetailCell/);
   assert.doesNotMatch(renderSource, /focusPendingDetailCell/);
@@ -311,6 +322,26 @@ test('equipment-history renderer shows the empty board state and supports author
     }).detailInfo),
     JSON.stringify([{ label: '\uC81C\uC870\uC0AC', value: 'Sample Maker' }])
   );
+  const legacyDetailDraft = api.createDraft({
+    name: 'Mixer',
+    detailInfo: [
+      { label: '\uC81C\uC870\uC0AC', value: 'Sample Maker' },
+      { label: '\uBA54\uBAA8', value: 'Clean daily' },
+    ],
+  });
+  assert.equal(JSON.stringify(legacyDetailDraft.detailGroups.equipmentSpecs), JSON.stringify([{ label: '\uC81C\uC870\uC0AC', value: 'Sample Maker' }]));
+  assert.equal(JSON.stringify(legacyDetailDraft.detailGroups.otherInfo), JSON.stringify([{ label: '\uBA54\uBAA8', value: 'Clean daily' }]));
+  const groupedRecord = api.buildRecordFromDraft({
+    name: 'Mixer',
+    detailGroups: {
+      equipmentSpecs: [{ label: '\uBAA8\uB378', value: 'MX-1' }],
+      otherInfo: [{ label: '\uBA54\uBAA8', value: 'Clean daily' }],
+    },
+  });
+  assert.equal(JSON.stringify(groupedRecord.detailGroups.equipmentSpecs), JSON.stringify([{ label: '\uBAA8\uB378', value: 'MX-1' }]));
+  assert.equal(JSON.stringify(groupedRecord.detailGroups.otherInfo), JSON.stringify([{ label: '\uBA54\uBAA8', value: 'Clean daily' }]));
+  assert.ok(groupedRecord.detailInfo.some((item) => item.label === '\uBAA8\uB378' && item.value === 'MX-1'));
+  assert.ok(groupedRecord.detailInfo.some((item) => item.label === '\uBA54\uBAA8' && item.value === 'Clean daily'));
   assert.deepEqual(
     api.normalizeEquipmentItems({ equipmentList: [{ id: 'legacy-yusan', name: '유산 기존 설비', team: '유산' }] })
       .map((item) => ({ team: item.team, teamDataKey: item.teamDataKey })),

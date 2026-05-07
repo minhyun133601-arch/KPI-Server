@@ -199,7 +199,7 @@ test('report sheet analysis popup tables registry resolves range/metric popup he
 
 test('kpi html loads report sheet analysis popup tables after analysis render and before summary render', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=053');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=054');
   const popupTablesIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/popup-tables.js?v=053');
   const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=053');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');

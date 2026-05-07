@@ -188,8 +188,19 @@ test('report sheet modal actions registry updates compare and fullscreen state t
   assert.equal(modal.dataset.analysisInlineRatioTableKey, 'heat');
   assert.equal(modal.dataset.analysisFullscreen, 'false');
   assert.equal(closeChartPopupCount, 1);
-  assert.ok(Number(modal.dataset.analysisInlineRatioTableX) >= 0);
-  assert.ok(Number(modal.dataset.analysisInlineRatioTableY) >= 0);
+  assert.equal(modal.dataset.analysisInlineRatioTableX, '110');
+  assert.equal(modal.dataset.analysisInlineRatioTableY, '60');
+
+  const movedTriggerEl = {
+    getBoundingClientRect() {
+      return { left: 790, top: 120, bottom: 155 };
+    },
+  };
+  const moveResult = modalActions.openUtilGasAnalysisRatioTablePopup(modal, 'heat', movedTriggerEl);
+  assert.equal(moveResult, true);
+  assert.equal(modal.dataset.analysisInlineRatioTableKey, 'heat');
+  assert.equal(modal.dataset.analysisInlineRatioTableX, '160');
+  assert.equal(modal.dataset.analysisInlineRatioTableY, '143');
 
   const chartResult = modalActions.openUtilGasAnalysisChartModal(modal, 'ratio-combined');
   assert.equal(chartResult, true);
@@ -202,7 +213,7 @@ test('report sheet modal actions registry updates compare and fullscreen state t
 test('kpi html loads report sheet modal actions before sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=053');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=053');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=059');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');
