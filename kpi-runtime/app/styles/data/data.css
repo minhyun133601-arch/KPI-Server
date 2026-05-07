@@ -7,7 +7,7 @@
         }
         .data-equipment-topbar {
             display: grid;
-            grid-template-columns: minmax(210px, 280px) minmax(0, 1fr) minmax(160px, 220px);
+            grid-template-columns: 62px minmax(0, 1fr) minmax(160px, 220px);
             gap: 16px;
             align-items: start;
             margin-bottom: 12px;
@@ -63,6 +63,50 @@
             font-weight: 900;
             letter-spacing: 0.04em;
         }
+        .data-equipment-title-pair {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+        }
+        .data-equipment-title-pair .data-equipment-title-team,
+        .data-equipment-title-pair .data-equipment-title-room,
+        .data-equipment-title-pair .data-equipment-title-name {
+            color: #ffffff;
+            font-size: 1.48rem;
+            font-weight: 900;
+        }
+        .data-equipment-title-status-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            align-self: center;
+            border: 1px solid rgba(255, 255, 255, 0.42);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.12);
+            padding: 3px;
+        }
+        .data-equipment-title-status-toggle button {
+            min-height: 28px;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.78);
+            padding: 0 11px;
+            font-size: 0.74rem;
+            font-weight: 900;
+            cursor: pointer;
+        }
+        .data-equipment-title-status-toggle button.is-active {
+            background: #ffffff;
+            color: #174c33;
+            box-shadow: 0 5px 16px rgba(0, 0, 0, 0.13);
+        }
+        .data-equipment-title-status-toggle button:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.74);
+            outline-offset: 2px;
+        }
         .data-equipment-actions {
             display: flex;
             justify-content: flex-end;
@@ -92,8 +136,18 @@
         }
         .data-equipment-top-grid {
             display: grid;
-            grid-template-columns: minmax(320px, 1.18fr) minmax(0, 1fr);
+            grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr);
             gap: 12px;
+        }
+        .data-equipment-top-grid .data-equipment-photo-card {
+            min-height: 240px;
+        }
+        .data-equipment-photo-info-card {
+            display: grid;
+            align-content: start;
+        }
+        .data-equipment-photo-info-grid {
+            gap: 10px;
         }
         .data-equipment-bottom-grid {
             display: grid;
@@ -115,6 +169,7 @@
             padding: 14px 16px;
         }
         .data-equipment-photo-card {
+            position: relative;
             min-height: 226px;
             display: grid;
             place-items: center;
@@ -122,6 +177,42 @@
             background:
                 linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 251, 255, 0.92)),
                 repeating-linear-gradient(45deg, transparent 0, transparent 14px, rgba(32, 110, 205, 0.03) 14px, rgba(32, 110, 205, 0.03) 28px);
+        }
+        .data-equipment-photo-card.is-locked {
+            cursor: default;
+        }
+        .data-equipment-photo-revert {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            min-height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border: 1px solid rgba(49, 80, 111, 0.2);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #31506f;
+            padding: 0 10px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(27, 53, 89, 0.12);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-3px);
+            transition: opacity 0.16s ease, transform 0.16s ease;
+        }
+        .data-equipment-photo-card:hover .data-equipment-photo-revert,
+        .data-equipment-photo-card:focus-within .data-equipment-photo-revert {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+        .data-equipment-photo-revert:hover {
+            border-color: rgba(180, 35, 24, 0.3);
+            color: #b42318;
         }
         .data-equipment-photo-placeholder {
             display: grid;
@@ -145,7 +236,8 @@
             width: 100%;
             height: 100%;
             min-height: 226px;
-            object-fit: cover;
+            object-fit: contain;
+            background: #f8fbff;
         }
         .data-equipment-section-title {
             display: flex;
@@ -183,59 +275,9 @@
             display: grid;
             gap: 12px;
         }
-        .data-equipment-detail-items {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 8px;
-        }
-        .data-equipment-detail-item {
-            display: grid;
-            grid-template-columns: minmax(120px, 0.8fr) minmax(180px, 1fr) 36px;
-            align-items: end;
-            gap: 8px;
-            min-width: 0;
-            padding: 10px;
-            border: 1px solid #e4edf7;
-            border-radius: 8px;
-            background: #fbfdff;
-        }
-        .data-equipment-detail-item label {
-            display: grid;
-            gap: 5px;
-            min-width: 0;
-            color: #34476c;
-            font-size: 0.74rem;
-            font-weight: 900;
-        }
-        .data-equipment-detail-item input {
-            width: 100%;
-            min-width: 0;
-            border: 1px solid #dce8f5;
-            border-radius: 6px;
-            background: #ffffff;
-            color: #263957;
-            padding: 8px 9px;
-            font: inherit;
-            font-size: 0.8rem;
-            font-weight: 800;
-            line-height: 1.35;
-        }
-        .data-equipment-detail-item input:focus {
-            outline: 2px solid rgba(47, 226, 124, 0.24);
-            border-color: #2fbf72;
-        }
-        .data-equipment-detail-empty {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 72px;
-            border: 1px dashed #cbd8e7;
-            border-radius: 8px;
-            background: #fbfdff;
-            color: #647795;
-            font-size: 0.82rem;
-            font-weight: 800;
-            text-align: center;
+        .data-equipment-detail-table th:first-child,
+        .data-equipment-detail-table td:first-child {
+            width: 28%;
         }
         .data-equipment-edit-grid label,
         .data-equipment-note-field {
@@ -247,6 +289,7 @@
             font-weight: 900;
         }
         .data-equipment-edit-grid input,
+        .data-equipment-edit-grid select,
         .data-equipment-note-field textarea,
         .data-equipment-edit-table input {
             width: 100%;
@@ -262,6 +305,7 @@
             line-height: 1.35;
         }
         .data-equipment-edit-grid input:focus,
+        .data-equipment-edit-grid select:focus,
         .data-equipment-note-field textarea:focus,
         .data-equipment-edit-table input:focus,
         .data-equipment-status-select:focus {
@@ -361,6 +405,11 @@
             background: #179b5f;
             color: #ffffff;
         }
+        .data-equipment-form-actions .data-equipment-danger-action {
+            border-color: #fecaca;
+            background: #fff5f5;
+            color: #b42318;
+        }
         .data-equipment-history-table,
         .data-equipment-doc-table {
             width: 100%;
@@ -427,7 +476,7 @@
             font-weight: 900;
         }
         .data-equipment-topbar-dashboard {
-            grid-template-columns: minmax(180px, 260px) minmax(0, 1fr) minmax(360px, 520px);
+            grid-template-columns: 62px minmax(0, 1fr) minmax(360px, 520px);
             align-items: center;
             padding: 12px 14px;
             border: 1px solid rgba(47, 226, 124, 0.2);
@@ -448,6 +497,9 @@
             background: rgba(47, 226, 124, 0.14);
             border-color: rgba(47, 226, 124, 0.28);
             color: #2fe27c;
+        }
+        .data-equipment-brand-icon-only {
+            justify-content: center;
         }
         .data-equipment-view-actions {
             flex-wrap: wrap;
@@ -682,8 +734,7 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .data-equipment-board-metric,
-        .data-equipment-board-rate {
+        .data-equipment-board-metric {
             display: grid;
             grid-template-columns: 1fr auto;
             gap: 8px;
@@ -702,29 +753,6 @@
         .data-equipment-board-card.is-stop .data-equipment-board-metric strong {
             color: #ffd7d7;
         }
-        .data-equipment-board-progress {
-            height: 7px;
-            margin: 8px 0 10px;
-            overflow: hidden;
-            border-radius: 999px;
-            background: rgba(174, 190, 206, 0.22);
-        }
-        .data-equipment-board-progress span {
-            display: block;
-            width: var(--rate);
-            height: 100%;
-            border-radius: inherit;
-            background: linear-gradient(90deg, #2ddd74, #31f48d);
-            box-shadow: 0 0 12px rgba(47, 226, 124, 0.35);
-        }
-        .data-equipment-board-card.is-check .data-equipment-board-progress span {
-            background: linear-gradient(90deg, #f6c445, #ffe28b);
-            box-shadow: 0 0 12px rgba(246, 196, 69, 0.3);
-        }
-        .data-equipment-board-card.is-stop .data-equipment-board-progress span {
-            background: linear-gradient(90deg, #d95151, #f48b8b);
-            box-shadow: 0 0 12px rgba(244, 139, 139, 0.28);
-        }
         .data-equipment-board-card button {
             width: 100%;
             min-height: 32px;
@@ -741,6 +769,85 @@
             display: grid;
             gap: 12px;
         }
+        .data-equipment-card-start {
+            width: min(760px, 100%);
+            margin: 0 auto;
+            padding: 18px;
+            display: grid;
+            gap: 14px;
+        }
+        .data-equipment-card-start-head {
+            display: grid;
+            gap: 5px;
+        }
+        .data-equipment-card-start-head strong {
+            color: #243d68;
+            font-size: 1.08rem;
+            font-weight: 900;
+        }
+        .data-equipment-card-start-head span {
+            color: #647795;
+            font-size: 0.82rem;
+            font-weight: 800;
+            line-height: 1.45;
+        }
+        .data-equipment-card-start-grid {
+            display: grid;
+            grid-template-columns: minmax(180px, 0.7fr) minmax(150px, 0.45fr) minmax(240px, 1fr);
+            gap: 10px;
+        }
+        .data-equipment-card-start-grid label {
+            display: grid;
+            gap: 5px;
+            min-width: 0;
+            color: #34476c;
+            font-size: 0.74rem;
+            font-weight: 900;
+        }
+        .data-equipment-card-start-grid input,
+        .data-equipment-card-start-grid select {
+            width: 100%;
+            min-width: 0;
+            border: 1px solid #dce8f5;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #263957;
+            padding: 8px 9px;
+            font: inherit;
+            font-size: 0.86rem;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+        .data-equipment-card-start-grid input:focus,
+        .data-equipment-card-start-grid select:focus {
+            outline: 2px solid rgba(47, 226, 124, 0.24);
+            border-color: #2fbf72;
+        }
+        .data-equipment-card-start-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .data-equipment-card-start-actions button {
+            min-height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border: 1px solid #d5e4f1;
+            border-radius: 7px;
+            background: #ffffff;
+            color: #31506f;
+            padding: 0 13px;
+            font-size: 0.78rem;
+            font-weight: 900;
+            cursor: pointer;
+        }
+        .data-equipment-card-start-actions .data-equipment-primary-action {
+            border-color: #179b5f;
+            background: #179b5f;
+            color: #ffffff;
+        }
         @media (max-width: 1180px) {
             .data-equipment-topbar {
                 grid-template-columns: 210px minmax(0, 1fr) 170px;
@@ -753,9 +860,6 @@
             }
             .data-equipment-top-grid,
             .data-equipment-bottom-grid {
-                grid-template-columns: 1fr;
-            }
-            .data-equipment-detail-items {
                 grid-template-columns: 1fr;
             }
             .data-equipment-photo-card {
@@ -793,13 +897,6 @@
             .data-equipment-operation-grid {
                 grid-template-columns: 1fr;
             }
-            .data-equipment-detail-item {
-                grid-template-columns: 1fr;
-                align-items: stretch;
-            }
-            .data-equipment-detail-item .data-equipment-row-remove {
-                width: 100%;
-            }
             .data-equipment-print-btn {
                 width: 100%;
             }
@@ -820,6 +917,13 @@
                 min-width: 760px;
             }
             .data-equipment-form-actions {
+                justify-content: stretch;
+                flex-direction: column;
+            }
+            .data-equipment-card-start-grid {
+                grid-template-columns: 1fr;
+            }
+            .data-equipment-card-start-actions {
                 justify-content: stretch;
                 flex-direction: column;
             }

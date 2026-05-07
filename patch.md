@@ -1,3 +1,43 @@
+# 2026-05-07 Patch Note
+
+Status: KPI-local reference frontend import completed for equipment history cards, legal facility entry, and team-calendar equipment summaries.
+
+## KPI-local Frontend Import
+
+Goal: bring the reviewed KPI-local equipment history card writing flow and legal facility entry flow into the company runtime while preserving company paths, ports, and storage boundaries.
+
+Touched areas: equipment history form/model/render, legal facility form/render, team calendar equipment-summary integration, KPI boot manifest, shared work category mapping, related styles, frontend smoke tests, and browser smoke coverage.
+
+Verification: targeted frontend smoke tests passed; `npm run format:check` passed; `npm run lint` passed; `npm run verify:server-structure` passed; `npm run smoke:kpi-browser` passed after updating stale assertions for empty legal-facility data and the current monthly performance popup.
+
+Follow-up: equipment history card photo upload now renders as a one-image preview after selection, without keeping the photo upload trigger visible or clickable.
+
+Follow-up: equipment history card keeps the sidebar/table-of-contents label as "설비 이력 카드", while the authoring header uses the selected team and equipment name instead of KPI/management-record branding.
+
+Follow-up: equipment history card authoring now includes an optional Korean text "실" field beside team, saves it with the record, and shows the header as team, room, and equipment name at matching title size.
+
+Follow-up: equipment history card authoring removed the visible basic-info panel and expands the equipment photo area across the former basic-info space.
+
+Follow-up: equipment history card authoring removed the header helper text, made team, room, and equipment title text the same neutral color and smaller size, and restored the expanded photo area to its original height after the smaller preview cropped attached images.
+
+Follow-up: equipment history card authoring now supports deleting saved cards, toggling run status beside the equipment name, and showing only running/stopped status on the board instead of utilization rate.
+
+Follow-up: equipment history card detailed-info authoring now uses a fixed two-column memo-style input grid; pressing Enter moves to the next cell and adds rows automatically.
+
+Follow-up: equipment history card top area now keeps attached photos uncropped with contain-fit, uses a 3:1 photo/info layout, and limits the side inputs to process, utilization rate, and vendor.
+
+Follow-up: equipment history status toggles and photo attachments now auto-save, and attached photos include a revert button that clears the photo and removes the stored file when possible.
+
+Follow-up: equipment history detailed-info rows now have a delete button again, and the item-name column is narrower.
+
+Follow-up: equipment history starts detailed-info authoring with one row, shows the photo revert control only while hovering/focusing the photo, and now matches maintenance/document sections with a detailed-info add-row button plus reliable row delete/clear behavior.
+
+Follow-up: utility metering gas settlement inputs now keep the active manual field unformatted while typing, refresh calculated fields separately, and derive a missing LNG calorific value from stored billed quantity plus monthly usage when old data only has billed quantity.
+
+Risk: no KPI-local runtime data, env files, uploads, logs, or secrets were copied. The browser smoke created one sample equipment-history row during verification; that exact sample row was removed and rechecked.
+
+---
+
 # 2026-05-06 Patch Note
 
 Status: KPI Server env handling now follows the portable single-env-file runtime pattern.

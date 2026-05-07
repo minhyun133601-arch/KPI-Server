@@ -467,6 +467,8 @@ test('kpi html loads work production split files before team calendar bootstrap'
   const overviewIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.overview.js?v=1');
   const draftIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.draft.js?v=1');
   const teamCalendarIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.js?v=237');
+  const equipmentSummaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.equipment-summary.js?v=1');
+  const teamCalendarRenderIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.render.js?v=1');
 
   assert.ok(baseIndex >= 0, 'work production loader is missing');
   assert.ok(adapterIndex > baseIndex, 'work browser adapter must load after production.js');
@@ -474,4 +476,6 @@ test('kpi html loads work production split files before team calendar bootstrap'
   assert.ok(overviewIndex > historyIndex, 'work production overview must load after production history');
   assert.ok(draftIndex > overviewIndex, 'work production draft must load after production overview');
   assert.ok(teamCalendarIndex > draftIndex, 'team calendar bootstrap must load after production split files');
+  assert.ok(equipmentSummaryIndex > teamCalendarIndex, 'equipment summary must load after team calendar popup controls');
+  assert.ok(teamCalendarRenderIndex > equipmentSummaryIndex, 'team calendar render must load after equipment summary');
 });

@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { execFile } from 'node:child_process';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -108,9 +109,20 @@ async function clickSidebarButton(page, label) {
 }
 
 async function fillEquipmentDetailItem(page, label, value) {
+  const rows = page.locator('.data-equipment-detail-table tbody tr');
+  const rowCount = await rows.count();
+  for (let index = 0; index < rowCount; index += 1) {
+    const row = rows.nth(index);
+    const labelInput = row.locator('[data-equipment-row-section="detailInfo"][data-equipment-field="label"]');
+    if (!(await labelInput.inputValue()).trim()) {
+      await labelInput.fill(label);
+      const valueInput = row.locator('[data-equipment-row-section="detailInfo"][data-equipment-field="value"]');
+      await valueInput.fill(value);
+      return;
+    }
+  }
   await page.locator('[data-equipment-add-row="detailInfo"]').click();
-  const rows = page.locator('.data-equipment-detail-item');
-  const row = rows.last();
+  const row = page.locator('.data-equipment-detail-table tbody tr').last();
   await row.locator('[data-equipment-row-section="detailInfo"][data-equipment-field="label"]').fill(label);
   await row.locator('[data-equipment-row-section="detailInfo"][data-equipment-field="value"]').fill(value);
 }
@@ -309,10 +321,54 @@ test.describe('KPI browser smoke', () => {
 
       await clickSidebarButton(page, '법정 설비 관리');
       await expect(page.locator('#content-container')).toContainText('법정 설비');
-      await expect(page.locator('#content-container')).toContainText('법정 설비 점검 프리뷰');
+      await expect(page.locator('#content-container')).toContainText('법정 설비 점검');
       await expect(page.locator('.audit-legal-dashboard')).toBeVisible();
       await expect(page.locator('.audit-legal-entry-form')).toBeVisible();
-      await expect(page.locator('#content-container')).toContainText('법정설비 등록');
+      await expect(page.locator('#content-container')).toContainText('보일러 설비 추가');
+      await expect(page.locator('#content-container')).toContainText('정기검사');
+      await expect(page.locator('#content-container')).toContainText('사용검사');
+      await expect(page.locator('#content-container')).toContainText('선임');
+      await expect(page.locator('[data-audit-legal-open-category-inspection="boiler"]')).toBeVisible();
+      await expect(page.locator('[data-audit-legal-calendar-shift="-1"]')).toBeVisible();
+      await expect(page.locator('[data-audit-legal-calendar-shift="1"]')).toBeVisible();
+      await expect(page.locator('[data-audit-legal-calendar-year]')).toBeVisible();
+      await expect(page.locator('[data-audit-legal-calendar-month]')).toBeVisible();
+      await expect(page.locator('.audit-legal-calendar-month-watermark')).toBeVisible();
+      const legalCalendarMonth = page.locator('[data-audit-legal-calendar-month]');
+      const initialLegalCalendarMonth = await legalCalendarMonth.inputValue();
+      await page.locator('[data-audit-legal-calendar-shift="1"]').click();
+      await expect(legalCalendarMonth).not.toHaveValue(initialLegalCalendarMonth);
+      const legalOpenInspectionButtons = page.locator('[data-audit-legal-open-inspection]');
+      if ((await legalOpenInspectionButtons.count()) === 0) {
+        for (const itemType of ['fire', 'electric', 'environment', 'other']) {
+          await page.locator(`[data-audit-legal-category="${itemType}"]`).click();
+          if ((await legalOpenInspectionButtons.count()) > 0) break;
+        }
+      }
+      if ((await legalOpenInspectionButtons.count()) > 0) {
+        await expect(page.locator('#content-container')).toContainText('남은 관리 일정');
+        await expect(page.locator('#content-container')).toContainText('날짜 미등록');
+        await expect(page.locator('#content-container')).toContainText('선임일');
+        await expect(page.locator('#content-container')).toContainText('다음 교육일');
+        await expect(legalOpenInspectionButtons.first()).toBeVisible();
+        await legalOpenInspectionButtons.first().click();
+        const legalInspectionForm = page.locator('[data-audit-legal-inspection-form]').first();
+        await expect(legalInspectionForm.locator('[data-audit-legal-inspection-input="cycle"]')).toBeVisible();
+        await legalInspectionForm.locator('[data-audit-legal-inspection-input="lastDate"]').fill('2026-01-10');
+        await legalInspectionForm.locator('[data-audit-legal-inspection-input="cycle"]').selectOption('6개월');
+        await expect(legalInspectionForm.locator('[data-audit-legal-inspection-input="nextDate"]')).toHaveValue(
+          '2026-07-10'
+        );
+        await expect(page.locator('[data-audit-legal-delete-facility]').first()).toBeVisible();
+      } else {
+        await expect(page.locator('#content-container')).toContainText('등록된 설비가 없습니다');
+        await expect(page.locator('[data-audit-legal-form]')).toBeVisible();
+        await expect(page.locator('[data-audit-legal-input="facility"]')).toBeVisible();
+      }
+      await expect(page.locator('#content-container')).not.toContainText('중요 알림');
+      await expect(page.locator('#content-container')).not.toContainText('프리뷰');
+      await expect(page.locator('#content-container')).not.toContainText('법정 설비 목록');
+      await expect(page.locator('#content-container')).not.toContainText('문서 현황');
       await expect(page.locator('.audit-legal-popup')).toHaveCount(0);
       await expect(page.locator('.audit-legal-popup-launch')).toHaveCount(0);
 
@@ -339,28 +395,74 @@ test.describe('KPI browser smoke', () => {
       const monthlyPopup = await monthlyPopupPromise;
       await monthlyPopup.waitForLoadState('domcontentloaded');
       await expect(monthlyPopup.locator('body')).toContainText('월간 실적보고');
-      await expect(monthlyPopup.locator('[data-team-tab="team1part1"]')).toBeVisible();
-      await monthlyPopup.locator('[data-team-tab="team3"]').click();
-      await expect(monthlyPopup.locator('[data-team-panel="team3"]')).toHaveClass(/is-active/);
-      await expect(monthlyPopup.locator('[data-team-panel="team3"]')).toContainText('생산량');
-      await expect(monthlyPopup.locator('[data-team-panel="team3"]')).toContainText('수율');
-      await expect(monthlyPopup.locator('[data-team-panel="team3"]')).toContainText('노무비');
+      await expect(monthlyPopup.locator('[data-report-utility-button="electric"]')).toBeVisible();
+      await expect(monthlyPopup.locator('[data-report-analysis-panel="electric"]')).toBeVisible();
+      await expect(monthlyPopup.locator('[data-report-analysis-panel="electric"] [data-report-summary]')).toContainText(
+        '생산량'
+      );
+      await monthlyPopup.locator('[data-report-utility-button="gas"]').click();
+      await expect(monthlyPopup.locator('[data-report-analysis-panel="gas"]')).toBeVisible();
+      await expect(monthlyPopup.locator('[data-report-analysis-panel="gas"] [data-report-summary]')).toContainText(
+        'LPG 사용량'
+      );
       await monthlyPopup.close();
 
       await clickSidebarButton(page, '설비 이력 카드');
       await expect(page.locator('#content-container')).toContainText('설비 현황');
       await expect(page.locator('.data-equipment-page')).toBeVisible();
-      await expect(page.locator('#content-container')).toContainText(/등록된 설비 카드가 없습니다.|샘플 혼합기 A/);
-      await page.getByRole('button', { name: '설비 이력 카드 작성' }).click();
+      const existingEquipmentCards = page.locator('.data-equipment-board-card');
+      if ((await existingEquipmentCards.count()) > 0) {
+        await expect(existingEquipmentCards.first()).toBeVisible();
+      } else {
+        await expect(page.locator('#content-container')).toContainText('등록된 설비가 없습니다.');
+      }
+      await page.locator('[data-equipment-view-action="card"]').click();
+      await expect(page.locator('[data-equipment-card-start-form]')).toBeVisible();
+      await page.locator('[data-equipment-start-field="team"]').selectOption('1팀 1파트');
+      await page.locator('[data-equipment-start-field="room"]').fill('외포장실');
+      await page.locator('[data-equipment-start-field="name"]').fill('샘플 혼합기 A');
+      await page.locator('[data-equipment-card-start-submit]').click();
       await expect(page.locator('[data-equipment-form]')).toBeVisible();
-      await page.locator('[data-equipment-field="team"]').fill('생산1팀');
-      await page.locator('[data-equipment-field="name"]').fill('샘플 혼합기 A');
-      await page.locator('[data-equipment-field="process"]').fill('혼합');
-      await page.locator('[data-equipment-field="rate"]').fill('88');
+      await expect(page.locator('.data-equipment-title-pair')).toContainText('1팀 1파트');
+      await expect(page.locator('.data-equipment-title-pair')).toContainText('(외포장실)');
+      await expect(page.locator('.data-equipment-title-pair')).toContainText('샘플 혼합기 A');
+      await expect(page.locator('[data-equipment-status-toggle="가동중"]')).toHaveAttribute('aria-pressed', 'true');
+      await page.locator('[data-equipment-status-toggle="비가동중"]').click();
+      await expect(page.locator('[data-equipment-status-toggle="비가동중"]')).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('.data-equipment-basic-grid')).toHaveCount(0);
+      const topGrid = page.locator('.data-equipment-top-grid');
+      await expect(topGrid.locator('.data-equipment-photo-card')).toBeVisible();
+      await expect(topGrid.locator('.data-equipment-photo-info-card')).toBeVisible();
+      await topGrid.locator('[data-equipment-field="process"]').fill('혼합 공정');
+      await topGrid.locator('[data-equipment-field="rate"]').fill('88');
+      await topGrid.locator('[data-equipment-field="owner"]').fill('ABC 정비');
+      await page.locator('[data-equipment-history-photo-input]').setInputFiles({
+        name: 'sample-equipment.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lQn1GQAAAABJRU5ErkJggg==',
+          'base64'
+        ),
+      });
+      await expect(page.locator('[data-equipment-photo-revert]')).toBeVisible();
+      await page.locator('[data-equipment-photo-revert]').click();
+      await expect(page.locator('[data-equipment-history-photo-input]')).toBeAttached();
+      const firstDetailRow = page.locator('.data-equipment-detail-table tbody tr').first();
+      const firstDetailLabel = firstDetailRow.locator(
+        '[data-equipment-row-section="detailInfo"][data-equipment-field="label"]'
+      );
+      const firstDetailValue = firstDetailRow.locator(
+        '[data-equipment-row-section="detailInfo"][data-equipment-field="value"]'
+      );
+      await firstDetailLabel.fill('베어링');
+      await firstDetailValue.fill('6204');
+      await page.locator('[data-equipment-remove-row="detailInfo"][data-equipment-row-index="0"]').click();
+      await expect(firstDetailLabel).toHaveValue('');
+      await expect(firstDetailValue).toHaveValue('');
+      await page.locator('[data-equipment-add-row="detailInfo"]').click();
+      await expect(page.locator('.data-equipment-detail-table tbody tr')).toHaveCount(2);
       await fillEquipmentDetailItem(page, '설비코드', 'EQ-MIX-001');
-      await fillEquipmentDetailItem(page, '공정 구분', '혼합 공정');
       await fillEquipmentDetailItem(page, '생산라인', '라인 알파');
-      await fillEquipmentDetailItem(page, '담당', '작업자 A');
       await fillEquipmentDetailItem(page, '제조사', '샘플 제조사');
       await page
         .locator('[data-equipment-row-section="maintenanceHistory"][data-equipment-field="date"]')
@@ -386,12 +488,22 @@ test.describe('KPI browser smoke', () => {
         .locator('[data-equipment-row-section="documents"][data-equipment-field="title"]')
         .first()
         .fill('점검 보고서');
-      await page.getByRole('button', { name: '설비 카드 저장' }).click();
+      await page.locator('[data-equipment-form] .data-equipment-primary-action').click();
       await expect(page.locator('#content-container')).toContainText('작성 내용이 설비 현황 보드에 반영되었습니다.');
       await page.getByRole('button', { name: '설비 현황' }).click();
-      await expect(page.locator('.data-equipment-board-card')).toHaveCount(1);
-      await expect(page.locator('.data-equipment-board-card')).toContainText('샘플 혼합기 A');
-      await expect(page.locator('.data-equipment-board-card')).toContainText('ON');
+      const sampleEquipmentCard = page.locator('.data-equipment-board-card').filter({ hasText: '샘플 혼합기 A' });
+      await expect(sampleEquipmentCard).toHaveCount(1);
+      await expect(sampleEquipmentCard).toContainText('비가동중');
+      await expect(sampleEquipmentCard).not.toContainText('가동률');
+      await sampleEquipmentCard.getByRole('button', { name: '기록 작성' }).click();
+      await expect(page.locator('[data-equipment-delete-card]')).toBeVisible();
+      page.once('dialog', async (dialog) => {
+        expect(dialog.message()).toContain('삭제');
+        await dialog.accept();
+      });
+      await page.locator('[data-equipment-delete-card]').click();
+      await expect(page.locator('[data-equipment-view="board"]')).toBeVisible();
+      await expect(page.locator('.data-equipment-board-card').filter({ hasText: '샘플 혼합기 A' })).toHaveCount(0);
       await clickSidebarButton(page, '목차 초기화');
       await expect(page.locator('.viewer-home-shell')).toBeVisible();
 

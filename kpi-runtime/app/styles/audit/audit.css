@@ -147,7 +147,7 @@
         .audit-legal-chip { display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 999px; border: 1px solid #e2e8f0; background: #f8fafc; color: #334155; padding: 3px 8px; font-size: 0.72rem; font-weight: 800; }
         .audit-legal-chip.warn { border-color: #fecaca; background: #fff1f2; color: #be123c; }
         .audit-legal-chip.safe { border-color: #bbf7d0; background: #ecfdf5; color: #166534; }
-        .audit-legal-dashboard { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); gap: 0.8rem; align-items: start; min-width: 0; }
+        .audit-legal-dashboard { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; align-items: start; min-width: 0; }
         .audit-legal-main,
         .audit-legal-side { min-width: 0; display: grid; gap: 0.8rem; }
         .audit-legal-equipment-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(156px, 1fr)); gap: 0.7rem; min-width: 0; }
@@ -155,6 +155,7 @@
         .audit-legal-equipment-card[data-audit-legal-category] { cursor: pointer; }
         .audit-legal-equipment-card[data-audit-legal-category]:hover,
         .audit-legal-equipment-card[data-audit-legal-category]:focus { border-color: #93c5fd; box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12); outline: 0; }
+        .audit-legal-equipment-card.is-active { border-color: #2563eb; box-shadow: 0 10px 22px rgba(37, 99, 235, 0.16); }
         .audit-legal-equipment-top { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
         .audit-legal-equipment-icon { width: 34px; height: 34px; flex: 0 0 auto; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: #f8fafc; border: 1px solid #e2e8f0; color: #334155; }
         .audit-legal-equipment-icon.fire { background: #fef2f2; border-color: #fecaca; color: #dc2626; }
@@ -162,6 +163,9 @@
         .audit-legal-equipment-icon.boiler { background: #fff7ed; border-color: #fdba74; color: #c2410c; }
         .audit-legal-equipment-icon.gas { background: #f0fdf4; border-color: #86efac; color: #15803d; }
         .audit-legal-equipment-icon.gasboiler { background: #fff7ed; border-color: #fdba74; color: #c2410c; }
+        .audit-legal-equipment-icon.cooling { background: #ecfeff; border-color: #a5f3fc; color: #0e7490; }
+        .audit-legal-equipment-icon.electric { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+        .audit-legal-equipment-icon.other { background: #f8fafc; border-color: #cbd5e1; color: #475569; }
         .audit-legal-equipment-icon.pressure { background: #f8fafc; border-color: #cbd5e1; color: #475569; }
         .audit-legal-equipment-title { min-width: 0; font-size: 0.86rem; color: #0f172a; line-height: 1.25; word-break: keep-all; }
         .audit-legal-metric-list { display: grid; gap: 0.35rem; align-content: start; }
@@ -176,9 +180,44 @@
         .audit-legal-status-token.near { color: #f59e0b; }
         .audit-legal-status-token.danger,
         .audit-legal-status-token.overdue { color: #dc2626; }
+        .audit-legal-category-panel { display: grid; gap: 0.7rem; }
+        .audit-legal-category-head { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; }
+        .audit-legal-add-equipment { min-height: 34px; border: 1px solid #2563eb; border-radius: 8px; background: #2563eb; color: #ffffff; padding: 0 11px; font-size: 0.75rem; font-weight: 900; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; }
+        .audit-legal-inspection-template,
+        .audit-legal-facility-inspections,
+        .audit-legal-entry-template { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; min-width: 0; }
+        .audit-legal-entry-template { margin-top: 0.5rem; }
+        .audit-legal-inspection-chip { display: inline-flex; align-items: center; min-height: 24px; border-radius: 999px; border: 1px solid #dbeafe; background: #eff6ff; color: #1d4ed8; padding: 3px 8px; font-size: 0.72rem; font-weight: 900; }
+        .audit-legal-facility-list { display: grid; gap: 0.5rem; }
+        .audit-legal-facility-row { display: grid; gap: 0.6rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff; padding: 9px 10px; }
+        .audit-legal-facility-head { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; flex-wrap: wrap; }
+        .audit-legal-facility-actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.4rem; flex-wrap: wrap; }
+        .audit-legal-facility-main { min-width: 0; display: grid; gap: 0.18rem; }
+        .audit-legal-facility-main strong { color: #0f172a; font-size: 0.84rem; line-height: 1.25; word-break: keep-all; }
+        .audit-legal-facility-main span { color: #64748b; font-size: 0.73rem; line-height: 1.25; }
+        .audit-legal-facility-due { display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.35rem; flex-wrap: wrap; color: #64748b; font-size: 0.72rem; font-weight: 800; }
+        .audit-legal-inspection-add { min-height: 30px; border: 1px solid #dbe4ef; border-radius: 8px; background: #ffffff; color: #334155; padding: 0 9px; font-size: 0.72rem; font-weight: 900; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; }
+        .audit-legal-inspection-add-primary { min-height: 34px; border-color: #2563eb; background: #2563eb; color: #ffffff; padding: 0 11px; }
+        .audit-legal-facility-delete { min-height: 30px; border: 1px solid #fecaca; border-radius: 8px; background: #fff1f2; color: #be123c; padding: 0 9px; font-size: 0.72rem; font-weight: 900; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; }
+        .audit-legal-inspection-list-head { color: #475569; font-size: 0.72rem; font-weight: 900; }
+        .audit-legal-inspection-list { display: grid; gap: 0.4rem; }
+        .audit-legal-inspection-row { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(96px, auto) minmax(96px, auto) auto; gap: 0.45rem; align-items: center; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc; padding: 6px 8px; font-size: 0.74rem; }
+        .audit-legal-inspection-row.is-template { border-style: dashed; background: #ffffff; }
+        .audit-legal-inspection-name { font-weight: 900; color: #0f172a; }
+        .audit-legal-inspection-date { color: #64748b; font-weight: 800; white-space: nowrap; }
+        .audit-legal-inspection-status { display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.35rem; flex-wrap: wrap; }
+        .audit-legal-inspection-cycle { min-height: 22px; border: 1px solid #cbd5e1; border-radius: 7px; background: #f8fafc; color: #475569; padding: 2px 7px; font-size: 0.68rem; font-weight: 900; display: inline-flex; align-items: center; }
+        .audit-legal-inspection-file { min-height: 22px; border: 1px solid #bfdbfe; border-radius: 7px; background: #eff6ff; color: #1d4ed8; padding: 2px 7px; font-size: 0.68rem; font-weight: 900; text-decoration: none; display: inline-flex; align-items: center; }
+        .audit-legal-days.is-missing { background: #f8fafc; color: #64748b; border-color: #cbd5e1; }
+        .audit-legal-inspection-fill { min-height: 24px; border: 1px solid #bfdbfe; border-radius: 7px; background: #eff6ff; color: #1d4ed8; padding: 0 7px; font-size: 0.68rem; font-weight: 900; cursor: pointer; }
+        .audit-legal-inspection-form { display: grid; grid-template-columns: repeat(5, minmax(108px, 1fr)) auto; gap: 0.5rem; align-items: end; border: 1px dashed #bfdbfe; border-radius: 10px; background: #eff6ff; padding: 8px; }
+        .audit-legal-inspection-form.has-facility { grid-template-columns: minmax(130px, 1fr) repeat(5, minmax(108px, 1fr)) auto; }
+        .audit-legal-inspection-actions { display: inline-flex; gap: 0.4rem; justify-content: flex-end; flex-wrap: wrap; }
+        .audit-legal-inspection-actions button { min-height: 34px; border: 1px solid #dbe4ef; border-radius: 8px; background: #ffffff; color: #334155; padding: 0 10px; font-size: 0.74rem; font-weight: 900; cursor: pointer; }
+        .audit-legal-inspection-actions .audit-legal-entry-primary { border-color: #2563eb; background: #2563eb; color: #ffffff; }
         .audit-legal-entry-card { border-top: 3px solid #2563eb; }
         .audit-legal-entry-form { display: grid; gap: 0.75rem; }
-        .audit-legal-entry-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.58rem; min-width: 0; }
+        .audit-legal-entry-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.58rem; min-width: 0; }
         .audit-legal-entry-assets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.58rem; min-width: 0; }
         .audit-legal-entry-field { display: grid; gap: 0.25rem; min-width: 0; }
         .audit-legal-entry-field.wide { grid-column: span 2; }
@@ -192,14 +231,22 @@
         .audit-legal-entry-actions button { min-height: 34px; border: 1px solid #dbe4ef; border-radius: 8px; background: #ffffff; color: #334155; padding: 0 11px; font-size: 0.75rem; font-weight: 900; cursor: pointer; }
         .audit-legal-entry-actions .audit-legal-entry-primary { border-color: #2563eb; background: #2563eb; color: #ffffff; }
         .audit-legal-content-grid { display: grid; grid-template-columns: minmax(280px, 0.42fr) minmax(0, 0.58fr); gap: 0.8rem; align-items: stretch; min-width: 0; }
-        .audit-legal-calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; margin-bottom: 0.6rem; }
+        .audit-legal-calendar-head { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
         .audit-legal-calendar-head strong { color: #0f172a; font-size: 0.94rem; }
-        .audit-legal-calendar-head span { color: #64748b; font-size: 0.74rem; font-weight: 800; }
+        .audit-legal-calendar-head > span { color: #64748b; font-size: 0.74rem; font-weight: 800; }
+        .audit-legal-calendar-nav { display: inline-flex; align-items: center; justify-content: flex-end; gap: 0.35rem; min-width: 0; }
+        .audit-legal-calendar-arrow { width: 30px; height: 30px; border: 1px solid #dbe4ef; border-radius: 8px; background: #ffffff; color: #334155; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        .audit-legal-calendar-arrow:hover { border-color: #2563eb; color: #1d4ed8; }
+        .audit-legal-calendar-picker { display: inline-flex; align-items: center; gap: 0.35rem; min-width: 0; }
+        .audit-legal-calendar-picker select { min-height: 30px; border: 1px solid #dbe4ef; border-radius: 8px; background: #ffffff; color: #0f172a; padding: 4px 25px 4px 8px; font: inherit; font-size: 0.74rem; font-weight: 850; }
+        .audit-legal-calendar-picker select:focus { outline: 2px solid rgba(37, 99, 235, 0.18); border-color: #2563eb; }
         .audit-legal-legend { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.55rem; color: #475569; font-size: 0.7rem; font-weight: 800; }
         .audit-legal-legend span { display: inline-flex; align-items: center; gap: 0.28rem; }
         .audit-legal-legend i { width: 7px; height: 7px; border-radius: 999px; display: inline-block; background: #2563eb; }
         .audit-legal-legend i.deadline { background: #dc2626; }
         .audit-legal-legend i.document { background: #7c3aed; }
+        .audit-legal-calendar-grid-wrap { position: relative; min-width: 0; }
+        .audit-legal-calendar-month-watermark { position: absolute; right: 10px; bottom: 8px; z-index: 3; pointer-events: none; color: rgba(15, 23, 42, 0.12); font-size: 1.55rem; line-height: 1; font-weight: 900; }
         .audit-legal-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff; }
         .audit-legal-weekday { min-height: 26px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 0.68rem; font-weight: 900; }
         .audit-legal-weekday:nth-child(7) { border-right: 0; }
@@ -509,6 +556,17 @@
             .audit-legal-entry-field.wide { grid-column: auto; }
             .audit-legal-entry-actions { justify-content: stretch; }
             .audit-legal-entry-actions button { flex: 1 1 150px; }
+            .audit-legal-facility-row { grid-template-columns: 1fr; }
+            .audit-legal-facility-due { justify-content: flex-start; }
+            .audit-legal-inspection-row,
+            .audit-legal-inspection-form { grid-template-columns: 1fr; }
+            .audit-legal-facility-actions { width: 100%; justify-content: stretch; }
+            .audit-legal-facility-actions button { flex: 1 1 140px; }
+            .audit-legal-inspection-actions { justify-content: stretch; }
+            .audit-legal-inspection-actions button { flex: 1 1 140px; }
+            .audit-legal-calendar-nav { width: 100%; justify-content: space-between; }
+            .audit-legal-calendar-picker { flex: 1 1 auto; }
+            .audit-legal-calendar-picker select { flex: 1 1 0; }
             .audit-legal-filters { grid-template-columns: 1fr; }
             .audit-legal-table { min-width: 900px; }
             .audit-legal-doc-card { grid-template-columns: 34px minmax(0, 1fr); }

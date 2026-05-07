@@ -184,6 +184,12 @@
                 `<option value="${optionKey}" ${optionKey === monthKey ? 'selected' : ''}>${formatWorkTeamCalendarMonthShortLabel(optionKey)}</option>`
             )).join('');
             const utilitySummary = getWorkTeamCalendarUtilitySummary(dataKey, monthKey);
+            const equipmentSummary = typeof getWorkTeamCalendarEquipmentSummary === 'function'
+                ? getWorkTeamCalendarEquipmentSummary(dataKey, monthKey)
+                : null;
+            const equipmentUtilityChipHtml = equipmentSummary && typeof renderWorkTeamCalendarEquipmentSummaryChipHtml === 'function'
+                ? renderWorkTeamCalendarEquipmentSummaryChipHtml(equipmentSummary, utilityPopupMetric === 'equipment')
+                : '';
             const isOverviewSummary = isOverviewCalendar === true;
             const isWasteOnlySummary = !isOverviewSummary && !!utilitySummary.waste && !utilitySummary.electric && !utilitySummary.gas;
             const gasChoiceHtml = !isWasteOnlySummary && !isOverviewSummary && utilitySummary.gas.canSelect
@@ -228,6 +234,7 @@
                             <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.waste?.costText || '-')}</span>
                         </div>
                         ${workUtilityChipHtml}
+                        ${equipmentUtilityChipHtml}
                     </div>
                 `
                 : `
@@ -250,6 +257,7 @@
                             <span class="work-team-calendar-utility-meta">${escapeHtml(utilitySummary.production?.itemCountText || '-')}</span>
                         </div>
                         ${workUtilityChipHtml}
+                        ${equipmentUtilityChipHtml}
                     </div>
                 `;
             let utilitySummaryHtmlResolved = isOverviewSummary
@@ -281,6 +289,7 @@
                             <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.workEntryCountText || '0 items')}</span>
                             <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.workCostText || '-')}</span>
                         </div>
+                        ${equipmentUtilityChipHtml}
                     </div>
                 `
                 : utilitySummaryHtml;
@@ -322,10 +331,13 @@
                         ${renderOverviewUtilityChip('waste', '폐수 방류량', utilitySummary.waste?.usageText || '-', `비용 ${utilitySummary.waste?.costText || '-'}`)}
                         ${renderOverviewUtilityChip('production', '총생산량', utilitySummary.production?.totalAmountText || '-', utilitySummary.production?.itemCountText || '-')}
                         ${renderOverviewUtilityChip('work', '작업내역', utilitySummary.workEntryCountText || '0건', `비용 ${utilitySummary.workCostText || '-'}`)}
+                        ${equipmentUtilityChipHtml}
                     </div>
                 `;
                 if (hasUtilityPopup) {
-                    if (utilityPopupMetric === 'work') {
+                    if (utilityPopupMetric === 'equipment' && typeof renderWorkTeamCalendarEquipmentPopupHtml === 'function') {
+                        utilityPopupHtml = renderWorkTeamCalendarEquipmentPopupHtml(equipmentSummary, category);
+                    } else if (utilityPopupMetric === 'work') {
                         const workPopupMonthLabel = utilityBreakdown.monthLabel || formatWorkTeamCalendarMonthOptionLabel(monthKey);
                         const workPopupHistoryHtml = renderWorkTeamCalendarGroupedHistoryHtml(dataKey, monthDateKeys);
                         utilityPopupHtml = `
@@ -439,6 +451,9 @@
                         `;
                     }
                 }
+            }
+            if (!isOverviewSummary && hasUtilityPopup && utilityPopupMetric === 'equipment' && typeof renderWorkTeamCalendarEquipmentPopupHtml === 'function') {
+                utilityPopupHtml = renderWorkTeamCalendarEquipmentPopupHtml(equipmentSummary, category);
             }
             if (!isOverviewSummary && hasUtilityPopup && utilityPopupMetric === 'work') {
                 const workPopupMonthLabel = formatWorkTeamCalendarMonthOptionLabel(monthKey);

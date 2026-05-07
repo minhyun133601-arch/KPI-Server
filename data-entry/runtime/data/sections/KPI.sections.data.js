@@ -35,13 +35,13 @@
                     icon: 'fa-screwdriver-wrench',
                     color: '#475569',
                     viewerMode: 'full-bleed',
-                    desc: '설비 현황 보드와 이력 카드 작성 폼에서 설비 정보, 정비 이력, 첨부 키를 함께 관리합니다.',
+                    desc: '설비 현황 보드와 이력 카드 작성 폼에서 설비 정보, 정비 이력, 첨부 문서를 함께 관리합니다.',
                     dataKey: 'data_equipment_history_card',
                     fileName: 'Central Server DB / Equipment History Card',
                     readOnly: false,
                     content: `
                         <div class="rounded-lg border border-slate-200 bg-slate-50 px-5 py-5 text-sm text-slate-600">
-                            설비 현황 보드와 설비 이력 카드 작성 폼을 불러오는 중입니다.
+                            설비 현황 보드와 설비 이력 카드 작성 화면을 불러오는 중입니다.
                         </div>
                     `
                 }

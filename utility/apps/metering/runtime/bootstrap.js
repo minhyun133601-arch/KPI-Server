@@ -131,6 +131,7 @@ function bindEvents() {
   elements.teamSettlementFields?.addEventListener("click", handleTeamSettlementFieldClick);
   elements.teamSettlementFields?.addEventListener("input", handleTeamSettlementFieldInput);
   elements.teamSettlementFields?.addEventListener("input", handleTeamDirectUsageInput);
+  elements.teamSettlementFields?.addEventListener("change", handleTeamSettlementFieldInput);
   elements.teamSettlementFields?.addEventListener("change", handleTeamDirectUsageChange);
   elements.teamSettlementFields?.addEventListener("keydown", handleTeamDirectUsageKeydown);
   elements.billingDocumentPreviewOpenBtn?.addEventListener("click", handleBillingDocumentPreviewOpenClick);

@@ -94,6 +94,7 @@
         "team-report/runtime/work/KPI.work.team-calendar.js",
         "team-report/runtime/work/KPI.work.team-calendar.selection.js",
         "team-report/runtime/work/KPI.work.team-calendar.draft-actions.js",
+        "team-report/runtime/work/KPI.work.team-calendar.equipment-summary.js",
         "team-report/runtime/work/KPI.work.team-calendar.render.js"
       ]
     },

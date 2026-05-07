@@ -4,16 +4,31 @@
     const BASIC_FIELDS = [
         { key: 'name', label: '설비명', placeholder: '설비명을 입력하세요.' },
         { key: 'team', label: '관리팀', placeholder: '예: 생산1팀' },
+        { key: 'room', label: '실', placeholder: '예: 외포장실' },
         { key: 'process', label: '공정', placeholder: '공정을 입력하세요.' },
         { key: 'rate', label: '가동률', placeholder: '숫자만 입력' },
     ];
 
     const OPERATION_FIELDS = BASIC_FIELDS;
 
+    const PHOTO_INFO_FIELDS = [
+        { key: 'process', label: '\uACF5\uC815', placeholder: '\uC608: \uD63C\uD569 \uACF5\uC815' },
+        { key: 'rate', label: '\uAC00\uB3D9\uB960', placeholder: '\uC22B\uC790\uB9CC \uC785\uB825' },
+        { key: 'owner', label: '\uB2F4\uB2F9 \uC5C5\uCCB4', placeholder: '\uC608: ABC\uC815\uBE44' },
+    ];
+
     const DETAIL_ITEM_FIELDS = [
         { key: 'label', label: '항목명', placeholder: '예: 제조사' },
         { key: 'value', label: '내용', placeholder: '내용을 입력하세요.' },
     ];
+
+    const SYSTEM_DETAIL_LABELS = new Set([
+        '\uC124\uBE44\uBA85',
+        '\uAD00\uB9AC\uD300',
+        '\uC2E4',
+        '\uACF5\uC815',
+        '\uAC00\uB3D9\uB960',
+    ]);
 
     const MAINTENANCE_FIELDS = [
         { key: 'date', label: '일자', placeholder: 'YYYY.MM.DD' },
@@ -38,6 +53,53 @@
         { key: 'downloadUrl' },
     ];
 
+    const EQUIPMENT_HISTORY_TEAM_OPTIONS = [
+        '1\uD300 1\uD30C\uD2B8',
+        '1\uD300 2\uD30C\uD2B8',
+        '2\uD300',
+        '3\uD300',
+        '\uACF5\uBB34\uD658\uACBD\uD300',
+    ];
+
+    const EQUIPMENT_HISTORY_TEAM_DATA_KEY_MAP = Object.freeze({
+        '1\uD3001\uD30C\uD2B8': 'work_team_calendar_team1_part1',
+        '1\uD3002\uD30C\uD2B8': 'work_team_calendar_team1_part2',
+        '2\uD300': 'work_team_calendar_team2',
+        '3\uD300': 'work_team_calendar_team3',
+        '\uACF5\uBB34\uD658\uACBD\uD300': 'work_team_calendar_team4',
+    });
+
+    function canonicalizeEquipmentHistoryTeam(value) {
+        return api.normalizeText(value).replace(/\s+/g, '');
+    }
+
+    function resolveEquipmentHistoryTeamDataKey(teamName) {
+        const raw = api.normalizeText(teamName);
+        if (/^work_team_calendar_team(?:1_part[12]|[234])$/.test(raw)) return raw;
+        const canonical = canonicalizeEquipmentHistoryTeam(raw);
+        if (EQUIPMENT_HISTORY_TEAM_DATA_KEY_MAP[canonical]) return EQUIPMENT_HISTORY_TEAM_DATA_KEY_MAP[canonical];
+        if (canonical.includes('\uC720\uC0B0')) return 'work_team_calendar_team4';
+        if (canonical.includes('\uBD81\uC815')) return 'work_team_calendar_team1_part1';
+        if (canonical.includes('1\uD300') && canonical.includes('1\uD30C\uD2B8')) return 'work_team_calendar_team1_part1';
+        if (canonical.includes('1\uD300') && canonical.includes('2\uD30C\uD2B8')) return 'work_team_calendar_team1_part2';
+        if (canonical.includes('2\uD300')) return 'work_team_calendar_team2';
+        if (canonical.includes('3\uD300')) return 'work_team_calendar_team3';
+        if (canonical.includes('\uACF5\uBB34\uD658\uACBD') || (canonical.includes('\uACF5\uBB34') && canonical.includes('\uD658\uACBD'))) {
+            return 'work_team_calendar_team4';
+        }
+        return '';
+    }
+
+    function normalizeEquipmentHistoryTeamName(teamName) {
+        const dataKey = resolveEquipmentHistoryTeamDataKey(teamName);
+        if (dataKey === 'work_team_calendar_team1_part1') return '1\uD300 1\uD30C\uD2B8';
+        if (dataKey === 'work_team_calendar_team1_part2') return '1\uD300 2\uD30C\uD2B8';
+        if (dataKey === 'work_team_calendar_team2') return '2\uD300';
+        if (dataKey === 'work_team_calendar_team3') return '3\uD300';
+        if (dataKey === 'work_team_calendar_team4') return '\uACF5\uBB34\uD658\uACBD\uD300';
+        return api.normalizeText(teamName);
+    }
+
     function createBlankMaintenanceRow() {
         return { date: '', type: '', content: '', worker: '', note: '' };
     }
@@ -59,21 +121,29 @@
         return api.asList(rows).map((row) => ({ ...factory(), ...(row || {}) }));
     }
 
+    function isSystemDetailInfoRow(row) {
+        return SYSTEM_DETAIL_LABELS.has(api.normalizeText(row?.label));
+    }
+
     function createDraft(equipment = null) {
         const source = equipment || {};
+        const editableDetailInfo = normalizeOptionalRows(source.detailInfo, createBlankDetailRow)
+            .filter((row) => !isSystemDetailInfoRow(row));
         return {
             id: api.normalizeText(source.id),
             equipmentCode: api.normalizeText(source.equipmentCode || source.id),
             name: api.normalizeText(source.name),
             line: api.normalizeText(source.line),
             process: api.normalizeText(source.process || source.group),
-            status: api.normalizeText(source.status || '운영중'),
+            status: normalizeEquipmentRunStatus(source.status || '가동중'),
             production: api.normalizeText(source.production),
             plan: api.normalizeText(source.plan),
             rate: source.rate === null || source.rate === undefined || source.rate === '' ? '' : String(source.rate),
             lastCheck: api.normalizeText(source.lastCheck),
             nextCheck: api.normalizeText(source.nextCheck),
-            team: api.normalizeText(source.team),
+            team: normalizeEquipmentHistoryTeamName(source.team || source.teamDataKey),
+            room: api.normalizeText(source.room),
+            teamDataKey: api.normalizeText(source.teamDataKey) || resolveEquipmentHistoryTeamDataKey(source.team),
             group: api.normalizeText(source.group),
             owner: api.normalizeText(source.owner),
             note: api.normalizeText(source.note),
@@ -83,9 +153,18 @@
             photoDownloadUrl: api.normalizeText(source.photoDownloadUrl),
             photoStorageRelPath: api.normalizeText(source.photoStorageRelPath),
             photoName: api.normalizeText(source.photoName),
-            detailInfo: normalizeOptionalRows(source.detailInfo, createBlankDetailRow),
+            detailInfo: editableDetailInfo,
             maintenanceHistory: normalizeRows(source.maintenanceHistory, createBlankMaintenanceRow),
             documents: normalizeRows(source.documents, createBlankDocumentRow),
+        };
+    }
+
+    function createEquipmentHistoryStartDraft(source = null) {
+        const base = source || {};
+        return {
+            team: normalizeEquipmentHistoryTeamName(base.team || base.teamDataKey),
+            room: api.normalizeText(base.room),
+            name: api.normalizeText(base.name),
         };
     }
 
@@ -112,6 +191,11 @@
         return { isValid: true, value: Math.max(0, Math.min(numeric, 100)) };
     }
 
+    function normalizeEquipmentRunStatus(status) {
+        const value = api.normalizeText(status);
+        return ['비가동중', '비가동', '정지', '점검중', '점검예정'].includes(value) ? '비가동중' : '가동중';
+    }
+
     function getEquipmentHistoryDraftValidationErrors(draft) {
         const normalized = createDraft(draft);
         const errors = [];
@@ -120,6 +204,18 @@
         }
         if (!parseDraftRate(normalized.rate).isValid) {
             errors.push({ field: 'rate', message: '\uAC00\uB3D9\uB960\uC740 0\uBD80\uD130 100\uAE4C\uC9C0\uC758 \uC22B\uC790\uB85C \uC785\uB825\uD574 \uC8FC\uC138\uC694.' });
+        }
+        return errors;
+    }
+
+    function getEquipmentHistoryStartValidationErrors(draft) {
+        const normalized = createEquipmentHistoryStartDraft(draft);
+        const errors = [];
+        if (!normalized.team) {
+            errors.push({ field: 'team', message: '\uD300\uC744 \uC120\uD0DD\uD574 \uC8FC\uC138\uC694.' });
+        }
+        if (!normalized.name) {
+            errors.push({ field: 'name', message: '\uC124\uBE44\uBA85\uC744 \uC785\uB825\uD574 \uC8FC\uC138\uC694.' });
         }
         return errors;
     }
@@ -149,6 +245,7 @@
         const id = normalized.id || makeEquipmentId(normalized);
         const rate = parseDraftRate(normalized.rate).value;
         const detailInfo = mergeDetailInfoRows(normalized);
+        const teamDataKey = normalized.teamDataKey || resolveEquipmentHistoryTeamDataKey(normalized.team);
         const documents = removeBlankRows(normalized.documents, DOCUMENT_SAVE_FIELDS)
             .map(({ pendingFile, attachmentKey, ...row }) => row);
         return {
@@ -157,13 +254,15 @@
             name: normalized.name,
             line: normalized.line,
             process: normalized.process,
-            status: normalized.status || '운영중',
+            status: normalizeEquipmentRunStatus(normalized.status),
             rate,
             production: normalized.production,
             plan: normalized.plan,
             lastCheck: normalized.lastCheck,
             nextCheck: normalized.nextCheck,
             team: normalized.team,
+            room: normalized.room,
+            teamDataKey,
             group: normalized.process,
             owner: normalized.owner,
             note: normalized.note,
@@ -184,13 +283,34 @@
         return `<input type="text" value="${api.escapeHtml(value)}" placeholder="${api.escapeHtml(field.placeholder || '')}" data-equipment-field="${api.escapeHtml(field.key)}" ${attrs}>`;
     }
 
+    function renderTeamSelect(value, attrs = '') {
+        const normalized = normalizeEquipmentHistoryTeamName(value);
+        const hasCustomValue = normalized && !EQUIPMENT_HISTORY_TEAM_OPTIONS.includes(normalized);
+        return `
+            <select data-equipment-field="team" ${attrs}>
+                <option value="">${api.escapeHtml('\uD300 \uC120\uD0DD')}</option>
+                ${EQUIPMENT_HISTORY_TEAM_OPTIONS.map((team) => `
+                    <option value="${api.escapeHtml(team)}"${team === normalized ? ' selected' : ''}>${api.escapeHtml(team)}</option>
+                `).join('')}
+                ${hasCustomValue ? `<option value="${api.escapeHtml(normalized)}" selected>${api.escapeHtml(normalized)}</option>` : ''}
+            </select>
+        `;
+    }
+
+    function renderFieldControl(field, value, attrs = '') {
+        if (field.key === 'team') {
+            return renderTeamSelect(value, attrs);
+        }
+        return renderInput(field, value, attrs);
+    }
+
     function renderFieldGrid(fields, draft, className) {
         return `
             <div class="${className}">
                 ${fields.map((field) => `
                     <label>
                         <span>${api.escapeHtml(field.label)}</span>
-                        ${renderInput(field, draft[field.key] || '')}
+                        ${renderFieldControl(field, draft[field.key] || '')}
                     </label>
                 `).join('')}
             </div>
@@ -198,26 +318,35 @@
     }
 
     function renderDetailItems(rows) {
-        const list = api.asList(rows);
-        if (!list.length) {
-            return '<div class="data-equipment-detail-empty">상세 정보 항목은 직접 추가해서 현재 설비 형식에 맞춰 적을 수 있습니다.</div>';
-        }
+        const source = api.asList(rows);
+        const list = source.length ? source : [createBlankDetailRow()];
 
         return `
-            <div class="data-equipment-detail-items">
-                ${list.map((row, rowIndex) => `
-                    <div class="data-equipment-detail-item">
-                        ${DETAIL_ITEM_FIELDS.map((field) => `
-                            <label>
-                                <span>${api.escapeHtml(field.label)}</span>
-                                ${renderInput(field, row?.[field.key] || '', `data-equipment-row-section="detailInfo" data-equipment-row-index="${rowIndex}"`)}
-                            </label>
+            <div class="data-equipment-table-scroll">
+                <table class="data-equipment-edit-table data-equipment-detail-table">
+                    <thead>
+                        <tr>
+                            ${DETAIL_ITEM_FIELDS.map((field) => `<th>${api.escapeHtml(field.label)}</th>`).join('')}
+                            <th>${api.escapeHtml('\uC0AD\uC81C')}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${list.map((row, rowIndex) => `
+                            <tr>
+                                ${DETAIL_ITEM_FIELDS.map((field) => `
+                                    <td>
+                                        ${renderInput(field, row?.[field.key] || '', `data-equipment-row-section="detailInfo" data-equipment-row-index="${rowIndex}"`)}
+                                    </td>
+                                `).join('')}
+                                <td>
+                                    <button type="button" class="data-equipment-row-remove data-equipment-detail-remove" data-equipment-remove-row="detailInfo" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml('\uD56D\uBAA9 \uC0AD\uC81C')}">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
                         `).join('')}
-                        <button type="button" class="data-equipment-row-remove" data-equipment-remove-row="detailInfo" data-equipment-row-index="${rowIndex}" aria-label="항목 제거">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </div>
-                `).join('')}
+                    </tbody>
+                </table>
             </div>
         `;
     }
@@ -292,16 +421,26 @@
     Object.assign(api, {
         BASIC_FIELDS,
         OPERATION_FIELDS,
+        PHOTO_INFO_FIELDS,
         DETAIL_ITEM_FIELDS,
         MAINTENANCE_FIELDS,
         DOCUMENT_FIELDS,
         DOCUMENT_SAVE_FIELDS,
+        EQUIPMENT_HISTORY_TEAM_OPTIONS,
+        EQUIPMENT_HISTORY_TEAM_DATA_KEY_MAP,
+        resolveEquipmentHistoryTeamDataKey,
+        normalizeEquipmentHistoryTeamName,
         createBlankMaintenanceRow,
         createBlankDocumentRow,
         createBlankDetailRow,
         createDraft,
+        createEquipmentHistoryStartDraft,
         getEquipmentHistoryDraftValidationErrors,
+        getEquipmentHistoryStartValidationErrors,
         buildRecordFromDraft,
+        renderInput,
+        renderTeamSelect,
+        renderFieldControl,
         renderFieldGrid,
         renderDetailItems,
         renderEditableTable,

@@ -286,6 +286,25 @@ function calculateBillingSettlementBilledQuantityMjValue(
   return calorificValue * usageBaseValue;
 }
 
+function deriveBillingSettlementCalorificValueFromBilledQuantityValue(
+  rawFields,
+  monthValue,
+  scopeKey = DEFAULT_BILLING_SETTLEMENT_SCOPE_KEY
+) {
+  const resourceType = getBillingSettlementResourceType(scopeKey, getCurrentResourceType());
+  if (resourceType !== RESOURCE_TYPES.GAS || isGasLpgBillingSettlementScope(scopeKey)) {
+    return null;
+  }
+
+  const billedQuantity = parseBillingSettlementNumericValue(rawFields?.billed_quantity_mj);
+  const usageBaseValue = getBillingSettlementUsageBaseValue(monthValue, scopeKey);
+  if (!Number.isFinite(billedQuantity) || !Number.isFinite(usageBaseValue) || usageBaseValue <= 0) {
+    return null;
+  }
+
+  return billedQuantity / usageBaseValue;
+}
+
 function calculateBillingSettlementUnitPriceValue(
   rawFields,
   monthValue,

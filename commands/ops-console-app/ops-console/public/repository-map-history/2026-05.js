@@ -1,6 +1,15 @@
 ((root) => {
   const entries = [
     {
+      date: '2026-05-07',
+      tag: 'frontend/import',
+      title: '설비 이력카드·법정 설비 프론트 이식',
+      summary:
+        'KPI-local 참조본의 설비 이력카드 작성 시작 흐름, 사진/공정 정보 상단 배치, 사진 되돌리기와 자동 저장, 상세 정보 메모식 입력판, 저장 카드 삭제, 가동중/비가동중 토글, 법정 설비 검사/선임 일정 입력, 작업 캘린더 설비이력 요약 연동을 회사 런타임에 반영했습니다.',
+      detail:
+        '개인정보 영향: 신규 실데이터나 첨부 원본을 복사하지 않았고 Playwright smoke가 남긴 샘플 설비 기록은 제거했습니다. 검증 기준: targeted frontend smoke, format, lint, server-structure, browser smoke.',
+    },
+    {
       date: '2026-05-06',
       tag: 'runtime/env',
       title: 'KPI Server env 파일 직접값 런타임 정리',

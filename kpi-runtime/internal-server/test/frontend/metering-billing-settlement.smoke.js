@@ -411,6 +411,27 @@ test('billing settlement resolves gas fields with calculated quantity, unit pric
   });
 });
 
+test('billing settlement derives missing gas calorific value from preserved billed quantity', () => {
+  const { context } = createBillingSettlementContext({
+    resourceType: 'gas',
+    usageBaseValue: 10,
+  });
+
+  const fields = toPlain(
+    context.resolveBillingSettlementFields(
+      {
+        power_charge: '100',
+        billed_quantity_mj: '432.110',
+      },
+      '2026-04',
+      'default'
+    )
+  );
+
+  assert.equal(fields.calorific_value, '43.211');
+  assert.equal(fields.billed_quantity_mj, '432.110');
+});
+
 test('billing settlement completion state excludes calorific value when gas usage base is missing', () => {
   const { context } = createBillingSettlementContext({
     resourceType: 'gas',

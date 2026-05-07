@@ -30,6 +30,7 @@ const teamCalendarSourcePaths = [
   teamCalendarPath,
   path.join(workDir, 'KPI.work.team-calendar.selection.js'),
   path.join(workDir, 'KPI.work.team-calendar.draft-actions.js'),
+  path.join(workDir, 'KPI.work.team-calendar.equipment-summary.js'),
   path.join(workDir, 'KPI.work.team-calendar.render.js'),
 ];
 
@@ -128,9 +129,45 @@ function createContext(options = {}) {
         ],
       },
     },
+    PortalData: {
+      data_equipment_history_card: {
+        equipmentList: [
+          {
+            id: 'eq-mixer-1',
+            equipmentCode: 'EQ-MIX-001',
+            name: 'Mixer 1',
+            team: '1팀 1파트',
+            teamDataKey: 'work_team_calendar_team1_part1',
+            process: 'Mixing',
+            status: '운영중',
+            rate: 82,
+            lastCheck: '2026.04.10',
+            nextCheck: '2026.05.10',
+            maintenanceHistory: [
+              { date: '2026.04.15', type: '정기점검', content: 'Belt check', worker: 'Alpha', note: 'OK' },
+              { date: '2026.05.01', type: '수리', content: 'Out of selected month', worker: 'Beta' },
+            ],
+          },
+          {
+            id: 'eq-legacy-yusan',
+            equipmentCode: 'EQ-WASTE-001',
+            name: 'Waste Pump',
+            team: '유산',
+            process: 'Waste',
+            status: '점검중',
+            maintenanceHistory: [
+              { date: '2026.04.18', type: '정비', content: 'Legacy team check', worker: 'Beta' },
+            ],
+          },
+        ],
+      },
+    },
     WorkState: {
       teamCalendarModal: 'overview',
       teamCalendarUtilityPopup: { overview: '' },
+      teamCalendarDate: {},
+      teamCalendarSelectedDates: {},
+      teamCalendarDatePicked: {},
       workEntryRootConnected: false,
       monthFilters: {},
       activeMonth: {},
@@ -181,7 +218,9 @@ function createContext(options = {}) {
   overrideBinding(context, 'getWorkTeamCalendarPrimarySelectedDate', () => selectedDateKey);
   overrideBinding(context, 'isWorkTeamCalendarDateLocked', () => false);
   overrideBinding(context, 'isWorkTeamCalendarOverview', () => true);
-  overrideBinding(context, 'getWorkTeamCalendarUtilityPopupMetric', () => '');
+  overrideBinding(context, 'getWorkTeamCalendarUtilityPopupMetric', (dataKey = 'overview') => (
+    context.WorkState.teamCalendarUtilityPopup?.[dataKey] || ''
+  ));
   overrideBinding(context, 'getWorkTeamCalendarEditorState', () => editorState);
   overrideBinding(context, 'getWorkTeamCalendarDraftForDates', () => ({
     title: '',
@@ -223,6 +262,8 @@ function createContext(options = {}) {
     electric: [],
     gas: [],
   }));
+  overrideBinding(context, 'setWorkTeamCalendarSelectedDateKeys', () => {});
+  overrideBinding(context, 'setWorkTeamCalendarExplicitDateSelection', () => {});
   overrideBinding(context, 'renderWorkTeamCalendarGroupedHistoryHtml', () => '');
   overrideBinding(context, 'bindWorkTeamCalendarMemberPicker', () => {});
   overrideBinding(context, 'bindWorkTeamCalendarEditorOverlay', () => {});
@@ -240,8 +281,31 @@ test('work team calendar overview modal renders after split files are loaded tog
     context.renderWorkTeamCalendarModal();
   });
   assert.match(modal.innerHTML, /work-team-calendar-utility-strip/);
+  assert.match(modal.innerHTML, /설비이력/);
   assert.match(modal.innerHTML, /work-team-calendar-grid/);
   assert.match(modal.innerHTML, /data-work-save-status="overview"/);
+});
+
+test('work team calendar equipment summary uses selected month maintenance rows', () => {
+  const { context, modal } = createContext();
+
+  const summary = context.getWorkTeamCalendarEquipmentSummary('overview', '2026-04');
+  assert.equal(summary.equipmentCount, 2);
+  assert.equal(summary.maintenanceCount, 2);
+  assert.ok(summary.maintenanceItems.some((item) => item.equipmentName === 'Mixer 1'));
+  const legacySummary = context.getWorkTeamCalendarEquipmentSummary('work_team_calendar_team4', '2026-04');
+  assert.equal(legacySummary.equipmentCount, 1);
+  assert.equal(legacySummary.equipmentItems[0].teamLabel, '공무환경팀');
+
+  assert.equal(context.openWorkTeamCalendarUtilityPopup('equipment', { render: false }), true);
+  context.renderWorkTeamCalendarModal();
+
+  assert.match(modal.innerHTML, /Overview 설비이력/);
+  assert.match(modal.innerHTML, /2026\.04 정비 2건/);
+  assert.match(modal.innerHTML, /Mixer 1/);
+  assert.match(modal.innerHTML, /Belt check/);
+  assert.match(modal.innerHTML, /Waste Pump/);
+  assert.match(modal.innerHTML, /Legacy team check/);
 });
 
 test('work team calendar offday cells keep production and history cues in the flag slot', () => {

@@ -11,6 +11,10 @@ function alertTeamSettlementFormAction(message) {
   }
 }
 
+function shouldPreserveTeamSettlementManualInputDisplay(event) {
+  return event?.type === "input";
+}
+
 function handleTeamSettlementFieldInput(event) {
   const input = event.target.closest("input[data-billing-settlement-field]");
   if (!input) {
@@ -79,24 +83,24 @@ function handleTeamSettlementFieldInput(event) {
   state.cleanStatusText = "정산 값을 수정했습니다. 저장해 주세요.";
   updateDirtyState();
 
-  if (!nextValue) {
-    if (zeroDefaultFieldKeys.includes(fieldKey) && nextFields[fieldKey]) {
+  if (!shouldPreserveTeamSettlementManualInputDisplay(event)) {
+    if (!nextValue && zeroDefaultFieldKeys.includes(fieldKey) && nextFields[fieldKey]) {
       input.value = formatBillingSettlementFieldDisplayValue(
         fieldKey,
         nextFields[fieldKey],
         resourceType,
         scopeKey
       );
-    } else {
+    } else if (!nextValue) {
       input.value = "";
+    } else {
+      input.value = formatBillingSettlementFieldDisplayValue(
+        fieldKey,
+        nextFields[fieldKey] ?? nextValue,
+        resourceType,
+        scopeKey
+      );
     }
-  } else {
-    input.value = formatBillingSettlementFieldDisplayValue(
-      fieldKey,
-      nextFields[fieldKey] ?? nextValue,
-      resourceType,
-      scopeKey
-    );
   }
 
   autoCalculatedFieldKeys.forEach((autoCalculatedFieldKey) => {

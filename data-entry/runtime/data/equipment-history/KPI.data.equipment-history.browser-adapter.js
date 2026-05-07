@@ -67,6 +67,11 @@
         if (typeof root.alert === 'function') root.alert(message);
     }
 
+    function confirmMessage(message) {
+        if (typeof root.confirm === 'function') return root.confirm(message);
+        return true;
+    }
+
     function printPage() {
         if (typeof root.print === 'function') root.print();
     }
@@ -82,6 +87,7 @@
         hasFetch,
         fetch: fetchFromRoot,
         alert: alertMessage,
+        confirm: confirmMessage,
         print: printPage,
     });
 

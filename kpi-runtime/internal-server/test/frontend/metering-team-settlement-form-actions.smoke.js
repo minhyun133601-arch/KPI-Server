@@ -176,6 +176,10 @@ function createTeamSettlementFormActionsContext(options = {}) {
   otherFormulaToggle.setAttribute('aria-expanded', 'true');
   const scopeToggle = createMockButton('teamSettlementScopeToggle', 'scope:electric');
   const autoCalculatedInput = createMockInput('unit_price', '');
+  const autoCalculatedInputs = {
+    unit_price: autoCalculatedInput,
+    ...(options.autoCalculatedInputs || {}),
+  };
   const teamSettlementFields = createTeamSettlementFieldsContainer({
     formulas: {
       billing_amount: formulaPanel,
@@ -183,9 +187,7 @@ function createTeamSettlementFormActionsContext(options = {}) {
     },
     formulaButtons: [formulaToggle, otherFormulaToggle],
     scopeToggles: [scopeToggle],
-    autoCalculatedInputs: {
-      unit_price: autoCalculatedInput,
-    },
+    autoCalculatedInputs,
   });
 
   const context = {
@@ -205,7 +207,9 @@ function createTeamSettlementFormActionsContext(options = {}) {
       EQUIPMENT: 'equipment',
       TEAM: 'team',
     },
-    BILLING_SETTLEMENT_FIELD_KEYS: new Set(['power_charge', 'vat', 'unit_price', 'billing_amount']),
+    BILLING_SETTLEMENT_FIELD_KEYS: new Set(
+      options.billingSettlementFieldKeys || ['power_charge', 'vat', 'unit_price', 'billing_amount']
+    ),
     elements: {
       teamSettlementFields,
     },
@@ -345,6 +349,38 @@ test('team settlement form actions update manual input and derived auto-calculat
   assert.equal(input.value, 'fmt:power_charge:123');
   assert.equal(autoCalculatedInput.value, 'auto:unit_price:auto:unit');
   assert.equal(calls.setBillingSettlementEntryForScope[0].entry.completed, false);
+});
+
+test('team settlement form actions keep active manual input raw while refreshing calculated gas fields', () => {
+  const billedQuantityInput = createMockInput('billed_quantity_mj', '');
+  const { context, calls } = createTeamSettlementFormActionsContext({
+    billingSettlementFieldKeys: [
+      'power_charge',
+      'calorific_value',
+      'billed_quantity_mj',
+      'unit_price',
+      'billing_amount',
+    ],
+    autoCalculatedFieldKeys: ['billed_quantity_mj', 'unit_price', 'billing_amount'],
+    autoCalculatedInputs: {
+      billed_quantity_mj: billedQuantityInput,
+    },
+    resolveFields(nextRawFields) {
+      return {
+        ...nextRawFields,
+        billed_quantity_mj: nextRawFields.calorific_value ? '432.110' : '',
+        unit_price: '10',
+        billing_amount: '100',
+      };
+    },
+  });
+  const input = createMockInput('calorific_value', '43.210');
+
+  context.handleTeamSettlementFieldInput({ target: input, type: 'input' });
+
+  assert.equal(input.value, '43.210');
+  assert.equal(billedQuantityInput.value, 'auto:billed_quantity_mj:432.110');
+  assert.equal(calls.setBillingSettlementEntryForScope[0].entry.fields.calorific_value, '43.210');
 });
 
 test('team settlement form actions preserve auto-calculated inputs as read-only display values', () => {

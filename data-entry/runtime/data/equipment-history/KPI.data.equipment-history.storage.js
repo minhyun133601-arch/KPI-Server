@@ -216,6 +216,16 @@
         return true;
     }
 
+    async function deleteEquipmentHistoryDraftAssets(draft) {
+        const deletedDocumentIds = [];
+        for (const documentId of collectEquipmentHistoryDraftDocumentIds(draft)) {
+            await deleteEquipmentHistoryDocument(documentId);
+            deletedDocumentIds.push(documentId);
+        }
+        clearDeletedEquipmentHistoryDraftReferences(draft, deletedDocumentIds);
+        return true;
+    }
+
     async function saveEquipmentHistoryPayload(payload) {
         const runtime = getRuntimeConfig();
         if (!runtime || !canSaveEquipmentHistoryToServer()) return false;
@@ -254,6 +264,7 @@
         uploadEquipmentHistoryDraftAssets,
         collectEquipmentHistoryDraftDocumentIds,
         deleteEquipmentHistoryUploadedDraftAssets,
+        deleteEquipmentHistoryDraftAssets,
         saveEquipmentHistoryPayload,
         getEquipmentPhotoPreviewUrl,
     });

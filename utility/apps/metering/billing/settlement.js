@@ -116,6 +116,18 @@ function resolveBillingSettlementFields(
   }
 
   if (resourceType === RESOURCE_TYPES.GAS && !isGasLpgBillingSettlementScope(scopeKey)) {
+    if (!fields.calorific_value) {
+      const derivedCalorificValue =
+        deriveBillingSettlementCalorificValueFromBilledQuantityValue(
+          rawFields,
+          monthValue,
+          scopeKey
+        );
+      if (Number.isFinite(derivedCalorificValue)) {
+        fields.calorific_value = derivedCalorificValue.toFixed(3);
+      }
+    }
+
     const billedQuantityMj = calculateBillingSettlementBilledQuantityMj(fields, monthValue, scopeKey);
     if (billedQuantityMj) {
       fields.billed_quantity_mj = billedQuantityMj;

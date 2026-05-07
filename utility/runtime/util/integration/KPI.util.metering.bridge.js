@@ -1,5 +1,5 @@
 (function () {
-    const INTEGRATED_METERING_ASSET_VERSION = 'v197';
+    const INTEGRATED_METERING_ASSET_VERSION = 'v198';
     const READING_WINDOW_ASSET_PATH = ['equipment/reading-win', 'dow.js'].join('');
 
     const integratedMeteringState = {

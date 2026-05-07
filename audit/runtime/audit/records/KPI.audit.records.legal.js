@@ -1,13 +1,24 @@
         function isAuditLegalFacilityDataKey(dataKey) {
             return String(dataKey || '').trim() === 'audit_legal_facility';
         }
+        const AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS = ['정기검사', '사용검사', '선임'];
+        const AUDIT_LEGAL_INSPECTION_CYCLE_OPTIONS = [
+            { value: '', label: '직접입력', months: 0 },
+            { value: '1개월', label: '1개월', months: 1 },
+            { value: '3개월', label: '3개월', months: 3 },
+            { value: '6개월', label: '6개월', months: 6 },
+            { value: '1년', label: '1년', months: 12 },
+            { value: '2년', label: '2년', months: 24 },
+            { value: '3년', label: '3년', months: 36 }
+        ];
         const AUDIT_LEGAL_CATEGORY_OPTIONS = [
-            { value: 'boiler', label: '보일러', icon: 'fa-fire-flame-simple' },
-            { value: 'cooling', label: '냉동기', icon: 'fa-snowflake' },
-            { value: 'gas', label: '가스', icon: 'fa-gas-pump' },
-            { value: 'electric', label: '전기', icon: 'fa-bolt' },
-            { value: 'fire', label: '소방', icon: 'fa-fire-extinguisher' },
-            { value: 'pressure', label: '압력용기', icon: 'fa-gauge-high' }
+            { value: 'boiler', label: '보일러', icon: 'fa-fire-flame-simple', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
+            { value: 'cooling', label: '냉동기', icon: 'fa-snowflake', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
+            { value: 'gas', label: '가스', icon: 'fa-gas-pump', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
+            { value: 'fire', label: '소방설비', icon: 'fa-fire-extinguisher', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
+            { value: 'electric', label: '전기', icon: 'fa-bolt', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
+            { value: 'environment', label: '환경', icon: 'fa-seedling', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
+            { value: 'other', label: '기타', icon: 'fa-clipboard-check', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS }
         ];
 
         const AUDIT_LEGAL_CATEGORY_PRESETS = {
@@ -50,6 +61,19 @@
                 attachmentKey: 'gas-tank-01-202703-cert',
                 note: ''
             },
+            fire: {
+                facility: '소방수신반',
+                managementNo: 'FIRE-01',
+                plant: '방재실',
+                statutoryItem: '작동기능점검',
+                cycle: '1년',
+                lastDate: '2026-05-01',
+                nextDate: '2027-05-01',
+                responsible: '안전팀',
+                agency: '점검업체명',
+                attachmentKey: 'fire-01-202705-report',
+                note: ''
+            },
             electric: {
                 facility: '수전설비',
                 managementNo: 'ELEC-01',
@@ -63,40 +87,179 @@
                 attachmentKey: 'electric-01-202704-cert',
                 note: ''
             },
-            fire: {
-                facility: '소방수신반',
-                managementNo: 'FIRE-01',
-                plant: '방재실',
-                statutoryItem: '소방 작동점검',
-                cycle: '1년',
-                lastDate: '2026-05-01',
-                nextDate: '2027-05-01',
-                responsible: '안전팀',
-                agency: '점검업체명',
-                attachmentKey: 'fire-01-202705-report',
+            environment: {
+                facility: '대기 배출시설',
+                managementNo: 'ENV-01',
+                plant: '환경설비실',
+                statutoryItem: '정기측정',
+                cycle: '6개월',
+                lastDate: '2026-03-15',
+                nextDate: '2026-09-15',
+                responsible: '공무환경팀',
+                agency: '측정대행기관명',
+                attachmentKey: 'env-01-202609-report',
                 note: ''
             },
-            pressure: {
-                facility: '압력용기 1호기',
-                managementNo: 'PRS-01',
-                plant: '유틸리티실',
-                statutoryItem: '압력용기 정기검사',
-                cycle: '2년',
-                lastDate: '2026-06-01',
-                nextDate: '2028-06-01',
-                responsible: '보전팀',
+            other: {
+                facility: '기타 법정설비',
+                managementNo: 'LEGAL-ETC-01',
+                plant: '현장',
+                statutoryItem: '정기검사',
+                cycle: '1년',
+                lastDate: '',
+                nextDate: '',
+                responsible: '공무환경팀',
                 agency: '검사기관명',
-                attachmentKey: 'pressure-01-202806-cert',
+                attachmentKey: '',
                 note: ''
             }
         };
+        const auditLegalUiState = {
+            selectedItemType: 'boiler',
+            inspectionFormFacilityId: '',
+            inspectionFormType: '',
+            calendarYear: 0,
+            calendarMonth: 0
+        };
+        const AUDIT_LEGAL_CATEGORY_INSPECTION_FORM_ID = '__category_inspection__';
 
         function normalizeAuditLegalItemType(value) {
             const raw = String(value || 'other').trim().toLowerCase();
             if (raw === 'gasboiler') return 'boiler';
             if (raw === 'refrigerator' || raw === 'refrigeration') return 'cooling';
-            if (raw === 'pressure-vessel' || raw === 'pressurevessel') return 'pressure';
-            return raw || 'other';
+            if (raw === 'firefighting' || raw === 'fire-fighting' || raw === 'safety') return 'fire';
+            if (raw === 'env') return 'environment';
+            if (raw === 'pressure' || raw === 'pressure-vessel' || raw === 'pressurevessel' || raw === 'hoist') return 'other';
+            return AUDIT_LEGAL_CATEGORY_OPTIONS.some((item) => item.value === raw) ? raw : 'other';
+        }
+
+        function getAuditLegalCategoryOption(itemType = 'boiler') {
+            const normalized = normalizeAuditLegalItemType(itemType);
+            return AUDIT_LEGAL_CATEGORY_OPTIONS.find((item) => item.value === normalized) || AUDIT_LEGAL_CATEGORY_OPTIONS[0];
+        }
+
+        function getAuditLegalDefaultInspectionItems(itemType = 'boiler') {
+            const option = getAuditLegalCategoryOption(itemType);
+            return Array.isArray(option.inspectionItems) && option.inspectionItems.length
+                ? option.inspectionItems.slice()
+                : ['정기검사'];
+        }
+
+        function normalizeAuditLegalInspectionLabels(value, itemType = 'boiler', statutoryItem = '') {
+            const labels = [];
+            const pushLabel = (label) => {
+                const normalized = String(label || '').trim();
+                if (normalized && !labels.includes(normalized)) labels.push(normalized);
+            };
+            if (Array.isArray(value)) {
+                value.forEach((item) => {
+                    if (typeof item === 'string') {
+                        pushLabel(item);
+                        return;
+                    }
+                    pushLabel(item?.label || item?.name || item?.title || item?.inspection || item?.statutoryItem);
+                });
+            }
+            pushLabel(statutoryItem);
+            getAuditLegalDefaultInspectionItems(itemType).forEach(pushLabel);
+            return labels;
+        }
+
+        function buildAuditLegalInspectionId(facilityId, index = 0) {
+            return `${String(facilityId || 'legal-facility').trim() || 'legal-facility'}-inspection-${index + 1}`;
+        }
+
+        function normalizeAuditLegalInspectionRecords(value, itemType = 'boiler', fallback = {}) {
+            const source = Array.isArray(value) ? value : [];
+            const records = source
+                .map((item, index) => {
+                    if (typeof item === 'string') {
+                        const type = String(item || '').trim();
+                        return {
+                            id: buildAuditLegalInspectionId(fallback.id, index),
+                            type,
+                            lastDate: '',
+                            nextDate: '',
+                        cycle: '',
+                        agency: '',
+                        attachmentKey: '',
+                        documentId: '',
+                        fileName: '',
+                        previewUrl: '',
+                        downloadUrl: '',
+                        storageRelPath: '',
+                        documentStatus: '',
+                        note: ''
+                    };
+                    }
+                    const type = String(item?.type || item?.label || item?.name || item?.title || item?.inspection || item?.statutoryItem || '').trim();
+                    return {
+                        id: String(item?.id || buildAuditLegalInspectionId(fallback.id, index)).trim(),
+                        type,
+                        lastDate: String(item?.lastDate || item?.lastInspectionDate || '').trim(),
+                        nextDate: String(item?.nextDate || item?.nextInspectionDate || item?.dueDate || '').trim(),
+                        cycle: String(item?.cycle || item?.period || '').trim(),
+                        agency: String(item?.agency || item?.organization || '').trim(),
+                        attachmentKey: String(item?.attachmentKey || item?.documentKey || '').trim(),
+                        documentId: String(item?.documentId || item?.fileId || '').trim(),
+                        fileName: String(item?.fileName || item?.originalName || '').trim(),
+                        previewUrl: String(item?.previewUrl || '').trim(),
+                        downloadUrl: String(item?.downloadUrl || '').trim(),
+                        storageRelPath: String(item?.storageRelPath || '').trim(),
+                        documentStatus: String(item?.documentStatus || item?.statusText || '').trim(),
+                        note: String(item?.note || '').trim()
+                    };
+                })
+                .filter((item) => item.type || item.lastDate || item.nextDate);
+            const fallbackType = String(fallback.statutoryItem || fallback.inspection || '').trim();
+            const fallbackLastDate = String(fallback.lastDate || '').trim();
+            const fallbackNextDate = String(fallback.nextDate || '').trim();
+            if (fallbackType || fallbackLastDate || fallbackNextDate) {
+                const fallbackRecord = {
+                    id: buildAuditLegalInspectionId(fallback.id, records.length),
+                    type: fallbackType || getAuditLegalDefaultInspectionItems(itemType)[0] || '정기검사',
+                    lastDate: fallbackLastDate,
+                    nextDate: fallbackNextDate,
+                    cycle: String(fallback.cycle || '').trim(),
+                    agency: String(fallback.agency || '').trim(),
+                    attachmentKey: String(fallback.attachmentKey || '').trim(),
+                    documentId: String(fallback.documentId || '').trim(),
+                    fileName: String(fallback.fileName || '').trim(),
+                    previewUrl: String(fallback.previewUrl || '').trim(),
+                    downloadUrl: String(fallback.downloadUrl || '').trim(),
+                    storageRelPath: String(fallback.storageRelPath || '').trim(),
+                    documentStatus: String(fallback.documentStatus || '').trim(),
+                    note: String(fallback.note || '').trim()
+                };
+                const hasSameFallback = records.some((item) =>
+                    item.type === fallbackRecord.type
+                    && item.lastDate === fallbackRecord.lastDate
+                    && item.nextDate === fallbackRecord.nextDate
+                );
+                if (!hasSameFallback) records.unshift(fallbackRecord);
+            }
+            return records;
+        }
+
+        function enrichAuditLegalInspectionStatus(inspection, now = new Date()) {
+            const daysLeft = getAuditLegalDaysLeft(inspection?.nextDate, now);
+            const status = getAuditLegalStatus(daysLeft);
+            return { ...inspection, daysLeft, status };
+        }
+
+        function getAuditLegalFacilitySchedule(inspections) {
+            return (Array.isArray(inspections) ? inspections : [])
+                .filter((item) => item?.daysLeft !== null && item?.daysLeft !== undefined)
+                .sort((a, b) => a.daysLeft - b.daysLeft)[0] || null;
+        }
+
+        function getAuditLegalSelectedItemType() {
+            return normalizeAuditLegalItemType(auditLegalUiState.selectedItemType || 'boiler');
+        }
+
+        function setAuditLegalSelectedCategory(itemType) {
+            auditLegalUiState.selectedItemType = normalizeAuditLegalItemType(itemType || 'boiler');
+            return auditLegalUiState.selectedItemType;
         }
 
         function normalizeAuditLegalFacilities(data) {
@@ -104,23 +267,47 @@
                 ? data.facilities
                 : (Array.isArray(data?.entries) ? data.entries : []);
             return source
-                .map((item, index) => ({
-                    id: String(item?.id || `legal-facility-${index + 1}`).trim(),
-                    plant: String(item?.plant || item?.team || '').trim(),
-                    managementNo: String(item?.managementNo || item?.equipmentCode || item?.code || '').trim(),
-                    facility: String(item?.facility || item?.equipment || item?.name || '').trim(),
-                    itemType: normalizeAuditLegalItemType(item?.itemType || item?.type || 'other'),
-                    statutoryItem: String(item?.statutoryItem || item?.inspection || item?.category || '').trim(),
-                    responsible: String(item?.responsible || item?.owner || '').trim(),
-                    agency: String(item?.agency || item?.organization || '').trim(),
-                    cycle: String(item?.cycle || item?.period || '').trim(),
-                    lastDate: String(item?.lastDate || item?.lastInspectionDate || '').trim(),
-                    nextDate: String(item?.nextDate || item?.nextInspectionDate || item?.dueDate || '').trim(),
-                    documentStatus: String(item?.documentStatus || item?.statusText || '').trim(),
-                    attachmentKey: String(item?.attachmentKey || item?.documentKey || '').trim(),
-                    previewTitle: String(item?.previewTitle || item?.documentTitle || '').trim(),
-                    note: String(item?.note || '').trim()
-                }))
+                .map((item, index) => {
+                    const itemType = normalizeAuditLegalItemType(item?.itemType || item?.type || 'other');
+                    const statutoryItem = String(item?.statutoryItem || item?.inspection || item?.category || '').trim();
+                    const id = String(item?.id || `legal-facility-${index + 1}`).trim();
+                    const inspections = normalizeAuditLegalInspectionRecords(item?.inspections, itemType, {
+                        id,
+                        statutoryItem,
+                        lastDate: item?.lastDate || item?.lastInspectionDate,
+                        nextDate: item?.nextDate || item?.nextInspectionDate || item?.dueDate,
+                        cycle: item?.cycle || item?.period,
+                        agency: item?.agency || item?.organization,
+                        attachmentKey: item?.attachmentKey || item?.documentKey,
+                        documentId: item?.documentId || item?.fileId,
+                        fileName: item?.fileName || item?.originalName,
+                        previewUrl: item?.previewUrl,
+                        downloadUrl: item?.downloadUrl,
+                        storageRelPath: item?.storageRelPath,
+                        documentStatus: item?.documentStatus || item?.statusText,
+                        note: item?.note
+                    });
+                    return {
+                        id,
+                        plant: String(item?.plant || item?.team || '').trim(),
+                        managementNo: String(item?.managementNo || item?.equipmentCode || item?.code || '').trim(),
+                        facility: String(item?.facility || item?.equipment || item?.name || '').trim(),
+                        itemType,
+                        statutoryItem,
+                        inspections,
+                        inspectionItems: normalizeAuditLegalInspectionLabels(item?.inspectionItems, itemType, statutoryItem),
+                        manager: String(item?.manager || item?.responsible || item?.owner || '').trim(),
+                        responsible: String(item?.responsible || item?.manager || item?.owner || '').trim(),
+                        agency: String(item?.agency || item?.organization || '').trim(),
+                        cycle: String(item?.cycle || item?.period || '').trim(),
+                        lastDate: String(item?.lastDate || item?.lastInspectionDate || '').trim(),
+                        nextDate: String(item?.nextDate || item?.nextInspectionDate || item?.dueDate || '').trim(),
+                        documentStatus: String(item?.documentStatus || item?.statusText || '').trim(),
+                        attachmentKey: String(item?.attachmentKey || item?.documentKey || '').trim(),
+                        previewTitle: String(item?.previewTitle || item?.documentTitle || '').trim(),
+                        note: String(item?.note || '').trim()
+                    };
+                })
                 .filter((item) => item.facility || item.statutoryItem);
         }
         function parseAuditLegalDate(value) {
@@ -133,6 +320,40 @@
             const date = parseAuditLegalDate(value);
             if (!date) return '-';
             return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+        }
+        function formatAuditLegalInputDate(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+        function getAuditLegalCycleOption(value) {
+            const normalized = String(value || '').trim();
+            return AUDIT_LEGAL_INSPECTION_CYCLE_OPTIONS.find((item) =>
+                item.value === normalized || item.label === normalized
+            ) || null;
+        }
+        function getAuditLegalCycleMonths(value) {
+            const normalized = String(value || '').trim();
+            const option = getAuditLegalCycleOption(normalized);
+            if (option) return option.months;
+            const monthMatch = normalized.match(/^(\d+)\s*(개월|m)$/i);
+            if (monthMatch) return Number(monthMatch[1]);
+            const yearMatch = normalized.match(/^(\d+)\s*(년|y)$/i);
+            if (yearMatch) return Number(yearMatch[1]) * 12;
+            return 0;
+        }
+        function formatAuditLegalCycleLabel(value) {
+            const normalized = String(value || '').trim();
+            const option = getAuditLegalCycleOption(normalized);
+            return option?.label || normalized;
+        }
+        function calculateAuditLegalNextDate(lastDate, cycleValue) {
+            const sourceDate = parseAuditLegalDate(lastDate);
+            const months = getAuditLegalCycleMonths(cycleValue);
+            if (!sourceDate || !months) return '';
+            const target = new Date(sourceDate.getFullYear(), sourceDate.getMonth() + months, 1);
+            const lastDayOfTargetMonth = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+            target.setDate(Math.min(sourceDate.getDate(), lastDayOfTargetMonth));
+            return formatAuditLegalInputDate(target);
         }
         function getAuditLegalDaysLeft(value, now = new Date()) {
             const dueDate = parseAuditLegalDate(value);
@@ -156,17 +377,7 @@
         }
         function getAuditLegalItemMeta(itemType) {
             const type = normalizeAuditLegalItemType(itemType);
-            const meta = {
-                boiler: { icon: 'fa-fire-flame-simple', label: '보일러' },
-                gas: { icon: 'fa-gas-pump', label: '가스' },
-                pressure: { icon: 'fa-gauge-high', label: '압력용기' },
-                fire: { icon: 'fa-fire-extinguisher', label: '소방' },
-                environment: { icon: 'fa-seedling', label: '환경' },
-                electric: { icon: 'fa-bolt', label: '전기' },
-                gasboiler: { icon: 'fa-fire-flame-simple', label: '보일러' },
-                cooling: { icon: 'fa-snowflake', label: '냉동' },
-                other: { icon: 'fa-clipboard-check', label: '기타' }
-            }[type] || { icon: 'fa-clipboard-check', label: '기타' };
+            const meta = getAuditLegalCategoryOption(type);
             return { type: sanitizeAuditLegalClass(type), icon: meta.icon, label: meta.label };
         }
         function renderAuditLegalItemBadge(itemType) {
@@ -178,6 +389,21 @@
                 ? '-'
                 : (daysLeft < 0 ? `D+${Math.abs(daysLeft)}` : `D-${daysLeft}`);
             return `<span class="audit-legal-days ${status.dayClass}">${escapeHtml(label)}</span>`;
+        }
+        function renderAuditLegalInspectionDaysBadge(inspection) {
+            if (!inspection?.nextDate) {
+                return '<span class="audit-legal-days is-missing">날짜 미등록</span>';
+            }
+            return renderAuditLegalDaysBadge(inspection.daysLeft, inspection.status || getAuditLegalStatus(null));
+        }
+        function renderAuditLegalInspectionFileLink(inspection) {
+            const label = String(inspection?.fileName || inspection?.documentStatus || '').trim();
+            const href = String(inspection?.downloadUrl || inspection?.previewUrl || '').trim();
+            if (!label && !inspection?.attachmentKey && !inspection?.documentId) return '';
+            if (href) {
+                return `<a class="audit-legal-inspection-file" href="${escapeHtml(href)}" target="_blank" rel="noopener">파일</a>`;
+            }
+            return '<span class="audit-legal-inspection-file">파일</span>';
         }
         function normalizeAuditLegalMetricList(source) {
             if (!Array.isArray(source)) return [];
@@ -227,48 +453,21 @@
             ].filter((item) => item.count !== '0');
         }
         function normalizeAuditLegalEquipment(data, records) {
-            if (Array.isArray(data?.equipment)) {
-                return data.equipment
-                    .map((item, index) => {
-                        const meta = getAuditLegalItemMeta(item?.itemType || item?.type);
-                        const itemType = normalizeAuditLegalItemType(item?.itemType || item?.type || meta.type);
-                        const typeRecords = records.filter((record) => normalizeAuditLegalItemType(record.itemType) === itemType);
-                        return {
-                            id: String(item?.id || `legal-equipment-${index + 1}`).trim(),
-                            title: String(item?.title || item?.name || meta.label).trim(),
-                            itemType: sanitizeAuditLegalClass(itemType),
-                            icon: String(item?.icon || meta.icon).trim(),
-                            metrics: buildAuditLegalEquipmentMetrics(typeRecords),
-                            statuses: buildAuditLegalEquipmentStatuses(typeRecords)
-                        };
-                    })
-                    .filter((item) => item.title);
-            }
-            const grouped = records.reduce((acc, item) => {
-                const meta = getAuditLegalItemMeta(item.itemType);
-                if (!acc[meta.type]) {
-                    acc[meta.type] = { meta, total: 0, overdue: 0, near: 0, safe: 0 };
-                }
-                acc[meta.type].total += 1;
-                acc[meta.type][item.status.key] = (acc[meta.type][item.status.key] || 0) + 1;
-                return acc;
-            }, {});
-            return Object.values(grouped).map((group) => ({
-                id: `derived-${group.meta.type}`,
-                title: group.meta.label,
-                itemType: group.meta.type,
-                icon: group.meta.icon,
-                metrics: [
-                    { label: '설비 수', value: String(group.total) },
-                    { label: '확인 필요', value: String(group.overdue + group.near) },
-                    { label: '정상', value: String(group.safe) }
-                ],
-                statuses: [
-                    { key: 'safe', label: '정상', count: String(group.safe) },
-                    { key: 'warning', label: '임박', count: String(group.near) },
-                    { key: 'danger', label: '초과', count: String(group.overdue) }
-                ].filter((item) => item.count !== '0')
-            }));
+            return AUDIT_LEGAL_CATEGORY_OPTIONS.map((option) => {
+                const typeRecords = records.filter((record) => normalizeAuditLegalItemType(record.itemType) === option.value);
+                return {
+                    id: `legal-category-${option.value}`,
+                    title: option.label,
+                    itemType: option.value,
+                    icon: option.icon,
+                    metrics: [
+                        { label: '등록 설비', value: String(typeRecords.length) },
+                        { label: '기본 점검', value: `${getAuditLegalDefaultInspectionItems(option.value).length}개` },
+                        { label: '확인 필요', value: String(typeRecords.filter((item) => item.status.key === 'overdue' || item.status.key === 'near').length) }
+                    ],
+                    statuses: buildAuditLegalEquipmentStatuses(typeRecords)
+                };
+            });
         }
         function resolveAuditLegalCount(value, counts) {
             if (value === 0) return '0';
@@ -299,39 +498,15 @@
                 { id: 'derived-docs', title: '문서 확인 필요', count: String(counts.overdue + counts.near), unit: '건', icon: 'fa-file-circle-check', severity: 'info' }
             ];
         }
-        function normalizeAuditLegalDocuments(data, records) {
-            const source = Array.isArray(data?.docs)
-                ? data.docs
-                : (Array.isArray(data?.documents) ? data.documents : []);
-            if (source.length) {
-                return source
-                    .map((item, index) => ({
-                        id: String(item?.id || `legal-doc-${index + 1}`).trim(),
-                        title: String(item?.title || '').trim(),
-                        icon: String(item?.icon || 'fa-file-lines').trim(),
-                        uploaded: Number(item?.uploaded || 0),
-                        missing: Number(item?.missing || 0),
-                        rate: Math.max(0, Math.min(100, Number(item?.rate || 0)))
-                    }))
-                    .filter((item) => item.title);
-            }
-            if (!records.length) return [];
-            const ready = records.filter((item) => item.attachmentKey || /ready|complete|monitoring|scheduled|첨부|등록|완료|정상/i.test(item.documentStatus)).length;
-            const missing = Math.max(0, records.length - ready);
-            const rate = records.length ? Math.round((ready / records.length) * 100) : 0;
-            return [
-                { id: 'derived-cert', title: '점검 증빙 문서', icon: 'fa-file-lines', uploaded: ready, missing, rate },
-                { id: 'derived-action', title: '보완 조치 기록', icon: 'fa-clipboard-check', uploaded: Math.max(0, ready - 1), missing: missing + 1, rate: Math.max(0, rate - 10) }
-            ];
-        }
         function normalizeAuditLegalEvents(data, records) {
-            const source = Array.isArray(data?.events) && data.events.length
-                ? data.events
-                : records.map((item) => ({
-                    date: item.nextDate,
-                    title: `${item.facility || '설비'} ${item.statutoryItem || '점검'}`,
-                    type: item.status.key === 'overdue' ? 'deadline' : (item.status.key === 'near' ? 'inspection' : 'document')
-                }));
+            const derived = records.flatMap((facility) => (facility.inspections || []).map((inspection) => ({
+                date: inspection.nextDate,
+                title: `${facility.facility || '설비'} ${inspection.type || '검사'}`,
+                type: inspection.status.key === 'overdue' ? 'deadline' : (inspection.status.key === 'near' ? 'inspection' : 'document')
+            })));
+            const source = derived.length
+                ? derived
+                : (Array.isArray(data?.events) && data.events.length ? data.events : []);
             return source
                 .map((item, index) => ({
                     id: String(item?.id || `legal-event-${index + 1}`).trim(),
@@ -341,22 +516,45 @@
                 }))
                 .filter((item) => parseAuditLegalDate(item.date) && item.title);
         }
+        function buildAuditLegalCalendarConfig(year, monthIndex, label = '') {
+            const resolvedYear = Number(year);
+            const resolvedMonthIndex = Number(monthIndex);
+            const date = new Date(
+                Number.isFinite(resolvedYear) ? resolvedYear : new Date().getFullYear(),
+                Number.isFinite(resolvedMonthIndex) ? resolvedMonthIndex : new Date().getMonth(),
+                1
+            );
+            const actualYear = date.getFullYear();
+            const actualMonthIndex = date.getMonth();
+            return {
+                year: actualYear,
+                monthIndex: actualMonthIndex,
+                label: String(label || `${actualYear}년 ${actualMonthIndex + 1}월`).trim()
+            };
+        }
+        function setAuditLegalCalendarMonth(year, monthIndex) {
+            const calendar = buildAuditLegalCalendarConfig(year, monthIndex);
+            auditLegalUiState.calendarYear = calendar.year;
+            auditLegalUiState.calendarMonth = calendar.monthIndex + 1;
+            return calendar;
+        }
         function getAuditLegalCalendarConfig(data, events) {
+            const selectedYear = Number(auditLegalUiState.calendarYear);
+            const selectedMonth = Number(auditLegalUiState.calendarMonth);
+            if (selectedYear && selectedMonth >= 1 && selectedMonth <= 12) {
+                return buildAuditLegalCalendarConfig(selectedYear, selectedMonth - 1);
+            }
             const configuredYear = Number(data?.calendar?.year);
             const configuredMonth = Number(data?.calendar?.month);
             if (configuredYear && configuredMonth >= 1 && configuredMonth <= 12) {
-                return {
-                    year: configuredYear,
-                    monthIndex: configuredMonth - 1,
-                    label: String(data?.calendar?.label || `${configuredYear}년 ${configuredMonth}월`).trim()
-                };
+                return buildAuditLegalCalendarConfig(
+                    configuredYear,
+                    configuredMonth - 1,
+                    data?.calendar?.label || `${configuredYear}년 ${configuredMonth}월`
+                );
             }
             const firstEvent = events.map((item) => parseAuditLegalDate(item.date)).find(Boolean) || new Date();
-            return {
-                year: firstEvent.getFullYear(),
-                monthIndex: firstEvent.getMonth(),
-                label: `${firstEvent.getFullYear()}년 ${firstEvent.getMonth() + 1}월`
-            };
+            return buildAuditLegalCalendarConfig(firstEvent.getFullYear(), firstEvent.getMonth());
         }
         function getAuditLegalCategoryPreset(itemType = 'boiler') {
             const normalized = normalizeAuditLegalItemType(itemType);
@@ -370,11 +568,12 @@
                 <option value="${escapeHtml(item.value)}"${item.value === selectedType ? ' selected' : ''}>${escapeHtml(item.label)}</option>
             `).join('');
         }
-        function renderAuditLegalEquipmentCards(cards) {
+        function renderAuditLegalEquipmentCards(cards, selectedType = 'boiler') {
             if (!cards.length) {
                 return '<div class="audit-legal-empty">표시할 설비 카드가 없습니다.</div>';
             }
             return cards.map((item) => {
+                const isActive = normalizeAuditLegalItemType(item.itemType) === normalizeAuditLegalItemType(selectedType);
                 const metricsHtml = item.metrics.map((metric) => `
                     <div class="audit-legal-metric-row"><span>${escapeHtml(metric.label)}</span><strong>${escapeHtml(metric.value || '-')}</strong></div>
                 `).join('');
@@ -382,7 +581,7 @@
                     <span class="audit-legal-status-token ${escapeHtml(status.key)}"><i></i>${escapeHtml(status.label)} ${escapeHtml(status.count)}</span>
                 `).join('');
                 return `
-                    <article class="audit-legal-equipment-card" data-audit-legal-category="${escapeHtml(item.itemType)}" role="button" tabindex="0">
+                    <article class="audit-legal-equipment-card ${isActive ? 'is-active' : ''}" data-audit-legal-category="${escapeHtml(item.itemType)}" role="button" tabindex="0" aria-pressed="${isActive ? 'true' : 'false'}">
                         <div class="audit-legal-equipment-top">
                             <span class="audit-legal-equipment-icon ${escapeHtml(item.itemType)}"><i class="${getAuditLegalIconClass(item.icon)}"></i></span>
                             <strong class="audit-legal-equipment-title">${escapeHtml(item.title)}</strong>
@@ -392,6 +591,196 @@
                     </article>
                 `;
             }).join('');
+        }
+        function renderAuditLegalInspectionChips(labels) {
+            const normalizedLabels = normalizeAuditLegalInspectionLabels(labels, getAuditLegalSelectedItemType());
+            return normalizedLabels.map((label) => `
+                <span class="audit-legal-inspection-chip" data-audit-legal-inspection-item>${escapeHtml(label)}</span>
+            `).join('');
+        }
+        function renderAuditLegalInspectionTypeOptions(itemType, selectedType = '') {
+            const options = getAuditLegalDefaultInspectionItems(itemType);
+            const selected = String(selectedType || options[0] || '정기검사').trim();
+            const normalizedOptions = options.includes(selected) ? options : [selected, ...options];
+            return normalizedOptions.map((item) => `
+                <option value="${escapeHtml(item)}"${item === selected ? ' selected' : ''}>${escapeHtml(item)}</option>
+            `).join('');
+        }
+        function isAuditLegalAppointmentType(value) {
+            return String(value || '').trim() === '선임';
+        }
+        function getAuditLegalInspectionDateLabels(value) {
+            if (isAuditLegalAppointmentType(value)) {
+                return {
+                    lastDate: '선임일',
+                    nextDate: '다음 교육일',
+                    cycle: '교육 주기',
+                    file: '선임/교육 증빙'
+                };
+            }
+            return {
+                lastDate: '최근 검사일',
+                nextDate: '다음 검사일',
+                cycle: '검사 주기',
+                file: '검사 증빙'
+            };
+        }
+        function getAuditLegalInspectionDisplayRows(item, itemType) {
+            const rows = Array.isArray(item?.inspections) ? item.inspections.slice() : [];
+            const knownTypes = new Set(rows.map((inspection) => String(inspection?.type || '').trim()).filter(Boolean));
+            const templateLabels = normalizeAuditLegalInspectionLabels(item?.inspectionItems, itemType, item?.statutoryItem);
+            templateLabels.forEach((label) => {
+                if (!label || knownTypes.has(label)) return;
+                rows.push({
+                    id: `${String(item?.id || 'legal-facility').trim()}-template-${label}`,
+                    type: label,
+                    lastDate: '',
+                    nextDate: '',
+                    cycle: '',
+                    daysLeft: null,
+                    status: getAuditLegalStatus(null),
+                    isTemplate: true
+                });
+                knownTypes.add(label);
+            });
+            return rows;
+        }
+        function renderAuditLegalInspectionRows(item, itemType) {
+            const rows = getAuditLegalInspectionDisplayRows(item, itemType);
+            if (!rows.length) {
+                return '<div class="audit-legal-empty compact">검사 일정 미등록</div>';
+            }
+            return rows.map((inspection) => `
+                <div class="audit-legal-inspection-row ${inspection.isTemplate ? 'is-template' : ''}">
+                    <span class="audit-legal-inspection-name">${escapeHtml(inspection.type || '검사')}</span>
+                    <span class="audit-legal-inspection-date">${escapeHtml(isAuditLegalAppointmentType(inspection.type) ? '선임일' : '최근')} ${escapeHtml(inspection.lastDate ? formatAuditLegalDate(inspection.lastDate) : '-')}</span>
+                    <span class="audit-legal-inspection-date">${escapeHtml(isAuditLegalAppointmentType(inspection.type) ? '다음 교육일' : '다음')} ${escapeHtml(inspection.nextDate ? formatAuditLegalDate(inspection.nextDate) : '-')}</span>
+                    <span class="audit-legal-inspection-status">
+                        ${inspection.cycle ? `<span class="audit-legal-inspection-cycle">주기 ${escapeHtml(formatAuditLegalCycleLabel(inspection.cycle))}</span>` : ''}
+                        ${renderAuditLegalInspectionFileLink(inspection)}
+                        ${renderAuditLegalInspectionDaysBadge(inspection)}
+                        ${inspection.isTemplate ? `
+                            <button type="button" class="audit-legal-inspection-fill" data-audit-legal-open-inspection="${escapeHtml(item.id)}" data-audit-legal-inspection-type="${escapeHtml(inspection.type || '')}">날짜 입력</button>
+                        ` : ''}
+                    </span>
+                </div>
+            `).join('');
+        }
+        function renderAuditLegalInspectionFacilityOptions(records, selectedFacilityId = '') {
+            return records.map((item) => `
+                <option value="${escapeHtml(item.id)}"${item.id === selectedFacilityId ? ' selected' : ''}>${escapeHtml(item.facility || '-')}</option>
+            `).join('');
+        }
+        function renderAuditLegalCycleOptions(selectedCycle = '') {
+            const selected = String(selectedCycle || '').trim();
+            const normalizedOptions = AUDIT_LEGAL_INSPECTION_CYCLE_OPTIONS.some((item) => item.value === selected)
+                ? AUDIT_LEGAL_INSPECTION_CYCLE_OPTIONS
+                : [
+                    ...AUDIT_LEGAL_INSPECTION_CYCLE_OPTIONS,
+                    { value: selected, label: selected, months: getAuditLegalCycleMonths(selected) }
+                ].filter((item) => item.value || item.label);
+            return normalizedOptions.map((item) => `
+                <option value="${escapeHtml(item.value)}"${item.value === selected ? ' selected' : ''}>${escapeHtml(item.label)}</option>
+            `).join('');
+        }
+        function renderAuditLegalInspectionForm(item, itemType, records = []) {
+            const isCategoryForm = !item;
+            if (isCategoryForm && auditLegalUiState.inspectionFormFacilityId !== AUDIT_LEGAL_CATEGORY_INSPECTION_FORM_ID) return '';
+            if (!isCategoryForm && auditLegalUiState.inspectionFormFacilityId !== item.id) return '';
+            const selectedFacilityId = item?.id || records[0]?.id || '';
+            const selectedType = auditLegalUiState.inspectionFormType || getAuditLegalDefaultInspectionItems(itemType)[0] || '정기검사';
+            const labels = getAuditLegalInspectionDateLabels(selectedType);
+            const facilityField = isCategoryForm ? `
+                <label class="audit-legal-entry-field">
+                    <span>설비</span>
+                    <select data-audit-legal-inspection-input="facilityId" required>
+                        ${renderAuditLegalInspectionFacilityOptions(records, selectedFacilityId)}
+                    </select>
+                </label>
+            ` : '';
+            return `
+                <form class="audit-legal-inspection-form ${isCategoryForm ? 'has-facility' : ''}" data-audit-legal-inspection-form data-audit-legal-facility-id="${escapeHtml(selectedFacilityId)}">
+                    ${facilityField}
+                    <label class="audit-legal-entry-field">
+                        <span>항목</span>
+                        <select data-audit-legal-inspection-input="type">
+                            ${renderAuditLegalInspectionTypeOptions(itemType, selectedType)}
+                        </select>
+                    </label>
+                    <label class="audit-legal-entry-field">
+                        <span data-audit-legal-inspection-label="lastDate">${escapeHtml(labels.lastDate)}</span>
+                        <input type="date" data-audit-legal-inspection-input="lastDate">
+                    </label>
+                    <label class="audit-legal-entry-field">
+                        <span data-audit-legal-inspection-label="cycle">${escapeHtml(labels.cycle)}</span>
+                        <select data-audit-legal-inspection-input="cycle">
+                            ${renderAuditLegalCycleOptions('')}
+                        </select>
+                    </label>
+                    <label class="audit-legal-entry-field">
+                        <span data-audit-legal-inspection-label="nextDate">${escapeHtml(labels.nextDate)}</span>
+                        <input type="date" data-audit-legal-inspection-input="nextDate" required>
+                    </label>
+                    <label class="audit-legal-entry-field audit-legal-inspection-file-field">
+                        <span data-audit-legal-inspection-label="file">${escapeHtml(labels.file)}</span>
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.doc,.docx,.hwp,.hwpx" data-audit-legal-file="attachment">
+                    </label>
+                    <div class="audit-legal-inspection-actions">
+                        <button type="submit" class="audit-legal-entry-primary">검사/선임 추가</button>
+                        <button type="button" data-audit-legal-cancel-inspection>취소</button>
+                    </div>
+                </form>
+            `;
+        }
+        function renderAuditLegalCategoryPanel(categoryOption, records) {
+            const label = categoryOption?.label || '보일러';
+            const type = normalizeAuditLegalItemType(categoryOption?.value || 'boiler');
+            const rowsHtml = records.length ? records.map((item) => `
+                <article class="audit-legal-facility-row">
+                    <div class="audit-legal-facility-head">
+                        <div class="audit-legal-facility-main">
+                            <strong>${escapeHtml(item.facility || '-')}</strong>
+                            <span>${escapeHtml([item.manager || item.responsible, item.plant].filter(Boolean).join(' / ') || '-')}</span>
+                        </div>
+                        <div class="audit-legal-facility-actions">
+                            <button type="button" class="audit-legal-inspection-add" data-audit-legal-open-inspection="${escapeHtml(item.id)}">
+                                <i class="fas fa-plus"></i>
+                                검사/선임 추가
+                            </button>
+                            <button type="button" class="audit-legal-facility-delete" data-audit-legal-delete-facility="${escapeHtml(item.id)}">
+                                <i class="fas fa-trash-can"></i>
+                                삭제
+                            </button>
+                        </div>
+                    </div>
+                    <div class="audit-legal-inspection-list-head">남은 관리 일정</div>
+                    <div class="audit-legal-inspection-list">
+                        ${renderAuditLegalInspectionRows(item, type)}
+                    </div>
+                    ${renderAuditLegalInspectionForm(item, type, records)}
+                </article>
+            `).join('') : `
+                <div class="audit-legal-empty">${escapeHtml(label)}에 등록된 설비가 없습니다. 설비 추가로 기본 틀을 먼저 만드세요.</div>
+            `;
+            return `
+                <div class="audit-ref-card audit-legal-category-panel" data-audit-legal-selected-category="${escapeHtml(type)}">
+                    <div class="audit-legal-category-head">
+                        <div>
+                            <div class="audit-ref-title">${escapeHtml(label)} 설비관리</div>
+                            <div class="audit-ref-meta-sub">등록 ${records.length}건 / 기본 검사항목 ${getAuditLegalDefaultInspectionItems(type).length}개</div>
+                        </div>
+                        <button type="button" class="audit-legal-inspection-add audit-legal-inspection-add-primary" data-audit-legal-open-category-inspection="${escapeHtml(type)}">
+                            <i class="fas fa-plus"></i>
+                            검사/선임 추가
+                        </button>
+                    </div>
+                    ${renderAuditLegalInspectionForm(null, type, records)}
+                    <div class="audit-legal-inspection-template" aria-label="${escapeHtml(label)} 기본 검사항목">
+                        ${renderAuditLegalInspectionChips(getAuditLegalDefaultInspectionItems(type))}
+                    </div>
+                    <div class="audit-legal-facility-list">${rowsHtml}</div>
+                </div>
+            `;
         }
         function renderAuditLegalAlerts(alerts) {
             if (!alerts.length) {
@@ -407,24 +796,28 @@
                 </article>
             `).join('');
         }
-        function renderAuditLegalDocuments(documents) {
-            if (!documents.length) {
-                return '<div class="audit-legal-empty">표시할 문서 현황이 없습니다.</div>';
+        function renderAuditLegalCalendarYearOptions(calendar, events) {
+            const eventYears = (Array.isArray(events) ? events : [])
+                .map((item) => parseAuditLegalDate(item.date)?.getFullYear())
+                .filter((year) => Number.isFinite(year));
+            const currentYear = new Date().getFullYear();
+            const yearSeeds = [calendar.year, currentYear, ...eventYears].filter((year) => Number.isFinite(year));
+            const minYear = Math.max(2000, Math.min(...yearSeeds) - 2);
+            const maxYear = Math.min(2099, Math.max(...yearSeeds) + 2);
+            const options = [];
+            for (let year = minYear; year <= maxYear; year += 1) {
+                options.push(`<option value="${year}"${year === calendar.year ? ' selected' : ''}>${year}년</option>`);
             }
-            return documents.map((item) => `
-                <article class="audit-legal-doc-card">
-                    <span class="audit-legal-doc-icon"><i class="${getAuditLegalIconClass(item.icon)}"></i></span>
-                    <div class="audit-legal-doc-copy">
-                        <strong>${escapeHtml(item.title)}</strong>
-                        <span>업로드 ${escapeHtml(String(item.uploaded))}건 / 미업로드 ${escapeHtml(String(item.missing))}건</span>
-                        <div class="audit-legal-doc-progress" aria-hidden="true"><i style="width:${escapeHtml(String(item.rate))}%"></i></div>
-                    </div>
-                    <span class="audit-legal-doc-rate">${escapeHtml(String(item.rate))}%</span>
-                </article>
+            return options.join('');
+        }
+        function renderAuditLegalCalendarMonthOptions(monthIndex) {
+            return Array.from({ length: 12 }, (_, index) => `
+                <option value="${index + 1}"${index === monthIndex ? ' selected' : ''}>${index + 1}월</option>
             `).join('');
         }
         function renderAuditLegalCalendar(data, events) {
             const calendar = getAuditLegalCalendarConfig(data, events);
+            const currentMonth = calendar.monthIndex + 1;
             const firstDay = new Date(calendar.year, calendar.monthIndex, 1).getDay();
             const daysInMonth = new Date(calendar.year, calendar.monthIndex + 1, 0).getDate();
             const daysInPrevMonth = new Date(calendar.year, calendar.monthIndex, 0).getDate();
@@ -464,24 +857,52 @@
             }).join('');
             return `
                 <div class="audit-legal-calendar-head">
-                    <strong>${escapeHtml(calendar.label)}</strong>
                     <span>점검 일정</span>
+                    <div class="audit-legal-calendar-nav" aria-label="${escapeHtml(calendar.label)} 달력 이동">
+                        <button type="button" class="audit-legal-calendar-arrow" data-audit-legal-calendar-shift="-1" data-audit-legal-calendar-year-value="${escapeHtml(String(calendar.year))}" data-audit-legal-calendar-month-value="${escapeHtml(String(currentMonth))}" aria-label="이전 달">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <div class="audit-legal-calendar-picker">
+                            <select data-audit-legal-calendar-year aria-label="점검 일정 연도">
+                                ${renderAuditLegalCalendarYearOptions(calendar, events)}
+                            </select>
+                            <select data-audit-legal-calendar-month aria-label="점검 일정 월">
+                                ${renderAuditLegalCalendarMonthOptions(calendar.monthIndex)}
+                            </select>
+                        </div>
+                        <button type="button" class="audit-legal-calendar-arrow" data-audit-legal-calendar-shift="1" data-audit-legal-calendar-year-value="${escapeHtml(String(calendar.year))}" data-audit-legal-calendar-month-value="${escapeHtml(String(currentMonth))}" aria-label="다음 달">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="audit-legal-legend">
                     <span><i class="inspection"></i>점검</span>
                     <span><i class="deadline"></i>마감</span>
                     <span><i class="document"></i>문서</span>
                 </div>
-                <div class="audit-legal-calendar-grid">${headerHtml}${cellHtml}</div>
+                <div class="audit-legal-calendar-grid-wrap" data-audit-legal-calendar-label="${escapeHtml(calendar.label)}">
+                    <div class="audit-legal-calendar-month-watermark" aria-hidden="true">${escapeHtml(calendar.label)}</div>
+                    <div class="audit-legal-calendar-grid">${headerHtml}${cellHtml}</div>
+                </div>
             `;
         }
         function renderAuditLegalFacilityPreview(category, data) {
             const now = new Date();
             const records = normalizeAuditLegalFacilities(data)
                 .map((item) => {
-                    const daysLeft = getAuditLegalDaysLeft(item.nextDate, now);
-                    const status = getAuditLegalStatus(daysLeft);
-                    return { ...item, daysLeft, status };
+                    const inspections = item.inspections.map((inspection) => enrichAuditLegalInspectionStatus(inspection, now));
+                    const nextInspection = getAuditLegalFacilitySchedule(inspections);
+                    const daysLeft = nextInspection?.daysLeft ?? null;
+                    const status = nextInspection?.status || getAuditLegalStatus(null);
+                    return {
+                        ...item,
+                        inspections,
+                        statutoryItem: nextInspection?.type || item.statutoryItem,
+                        lastDate: nextInspection?.lastDate || item.lastDate,
+                        nextDate: nextInspection?.nextDate || item.nextDate,
+                        daysLeft,
+                        status
+                    };
                 })
                 .sort((a, b) => {
                     const aDays = a.daysLeft === null || a.daysLeft === undefined ? Number.POSITIVE_INFINITY : a.daysLeft;
@@ -489,87 +910,15 @@
                     if (aDays !== bDays) return aDays - bDays;
                     return (a.facility || '').localeCompare(b.facility || '', 'ko');
                 });
-            const selected = records.find((item) => item.status.key === 'overdue' || item.status.key === 'near') || records[0] || null;
+            const selectedType = getAuditLegalSelectedItemType();
+            const selectedCategory = getAuditLegalCategoryOption(selectedType);
+            const selectedCategoryRecords = records.filter((item) => normalizeAuditLegalItemType(item.itemType) === selectedType);
             const overdueCount = records.filter((item) => item.status.key === 'overdue').length;
             const nearCount = records.filter((item) => item.status.key === 'near').length;
             const safeCount = records.filter((item) => item.status.key === 'safe').length;
-            const counts = {
-                total: records.length,
-                overdue: overdueCount,
-                near: nearCount,
-                safe: safeCount,
-                needsReview: overdueCount + nearCount
-            };
             const alarmSafe = overdueCount === 0 && nearCount === 0;
             const equipmentCards = normalizeAuditLegalEquipment(data, records);
-            const alerts = normalizeAuditLegalAlerts(data, counts);
-            const documents = normalizeAuditLegalDocuments(data, records);
             const events = normalizeAuditLegalEvents(data, records);
-            const rowsHtml = records.length ? records.map((item) => `
-                <tr class="${item.status.rowClass}">
-                    <td>${renderAuditLegalItemBadge(item.itemType)}</td>
-                    <td>
-                        <strong>${escapeHtml(item.facility || '-')}</strong>
-                        <div class="audit-ref-meta-sub">${escapeHtml(item.managementNo || '-')}</div>
-                    </td>
-                    <td>${escapeHtml(item.plant || '-')}</td>
-                    <td>${escapeHtml(item.statutoryItem || '-')}</td>
-                    <td>${escapeHtml(item.responsible || '-')}</td>
-                    <td>${escapeHtml(item.agency || '-')}</td>
-                    <td>${escapeHtml(item.cycle || '-')}</td>
-                    <td class="is-date">${escapeHtml(formatAuditLegalDate(item.lastDate))}</td>
-                    <td class="is-date">${escapeHtml(formatAuditLegalDate(item.nextDate))}</td>
-                    <td>${renderAuditLegalDaysBadge(item.daysLeft, item.status)}</td>
-                    <td>${escapeHtml(item.attachmentKey || item.documentStatus || item.status.label)}</td>
-                </tr>
-            `).join('') : `
-                <tr>
-                    <td colspan="11">
-                        <div class="audit-legal-empty">등록된 법정 설비 점검 항목이 없습니다.</div>
-                    </td>
-                </tr>
-            `;
-            const previewHtml = selected ? `
-                <div class="audit-lux-preview-card">
-                    <div class="audit-lux-preview-head">
-                        <div class="audit-lux-preview-copy">
-                            <div class="audit-lux-preview-title">법정 설비 문서 프리뷰</div>
-                            <div class="audit-lux-preview-meta">${escapeHtml(selected.previewTitle || selected.statutoryItem || '점검 문서')}</div>
-                        </div>
-                        ${renderAuditLegalDaysBadge(selected.daysLeft, selected.status)}
-                    </div>
-                    <div class="audit-lux-preview-stage">
-                        <div class="audit-ref-preview">
-                            <div class="audit-report-hero">
-                                <div class="audit-report-hero-head">
-                                    <div class="audit-report-hero-title">${escapeHtml(selected.facility || '-')}</div>
-                                    <div class="audit-report-hero-sub">${escapeHtml(selected.plant || '-')} / ${escapeHtml(selected.agency || '-')}</div>
-                                </div>
-                                <div class="audit-report-kpis">
-                                    <span class="audit-report-kpi">${escapeHtml(selected.status.label)}</span>
-                                    <span class="audit-report-kpi">${escapeHtml(selected.cycle || '주기 미지정')}</span>
-                                </div>
-                            </div>
-                            <table class="audit-table">
-                                <tbody>
-                                    <tr><th>법정 항목</th><td>${escapeHtml(selected.statutoryItem || '-')}</td></tr>
-                                    <tr><th>최근 점검</th><td>${escapeHtml(formatAuditLegalDate(selected.lastDate))}</td></tr>
-                                    <tr><th>다음 점검</th><td>${escapeHtml(formatAuditLegalDate(selected.nextDate))}</td></tr>
-                                    <tr><th>담당</th><td>${escapeHtml(selected.responsible || '-')}</td></tr>
-                                    <tr><th>첨부 키</th><td>${escapeHtml(selected.attachmentKey || selected.documentStatus || '-')}</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="audit-lux-preview-foot">
-                        <span class="audit-lux-preview-origin">${escapeHtml(selected.note || '법정 설비 점검 기록 프리뷰입니다.')}</span>
-                    </div>
-                </div>
-            ` : `
-                <div class="audit-lux-preview-card">
-                    <div class="audit-lux-preview-empty">표시할 법정 설비 프리뷰가 없습니다.</div>
-                </div>
-            `;
             const contentContainer = document.getElementById('content-container');
             contentContainer.innerHTML = `
                 <div class="border-b pb-4 mb-6">
@@ -584,7 +933,7 @@
                         <div class="audit-section-header">
                             <div class="audit-section-title">
                                 <span class="audit-section-icon"><i class="fas fa-scale-balanced"></i></span>
-                                <span>법정 설비 점검 프리뷰</span>
+                                <span>법정 설비 점검</span>
                             </div>
                             <span class="audit-badge">총 ${records.length}건</span>
                         </div>
@@ -602,58 +951,16 @@
                             </div>
                             <div class="audit-legal-dashboard">
                                 <div class="audit-legal-main">
+                                    <div class="audit-ref-card audit-legal-schedule-card">
+                                        <div class="audit-ref-title">점검 일정</div>
+                                        <div class="mt-3">${renderAuditLegalCalendar(data, events)}</div>
+                                    </div>
                                     <div class="audit-legal-equipment-grid">
-                                        ${renderAuditLegalEquipmentCards(equipmentCards)}
+                                        ${renderAuditLegalEquipmentCards(equipmentCards, selectedType)}
                                     </div>
-                                    ${renderAuditLegalEntryForm()}
-                                    <div class="audit-legal-content-grid">
-                                        <div class="audit-ref-card">
-                                            <div class="audit-ref-title">점검 일정</div>
-                                            <div class="mt-3">${renderAuditLegalCalendar(data, events)}</div>
-                                        </div>
-                                        <div class="audit-ref-card">
-                                            <div class="audit-ref-title">법정 설비 목록</div>
-                                            <div class="audit-legal-table-wrap mt-3">
-                                                <table class="audit-legal-table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>구분</th>
-                                                            <th>설비</th>
-                                                            <th>위치</th>
-                                                            <th>법정 항목</th>
-                                                            <th>담당</th>
-                                                            <th>기관</th>
-                                                            <th>주기</th>
-                                                            <th>최근 점검</th>
-                                                            <th>다음 점검</th>
-                                                            <th>D-Day</th>
-                                                            <th>첨부 키</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>${rowsHtml}</tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="audit-ref-card">
-                                        <div class="audit-ref-title">문서 현황</div>
-                                        <div class="audit-legal-doc-grid mt-3">
-                                            ${renderAuditLegalDocuments(documents)}
-                                        </div>
-                                    </div>
+                                    ${renderAuditLegalCategoryPanel(selectedCategory, selectedCategoryRecords)}
+                                    ${renderAuditLegalEntryForm(selectedType)}
                                 </div>
-                                <aside class="audit-legal-side" aria-label="법정 설비 알림과 프리뷰">
-                                    <div class="audit-ref-card">
-                                        <div class="audit-ref-title">중요 알림</div>
-                                        <div class="audit-legal-alert-list mt-3">
-                                            ${renderAuditLegalAlerts(alerts)}
-                                        </div>
-                                    </div>
-                                    <div class="audit-ref-card">
-                                        <div class="audit-ref-title">프리뷰</div>
-                                        <div class="mt-3">${previewHtml}</div>
-                                    </div>
-                                </aside>
                             </div>
                         </div>
                     </div>

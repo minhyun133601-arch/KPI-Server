@@ -54,7 +54,7 @@ test('demo data host routes PortalData defaults through the browser adapter', ()
 
 test('kpi html loads demo data browser adapter before demo data', () => {
   const adapterIndex = kpiHtml.indexOf('kpi-runtime/demo/KPI.demo-data.browser-adapter.js?v=1');
-  const demoDataIndex = kpiHtml.indexOf('kpi-runtime/demo/KPI.demo-data.js?v=7');
+  const demoDataIndex = kpiHtml.indexOf('kpi-runtime/demo/KPI.demo-data.js?v=8');
 
   assert.ok(adapterIndex >= 0, 'demo data browser adapter loader is missing');
   assert.ok(demoDataIndex > adapterIndex, 'demo data must load after demo data browser adapter');

@@ -222,7 +222,7 @@
             }
             return appendWorkTeamCalendarOverviewCategory(getWorkTeamCalendarRawCategoryList().filter(category => {
                 const dataKey = String(category?.dataKey || '').trim();
-                return dataKey !== 'work_team_calendar_overview' && dataKey !== 'work_team_calendar_team4';
+                return dataKey !== 'work_team_calendar_overview';
             }));
         }
 

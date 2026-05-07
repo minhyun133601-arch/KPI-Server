@@ -38,15 +38,43 @@
         return normalizeText(found?.value || fallback);
     }
 
+    function canonicalizeEquipmentHistoryTeam(value) {
+        return normalizeText(value).replace(/\s+/g, '');
+    }
+
+    function resolveEquipmentHistoryTeamDataKey(teamName) {
+        const raw = normalizeText(teamName);
+        if (/^work_team_calendar_team(?:1_part[12]|[234])$/.test(raw)) return raw;
+        const canonical = canonicalizeEquipmentHistoryTeam(raw);
+        if (canonical.includes('유산')) return 'work_team_calendar_team4';
+        if (canonical.includes('북정')) return 'work_team_calendar_team1_part1';
+        if (canonical.includes('1팀') && canonical.includes('1파트')) return 'work_team_calendar_team1_part1';
+        if (canonical.includes('1팀') && canonical.includes('2파트')) return 'work_team_calendar_team1_part2';
+        if (canonical.includes('2팀')) return 'work_team_calendar_team2';
+        if (canonical.includes('3팀')) return 'work_team_calendar_team3';
+        if (canonical.includes('공무환경') || (canonical.includes('공무') && canonical.includes('환경'))) {
+            return 'work_team_calendar_team4';
+        }
+        return '';
+    }
+
+    function normalizeEquipmentHistoryTeamName(teamName) {
+        const dataKey = resolveEquipmentHistoryTeamDataKey(teamName);
+        if (dataKey === 'work_team_calendar_team1_part1') return '1팀 1파트';
+        if (dataKey === 'work_team_calendar_team1_part2') return '1팀 2파트';
+        if (dataKey === 'work_team_calendar_team2') return '2팀';
+        if (dataKey === 'work_team_calendar_team3') return '3팀';
+        if (dataKey === 'work_team_calendar_team4') return '공무환경팀';
+        return normalizeText(teamName);
+    }
+
     function getEquipmentStatus(status) {
-        const value = normalizeText(status) || '운영중';
-        if (value === '정지') {
-            return { label: value, powerLabel: 'OFF', tone: 'stop', dotClassName: 'is-stop', isRunning: false };
+        const value = normalizeText(status) || '가동중';
+        const isStopped = ['비가동중', '비가동', '정지', '점검중', '점검예정'].includes(value);
+        if (isStopped) {
+            return { label: '비가동중', powerLabel: '비가동중', tone: 'stop', dotClassName: 'is-stop', isRunning: false };
         }
-        if (value === '점검중' || value === '점검예정') {
-            return { label: value, powerLabel: 'CHECK', tone: 'check', dotClassName: 'is-check', isRunning: false };
-        }
-        return { label: value, powerLabel: 'ON', tone: 'running', dotClassName: '', isRunning: true };
+        return { label: '가동중', powerLabel: '가동중', tone: 'running', dotClassName: '', isRunning: true };
     }
 
     function normalizeDocuments(rows) {
@@ -67,10 +95,14 @@
         const operationInfo = asList(item?.operationInfo);
         const detailInfo = asList(item?.detailInfo);
         const statusMeta = getEquipmentStatus(item?.status);
+        const rawTeam = item?.team || item?.department || getInfoValue(detailInfo, ['관리팀', '관리부서', '부서']);
+        const team = normalizeEquipmentHistoryTeamName(rawTeam || item?.teamDataKey);
+        const teamDataKey = normalizeText(item?.teamDataKey) || resolveEquipmentHistoryTeamDataKey(rawTeam);
         return {
             id: normalizeText(item?.id || item?.equipmentCode || `equipment-${index + 1}`),
             equipmentCode: normalizeText(item?.equipmentCode || item?.code || getInfoValue(detailInfo, ['설비코드', '코드']) || item?.id),
-            team: normalizeText(item?.team || item?.department || getInfoValue(detailInfo, ['관리팀', '관리부서', '부서'])),
+            team,
+            room: normalizeText(item?.room || item?.roomName || item?.locationRoom || getInfoValue(detailInfo, ['실', '위치', '설치실']) || getInfoValue(operationInfo, ['실', '위치', '설치실'])),
             group: normalizeText(item?.group || item?.section || getInfoValue(detailInfo, ['공정', '설비구분', '공정 구분', '공정구분']) || item?.process || getInfoValue(operationInfo, ['공정', '공정 단계'])),
             name: normalizeText(item?.name || item?.equipmentName || getInfoValue(detailInfo, ['설비명'])),
             line: normalizeText(item?.line || getInfoValue(detailInfo, ['생산라인']) || getInfoValue(operationInfo, ['생산라인'])),
@@ -82,6 +114,7 @@
             plan: normalizeText(item?.plan || getInfoValue(operationInfo, ['목표 기준', '목표 생산량'])),
             lastCheck: normalizeText(item?.lastCheck || getInfoValue(operationInfo, ['최근 점검'])),
             nextCheck: normalizeText(item?.nextCheck || getInfoValue(operationInfo, ['다음 점검'])),
+            teamDataKey,
             owner: normalizeText(item?.owner || getInfoValue(detailInfo, ['담당', '책임자'])),
             note: normalizeText(item?.note),
             photoDataUrl: normalizeText(item?.photoDataUrl),
@@ -129,6 +162,7 @@
         return [
             { label: '설비명', value: equipment?.name || '' },
             { label: '관리팀', value: equipment?.team || '' },
+            { label: '실', value: equipment?.room || '' },
             { label: '공정', value: equipment?.process || equipment?.group || '' },
             { label: '가동률', value: formatRateValue(equipment?.rate) },
         ];
@@ -138,6 +172,7 @@
         return [
             { label: '설비명', value: equipment?.name || '' },
             { label: '관리팀', value: equipment?.team || '' },
+            { label: '실', value: equipment?.room || '' },
             { label: '공정', value: equipment?.process || equipment?.group || '' },
             { label: '가동률', value: formatRateValue(equipment?.rate) },
         ];
