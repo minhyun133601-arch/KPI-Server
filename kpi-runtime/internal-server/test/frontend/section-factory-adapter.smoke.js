@@ -59,6 +59,10 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.equal(appData.work.name, '팀별내역서');
   assert.equal(appData.util.name, '유틸리티');
   assert.equal(appData.audit.name, '오디트');
+  assert.equal(
+    JSON.stringify(appData.audit.categories.map((category) => category.dataKey)),
+    JSON.stringify(['audit_lux', 'audit_legal_facility'])
+  );
   assert.equal(appData.data.name, '데이터 관리');
   assert.equal(appData.productionReport.directLaunch, true);
   assert.equal(appData.owner.ownerOnly, true);
@@ -78,7 +82,7 @@ test('kpi html loads section factory adapter before all section factories', () =
   const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=231');
   const utilIndex = kpiHtml.indexOf('utility/runtime/util/sections/KPI.sections.util.js?v=241');
   const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=6');
-  const auditIndex = kpiHtml.indexOf('audit/runtime/audit/sections/KPI.sections.audit.js?v=3');
+  const auditIndex = kpiHtml.indexOf('audit/runtime/audit/sections/KPI.sections.audit.js?v=4');
   const productionIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.production-report.js?v=1');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
   const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=1');

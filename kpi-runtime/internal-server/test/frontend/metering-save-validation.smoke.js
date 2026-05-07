@@ -178,6 +178,7 @@ function createSaveValidationContext(options = {}) {
         teamAssignments: {},
         teamMonthlyEntries: {},
         teamMonthlyAmountEntries: {},
+        billingSettlementEntries: {},
       },
     },
     elements: {
@@ -538,10 +539,15 @@ test('performManualSave syncs pending team drafts before persisting team mode', 
     currentMode: 'team',
   });
   const helperCalls = [];
+  const completionCalls = [];
   const persistCalls = [];
 
   setBinding(context, 'syncPendingMeteringDraftInputs', (options = {}) => {
     helperCalls.push({ ...options });
+    return true;
+  });
+  setBinding(context, 'completeCurrentBillingSettlementEntryForManualSave', () => {
+    completionCalls.push(true);
     return true;
   });
   setBinding(context, 'supportsSharedServerPersistence', () => true);
@@ -559,10 +565,55 @@ test('performManualSave syncs pending team drafts before persisting team mode', 
 
   assert.equal(didSave, true);
   assert.deepEqual(helperCalls, [{}]);
+  assert.deepEqual(completionCalls, [true]);
   assert.equal(persistCalls.length, 2);
   assert.equal(context.state.loadedSnapshot, 'snapshot-after-team-save');
   assert.equal(context.state.store.manualSaveHistory[0].mode, 'team');
   assert.equal(context.state.store.manualSaveHistory[0].contextLabel, 'team 2026-04 context');
+});
+
+test('manual save marks the current settlement entry complete when required fields are present', () => {
+  const context = createSaveValidationContext({
+    currentMode: 'team',
+  });
+  const completedEntries = [];
+  let renderCalls = 0;
+
+  context.state.isTeamSettlementPanelOpen = true;
+  setBinding(context, 'supportsBillingSettlementForCurrentResource', () => true);
+  setBinding(context, 'getCurrentBillingSettlementScope', () => 'bukjeong');
+  setBinding(context, 'getBillingSettlementCompletionState', () => ({
+    entry: {
+      fields: {
+        base_charge: '100',
+      },
+      completed: false,
+    },
+    fields: {
+      base_charge: '100',
+      billing_amount: '110',
+    },
+    missingFieldKeys: [],
+  }));
+  setBinding(context, 'setBillingSettlementEntryForScope', (monthValue, entry, scopeKey) => {
+    completedEntries.push({ monthValue, entry, scopeKey });
+  });
+  setBinding(context, 'renderTeamMode', () => {
+    renderCalls += 1;
+  });
+
+  const didComplete = context.completeCurrentBillingSettlementEntryForManualSave();
+
+  assert.equal(didComplete, true);
+  assert.equal(completedEntries.length, 1);
+  assert.equal(completedEntries[0].monthValue, '2026-04');
+  assert.equal(completedEntries[0].scopeKey, 'bukjeong');
+  assert.equal(completedEntries[0].entry.completed, true);
+  assert.deepEqual(completedEntries[0].entry.fields, {
+    base_charge: '100',
+    billing_amount: '110',
+  });
+  assert.equal(renderCalls, 1);
 });
 
 test('writeStorePayloadToSharedServer sends shared-store version metadata and remembers the response meta', async () => {

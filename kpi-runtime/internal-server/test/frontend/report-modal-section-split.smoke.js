@@ -46,8 +46,8 @@ test('report modal chart and overview sections are split out of modal render', (
 test('kpi html loads report modal sections before modal render', () => {
   const secondaryIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.secondary-modals.js');
   const chartIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.modal.chart-section.js?v=340');
-  const overviewIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.modal.composition-overview.js?v=340');
-  const renderIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.modal.render.js');
+  const overviewIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.modal.composition-overview.js?v=341');
+  const renderIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.modal.render.js?v=341');
   const panelIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.panel.js');
 
   assert.ok(secondaryIndex >= 0, 'report secondary modal loader is missing');

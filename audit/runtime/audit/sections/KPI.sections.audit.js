@@ -46,31 +46,6 @@
                             법정 설비 점검 일정, 담당 기관, 증빙 문서 상태를 한 화면에서 확인합니다.
                         </div>
                     `
-                },
-                {
-                    title: '안전 관리',
-                    icon: 'fa-shield-halved',
-                    color: '#0f766e',
-                    desc: '추후 추가 예정',
-                    dataKey: 'audit_safety_management',
-                    fileName: '추후 추가 예정',
-                    isPlaceholder: true,
-                    content: `
-                        <div class="p-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50">
-                            <div class="flex items-center gap-3">
-                                <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-teal-100 text-teal-700">
-                                    <i class="fa-solid fa-shield-halved"></i>
-                                </span>
-                                <div>
-                                    <h3 class="text-slate-800 font-semibold text-base">안전 관리</h3>
-                                    <p class="mt-1 text-sm text-slate-600">추후 추가 예정입니다.</p>
-                                </div>
-                            </div>
-                            <p class="mt-4 text-sm text-slate-600">
-                                안전 관리 목차만 먼저 이어졌고, 세부 점검 항목과 기록 화면은 이후 추가 예정입니다.
-                            </p>
-                        </div>
-                    `
                 }
             ]
         };

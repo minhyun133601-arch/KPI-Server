@@ -109,22 +109,22 @@ async function clickSidebarButton(page, label) {
 }
 
 async function fillEquipmentDetailItem(page, label, value, section = 'equipmentSpecs') {
-  const rows = page.locator(`[data-equipment-detail-group="${section}"] .data-equipment-detail-table tbody tr`);
-  const rowCount = await rows.count();
+  const items = page.locator(`[data-equipment-detail-group="${section}"] .data-equipment-detail-item`);
+  const rowCount = await items.count();
   for (let index = 0; index < rowCount; index += 1) {
-    const row = rows.nth(index);
-    const labelInput = row.locator(`[data-equipment-row-section="${section}"][data-equipment-field="label"]`);
+    const item = items.nth(index);
+    const labelInput = item.locator(`[data-equipment-row-section="${section}"][data-equipment-field="label"]`);
     if (!(await labelInput.inputValue()).trim()) {
       await labelInput.fill(label);
-      const valueInput = row.locator(`[data-equipment-row-section="${section}"][data-equipment-field="value"]`);
+      const valueInput = item.locator(`[data-equipment-row-section="${section}"][data-equipment-field="value"]`);
       await valueInput.fill(value);
       return;
     }
   }
   await page.locator(`[data-equipment-add-row="${section}"]`).click();
-  const row = page.locator(`[data-equipment-detail-group="${section}"] .data-equipment-detail-table tbody tr`).last();
-  await row.locator(`[data-equipment-row-section="${section}"][data-equipment-field="label"]`).fill(label);
-  await row.locator(`[data-equipment-row-section="${section}"][data-equipment-field="value"]`).fill(value);
+  const item = page.locator(`[data-equipment-detail-group="${section}"] .data-equipment-detail-item`).last();
+  await item.locator(`[data-equipment-row-section="${section}"][data-equipment-field="label"]`).fill(label);
+  await item.locator(`[data-equipment-row-section="${section}"][data-equipment-field="value"]`).fill(value);
 }
 
 async function expectIntegratedMeteringTitle(page, titlePattern) {
@@ -295,6 +295,12 @@ test.describe('KPI browser smoke', () => {
 
       await clickSidebarButton(page, '분석');
       await expect(page.locator('#content-container')).toContainText('총괄 비율');
+      const totalRatioOpenButton = page.locator('[data-role="util-report-open-modal"]').first();
+      await expect(totalRatioOpenButton).toBeVisible();
+      await totalRatioOpenButton.click();
+      await expect(page.locator('#util-report-modal.is-open')).toBeVisible();
+      await page.locator('[data-role="util-report-modal-close"]').click();
+      await expect(page.locator('#util-report-modal.is-open')).toHaveCount(0);
       const analysisToggleButton = page
         .locator('#content-container button')
         .filter({ hasText: /검침표|분석표/ })
@@ -329,6 +335,14 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('#content-container')).toContainText('사용검사');
       await expect(page.locator('#content-container')).toContainText('선임');
       await expect(page.locator('[data-audit-legal-open-category-inspection="boiler"]')).toBeVisible();
+      await expect(page.locator('[data-audit-legal-category="elevator"]')).toBeVisible();
+      await expect(page.locator('#content-container')).toContainText('승강기');
+      await expect(page.locator('[data-audit-legal-calendar-toggle]')).toHaveAttribute('aria-expanded', 'true');
+      await page.locator('[data-audit-legal-calendar-toggle]').click();
+      await expect(page.locator('[data-audit-legal-calendar-toggle]')).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.locator('.audit-legal-calendar-month-watermark')).toHaveCount(0);
+      await page.locator('[data-audit-legal-calendar-toggle]').click();
+      await expect(page.locator('[data-audit-legal-calendar-toggle]')).toHaveAttribute('aria-expanded', 'true');
       await expect(page.locator('[data-audit-legal-calendar-shift="-1"]')).toBeVisible();
       await expect(page.locator('[data-audit-legal-calendar-shift="1"]')).toBeVisible();
       await expect(page.locator('[data-audit-legal-calendar-year]')).toBeVisible();
@@ -340,7 +354,7 @@ test.describe('KPI browser smoke', () => {
       await expect(legalCalendarMonth).not.toHaveValue(initialLegalCalendarMonth);
       const legalOpenInspectionButtons = page.locator('[data-audit-legal-open-inspection]');
       if ((await legalOpenInspectionButtons.count()) === 0) {
-        for (const itemType of ['fire', 'electric', 'environment', 'other']) {
+        for (const itemType of ['fire', 'electric', 'environment', 'elevator', 'other']) {
           await page.locator(`[data-audit-legal-category="${itemType}"]`).click();
           if ((await legalOpenInspectionButtons.count()) > 0) break;
         }
@@ -371,10 +385,6 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('#content-container')).not.toContainText('문서 현황');
       await expect(page.locator('.audit-legal-popup')).toHaveCount(0);
       await expect(page.locator('.audit-legal-popup-launch')).toHaveCount(0);
-
-      await clickSidebarButton(page, '안전 관리');
-      await expect(page.locator('#content-container')).toContainText('안전 관리');
-      await expect(page.locator('#content-container')).toContainText('추후 추가 예정');
 
       await clickSidebarButton(page, '유틸리티 기입');
       await expectIntegratedMeteringTitle(page, /월간 (전기 기입|가스 검침|폐수 기입|생산량 기입) 시트/);
@@ -435,6 +445,7 @@ test.describe('KPI browser smoke', () => {
       await expect(topGrid.locator('.data-equipment-photo-info-card')).toBeVisible();
       await topGrid.locator('[data-equipment-field="process"]').fill('혼합 공정');
       await topGrid.locator('[data-equipment-field="rate"]').fill('88');
+      await topGrid.locator('[data-equipment-field="manufacturer"]').fill('샘플 제조사');
       await topGrid.locator('[data-equipment-field="owner"]').fill('ABC 정비');
       await page.locator('[data-equipment-history-photo-input]').setInputFiles({
         name: 'sample-equipment.png',
@@ -450,16 +461,15 @@ test.describe('KPI browser smoke', () => {
       const specsGroup = page.locator('[data-equipment-detail-group="equipmentSpecs"]');
       const otherGroup = page.locator('[data-equipment-detail-group="otherInfo"]');
       await expect(specsGroup).toBeVisible();
-      await expect(otherGroup).toBeVisible();
-      const specsBox = await specsGroup.boundingBox();
-      const otherBox = await otherGroup.boundingBox();
-      expect(specsBox?.x ?? 0).toBeLessThan(otherBox?.x ?? 0);
-      expect(Math.abs((specsBox?.width ?? 0) - (otherBox?.width ?? 0))).toBeLessThanOrEqual(2);
-      const firstDetailRow = specsGroup.locator('.data-equipment-detail-table tbody tr').first();
-      const firstDetailLabel = firstDetailRow.locator(
+      await expect(otherGroup).toHaveCount(0);
+      await expect(page.locator('.data-equipment-detail-card .data-equipment-section-title')).toContainText(
+        '설비 스펙'
+      );
+      const firstDetailItem = specsGroup.locator('.data-equipment-detail-item').first();
+      const firstDetailLabel = firstDetailItem.locator(
         '[data-equipment-row-section="equipmentSpecs"][data-equipment-field="label"]'
       );
-      const firstDetailValue = firstDetailRow.locator(
+      const firstDetailValue = firstDetailItem.locator(
         '[data-equipment-row-section="equipmentSpecs"][data-equipment-field="value"]'
       );
       await firstDetailLabel.fill('베어링');
@@ -468,10 +478,10 @@ test.describe('KPI browser smoke', () => {
       await expect(firstDetailLabel).toHaveValue('');
       await expect(firstDetailValue).toHaveValue('');
       await page.locator('[data-equipment-add-row="equipmentSpecs"]').click();
-      await expect(specsGroup.locator('.data-equipment-detail-table tbody tr')).toHaveCount(2);
+      await expect(specsGroup.locator('.data-equipment-detail-item')).toHaveCount(2);
       await fillEquipmentDetailItem(page, '설비코드', 'EQ-MIX-001');
       await fillEquipmentDetailItem(page, '생산라인', '라인 알파');
-      await fillEquipmentDetailItem(page, '제조사', '샘플 제조사');
+      await fillEquipmentDetailItem(page, '모델', 'MX-1');
       await page
         .locator('[data-equipment-row-section="maintenanceHistory"][data-equipment-field="date"]')
         .first()

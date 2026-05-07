@@ -151,6 +151,13 @@
         .audit-legal-main,
         .audit-legal-side { min-width: 0; display: grid; gap: 0.8rem; }
         .audit-legal-equipment-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(156px, 1fr)); gap: 0.7rem; min-width: 0; }
+        .audit-legal-schedule-card { display: grid; gap: 0.7rem; }
+        .audit-legal-schedule-card.is-collapsed { padding-bottom: 12px; }
+        .audit-legal-schedule-head { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; min-width: 0; }
+        .audit-legal-calendar-toggle { min-height: 32px; border: 1px solid #dbe4ef; border-radius: 8px; background: #ffffff; color: #334155; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; font-size: 0.74rem; font-weight: 900; cursor: pointer; }
+        .audit-legal-calendar-toggle:hover,
+        .audit-legal-calendar-toggle:focus { border-color: #2563eb; color: #1d4ed8; outline: 0; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
+        .audit-legal-calendar-panel { display: grid; gap: 0.55rem; }
         .audit-legal-equipment-card { min-height: 154px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; padding: 12px; display: grid; grid-template-rows: auto 1fr auto; gap: 0.65rem; box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06); }
         .audit-legal-equipment-card[data-audit-legal-category] { cursor: pointer; }
         .audit-legal-equipment-card[data-audit-legal-category]:hover,
@@ -165,6 +172,7 @@
         .audit-legal-equipment-icon.gasboiler { background: #fff7ed; border-color: #fdba74; color: #c2410c; }
         .audit-legal-equipment-icon.cooling { background: #ecfeff; border-color: #a5f3fc; color: #0e7490; }
         .audit-legal-equipment-icon.electric { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+        .audit-legal-equipment-icon.elevator { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; }
         .audit-legal-equipment-icon.other { background: #f8fafc; border-color: #cbd5e1; color: #475569; }
         .audit-legal-equipment-icon.pressure { background: #f8fafc; border-color: #cbd5e1; color: #475569; }
         .audit-legal-equipment-title { min-width: 0; font-size: 0.86rem; color: #0f172a; line-height: 1.25; word-break: keep-all; }
@@ -299,6 +307,7 @@
         .audit-legal-item-badge.gas { border-color: #86efac; background: #f0fdf4; color: #15803d; }
         .audit-legal-item-badge.gasboiler { border-color: #fdba74; background: #fff7ed; color: #c2410c; }
         .audit-legal-item-badge.cooling { border-color: #a5f3fc; background: #ecfeff; color: #0e7490; }
+        .audit-legal-item-badge.elevator { border-color: #ddd6fe; background: #f5f3ff; color: #6d28d9; }
         .audit-legal-item-badge.pressure { border-color: #cbd5e1; background: #f8fafc; color: #475569; }
         .audit-legal-item-badge.other { border-color: #cbd5e1; background: #f8fafc; color: #475569; }
         .audit-legal-table tr.is-near td { background: #fff7ed; }

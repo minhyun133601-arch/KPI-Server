@@ -325,9 +325,9 @@ test('report sheet summary render registry builds badges, stats, compare, matrix
 
 test('kpi html loads report sheet summary render between analysis render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=054');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=055');
   const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=055');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(analysisRenderIndex >= 0, 'report sheet analysis render loader is missing');

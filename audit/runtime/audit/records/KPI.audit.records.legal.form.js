@@ -337,6 +337,10 @@
                 setAuditLegalCalendarMonth(year, monthIndex);
                 renderAuditLegalFacilityPreview(category, data);
             };
+            contentContainer.querySelector('[data-audit-legal-calendar-toggle]')?.addEventListener('click', () => {
+                auditLegalUiState.calendarExpanded = auditLegalUiState.calendarExpanded === false;
+                renderAuditLegalFacilityPreview(category, data);
+            });
             contentContainer.querySelectorAll('[data-audit-legal-calendar-shift]').forEach((button) => {
                 button.addEventListener('click', () => {
                     const year = Number(button.dataset.auditLegalCalendarYearValue);

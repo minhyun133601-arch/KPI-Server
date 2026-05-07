@@ -90,7 +90,8 @@ function createAnalysisModelContext() {
   const gasMetricMap = new Map([
     ['2026-01', { lpgUsage: 2500, lngUsage: 4100, gasCost: 1800000, production: 188, ratioProduction: { lpg: 84, lng: 104 } }],
     ['2026-02', { lpgUsage: 2700, lngUsage: 4300, gasCost: 1920000, production: 200, ratioProduction: { lpg: 91, lng: 109 } }],
-    ['2026-03', { lpgUsage: 2900, lngUsage: 4500, gasCost: 2050000, production: 221, ratioProduction: { lpg: 96, lng: 125 } }]
+    ['2026-03', { lpgUsage: 2900, lngUsage: 4500, gasCost: 2050000, production: 221, ratioProduction: { lpg: 96, lng: 125 } }],
+    ['2026-04', { lpgUsage: 3100, lngUsage: 4700, gasCost: null, production: 240, ratioProduction: { lpg: 102, lng: 138 } }]
   ]);
   const productionValueMap = {
     '2026-01': {
@@ -211,7 +212,7 @@ test('report sheet analysis model registries build electric and gas analysis mod
       };
     },
     buildUtilSheetMonthBounds() {
-      return { from: '2026-01', to: '2026-03' };
+      return { from: '2026-01', to: '2026-04' };
     },
     isUtilSheetSettledRow(row) {
       return Boolean(row?.monthKey);
@@ -453,12 +454,26 @@ test('report sheet analysis model registries build electric and gas analysis mod
   assert.equal(config.UtilSheetAnalysisState.electric.teamKey, 'team-a');
   assert.equal(config.UtilSheetAnalysisState.electric.from, '2026-01');
   assert.equal(config.UtilSheetAnalysisState.electric.to, '2026-03');
+  const electricSummaryByKey = new Map(electricModel.summaryItems.map((item) => [item.key, item]));
+  assert.equal(electricSummaryByKey.get('electricUsage')?.valueText, '132.0 kWh');
+  assert.equal(electricSummaryByKey.get('electricCost')?.valueText, '1,452 KRW');
+  assert.equal(electricSummaryByKey.get('production')?.valueText, '120.0 kg');
+  assert.match(electricSummaryByKey.get('electricCost')?.metaText || '', /LONG:2026-03/);
+  assert.doesNotMatch(electricSummaryByKey.get('electricCost')?.metaText || '', /범위 누적/);
 
   assert.equal(gasModel.hasData, true);
   assert.equal(gasModel.categoryOption.key, 'yusan');
   assert.ok(gasModel.combinedChart);
   assert.ok(gasModel.ratioCombinedChart);
   assert.ok(Array.isArray(gasModel.summaryItems));
+  const gasSummaryByKey = new Map(gasModel.summaryItems.map((item) => [item.key, item]));
+  assert.equal(gasSummaryByKey.get('lpgUsage')?.valueText, '2900.0 kg');
+  assert.equal(gasSummaryByKey.get('lngUsage')?.valueText, '4500.0 Nm3');
+  assert.equal(gasSummaryByKey.get('gasCost')?.valueText, '2,050,000 KRW');
+  assert.equal(gasSummaryByKey.get('production')?.valueText, '221.0 kg');
+  assert.deepEqual(gasModel.monthOptions.map((item) => item.value), ['2026-01', '2026-02', '2026-03']);
+  assert.match(gasSummaryByKey.get('gasCost')?.metaText || '', /LONG:2026-03/);
+  assert.doesNotMatch(gasSummaryByKey.get('gasCost')?.metaText || '', /범위 합계|범위 누적/);
   assert.equal(config.UtilSheetAnalysisState.gas.categoryKey, 'yusan');
   assert.equal(config.UtilSheetAnalysisState.gas.from, '2026-01');
   assert.equal(config.UtilSheetAnalysisState.gas.to, '2026-03');
@@ -467,12 +482,12 @@ test('report sheet analysis model registries build electric and gas analysis mod
 test('kpi html loads report sheet analysis model scripts before analysis render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
-  const rangeRatioIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/range-ratio.js?v=053');
+  const rangeRatioIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/range-ratio.js?v=054');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
-  const electricModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/model.js?v=053');
-  const gasModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/gas/model.js?v=053');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=054');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
+  const electricModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/model.js?v=055');
+  const gasModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/gas/model.js?v=055');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=055');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=055');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');

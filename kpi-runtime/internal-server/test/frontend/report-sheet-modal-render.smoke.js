@@ -533,13 +533,13 @@ test('report sheet gas runtime sync forces one metering sync per report session'
 
 test('kpi html loads report sheet modal render between modal shell and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=054');
+  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=055');
   const gasScopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=053');
   const gasRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/runtime-sync.js?v=054');
   const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=059');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=054');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=055');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=055');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(configIndex >= 0, 'report sheet config loader is missing');

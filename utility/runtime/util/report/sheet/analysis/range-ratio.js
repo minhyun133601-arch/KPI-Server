@@ -391,6 +391,7 @@
             buildRatioSummaryItem(lngTable, 'fa-fire')
         ].filter(Boolean);
 
+        const activeMonthLabel = String(options?.activeMonthLabel || options?.activeMonthKey || '').trim();
         const lineRatioSummaryItems = lineRatioSeries.map(series => {
             const unitKey = getGasUnitKey(series?.key);
             const isAmountMode = unitKey === 'kg' || unitKey === 'ton';
@@ -398,13 +399,13 @@
                 key: series.key,
                 title: series.title,
                 valueText: formatLineMetricValue(
-                    isAmountMode ? series?.totalAmount : series?.totalRatio,
+                    isAmountMode ? series?.activeAmount : series?.activeRatio,
                     unitKey
                 ),
                 secondaryLabelText: isAmountMode ? '%' : 'kg',
                 secondaryValueText: isAmountMode
-                    ? formatPercent(series?.totalRatio)
-                    : formatLineMetricValue(series?.totalAmount, 'kg'),
+                    ? formatPercent(series?.activeRatio)
+                    : formatLineMetricValue(series?.activeAmount, 'kg'),
                 subText: buildCompareSub(
                     options?.compareLabel || '전월대비',
                     options?.activeMonthKey || '',
@@ -417,8 +418,8 @@
                 tone: 'production',
                 popupTableKey: series.key,
                 metaText: options?.categoryLabel
-                    ? `범위 누적 · ${rangeLabel} · 기준 ${options.categoryLabel}`
-                    : `범위 누적 · ${rangeLabel}`
+                    ? `${activeMonthLabel} · 기준 ${options.categoryLabel}`
+                    : activeMonthLabel
             };
         });
 

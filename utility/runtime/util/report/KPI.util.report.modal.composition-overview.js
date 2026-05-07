@@ -251,6 +251,7 @@
                 compositionKeys,
                 compositionValueType,
                 isProductionCategory,
+                processComposition,
                 productionSiteContextKey
             };
         }

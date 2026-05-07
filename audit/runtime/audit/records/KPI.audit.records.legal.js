@@ -15,9 +15,10 @@
             { value: 'boiler', label: '보일러', icon: 'fa-fire-flame-simple', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
             { value: 'cooling', label: '냉동기', icon: 'fa-snowflake', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
             { value: 'gas', label: '가스', icon: 'fa-gas-pump', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
-            { value: 'fire', label: '소방설비', icon: 'fa-fire-extinguisher', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
+            { value: 'fire', label: '소방', icon: 'fa-fire-extinguisher', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
             { value: 'electric', label: '전기', icon: 'fa-bolt', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
             { value: 'environment', label: '환경', icon: 'fa-seedling', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
+            { value: 'elevator', label: '승강기', icon: 'fa-elevator', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS },
             { value: 'other', label: '기타', icon: 'fa-clipboard-check', inspectionItems: AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS }
         ];
 
@@ -100,6 +101,19 @@
                 attachmentKey: 'env-01-202609-report',
                 note: ''
             },
+            elevator: {
+                facility: '화물용 승강기',
+                managementNo: 'ELEV-01',
+                plant: '공장동',
+                statutoryItem: '승강기 정기검사',
+                cycle: '1년',
+                lastDate: '',
+                nextDate: '',
+                responsible: '시설팀',
+                agency: '검사기관명',
+                attachmentKey: '',
+                note: ''
+            },
             other: {
                 facility: '기타 법정설비',
                 managementNo: 'LEGAL-ETC-01',
@@ -119,7 +133,8 @@
             inspectionFormFacilityId: '',
             inspectionFormType: '',
             calendarYear: 0,
-            calendarMonth: 0
+            calendarMonth: 0,
+            calendarExpanded: true
         };
         const AUDIT_LEGAL_CATEGORY_INSPECTION_FORM_ID = '__category_inspection__';
 
@@ -129,7 +144,8 @@
             if (raw === 'refrigerator' || raw === 'refrigeration') return 'cooling';
             if (raw === 'firefighting' || raw === 'fire-fighting' || raw === 'safety') return 'fire';
             if (raw === 'env') return 'environment';
-            if (raw === 'pressure' || raw === 'pressure-vessel' || raw === 'pressurevessel' || raw === 'hoist') return 'other';
+            if (raw === 'elevator' || raw === 'lift' || raw === 'hoist' || raw === '승강기') return 'elevator';
+            if (raw === 'pressure' || raw === 'pressure-vessel' || raw === 'pressurevessel') return 'other';
             return AUDIT_LEGAL_CATEGORY_OPTIONS.some((item) => item.value === raw) ? raw : 'other';
         }
 
@@ -886,6 +902,22 @@
                 </div>
             `;
         }
+        function renderAuditLegalCalendarCard(data, events) {
+            const isExpanded = auditLegalUiState.calendarExpanded !== false;
+            const toggleLabel = isExpanded ? '닫기' : '열기';
+            return `
+                <div class="audit-ref-card audit-legal-schedule-card ${isExpanded ? 'is-expanded' : 'is-collapsed'}">
+                    <div class="audit-legal-schedule-head">
+                        <div class="audit-ref-title">점검 일정</div>
+                        <button type="button" class="audit-legal-calendar-toggle" data-audit-legal-calendar-toggle aria-expanded="${isExpanded ? 'true' : 'false'}">
+                            <i class="fas ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}"></i>
+                            <span>${escapeHtml(toggleLabel)}</span>
+                        </button>
+                    </div>
+                    ${isExpanded ? `<div class="audit-legal-calendar-panel">${renderAuditLegalCalendar(data, events)}</div>` : ''}
+                </div>
+            `;
+        }
         function renderAuditLegalFacilityPreview(category, data) {
             const now = new Date();
             const records = normalizeAuditLegalFacilities(data)
@@ -951,10 +983,7 @@
                             </div>
                             <div class="audit-legal-dashboard">
                                 <div class="audit-legal-main">
-                                    <div class="audit-ref-card audit-legal-schedule-card">
-                                        <div class="audit-ref-title">점검 일정</div>
-                                        <div class="mt-3">${renderAuditLegalCalendar(data, events)}</div>
-                                    </div>
+                                    ${renderAuditLegalCalendarCard(data, events)}
                                     <div class="audit-legal-equipment-grid">
                                         ${renderAuditLegalEquipmentCards(equipmentCards, selectedType)}
                                     </div>

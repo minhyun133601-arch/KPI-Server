@@ -11,7 +11,6 @@
         'KPI.util.report.sheet.helpers.js'
     );
     const {
-        UTIL_SHEET_CUTOFF,
         utilSheetNumberFormatter
     } = utilReportSheetConfig;
 
@@ -110,9 +109,13 @@
 
     function isUtilSheetSettledRow(row, spec) {
         if (!row || !spec) return false;
-        const hasCost = Number.isFinite(row?.[spec.costKey]);
-        const hasProduction = Number.isFinite(row?.production) && row.production > 0;
-        return hasCost && hasProduction;
+        const usage = Number(row?.[spec.usageKey]);
+        const cost = Number(row?.[spec.costKey]);
+        const production = Number(row?.production);
+        const hasUsage = Number.isFinite(usage) && usage > 0;
+        const hasCost = Number.isFinite(cost) && cost > 0;
+        const hasProduction = Number.isFinite(production) && production > 0;
+        return hasUsage && hasCost && hasProduction;
     }
 
     function appendUtilSheetUnit(text, unit) {
@@ -154,10 +157,7 @@
             .sort(compareUtilSheetMonthKeys);
         if (!monthKeys.length) return null;
         const from = monthKeys[0];
-        const latest = monthKeys[monthKeys.length - 1];
-        const to = compareUtilSheetMonthKeys(latest, UTIL_SHEET_CUTOFF) > 0
-            ? UTIL_SHEET_CUTOFF
-            : latest;
+        const to = monthKeys[monthKeys.length - 1];
         if (compareUtilSheetMonthKeys(from, to) > 0) return null;
         return { from, to };
     }

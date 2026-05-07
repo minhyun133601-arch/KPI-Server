@@ -10,7 +10,7 @@
         return;
     }
 
-    const UTIL_SHEET_CUTOFF = '2026-02';
+    const UTIL_SHEET_CUTOFF = '';
     const utilSheetNumberFormatter = new Intl.NumberFormat('ko-KR');
     const UTIL_SHEET_DATASET_SPECS = {
         gas: {

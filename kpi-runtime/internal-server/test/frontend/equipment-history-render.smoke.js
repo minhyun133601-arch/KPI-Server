@@ -143,10 +143,10 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
 
 test('kpi html loads equipment-history modules before the data runtime bridge', () => {
   const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=2');
-  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=3');
-  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=9');
+  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=5');
+  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=11');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=2');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=12');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=13');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=3');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -221,27 +221,33 @@ test('equipment-history renderer shows the empty board state and supports author
   const photoInfoHtml = api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft(), 'data-equipment-edit-grid data-equipment-photo-info-grid');
   assert.match(photoInfoHtml, /공정/);
   assert.match(photoInfoHtml, /가동률/);
+  assert.match(photoInfoHtml, /제조사/);
   assert.match(photoInfoHtml, /담당 업체/);
+  assert.ok(photoInfoHtml.indexOf('제조사') > photoInfoHtml.indexOf('가동률'));
+  assert.ok(photoInfoHtml.indexOf('담당 업체') > photoInfoHtml.indexOf('제조사'));
+  assert.match(photoInfoHtml, /data-equipment-field="manufacturer"/);
   assert.doesNotMatch(photoInfoHtml, /설비명/);
   assert.doesNotMatch(photoInfoHtml, /관리팀/);
   assert.doesNotMatch(photoInfoHtml, /data-equipment-field="team"/);
 
-  const detailTableHtml = api.renderDetailItems([]);
-  assert.match(detailTableHtml, /data-equipment-detail-table/);
-  assert.match(detailTableHtml, /data-equipment-detail-remove/);
-  assert.match(detailTableHtml, /data-equipment-remove-row="detailInfo"/);
-  assert.match(detailTableHtml, /data-equipment-row-index="0"/);
-  assert.doesNotMatch(detailTableHtml, /data-equipment-row-index="1"/);
-  assert.doesNotMatch(detailTableHtml, /data-equipment-detail-pad/);
-  assert.doesNotMatch(detailTableHtml, /data-equipment-detail-cell/);
-  const groupedDetailTableHtml = api.renderDetailGroups(api.createDraft().detailGroups);
-  assert.match(groupedDetailTableHtml, /data-equipment-detail-groups/);
-  assert.match(groupedDetailTableHtml, /data-equipment-detail-group="equipmentSpecs"/);
-  assert.match(groupedDetailTableHtml, /data-equipment-detail-group="otherInfo"/);
-  assert.match(groupedDetailTableHtml, /data-equipment-add-row="equipmentSpecs"/);
-  assert.match(groupedDetailTableHtml, /data-equipment-add-row="otherInfo"/);
-  assert.match(groupedDetailTableHtml, /data-equipment-remove-row="equipmentSpecs"/);
-  assert.match(groupedDetailTableHtml, /data-equipment-remove-row="otherInfo"/);
+  const detailItemsHtml = api.renderDetailItems([]);
+  assert.match(detailItemsHtml, /data-equipment-detail-items-grid/);
+  assert.match(detailItemsHtml, /data-equipment-detail-item/);
+  assert.match(detailItemsHtml, /data-equipment-detail-remove/);
+  assert.match(detailItemsHtml, /data-equipment-remove-row="detailInfo"/);
+  assert.match(detailItemsHtml, /data-equipment-row-index="0"/);
+  assert.doesNotMatch(detailItemsHtml, /data-equipment-row-index="1"/);
+  assert.doesNotMatch(detailItemsHtml, /data-equipment-detail-table/);
+  assert.doesNotMatch(detailItemsHtml, /data-equipment-detail-pad/);
+  assert.doesNotMatch(detailItemsHtml, /data-equipment-detail-cell/);
+  const groupedDetailItemsHtml = api.renderDetailGroups(api.createDraft().detailGroups);
+  assert.match(groupedDetailItemsHtml, /data-equipment-detail-groups/);
+  assert.match(groupedDetailItemsHtml, /data-equipment-detail-group="equipmentSpecs"/);
+  assert.doesNotMatch(groupedDetailItemsHtml, /data-equipment-detail-group="otherInfo"/);
+  assert.match(groupedDetailItemsHtml, /data-equipment-add-row="equipmentSpecs"/);
+  assert.doesNotMatch(groupedDetailItemsHtml, /data-equipment-add-row="otherInfo"/);
+  assert.match(groupedDetailItemsHtml, /data-equipment-remove-row="equipmentSpecs"/);
+  assert.doesNotMatch(groupedDetailItemsHtml, /data-equipment-remove-row="otherInfo"/);
 
   assert.doesNotMatch(renderSource, /설비 운영 정보/);
   assert.doesNotMatch(renderSource, /data-equipment-identity-stack/);
@@ -251,10 +257,11 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-photo-info-card/);
   assert.match(renderSource, /api\.renderFieldGrid\(api\.PHOTO_INFO_FIELDS/);
   assert.match(dataCssSource, /grid-template-columns:\s*minmax\(0,\s*3fr\)\s*minmax\(260px,\s*1fr\)/);
-  assert.match(dataCssSource, /data-equipment-detail-groups[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)/);
+  assert.match(dataCssSource, /data-equipment-detail-groups[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(dataCssSource, /data-equipment-detail-items-grid[\s\S]+grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(dataCssSource, /@media \(max-width:\s*780px\)[\s\S]+data-equipment-detail-items-grid[\s\S]+grid-template-columns:\s*1fr/);
   assert.doesNotMatch(dataCssSource, /data-equipment-bottom-grid,\s*[\r\n\s]*\.data-equipment-detail-groups/);
-  assert.match(dataCssSource, /data-equipment-detail-table th:first-child/);
-  assert.match(dataCssSource, /width:\s*28%/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-detail-table th:first-child/);
   assert.match(dataCssSource, /object-fit:\s*contain/);
   assert.match(dataCssSource, /data-equipment-photo-revert/);
   assert.match(dataCssSource, /data-equipment-photo-card:hover\s+\.data-equipment-photo-revert/);
@@ -264,6 +271,7 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-title-room/);
   assert.match(renderSource, /data-equipment-title-name/);
   assert.match(renderSource, /function renderStatusToggle/);
+  assert.match(renderSource, /\\uC124\\uBE44 \\uC2A4\\uD399/);
   assert.match(renderSource, /api\.renderDetailGroups\(draft\.detailGroups\)/);
   assert.match(formSource, /data-equipment-add-row="\$\{api\.escapeHtml\(groupKey\)\}"/);
   assert.doesNotMatch(renderSource, /handleDetailCellKeydown/);
@@ -299,6 +307,7 @@ test('equipment-history renderer shows the empty board state and supports author
     production: '2,680 kg',
     plan: '3,000 kg / 일',
     rate: '88',
+    manufacturer: '샘플 제조사',
     note: '설비 기록 작성 테스트',
     photoDocumentId: 'doc-photo-1',
     photoPreviewUrl: '/api/files/doc-photo-1/view',
@@ -320,7 +329,17 @@ test('equipment-history renderer shows the empty board state and supports author
         { label: '\uC81C\uC870\uC0AC', value: 'Sample Maker' },
       ],
     }).detailInfo),
-    JSON.stringify([{ label: '\uC81C\uC870\uC0AC', value: 'Sample Maker' }])
+    JSON.stringify([])
+  );
+  assert.equal(
+    api.createDraft({
+      name: 'Mixer',
+      detailInfo: [
+        { label: '\uC124\uBE44\uBA85', value: 'Mixer' },
+        { label: '\uC81C\uC870\uC0AC', value: 'Sample Maker' },
+      ],
+    }).manufacturer,
+    'Sample Maker'
   );
   const legacyDetailDraft = api.createDraft({
     name: 'Mixer',
@@ -329,8 +348,14 @@ test('equipment-history renderer shows the empty board state and supports author
       { label: '\uBA54\uBAA8', value: 'Clean daily' },
     ],
   });
-  assert.equal(JSON.stringify(legacyDetailDraft.detailGroups.equipmentSpecs), JSON.stringify([{ label: '\uC81C\uC870\uC0AC', value: 'Sample Maker' }]));
-  assert.equal(JSON.stringify(legacyDetailDraft.detailGroups.otherInfo), JSON.stringify([{ label: '\uBA54\uBAA8', value: 'Clean daily' }]));
+  assert.equal(
+    JSON.stringify(legacyDetailDraft.detailGroups.equipmentSpecs),
+    JSON.stringify([
+      { label: '\uBA54\uBAA8', value: 'Clean daily' },
+    ])
+  );
+  assert.equal(legacyDetailDraft.manufacturer, 'Sample Maker');
+  assert.equal(legacyDetailDraft.detailGroups.otherInfo, undefined);
   const groupedRecord = api.buildRecordFromDraft({
     name: 'Mixer',
     detailGroups: {
@@ -338,8 +363,14 @@ test('equipment-history renderer shows the empty board state and supports author
       otherInfo: [{ label: '\uBA54\uBAA8', value: 'Clean daily' }],
     },
   });
-  assert.equal(JSON.stringify(groupedRecord.detailGroups.equipmentSpecs), JSON.stringify([{ label: '\uBAA8\uB378', value: 'MX-1' }]));
-  assert.equal(JSON.stringify(groupedRecord.detailGroups.otherInfo), JSON.stringify([{ label: '\uBA54\uBAA8', value: 'Clean daily' }]));
+  assert.equal(
+    JSON.stringify(groupedRecord.detailGroups.equipmentSpecs),
+    JSON.stringify([
+      { label: '\uBAA8\uB378', value: 'MX-1' },
+      { label: '\uBA54\uBAA8', value: 'Clean daily' },
+    ])
+  );
+  assert.equal(groupedRecord.detailGroups.otherInfo, undefined);
   assert.ok(groupedRecord.detailInfo.some((item) => item.label === '\uBAA8\uB378' && item.value === 'MX-1'));
   assert.ok(groupedRecord.detailInfo.some((item) => item.label === '\uBA54\uBAA8' && item.value === 'Clean daily'));
   assert.deepEqual(
@@ -362,6 +393,7 @@ test('equipment-history renderer shows the empty board state and supports author
   );
   assert.equal(record.photoDataUrl, '');
   assert.equal(record.photoDocumentId, 'doc-photo-1');
+  assert.equal(record.manufacturer, '샘플 제조사');
   assert.equal(record.documents[0].documentId, 'doc-attachment-1');
   assert.equal(record.documents[0].attachmentKey, undefined);
   assert.equal(record.operationInfo.map((item) => item.label).join(','), '설비명,관리팀,실,공정,가동률');

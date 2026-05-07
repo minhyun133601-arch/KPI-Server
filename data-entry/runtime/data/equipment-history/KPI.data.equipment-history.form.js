@@ -14,6 +14,7 @@
     const PHOTO_INFO_FIELDS = [
         { key: 'process', label: '\uACF5\uC815', placeholder: '\uC608: \uD63C\uD569 \uACF5\uC815' },
         { key: 'rate', label: '\uAC00\uB3D9\uB960', placeholder: '\uC22B\uC790\uB9CC \uC785\uB825' },
+        { key: 'manufacturer', label: '\uC81C\uC870\uC0AC', placeholder: '\uC608: ABC\uC81C\uC870' },
         { key: 'owner', label: '\uB2F4\uB2F9 \uC5C5\uCCB4', placeholder: '\uC608: ABC\uC815\uBE44' },
     ];
 
@@ -22,40 +23,12 @@
         { key: 'value', label: '내용', placeholder: '내용을 입력하세요.' },
     ];
 
-    const DETAIL_GROUP_KEYS = ['equipmentSpecs', 'otherInfo'];
+    const DETAIL_GROUP_KEYS = ['equipmentSpecs'];
+    const LEGACY_DETAIL_GROUP_KEYS = ['equipmentSpecs', 'otherInfo'];
 
     const DETAIL_GROUP_LABELS = Object.freeze({
         equipmentSpecs: '\uC124\uBE44 \uC2A4\uD399',
-        otherInfo: '\uADF8 \uC678 \uC815\uBCF4',
     });
-
-    const DETAIL_SPEC_LABEL_KEYWORDS = [
-        '\uC81C\uC870\uC0AC',
-        '\uC81C\uC791\uC0AC',
-        '\uBAA8\uB378',
-        '\uD615\uC2DD',
-        '\uADDC\uACA9',
-        '\uC0AC\uC591',
-        '\uC6A9\uB7C9',
-        '\uC804\uC555',
-        '\uC804\uB958',
-        '\uB3D9\uB825',
-        '\uCD9C\uB825',
-        '\uC18D\uB3C4',
-        '\uC555\uB825',
-        '\uC628\uB3C4',
-        '\uC7AC\uC9C8',
-        '\uCE58\uC218',
-        '\uC911\uB7C9',
-        '\uC124\uBE44\uCF54\uB4DC',
-        '\uCF54\uB4DC',
-        '\uC2DC\uB9AC\uC5BC',
-        '\uC81C\uC870\uBC88\uD638',
-        'model',
-        'serial',
-        's/n',
-        'spec',
-    ];
 
     const SYSTEM_DETAIL_LABELS = new Set([
         '\uC124\uBE44\uBA85',
@@ -63,6 +36,7 @@
         '\uC2E4',
         '\uACF5\uC815',
         '\uAC00\uB3D9\uB960',
+        '\uC81C\uC870\uC0AC',
     ]);
 
     const MAINTENANCE_FIELDS = [
@@ -169,18 +143,14 @@
             .filter((row) => !isSystemDetailInfoRow(row));
     }
 
-    function isEquipmentSpecDetailRow(row) {
-        const label = api.normalizeText(row?.label).toLowerCase();
-        return DETAIL_SPEC_LABEL_KEYWORDS.some((keyword) => label.includes(keyword.toLowerCase()));
+    function getDetailInfoValue(rows, labels) {
+        const labelSet = new Set(api.asList(labels).map((label) => api.normalizeText(label)));
+        const found = api.asList(rows).find((row) => labelSet.has(api.normalizeText(row?.label)));
+        return api.normalizeText(found?.value);
     }
 
     function splitLegacyDetailInfoRows(rows) {
-        const groups = { equipmentSpecs: [], otherInfo: [] };
-        normalizeDetailInfoRows(rows).forEach((row) => {
-            const groupKey = isEquipmentSpecDetailRow(row) ? 'equipmentSpecs' : 'otherInfo';
-            groups[groupKey].push(row);
-        });
-        return groups;
+        return { equipmentSpecs: normalizeDetailInfoRows(rows) };
     }
 
     function getDetailGroupSource(source, groupKey) {
@@ -191,11 +161,13 @@
     }
 
     function normalizeEquipmentHistoryDetailGroups(source = {}) {
-        const hasGroupedRows = DETAIL_GROUP_KEYS.some((groupKey) => Array.isArray(getDetailGroupSource(source, groupKey)));
+        const hasGroupedRows = LEGACY_DETAIL_GROUP_KEYS.some((groupKey) => Array.isArray(getDetailGroupSource(source, groupKey)));
         const groupedRows = hasGroupedRows
             ? {
-                equipmentSpecs: normalizeDetailInfoRows(getDetailGroupSource(source, 'equipmentSpecs')),
-                otherInfo: normalizeDetailInfoRows(getDetailGroupSource(source, 'otherInfo')),
+                equipmentSpecs: [
+                    ...normalizeDetailInfoRows(getDetailGroupSource(source, 'equipmentSpecs')),
+                    ...normalizeDetailInfoRows(getDetailGroupSource(source, 'otherInfo')),
+                ],
             }
             : splitLegacyDetailInfoRows(source.detailInfo);
 
@@ -220,6 +192,11 @@
         const source = equipment || {};
         const detailGroups = normalizeEquipmentHistoryDetailGroups(source);
         const editableDetailInfo = removeBlankRows(flattenDetailGroupRows(detailGroups), DETAIL_ITEM_FIELDS);
+        const rawDetailRows = [
+            ...api.asList(source.detailInfo),
+            ...api.asList(getDetailGroupSource(source, 'equipmentSpecs')),
+            ...api.asList(getDetailGroupSource(source, 'otherInfo')),
+        ];
         return {
             id: api.normalizeText(source.id),
             equipmentCode: api.normalizeText(source.equipmentCode || source.id),
@@ -236,6 +213,8 @@
             room: api.normalizeText(source.room),
             teamDataKey: api.normalizeText(source.teamDataKey) || resolveEquipmentHistoryTeamDataKey(source.team),
             group: api.normalizeText(source.group),
+            manufacturer: api.normalizeText(source.manufacturer || source.maker)
+                || getDetailInfoValue(rawDetailRows, ['\uC81C\uC870\uC0AC', '\uC81C\uC791\uC0AC', '\uBA54\uC774\uCEE4', 'maker', 'manufacturer']),
             owner: api.normalizeText(source.owner),
             note: api.normalizeText(source.note),
             photoDataUrl: api.normalizeText(source.photoDataUrl),
@@ -318,6 +297,7 @@
             { label: '관리팀', value: normalized.team },
             { label: '공정', value: normalized.process },
             { label: '가동률', value: normalized.rate !== '' ? `${parseDraftRate(normalized.rate).value}%` : '' },
+            { label: '제조사', value: normalized.manufacturer },
         ].filter((row) => row.value);
 
         const customRows = removeBlankRows(flattenDetailGroupRows(detailGroups || normalized.detailGroups), DETAIL_ITEM_FIELDS);
@@ -357,6 +337,7 @@
             room: normalized.room,
             teamDataKey,
             group: normalized.process,
+            manufacturer: normalized.manufacturer,
             owner: normalized.owner,
             note: normalized.note,
             photoDataUrl: normalized.photoDocumentId ? '' : normalized.photoDataUrl,
@@ -417,31 +398,22 @@
         const list = source.length ? source : [createBlankDetailRow()];
 
         return `
-            <div class="data-equipment-table-scroll">
-                <table class="data-equipment-edit-table data-equipment-detail-table">
-                    <thead>
-                        <tr>
-                            ${DETAIL_ITEM_FIELDS.map((field) => `<th>${api.escapeHtml(field.label)}</th>`).join('')}
-                            <th>${api.escapeHtml('\uC0AD\uC81C')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${list.map((row, rowIndex) => `
-                            <tr>
-                                ${DETAIL_ITEM_FIELDS.map((field) => `
-                                    <td>
-                                        ${renderInput(field, row?.[field.key] || '', `data-equipment-row-section="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}"`)}
-                                    </td>
-                                `).join('')}
-                                <td>
-                                    <button type="button" class="data-equipment-row-remove data-equipment-detail-remove" data-equipment-remove-row="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml('\uD56D\uBAA9 \uC0AD\uC81C')}">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+            <div class="data-equipment-detail-items-grid">
+                ${list.map((row, rowIndex) => `
+                    <article class="data-equipment-detail-item" data-equipment-detail-item data-equipment-row-index="${rowIndex}">
+                        <div class="data-equipment-detail-item-fields">
+                            ${DETAIL_ITEM_FIELDS.map((field) => `
+                                <label>
+                                    <span>${api.escapeHtml(field.label)}</span>
+                                    ${renderInput(field, row?.[field.key] || '', `data-equipment-row-section="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}"`)}
+                                </label>
+                            `).join('')}
+                            <button type="button" class="data-equipment-row-remove data-equipment-detail-remove" data-equipment-remove-row="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml('\uD56D\uBAA9 \uC0AD\uC81C')}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </article>
+                `).join('')}
             </div>
         `;
     }
@@ -453,7 +425,6 @@
                 ${DETAIL_GROUP_KEYS.map((groupKey) => `
                     <section class="data-equipment-detail-group" data-equipment-detail-group="${api.escapeHtml(groupKey)}">
                         <div class="data-equipment-detail-group-head">
-                            <strong>${api.escapeHtml(DETAIL_GROUP_LABELS[groupKey])}</strong>
                             <button type="button" class="data-equipment-add-row" data-equipment-add-row="${api.escapeHtml(groupKey)}">
                                 <i class="fas fa-plus"></i><span>${api.escapeHtml('\uD589 \uCD94\uAC00')}</span>
                             </button>

@@ -484,7 +484,8 @@ test('team settlement render builds electric bukjeong fields and document action
   );
   assert.equal(context.elements.teamSettlementPreviewBtn.classList.contains('is-hidden'), false);
   assert.equal(context.elements.teamSettlementOpenBtn.classList.contains('is-hidden'), false);
-  assert.equal(context.elements.teamSettlementCompleteBtn.disabled, false);
+  assert.equal(context.elements.teamSettlementCompleteBtn.classList.contains('is-hidden'), true);
+  assert.equal(context.elements.teamSettlementCompleteBtn.disabled, true);
   assert.equal(context.__actions.children[0].dataset.teamSettlementDirectoryConnect, 'true');
 });
 
@@ -507,7 +508,7 @@ test('team settlement render hides unsupported resources and clears stale fields
   assert.equal(context.elements.teamSettlementCompleteBtn.classList.contains('is-hidden'), true);
 });
 
-test('team settlement completion button marks completed entries', () => {
+test('team settlement completion button stays hidden because save owns completion', () => {
   const completedEntry = {
     fields: {
       base_charge: '1',
@@ -524,7 +525,8 @@ test('team settlement completion button marks completed entries', () => {
 
   context.syncTeamSettlementCompletionButtonState('2026-04', true, 'bukjeong');
 
-  assert.equal(context.elements.teamSettlementCompleteBtn.classList.contains('is-completed'), true);
-  assert.equal(context.elements.teamSettlementCompleteBtn.disabled, false);
-  assert.equal(context.elements.teamSettlementCompleteBtn.textContent, '취소');
+  assert.equal(context.elements.teamSettlementCompleteBtn.classList.contains('is-hidden'), true);
+  assert.equal(context.elements.teamSettlementCompleteBtn.classList.contains('is-completed'), false);
+  assert.equal(context.elements.teamSettlementCompleteBtn.disabled, true);
+  assert.equal(context.elements.teamSettlementCompleteBtn.textContent, '');
 });

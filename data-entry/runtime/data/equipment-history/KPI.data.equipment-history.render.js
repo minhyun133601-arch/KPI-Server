@@ -202,7 +202,7 @@
                     </div>
                     <article class="data-equipment-card data-equipment-detail-card">
                         <h3 class="data-equipment-section-title">
-                            상세 정보
+                            ${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}
                         </h3>
                         ${api.renderDetailGroups(draft.detailGroups)}
                     </article>

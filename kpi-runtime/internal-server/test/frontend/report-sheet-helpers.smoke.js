@@ -34,7 +34,7 @@ test('report sheet helper functions are split out of sheet runtime', () => {
       const match = String(value || '').match(/^(\d{4})-(\d{2})$/u);
       return match ? { year: Number(match[1]), month: Number(match[2]) } : null;
     },
-    buildUtilMonthOptions: () => [{ value: '2026-01' }, { value: '2026-02' }],
+    buildUtilMonthOptions: () => [{ value: '2026-01' }, { value: '2026-02' }, { value: '2026-03' }],
     UTIL_GAS_ENTRIES: [],
     UTIL_ELECTRIC_ENTRIES: [],
   };
@@ -57,7 +57,23 @@ test('report sheet helper functions are split out of sheet runtime', () => {
   assert.equal(context.compareUtilSheetMonthKeys('2026-01', '2026-02'), -1);
   assert.equal(
     JSON.stringify(context.buildUtilSheetMonthBounds('gas')),
-    JSON.stringify({ from: '2026-01', to: '2026-02' })
+    JSON.stringify({ from: '2026-01', to: '2026-03' })
+  );
+  assert.equal(
+    context.isUtilSheetSettledRow({ gasUsage: 10, gasCost: 20, production: 3 }, { usageKey: 'gasUsage', costKey: 'gasCost' }),
+    true
+  );
+  assert.equal(
+    context.isUtilSheetSettledRow({ gasUsage: 0, gasCost: 20, production: 3 }, { usageKey: 'gasUsage', costKey: 'gasCost' }),
+    false
+  );
+  assert.equal(
+    context.isUtilSheetSettledRow({ gasUsage: 10, gasCost: 0, production: 3 }, { usageKey: 'gasUsage', costKey: 'gasCost' }),
+    false
+  );
+  assert.equal(
+    context.isUtilSheetSettledRow({ gasUsage: 10, gasCost: 20, production: 0 }, { usageKey: 'gasUsage', costKey: 'gasCost' }),
+    false
   );
   assert.doesNotMatch(sheetSource, /function\s+formatUtilSheetCost/);
   assert.doesNotMatch(sheetSource, /function\s+buildUtilSheetMonthBounds/);
@@ -67,8 +83,8 @@ test('report sheet helper functions are split out of sheet runtime', () => {
 
 test('kpi html loads report sheet helpers before sheet runtime', () => {
   const summaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=053');
-  const helpersIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.helpers.js?v=340');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
+  const helpersIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.helpers.js?v=341');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=055');
 
   assert.ok(summaryIndex >= 0, 'report sheet summary loader is missing');
   assert.ok(helpersIndex > summaryIndex, 'report sheet helpers must load after summary render helpers');

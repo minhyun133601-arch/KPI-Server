@@ -531,17 +531,17 @@
         const buildCompareMonthKey = monthKey => normalizedCompareKey === 'year'
             ? shiftMonthKey(monthKey, -12)
             : shiftMonthKey(monthKey, -1);
-        const sumValues = (rows, key) => rows.reduce((total, row) => total + (Number.isFinite(row?.[key]) ? row[key] : 0), 0);
         const activeMonthKey = range.to;
         const referenceMonthKey = buildCompareMonthKey(activeMonthKey);
         const activeRow = rowMap.get(activeMonthKey) || null;
         const referenceRow = rowMap.get(referenceMonthKey) || null;
         const compareLabel = getCompareLabel(normalizedCompareKey);
         const teamOption = datasetResult.option || getElectricTeamOption(teamKey);
-        const totalUsage = sumValues(rangeRows, 'electricUsage');
-        const totalCost = sumValues(rangeRows, 'electricCost');
-        const totalProduction = sumValues(rangeRows, 'production');
-        const totalIntensity = totalProduction > 0 ? totalUsage / totalProduction : null;
+        const activeMonthLabel = monthOptions.find(item => item.value === activeMonthKey)?.label || activeMonthKey;
+        const selectedMonthMetaText = [activeMonthLabel, teamOption.label].filter(Boolean).join(' · ');
+        const activeUsage = Number.isFinite(activeRow?.electricUsage) ? activeRow.electricUsage : null;
+        const activeCost = Number.isFinite(activeRow?.electricCost) ? activeRow.electricCost : null;
+        const activeProduction = Number.isFinite(activeRow?.production) ? activeRow.production : null;
         const activeIntensity = Number.isFinite(activeRow?.electricUsage) && Number.isFinite(activeRow?.production) && activeRow.production > 0
             ? activeRow.electricUsage / activeRow.production
             : null;
@@ -563,7 +563,7 @@
                 color: '#f59e0b',
                 chartType: 'bar',
                 points: rangeKeys.map(monthKey => createPoint(monthKey, rowMap.get(monthKey)?.electricUsage)),
-                valueText: formatQuantity(totalUsage, 'kWh'),
+                valueText: formatQuantity(activeUsage, 'kWh'),
                 subText: buildCompareSub(
                     compareLabel,
                     activeMonthKey,
@@ -584,7 +584,7 @@
                 chartType: 'line',
                 lineWidth: 3.2,
                 points: rangeKeys.map(monthKey => createPoint(monthKey, rowMap.get(monthKey)?.electricCost)),
-                valueText: formatCost(totalCost),
+                valueText: formatCost(activeCost),
                 subText: buildCompareSub(
                     compareLabel,
                     activeMonthKey,
@@ -603,7 +603,7 @@
                 lineWidth: 3,
                 lineDash: '8 6',
                 points: rangeKeys.map(monthKey => createPoint(monthKey, rowMap.get(monthKey)?.production)),
-                valueText: formatQuantity(totalProduction, 'kg'),
+                valueText: formatQuantity(activeProduction, 'kg'),
                 subText: buildCompareSub(
                     compareLabel,
                     activeMonthKey,
@@ -653,9 +653,9 @@
             const lineRatioSummaryItems = lineRatioSeries.map(series => ({
                 key: series.key,
                 title: series.title,
-                valueText: formatPercent(series.totalRatio),
+                valueText: formatPercent(series.activeRatio),
                 secondaryLabelText: '생산량',
-                secondaryValueText: formatQuantity(series.totalAmount, 'kg'),
+                secondaryValueText: formatQuantity(series.activeAmount, 'kg'),
                 subText: buildCompareSub(
                     compareLabel,
                     activeMonthKey,
@@ -663,7 +663,7 @@
                 ),
                 icon: 'fa-chart-pie',
                 tone: 'production',
-                metaText: ['범위 누적', rangeLabel, '기준 ' + teamOption.label].join(' · ')
+                metaText: selectedMonthMetaText
             }));
             const resolvedLineRatioSummaryItems = lineRatioSummaryItems.map((item, index) => {
                 const series = lineRatioSeries[index] || null;
@@ -673,13 +673,13 @@
                     ...item,
                     popupTableKey: series?.key || item?.popupTableKey || '',
                     valueText: formatUtilElectricAnalysisLineMetricValue(
-                        isAmountMode ? series?.totalAmount : series?.totalRatio,
+                        isAmountMode ? series?.activeAmount : series?.activeRatio,
                         unitKey
                     ),
                     secondaryLabelText: isAmountMode ? '%' : 'kg',
                     secondaryValueText: isAmountMode
-                        ? formatPercent(series?.totalRatio)
-                        : formatUtilElectricAnalysisLineMetricValue(series?.totalAmount, 'kg'),
+                        ? formatPercent(series?.activeRatio)
+                        : formatUtilElectricAnalysisLineMetricValue(series?.activeAmount, 'kg'),
                     subText: buildCompareSub(
                         compareLabel,
                         activeMonthKey,
@@ -694,7 +694,7 @@
                 {
                     key: 'electricIntensity',
                     title: intensityBaseChart.title,
-                    valueText: formatUtilElectricAnalysisIntensity(totalIntensity),
+                    valueText: formatUtilElectricAnalysisIntensity(activeIntensity),
                     subText: buildCompareSub(
                         compareLabel,
                         activeMonthKey,
@@ -702,7 +702,7 @@
                     ),
                     icon: 'fa-gauge-high',
                     tone: 'electric',
-                    metaText: `범위 누적 · ${rangeLabel} · 기준 ${teamOption.label}`
+                    metaText: selectedMonthMetaText
                 }
             ].concat(resolvedLineRatioSummaryItems);
             intensityChart.summaryControlItems = intensityControlItems;
@@ -711,29 +711,29 @@
             {
                 key: 'electricUsage',
                 title: '전기 사용량',
-                valueText: formatQuantity(totalUsage, 'kWh'),
+                valueText: formatQuantity(activeUsage, 'kWh'),
                 subText: charts[0].subText,
                 icon: 'fa-bolt',
                 tone: 'electric',
-                metaText: `범위 누적 · ${rangeLabel} · 기준 ${teamOption.label}`
+                metaText: selectedMonthMetaText
             },
             {
                 key: 'electricCost',
                 title: '금액',
-                valueText: formatCost(totalCost),
+                valueText: formatCost(activeCost),
                 subText: charts[1].subText,
                 icon: 'fa-coins',
                 tone: 'cost',
-                metaText: `범위 누적 · ${rangeLabel} · 기준 ${teamOption.label}`
+                metaText: selectedMonthMetaText
             },
             {
                 key: 'production',
                 title: '생산량',
-                valueText: formatQuantity(totalProduction, 'kg'),
+                valueText: formatQuantity(activeProduction, 'kg'),
                 subText: charts[2].subText,
                 icon: 'fa-industry',
                 tone: 'production',
-                metaText: `범위 누적 · ${rangeLabel} · 기준 ${teamOption.label}`
+                metaText: selectedMonthMetaText
             }
         ];
 

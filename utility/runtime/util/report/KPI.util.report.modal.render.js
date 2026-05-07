@@ -79,6 +79,7 @@
                 compositionKeys,
                 compositionValueType,
                 isProductionCategory,
+                processComposition,
                 productionSiteContextKey
             } = renderUtilReportModalCompositionOverview(result, {
                 totalDonutEl,

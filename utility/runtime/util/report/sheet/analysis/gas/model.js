@@ -241,13 +241,28 @@
             categoryKey: 'cost',
             selectedScopeKeys: [spec.scopeKey]
         };
+        const categoryOption = getGasCategoryOption(UtilSheetAnalysisState.gas.categoryKey);
         const fullResult = runtime.buildUtilReportMonthlyRows(baseState);
         const fullRows = Array.isArray(fullResult?.rows) ? fullResult.rows : [];
-        const settledRows = fullRows.filter(row => Boolean(row?.monthKey));
-        const monthOptions = settledRows.map(row => ({
+        const candidateRows = fullRows.filter(row => Boolean(row?.monthKey));
+        const candidateMonthOptions = candidateRows.map(row => ({
             value: row.monthKey,
             label: typeof runtime.formatUtilReportMonthLong === 'function' ? runtime.formatUtilReportMonthLong(row.monthKey) : row.monthKey
         }));
+        const monthMetricMap = buildGasMetricMap(
+            candidateMonthOptions.map(item => item.value),
+            categoryOption
+        );
+        const monthOptions = candidateMonthOptions.filter(item => {
+            const metric = monthMetricMap.get(item.value) || {};
+            const activeUsageValues = [];
+            if (!isGasFuelInactive('lng')) activeUsageValues.push(Number(metric.lngUsage));
+            if (categoryOption.showLpgCard && !isGasFuelInactive('lpg')) activeUsageValues.push(Number(metric.lpgUsage));
+            const hasActiveUsage = activeUsageValues.some(value => Number.isFinite(value) && value > 0);
+            const hasCategoryCost = Number.isFinite(Number(metric.gasCost)) && Number(metric.gasCost) > 0;
+            const hasCategoryProduction = Number.isFinite(Number(metric.production)) && Number(metric.production) > 0;
+            return hasActiveUsage && hasCategoryCost && hasCategoryProduction;
+        });
         if (!monthOptions.length) {
             return {
                 hasData: false,
@@ -259,7 +274,6 @@
         }
 
         const normalizedCompareKey = normalizeCompareKey(compareKey);
-        const categoryOption = getGasCategoryOption(UtilSheetAnalysisState.gas.categoryKey);
         const fallbackTo = monthOptions.some(item => item.value === selectedMonthKey)
             ? selectedMonthKey
             : monthOptions[monthOptions.length - 1].value;
@@ -271,10 +285,6 @@
         );
         const rangeKeys = buildRangeMonthKeys(monthOptions, range.from, range.to);
         const rangeLabel = buildRangeLabel(range.from, range.to);
-        const monthMetricMap = buildGasMetricMap(
-            monthOptions.map(item => item.value),
-            categoryOption
-        );
         const usageMap = new Map(
             monthOptions.map(item => {
                 const metric = monthMetricMap.get(item.value) || {};
@@ -312,17 +322,14 @@
         const buildCompareKey = monthKey => normalizedCompareKey === 'year'
             ? shiftMonthKey(monthKey, -12)
             : shiftMonthKey(monthKey, -1);
-        const buildQuantityTotal = (points, unit) => formatQuantity(
-            points.reduce((sum, point) => sum + (Number.isFinite(point?.value) ? point.value : 0), 0),
-            unit
-        );
         const activeMonthKey = range.to;
         const referenceMonthKey = buildCompareKey(activeMonthKey);
         const activeMetric = monthMetricMap.get(activeMonthKey) || {};
         const referenceMetric = monthMetricMap.get(referenceMonthKey) || {};
         const compareLabel = normalizedCompareKey === 'year' ? '전년대비' : '전월대비';
-        const scopeMetaText = `범위 합계 · ${rangeLabel} · 기준 ${categoryOption.label}`;
-        const costMetaText = `${scopeMetaText} · ${buildCostModeText(categoryOption)}`;
+        const activeMonthLabel = monthOptions.find(item => item.value === activeMonthKey)?.label || activeMonthKey;
+        const scopeMetaText = [activeMonthLabel, categoryOption.label].filter(Boolean).join(' · ');
+        const costMetaText = [scopeMetaText, buildCostModeText(categoryOption)].filter(Boolean).join(' · ');
         const lineRatioSeries = buildElectricLineRatioSeries(
             rangeKeys,
             { productionTeamNames: categoryOption.productionTeamNames || [] },
@@ -390,7 +397,7 @@
             let metaText = scopeMetaText;
 
             if (chart.key === 'lpgUsage') {
-                valueText = buildQuantityTotal(chart.points, 'kg');
+                valueText = formatQuantity(activeMetric?.lpgUsage, 'kg');
                 subText = buildCompareSub(
                     compareLabel,
                     activeMonthKey,
@@ -400,7 +407,7 @@
                     )
                 );
             } else if (chart.key === 'lngUsage') {
-                valueText = buildQuantityTotal(chart.points, 'Nm3');
+                valueText = formatQuantity(activeMetric?.lngUsage, 'Nm3');
                 subText = buildCompareSub(
                     compareLabel,
                     activeMonthKey,
@@ -410,9 +417,7 @@
                     )
                 );
             } else if (chart.key === 'gasCost') {
-                valueText = formatCost(
-                    chart.points.reduce((sum, point) => sum + (Number.isFinite(point?.value) ? point.value : 0), 0)
-                );
+                valueText = formatCost(activeMetric?.gasCost);
                 subText = buildCompareSub(
                     compareLabel,
                     activeMonthKey,
@@ -420,10 +425,7 @@
                 );
                 metaText = costMetaText;
             } else if (chart.key === 'production') {
-                valueText = formatQuantity(
-                    chart.points.reduce((sum, point) => sum + (Number.isFinite(point?.value) ? point.value : 0), 0),
-                    'kg'
-                );
+                valueText = formatQuantity(activeMetric?.production, 'kg');
                 subText = buildCompareSub(
                     compareLabel,
                     activeMonthKey,
@@ -449,6 +451,7 @@
             lineRatioSeries,
             compareLabel,
             activeMonthKey,
+            activeMonthLabel,
             referenceMonthKey,
             categoryLabel: categoryOption.label
         });

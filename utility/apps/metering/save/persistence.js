@@ -160,6 +160,63 @@ function syncPendingMeteringDraftInputs(options = {}) {
   return syncPendingTeamDraftInputs();
 }
 
+function completeCurrentBillingSettlementEntryForManualSave() {
+  if (getCurrentMode() !== MODES.TEAM || state.isTeamSettlementPanelOpen !== true) {
+    return false;
+  }
+
+  if (
+    typeof supportsBillingSettlementForCurrentResource === "function" &&
+    !supportsBillingSettlementForCurrentResource()
+  ) {
+    return false;
+  }
+
+  if (
+    typeof getBillingSettlementCompletionState !== "function" ||
+    typeof setBillingSettlementEntryForScope !== "function"
+  ) {
+    return false;
+  }
+
+  const monthValue = normalizeMonthValue(state.currentMonth);
+  const scopeKey =
+    typeof getCurrentBillingSettlementScope === "function"
+      ? getCurrentBillingSettlementScope()
+      : "";
+  if (!monthValue || !scopeKey) {
+    return false;
+  }
+
+  const completionState = getBillingSettlementCompletionState(monthValue, scopeKey);
+  const fields = completionState.fields || {};
+  const missingFieldKeys = completionState.missingFieldKeys || [];
+  if (
+    !completionState.entry?.fields ||
+    !Object.keys(completionState.entry.fields).length ||
+    missingFieldKeys.length ||
+    completionState.entry.completed === true
+  ) {
+    return false;
+  }
+
+  setBillingSettlementEntryForScope(
+    monthValue,
+    {
+      monthValue,
+      fields,
+      completed: true,
+      updatedAt: new Date().toISOString(),
+    },
+    scopeKey
+  );
+  state.cleanStatusText = "정산 입력을 저장 완료 처리했습니다.";
+  renderTeamMode();
+  renderCalendar();
+  renderSummary();
+  return true;
+}
+
 function scheduleEquipmentLocalAutosave() {
   if (getCurrentMode() !== MODES.EQUIPMENT || !state.selectedDate) {
     return;

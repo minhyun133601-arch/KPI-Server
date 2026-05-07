@@ -140,7 +140,9 @@ test('audit legal facility preview renders registration form and extended column
   assert.match(html, /data-audit-legal-category="fire"/);
   assert.match(html, /data-audit-legal-category="electric"/);
   assert.match(html, /data-audit-legal-category="environment"/);
+  assert.match(html, /data-audit-legal-category="elevator"/);
   assert.match(html, /data-audit-legal-category="other"/);
+  assert.match(html, /승강기/);
   assert.match(html, /정기검사/);
   assert.match(html, /사용검사/);
   assert.match(html, /선임/);
@@ -160,6 +162,8 @@ test('audit legal facility preview renders registration form and extended column
   assert.match(html, /data-audit-legal-calendar-shift="1"/);
   assert.match(html, /data-audit-legal-calendar-year/);
   assert.match(html, /data-audit-legal-calendar-month/);
+  assert.match(html, /data-audit-legal-calendar-toggle/);
+  assert.match(html, /aria-expanded="true"/);
   assert.match(html, /audit-legal-calendar-month-watermark/);
   assert.match(html, /aria-label="점검 일정 연도"/);
   assert.match(html, /aria-label="점검 일정 월"/);
@@ -202,6 +206,9 @@ test('audit legal facility submit waits for record save and cleans uploaded file
   assert.match(legalFormSource, /setAuditLegalCalendarMonth/);
   assert.match(legalFormSource, /서버 저장이 완료되지 않아 법정설비 등록을 취소했습니다/);
   assert.match(legalSource, /AUDIT_LEGAL_CATEGORY_INSPECTION_FORM_ID/);
+  assert.match(legalSource, /calendarExpanded: true/);
+  assert.match(legalSource, /value: 'elevator', label: '승강기'/);
+  assert.match(legalFormSource, /data-audit-legal-calendar-toggle/);
   assert.match(legalSource, /data-audit-legal-calendar-year/);
   assert.match(legalSource, /data-audit-legal-calendar-month/);
   assert.doesNotMatch(legalSource, /function bindAuditLegalEntryEvents/);

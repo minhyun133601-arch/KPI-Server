@@ -120,6 +120,7 @@ async function performManualSave(options = {}) {
   sharedServerPersistenceState.lastErrorMessage = "";
   if (currentMode === MODES.TEAM) {
     syncPendingMeteringDraftInputs();
+    completeCurrentBillingSettlementEntryForManualSave();
   }
 
   let didSave = false;

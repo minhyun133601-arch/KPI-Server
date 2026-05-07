@@ -486,7 +486,7 @@
                 <div class="util-sheet-section-head util-sheet-analysis-section-head">
                     <div>
                         <div class="util-sheet-section-title">전기 분석표</div>
-                        <div class="util-sheet-section-sub">전기 사용량, 금액, 생산량, 생산량 대비 전기 사용량을 누적 기준으로 비교합니다.</div>
+                        <div class="util-sheet-section-sub">전기 사용량, 금액, 생산량, 생산량 대비 전기 사용량을 월별 기준으로 비교합니다.</div>
                     </div>
                     <div class="util-sheet-analysis-toolbar">
                         ${buildElectricAnalysisTeamSelectHtml(model?.teamOption?.key || 'combined')}

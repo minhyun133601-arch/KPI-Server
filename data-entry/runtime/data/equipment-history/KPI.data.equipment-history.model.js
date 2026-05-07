@@ -98,9 +98,10 @@
             || Array.isArray(groups.equipmentSpecs)
             || Array.isArray(groups.otherInfo);
         if (!hasGroupedRows) return null;
+        const equipmentSpecs = Array.isArray(item?.equipmentSpecs) ? item.equipmentSpecs : groups.equipmentSpecs;
+        const otherInfo = Array.isArray(item?.otherInfo) ? item.otherInfo : groups.otherInfo;
         return {
-            equipmentSpecs: asList(item?.equipmentSpecs || groups.equipmentSpecs),
-            otherInfo: asList(item?.otherInfo || groups.otherInfo),
+            equipmentSpecs: [...asList(equipmentSpecs), ...asList(otherInfo)],
         };
     }
 
@@ -129,6 +130,7 @@
             lastCheck: normalizeText(item?.lastCheck || getInfoValue(operationInfo, ['최근 점검'])),
             nextCheck: normalizeText(item?.nextCheck || getInfoValue(operationInfo, ['다음 점검'])),
             teamDataKey,
+            manufacturer: normalizeText(item?.manufacturer || item?.maker || getInfoValue(detailInfo, ['제조사', '제작사', '메이커']) || getInfoValue(operationInfo, ['제조사', '제작사', '메이커'])),
             owner: normalizeText(item?.owner || getInfoValue(detailInfo, ['담당', '책임자'])),
             note: normalizeText(item?.note),
             photoDataUrl: normalizeText(item?.photoDataUrl),
@@ -180,6 +182,7 @@
             { label: '실', value: equipment?.room || '' },
             { label: '공정', value: equipment?.process || equipment?.group || '' },
             { label: '가동률', value: formatRateValue(equipment?.rate) },
+            { label: '제조사', value: equipment?.manufacturer || '' },
         ];
     }
 

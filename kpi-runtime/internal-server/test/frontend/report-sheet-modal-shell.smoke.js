@@ -788,8 +788,8 @@ test('kpi html loads report sheet modal shell before modal render and sheet.js',
   const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=053');
   const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=059');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=054');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=054');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=055');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=055');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');

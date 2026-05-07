@@ -150,7 +150,7 @@ test('kpi html loads gas meter model before gas summary modules and sheet.js', (
   const gasMeterModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/meter-model.js?v=053');
   const gasComparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/comparison-summary.js?v=053');
   const scopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=054');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=055');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(electricComparisonIndex >= 0, 'electric comparison summary loader is missing');

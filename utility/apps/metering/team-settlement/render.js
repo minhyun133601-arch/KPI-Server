@@ -390,36 +390,9 @@ function syncTeamSettlementCompletionButtonState(
     return;
   }
 
-  const scopeTitle = getBillingSettlementScopeTitle(scopeKey);
-  const completionState = getBillingSettlementCompletionState(monthValue, scopeKey);
-  const hasAnyFields = Boolean(completionState.entry?.fields && Object.keys(completionState.entry.fields).length);
-  const isCompleted = Boolean(completionState.entry?.completed) && !completionState.missingFieldKeys.length;
-  const missingLabels = completionState.missingFieldKeys.map(getBillingSettlementFieldLabel);
-
-  elements.teamSettlementCompleteBtn.classList.toggle("is-hidden", !shouldShow);
-  elements.teamSettlementCompleteBtn.classList.toggle("is-completed", isCompleted);
-  elements.teamSettlementCompleteBtn.disabled = !shouldShow || !hasAnyFields;
-  elements.teamSettlementCompleteBtn.textContent = isCompleted ? "취소" : "완료";
-
-  if (!shouldShow) {
-    elements.teamSettlementCompleteBtn.title = `${scopeTitle} 완료`;
-    return;
-  }
-
-  if (!hasAnyFields) {
-    elements.teamSettlementCompleteBtn.title = `${scopeTitle} 값을 먼저 입력해 주세요`;
-    return;
-  }
-
-  if (isCompleted) {
-    elements.teamSettlementCompleteBtn.title = `${scopeTitle} 완료 상태입니다.`;
-    return;
-  }
-
-  if (missingLabels.length) {
-    elements.teamSettlementCompleteBtn.title = `${scopeTitle} 확인 필요: ${missingLabels.join(", ")}`;
-    return;
-  }
-
-  elements.teamSettlementCompleteBtn.title = `${scopeTitle} 값 검토 후 완료 처리`;
+  elements.teamSettlementCompleteBtn.classList.add("is-hidden");
+  elements.teamSettlementCompleteBtn.classList.remove("is-completed");
+  elements.teamSettlementCompleteBtn.disabled = true;
+  elements.teamSettlementCompleteBtn.textContent = "";
+  elements.teamSettlementCompleteBtn.title = "";
 }
