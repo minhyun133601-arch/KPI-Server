@@ -134,6 +134,11 @@ test('work history layout templates registry exposes shell and modal builders', 
   assert.equal(typeof view.buildDeleteModal, 'function');
   assert.equal(typeof view.getTeamIconSvg, 'function');
   assert.equal(typeof view.getSectionIconSvg, 'function');
+  assert.equal(view.formatCostInputValue('1,234원'), '1234');
+  assert.equal(view.formatCurrency(150000000), '1억 5천만원');
+  assert.equal(view.formatCurrency(100000000), '1억원');
+  assert.equal(view.formatCurrency(5000), '1만원 미만');
+  assert.equal(view.formatCurrency(null), '자체처리');
 
   const shellHtml = view.buildShellHtml();
   const pageHeaderHtml = view.buildPageHeader();
@@ -150,10 +155,10 @@ test('work history layout templates registry exposes shell and modal builders', 
 
 test('kpi html loads work history layout templates between layout and render', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=250');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=252');
   const workspaceStateIndex = kpiHtml.indexOf('runtime/work/history/layout/workspace-state.js?v=2');
-  const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=250');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=235');
+  const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=251');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=236');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(layoutIndex >= 0, 'work history layout loader is missing');
@@ -168,8 +173,9 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   const view = context.KpiWorkHistory.view;
   const { importHrefs, sources } = await readImportedHistoryStyles();
 
-  assert.equal(view.CSS_PATH, 'team-report/runtime/work/history/KPI.work.history.css?v=246');
+  assert.equal(view.CSS_PATH, 'team-report/runtime/work/history/KPI.work.history.css?v=247');
   assert.match(layoutSource, /<link rel="stylesheet" href="\$\{CSS_PATH\}">/);
+  assert.match(templatesSource, /pattern="\[0-9\]\*"/);
   assert.deepEqual(importHrefs.map(stripCssImportVersion), expectedHistoryStyleImports);
   assert.ok(countLines(historyCssManifestSource) < 800, 'KPI.work.history.css manifest is too large');
   sources.forEach(({ href, source }) => {

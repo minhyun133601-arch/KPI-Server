@@ -644,12 +644,15 @@
             font-weight: 700;
         }
         .data-equipment-board-column {
+            --equipment-team-color: #2fe27c;
+            --equipment-team-color-2: #8effbd;
+            --equipment-team-tint: #ecfdf5;
             min-height: 560px;
             padding: 12px;
-            border: 1px solid rgba(47, 226, 124, 0.22);
-            border-top: 4px solid #2fe27c;
+            border: 1px solid color-mix(in srgb, var(--equipment-team-color) 30%, rgba(255, 255, 255, 0.12));
+            border-top: 4px solid var(--equipment-team-color);
             border-radius: 8px 8px 0 0;
-            background: linear-gradient(180deg, #102235, #142c43);
+            background: linear-gradient(180deg, color-mix(in srgb, var(--equipment-team-color) 18%, #102235), color-mix(in srgb, var(--equipment-team-color-2) 10%, #142c43));
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
         }
         .data-equipment-board-column > header {
@@ -667,13 +670,36 @@
             gap: 3px;
             min-width: 0;
         }
+        .data-equipment-board-team-heading {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .data-equipment-board-team-icon {
+            width: 34px;
+            height: 34px;
+            flex: 0 0 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 11px;
+            background: linear-gradient(135deg, var(--equipment-team-color), var(--equipment-team-color-2));
+            color: #ffffff;
+            box-shadow: 0 10px 24px color-mix(in srgb, var(--equipment-team-color) 34%, transparent);
+        }
+        .data-equipment-board-team-copy {
+            min-width: 0;
+            display: grid;
+            gap: 3px;
+        }
         .data-equipment-board-team-title strong {
             overflow-wrap: anywhere;
             font-size: 0.95rem;
             line-height: 1.2;
         }
         .data-equipment-board-team-title small {
-            color: #8fb6c9;
+            color: color-mix(in srgb, var(--equipment-team-tint) 76%, #8fb6c9);
             font-size: 0.69rem;
             font-weight: 900;
         }
@@ -682,19 +708,19 @@
             align-items: center;
             min-height: 24px;
             padding: 0 8px;
-            border: 1px solid rgba(47, 226, 124, 0.24);
+            border: 1px solid color-mix(in srgb, var(--equipment-team-color) 34%, transparent);
             border-radius: 999px;
-            background: rgba(47, 226, 124, 0.08);
-            color: #dfffee;
+            background: color-mix(in srgb, var(--equipment-team-color) 12%, transparent);
+            color: color-mix(in srgb, var(--equipment-team-tint) 76%, #ffffff);
             font-size: 0.72rem;
             white-space: nowrap;
         }
         .data-equipment-board-section {
             margin-top: 10px;
             padding: 10px;
-            border: 1px solid rgba(168, 190, 212, 0.2);
+            border: 1px solid color-mix(in srgb, var(--equipment-team-color) 20%, rgba(168, 190, 212, 0.2));
             border-radius: 8px;
-            background: rgba(45, 64, 80, 0.58);
+            background: color-mix(in srgb, var(--equipment-team-color) 9%, rgba(45, 64, 80, 0.58));
         }
         .data-equipment-board-section h3 {
             margin: 0 0 8px;
@@ -710,9 +736,9 @@
             min-height: 224px;
             margin-top: 8px;
             padding: 12px;
-            border: 1px solid rgba(47, 226, 124, 0.42);
+            border: 1px solid color-mix(in srgb, var(--equipment-team-color) 42%, transparent);
             border-radius: 8px;
-            background: linear-gradient(180deg, rgba(45, 83, 73, 0.92), rgba(41, 67, 72, 0.84));
+            background: linear-gradient(180deg, color-mix(in srgb, var(--equipment-team-color) 22%, rgba(45, 83, 73, 0.92)), color-mix(in srgb, var(--equipment-team-color-2) 14%, rgba(41, 67, 72, 0.84)));
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.14);
         }
         .data-equipment-board-card:first-of-type {
@@ -725,7 +751,7 @@
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, #2fe27c, #8effbd);
+            background: linear-gradient(90deg, var(--equipment-team-color), var(--equipment-team-color-2));
         }
         .data-equipment-board-card.is-check::before {
             background: linear-gradient(90deg, #f6c445, #ffe28b);
@@ -773,8 +799,8 @@
             font-weight: 900;
         }
         .data-equipment-board-chip.is-running {
-            background: rgba(47, 226, 124, 0.16);
-            color: #68f7a8;
+            background: color-mix(in srgb, var(--equipment-team-color) 16%, transparent);
+            color: color-mix(in srgb, var(--equipment-team-color-2) 76%, #ffffff);
         }
         .data-equipment-board-chip.is-check {
             background: rgba(246, 196, 69, 0.18);
@@ -793,8 +819,8 @@
             height: 9px;
             flex: 0 0 9px;
             border-radius: 999px;
-            background: #2fe27c;
-            box-shadow: 0 0 10px rgba(47, 226, 124, 0.75);
+            background: var(--equipment-team-color);
+            box-shadow: 0 0 10px color-mix(in srgb, var(--equipment-team-color) 72%, transparent);
         }
         .data-equipment-live-dot.is-check {
             background: #f6c445;
@@ -824,7 +850,7 @@
             font-weight: 900;
         }
         .data-equipment-board-metric strong {
-            color: #2fe27c;
+            color: color-mix(in srgb, var(--equipment-team-color-2) 80%, #ffffff);
             font-weight: 900;
         }
         .data-equipment-board-card.is-check .data-equipment-board-metric strong {
@@ -837,10 +863,10 @@
             width: 100%;
             min-height: 32px;
             margin-top: auto;
-            border: 1px solid rgba(60, 240, 136, 0.34);
+            border: 1px solid color-mix(in srgb, var(--equipment-team-color) 34%, transparent);
             border-radius: 7px;
-            background: rgba(47, 226, 124, 0.18);
-            color: #47f592;
+            background: color-mix(in srgb, var(--equipment-team-color) 18%, transparent);
+            color: color-mix(in srgb, var(--equipment-team-color-2) 82%, #ffffff);
             font-size: 0.76rem;
             font-weight: 900;
             cursor: pointer;

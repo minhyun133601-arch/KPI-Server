@@ -42,6 +42,28 @@
         `;
     }
 
+    function getSafeBoardTeamColor(value, fallback) {
+        const raw = api.normalizeText(value);
+        return /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback;
+    }
+
+    function getSafeBoardTeamIcon(icon) {
+        const raw = api.normalizeText(icon);
+        return /^fa[-\w]+$/.test(raw) ? raw : 'fa-industry';
+    }
+
+    function getBoardTeamStyle(meta) {
+        const color = getSafeBoardTeamColor(meta?.color, '#2fe27c');
+        const secondaryColor = getSafeBoardTeamColor(meta?.secondaryColor, '#8effbd');
+        const tint = getSafeBoardTeamColor(meta?.tint, '#ecfdf5');
+        return `--equipment-team-color:${api.escapeHtml(color)};--equipment-team-color-2:${api.escapeHtml(secondaryColor)};--equipment-team-tint:${api.escapeHtml(tint)};`;
+    }
+
+    function getBoardTeamSubtitle(meta) {
+        const parts = [meta?.processTag, meta?.processLabel].map(api.normalizeText).filter(Boolean);
+        return parts.length ? parts.join(' · ') : '팀별 설비 이력';
+    }
+
     function renderBoardCard(item) {
         const statusMeta = item.statusMeta || api.getEquipmentStatus(item.status);
         const toneClassName = statusMeta.tone === 'check' ? 'is-check' : statusMeta.tone === 'stop' ? 'is-stop' : '';
@@ -70,12 +92,19 @@
         const activeCount = items.filter((item) => item.statusMeta?.isRunning).length;
         const pausedCount = items.length - activeCount;
         const boardBody = groups.length
-            ? groups.map((group) => `
-                <section class="data-equipment-board-column" data-equipment-board-team="${api.escapeHtml(group.teamDataKey || group.team)}">
+            ? groups.map((group) => {
+                const teamMeta = group.teamMeta || api.getEquipmentHistoryTeamMeta?.(group.teamDataKey || group.team) || {};
+                return `
+                <section class="data-equipment-board-column" data-equipment-board-team="${api.escapeHtml(group.teamDataKey || group.team)}" style="${getBoardTeamStyle(teamMeta)}">
                     <header>
                         <div class="data-equipment-board-team-title">
-                            <strong>${api.escapeHtml(group.team)}</strong>
-                            <small>${api.escapeHtml('팀별 설비 이력')}</small>
+                            <span class="data-equipment-board-team-heading">
+                                <span class="data-equipment-board-team-icon" aria-hidden="true"><i class="fas ${api.escapeHtml(getSafeBoardTeamIcon(teamMeta.icon))}"></i></span>
+                                <span class="data-equipment-board-team-copy">
+                                    <strong>${api.escapeHtml(group.team)}</strong>
+                                    <small>${api.escapeHtml(getBoardTeamSubtitle(teamMeta))}</small>
+                                </span>
+                            </span>
                         </div>
                         <span>총 ${group.equipmentCount} · 가동 ${group.runningCount} · 비가동 ${group.stoppedCount}</span>
                     </header>
@@ -86,7 +115,8 @@
                         </div>
                     `).join('')}
                 </section>
-            `).join('')
+            `;
+            }).join('')
             : `
                 <article class="data-equipment-board-empty">
                     <strong>등록된 설비가 없습니다.</strong>

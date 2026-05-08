@@ -364,7 +364,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="recordCost">비용</label>
-                                    <input type="text" id="recordCost" inputmode="numeric" placeholder="미입력 시 자체처리">
+                                    <input type="text" id="recordCost" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="숫자만 입력 (원 단위)">
                                 </div>
                             </div>
 

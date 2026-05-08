@@ -13,7 +13,7 @@
         setShadowHost
     } = history;
 
-    const CSS_PATH = 'team-report/runtime/work/history/KPI.work.history.css?v=246';
+    const CSS_PATH = 'team-report/runtime/work/history/KPI.work.history.css?v=247';
     const COMPANY_LOGO_SRC = '/shared-assets/logo.jpg';
     const OVERVIEW_KEY = 'overview';
     const DRAG_SCROLL_THRESHOLD = 6;
@@ -212,9 +212,34 @@
         return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
     }
 
+    function formatKoreanCurrencyChunk(value) {
+        const numeric = Math.floor(Number(value) || 0);
+        if (numeric <= 0) return '';
+        const thousands = Math.floor(numeric / 1000);
+        const hundreds = Math.floor((numeric % 1000) / 100);
+        const tail = numeric % 100;
+        return [thousands > 0 ? `${thousands}천` : '', hundreds > 0 ? `${hundreds}백` : '', tail > 0 ? String(tail) : ''].filter(Boolean).join('');
+    }
+
     function formatCurrency(cost) {
         if (cost === null || cost === undefined || cost === '') return '자체처리';
-        return `${Number(cost).toLocaleString('ko-KR')}원`;
+        const numeric = Number(cost);
+        if (!Number.isFinite(numeric)) return '자체처리';
+        const amount = Math.max(0, Math.round(numeric));
+        if (amount === 0) return '0원';
+        const totalMan = Math.floor(amount / 10000);
+        if (totalMan <= 0) return '1만원 미만';
+        const eok = Math.floor(totalMan / 10000);
+        const restMan = totalMan % 10000;
+        const parts = [];
+        if (eok > 0) {
+            const eokText = formatKoreanCurrencyChunk(eok);
+            parts.push(restMan > 0 ? `${eokText}억` : `${eokText}억원`);
+        }
+        if (restMan > 0) {
+            parts.push(`${formatKoreanCurrencyChunk(restMan)}만원`);
+        }
+        return parts.join(' ');
     }
 
     function formatFileSize(bytes) {
@@ -226,9 +251,7 @@
 
     function formatCostInputValue(value) {
         if (value === null || value === undefined || value === '') return '';
-        const digits = String(value).replace(/[^\d]/g, '');
-        if (!digits) return '';
-        return Number(digits).toLocaleString('ko-KR');
+        return String(value).replace(/[^\d]/g, '') || '';
     }
 
     function buildTimestampLabel() {

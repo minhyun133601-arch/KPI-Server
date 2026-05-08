@@ -3,11 +3,11 @@
     {
       date: '2026-05-08',
       tag: 'work-history-equipment/ui-cleanup',
-      title: '작업내역 첨부/달력 표시와 설비 이력카드 정리',
+      title: '작업내역 첨부/달력/페이지 표시와 설비 이력카드 정리',
       summary:
-        '작업내역 첨부를 보고서, 견적서, 기타 3개 구분으로 정리하고, 작업내역이 팀 달력 날짜칸에서 별+하위카테고리만 크게 보이게 했으며, 설비 이력카드 보드는 작성된 카드를 팀별 lane과 설비 선택 묶음으로 구분되게 정리했습니다.',
+        '작업내역 첨부를 보고서, 견적서, 기타 3개 구분으로 정리하고, 비용 입력은 숫자 전용/표시는 만원 단위로 줄였으며, 작업내역이 팀 달력 날짜칸에서 별+하위카테고리만 크게 보이게 했습니다. 작업내역 목록은 긴 스크롤 대신 1, 2, 3 번호 버튼으로 넘기게 했고, 설비 이력카드 보드는 작성된 카드를 팀별 lane과 팀별 내역서 컨셉 색상/아이콘으로 구분되게 정리했습니다.',
       detail:
-        '기존 billing/report_pdf 문서 11건과 work_history_records payload는 one-shot repair로 새 카테고리/슬롯에 맞췄고, 작업 달력은 저장 구조 변경 없이 월간 요약/날짜칸 cue 렌더링만 조정하면서 우측 상단 별 카운트는 제거했습니다. 설비 이력카드는 팀 그룹 정렬/보드 헤더/선택 optgroup을 정리했습니다. 검증 기준: 작업내역 frontend smoke, document-storage unit, repair preview/write, equipment-history render smoke, browser smoke.',
+        '기존 billing/report_pdf 문서 11건과 work_history_records payload는 one-shot repair로 새 카테고리/슬롯에 맞췄고, 작업 달력은 저장 구조 변경 없이 월간 요약/날짜칸 cue 렌더링만 조정하면서 우측 상단 별 카운트는 제거했습니다. 작업내역 비용은 저장값을 원 단위 숫자로 유지하되 입력창은 숫자만 남기고 화면 표시는 만원/억원 단위로 줄였습니다. 작업내역 전체/팀별 목록은 8개 단위 페이지 상태를 두고 검색/필터 변경 시 첫 페이지로 돌아가게 했습니다. 설비 이력카드는 팀 그룹 정렬/보드 헤더/선택 optgroup을 정리하고 팀별 내역서 메타를 adapter 경유로 lane 색상과 아이콘에 반영했습니다. 검증 기준: 작업내역 frontend smoke, document-storage unit, repair preview/write, equipment-history render smoke, browser smoke.',
     },
     {
       date: '2026-05-07',

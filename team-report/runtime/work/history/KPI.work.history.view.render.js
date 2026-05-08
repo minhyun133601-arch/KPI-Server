@@ -142,8 +142,9 @@
         const container = getElement('overview-records');
         if (!container) return;
         const records = getFilteredOverviewRecords();
+        const pageData = view.getPagedRecords?.(view.OVERVIEW_KEY, records) || { records };
         container.innerHTML = records.length
-            ? records.map(record => buildRecordCard(record, true)).join('')
+            ? `${(pageData.records || records).map(record => buildRecordCard(record, true)).join('')}${view.buildRecordPagination?.(view.OVERVIEW_KEY, pageData) || ''}`
             : view.renderEmptyState(view.getEmptyStateMessage?.() || '조건에 맞는 작업내역이 없습니다.');
     }
 
@@ -151,8 +152,9 @@
         const container = getElement(`${team}-records`);
         if (!container) return;
         const records = getFilteredTeamRecords(team);
+        const pageData = view.getPagedRecords?.(team, records) || { records };
         container.innerHTML = records.length
-            ? records.map(record => buildRecordCard(record, false)).join('')
+            ? `${(pageData.records || records).map(record => buildRecordCard(record, false)).join('')}${view.buildRecordPagination?.(team, pageData) || ''}`
             : view.renderEmptyState(view.getEmptyStateMessage?.() || '조건에 맞는 작업내역이 없습니다.');
     }
 

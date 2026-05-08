@@ -192,3 +192,26 @@ test('work history split action files expose view and history hooks after bootst
   assert.equal(history.downloadBackupSnapshot, view.downloadBackupSnapshot);
   assert.equal(history.closeOverlays, view.closeOverlays);
 });
+
+test('work history page buttons dispatch to numbered pagination state', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  const calls = [];
+  view.setRecordPage = (prefix, page) => {
+    calls.push({ prefix, page });
+  };
+  const actionTarget = {
+    dataset: { action: 'change-page', prefix: 'team1part1', page: '2' }
+  };
+
+  view.handleRootClick({
+    target: {
+      closest(selector) {
+        return selector === '[data-action]' ? actionTarget : null;
+      },
+      classList: { contains: () => false }
+    }
+  });
+
+  assert.deepEqual(calls, [{ prefix: 'team1part1', page: 2 }]);
+});

@@ -10,7 +10,6 @@
         getElement
     } = history;
 
-    // Search, modal, document, and export helpers are split into sibling runtime files.
     function bindEvents() {
         const root = view.getShadowRoot?.();
         if (!root || root.__kpiWorkHistoryBound) return;
@@ -131,6 +130,10 @@
                 view.resetDateFilters?.(actionTarget.dataset.prefix || view.OVERVIEW_KEY);
                 return;
             }
+            if (action === 'change-page') {
+                view.setRecordPage?.(actionTarget.dataset.prefix || view.OVERVIEW_KEY, Number(actionTarget.dataset.page));
+                return;
+            }
             if (action === 'toggle-fullscreen') {
                 void view.toggleHistoryFullscreen?.(actionTarget.dataset.prefix || view.OVERVIEW_KEY);
                 return;
@@ -196,6 +199,7 @@
                 ? (history.getFixedCategoryFilter() || String(target.value || '').trim())
                 : String(target.value || '').trim();
             view.syncCategoryFilterInputs?.(state.currentCategoryFilter, target);
+            view.resetRecordPage?.();
             view.renderCurrentView?.();
             return;
         }
@@ -217,6 +221,7 @@
 
         const filterPrefix = target.dataset.filterPrefix;
         if (!filterPrefix) return;
+        view.resetRecordPage?.(filterPrefix);
         if (filterPrefix === view.OVERVIEW_KEY) {
             view.renderOverview?.();
             view.updateHeaderSummary?.();
@@ -244,6 +249,7 @@
 
         if (target.id === 'recordCost') {
             target.value = view.formatCostInputValue(target.value);
+            target.setSelectionRange?.(target.value.length, target.value.length);
         }
     }
 

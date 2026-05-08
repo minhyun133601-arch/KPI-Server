@@ -215,7 +215,29 @@
                 return view.formatCurrency(cost);
             }
             if (cost === null || cost === undefined || cost === '') return '자체처리';
-            return `${Number(cost).toLocaleString('ko-KR')}원`;
+            const numeric = Number(cost);
+            if (!Number.isFinite(numeric)) return '자체처리';
+            const amount = Math.max(0, Math.round(numeric));
+            if (amount === 0) return '0원';
+            const totalMan = Math.floor(amount / 10000);
+            if (totalMan <= 0) return '1만원 미만';
+            const eok = Math.floor(totalMan / 10000);
+            const restMan = totalMan % 10000;
+            const formatChunk = (value) => {
+                const chunk = Math.floor(Number(value) || 0);
+                const thousands = Math.floor(chunk / 1000);
+                const hundreds = Math.floor((chunk % 1000) / 100);
+                const tail = chunk % 100;
+                return [
+                    thousands > 0 ? `${thousands}천` : '',
+                    hundreds > 0 ? `${hundreds}백` : '',
+                    tail > 0 ? String(tail) : ''
+                ].filter(Boolean).join('');
+            };
+            return [
+                eok > 0 ? `${formatChunk(eok)}억${restMan > 0 ? '' : '원'}` : '',
+                restMan > 0 ? `${formatChunk(restMan)}만원` : ''
+            ].filter(Boolean).join(' ');
         }
 
         function formatWorkTeamCalendarHistoryAssignees(record) {

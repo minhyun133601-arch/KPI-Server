@@ -30,7 +30,9 @@
 
     function normalizeCost(value) {
         if (value === null || value === undefined || value === '') return null;
-        const normalized = Number(String(value).replace(/,/g, ''));
+        const digits = String(value).replace(/[^\d]/g, '');
+        if (!digits) return null;
+        const normalized = Number(digits);
         return Number.isFinite(normalized) ? normalized : null;
     }
 

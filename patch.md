@@ -1,6 +1,26 @@
 # 2026-05-08 Patch Note
 
-Status: 작업내역 첨부 정리, 설비 이력카드 팀별 표시, 작업내역 달력 별/하위카테고리 표시를 반영했습니다.
+Status: 작업내역 첨부 정리, 설비 이력카드 팀별 표시, 작업내역 달력 별/하위카테고리 표시, 작업내역 페이지 넘김을 반영했습니다.
+
+## Work History Pagination
+
+Goal: 작업내역 목록을 길게 드래그해 내리는 방식 대신 1, 2, 3 번호 버튼과 이전/다음으로 페이지를 넘기게 합니다.
+
+Touched areas: 작업내역 전체/팀별 목록 렌더링, 페이지 상태, 검색/카테고리/날짜 필터 초기화, 페이지 버튼 CSS, work-history frontend smoke.
+
+Verification: `node --check` for changed pagination/render/action JS passed; `npm run smoke:work-history-render-card-parts`, `npm run smoke:work-history-view-actions`, `npm run smoke:work-history-layout-templates`, `npm run smoke:work-history-render-print`, `npm run verify:server-structure`, `git diff --check`, and `npm run smoke:kpi-browser` passed.
+
+Risk: 저장 데이터 구조는 바꾸지 않고 화면에 한 번에 표시하는 작업내역 개수만 8개 단위로 나눕니다.
+
+## Work History Cost Input
+
+Goal: 작업내역 비용 입력은 숫자만 남기고, 화면에 표시되는 작업내역 비용은 `1억 5천만원` 같은 만원 단위로 줄여 보여줍니다.
+
+Touched areas: 작업내역 비용 normalize, 입력창 sanitizing, 작업내역 비용 표시 formatter, 팀 달력 작업내역 비용 요약, work-history/work-production frontend smoke.
+
+Verification: `node --check` for changed work-history JS passed; targeted `node --test` for work-history core/layout/card/print and work-production passed; `npm run smoke:work-history-core` passed; `npm run smoke:work-production` passed.
+
+Risk: 저장값은 기존처럼 원 단위 숫자로 유지하고 표시 포맷만 줄였습니다. 1만원 미만 금액은 `1만원 미만`으로 표시됩니다.
 
 ## Work Calendar History Cues
 
@@ -14,13 +34,13 @@ Risk: 저장 데이터는 바꾸지 않고 달력 표시용 요약과 렌더링�
 
 ## Equipment History Team Board
 
-Goal: 설비 이력카드 보드에서 작성된 카드를 팀별로 더 명확하게 구분해서 보여줍니다.
+Goal: 설비 이력카드 보드에서 작성된 카드를 팀별로 더 명확하게 구분하고, 각 팀 lane을 팀별 내역서의 색상/아이콘/공정 컨셉과 맞춰 보여줍니다.
 
-Touched areas: 설비 이력카드 팀 그룹 정렬, 팀별 보드 lane header, 설비 선택 드롭다운 optgroup, data CSS, equipment-history render smoke.
+Touched areas: 설비 이력카드 팀 그룹 정렬, 팀별 보드 lane header, 팀별 내역서 메타 adapter 연결, 설비 선택 드롭다운 optgroup, data CSS, equipment-history render smoke.
 
 Verification: `node --check` for changed equipment-history JS passed; `node --test kpi-runtime/internal-server/test/frontend/equipment-history-render.smoke.js` passed; `npm run format:check` passed; `npm run lint` passed; `npm run verify:server-structure` passed with warningCount 0; `npm run smoke:kpi-browser` passed.
 
-Risk: 저장 데이터 구조는 바꾸지 않고 화면 그룹/정렬만 조정했습니다.
+Risk: 저장 데이터 구조는 바꾸지 않고 화면 그룹/정렬과 팀 컨셉 표시만 조정했습니다.
 
 ## Work History Attachments
 

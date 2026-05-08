@@ -76,6 +76,18 @@
         if (typeof root.print === 'function') root.print();
     }
 
+    function getWorkTeamCalendarCategoryMeta(dataKey) {
+        const normalized = String(dataKey || '').trim();
+        if (!normalized) return null;
+        const directMeta = typeof root.getWorkTeamCalendarRawCategoryByDataKey === 'function'
+            ? root.getWorkTeamCalendarRawCategoryByDataKey(normalized)
+            : null;
+        if (directMeta) return directMeta;
+        return typeof root.getWorkTeamCalendarCategory === 'function'
+            ? root.getWorkTeamCalendarCategory(normalized)
+            : null;
+    }
+
     root.KpiDataEquipmentHistoryBrowserAdapter = Object.freeze({
         cloneJson,
         getApi,
@@ -89,6 +101,7 @@
         alert: alertMessage,
         confirm: confirmMessage,
         print: printPage,
+        getWorkTeamCalendarCategoryMeta,
     });
 
     if (globalScope && globalScope !== root) {

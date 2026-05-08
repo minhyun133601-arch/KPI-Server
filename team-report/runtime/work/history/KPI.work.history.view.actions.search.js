@@ -141,6 +141,7 @@
         state.currentCategoryFilter = getResolvedCategoryFilter('');
         syncSearchInputs('');
         syncCategoryFilterInputs(state.currentCategoryFilter);
+        view.resetRecordPage?.(prefix);
         view.renderCurrentView?.();
     }
 
@@ -151,6 +152,7 @@
         state.currentCategoryFilter = getResolvedCategoryFilter(categorySelect?.value || '');
         syncSearchInputs(state.currentKeyword, input);
         syncCategoryFilterInputs(state.currentCategoryFilter, categorySelect);
+        view.resetRecordPage?.();
         view.renderCurrentView?.();
     }
 
@@ -158,6 +160,7 @@
         const input = getActiveSearchInput(triggerTarget);
         syncSearchInputs('', input);
         state.currentKeyword = '';
+        view.resetRecordPage?.();
         view.renderCurrentView?.();
     }
 

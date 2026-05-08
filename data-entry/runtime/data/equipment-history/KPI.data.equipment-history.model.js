@@ -50,6 +50,75 @@
         '공무환경팀',
     ]);
 
+    const EQUIPMENT_HISTORY_TEAM_META_FALLBACK = Object.freeze({
+        work_team_calendar_team1_part1: {
+            title: '1팀 1파트',
+            icon: 'fa-cheese',
+            color: '#2563eb',
+            secondaryColor: '#1d4ed8',
+            tint: '#eff6ff',
+            processLabel: '건조',
+            processTag: '분말',
+        },
+        work_team_calendar_team1_part2: {
+            title: '1팀 2파트',
+            icon: 'fa-cheese',
+            color: '#f59e0b',
+            secondaryColor: '#d97706',
+            tint: '#fff7ed',
+            processLabel: '건조',
+            processTag: '분말',
+        },
+        work_team_calendar_team2: {
+            title: '2팀',
+            icon: 'fa-box-open',
+            color: '#059669',
+            secondaryColor: '#047857',
+            tint: '#ecfdf5',
+            processLabel: '스틱 · 소포장',
+            processTag: '포장',
+        },
+        work_team_calendar_team3: {
+            title: '3팀',
+            icon: 'fa-bottle-water',
+            color: '#7c3aed',
+            secondaryColor: '#5b21b6',
+            tint: '#f5f3ff',
+            processLabel: '액상',
+            processTag: '액상',
+        },
+        work_team_calendar_team4: {
+            title: '공무환경팀',
+            icon: 'fa-screwdriver-wrench',
+            color: '#dc2626',
+            secondaryColor: '#b91c1c',
+            tint: '#fef2f2',
+            processLabel: '공무환경',
+            processTag: '폐수 · 기타',
+        },
+    });
+
+    function normalizeEquipmentHistoryColor(value, fallback) {
+        const raw = normalizeText(value);
+        return /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback;
+    }
+
+    function getEquipmentHistoryTeamMeta(teamName) {
+        const dataKey = resolveEquipmentHistoryTeamDataKey(teamName);
+        const fallback = EQUIPMENT_HISTORY_TEAM_META_FALLBACK[dataKey] || {};
+        const runtimeMeta = KpiDataEquipmentHistoryBrowserAdapter.getWorkTeamCalendarCategoryMeta?.(dataKey) || {};
+        return {
+            dataKey,
+            title: normalizeEquipmentHistoryTeamName(runtimeMeta.title || fallback.title || teamName),
+            icon: normalizeText(runtimeMeta.icon || fallback.icon || 'fa-industry'),
+            color: normalizeEquipmentHistoryColor(runtimeMeta.color, fallback.color || '#2fe27c'),
+            secondaryColor: normalizeEquipmentHistoryColor(runtimeMeta.secondaryColor, fallback.secondaryColor || fallback.color || '#8effbd'),
+            tint: normalizeEquipmentHistoryColor(runtimeMeta.tint, fallback.tint || '#ecfdf5'),
+            processLabel: normalizeText(runtimeMeta.processLabel || fallback.processLabel || ''),
+            processTag: normalizeText(runtimeMeta.processTag || fallback.processTag || ''),
+        };
+    }
+
     function resolveEquipmentHistoryTeamDataKey(teamName) {
         const raw = normalizeText(teamName);
         if (/^work_team_calendar_team(?:1_part[12]|[234])$/.test(raw)) return raw;
@@ -206,6 +275,7 @@
                 return {
                     team,
                     teamDataKey: resolveEquipmentHistoryTeamDataKey(team),
+                    teamMeta: getEquipmentHistoryTeamMeta(team),
                     sortIndex: getEquipmentHistoryTeamSortIndex(team),
                     equipmentCount: equipment.length,
                     runningCount,
@@ -249,6 +319,7 @@
         formatRateValue,
         getInfoValue,
         getEquipmentStatus,
+        getEquipmentHistoryTeamMeta,
         normalizeEquipmentItems,
         groupEquipmentItems,
         getSelectedEquipment,

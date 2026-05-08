@@ -25,18 +25,22 @@ const renderPath = await findFile(repoRoot, 'KPI.work.history.view.render.js');
 assert.ok(renderPath, 'work history render source is missing');
 
 const adapterPath = path.join(path.dirname(renderPath), 'KPI.work.history.browser-adapter.js');
+const paginationPath = path.join(path.dirname(renderPath), 'render', 'pagination.js');
 const cardPartsPath = path.join(path.dirname(renderPath), 'render', 'card-parts.js');
 const adapterSource = await fs.readFile(adapterPath, 'utf8');
 const renderSource = await fs.readFile(renderPath, 'utf8');
+const paginationSource = await fs.readFile(paginationPath, 'utf8');
 const cardPartsSource = await fs.readFile(cardPartsPath, 'utf8');
 const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
 
-function createContext() {
+function createContext(options = {}) {
   const attachment = {
     originalName: '2026-04-02 Alpha task 보고서.pdf',
     size: 1024,
     downloadUrl: '/download/report.pdf'
   };
+  const elements = options.elements || {};
+  const payload = options.payload || { teams: { team1part1: [] } };
   const history = {
     TEAM_KEYS: ['team1part1'],
     TeamInfo: {
@@ -48,10 +52,13 @@ function createContext() {
       currentCategoryFilter: ''
     },
     getPayload() {
-      return { teams: { team1part1: [] } };
+      return payload;
     },
-    getElement() {
-      return null;
+    getElement(id) {
+      return elements[id] || null;
+    },
+    queryAll() {
+      return [];
     },
     ATTACHMENT_SLOT_KEYS: ['report', 'estimate', 'other'],
     ATTACHMENT_SLOT_META: {
@@ -133,8 +140,24 @@ function createContext() {
   vm.createContext(context);
   vm.runInContext(adapterSource, context, { filename: 'KPI.work.history.browser-adapter.js' });
   vm.runInContext(renderSource, context, { filename: 'KPI.work.history.view.render.js' });
+  vm.runInContext(paginationSource, context, { filename: 'render/pagination.js' });
   vm.runInContext(cardPartsSource, context, { filename: 'render/card-parts.js' });
   return context;
+}
+
+function createRecord(index) {
+  const day = String(index).padStart(2, '0');
+  return {
+    team: 'team1part1',
+    category: 'monthly',
+    assignees: [`Alpha ${index}`],
+    workContent: `Task ${index}`,
+    remarks: `note ${index}`,
+    startDate: `2026-04-${day}`,
+    endDate: `2026-04-${day}`,
+    plannedEndDate: `2026-04-${day}`,
+    cost: index * 10000
+  };
 }
 
 test('work history render card parts registry exposes summary, attachment, compact card, and empty state helpers', () => {
@@ -163,15 +186,51 @@ test('work history render card parts registry exposes summary, attachment, compa
   assert.match(view.renderEmptyState('empty'), /empty/);
 });
 
+test('work history render paginates long record lists by numbered pages', () => {
+  const overviewRecords = {
+    innerHTML: '',
+    scrollIntoView() {
+      this.scrolled = true;
+    }
+  };
+  const payload = {
+    teams: {
+      team1part1: Array.from({ length: 9 }, (_, index) => createRecord(index + 1))
+    }
+  };
+  const context = createContext({
+    elements: {
+      'overview-records': overviewRecords
+    },
+    payload
+  });
+  const view = context.KpiWorkHistory.view;
+
+  view.renderOverview();
+  assert.equal((overviewRecords.innerHTML.match(/<details class="report-card/g) || []).length, 8);
+  assert.match(overviewRecords.innerHTML, /history-pagination/);
+  assert.match(overviewRecords.innerHTML, /data-page="2"/);
+  assert.match(overviewRecords.innerHTML, /Task 9/);
+  assert.doesNotMatch(overviewRecords.innerHTML, /Task 1/);
+
+  view.setRecordPage('overview', 2);
+  assert.equal((overviewRecords.innerHTML.match(/<details class="report-card/g) || []).length, 1);
+  assert.match(overviewRecords.innerHTML, /Task 1/);
+  assert.equal(overviewRecords.scrolled, true);
+});
+
 test('kpi html loads work history render card parts between render and print', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=235');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=236');
+  const paginationIndex = kpiHtml.indexOf('runtime/work/history/render/pagination.js?v=1');
   const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=235');
   const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=234');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(renderIndex >= 0, 'work history render loader is missing');
+  assert.ok(paginationIndex >= 0, 'work history pagination loader is missing');
   assert.ok(renderIndex > adapterIndex, 'work history render must load after browser adapter');
-  assert.ok(cardPartsIndex > renderIndex, 'work history card parts loader must load after render.js');
+  assert.ok(paginationIndex > renderIndex, 'work history pagination must load after render.js');
+  assert.ok(cardPartsIndex > paginationIndex, 'work history card parts loader must load after pagination');
   assert.ok(printIndex > cardPartsIndex, 'work history print loader must load after render card parts');
 });

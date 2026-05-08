@@ -421,11 +421,13 @@ test('work production split files expose utility, history, and draft helpers tog
   assert.equal(summary.electric.usageText, '120 kWh');
   assert.equal(summary.production.totalAmountText, '350kg');
   assert.match(summary.workEntryCountText, /^1건/);
+  assert.equal(summary.workCostText, '10만원');
   assert.equal(historySummary.starCount, 1);
   assert.equal(historySummary.items[0].star, 'KPI');
   assert.equal(historySummary.items[0].subcategory, 'Inspection');
   assert.equal(historySummary.items[0].title, 'Boiler check');
   assert.match(historyHtml, /Boiler check/);
+  assert.match(historyHtml, /10만원/);
   assert.match(historyHtml, /work-team-calendar-work-pill is-kpi/);
   assert.match(historyHtml, /work-team-calendar-team-group/);
 });
@@ -471,7 +473,7 @@ test('work production draft uses the browser adapter for storage capabilities', 
 test('kpi html loads work production split files before team calendar bootstrap', () => {
   const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=238');
   const adapterIndex = kpiHtml.indexOf('runtime/work/KPI.work.browser-adapter.js?v=1');
-  const historyIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.history.js?v=2');
+  const historyIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.history.js?v=3');
   const overviewIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.overview.js?v=1');
   const draftIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.draft.js?v=1');
   const teamCalendarIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.js?v=237');

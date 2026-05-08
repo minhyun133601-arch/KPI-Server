@@ -112,6 +112,9 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
       print() {
         printed = true;
       },
+      getWorkTeamCalendarRawCategoryByDataKey(dataKey) {
+        return dataKey === 'work_team_calendar_team2' ? { title: '2팀', color: '#059669' } : null;
+      },
     },
   };
   context.globalThis = context;
@@ -139,14 +142,15 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
   assert.deepEqual(alerts, ['message']);
   assert.deepEqual(confirms, ['delete?']);
   assert.equal(printed, true);
+  assert.equal(adapter.getWorkTeamCalendarCategoryMeta('work_team_calendar_team2').color, '#059669');
 });
 
 test('kpi html loads equipment-history modules before the data runtime bridge', () => {
-  const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=2');
-  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=6');
+  const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=3');
+  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=7');
   const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=11');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=2');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=14');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=15');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=3');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -210,6 +214,12 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team1_part1"/);
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team2"/);
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team4"/);
+  assert.match(container.innerHTML, /--equipment-team-color:#2563eb/);
+  assert.match(container.innerHTML, /--equipment-team-color:#dc2626/);
+  assert.match(container.innerHTML, /fa-cheese/);
+  assert.match(container.innerHTML, /fa-screwdriver-wrench/);
+  assert.match(container.innerHTML, /분말 · 건조/);
+  assert.match(container.innerHTML, /폐수 · 기타 · 공무환경/);
   assert.ok(
     container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team1_part1"')
       < container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team2"')
@@ -291,6 +301,8 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /data-equipment-photo-revert/);
   assert.match(dataCssSource, /data-equipment-photo-card:hover\s+\.data-equipment-photo-revert/);
   assert.match(dataCssSource, /opacity:\s*0/);
+  assert.match(dataCssSource, /--equipment-team-color/);
+  assert.match(dataCssSource, /data-equipment-board-team-icon/);
   assert.match(renderSource, /data-equipment-title-pair/);
   assert.match(renderSource, /data-equipment-title-team/);
   assert.match(renderSource, /data-equipment-title-room/);
