@@ -100,8 +100,8 @@
             : undefined;
     }
 
-    function closeHistoryOverlays() {
-        getHistory()?.closeOverlays?.();
+    function closeHistoryOverlays(options = {}) {
+        return getHistory()?.closeOverlays?.(options);
     }
 
     function renderHistory(category, context) {

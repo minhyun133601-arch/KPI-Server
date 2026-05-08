@@ -214,9 +214,9 @@
             if (typeof view?.formatCurrency === 'function') {
                 return view.formatCurrency(cost);
             }
-            if (cost === null || cost === undefined || cost === '') return '자체처리';
+            if (cost === null || cost === undefined || cost === '') return '-';
             const numeric = Number(cost);
-            if (!Number.isFinite(numeric)) return '자체처리';
+            if (!Number.isFinite(numeric)) return '-';
             const amount = Math.max(0, Math.round(numeric));
             if (amount === 0) return '0원';
             const totalMan = Math.floor(amount / 10000);

@@ -66,6 +66,8 @@ function createContext(options = {}) {
     destroyed: 0,
     sidebarCalls: [],
     syncedItems: [],
+    historyStates: [],
+    historyBackCalls: 0,
   };
   const context = {
     ['global' + 'This']: null,
@@ -82,11 +84,29 @@ function createContext(options = {}) {
     location: {
       protocol: 'http:',
       hostname: '127.0.0.1',
+      pathname: '/KPI.html',
+      search: '?mode=company',
+      hash: '#kpi?view=home',
+      href: 'http://127.0.0.1/KPI.html?mode=company#kpi?view=home',
       replace(url) {
         state.replacedUrls.push(url);
       },
       assign(url) {
         state.assignedUrls.push(url);
+      },
+    },
+    history: {
+      state: { existing: true },
+      pushState(nextState, title, url) {
+        state.historyStates.push({ action: 'push', state: nextState, title, url });
+        this.state = nextState;
+      },
+      replaceState(nextState, title, url) {
+        state.historyStates.push({ action: 'replace', state: nextState, title, url });
+        this.state = nextState;
+      },
+      back() {
+        state.historyBackCalls += 1;
       },
     },
     alert(message) {
@@ -149,6 +169,9 @@ test('app browser adapter wraps runtime storage location events popups and bridg
 
   assert.equal(adapter.getLocationMeta().protocol, 'http:');
   assert.equal(adapter.getLocationMeta().hostname, '127.0.0.1');
+  assert.equal(adapter.getLocationMeta().pathname, '/KPI.html');
+  assert.equal(adapter.getLocationMeta().search, '?mode=company');
+  assert.equal(adapter.getLocationMeta().hash, '#kpi?view=home');
   adapter.replaceLocation('/login');
   adapter.assignLocation('/fallback');
   assert.deepEqual(state.replacedUrls, ['/login']);
@@ -158,6 +181,26 @@ test('app browser adapter wraps runtime storage location events popups and bridg
   adapter.addWindowEventListener('keydown', () => {}, true);
   assert.deepEqual(state.alerts, ['saved']);
   assert.equal(state.events[0]?.type, 'keydown');
+
+  assert.deepEqual(adapter.getCurrentHistoryState(), { existing: true });
+  adapter.pushHistoryState({ route: 'work' }, '', '/KPI.html#kpi?view=category');
+  adapter.replaceHistoryState({ route: 'home' }, '', '/KPI.html#kpi?view=home');
+  adapter.goHistoryBack();
+  assert.deepEqual(state.historyStates, [
+    {
+      action: 'push',
+      state: { route: 'work' },
+      title: '',
+      url: '/KPI.html#kpi?view=category',
+    },
+    {
+      action: 'replace',
+      state: { route: 'home' },
+      title: '',
+      url: '/KPI.html#kpi?view=home',
+    },
+  ]);
+  assert.equal(state.historyBackCalls, 1);
 
   adapter.destroyIntegratedMeteringMount();
   assert.equal(state.destroyed, 1);
@@ -221,4 +264,23 @@ test('app split source files route browser globals through the browser adapter',
   const sharedSource = splitSources.find(entry => entry.sourcePath.endsWith('KPI.app.shared.js'))?.source || '';
   assert.match(sharedSource, /const browser = typeof KpiAppBrowserAdapter !== 'undefined'/);
   assert.match(sharedSource, /browser\?\.markGlobalSaveShell\?\.\(\)/);
+});
+
+test('app shell records internal navigation in browser history and restores on back', () => {
+  const sharedSource = splitSources.find(entry => entry.sourcePath.endsWith('KPI.app.shared.js'))?.source || '';
+  const navigationSource = splitSources.find(entry => entry.sourcePath.endsWith('KPI.app.navigation.js'))?.source || '';
+  const viewerSource = splitSources.find(entry => entry.sourcePath.endsWith('KPI.app.viewer.js'))?.source || '';
+  const globalSaveSource = splitSources.find(entry => entry.sourcePath.endsWith('KPI.app.global-save.js'))?.source || '';
+
+  assert.match(sharedSource, /const AppHistoryState = \{/);
+  assert.match(navigationSource, /function bindAppHistoryNavigation\(\)/);
+  assert.match(navigationSource, /addWindowEventListener\?\.\('popstate', handleAppHistoryPopState\)/);
+  assert.match(navigationSource, /browser\?\.pushHistoryState\?\./);
+  assert.match(navigationSource, /browser\?\.replaceHistoryState\?\./);
+  assert.match(navigationSource, /function applyAppHistoryRoute\(route = null\)/);
+  assert.match(viewerSource, /syncAppHistoryAfterNavigation\(options\)/);
+  assert.match(globalSaveSource, /navigateAppBack\(\)/);
+  assert.match(appSource, /bindAppHistoryNavigation\(\);/);
+  assert.match(appSource, /goHome\(\{ __skipHistory: true \}\);/);
+  assert.match(appSource, /initializeAppHistoryState\(\);/);
 });

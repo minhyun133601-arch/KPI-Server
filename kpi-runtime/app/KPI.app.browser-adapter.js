@@ -29,7 +29,11 @@
     function getLocationMeta() {
         return {
             protocol: String(root.location?.protocol || ''),
-            hostname: String(root.location?.hostname || '')
+            hostname: String(root.location?.hostname || ''),
+            pathname: String(root.location?.pathname || ''),
+            search: String(root.location?.search || ''),
+            hash: String(root.location?.hash || ''),
+            href: String(root.location?.href || '')
         };
     }
 
@@ -49,6 +53,22 @@
 
     function addWindowEventListener(type, listener, options) {
         return root.addEventListener?.(type, listener, options);
+    }
+
+    function getCurrentHistoryState() {
+        return root.history?.state || null;
+    }
+
+    function pushHistoryState(state, title, url) {
+        return root.history?.pushState?.(state, title, url);
+    }
+
+    function replaceHistoryState(state, title, url) {
+        return root.history?.replaceState?.(state, title, url);
+    }
+
+    function goHistoryBack() {
+        return root.history?.back?.();
     }
 
     function destroyIntegratedMeteringMount() {
@@ -109,6 +129,10 @@
         assignLocation,
         showAlert,
         addWindowEventListener,
+        getCurrentHistoryState,
+        pushHistoryState,
+        replaceHistoryState,
+        goHistoryBack,
         destroyIntegratedMeteringMount,
         applyUtilSidebarSelectionToCurrentView,
         canApplyUtilSidebarSelection,

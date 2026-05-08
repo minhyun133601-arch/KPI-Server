@@ -158,16 +158,13 @@
         });
     }
 
-    function compareEquipmentHistoryItems(left, right) {
-        return compareEquipmentHistoryText(left.room, right.room)
-            || compareEquipmentHistoryText(left.group, right.group)
-            || compareEquipmentHistoryText(left.name, right.name)
-            || compareEquipmentHistoryText(left.id, right.id);
-    }
-
     function getEquipmentStatus(status) {
         const value = normalizeText(status) || '가동중';
-        const isStopped = ['비가동중', '비가동', '정지', '점검중', '점검예정'].includes(value);
+        const isMaintenance = ['정비중', '점검중', '점검예정'].includes(value);
+        if (isMaintenance) {
+            return { label: '정비중', powerLabel: '정비중', tone: 'check', dotClassName: 'is-check', isRunning: false };
+        }
+        const isStopped = ['비가동중', '비가동', '정지'].includes(value);
         if (isStopped) {
             return { label: '비가동중', powerLabel: '비가동중', tone: 'stop', dotClassName: 'is-stop', isRunning: false };
         }
@@ -212,6 +209,7 @@
         const teamDataKey = normalizeText(item?.teamDataKey) || resolveEquipmentHistoryTeamDataKey(rawTeam);
         return {
             id: normalizeText(item?.id || item?.equipmentCode || `equipment-${index + 1}`),
+            sourceIndex: index,
             equipmentCode: normalizeText(item?.equipmentCode || item?.code || getInfoValue(detailInfo, ['설비코드', '코드']) || item?.id),
             team,
             room: normalizeText(item?.room || item?.roomName || item?.locationRoom || getInfoValue(detailInfo, ['실', '위치', '설치실']) || getInfoValue(operationInfo, ['실', '위치', '설치실'])),
@@ -267,9 +265,8 @@
                 const normalizedSections = [...sections.entries()]
                     .map(([title, equipment]) => ({
                         title,
-                        equipment: equipment.slice().sort(compareEquipmentHistoryItems),
-                    }))
-                    .sort((left, right) => compareEquipmentHistoryText(left.title, right.title));
+                        equipment: equipment.slice(),
+                    }));
                 const equipment = normalizedSections.flatMap((section) => section.equipment);
                 const runningCount = equipment.filter((item) => item.statusMeta?.isRunning).length;
                 return {

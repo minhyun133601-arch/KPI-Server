@@ -2,8 +2,10 @@
         bindGlobalSaveButton();
         bindGlobalSaveHotkey();
         bindGlobalSaveRefreshHooks();
+        bindAppHistoryNavigation();
         bindRuntimeAuthUi();
         renderGlobalSaveUi({ forceDefault: true });
         KpiRuntime?.runBootTasks?.();
         renderRuntimeAuthUi();
-        goHome();
+        goHome({ __skipHistory: true });
+        initializeAppHistoryState();

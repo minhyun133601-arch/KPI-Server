@@ -147,10 +147,10 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
 
 test('kpi html loads equipment-history modules before the data runtime bridge', () => {
   const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=3');
-  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=7');
-  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=11');
+  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=9');
+  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=12');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=2');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=15');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=18');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=3');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -207,7 +207,7 @@ test('equipment-history renderer shows the empty board state and supports author
       { id: 'eq-team2', name: '2팀 포장기', team: '2팀', room: 'B실', process: '포장', status: '가동중' },
       { id: 'eq-team1-b', name: '1팀 B 혼합기', team: '1팀 1파트', room: 'B실', process: '혼합', status: '비가동중' },
       { id: 'eq-team1-a', name: '1팀 A 혼합기', team: '1팀 1파트', room: 'A실', process: '혼합', status: '가동중' },
-      { id: 'eq-team4', name: '폐수 펌프', team: '유산', room: '처리장', process: '폐수', status: '가동중' },
+      { id: 'eq-team4', name: '폐수 펌프', team: '유산', room: '처리장', process: '폐수', status: '정비중' },
     ],
   };
   registeredRenderer({ title: '설비 이력 카드', dataKey: 'data_equipment_history_card' }, { container });
@@ -216,20 +216,31 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team4"/);
   assert.match(container.innerHTML, /--equipment-team-color:#2563eb/);
   assert.match(container.innerHTML, /--equipment-team-color:#dc2626/);
-  assert.match(container.innerHTML, /fa-cheese/);
-  assert.match(container.innerHTML, /fa-screwdriver-wrench/);
-  assert.match(container.innerHTML, /분말 · 건조/);
-  assert.match(container.innerHTML, /폐수 · 기타 · 공무환경/);
+  assert.doesNotMatch(container.innerHTML, /fa-cheese/);
+  assert.doesNotMatch(container.innerHTML, /fa-screwdriver-wrench/);
+  assert.doesNotMatch(container.innerHTML, /분말 · 건조/);
+  assert.doesNotMatch(container.innerHTML, /폐수 · 기타 · 공무환경/);
   assert.ok(
     container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team1_part1"')
       < container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team2"')
   );
-  assert.match(container.innerHTML, /총 2 · 가동 1 · 비가동 1/);
+  assert.doesNotMatch(container.innerHTML, /총 2 · 가동 1 · 비가동 1/);
+  assert.match(container.innerHTML, /data-equipment-board-card is-running/);
+  assert.match(container.innerHTML, /data-equipment-board-card is-stop/);
+  assert.match(container.innerHTML, /data-equipment-board-card is-check/);
+  assert.match(container.innerHTML, /data-equipment-board-status-button is-running"[^>]*data-equipment-cycle-status-card="eq-team1-a"[^>]*>가동중/);
+  assert.match(container.innerHTML, /data-equipment-board-status-button is-stop"[^>]*data-equipment-cycle-status-card="eq-team1-b"[^>]*>비가동중/);
+  assert.match(container.innerHTML, /data-equipment-board-status-button is-check"[^>]*data-equipment-cycle-status-card="eq-team4"[^>]*>정비중/);
+  assert.match(container.innerHTML, /data-equipment-board-card-tools/);
+  assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-b"[^>]*data-equipment-move-direction="-1"[^>]*disabled/);
+  assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-b"[^>]*data-equipment-move-direction="1"/);
+  assert.match(container.innerHTML, /data-equipment-board-open-button/);
   assert.match(container.innerHTML, /<optgroup label="1팀 1파트 \(2\)">/);
   assert.match(container.innerHTML, /<optgroup label="2팀 \(1\)">/);
   assert.match(container.innerHTML, /<optgroup label="공무환경팀 \(1\)">/);
-  assert.ok(container.innerHTML.indexOf('A실 / 혼합') < container.innerHTML.indexOf('B실 / 혼합'));
-  assert.ok(container.innerHTML.indexOf('A실 / 1팀 A 혼합기') < container.innerHTML.indexOf('B실 / 1팀 B 혼합기'));
+  assert.ok(container.innerHTML.indexOf('B실 / 혼합') < container.innerHTML.indexOf('A실 / 혼합'));
+  assert.ok(container.innerHTML.indexOf('B실 / 1팀 B 혼합기') < container.innerHTML.indexOf('A실 / 1팀 A 혼합기'));
+  assert.equal(api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card)[1].sourceIndex, 1);
 
   const documentTableHtml = api.renderDocumentEditableTable([api.createBlankDocumentRow()]);
   assert.match(documentTableHtml, /문서명/);
@@ -302,7 +313,23 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /data-equipment-photo-card:hover\s+\.data-equipment-photo-revert/);
   assert.match(dataCssSource, /opacity:\s*0/);
   assert.match(dataCssSource, /--equipment-team-color/);
-  assert.match(dataCssSource, /data-equipment-board-team-icon/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-board-team-icon/);
+  assert.doesNotMatch(renderSource, /data-equipment-board-team-icon/);
+  assert.match(dataCssSource, /data-equipment-board-card[\s\S]+background:\s*linear-gradient\(180deg,\s*#203145,\s*#192839\)/);
+  assert.match(dataCssSource, /data-equipment-board-card\.is-running[\s\S]+--equipment-card-status-color:\s*#2fe27c/);
+  assert.match(dataCssSource, /data-equipment-board-card\.is-stop[\s\S]+--equipment-card-status-color:\s*#d95151/);
+  assert.match(dataCssSource, /data-equipment-board-card\.is-check[\s\S]+--equipment-card-status-color:\s*#f6c445/);
+  assert.match(dataCssSource, /data-equipment-board-status-button/);
+  assert.match(dataCssSource, /data-equipment-board-card-tools/);
+  assert.match(dataCssSource, /data-equipment-board-order-button/);
+  assert.match(dataCssSource, /data-equipment-board-open-button/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-board-card button\s*\{/);
+  assert.match(renderSource, /EQUIPMENT_BOARD_STATUS_CYCLE/);
+  assert.match(renderSource, /async function cycleBoardCardStatus/);
+  assert.match(renderSource, /async function moveBoardCard/);
+  assert.match(renderSource, /buildEquipmentListWithRecord/);
+  assert.match(modelSource, /sourceIndex:\s*index/);
+  assert.doesNotMatch(modelSource, /equipment:\s*equipment\.slice\(\)\.sort\(compareEquipmentHistoryItems\)/);
   assert.match(renderSource, /data-equipment-title-pair/);
   assert.match(renderSource, /data-equipment-title-team/);
   assert.match(renderSource, /data-equipment-title-room/);
@@ -460,6 +487,10 @@ test('equipment-history rate preserves explicit zero and rejects invalid authori
   const api = context.KpiDataEquipmentHistory;
 
   assert.equal(api.createDraft({ name: 'Mixer', rate: 0 }).rate, '0');
+  assert.equal(api.createDraft({ name: 'Mixer', status: '점검중' }).status, '정비중');
+  assert.equal(api.getEquipmentStatus('점검예정').tone, 'check');
+  assert.equal(api.getEquipmentStatus('비가동중').tone, 'stop');
+  assert.equal(api.getEquipmentStatus('가동중').tone, 'running');
   assert.equal(api.buildRecordFromDraft({ name: 'Mixer', rate: '0' }).rate, 0);
   assert.equal(api.buildRecordFromDraft({ name: 'Mixer', rate: '88.5%' }).rate, 88.5);
   assert.ok(api.buildOperationInfo({ name: 'Mixer', rate: 0 }).some((item) => item.value === '0%'));

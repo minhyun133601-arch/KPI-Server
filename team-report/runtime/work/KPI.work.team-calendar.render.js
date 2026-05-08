@@ -517,6 +517,7 @@
                     selectedDateKeys.includes(dateKey) ? 'is-selected' : '',
                     isLocked ? 'is-locked' : '',
                     hasHistory ? 'is-filled' : '',
+                    hasHistory ? 'has-history' : '',
                     isOffday ? 'is-offday' : ''
                 ].filter(Boolean).join(' ');
                 const productionCount = Number(productionSummary?.count || 0);

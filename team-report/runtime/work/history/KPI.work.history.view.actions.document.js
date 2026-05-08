@@ -232,9 +232,11 @@
         }, 2400);
     }
 
-    function closeOverlays() {
-        view.closeRecordModal?.();
+    function closeOverlays(options = {}) {
+        const recordCloseResult = view.closeRecordModal?.({ confirm: options.confirm === true });
+        if (recordCloseResult === false) return false;
         view.closeDeleteModal?.();
+        return true;
     }
 
     Object.assign(view, {

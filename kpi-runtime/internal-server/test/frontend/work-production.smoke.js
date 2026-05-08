@@ -473,12 +473,12 @@ test('work production draft uses the browser adapter for storage capabilities', 
 test('kpi html loads work production split files before team calendar bootstrap', () => {
   const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=238');
   const adapterIndex = kpiHtml.indexOf('runtime/work/KPI.work.browser-adapter.js?v=1');
-  const historyIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.history.js?v=3');
+  const historyIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.history.js?v=4');
   const overviewIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.overview.js?v=1');
   const draftIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.draft.js?v=1');
   const teamCalendarIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.js?v=237');
   const equipmentSummaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.equipment-summary.js?v=1');
-  const teamCalendarRenderIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.render.js?v=3');
+  const teamCalendarRenderIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.render.js?v=4');
 
   assert.ok(baseIndex >= 0, 'work production loader is missing');
   assert.ok(adapterIndex > baseIndex, 'work browser adapter must load after production.js');

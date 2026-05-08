@@ -656,64 +656,22 @@
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
         }
         .data-equipment-board-column > header {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            align-items: flex-start;
+            display: block;
             margin-bottom: 9px;
             color: #f5fbff;
             font-size: 0.92rem;
             font-weight: 900;
         }
         .data-equipment-board-team-title {
-            display: grid;
-            gap: 3px;
+            display: block;
             min-width: 0;
-        }
-        .data-equipment-board-team-heading {
-            min-width: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .data-equipment-board-team-icon {
-            width: 34px;
-            height: 34px;
-            flex: 0 0 34px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 11px;
-            background: linear-gradient(135deg, var(--equipment-team-color), var(--equipment-team-color-2));
-            color: #ffffff;
-            box-shadow: 0 10px 24px color-mix(in srgb, var(--equipment-team-color) 34%, transparent);
-        }
-        .data-equipment-board-team-copy {
-            min-width: 0;
-            display: grid;
-            gap: 3px;
         }
         .data-equipment-board-team-title strong {
             overflow-wrap: anywhere;
-            font-size: 0.95rem;
+            font-size: 1rem;
             line-height: 1.2;
-        }
-        .data-equipment-board-team-title small {
-            color: color-mix(in srgb, var(--equipment-team-tint) 76%, #8fb6c9);
-            font-size: 0.69rem;
             font-weight: 900;
-        }
-        .data-equipment-board-column > header span {
-            display: inline-flex;
-            align-items: center;
-            min-height: 24px;
-            padding: 0 8px;
-            border: 1px solid color-mix(in srgb, var(--equipment-team-color) 34%, transparent);
-            border-radius: 999px;
-            background: color-mix(in srgb, var(--equipment-team-color) 12%, transparent);
-            color: color-mix(in srgb, var(--equipment-team-tint) 76%, #ffffff);
-            font-size: 0.72rem;
-            white-space: nowrap;
+            color: #f5fbff;
         }
         .data-equipment-board-section {
             margin-top: 10px;
@@ -729,6 +687,8 @@
             font-weight: 900;
         }
         .data-equipment-board-card {
+            --equipment-card-status-color: #7d94aa;
+            --equipment-card-status-color-2: #b2c3d4;
             position: relative;
             overflow: hidden;
             display: flex;
@@ -736,9 +696,9 @@
             min-height: 224px;
             margin-top: 8px;
             padding: 12px;
-            border: 1px solid color-mix(in srgb, var(--equipment-team-color) 42%, transparent);
+            border: 1px solid rgba(151, 174, 193, 0.34);
             border-radius: 8px;
-            background: linear-gradient(180deg, color-mix(in srgb, var(--equipment-team-color) 22%, rgba(45, 83, 73, 0.92)), color-mix(in srgb, var(--equipment-team-color-2) 14%, rgba(41, 67, 72, 0.84)));
+            background: linear-gradient(180deg, #203145, #192839);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.14);
         }
         .data-equipment-board-card:first-of-type {
@@ -751,12 +711,20 @@
             left: 0;
             right: 0;
             height: 3px;
-            background: linear-gradient(90deg, var(--equipment-team-color), var(--equipment-team-color-2));
+            background: linear-gradient(90deg, var(--equipment-card-status-color), var(--equipment-card-status-color-2));
+        }
+        .data-equipment-board-card.is-running {
+            --equipment-card-status-color: #2fe27c;
+            --equipment-card-status-color-2: #8effbd;
+            border-color: rgba(47, 226, 124, 0.58);
+            background: linear-gradient(180deg, rgba(27, 67, 51, 0.94), rgba(20, 49, 42, 0.86));
         }
         .data-equipment-board-card.is-check::before {
             background: linear-gradient(90deg, #f6c445, #ffe28b);
         }
         .data-equipment-board-card.is-check {
+            --equipment-card-status-color: #f6c445;
+            --equipment-card-status-color-2: #ffe28b;
             border-color: rgba(246, 196, 69, 0.56);
             background: linear-gradient(180deg, rgba(78, 71, 49, 0.88), rgba(51, 66, 64, 0.8));
         }
@@ -764,6 +732,8 @@
             background: linear-gradient(90deg, #d95151, #f48b8b);
         }
         .data-equipment-board-card.is-stop {
+            --equipment-card-status-color: #d95151;
+            --equipment-card-status-color-2: #f48b8b;
             border-color: rgba(244, 139, 139, 0.48);
             background: linear-gradient(180deg, rgba(74, 55, 55, 0.9), rgba(56, 61, 74, 0.82));
         }
@@ -792,15 +762,24 @@
         .data-equipment-board-chip {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             min-height: 22px;
             padding: 0 8px;
+            border: 0;
             border-radius: 999px;
             font-size: 0.66rem;
             font-weight: 900;
+            line-height: 1.2;
+        }
+        .data-equipment-board-status-button {
+            cursor: pointer;
+        }
+        .data-equipment-board-status-button:hover {
+            filter: brightness(1.08);
         }
         .data-equipment-board-chip.is-running {
-            background: color-mix(in srgb, var(--equipment-team-color) 16%, transparent);
-            color: color-mix(in srgb, var(--equipment-team-color-2) 76%, #ffffff);
+            background: rgba(47, 226, 124, 0.14);
+            color: #bff8d5;
         }
         .data-equipment-board-chip.is-check {
             background: rgba(246, 196, 69, 0.18);
@@ -819,8 +798,8 @@
             height: 9px;
             flex: 0 0 9px;
             border-radius: 999px;
-            background: var(--equipment-team-color);
-            box-shadow: 0 0 10px color-mix(in srgb, var(--equipment-team-color) 72%, transparent);
+            background: #2fe27c;
+            box-shadow: 0 0 10px rgba(47, 226, 124, 0.58);
         }
         .data-equipment-live-dot.is-check {
             background: #f6c445;
@@ -850,8 +829,11 @@
             font-weight: 900;
         }
         .data-equipment-board-metric strong {
-            color: color-mix(in srgb, var(--equipment-team-color-2) 80%, #ffffff);
+            color: #f4fbff;
             font-weight: 900;
+        }
+        .data-equipment-board-card.is-running .data-equipment-board-metric strong {
+            color: #bff8d5;
         }
         .data-equipment-board-card.is-check .data-equipment-board-metric strong {
             color: #ffe28b;
@@ -859,17 +841,34 @@
         .data-equipment-board-card.is-stop .data-equipment-board-metric strong {
             color: #ffd7d7;
         }
-        .data-equipment-board-card button {
-            width: 100%;
-            min-height: 32px;
+        .data-equipment-board-card-tools {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
             margin-top: auto;
-            border: 1px solid color-mix(in srgb, var(--equipment-team-color) 34%, transparent);
+            padding-top: 10px;
+        }
+        .data-equipment-board-order-button,
+        .data-equipment-board-open-button {
+            border: 1px solid color-mix(in srgb, var(--equipment-card-status-color) 46%, transparent);
             border-radius: 7px;
-            background: color-mix(in srgb, var(--equipment-team-color) 18%, transparent);
-            color: color-mix(in srgb, var(--equipment-team-color-2) 82%, #ffffff);
+            background: color-mix(in srgb, var(--equipment-card-status-color) 14%, rgba(255, 255, 255, 0.07));
+            color: color-mix(in srgb, var(--equipment-card-status-color-2) 78%, #ffffff);
             font-size: 0.76rem;
             font-weight: 900;
             cursor: pointer;
+        }
+        .data-equipment-board-order-button {
+            min-height: 30px;
+        }
+        .data-equipment-board-order-button:disabled {
+            opacity: 0.34;
+            cursor: not-allowed;
+        }
+        .data-equipment-board-open-button {
+            width: 100%;
+            min-height: 32px;
+            margin-top: 7px;
         }
         .data-equipment-card-view {
             display: grid;

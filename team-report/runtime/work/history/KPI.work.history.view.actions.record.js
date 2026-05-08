@@ -31,6 +31,68 @@
         return typeof isProductionReportWorkspace === 'function' && isProductionReportWorkspace();
     }
 
+    function getAttachmentSnapshot(attachment = null) {
+        if (!attachment) return null;
+        return {
+            documentId: String(attachment.documentId || '').trim(),
+            assetId: String(attachment.assetId || '').trim(),
+            originalName: String(attachment.originalName || attachment.fileName || attachment.name || '').trim(),
+            size: Number(attachment.size) || 0
+        };
+    }
+
+    function getPendingFileSnapshot(file = null) {
+        if (!file) return null;
+        return {
+            name: String(file.name || '').trim(),
+            size: Number(file.size) || 0,
+            type: String(file.type || '').trim()
+        };
+    }
+
+    function getRecordFormSnapshot() {
+        const formState = state.formState || {};
+        return {
+            sourceTeam: String(getElement('formSourceTeam')?.value || '').trim(),
+            index: String(getElement('formIndex')?.value || '').trim(),
+            startDate: String(getElement('recordStartDate')?.value || '').trim(),
+            endDate: String(getElement('recordEndDate')?.value || '').trim(),
+            team: String(getElement('recordTeam')?.value || '').trim(),
+            assignee: String(getElement('recordAssignee')?.value || '').trim(),
+            categoryGroup: String(getElement('recordCategoryGroup')?.value || '').trim(),
+            category: String(getElement('recordCategory')?.value || '').trim(),
+            workContent: String(getElement('recordWorkContent')?.value || '').trim(),
+            remarks: String(getElement('recordRemarks')?.value || '').trim(),
+            cost: String(getElement('recordCost')?.value || '').trim(),
+            existingAttachments: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [
+                slotKey,
+                getAttachmentSnapshot(formState.existingAttachments?.[slotKey] || null)
+            ])),
+            pendingFiles: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [
+                slotKey,
+                getPendingFileSnapshot(formState.pendingFiles?.[slotKey] || null)
+            ])),
+            removedAttachments: (formState.removedAttachments || []).map(getAttachmentSnapshot)
+        };
+    }
+
+    function rememberRecordFormSnapshot() {
+        if (!state.formState) return;
+        state.formState.initialSnapshot = JSON.stringify(getRecordFormSnapshot());
+    }
+
+    function hasRecordFormChanged() {
+        if (!isRecordModalOpen()) return false;
+        const initialSnapshot = String(state.formState?.initialSnapshot || '');
+        if (!initialSnapshot) return false;
+        return JSON.stringify(getRecordFormSnapshot()) !== initialSnapshot;
+    }
+
+    function confirmRecordModalClose() {
+        if (!hasRecordFormChanged()) return true;
+        return browser.confirm('작성 중인 작업내역이 저장되지 않았습니다. 닫을까요?') !== false;
+    }
+
     function openRecordModal(team, index = null) {
         const form = getElement('recordForm');
         form?.reset();
@@ -74,7 +136,7 @@
                 getElement('recordStartDate').value = record.startDate || '';
                 getElement('recordEndDate').value = record.endDate || '';
                 getElement('recordTeam').value = record.team || defaultTeam;
-                getElement('recordAssignee').value = (record.assignees || normalizeAssignees(record.assignee || '')).join('\n');
+                getElement('recordAssignee').value = normalizeAssignees(record.assignees || record.assignee || record.worker || '').join(', ');
                 view.syncRecordCategoryInputs?.(isProductionWorkspace() ? 'report' : editCategoryGroup, isProductionWorkspace() ? '' : editCategory);
                 getElement('recordWorkContent').value = record.workContent || '';
                 getElement('recordRemarks').value = record.remarks || '';
@@ -88,6 +150,7 @@
             getElement('recordStartDate').value = view.todayInputValue();
             getElement('recordEndDate').value = view.todayInputValue();
             view.syncRecordCategoryInputs?.(isProductionWorkspace() ? 'report' : '', '');
+            getElement('recordAssignee').value = '';
             getElement('recordCost').value = '';
         }
 
@@ -99,11 +162,16 @@
         if (legacyAttachmentInput) legacyAttachmentInput.value = '';
         updateAssigneePreview(getElement('recordAssignee')?.value || '');
         view.renderAttachmentList?.();
+        rememberRecordFormSnapshot();
         getElement('recordModal')?.classList.add('show');
     }
 
-    function closeRecordModal() {
+    function closeRecordModal(options = {}) {
+        if (options.force !== true && options.confirm === true && !confirmRecordModalClose()) {
+            return false;
+        }
         getElement('recordModal')?.classList.remove('show');
+        return true;
     }
 
     function isRecordModalOpen() {
@@ -272,7 +340,7 @@
             await deleteAttachmentsFromServer(state.formState.removedAttachments);
         }
 
-        closeRecordModal();
+        closeRecordModal({ force: true });
         view.renderCurrentView?.();
         if (state.currentTeam !== view.OVERVIEW_KEY) {
             view.switchTab?.(targetTeam);
@@ -334,6 +402,8 @@
         closeDeleteModal,
         isDeleteModalOpen,
         updateAssigneePreview,
+        hasRecordFormChanged,
+        confirmRecordModalClose,
         saveRecord,
         confirmDelete
     });

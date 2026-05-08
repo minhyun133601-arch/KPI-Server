@@ -50,6 +50,13 @@
             categoryIndex: -1,
             teamDataKey: ''
         };
+        const AppHistoryState = {
+            namespace: 'kpi-app',
+            applying: false,
+            bound: false,
+            lastRouteKey: '',
+            sequence: 0
+        };
         let activeCategoryIndex = -1;
         browser?.markGlobalSaveShell?.();
 

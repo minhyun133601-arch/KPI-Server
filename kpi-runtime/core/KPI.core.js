@@ -72,14 +72,18 @@
             KpiRuntimeState.shortcutClosers[normalizedKey] = closer;
         }
 
-        function closeShortcutLayers() {
+        function closeShortcutLayers(options = {}) {
+            let result = true;
             Object.entries(KpiRuntimeState.shortcutClosers).forEach(([key, closer]) => {
                 try {
-                    closer();
+                    if (closer(options) === false) {
+                        result = false;
+                    }
                 } catch (error) {
                     console.error(`KpiRuntime shortcut closer failed: ${key}`, error);
                 }
             });
+            return result;
         }
 
         function registerBootTask(key, task) {

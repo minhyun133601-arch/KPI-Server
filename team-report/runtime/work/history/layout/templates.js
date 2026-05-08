@@ -354,13 +354,12 @@
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="recordAssignee">작업자(여러 명 가능)</label>
-                                    <textarea id="recordAssignee" rows="4" placeholder="김민현&#10;김철수&#10;박영희" required></textarea>
+                                    <label for="recordAssignee">작업자</label>
+                                    <input type="text" id="recordAssignee" autocomplete="off" placeholder="김민현, 김철수" required>
                                     <div class="field-helper">
-                                        <span class="field-helper-badge">줄바꿈 입력</span>
-                                        <span class="field-helper-text">한 줄에 한 명씩 적으면 각각의 작업자로 정리됩니다.</span>
+                                        <span class="field-helper-badge">쉼표 구분</span>
+                                        <span class="field-helper-text">여러 명은 쉼표로 구분합니다.</span>
                                     </div>
-                                    <div class="assignee-preview" id="assigneePreview" aria-live="polite"></div>
                                 </div>
                                 <div class="form-group">
                                     <label for="recordCost">비용</label>

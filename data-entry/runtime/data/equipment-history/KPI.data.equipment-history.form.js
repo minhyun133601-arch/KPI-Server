@@ -264,7 +264,8 @@
 
     function normalizeEquipmentRunStatus(status) {
         const value = api.normalizeText(status);
-        return ['비가동중', '비가동', '정지', '점검중', '점검예정'].includes(value) ? '비가동중' : '가동중';
+        if (['정비중', '점검중', '점검예정'].includes(value)) return '정비중';
+        return ['비가동중', '비가동', '정지'].includes(value) ? '비가동중' : '가동중';
     }
 
     function getEquipmentHistoryDraftValidationErrors(draft) {

@@ -236,24 +236,30 @@
                 const dashboard = document.getElementById('dashboard');
                 if (!dashboard || !dashboard.classList.contains('hidden-view')) return;
                 if (hasOpenModalLayer()) {
-                    closeGlobalSectionShortcutLayers();
+                    closeGlobalSectionShortcutLayers({ confirm: true });
                     evt.preventDefault();
                     return;
                 }
-                goHome();
-                evt.preventDefault();
+                if (navigateAppBack()) {
+                    evt.preventDefault();
+                }
             });
         }
 
-        function closeGlobalSectionShortcutLayers() {
-            KpiRuntime?.closeShortcutLayers?.();
+        function closeGlobalSectionShortcutLayers(options = {}) {
+            const closeResult = KpiRuntime?.closeShortcutLayers?.(options);
+            if (closeResult === false) return false;
             document.querySelectorAll('[id$="-modal"].is-open').forEach(modal => {
                 modal.classList.remove('is-open');
                 modal.classList.remove('is-chart-fullscreen');
             });
+            document.querySelectorAll('.modal.show').forEach(modal => {
+                modal.classList.remove('show');
+            });
             document.body.style.overflow = '';
+            return true;
         }
 
         function hasOpenModalLayer() {
-            return Boolean(document.querySelector('[id$="-modal"].is-open'));
+            return Boolean(document.querySelector('[id$="-modal"].is-open, .modal.show'));
         }

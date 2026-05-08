@@ -167,6 +167,7 @@ test('work history core split files expose normalized payload and storage hooks 
   );
   assert.equal(history.normalizeCost('150,000,000원'), 150000000);
   assert.equal(history.normalizeCost('abc'), null);
+  assert.deepEqual(history.normalizeAssignees(['미정', 'Alpha', '미입력', '-', 'Beta']), ['Alpha', 'Beta']);
 
   assert.equal(payload.meta.moduleKey, 'work_history_records');
   assert.equal(payload.teams.team1part1.length, 1);
@@ -185,9 +186,9 @@ test('kpi html loads work history core split files before layout bootstrap', () 
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
   const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=2');
   const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=218');
-  const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=3');
+  const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=4');
   const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=2');
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=252');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=254');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(configIndex >= 0, 'work history core config loader is missing');

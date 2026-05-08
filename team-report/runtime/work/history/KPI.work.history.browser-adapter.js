@@ -59,6 +59,10 @@
         }
     }
 
+    function confirm(message) {
+        return typeof root.confirm === 'function' ? root.confirm(message) : true;
+    }
+
     function openPopup(url, target, features) {
         return typeof root.open === 'function' ? root.open(url, target, features) : null;
     }
@@ -78,6 +82,7 @@
         canUseServerWrite,
         setLastError,
         alert,
+        confirm,
         openPopup,
         addWindowEventListener
     });

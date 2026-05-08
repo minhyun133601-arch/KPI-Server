@@ -1,6 +1,7 @@
 (function () {
     const browser = KpiDataEquipmentHistoryBrowserAdapter;
     const api = browser.getApi();
+    const EQUIPMENT_BOARD_STATUS_CYCLE = ['\uAC00\uB3D9\uC911', '\uBE44\uAC00\uB3D9\uC911', '\uC815\uBE44\uC911'];
 
     function renderMaintenanceRows(rows) {
         const list = api.asList(rows);
@@ -47,11 +48,6 @@
         return /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback;
     }
 
-    function getSafeBoardTeamIcon(icon) {
-        const raw = api.normalizeText(icon);
-        return /^fa[-\w]+$/.test(raw) ? raw : 'fa-industry';
-    }
-
     function getBoardTeamStyle(meta) {
         const color = getSafeBoardTeamColor(meta?.color, '#2fe27c');
         const secondaryColor = getSafeBoardTeamColor(meta?.secondaryColor, '#8effbd');
@@ -59,14 +55,18 @@
         return `--equipment-team-color:${api.escapeHtml(color)};--equipment-team-color-2:${api.escapeHtml(secondaryColor)};--equipment-team-tint:${api.escapeHtml(tint)};`;
     }
 
-    function getBoardTeamSubtitle(meta) {
-        const parts = [meta?.processTag, meta?.processLabel].map(api.normalizeText).filter(Boolean);
-        return parts.length ? parts.join(' · ') : '팀별 설비 이력';
+    function getNextEquipmentBoardStatus(status) {
+        const currentLabel = api.getEquipmentStatus(status).label;
+        const currentIndex = EQUIPMENT_BOARD_STATUS_CYCLE.indexOf(currentLabel);
+        return EQUIPMENT_BOARD_STATUS_CYCLE[(currentIndex + 1) % EQUIPMENT_BOARD_STATUS_CYCLE.length];
     }
 
-    function renderBoardCard(item) {
+    function renderBoardCard(item, orderMeta = {}) {
         const statusMeta = item.statusMeta || api.getEquipmentStatus(item.status);
-        const toneClassName = statusMeta.tone === 'check' ? 'is-check' : statusMeta.tone === 'stop' ? 'is-stop' : '';
+        const statusTone = ['running', 'stop', 'check'].includes(statusMeta.tone) ? statusMeta.tone : 'running';
+        const toneClassName = `is-${statusTone}`;
+        const moveUpLabel = '\uC704\uB85C \uC774\uB3D9';
+        const moveDownLabel = '\uC544\uB798\uB85C \uC774\uB3D9';
         return `
             <article class="data-equipment-board-card ${toneClassName}">
                 <div class="data-equipment-board-card-head">
@@ -75,7 +75,7 @@
                         ${api.escapeHtml(item.name)}
                     </strong>
                     <div class="data-equipment-board-state">
-                        <span class="data-equipment-board-chip is-${statusMeta.tone}">${api.escapeHtml(statusMeta.label)}</span>
+                        <button type="button" class="data-equipment-board-chip data-equipment-board-status-button is-${statusMeta.tone}" data-equipment-cycle-status-card="${api.escapeHtml(item.id)}" aria-label="${api.escapeHtml('\uAC00\uB3D9 \uC0C1\uD0DC \uBCC0\uACBD')}" title="${api.escapeHtml('\uD074\uB9AD\uD558\uBA74 \uAC00\uB3D9\uC911, \uBE44\uAC00\uB3D9\uC911, \uC815\uBE44\uC911\uC73C\uB85C \uBC14\uB014\uB2C8\uB2E4.')}">${api.escapeHtml(statusMeta.label)}</button>
                     </div>
                 </div>
                 <p>${api.escapeHtml([item.room, item.group].filter(Boolean).join(' / ') || item.line || '관리 구분 미지정')}</p>
@@ -83,7 +83,15 @@
                 ${renderBoardMetric('현재 실적', item.production || '-')}
                 ${renderBoardMetric('목표 기준', item.plan || '-')}
                 ${renderBoardMetric('다음 점검', item.nextCheck || '-')}
-                    <button type="button" data-equipment-open-card="${api.escapeHtml(item.id)}">기록 작성</button>
+                <div class="data-equipment-board-card-tools">
+                    <button type="button" class="data-equipment-board-order-button" data-equipment-move-card="${api.escapeHtml(item.id)}" data-equipment-move-direction="-1" aria-label="${api.escapeHtml(moveUpLabel)}" title="${api.escapeHtml(moveUpLabel)}"${orderMeta.canMoveUp ? '' : ' disabled'}>
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button type="button" class="data-equipment-board-order-button" data-equipment-move-card="${api.escapeHtml(item.id)}" data-equipment-move-direction="1" aria-label="${api.escapeHtml(moveDownLabel)}" title="${api.escapeHtml(moveDownLabel)}"${orderMeta.canMoveDown ? '' : ' disabled'}>
+                        <i class="fas fa-arrow-down"></i>
+                    </button>
+                </div>
+                <button type="button" class="data-equipment-board-open-button" data-equipment-open-card="${api.escapeHtml(item.id)}">기록 작성</button>
             </article>
         `;
     }
@@ -94,24 +102,22 @@
         const boardBody = groups.length
             ? groups.map((group) => {
                 const teamMeta = group.teamMeta || api.getEquipmentHistoryTeamMeta?.(group.teamDataKey || group.team) || {};
+                const teamEquipmentIds = group.sections.flatMap((section) => section.equipment.map((item) => item.id));
+                const teamOrderMeta = new Map(teamEquipmentIds.map((id, index) => [id, {
+                    canMoveUp: index > 0,
+                    canMoveDown: index < teamEquipmentIds.length - 1,
+                }]));
                 return `
                 <section class="data-equipment-board-column" data-equipment-board-team="${api.escapeHtml(group.teamDataKey || group.team)}" style="${getBoardTeamStyle(teamMeta)}">
                     <header>
                         <div class="data-equipment-board-team-title">
-                            <span class="data-equipment-board-team-heading">
-                                <span class="data-equipment-board-team-icon" aria-hidden="true"><i class="fas ${api.escapeHtml(getSafeBoardTeamIcon(teamMeta.icon))}"></i></span>
-                                <span class="data-equipment-board-team-copy">
-                                    <strong>${api.escapeHtml(group.team)}</strong>
-                                    <small>${api.escapeHtml(getBoardTeamSubtitle(teamMeta))}</small>
-                                </span>
-                            </span>
+                            <strong>${api.escapeHtml(group.team)}</strong>
                         </div>
-                        <span>총 ${group.equipmentCount} · 가동 ${group.runningCount} · 비가동 ${group.stoppedCount}</span>
                     </header>
                     ${group.sections.map((section) => `
                         <div class="data-equipment-board-section">
                             <h3>${api.escapeHtml(section.title)}</h3>
-                            ${section.equipment.map(renderBoardCard).join('')}
+                            ${section.equipment.map((item) => renderBoardCard(item, teamOrderMeta.get(item.id))).join('')}
                         </div>
                     `).join('')}
                 </section>
@@ -183,7 +189,7 @@
         const statusMeta = api.getEquipmentStatus(status);
         return `
             <span class="data-equipment-title-status-toggle" role="group" aria-label="설비 가동 상태">
-                ${['가동중', '비가동중'].map((item) => `
+                ${['가동중', '비가동중', '정비중'].map((item) => `
                     <button type="button" class="${statusMeta.label === item ? 'is-active' : ''}" aria-pressed="${statusMeta.label === item ? 'true' : 'false'}" data-equipment-status-toggle="${api.escapeHtml(item)}">
                         ${api.escapeHtml(item)}
                     </button>
@@ -535,6 +541,50 @@
         if (!rows.length) addDraftRow(state, section);
     }
 
+    function clonePayload(value) {
+        return JSON.parse(JSON.stringify(value || {}));
+    }
+
+    function getPayloadEquipmentList(data) {
+        const source = Array.isArray(data?.equipmentList) ? data.equipmentList : api.normalizeEquipmentItems(data);
+        return api.asList(source).map((item) => JSON.parse(JSON.stringify(item || {})));
+    }
+
+    function writeWorkingPayload(data, nextPayload) {
+        Object.keys(data || {}).forEach((key) => delete data[key]);
+        Object.assign(data, nextPayload);
+        browser.writePortalPayload('data_equipment_history_card', nextPayload);
+    }
+
+    async function persistEquipmentHistoryPayload(data, nextPayload, errorCode) {
+        const previousPayload = clonePayload(data);
+        const canSaveToServer = api.canSaveEquipmentHistoryToServer?.() === true;
+        let persistedPayload = nextPayload;
+        try {
+            if (canSaveToServer) {
+                const savedPayload = await api.saveEquipmentHistoryPayload?.(nextPayload);
+                if (!savedPayload) throw new Error(errorCode);
+                persistedPayload = savedPayload;
+            }
+        } catch (error) {
+            browser.writePortalPayload('data_equipment_history_card', previousPayload);
+            throw error;
+        }
+        writeWorkingPayload(data, persistedPayload);
+        return persistedPayload;
+    }
+
+    function buildEquipmentListWithRecord(data, record) {
+        const nextList = getPayloadEquipmentList(data);
+        const matched = api.normalizeEquipmentItems({ equipmentList: nextList })
+            .find((item) => item.id === record.id);
+        if (matched && Number.isInteger(matched.sourceIndex)) {
+            nextList[matched.sourceIndex] = record;
+            return nextList;
+        }
+        return [record, ...nextList];
+    }
+
     async function saveDraft(data, state, options = {}) {
         const draft = state.draft || api.createDraft();
         const validationErrors = api.getEquipmentHistoryDraftValidationErrors?.(draft) || [];
@@ -561,10 +611,9 @@
                 return false;
             }
 
-            const existingItems = api.normalizeEquipmentItems(data).filter((item) => item.id !== record.id);
             nextPayload = {
                 ...JSON.parse(JSON.stringify(data || {})),
-                equipmentList: [record, ...existingItems],
+                equipmentList: buildEquipmentListWithRecord(data, record),
             };
             if (canSaveToServer) {
                 const savedPayload = await api.saveEquipmentHistoryPayload?.(nextPayload);
@@ -590,6 +639,56 @@
         state.selectedId = record.id;
         state.draft = api.createDraft(record);
         state.message = options.message || '작성 내용이 설비 현황 보드에 반영되었습니다.';
+        return true;
+    }
+
+    async function cycleBoardCardStatus(data, state, recordId) {
+        const normalizedRecordId = api.normalizeText(recordId);
+        if (!normalizedRecordId) return false;
+        const nextList = getPayloadEquipmentList(data);
+        const item = api.normalizeEquipmentItems({ equipmentList: nextList })
+            .find((entry) => entry.id === normalizedRecordId);
+        if (!item || !Number.isInteger(item.sourceIndex)) return false;
+
+        nextList[item.sourceIndex] = {
+            ...nextList[item.sourceIndex],
+            status: getNextEquipmentBoardStatus(item.status),
+        };
+        const nextPayload = {
+            ...clonePayload(data),
+            equipmentList: nextList,
+        };
+        await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_status_failed');
+        state.selectedId = item.id;
+        state.message = '\uAC00\uB3D9 \uC0C1\uD0DC\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
+        return true;
+    }
+
+    async function moveBoardCard(data, state, recordId, direction) {
+        const normalizedRecordId = api.normalizeText(recordId);
+        const moveDirection = Number(direction) < 0 ? -1 : 1;
+        if (!normalizedRecordId) return false;
+        const nextList = getPayloadEquipmentList(data);
+        const items = api.normalizeEquipmentItems({ equipmentList: nextList });
+        const item = items.find((entry) => entry.id === normalizedRecordId);
+        if (!item || !Number.isInteger(item.sourceIndex)) return false;
+
+        const teamKey = item.teamDataKey || api.normalizeEquipmentHistoryTeamName?.(item.team) || item.team;
+        const teamItems = items.filter((entry) => (entry.teamDataKey || api.normalizeEquipmentHistoryTeamName?.(entry.team) || entry.team) === teamKey);
+        const teamIndex = teamItems.findIndex((entry) => entry.id === item.id);
+        const swapItem = teamItems[teamIndex + moveDirection];
+        if (!swapItem || !Number.isInteger(swapItem.sourceIndex)) return false;
+
+        const currentRaw = nextList[item.sourceIndex];
+        nextList[item.sourceIndex] = nextList[swapItem.sourceIndex];
+        nextList[swapItem.sourceIndex] = currentRaw;
+        const nextPayload = {
+            ...clonePayload(data),
+            equipmentList: nextList,
+        };
+        await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_order_failed');
+        state.selectedId = item.id;
+        state.message = '\uC124\uBE44 \uD45C\uC2DC \uC21C\uC11C\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
         return true;
     }
 
@@ -763,6 +862,28 @@
                 state.view = 'card';
                 ensureDraft(data, state);
                 redraw();
+            });
+        });
+
+        root.querySelectorAll('[data-equipment-cycle-status-card]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                try {
+                    if (await cycleBoardCardStatus(data, state, button.dataset.equipmentCycleStatusCard)) redraw();
+                } catch (error) {
+                    console.warn('[kpi] equipment history board status save failed', error);
+                    browser.alert('\uAC00\uB3D9 \uC0C1\uD0DC \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.');
+                }
+            });
+        });
+
+        root.querySelectorAll('[data-equipment-move-card]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                try {
+                    if (await moveBoardCard(data, state, button.dataset.equipmentMoveCard, button.dataset.equipmentMoveDirection)) redraw();
+                } catch (error) {
+                    console.warn('[kpi] equipment history board order save failed', error);
+                    browser.alert('\uC124\uBE44 \uC21C\uC11C \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.');
+                }
             });
         });
 

@@ -1,6 +1,76 @@
 # 2026-05-08 Patch Note
 
-Status: 작업내역 첨부 정리, 설비 이력카드 팀별 표시, 작업내역 달력 별/하위카테고리 표시, 작업내역 페이지 넘김을 반영했습니다.
+Status: 작업내역 첨부 정리, 설비 이력카드 팀별 표시, 작업내역 달력 별/하위카테고리 표시, 작업내역 페이지 넘김, 앱 내부 뒤로가기를 반영했습니다.
+
+## App Internal Back Navigation
+
+Goal: 브라우저 뒤로가기/Backspace가 통합 관리 툴을 바로 빠져나가지 않고, 앱 내부 이전 화면으로 먼저 돌아가게 합니다.
+
+Touched areas: KPI app browser adapter, app navigation history state, global modal/backspace handling, runtime shortcut closer return flow, work-history overlay close confirmation, frontend smoke tests.
+
+Verification: `node --test kpi-runtime/internal-server/test/frontend/kpi-app-browser-adapter.smoke.js`, `node --test kpi-runtime/internal-server/test/frontend/work-history-view-actions.smoke.js`, `npm run smoke:work-history-view-actions`, `npm run smoke:work-history-core`, `npm run smoke:kpi-shell-css`, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, and `npm run smoke:kpi-browser` passed.
+
+Risk: 내부 탭/카테고리 이동은 `#kpi?...` 히스토리 상태로 복원합니다. 앱 첫 화면에서 더 돌아갈 내부 화면이 없을 때는 브라우저 기본 뒤로가기가 그대로 동작합니다.
+
+## Work History Assignee Input Fix
+
+Goal: 작업내역 기입/수정 시 작업자 칸에 `미정`이 자동으로 남지 않게 하고, 작업자 입력칸이 내용 때문에 아래로 늘어나지 않도록 한 줄 고정 입력으로 정리합니다.
+
+Touched areas: work-history assignee normalization, record modal template, work-history modal CSS, asset cache version, work-history frontend smoke.
+
+Verification: `node --check` for changed work-history records/layout/templates/record-actions/test JS and Repository Map history JS passed; `npm run smoke:work-history-core`, `npm run smoke:work-history-layout-templates`, `npm run smoke:work-history-render-print`, `npm run smoke:work-history-view-actions`, `npm run smoke:work-production`, `npm run smoke:kpi-shell-css`, `node --test test/frontend/repository-map-architecture.smoke.js test/frontend/ops-console-data-reference.smoke.js`, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `git diff --check`, and `npm run smoke:kpi-browser` passed.
+
+Risk: 여러 작업자는 기존처럼 쉼표로 구분해 저장하며, 줄바꿈 입력 안내/미리보기 pill은 입력칸 높이 밀림 방지를 위해 제거했습니다.
+
+## Equipment Board Order And Status Quick Actions
+
+Goal: 설비 이력카드 보드에서 이미 기입한 설비의 표시 순서를 바꾸고, 전체 카드 화면에서도 가동중/비가동중/정비중을 한 번씩 클릭할 때마다 순환 변경할 수 있게 합니다.
+
+Touched areas: equipment-history item normalization/display order, board card render actions, board card status/order CSS, asset cache version, equipment-history render smoke.
+
+Verification: `node --check` for changed equipment-history model/render/test JS and Repository Map history JS passed; `node --test kpi-runtime/internal-server/test/frontend/equipment-history-render.smoke.js`, `npm run smoke:kpi-shell-css`, `node --test test/frontend/repository-map-architecture.smoke.js test/frontend/ops-console-data-reference.smoke.js`, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `git diff --check`, and `npm run smoke:kpi-browser` passed.
+
+Risk: 순서 변경은 같은 팀 안의 설비끼리 위/아래 버튼으로 교환하며, 팀 lane 자체 정렬은 기존 팀 순서 기준을 유지합니다.
+
+## Work Calendar History Highlight
+
+Goal: 휴무 표시는 유지하되 작업내역이 있는 날짜칸은 테두리를 별도로 강조하고, `★ 하위카테고리` 네모와 글자 색은 휴무/평일 모두 같은 진한 작업내역 스타일로 보이게 합니다.
+
+Touched areas: 작업 팀 달력 날짜칸 class, 작업내역 cue CSS, work CSS/team-calendar render asset cache version, work-team-calendar render smoke.
+
+Verification: `node --check` for changed work-team-calendar render/test JS passed; `npm run smoke:work-team-calendar-render`, `npm run smoke:kpi-shell-css`, `npm run smoke:work-production`, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `git diff --check`, and `npm run smoke:kpi-browser` passed.
+
+Risk: 저장 데이터 구조는 바꾸지 않고 달력 강조 표시만 조정합니다.
+
+## Equipment History Status Card Colors
+
+Goal: 설비 이력카드 보드의 설비 네모가 상태별로 확실히 구분되도록 가동중은 초록, 비가동중은 빨강, 정비중은 노랑으로 통일합니다.
+
+Touched areas: 설비 상태 메타, 설비 상태 토글, 설비 board card status class, 설비 board card CSS, asset cache version, equipment-history render smoke.
+
+Verification: `node --check` for changed equipment-history model/form/render JS passed; `node --test kpi-runtime/internal-server/test/frontend/equipment-history-render.smoke.js`, `npm run smoke:kpi-shell-css`, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `git diff --check`, and `npm run smoke:kpi-browser` passed.
+
+Risk: 기존 점검중/점검예정 데이터는 정비중 노랑 카드로 표시되며, 저장 구조는 바꾸지 않습니다.
+
+## Equipment History Team Header Trim
+
+Goal: 설비 이력카드 팀별 보드 헤더는 `1팀 2파트` 같은 팀명만 남기고, 내부 설비 카드 네모는 팀 lane 색상 스타일에 휩쓸리지 않게 중립 톤으로 고정합니다.
+
+Touched areas: 설비 이력카드 board header markup, 설비 board card CSS, data CSS/render asset cache version, equipment-history render smoke.
+
+Verification: `node --check` for changed equipment-history render JS passed; `node --test kpi-runtime/internal-server/test/frontend/equipment-history-render.smoke.js`, `npm run smoke:kpi-shell-css`, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `git diff --check`, and `npm run smoke:kpi-browser` passed.
+
+Risk: 팀별 lane 구분과 정렬은 유지하고, 헤더 장식과 설비 카드 색상 번짐만 제거합니다.
+
+## Work History Blank Cost Label
+
+Goal: 작업내역 비용을 입력하지 않은 항목에 `자체처리` 문구를 표시하지 않고 빈 비용 표시는 `-`로 정리합니다.
+
+Touched areas: 작업내역 비용 표시 formatter, 팀 달력 작업내역 비용 fallback, asset cache version, work-history/work-production smoke.
+
+Verification: `node --check` for changed work-history/work-production JS passed; `npm run smoke:work-history-layout-templates`, `npm run smoke:work-history-core`, `npm run smoke:work-production`, `git diff --check`, `npm run format:check`, `npm run lint`, and `npm run verify:server-structure` passed.
+
+Risk: 저장 데이터 구조는 바꾸지 않고 비용 미입력 표시 문구만 바꿉니다.
 
 ## Work History Pagination
 

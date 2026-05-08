@@ -69,7 +69,7 @@
         }
     });
 
-    runtime.registerShortcutCloser('work-history', () => {
-        browser?.closeHistoryOverlays?.();
+    runtime.registerShortcutCloser('work-history', (options = {}) => {
+        return browser?.closeHistoryOverlays?.(options);
     });
 })();

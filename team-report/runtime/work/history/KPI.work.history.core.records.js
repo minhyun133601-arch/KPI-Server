@@ -38,7 +38,9 @@
 
     function normalizeAssignees(value) {
         const items = Array.isArray(value) ? value : String(value || '').split(/[\n,\/;]+/);
-        return items.map(item => String(item || '').trim()).filter(Boolean);
+        const placeholderValues = new Set(['미정', '미입력', '없음', '-']);
+        return items.map(item => String(item || '').trim())
+            .filter(item => item && !placeholderValues.has(item.replace(/\s+/g, '')));
     }
 
     function normalizeRecordCategoryAlias(value) {

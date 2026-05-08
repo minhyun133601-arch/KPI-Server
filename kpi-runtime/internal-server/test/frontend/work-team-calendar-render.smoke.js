@@ -51,6 +51,7 @@ const teamCalendarRenderSource = teamCalendarSources.find(
 const teamCalendarDraftActionsSource = teamCalendarSources.find(
   (entry) => entry.filename === 'KPI.work.team-calendar.draft-actions.js'
 )?.source || '';
+const workCssSource = await fs.readFile(path.join(repoRoot, 'kpi-runtime', 'app', 'styles', 'work', 'work.css'), 'utf8');
 
 function overrideBinding(context, name, value) {
   const overrideKey = `__override_${name}`;
@@ -327,11 +328,15 @@ test('work team calendar offday cells keep production and history cues in the fl
   assert.match(modal.innerHTML, /휴무/);
   assert.match(modal.innerHTML, /오늘/);
   assert.doesNotMatch(modal.innerHTML, /KPI 3/);
+  assert.match(modal.innerHTML, /work-team-calendar-day[^"]*has-history[^"]*is-offday/);
   assert.match(modal.innerHTML, /work-team-calendar-day-history-item/);
   assert.match(modal.innerHTML, /자체 정비/);
   assert.doesNotMatch(modal.innerHTML, /Belt check/);
   assert.match(modal.innerHTML, /\+2건/);
   assert.match(modal.innerHTML, /18kg/);
+  assert.match(workCssSource, /\.work-team-calendar-day\.is-offday\.has-history\s*\{/);
+  assert.match(workCssSource, /\.work-team-calendar-day-history-item\s*\{[^}]*#eff6ff/s);
+  assert.match(workCssSource, /\.work-team-calendar-day-history-category\s*\{[^}]*#1e3a8a/s);
 });
 
 test('work team calendar source does not keep stray equipUtilityChipHtml references', () => {

@@ -532,6 +532,12 @@
     letter-spacing: 0.02em;
 }
 
+#recordAssignee {
+    height: 42px;
+    min-height: 42px;
+    white-space: nowrap;
+}
+
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {

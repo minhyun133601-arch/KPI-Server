@@ -42,6 +42,8 @@ const splitSources = await Promise.all(
 );
 
 function createContext() {
+  const elements = new Map();
+  const confirmMessages = [];
   const history = {
     TEAM_KEYS: ['team1part1'],
     TeamInfo: {
@@ -54,8 +56,8 @@ function createContext() {
     queryAll() {
       return [];
     },
-    getElement() {
-      return null;
+    getElement(id) {
+      return elements.get(id) || null;
     },
     getPayload() {
       return { teams: {} };
@@ -77,6 +79,12 @@ function createContext() {
     },
     cloneJson(value) {
       return JSON.parse(JSON.stringify(value));
+    },
+    escapeHtml(value) {
+      return String(value ?? '');
+    },
+    escapeAttribute(value) {
+      return String(value ?? '');
     },
     isAllowedRecordCategory() {
       return true;
@@ -161,7 +169,13 @@ function createContext() {
   context.globalThis = context;
   context.KpiWorkHistory = history;
   context.alert = () => {};
+  context.confirm = (message) => {
+    confirmMessages.push(message);
+    return context.__confirmResult !== false;
+  };
   context.setLastModified = () => {};
+  context.__elements = elements;
+  context.__confirmMessages = confirmMessages;
   vm.createContext(context);
 
   splitSources.forEach(({ filename, source }) => {
@@ -169,6 +183,46 @@ function createContext() {
   });
 
   return context;
+}
+
+function createClassList(initial = []) {
+  const values = new Set(initial);
+  return {
+    add(value) {
+      values.add(value);
+    },
+    remove(value) {
+      values.delete(value);
+    },
+    contains(value) {
+      return values.has(value);
+    },
+    toggle(value, force) {
+      const next = typeof force === 'boolean' ? force : !values.has(value);
+      if (next) values.add(value);
+      else values.delete(value);
+      return next;
+    },
+  };
+}
+
+function createFormElement(value = '') {
+  return {
+    value,
+    min: '',
+    max: '',
+    textContent: '',
+    innerHTML: '',
+    options: [],
+    dataset: {},
+    classList: createClassList(),
+    reset() {
+      this.value = '';
+    },
+    querySelector() {
+      return null;
+    },
+  };
 }
 
 test('work history split action files expose view and history hooks after bootstrap', () => {
@@ -214,4 +268,47 @@ test('work history page buttons dispatch to numbered pagination state', () => {
   });
 
   assert.deepEqual(calls, [{ prefix: 'team1part1', page: 2 }]);
+});
+
+test('work history overlay close confirms when the record form has unsaved edits', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  const elements = context.__elements;
+  [
+    'recordForm',
+    'formSourceTeam',
+    'formIndex',
+    'recordStartDate',
+    'recordEndDate',
+    'recordTeam',
+    'recordAssignee',
+    'recordCategoryGroup',
+    'recordCategory',
+    'recordWorkContent',
+    'recordRemarks',
+    'recordCost',
+    'modalTitle',
+    'attachmentList',
+    'deleteModal',
+  ].forEach(id => {
+    elements.set(id, createFormElement(''));
+  });
+  elements.set('recordModal', {
+    classList: createClassList(),
+  });
+
+  view.openRecordModal('team1part1');
+  assert.equal(view.hasRecordFormChanged(), false);
+
+  elements.get('recordWorkContent').value = 'Changed work';
+  assert.equal(view.hasRecordFormChanged(), true);
+
+  context.__confirmResult = false;
+  assert.equal(view.closeOverlays({ confirm: true }), false);
+  assert.equal(elements.get('recordModal').classList.contains('show'), true);
+
+  context.__confirmResult = true;
+  assert.equal(view.closeOverlays({ confirm: true }), true);
+  assert.equal(elements.get('recordModal').classList.contains('show'), false);
+  assert.match(context.__confirmMessages[0], /저장되지 않았습니다/);
 });

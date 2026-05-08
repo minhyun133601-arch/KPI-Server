@@ -239,6 +239,248 @@
             syncDashboardLastModified();
         }
 
+        function getAppHistorySectionId(value = '') {
+            const normalized = String(value || '').trim();
+            if (!normalized) return '';
+            return getDashboardSections().some(entry => entry.id === normalized) ? normalized : '';
+        }
+
+        function normalizeAppHistoryIndex(value, fallback = -1) {
+            const nextValue = Number(value);
+            return Number.isFinite(nextValue) ? Math.trunc(nextValue) : fallback;
+        }
+
+        function sanitizeAppHistoryRoute(route = null) {
+            const view = String(route?.view || '').trim();
+            if (view === 'home' || !route || typeof route !== 'object') {
+                return { view: 'home' };
+            }
+
+            const sectionId = getAppHistorySectionId(route.sectionId);
+            if (!sectionId || !AppData[sectionId]) {
+                return { view: 'home' };
+            }
+
+            if (view === 'category') {
+                const categories = Array.isArray(AppData[sectionId]?.categories) ? AppData[sectionId].categories : [];
+                const categoryIndex = normalizeAppHistoryIndex(route.categoryIndex, -1);
+                if (categoryIndex >= 0 && categoryIndex < categories.length) {
+                    const navSectionId = getAppHistorySectionId(route.navSectionId) || sectionId;
+                    const navCategoryIndex = normalizeAppHistoryIndex(route.navCategoryIndex, categoryIndex);
+                    return {
+                        view: 'category',
+                        sectionId,
+                        categoryIndex,
+                        teamDataKey: String(route.teamDataKey || '').trim(),
+                        navSectionId,
+                        navCategoryIndex,
+                        navTeamDataKey: String(route.navTeamDataKey || route.teamDataKey || '').trim()
+                    };
+                }
+            }
+
+            return { view: 'section', sectionId };
+        }
+
+        function getCurrentAppRoute() {
+            const sectionId = getAppHistorySectionId(activeSectionId);
+            if (!sectionId) {
+                return { view: 'home' };
+            }
+            if (Number(activeCategoryIndex) >= 0) {
+                const navSectionId = getNavigationSelectionSectionId();
+                const navCategoryIndex = navSectionId
+                    ? getNavigationSelectionCategoryIndex(navSectionId)
+                    : -1;
+                const teamDataKey = String(
+                    getNavigationSelectionTeamDataKey(navSectionId, navCategoryIndex)
+                    || ((typeof WorkState !== 'undefined' && WorkState) ? WorkState.teamCalendarHubDataKey : '')
+                    || activeRenderContext?.category?.dataKey
+                    || ''
+                ).trim();
+                return sanitizeAppHistoryRoute({
+                    view: 'category',
+                    sectionId,
+                    categoryIndex: activeCategoryIndex,
+                    teamDataKey,
+                    navSectionId: navSectionId || sectionId,
+                    navCategoryIndex: navCategoryIndex >= 0 ? navCategoryIndex : activeCategoryIndex,
+                    navTeamDataKey: getNavigationSelectionTeamDataKey(navSectionId, navCategoryIndex) || teamDataKey
+                });
+            }
+            return { view: 'section', sectionId };
+        }
+
+        function getAppHistoryRouteKey(route = null) {
+            const normalized = sanitizeAppHistoryRoute(route);
+            if (normalized.view === 'home') return 'home';
+            if (normalized.view === 'section') return `section:${normalized.sectionId}`;
+            return [
+                'category',
+                normalized.sectionId,
+                normalized.categoryIndex,
+                normalized.teamDataKey,
+                normalized.navSectionId,
+                normalized.navCategoryIndex,
+                normalized.navTeamDataKey
+            ].join(':');
+        }
+
+        function buildAppHistoryUrl(route = null) {
+            const normalized = sanitizeAppHistoryRoute(route);
+            const params = new URLSearchParams();
+            params.set('view', normalized.view);
+            if (normalized.sectionId) params.set('section', normalized.sectionId);
+            if (normalized.view === 'category') {
+                params.set('category', String(normalized.categoryIndex));
+                if (normalized.teamDataKey) params.set('team', normalized.teamDataKey);
+                if (normalized.navSectionId && normalized.navSectionId !== normalized.sectionId) {
+                    params.set('navSection', normalized.navSectionId);
+                }
+                if (Number(normalized.navCategoryIndex) !== Number(normalized.categoryIndex)) {
+                    params.set('navCategory', String(normalized.navCategoryIndex));
+                }
+                if (normalized.navTeamDataKey && normalized.navTeamDataKey !== normalized.teamDataKey) {
+                    params.set('navTeam', normalized.navTeamDataKey);
+                }
+            }
+            const locationMeta = browser?.getLocationMeta?.() || {};
+            const basePath = `${locationMeta.pathname || ''}${locationMeta.search || ''}`;
+            return `${basePath || ''}#kpi?${params.toString()}`;
+        }
+
+        function buildAppHistoryState(route = null) {
+            const normalized = sanitizeAppHistoryRoute(route);
+            AppHistoryState.sequence += 1;
+            return {
+                __kpiApp: AppHistoryState.namespace,
+                sequence: AppHistoryState.sequence,
+                route: normalized
+            };
+        }
+
+        function isAppHistoryState(state = null) {
+            return state && state.__kpiApp === AppHistoryState.namespace && state.route;
+        }
+
+        function parseAppHistoryHash(hash = '') {
+            const value = String(hash || '').trim();
+            if (!value.startsWith('#kpi?')) return null;
+            const params = new URLSearchParams(value.slice(5));
+            const view = String(params.get('view') || '').trim();
+            if (view === 'home') return { view: 'home' };
+            const route = {
+                view,
+                sectionId: params.get('section') || '',
+                categoryIndex: params.get('category') || -1,
+                teamDataKey: params.get('team') || '',
+                navSectionId: params.get('navSection') || '',
+                navCategoryIndex: params.get('navCategory') || -1,
+                navTeamDataKey: params.get('navTeam') || ''
+            };
+            return sanitizeAppHistoryRoute(route);
+        }
+
+        function commitAppHistoryRoute(route = null, options = {}) {
+            if (AppHistoryState.applying && options.force !== true) return;
+            const normalized = sanitizeAppHistoryRoute(route || getCurrentAppRoute());
+            const routeKey = getAppHistoryRouteKey(normalized);
+            if (options.force !== true && routeKey === AppHistoryState.lastRouteKey) return;
+            const state = buildAppHistoryState(normalized);
+            const url = buildAppHistoryUrl(normalized);
+            if (options.replace === true) {
+                browser?.replaceHistoryState?.(state, '', url);
+            } else {
+                browser?.pushHistoryState?.(state, '', url);
+            }
+            AppHistoryState.lastRouteKey = routeKey;
+        }
+
+        function syncAppHistoryAfterNavigation(options = {}) {
+            if (options.__skipHistory === true || AppHistoryState.applying) return;
+            commitAppHistoryRoute(getCurrentAppRoute(), {
+                replace: options.__replaceHistory === true,
+                force: options.__forceHistory === true
+            });
+        }
+
+        function applyAppHistoryRoute(route = null) {
+            const normalized = sanitizeAppHistoryRoute(route);
+            AppHistoryState.applying = true;
+            try {
+                if (normalized.view === 'home') {
+                    goHome({ __skipHistory: true });
+                    return true;
+                }
+                if (normalized.view === 'category') {
+                    selectCategory(normalized.sectionId, normalized.categoryIndex, {
+                        teamDataKey: normalized.teamDataKey,
+                        __navSectionId: normalized.navSectionId || normalized.sectionId,
+                        __navCategoryIndex: normalized.navCategoryIndex,
+                        __navTeamDataKey: normalized.navTeamDataKey || normalized.teamDataKey,
+                        __skipHistory: true
+                    });
+                    return true;
+                }
+                openSection(normalized.sectionId, { __skipHistory: true });
+                return true;
+            } finally {
+                AppHistoryState.applying = false;
+                AppHistoryState.lastRouteKey = getAppHistoryRouteKey(normalized);
+            }
+        }
+
+        function pushCurrentAppHistoryEntry() {
+            commitAppHistoryRoute(getCurrentAppRoute(), { force: true });
+        }
+
+        function handleAppHistoryPopState(event) {
+            if (hasOpenModalLayer()) {
+                closeGlobalSectionShortcutLayers({ confirm: true });
+                pushCurrentAppHistoryEntry();
+                return;
+            }
+            const state = event?.state || null;
+            if (!isAppHistoryState(state)) return;
+            applyAppHistoryRoute(state.route);
+        }
+
+        function bindAppHistoryNavigation() {
+            if (AppHistoryState.bound || browser?.getFlag?.('__appHistoryNavigationListener')) return;
+            AppHistoryState.bound = true;
+            browser?.setFlag?.('__appHistoryNavigationListener');
+            browser?.addWindowEventListener?.('popstate', handleAppHistoryPopState);
+        }
+
+        function initializeAppHistoryState() {
+            const existingState = browser?.getCurrentHistoryState?.();
+            const locationMeta = browser?.getLocationMeta?.() || {};
+            const initialRoute = isAppHistoryState(existingState)
+                ? sanitizeAppHistoryRoute(existingState.route)
+                : (parseAppHistoryHash(locationMeta.hash) || getCurrentAppRoute());
+            const currentKey = getAppHistoryRouteKey(getCurrentAppRoute());
+            const initialKey = getAppHistoryRouteKey(initialRoute);
+            if (initialKey !== currentKey) {
+                applyAppHistoryRoute(initialRoute);
+            }
+            commitAppHistoryRoute(getCurrentAppRoute(), { replace: true, force: true });
+        }
+
+        function navigateAppBack() {
+            if (hasOpenModalLayer()) {
+                return closeGlobalSectionShortcutLayers({ confirm: true }) !== false;
+            }
+            if (getAppHistoryRouteKey(getCurrentAppRoute()) === 'home') {
+                return false;
+            }
+            if (typeof browser?.goHistoryBack === 'function') {
+                browser.goHistoryBack();
+                return true;
+            }
+            goHome();
+            return true;
+        }
+
         function setDashboardSection(sectionId) {
             const normalizedSectionId = getDashboardSectionKey(sectionId);
             const section = AppData[normalizedSectionId];
@@ -300,7 +542,7 @@
             };
         }
 
-        function openSection(id) {
+        function openSection(id, options = {}) {
             const data = AppData[id];
             if (!data) return;
             if (data.directLaunch === true) {
@@ -313,7 +555,10 @@
             document.getElementById('dashboard')?.classList.add('hidden-view');
             if (data.categories && data.categories.length > 0) {
                 const defaultOptions = KpiRuntime?.getDefaultOpenOptions?.(id, { section: data }) || {};
-                selectCategory(data.id, 0, defaultOptions);
+                selectCategory(data.id, 0, {
+                    ...defaultOptions,
+                    __skipHistory: options.__skipHistory === true
+                });
                 return;
             }
             activeSectionId = id;
@@ -322,9 +567,10 @@
             updateViewerTitle(id, null);
             renderSidebar();
             scheduleGlobalSaveUiRefresh({ forceDefault: true });
+            syncAppHistoryAfterNavigation(options);
         }
 
-        function goHome() {
+        function goHome(options = {}) {
             void browser?.destroyIntegratedMeteringMount?.();
             activeSectionId = null;
             activeCategoryIndex = -1;
@@ -336,4 +582,5 @@
             renderSidebar();
             renderViewerHome();
             scheduleGlobalSaveUiRefresh({ forceDefault: true });
+            syncAppHistoryAfterNavigation(options);
         }

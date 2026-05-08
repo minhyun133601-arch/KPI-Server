@@ -379,7 +379,8 @@
                     __navSectionId: navSectionId,
                     __navCategoryIndex: navCategoryIndex,
                     __navTeamDataKey: navTeamDataKey,
-                    __skipShortcut: true
+                    __skipShortcut: true,
+                    __skipHistory: options.__skipHistory === true
                 });
                 return;
             }
@@ -464,4 +465,5 @@
             }
             mainScroll.scrollTop = 0;
             scheduleGlobalSaveUiRefresh({ forceDefault: true });
+            syncAppHistoryAfterNavigation(options);
         }
