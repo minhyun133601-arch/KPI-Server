@@ -56,7 +56,7 @@
                         <span class="data-equipment-board-chip is-${statusMeta.tone}">${api.escapeHtml(statusMeta.label)}</span>
                     </div>
                 </div>
-                <p>${api.escapeHtml([item.team, item.room, item.group].filter(Boolean).join(' / ') || item.line || '관리 구분 미지정')}</p>
+                <p>${api.escapeHtml([item.room, item.group].filter(Boolean).join(' / ') || item.line || '관리 구분 미지정')}</p>
                 ${renderBoardMetric('설비코드', item.equipmentCode || '-')}
                 ${renderBoardMetric('현재 실적', item.production || '-')}
                 ${renderBoardMetric('목표 기준', item.plan || '-')}
@@ -71,10 +71,13 @@
         const pausedCount = items.length - activeCount;
         const boardBody = groups.length
             ? groups.map((group) => `
-                <section class="data-equipment-board-column">
+                <section class="data-equipment-board-column" data-equipment-board-team="${api.escapeHtml(group.teamDataKey || group.team)}">
                     <header>
-                        <strong>${api.escapeHtml(group.team)}</strong>
-                        <span>${group.sections.reduce((sum, section) => sum + section.equipment.length, 0)} 설비</span>
+                        <div class="data-equipment-board-team-title">
+                            <strong>${api.escapeHtml(group.team)}</strong>
+                            <small>${api.escapeHtml('팀별 설비 이력')}</small>
+                        </div>
+                        <span>총 ${group.equipmentCount} · 가동 ${group.runningCount} · 비가동 ${group.stoppedCount}</span>
                     </header>
                     ${group.sections.map((section) => `
                         <div class="data-equipment-board-section">
@@ -103,6 +106,20 @@
                 </div>
             </section>
         `;
+    }
+
+    function renderEquipmentSelectOptions(groups, selected) {
+        return api.asList(groups).map((group) => {
+            const options = group.sections.flatMap((section) => section.equipment).map((item) => {
+                const label = [item.room, item.name].filter(Boolean).join(' / ') || item.name;
+                return `<option value="${api.escapeHtml(item.id)}"${item.id === selected?.id ? ' selected' : ''}>${api.escapeHtml(label)}</option>`;
+            }).join('');
+            return `
+                <optgroup label="${api.escapeHtml(`${group.team} (${group.equipmentCount})`)}">
+                    ${options}
+                </optgroup>
+            `;
+        }).join('');
     }
 
     function renderPhotoCard(draft) {
@@ -297,7 +314,7 @@
         `;
     }
 
-    function renderTopbar(category, items, selected, state) {
+    function renderTopbar(category, items, selected, state, groups) {
         const isCard = state.view === 'card';
         const isCardStart = state.view === 'card-start';
         const isAuthoring = isCard || isCardStart;
@@ -315,7 +332,7 @@
                     ${isCard ? '<button type="button" data-equipment-history-print><i class="fas fa-print"></i><span>PDF 출력</span></button>' : ''}
                     ${items.length ? `
                         <select data-equipment-select aria-label="설비 선택">
-                            ${items.map((item) => `<option value="${api.escapeHtml(item.id)}"${item.id === selected?.id ? ' selected' : ''}>${api.escapeHtml(item.name)}</option>`).join('')}
+                            ${renderEquipmentSelectOptions(groups, selected)}
                         </select>
                     ` : ''}
                 </div>
@@ -331,7 +348,7 @@
         const isCardStart = state.view === 'card-start';
         return `
             <section class="data-equipment-page">
-                ${renderTopbar(category, items, selected, state)}
+                ${renderTopbar(category, items, selected, state, groups)}
                 ${isCard ? renderHistoryCard(category, data, state) : isCardStart ? renderCardStarter(state) : renderBoard(groups, items)}
             </section>
         `;

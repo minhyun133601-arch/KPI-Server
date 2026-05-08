@@ -66,24 +66,11 @@
             const detailOverlayActive = hasDateSelection && !selectedDateLocked;
             const draft = getWorkTeamCalendarDraftForDates(dataKey, selectedDateKeys);
             const selectedHistoryRecords = getWorkTeamCalendarHistoryRecordsForDates(dataKey, selectedDateKeys);
-            const isHistoryKpiRecord = (record) => {
-                if (typeof isWorkTeamCalendarHistoryKpi === 'function') {
-                    return isWorkTeamCalendarHistoryKpi(record);
-                }
-                if (workTeamCalendarRenderBrowser) {
-                    return workTeamCalendarRenderBrowser.isHistoryImportantRecord(record);
-                }
-                return String(record?.category || '').trim() === 'KPI'
-                    || String(record?.categoryGroup || record?.categoryType || '').trim() === 'report';
-            };
             const hasSelectedEntryContent = selectedHistoryRecords.length > 0;
             const hasReadonlyEntryContent = hasSelectedEntryContent && !isOverviewCalendar;
-            const selectedHistoryHasKpi = hasSelectedEntryContent && selectedHistoryRecords.some(isHistoryKpiRecord);
-            const selectedHistoryKpiCount = hasSelectedEntryContent
-                ? selectedHistoryRecords.filter(isHistoryKpiRecord).length
-                : 0;
             const historyKpiLabel = workTeamCalendarRenderBrowser?.getHistoryImportantFlagLabel?.() || '\u2605';
             const historyKpiPillLabel = workTeamCalendarRenderBrowser?.getHistoryImportantPillLabel?.() || '\u2605';
+            const selectedHistoryStarCount = hasSelectedEntryContent ? selectedHistoryRecords.length : 0;
             const selectedHistoryCostSummary = hasSelectedEntryContent && typeof getWorkTeamCalendarHistoryCostSummary === 'function'
                 ? getWorkTeamCalendarHistoryCostSummary(selectedHistoryRecords)
                 : { totalCost: 0, costText: '-' };
@@ -137,7 +124,7 @@
                         : (selectedProductionSummary?.isOffday ? '-' : (category.emptyProductionLabel || '\uD488\uBAA9 \uC5C6\uC74C'))
                 );
             let detailCountBadgeText = hasSelectedEntryContent
-                ? (formatUtilNumber(selectedHistoryRecords.length, 0) + '\uAC74' + (selectedHistoryHasKpi ? (' \u00B7 ' + historyKpiLabel + (selectedHistoryKpiCount > 1 ? (' ' + formatUtilNumber(selectedHistoryKpiCount, 0)) : '')) : '') + ' \u00B7 \uBE44\uC6A9 ' + (selectedHistoryCostSummary.costText || '-'))
+                ? (formatUtilNumber(selectedHistoryRecords.length, 0) + '\uAC74' + (selectedHistoryStarCount > 0 ? (' \u00B7 ' + historyKpiLabel + (selectedHistoryStarCount > 1 ? (' ' + formatUtilNumber(selectedHistoryStarCount, 0)) : '')) : '') + ' \u00B7 \uBE44\uC6A9 ' + (selectedHistoryCostSummary.costText || '-'))
                 : detailCountText;
             if (isOverviewCalendar) {
                 detailSub = '\uD300\uBCC4 \uC0DD\uC0B0 \uD488\uBAA9 \uBCF4\uAE30';
@@ -486,12 +473,27 @@
                     </div>
                 `;
             }
-            function buildWorkTeamCalendarHistoryCueHtml(count, kpiCount) {
-                const historyCount = Number(count || 0);
-                const historyKpiCount = Number(kpiCount || 0);
+            function buildWorkTeamCalendarHistoryCueHtml(summary) {
+                const historyCount = Number(summary?.count || 0);
+                const items = Array.isArray(summary?.items) ? summary.items : [];
                 if (historyCount <= 0) return '';
-                if (historyCount === 1 && historyKpiCount === 1) return '';
-                return `<span class="work-team-calendar-day-summary">${escapeHtml(formatUtilNumber(historyCount, 0) + '건')}</span>`;
+                if (items.length) {
+                    const itemHtml = items.map(item => `
+                        <span class="work-team-calendar-day-history-item">
+                            <span class="work-team-calendar-day-history-star">${escapeHtml(item?.star || '★')}</span>
+                            <span class="work-team-calendar-day-history-copy">
+                                <span class="work-team-calendar-day-history-category">${escapeHtml(item?.subcategory || '작업내역')}</span>
+                                <span class="work-team-calendar-day-history-title">${escapeHtml(item?.title || '제목 미입력')}</span>
+                            </span>
+                        </span>
+                    `).join('');
+                    const remainingCount = Number(summary?.remainingCount || 0);
+                    const moreHtml = remainingCount > 0
+                        ? `<span class="work-team-calendar-day-history-more">+${escapeHtml(formatUtilNumber(remainingCount, 0))}건</span>`
+                        : '';
+                    return `<span class="work-team-calendar-day-history-list">${itemHtml}${moreHtml}</span>`;
+                }
+                return `<span class="work-team-calendar-day-summary is-history-count">${escapeHtml(`★ ${formatUtilNumber(historyCount, 0)}건`)}</span>`;
             }
             function buildWorkTeamCalendarProductionCueHtml(count, totalAmount) {
                 const productionCount = Number(count || 0);
@@ -510,8 +512,8 @@
                 const productionSummary = inMonth ? (productionSummaryMap.get(dateKey) || null) : null;
                 const historySummary = inMonth ? (historySummaryMap.get(dateKey) || null) : null;
                 const historyCount = Number(historySummary?.count || 0);
-                const historyKpiCount = Number(historySummary?.kpiCount || 0);
-                const historyHasKpi = inMonth && historyKpiCount > 0;
+                const historyStarCount = Number(historySummary?.starCount || historyCount);
+                const historyHasStar = inMonth && historyStarCount > 0;
                 const hasHistory = inMonth && historyCount > 0;
                 const isOffday = inMonth && !!productionSummary?.isOffday;
                 const classes = [
@@ -527,7 +529,7 @@
                 const totalAmount = Number(productionSummary?.totalAmount || 0);
                 const productionCueHtml = buildWorkTeamCalendarProductionCueHtml(productionCount, totalAmount);
                 const historyCueHtml = hasHistory
-                    ? buildWorkTeamCalendarHistoryCueHtml(historyCount, historyKpiCount)
+                    ? buildWorkTeamCalendarHistoryCueHtml(historySummary)
                     : '';
                 const flagParts = [];
                 if (inMonth && isLocked) {
@@ -539,8 +541,8 @@
                     if (inMonth && dateKey === todayKey) {
                         flagParts.push(`<span class="work-team-calendar-day-flag">오늘</span>`);
                     }
-                    if (historyHasKpi) {
-                        const kpiFlagLabel = historyKpiCount > 1 ? `${historyKpiPillLabel} ${formatUtilNumber(historyKpiCount, 0)}` : historyKpiPillLabel;
+                    if (historyHasStar) {
+                        const kpiFlagLabel = historyStarCount > 1 ? `${historyKpiPillLabel} ${formatUtilNumber(historyStarCount, 0)}` : historyKpiPillLabel;
                         flagParts.push(`<span class="work-team-calendar-day-flag is-kpi">${escapeHtml(kpiFlagLabel)}</span>`);
                     }
                     if (inMonth && isOffday) {

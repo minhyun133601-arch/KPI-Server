@@ -42,6 +42,14 @@
         return normalizeText(value).replace(/\s+/g, '');
     }
 
+    const EQUIPMENT_HISTORY_TEAM_SORT_ORDER = Object.freeze([
+        '1팀 1파트',
+        '1팀 2파트',
+        '2팀',
+        '3팀',
+        '공무환경팀',
+    ]);
+
     function resolveEquipmentHistoryTeamDataKey(teamName) {
         const raw = normalizeText(teamName);
         if (/^work_team_calendar_team(?:1_part[12]|[234])$/.test(raw)) return raw;
@@ -66,6 +74,26 @@
         if (dataKey === 'work_team_calendar_team3') return '3팀';
         if (dataKey === 'work_team_calendar_team4') return '공무환경팀';
         return normalizeText(teamName);
+    }
+
+    function getEquipmentHistoryTeamSortIndex(teamName) {
+        const normalized = normalizeEquipmentHistoryTeamName(teamName);
+        const index = EQUIPMENT_HISTORY_TEAM_SORT_ORDER.indexOf(normalized);
+        return index >= 0 ? index : EQUIPMENT_HISTORY_TEAM_SORT_ORDER.length;
+    }
+
+    function compareEquipmentHistoryText(left, right) {
+        return normalizeText(left).localeCompare(normalizeText(right), 'ko-KR', {
+            numeric: true,
+            sensitivity: 'base',
+        });
+    }
+
+    function compareEquipmentHistoryItems(left, right) {
+        return compareEquipmentHistoryText(left.room, right.room)
+            || compareEquipmentHistoryText(left.group, right.group)
+            || compareEquipmentHistoryText(left.name, right.name)
+            || compareEquipmentHistoryText(left.id, right.id);
     }
 
     function getEquipmentStatus(status) {
@@ -157,7 +185,7 @@
         const groups = new Map();
 
         asList(items).forEach((item) => {
-            const teamKey = item.team || '미분류 설비';
+            const teamKey = normalizeEquipmentHistoryTeamName(item.team || item.teamDataKey) || '미분류 설비';
             const sectionKey = item.group || '공정 미지정';
             if (!groups.has(teamKey)) groups.set(teamKey, new Map());
             const sections = groups.get(teamKey);
@@ -165,10 +193,27 @@
             sections.get(sectionKey).push(item);
         });
 
-        return [...groups.entries()].map(([team, sections]) => ({
-            team,
-            sections: [...sections.entries()].map(([title, equipment]) => ({ title, equipment })),
-        }));
+        return [...groups.entries()]
+            .map(([team, sections]) => {
+                const normalizedSections = [...sections.entries()]
+                    .map(([title, equipment]) => ({
+                        title,
+                        equipment: equipment.slice().sort(compareEquipmentHistoryItems),
+                    }))
+                    .sort((left, right) => compareEquipmentHistoryText(left.title, right.title));
+                const equipment = normalizedSections.flatMap((section) => section.equipment);
+                const runningCount = equipment.filter((item) => item.statusMeta?.isRunning).length;
+                return {
+                    team,
+                    teamDataKey: resolveEquipmentHistoryTeamDataKey(team),
+                    sortIndex: getEquipmentHistoryTeamSortIndex(team),
+                    equipmentCount: equipment.length,
+                    runningCount,
+                    stoppedCount: equipment.length - runningCount,
+                    sections: normalizedSections,
+                };
+            })
+            .sort((left, right) => (left.sortIndex - right.sortIndex) || compareEquipmentHistoryText(left.team, right.team));
     }
 
     function getSelectedEquipment(items, selectedId) {

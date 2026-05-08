@@ -143,10 +143,10 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
 
 test('kpi html loads equipment-history modules before the data runtime bridge', () => {
   const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=2');
-  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=5');
+  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=6');
   const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=11');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=2');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=13');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=14');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=3');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -197,6 +197,29 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /기록 작성/);
   assert.match(container.innerHTML, /등록된 설비가 없습니다/);
   assert.doesNotMatch(container.innerHTML, /숨김|KPI|설비 이력 관리 기록/);
+
+  context.PortalData.data_equipment_history_card = {
+    equipmentList: [
+      { id: 'eq-team2', name: '2팀 포장기', team: '2팀', room: 'B실', process: '포장', status: '가동중' },
+      { id: 'eq-team1-b', name: '1팀 B 혼합기', team: '1팀 1파트', room: 'B실', process: '혼합', status: '비가동중' },
+      { id: 'eq-team1-a', name: '1팀 A 혼합기', team: '1팀 1파트', room: 'A실', process: '혼합', status: '가동중' },
+      { id: 'eq-team4', name: '폐수 펌프', team: '유산', room: '처리장', process: '폐수', status: '가동중' },
+    ],
+  };
+  registeredRenderer({ title: '설비 이력 카드', dataKey: 'data_equipment_history_card' }, { container });
+  assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team1_part1"/);
+  assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team2"/);
+  assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team4"/);
+  assert.ok(
+    container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team1_part1"')
+      < container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team2"')
+  );
+  assert.match(container.innerHTML, /총 2 · 가동 1 · 비가동 1/);
+  assert.match(container.innerHTML, /<optgroup label="1팀 1파트 \(2\)">/);
+  assert.match(container.innerHTML, /<optgroup label="2팀 \(1\)">/);
+  assert.match(container.innerHTML, /<optgroup label="공무환경팀 \(1\)">/);
+  assert.ok(container.innerHTML.indexOf('A실 / 혼합') < container.innerHTML.indexOf('B실 / 혼합'));
+  assert.ok(container.innerHTML.indexOf('A실 / 1팀 A 혼합기') < container.innerHTML.indexOf('B실 / 1팀 B 혼합기'));
 
   const documentTableHtml = api.renderDocumentEditableTable([api.createBlankDocumentRow()]);
   assert.match(documentTableHtml, /문서명/);
@@ -257,6 +280,8 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-photo-info-card/);
   assert.match(renderSource, /api\.renderFieldGrid\(api\.PHOTO_INFO_FIELDS/);
   assert.match(dataCssSource, /grid-template-columns:\s*minmax\(0,\s*3fr\)\s*minmax\(260px,\s*1fr\)/);
+  assert.match(dataCssSource, /data-equipment-board-team-title/);
+  assert.match(dataCssSource, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(260px,\s*1fr\)\)/);
   assert.match(dataCssSource, /data-equipment-detail-groups[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(dataCssSource, /data-equipment-detail-items-grid[\s\S]+grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(dataCssSource, /@media \(max-width:\s*780px\)[\s\S]+data-equipment-detail-items-grid[\s\S]+grid-template-columns:\s*1fr/);

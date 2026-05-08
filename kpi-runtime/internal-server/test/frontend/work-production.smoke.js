@@ -408,6 +408,9 @@ function createContext() {
 test('work production split files expose utility, history, and draft helpers together', () => {
   const context = createContext();
   const summary = context.getWorkTeamCalendarUtilitySummary('work_team_calendar_overview', '2026-04');
+  const historySummary = context
+    .getWorkTeamCalendarHistorySummaryMap('work_team_calendar_overview', ['2026-04-15'])
+    .get('2026-04-15');
   const historyHtml = context.renderWorkTeamCalendarGroupedHistoryHtml('work_team_calendar_overview', [
     '2026-04-15',
   ]);
@@ -418,7 +421,12 @@ test('work production split files expose utility, history, and draft helpers tog
   assert.equal(summary.electric.usageText, '120 kWh');
   assert.equal(summary.production.totalAmountText, '350kg');
   assert.match(summary.workEntryCountText, /^1건/);
+  assert.equal(historySummary.starCount, 1);
+  assert.equal(historySummary.items[0].star, 'KPI');
+  assert.equal(historySummary.items[0].subcategory, 'Inspection');
+  assert.equal(historySummary.items[0].title, 'Boiler check');
   assert.match(historyHtml, /Boiler check/);
+  assert.match(historyHtml, /work-team-calendar-work-pill is-kpi/);
   assert.match(historyHtml, /work-team-calendar-team-group/);
 });
 
@@ -463,12 +471,12 @@ test('work production draft uses the browser adapter for storage capabilities', 
 test('kpi html loads work production split files before team calendar bootstrap', () => {
   const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=238');
   const adapterIndex = kpiHtml.indexOf('runtime/work/KPI.work.browser-adapter.js?v=1');
-  const historyIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.history.js?v=1');
+  const historyIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.history.js?v=2');
   const overviewIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.overview.js?v=1');
   const draftIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.draft.js?v=1');
   const teamCalendarIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.js?v=237');
   const equipmentSummaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.equipment-summary.js?v=1');
-  const teamCalendarRenderIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.render.js?v=1');
+  const teamCalendarRenderIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.render.js?v=2');
 
   assert.ok(baseIndex >= 0, 'work production loader is missing');
   assert.ok(adapterIndex > baseIndex, 'work browser adapter must load after production.js');

@@ -1,6 +1,26 @@
 # 2026-05-08 Patch Note
 
-Status: 작업내역 첨부 구분/저장 파일명 단순화와 기존 첨부 데이터 정리를 완료했습니다.
+Status: 작업내역 첨부 정리, 설비 이력카드 팀별 표시, 작업내역 달력 별/하위카테고리 표시를 반영했습니다.
+
+## Work Calendar History Cues
+
+Goal: 작업내역으로 기입한 항목이 팀 달력 날짜칸에서 더 크게 보이고, 각 항목 앞에 별과 하위카테고리가 함께 표시되게 합니다.
+
+Touched areas: 작업내역 월간 요약 생성, 팀 달력 날짜칸 작업내역 cue 렌더링, 작업 달력 CSS, shell asset cache version, work-production/team-calendar frontend smoke.
+
+Verification: `node --check` for changed work-history/team-calendar JS passed; targeted `node --test` for work-production, work-team-calendar-render, and kpi-shell-css passed; `npm run smoke:work-production`, `npm run smoke:work-team-calendar-render`, `npm run smoke:work-renderers`, `npm run smoke:work-history-core`, `node --test test/frontend/ops-console-data-reference.smoke.js`, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `git diff --check`, and `npm run smoke:kpi-browser` passed.
+
+Risk: 저장 데이터는 바꾸지 않고 달력 표시용 요약과 렌더링만 조정했습니다. 날짜칸에는 최대 2개 항목을 먼저 보여주고 초과분은 `+N건`으로 축약합니다.
+
+## Equipment History Team Board
+
+Goal: 설비 이력카드 보드에서 작성된 카드를 팀별로 더 명확하게 구분해서 보여줍니다.
+
+Touched areas: 설비 이력카드 팀 그룹 정렬, 팀별 보드 lane header, 설비 선택 드롭다운 optgroup, data CSS, equipment-history render smoke.
+
+Verification: `node --check` for changed equipment-history JS passed; `node --test kpi-runtime/internal-server/test/frontend/equipment-history-render.smoke.js` passed; `npm run format:check` passed; `npm run lint` passed; `npm run verify:server-structure` passed with warningCount 0; `npm run smoke:kpi-browser` passed.
+
+Risk: 저장 데이터 구조는 바꾸지 않고 화면 그룹/정렬만 조정했습니다.
 
 ## Work History Attachments
 

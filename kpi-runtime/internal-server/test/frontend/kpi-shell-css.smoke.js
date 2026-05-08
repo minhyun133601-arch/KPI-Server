@@ -29,8 +29,8 @@ const styleEntries = [
     relativeSegments: ['shell', 'shell-chrome.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/work/work.css?v=058`,
-    manifestHref: './styles/work/work.css?v=058',
+    href: `${runtimeDirName}/app/styles/work/work.css?v=059`,
+    manifestHref: './styles/work/work.css?v=059',
     fileName: 'work.css',
     relativeSegments: ['work', 'work.css'],
   },

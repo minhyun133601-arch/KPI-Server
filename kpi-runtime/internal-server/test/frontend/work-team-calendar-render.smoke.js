@@ -311,16 +311,27 @@ test('work team calendar equipment summary uses selected month maintenance rows'
 test('work team calendar offday cells keep production and history cues in the flag slot', () => {
   const { context, modal } = createContext({
     productionSummaryMap: new Map([['2026-04-15', { count: 2, totalAmount: 18, isOffday: true }]]),
-    historySummaryMap: new Map([['2026-04-15', { count: 3, kpiCount: 2 }]]),
+    historySummaryMap: new Map([['2026-04-15', {
+      count: 3,
+      kpiCount: 2,
+      starCount: 3,
+      items: [
+        { star: '★', subcategory: '자체 정비', title: 'Belt check' },
+      ],
+      remainingCount: 2,
+    }]]),
   });
 
   context.renderWorkTeamCalendarModal();
 
   assert.match(modal.innerHTML, /휴무/);
   assert.match(modal.innerHTML, /오늘/);
-  assert.match(modal.innerHTML, /KPI 2/);
+  assert.match(modal.innerHTML, /KPI 3/);
+  assert.match(modal.innerHTML, /work-team-calendar-day-history-item/);
+  assert.match(modal.innerHTML, /자체 정비/);
+  assert.match(modal.innerHTML, /Belt check/);
+  assert.match(modal.innerHTML, /\+2건/);
   assert.match(modal.innerHTML, /18kg/);
-  assert.match(modal.innerHTML, /3건/);
 });
 
 test('work team calendar source does not keep stray equipUtilityChipHtml references', () => {

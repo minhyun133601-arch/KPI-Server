@@ -81,12 +81,30 @@
             return String(record?.category || '').trim();
         }
 
+        function getWorkTeamCalendarHistoryCategoryGroupLabel(record) {
+            const history = getWorkTeamCalendarHistoryModule();
+            if (typeof history?.getRecordCategoryGroupLabel === 'function') {
+                return String(history.getRecordCategoryGroupLabel(record) || '').trim();
+            }
+            const groupKey = String(record?.categoryGroup || record?.categoryType || '').trim().toLowerCase();
+            if (groupKey === 'kpi') return 'KPI';
+            if (groupKey === 'focus') return '중점 추진 과제';
+            if (groupKey === 'report') return '보고';
+            return String(record?.categoryGroup || record?.categoryType || '').trim();
+        }
+
+        function getWorkTeamCalendarHistorySubcategory(record) {
+            return normalizeWorkTeamCalendarHistoryCategory(record)
+                || getWorkTeamCalendarHistoryCategoryGroupLabel(record)
+                || '작업내역';
+        }
+
         function getWorkTeamCalendarHistoryTagLabels(record) {
             const history = getWorkTeamCalendarHistoryModule();
             const labels = [];
             const importantFlagLabel = history?.IMPORTANT_FLAG_LABEL || history?.KPI_FLAG_LABEL || '★';
             const kpiFlagLabel = history?.KPI_FLAG_LABEL || '★';
-            if (isWorkTeamCalendarHistoryKpi(record)) {
+            if (importantFlagLabel) {
                 labels.push(importantFlagLabel);
             }
             if (typeof history?.getRecordTagLabels === 'function') {
@@ -102,6 +120,30 @@
                 labels.push(category);
             }
             return labels;
+        }
+
+        function getWorkTeamCalendarHistoryDayCueTitle(record) {
+            return String(record?.workContent || '')
+                .split(/\r?\n/)
+                .map(line => String(line || '').trim())
+                .find(Boolean)
+                || getWorkTeamCalendarHistoryRecordTitle(record)
+                || '제목 미입력';
+        }
+
+        function getWorkTeamCalendarHistoryDayCueItems(records) {
+            const list = Array.isArray(records) ? records : [];
+            const history = getWorkTeamCalendarHistoryModule();
+            const starLabel = history?.IMPORTANT_FLAG_PILL_LABEL
+                || history?.KPI_FLAG_PILL_LABEL
+                || history?.IMPORTANT_FLAG_LABEL
+                || history?.KPI_FLAG_LABEL
+                || '★';
+            return list.slice(0, 2).map(record => ({
+                star: starLabel,
+                subcategory: getWorkTeamCalendarHistorySubcategory(record),
+                title: getWorkTeamCalendarHistoryDayCueTitle(record)
+            }));
         }
 
         function getWorkTeamCalendarHistoryMonthDateKeys(monthKey) {
@@ -247,7 +289,11 @@
                     count: records.length,
                     hasKpi: records.some(record => isWorkTeamCalendarHistoryKpi(record)),
                     kpiCount: records.filter(record => isWorkTeamCalendarHistoryKpi(record)).length,
+                    starCount: records.length,
+                    items: getWorkTeamCalendarHistoryDayCueItems(records),
+                    remainingCount: Math.max(0, records.length - 2),
                     title: leadRecord ? getWorkTeamCalendarHistoryRecordTitle(leadRecord) : '',
+                    subcategory: leadRecord ? getWorkTeamCalendarHistorySubcategory(leadRecord) : '',
                     assignee: leadRecord ? formatWorkTeamCalendarHistoryAssignees(leadRecord) : '',
                     attachmentCount: records.reduce((sum, record) => sum + getWorkTeamCalendarHistoryAttachmentCount(record), 0)
                 });
