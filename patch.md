@@ -4,13 +4,13 @@ Status: 작업내역 첨부 정리, 설비 이력카드 팀별 표시, 작업내
 
 ## Work Calendar History Cues
 
-Goal: 작업내역으로 기입한 항목이 팀 달력 날짜칸에서 더 크게 보이고, 각 항목 앞에 별과 하위카테고리가 함께 표시되게 합니다.
+Goal: 작업내역으로 기입한 항목이 팀 달력 날짜칸에서 더 크게 보이고, 우측 상단 별 카운트 없이 각 항목 앞에 별과 하위카테고리만 표시되게 합니다.
 
 Touched areas: 작업내역 월간 요약 생성, 팀 달력 날짜칸 작업내역 cue 렌더링, 작업 달력 CSS, shell asset cache version, work-production/team-calendar frontend smoke.
 
 Verification: `node --check` for changed work-history/team-calendar JS passed; targeted `node --test` for work-production, work-team-calendar-render, and kpi-shell-css passed; `npm run smoke:work-production`, `npm run smoke:work-team-calendar-render`, `npm run smoke:work-renderers`, `npm run smoke:work-history-core`, `node --test test/frontend/ops-console-data-reference.smoke.js`, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `git diff --check`, and `npm run smoke:kpi-browser` passed.
 
-Risk: 저장 데이터는 바꾸지 않고 달력 표시용 요약과 렌더링만 조정했습니다. 날짜칸에는 최대 2개 항목을 먼저 보여주고 초과분은 `+N건`으로 축약합니다.
+Risk: 저장 데이터는 바꾸지 않고 달력 표시용 요약과 렌더링만 조정했습니다. 날짜칸에는 최대 2개 하위카테고리를 먼저 보여주고 초과분은 `+N건`으로 축약합니다.
 
 ## Equipment History Team Board
 

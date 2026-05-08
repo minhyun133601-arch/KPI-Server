@@ -69,7 +69,6 @@
             const hasSelectedEntryContent = selectedHistoryRecords.length > 0;
             const hasReadonlyEntryContent = hasSelectedEntryContent && !isOverviewCalendar;
             const historyKpiLabel = workTeamCalendarRenderBrowser?.getHistoryImportantFlagLabel?.() || '\u2605';
-            const historyKpiPillLabel = workTeamCalendarRenderBrowser?.getHistoryImportantPillLabel?.() || '\u2605';
             const selectedHistoryStarCount = hasSelectedEntryContent ? selectedHistoryRecords.length : 0;
             const selectedHistoryCostSummary = hasSelectedEntryContent && typeof getWorkTeamCalendarHistoryCostSummary === 'function'
                 ? getWorkTeamCalendarHistoryCostSummary(selectedHistoryRecords)
@@ -481,10 +480,7 @@
                     const itemHtml = items.map(item => `
                         <span class="work-team-calendar-day-history-item">
                             <span class="work-team-calendar-day-history-star">${escapeHtml(item?.star || '★')}</span>
-                            <span class="work-team-calendar-day-history-copy">
-                                <span class="work-team-calendar-day-history-category">${escapeHtml(item?.subcategory || '작업내역')}</span>
-                                <span class="work-team-calendar-day-history-title">${escapeHtml(item?.title || '제목 미입력')}</span>
-                            </span>
+                            <span class="work-team-calendar-day-history-category">${escapeHtml(item?.subcategory || '작업내역')}</span>
                         </span>
                     `).join('');
                     const remainingCount = Number(summary?.remainingCount || 0);
@@ -512,8 +508,6 @@
                 const productionSummary = inMonth ? (productionSummaryMap.get(dateKey) || null) : null;
                 const historySummary = inMonth ? (historySummaryMap.get(dateKey) || null) : null;
                 const historyCount = Number(historySummary?.count || 0);
-                const historyStarCount = Number(historySummary?.starCount || historyCount);
-                const historyHasStar = inMonth && historyStarCount > 0;
                 const hasHistory = inMonth && historyCount > 0;
                 const isOffday = inMonth && !!productionSummary?.isOffday;
                 const classes = [
@@ -540,10 +534,6 @@
                     }
                     if (inMonth && dateKey === todayKey) {
                         flagParts.push(`<span class="work-team-calendar-day-flag">오늘</span>`);
-                    }
-                    if (historyHasStar) {
-                        const kpiFlagLabel = historyStarCount > 1 ? `${historyKpiPillLabel} ${formatUtilNumber(historyStarCount, 0)}` : historyKpiPillLabel;
-                        flagParts.push(`<span class="work-team-calendar-day-flag is-kpi">${escapeHtml(kpiFlagLabel)}</span>`);
                     }
                     if (inMonth && isOffday) {
                         if (productionCueHtml) {

@@ -5,9 +5,9 @@
       tag: 'work-history-equipment/ui-cleanup',
       title: '작업내역 첨부/달력 표시와 설비 이력카드 정리',
       summary:
-        '작업내역 첨부를 보고서, 견적서, 기타 3개 구분으로 정리하고, 작업내역이 팀 달력 날짜칸에서 별+하위카테고리+제목으로 크게 보이게 했으며, 설비 이력카드 보드는 작성된 카드를 팀별 lane과 설비 선택 묶음으로 구분되게 정리했습니다.',
+        '작업내역 첨부를 보고서, 견적서, 기타 3개 구분으로 정리하고, 작업내역이 팀 달력 날짜칸에서 별+하위카테고리만 크게 보이게 했으며, 설비 이력카드 보드는 작성된 카드를 팀별 lane과 설비 선택 묶음으로 구분되게 정리했습니다.',
       detail:
-        '기존 billing/report_pdf 문서 11건과 work_history_records payload는 one-shot repair로 새 카테고리/슬롯에 맞췄고, 작업 달력은 저장 구조 변경 없이 월간 요약/날짜칸 cue 렌더링만 조정했습니다. 설비 이력카드는 팀 그룹 정렬/보드 헤더/선택 optgroup을 정리했습니다. 검증 기준: 작업내역 frontend smoke, document-storage unit, repair preview/write, equipment-history render smoke, browser smoke.',
+        '기존 billing/report_pdf 문서 11건과 work_history_records payload는 one-shot repair로 새 카테고리/슬롯에 맞췄고, 작업 달력은 저장 구조 변경 없이 월간 요약/날짜칸 cue 렌더링만 조정하면서 우측 상단 별 카운트는 제거했습니다. 설비 이력카드는 팀 그룹 정렬/보드 헤더/선택 optgroup을 정리했습니다. 검증 기준: 작업내역 frontend smoke, document-storage unit, repair preview/write, equipment-history render smoke, browser smoke.',
     },
     {
       date: '2026-05-07',

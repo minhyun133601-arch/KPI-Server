@@ -326,10 +326,10 @@ test('work team calendar offday cells keep production and history cues in the fl
 
   assert.match(modal.innerHTML, /휴무/);
   assert.match(modal.innerHTML, /오늘/);
-  assert.match(modal.innerHTML, /KPI 3/);
+  assert.doesNotMatch(modal.innerHTML, /KPI 3/);
   assert.match(modal.innerHTML, /work-team-calendar-day-history-item/);
   assert.match(modal.innerHTML, /자체 정비/);
-  assert.match(modal.innerHTML, /Belt check/);
+  assert.doesNotMatch(modal.innerHTML, /Belt check/);
   assert.match(modal.innerHTML, /\+2건/);
   assert.match(modal.innerHTML, /18kg/);
 });
