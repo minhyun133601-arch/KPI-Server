@@ -12,6 +12,7 @@
         RECORD_CATEGORY_ALIAS_MAP,
         RECORD_CATEGORY_OPTIONS,
         ATTACHMENT_SLOT_KEYS,
+        LEGACY_ATTACHMENT_SLOT_MAP,
         IMPORTANT_FLAG_LABEL,
         cloneJson
     } = history;
@@ -200,11 +201,15 @@
         return Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, null]));
     }
 
+    function normalizeAttachmentSlotKey(value) {
+        const rawValue = String(value || '').trim();
+        if (ATTACHMENT_SLOT_KEYS.includes(rawValue)) return rawValue;
+        return String(LEGACY_ATTACHMENT_SLOT_MAP?.[rawValue] || '').trim();
+    }
+
     function normalizeAttachment(item, fallbackType = '') {
         if (!item) return null;
-        const normalizedType = ATTACHMENT_SLOT_KEYS.includes(String(item?.attachmentType || item?.type || fallbackType).trim())
-            ? String(item.attachmentType || item.type || fallbackType).trim()
-            : '';
+        const normalizedType = normalizeAttachmentSlotKey(item?.attachmentType || item?.type || fallbackType);
         if (typeof item === 'string') {
             const storedName = item.split('/').pop();
             return {
@@ -260,15 +265,21 @@
                 slots[slotKey] = normalized;
             }
         });
+        Object.entries(LEGACY_ATTACHMENT_SLOT_MAP || {}).forEach(([legacySlotKey, mappedSlotKey]) => {
+            if (slots[mappedSlotKey]) return;
+            const normalized = normalizeAttachment(source[legacySlotKey], mappedSlotKey);
+            if (normalized) {
+                normalized.attachmentType = mappedSlotKey;
+                slots[mappedSlotKey] = normalized;
+            }
+        });
 
         const legacy = Array.isArray(legacyAttachments)
             ? legacyAttachments.map(item => normalizeAttachment(item)).filter(Boolean)
             : [];
         legacy.forEach((attachment) => {
-            const explicitType = ATTACHMENT_SLOT_KEYS.includes(String(attachment.attachmentType || '').trim())
-                ? String(attachment.attachmentType).trim()
-                : '';
-            const slotKey = explicitType || (!slots.report ? 'report' : (!slots.billing ? 'billing' : ''));
+            const explicitType = normalizeAttachmentSlotKey(attachment.attachmentType);
+            const slotKey = explicitType || ATTACHMENT_SLOT_KEYS.find(candidate => !slots[candidate]);
             if (!slotKey || slots[slotKey]) return;
             slots[slotKey] = {
                 ...attachment,
@@ -313,8 +324,9 @@
         );
         const attachmentSlots = normalizeAttachmentSlots(
             record?.attachmentSlots || {
-                billing: record?.billingAttachment || record?.billingDocument || null,
-                report: record?.reportAttachment || record?.reportDocument || null
+                report: record?.reportAttachment || record?.reportDocument || null,
+                estimate: record?.estimateAttachment || record?.estimateDocument || null,
+                other: record?.otherAttachment || record?.otherDocument || record?.billingAttachment || record?.billingDocument || null
             },
             record?.attachments
         );
@@ -331,8 +343,9 @@
             workContent: String(record?.workContent || record?.currentWork || '').trim(),
             remarks: String(record?.remarks || '').trim(),
             attachmentSlots,
-            billingAttachment: attachmentSlots.billing ? { ...attachmentSlots.billing } : null,
             reportAttachment: attachmentSlots.report ? { ...attachmentSlots.report } : null,
+            estimateAttachment: attachmentSlots.estimate ? { ...attachmentSlots.estimate } : null,
+            otherAttachment: attachmentSlots.other ? { ...attachmentSlots.other } : null,
             attachments: flattenAttachmentSlots(attachmentSlots),
             cost: normalizeCost(record?.cost)
         };
@@ -393,6 +406,7 @@
         isImportantRecord,
         getRecordTagLabels,
         formatRecordTagText,
+        normalizeAttachmentSlotKey,
         normalizeAttachment,
         normalizeAttachmentSlots,
         flattenAttachmentSlots,

@@ -205,15 +205,15 @@
             return;
         }
 
-        if (target.id === 'recordAttachments' || target.id === 'recordBillingAttachment') {
-            view.handleAttachmentSelection?.('billing', target.files);
+        if (target.matches?.('.attachment-file-input')) {
+            const slotKey = target.dataset.slot || '';
+            view.handleAttachmentSelection?.(slotKey, target.files);
             return;
         }
 
-        if (target.id === 'recordReportAttachment') {
-            view.handleAttachmentSelection?.('report', target.files);
-            return;
-        }
+        if (target.id === 'recordAttachments' || target.id === 'recordBillingAttachment') { view.handleAttachmentSelection?.('other', target.files); return; }
+
+        if (/^record(?:StartDate|EndDate|Team)$/.test(target.id || '')) { view.renderAttachmentList?.(); return; }
 
         const filterPrefix = target.dataset.filterPrefix;
         if (!filterPrefix) return;
@@ -239,6 +239,8 @@
             view.updateAssigneePreview?.(target.value);
             return;
         }
+
+        if (target.id === 'recordWorkContent') { view.renderAttachmentList?.(); return; }
 
         if (target.id === 'recordCost') {
             target.value = view.formatCostInputValue(target.value);

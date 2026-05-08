@@ -84,10 +84,11 @@ function createContext() {
     isKpiRecord() {
       return false;
     },
-    ATTACHMENT_SLOT_KEYS: ['billing', 'report'],
+    ATTACHMENT_SLOT_KEYS: ['report', 'estimate', 'other'],
     ATTACHMENT_SLOT_META: {
-      billing: { label: 'Billing' },
       report: { label: 'Report' },
+      estimate: { label: 'Estimate' },
+      other: { label: 'Other' },
     },
     WORK_HISTORY_ATTACHMENT_MAX_BYTES: 10 * 1024 * 1024,
     getRecordAttachment() {

@@ -303,7 +303,7 @@
                             <ul>
                                 <li id="recordGuideItemRequired">기간, 팀, 작업자, 업무내용은 필수입니다.</li>
                                 <li id="recordGuideItemCost">비용은 필요한 경우에만 입력합니다.</li>
-                                <li id="recordGuideItemAttachment">첨부는 청구서 1건, 보고자료 1건으로 구분되며 PDF·엑셀·PPT·워드·한글 문서를 올릴 수 있습니다.</li>
+                                <li id="recordGuideItemAttachment">첨부는 보고서, 견적서, 기타로 구분되며 PDF·엑셀·PPT·워드·한글 문서를 올릴 수 있습니다.</li>
                             </ul>
                         </div>
 
@@ -377,11 +377,12 @@
 
                             <div class="form-group">
                                 <label id="recordAttachmentLabel">${isProductionWorkspace() ? '보고 첨부' : '첨부 파일'}</label>
-                                <div class="file-help" id="recordAttachmentHelp">${isProductionWorkspace() ? '보고자료 문서 1건을 선택합니다.' : '청구서와 보고자료 칸에서 각각 문서 1건씩 선택합니다.'}</div>
+                                <div class="file-help" id="recordAttachmentHelp">${isProductionWorkspace() ? '보고서 문서 1건을 선택합니다.' : '보고서, 견적서, 기타 칸에서 각각 문서 1건씩 선택합니다.'}</div>
                                 <div class="attachment-list" id="attachmentList"></div>
                                 <div class="attachment-inputs" aria-hidden="true">
-                                    <input type="file" id="recordBillingAttachment" class="attachment-file-input" accept="${escapeAttribute(WORK_HISTORY_ATTACHMENT_ACCEPT || '')}" tabindex="-1">
-                                    <input type="file" id="recordReportAttachment" class="attachment-file-input" accept="${escapeAttribute(WORK_HISTORY_ATTACHMENT_ACCEPT || '')}" tabindex="-1">
+                                    <input type="file" id="recordReportAttachment" class="attachment-file-input" data-slot="report" accept="${escapeAttribute(WORK_HISTORY_ATTACHMENT_ACCEPT || '')}" tabindex="-1">
+                                    <input type="file" id="recordEstimateAttachment" class="attachment-file-input" data-slot="estimate" accept="${escapeAttribute(WORK_HISTORY_ATTACHMENT_ACCEPT || '')}" tabindex="-1">
+                                    <input type="file" id="recordOtherAttachment" class="attachment-file-input" data-slot="other" accept="${escapeAttribute(WORK_HISTORY_ATTACHMENT_ACCEPT || '')}" tabindex="-1">
                                 </div>
                             </div>
                         </form>

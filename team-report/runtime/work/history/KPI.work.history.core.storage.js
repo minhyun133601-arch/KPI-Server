@@ -5,7 +5,6 @@
 
     const {
         DATA_KEY,
-        TeamInfo,
         LOCAL_BACKUP_KEY,
         ATTACHMENT_SLOT_KEYS,
         ATTACHMENT_SLOT_META,
@@ -17,6 +16,7 @@
         getPayload,
         replacePayload,
         normalizePayload,
+        normalizeAttachmentSlotKey,
         normalizeAttachment,
         flattenAttachmentSlots
     } = history;
@@ -88,23 +88,38 @@
     function buildAttachmentOwnerKey(team, startDate, attachmentType) {
         const teamKey = String(team || 'unassigned').trim() || 'unassigned';
         const dateKey = String(startDate || '').trim() || 'undated';
-        const slotKey = ATTACHMENT_SLOT_KEYS.includes(String(attachmentType || '').trim())
-            ? String(attachmentType).trim()
-            : 'report';
+        const slotKey = typeof normalizeAttachmentSlotKey === 'function'
+            ? normalizeAttachmentSlotKey(attachmentType) || 'other'
+            : (ATTACHMENT_SLOT_KEYS.includes(String(attachmentType || '').trim()) ? String(attachmentType).trim() : 'other');
         const nonce = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
         return `${DATA_KEY}:${teamKey}:${slotKey}:${dateKey}:${nonce}`;
     }
 
+    function getAttachmentTitleLine(value) {
+        return String(value || '')
+            .split(/\r?\n/)
+            .map(line => String(line || '').replace(/\s+/g, ' ').trim())
+            .find(Boolean) || '';
+    }
+
+    function truncateFileNameBody(value, maxLength = 90) {
+        const chars = Array.from(String(value || '').trim());
+        return chars.length > maxLength
+            ? chars.slice(0, maxLength).join('').trim()
+            : chars.join('').trim();
+    }
+
     function formatAttachmentFileName(context, slotMeta, fallbackName, mimeType = '') {
-        const teamKey = String(context?.team || '').trim();
-        const teamLabel = TeamInfo[teamKey]?.name || teamKey || '팀';
         const startDate = String(context?.startDate || '').trim();
         const endDate = String(context?.endDate || '').trim();
-        const dateLabel = startDate && endDate
-            ? `${startDate}~${endDate}`
-            : (startDate || endDate || '날짜미정');
+        const dateLabel = endDate || startDate || '날짜미정';
+        const titleLabel = truncateFileNameBody(
+            getAttachmentTitleLine(context?.workTitle || context?.workContent)
+            || getAttachmentTitleLine(context?.title)
+            || '작업내역'
+        );
         const slotLabel = String(slotMeta?.label || '').trim() || '첨부';
-        const nameBody = `${teamLabel} ${dateLabel} ${slotLabel}`.trim();
+        const nameBody = `${dateLabel} ${titleLabel} ${slotLabel}`.trim();
         const safeBody = nameBody.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_');
         const ext = getWorkHistoryAttachmentExtension(fallbackName, mimeType);
         return `${safeBody}${ext || ''}`;
@@ -117,9 +132,9 @@
             throw new Error('attachment_upload_unavailable');
         }
 
-        const attachmentType = ATTACHMENT_SLOT_KEYS.includes(String(context.attachmentType || '').trim())
-            ? String(context.attachmentType).trim()
-            : 'report';
+        const attachmentType = typeof normalizeAttachmentSlotKey === 'function'
+            ? normalizeAttachmentSlotKey(context.attachmentType) || 'other'
+            : (ATTACHMENT_SLOT_KEYS.includes(String(context.attachmentType || '').trim()) ? String(context.attachmentType).trim() : 'other');
         const slotMeta = ATTACHMENT_SLOT_META[attachmentType] || ATTACHMENT_SLOT_META.report;
         const uploaded = [];
         for (const file of files) {
@@ -320,6 +335,7 @@
         ),
         getWorkHistoryAttachmentExtension,
         validateWorkHistoryAttachment,
+        formatAttachmentFileName,
         getRecordRuntimeConfig,
         getAssetRuntimeConfig,
         uploadPendingAttachments,

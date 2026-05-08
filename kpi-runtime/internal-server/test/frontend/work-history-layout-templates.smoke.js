@@ -151,9 +151,9 @@ test('work history layout templates registry exposes shell and modal builders', 
 test('kpi html loads work history layout templates between layout and render', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
   const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=250');
-  const workspaceStateIndex = kpiHtml.indexOf('runtime/work/history/layout/workspace-state.js?v=1');
-  const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=249');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=234');
+  const workspaceStateIndex = kpiHtml.indexOf('runtime/work/history/layout/workspace-state.js?v=2');
+  const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=250');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=235');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(layoutIndex >= 0, 'work history layout loader is missing');

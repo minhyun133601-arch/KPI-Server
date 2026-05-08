@@ -60,11 +60,11 @@
                 <td>${escapeHtml(view.formatCurrency(record.cost))}</td>
                 <td>${escapeHtml(view.buildRecordRemarkText(record)).replace(/\n/g, '<br>')}</td>
                 <td>${escapeHtml(
-                    ATTACHMENT_SLOT_KEYS
+                    (typeof view.getVisibleAttachmentSlotKeys === 'function' ? view.getVisibleAttachmentSlotKeys() : ATTACHMENT_SLOT_KEYS)
                         .map((slotKey) => {
                             const meta = ATTACHMENT_SLOT_META[slotKey];
                             const attachment = getRecordAttachment(record, slotKey);
-                            return attachment ? `${meta.label}: ${attachment.originalName}` : '';
+                            return attachment ? `${meta.label} 첨부` : '';
                         })
                         .filter(Boolean)
                         .join(', ') || '첨부 없음'

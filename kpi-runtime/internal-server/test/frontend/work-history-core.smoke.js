@@ -155,6 +155,16 @@ test('work history core split files expose normalized payload and storage hooks 
   assert.equal(typeof history.buildExportScript, 'function');
   assert.equal(typeof history.getRecordCategoryGroupLabel, 'function');
   assert.equal(typeof history.getRecordAttachment, 'function');
+  assert.deepEqual([...history.ATTACHMENT_SLOT_KEYS], ['report', 'estimate', 'other']);
+  assert.equal(
+    history.normalizeAttachment({
+      attachmentType: 'billing',
+      originalName: 'legacy-billing.pdf',
+      storedName: 'legacy-billing.pdf',
+      url: '/attachments/legacy-billing.pdf',
+    }).attachmentType,
+    'other'
+  );
 
   assert.equal(payload.meta.moduleKey, 'work_history_records');
   assert.equal(payload.teams.team1part1.length, 1);
@@ -171,10 +181,10 @@ test('work history core split files expose normalized payload and storage hooks 
 
 test('kpi html loads work history core split files before layout bootstrap', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=1');
-  const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=217');
-  const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=1');
-  const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=1');
+  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=2');
+  const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=218');
+  const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=2');
+  const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=2');
   const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=250');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');

@@ -14,6 +14,7 @@
         getPayload,
         isProductionReportWorkspace,
         validateWorkHistoryAttachment,
+        formatAttachmentFileName,
         saveNow,
         getRecordRuntimeConfig,
         buildExportScript
@@ -39,9 +40,28 @@
     }
 
     function getAttachmentInputId(slotKey) {
-        return String(slotKey || '').trim() === 'billing'
-            ? 'recordBillingAttachment'
-            : 'recordReportAttachment';
+        const normalizedSlotKey = String(slotKey || '').trim();
+        const suffix = normalizedSlotKey
+            .split('-')
+            .map(part => part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : '')
+            .join('');
+        return suffix ? `record${suffix}Attachment` : '';
+    }
+
+    function getCurrentAttachmentNameContext() {
+        return {
+            team: getElement('recordTeam')?.value || '',
+            startDate: getElement('recordStartDate')?.value || '',
+            endDate: getElement('recordEndDate')?.value || '',
+            workContent: getElement('recordWorkContent')?.value || ''
+        };
+    }
+
+    function getPendingAttachmentName(slotKey, file) {
+        const meta = ATTACHMENT_SLOT_META[slotKey] || {};
+        return typeof formatAttachmentFileName === 'function'
+            ? formatAttachmentFileName(getCurrentAttachmentNameContext(), meta, file?.name, file?.type)
+            : String(file?.name || '').trim();
     }
 
     function openAttachmentPicker(slotKey) {
@@ -84,6 +104,7 @@
             const meta = ATTACHMENT_SLOT_META[slotKey];
             const existing = state.formState.existingAttachments?.[slotKey] || null;
             const pending = state.formState.pendingFiles?.[slotKey] || null;
+            const pendingName = pending ? getPendingAttachmentName(slotKey, pending) : '';
             const pickerButtonHtml = `
                 <button type="button" class="attachment-pick-btn" data-action="pick-attachment" data-slot="${slotKey}">파일 선택</button>
             `;
@@ -91,7 +112,7 @@
                 ? `
                     <div class="attachment-item pending">
                         <div class="attachment-meta">
-                            <span class="attachment-name">${history.escapeHtml(pending.name)}</span>
+                            <span class="attachment-name">${history.escapeHtml(pendingName || pending.name)}</span>
                             <span class="attachment-size">${history.escapeHtml(view.formatFileSize(pending.size))}</span>
                         </div>
                         <div class="attachment-actions">

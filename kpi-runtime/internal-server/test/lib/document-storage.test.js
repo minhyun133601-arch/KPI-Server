@@ -40,12 +40,24 @@ test('metering billing documents are stored below resource-specific folders', ()
   assert.deepEqual(gas.storageFolder, ['첨부파일', '유틸리티', '가스 청구서']);
 });
 
-test('work history documents resolve billing report and fallback folders', () => {
-  const billing = resolveDocumentStorage({
+test('work history documents resolve report estimate other and fallback folders', () => {
+  const report = resolveDocumentStorage({
+    ownerDomain: 'work.history',
+    fileCategory: 'report_document',
+  });
+  const estimate = resolveDocumentStorage({
+    ownerDomain: 'work.history',
+    fileCategory: 'estimate_document',
+  });
+  const other = resolveDocumentStorage({
+    ownerDomain: 'work.history',
+    fileCategory: 'other_document',
+  });
+  const legacyBilling = resolveDocumentStorage({
     ownerDomain: 'work.history',
     fileCategory: 'billing_pdf',
   });
-  const report = resolveDocumentStorage({
+  const legacyReport = resolveDocumentStorage({
     ownerDomain: 'work.history',
     fileCategory: 'report_pdf',
   });
@@ -54,8 +66,11 @@ test('work history documents resolve billing report and fallback folders', () =>
     fileCategory: 'attachment',
   });
 
-  assert.deepEqual(billing.storageFolder, ['첨부파일', '작업내역', '청구서']);
   assert.deepEqual(report.storageFolder, ['첨부파일', '작업내역', '보고서']);
+  assert.deepEqual(estimate.storageFolder, ['첨부파일', '작업내역', '견적서']);
+  assert.deepEqual(other.storageFolder, ['첨부파일', '작업내역', '기타']);
+  assert.deepEqual(legacyBilling.storageFolder, ['첨부파일', '작업내역', '청구서']);
+  assert.deepEqual(legacyReport.storageFolder, ['첨부파일', '작업내역', '보고서']);
   assert.deepEqual(fallback.storageFolder, ['첨부파일', '작업내역', '기타']);
 });
 

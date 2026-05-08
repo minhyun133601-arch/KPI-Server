@@ -58,7 +58,7 @@ test('report record helpers match existing work report entries by date and file 
   });
 });
 
-test('buildNextReportRecord preserves billing attachment and mirrors managed report attachment', () => {
+test('buildNextReportRecord moves legacy billing attachment to other and mirrors managed report attachment', () => {
   const reportAttachment = buildManagedAttachment({
     id: 'doc-22',
     original_name: 'repair-report.pdf',
@@ -66,7 +66,7 @@ test('buildNextReportRecord preserves billing attachment and mirrors managed rep
     byte_size: 512,
     mime_type: 'application/pdf',
     storage_rel_path: 'reports/stored.pdf',
-    file_category: 'report_pdf',
+    file_category: 'report_document',
   });
   const nextRecord = buildNextReportRecord(
     {
@@ -87,6 +87,8 @@ test('buildNextReportRecord preserves billing attachment and mirrors managed rep
   assert.equal(nextRecord.categoryGroup, 'report');
   assert.equal(nextRecord.startDate, '2026-04-22');
   assert.equal(nextRecord.attachmentSlots.report.documentId, 'doc-22');
-  assert.equal(nextRecord.billingAttachment.originalName, 'billing.pdf');
+  assert.equal(nextRecord.attachmentSlots.other.originalName, 'billing.pdf');
+  assert.equal(nextRecord.attachmentSlots.other.attachmentType, 'other');
+  assert.equal(nextRecord.billingAttachment, undefined);
   assert.equal(nextRecord.attachments.length, 2);
 });

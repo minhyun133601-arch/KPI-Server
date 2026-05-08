@@ -299,8 +299,8 @@ const dataFlows = [
       en: 'The work-history tool saves to work_history_records, while team-calendar work data is split into work_runtime team records.',
     },
     status: {
-      ko: '기입 가능. 작업내역 본문과 청구서/보고서 첨부 저장 경로가 있습니다.',
-      en: 'Writable. Work-history payloads plus billing/report attachments have storage paths.',
+      ko: '기입 가능. 작업내역 본문과 보고서/견적서/기타 첨부 저장 경로가 있습니다.',
+      en: 'Writable. Work-history payloads plus report/estimate/other attachments have storage paths.',
     },
     chain: ['Work UI', 'KpiWorkHistory storage', '/api/modules/portal_data/records/work_history_records', 'app_documents for attachments'],
     ui: [
@@ -319,15 +319,17 @@ const dataFlows = [
       'app_module_records(module_key=work_runtime, record_key=work_team_calendar_team1_part1|team1_part2|team2|team3|team4|overview)',
     ],
     assets: [
-      'app_documents(ownerDomain=work.history, fileCategory=billing_pdf|report_pdf)',
-      'KPI_STORAGE_ROOT/files/첨부파일/작업내역/청구서',
+      'app_documents(ownerDomain=work.history, fileCategory=report_document|estimate_document|other_document)',
       'KPI_STORAGE_ROOT/files/첨부파일/작업내역/보고서',
+      'KPI_STORAGE_ROOT/files/첨부파일/작업내역/견적서',
+      'KPI_STORAGE_ROOT/files/첨부파일/작업내역/기타',
     ],
     permissions: ['work.team_calendar'],
     sharedGroups: ['portal-data', 'work-runtime', 'app-documents'],
     imageRefs: [
-      'attachmentSlots.billing.documentId / previewUrl / downloadUrl',
       'attachmentSlots.report.documentId / previewUrl / downloadUrl',
+      'attachmentSlots.estimate.documentId / previewUrl / downloadUrl',
+      'attachmentSlots.other.documentId / previewUrl / downloadUrl',
       'attachments[].documentId',
       'app_documents.owner_domain=work.history',
     ],
@@ -336,7 +338,7 @@ const dataFlows = [
       'kpi-runtime/internal-server/src/lib/portal-bootstrap/runtime-config.js',
       'kpi-runtime/internal-server/src/lib/document-storage.js',
     ],
-    tags: ['작업내역', 'work_history_records', 'work_runtime', 'work.team_calendar', 'billing_pdf', 'report_pdf'],
+    tags: ['작업내역', 'work_history_records', 'work_runtime', 'work.team_calendar', 'report_document', 'estimate_document', 'other_document'],
   },
   {
     id: 'utility-metering',

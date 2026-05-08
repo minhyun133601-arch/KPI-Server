@@ -25,6 +25,9 @@ const STORAGE_FOLDER_BY_OWNER_DOMAIN = Object.freeze({
   'work.team_calendar': Object.freeze([ATTACHMENT_ROOT_FOLDER, '작업내역', '캘린더 첨부'])
 });
 const WORK_HISTORY_STORAGE_FOLDER_BY_CATEGORY = Object.freeze({
+  report_document: Object.freeze([ATTACHMENT_ROOT_FOLDER, '작업내역', '보고서']),
+  estimate_document: Object.freeze([ATTACHMENT_ROOT_FOLDER, '작업내역', '견적서']),
+  other_document: Object.freeze([ATTACHMENT_ROOT_FOLDER, '작업내역', '기타']),
   billing_pdf: Object.freeze([ATTACHMENT_ROOT_FOLDER, '작업내역', '청구서']),
   report_pdf: Object.freeze([ATTACHMENT_ROOT_FOLDER, '작업내역', '보고서'])
 });

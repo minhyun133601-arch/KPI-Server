@@ -87,10 +87,11 @@ function createContext() {
     getElement(id) {
       return filterInputs[id] || null;
     },
-    ATTACHMENT_SLOT_KEYS: ['billing', 'report'],
+    ATTACHMENT_SLOT_KEYS: ['report', 'estimate', 'other'],
     ATTACHMENT_SLOT_META: {
-      billing: { label: 'Billing' },
-      report: { label: 'Report' }
+      report: { label: 'Report' },
+      estimate: { label: 'Estimate' },
+      other: { label: 'Other' }
     },
     getRecordAttachments() {
       return [];
@@ -218,13 +219,13 @@ test('work history render print registry exposes print helpers and bootstrap sna
 
 test('kpi html loads work history render print between render and view bootstrap', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=234');
-  const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=234');
-  const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=233');
-  const actionsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.js?v=233');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=235');
+  const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=235');
+  const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=234');
+  const actionsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.js?v=234');
   const searchIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.search.js?v=2');
-  const recordIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.record.js?v=2');
-  const documentIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.document.js?v=2');
+  const recordIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.record.js?v=3');
+  const documentIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.document.js?v=3');
   const viewIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.js');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');

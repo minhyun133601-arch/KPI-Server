@@ -18,15 +18,22 @@
         team4: { name: '공무환경팀', desc: '폐수 · 전체 · 기타', class: 'team4' }
     });
     const LOCAL_BACKUP_KEY = `workhistory:${DATA_KEY}`;
-    const ATTACHMENT_SLOT_KEYS = ['billing', 'report'];
+    const ATTACHMENT_SLOT_KEYS = ['report', 'estimate', 'other'];
+    const LEGACY_ATTACHMENT_SLOT_MAP = Object.freeze({
+        billing: 'other'
+    });
     const ATTACHMENT_SLOT_META = Object.freeze({
-        billing: {
-            label: '청구서',
-            fileCategory: 'billing_pdf'
-        },
         report: {
-            label: '보고자료',
-            fileCategory: 'report_pdf'
+            label: '보고서',
+            fileCategory: 'report_document'
+        },
+        estimate: {
+            label: '견적서',
+            fileCategory: 'estimate_document'
+        },
+        other: {
+            label: '기타',
+            fileCategory: 'other_document'
         }
     });
     const WORK_HISTORY_ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
@@ -110,6 +117,7 @@
         TeamInfo,
         LOCAL_BACKUP_KEY,
         ATTACHMENT_SLOT_KEYS,
+        LEGACY_ATTACHMENT_SLOT_MAP,
         ATTACHMENT_SLOT_META,
         WORK_HISTORY_ATTACHMENT_MAX_BYTES,
         WORK_HISTORY_ATTACHMENT_RULES,

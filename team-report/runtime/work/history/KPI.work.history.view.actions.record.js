@@ -53,14 +53,8 @@
 
         state.formState = {
             sourceTeam: team,
-            existingAttachments: {
-                billing: null,
-                report: null
-            },
-            pendingFiles: {
-                billing: null,
-                report: null
-            },
+            existingAttachments: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, null])),
+            pendingFiles: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, null])),
             removedAttachments: []
         };
 
@@ -85,10 +79,9 @@
                 getElement('recordWorkContent').value = record.workContent || '';
                 getElement('recordRemarks').value = record.remarks || '';
                 getElement('recordCost').value = view.formatCostInputValue(record.cost);
-                state.formState.existingAttachments = {
-                    billing: getRecordAttachment(record, 'billing'),
-                    report: getRecordAttachment(record, 'report')
-                };
+                state.formState.existingAttachments = Object.fromEntries(
+                    ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, getRecordAttachment(record, slotKey)])
+                );
             }
         } else {
             getElement('modalTitle').textContent = view.getRecordModalTitle?.(false) || '작업내역 추가';
@@ -99,7 +92,7 @@
         }
 
         ATTACHMENT_SLOT_KEYS.forEach((slotKey) => {
-            const input = getElement(slotKey === 'billing' ? 'recordBillingAttachment' : 'recordReportAttachment');
+            const input = getElement(view.getAttachmentInputId?.(slotKey) || '');
             if (input) input.value = '';
         });
         const legacyAttachmentInput = getElement('recordAttachments');
@@ -210,10 +203,9 @@
             return false;
         }
 
-        const nextAttachmentSlots = {
-            billing: state.formState.existingAttachments?.billing || null,
-            report: state.formState.existingAttachments?.report || null
-        };
+        const nextAttachmentSlots = Object.fromEntries(
+            ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, state.formState.existingAttachments?.[slotKey] || null])
+        );
         for (const slotKey of ATTACHMENT_SLOT_KEYS) {
             const pendingFile = state.formState.pendingFiles?.[slotKey] || null;
             if (!pendingFile) continue;
@@ -222,6 +214,7 @@
                     team: targetTeam,
                     startDate,
                     endDate,
+                    workContent,
                     attachmentType: slotKey
                 });
                 nextAttachmentSlots[slotKey] = uploadedAttachments[0] || null;
@@ -249,8 +242,9 @@
             workContent,
             remarks,
             attachmentSlots: nextAttachmentSlots,
-            billingAttachment: nextAttachmentSlots.billing,
             reportAttachment: nextAttachmentSlots.report,
+            estimateAttachment: nextAttachmentSlots.estimate,
+            otherAttachment: nextAttachmentSlots.other,
             attachments: flattenAttachmentSlots(nextAttachmentSlots),
             cost
         };

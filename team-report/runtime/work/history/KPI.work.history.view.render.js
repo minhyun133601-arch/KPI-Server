@@ -10,7 +10,6 @@
         getPayload,
         getElement,
         getRecordAttachments,
-        getRecordAttachment,
         KPI_FLAG_LABEL,
         normalizeRecordCategory,
         getRecordCategoryGroupLabel,
@@ -230,17 +229,11 @@
             .split(/\r?\n/)
             .map(line => String(line || '').trim())
             .find(Boolean);
-        const billing = getRecordAttachment(record, 'billing');
-        const report = getRecordAttachment(record, 'report');
-        const attachmentLabel = billing && report
-            ? '청구서/보고자료'
-            : (billing ? '청구서' : (report ? '보고자료' : ''));
+        const hasAttachments = getRecordAttachments(record).length > 0;
 
-        if (attachmentLabel && workTitle) return `${importantPrefix}${attachmentLabel} · ${workTitle}`;
-        if (attachmentLabel && categoryText) return `${importantPrefix}${attachmentLabel} · ${categoryText}`;
         if (workTitle) return `${importantPrefix}${workTitle}`;
-        if (attachmentLabel) return `${importantPrefix}${attachmentLabel} 첨부`;
         if (categoryText) return `${importantPrefix}${categoryText}`;
+        if (hasAttachments) return `${importantPrefix}첨부 문서`;
         const remarksTitle = String(record?.remarks || '')
             .split(/\r?\n/)
             .map(line => String(line || '').trim())

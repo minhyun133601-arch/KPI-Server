@@ -9,5 +9,5 @@ export const REPORT_TEAM_KEY = 'team4';
 export const REPORT_CATEGORY_GROUP = 'report';
 export const WORK_ATTACHMENT_TYPE = 'report';
 export const WORK_OWNER_DOMAIN = 'work.history';
-export const WORK_FILE_CATEGORY = 'report_pdf';
+export const WORK_FILE_CATEGORY = 'report_document';
 export const backupDir = path.join(config.storageRoot, 'migration-backups');

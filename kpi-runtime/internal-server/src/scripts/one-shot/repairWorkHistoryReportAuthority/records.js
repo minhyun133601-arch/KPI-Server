@@ -9,8 +9,9 @@ import { cloneJson, getAttachmentFileName, isPlainObject, normalizeText, parseDa
 
 export function createEmptyAttachmentSlots() {
   return {
-    billing: null,
     report: null,
+    estimate: null,
+    other: null,
   };
 }
 
@@ -75,11 +76,21 @@ export function buildNextReportRecord(existingRecord, entry, attachment) {
   const existingSlots = isPlainObject(nextRecord.attachmentSlots)
     ? cloneJson(nextRecord.attachmentSlots)
     : createEmptyAttachmentSlots();
-  const billingAttachment =
-    existingSlots.billing && isPlainObject(existingSlots.billing)
-      ? cloneJson(existingSlots.billing)
-      : isPlainObject(nextRecord.billingAttachment)
-        ? cloneJson(nextRecord.billingAttachment)
+  const otherAttachment =
+    existingSlots.other && isPlainObject(existingSlots.other)
+      ? cloneJson(existingSlots.other)
+      : existingSlots.billing && isPlainObject(existingSlots.billing)
+        ? cloneJson({ ...existingSlots.billing, attachmentType: 'other' })
+        : isPlainObject(nextRecord.otherAttachment)
+          ? cloneJson(nextRecord.otherAttachment)
+          : isPlainObject(nextRecord.billingAttachment)
+            ? cloneJson({ ...nextRecord.billingAttachment, attachmentType: 'other' })
+            : null;
+  const estimateAttachment =
+    existingSlots.estimate && isPlainObject(existingSlots.estimate)
+      ? cloneJson(existingSlots.estimate)
+      : isPlainObject(nextRecord.estimateAttachment)
+        ? cloneJson(nextRecord.estimateAttachment)
         : null;
 
   nextRecord.team = REPORT_TEAM_KEY;
@@ -96,11 +107,15 @@ export function buildNextReportRecord(existingRecord, entry, attachment) {
   nextRecord.workContent = normalizeText(nextRecord.workContent) || entry.workContent || entry.originalName;
   nextRecord.remarks = normalizeText(nextRecord.remarks);
   nextRecord.attachmentSlots = {
-    billing: billingAttachment,
     report: cloneJson(attachment),
+    estimate: estimateAttachment,
+    other: otherAttachment,
   };
-  nextRecord.billingAttachment = billingAttachment ? cloneJson(billingAttachment) : null;
   nextRecord.reportAttachment = cloneJson(attachment);
-  nextRecord.attachments = [billingAttachment, attachment].filter(Boolean).map((item) => cloneJson(item));
+  nextRecord.estimateAttachment = estimateAttachment ? cloneJson(estimateAttachment) : null;
+  nextRecord.otherAttachment = otherAttachment ? cloneJson(otherAttachment) : null;
+  nextRecord.attachments = [attachment, estimateAttachment, otherAttachment].filter(Boolean).map((item) => cloneJson(item));
+  delete nextRecord.billingAttachment;
+  delete nextRecord.billingDocument;
   return nextRecord;
 }

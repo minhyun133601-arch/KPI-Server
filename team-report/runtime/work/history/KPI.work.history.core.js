@@ -40,14 +40,8 @@
         pendingDelete: { team: null, index: null },
         formState: {
             sourceTeam: '',
-            existingAttachments: {
-                billing: null,
-                report: null
-            },
-            pendingFiles: {
-                billing: null,
-                report: null
-            },
+            existingAttachments: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, null])),
+            pendingFiles: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, null])),
             removedAttachments: []
         },
         toastTimer: null,

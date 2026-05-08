@@ -23,6 +23,7 @@
     "migrate:util-production-daily": "node src/scripts/one-shot/migrateUtilProductionDailyToStructuredModel.js",
     "migrate:work-history-reports": "node src/scripts/one-shot/migrateWorkHistoryReportRecords.js",
     "repair:work-history-report-authority": "node src/scripts/one-shot/repairWorkHistoryReportAuthority.js",
+    "repair:work-history-attachment-categories": "node src/scripts/one-shot/repairWorkHistoryAttachmentCategories.js",
     "repair:metering-billing-storage": "node src/scripts/one-shot/repairMeteringBillingDocumentStorage.js",
     "sessions:prune": "node src/scripts/pruneExpiredSessions.js",
     "report:legacy-attachments": "node src/scripts/reportLegacyAttachmentStatus.js",

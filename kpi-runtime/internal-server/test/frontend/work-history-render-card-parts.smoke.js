@@ -33,9 +33,9 @@ const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
 
 function createContext() {
   const attachment = {
-    originalName: 'billing.pdf',
+    originalName: '2026-04-02 Alpha task 보고서.pdf',
     size: 1024,
-    downloadUrl: '/download/billing.pdf'
+    downloadUrl: '/download/report.pdf'
   };
   const history = {
     TEAM_KEYS: ['team1part1'],
@@ -53,16 +53,17 @@ function createContext() {
     getElement() {
       return null;
     },
-    ATTACHMENT_SLOT_KEYS: ['billing', 'report'],
+    ATTACHMENT_SLOT_KEYS: ['report', 'estimate', 'other'],
     ATTACHMENT_SLOT_META: {
-      billing: { label: 'Billing' },
-      report: { label: 'Report' }
+      report: { label: 'Report' },
+      estimate: { label: 'Estimate' },
+      other: { label: 'Other' }
     },
     getRecordAttachments() {
       return [attachment];
     },
     getRecordAttachment(record, slotKey) {
-      return slotKey === 'billing' ? attachment : null;
+      return slotKey === 'report' ? attachment : null;
     },
     KPI_FLAG_LABEL: 'KPI',
     KPI_FLAG_PILL_LABEL: 'KPI',
@@ -157,16 +158,16 @@ test('work history render card parts registry exposes summary, attachment, compa
   assert.equal(typeof view.renderEmptyState, 'function');
 
   assert.match(view.buildSummaryContent(record), /summary-grid/);
-  assert.match(view.buildAttachmentLinks(record), /billing\.pdf/);
+  assert.match(view.buildAttachmentLinks(record), /2026-04-02 Alpha task 보고서\.pdf/);
   assert.match(view.buildCompactRecordCard(record), /Alpha task/);
   assert.match(view.renderEmptyState('empty'), /empty/);
 });
 
 test('kpi html loads work history render card parts between render and print', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=234');
-  const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=234');
-  const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=233');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=235');
+  const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=235');
+  const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=234');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(renderIndex >= 0, 'work history render loader is missing');

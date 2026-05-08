@@ -1,6 +1,15 @@
 ((root) => {
   const entries = [
     {
+      date: '2026-05-08',
+      tag: 'work-history/attachments',
+      title: '작업내역 첨부 구분과 파일명 단순화',
+      summary:
+        '작업내역 첨부를 기존 청구서/보고자료 대신 보고서, 견적서, 기타 3개 구분으로 정리하고, 저장 표시 파일명은 작업 종료일과 작업 제목 중심으로 생성되게 바꿨습니다.',
+      detail:
+        '기존 billing/report_pdf 문서 11건과 work_history_records payload도 one-shot repair로 새 카테고리/슬롯에 맞춰 정리했습니다. 검증 기준: 작업내역 frontend smoke, document-storage unit, repair preview/write, browser smoke.',
+    },
+    {
       date: '2026-05-07',
       tag: 'frontend/import',
       title: '설비 이력카드·법정 설비 프론트 이식',

@@ -1,3 +1,21 @@
+# 2026-05-08 Patch Note
+
+Status: 작업내역 첨부 구분/저장 파일명 단순화와 기존 첨부 데이터 정리를 완료했습니다.
+
+## Work History Attachments
+
+Goal: 작업 제목 영역에 청구서/첨부 파일명이 섞이지 않게 하고, 첨부 문서를 보고서/견적서/기타로 구분합니다.
+
+Touched areas: 작업내역 첨부 슬롯, 첨부 파일명 생성 규칙, 작업내역 카드 제목 생성, 서버 문서 저장 폴더, 기존 work.history 문서 카테고리 repair script, Data Reference Map, 관련 smoke/unit tests.
+
+Data repair: PostgreSQL dump `kpi-runtime/internal-server/var/prod/backups/postgres-dumps/postgres-dump-20260508-092642.dump` created before write. `npm run repair:work-history-attachment-categories -- --write` updated 11 work.history document rows, copied 1 legacy billing file into the new 기타 folder, skipped 0 missing files, and moved `work_history_records` from version 29 to 30. Follow-up preview now reports legacyDocumentCount 0 and payload changed false.
+
+Verification: `node --check` for changed runtime/public JS passed; targeted work-history smoke tests passed; one-shot repair tests passed; `npm run smoke:work-production` passed; `npm run smoke:work-renderers` passed; `node --test test/lib/document-storage.test.js test/frontend/ops-console-data-reference.smoke.js` passed; `npm run format:check` passed; `npm run lint` passed; `npm run verify:server-structure` passed with warningCount 0; `npm run smoke:kpi-browser` passed.
+
+Risk: 기존 `billing` 첨부는 `기타` 슬롯으로 정규화됐고 DB 참조는 `report_document|estimate_document|other_document`만 사용합니다. 원본 레거시 파일은 삭제하지 않았습니다. `npm run verify` 전체 게이트는 작업내역과 무관한 기존 audit records threshold/global-access 실패 및 `var/backups/code-patches` 백업 테스트 발견으로 blocked.
+
+---
+
 # 2026-05-07 Patch Note
 
 Status: KPI-local reference frontend import completed for equipment history cards, legal facility entry, and team-calendar equipment summaries.

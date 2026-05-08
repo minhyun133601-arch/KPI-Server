@@ -129,6 +129,8 @@ test('ops console keeps demo-style Repository Map and Data Reference Map surface
   assert.match(dataReferenceContentSource, /module_key=util_metering/);
   assert.match(dataReferenceContentSource, /ownerDomain=audit\.legal_facility/);
   assert.match(dataReferenceContentSource, /ownerDomain=data\.equipment_history/);
+  assert.match(dataReferenceContentSource, /ownerDomain=work\.history/);
+  assert.match(dataReferenceContentSource, /report_document\|estimate_document\|other_document/);
   assert.match(dataReferenceContentSource, /ownerDomain=metering\.billing_document/);
 
   assert.match(dataReferenceSource, /function renderArchitectureWeb\(flows\)/);
@@ -187,10 +189,10 @@ test('ops console keeps demo-style Repository Map and Data Reference Map surface
   );
   assert.equal(
     repositoryMapDataContext.window.KPI_REPOSITORY_MAP_DAILY_HISTORY[0].tag,
-    'frontend/import'
+    'work-history/attachments'
   );
 
-  for (const date of ['2026-05-07', '2026-05-05', '2026-05-04', '2026-05-02', '2026-05-01']) {
+  for (const date of ['2026-05-08', '2026-05-07', '2026-05-05', '2026-05-04', '2026-05-02', '2026-05-01']) {
     assert.equal(
       repositoryMapDataContext.window.KPI_REPOSITORY_MAP_DAILY_HISTORY.filter((entry) => entry.date === date).length,
       1

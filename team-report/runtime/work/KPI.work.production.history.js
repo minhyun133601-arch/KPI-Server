@@ -222,16 +222,13 @@
                 .split(/\r?\n/)
                 .map(line => String(line || '').trim())
                 .find(Boolean);
-            const billing = getWorkTeamCalendarHistoryAttachment(record, 'billing');
             const report = getWorkTeamCalendarHistoryAttachment(record, 'report');
-            const attachmentLabel = billing && report
-                ? '청구서/보고서'
-                : (billing ? '청구서' : (report ? '보고서' : ''));
-            if (attachmentLabel && workTitle) return `${kpiPrefix}${attachmentLabel} · ${workTitle}`;
-            if (attachmentLabel && categoryText) return `${kpiPrefix}${attachmentLabel} · ${categoryText}`;
+            const estimate = getWorkTeamCalendarHistoryAttachment(record, 'estimate');
+            const other = getWorkTeamCalendarHistoryAttachment(record, 'other')
+                || getWorkTeamCalendarHistoryAttachment(record, 'billing');
             if (workTitle) return `${kpiPrefix}${workTitle}`;
-            if (attachmentLabel) return `${kpiPrefix}${attachmentLabel} 첨부`;
             if (categoryText) return `${kpiPrefix}${categoryText}`;
+            if (report || estimate || other) return `${kpiPrefix}첨부 문서`;
             const remarksTitle = String(record?.remarks || '')
                 .split(/\r?\n/)
                 .map(line => String(line || '').trim())

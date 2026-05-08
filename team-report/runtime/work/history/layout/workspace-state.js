@@ -114,8 +114,8 @@
         }
         if (attachmentHelpEl) {
             attachmentHelpEl.textContent = isProductionReport
-                ? '보고자료 문서 1건을 선택합니다.'
-                : '청구서와 보고자료 칸에서 각각 문서 1건씩 선택합니다.';
+                ? '보고서 문서 1건을 선택합니다.'
+                : '보고서, 견적서, 기타 칸에서 각각 문서 1건씩 선택합니다.';
         }
         if (workContentInput) {
             workContentInput.placeholder = isProductionReport
@@ -151,8 +151,8 @@
         }
         if (guideAttachmentEl) {
             guideAttachmentEl.textContent = isProductionReport
-                ? '실적 보고 화면에서는 보고자료 문서 1건만 첨부할 수 있습니다.'
-                : '첨부는 청구서 1건, 보고자료 1건으로 구분되며 PDF·엑셀·PPT·워드·한글 문서를 올릴 수 있습니다.';
+                ? '실적 보고 화면에서는 보고서 문서 1건만 첨부할 수 있습니다.'
+                : '첨부는 보고서, 견적서, 기타로 구분되며 PDF·엑셀·PPT·워드·한글 문서를 올릴 수 있습니다.';
         }
         queryAll('[data-role="add-record-label"]').forEach((node) => {
             node.textContent = getAddRecordLabel();
