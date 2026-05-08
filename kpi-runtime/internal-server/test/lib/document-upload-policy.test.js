@@ -131,6 +131,30 @@ test('document upload policy keeps managed attachment office and hwp types bound
   }, 'unsupported_type');
 });
 
+test('document upload policy allows equipment history document images', () => {
+  const baseInput = {
+    ownerDomain: 'data.equipment_history',
+    fileCategory: 'attachment',
+    base64Data: Buffer.from('attachment').toString('base64'),
+  };
+
+  assert.doesNotThrow(() => validateDocumentUploadPolicy({
+    ...baseInput,
+    originalName: 'manual.pdf',
+    mimeType: 'application/pdf',
+  }));
+  assert.doesNotThrow(() => validateDocumentUploadPolicy({
+    ...baseInput,
+    originalName: 'nameplate.jpg',
+    mimeType: 'image/jpeg',
+  }));
+  assertRejectsUpload({
+    ...baseInput,
+    originalName: 'tool.exe',
+    mimeType: 'application/octet-stream',
+  }, 'unsupported_type');
+});
+
 test('document upload policy rejects managed uploads over the byte limit', () => {
   const tooLargeBase64 = 'A'.repeat(Math.ceil(((DOCUMENT_UPLOAD_MAX_BYTES + 1) * 4) / 3));
 

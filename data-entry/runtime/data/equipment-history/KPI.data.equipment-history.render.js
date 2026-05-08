@@ -68,7 +68,7 @@
         const moveUpLabel = '\uC704\uB85C \uC774\uB3D9';
         const moveDownLabel = '\uC544\uB798\uB85C \uC774\uB3D9';
         return `
-            <article class="data-equipment-board-card ${toneClassName}">
+            <article class="data-equipment-board-card ${toneClassName}" data-equipment-board-card="${api.escapeHtml(item.id)}">
                 <div class="data-equipment-board-card-head">
                     <strong>
                         <span class="data-equipment-live-dot ${statusMeta.dotClassName}"></span>
@@ -79,11 +79,8 @@
                     </div>
                 </div>
                 <p>${api.escapeHtml([item.room, item.group].filter(Boolean).join(' / ') || item.line || '관리 구분 미지정')}</p>
-                ${renderBoardMetric('설비코드', item.equipmentCode || '-')}
-                ${renderBoardMetric('현재 실적', item.production || '-')}
-                ${renderBoardMetric('목표 기준', item.plan || '-')}
                 ${renderBoardMetric('다음 점검', item.nextCheck || '-')}
-                <div class="data-equipment-board-card-tools">
+                <div class="data-equipment-board-card-tools" aria-hidden="true">
                     <button type="button" class="data-equipment-board-order-button" data-equipment-move-card="${api.escapeHtml(item.id)}" data-equipment-move-direction="-1" aria-label="${api.escapeHtml(moveUpLabel)}" title="${api.escapeHtml(moveUpLabel)}"${orderMeta.canMoveUp ? '' : ' disabled'}>
                         <i class="fas fa-arrow-up"></i>
                     </button>
@@ -96,28 +93,37 @@
         `;
     }
 
+    function getBoardCardOrderMeta(sectionEquipment = [], index = 0) {
+        const previous = sectionEquipment[index - 1];
+        const next = sectionEquipment[index + 1];
+        return {
+            canMoveUp: Boolean(previous),
+            canMoveDown: Boolean(next),
+        };
+    }
+
     function renderBoard(groups, items) {
         const activeCount = items.filter((item) => item.statusMeta?.isRunning).length;
         const pausedCount = items.length - activeCount;
         const boardBody = groups.length
             ? groups.map((group) => {
                 const teamMeta = group.teamMeta || api.getEquipmentHistoryTeamMeta?.(group.teamDataKey || group.team) || {};
-                const teamEquipmentIds = group.sections.flatMap((section) => section.equipment.map((item) => item.id));
-                const teamOrderMeta = new Map(teamEquipmentIds.map((id, index) => [id, {
-                    canMoveUp: index > 0,
-                    canMoveDown: index < teamEquipmentIds.length - 1,
-                }]));
+                const teamKey = group.teamDataKey || group.team;
+                const orderToggleLabel = `${group.team} \uC21C\uC11C \uC774\uB3D9`;
                 return `
-                <section class="data-equipment-board-column" data-equipment-board-team="${api.escapeHtml(group.teamDataKey || group.team)}" style="${getBoardTeamStyle(teamMeta)}">
+                <section class="data-equipment-board-column" data-equipment-board-team="${api.escapeHtml(teamKey)}" style="${getBoardTeamStyle(teamMeta)}">
                     <header>
                         <div class="data-equipment-board-team-title">
                             <strong>${api.escapeHtml(group.team)}</strong>
                         </div>
+                        <button type="button" class="data-equipment-board-team-order-toggle" data-equipment-order-toggle-team="${api.escapeHtml(teamKey)}" aria-label="${api.escapeHtml(orderToggleLabel)}" title="${api.escapeHtml(orderToggleLabel)}" aria-expanded="false">
+                            <i class="fas fa-arrows-up-down" aria-hidden="true"></i>
+                        </button>
                     </header>
                     ${group.sections.map((section) => `
                         <div class="data-equipment-board-section">
                             <h3>${api.escapeHtml(section.title)}</h3>
-                            ${section.equipment.map((item) => renderBoardCard(item, teamOrderMeta.get(item.id))).join('')}
+                            ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex))).join('')}
                         </div>
                     `).join('')}
                 </section>
@@ -257,7 +263,7 @@
                         <h3 class="data-equipment-section-title">
                             ${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}
                         </h3>
-                        ${api.renderDetailGroups(draft.detailGroups)}
+                        ${api.renderDetailGroups(draft.detailGroups, { openBlocks: state.openEquipmentSpecBlocks || {} })}
                     </article>
                     <div class="data-equipment-bottom-grid">
                         <article class="data-equipment-card data-equipment-history-card">
@@ -313,7 +319,7 @@
                 <span>
                     <strong>마지막 업데이트</strong>
                     ${api.escapeHtml(header.updatedAt || data.meta?.updatedAt || '-')}
-                    <strong>담당</strong>
+                    <strong>${api.escapeHtml(draft?.ownerLabel || header.ownerLabel || '담당 업체')}</strong>
                     ${api.escapeHtml(draft?.owner || header.owner || '-')}
                 </span>
             </footer>
@@ -394,6 +400,7 @@
         const items = api.normalizeEquipmentItems(data);
         const selected = api.getSelectedEquipment(items, state.selectedId);
         state.draft = api.createDraft(selected);
+        state.openEquipmentSpecBlocks = {};
     }
 
     function startNewCard(state) {
@@ -402,6 +409,7 @@
         state.starter = api.createEquipmentHistoryStartDraft?.() || { team: '', room: '', name: '' };
         state.view = 'card-start';
         state.message = '';
+        state.openEquipmentSpecBlocks = {};
     }
 
     function updateStarterFromInput(state, event) {
@@ -433,6 +441,7 @@
         });
         state.view = 'card';
         state.message = '';
+        state.openEquipmentSpecBlocks = {};
         return true;
     }
 
@@ -511,6 +520,46 @@
         state.draft.maintenanceHistory.push(api.createBlankMaintenanceRow());
     }
 
+    function createEquipmentSpecBlockId() {
+        return `spec-block-${Date.now().toString(36)}-${Math.round(Math.random() * 1e6).toString(36)}`;
+    }
+
+    function ensureOpenEquipmentSpecBlocks(state) {
+        if (!state.openEquipmentSpecBlocks || typeof state.openEquipmentSpecBlocks !== 'object') {
+            state.openEquipmentSpecBlocks = {};
+        }
+        return state.openEquipmentSpecBlocks;
+    }
+
+    function setEquipmentSpecBlockOpen(state, blockKey, isOpen) {
+        const key = api.normalizeText(blockKey);
+        if (!key) return;
+        const openBlocks = ensureOpenEquipmentSpecBlocks(state);
+        if (isOpen) openBlocks[key] = true;
+        else delete openBlocks[key];
+    }
+
+    function addDraftBlock(state, section) {
+        if (!state.draft) state.draft = api.createDraft();
+        const detailGroupRows = getDraftDetailGroupRows(state, section);
+        if (!detailGroupRows) {
+            addDraftRow(state, section);
+            return '';
+        }
+        const blockId = createEquipmentSpecBlockId();
+        const category = 'other';
+        detailGroupRows.push(api.createBlankDetailRow(category, blockId));
+        return `${category}:${blockId}`;
+    }
+
+    function addDraftRowToBlock(state, section, index, category, blockId) {
+        const detailGroupRows = getDraftDetailGroupRows(state, section);
+        if (!detailGroupRows) return false;
+        const targetIndex = Number.isInteger(index) && index >= 0 ? Math.min(index + 1, detailGroupRows.length) : detailGroupRows.length;
+        detailGroupRows.splice(targetIndex, 0, api.createBlankDetailRow(api.normalizeText(category) || 'other', blockId));
+        return true;
+    }
+
     function removeDraftRow(state, section, index) {
         const detailGroupRows = getDraftDetailGroupRows(state, section);
         if (detailGroupRows) {
@@ -539,6 +588,38 @@
         if (!Array.isArray(rows) || !Number.isInteger(index)) return;
         rows.splice(index, 1);
         if (!rows.length) addDraftRow(state, section);
+    }
+
+    function swapDraftRows(rows, sourceIndex, targetIndex) {
+        if (!Array.isArray(rows)) return false;
+        if (!Number.isInteger(sourceIndex) || !Number.isInteger(targetIndex)) return false;
+        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex >= rows.length || targetIndex >= rows.length) return false;
+        if (sourceIndex === targetIndex) return false;
+        const next = rows[sourceIndex];
+        rows[sourceIndex] = rows[targetIndex];
+        rows[targetIndex] = next;
+        return true;
+    }
+
+    function moveDraftRow(state, section, index, direction, category) {
+        const step = Number(direction) < 0 ? -1 : 1;
+        const detailGroupRows = getDraftDetailGroupRows(state, section);
+        if (detailGroupRows) {
+            if (!Number.isInteger(index) || index < 0 || index >= detailGroupRows.length) return false;
+            if (section === 'equipmentSpecs') {
+                const categoryKey = api.normalizeText(category) || api.getEquipmentSpecCategory?.(detailGroupRows[index]) || 'other';
+                const categoryRows = detailGroupRows
+                    .map((row, rowIndex) => ({ rowIndex, category: api.getEquipmentSpecCategory?.(row) || 'other' }))
+                    .filter((entry) => entry.category === categoryKey);
+                const currentCategoryIndex = categoryRows.findIndex((entry) => entry.rowIndex === index);
+                const target = categoryRows[currentCategoryIndex + step];
+                if (!target) return false;
+                return swapDraftRows(detailGroupRows, index, target.rowIndex);
+            }
+            return swapDraftRows(detailGroupRows, index, index + step);
+        }
+        const rows = state.draft?.[section];
+        return swapDraftRows(rows, index, index + step);
     }
 
     function clonePayload(value) {
@@ -572,6 +653,26 @@
         }
         writeWorkingPayload(data, persistedPayload);
         return persistedPayload;
+    }
+
+    function getEquipmentHistorySaveFailureMessage(error) {
+        const code = api.normalizeText(error?.message);
+        if (code === 'unsupported_type') {
+            return '지원하지 않는 첨부 파일 형식입니다. PDF, 엑셀, 워드, 한글, 이미지 파일만 첨부해 주세요.';
+        }
+        if (code === 'file_too_large' || code === 'body_too_large') {
+            return '첨부 파일이 너무 큽니다. 파일당 25MB 이하로 첨부해 주세요.';
+        }
+        if (code === 'empty_file_payload') {
+            return '첨부 파일을 읽지 못했습니다. 파일을 다시 선택해 주세요.';
+        }
+        if (code === 'forbidden') {
+            return '설비 이력카드 저장 권한이 없습니다.';
+        }
+        if (code === 'unauthorized') {
+            return '로그인이 만료되었습니다. 다시 로그인한 뒤 저장해 주세요.';
+        }
+        return '저장에 실패했습니다.';
     }
 
     function buildEquipmentListWithRecord(data, record) {
@@ -674,7 +775,12 @@
         if (!item || !Number.isInteger(item.sourceIndex)) return false;
 
         const teamKey = item.teamDataKey || api.normalizeEquipmentHistoryTeamName?.(item.team) || item.team;
-        const teamItems = items.filter((entry) => (entry.teamDataKey || api.normalizeEquipmentHistoryTeamName?.(entry.team) || entry.team) === teamKey);
+        const itemGroup = api.normalizeText(item.group || '');
+        const teamItems = items.filter((entry) => {
+            const entryTeamKey = entry.teamDataKey || api.normalizeEquipmentHistoryTeamName?.(entry.team) || entry.team;
+            return entryTeamKey === teamKey
+                && api.normalizeText(entry.group || '') === itemGroup;
+        });
         const teamIndex = teamItems.findIndex((entry) => entry.id === item.id);
         const swapItem = teamItems[teamIndex + moveDirection];
         if (!swapItem || !Number.isInteger(swapItem.sourceIndex)) return false;
@@ -697,7 +803,7 @@
             if (await saveDraft(data, state, { message })) redraw();
         } catch (error) {
             console.warn('[kpi] equipment history auto save failed', error);
-            browser.alert('자동 저장에 실패했습니다.');
+            browser.alert(getEquipmentHistorySaveFailureMessage(error));
         }
     }
 
@@ -876,6 +982,19 @@
             });
         });
 
+        root.querySelectorAll('[data-equipment-order-toggle-team]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const column = button.closest?.('.data-equipment-board-column');
+                if (!column) return;
+                const isOpen = !column.classList.contains('is-ordering');
+                column.classList.toggle('is-ordering', isOpen);
+                button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                column.querySelectorAll('.data-equipment-board-card-tools').forEach((tools) => {
+                    tools.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+                });
+            });
+        });
+
         root.querySelectorAll('[data-equipment-move-card]').forEach((button) => {
             button.addEventListener('click', async () => {
                 try {
@@ -920,7 +1039,7 @@
                 if (await saveDraft(data, state)) redraw();
             } catch (error) {
                 console.warn('[kpi] equipment history save failed', error);
-                browser.alert('저장에 실패했습니다.');
+                browser.alert(getEquipmentHistorySaveFailureMessage(error));
             }
         });
 
@@ -971,9 +1090,68 @@
             });
         });
 
+        root.querySelectorAll('[data-equipment-add-block]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const blockKey = addDraftBlock(state, button.dataset.equipmentAddBlock);
+                if (blockKey) setEquipmentSpecBlockOpen(state, blockKey, true);
+                redraw();
+            });
+        });
+
+        root.querySelectorAll('[data-equipment-spec-block-toggle]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const block = button.closest('[data-equipment-spec-block]');
+                if (!block) return;
+                const isManaging = !block.classList.contains('is-managing');
+                setEquipmentSpecBlockOpen(state, block.dataset.equipmentSpecBlockKey, isManaging);
+                block.classList.toggle('is-managing', isManaging);
+                button.setAttribute('aria-expanded', String(isManaging));
+                block.querySelectorAll('.data-equipment-spec-block-actions').forEach((actions) => {
+                    actions.setAttribute('aria-hidden', String(!isManaging));
+                });
+                block.querySelectorAll('.data-equipment-spec-row-actions').forEach((actions) => {
+                    actions.setAttribute('aria-hidden', String(!isManaging));
+                });
+            });
+        });
+
+        root.querySelectorAll('[data-equipment-add-row-to-block]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const blockKey = button.dataset.equipmentSpecBlockKey;
+                if (addDraftRowToBlock(
+                    state,
+                    button.dataset.equipmentAddRowToBlock,
+                    Number(button.dataset.equipmentRowIndex),
+                    button.dataset.equipmentRowCategory,
+                    button.dataset.equipmentSpecBlockId
+                )) {
+                    setEquipmentSpecBlockOpen(state, blockKey, true);
+                    redraw();
+                }
+            });
+        });
+
+        root.querySelectorAll('[data-equipment-move-row]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const blockKey = button.closest('[data-equipment-spec-block]')?.dataset.equipmentSpecBlockKey;
+                if (moveDraftRow(
+                    state,
+                    button.dataset.equipmentMoveRow,
+                    Number(button.dataset.equipmentRowIndex),
+                    button.dataset.equipmentMoveDirection,
+                    button.dataset.equipmentRowCategory
+                )) {
+                    setEquipmentSpecBlockOpen(state, blockKey, true);
+                    redraw();
+                }
+            });
+        });
+
         root.querySelectorAll('[data-equipment-remove-row]').forEach((button) => {
             button.addEventListener('click', () => {
+                const blockKey = button.closest('[data-equipment-spec-block]')?.dataset.equipmentSpecBlockKey;
                 removeDraftRow(state, button.dataset.equipmentRemoveRow, Number(button.dataset.equipmentRowIndex));
+                setEquipmentSpecBlockOpen(state, blockKey, true);
                 redraw();
             });
         });
@@ -1009,7 +1187,14 @@
         if (!container) return;
         const workingData = data;
         const items = api.normalizeEquipmentItems(workingData);
-        const state = { view: 'board', selectedId: items[0]?.id || '', draft: null, starter: null, message: '' };
+        const state = {
+            view: 'board',
+            selectedId: items[0]?.id || '',
+            draft: null,
+            starter: null,
+            message: '',
+            openEquipmentSpecBlocks: {},
+        };
         const redraw = () => {
             container.innerHTML = renderShell(category, workingData, state);
             bindEvents(container, redraw, state, workingData);

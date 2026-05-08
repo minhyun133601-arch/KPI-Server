@@ -1,6 +1,56 @@
 # 2026-05-08 Patch Note
 
-Status: 작업내역 첨부 정리, 설비 이력카드 팀별 표시, 작업내역 달력 별/하위카테고리 표시, 작업내역 페이지 넘김, 앱 내부 뒤로가기를 반영했습니다.
+Update: Equipment spec rows now render as grouped four-row boxes inside the existing broad categories. Delete and move controls stay hidden until the box arrange button is opened, while the saved row-based data shape stays unchanged.
+
+Update: Equipment spec top-level add now creates a new box, and row add moved inside each box arrange menu. Open arrange menus stay open after row add/move/delete until the same ellipsis button is clicked again.
+
+## Equipment Spec Category Layout
+
+Goal: 설비 이력카드 작성 화면에서 설비 스펙 행이 길어져도 중구난방으로 보이지 않도록 기본 정보, 주요 스펙, 점검·문서, 기타 정도의 큰 묶음으로 자동 배치합니다.
+
+Touched areas: equipment-history form renderer, data CSS, shell asset cache version, equipment-history render smoke.
+
+Verification: `node --check data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js`, `node --check kpi-runtime/internal-server/test/frontend/equipment-history-render.smoke.js`, `node --test kpi-runtime/internal-server/test/frontend/equipment-history-render.smoke.js`, `npm run smoke:kpi-shell-css`, `npm run format:check`, `npm run lint`, `git diff --check`, and `npm run smoke:kpi-browser` passed.
+
+Risk: 저장 데이터 구조는 그대로 두고 화면 배치만 묶기 때문에 기존 DB 행 순서와 저장 형식은 바뀌지 않습니다.
+
+Update: 설비 이력카드 작성 화면에서 제조사 바로 아래에 `제조년월` 입력칸을 추가하고, 기존 스펙 행의 제조년월 값은 이 필드로 끌어올려 중복 표시되지 않게 했습니다.
+
+Update: `제조사`와 `담당 업체`는 고정 문구가 아니라 사용자가 직접 바꿀 수 있는 제목 입력칸으로 바꾸고, 그 아래 내용에는 주소나 연락처를 여러 줄로 적을 수 있게 했습니다.
+
+Update: 설비 이력카드 작성 화면의 `공정`, `가동률` 아래에 `기종` 입력칸을 추가하고, 기존 스펙 행의 `기종`/`모델명`/`모델` 값은 이 필드로 끌어올려 중복 표시되지 않게 했습니다.
+
+Update: `제조사`와 `담당 업체` 내용칸은 다른 항목처럼 한 줄 입력칸으로 되돌리고, 기존 줄바꿈 내용은 화면에서 ` / `로 이어 보이게 했습니다. `제조년월`은 `YYYY-MM` 월 선택 입력으로 바꿨습니다.
+
+Status: 작업내역 첨부 정리, 설비 이력카드 팀별 표시/상태 기본 정렬/이동 토글, 작업내역 달력 별/하위카테고리 표시, 작업내역 페이지 넘김, 앱 내부 뒤로가기, 특정 작업내역 자동 별표 제거를 반영했습니다.
+
+## Work History Important Marker Cleanup
+
+Goal: `1팀 2파트 / 건조기 V/F 안전발판 개선` 작업내역이 더 이상 자동 중요 표시로 잡혀 제목 앞 별표가 붙지 않게 합니다.
+
+Touched areas: work-history achievement marker rules, shell asset cache version, work-history core smoke.
+
+Verification: `node --check` for changed work-history config/test files passed; `npm run smoke:work-history-core` and `npm run smoke:kpi-browser` passed.
+
+Risk: 기존 저장 기록은 삭제하지 않고 자동 별표 판정 규칙만 좁혔습니다. 다른 남아 있는 실적 표시 규칙은 그대로 유지합니다.
+
+## Equipment Board Move Toggle And Status Order
+
+Goal: 설비 이력카드 보드에서 각 팀 lane 우측 상단의 이동 표시를 눌렀을 때만 해당 팀 카드들의 위/아래 순서 변경 화살표가 보이게 하고, 상태 변경이 카드 표시 순서를 흔들지 않게 정리합니다.
+
+Touched areas: equipment-history board item sorting, board card move-toggle markup, data CSS, asset cache version, equipment-history render smoke.
+
+Verification: `node --check` for changed equipment-history JS/test files passed; `node --test kpi-runtime/internal-server/test/frontend/equipment-history-render.smoke.js` passed; `npm run smoke:kpi-shell-css` passed.
+
+Risk: 순서 변경은 같은 팀/공정 안의 설비끼리 저장되며, 가동중/비가동중/정비중은 카드 색과 상태 토글에만 영향을 줍니다.
+
+Update: 상태를 바꿀 때 카드 위치가 흔들리지 않도록 상태 우선 정렬을 제거하고, 같은 팀/공정 안에서는 가동중/비가동중/정비중이 달라도 기존 표시 순서를 유지하게 했습니다. 팀 lane 우측 상단 이동 표시 버튼은 노란 강조 버튼으로 바꿔 팀 색상 안에 묻히지 않게 했습니다.
+
+Update: 설비 현황 보드 카드의 보조 지표는 `다음 점검`만 남기고 `설비코드`, `현재 실적`, `목표 기준`은 카드 화면에서 숨겼습니다.
+
+Update: 설비 이력카드 작성 화면의 `담당 업체` 입력칸은 여러 줄 입력으로 바꿔 업체명 아래에 전화번호를 같이 적을 수 있게 했습니다.
+
+Update: 설비 이력카드 관련 문서 첨부에서 PDF/Office/HWP 문서뿐 아니라 명판 사진 같은 이미지 파일도 저장할 수 있게 허용하고, 첨부 실패 시 파일 형식/용량/권한 원인을 구분해서 안내하게 했습니다.
 
 ## App Internal Back Navigation
 

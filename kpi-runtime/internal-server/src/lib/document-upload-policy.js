@@ -76,8 +76,20 @@ function isMeteringBillingDocumentUpload({ ownerDomain, fileCategory }) {
   return ownerDomain === 'metering.billing_document' && normalizeText(fileCategory) === 'billing_document';
 }
 
+function isEquipmentHistoryUpload({ ownerDomain }) {
+  return ownerDomain === 'data.equipment_history';
+}
+
 function isPdfUploadType({ extension, mimeType }) {
   return extension === '.pdf' && mimeType === 'application/pdf';
+}
+
+function hasAllowedImageUploadType({ extension, mimeType }) {
+  return DOCUMENT_IMAGE_ALLOWED_EXTENSIONS.has(extension) || DOCUMENT_IMAGE_ALLOWED_MIME_TYPES.has(mimeType);
+}
+
+function hasAllowedAttachmentUploadType({ extension, mimeType }) {
+  return DOCUMENT_ATTACHMENT_ALLOWED_EXTENSIONS.has(extension) || DOCUMENT_ATTACHMENT_ALLOWED_MIME_TYPES.has(mimeType);
 }
 
 function hasAllowedUploadType({ ownerDomain, fileCategory, extension, mimeType }) {
@@ -85,14 +97,17 @@ function hasAllowedUploadType({ ownerDomain, fileCategory, extension, mimeType }
     return isPdfUploadType({ extension, mimeType });
   }
   if (isAuditLuxEvidenceUpload({ ownerDomain, fileCategory })) {
-    return DOCUMENT_IMAGE_ALLOWED_EXTENSIONS.has(extension)
-      || DOCUMENT_IMAGE_ALLOWED_MIME_TYPES.has(mimeType)
+    return hasAllowedImageUploadType({ extension, mimeType })
       || isPdfUploadType({ extension, mimeType });
   }
   if (isImageUploadCategory(fileCategory)) {
-    return DOCUMENT_IMAGE_ALLOWED_EXTENSIONS.has(extension) || DOCUMENT_IMAGE_ALLOWED_MIME_TYPES.has(mimeType);
+    return hasAllowedImageUploadType({ extension, mimeType });
   }
-  return DOCUMENT_ATTACHMENT_ALLOWED_EXTENSIONS.has(extension) || DOCUMENT_ATTACHMENT_ALLOWED_MIME_TYPES.has(mimeType);
+  if (isEquipmentHistoryUpload({ ownerDomain })) {
+    return hasAllowedAttachmentUploadType({ extension, mimeType })
+      || hasAllowedImageUploadType({ extension, mimeType });
+  }
+  return hasAllowedAttachmentUploadType({ extension, mimeType });
 }
 
 export function validateDocumentUploadPolicy({ ownerDomain, fileCategory, originalName, mimeType, base64Data }) {

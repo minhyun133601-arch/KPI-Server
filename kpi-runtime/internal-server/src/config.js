@@ -129,7 +129,7 @@ export const config = {
     'camera=(), microphone=(), geolocation=()',
   strictTransportSecurityEnabled: readBoolean(process.env.KPI_HSTS_ENABLED, false),
   storageRoot: normalizeStorageRoot(process.env.KPI_STORAGE_ROOT),
-  maxJsonBodyBytes: 30 * 1024 * 1024
+  maxJsonBodyBytes: 40 * 1024 * 1024
 };
 
 export const runtimePaths = {

@@ -67,12 +67,6 @@
             startDate: '2026-02-22',
             endDate: '2026-02-22',
             workIncludes: Object.freeze(['배합실 무중력혼합기 핀밀 축 점검'])
-        }),
-        Object.freeze({
-            team: 'team1part2',
-            startDate: '2026-03-31',
-            endDate: '2026-03-31',
-            workIncludes: Object.freeze(['건조기 V/F 안전발판 개선'])
         })
     ]);
     const RECORD_CATEGORY_GROUP_ORDER = Object.freeze(['kpi', 'focus', 'report']);

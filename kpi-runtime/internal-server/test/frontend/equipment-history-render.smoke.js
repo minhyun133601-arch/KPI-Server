@@ -147,10 +147,10 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
 
 test('kpi html loads equipment-history modules before the data runtime bridge', () => {
   const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=3');
-  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=9');
-  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=12');
+  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=13');
+  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=21');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=2');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=18');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=26');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=3');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -160,6 +160,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(storageIndex > formIndex, 'equipment-history storage loader must load after the form');
   assert.ok(renderIndex > storageIndex, 'equipment-history render loader must load after storage');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
+  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=029') >= 0, 'data css cache version is stale');
   assert.ok(bootManifestSource.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js') >= 0);
 });
 
@@ -207,6 +208,7 @@ test('equipment-history renderer shows the empty board state and supports author
       { id: 'eq-team2', name: '2팀 포장기', team: '2팀', room: 'B실', process: '포장', status: '가동중' },
       { id: 'eq-team1-b', name: '1팀 B 혼합기', team: '1팀 1파트', room: 'B실', process: '혼합', status: '비가동중' },
       { id: 'eq-team1-a', name: '1팀 A 혼합기', team: '1팀 1파트', room: 'A실', process: '혼합', status: '가동중' },
+      { id: 'eq-team1-c', name: '1팀 C 혼합기', team: '1팀 1파트', room: 'C실', process: '혼합', status: '가동중' },
       { id: 'eq-team4', name: '폐수 펌프', team: '유산', room: '처리장', process: '폐수', status: '정비중' },
     ],
   };
@@ -231,21 +233,36 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /data-equipment-board-status-button is-running"[^>]*data-equipment-cycle-status-card="eq-team1-a"[^>]*>가동중/);
   assert.match(container.innerHTML, /data-equipment-board-status-button is-stop"[^>]*data-equipment-cycle-status-card="eq-team1-b"[^>]*>비가동중/);
   assert.match(container.innerHTML, /data-equipment-board-status-button is-check"[^>]*data-equipment-cycle-status-card="eq-team4"[^>]*>정비중/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-board-metric[\s\S]*설비코드/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-board-metric[\s\S]*현재 실적/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-board-metric[\s\S]*목표 기준/);
+  assert.match(container.innerHTML, /data-equipment-board-metric[\s\S]*다음 점검/);
+  assert.match(container.innerHTML, /data-equipment-order-toggle-team="work_team_calendar_team1_part1"/);
+  assert.equal((container.innerHTML.match(/data-equipment-order-toggle-team="work_team_calendar_team1_part1"/g) || []).length, 1);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-order-toggle-card/);
+  assert.match(container.innerHTML, /data-equipment-board-card-tools" aria-hidden="true"/);
   assert.match(container.innerHTML, /data-equipment-board-card-tools/);
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-b"[^>]*data-equipment-move-direction="-1"[^>]*disabled/);
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-b"[^>]*data-equipment-move-direction="1"/);
+  assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-a"[^>]*data-equipment-move-direction="-1"/);
+  assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-a"[^>]*data-equipment-move-direction="1"/);
+  assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-c"[^>]*data-equipment-move-direction="-1"/);
+  assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-c"[^>]*data-equipment-move-direction="1"[^>]*disabled/);
   assert.match(container.innerHTML, /data-equipment-board-open-button/);
-  assert.match(container.innerHTML, /<optgroup label="1팀 1파트 \(2\)">/);
+  assert.match(container.innerHTML, /<optgroup label="1팀 1파트 \(3\)">/);
   assert.match(container.innerHTML, /<optgroup label="2팀 \(1\)">/);
   assert.match(container.innerHTML, /<optgroup label="공무환경팀 \(1\)">/);
   assert.ok(container.innerHTML.indexOf('B실 / 혼합') < container.innerHTML.indexOf('A실 / 혼합'));
+  assert.ok(container.innerHTML.indexOf('A실 / 혼합') < container.innerHTML.indexOf('C실 / 혼합'));
   assert.ok(container.innerHTML.indexOf('B실 / 1팀 B 혼합기') < container.innerHTML.indexOf('A실 / 1팀 A 혼합기'));
+  assert.ok(container.innerHTML.indexOf('A실 / 1팀 A 혼합기') < container.innerHTML.indexOf('C실 / 1팀 C 혼합기'));
   assert.equal(api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card)[1].sourceIndex, 1);
 
   const documentTableHtml = api.renderDocumentEditableTable([api.createBlankDocumentRow()]);
   assert.match(documentTableHtml, /문서명/);
   assert.match(documentTableHtml, /파일 첨부/);
   assert.match(documentTableHtml, /선택된 파일 없음/);
+  assert.match(documentTableHtml, /accept="[^"]*\.pdf[^"]*\.jpg[^"]*\.bmp/);
   assert.doesNotMatch(documentTableHtml, /첨부 키/);
   assert.doesNotMatch(documentTableHtml, /attachmentKey/);
   assert.doesNotMatch(documentTableHtml, /\?쒓굅|\?\?\?쒓굅|\?쓋굅/);
@@ -265,11 +282,29 @@ test('equipment-history renderer shows the empty board state and supports author
   const photoInfoHtml = api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft(), 'data-equipment-edit-grid data-equipment-photo-info-grid');
   assert.match(photoInfoHtml, /공정/);
   assert.match(photoInfoHtml, /가동률/);
+  assert.match(photoInfoHtml, /기종/);
   assert.match(photoInfoHtml, /제조사/);
+  assert.match(photoInfoHtml, /제조년월/);
   assert.match(photoInfoHtml, /담당 업체/);
-  assert.ok(photoInfoHtml.indexOf('제조사') > photoInfoHtml.indexOf('가동률'));
-  assert.ok(photoInfoHtml.indexOf('담당 업체') > photoInfoHtml.indexOf('제조사'));
+  assert.ok(photoInfoHtml.indexOf('기종') > photoInfoHtml.indexOf('가동률'));
+  assert.ok(photoInfoHtml.indexOf('제조사') > photoInfoHtml.indexOf('기종'));
+  assert.ok(photoInfoHtml.indexOf('제조년월') > photoInfoHtml.indexOf('제조사'));
+  assert.ok(photoInfoHtml.indexOf('담당 업체') > photoInfoHtml.indexOf('제조년월'));
+  assert.match(photoInfoHtml, /class="data-equipment-field-label-input"[^>]*data-equipment-field="manufacturerLabel"/);
+  assert.match(photoInfoHtml, /class="data-equipment-field-label-input"[^>]*data-equipment-field="ownerLabel"/);
   assert.match(photoInfoHtml, /data-equipment-field="manufacturer"/);
+  assert.match(photoInfoHtml, /data-equipment-field="modelName"/);
+  assert.match(photoInfoHtml, /data-equipment-field="manufacturedAt"/);
+  assert.match(photoInfoHtml, /<input type="text"[^>]*data-equipment-field="manufacturer"/);
+  assert.match(photoInfoHtml, /<input type="month"[^>]*data-equipment-field="manufacturedAt"/);
+  assert.match(photoInfoHtml, /<input type="text"[^>]*data-equipment-field="owner"/);
+  assert.doesNotMatch(photoInfoHtml, /<textarea[^>]*data-equipment-field="manufacturer"/);
+  assert.doesNotMatch(photoInfoHtml, /<textarea[^>]*data-equipment-field="owner"/);
+  assert.match(api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft({ modelName: 'FUJI-ACE EC101' }), 'data-equipment-edit-grid data-equipment-photo-info-grid'), /FUJI-ACE EC101/);
+  assert.match(api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft({ manufacturedAt: '2012.10' }), 'data-equipment-edit-grid data-equipment-photo-info-grid'), /value="2012-10"/);
+  assert.match(api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft({ manufacturerLabel: '제조사 주소', manufacturer: '서울시' }), 'data-equipment-edit-grid data-equipment-photo-info-grid'), /class="data-equipment-field-label-input"[^>]*value="제조사 주소"[^>]*data-equipment-field="manufacturerLabel"/);
+  assert.match(api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft({ ownerLabel: 'A\/S 연락처', owner: '010-1234-5678' }), 'data-equipment-edit-grid data-equipment-photo-info-grid'), /class="data-equipment-field-label-input"[^>]*value="A\/S 연락처"[^>]*data-equipment-field="ownerLabel"/);
+  assert.match(api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft({ owner: 'ABC정비\n010-1234-5678' }), 'data-equipment-edit-grid data-equipment-photo-info-grid'), /ABC정비 \/ 010-1234-5678/);
   assert.doesNotMatch(photoInfoHtml, /설비명/);
   assert.doesNotMatch(photoInfoHtml, /관리팀/);
   assert.doesNotMatch(photoInfoHtml, /data-equipment-field="team"/);
@@ -284,11 +319,49 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.doesNotMatch(detailItemsHtml, /data-equipment-detail-table/);
   assert.doesNotMatch(detailItemsHtml, /data-equipment-detail-pad/);
   assert.doesNotMatch(detailItemsHtml, /data-equipment-detail-cell/);
+  const categorizedSpecHtml = api.renderDetailItems([
+    { label: '\uBAA8\uB378\uBA85', value: 'FUJI-ACE EC101' },
+    { label: '\uC804\uC6D0', value: '200/220 V, 3\uC0C1' },
+    { label: '\uCD95 \uCCB4\uACC4', value: '4\uCD95 \uC11C\uBCF4' },
+    { label: '\uC8FC\uC694 \uC810\uAC80\uBD80', value: '\uBCA0\uC5B4\uB9C1 / \uAC10\uC18D\uAE30' },
+    { label: '\uC6B0\uC120 \uD655\uBCF4 \uBB38\uC11C', value: '\uC624\uB958 \uC774\uB825 / \uBC31\uC5C5 \uC0C1\uD0DC' },
+    { label: '\uD604\uC7A5 \uBA54\uBAA8', value: '\uD5A5\uD6C4 \uD655\uC778' },
+  ], 'equipmentSpecs');
+  assert.match(categorizedSpecHtml, /data-equipment-detail-items-grid is-categorized/);
+  assert.match(categorizedSpecHtml, /\uAE30\uBCF8 \uC815\uBCF4/);
+  assert.match(categorizedSpecHtml, /\uC8FC\uC694 \uC2A4\uD399/);
+  assert.match(categorizedSpecHtml, /\uC810\uAC80\u00B7\uBB38\uC11C/);
+  assert.match(categorizedSpecHtml, /\uAE30\uD0C0/);
+  assert.doesNotMatch(categorizedSpecHtml, /\uC131\uB2A5\u00B7\uC804\uC6D0/);
+  assert.doesNotMatch(categorizedSpecHtml, /\uCD95\u00B7\uC81C\uC5B4/);
+  assert.match(categorizedSpecHtml, /data-equipment-detail-category-grid/);
+  assert.match(categorizedSpecHtml, /data-equipment-spec-block/);
+  assert.match(categorizedSpecHtml, /data-equipment-spec-block-toggle/);
+  assert.match(categorizedSpecHtml, /data-equipment-add-row-to-block="equipmentSpecs"/);
+  assert.match(categorizedSpecHtml, /data-equipment-spec-row-actions/);
+  assert.match(categorizedSpecHtml, /data-equipment-move-row="equipmentSpecs"/);
+  assert.match(categorizedSpecHtml, /data-equipment-row-index="5"/);
+  const openSpecHtml = api.renderDetailItems([
+    { label: '\uC804\uC6D0', value: '200 V' },
+  ], 'equipmentSpecs', { openBlocks: { 'spec:auto-0': true } });
+  assert.match(openSpecHtml, /data-equipment-spec-block is-managing/);
+  assert.match(openSpecHtml, /data-equipment-spec-block-actions" aria-hidden="false"/);
+  assert.match(openSpecHtml, /data-equipment-spec-row-actions" aria-hidden="false"/);
+  const denseSpecHtml = api.renderDetailItems([
+    { label: '\uC804\uC6D0', value: '200 V' },
+    { label: '\uACF5\uC555', value: '0.5 MPa' },
+    { label: '\uC911\uB7C9', value: '120 kg' },
+    { label: '\uC18D\uB3C4', value: '30 rpm' },
+    { label: '\uC0AC\uC774\uC988', value: '1000 mm' },
+  ], 'equipmentSpecs');
+  assert.equal((denseSpecHtml.match(/data-equipment-spec-block-index/g) || []).length, 2);
+  assert.equal((denseSpecHtml.match(/data-equipment-spec-block-row/g) || []).length, 5);
   const groupedDetailItemsHtml = api.renderDetailGroups(api.createDraft().detailGroups);
   assert.match(groupedDetailItemsHtml, /data-equipment-detail-groups/);
   assert.match(groupedDetailItemsHtml, /data-equipment-detail-group="equipmentSpecs"/);
   assert.doesNotMatch(groupedDetailItemsHtml, /data-equipment-detail-group="otherInfo"/);
-  assert.match(groupedDetailItemsHtml, /data-equipment-add-row="equipmentSpecs"/);
+  assert.match(groupedDetailItemsHtml, /data-equipment-add-block="equipmentSpecs"/);
+  assert.match(groupedDetailItemsHtml, /data-equipment-add-row-to-block="equipmentSpecs"/);
   assert.doesNotMatch(groupedDetailItemsHtml, /data-equipment-add-row="otherInfo"/);
   assert.match(groupedDetailItemsHtml, /data-equipment-remove-row="equipmentSpecs"/);
   assert.doesNotMatch(groupedDetailItemsHtml, /data-equipment-remove-row="otherInfo"/);
@@ -305,7 +378,17 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(260px,\s*1fr\)\)/);
   assert.match(dataCssSource, /data-equipment-detail-groups[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(dataCssSource, /data-equipment-detail-items-grid[\s\S]+grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(dataCssSource, /data-equipment-detail-items-grid\.is-categorized[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(dataCssSource, /data-equipment-detail-category-grid[\s\S]+grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(dataCssSource, /data-equipment-spec-block[\s\S]+border:\s*1px solid #d8e5f2/);
+  assert.match(dataCssSource, /data-equipment-spec-block-actions[\s\S]+display:\s*none/);
+  assert.match(dataCssSource, /data-equipment-spec-block\.is-managing\s+\.data-equipment-spec-block-actions[\s\S]+display:\s*inline-flex/);
+  assert.match(dataCssSource, /data-equipment-spec-row-actions[\s\S]+display:\s*none/);
+  assert.match(dataCssSource, /data-equipment-spec-block\.is-managing\s+\.data-equipment-spec-row-actions[\s\S]+display:\s*inline-flex/);
+  assert.match(dataCssSource, /data-equipment-field-label-input[\s\S]+background:\s*#f3f7fc/);
   assert.match(dataCssSource, /@media \(max-width:\s*780px\)[\s\S]+data-equipment-detail-items-grid[\s\S]+grid-template-columns:\s*1fr/);
+  assert.match(dataCssSource, /@media \(max-width:\s*780px\)[\s\S]+data-equipment-detail-category-grid[\s\S]+grid-template-columns:\s*1fr/);
+  assert.match(dataCssSource, /@media \(max-width:\s*780px\)[\s\S]+data-equipment-spec-block-row[\s\S]+grid-template-columns:\s*1fr/);
   assert.doesNotMatch(dataCssSource, /data-equipment-bottom-grid,\s*[\r\n\s]*\.data-equipment-detail-groups/);
   assert.doesNotMatch(dataCssSource, /data-equipment-detail-table th:first-child/);
   assert.match(dataCssSource, /object-fit:\s*contain/);
@@ -320,15 +403,24 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /data-equipment-board-card\.is-stop[\s\S]+--equipment-card-status-color:\s*#d95151/);
   assert.match(dataCssSource, /data-equipment-board-card\.is-check[\s\S]+--equipment-card-status-color:\s*#f6c445/);
   assert.match(dataCssSource, /data-equipment-board-status-button/);
+  assert.match(dataCssSource, /data-equipment-board-team-order-toggle/);
+  assert.match(dataCssSource, /data-equipment-board-team-order-toggle[\s\S]+#ffe28a/);
   assert.match(dataCssSource, /data-equipment-board-card-tools/);
+  assert.match(dataCssSource, /data-equipment-board-card-tools[\s\S]+display:\s*none/);
+  assert.match(dataCssSource, /data-equipment-board-column\.is-ordering\s+\.data-equipment-board-card-tools[\s\S]+display:\s*grid/);
   assert.match(dataCssSource, /data-equipment-board-order-button/);
   assert.match(dataCssSource, /data-equipment-board-open-button/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-card button\s*\{/);
   assert.match(renderSource, /EQUIPMENT_BOARD_STATUS_CYCLE/);
+  assert.match(renderSource, /data-equipment-order-toggle-team/);
+  assert.doesNotMatch(renderSource, /data-equipment-order-toggle-card/);
+  assert.match(renderSource, /aria-hidden="true"/);
+  assert.match(renderSource, /column\.classList\.toggle\('is-ordering', isOpen\)/);
   assert.match(renderSource, /async function cycleBoardCardStatus/);
   assert.match(renderSource, /async function moveBoardCard/);
   assert.match(renderSource, /buildEquipmentListWithRecord/);
   assert.match(modelSource, /sourceIndex:\s*index/);
+  assert.doesNotMatch(modelSource, /getEquipmentStatusSortIndex/);
   assert.doesNotMatch(modelSource, /equipment:\s*equipment\.slice\(\)\.sort\(compareEquipmentHistoryItems\)/);
   assert.match(renderSource, /data-equipment-title-pair/);
   assert.match(renderSource, /data-equipment-title-team/);
@@ -336,8 +428,12 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-title-name/);
   assert.match(renderSource, /function renderStatusToggle/);
   assert.match(renderSource, /\\uC124\\uBE44 \\uC2A4\\uD399/);
-  assert.match(renderSource, /api\.renderDetailGroups\(draft\.detailGroups\)/);
-  assert.match(formSource, /data-equipment-add-row="\$\{api\.escapeHtml\(groupKey\)\}"/);
+  assert.match(renderSource, /api\.renderDetailGroups\(draft\.detailGroups, \{ openBlocks: state\.openEquipmentSpecBlocks \|\| \{\} \}\)/);
+  assert.match(formSource, /data-equipment-add-block="\$\{api\.escapeHtml\(groupKey\)\}"/);
+  assert.match(formSource, /data-equipment-add-row-to-block/);
+  assert.match(renderSource, /data-equipment-spec-block-toggle/);
+  assert.match(renderSource, /setEquipmentSpecBlockOpen\(state, blockKey, true\)/);
+  assert.match(renderSource, /data-equipment-move-row/);
   assert.doesNotMatch(renderSource, /handleDetailCellKeydown/);
   assert.doesNotMatch(renderSource, /equipmentDetailCell/);
   assert.doesNotMatch(renderSource, /focusPendingDetailCell/);
@@ -371,7 +467,9 @@ test('equipment-history renderer shows the empty board state and supports author
     production: '2,680 kg',
     plan: '3,000 kg / 일',
     rate: '88',
+    modelName: 'MX-1',
     manufacturer: '샘플 제조사',
+    manufacturedAt: '2020.03',
     note: '설비 기록 작성 테스트',
     photoDocumentId: 'doc-photo-1',
     photoPreviewUrl: '/api/files/doc-photo-1/view',
@@ -390,7 +488,9 @@ test('equipment-history renderer shows the empty board state and supports author
       name: 'Mixer',
       detailInfo: [
         { label: '\uC124\uBE44\uBA85', value: 'Mixer' },
+        { label: '\uAE30\uC885', value: 'MX-1' },
         { label: '\uC81C\uC870\uC0AC', value: 'Sample Maker' },
+        { label: '\uC81C\uC870\uB144\uC6D4', value: '2018.07' },
       ],
     }).detailInfo),
     JSON.stringify([])
@@ -400,15 +500,35 @@ test('equipment-history renderer shows the empty board state and supports author
       name: 'Mixer',
       detailInfo: [
         { label: '\uC124\uBE44\uBA85', value: 'Mixer' },
+        { label: '\uAE30\uC885', value: 'MX-1' },
         { label: '\uC81C\uC870\uC0AC', value: 'Sample Maker' },
+        { label: '\uC81C\uC870\uB144\uC6D4', value: '2018.07' },
       ],
     }).manufacturer,
     'Sample Maker'
   );
+  assert.equal(
+    api.createDraft({
+      name: 'Mixer',
+      detailInfo: [
+        { label: '\uBAA8\uB378\uBA85', value: 'MX-1' },
+        { label: '\uC81C\uC870\uB144\uC6D4', value: '2018.07' },
+      ],
+    }).modelName,
+    'MX-1'
+  );
+  assert.equal(api.createDraft({
+    name: 'Mixer',
+    detailInfo: [
+      { label: '\uC81C\uC870\uB144\uC6D4', value: '2018.07' },
+    ],
+  }).manufacturedAt, '2018-07');
   const legacyDetailDraft = api.createDraft({
     name: 'Mixer',
     detailInfo: [
+      { label: '\uBAA8\uB378\uBA85', value: 'MX-1' },
       { label: '\uC81C\uC870\uC0AC', value: 'Sample Maker' },
+      { label: '\uC81C\uC870\uB144\uC6D4', value: '2018.07' },
       { label: '\uBA54\uBAA8', value: 'Clean daily' },
     ],
   });
@@ -418,8 +538,67 @@ test('equipment-history renderer shows the empty board state and supports author
       { label: '\uBA54\uBAA8', value: 'Clean daily' },
     ])
   );
+  assert.equal(legacyDetailDraft.modelName, 'MX-1');
   assert.equal(legacyDetailDraft.manufacturer, 'Sample Maker');
+  assert.equal(legacyDetailDraft.manufacturedAt, '2018-07');
   assert.equal(legacyDetailDraft.detailGroups.otherInfo, undefined);
+  assert.equal(api.createDraft().manufacturerLabel, '제조사');
+  assert.equal(api.createDraft().ownerLabel, '담당 업체');
+  const customLabelDraft = api.createDraft({
+    name: 'Mixer',
+    manufacturerLabel: '제조사 주소',
+    ownerLabel: '담당 업체 연락처',
+    detailInfo: [
+      { label: '제조사 주소', value: 'ABC제조\n서울시' },
+      { label: '담당 업체 연락처', value: 'ABC정비\n010-1234-5678' },
+      { label: '메모', value: 'Clean daily' },
+    ],
+  });
+  assert.equal(customLabelDraft.manufacturer, 'ABC제조\n서울시');
+  assert.equal(customLabelDraft.owner, 'ABC정비\n010-1234-5678');
+  assert.equal(
+    JSON.stringify(customLabelDraft.detailGroups.equipmentSpecs),
+    JSON.stringify([{ label: '메모', value: 'Clean daily' }])
+  );
+  assert.deepEqual(
+    api.normalizeEquipmentItems({
+      equipmentList: [{
+        id: 'custom-label',
+        name: 'Mixer',
+        manufacturerLabel: '제조사 주소',
+        ownerLabel: '담당 업체 연락처',
+        modelName: 'MX-1',
+        detailInfo: [
+          { label: '제조사 주소', value: 'ABC제조\n서울시' },
+          { label: '담당 업체 연락처', value: 'ABC정비\n010-1234-5678' },
+        ],
+      }],
+    }).map((item) => ({
+      manufacturerLabel: item.manufacturerLabel,
+      manufacturer: item.manufacturer,
+      ownerLabel: item.ownerLabel,
+      owner: item.owner,
+      modelName: item.modelName,
+    })),
+    [{
+      manufacturerLabel: '제조사 주소',
+      manufacturer: 'ABC제조\n서울시',
+      ownerLabel: '담당 업체 연락처',
+      owner: 'ABC정비\n010-1234-5678',
+      modelName: 'MX-1',
+    }]
+  );
+  const customLabelRecord = api.buildRecordFromDraft({
+    name: 'Mixer',
+    manufacturerLabel: '제조사 주소',
+    manufacturer: 'ABC제조\n서울시',
+    ownerLabel: '담당 업체 연락처',
+    owner: 'ABC정비\n010-1234-5678',
+  });
+  assert.equal(customLabelRecord.manufacturerLabel, '제조사 주소');
+  assert.equal(customLabelRecord.ownerLabel, '담당 업체 연락처');
+  assert.ok(customLabelRecord.detailInfo.some((item) => item.label === '제조사 주소' && item.value === 'ABC제조\n서울시'));
+  assert.ok(!api.createDraft(customLabelRecord).detailGroups.equipmentSpecs.some((item) => item.label === '제조사 주소'));
   const groupedRecord = api.buildRecordFromDraft({
     name: 'Mixer',
     detailGroups: {
@@ -430,12 +609,12 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.equal(
     JSON.stringify(groupedRecord.detailGroups.equipmentSpecs),
     JSON.stringify([
-      { label: '\uBAA8\uB378', value: 'MX-1' },
       { label: '\uBA54\uBAA8', value: 'Clean daily' },
     ])
   );
   assert.equal(groupedRecord.detailGroups.otherInfo, undefined);
-  assert.ok(groupedRecord.detailInfo.some((item) => item.label === '\uBAA8\uB378' && item.value === 'MX-1'));
+  assert.equal(groupedRecord.modelName, 'MX-1');
+  assert.ok(groupedRecord.detailInfo.some((item) => item.label === '\uAE30\uC885' && item.value === 'MX-1'));
   assert.ok(groupedRecord.detailInfo.some((item) => item.label === '\uBA54\uBAA8' && item.value === 'Clean daily'));
   assert.deepEqual(
     api.normalizeEquipmentItems({ equipmentList: [{ id: 'legacy-yusan', name: '유산 기존 설비', team: '유산' }] })
@@ -457,14 +636,18 @@ test('equipment-history renderer shows the empty board state and supports author
   );
   assert.equal(record.photoDataUrl, '');
   assert.equal(record.photoDocumentId, 'doc-photo-1');
+  assert.equal(record.modelName, 'MX-1');
   assert.equal(record.manufacturer, '샘플 제조사');
+  assert.equal(record.manufacturedAt, '2020-03');
   assert.equal(record.documents[0].documentId, 'doc-attachment-1');
   assert.equal(record.documents[0].attachmentKey, undefined);
   assert.equal(record.operationInfo.map((item) => item.label).join(','), '설비명,관리팀,실,공정,가동률');
   assert.ok(record.detailInfo.some((item) => item.label === '공정' && item.value === '혼합'));
   assert.ok(!record.detailInfo.some((item) => item.label === '설비코드'));
   assert.ok(!record.detailInfo.some((item) => item.label === '담당'));
+  assert.ok(record.detailInfo.some((item) => item.label === '기종' && item.value === 'MX-1'));
   assert.ok(record.detailInfo.some((item) => item.label === '제조사' && item.value === '샘플 제조사'));
+  assert.ok(record.detailInfo.some((item) => item.label === '제조년월' && item.value === '2020-03'));
   assert.match(renderSource, /data-equipment-card-start-form/);
   assert.match(renderSource, /data-equipment-start-field="team"/);
   assert.match(renderSource, /data-equipment-start-field="room"/);
@@ -477,6 +660,8 @@ test('equipment-history save confirms payload persistence before publishing uplo
   assert.match(storageSource, /async function deleteEquipmentHistoryDraftAssets/);
   assert.match(storageSource, /collectEquipmentHistoryDraftDocumentIds/);
   assert.match(renderSource, /const savedPayload = await api\.saveEquipmentHistoryPayload\?\.\(nextPayload\)/);
+  assert.match(renderSource, /지원하지 않는 첨부 파일 형식입니다/);
+  assert.match(renderSource, /첨부 파일이 너무 큽니다/);
   assert.match(renderSource, /deleteEquipmentHistoryUploadedDraftAssets\?\.\(draft, previousDocumentIds\)/);
   assert.match(renderSource, /deleteEquipmentHistoryDraftAssets\?\.\(draft\)/);
   assert.match(renderSource, /Object\.assign\(data, nextPayload\)/);

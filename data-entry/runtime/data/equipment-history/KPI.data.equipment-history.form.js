@@ -11,11 +11,16 @@
 
     const OPERATION_FIELDS = BASIC_FIELDS;
 
+    const DEFAULT_MANUFACTURER_LABEL = '\uC81C\uC870\uC0AC';
+    const DEFAULT_OWNER_LABEL = '\uB2F4\uB2F9 \uC5C5\uCCB4';
+
     const PHOTO_INFO_FIELDS = [
         { key: 'process', label: '\uACF5\uC815', placeholder: '\uC608: \uD63C\uD569 \uACF5\uC815' },
         { key: 'rate', label: '\uAC00\uB3D9\uB960', placeholder: '\uC22B\uC790\uB9CC \uC785\uB825' },
-        { key: 'manufacturer', label: '\uC81C\uC870\uC0AC', placeholder: '\uC608: ABC\uC81C\uC870' },
-        { key: 'owner', label: '\uB2F4\uB2F9 \uC5C5\uCCB4', placeholder: '\uC608: ABC\uC815\uBE44' },
+        { key: 'modelName', label: '\uAE30\uC885', placeholder: '\uC608: FUJI-ACE EC101' },
+        { key: 'manufacturer', label: DEFAULT_MANUFACTURER_LABEL, placeholder: '\uC5C5\uCCB4\uBA85 / \uC8FC\uC18C', editableLabelKey: 'manufacturerLabel' },
+        { key: 'manufacturedAt', label: '\uC81C\uC870\uB144\uC6D4', placeholder: 'YYYY-MM', inputType: 'month' },
+        { key: 'owner', label: DEFAULT_OWNER_LABEL, placeholder: '\uC5C5\uCCB4\uBA85 / \uC804\uD654\uBC88\uD638', editableLabelKey: 'ownerLabel' },
     ];
 
     const DETAIL_ITEM_FIELDS = [
@@ -30,13 +35,43 @@
         equipmentSpecs: '\uC124\uBE44 \uC2A4\uD399',
     });
 
+    const EQUIPMENT_SPEC_CATEGORY_ORDER = Object.freeze([
+        { key: 'identity', title: '\uAE30\uBCF8 \uC815\uBCF4' },
+        { key: 'spec', title: '\uC8FC\uC694 \uC2A4\uD399' },
+        { key: 'maintenance', title: '\uC810\uAC80\u00B7\uBB38\uC11C' },
+        { key: 'other', title: '\uAE30\uD0C0' },
+    ]);
+    const EQUIPMENT_SPEC_BLOCK_SIZE = 4;
+    const EQUIPMENT_SPEC_CATEGORY_HINT_KEY = '__equipmentSpecCategory';
+    const EQUIPMENT_SPEC_BLOCK_ID_KEY = '__equipmentSpecBlockId';
+
+    const EQUIPMENT_SPEC_IDENTITY_LABELS = new Set([
+        '\uC790\uB8CC \uCD9C\uCC98',
+        '\uAE30\uC885',
+        '\uBAA8\uB378\uBA85',
+        '\uBAA8\uB378',
+        '\uC2DC\uB9AC\uC5BC',
+        'serial no.',
+        'serial',
+        '\uC81C\uC870\uBC88\uD638',
+        '\uC81C\uC870\uB144\uC6D4',
+        '\uC81C\uC870\uC0AC',
+        '\uC7A5\uBE44 \uC720\uD615',
+        '\uC801\uC6A9 \uACF5\uC815',
+        '\uBCC0\uD615 \uD655\uC778',
+    ]);
+
     const SYSTEM_DETAIL_LABELS = new Set([
         '\uC124\uBE44\uBA85',
         '\uAD00\uB9AC\uD300',
         '\uC2E4',
         '\uACF5\uC815',
         '\uAC00\uB3D9\uB960',
+        '\uAE30\uC885',
+        '\uBAA8\uB378\uBA85',
+        '\uBAA8\uB378',
         '\uC81C\uC870\uC0AC',
+        '\uC81C\uC870\uB144\uC6D4',
     ]);
 
     const MAINTENANCE_FIELDS = [
@@ -50,6 +85,8 @@
     const DOCUMENT_FIELDS = [
         { key: 'title', label: '문서명', placeholder: '예: 점검 보고서' },
     ];
+
+    const DOCUMENT_ATTACHMENT_ACCEPT = '.pdf,.xls,.xlsx,.ppt,.pptx,.doc,.docx,.hwp,.hwpx,.jpg,.jpeg,.png,.webp,.gif,.bmp';
 
     const DOCUMENT_SAVE_FIELDS = [
         ...DOCUMENT_FIELDS,
@@ -117,8 +154,13 @@
         return { clientRowId: `doc-${Date.now()}-${Math.round(Math.random() * 1e6)}`, title: '' };
     }
 
-    function createBlankDetailRow() {
-        return { label: '', value: '' };
+    function createBlankDetailRow(category = '', blockId = '') {
+        const row = { label: '', value: '' };
+        const categoryKey = api.normalizeText(category);
+        const blockKey = api.normalizeText(blockId);
+        if (categoryKey) row[EQUIPMENT_SPEC_CATEGORY_HINT_KEY] = categoryKey;
+        if (blockKey) row[EQUIPMENT_SPEC_BLOCK_ID_KEY] = blockKey;
+        return row;
     }
 
     function normalizeRows(rows, factory) {
@@ -130,17 +172,43 @@
         return api.asList(rows).map((row) => ({ ...factory(), ...(row || {}) }));
     }
 
-    function isSystemDetailInfoRow(row) {
-        return SYSTEM_DETAIL_LABELS.has(api.normalizeText(row?.label));
+    function normalizeYearMonthValue(value) {
+        const raw = api.normalizeText(value);
+        if (!raw) return '';
+        const match = raw.match(/^(\d{4})\D{0,3}(\d{1,2})/);
+        if (!match) return raw;
+        const month = Number(match[2]);
+        if (!Number.isInteger(month) || month < 1 || month > 12) return raw;
+        return `${match[1]}-${String(month).padStart(2, '0')}`;
+    }
+
+    function normalizeSingleLineValue(value) {
+        return api.normalizeText(value).replace(/\s*[\r\n]+\s*/g, ' / ');
+    }
+
+    function getCustomSystemDetailLabels(source = {}) {
+        return [
+            source.manufacturerLabel,
+            source.manufacturerTitle,
+            source.manufacturerLabelText,
+            source.ownerLabel,
+            source.ownerTitle,
+            source.ownerLabelText,
+        ].map((label) => api.normalizeText(label)).filter(Boolean);
+    }
+
+    function isSystemDetailInfoRow(row, extraLabels = []) {
+        const label = api.normalizeText(row?.label);
+        return SYSTEM_DETAIL_LABELS.has(label) || api.asList(extraLabels).includes(label);
     }
 
     function isEquipmentHistoryDetailGroupSection(section) {
         return DETAIL_GROUP_KEYS.includes(api.normalizeText(section));
     }
 
-    function normalizeDetailInfoRows(rows) {
+    function normalizeDetailInfoRows(rows, extraSystemLabels = []) {
         return normalizeOptionalRows(rows, createBlankDetailRow)
-            .filter((row) => !isSystemDetailInfoRow(row));
+            .filter((row) => !isSystemDetailInfoRow(row, extraSystemLabels));
     }
 
     function getDetailInfoValue(rows, labels) {
@@ -149,8 +217,8 @@
         return api.normalizeText(found?.value);
     }
 
-    function splitLegacyDetailInfoRows(rows) {
-        return { equipmentSpecs: normalizeDetailInfoRows(rows) };
+    function splitLegacyDetailInfoRows(rows, extraSystemLabels = []) {
+        return { equipmentSpecs: normalizeDetailInfoRows(rows, extraSystemLabels) };
     }
 
     function getDetailGroupSource(source, groupKey) {
@@ -162,14 +230,15 @@
 
     function normalizeEquipmentHistoryDetailGroups(source = {}) {
         const hasGroupedRows = LEGACY_DETAIL_GROUP_KEYS.some((groupKey) => Array.isArray(getDetailGroupSource(source, groupKey)));
+        const extraSystemLabels = getCustomSystemDetailLabels(source);
         const groupedRows = hasGroupedRows
             ? {
                 equipmentSpecs: [
-                    ...normalizeDetailInfoRows(getDetailGroupSource(source, 'equipmentSpecs')),
-                    ...normalizeDetailInfoRows(getDetailGroupSource(source, 'otherInfo')),
+                    ...normalizeDetailInfoRows(getDetailGroupSource(source, 'equipmentSpecs'), extraSystemLabels),
+                    ...normalizeDetailInfoRows(getDetailGroupSource(source, 'otherInfo'), extraSystemLabels),
                 ],
             }
-            : splitLegacyDetailInfoRows(source.detailInfo);
+            : splitLegacyDetailInfoRows(source.detailInfo, extraSystemLabels);
 
         return DETAIL_GROUP_KEYS.reduce((result, groupKey) => {
             result[groupKey] = normalizeRows(groupedRows[groupKey], createBlankDetailRow);
@@ -179,7 +248,8 @@
 
     function removeBlankDetailGroupRows(detailGroups) {
         return DETAIL_GROUP_KEYS.reduce((result, groupKey) => {
-            result[groupKey] = removeBlankRows(api.asList(detailGroups?.[groupKey]), DETAIL_ITEM_FIELDS);
+            result[groupKey] = removeBlankRows(api.asList(detailGroups?.[groupKey]), DETAIL_ITEM_FIELDS)
+                .map((row) => ({ label: api.normalizeText(row?.label), value: api.normalizeText(row?.value) }));
             return result;
         }, {});
     }
@@ -197,6 +267,8 @@
             ...api.asList(getDetailGroupSource(source, 'equipmentSpecs')),
             ...api.asList(getDetailGroupSource(source, 'otherInfo')),
         ];
+        const manufacturerLabel = api.normalizeText(source.manufacturerLabel || source.manufacturerTitle || source.manufacturerLabelText) || DEFAULT_MANUFACTURER_LABEL;
+        const ownerLabel = api.normalizeText(source.ownerLabel || source.ownerTitle || source.ownerLabelText) || DEFAULT_OWNER_LABEL;
         return {
             id: api.normalizeText(source.id),
             equipmentCode: api.normalizeText(source.equipmentCode || source.id),
@@ -213,9 +285,17 @@
             room: api.normalizeText(source.room),
             teamDataKey: api.normalizeText(source.teamDataKey) || resolveEquipmentHistoryTeamDataKey(source.team),
             group: api.normalizeText(source.group),
+            modelName: api.normalizeText(source.modelName || source.model || source.equipmentModel || source.machineModel || source.machineType)
+                || getDetailInfoValue(rawDetailRows, ['\uAE30\uC885', '\uBAA8\uB378\uBA85', '\uBAA8\uB378', '\uBAA8\uB378 \uBC88\uD638', 'modelName', 'model']),
+            manufacturerLabel,
             manufacturer: api.normalizeText(source.manufacturer || source.maker)
-                || getDetailInfoValue(rawDetailRows, ['\uC81C\uC870\uC0AC', '\uC81C\uC791\uC0AC', '\uBA54\uC774\uCEE4', 'maker', 'manufacturer']),
-            owner: api.normalizeText(source.owner),
+                || getDetailInfoValue(rawDetailRows, ['\uC81C\uC870\uC0AC', '\uC81C\uC791\uC0AC', '\uBA54\uC774\uCEE4', 'maker', 'manufacturer', manufacturerLabel]),
+            manufacturedAt: normalizeYearMonthValue(
+                api.normalizeText(source.manufacturedAt || source.manufactureDate || source.manufacturedDate || source.manufactureYearMonth || source.productionDate)
+                    || getDetailInfoValue(rawDetailRows, ['\uC81C\uC870\uB144\uC6D4', '\uC81C\uC870 \uC5F0\uC6D4', '\uC81C\uC870\uB144\uB3C4', '\uC81C\uC791\uB144\uC6D4', '\uC81C\uC791 \uC5F0\uC6D4', '\uC81C\uC870\uC77C\uC790', '\uC81C\uC791\uC77C\uC790', 'manufacturedAt', 'manufactureDate', 'manufacturedDate'])
+            ),
+            ownerLabel,
+            owner: api.normalizeText(source.owner) || getDetailInfoValue(rawDetailRows, ['\uB2F4\uB2F9 \uC5C5\uCCB4', '\uB2F4\uB2F9', '\uCC45\uC784\uC790', ownerLabel]),
             note: api.normalizeText(source.note),
             photoDataUrl: api.normalizeText(source.photoDataUrl),
             photoDocumentId: api.normalizeText(source.photoDocumentId || source.photoFileId),
@@ -298,7 +378,9 @@
             { label: '관리팀', value: normalized.team },
             { label: '공정', value: normalized.process },
             { label: '가동률', value: normalized.rate !== '' ? `${parseDraftRate(normalized.rate).value}%` : '' },
-            { label: '제조사', value: normalized.manufacturer },
+            { label: '기종', value: normalized.modelName },
+            { label: normalized.manufacturerLabel || DEFAULT_MANUFACTURER_LABEL, value: normalized.manufacturer },
+            { label: '제조년월', value: normalized.manufacturedAt },
         ].filter((row) => row.value);
 
         const customRows = removeBlankRows(flattenDetailGroupRows(detailGroups || normalized.detailGroups), DETAIL_ITEM_FIELDS);
@@ -338,7 +420,11 @@
             room: normalized.room,
             teamDataKey,
             group: normalized.process,
+            modelName: normalized.modelName,
+            manufacturerLabel: normalized.manufacturerLabel || DEFAULT_MANUFACTURER_LABEL,
             manufacturer: normalized.manufacturer,
+            manufacturedAt: normalized.manufacturedAt,
+            ownerLabel: normalized.ownerLabel || DEFAULT_OWNER_LABEL,
             owner: normalized.owner,
             note: normalized.note,
             photoDataUrl: normalized.photoDocumentId ? '' : normalized.photoDataUrl,
@@ -356,7 +442,13 @@
     }
 
     function renderInput(field, value, attrs = '') {
-        return `<input type="text" value="${api.escapeHtml(value)}" placeholder="${api.escapeHtml(field.placeholder || '')}" data-equipment-field="${api.escapeHtml(field.key)}" ${attrs}>`;
+        const inputType = api.normalizeText(field.inputType) || 'text';
+        const controlValue = inputType === 'month' ? normalizeYearMonthValue(value) : normalizeSingleLineValue(value);
+        return `<input type="${api.escapeHtml(inputType)}" value="${api.escapeHtml(controlValue)}" placeholder="${api.escapeHtml(field.placeholder || '')}" data-equipment-field="${api.escapeHtml(field.key)}" ${attrs}>`;
+    }
+
+    function renderTextarea(field, value, attrs = '') {
+        return `<textarea placeholder="${api.escapeHtml(field.placeholder || '')}" data-equipment-field="${api.escapeHtml(field.key)}" ${attrs}>${api.escapeHtml(value)}</textarea>`;
     }
 
     function renderTeamSelect(value, attrs = '') {
@@ -377,60 +469,228 @@
         if (field.key === 'team') {
             return renderTeamSelect(value, attrs);
         }
+        if (field.multiline) {
+            return renderTextarea(field, value, attrs);
+        }
         return renderInput(field, value, attrs);
+    }
+
+    function renderFieldLabel(field, draft) {
+        if (!field.editableLabelKey) {
+            return `<span>${api.escapeHtml(field.label)}</span>`;
+        }
+        const value = api.normalizeText(draft?.[field.editableLabelKey]) || field.label;
+        return `<input type="text" class="data-equipment-field-label-input" value="${api.escapeHtml(value)}" placeholder="${api.escapeHtml(field.label)}" data-equipment-field="${api.escapeHtml(field.editableLabelKey)}" aria-label="${api.escapeHtml(`${field.label} 제목`)}">`;
     }
 
     function renderFieldGrid(fields, draft, className) {
         return `
             <div class="${className}">
                 ${fields.map((field) => `
-                    <label>
-                        <span>${api.escapeHtml(field.label)}</span>
+                    <div data-equipment-field-wrap="${api.escapeHtml(field.key)}">
+                        ${renderFieldLabel(field, draft)}
                         ${renderFieldControl(field, draft[field.key] || '')}
-                    </label>
+                    </div>
                 `).join('')}
             </div>
         `;
     }
 
-    function renderDetailItems(rows, sectionKey = 'detailInfo') {
-        const section = api.normalizeText(sectionKey) || 'detailInfo';
+    function getEquipmentSpecCategory(row) {
+        const label = api.normalizeText(row?.label);
+        const value = api.normalizeText(row?.value);
+        const labelKey = label.toLowerCase();
+        const text = `${label} ${value}`.toLowerCase();
+        if (!label && !value) return api.normalizeText(row?.[EQUIPMENT_SPEC_CATEGORY_HINT_KEY]) || 'other';
+        if (EQUIPMENT_SPEC_IDENTITY_LABELS.has(label) || EQUIPMENT_SPEC_IDENTITY_LABELS.has(labelKey)) {
+            return 'identity';
+        }
+        if (/적재하중|처리능력|전원|전압|소비전력|본체중량|중량|스트로크|회전각|반복정도|용량|규격|치수|속도|사이클|cycle|kva|kg|mm|축|제어|hmi|plc|컨트롤러|펜던트|메뉴|인터록|센서|teaching|티칭|파라미터|공압|핸드/.test(text)) {
+            return 'spec';
+        }
+        if (/정비|점검|윤활|베어링|감속기|볼스크류|ball screw|타이밍벨트|reducer|guide|bushing|그리스|급지|오류|에러|진단|문서|도면|회로도|확보|이력|trouble|backup|백업|우선/.test(text)) {
+            return 'maintenance';
+        }
+        return 'other';
+    }
+
+    function getEquipmentSpecBlockId(row) {
+        return api.normalizeText(row?.[EQUIPMENT_SPEC_BLOCK_ID_KEY]);
+    }
+
+    function groupEquipmentSpecRows(rows, section) {
         const source = api.asList(rows);
         const list = source.length ? source : [createBlankDetailRow()];
+        const entries = list.map((row, rowIndex) => ({
+            row,
+            rowIndex,
+            category: section === 'equipmentSpecs' ? getEquipmentSpecCategory(row) : 'other',
+        }));
+        if (section !== 'equipmentSpecs') {
+            return [{ key: 'other', title: '', entries }];
+        }
+        return EQUIPMENT_SPEC_CATEGORY_ORDER.map((category) => ({
+            ...category,
+            entries: entries.filter((entry) => entry.category === category.key),
+        })).filter((category) => category.entries.length);
+    }
 
+    function chunkEquipmentSpecEntries(entries) {
+        const chunks = [];
+        let current = [];
+        let currentBlockId = '';
+        const flush = () => {
+            if (!current.length) return;
+            chunks.push({ entries: current, blockId: currentBlockId });
+            current = [];
+            currentBlockId = '';
+        };
+
+        api.asList(entries).forEach((entry) => {
+            const blockId = getEquipmentSpecBlockId(entry?.row);
+            if (current.length >= EQUIPMENT_SPEC_BLOCK_SIZE || (current.length && currentBlockId !== blockId)) {
+                flush();
+            }
+            currentBlockId = blockId;
+            current.push(entry);
+        });
+        flush();
+        return chunks;
+    }
+
+    function getEquipmentSpecBlockKey(groupKey, block, blockIndex) {
+        const blockId = api.normalizeText(block?.blockId);
+        return `${api.normalizeText(groupKey) || 'other'}:${blockId || `auto-${blockIndex}`}`;
+    }
+
+    function isEquipmentSpecBlockOpen(options, blockKey) {
+        return options?.openBlocks?.[blockKey] === true;
+    }
+
+    function getEquipmentSpecBlockLastRowIndex(entries) {
+        return api.asList(entries).reduce((result, entry) => {
+            const rowIndex = Number(entry?.rowIndex);
+            return Number.isInteger(rowIndex) ? Math.max(result, rowIndex) : result;
+        }, -1);
+    }
+
+    function renderDetailItem(row, section, rowIndex) {
         return `
-            <div class="data-equipment-detail-items-grid">
-                ${list.map((row, rowIndex) => `
-                    <article class="data-equipment-detail-item" data-equipment-detail-item data-equipment-row-index="${rowIndex}">
-                        <div class="data-equipment-detail-item-fields">
-                            ${DETAIL_ITEM_FIELDS.map((field) => `
-                                <label>
-                                    <span>${api.escapeHtml(field.label)}</span>
-                                    ${renderInput(field, row?.[field.key] || '', `data-equipment-row-section="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}"`)}
-                                </label>
-                            `).join('')}
-                            <button type="button" class="data-equipment-row-remove data-equipment-detail-remove" data-equipment-remove-row="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml('\uD56D\uBAA9 \uC0AD\uC81C')}">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </div>
-                    </article>
-                `).join('')}
+            <article class="data-equipment-detail-item" data-equipment-detail-item data-equipment-row-index="${rowIndex}">
+                <div class="data-equipment-detail-item-fields">
+                    ${DETAIL_ITEM_FIELDS.map((field) => `
+                        <label>
+                            <span>${api.escapeHtml(field.label)}</span>
+                            ${renderInput(field, row?.[field.key] || '', `data-equipment-row-section="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}"`)}
+                        </label>
+                    `).join('')}
+                    <button type="button" class="data-equipment-row-remove data-equipment-detail-remove" data-equipment-remove-row="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml('\uD56D\uBAA9 \uC0AD\uC81C')}">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </article>
+        `;
+    }
+
+    function renderEquipmentSpecBlockItem(entry, section, isOpen = false) {
+        const rowIndex = Number(entry?.rowIndex);
+        const row = entry?.row || {};
+        const category = api.normalizeText(entry?.category);
+        const categoryAttr = category ? `data-equipment-row-category="${api.escapeHtml(category)}"` : '';
+        const commonAttrs = `data-equipment-row-section="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}"`;
+        return `
+            <div class="data-equipment-detail-item data-equipment-spec-block-row" data-equipment-detail-item data-equipment-row-index="${rowIndex}">
+                ${renderInput(DETAIL_ITEM_FIELDS[0], row.label || '', `${commonAttrs} aria-label="${api.escapeHtml(DETAIL_ITEM_FIELDS[0].label)}"`)}
+                ${renderInput(DETAIL_ITEM_FIELDS[1], row.value || '', `${commonAttrs} aria-label="${api.escapeHtml(DETAIL_ITEM_FIELDS[1].label)}"`)}
+                <div class="data-equipment-spec-row-actions" aria-hidden="${isOpen ? 'false' : 'true'}">
+                    <button type="button" class="data-equipment-spec-move" data-equipment-move-row="${api.escapeHtml(section)}" data-equipment-move-direction="-1" data-equipment-row-index="${rowIndex}" ${categoryAttr} aria-label="${api.escapeHtml('\uC704\uB85C \uC774\uB3D9')}" ${entry.canMoveUp ? '' : 'disabled'}>
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                    <button type="button" class="data-equipment-spec-move" data-equipment-move-row="${api.escapeHtml(section)}" data-equipment-move-direction="1" data-equipment-row-index="${rowIndex}" ${categoryAttr} aria-label="${api.escapeHtml('\uC544\uB798\uB85C \uC774\uB3D9')}" ${entry.canMoveDown ? '' : 'disabled'}>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <button type="button" class="data-equipment-row-remove data-equipment-detail-remove" data-equipment-remove-row="${api.escapeHtml(section)}" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml('\uD56D\uBAA9 \uC0AD\uC81C')}">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
             </div>
         `;
     }
 
-    function renderDetailGroups(detailGroups) {
+    function renderEquipmentSpecBlockActions(block, groupKey, section, blockKey, isOpen) {
+        const entries = api.asList(block?.entries);
+        const blockId = api.normalizeText(block?.blockId);
+        const isFull = entries.length >= EQUIPMENT_SPEC_BLOCK_SIZE;
+        const lastRowIndex = getEquipmentSpecBlockLastRowIndex(entries);
+        return `
+            <div class="data-equipment-spec-block-actions" aria-hidden="${isOpen ? 'false' : 'true'}">
+                <button type="button" class="data-equipment-spec-block-add" data-equipment-add-row-to-block="${api.escapeHtml(section)}" data-equipment-row-category="${api.escapeHtml(groupKey)}" data-equipment-spec-block-key="${api.escapeHtml(blockKey)}" data-equipment-spec-block-id="${api.escapeHtml(blockId)}" data-equipment-row-index="${lastRowIndex}" aria-label="${api.escapeHtml('\uD589 \uCD94\uAC00')}" title="${api.escapeHtml('\uD589 \uCD94\uAC00')}" ${isFull ? 'disabled' : ''}>
+                    <i class="fas fa-plus"></i><span>${api.escapeHtml('\uD589 \uCD94\uAC00')}</span>
+                </button>
+            </div>
+        `;
+    }
+
+    function renderEquipmentSpecBlock(block, section, blockIndex, groupKey, options = {}) {
+        const blockKey = getEquipmentSpecBlockKey(groupKey, block, blockIndex);
+        const isOpen = isEquipmentSpecBlockOpen(options, blockKey);
+        return `
+            <article class="data-equipment-spec-block ${isOpen ? 'is-managing' : ''}" data-equipment-spec-block data-equipment-spec-block-index="${blockIndex}" data-equipment-spec-block-key="${api.escapeHtml(blockKey)}">
+                <div class="data-equipment-spec-block-head">
+                    ${renderEquipmentSpecBlockActions(block, groupKey, section, blockKey, isOpen)}
+                    <button type="button" class="data-equipment-spec-block-toggle" data-equipment-spec-block-toggle aria-expanded="${isOpen ? 'true' : 'false'}" aria-label="${api.escapeHtml('\uC815\uB9AC')}">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                </div>
+                <div class="data-equipment-spec-block-items">
+                    ${block.entries.map((entry) => renderEquipmentSpecBlockItem(entry, section, isOpen)).join('')}
+                </div>
+            </article>
+        `;
+    }
+
+    function renderEquipmentSpecCategory(group, section, options = {}) {
+        const entries = group.entries.map((entry, entryIndex, list) => ({
+            ...entry,
+            canMoveUp: entryIndex > 0,
+            canMoveDown: entryIndex < list.length - 1,
+        }));
+        return `
+            <section class="data-equipment-detail-category" data-equipment-detail-category="${api.escapeHtml(group.key)}">
+                <h4>${api.escapeHtml(group.title)}</h4>
+                <div class="data-equipment-detail-category-grid">
+                    ${chunkEquipmentSpecEntries(entries).map((block, blockIndex) => renderEquipmentSpecBlock(block, section, blockIndex, group.key, options)).join('')}
+                </div>
+            </section>
+        `;
+    }
+
+    function renderDetailItems(rows, sectionKey = 'detailInfo', options = {}) {
+        const section = api.normalizeText(sectionKey) || 'detailInfo';
+        const groupedRows = groupEquipmentSpecRows(rows, section);
+        const isCategorized = section === 'equipmentSpecs';
+
+        return `
+            <div class="data-equipment-detail-items-grid ${isCategorized ? 'is-categorized' : ''}">
+                ${groupedRows.map((group) => isCategorized
+                    ? renderEquipmentSpecCategory(group, section, options)
+                    : group.entries.map((entry) => renderDetailItem(entry.row, section, entry.rowIndex)).join('')).join('')}
+            </div>
+        `;
+    }
+
+    function renderDetailGroups(detailGroups, options = {}) {
         const groups = normalizeEquipmentHistoryDetailGroups({ detailGroups });
         return `
             <div class="data-equipment-detail-groups">
                 ${DETAIL_GROUP_KEYS.map((groupKey) => `
                     <section class="data-equipment-detail-group" data-equipment-detail-group="${api.escapeHtml(groupKey)}">
                         <div class="data-equipment-detail-group-head">
-                            <button type="button" class="data-equipment-add-row" data-equipment-add-row="${api.escapeHtml(groupKey)}">
-                                <i class="fas fa-plus"></i><span>${api.escapeHtml('\uD589 \uCD94\uAC00')}</span>
+                            <button type="button" class="data-equipment-add-block" data-equipment-add-block="${api.escapeHtml(groupKey)}">
+                                <i class="fas fa-plus"></i><span>${api.escapeHtml('\uBC15\uC2A4 \uCD94\uAC00')}</span>
                             </button>
                         </div>
-                        ${renderDetailItems(groups[groupKey], groupKey)}
+                        ${renderDetailItems(groups[groupKey], groupKey, options)}
                     </section>
                 `).join('')}
             </div>
@@ -484,7 +744,7 @@
                                 <td>${renderInput(DOCUMENT_FIELDS[0], row?.title || '', `data-equipment-row-section="documents" data-equipment-row-index="${rowIndex}"`)}</td>
                                 <td>
                                     <div class="data-equipment-document-picker">
-                                        <input type="file" hidden data-equipment-document-file-input data-equipment-row-index="${rowIndex}">
+                                        <input type="file" hidden accept="${api.escapeHtml(DOCUMENT_ATTACHMENT_ACCEPT)}" data-equipment-document-file-input data-equipment-row-index="${rowIndex}">
                                         <button type="button" class="data-equipment-document-pick" data-equipment-document-pick="${rowIndex}" aria-label="문서 파일 첨부" title="파일 첨부">
                                             <i class="fas fa-plus"></i>
                                         </button>
@@ -511,8 +771,11 @@
         DETAIL_ITEM_FIELDS,
         DETAIL_GROUP_KEYS,
         DETAIL_GROUP_LABELS,
+        EQUIPMENT_SPEC_CATEGORY_ORDER,
+        EQUIPMENT_SPEC_BLOCK_SIZE,
         MAINTENANCE_FIELDS,
         DOCUMENT_FIELDS,
+        DOCUMENT_ATTACHMENT_ACCEPT,
         DOCUMENT_SAVE_FIELDS,
         EQUIPMENT_HISTORY_TEAM_OPTIONS,
         EQUIPMENT_HISTORY_TEAM_DATA_KEY_MAP,
@@ -532,6 +795,7 @@
         renderTeamSelect,
         renderFieldControl,
         renderFieldGrid,
+        getEquipmentSpecCategory,
         renderDetailItems,
         renderDetailGroups,
         renderEditableTable,

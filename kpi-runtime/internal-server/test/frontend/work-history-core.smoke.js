@@ -168,6 +168,24 @@ test('work history core split files expose normalized payload and storage hooks 
   assert.equal(history.normalizeCost('150,000,000원'), 150000000);
   assert.equal(history.normalizeCost('abc'), null);
   assert.deepEqual(history.normalizeAssignees(['미정', 'Alpha', '미입력', '-', 'Beta']), ['Alpha', 'Beta']);
+  assert.equal(
+    history.isImportantRecord({
+      team: 'team1part2',
+      startDate: '2026-03-31',
+      endDate: '2026-03-31',
+      workContent: '건조기 V/F 안전발판 개선',
+    }),
+    false
+  );
+  assert.equal(
+    history.isImportantRecord({
+      team: 'team2',
+      startDate: '2026-02-22',
+      endDate: '2026-02-22',
+      workContent: '배합실 무중력혼합기 핀밀 축 점검',
+    }),
+    true
+  );
 
   assert.equal(payload.meta.moduleKey, 'work_history_records');
   assert.equal(payload.teams.team1part1.length, 1);
@@ -184,7 +202,7 @@ test('work history core split files expose normalized payload and storage hooks 
 
 test('kpi html loads work history core split files before layout bootstrap', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=2');
+  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=3');
   const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=218');
   const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=4');
   const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=2');

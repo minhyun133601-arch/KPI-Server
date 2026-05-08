@@ -121,7 +121,7 @@ async function fillEquipmentDetailItem(page, label, value, section = 'equipmentS
       return;
     }
   }
-  await page.locator(`[data-equipment-add-row="${section}"]`).click();
+  await page.locator(`[data-equipment-add-block="${section}"]`).click();
   const item = page.locator(`[data-equipment-detail-group="${section}"] .data-equipment-detail-item`).last();
   await item.locator(`[data-equipment-row-section="${section}"][data-equipment-field="label"]`).fill(label);
   await item.locator(`[data-equipment-row-section="${section}"][data-equipment-field="value"]`).fill(value);
@@ -474,10 +474,13 @@ test.describe('KPI browser smoke', () => {
       );
       await firstDetailLabel.fill('베어링');
       await firstDetailValue.fill('6204');
+      await specsGroup.locator('[data-equipment-spec-block-toggle]').first().click();
+      await expect(specsGroup.locator('.data-equipment-spec-block').first()).toHaveClass(/is-managing/);
       await page.locator('[data-equipment-remove-row="equipmentSpecs"][data-equipment-row-index="0"]').click();
+      await expect(specsGroup.locator('.data-equipment-spec-block').first()).toHaveClass(/is-managing/);
       await expect(firstDetailLabel).toHaveValue('');
       await expect(firstDetailValue).toHaveValue('');
-      await page.locator('[data-equipment-add-row="equipmentSpecs"]').click();
+      await page.locator('[data-equipment-add-block="equipmentSpecs"]').click();
       await expect(specsGroup.locator('.data-equipment-detail-item')).toHaveCount(2);
       await fillEquipmentDetailItem(page, '설비코드', 'EQ-MIX-001');
       await fillEquipmentDetailItem(page, '생산라인', '라인 알파');
@@ -506,6 +509,18 @@ test.describe('KPI browser smoke', () => {
         .locator('[data-equipment-row-section="documents"][data-equipment-field="title"]')
         .first()
         .fill('점검 보고서');
+      await page
+        .locator('[data-equipment-document-file-input]')
+        .first()
+        .setInputFiles({
+          name: 'sample-nameplate.png',
+          mimeType: 'image/png',
+          buffer: Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lQn1GQAAAABJRU5ErkJggg==',
+            'base64'
+          ),
+        });
+      await expect(page.locator('.data-equipment-document-picker').first()).toContainText('sample-nameplate.png');
       await page.locator('[data-equipment-form] .data-equipment-primary-action').click();
       await expect(page.locator('#content-container')).toContainText('작성 내용이 설비 현황 보드에 반영되었습니다.');
       await page.getByRole('button', { name: '설비 현황' }).click();

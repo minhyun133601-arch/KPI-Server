@@ -171,6 +171,11 @@
         return { label: '가동중', powerLabel: '가동중', tone: 'running', dotClassName: '', isRunning: true };
     }
 
+    function compareEquipmentHistoryBoardItems(left, right) {
+        return ((Number(left?.sourceIndex) || 0) - (Number(right?.sourceIndex) || 0))
+            || compareEquipmentHistoryText(left?.name, right?.name);
+    }
+
     function normalizeDocuments(rows) {
         return asList(rows).map((row) => ({
             title: normalizeText(row?.title || row?.name || row?.file || row?.fileName || row?.originalName || row?.attachmentKey || row?.key),
@@ -207,6 +212,8 @@
         const rawTeam = item?.team || item?.department || getInfoValue(detailInfo, ['관리팀', '관리부서', '부서']);
         const team = normalizeEquipmentHistoryTeamName(rawTeam || item?.teamDataKey);
         const teamDataKey = normalizeText(item?.teamDataKey) || resolveEquipmentHistoryTeamDataKey(rawTeam);
+        const manufacturerLabel = normalizeText(item?.manufacturerLabel || item?.manufacturerTitle || item?.manufacturerLabelText) || '제조사';
+        const ownerLabel = normalizeText(item?.ownerLabel || item?.ownerTitle || item?.ownerLabelText) || '담당 업체';
         return {
             id: normalizeText(item?.id || item?.equipmentCode || `equipment-${index + 1}`),
             sourceIndex: index,
@@ -217,6 +224,7 @@
             name: normalizeText(item?.name || item?.equipmentName || getInfoValue(detailInfo, ['설비명'])),
             line: normalizeText(item?.line || getInfoValue(detailInfo, ['생산라인']) || getInfoValue(operationInfo, ['생산라인'])),
             process: normalizeText(item?.process || getInfoValue(detailInfo, ['공정']) || getInfoValue(operationInfo, ['공정', '공정 단계']) || item?.group),
+            modelName: normalizeText(item?.modelName || item?.model || item?.equipmentModel || item?.machineModel || item?.machineType || getInfoValue(detailInfo, ['기종', '모델명', '모델', '모델 번호']) || getInfoValue(operationInfo, ['기종', '모델명', '모델', '모델 번호'])),
             status: statusMeta.label,
             statusMeta,
             rate: parseRate(item?.rate ?? item?.utilization ?? getInfoValue(operationInfo, ['가동률', '핵심 KPI'], 0)),
@@ -225,8 +233,11 @@
             lastCheck: normalizeText(item?.lastCheck || getInfoValue(operationInfo, ['최근 점검'])),
             nextCheck: normalizeText(item?.nextCheck || getInfoValue(operationInfo, ['다음 점검'])),
             teamDataKey,
-            manufacturer: normalizeText(item?.manufacturer || item?.maker || getInfoValue(detailInfo, ['제조사', '제작사', '메이커']) || getInfoValue(operationInfo, ['제조사', '제작사', '메이커'])),
-            owner: normalizeText(item?.owner || getInfoValue(detailInfo, ['담당', '책임자'])),
+            manufacturerLabel,
+            manufacturer: normalizeText(item?.manufacturer || item?.maker || getInfoValue(detailInfo, ['제조사', '제작사', '메이커', manufacturerLabel]) || getInfoValue(operationInfo, ['제조사', '제작사', '메이커', manufacturerLabel])),
+            manufacturedAt: normalizeText(item?.manufacturedAt || item?.manufactureDate || item?.manufacturedDate || item?.manufactureYearMonth || item?.productionDate || getInfoValue(detailInfo, ['제조년월', '제조 연월', '제조년도', '제작년월', '제작 연월', '제조일자', '제작일자']) || getInfoValue(operationInfo, ['제조년월', '제조 연월', '제조년도', '제작년월', '제작 연월', '제조일자', '제작일자'])),
+            ownerLabel,
+            owner: normalizeText(item?.owner || getInfoValue(detailInfo, ['담당 업체', '담당', '책임자', ownerLabel])),
             note: normalizeText(item?.note),
             photoDataUrl: normalizeText(item?.photoDataUrl),
             photoDocumentId: normalizeText(item?.photoDocumentId || item?.photoFileId),
@@ -265,7 +276,7 @@
                 const normalizedSections = [...sections.entries()]
                     .map(([title, equipment]) => ({
                         title,
-                        equipment: equipment.slice(),
+                        equipment: equipment.slice().sort(compareEquipmentHistoryBoardItems),
                     }));
                 const equipment = normalizedSections.flatMap((section) => section.equipment);
                 const runningCount = equipment.filter((item) => item.statusMeta?.isRunning).length;
@@ -294,7 +305,9 @@
             { label: '실', value: equipment?.room || '' },
             { label: '공정', value: equipment?.process || equipment?.group || '' },
             { label: '가동률', value: formatRateValue(equipment?.rate) },
-            { label: '제조사', value: equipment?.manufacturer || '' },
+            { label: '기종', value: equipment?.modelName || '' },
+            { label: equipment?.manufacturerLabel || '제조사', value: equipment?.manufacturer || '' },
+            { label: '제조년월', value: equipment?.manufacturedAt || '' },
         ];
     }
 
