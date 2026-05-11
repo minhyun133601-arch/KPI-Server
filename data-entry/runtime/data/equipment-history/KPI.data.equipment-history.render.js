@@ -4,6 +4,8 @@
     const EQUIPMENT_BOARD_STATUS_CYCLE = ['\uAC00\uB3D9\uC911', '\uBE44\uAC00\uB3D9\uC911', '\uC815\uBE44\uC911'];
     const START_ROOM_DATALIST_ID = 'data-equipment-room-options-start';
     const CARD_ROOM_DATALIST_ID = 'data-equipment-room-options-card';
+    const EQUIPMENT_PRINT_POPUP_FEATURES = 'width=900,height=1200';
+    let activeSaveController = null;
 
     function getEquipmentTeamDataKey(value) {
         const normalizedTeam = api.normalizeEquipmentHistoryTeamName?.(value) || api.normalizeText(value);
@@ -433,7 +435,7 @@
                     <button type="button" class="data-equipment-save-action" data-equipment-save-current>
                         <i class="fas fa-save"></i><span>${api.escapeHtml('\uC800\uC7A5')}</span>
                     </button>
-                    ${isCard ? '<button type="button" data-equipment-history-print><i class="fas fa-print"></i><span>PDF 출력</span></button>' : ''}
+                    ${isCard ? `<button type="button" class="data-equipment-print-btn" data-equipment-history-print><i class="fas fa-print"></i><span>${api.escapeHtml('\uC124\uBE44\uC774\uB825\uCE74\uB4DC A4 \uCD9C\uB825')}</span></button>` : ''}
                     ${items.length ? `
                         <select data-equipment-select aria-label="설비 선택">
                             ${renderEquipmentSelectOptions(groups, selected)}
@@ -912,7 +914,8 @@
 
     function isEquipmentHistorySaveShortcut(event) {
         const key = String(event?.key || '').toLowerCase();
-        return key === 's' && (event.ctrlKey || event.metaKey) && !event.altKey;
+        const code = String(event?.code || '');
+        return (key === 's' || code === 'KeyS') && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey;
     }
 
     function bindSaveShortcut(root, state, data, redraw) {
@@ -937,6 +940,370 @@
 
         keyboardRoot.addEventListener('keydown', handleKeydown);
         state.disposeSaveShortcut = () => keyboardRoot.removeEventListener?.('keydown', handleKeydown);
+    }
+
+    function getEquipmentHistorySaveAction() {
+        if (!activeSaveController || typeof activeSaveController.save !== 'function') return null;
+        if (activeSaveController.container?.isConnected === false) return null;
+        const canSave = api.canSaveEquipmentHistoryToServer?.() === true;
+        return {
+            priority: 110,
+            canSave,
+            buttonLabel: '\uC800\uC7A5',
+            historyLabel: '\uC124\uBE44 \uC774\uB825\uCE74\uB4DC \uC800\uC7A5',
+            title: '\uC124\uBE44 \uC774\uB825\uCE74\uB4DC \uC800\uC7A5',
+            statusText: canSave
+                ? '\uD604\uC7AC \uC124\uBE44 \uC774\uB825\uCE74\uB4DC\uB97C \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.'
+                : '\uC11C\uBC84 \uC800\uC7A5 \uAD8C\uD55C\uC774 \uC788\uC5B4\uC57C \uC124\uBE44 \uC774\uB825\uCE74\uB4DC\uB97C \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+            errorMessage: '\uC124\uBE44 \uC774\uB825\uCE74\uB4DC \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.',
+            perform: () => activeSaveController.save({
+                message: '\uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4.',
+            }),
+        };
+    }
+
+    function normalizePrintText(value) {
+        return api.normalizeText(value);
+    }
+
+    function renderPrintText(value, fallback = '-') {
+        const text = normalizePrintText(value);
+        return api.escapeHtml(text || fallback).replace(/\r?\n/g, '<br>');
+    }
+
+    function isPrintRowBlank(row, keys) {
+        return api.asList(keys).every((key) => !normalizePrintText(row?.[key]));
+    }
+
+    function formatPrintRate(value) {
+        const raw = normalizePrintText(value);
+        if (!raw) return '';
+        if (/%$/.test(raw)) return raw;
+        const numeric = Number(raw.replace(/,/g, ''));
+        return Number.isFinite(numeric) ? `${numeric}%` : raw;
+    }
+
+    function getPrintFieldLabel(field, draft) {
+        if (!field?.editableLabelKey) return field?.label || '';
+        return normalizePrintText(draft?.[field.editableLabelKey]) || field.label || '';
+    }
+
+    function getPrintFieldValue(field, draft) {
+        if (!field?.key) return '';
+        if (field.key === 'rate') return formatPrintRate(draft?.[field.key]);
+        return normalizePrintText(draft?.[field.key]);
+    }
+
+    function renderEquipmentPrintStaticField(label, value, fallback = '-') {
+        return `
+            <label class="equipment-print-static-field">
+                <span>${renderPrintText(label, '')}</span>
+                <div>${renderPrintText(value, fallback)}</div>
+            </label>
+        `;
+    }
+
+    function renderEquipmentPrintInfoGrid(draft) {
+        return `
+            <div class="data-equipment-edit-grid data-equipment-photo-info-grid equipment-print-static-grid">
+                ${api.asList(api.PHOTO_INFO_FIELDS).map((field) => `
+                    ${renderEquipmentPrintStaticField(getPrintFieldLabel(field, draft), getPrintFieldValue(field, draft))}
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function renderEquipmentPrintPhoto(draft) {
+        const photoSrc = api.getEquipmentPhotoPreviewUrl?.(draft) || draft.photoDataUrl || draft.photoPreviewUrl || '';
+        if (!photoSrc) {
+            return `
+                <div class="data-equipment-photo-placeholder equipment-print-photo-empty">
+                    <strong>${api.escapeHtml('\uC0AC\uC9C4 \uC5C6\uC74C')}</strong>
+                </div>
+            `;
+        }
+        return `<img class="data-equipment-photo-preview" src="${api.escapeHtml(photoSrc)}" alt="${api.escapeHtml('\uC124\uBE44 \uC0AC\uC9C4')}">`;
+    }
+
+    function getEquipmentPrintSpecRows(draft) {
+        return api.asList(draft?.detailGroups?.equipmentSpecs)
+            .filter((row) => !isPrintRowBlank(row, ['label', 'value']));
+    }
+
+    function chunkEquipmentPrintRows(rows, size = 8) {
+        const result = [];
+        for (let index = 0; index < rows.length; index += size) {
+            result.push(rows.slice(index, index + size));
+        }
+        return result;
+    }
+
+    function renderEquipmentPrintSpecRows(draft) {
+        const rows = getEquipmentPrintSpecRows(draft);
+        if (!rows.length) {
+            return `<div class="equipment-print-empty">${api.escapeHtml('\uB4F1\uB85D\uB41C \uC124\uBE44 \uC2A4\uD399\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.')}</div>`;
+        }
+        return `
+            <div class="data-equipment-detail-groups">
+                <section class="data-equipment-detail-group" data-equipment-detail-group="equipmentSpecs">
+                    <div class="data-equipment-detail-items-grid is-categorized">
+                        <section class="data-equipment-detail-category">
+                            <div class="data-equipment-detail-category-grid">
+                                ${chunkEquipmentPrintRows(rows).map((blockRows, blockIndex) => `
+                                    <article class="data-equipment-spec-block equipment-print-spec-block" data-equipment-spec-block-index="${blockIndex}">
+                                        <div class="data-equipment-spec-block-items">
+                                            ${blockRows.map((row) => `
+                                                <div class="data-equipment-detail-item data-equipment-spec-block-row equipment-print-spec-row">
+                                                    <div class="equipment-print-spec-label">${renderPrintText(row?.label)}</div>
+                                                    <div class="equipment-print-spec-value">${renderPrintText(row?.value)}</div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </article>
+                                `).join('')}
+                            </div>
+                        </section>
+                    </div>
+                </section>
+            </div>
+        `;
+    }
+
+    function getEquipmentPrintDocumentRows(draft) {
+        return api.asList(draft?.documents)
+            .filter((row) => !isPrintRowBlank(row, ['title', 'fileName', 'originalName', 'downloadUrl']));
+    }
+
+    function renderEquipmentPrintDocumentRows(draft) {
+        const rows = getEquipmentPrintDocumentRows(draft);
+        if (!rows.length) {
+            return `<tr><td colspan="2" class="equipment-print-empty-cell">${api.escapeHtml('\uB4F1\uB85D\uB41C \uAD00\uB828 \uBB38\uC11C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.')}</td></tr>`;
+        }
+        return rows.map((row) => {
+            const fileLabel = row?.pendingFile?.name || row?.fileName || row?.originalName || row?.downloadUrl || '-';
+            return `
+                <tr>
+                    <td><div class="equipment-print-table-value">${renderPrintText(row?.title || row?.fileName || row?.originalName)}</div></td>
+                    <td><div class="equipment-print-table-value">${renderPrintText(fileLabel)}</div></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function getEquipmentPrintMaintenanceRows(draft) {
+        return api.asList(draft?.maintenanceHistory)
+            .filter((row) => !isPrintRowBlank(row, ['date', 'type', 'content', 'worker', 'note']));
+    }
+
+    function renderEquipmentPrintMaintenanceRows(draft) {
+        const rows = getEquipmentPrintMaintenanceRows(draft);
+        if (!rows.length) {
+            return `<tr><td colspan="5" class="equipment-print-empty-cell">${api.escapeHtml('\uB4F1\uB85D\uB41C \uC815\uBE44 \uC774\uB825\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.')}</td></tr>`;
+        }
+        return rows.map((row) => `
+            <tr>
+                <td><div class="equipment-print-table-value">${renderPrintText(row?.date)}</div></td>
+                <td><div class="equipment-print-table-value">${renderPrintText(row?.type)}</div></td>
+                <td><div class="equipment-print-table-value">${renderPrintText(row?.content)}</div></td>
+                <td><div class="equipment-print-table-value">${renderPrintText(row?.worker)}</div></td>
+                <td><div class="equipment-print-table-value">${renderPrintText(row?.note)}</div></td>
+            </tr>
+        `).join('');
+    }
+
+    function buildEquipmentHistoryPrintDocument(draftInput) {
+        const draft = api.createDraft(draftInput);
+        const statusLabel = api.getEquipmentStatus(draft.status).label;
+        const title = normalizePrintText(draft.name) || '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC';
+        const metaLabel = [draft.team, draft.room, draft.process, statusLabel].map(normalizePrintText).filter(Boolean).join(' / ');
+        const printedAt = new Date().toLocaleString('ko-KR');
+        return `
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>${api.escapeHtml(title)} ${api.escapeHtml('\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC')}</title>
+    <style>
+        @page { size: A4 portrait; margin: 6mm; }
+        * { box-sizing: border-box; }
+        figure { margin: 0; }
+        html, body { margin: 0; background: #ffffff; color: #111827; font-family: 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .equipment-print-page { min-height: 285mm; display: grid; grid-template-rows: auto 1fr; gap: 3mm; }
+        .equipment-print-form-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6mm; align-items: end; border-bottom: 1px solid #d6e3f1; padding-bottom: 2.2mm; }
+        .equipment-print-title-block { min-width: 0; display: grid; gap: 1mm; }
+        .equipment-print-title-block span { color: #1268d8; font-size: 9px; font-weight: 900; line-height: 1.2; }
+        .equipment-print-title-block strong { color: #14233b; font-size: 20px; font-weight: 900; line-height: 1.12; word-break: break-word; }
+        .equipment-print-title-block small { color: #52657f; font-size: 9px; font-weight: 800; line-height: 1.25; }
+        .equipment-print-stamp { color: #647795; font-size: 8px; font-weight: 800; text-align: right; white-space: nowrap; }
+        .data-equipment-card-view { min-height: 0; display: grid; }
+        .data-equipment-layout,
+        .data-equipment-edit-form { min-height: 0; display: grid; grid-template-rows: 54mm minmax(0, 1fr) minmax(68mm, auto) minmax(23mm, auto); gap: 3mm; }
+        .equipment-print-form { height: 100%; }
+        .data-equipment-top-grid { min-height: 0; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(60mm, 0.85fr); gap: 3mm; }
+        .data-equipment-bottom-grid { min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3mm; align-items: stretch; }
+        .data-equipment-card,
+        .data-equipment-photo-card { overflow: hidden; background: #ffffff; border: 1px solid #dbe7f5; border-radius: 8px; box-shadow: none; }
+        .data-equipment-card-pad,
+        .data-equipment-detail-card,
+        .data-equipment-history-card,
+        .data-equipment-doc-card { min-width: 0; padding: 3mm; }
+        .data-equipment-history-card,
+        .data-equipment-doc-card { display: grid; grid-template-rows: auto minmax(0, 1fr); align-content: start; }
+        .data-equipment-photo-card { min-height: 0; height: 54mm; display: grid; place-items: center; background: #f8fbff; }
+        .data-equipment-photo-preview { width: 100%; height: 100%; min-height: 0; object-fit: contain; display: block; background: #f8fbff; }
+        .data-equipment-photo-placeholder,
+        .equipment-print-photo-empty { width: 100%; height: 100%; display: grid; place-items: center; color: #63748e; font-size: 10px; font-weight: 800; text-align: center; }
+        .data-equipment-section-title { display: flex; align-items: center; gap: 2mm; margin: 0 0 2mm; color: #1268d8; font-size: 11px; font-weight: 900; line-height: 1.25; }
+        .equipment-print-status-pill { margin-left: auto; border: 1px solid #b9d8c7; border-radius: 7px; background: #f7fffb; color: #166534; padding: 1mm 2mm; font-size: 8px; font-weight: 900; }
+        .data-equipment-edit-grid { display: grid; gap: 2mm; }
+        .data-equipment-photo-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
+        .equipment-print-static-field,
+        .data-equipment-note-field { display: grid; gap: 1.2mm; min-width: 0; color: #34476c; font-size: 8.5px; font-weight: 900; }
+        .equipment-print-static-field span,
+        .data-equipment-note-field span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .equipment-print-static-field div,
+        .equipment-print-static-note,
+        .equipment-print-spec-label,
+        .equipment-print-spec-value,
+        .equipment-print-table-value { width: 100%; min-width: 0; border: 1px solid #dce8f5; border-radius: 6px; background: #ffffff; color: #263957; padding: 1.7mm 2mm; font-size: 9.5px; font-weight: 800; line-height: 1.3; word-break: break-word; white-space: normal; }
+        .data-equipment-detail-card { display: grid; grid-template-rows: auto minmax(0, 1fr); }
+        .data-equipment-detail-groups,
+        .data-equipment-detail-group,
+        .data-equipment-detail-items-grid,
+        .data-equipment-detail-category,
+        .data-equipment-detail-category-grid { min-width: 0; display: grid; gap: 2mm; }
+        .data-equipment-detail-items-grid.is-categorized { grid-template-columns: minmax(0, 1fr); }
+        .data-equipment-spec-block { min-width: 0; border: 1px solid #d8e5f2; border-radius: 8px; background: #f8fbff; padding: 2mm; }
+        .data-equipment-spec-block-items { display: grid; grid-auto-flow: column; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, auto)); gap: 1.7mm; min-width: 0; }
+        .data-equipment-spec-block-row { display: grid; grid-template-columns: minmax(24mm, 0.8fr) minmax(0, 1.2fr); gap: 1.7mm; align-items: center; min-width: 0; }
+        .equipment-print-spec-label { background: #f3f7fc; color: #203a5b; font-size: 8.5px; }
+        .equipment-print-spec-value { font-size: 9.5px; }
+        .data-equipment-table-scroll { min-width: 0; border: 1px solid #d8e5f2; border-radius: 8px; background: #f8fbff; padding: 2mm; }
+        .data-equipment-edit-table,
+        .equipment-print-table { width: 100%; border-collapse: separate; border-spacing: 0 1.4mm; table-layout: fixed; font-size: 8.5px; line-height: 1.2; }
+        .data-equipment-edit-table th,
+        .data-equipment-edit-table td { border: 0; padding: 0 0.8mm; vertical-align: top; word-break: break-word; }
+        .data-equipment-edit-table th { background: transparent; color: #34476c; font-size: 8px; font-weight: 900; text-align: left; padding-bottom: 0.4mm; }
+        .equipment-print-table-value { min-height: 7.2mm; padding: 1.4mm 1.6mm; }
+        .equipment-print-maintenance-table th:nth-child(1),
+        .equipment-print-maintenance-table td:nth-child(1) { width: 17%; }
+        .equipment-print-maintenance-table th:nth-child(2),
+        .equipment-print-maintenance-table td:nth-child(2) { width: 15%; }
+        .equipment-print-maintenance-table th:nth-child(4),
+        .equipment-print-maintenance-table td:nth-child(4) { width: 16%; }
+        .equipment-print-doc-table th:nth-child(1),
+        .equipment-print-doc-table td:nth-child(1) { width: 42%; }
+        .equipment-print-static-note { min-height: 16mm; }
+        .equipment-print-empty,
+        .equipment-print-empty-cell { color: #6b7280; font-size: 9px; font-weight: 800; text-align: center; }
+        @media screen {
+            body { padding: 10mm; background: #e5e7eb; }
+            .equipment-print-page { width: 198mm; margin: 0 auto; padding: 0; background: #ffffff; box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18); }
+        }
+    </style>
+</head>
+<body>
+    <main class="equipment-print-page">
+        <header class="equipment-print-form-header">
+            <div class="equipment-print-title-block">
+                <span>${api.escapeHtml('\uC124\uBE44 \uC774\uB825\uCE74\uB4DC')}</span>
+                <strong>${renderPrintText(title, '\uC124\uBE44 \uC774\uB825\uCE74\uB4DC')}</strong>
+                <small>${renderPrintText(metaLabel, '-')}</small>
+            </div>
+            <div class="equipment-print-stamp">${api.escapeHtml('\uCD9C\uB825')} ${renderPrintText(printedAt, '-')}</div>
+        </header>
+        <section class="data-equipment-card-view" data-equipment-view="card-print">
+            <form class="data-equipment-layout data-equipment-edit-form equipment-print-form" aria-label="${api.escapeHtml('\uC124\uBE44 \uAE30\uB85D \uCD9C\uB825')}">
+                <div class="data-equipment-top-grid">
+                    <figure class="data-equipment-photo-card">${renderEquipmentPrintPhoto(draft)}</figure>
+                    <article class="data-equipment-card data-equipment-card-pad data-equipment-photo-info-card">
+                        ${renderEquipmentPrintInfoGrid(draft)}
+                    </article>
+                </div>
+                <article class="data-equipment-card data-equipment-detail-card">
+                    <h3 class="data-equipment-section-title">
+                        ${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}
+                        <span class="equipment-print-status-pill">${renderPrintText(statusLabel, '-')}</span>
+                    </h3>
+                    ${renderEquipmentPrintSpecRows(draft)}
+                </article>
+                <div class="data-equipment-bottom-grid">
+                    <article class="data-equipment-card data-equipment-history-card equipment-print-maintenance">
+                        <h3 class="data-equipment-section-title">${api.escapeHtml('\uC815\uBE44 \uC774\uB825')}</h3>
+                        <div class="data-equipment-table-scroll">
+                            <table class="data-equipment-edit-table equipment-print-table equipment-print-maintenance-table">
+                                <thead>
+                                    <tr>
+                                        <th>${api.escapeHtml('\uC77C\uC790')}</th>
+                                        <th>${api.escapeHtml('\uAD6C\uBD84')}</th>
+                                        <th>${api.escapeHtml('\uB0B4\uC6A9')}</th>
+                                        <th>${api.escapeHtml('\uC791\uC5C5\uC790')}</th>
+                                        <th>${api.escapeHtml('\uBE44\uACE0')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${renderEquipmentPrintMaintenanceRows(draft)}</tbody>
+                            </table>
+                        </div>
+                    </article>
+                    <article class="data-equipment-card data-equipment-doc-card equipment-print-documents">
+                        <h3 class="data-equipment-section-title">${api.escapeHtml('\uAD00\uB828 \uBB38\uC11C')}</h3>
+                        <div class="data-equipment-table-scroll">
+                            <table class="data-equipment-edit-table equipment-print-table equipment-print-doc-table">
+                                <thead>
+                                    <tr>
+                                        <th>${api.escapeHtml('\uBB38\uC11C\uBA85')}</th>
+                                        <th>${api.escapeHtml('\uCCA8\uBD80 \uD30C\uC77C')}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${renderEquipmentPrintDocumentRows(draft)}</tbody>
+                            </table>
+                        </div>
+                    </article>
+                </div>
+                <label class="data-equipment-note-field equipment-print-note">
+                    <span>${api.escapeHtml('\uBE44\uACE0')}</span>
+                    <div class="equipment-print-static-note">${renderPrintText(draft.note, '-')}</div>
+                </label>
+            </form>
+        </section>
+    </main>
+</body>
+</html>
+        `;
+    }
+
+    function printEquipmentHistoryCard(root, state) {
+        if (!state.draft) {
+            browser.alert('\uCD9C\uB825\uD560 \uC124\uBE44 \uC774\uB825\uCE74\uB4DC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.');
+            return;
+        }
+        syncDraftFromForm(root, state);
+        const printDocument = buildEquipmentHistoryPrintDocument(state.draft);
+        const printTitle = `${normalizePrintText(state.draft.name) || '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC'} \uCD9C\uB825`;
+        if (browser.printHtmlDocument?.(printDocument, { title: printTitle })) {
+            return;
+        }
+
+        const popup = browser.openPopup?.('', '_blank', EQUIPMENT_PRINT_POPUP_FEATURES);
+        if (!popup || !popup.document) {
+            browser.alert('\uC778\uC1C4 \uCC3D\uC744 \uC5F4 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uBE0C\uB77C\uC6B0\uC800\uC758 \uC0C8 \uCC3D/\uC778\uC1C4 \uAD8C\uD55C\uC744 \uD655\uC778\uD55C \uB4A4 \uB2E4\uC2DC \uCD9C\uB825\uD574 \uC8FC\uC138\uC694.');
+            return;
+        }
+        try {
+            popup.opener = null;
+        } catch {}
+        const printOnce = () => {
+            if (popup.__equipmentHistoryPrinted) return;
+            popup.__equipmentHistoryPrinted = true;
+            popup.focus?.();
+            popup.print?.();
+            popup.close?.();
+        };
+        popup.document.write(printDocument);
+        popup.document.close?.();
+        popup.onload = printOnce;
+        if (typeof popup.setTimeout === 'function') popup.setTimeout(printOnce, 250);
     }
 
     function getDraftPhotoSnapshot(draft) {
@@ -1080,7 +1447,7 @@
 
     function bindEvents(root, redraw, state, data) {
         root.querySelectorAll('[data-equipment-history-print]').forEach((button) => {
-            button.addEventListener('click', () => browser.print());
+            button.addEventListener('click', () => printEquipmentHistoryCard(root, state));
         });
 
         root.querySelectorAll('[data-equipment-view-action]').forEach((button) => {
@@ -1334,8 +1701,14 @@
             container.innerHTML = renderShell(category, workingData, state);
             bindEvents(container, redraw, state, workingData);
         };
+        activeSaveController = {
+            container,
+            save: (options = {}) => saveCurrentEquipmentHistoryView(container, workingData, state, redraw, options),
+        };
         redraw();
     }
 
+    api.getEquipmentHistorySaveAction = getEquipmentHistorySaveAction;
+    api.buildEquipmentHistoryPrintDocument = buildEquipmentHistoryPrintDocument;
     api.render = render;
 })();

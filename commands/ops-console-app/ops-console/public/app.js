@@ -379,11 +379,43 @@ function buildActionItem(command) {
   wrapper.appendChild(action);
   return wrapper;
 }
+function getManagedUserOptions() {
+  const users = Array.isArray(overviewCache?.users) ? overviewCache.users : [];
+  return users
+    .filter((user) => {
+      const roles = Array.isArray(user.roles) ? user.roles : [];
+      return user?.username && user.is_active !== false && !roles.includes('owner');
+    })
+    .map((user) => {
+      const roles = Array.isArray(user.roles) && user.roles.length ? user.roles.join(', ') : '-';
+      return {
+        value: user.username,
+        label: `${user.username} (${roles})`
+      };
+    });
+}
+function getDynamicFieldOptions(optionsSource) {
+  if (optionsSource === 'managedUsers') {
+    return getManagedUserOptions();
+  }
+  return [];
+}
 function buildField(controlConfig) {
   let control;
   if (controlConfig.type === 'select') {
     control = document.createElement('select');
-    for (const option of controlConfig.options || []) {
+    const options = Array.isArray(controlConfig.options)
+      ? controlConfig.options
+      : getDynamicFieldOptions(controlConfig.optionsSource);
+    if (!options.length && controlConfig.optionsSource === 'managedUsers') {
+      const optionNode = document.createElement('option');
+      optionNode.value = '';
+      optionNode.textContent = t('noManageableUsers');
+      optionNode.disabled = true;
+      optionNode.selected = true;
+      control.appendChild(optionNode);
+    }
+    for (const option of options) {
       const optionNode = document.createElement('option');
       optionNode.value = option.value;
       optionNode.textContent = option.label;
@@ -486,7 +518,7 @@ function renderCommands(commands) {
       continue;
     }
     if (command.category === 'account') {
-      accountActions.appendChild(buildFormItem(command));
+      accountActions.appendChild(command.kind === 'action' ? buildActionItem(command) : buildFormItem(command));
       continue;
     }
     if (command.category === 'db' || command.category === 'tools') {
@@ -640,6 +672,11 @@ async function reloadOverview() {
 async function reloadUsers() {
   try {
     const payload = await fetchJson('/api/users');
+    if (overviewCache) {
+      overviewCache.users = payload.users || [];
+      overviewCache.usersError = payload.error || '';
+      renderCommands(overviewCache.commandRegistry || []);
+    }
     renderUsers(payload.users, payload.error || '');
     setResult(t('usersReloaded'));
   } catch (error) {

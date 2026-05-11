@@ -76,6 +76,65 @@
         if (typeof root.print === 'function') root.print();
     }
 
+    function openPopup(url, target, features) {
+        if (typeof root.open === 'function') return root.open(url, target, features);
+        return null;
+    }
+
+    function printHtmlDocument(html, options = {}) {
+        const doc = root.document;
+        if (!doc?.body || typeof doc.createElement !== 'function' || !html) return false;
+        const frame = doc.createElement('iframe');
+        frame.setAttribute?.('title', options.title || 'print');
+        frame.setAttribute?.('aria-hidden', 'true');
+        Object.assign(frame.style, {
+            position: 'fixed',
+            right: '0',
+            bottom: '0',
+            width: '0',
+            height: '0',
+            border: '0',
+            opacity: '0',
+            pointerEvents: 'none',
+        });
+        doc.body.appendChild(frame);
+
+        const frameWindow = frame.contentWindow;
+        const frameDocument = frame.contentDocument || frameWindow?.document;
+        if (!frameWindow || !frameDocument) {
+            frame.remove?.();
+            return false;
+        }
+
+        let cleanupDone = false;
+        const cleanup = () => {
+            if (cleanupDone) return;
+            cleanupDone = true;
+            frame.remove?.();
+        };
+        const printOnce = () => {
+            if (frame.__equipmentHistoryPrinted) return;
+            frame.__equipmentHistoryPrinted = true;
+            frameWindow.focus?.();
+            frameWindow.print?.();
+            if (typeof root.setTimeout === 'function') root.setTimeout(cleanup, 60000);
+        };
+
+        try {
+            frameWindow.addEventListener?.('afterprint', cleanup, { once: true });
+            frameDocument.open?.();
+            frameDocument.write(html);
+            frameDocument.close?.();
+            frame.onload = printOnce;
+            if (typeof root.setTimeout === 'function') root.setTimeout(printOnce, 250);
+            else printOnce();
+            return true;
+        } catch {
+            cleanup();
+            return false;
+        }
+    }
+
     function getWorkTeamCalendarCategoryMeta(dataKey) {
         const normalized = String(dataKey || '').trim();
         if (!normalized) return null;
@@ -101,6 +160,8 @@
         alert: alertMessage,
         confirm: confirmMessage,
         print: printPage,
+        openPopup,
+        printHtmlDocument,
         getWorkTeamCalendarCategoryMeta,
     });
 

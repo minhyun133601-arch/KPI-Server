@@ -8,7 +8,7 @@ export const TAB_PREVIEW = 'preview';
 export const TAB_REFERENCE = 'reference';
 export const LANGUAGE_STORAGE_KEY = 'kpi.opsConsole.language';
 export const iconMap = { monitor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="12" rx="2"></rect><path d="M8 19.5h8"></path><path d="M12 16.5v3"></path></svg>', server: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="6" rx="2"></rect><rect x="4" y="14" width="16" height="6" rx="2"></rect><path d="M8 7h.01M8 17h.01M16 7h2M16 17h2"></path></svg>', database: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7" ry="3.5"></ellipse><path d="M5 5.5v6c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-6"></path><path d="M5 11.5v6c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-6"></path></svg>', clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 7.5v5l3 2"></path></svg>', power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v8"></path><path d="M6.5 6.5a8 8 0 1 0 11 0"></path></svg>', stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>', refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 5v5h-5"></path><path d="M4 19v-5h5"></path><path d="M18 10a6.5 6.5 0 0 0-11-2L4 10"></path><path d="M6 14a6.5 6.5 0 0 0 11 2l3-2"></path></svg>', user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M5.5 19a6.5 6.5 0 0 1 13 0"></path></svg>', key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="3"></circle><path d="M10.5 13.5 19 5l2 2-1.5 1.5 1 1L18 12l-1-1-1.5 1.5"></path></svg>', trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7h15"></path><path d="M9 4.5h6"></path><path d="M7 7l1 12h8l1-12"></path></svg>', folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5h6l2 2h9v7a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Z"></path></svg>', terminal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2"></rect><path d="m7.5 9 3 3-3 3"></path><path d="M12.5 15h4"></path></svg>', tools: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 7 3-3 3 3-3 3"></path><path d="M17 7 8 16"></path><path d="m5 13 6 6"></path><path d="M4 20h4"></path></svg>', list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11"></path><path d="M9 12h11"></path><path d="M9 18h11"></path><circle cx="5" cy="6" r="1"></circle><circle cx="5" cy="12" r="1"></circle><circle cx="5" cy="18" r="1"></circle></svg>', table: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 10h16M10 5v14"></path></svg>', spark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8Z"></path><path d="m19 15 .8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8Z"></path></svg>' };
-export const commandIconMap = { 'server.start': 'power', 'server.stop': 'stop', 'server.recover': 'refresh', 'startup.register': 'clock', 'startup.unregister': 'clock', 'system.scheduleShutdown': 'clock', 'account.bootstrapOwner': 'user', 'account.createEmployee': 'user', 'account.resetPassword': 'key', 'account.deleteUser': 'trash', 'db.listTables': 'table', 'db.openConsole': 'terminal', 'filesystem.openCommandsFolder': 'folder', 'filesystem.openLogsFolder': 'folder' };
+export const commandIconMap = { 'server.start': 'power', 'server.stop': 'stop', 'server.recover': 'refresh', 'startup.register': 'clock', 'startup.unregister': 'clock', 'system.scheduleShutdown': 'clock', 'account.bootstrapOwner': 'user', 'account.createEmployee': 'user', 'account.resetPassword': 'key', 'account.manageUser': 'key', 'account.deleteUser': 'trash', 'account.promoteViewersToAdmin': 'user', 'db.listTables': 'table', 'db.openConsole': 'terminal', 'filesystem.openCommandsFolder': 'folder', 'filesystem.openLogsFolder': 'folder' };
 export const commandLabelMap = {
   'server.start': '실행',
   'server.stop': '중지',
@@ -19,7 +19,9 @@ export const commandLabelMap = {
   'account.bootstrapOwner': '생성',
   'account.createEmployee': '생성',
   'account.resetPassword': '변경',
+  'account.manageUser': '적용',
   'account.deleteUser': '삭제',
+  'account.promoteViewersToAdmin': '승격',
   'db.listTables': '불러오기',
   'db.openConsole': '열기',
   'filesystem.openCommandsFolder': '열기',
@@ -31,6 +33,8 @@ export const compactDescriptionMap = {
   'server.recover': '실행 중인 흔적을 정리하고 다시 올립니다.',
   'startup.register': '현재 사용자 로그인 시 자동으로 서버를 올립니다.',
   'startup.unregister': '현재 사용자 자동실행을 해제합니다.',
+  'account.manageUser': '기존 아이디를 선택해 viewer, admin, 삭제를 적용합니다.',
+  'account.promoteViewersToAdmin': 'viewer 계정을 admin으로 일괄 승격합니다.',
   'system.scheduleShutdown': '시작 또는 종료 시간을 예약합니다.',
   'db.listTables': '테이블 이름만 바로 확인합니다.',
   'db.openConsole': 'psql 콘솔 창을 엽니다.',
@@ -94,6 +98,7 @@ export const i18n = {
     done: '완료',
     none: '없음',
     active: '활성',
+    noManageableUsers: '관리할 수 있는 계정이 없습니다.',
     noSchedule: '예약 없음',
     bothSchedule: '시작·종료 예약',
     scheduleStatus: '{kind} 예약',
@@ -199,6 +204,7 @@ export const i18n = {
     done: 'Done',
     none: 'None',
     active: 'Active',
+    noManageableUsers: 'No manageable users.',
     noSchedule: 'No schedule',
     bothSchedule: 'Start and shutdown scheduled',
     scheduleStatus: '{kind} scheduled',
@@ -261,7 +267,9 @@ export const commandText = {
       'account.bootstrapOwner': 'Create',
       'account.createEmployee': 'Create',
       'account.resetPassword': 'Change',
+      'account.manageUser': 'Apply',
       'account.deleteUser': 'Delete',
+      'account.promoteViewersToAdmin': 'Promote',
       'db.listTables': 'Load',
       'db.openConsole': 'Open',
       'filesystem.openCommandsFolder': 'Open',
@@ -276,7 +284,9 @@ export const commandText = {
       'account.bootstrapOwner': 'Create owner',
       'account.createEmployee': 'Create staff account',
       'account.resetPassword': 'Reset password',
+      'account.manageUser': 'Manage user account',
       'account.deleteUser': 'Delete user',
+      'account.promoteViewersToAdmin': 'Promote viewers to admin',
       'db.listTables': 'View DB tables',
       'db.openConsole': 'Open DB console',
       'filesystem.openCommandsFolder': 'Open commands folder',
@@ -292,7 +302,9 @@ export const commandText = {
       'account.bootstrapOwner': 'Create the first owner account locally.',
       'account.createEmployee': 'Create a new account with viewer as the default role.',
       'account.resetPassword': 'Set a new password for the selected user.',
+      'account.manageUser': 'Choose an existing non-owner account and apply viewer, admin, or delete.',
       'account.deleteUser': 'Delete a non-owner account.',
+      'account.promoteViewersToAdmin': 'Change every viewer-role account to admin.',
       'db.listTables': 'Show table names in this screen.',
       'db.openConsole': 'Open a psql console in a new PowerShell window.',
       'filesystem.openCommandsFolder': 'Open the existing commands folder in Explorer.',
@@ -309,19 +321,26 @@ export const commandText = {
       'account.createEmployee.roles': { label: 'Role' },
       'account.resetPassword.username': { label: 'Target ID' },
       'account.resetPassword.password': { label: 'New password' },
+      'account.manageUser.username': { label: 'User ID' },
+      'account.manageUser.operation': { label: 'Management action' },
       'account.deleteUser.username': { label: 'User ID to delete' },
       'account.deleteUser.confirmText': { label: 'Confirmation text', placeholder: 'DELETE' },
       'system.scheduleShutdown.actionType': { label: 'Schedule type' },
       'system.scheduleShutdown.timeText': { label: 'Scheduled time', placeholder: '22:00' }
     },
     options: {
+      'account.manageUser.operation.viewer': 'viewer',
+      'account.manageUser.operation.admin': 'admin',
+      'account.manageUser.operation.delete': 'Delete',
       'system.scheduleShutdown.actionType.start': 'Start',
       'system.scheduleShutdown.actionType.shutdown': 'Shutdown'
     },
     confirmMessages: {
       'server.stop': 'Stop the KPI server and local PostgreSQL.',
       'server.recover': 'Recover and restart the KPI server.',
-      'account.deleteUser': 'Delete this user account.'
+      'account.manageUser': 'Apply this account management change.',
+      'account.deleteUser': 'Delete this user account.',
+      'account.promoteViewersToAdmin': 'Promote every viewer account to admin.'
     }
   }
 };
@@ -338,7 +357,10 @@ export const serverSummaryTranslations = {
     '오너 생성이 완료되었습니다.': 'Owner creation is complete.',
     '직원 계정 생성이 완료되었습니다.': 'Staff account creation is complete.',
     '비밀번호 재설정이 완료되었습니다.': 'Password reset is complete.',
+    '사용자 계정 관리가 완료되었습니다.': 'User account management is complete.',
+    '사용자 계정 삭제가 완료되었습니다.': 'User account deletion is complete.',
     '사용자 삭제가 완료되었습니다.': 'User deletion is complete.',
+    '뷰어 계정 어드민 승격이 완료되었습니다.': 'Viewer accounts were promoted to admin.',
     'DB 콘솔 창을 열었습니다.': 'DB console window was opened.',
     'commands 폴더를 열었습니다.': 'Commands folder was opened.',
     '로그 폴더를 열었습니다.': 'Logs folder was opened.',

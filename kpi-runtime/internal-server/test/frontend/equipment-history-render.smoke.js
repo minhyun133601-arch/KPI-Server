@@ -28,6 +28,7 @@ function createEquipmentHistoryRuntime() {
   };
 
   let registeredRenderer = null;
+  let registeredSaveProvider = null;
   const context = {
     console,
     document: {
@@ -41,6 +42,9 @@ function createEquipmentHistoryRuntime() {
       },
       registerSectionRenderer(scope, renderer) {
         if (scope === 'data') registeredRenderer = renderer;
+      },
+      registerSaveProvider(key, provider) {
+        if (key === 'data-equipment-history-save') registeredSaveProvider = provider;
       },
     },
     PortalData: {},
@@ -70,7 +74,8 @@ function createEquipmentHistoryRuntime() {
   vm.runInContext(bridgeSource, context, { filename: 'KPI.data.runtime.js' });
 
   assert.equal(typeof registeredRenderer, 'function', 'data section renderer must be registered');
-  return { context, container, registeredRenderer };
+  assert.equal(typeof registeredSaveProvider, 'function', 'equipment-history save provider must be registered');
+  return { context, container, registeredRenderer, registeredSaveProvider };
 }
 
 test('equipment-history browser adapter wraps runtime portal fetch alert and print bridges', async () => {
@@ -78,9 +83,42 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
   const alerts = [];
   const confirms = [];
   let printed = false;
+  let printFrameHtml = '';
+  let printFrameRemoved = false;
   const context = {
     console,
     window: {
+      document: {
+        body: {
+          appendChild() {},
+        },
+        createElement(tagName) {
+          assert.equal(tagName, 'iframe');
+          const frameDocument = {
+            open() {},
+            write(html) {
+              printFrameHtml = html;
+            },
+            close() {},
+          };
+          return {
+            style: {},
+            setAttribute() {},
+            remove() {
+              printFrameRemoved = true;
+            },
+            contentDocument: frameDocument,
+            contentWindow: {
+              document: frameDocument,
+              addEventListener() {},
+              focus() {},
+              print() {
+                printed = true;
+              },
+            },
+          };
+        },
+      },
       KpiRuntime: {
         canUseServerWrite(writeEnabled) {
           return writeEnabled === true;
@@ -112,6 +150,9 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
       print() {
         printed = true;
       },
+      setTimeout(callback) {
+        callback();
+      },
       getWorkTeamCalendarRawCategoryByDataKey(dataKey) {
         return dataKey === 'work_team_calendar_team2' ? { title: '2팀', color: '#059669' } : null;
       },
@@ -142,16 +183,21 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
   assert.deepEqual(alerts, ['message']);
   assert.deepEqual(confirms, ['delete?']);
   assert.equal(printed, true);
+  assert.equal(typeof adapter.openPopup, 'function');
+  assert.equal(typeof adapter.printHtmlDocument, 'function');
+  assert.equal(adapter.printHtmlDocument('<!doctype html><title>card</title>', { title: 'card print' }), true);
+  assert.match(printFrameHtml, /card/);
+  assert.equal(printFrameRemoved, true);
   assert.equal(adapter.getWorkTeamCalendarCategoryMeta('work_team_calendar_team2').color, '#059669');
 });
 
 test('kpi html loads equipment-history modules before the data runtime bridge', () => {
-  const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=3');
+  const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=5');
   const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=15');
   const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=24');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=2');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=34');
-  const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=3');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=38');
+  const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=4');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
   assert.ok(modelIndex >= 0, 'equipment-history model loader is missing');
@@ -162,6 +208,63 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
   assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=036') >= 0, 'data css cache version is stale');
   assert.ok(bootManifestSource.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js') >= 0);
+});
+
+test('equipment-history print document preserves the A4 card form through maintenance docs and note', () => {
+  const { context } = createEquipmentHistoryRuntime();
+  const api = context.KpiDataEquipmentHistory;
+  const draft = api.createDraft({
+    name: 'Mixer A',
+    team: '2\uD300',
+    room: 'A\uC2E4',
+    process: '\uD63C\uD569',
+    rate: '88',
+    modelName: 'MX-100',
+    manufacturer: 'Sample Maker',
+    manufacturedAt: '2020-03',
+    owner: 'Sample Service\n010-1234-5678',
+    photoPreviewUrl: '/api/files/photo-1/view',
+    detailGroups: {
+      equipmentSpecs: [
+        { label: '\uC6A9\uB7C9', value: '100 kg' },
+        { label: '\uC804\uC555', value: '220 V' },
+      ],
+    },
+    documents: [{ title: '\uC810\uAC80 \uBCF4\uACE0\uC11C', fileName: 'mixer-a-report.pdf' }],
+    maintenanceHistory: [
+      { date: '2026.05.11', type: '\uC810\uAC80', content: '\uBCA8\uD2B8 \uC7A5\uB825 \uD655\uC778', worker: '\uD64D\uAE38\uB3D9', note: '\uC815\uC0C1' },
+    ],
+    note: '\uBE44\uACE0 \uB0B4\uC6A9',
+  });
+  const html = api.buildEquipmentHistoryPrintDocument(draft);
+
+  assert.equal(typeof api.buildEquipmentHistoryPrintDocument, 'function');
+  assert.match(html, /@page \{ size: A4 portrait; margin: 6mm; \}/);
+  assert.match(html, /class="equipment-print-page"/);
+  assert.match(html, /class="data-equipment-layout data-equipment-edit-form equipment-print-form"/);
+  assert.match(html, /class="data-equipment-top-grid"/);
+  assert.match(html, /class="data-equipment-card data-equipment-detail-card"/);
+  assert.match(html, /class="data-equipment-bottom-grid"/);
+  assert.match(html, /class="data-equipment-card data-equipment-history-card equipment-print-maintenance"/);
+  assert.match(html, /class="data-equipment-card data-equipment-doc-card equipment-print-documents"/);
+  assert.match(html, /class="data-equipment-note-field equipment-print-note"/);
+  assert.match(html, /\uAD00\uB828 \uBB38\uC11C/);
+  assert.match(html, /\uC815\uBE44 \uC774\uB825/);
+  assert.match(html, /\uBE44\uACE0/);
+  assert.ok(
+    html.indexOf('class="data-equipment-card data-equipment-history-card equipment-print-maintenance"')
+      < html.indexOf('class="data-equipment-card data-equipment-doc-card equipment-print-documents"')
+  );
+  assert.ok(
+    html.indexOf('class="data-equipment-card data-equipment-doc-card equipment-print-documents"')
+      < html.indexOf('class="data-equipment-note-field equipment-print-note"')
+  );
+  assert.match(html, /mixer-a-report\.pdf/);
+  assert.match(html, /100 kg/);
+  assert.match(html, /\uBE44\uACE0 \uB0B4\uC6A9/);
+  assert.match(renderSource, /printHtmlDocument/);
+  assert.doesNotMatch(renderSource, /noopener,noreferrer/);
+  assert.doesNotMatch(html, /data-equipment-field|data-equipment-add-row|data-equipment-form-actions|data-equipment-spec-block-toggle/);
 });
 
 test('equipment-history renderer shows the empty board state and supports authoring records', () => {
@@ -730,6 +833,9 @@ test('equipment-history save confirms payload persistence before publishing uplo
   assert.match(renderSource, /deleteEquipmentHistoryUploadedDraftAssets\?\.\(draft, previousDocumentIds\)/);
   assert.match(renderSource, /deleteEquipmentHistoryDraftAssets\?\.\(draft\)/);
   assert.match(renderSource, /Object\.assign\(data, nextPayload\)/);
+  assert.match(renderSource, /code === 'KeyS'/);
+  assert.match(renderSource, /api\.getEquipmentHistorySaveAction = getEquipmentHistorySaveAction/);
+  assert.match(bridgeSource, /registerSaveProvider\('data-equipment-history-save'/);
 });
 
 test('equipment-history rate preserves explicit zero and rejects invalid authoring input', () => {

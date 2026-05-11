@@ -52,16 +52,35 @@ export const commandRegistry = [
     ]
   },
   {
-    key: 'account.deleteUser',
+    key: 'account.manageUser',
     category: 'account',
-    title: '사용자 삭제',
-    description: 'owner가 아닌 계정을 실제로 삭제합니다.',
+    title: '사용자 관리',
+    description: 'owner 계정을 제외한 기존 아이디를 선택해 viewer, admin, 삭제 중 하나를 적용합니다.',
     kind: 'form',
-    confirmMessage: '사용자 계정을 실제로 삭제합니다.',
+    confirmMessage: '선택한 사용자 계정 설정을 적용합니다.',
     fields: [
-      { name: 'username', label: '삭제할 아이디', type: 'text', required: true },
-      { name: 'confirmText', label: '확인 문구', type: 'text', placeholder: 'DELETE', required: true }
+      { name: 'username', label: '아이디', type: 'select', optionsSource: 'managedUsers', required: true },
+      {
+        name: 'operation',
+        label: '관리',
+        type: 'select',
+        required: true,
+        options: [
+          { value: 'viewer', label: 'viewer' },
+          { value: 'admin', label: 'admin' },
+          { value: 'delete', label: '삭제' }
+        ],
+        defaultValue: 'viewer'
+      }
     ]
+  },
+  {
+    key: 'account.promoteViewersToAdmin',
+    category: 'account',
+    title: '뷰어 전체 어드민 승격',
+    description: '현재 viewer 역할이 포함된 계정을 admin으로 일괄 변경합니다.',
+    kind: 'action',
+    confirmMessage: '현재 viewer 계정 전체를 admin으로 승격합니다. 계속할까요?'
   },
   { key: 'db.listTables', category: 'db', title: 'DB 테이블 보기', description: 'psql 결과를 이 화면에서 바로 보여줍니다.', kind: 'action' },
   { key: 'db.openConsole', category: 'db', title: 'DB 콘솔 창 열기', description: '새 PowerShell 창에서 psql 콘솔을 엽니다.', kind: 'action' },

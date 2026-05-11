@@ -159,6 +159,7 @@ async function actionResetPassword(payload) {
   };
 }
 
+// eslint-disable-next-line no-unused-vars
 async function actionDeleteUser(payload) {
   if (String(payload.confirmText || '').trim().toUpperCase() !== 'DELETE') {
     throw new Error('confirm_text_must_be_DELETE');
@@ -175,6 +176,39 @@ async function actionDeleteUser(payload) {
   return {
     ok: true,
     summary: '사용자 삭제가 완료되었습니다.',
+    output: result.stdout,
+    data: parsed
+  };
+}
+
+async function actionManageUser(payload) {
+  await ensureRuntimeReady();
+  const result = await runNodeScript('manageUserAccount.js', [
+    `--username=${payload.username || ''}`,
+    `--operation=${payload.operation || ''}`
+  ]);
+  const parsed = safeJsonParse(result.stdout);
+  if (!parsed?.ok) {
+    throw new Error(parsed?.error || 'user_manage_failed');
+  }
+  return {
+    ok: true,
+    summary: parsed.operation === 'delete' ? '사용자 계정 삭제가 완료되었습니다.' : '사용자 계정 관리가 완료되었습니다.',
+    output: result.stdout,
+    data: parsed
+  };
+}
+
+async function actionPromoteViewersToAdmin() {
+  await ensureRuntimeReady();
+  const result = await runNodeScript('promoteViewerUsersToAdmin.js', ['--write']);
+  const parsed = safeJsonParse(result.stdout);
+  if (!parsed?.ok) {
+    throw new Error(parsed?.error || 'viewer_promotion_failed');
+  }
+  return {
+    ok: true,
+    summary: '뷰어 계정 어드민 승격이 완료되었습니다.',
     output: result.stdout,
     data: parsed
   };
@@ -260,7 +294,8 @@ const actionHandlers = {
   'account.bootstrapOwner': actionBootstrapOwner,
   'account.createEmployee': actionCreateEmployee,
   'account.resetPassword': actionResetPassword,
-  'account.deleteUser': actionDeleteUser,
+  'account.manageUser': actionManageUser,
+  'account.promoteViewersToAdmin': actionPromoteViewersToAdmin,
   'db.listTables': getDbTableList,
   'db.openConsole': actionOpenDbConsole,
   'filesystem.openCommandsFolder': actionOpenCommandsFolder,

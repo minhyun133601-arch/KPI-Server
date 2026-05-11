@@ -116,6 +116,12 @@
             renderGlobalSaveUi();
         }
 
+        function isGlobalSaveShortcut(evt) {
+            const key = String(evt?.key || '').toLowerCase();
+            const code = String(evt?.code || '');
+            return (key === 's' || code === 'KeyS') && (evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey;
+        }
+
         function scheduleGlobalSaveUiRefresh(options = {}) {
             if (globalSaveRefreshTimer) {
                 clearTimeout(globalSaveRefreshTimer);
@@ -166,9 +172,9 @@
                     ? new Date(savedRecord.savedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
                     : '';
                 GlobalSaveUiState.message = savedTime
-                    ? `저장이 완료되었습니다. ${savedTime}`
-                    : '저장이 완료되었습니다.';
-                GlobalSaveUiState.tone = '';
+                    ? `저장되었습니다. ${savedTime}`
+                    : '저장되었습니다.';
+                GlobalSaveUiState.tone = 'success';
                 successAlertMessage = '저장되었습니다.';
                 return true;
             } catch (error) {
@@ -179,7 +185,7 @@
             } finally {
                 GlobalSaveUiState.busy = false;
                 if (successAlertMessage) {
-                    resetGlobalSaveUiToDefault();
+                    renderGlobalSaveUi();
                     browser?.showAlert?.(successAlertMessage);
                 } else {
                     renderGlobalSaveUi();
@@ -201,9 +207,7 @@
             browser?.setFlag?.('__globalSaveHotkeyListener');
             browser?.addWindowEventListener?.('keydown', evt => {
                 if (evt.defaultPrevented) return;
-                if (evt.altKey || evt.shiftKey) return;
-                if (!(evt.ctrlKey || evt.metaKey)) return;
-                if (String(evt.key || '').toLowerCase() !== 's') return;
+                if (!isGlobalSaveShortcut(evt)) return;
                 evt.preventDefault();
                 evt.stopPropagation();
                 void triggerGlobalSave({ trigger: 'shortcut' });

@@ -280,6 +280,9 @@ test('app shell records internal navigation in browser history and restores on b
   assert.match(navigationSource, /function applyAppHistoryRoute\(route = null\)/);
   assert.match(viewerSource, /syncAppHistoryAfterNavigation\(options\)/);
   assert.match(globalSaveSource, /navigateAppBack\(\)/);
+  assert.match(globalSaveSource, /function isGlobalSaveShortcut\(evt\)/);
+  assert.match(globalSaveSource, /code === 'KeyS'/);
+  assert.match(globalSaveSource, /\uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4\./);
   assert.match(appSource, /bindAppHistoryNavigation\(\);/);
   assert.match(appSource, /goHome\(\{ __skipHistory: true \}\);/);
   assert.match(appSource, /initializeAppHistoryState\(\);/);
