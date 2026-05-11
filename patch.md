@@ -1,16 +1,16 @@
 # 2026-05-11 Patch Note
 
-Status: 설비이력카드 A4 출력과 운영툴 viewer 일괄 admin 승격을 반영했습니다.
+Status: 설비이력카드 A4 출력과 운영툴 사용자 계정 관리를 반영했습니다.
 
 ## Equipment History A4 Print And Account Promotion
 
-Goal: 설비이력카드의 관련문서, 정비이력, 비고까지 A4 한 장에 맞춰 출력하고, 운영 콘솔 계정 관리에서 viewer 계정을 admin으로 일괄 승격할 수 있게 합니다.
+Goal: 설비이력카드의 관련문서, 정비이력, 비고까지 A4 한 장에 맞춰 출력하고, 운영 콘솔 계정 관리에서 owner를 제외한 기존 계정의 viewer/admin/삭제를 선택 적용할 수 있게 합니다.
 
-Touched areas: equipment-history render/browser adapter, KPI shell asset cache version, equipment-history render smoke, ops console account command/action/config, viewer-role promotion service/script, ops console account promotion smoke.
+Touched areas: equipment-history render/browser adapter, KPI shell asset cache version, equipment-history render smoke, ops console account command/action/config, user account management service/script, ops console account management smoke.
 
 Data change: PostgreSQL dump `kpi-runtime/internal-server/var/prod/backups/postgres-dumps/postgres-dump-20260511-162351.dump` created before write. `Andryu`, `Bogus`, `Danny`, `Eric`, `Felix`, `Jeff`, `Mike`, and `Shine` were promoted from `viewer` to `admin`. Follow-up dry-run reports promotedCount 0.
 
-Verification: `node --check` for changed JS passed; `node --test test/frontend/equipment-history-render.smoke.js` passed; `node --test test/frontend/ops-console-account-promotion.smoke.js` passed; `npm run format:check` passed; `npm run lint` passed; `npm run verify:server-structure` passed with warningCount 0; `git diff --check` passed; `npm run smoke:kpi-browser` passed; direct ops action call returned ok with promotedCount 0 after the write.
+Verification: `node --check` for changed JS passed; `node --test test/frontend/equipment-history-render.smoke.js` passed; `node --test test/frontend/ops-console-account-management.smoke.js` passed; `npm run format:check` passed; `npm run lint` passed; `npm run verify:server-structure` passed with warningCount 0; `git diff --check` passed; `npm run smoke:kpi-browser` passed; direct account management script checked owner protection.
 
 Risk: promoted accounts now have admin-level access. The print layout now mirrors the card form for readability, so very dense records may continue onto an additional A4 page instead of being squeezed into a cramped custom layout.
 
@@ -21,6 +21,8 @@ Update: 설비이력카드 A4 출력은 별도 조밀 인쇄표 대신 작성 �
 Update: 운영 콘솔의 사용자 삭제 폼을 사용자 관리 폼으로 바꾸고, owner 계정을 제외한 기존 아이디 드롭다운 옆에서 viewer, admin, 삭제 중 하나를 선택해 적용할 수 있게 했습니다. 서버 스크립트도 owner 계정 변경/삭제를 `owner_manage_forbidden`으로 차단합니다.
 
 Update: PostgreSQL dump `kpi-runtime/internal-server/var/prod/backups/postgres-dumps/postgres-dump-20260511-165446.dump`를 생성한 뒤 Codex 전용 계정 `codex.popup.1777516642301-b8owh9`와 `codex.e2e.1777430105121-3ci87i`를 삭제했습니다. 재조회 결과 `codex` 계정은 남아 있지 않고 실제 owner `김민현` 계정은 유지됩니다.
+
+Update: 운영 콘솔에서 `뷰어 전체 어드민 승격` 일괄 액션을 제거했습니다. 개별 계정은 기존 `사용자 관리` 드롭다운에서 viewer/admin/삭제로만 변경합니다.
 
 ---
 

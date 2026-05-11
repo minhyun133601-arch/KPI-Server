@@ -74,14 +74,6 @@ export const commandRegistry = [
       }
     ]
   },
-  {
-    key: 'account.promoteViewersToAdmin',
-    category: 'account',
-    title: '뷰어 전체 어드민 승격',
-    description: '현재 viewer 역할이 포함된 계정을 admin으로 일괄 변경합니다.',
-    kind: 'action',
-    confirmMessage: '현재 viewer 계정 전체를 admin으로 승격합니다. 계속할까요?'
-  },
   { key: 'db.listTables', category: 'db', title: 'DB 테이블 보기', description: 'psql 결과를 이 화면에서 바로 보여줍니다.', kind: 'action' },
   { key: 'db.openConsole', category: 'db', title: 'DB 콘솔 창 열기', description: '새 PowerShell 창에서 psql 콘솔을 엽니다.', kind: 'action' },
   { key: 'filesystem.openCommandsFolder', category: 'tools', title: 'commands 폴더 열기', description: '기존 commands 폴더를 탐색기에서 엽니다.', kind: 'action' },

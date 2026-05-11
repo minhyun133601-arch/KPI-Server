@@ -199,21 +199,6 @@ async function actionManageUser(payload) {
   };
 }
 
-async function actionPromoteViewersToAdmin() {
-  await ensureRuntimeReady();
-  const result = await runNodeScript('promoteViewerUsersToAdmin.js', ['--write']);
-  const parsed = safeJsonParse(result.stdout);
-  if (!parsed?.ok) {
-    throw new Error(parsed?.error || 'viewer_promotion_failed');
-  }
-  return {
-    ok: true,
-    summary: '뷰어 계정 어드민 승격이 완료되었습니다.',
-    output: result.stdout,
-    data: parsed
-  };
-}
-
 async function actionOpenDbConsole() {
   openExternalWindow('cmd.exe', [
     '/c',
@@ -295,7 +280,6 @@ const actionHandlers = {
   'account.createEmployee': actionCreateEmployee,
   'account.resetPassword': actionResetPassword,
   'account.manageUser': actionManageUser,
-  'account.promoteViewersToAdmin': actionPromoteViewersToAdmin,
   'db.listTables': getDbTableList,
   'db.openConsole': actionOpenDbConsole,
   'filesystem.openCommandsFolder': actionOpenCommandsFolder,

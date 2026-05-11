@@ -3,11 +3,11 @@
     {
       date: '2026-05-11',
       tag: 'equipment-history-print/account-admin',
-      title: '설비이력카드 A4 출력과 viewer 일괄 admin 승격',
+      title: '설비이력카드 A4 출력과 사용자 계정 관리',
       summary:
-        '설비이력카드 작성 화면에 A4 출력 액션을 추가해 사진/기본정보/설비 스펙/정비 이력/관련 문서/비고 카드 양식을 유지한 인쇄 문서로 배치하고, 운영 콘솔 계정 관리에는 viewer 역할 계정을 admin으로 일괄 승격하는 확인형 액션을 추가했습니다.',
+        '설비이력카드 작성 화면에 A4 출력 액션을 추가해 사진/기본정보/설비 스펙/정비 이력/관련 문서/비고 카드 양식을 유지한 인쇄 문서로 배치하고, 운영 콘솔 계정 관리에는 기존 계정을 선택해 viewer/admin/삭제를 적용하는 사용자 관리 폼을 추가했습니다.',
       detail:
-        'viewer 승격은 별도 서비스와 로컬 스크립트로 분리해 dry-run과 write 경로를 모두 지원합니다. 데이터 변경 전 PostgreSQL custom dump를 생성했고 Andryu, Bogus, Danny, Eric, Felix, Jeff, Mike, Shine 계정을 viewer에서 admin으로 변경했습니다. 운영 콘솔의 사용자 삭제 폼은 owner 계정을 제외한 기존 아이디 드롭다운과 viewer/admin/삭제 선택으로 구성한 사용자 관리 폼으로 바꿨고, 서버 스크립트도 owner 변경/삭제를 차단합니다. A4 출력은 숨은 인쇄 프레임을 우선 사용해 팝업 허용 안내 없이 인쇄 대화상자를 열도록 조정했고, 별도 조밀표 대신 작성 화면과 같은 카드 양식을 쓰도록 정리했습니다. 검증 기준: equipment-history render smoke, ops-console account promotion smoke, ops-console data-reference smoke, format, lint, server-structure, git diff --check, KPI browser smoke.',
+        '데이터 변경 전 PostgreSQL custom dump를 생성했고 Andryu, Bogus, Danny, Eric, Felix, Jeff, Mike, Shine 계정을 viewer에서 admin으로 변경했습니다. 운영 콘솔의 사용자 삭제 폼은 owner 계정을 제외한 기존 아이디 드롭다운과 viewer/admin/삭제 선택으로 구성한 사용자 관리 폼으로 바꿨고, 서버 스크립트도 owner 변경/삭제를 차단합니다. 이후 일괄 승격 액션은 제거해 계정 변경은 개별 사용자 관리 폼으로만 처리합니다. A4 출력은 숨은 인쇄 프레임을 우선 사용해 팝업 허용 안내 없이 인쇄 대화상자를 열도록 조정했고, 별도 조밀표 대신 작성 화면과 같은 카드 양식을 쓰도록 정리했습니다. 검증 기준: equipment-history render smoke, ops-console account management smoke, ops-console data-reference smoke, format, lint, server-structure, git diff --check, KPI browser smoke.',
     },
     {
       date: '2026-05-08',
