@@ -426,16 +426,22 @@ test.describe('KPI browser smoke', () => {
       } else {
         await expect(page.locator('#content-container')).toContainText('등록된 설비가 없습니다.');
       }
+      const sampleEquipmentName = `샘플 혼합기 ${Date.now()}`;
       await page.locator('[data-equipment-view-action="card"]').click();
       await expect(page.locator('[data-equipment-card-start-form]')).toBeVisible();
       await page.locator('[data-equipment-start-field="team"]').selectOption('1팀 1파트');
+      await expect(page.locator('[data-equipment-start-field="room"]')).toHaveAttribute(
+        'list',
+        'data-equipment-room-options-start'
+      );
+      await expect(page.locator('#data-equipment-room-options-start')).toBeAttached();
       await page.locator('[data-equipment-start-field="room"]').fill('외포장실');
-      await page.locator('[data-equipment-start-field="name"]').fill('샘플 혼합기 A');
+      await page.locator('[data-equipment-start-field="name"]').fill(sampleEquipmentName);
       await page.locator('[data-equipment-card-start-submit]').click();
       await expect(page.locator('[data-equipment-form]')).toBeVisible();
       await expect(page.locator('.data-equipment-title-pair')).toContainText('1팀 1파트');
-      await expect(page.locator('.data-equipment-title-pair')).toContainText('(외포장실)');
-      await expect(page.locator('.data-equipment-title-pair')).toContainText('샘플 혼합기 A');
+      await expect(page.locator('.data-equipment-title-room')).toHaveValue('외포장실');
+      await expect(page.locator('.data-equipment-title-name')).toHaveValue(sampleEquipmentName);
       await expect(page.locator('[data-equipment-status-toggle="가동중"]')).toHaveAttribute('aria-pressed', 'true');
       await page.locator('[data-equipment-status-toggle="비가동중"]').click();
       await expect(page.locator('[data-equipment-status-toggle="비가동중"]')).toHaveAttribute('aria-pressed', 'true');
@@ -443,6 +449,11 @@ test.describe('KPI browser smoke', () => {
       const topGrid = page.locator('.data-equipment-top-grid');
       await expect(topGrid.locator('.data-equipment-photo-card')).toBeVisible();
       await expect(topGrid.locator('.data-equipment-photo-info-card')).toBeVisible();
+      await expect(topGrid.locator('[data-equipment-field="room"]')).toHaveAttribute(
+        'list',
+        'data-equipment-room-options-card'
+      );
+      await expect(page.locator('#data-equipment-room-options-card')).toBeAttached();
       await topGrid.locator('[data-equipment-field="process"]').fill('혼합 공정');
       await topGrid.locator('[data-equipment-field="rate"]').fill('88');
       await topGrid.locator('[data-equipment-field="manufacturer"]').fill('샘플 제조사');
@@ -521,10 +532,10 @@ test.describe('KPI browser smoke', () => {
           ),
         });
       await expect(page.locator('.data-equipment-document-picker').first()).toContainText('sample-nameplate.png');
-      await page.locator('[data-equipment-form] .data-equipment-primary-action').click();
-      await expect(page.locator('#content-container')).toContainText('작성 내용이 설비 현황 보드에 반영되었습니다.');
+      await page.locator('[data-equipment-save-current]').click();
+      await expect(page.locator('#content-container')).toContainText('설비 이력카드를 저장했습니다.');
       await page.getByRole('button', { name: '설비 현황' }).click();
-      const sampleEquipmentCard = page.locator('.data-equipment-board-card').filter({ hasText: '샘플 혼합기 A' });
+      const sampleEquipmentCard = page.locator('.data-equipment-board-card').filter({ hasText: sampleEquipmentName });
       await expect(sampleEquipmentCard).toHaveCount(1);
       await expect(sampleEquipmentCard).toContainText('비가동중');
       await expect(sampleEquipmentCard).not.toContainText('가동률');
@@ -536,7 +547,7 @@ test.describe('KPI browser smoke', () => {
       });
       await page.locator('[data-equipment-delete-card]').click();
       await expect(page.locator('[data-equipment-view="board"]')).toBeVisible();
-      await expect(page.locator('.data-equipment-board-card').filter({ hasText: '샘플 혼합기 A' })).toHaveCount(0);
+      await expect(page.locator('.data-equipment-board-card').filter({ hasText: sampleEquipmentName })).toHaveCount(0);
       await clickSidebarButton(page, '목차 초기화');
       await expect(page.locator('.viewer-home-shell')).toBeVisible();
 

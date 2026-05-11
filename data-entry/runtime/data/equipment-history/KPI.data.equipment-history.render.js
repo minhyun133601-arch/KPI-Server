@@ -2,6 +2,34 @@
     const browser = KpiDataEquipmentHistoryBrowserAdapter;
     const api = browser.getApi();
     const EQUIPMENT_BOARD_STATUS_CYCLE = ['\uAC00\uB3D9\uC911', '\uBE44\uAC00\uB3D9\uC911', '\uC815\uBE44\uC911'];
+    const START_ROOM_DATALIST_ID = 'data-equipment-room-options-start';
+    const CARD_ROOM_DATALIST_ID = 'data-equipment-room-options-card';
+
+    function getEquipmentTeamDataKey(value) {
+        const normalizedTeam = api.normalizeEquipmentHistoryTeamName?.(value) || api.normalizeText(value);
+        return api.resolveEquipmentHistoryTeamDataKey?.(normalizedTeam) || normalizedTeam;
+    }
+
+    function getTeamRoomOptions(data, team) {
+        const selectedTeamKey = getEquipmentTeamDataKey(team);
+        if (!selectedTeamKey) return [];
+        const rooms = new Set();
+        api.normalizeEquipmentItems(data).forEach((item) => {
+            const itemTeamKeys = new Set([item.teamDataKey, getEquipmentTeamDataKey(item.team)].filter(Boolean));
+            if (!itemTeamKeys.has(selectedTeamKey)) return;
+            const room = api.normalizeText(item.room);
+            if (room) rooms.add(room);
+        });
+        return Array.from(rooms).sort((a, b) => a.localeCompare(b, 'ko-KR', { numeric: true, sensitivity: 'base' }));
+    }
+
+    function renderRoomDatalist(id, rooms) {
+        return `
+            <datalist id="${api.escapeHtml(id)}">
+                ${rooms.map((room) => `<option value="${api.escapeHtml(room)}"></option>`).join('')}
+            </datalist>
+        `;
+    }
 
     function renderMaintenanceRows(rows) {
         const list = api.asList(rows);
@@ -67,6 +95,7 @@
         const toneClassName = `is-${statusTone}`;
         const moveUpLabel = '\uC704\uB85C \uC774\uB3D9';
         const moveDownLabel = '\uC544\uB798\uB85C \uC774\uB3D9';
+        const processLabel = api.normalizeText(item.process || item.group);
         return `
             <article class="data-equipment-board-card ${toneClassName}" data-equipment-board-card="${api.escapeHtml(item.id)}">
                 <div class="data-equipment-board-card-head">
@@ -78,7 +107,7 @@
                         <button type="button" class="data-equipment-board-chip data-equipment-board-status-button is-${statusMeta.tone}" data-equipment-cycle-status-card="${api.escapeHtml(item.id)}" aria-label="${api.escapeHtml('\uAC00\uB3D9 \uC0C1\uD0DC \uBCC0\uACBD')}" title="${api.escapeHtml('\uD074\uB9AD\uD558\uBA74 \uAC00\uB3D9\uC911, \uBE44\uAC00\uB3D9\uC911, \uC815\uBE44\uC911\uC73C\uB85C \uBC14\uB014\uB2C8\uB2E4.')}">${api.escapeHtml(statusMeta.label)}</button>
                     </div>
                 </div>
-                <p>${api.escapeHtml([item.room, item.group].filter(Boolean).join(' / ') || item.line || '관리 구분 미지정')}</p>
+                <p>${api.escapeHtml(processLabel)}</p>
                 ${renderBoardMetric('다음 점검', item.nextCheck || '-')}
                 <div class="data-equipment-board-card-tools" aria-hidden="true">
                     <button type="button" class="data-equipment-board-order-button" data-equipment-move-card="${api.escapeHtml(item.id)}" data-equipment-move-direction="-1" aria-label="${api.escapeHtml(moveUpLabel)}" title="${api.escapeHtml(moveUpLabel)}"${orderMeta.canMoveUp ? '' : ' disabled'}>
@@ -102,6 +131,19 @@
         };
     }
 
+    function renderBoardSectionTitle(title) {
+        const roomTitle = api.normalizeText(title);
+        if (!roomTitle) return '';
+        return `
+            <h3 class="data-equipment-board-room-title">
+                <span class="data-equipment-board-room-title-main">
+                    <span class="data-equipment-board-room-icon"><i class="fas fa-door-open" aria-hidden="true"></i></span>
+                    <span>${api.escapeHtml(roomTitle)}</span>
+                </span>
+            </h3>
+        `;
+    }
+
     function renderBoard(groups, items) {
         const activeCount = items.filter((item) => item.statusMeta?.isRunning).length;
         const pausedCount = items.length - activeCount;
@@ -122,7 +164,7 @@
                     </header>
                     ${group.sections.map((section) => `
                         <div class="data-equipment-board-section">
-                            <h3>${api.escapeHtml(section.title)}</h3>
+                            ${renderBoardSectionTitle(section.title)}
                             ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex))).join('')}
                         </div>
                     `).join('')}
@@ -211,8 +253,9 @@
         return state.starter;
     }
 
-    function renderCardStarter(state) {
+    function renderCardStarter(state, data) {
         const starter = getStartDraft(state);
+        const roomOptions = getTeamRoomOptions(data, starter.team);
         return `
             <section class="data-equipment-card-view" data-equipment-view="card-start">
                 <form class="data-equipment-card-start data-equipment-card" data-equipment-card-start-form>
@@ -227,7 +270,8 @@
                         </label>
                         <label>
                             <span>${api.escapeHtml('\uC2E4')}</span>
-                            <input type="text" value="${api.escapeHtml(starter.room)}" placeholder="${api.escapeHtml('\uC2E4 \uC785\uB825')}" data-equipment-start-field="room">
+                            <input type="text" value="${api.escapeHtml(starter.room)}" placeholder="${api.escapeHtml('\uC2E4 \uC785\uB825')}" list="${api.escapeHtml(START_ROOM_DATALIST_ID)}" data-equipment-start-field="room">
+                            ${renderRoomDatalist(START_ROOM_DATALIST_ID, roomOptions)}
                         </label>
                         <label>
                             <span>${api.escapeHtml('\uC124\uBE44\uBA85')}</span>
@@ -250,13 +294,17 @@
     function renderHistoryCard(category, data, state) {
         const header = data.header || {};
         const draft = state.draft || api.createDraft();
+        const roomOptions = getTeamRoomOptions(data, draft.team);
         return `
             <section class="data-equipment-card-view" data-equipment-view="card">
                 <form class="data-equipment-layout data-equipment-edit-form" aria-label="설비 기록 작성" data-equipment-form>
                     <div class="data-equipment-top-grid">
                         ${renderPhotoCard(draft)}
                         <article class="data-equipment-card data-equipment-card-pad data-equipment-photo-info-card">
-                            ${api.renderFieldGrid(api.PHOTO_INFO_FIELDS, draft, 'data-equipment-edit-grid data-equipment-photo-info-grid')}
+                            ${api.renderFieldGrid(api.PHOTO_INFO_FIELDS, draft, 'data-equipment-edit-grid data-equipment-photo-info-grid', {
+                                fieldAttrs: { room: `list="${api.escapeHtml(CARD_ROOM_DATALIST_ID)}"` },
+                            })}
+                            ${renderRoomDatalist(CARD_ROOM_DATALIST_ID, roomOptions)}
                         </article>
                     </div>
                     <article class="data-equipment-card data-equipment-detail-card">
@@ -294,9 +342,6 @@
                         <textarea data-equipment-field="note" placeholder="비고를 입력하세요.">${api.escapeHtml(draft.note || '')}</textarea>
                     </label>
                     <div class="data-equipment-form-actions">
-                        <button type="submit" class="data-equipment-primary-action">
-                            <i class="fas fa-save"></i><span>저장</span>
-                        </button>
                         ${draft.id ? `
                             <button type="button" class="data-equipment-danger-action" data-equipment-delete-card>
                                 <i class="fas fa-trash"></i><span>삭제</span>
@@ -315,7 +360,7 @@
     function renderFooter(header, data, draft, state) {
         return `
             <footer class="data-equipment-footer">
-                <span>${api.escapeHtml(state.message || '작성 후 저장을 누르면 설비 현황 보드에 즉시 반영됩니다.')}</span>
+                ${state.message ? `<span>${api.escapeHtml(state.message)}</span>` : '<span aria-hidden="true"></span>'}
                 <span>
                     <strong>마지막 업데이트</strong>
                     ${api.escapeHtml(header.updatedAt || data.meta?.updatedAt || '-')}
@@ -323,6 +368,20 @@
                     ${api.escapeHtml(draft?.owner || header.owner || '-')}
                 </span>
             </footer>
+        `;
+    }
+
+    function renderTitleInput(field, value, label, className, placeholder = '', attrs = '') {
+        return `
+            <input
+                type="text"
+                class="data-equipment-title-input ${api.escapeHtml(className)}"
+                value="${api.escapeHtml(value)}"
+                placeholder="${api.escapeHtml(placeholder || label)}"
+                data-equipment-field="${api.escapeHtml(field)}"
+                aria-label="${api.escapeHtml(label)}"
+                ${attrs}
+            >
         `;
     }
 
@@ -338,8 +397,8 @@
             return `
                 <h2 class="data-equipment-title-pair">
                     <span class="data-equipment-title-team">${api.escapeHtml(teamName)}</span>
-                    ${roomName ? `<span class="data-equipment-title-room">(${api.escapeHtml(roomName)})</span>` : ''}
-                    <span class="data-equipment-title-name">${api.escapeHtml(equipmentName)}</span>
+                    ${renderTitleInput('room', roomName, '실', 'data-equipment-title-room', '실', `list="${api.escapeHtml(CARD_ROOM_DATALIST_ID)}"`)}
+                    ${renderTitleInput('name', equipmentName, '설비명', 'data-equipment-title-name', '설비명')}
                     ${renderStatusToggle(status)}
                 </h2>
             `;
@@ -371,6 +430,9 @@
                 <div class="data-equipment-actions data-equipment-view-actions">
                     <button type="button" class="${isAuthoring ? '' : 'active'}" data-equipment-view-action="board">설비 현황</button>
                     <button type="button" class="${isAuthoring ? 'active' : ''}" data-equipment-view-action="card">기록 작성</button>
+                    <button type="button" class="data-equipment-save-action" data-equipment-save-current>
+                        <i class="fas fa-save"></i><span>${api.escapeHtml('\uC800\uC7A5')}</span>
+                    </button>
                     ${isCard ? '<button type="button" data-equipment-history-print><i class="fas fa-print"></i><span>PDF 출력</span></button>' : ''}
                     ${items.length ? `
                         <select data-equipment-select aria-label="설비 선택">
@@ -391,7 +453,7 @@
         return `
             <section class="data-equipment-page">
                 ${renderTopbar(category, items, selected, state, groups)}
-                ${isCard ? renderHistoryCard(category, data, state) : isCardStart ? renderCardStarter(state) : renderBoard(groups, items)}
+                ${isCard ? renderHistoryCard(category, data, state) : isCardStart ? renderCardStarter(state, data) : renderBoard(groups, items)}
             </section>
         `;
     }
@@ -502,6 +564,13 @@
         syncMirroredFields(root, field, value, input);
     }
 
+    function syncDraftFromForm(root, state) {
+        if (!state.draft) return;
+        root.querySelectorAll('[data-equipment-field]').forEach((input) => {
+            updateDraftFromInput(root, state, { target: input });
+        });
+    }
+
     function addDraftRow(state, section) {
         if (!state.draft) state.draft = api.createDraft();
         const detailGroupRows = getDraftDetailGroupRows(state, section);
@@ -518,10 +587,6 @@
             return;
         }
         state.draft.maintenanceHistory.push(api.createBlankMaintenanceRow());
-    }
-
-    function createEquipmentSpecBlockId() {
-        return `spec-block-${Date.now().toString(36)}-${Math.round(Math.random() * 1e6).toString(36)}`;
     }
 
     function ensureOpenEquipmentSpecBlocks(state) {
@@ -546,10 +611,10 @@
             addDraftRow(state, section);
             return '';
         }
-        const blockId = createEquipmentSpecBlockId();
-        const category = 'other';
-        detailGroupRows.push(api.createBlankDetailRow(category, blockId));
-        return `${category}:${blockId}`;
+        detailGroupRows.push(api.createBlankDetailRow());
+        const blockSize = Number(api.EQUIPMENT_SPEC_BLOCK_SIZE) || 8;
+        const blockIndex = Math.max(0, Math.floor((detailGroupRows.length - 1) / blockSize));
+        return `all:auto-${blockIndex}`;
     }
 
     function addDraftRowToBlock(state, section, index, category, blockId) {
@@ -608,6 +673,9 @@
             if (!Number.isInteger(index) || index < 0 || index >= detailGroupRows.length) return false;
             if (section === 'equipmentSpecs') {
                 const categoryKey = api.normalizeText(category) || api.getEquipmentSpecCategory?.(detailGroupRows[index]) || 'other';
+                if (categoryKey === 'all') {
+                    return swapDraftRows(detailGroupRows, index, index + step);
+                }
                 const categoryRows = detailGroupRows
                     .map((row, rowIndex) => ({ rowIndex, category: api.getEquipmentSpecCategory?.(row) || 'other' }))
                     .filter((entry) => entry.category === categoryKey);
@@ -775,11 +843,11 @@
         if (!item || !Number.isInteger(item.sourceIndex)) return false;
 
         const teamKey = item.teamDataKey || api.normalizeEquipmentHistoryTeamName?.(item.team) || item.team;
-        const itemGroup = api.normalizeText(item.group || '');
+        const itemRoom = api.normalizeText(item.room || '');
         const teamItems = items.filter((entry) => {
             const entryTeamKey = entry.teamDataKey || api.normalizeEquipmentHistoryTeamName?.(entry.team) || entry.team;
             return entryTeamKey === teamKey
-                && api.normalizeText(entry.group || '') === itemGroup;
+                && api.normalizeText(entry.room || '') === itemRoom;
         });
         const teamIndex = teamItems.findIndex((entry) => entry.id === item.id);
         const swapItem = teamItems[teamIndex + moveDirection];
@@ -805,6 +873,70 @@
             console.warn('[kpi] equipment history auto save failed', error);
             browser.alert(getEquipmentHistorySaveFailureMessage(error));
         }
+    }
+
+    async function saveCurrentEquipmentHistoryView(root, data, state, redraw, options = {}) {
+        const previousView = state.view;
+        try {
+            if (state.view === 'card-start') {
+                syncStarterFromForm(root, state);
+                if (!createDraftFromStarter(state)) return false;
+            } else if (state.view !== 'card') {
+                const items = api.normalizeEquipmentItems(data);
+                const selected = api.getSelectedEquipment(items, state.selectedId) || items[0];
+                if (!selected) {
+                    startNewCard(state);
+                    redraw();
+                    return false;
+                }
+                state.selectedId = selected.id;
+                ensureDraft(data, state);
+            }
+
+            syncDraftFromForm(root, state);
+            const saved = await saveDraft(data, state, {
+                message: options.message || '\uC124\uBE44 \uC774\uB825\uCE74\uB4DC\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.',
+            });
+            if (saved && previousView === 'board') {
+                state.view = 'board';
+                state.draft = null;
+            }
+            if (saved) redraw();
+            return saved;
+        } catch (error) {
+            console.warn('[kpi] equipment history save failed', error);
+            browser.alert(getEquipmentHistorySaveFailureMessage(error));
+            return false;
+        }
+    }
+
+    function isEquipmentHistorySaveShortcut(event) {
+        const key = String(event?.key || '').toLowerCase();
+        return key === 's' && (event.ctrlKey || event.metaKey) && !event.altKey;
+    }
+
+    function bindSaveShortcut(root, state, data, redraw) {
+        if (typeof state.disposeSaveShortcut === 'function') {
+            state.disposeSaveShortcut();
+            state.disposeSaveShortcut = null;
+        }
+
+        const keyboardRoot = root?.ownerDocument || (typeof document !== 'undefined' ? document : null);
+        if (!keyboardRoot || typeof keyboardRoot.addEventListener !== 'function') return;
+
+        const handleKeydown = async (event) => {
+            if (root?.isConnected === false || !root?.querySelector?.('.data-equipment-page')) {
+                state.disposeSaveShortcut?.();
+                return;
+            }
+            if (!isEquipmentHistorySaveShortcut(event)) return;
+
+            event.preventDefault?.();
+            await saveCurrentEquipmentHistoryView(root, data, state, redraw);
+        };
+
+        keyboardRoot.addEventListener('keydown', handleKeydown);
+        state.disposeSaveShortcut = () => keyboardRoot.removeEventListener?.('keydown', handleKeydown);
     }
 
     function getDraftPhotoSnapshot(draft) {
@@ -962,6 +1094,10 @@
             });
         });
 
+        root.querySelector('[data-equipment-save-current]')?.addEventListener('click', async () => {
+            await saveCurrentEquipmentHistoryView(root, data, state, redraw);
+        });
+
         root.querySelectorAll('[data-equipment-open-card]').forEach((button) => {
             button.addEventListener('click', () => {
                 state.selectedId = button.dataset.equipmentOpenCard || state.selectedId;
@@ -1030,17 +1166,15 @@
 
         root.querySelectorAll('[data-equipment-start-field]').forEach((input) => {
             input.addEventListener('input', (event) => updateStarterFromInput(state, event));
-            input.addEventListener('change', (event) => updateStarterFromInput(state, event));
+            input.addEventListener('change', (event) => {
+                updateStarterFromInput(state, event);
+                if (event.target.dataset.equipmentStartField === 'team') redraw();
+            });
         });
 
         root.querySelector('[data-equipment-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
-            try {
-                if (await saveDraft(data, state)) redraw();
-            } catch (error) {
-                console.warn('[kpi] equipment history save failed', error);
-                browser.alert(getEquipmentHistorySaveFailureMessage(error));
-            }
+            await saveCurrentEquipmentHistoryView(root, data, state, redraw);
         });
 
         root.querySelector('[data-equipment-clear-form]')?.addEventListener('click', () => {
@@ -1180,6 +1314,7 @@
         });
 
         bindPhotoPreview(root, state, data, redraw);
+        bindSaveShortcut(root, state, data, redraw);
     }
 
     function render(category, context = {}, data = {}) {

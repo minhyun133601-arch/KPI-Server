@@ -147,10 +147,10 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
 
 test('kpi html loads equipment-history modules before the data runtime bridge', () => {
   const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=3');
-  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=13');
-  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=21');
+  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=15');
+  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=24');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=2');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=26');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=34');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=3');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -160,7 +160,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(storageIndex > formIndex, 'equipment-history storage loader must load after the form');
   assert.ok(renderIndex > storageIndex, 'equipment-history render loader must load after storage');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
-  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=029') >= 0, 'data css cache version is stale');
+  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=036') >= 0, 'data css cache version is stale');
   assert.ok(bootManifestSource.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js') >= 0);
 });
 
@@ -209,6 +209,7 @@ test('equipment-history renderer shows the empty board state and supports author
       { id: 'eq-team1-b', name: '1팀 B 혼합기', team: '1팀 1파트', room: 'B실', process: '혼합', status: '비가동중' },
       { id: 'eq-team1-a', name: '1팀 A 혼합기', team: '1팀 1파트', room: 'A실', process: '혼합', status: '가동중' },
       { id: 'eq-team1-c', name: '1팀 C 혼합기', team: '1팀 1파트', room: 'C실', process: '혼합', status: '가동중' },
+      { id: 'eq-team1-no-room', name: '1팀 실 미입력 설비', team: '1팀 1파트', process: '점검', status: '가동중' },
       { id: 'eq-team4', name: '폐수 펌프', team: '유산', room: '처리장', process: '폐수', status: '정비중' },
     ],
   };
@@ -230,6 +231,19 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /data-equipment-board-card is-running/);
   assert.match(container.innerHTML, /data-equipment-board-card is-stop/);
   assert.match(container.innerHTML, /data-equipment-board-card is-check/);
+  assert.match(container.innerHTML, /data-equipment-board-room-title/);
+  assert.match(container.innerHTML, /data-equipment-board-room-icon/);
+  assert.doesNotMatch(container.innerHTML, /\uC2E4 \uAD6C\uBD84/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-board-room-badge/);
+  assert.match(container.innerHTML, /<span>B\uC2E4<\/span>/);
+  assert.match(container.innerHTML, /<span>A\uC2E4<\/span>/);
+  assert.match(container.innerHTML, /<span>C\uC2E4<\/span>/);
+  assert.doesNotMatch(container.innerHTML, /<h3>\uD63C\uD569<\/h3>/);
+  assert.doesNotMatch(container.innerHTML, /<h3>\uC2E4 \uBBF8\uC9C0\uC815<\/h3>/);
+  assert.doesNotMatch(container.innerHTML, /<h3><\/h3>/);
+  const groupedByRoom = api.groupEquipmentItems(api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card));
+  const team1BoardGroup = groupedByRoom.find((group) => group.teamDataKey === 'work_team_calendar_team1_part1');
+  assert.equal(JSON.stringify(team1BoardGroup.sections.map((section) => section.title)), JSON.stringify(['B\uC2E4', 'A\uC2E4', 'C\uC2E4', '']));
   assert.match(container.innerHTML, /data-equipment-board-status-button is-running"[^>]*data-equipment-cycle-status-card="eq-team1-a"[^>]*>가동중/);
   assert.match(container.innerHTML, /data-equipment-board-status-button is-stop"[^>]*data-equipment-cycle-status-card="eq-team1-b"[^>]*>비가동중/);
   assert.match(container.innerHTML, /data-equipment-board-status-button is-check"[^>]*data-equipment-cycle-status-card="eq-team4"[^>]*>정비중/);
@@ -249,11 +263,11 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-c"[^>]*data-equipment-move-direction="-1"/);
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-c"[^>]*data-equipment-move-direction="1"[^>]*disabled/);
   assert.match(container.innerHTML, /data-equipment-board-open-button/);
-  assert.match(container.innerHTML, /<optgroup label="1팀 1파트 \(3\)">/);
+  assert.match(container.innerHTML, /<optgroup label="1팀 1파트 \(4\)">/);
   assert.match(container.innerHTML, /<optgroup label="2팀 \(1\)">/);
   assert.match(container.innerHTML, /<optgroup label="공무환경팀 \(1\)">/);
-  assert.ok(container.innerHTML.indexOf('B실 / 혼합') < container.innerHTML.indexOf('A실 / 혼합'));
-  assert.ok(container.innerHTML.indexOf('A실 / 혼합') < container.innerHTML.indexOf('C실 / 혼합'));
+  assert.doesNotMatch(container.innerHTML, /B실 \/ 혼합/);
+  assert.match(container.innerHTML, /<p>혼합<\/p>/);
   assert.ok(container.innerHTML.indexOf('B실 / 1팀 B 혼합기') < container.innerHTML.indexOf('A실 / 1팀 A 혼합기'));
   assert.ok(container.innerHTML.indexOf('A실 / 1팀 A 혼합기') < container.innerHTML.indexOf('C실 / 1팀 C 혼합기'));
   assert.equal(api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card)[1].sourceIndex, 1);
@@ -280,6 +294,8 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.doesNotMatch(basicFieldHtml, /담당/);
 
   const photoInfoHtml = api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft(), 'data-equipment-edit-grid data-equipment-photo-info-grid');
+  assert.match(photoInfoHtml, /data-equipment-field="name"/);
+  assert.match(photoInfoHtml, /data-equipment-field="room"/);
   assert.match(photoInfoHtml, /공정/);
   assert.match(photoInfoHtml, /가동률/);
   assert.match(photoInfoHtml, /기종/);
@@ -305,9 +321,14 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft({ manufacturerLabel: '제조사 주소', manufacturer: '서울시' }), 'data-equipment-edit-grid data-equipment-photo-info-grid'), /class="data-equipment-field-label-input"[^>]*value="제조사 주소"[^>]*data-equipment-field="manufacturerLabel"/);
   assert.match(api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft({ ownerLabel: 'A\/S 연락처', owner: '010-1234-5678' }), 'data-equipment-edit-grid data-equipment-photo-info-grid'), /class="data-equipment-field-label-input"[^>]*value="A\/S 연락처"[^>]*data-equipment-field="ownerLabel"/);
   assert.match(api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft({ owner: 'ABC정비\n010-1234-5678' }), 'data-equipment-edit-grid data-equipment-photo-info-grid'), /ABC정비 \/ 010-1234-5678/);
-  assert.doesNotMatch(photoInfoHtml, /설비명/);
+  assert.match(photoInfoHtml, /설비명/);
+  assert.match(photoInfoHtml, /실/);
   assert.doesNotMatch(photoInfoHtml, /관리팀/);
   assert.doesNotMatch(photoInfoHtml, /data-equipment-field="team"/);
+  const roomListPhotoInfoHtml = api.renderFieldGrid(api.PHOTO_INFO_FIELDS, api.createDraft(), 'data-equipment-edit-grid data-equipment-photo-info-grid', {
+    fieldAttrs: { room: 'list="room-options"' },
+  });
+  assert.match(roomListPhotoInfoHtml, /data-equipment-field="room"[^>]*list="room-options"/);
 
   const detailItemsHtml = api.renderDetailItems([]);
   assert.match(detailItemsHtml, /data-equipment-detail-items-grid/);
@@ -328,10 +349,11 @@ test('equipment-history renderer shows the empty board state and supports author
     { label: '\uD604\uC7A5 \uBA54\uBAA8', value: '\uD5A5\uD6C4 \uD655\uC778' },
   ], 'equipmentSpecs');
   assert.match(categorizedSpecHtml, /data-equipment-detail-items-grid is-categorized/);
-  assert.match(categorizedSpecHtml, /\uAE30\uBCF8 \uC815\uBCF4/);
-  assert.match(categorizedSpecHtml, /\uC8FC\uC694 \uC2A4\uD399/);
-  assert.match(categorizedSpecHtml, /\uC810\uAC80\u00B7\uBB38\uC11C/);
-  assert.match(categorizedSpecHtml, /\uAE30\uD0C0/);
+  assert.match(categorizedSpecHtml, /data-equipment-detail-category="all"/);
+  assert.doesNotMatch(categorizedSpecHtml, /\uAE30\uBCF8 \uC815\uBCF4/);
+  assert.doesNotMatch(categorizedSpecHtml, /\uC8FC\uC694 \uC2A4\uD399/);
+  assert.doesNotMatch(categorizedSpecHtml, /\uC810\uAC80\u00B7\uBB38\uC11C/);
+  assert.doesNotMatch(categorizedSpecHtml, /\uAE30\uD0C0/);
   assert.doesNotMatch(categorizedSpecHtml, /\uC131\uB2A5\u00B7\uC804\uC6D0/);
   assert.doesNotMatch(categorizedSpecHtml, /\uCD95\u00B7\uC81C\uC5B4/);
   assert.match(categorizedSpecHtml, /data-equipment-detail-category-grid/);
@@ -343,7 +365,7 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(categorizedSpecHtml, /data-equipment-row-index="5"/);
   const openSpecHtml = api.renderDetailItems([
     { label: '\uC804\uC6D0', value: '200 V' },
-  ], 'equipmentSpecs', { openBlocks: { 'spec:auto-0': true } });
+  ], 'equipmentSpecs', { openBlocks: { 'all:auto-0': true } });
   assert.match(openSpecHtml, /data-equipment-spec-block is-managing/);
   assert.match(openSpecHtml, /data-equipment-spec-block-actions" aria-hidden="false"/);
   assert.match(openSpecHtml, /data-equipment-spec-row-actions" aria-hidden="false"/);
@@ -354,8 +376,16 @@ test('equipment-history renderer shows the empty board state and supports author
     { label: '\uC18D\uB3C4', value: '30 rpm' },
     { label: '\uC0AC\uC774\uC988', value: '1000 mm' },
   ], 'equipmentSpecs');
-  assert.equal((denseSpecHtml.match(/data-equipment-spec-block-index/g) || []).length, 2);
+  assert.equal((denseSpecHtml.match(/data-equipment-spec-block-index/g) || []).length, 1);
   assert.equal((denseSpecHtml.match(/data-equipment-spec-block-row/g) || []).length, 5);
+  const twelveSpecHtml = api.renderDetailItems(Array.from({ length: 12 }, (_, index) => ({
+    label: `L${index + 1}`,
+    value: `V${index + 1}`,
+  })), 'equipmentSpecs');
+  assert.equal((twelveSpecHtml.match(/data-equipment-spec-block-index/g) || []).length, 2);
+  assert.equal((twelveSpecHtml.match(/data-equipment-spec-block-row/g) || []).length, 12);
+  assert.ok(twelveSpecHtml.indexOf('data-equipment-row-index="7"') < twelveSpecHtml.indexOf('data-equipment-spec-block-index="1"'));
+  assert.ok(twelveSpecHtml.indexOf('data-equipment-spec-block-index="1"') < twelveSpecHtml.indexOf('data-equipment-row-index="8"'));
   const groupedDetailItemsHtml = api.renderDetailGroups(api.createDraft().detailGroups);
   assert.match(groupedDetailItemsHtml, /data-equipment-detail-groups/);
   assert.match(groupedDetailItemsHtml, /data-equipment-detail-group="equipmentSpecs"/);
@@ -373,13 +403,48 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /function renderHistoryCard\(category, data, state\) \{[\s\S]+const header = data\.header \|\| \{\}/);
   assert.match(renderSource, /data-equipment-photo-info-card/);
   assert.match(renderSource, /api\.renderFieldGrid\(api\.PHOTO_INFO_FIELDS/);
+  assert.match(renderSource, /function getTeamRoomOptions\(data, team\)/);
+  assert.match(renderSource, /data-equipment-room-options-start/);
+  assert.match(renderSource, /data-equipment-room-options-card/);
+  assert.match(renderSource, /fieldAttrs: \{ room: `list="\$\{api\.escapeHtml\(CARD_ROOM_DATALIST_ID\)\}"` \}/);
+  assert.match(renderSource, /event\.target\.dataset\.equipmentStartField === 'team'[\s\S]+redraw\(\)/);
+  assert.doesNotMatch(renderSource, /<button type="submit" class="data-equipment-primary-action">[\s\S]*?<i class="fas fa-save"/);
+  assert.doesNotMatch(renderSource, /작성 후 저장을 누르면 설비 현황 보드에 즉시 반영됩니다/);
+  assert.match(renderSource, /data-equipment-save-current/);
+  assert.match(renderSource, /saveCurrentEquipmentHistoryView\(root, data, state, redraw/);
+  assert.match(renderSource, /function bindSaveShortcut/);
+  assert.match(renderSource, /root\?\.querySelector\?\.\('\.data-equipment-page'\)/);
+  assert.doesNotMatch(renderSource, /state\.view !== 'card' \|\| !isEquipmentHistorySaveShortcut/);
+  assert.match(renderSource, /<p>\$\{api\.escapeHtml\(processLabel\)\}<\/p>/);
+  assert.doesNotMatch(renderSource, /locationLabel/);
+  assert.doesNotMatch(renderSource, /관리 구분 미지정/);
+  assert.match(renderSource, /data-equipment-title-input/);
+  assert.match(dataCssSource, /data-equipment-title-input/);
+  assert.match(dataCssSource, /data-equipment-save-action/);
+  assert.match(dataCssSource, /data-equipment-bottom-grid[\s\S]+grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(dataCssSource, /data-equipment-table-scroll[\s\S]+border:\s*1px solid #d8e5f2/);
+  assert.match(dataCssSource, /data-equipment-table-scroll[\s\S]+background:\s*#f8fbff/);
+  assert.match(dataCssSource, /data-equipment-edit-table[\s\S]+border-collapse:\s*separate/);
+  assert.match(dataCssSource, /data-equipment-edit-table[\s\S]+border-spacing:\s*0 7px/);
+  assert.match(dataCssSource, /data-equipment-document-picker[\s\S]+min-height:\s*34px/);
   assert.match(dataCssSource, /grid-template-columns:\s*minmax\(0,\s*3fr\)\s*minmax\(260px,\s*1fr\)/);
   assert.match(dataCssSource, /data-equipment-board-team-title/);
+  assert.match(dataCssSource, /data-equipment-board-section[\s\S]+display:\s*grid/);
+  assert.match(dataCssSource, /data-equipment-board-section[\s\S]+gap:\s*20px/);
+  assert.match(dataCssSource, /data-equipment-board-section[\s\S]+margin-top:\s*24px/);
+  assert.match(dataCssSource, /data-equipment-board-section[\s\S]+padding:\s*16px/);
+  assert.match(dataCssSource, /data-equipment-board-section h3[\s\S]+border-bottom:\s*1px solid/);
+  assert.match(dataCssSource, /data-equipment-board-room-icon[\s\S]+width:\s*26px/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-board-room-badge/);
+  assert.match(dataCssSource, /data-equipment-board-card[\s\S]+margin-top:\s*0/);
   assert.match(dataCssSource, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(260px,\s*1fr\)\)/);
   assert.match(dataCssSource, /data-equipment-detail-groups[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(dataCssSource, /data-equipment-detail-items-grid[\s\S]+grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(dataCssSource, /data-equipment-detail-items-grid\.is-categorized[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
-  assert.match(dataCssSource, /data-equipment-detail-category-grid[\s\S]+grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(dataCssSource, /data-equipment-detail-category-grid[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(dataCssSource, /data-equipment-spec-block-items[\s\S]+grid-auto-flow:\s*column/);
+  assert.match(dataCssSource, /data-equipment-spec-block-items[\s\S]+grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(dataCssSource, /data-equipment-spec-block-items[\s\S]+grid-template-rows:\s*repeat\(4,\s*minmax\(0,\s*auto\)\)/);
   assert.match(dataCssSource, /data-equipment-spec-block[\s\S]+border:\s*1px solid #d8e5f2/);
   assert.match(dataCssSource, /data-equipment-spec-block-actions[\s\S]+display:\s*none/);
   assert.match(dataCssSource, /data-equipment-spec-block\.is-managing\s+\.data-equipment-spec-block-actions[\s\S]+display:\s*inline-flex/);

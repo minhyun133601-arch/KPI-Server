@@ -15,6 +15,8 @@
     const DEFAULT_OWNER_LABEL = '\uB2F4\uB2F9 \uC5C5\uCCB4';
 
     const PHOTO_INFO_FIELDS = [
+        { key: 'name', label: '\uC124\uBE44\uBA85', placeholder: '\uC608: \uBC18\uC8FD\uAE30' },
+        { key: 'room', label: '\uC2E4', placeholder: '\uC608: \uC81C\uD658\uC2E4' },
         { key: 'process', label: '\uACF5\uC815', placeholder: '\uC608: \uD63C\uD569 \uACF5\uC815' },
         { key: 'rate', label: '\uAC00\uB3D9\uB960', placeholder: '\uC22B\uC790\uB9CC \uC785\uB825' },
         { key: 'modelName', label: '\uAE30\uC885', placeholder: '\uC608: FUJI-ACE EC101' },
@@ -41,7 +43,7 @@
         { key: 'maintenance', title: '\uC810\uAC80\u00B7\uBB38\uC11C' },
         { key: 'other', title: '\uAE30\uD0C0' },
     ]);
-    const EQUIPMENT_SPEC_BLOCK_SIZE = 4;
+    const EQUIPMENT_SPEC_BLOCK_SIZE = 8;
     const EQUIPMENT_SPEC_CATEGORY_HINT_KEY = '__equipmentSpecCategory';
     const EQUIPMENT_SPEC_BLOCK_ID_KEY = '__equipmentSpecBlockId';
 
@@ -483,13 +485,24 @@
         return `<input type="text" class="data-equipment-field-label-input" value="${api.escapeHtml(value)}" placeholder="${api.escapeHtml(field.label)}" data-equipment-field="${api.escapeHtml(field.editableLabelKey)}" aria-label="${api.escapeHtml(`${field.label} 제목`)}">`;
     }
 
-    function renderFieldGrid(fields, draft, className) {
+    function getFieldControlAttrs(field, draft, options) {
+        const attrs = options?.fieldAttrs;
+        if (typeof attrs === 'function') {
+            return attrs(field, draft) || '';
+        }
+        if (attrs && typeof attrs === 'object') {
+            return attrs[field.key] || '';
+        }
+        return '';
+    }
+
+    function renderFieldGrid(fields, draft, className, options = {}) {
         return `
             <div class="${className}">
                 ${fields.map((field) => `
                     <div data-equipment-field-wrap="${api.escapeHtml(field.key)}">
                         ${renderFieldLabel(field, draft)}
-                        ${renderFieldControl(field, draft[field.key] || '')}
+                        ${renderFieldControl(field, draft[field.key] || '', getFieldControlAttrs(field, draft, options))}
                     </div>
                 `).join('')}
             </div>
@@ -514,47 +527,26 @@
         return 'other';
     }
 
-    function getEquipmentSpecBlockId(row) {
-        return api.normalizeText(row?.[EQUIPMENT_SPEC_BLOCK_ID_KEY]);
-    }
-
     function groupEquipmentSpecRows(rows, section) {
         const source = api.asList(rows);
         const list = source.length ? source : [createBlankDetailRow()];
         const entries = list.map((row, rowIndex) => ({
             row,
             rowIndex,
-            category: section === 'equipmentSpecs' ? getEquipmentSpecCategory(row) : 'other',
+            category: section === 'equipmentSpecs' ? 'all' : 'other',
         }));
         if (section !== 'equipmentSpecs') {
             return [{ key: 'other', title: '', entries }];
         }
-        return EQUIPMENT_SPEC_CATEGORY_ORDER.map((category) => ({
-            ...category,
-            entries: entries.filter((entry) => entry.category === category.key),
-        })).filter((category) => category.entries.length);
+        return [{ key: 'all', title: '', entries }];
     }
 
     function chunkEquipmentSpecEntries(entries) {
+        const list = api.asList(entries);
         const chunks = [];
-        let current = [];
-        let currentBlockId = '';
-        const flush = () => {
-            if (!current.length) return;
-            chunks.push({ entries: current, blockId: currentBlockId });
-            current = [];
-            currentBlockId = '';
-        };
-
-        api.asList(entries).forEach((entry) => {
-            const blockId = getEquipmentSpecBlockId(entry?.row);
-            if (current.length >= EQUIPMENT_SPEC_BLOCK_SIZE || (current.length && currentBlockId !== blockId)) {
-                flush();
-            }
-            currentBlockId = blockId;
-            current.push(entry);
-        });
-        flush();
+        for (let index = 0; index < list.length; index += EQUIPMENT_SPEC_BLOCK_SIZE) {
+            chunks.push({ entries: list.slice(index, index + EQUIPMENT_SPEC_BLOCK_SIZE), blockId: '' });
+        }
         return chunks;
     }
 
@@ -657,7 +649,7 @@
         }));
         return `
             <section class="data-equipment-detail-category" data-equipment-detail-category="${api.escapeHtml(group.key)}">
-                <h4>${api.escapeHtml(group.title)}</h4>
+                ${group.title ? `<h4>${api.escapeHtml(group.title)}</h4>` : ''}
                 <div class="data-equipment-detail-category-grid">
                     ${chunkEquipmentSpecEntries(entries).map((block, blockIndex) => renderEquipmentSpecBlock(block, section, blockIndex, group.key, options)).join('')}
                 </div>
@@ -687,7 +679,7 @@
                     <section class="data-equipment-detail-group" data-equipment-detail-group="${api.escapeHtml(groupKey)}">
                         <div class="data-equipment-detail-group-head">
                             <button type="button" class="data-equipment-add-block" data-equipment-add-block="${api.escapeHtml(groupKey)}">
-                                <i class="fas fa-plus"></i><span>${api.escapeHtml('\uBC15\uC2A4 \uCD94\uAC00')}</span>
+                                <i class="fas fa-plus"></i><span>${api.escapeHtml('\uD589 \uCD94\uAC00')}</span>
                             </button>
                         </div>
                         ${renderDetailItems(groups[groupKey], groupKey, options)}

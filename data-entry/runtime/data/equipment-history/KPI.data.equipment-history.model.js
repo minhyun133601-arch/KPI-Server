@@ -264,7 +264,7 @@
 
         asList(items).forEach((item) => {
             const teamKey = normalizeEquipmentHistoryTeamName(item.team || item.teamDataKey) || '미분류 설비';
-            const sectionKey = item.group || '공정 미지정';
+            const sectionKey = item.room || '';
             if (!groups.has(teamKey)) groups.set(teamKey, new Map());
             const sections = groups.get(teamKey);
             if (!sections.has(sectionKey)) sections.set(sectionKey, []);
