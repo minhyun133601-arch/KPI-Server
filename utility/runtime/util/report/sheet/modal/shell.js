@@ -24,7 +24,8 @@
     const utilReportSheetOptions = runtimeAdapter.getApi('KPIUtilReportSheetOptions') || {};
     const {
         UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS = [],
-        UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS = []
+        UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS = [],
+        UTIL_WASTE_ANALYSIS_SITE_OPTIONS = []
     } = utilReportSheetOptions;
 
     const runtime = {
@@ -46,6 +47,7 @@
         setUtilSheetAnalysisDisplayMode: null,
         applyUtilSheetCompareSelection: null,
         applyUtilGasAnalysisCategorySelection: null,
+        applyUtilWasteAnalysisSiteSelection: null,
         applyUtilElectricMeterViewSelection: null,
         setUtilGasAnalysisChartFullscreen: null,
         resolveUtilSheetAnalysisLabelToggleContext: null,
@@ -65,8 +67,10 @@
         buildUtilElectricMeterComparisonSectionHtml: null,
         buildUtilGasAnalysisModel: null,
         buildUtilElectricAnalysisModel: null,
+        buildUtilWasteAnalysisModel: null,
         buildUtilGasAnalysisBodyHtmlV2: null,
         buildUtilElectricAnalysisBodyHtmlV2: null,
+        buildUtilWasteAnalysisBodyHtmlV2: null,
         resolveUtilSheetMemoItems: null,
         buildUtilSheetMemoSectionHtml: null,
         isUtilSheetCustomAnalysisDataset: null,
@@ -111,7 +115,9 @@
         if (typeof runtime.resolveUtilSheetReportDatasetKey === 'function') {
             return runtime.resolveUtilSheetReportDatasetKey(sheetType, datasetKey);
         }
-        return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+        const normalizedKey = String(datasetKey || '').trim();
+        if (normalizedKey === 'electric' || normalizedKey === 'waste') return normalizedKey;
+        return 'gas';
     }
 
     function getManualMemoKey(sheetType = 'meter', datasetKey = 'gas') {
@@ -156,7 +162,10 @@
         if (typeof runtime.getUtilSheetAlternateDatasetKey === 'function') {
             return runtime.getUtilSheetAlternateDatasetKey(datasetKey, sheetType);
         }
-        return String(datasetKey || '').trim() === 'electric' ? 'gas' : 'electric';
+        const normalizedKey = resolveDatasetKey(sheetType, datasetKey);
+        if (normalizedKey === 'gas') return 'electric';
+        if (normalizedKey === 'electric') return 'waste';
+        return 'gas';
     }
 
     function isCustomAnalysisDataset(datasetKey = '') {
@@ -283,6 +292,8 @@
             .util-sheet-meter-extract-page .fa-fire-flame-curved::before,
             .util-sheet-meter-extract-page .fa-fire-burner::before { content: "△"; }
             .util-sheet-meter-extract-page .fa-bolt::before { content: "ϟ"; }
+            .util-sheet-meter-extract-page .fa-water::before,
+            .util-sheet-meter-extract-page .fa-droplet::before { content: "≋"; }
             .util-sheet-meter-extract-page .fa-coins::before,
             .util-sheet-meter-extract-page .fa-won-sign::before { content: "₩"; }
             .util-sheet-meter-extract-page .fa-industry::before { content: "▦"; }
@@ -496,7 +507,9 @@
         const normalizedDatasetKey = resolveDatasetKey('analysis', datasetKey);
         const sourceOptions = normalizedDatasetKey === 'electric'
             ? UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS
-            : UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS;
+            : (normalizedDatasetKey === 'waste'
+                ? UTIL_WASTE_ANALYSIS_SITE_OPTIONS
+                : UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS);
         const options = (Array.isArray(sourceOptions) ? sourceOptions : [])
             .map(option => ({
                 key: String(option?.key || '').trim(),
@@ -507,17 +520,22 @@
 
         const fallbackKey = normalizedDatasetKey === 'electric'
             ? String(model?.teamOption?.key || '').trim()
-            : String(model?.categoryOption?.key || '').trim();
+            : (normalizedDatasetKey === 'waste'
+                ? String(model?.siteOption?.key || '').trim()
+                : String(model?.categoryOption?.key || '').trim());
         const fallbackLabel = normalizedDatasetKey === 'electric'
             ? String(model?.teamOption?.label || fallbackKey || '').trim()
-            : String(model?.categoryOption?.selectLabel || model?.categoryOption?.label || fallbackKey || '').trim();
+            : (normalizedDatasetKey === 'waste'
+                ? String(model?.siteOption?.selectLabel || model?.siteOption?.label || fallbackKey || '').trim()
+                : String(model?.categoryOption?.selectLabel || model?.categoryOption?.label || fallbackKey || '').trim());
         return fallbackKey ? [{ key: fallbackKey, label: fallbackLabel || fallbackKey }] : [];
     }
 
     function getAnalysisModelScopeKey(datasetKey = 'gas', model = {}) {
-        return resolveDatasetKey('analysis', datasetKey) === 'electric'
-            ? String(model?.teamOption?.key || '').trim()
-            : String(model?.categoryOption?.key || '').trim();
+        const normalizedDatasetKey = resolveDatasetKey('analysis', datasetKey);
+        if (normalizedDatasetKey === 'electric') return String(model?.teamOption?.key || '').trim();
+        if (normalizedDatasetKey === 'waste') return String(model?.siteOption?.key || '').trim();
+        return String(model?.categoryOption?.key || '').trim();
     }
 
     function getAnalysisModelMonthEdge(model = {}, edge = 'from') {
@@ -538,6 +556,11 @@
                 from: String(UtilSheetAnalysisState.electric?.from || '').trim(),
                 to: String(UtilSheetAnalysisState.electric?.to || '').trim(),
                 teamKey: String(UtilSheetAnalysisState.electric?.teamKey || '').trim()
+            },
+            waste: {
+                from: String(UtilSheetAnalysisState.waste?.from || '').trim(),
+                to: String(UtilSheetAnalysisState.waste?.to || '').trim(),
+                siteKey: String(UtilSheetAnalysisState.waste?.siteKey || '').trim()
             }
         };
     }
@@ -554,6 +577,11 @@
             UtilSheetAnalysisState.electric.to = snapshot.electric?.to || '';
             UtilSheetAnalysisState.electric.teamKey = snapshot.electric?.teamKey || UtilSheetAnalysisState.electric.teamKey;
         }
+        if (UtilSheetAnalysisState.waste) {
+            UtilSheetAnalysisState.waste.from = snapshot.waste?.from || '';
+            UtilSheetAnalysisState.waste.to = snapshot.waste?.to || '';
+            UtilSheetAnalysisState.waste.siteKey = snapshot.waste?.siteKey || UtilSheetAnalysisState.waste.siteKey;
+        }
     }
 
     function setAnalysisStateForExtractModel(datasetKey = 'gas', scopeKey = '', fromKey = '', toKey = '') {
@@ -564,6 +592,8 @@
         state.to = String(toKey || '').trim();
         if (normalizedDatasetKey === 'electric') {
             state.teamKey = String(scopeKey || state.teamKey || '').trim();
+        } else if (normalizedDatasetKey === 'waste') {
+            state.siteKey = String(scopeKey || state.siteKey || '').trim();
         } else {
             state.categoryKey = String(scopeKey || state.categoryKey || '').trim();
         }
@@ -576,9 +606,13 @@
             ? (typeof runtime.buildUtilElectricAnalysisBodyHtmlV2 === 'function'
                 ? runtime.buildUtilElectricAnalysisBodyHtmlV2(model, {}, modal)
                 : '')
-            : (typeof runtime.buildUtilGasAnalysisBodyHtmlV2 === 'function'
-                ? runtime.buildUtilGasAnalysisBodyHtmlV2(model, {}, modal)
-                : '');
+            : (normalizedDatasetKey === 'waste'
+                ? (typeof runtime.buildUtilWasteAnalysisBodyHtmlV2 === 'function'
+                    ? runtime.buildUtilWasteAnalysisBodyHtmlV2(model, {}, modal)
+                    : '')
+                : (typeof runtime.buildUtilGasAnalysisBodyHtmlV2 === 'function'
+                    ? runtime.buildUtilGasAnalysisBodyHtmlV2(model, {}, modal)
+                    : ''));
         const memoItems = typeof runtime.resolveUtilSheetMemoItems === 'function'
             ? runtime.resolveUtilSheetMemoItems(
                 'analysis',
@@ -617,13 +651,20 @@
                 const scopeKey = String(option?.key || '').trim();
                 if (!scopeKey) return;
                 setAnalysisStateForExtractModel(normalizedDatasetKey, scopeKey, fullFrom, fullTo);
-                const nextModel = normalizedDatasetKey === 'electric'
-                    ? (typeof runtime.buildUtilElectricAnalysisModel === 'function'
+                let nextModel = null;
+                if (normalizedDatasetKey === 'electric') {
+                    nextModel = typeof runtime.buildUtilElectricAnalysisModel === 'function'
                         ? runtime.buildUtilElectricAnalysisModel(selectedMonthKey || fullTo, compareKey, scopeKey)
-                        : null)
-                    : (typeof runtime.buildUtilGasAnalysisModel === 'function'
+                        : null;
+                } else if (normalizedDatasetKey === 'waste') {
+                    nextModel = typeof runtime.buildUtilWasteAnalysisModel === 'function'
+                        ? runtime.buildUtilWasteAnalysisModel(selectedMonthKey || fullTo, compareKey, scopeKey)
+                        : null;
+                } else {
+                    nextModel = typeof runtime.buildUtilGasAnalysisModel === 'function'
                         ? runtime.buildUtilGasAnalysisModel(selectedMonthKey || fullTo, compareKey)
-                        : null);
+                        : null;
+                }
                 if (nextModel?.hasData) {
                     scopeModels[scopeKey] = attachAnalysisExtractBodyHtml(nextModel, normalizedDatasetKey, modal, compareKey);
                 }
@@ -711,7 +752,8 @@
         const runtimeSource = function utilSheetAnalysisExtractRuntime() {
             const rootScope = this || {};
             const payload = rootScope.__UTIL_SHEET_ANALYSIS_EXTRACT__ || {};
-            const datasetKey = String(payload.datasetKey || 'gas').trim() === 'electric' ? 'electric' : 'gas';
+            const rawDatasetKey = String(payload.datasetKey || 'gas').trim();
+            const datasetKey = rawDatasetKey === 'electric' || rawDatasetKey === 'waste' ? rawDatasetKey : 'gas';
             const scopeModels = payload.scopeModels && typeof payload.scopeModels === 'object'
                 ? payload.scopeModels
                 : {};
@@ -719,13 +761,15 @@
             let activeScopeKey = String(payload.activeScopeKey || '').trim()
                 || String(datasetKey === 'electric'
                     ? (model?.teamOption?.key || '')
-                    : (model?.categoryOption?.key || '')).trim();
+                    : (datasetKey === 'waste'
+                        ? (model?.siteOption?.key || '')
+                        : (model?.categoryOption?.key || ''))).trim();
             let activeRange = {
                 from: String(payload.activeRange?.from || model?.range?.from || '').trim(),
                 to: String(payload.activeRange?.to || model?.range?.to || '').trim()
             };
             const activeCompareKey = String(payload.compareKey || '').trim() === 'year' ? 'year' : 'month';
-            const state = { unitKeys: {}, displayModes: {}, labelModes: {}, seriesLabelModes: {} };
+            const state = { unitKeys: {}, displayModes: {}, labelModes: {}, seriesLabelModes: {}, decimalDigits: {} };
             let manualMemoText = String(payload.manualMemoText || model?.manualMemoText || '');
             const dirtyChartKeys = {};
             const originalChartFrames = {};
@@ -747,11 +791,17 @@
             function formatNumber(value, decimals = 0) {
                 const number = finite(value);
                 if (!Number.isFinite(number)) return '-';
-                const digits = Math.max(0, Math.min(4, Number.isFinite(Number(decimals)) ? Number(decimals) : 0));
+                const digits = normalizeDecimalDigits(decimals, 0);
                 return number.toLocaleString('ko-KR', {
                     maximumFractionDigits: digits,
-                    minimumFractionDigits: digits > 0 ? Math.min(digits, 3) : 0
+                    minimumFractionDigits: digits
                 });
+            }
+
+            function normalizeDecimalDigits(value, fallback = 0) {
+                const number = Number(value);
+                if (!Number.isFinite(number)) return fallback;
+                return Math.max(0, Math.min(4, Math.trunc(number)));
             }
 
             function escapeSelector(value) {
@@ -921,12 +971,16 @@
             }
 
             function resolveSeriesDecimals(item, unitKey, sourceSeries, chart) {
+                const itemKey = String(item?.key || '').trim();
+                if (itemKey && Object.prototype.hasOwnProperty.call(state.decimalDigits, itemKey)) {
+                    return normalizeDecimalDigits(state.decimalDigits[itemKey], 0);
+                }
                 const unitOption = findExplicitUnitOption(item, unitKey);
-                if (Number.isFinite(Number(unitOption?.decimals))) return Number(unitOption.decimals);
-                if (Number.isFinite(Number(item?.decimals))) return Number(item.decimals);
-                if (Number.isFinite(Number(sourceSeries?.decimals))) return Number(sourceSeries.decimals);
-                if (Number.isFinite(Number(chart?.decimals))) return Number(chart.decimals);
-                return String(item?.key || '').trim().startsWith('ratio-') ? 3 : 0;
+                if (Number.isFinite(Number(unitOption?.decimals))) return normalizeDecimalDigits(unitOption.decimals, 0);
+                if (Number.isFinite(Number(item?.decimals))) return normalizeDecimalDigits(item.decimals, 0);
+                if (Number.isFinite(Number(sourceSeries?.decimals))) return normalizeDecimalDigits(sourceSeries.decimals, 0);
+                if (Number.isFinite(Number(chart?.decimals))) return normalizeDecimalDigits(chart.decimals, 0);
+                return itemKey.startsWith('ratio-') ? 3 : 0;
             }
 
             function buildSeries(chart) {
@@ -1026,7 +1080,7 @@
                     : '';
                 const periodLabel = String(options.periodLabel || '').trim();
                 const inlinePeriodLegend = options.inlinePeriodLegend === true;
-                const palette = ['#2563eb', '#dc2626', '#16a34a', '#f97316', '#7c3aed', '#0891b2'];
+                const palette = ['#2563eb', '#dc2626', '#16a34a', '#f97316', '#7c3aed', '#be185d'];
                 const filteredSeries = (Array.isArray(seriesList) ? seriesList : [])
                     .filter(item => item && Array.isArray(item.points) && item.points.length)
                     .map((item, index) => ({
@@ -1392,6 +1446,24 @@
                 });
             }
 
+            function setDecimalSelectState(seriesKey) {
+                queryAnalysisAll('[data-role="util-sheet-analysis-decimals"]').forEach(select => {
+                    if (select.dataset.chartKey !== seriesKey) return;
+                    if (Object.prototype.hasOwnProperty.call(state.decimalDigits, seriesKey)) {
+                        select.value = String(normalizeDecimalDigits(state.decimalDigits[seriesKey], 0));
+                        return;
+                    }
+                    const controlItem = findControlItemByKey(seriesKey);
+                    if (!controlItem) return;
+                    select.value = String(resolveSeriesDecimals(
+                        controlItem,
+                        state.unitKeys[seriesKey] || controlItem.unitKey || '',
+                        null,
+                        findControlItemChart(controlItem)
+                    ));
+                });
+            }
+
             function syncSeriesLabelToggles() {
                 queryAnalysisAll('[data-role="util-sheet-analysis-series-label-toggle"]').forEach(toggle => {
                     const seriesKey = String(toggle?.dataset?.chartKey || '').trim();
@@ -1546,7 +1618,23 @@
                         </th>
                         ${(Array.isArray(row.cells) ? row.cells : []).map(cell => {
                             const value = finite(cell);
-                            const decimals = Number.isFinite(Number(row?.decimals)) ? Number(row.decimals) : (kind === 'ratio' ? 3 : Number(table?.decimals || controlItem?.decimals || 0));
+                            const resolvedItemDecimals = controlItem
+                                ? resolveSeriesDecimals(
+                                    controlItem,
+                                    state.unitKeys[controlItem.key] || controlItem.unitKey || '',
+                                    null,
+                                    findControlItemChart(controlItem)
+                                )
+                                : null;
+                            const hasDecimalOverride = !!controlItem?.key
+                                && Object.prototype.hasOwnProperty.call(state.decimalDigits, controlItem.key);
+                            const decimals = hasDecimalOverride && Number.isFinite(Number(resolvedItemDecimals))
+                                ? resolvedItemDecimals
+                                : (Number.isFinite(Number(row?.decimals))
+                                ? normalizeDecimalDigits(row.decimals, 0)
+                                : (Number.isFinite(Number(resolvedItemDecimals))
+                                    ? resolvedItemDecimals
+                                    : (kind === 'ratio' ? 3 : normalizeDecimalDigits(table?.decimals || controlItem?.decimals || 0, 0))));
                             return `<td class="${Number.isFinite(value) ? 'is-strong' : 'is-empty'}">${Number.isFinite(value) ? escapeHtml(formatNumber(value, decimals)) : ''}</td>`;
                         }).join('')}
                     </tr>
@@ -1586,6 +1674,7 @@
                     || String(candidate?.key || '').trim() === String(item?.key || '').trim()
                 )));
                 const sourceSeries = findSourceSeries(sourceChart, item, itemIndex);
+                const tableDecimals = resolveSeriesDecimals(item, unitKey, sourceSeries, sourceChart);
                 const pointMap = new Map(points.map((point, pointIndex) => [
                     String(point?.monthKey || point?.key || '').trim(),
                     {
@@ -1601,12 +1690,12 @@
                     title: item.title || item.label || '표',
                     tone: item.tone || 'neutral',
                     unitLabel: unitOption?.label || item.unitLabel || item.metricLabel || '',
-                    decimals: Number.isFinite(Number(unitOption?.decimals)) ? Number(unitOption.decimals) : Number(item.decimals || 0),
+                    decimals: tableDecimals,
                     rows: years.map(year => ({
                         year,
                         label: item.title || item.label || '',
                         unitLabel: unitOption?.label || item.unitLabel || item.metricLabel || '',
-                        decimals: Number.isFinite(Number(unitOption?.decimals)) ? Number(unitOption.decimals) : Number(item.decimals || 0),
+                        decimals: tableDecimals,
                         cells: Array.from({ length: 12 }, (_, index) => {
                             const monthKey = `${year}-${String(index + 1).padStart(2, '0')}`;
                             if (!activeMonthSet.has(monthKey)) return null;
@@ -1752,6 +1841,18 @@
                 bindDataTableDrag(panel);
             }
 
+            function refreshInlineDataTables() {
+                queryAnalysisAll('[data-role="util-sheet-analysis-inline-table-panel"]').forEach(panel => {
+                    const tableKey = String(panel?.getAttribute?.('data-table-key') || panel?.dataset?.tableKey || '').trim();
+                    const tableEntry = resolveTableEntry(tableKey);
+                    const body = panel?.querySelector?.('.util-sheet-analysis-inline-table-panel-body');
+                    const toolbar = body?.querySelector?.('.util-sheet-analysis-inline-table-toolbar');
+                    if (!tableEntry?.table || !body || !toolbar) return;
+                    body.querySelectorAll?.('.util-sheet-analysis-table-card').forEach(node => node.remove());
+                    toolbar.insertAdjacentHTML?.('afterend', buildMonthTableHtml(tableEntry.table, tableEntry.controlItem, tableEntry.kind));
+                });
+            }
+
             function getAnalysisBody() {
                 const root = getAnalysisRoot();
                 return root?.querySelector?.('[data-role="util-sheet-report-body"]')
@@ -1762,7 +1863,9 @@
             function getScopeKeyFromModel(nextModel = model) {
                 return String(datasetKey === 'electric'
                     ? (nextModel?.teamOption?.key || '')
-                    : (nextModel?.categoryOption?.key || '')).trim();
+                    : (datasetKey === 'waste'
+                        ? (nextModel?.siteOption?.key || '')
+                        : (nextModel?.categoryOption?.key || ''))).trim();
             }
 
             function getModelForScope(scopeKey = '') {
@@ -1780,7 +1883,9 @@
                 });
                 const selector = datasetKey === 'electric'
                     ? '[data-role="util-sheet-analysis-electric-team-select"]'
-                    : '[data-role="util-sheet-analysis-gas-category-select"]';
+                    : (datasetKey === 'waste'
+                        ? '[data-role="util-sheet-analysis-waste-site-select"]'
+                        : '[data-role="util-sheet-analysis-gas-category-select"]');
                 queryAnalysisAll(selector).forEach(select => {
                     select.value = activeScopeKey || getScopeKeyFromModel() || select.value || '';
                 });
@@ -1789,16 +1894,22 @@
             function resetExtractStateFromDocument() {
                 const previousLabelModes = { ...state.labelModes };
                 const previousSeriesLabelModes = { ...state.seriesLabelModes };
+                const previousDecimalDigits = { ...state.decimalDigits };
                 state.unitKeys = {};
                 state.displayModes = {};
                 state.labelModes = {};
                 state.seriesLabelModes = {};
+                state.decimalDigits = {};
                 Object.keys(dirtyChartKeys).forEach(key => { delete dirtyChartKeys[key]; });
                 Object.keys(originalChartFrames).forEach(key => { delete originalChartFrames[key]; });
                 initializeState();
                 Object.assign(state.labelModes, previousLabelModes);
                 Object.assign(state.seriesLabelModes, previousSeriesLabelModes);
+                Object.assign(state.decimalDigits, previousDecimalDigits);
                 syncSeriesLabelToggles();
+                queryAnalysisAll('[data-role="util-sheet-analysis-decimals"]').forEach(select => {
+                    setDecimalSelectState(String(select?.dataset?.chartKey || '').trim());
+                });
                 captureOriginalChartFrames();
                 bindAnalysisChartDragScroll(getAnalysisRoot());
             }
@@ -1829,7 +1940,7 @@
                     .filter(Number.isFinite);
                 if (!values.length) return String(summaryItem?.valueText || '').trim();
                 const total = values.reduce((sum, value) => sum + value, 0);
-                const decimals = Number.isFinite(Number(unitOption?.decimals)) ? Number(unitOption.decimals) : Number(controlItem.decimals || 0);
+                const decimals = resolveSeriesDecimals(controlItem, unitKey, sourceSeries, sourceChart);
                 const label = String(unitOption?.label || controlItem.unitLabel || controlItem.metricLabel || '').trim();
                 return `${formatNumber(total, decimals)}${label}`;
             }
@@ -2011,6 +2122,7 @@
                         .forEach(card => renderChart(chart, card));
                 });
                 updateSummaryCards();
+                refreshInlineDataTables();
                 bindAnalysisChartDragScroll(getAnalysisRoot());
             }
 
@@ -2111,7 +2223,7 @@
                     renderAllChartsForActiveRange();
                     return;
                 }
-                const scopeSelect = target?.closest?.('[data-role="util-sheet-analysis-gas-category-select"], [data-role="util-sheet-analysis-electric-team-select"]');
+                const scopeSelect = target?.closest?.('[data-role="util-sheet-analysis-gas-category-select"], [data-role="util-sheet-analysis-electric-team-select"], [data-role="util-sheet-analysis-waste-site-select"]');
                 if (scopeSelect) {
                     renderAnalysisBodyForScope(scopeSelect.value || '');
                     return;
@@ -2121,8 +2233,21 @@
                     const seriesKey = unitSelect.dataset.chartKey || '';
                     state.unitKeys[seriesKey] = unitSelect.value || '';
                     setUnitSelectState(seriesKey);
+                    setDecimalSelectState(seriesKey);
                     renderAffectedCharts(seriesKey);
                     updateSummaryCards();
+                    refreshInlineDataTables();
+                    return;
+                }
+                const decimalsSelect = target?.closest?.('[data-role="util-sheet-analysis-decimals"]');
+                if (decimalsSelect) {
+                    const seriesKey = String(decimalsSelect.dataset.chartKey || '').trim();
+                    if (!seriesKey) return;
+                    state.decimalDigits[seriesKey] = normalizeDecimalDigits(decimalsSelect.value, 0);
+                    setDecimalSelectState(seriesKey);
+                    renderAffectedCharts(seriesKey);
+                    updateSummaryCards();
+                    refreshInlineDataTables();
                     return;
                 }
                 const seriesLabelToggle = target?.closest?.('[data-role="util-sheet-analysis-series-label-toggle"]');
@@ -2166,10 +2291,17 @@
         `;
     }
 
+    function getExtractDatasetLabel(datasetKey = 'gas') {
+        const normalizedDatasetKey = String(datasetKey || '').trim();
+        if (normalizedDatasetKey === 'electric') return '전력비';
+        if (normalizedDatasetKey === 'waste') return '폐수';
+        return '가스';
+    }
+
     function buildMeterExtractDocumentHtml(modal, reportCardHtml = '') {
         const title = getTextContent(modal, '[data-role="util-sheet-report-title"]', '검침표');
         const datasetKey = resolveDatasetKey('meter', modal?.dataset?.datasetKey || UtilSheetReportState.meter || 'gas');
-        const datasetLabel = datasetKey === 'electric' ? '전력비' : '가스';
+        const datasetLabel = getExtractDatasetLabel(datasetKey);
         return `
             <!doctype html>
             <html lang="ko">
@@ -2221,7 +2353,7 @@
     function buildAnalysisExtractDocumentHtml(modal, reportCardHtml = '') {
         const title = getTextContent(modal, '[data-role="util-sheet-report-title"]', '분석표');
         const datasetKey = resolveDatasetKey('analysis', modal?.dataset?.datasetKey || UtilSheetReportState.analysis || 'gas');
-        const datasetLabel = datasetKey === 'electric' ? '전력비' : '가스';
+        const datasetLabel = getExtractDatasetLabel(datasetKey);
         const extractPayload = buildAnalysisExtractPayload(modal, datasetKey);
         return `
             <!doctype html>
@@ -2319,7 +2451,7 @@
 
     function buildCombinedExtractDocumentHtml(modal, options = {}) {
         const datasetKey = resolveDatasetKey('meter', options.datasetKey || modal?.dataset?.datasetKey || 'gas');
-        const datasetLabel = datasetKey === 'electric' ? '전력비' : '가스';
+        const datasetLabel = getExtractDatasetLabel(datasetKey);
         const meterTitle = String(options.meterTitle || '검침표').trim();
         const analysisTitle = String(options.analysisTitle || '분석표').trim();
         const meterReportCardHtml = String(options.meterReportCardHtml || '').trim();
@@ -2841,6 +2973,11 @@
             const gasCategorySelect = findClosest(target, '[data-role="util-sheet-analysis-gas-category-select"]');
             if (gasCategorySelect && typeof runtime.applyUtilGasAnalysisCategorySelection === 'function') {
                 runtime.applyUtilGasAnalysisCategorySelection(modal, gasCategorySelect.value || 'yusan');
+                return;
+            }
+            const wasteSiteSelect = findClosest(target, '[data-role="util-sheet-analysis-waste-site-select"]');
+            if (wasteSiteSelect && typeof runtime.applyUtilWasteAnalysisSiteSelection === 'function') {
+                runtime.applyUtilWasteAnalysisSiteSelection(modal, wasteSiteSelect.value || 'all');
                 return;
             }
             const monthSelect = findClosest(target, '[data-role="util-sheet-modal-month"]');

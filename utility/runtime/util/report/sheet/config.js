@@ -32,6 +32,16 @@
             unitKey: 'electricUnit',
             usageUnit: 'kWh',
             color: '#2563eb'
+        },
+        waste: {
+            key: 'waste',
+            label: '폐수',
+            scopeKey: 'waste',
+            usageKey: 'wasteUsage',
+            costKey: 'wasteCost',
+            unitKey: 'wasteUnit',
+            usageUnit: '㎥',
+            color: '#7c3aed'
         }
     };
     const UTIL_SHEET_TYPE_SPECS = {
@@ -125,6 +135,26 @@
                 production: 'line',
                 electricIntensity: 'line'
             }
+        },
+        waste: {
+            from: '',
+            to: '',
+            siteKey: 'all',
+            showLabels: null,
+            seriesLabelModes: {},
+            unitKeys: {
+                wasteUsage: 'm3',
+                wasteCost: 'million',
+                production: 'ton',
+                wasteIntensity: 'm3ton'
+            },
+            decimalDigits: {},
+            displayModes: {
+                wasteUsage: 'bar',
+                wasteCost: 'line',
+                production: 'line',
+                wasteIntensity: 'line'
+            }
         }
     };
     const UtilSheetDetachedReportState = {
@@ -206,6 +236,37 @@
         production: 'line',
         electricIntensity: 'line'
     });
+    const UTIL_WASTE_ANALYSIS_UNIT_OPTIONS = Object.freeze({
+        wasteUsage: Object.freeze([
+            { key: 'm3', label: '㎥', scale: 1, decimals: 0 },
+            { key: 'km3', label: '천㎥', scale: 1000, decimals: 1 }
+        ]),
+        wasteCost: Object.freeze([
+            { key: 'krw', label: '원', scale: 1, decimals: 0 },
+            { key: 'thousand', label: '천원', scale: 1000, decimals: 1 },
+            { key: 'million', label: '백만원', scale: 1000000, decimals: 1 }
+        ]),
+        production: Object.freeze([
+            { key: 'kg', label: 'kg', scale: 1, decimals: 0 },
+            { key: 'ton', label: 'ton', scale: 1000, decimals: 1 }
+        ]),
+        wasteIntensity: Object.freeze([
+            { key: 'm3ton', label: '㎥/ton', scale: 1, decimals: 2 },
+            { key: 'm3kg', label: '㎥/kg', scale: 1000, decimals: 4 }
+        ])
+    });
+    const UTIL_WASTE_ANALYSIS_DEFAULT_UNITS = Object.freeze({
+        wasteUsage: 'm3',
+        wasteCost: 'million',
+        production: 'ton',
+        wasteIntensity: 'm3ton'
+    });
+    const UTIL_WASTE_ANALYSIS_DEFAULT_DISPLAY_MODES = Object.freeze({
+        wasteUsage: 'bar',
+        wasteCost: 'line',
+        production: 'line',
+        wasteIntensity: 'line'
+    });
     const UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_PREFIX = 'productionLineRatio::';
     const UTIL_GAS_ANALYSIS_DISPLAY_OPTIONS = Object.freeze([
         { key: 'bar', label: '막대' },
@@ -283,6 +344,9 @@
         UTIL_ELECTRIC_ANALYSIS_DEFAULT_UNITS,
         UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_UNIT_OPTIONS,
         UTIL_ELECTRIC_ANALYSIS_DEFAULT_DISPLAY_MODES,
+        UTIL_WASTE_ANALYSIS_UNIT_OPTIONS,
+        UTIL_WASTE_ANALYSIS_DEFAULT_UNITS,
+        UTIL_WASTE_ANALYSIS_DEFAULT_DISPLAY_MODES,
         UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_PREFIX,
         UTIL_GAS_ANALYSIS_DISPLAY_OPTIONS,
         UTIL_GAS_METER_FIELD_ORDER,

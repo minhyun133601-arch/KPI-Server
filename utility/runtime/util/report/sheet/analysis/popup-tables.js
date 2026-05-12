@@ -21,6 +21,10 @@
         getUtilElectricAnalysisChartDecimals: null,
         scaleUtilElectricAnalysisChartValue: null,
         resolveUtilElectricAnalysisPointValue: null,
+        getUtilWasteAnalysisUnitKey: null,
+        getUtilWasteAnalysisChartUnitLabel: null,
+        getUtilWasteAnalysisChartDecimals: null,
+        scaleUtilWasteAnalysisChartValue: null,
         getUtilGasAnalysisUnitKey: null,
         getUtilGasAnalysisChartUnitLabel: null,
         getUtilGasAnalysisChartDecimals: null,
@@ -66,7 +70,9 @@
         if (typeof runtime.normalizeUtilSheetAnalysisDatasetKey === 'function') {
             return runtime.normalizeUtilSheetAnalysisDatasetKey(datasetKey);
         }
-        return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+        const normalizedKey = String(datasetKey || '').trim();
+        if (normalizedKey === 'electric' || normalizedKey === 'waste') return normalizedKey;
+        return 'gas';
     }
 
     function getElectricUnitKey(chartKey = '') {
@@ -102,6 +108,34 @@
             return runtime.resolveUtilElectricAnalysisPointValue(controlItem, point, unitKey);
         }
         return point?.value;
+    }
+
+    function getWasteUnitKey(chartKey = '') {
+        if (typeof runtime.getUtilWasteAnalysisUnitKey === 'function') {
+            return runtime.getUtilWasteAnalysisUnitKey(chartKey);
+        }
+        return '';
+    }
+
+    function getWasteUnitLabel(chartKey = '', unitKey = '') {
+        if (typeof runtime.getUtilWasteAnalysisChartUnitLabel === 'function') {
+            return runtime.getUtilWasteAnalysisChartUnitLabel(chartKey, unitKey);
+        }
+        return '';
+    }
+
+    function getWasteDecimals(chartKey = '', unitKey = '') {
+        if (typeof runtime.getUtilWasteAnalysisChartDecimals === 'function') {
+            return runtime.getUtilWasteAnalysisChartDecimals(chartKey, unitKey);
+        }
+        return 0;
+    }
+
+    function scaleWasteValue(chartKey = '', value, unitKey = '') {
+        if (typeof runtime.scaleUtilWasteAnalysisChartValue === 'function') {
+            return runtime.scaleUtilWasteAnalysisChartValue(chartKey, value, unitKey);
+        }
+        return Number.isFinite(value) ? value : null;
     }
 
     function getGasUnitKey(chartKey = '') {
@@ -214,21 +248,35 @@
         );
         const unitKey = normalizedDatasetKey === 'electric'
             ? getElectricUnitKey(chartKey)
-            : getGasUnitKey(chartKey);
+            : (normalizedDatasetKey === 'waste'
+                ? getWasteUnitKey(chartKey)
+                : getGasUnitKey(chartKey));
         const unitLabel = normalizedDatasetKey === 'electric'
             ? (getElectricUnitLabel(chartKey, unitKey)
                 || String(controlItem?.unitLabel || controlItem?.metricLabel || '').trim())
-            : (getGasUnitLabel(chartKey, unitKey)
-                || String(controlItem?.unitLabel || controlItem?.metricLabel || '').trim());
+            : (normalizedDatasetKey === 'waste'
+                ? (getWasteUnitLabel(chartKey, unitKey)
+                    || String(controlItem?.unitLabel || controlItem?.metricLabel || '').trim())
+                : (getGasUnitLabel(chartKey, unitKey)
+                    || String(controlItem?.unitLabel || controlItem?.metricLabel || '').trim()));
         const decimals = normalizedDatasetKey === 'electric'
             ? getElectricDecimals(chartKey, unitKey)
-            : getGasDecimals(chartKey, unitKey);
+            : (normalizedDatasetKey === 'waste'
+                ? getWasteDecimals(chartKey, unitKey)
+                : getGasDecimals(chartKey, unitKey));
         const resolveScaledValue = (point) => {
             if (!point) return null;
             if (normalizedDatasetKey === 'electric') {
                 return scaleElectricValue(
                     chartKey,
                     resolveElectricPointValue(controlItem, point, unitKey),
+                    unitKey
+                );
+            }
+            if (normalizedDatasetKey === 'waste') {
+                return scaleWasteValue(
+                    chartKey,
+                    Number(point?.value),
                     unitKey
                 );
             }
@@ -319,6 +367,18 @@
                 kind: 'metric',
                 table: electricTable,
                 controlItem: electricControlItem
+            };
+        }
+        if (datasetKey === 'waste') {
+            const wasteControlItem = getUtilElectricAnalysisAllControlItems(modal._utilSheetAnalysisModel)
+                .find(item => String(item?.key || '').trim().toLowerCase() === normalizedTableKey) || null;
+            const wasteTable = buildUtilGasAnalysisMetricTableModel(wasteControlItem, 'waste');
+            if (!wasteTable) return null;
+            return {
+                key: normalizedTableKey,
+                kind: 'metric',
+                table: wasteTable,
+                controlItem: wasteControlItem
             };
         }
         const ratioTable = getUtilGasAnalysisRatioTableByKey(modal, normalizedTableKey);

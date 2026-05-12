@@ -18,10 +18,12 @@
     const {
         UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS,
         UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS,
+        UTIL_WASTE_ANALYSIS_SITE_OPTIONS,
         UTIL_ELECTRIC_METER_TEAM_OPTIONS,
         normalizeUtilElectricMeterTeamKey,
         normalizeUtilElectricAnalysisTeamKey,
         normalizeUtilGasAnalysisCategoryKey,
+        normalizeUtilWasteAnalysisSiteKey,
         normalizeUtilElectricMeterViewKey
     } = utilReportSheetOptions;
 
@@ -123,6 +125,21 @@
         `;
     }
 
+    function buildUtilWasteAnalysisSiteSelectHtml(selectedKey = 'all') {
+        const normalizedKey = normalizeUtilWasteAnalysisSiteKey(selectedKey);
+        return `
+            <div class="util-sheet-meter-summary-toolbar">
+                <label class="util-sheet-meter-summary-control">
+                    <select class="util-sheet-meter-summary-select" data-role="util-sheet-analysis-waste-site-select" aria-label="폐수 분석표 기준">
+                        ${UTIL_WASTE_ANALYSIS_SITE_OPTIONS.map(option => `
+                            <option value="${escapeHtml(option.key)}"${option.key === normalizedKey ? ' selected' : ''}>${escapeHtml(option.selectLabel || option.label)}</option>
+                        `).join('')}
+                    </select>
+                </label>
+            </div>
+        `;
+    }
+
     function buildUtilElectricMeterViewToggleHtml(selectedViewKey = 'meter') {
         const normalizedViewKey = normalizeUtilElectricMeterViewKey(selectedViewKey);
         return `
@@ -146,6 +163,7 @@
         buildUtilElectricMeterTeamSelectHtml,
         buildUtilElectricAnalysisTeamSelectHtml,
         buildUtilGasAnalysisCategorySelectHtml,
+        buildUtilWasteAnalysisSiteSelectHtml,
         buildUtilElectricMeterViewToggleHtml,
         buildUtilSheetMonthOptionHtml
     };

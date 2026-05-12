@@ -960,6 +960,7 @@ test('report sheet modal shell extraction downloads analysis html with standalon
                 `}
                 <div class="util-sheet-analysis-summary-controls">
                   <select data-role="util-sheet-analysis-unit" data-chart-key="lngUsage"><option value="nm3">Nm3</option></select>
+                  <select data-role="util-sheet-analysis-decimals" data-chart-key="lngUsage"><option value="0">0</option><option value="2">2</option></select>
                   <input type="checkbox" data-role="util-sheet-analysis-series-label-toggle" data-chart-key="lngUsage" checked>
                   <button data-role="util-sheet-analysis-series-type" data-chart-key="lngUsage" data-chart-type="line">LINE</button>
                   <button data-role="util-sheet-analysis-open-ratio-table" data-table-key="lngUsage">TABLE_POPUP</button>
@@ -1023,6 +1024,13 @@ test('report sheet modal shell extraction downloads analysis html with standalon
   assert.match(html, /panel\.style\.left = `\$\{Math\.round\(clampedLeft\)\}px`/);
   assert.match(html, /function buildMonthTableHtml/);
   assert.match(html, /data-role="util-sheet-analysis-unit"/);
+  assert.match(html, /data-role="util-sheet-analysis-decimals"/);
+  assert.match(html, /decimalDigits/);
+  assert.match(html, /function setDecimalSelectState/);
+  assert.match(html, /minimumFractionDigits: digits/);
+  assert.match(html, /const decimalsSelect = target\?\.closest\?\.\('\[data-role="util-sheet-analysis-decimals"\]'\)/);
+  assert.match(html, /state\.decimalDigits\[seriesKey\] = normalizeDecimalDigits\(decimalsSelect\.value, 0\)/);
+  assert.match(html, /refreshInlineDataTables\(\)/);
   assert.match(html, /data-role="util-sheet-analysis-series-label-toggle"/);
   assert.match(html, /seriesLabelModes/);
   assert.match(html, /data-role="util-sheet-analysis-series-type"/);

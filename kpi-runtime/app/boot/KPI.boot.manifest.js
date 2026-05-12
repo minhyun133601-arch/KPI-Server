@@ -215,6 +215,7 @@
         "utility/runtime/util/report/sheet/gas/comparison-summary.js",
         "utility/runtime/util/report/sheet/gas/scoped-metrics.js",
         "utility/runtime/util/report/sheet/gas/runtime-sync.js",
+        "utility/runtime/util/report/sheet/waste/meter-model.js",
         "utility/runtime/util/report/sheet/panel/runtime.js",
         "utility/runtime/util/report/sheet/panel/preview.js",
         "utility/runtime/util/report/sheet/windows/detached-interactions.js",
@@ -230,6 +231,7 @@
         "utility/runtime/util/report/sheet/analysis/electric/chart-model.js",
         "utility/runtime/util/report/sheet/analysis/electric/model.js",
         "utility/runtime/util/report/sheet/analysis/gas/model.js",
+        "utility/runtime/util/report/sheet/analysis/waste/model.js",
         "utility/runtime/util/report/sheet/analysis/render.js",
         "utility/runtime/util/report/sheet/analysis/popup-tables.js",
         "utility/runtime/util/report/sheet/summary/render.js"

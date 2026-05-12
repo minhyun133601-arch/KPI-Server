@@ -104,6 +104,7 @@
     function getUtilSheetEntries(datasetKey) {
         if (datasetKey === 'gas') return Array.isArray(UTIL_GAS_ENTRIES) ? UTIL_GAS_ENTRIES : [];
         if (datasetKey === 'electric') return Array.isArray(UTIL_ELECTRIC_ENTRIES) ? UTIL_ELECTRIC_ENTRIES : [];
+        if (datasetKey === 'waste') return Array.isArray(UTIL_WASTE_ENTRIES) ? UTIL_WASTE_ENTRIES : [];
         return [];
     }
 
@@ -115,6 +116,9 @@
         const hasUsage = Number.isFinite(usage) && usage > 0;
         const hasCost = Number.isFinite(cost) && cost > 0;
         const hasProduction = Number.isFinite(production) && production > 0;
+        if (spec.key === 'waste') {
+            return hasUsage || hasCost || hasProduction;
+        }
         return hasUsage && hasCost && hasProduction;
     }
 

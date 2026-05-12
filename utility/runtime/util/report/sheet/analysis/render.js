@@ -32,6 +32,7 @@
     const {
         buildUtilGasAnalysisCategorySelectHtml: buildGasAnalysisCategorySelectControlHtml,
         buildUtilElectricAnalysisTeamSelectHtml: buildElectricAnalysisTeamSelectControlHtml,
+        buildUtilWasteAnalysisSiteSelectHtml: buildWasteAnalysisSiteSelectControlHtml,
         buildUtilSheetMonthOptionHtml: buildMonthOptionControlHtml
     } = utilReportSheetControls;
 
@@ -51,7 +52,9 @@
         if (typeof runtime.normalizeUtilSheetAnalysisDatasetKey === 'function') {
             return runtime.normalizeUtilSheetAnalysisDatasetKey(datasetKey);
         }
-        return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+        const normalizedKey = String(datasetKey || '').trim();
+        if (normalizedKey === 'electric' || normalizedKey === 'waste') return normalizedKey;
+        return 'gas';
     }
 
     function getAnalysisShowLabels(datasetKey = 'gas', chartKey = '', isFullscreenChart = false) {
@@ -128,6 +131,10 @@
 
     function buildElectricAnalysisTeamSelectHtml(selectedKey = 'combined') {
         return buildElectricAnalysisTeamSelectControlHtml(selectedKey);
+    }
+
+    function buildWasteAnalysisSiteSelectHtml(selectedKey = 'all') {
+        return buildWasteAnalysisSiteSelectControlHtml(selectedKey);
     }
 
     function buildMonthOptionHtml(monthOptions, selectedValue = '') {
@@ -516,6 +523,44 @@
         `;
     }
 
+    function buildUtilWasteAnalysisBodyHtmlV2(model, viewState = {}, modal = null) {
+        const sectionClassName = [
+            'util-sheet-section',
+            'util-sheet-analysis-section',
+            viewState?.fullscreenChart === true ? 'is-chart-fullscreen' : ''
+        ].filter(Boolean).join(' ');
+        const inlineTableKey = viewState?.fullscreenChart === true
+            ? ''
+            : getInlineRatioTableKey(modal, viewState?.inlineTableKey || '');
+        const floatingTableHtml = inlineTableKey
+            ? buildGasAnalysisFloatingTablePanelHtml(modal, model, inlineTableKey)
+            : '';
+        const controlItems = [
+            ...(Array.isArray(model?.combinedChart?.controlItems) ? model.combinedChart.controlItems : []),
+            ...(Array.isArray(model?.charts)
+                ? model.charts.flatMap(chart => Array.isArray(chart?.controlItems) ? chart.controlItems : [])
+                : [])
+        ];
+        return `
+            <section class="${escapeHtml(sectionClassName)}" data-role="util-sheet-analysis-section">
+                <div class="util-sheet-section-head util-sheet-analysis-section-head">
+                    <div>
+                        <div class="util-sheet-section-title">폐수 분석표</div>
+                        <div class="util-sheet-section-sub">방류량, 처리 비용, 생산량, 생산량 대비 폐수 방류량을 월별 기준으로 비교합니다.</div>
+                    </div>
+                </div>
+                ${floatingTableHtml}
+                <div data-role="util-sheet-analysis-summary-grid">
+                    ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, controlItems, { datasetKey: 'waste' })}
+                </div>
+                <div class="util-sheet-analysis-grid" data-role="util-sheet-analysis-grid">
+                    ${model.combinedChart ? buildUtilGasAnalysisChartCardHtmlV2(model.combinedChart, model, viewState) : ''}
+                    ${Array.isArray(model.charts) ? model.charts.map(chart => buildUtilGasAnalysisChartCardHtmlV2(chart, model, viewState)).join('') : ''}
+                </div>
+            </section>
+        `;
+    }
+
     function buildUtilGasAnalysisBodyHtml(model) {
         return `
             <section class="util-sheet-section">
@@ -546,6 +591,7 @@
         buildUtilSheetAnalysisSummaryGridHtml,
         buildUtilGasAnalysisBodyHtmlV2,
         buildUtilElectricAnalysisBodyHtmlV2,
+        buildUtilWasteAnalysisBodyHtmlV2,
         buildUtilGasAnalysisBodyHtml
     });
 

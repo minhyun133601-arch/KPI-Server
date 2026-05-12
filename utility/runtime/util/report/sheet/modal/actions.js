@@ -31,6 +31,7 @@
         normalizeUtilElectricMeterTeamKey: null,
         normalizeUtilElectricAnalysisTeamKey: null,
         normalizeUtilGasAnalysisCategoryKey: null,
+        normalizeUtilWasteAnalysisSiteKey: null,
         normalizeUtilElectricMeterViewKey: null,
         getUtilGasAnalysisInlineRatioTableKey: null,
         normalizeUtilGasAnalysisFullscreenChartKey: null,
@@ -73,7 +74,9 @@
         if (typeof runtime.resolveUtilSheetReportDatasetKey === 'function') {
             return runtime.resolveUtilSheetReportDatasetKey(sheetType, datasetKey);
         }
-        return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+        const normalizedKey = String(datasetKey || '').trim();
+        if (normalizedKey === 'electric' || normalizedKey === 'waste') return normalizedKey;
+        return 'gas';
     }
 
     function rerenderAndSync(modal) {
@@ -162,6 +165,18 @@
             : String(categoryKey || 'yusan').trim() || 'yusan';
         modal.dataset.gasAnalysisCategoryKey = normalizedKey;
         UtilSheetAnalysisState.gas.categoryKey = normalizedKey;
+        rerenderAndSync(modal);
+    }
+
+    function applyUtilWasteAnalysisSiteSelection(modal, siteKey = 'all') {
+        if (!modal) return;
+        const normalizedKey = typeof runtime.normalizeUtilWasteAnalysisSiteKey === 'function'
+            ? runtime.normalizeUtilWasteAnalysisSiteKey(siteKey)
+            : String(siteKey || 'all').trim() || 'all';
+        modal.dataset.wasteAnalysisSiteKey = normalizedKey;
+        if (UtilSheetAnalysisState.waste) {
+            UtilSheetAnalysisState.waste.siteKey = normalizedKey;
+        }
         rerenderAndSync(modal);
     }
 
@@ -366,6 +381,7 @@
         applyUtilElectricMeterTeamSelection,
         applyUtilElectricAnalysisTeamSelection,
         applyUtilGasAnalysisCategorySelection,
+        applyUtilWasteAnalysisSiteSelection,
         applyUtilElectricMeterViewSelection,
         setUtilGasAnalysisInlineTablePositionFromTrigger,
         setUtilGasAnalysisChartFullscreen,

@@ -79,15 +79,17 @@
     }
 
     function normalizeUtilSheetDatasetKey(datasetKey) {
-        return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+        const normalizedKey = String(datasetKey || '').trim();
+        if (normalizedKey === 'electric' || normalizedKey === 'waste') return normalizedKey;
+        return 'gas';
     }
 
     function getUtilSheetAllowedDatasetKeys(sheetType) {
         const normalizedSheetType = normalizeUtilSheetType(sheetType);
         if (normalizedSheetType === 'meter' || normalizedSheetType === 'analysis') {
-            return ['gas', 'electric'];
+            return ['gas', 'electric', 'waste'];
         }
-        return ['gas', 'electric'];
+        return ['gas', 'electric', 'waste'];
     }
 
     function resolveUtilSheetReportDatasetKey(sheetType, datasetKey) {
@@ -120,9 +122,13 @@
         const normalizedSheetType = normalizeUtilSheetType(sheetType);
         const normalizedDatasetKey = normalizeUtilSheetDatasetKey(datasetKey);
         const datasetSpec = UTIL_SHEET_DATASET_SPECS[normalizedDatasetKey] || UTIL_SHEET_DATASET_SPECS.gas || {};
-        const datasetLabel = String(datasetSpec.label || (normalizedDatasetKey === 'electric' ? '전기비' : '가스비'));
-        const iconClass = normalizedDatasetKey === 'electric' ? 'fa-bolt' : 'fa-fire-flame-curved';
-        const kicker = normalizedDatasetKey === 'electric' ? 'ELECTRIC REPORT' : 'GAS REPORT';
+        const datasetLabel = String(datasetSpec.label || (normalizedDatasetKey === 'electric' ? '전기비' : (normalizedDatasetKey === 'waste' ? '폐수' : '가스비')));
+        const iconClass = normalizedDatasetKey === 'electric'
+            ? 'fa-bolt'
+            : (normalizedDatasetKey === 'waste' ? 'fa-water' : 'fa-fire-flame-curved');
+        const kicker = normalizedDatasetKey === 'electric'
+            ? 'ELECTRIC REPORT'
+            : (normalizedDatasetKey === 'waste' ? 'WASTE REPORT' : 'GAS REPORT');
 
         if (normalizedSheetType === 'analysis') {
             return {
@@ -168,7 +174,9 @@
         const nextDatasetKey = getUtilSheetAlternateDatasetKey(normalizedDatasetKey, normalizedSheetType);
         const currentSpec = UTIL_SHEET_DATASET_SPECS[normalizedDatasetKey] || UTIL_SHEET_DATASET_SPECS.gas || {};
         const nextSpec = UTIL_SHEET_DATASET_SPECS[nextDatasetKey] || UTIL_SHEET_DATASET_SPECS.gas || {};
-        const iconClass = normalizedDatasetKey === 'electric' ? 'fa-bolt' : 'fa-fire-flame-curved';
+        const iconClass = normalizedDatasetKey === 'electric'
+            ? 'fa-bolt'
+            : (normalizedDatasetKey === 'waste' ? 'fa-water' : 'fa-fire-flame-curved');
         const showToggle = allowedDatasetKeys.length > 1;
 
         root.querySelectorAll(selector).forEach(button => {

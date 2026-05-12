@@ -34,6 +34,7 @@
         normalizeUtilGasAnalysisCategoryKey: null,
         normalizeUtilElectricMeterTeamKey: null,
         normalizeUtilElectricAnalysisTeamKey: null,
+        normalizeUtilWasteAnalysisSiteKey: null,
         normalizeUtilElectricMeterViewKey: null,
         buildUtilSheetDatasetResult: null,
         pruneUtilSheetDatasetToggles: null,
@@ -64,8 +65,11 @@
         bindUtilSheetAnalysisInlineTableDrag: null,
         buildUtilElectricAnalysisModel: null,
         buildUtilElectricAnalysisBodyHtmlV2: null,
+        buildUtilWasteAnalysisModel: null,
+        buildUtilWasteAnalysisBodyHtmlV2: null,
         buildUtilGasAnalysisCategorySelectHtml: null,
         buildUtilElectricAnalysisTeamSelectHtml: null,
+        buildUtilWasteAnalysisSiteSelectHtml: null,
         buildUtilSheetMonthOptionHtml: null,
         buildUtilElectricMeterComparisonModel: null,
         buildUtilElectricMeterTeamDatasetResult: null,
@@ -77,6 +81,8 @@
         buildUtilSheetStatsHtml: null,
         buildUtilGasMeterComparisonSectionHtml: null,
         buildUtilElectricMeterComparisonSectionHtml: null,
+        buildUtilWasteMeterModel: null,
+        buildUtilWasteMeterSectionHtml: null,
         buildUtilSheetMatrixHtml: null,
         relocateUtilGasGuidanceNote: null
     };
@@ -101,7 +107,9 @@
         if (typeof runtime.resolveUtilSheetReportDatasetKey === 'function') {
             return runtime.resolveUtilSheetReportDatasetKey(sheetType, datasetKey);
         }
-        return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+        const normalizedKey = String(datasetKey || '').trim();
+        if (normalizedKey === 'electric' || normalizedKey === 'waste') return normalizedKey;
+        return 'gas';
     }
 
     function getManualMemoKey(sheetType = 'meter', datasetKey = 'gas') {
@@ -154,6 +162,14 @@
             return runtime.normalizeUtilElectricAnalysisTeamKey(teamKey);
         }
         return String(teamKey || 'combined').trim() || 'combined';
+    }
+
+    function normalizeWasteAnalysisSiteKey(siteKey = 'all') {
+        if (typeof runtime.normalizeUtilWasteAnalysisSiteKey === 'function') {
+            return runtime.normalizeUtilWasteAnalysisSiteKey(siteKey);
+        }
+        const normalizedKey = String(siteKey || 'all').trim();
+        return normalizedKey || 'all';
     }
 
     function normalizeElectricMeterViewKey(viewKey = 'meter') {
@@ -228,6 +244,9 @@
         if (datasetKey === 'electric' && typeof runtime.buildUtilElectricAnalysisTeamSelectHtml === 'function') {
             return runtime.buildUtilElectricAnalysisTeamSelectHtml(analysisModel?.teamOption?.key || 'combined');
         }
+        if (datasetKey === 'waste' && typeof runtime.buildUtilWasteAnalysisSiteSelectHtml === 'function') {
+            return runtime.buildUtilWasteAnalysisSiteSelectHtml(analysisModel?.siteOption?.key || 'all');
+        }
         if (typeof runtime.buildUtilGasAnalysisCategorySelectHtml === 'function') {
             return runtime.buildUtilGasAnalysisCategorySelectHtml(analysisModel?.categoryOption?.key || 'yusan');
         }
@@ -239,11 +258,11 @@
         return `
             <div class="util-sheet-analysis-head-control-row">
                 <div class="util-sheet-analysis-range is-head">
-                    <select class="util-sheet-month-select" data-role="util-sheet-analysis-from" aria-label="${datasetKey === 'electric' ? '전기 분석표 시작월' : '가스 분석표 시작월'}">
+                    <select class="util-sheet-month-select" data-role="util-sheet-analysis-from" aria-label="${datasetKey === 'electric' ? '전기 분석표 시작월' : (datasetKey === 'waste' ? '폐수 분석표 시작월' : '가스 분석표 시작월')}">
                         ${buildMonthOptionHtml(analysisModel.monthOptions, analysisModel.range?.from)}
                     </select>
                     <span class="util-sheet-analysis-range-divider">~</span>
-                    <select class="util-sheet-month-select" data-role="util-sheet-analysis-to" aria-label="${datasetKey === 'electric' ? '전기 분석표 종료월' : '가스 분석표 종료월'}">
+                    <select class="util-sheet-month-select" data-role="util-sheet-analysis-to" aria-label="${datasetKey === 'electric' ? '전기 분석표 종료월' : (datasetKey === 'waste' ? '폐수 분석표 종료월' : '가스 분석표 종료월')}">
                         ${buildMonthOptionHtml(analysisModel.monthOptions, analysisModel.range?.to)}
                     </select>
                 </div>
@@ -340,6 +359,7 @@
         const gasAnalysisCategoryKey = normalizeGasAnalysisCategoryKey(modal.dataset.gasAnalysisCategoryKey || UtilSheetAnalysisState.gas.categoryKey);
         const electricMeterTeamKey = normalizeElectricMeterTeamKey(modal.dataset.electricMeterTeamKey || UtilSheetMeterState.electricTeamKey);
         const electricAnalysisTeamKey = normalizeElectricAnalysisTeamKey(modal.dataset.electricAnalysisTeamKey || UtilSheetAnalysisState.electric.teamKey);
+        const wasteAnalysisSiteKey = normalizeWasteAnalysisSiteKey(modal.dataset.wasteAnalysisSiteKey || UtilSheetAnalysisState.waste?.siteKey);
         const electricMeterViewKey = normalizeElectricMeterViewKey(modal.dataset.electricMeterViewKey || UtilSheetMeterState.electricViewKey);
         const datasetResult = typeof runtime.buildUtilSheetDatasetResult === 'function'
             ? runtime.buildUtilSheetDatasetResult(datasetKey, selectedMonthKey)
@@ -358,12 +378,16 @@
         modal.dataset.gasAnalysisCategoryKey = gasAnalysisCategoryKey;
         modal.dataset.electricMeterTeamKey = electricMeterTeamKey;
         modal.dataset.electricAnalysisTeamKey = electricAnalysisTeamKey;
+        modal.dataset.wasteAnalysisSiteKey = wasteAnalysisSiteKey;
         modal.dataset.electricMeterViewKey = electricMeterViewKey;
         UtilSheetReportState[sheetType] = datasetKey;
         UtilSheetMeterState.gasProductionKey = gasMeterProductionKey;
         UtilSheetAnalysisState.gas.categoryKey = gasAnalysisCategoryKey;
         UtilSheetMeterState.electricTeamKey = electricMeterTeamKey;
         UtilSheetAnalysisState.electric.teamKey = electricAnalysisTeamKey;
+        if (UtilSheetAnalysisState.waste) {
+            UtilSheetAnalysisState.waste.siteKey = wasteAnalysisSiteKey;
+        }
         UtilSheetMeterState.electricViewKey = electricMeterViewKey;
         syncSheetExtractButton(modal, sheetType);
         setAnalysisHeaderControls(modal, null, datasetKey, compareKey);
@@ -553,6 +577,46 @@
             return;
         }
 
+        if (sheetType === 'analysis' && datasetKey === 'waste') {
+            const analysisModel = typeof runtime.buildUtilWasteAnalysisModel === 'function'
+                ? runtime.buildUtilWasteAnalysisModel(selectedMonthKey || datasetResult.activeMonthKey, compareKey, wasteAnalysisSiteKey)
+                : { hasData: false };
+            modal._utilSheetAnalysisModel = analysisModel;
+            if (!analysisModel.hasData) {
+                if (subEl) subEl.textContent = '기준: 데이터 없음';
+                bodyEl.innerHTML = '<div class="util-sheet-empty">표시할 폐수 분석 데이터를 준비하지 못했습니다.</div>';
+                syncSupplementaryWindows(modal);
+                return;
+            }
+
+            modal.dataset.monthKey = analysisModel.range.to;
+            modal.dataset.wasteAnalysisSiteKey = analysisModel.siteOption?.key || wasteAnalysisSiteKey;
+            UtilSheetReportMonthState[sheetType] = analysisModel.range.to;
+            if (UtilSheetAnalysisState.waste) {
+                UtilSheetAnalysisState.waste.siteKey = analysisModel.siteOption?.key || wasteAnalysisSiteKey;
+            }
+            if (monthSelect) monthSelect.value = analysisModel.range.to;
+            const analysisViewState = resolveAnalysisViewState(modal);
+            setAnalysisHeaderControls(modal, analysisModel, datasetKey, compareKey);
+            const insights = typeof runtime.resolveUtilSheetMemoItems === 'function'
+                ? runtime.resolveUtilSheetMemoItems(sheetType, datasetKey, analysisModel.datasetResult || datasetResult, compareKey, null, { analysisModel })
+                : [];
+            bodyEl.innerHTML = `
+                ${typeof runtime.buildUtilWasteAnalysisBodyHtmlV2 === 'function' ? runtime.buildUtilWasteAnalysisBodyHtmlV2(analysisModel, analysisViewState, modal) : ''}
+                ${analysisViewState.fullscreenChart
+                    ? ''
+                    : buildMemoSectionHtml(insights, modal, sheetType, datasetKey)}
+            `;
+            if (typeof runtime.bindUtilSheetAnalysisChartDragScroll === 'function') {
+                runtime.bindUtilSheetAnalysisChartDragScroll(bodyEl);
+            }
+            if (typeof runtime.bindUtilSheetAnalysisInlineTableDrag === 'function') {
+                runtime.bindUtilSheetAnalysisInlineTableDrag(bodyEl, modal);
+            }
+            syncSupplementaryWindows(modal);
+            return;
+        }
+
         const compareMeta = typeof runtime.buildUtilSheetCompareMeta === 'function'
             ? runtime.buildUtilSheetCompareMeta(datasetResult, compareKey)
             : { label: '' };
@@ -562,6 +626,9 @@
             : null;
         const electricMeterComparisonModel = sheetType === 'meter' && datasetKey === 'electric' && typeof runtime.buildUtilElectricMeterComparisonModel === 'function'
             ? runtime.buildUtilElectricMeterComparisonModel(datasetResult.activeMonthKey || selectedMonthKey, compareKey, electricMeterTeamKey)
+            : null;
+        const wasteMeterModel = sheetType === 'meter' && datasetKey === 'waste' && typeof runtime.buildUtilWasteMeterModel === 'function'
+            ? runtime.buildUtilWasteMeterModel(datasetResult.activeMonthKey || selectedMonthKey)
             : null;
         const electricTeamDatasetResult = sheetType === 'meter' && datasetKey === 'electric' && electricRuntimeReady && typeof runtime.buildUtilElectricMeterTeamDatasetResult === 'function'
             ? runtime.buildUtilElectricMeterTeamDatasetResult(datasetResult.activeMonthKey || selectedMonthKey, electricMeterTeamKey)
@@ -613,6 +680,10 @@
                     ? (typeof runtime.buildUtilElectricMeterComparisonSectionHtml === 'function'
                         ? runtime.buildUtilElectricMeterComparisonSectionHtml(electricMeterComparisonModel, electricTeamDatasetResult, electricMeterViewKey)
                         : '')
+                    : sheetType === 'meter' && datasetKey === 'waste'
+                        ? (typeof runtime.buildUtilWasteMeterSectionHtml === 'function'
+                            ? runtime.buildUtilWasteMeterSectionHtml(wasteMeterModel)
+                            : '')
                     : ''}
             ${sheetType === 'analysis' ? `
                 <section class="util-sheet-section">

@@ -21,6 +21,7 @@
         applyUtilElectricMeterTeamSelection: null,
         applyUtilElectricAnalysisTeamSelection: null,
         applyUtilGasAnalysisCategorySelection: null,
+        applyUtilWasteAnalysisSiteSelection: null,
         setUtilGasAnalysisFuelInactive: null,
         setUtilSheetAnalysisUnitKey: null,
         setUtilSheetAnalysisDecimals: null,
@@ -183,6 +184,13 @@
             if (gasCategorySelect) {
                 if (typeof runtime.applyUtilGasAnalysisCategorySelection === 'function') {
                     runtime.applyUtilGasAnalysisCategorySelection(modal, gasCategorySelect.value || 'yusan');
+                }
+                return;
+            }
+            const wasteSiteSelect = event.target?.closest?.('[data-role="util-sheet-analysis-waste-site-select"]');
+            if (wasteSiteSelect) {
+                if (typeof runtime.applyUtilWasteAnalysisSiteSelection === 'function') {
+                    runtime.applyUtilWasteAnalysisSiteSelection(modal, wasteSiteSelect.value || 'all');
                 }
                 return;
             }

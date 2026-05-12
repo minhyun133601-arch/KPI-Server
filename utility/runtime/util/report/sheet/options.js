@@ -130,6 +130,30 @@
             showLpgCard: true
         })
     ]);
+    const UTIL_WASTE_ANALYSIS_SITE_OPTIONS = Object.freeze([
+        Object.freeze({
+            key: 'all',
+            label: '합산',
+            selectLabel: '합산 (유산 + 북정)',
+            wasteTeam: 'all',
+            productionTeam: 'all',
+            productionTeamNames: Object.freeze(['1팀 1파트', '1팀 2파트', '2팀', '3팀'])
+        }),
+        Object.freeze({
+            key: 'yusan',
+            label: '유산',
+            wasteTeam: '유산',
+            productionTeam: '유산',
+            productionTeamNames: Object.freeze(['1팀 2파트', '2팀', '3팀'])
+        }),
+        Object.freeze({
+            key: 'bukjeong',
+            label: '북정',
+            wasteTeam: '북정',
+            productionTeam: '북정',
+            productionTeamNames: Object.freeze(['1팀 1파트'])
+        })
+    ]);
     const UTIL_ELECTRIC_METER_TEAM_OPTIONS = Object.freeze([
         Object.freeze({
             key: 'team_01_02',
@@ -287,6 +311,19 @@
             || UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS[UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS.length - 1];
     }
 
+    function normalizeUtilWasteAnalysisSiteKey(value = '') {
+        const normalizedValue = String(value || '').trim();
+        return UTIL_WASTE_ANALYSIS_SITE_OPTIONS.some(option => option.key === normalizedValue)
+            ? normalizedValue
+            : 'all';
+    }
+
+    function getUtilWasteAnalysisSiteOption(value = '') {
+        const normalizedKey = normalizeUtilWasteAnalysisSiteKey(value);
+        return UTIL_WASTE_ANALYSIS_SITE_OPTIONS.find(option => option.key === normalizedKey)
+            || UTIL_WASTE_ANALYSIS_SITE_OPTIONS[0];
+    }
+
     function normalizeUtilElectricMeterViewKey(value = '') {
         const normalizedValue = String(value || '').trim().toLowerCase();
         if (normalizedValue === 'allocation' || normalizedValue === 'team') return normalizedValue;
@@ -296,6 +333,7 @@
     const api = {
         UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS,
         UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS,
+        UTIL_WASTE_ANALYSIS_SITE_OPTIONS,
         UTIL_ELECTRIC_METER_TEAM_OPTIONS,
         UTIL_ELECTRIC_METER_TOTAL_POWER_FIELD_ID,
         UTIL_ELECTRIC_METER_ACTIVE_POWER_FIELD_IDS,
@@ -313,6 +351,8 @@
         getUtilElectricAnalysisTeamOption,
         normalizeUtilGasAnalysisCategoryKey,
         getUtilGasAnalysisCategoryOption,
+        normalizeUtilWasteAnalysisSiteKey,
+        getUtilWasteAnalysisSiteOption,
         normalizeUtilElectricMeterViewKey
     };
 
