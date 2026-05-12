@@ -373,8 +373,19 @@
         .util-sheet-report-head-kicker { font-size: 0.68rem; font-weight: 900; color: #1d4ed8; letter-spacing: 0.06em; text-transform: uppercase; }
         .util-sheet-report-head-title { font-size: 1.02rem; font-weight: 900; color: #0f172a; }
         .util-sheet-report-head-sub { font-size: 0.75rem; color: #475569; font-weight: 700; }
+        .util-sheet-analysis-head-controls { min-width: min(820px, 64vw); }
+        .util-sheet-analysis-head-control-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+        .util-sheet-analysis-head-controls .util-sheet-analysis-range { padding: 3px; }
+        .util-sheet-analysis-head-controls .util-sheet-analysis-range .util-sheet-month-select { min-width: 112px; min-height: 31px; }
+        .util-sheet-analysis-head-controls .util-sheet-meter-summary-toolbar { justify-content: flex-start; gap: 0; }
+        .util-sheet-analysis-head-controls .util-sheet-meter-summary-control { margin: 0; }
+        .util-sheet-analysis-head-controls .util-sheet-meter-summary-select { min-height: 31px; min-width: 148px; }
+        .util-sheet-analysis-head-controls .util-sheet-segment { padding: 3px; }
+        .util-sheet-analysis-head-controls .util-sheet-segment-btn { min-height: 29px; padding: 0 10px; }
         .util-sheet-report-head-actions { display: flex; align-items: center; gap: 0.28rem; flex-wrap: wrap; justify-content: flex-end; }
         .util-sheet-report-main-controls { display: inline-flex; align-items: center; gap: 0.22rem; flex-wrap: wrap; }
+        .util-sheet-extract-options { position: fixed; inset: 0; z-index: 1465; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(15, 23, 42, 0.42); }
+        .util-sheet-extract-options[hidden] { display: none !important; }
         .util-sheet-report-window-actions { display: inline-flex; align-items: center; gap: 0.35rem; margin-left: 0.1rem; }
         .util-sheet-report-icon-btn { min-height: 34px; border: 1px solid #bfdbfe; background: rgba(255, 255, 255, 0.9); color: #1d4ed8; border-radius: 8px; padding: 0 11px; display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.76rem; font-weight: 800; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,0.72); }
         .util-sheet-report-icon-btn:hover { border-color: #60a5fa; background: #ffffff; }
@@ -383,6 +394,17 @@
         .util-sheet-report-window-actions .util-sheet-report-icon-btn span { display: none; }
         .util-sheet-report-icon-btn.is-close { width: 34px; min-width: 34px; justify-content: center; padding: 0; border-color: #fecaca; color: #b91c1c; }
         .util-sheet-report-icon-btn.is-close:hover { border-color: #f87171; background: #fff1f2; }
+        .util-sheet-extract-options-backdrop { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(15, 23, 42, 0.42); }
+        .util-sheet-extract-options-card { width: min(420px, calc(100vw - 36px)); border: 1px solid #dbe4f3; border-radius: 8px; background: #ffffff; box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28); overflow: hidden; }
+        .util-sheet-extract-options-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 12px 14px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+        .util-sheet-extract-options-title { font-size: 0.94rem; font-weight: 900; color: #0f172a; }
+        .util-sheet-extract-options-body { display: grid; gap: 0.75rem; padding: 14px; }
+        .util-sheet-extract-options-group { display: grid; gap: 0.45rem; margin: 0; padding: 0; border: 0; }
+        .util-sheet-extract-options-group legend { margin-bottom: 0.15rem; font-size: 0.74rem; font-weight: 900; color: #475569; }
+        .util-sheet-extract-option { display: flex; align-items: center; gap: 0.5rem; min-height: 34px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0 10px; background: #ffffff; color: #0f172a; font-size: 0.8rem; font-weight: 800; cursor: pointer; }
+        .util-sheet-extract-option:has(input:checked) { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
+        .util-sheet-extract-options-note { border-top: 1px dashed #dbe4f3; padding-top: 0.6rem; color: #64748b; font-size: 0.73rem; font-weight: 700; line-height: 1.35; }
+        .util-sheet-extract-options-actions { display: flex; justify-content: flex-end; gap: 0.45rem; padding: 12px 14px; border-top: 1px solid #e2e8f0; background: #f8fafc; }
         .util-sheet-report-head-actions .util-sheet-month-field { min-width: 124px; }
         .util-sheet-report-head-actions .util-sheet-month-label { color: #475569; }
         .util-sheet-report-head-actions .util-sheet-month-select { background: #ffffff; }
@@ -586,6 +608,7 @@
         .util-sheet-analysis-chart-btn:disabled { opacity: 0.42; cursor: default; }
         .util-sheet-analysis-series-dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.92); }
         .util-sheet-analysis-series-select { min-width: 92px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; color: #0f172a; padding: 4px 8px; min-height: 30px; font-size: 0.74rem; font-weight: 800; }
+        .util-sheet-analysis-decimals-select { min-width: 58px; }
         .util-sheet-analysis-series-mode,
         .util-sheet-analysis-series-actions,
         .util-sheet-analysis-series-controls { display: inline-flex; align-items: center; gap: 0.24rem; flex-wrap: wrap; }
@@ -658,6 +681,16 @@
         .util-sheet-memo-section { border-color: #dbeafe; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08); }
         .util-sheet-note-list { margin: 0; padding-left: 18px; display: grid; gap: 0.45rem; }
         .util-sheet-note-list li { font-size: 0.76rem; color: #334155; font-weight: 700; line-height: 1.45; }
+        .util-sheet-memo-arrow { display: inline-flex; align-items: center; justify-content: center; min-width: 1em; margin-right: 0.18rem; font-size: 0.84rem; font-weight: 900; line-height: 1; vertical-align: -0.05em; }
+        .util-sheet-memo-arrow.is-up { color: #dc2626; }
+        .util-sheet-memo-arrow.is-down { color: #2563eb; }
+        .util-sheet-memo-arrow.is-flat { color: #64748b; }
+        .util-sheet-manual-memo { display: grid; gap: 0.35rem; margin-top: 0.85rem; padding-top: 0.8rem; border-top: 1px dashed #bfdbfe; }
+        .util-sheet-manual-memo-label { font-size: 0.73rem; font-weight: 900; color: #1e40af; }
+        .util-sheet-manual-memo-input { width: 100%; min-height: 92px; resize: vertical; border: 1px solid #bfdbfe; border-radius: 8px; background: #ffffff; color: #0f172a; padding: 9px 10px; font-size: 0.78rem; font-weight: 700; line-height: 1.45; outline: none; box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04); }
+        .util-sheet-manual-memo-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14); }
+        .util-sheet-manual-memo-input::placeholder { color: #94a3b8; font-weight: 700; }
+        .util-sheet-manual-memo-text { min-height: 56px; border: 1px solid #bfdbfe; border-radius: 8px; background: #ffffff; color: #0f172a; padding: 9px 10px; font-size: 0.78rem; font-weight: 700; line-height: 1.45; white-space: pre-wrap; }
         .util-sheet-empty { text-align: center; padding: 28px 16px; border: 1px dashed #cbd5e1; border-radius: 8px; background: #ffffff; color: #64748b; font-size: 0.82rem; font-weight: 700; }
         @media (max-width: 960px) {
             .util-sheet-analysis-inline-table-panel { position: static; width: 100%; right: auto; top: auto; }

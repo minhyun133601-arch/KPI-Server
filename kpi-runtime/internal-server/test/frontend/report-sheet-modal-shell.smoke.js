@@ -17,8 +17,16 @@ const reportSheetModalShellSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/modal/shell.js', import.meta.url),
   'utf8'
 );
+const kpiUtilReportSheetSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.sheet.js', import.meta.url),
+  'utf8'
+);
 const kpiHtml = await fs.readFile(
   new URL('../../../../KPI.html', import.meta.url),
+  'utf8'
+);
+const meteringCssSource = await fs.readFile(
+  new URL('../../../app/styles/metering/metering.css', import.meta.url),
   'utf8'
 );
 
@@ -29,6 +37,7 @@ function createDocumentHarness() {
     alertMessages: [],
     blobOptions: null,
     blobParts: [],
+    blobHistory: [],
     clickedDownloads: [],
     focusedPopupCount: 0,
     openedHtml: '',
@@ -162,6 +171,7 @@ function createModalShellContext() {
       constructor(parts, options) {
         harness.blobParts = parts;
         harness.blobOptions = options;
+        harness.blobHistory.push({ parts, options });
       }
     },
     URL: {
@@ -228,6 +238,10 @@ test('report sheet modal shell registry creates the shared modal and routes type
 
   assert.doesNotMatch(reportSheetModalShellSource, /globalThis|window\.|globalScope/);
   assert.match(reportSheetModalShellSource, /KPIUtilReportRuntimeAdapter/);
+  assert.match(reportSheetModalShellSource, /util-sheet-extract-options-card/);
+  assert.match(reportSheetModalShellSource, /data-role="util-sheet-extract-run"/);
+  assert.doesNotMatch(reportSheetModalShellSource, /util-sheet-extract-actions/);
+  assert.match(meteringCssSource, /\.util-sheet-extract-options \{ position: fixed;/);
   config.UtilSheetReportMonthState.analysis = '2026-05';
   config.UtilSheetCompareState.analysis = 'year';
 
@@ -405,15 +419,15 @@ test('report sheet modal shell extraction downloads the visible meter report as 
           return `
             <section class="util-sheet-report-card">
               <div class="util-sheet-report-head">VISIBLE_REPORT_HEADER</div>
-              ${removedSub ? '' : '<div data-role="util-sheet-report-sub">기준: 2026년 5월</div>'}
+              ${removedSub ? '' : '<div data-role="util-sheet-report-sub">BASE_MONTH_2026_05</div>'}
               ${removedControls ? '' : '<div class="util-sheet-report-main-controls">TOGGLE_CONTROL</div>'}
               <div class="util-sheet-report-body">
-                ${removedSummaryToolbar ? '' : '<div class="util-sheet-meter-summary-toolbar">기준<select><option>합산</option></select></div>'}
+                ${removedSummaryToolbar ? '' : '<div class="util-sheet-meter-summary-toolbar">SUMMARY_SCOPE<select><option>COMBINED</option></select></div>'}
                 <span class="util-sheet-meter-table-badge"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i></span>
                 <article class="util-sheet-meter-table-card is-reference">REFERENCE_VISIBLE</article>
                 <article class="util-sheet-meter-table-card is-current">CURRENT_VISIBLE_METER_TABLE</article>
-                ${removedWindowActions ? '' : '<button data-role="util-sheet-report-print">추출</button>'}
-                ${removedBillingButton ? '' : '<button data-role="util-sheet-billing-preview-toggle">청구서</button>'}
+                ${removedWindowActions ? '' : '<button data-role="util-sheet-report-print">EXTRACT</button>'}
+                ${removedBillingButton ? '' : '<button data-role="util-sheet-billing-preview-toggle">BILLING</button>'}
               </div>
             </section>
           `;
@@ -421,8 +435,8 @@ test('report sheet modal shell extraction downloads the visible meter report as 
       };
     },
   };
-  const title = { textContent: '가스 검침표' };
-  const sub = { textContent: '기준: 2026년 5월' };
+  const title = { textContent: 'GAS_METER_REPORT' };
+  const sub = { textContent: 'BASE_MONTH_2026_05' };
 
   modal.querySelector = (selector) => ({
     '.util-sheet-report-card': reportCard,
@@ -450,10 +464,10 @@ test('report sheet modal shell extraction downloads the visible meter report as 
   assert.ok(removedRoles.includes('report-sub'));
   assert.ok(removedRoles.includes('summary-toolbar'));
   const html = String(harness.blobParts[0] || '');
-  assert.match(html, /가스 검침표/);
-  assert.doesNotMatch(html, /기준: 2026년 5월/);
+  assert.match(html, /GAS_METER_REPORT/);
+  assert.doesNotMatch(html, /BASE_MONTH_2026_05/);
   assert.doesNotMatch(html, /TOGGLE_CONTROL/);
-  assert.doesNotMatch(html, /<option>합산<\/option>/);
+  assert.doesNotMatch(html, /<option>COMBINED<\/option>/);
   assert.match(html, /font-awesome\/6\.4\.0\/css\/all\.min\.css/);
   assert.doesNotMatch(html, /app\/styles\/metering\/metering\.css/);
   assert.match(html, /fa-solid fa-table-cells-large/);
@@ -463,11 +477,238 @@ test('report sheet modal shell extraction downloads the visible meter report as 
   assert.match(html, /overflow-y: auto !important/);
   assert.match(html, /\.util-sheet-meter-extract-body \.util-sheet-report-body \{ height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important;/);
   assert.doesNotMatch(html, /data-role="util-sheet-report-print"/);
-  assert.doesNotMatch(html, />청구서</);
+  assert.doesNotMatch(html, />BILLING</);
   assert.deepEqual(harness.alertMessages, []);
 });
 
-test('report sheet modal shell extraction keeps electric meter views switchable', () => {
+test('report sheet modal shell extraction can select meter and analysis together with analysis default range', () => {
+  const { context, harness } = createModalShellContext();
+  const modalShell = context.KPIUtilReportSheetModalShell;
+  const config = context.KPIUtilReportSheetConfig;
+
+  config.UtilSheetReportState.meter = 'gas';
+  config.UtilSheetReportState.analysis = 'electric';
+  config.UtilSheetReportMonthState.meter = '2026-05';
+  config.UtilSheetReportMonthState.analysis = '2026-01';
+  config.UtilSheetCompareState.meter = 'month';
+  config.UtilSheetCompareState.analysis = 'year';
+  config.UtilSheetAnalysisState.gas.from = '';
+  config.UtilSheetAnalysisState.gas.to = '';
+  config.UtilSheetAnalysisState.gas.categoryKey = 'yusan';
+
+  const makeAnalysisModel = (range, categoryKey = 'yusan') => ({
+    hasData: true,
+    datasetKey: 'gas',
+    categoryOption: { key: categoryKey, label: categoryKey, selectLabel: categoryKey },
+    range,
+    rangeLabel: `${range.from} ~ ${range.to}`,
+    monthOptions: [
+      { value: '2026-03', label: '2026.03' },
+      { value: '2026-04', label: '2026.04' },
+      { value: '2026-05', label: '2026.05' },
+    ],
+    summaryItems: [],
+    charts: [],
+    combinedChart: { key: 'combined', title: 'Combined', controlItems: [], series: [] },
+    ratioCombinedChart: { key: 'ratio-combined', title: 'Ratio', controlItems: [], series: [] },
+  });
+  const renderCalls = [];
+
+  modalShell.setRuntimeAdapters({
+    normalizeUtilSheetType(sheetType) {
+      return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+    },
+    resolveUtilSheetReportDatasetKey(sheetType, datasetKey) {
+      void sheetType;
+      return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+    },
+    normalizeUtilSheetCompareKey(compareKey) {
+      return String(compareKey || '').trim() === 'year' ? 'year' : 'month';
+    },
+    renderUtilSheetReportModal(modal) {
+      const sheetType = modal.dataset.sheetType;
+      const state = config.UtilSheetAnalysisState.gas;
+      renderCalls.push({
+        sheetType,
+        datasetKey: modal.dataset.datasetKey,
+        monthKey: modal.dataset.monthKey,
+        compareKey: modal.dataset.compareKey,
+        from: state.from,
+        to: state.to,
+      });
+      config.UtilSheetReportState[sheetType] = modal.dataset.datasetKey;
+      config.UtilSheetReportMonthState[sheetType] = modal.dataset.monthKey;
+      config.UtilSheetCompareState[sheetType] = modal.dataset.compareKey;
+      modal._utilSheetAnalysisModel = sheetType === 'analysis'
+        ? makeAnalysisModel({ from: state.from, to: state.to }, state.categoryKey)
+        : null;
+    },
+    buildUtilGasAnalysisModel() {
+      const state = config.UtilSheetAnalysisState.gas;
+      return makeAnalysisModel({ from: state.from, to: state.to }, state.categoryKey);
+    },
+    buildUtilGasAnalysisBodyHtmlV2(model) {
+      return `<div class="analysis-body-html">ANALYSIS_BODY_${model.range.from}_${model.range.to}</div>`;
+    },
+  });
+
+  const modal = modalShell.ensureUtilSheetReportModal();
+  modal.dataset.sheetType = 'meter';
+  modal.dataset.datasetKey = 'gas';
+  modal.dataset.monthKey = '2026-05';
+  modal.dataset.compareKey = 'month';
+
+  const panel = {
+    hidden: true,
+    toggleAttribute(name, force) {
+      if (name === 'hidden') this.hidden = force === true;
+    },
+  };
+  const meterCheckbox = {
+    checked: false,
+    dataset: { extractSheetType: 'meter' },
+  };
+  const analysisCheckbox = {
+    checked: false,
+    dataset: { extractSheetType: 'analysis' },
+  };
+  const reportCard = {
+    querySelectorAll(selector) {
+      return selector === 'input, textarea, select' ? [] : [];
+    },
+    cloneNode(deep) {
+      assert.equal(deep, true);
+      let removedControls = false;
+      let removedPrint = false;
+      return {
+        querySelectorAll(selector) {
+          if (selector === 'input, textarea, select' || selector === '[id]') return [];
+          const removals = [];
+          if (selector.includes('.util-sheet-report-main-controls')) {
+            removals.push({
+              remove() {
+                removedControls = true;
+              },
+            });
+          }
+          if (selector.includes('[data-role="util-sheet-report-print"]')) {
+            removals.push({
+              remove() {
+                removedPrint = true;
+              },
+            });
+          }
+          return removals;
+        },
+        get outerHTML() {
+          const sheetType = modal.dataset.sheetType;
+          const range = modal._utilSheetAnalysisModel?.range || {};
+          return `
+            <section class="util-sheet-report-card" data-card-sheet-type="${sheetType}">
+              ${removedControls ? '' : '<div class="util-sheet-report-main-controls">APP_CONTROLS</div>'}
+              <div class="util-sheet-report-body" data-role="util-sheet-report-body">
+                ${sheetType === 'analysis' ? `
+                  <div class="util-sheet-analysis-toolbar">
+                    <select data-role="util-sheet-analysis-from"><option value="2026-04">2026.04</option></select>
+                    <select data-role="util-sheet-analysis-to"><option value="2026-05">2026.05</option></select>
+                    <select data-role="util-sheet-analysis-gas-category-select"><option value="yusan">yusan</option></select>
+                  </div>
+                  <div>ANALYSIS_CARD_${range.from}_${range.to}</div>
+                ` : `<div>METER_CARD_${modal.dataset.monthKey}</div>`}
+                ${removedPrint ? '' : '<button data-role="util-sheet-report-print">extract</button>'}
+              </div>
+            </section>
+          `;
+        },
+      };
+    },
+  };
+  const title = {
+    get textContent() {
+      return modal.dataset.sheetType === 'analysis' ? 'GAS ANALYSIS' : 'GAS METER';
+    },
+  };
+
+  modal.querySelector = (selector) => ({
+    '[data-role="util-sheet-extract-options"]': panel,
+    '.util-sheet-report-card': reportCard,
+    '[data-role="util-sheet-report-title"]': title,
+  }[selector] || null);
+  modal.querySelectorAll = (selector) => (
+    selector === '[data-role="util-sheet-extract-option"]'
+      ? [meterCheckbox, analysisCheckbox]
+      : []
+  );
+
+  modal.listeners.click({
+    target: createTarget({
+      '[data-role="util-sheet-report-print"]': true,
+    }),
+  });
+
+  assert.equal(panel.hidden, false);
+  assert.equal(meterCheckbox.checked, true);
+  assert.equal(analysisCheckbox.checked, false);
+  assert.deepEqual(harness.clickedDownloads, []);
+
+  analysisCheckbox.checked = true;
+  modal.listeners.click({
+    target: createTarget({
+      '[data-role="util-sheet-extract-run"]': true,
+    }),
+  });
+
+  assert.deepEqual(harness.clickedDownloads.map(item => item.download), [
+    'utility-report-gas-2026-04-2026-05.html',
+  ]);
+  assert.equal(harness.clickedDownloads.length, 1);
+  assert.equal(panel.hidden, true);
+  assert.equal(modal.dataset.extractOptionsOpen, 'false');
+  assert.ok(renderCalls.some(call => (
+    call.sheetType === 'analysis'
+    && call.monthKey === '2026-05'
+    && call.from === '2026-04'
+    && call.to === '2026-05'
+  )));
+
+  const combinedHtml = String(harness.blobHistory[0]?.parts?.[0] || '');
+  assert.equal(harness.blobHistory.length, 1);
+  assert.match(combinedHtml, /data-role="util-sheet-combined-tab" data-combined-sheet-type="meter"/);
+  assert.match(combinedHtml, /data-role="util-sheet-combined-tab" data-combined-sheet-type="analysis"/);
+  assert.match(combinedHtml, /data-role="util-sheet-combined-section" data-combined-sheet-type="meter"/);
+  assert.match(combinedHtml, /data-role="util-sheet-combined-section" data-combined-sheet-type="analysis"/);
+  assert.doesNotMatch(combinedHtml, /COMBINED EXTRACT/);
+  assert.doesNotMatch(combinedHtml, /\uAC80\uCE68\uD45C\s*\/\s*\uBD84\uC11D\uD45C\s*\uCD94\uCD9C/);
+  assert.doesNotMatch(combinedHtml, /util-sheet-combined-extract-title/);
+  assert.match(combinedHtml, /utilSheetCombinedExtractToggle/);
+  assert.match(combinedHtml, /setActiveSheet\('meter'\)/);
+  assert.match(combinedHtml, /METER_CARD_2026-05/);
+  assert.match(combinedHtml, /ANALYSIS_CARD_2026-04_2026-05/);
+  assert.match(combinedHtml, /"activeRange":\{"from":"2026-04","to":"2026-05"\}/);
+  assert.match(combinedHtml, /ANALYSIS_BODY_2026-03_2026-05/);
+  assert.match(combinedHtml, /scopeModels/);
+  assert.match(combinedHtml, /function getAnalysisRoot\(\)/);
+  assert.match(combinedHtml, /queryAnalysisAll\('\.util-sheet-analysis-summary-card'\)/);
+  assert.match(combinedHtml, /queryAnalysisAll\(`\[data-analysis-chart-key=/);
+  assert.doesNotMatch(combinedHtml, /document\.querySelectorAll\('\.util-sheet-analysis-summary-card'\)/);
+  assert.doesNotMatch(combinedHtml, /document\.querySelectorAll\(`\[data-analysis-chart-key=/);
+  assert.match(combinedHtml, /data-role="util-sheet-analysis-from"/);
+  assert.match(combinedHtml, /data-role="util-sheet-analysis-to"/);
+  assert.match(combinedHtml, /data-role="util-sheet-analysis-gas-category-select"/);
+  assert.match(combinedHtml, /\.util-sheet-combined-extract-section\[hidden\] \{ display: none !important; \}/);
+  assert.match(combinedHtml, /\.util-sheet-combined-extract-section\.is-analysis \{ break-before: page; \}/);
+  assert.equal(modal.dataset.sheetType, 'meter');
+  assert.equal(modal.dataset.monthKey, '2026-05');
+  assert.equal(config.UtilSheetReportState.analysis, 'electric');
+  assert.equal(config.UtilSheetReportMonthState.analysis, '2026-01');
+  assert.equal(config.UtilSheetCompareState.analysis, 'year');
+  assert.equal(config.UtilSheetAnalysisState.gas.from, '');
+  assert.equal(config.UtilSheetAnalysisState.gas.to, '');
+  assert.equal(config.UtilSheetAnalysisState.gas.categoryKey, 'yusan');
+  assert.deepEqual(harness.alertMessages, []);
+});
+
+test('report sheet modal shell extraction keeps electric meter output static', () => {
   const { context, harness } = createModalShellContext();
   const modalShell = context.KPIUtilReportSheetModalShell;
 
@@ -491,7 +732,7 @@ test('report sheet modal shell extraction keeps electric meter views switchable'
       return { ready: true, monthKey, compareKey, teamKey };
     },
     buildUtilElectricMeterTeamDatasetResult(monthKey, teamKey) {
-      return { option: { key: teamKey, label: '합산' }, latestRow: { monthKey } };
+      return { option: { key: teamKey, label: 'COMBINED_TEAM' }, latestRow: { monthKey } };
     },
     buildUtilElectricMeterComparisonSectionHtml(model, teamDatasetResult, viewKey) {
       comparisonCalls.push({ model, teamDatasetResult, viewKey });
@@ -499,9 +740,9 @@ test('report sheet modal shell extraction keeps electric meter views switchable'
         <section class="util-sheet-section" data-rendered-electric-view="${viewKey}">
           <div class="util-sheet-section-head">
             <div class="util-sheet-segment" data-role="util-sheet-meter-electric-view-toggle">
-              <button type="button" data-role="util-sheet-meter-electric-view-select" data-view-key="meter">검침표</button>
-              <button type="button" data-role="util-sheet-meter-electric-view-select" data-view-key="allocation">설비 배부 요약</button>
-              <button type="button" data-role="util-sheet-meter-electric-view-select" data-view-key="team">팀 요약</button>
+              <button type="button" data-role="util-sheet-meter-electric-view-select" data-view-key="meter">METER_VIEW</button>
+              <button type="button" data-role="util-sheet-meter-electric-view-select" data-view-key="allocation">ALLOCATION_VIEW</button>
+              <button type="button" data-role="util-sheet-meter-electric-view-select" data-view-key="team">TEAM_VIEW</button>
             </div>
           </div>
           <div class="util-sheet-meter-table-stack">ELECTRIC_${viewKey.toUpperCase()}_VIEW</div>
@@ -549,14 +790,14 @@ test('report sheet modal shell extraction keeps electric meter views switchable'
             <section class="util-sheet-report-card">
               <div class="util-sheet-report-head">ELECTRIC_HEADER</div>
               <div class="util-sheet-report-body" data-role="util-sheet-report-body">${body.innerHTML}</div>
-              <button data-role="util-sheet-report-print">추출</button>
+              <button data-role="util-sheet-report-print">EXTRACT</button>
             </section>
           `;
         },
       };
     },
   };
-  const title = { textContent: '전력비 검침표' };
+  const title = { textContent: 'ELECTRIC_METER_REPORT' };
 
   modal.querySelector = (selector) => ({
     '.util-sheet-report-card': reportCard,
@@ -571,22 +812,17 @@ test('report sheet modal shell extraction keeps electric meter views switchable'
   assert.deepEqual(harness.clickedDownloads, [
     { href: 'blob:meter-report', download: 'utility-meter-electric-2026-02.html' },
   ]);
-  assert.deepEqual(comparisonCalls.map(call => call.viewKey), ['meter', 'allocation', 'team']);
-  assert.equal(comparisonCalls[0].model.monthKey, '2026-02');
-  assert.equal(comparisonCalls[0].model.compareKey, 'year');
-  assert.equal(comparisonCalls[0].model.teamKey, 'combined');
+  assert.deepEqual(comparisonCalls, []);
 
   const html = String(harness.blobParts[0] || '');
-  assert.match(html, /utilSheetElectricMeterExtractRuntime/);
-  assert.match(html, /data-role="util-sheet-electric-extract-views"/);
-  assert.match(html, /data-active-view="team"/);
-  assert.match(html, /ELECTRIC_HERO/);
-  assert.match(html, /ELECTRIC_METER_VIEW/);
-  assert.match(html, /ELECTRIC_ALLOCATION_VIEW/);
-  assert.match(html, /ELECTRIC_TEAM_VIEW/);
-  assert.match(html, /ELECTRIC_MEMO/);
-  assert.match(html, /data-role="util-sheet-meter-electric-view-select"/);
-  assert.doesNotMatch(html, /OLD_VIEW/);
+  assert.doesNotMatch(html, /utilSheetElectricMeterExtractRuntime/);
+  assert.doesNotMatch(html, /data-role="util-sheet-electric-extract-views"/);
+  assert.doesNotMatch(html, /data-active-view="team"/);
+  assert.match(html, /OLD_HERO/);
+  assert.match(html, /OLD_VIEW/);
+  assert.doesNotMatch(html, /ELECTRIC_METER_VIEW/);
+  assert.doesNotMatch(html, /ELECTRIC_ALLOCATION_VIEW/);
+  assert.doesNotMatch(html, /ELECTRIC_TEAM_VIEW/);
   assert.deepEqual(harness.alertMessages, []);
 });
 
@@ -615,51 +851,51 @@ test('report sheet modal shell extraction downloads analysis html with standalon
     rangeLabel: '2026.03 ~ 2026.05',
     combinedChart: {
       key: 'combined',
-      title: 'LNG/LPG 사용량 · 금액 · 생산량',
+      title: 'LNG_LPG_USAGE_COST_PRODUCTION',
       controlItems: [{
         key: 'lngUsage',
-        title: 'LNG 사용량',
+        title: 'LNG_USAGE',
         color: '#2563eb',
         displayMode: 'bar',
         unitKey: 'nm3',
         unitLabel: 'Nm3',
         unitOptions: [
           { key: 'nm3', label: 'Nm3', scale: 1, decimals: 0 },
-          { key: 'knm3', label: '천Nm3', scale: 1000, decimals: 1 },
+          { key: 'knm3', label: 'kNm3', scale: 1000, decimals: 1 },
         ],
         points: [
-          { monthKey: '2026-03', label: '3월', value: 0 },
-          { monthKey: '2026-04', label: '4월', value: 0 },
+          { monthKey: '2026-03', label: 'Mar', value: 0 },
+          { monthKey: '2026-04', label: 'Apr', value: 0 },
         ],
       }],
       series: [{
         seriesKey: 'lngUsage',
         points: [
-          { monthKey: '2026-03', label: '3월', value: 100 },
-          { monthKey: '2026-04', label: '4월', value: 120 },
+          { monthKey: '2026-03', label: 'Mar', value: 100 },
+          { monthKey: '2026-04', label: 'Apr', value: 120 },
         ],
       }],
     },
     ratioCombinedChart: {
       key: 'ratio-combined',
-      title: 'LPG/LNG 소모량 추이',
+      title: 'RATIO_TREND',
       decimals: 3,
       controlItems: [{
         key: 'ratio-lng',
-        title: 'LNG 소모량',
-        label: 'LNG 소모량 (Nm3/kg)',
+        title: 'LNG_RATIO',
+        label: 'LNG_RATIO_NM3_KG',
         color: '#2563eb',
         displayMode: 'bar',
         points: [
-          { monthKey: '2026-03', label: '3월', value: 0 },
-          { monthKey: '2026-04', label: '4월', value: 0 },
+          { monthKey: '2026-03', label: 'Mar', value: 0 },
+          { monthKey: '2026-04', label: 'Apr', value: 0 },
         ],
       }],
       series: [{
         seriesKey: 'ratio-lng',
         points: [
-          { monthKey: '2026-03', label: '3월', value: 0.115 },
-          { monthKey: '2026-04', label: '4월', value: 0.103 },
+          { monthKey: '2026-03', label: 'Mar', value: 0.115 },
+          { monthKey: '2026-04', label: 'Apr', value: 0.103 },
         ],
       }],
     },
@@ -667,6 +903,8 @@ test('report sheet modal shell extraction downloads analysis html with standalon
 
   let removedToolbar = false;
   let removedMainControls = false;
+  let removedExtractOptions = false;
+  let removedMeterSummaryToolbar = false;
   const reportCard = {
     querySelectorAll(selector) {
       return selector === 'input, textarea, select' ? [] : [];
@@ -676,33 +914,58 @@ test('report sheet modal shell extraction downloads analysis html with standalon
       return {
         querySelectorAll(selector) {
           if (selector === 'input, textarea, select' || selector === '[id]') return [];
-          return [
-            {
+          const removals = [];
+          if (selector.includes('.util-sheet-report-main-controls')) {
+            removals.push({
               remove() {
                 removedMainControls = true;
               },
-            },
-            {
+            });
+          }
+          if (selector.includes('[data-role="util-sheet-extract-options"]')) {
+            removals.push({
+              remove() {
+                removedExtractOptions = true;
+              },
+            });
+          }
+          if (selector.includes('.util-sheet-meter-summary-toolbar')) {
+            removals.push({
+              remove() {
+                removedMeterSummaryToolbar = true;
+              },
+            });
+          }
+          if (selector.includes('.util-sheet-analysis-toolbar')) {
+            removals.push({
               remove() {
                 removedToolbar = true;
               },
-            },
-          ];
+            });
+          }
+          return removals;
         },
         get outerHTML() {
           return `
             <section class="util-sheet-report-card">
               <div class="util-sheet-report-head">ANALYSIS_HEADER</div>
+              ${removedExtractOptions ? '' : '<div data-role="util-sheet-extract-options">EXTRACT_OPTIONS</div>'}
               ${removedMainControls ? '' : '<div class="util-sheet-report-main-controls">APP_TOGGLE</div>'}
               <div class="util-sheet-report-body">
-                ${removedToolbar ? '' : '<div class="util-sheet-analysis-toolbar">RANGE_TEAM_TOOLBAR</div>'}
+                ${removedToolbar ? '' : `
+                  <div class="util-sheet-analysis-toolbar">
+                    RANGE_TEAM_TOOLBAR
+                    ${removedMeterSummaryToolbar ? '' : '<div class="util-sheet-meter-summary-toolbar"><select data-role="util-sheet-analysis-gas-category-select"><option value="yusan">yusan</option></select></div>'}
+                  </div>
+                `}
                 <div class="util-sheet-analysis-summary-controls">
                   <select data-role="util-sheet-analysis-unit" data-chart-key="lngUsage"><option value="nm3">Nm3</option></select>
-                  <button data-role="util-sheet-analysis-series-type" data-chart-key="lngUsage" data-chart-type="line">선</button>
-                  <button data-role="util-sheet-analysis-open-ratio-table" data-table-key="lngUsage">표 팝업</button>
+                  <input type="checkbox" data-role="util-sheet-analysis-series-label-toggle" data-chart-key="lngUsage" checked>
+                  <button data-role="util-sheet-analysis-series-type" data-chart-key="lngUsage" data-chart-type="line">LINE</button>
+                  <button data-role="util-sheet-analysis-open-ratio-table" data-table-key="lngUsage">TABLE_POPUP</button>
                 </div>
                 <article class="util-sheet-analysis-chart-card" data-role="util-sheet-analysis-chart-card" data-analysis-chart-key="combined">
-                  <button data-role="util-sheet-analysis-open-chart" data-chart-key="combined">전체화면</button>
+                  <button data-role="util-sheet-analysis-open-chart" data-chart-key="combined">FULLSCREEN</button>
                   <div class="util-sheet-analysis-chart-frame"><svg data-testid="original-rendered-chart"><path d="M 0 0 L 10 10"></path></svg></div>
                 </article>
               </div>
@@ -712,7 +975,7 @@ test('report sheet modal shell extraction downloads analysis html with standalon
       };
     },
   };
-  const title = { textContent: '가스 분석표' };
+  const title = { textContent: 'GAS_ANALYSIS_REPORT' };
 
   modal.querySelector = (selector) => ({
     '.util-sheet-report-card': reportCard,
@@ -728,7 +991,7 @@ test('report sheet modal shell extraction downloads analysis html with standalon
     { href: 'blob:meter-report', download: 'utility-analysis-gas-2026-03-2026-05.html' },
   ]);
   const html = String(harness.blobParts[0] || '');
-  assert.match(html, /가스 분석표/);
+  assert.match(html, /GAS_ANALYSIS_REPORT/);
   assert.match(html, /__UTIL_SHEET_ANALYSIS_EXTRACT__/);
   assert.match(html, /id="util-sheet-analysis-extract-data"/);
   assert.match(html, /utilSheetAnalysisExtractRuntime/);
@@ -737,18 +1000,16 @@ test('report sheet modal shell extraction downloads analysis html with standalon
   assert.match(html, /baseY: pad\.top \+ \(\(maxVal - baseValue\) \/ valueRange\) \* plotH/);
   assert.match(html, /function findSourceSeries/);
   assert.match(html, /function findControlItemChart/);
-  assert.match(html, /function getUsageProductionRatioKeys/);
-  assert.match(html, /function getEffectiveUnitOption/);
-  assert.match(html, /function scaleUsageProductionRatioValue/);
-  assert.match(html, /function getAffectedSeriesKeys/);
-  assert.match(html, /affected\.add\('electricIntensity'\)/);
-  assert.match(html, /affected\.add\('ratio-lng'\)/);
-  assert.match(html, /function refreshOpenDataTables/);
   assert.match(html, /function resolveSeriesDecimals/);
   assert.match(html, /startsWith\('ratio-'\) \? 3 : 0/);
   assert.match(html, /raw = sourcePointValue \* sourceScale/);
   assert.match(html, /pointEntry\?\.sourcePoint/);
   assert.match(html, /function bindAnalysisChartDragScroll/);
+  assert.match(html, /scopeModels/);
+  assert.match(html, /activeRange/);
+  assert.match(html, /function renderAnalysisBodyForScope/);
+  assert.match(html, /data-role="util-sheet-analysis-from"/);
+  assert.match(html, /data-role="util-sheet-analysis-to"/);
   assert.match(html, /analysisExtractDragBound/);
   assert.match(html, /const chartInlineStyle = \[/);
   assert.match(html, /width:100%;max-width:100%;overflow-x:auto;overflow-y:visible/);
@@ -762,8 +1023,11 @@ test('report sheet modal shell extraction downloads analysis html with standalon
   assert.match(html, /panel\.style\.left = `\$\{Math\.round\(clampedLeft\)\}px`/);
   assert.match(html, /function buildMonthTableHtml/);
   assert.match(html, /data-role="util-sheet-analysis-unit"/);
+  assert.match(html, /data-role="util-sheet-analysis-series-label-toggle"/);
+  assert.match(html, /seriesLabelModes/);
   assert.match(html, /data-role="util-sheet-analysis-series-type"/);
   assert.match(html, /data-role="util-sheet-analysis-open-ratio-table"/);
+  assert.match(html, /data-role="util-sheet-analysis-gas-category-select"/);
   assert.match(html, /data-testid="original-rendered-chart"/);
   assert.match(html, /is-extract-fullscreen/);
   assert.match(html, /util-analytics-chart-canvas\.is-dragging/);
@@ -773,23 +1037,32 @@ test('report sheet modal shell extraction downloads analysis html with standalon
   assert.doesNotMatch(html, /app\/styles\/metering\/metering\.css/);
   assert.doesNotMatch(html, /util-sheet-analysis-inline-table-panel is-extract/);
   assert.match(html, /"range":\{"from":"2026-03","to":"2026-05"\}/);
-  assert.match(html, /"series":\[\{"seriesKey":"lngUsage","points":\[\{"monthKey":"2026-03","label":"3월","value":100\}/);
+  assert.match(html, /"series":\[\{"seriesKey":"lngUsage","points":\[\{"monthKey":"2026-03","label":"Mar","value":100\}/);
   assert.match(html, /"ratioCombinedChart":\{"key":"ratio-combined"/);
-  assert.match(html, /"series":\[\{"seriesKey":"ratio-lng","points":\[\{"monthKey":"2026-03","label":"3월","value":0\.115\}/);
-  assert.doesNotMatch(html, /RANGE_TEAM_TOOLBAR/);
+  assert.match(html, /"series":\[\{"seriesKey":"ratio-lng","points":\[\{"monthKey":"2026-03","label":"Mar","value":0\.115\}/);
+  assert.match(html, /RANGE_TEAM_TOOLBAR/);
   assert.doesNotMatch(html, /APP_TOGGLE/);
-  assert.equal(removedToolbar, true);
+  assert.doesNotMatch(html, /EXTRACT_OPTIONS/);
+  assert.equal(removedToolbar, false);
   assert.equal(removedMainControls, true);
+  assert.equal(removedExtractOptions, true);
+  assert.equal(removedMeterSummaryToolbar, false);
   assert.deepEqual(harness.alertMessages, []);
 });
 
 test('kpi html loads report sheet modal shell before modal render and sheet.js', () => {
+  assert.match(
+    kpiUtilReportSheetSource,
+    /utilReportSheetModalShell\.setRuntimeAdapters\(\{[\s\S]*buildUtilGasAnalysisModel,[\s\S]*buildUtilElectricAnalysisModel,[\s\S]*buildUtilGasAnalysisBodyHtmlV2,[\s\S]*buildUtilElectricAnalysisBodyHtmlV2,/,
+    'modal shell must receive analysis extract model/body adapters'
+  );
+
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=053');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=059');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=055');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=055');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=076');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=057');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=057');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=059');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');

@@ -64,6 +64,9 @@
         bindUtilSheetAnalysisInlineTableDrag: null,
         buildUtilElectricAnalysisModel: null,
         buildUtilElectricAnalysisBodyHtmlV2: null,
+        buildUtilGasAnalysisCategorySelectHtml: null,
+        buildUtilElectricAnalysisTeamSelectHtml: null,
+        buildUtilSheetMonthOptionHtml: null,
         buildUtilElectricMeterComparisonModel: null,
         buildUtilElectricMeterTeamDatasetResult: null,
         buildUtilGasMeterSummaryItems: null,
@@ -99,6 +102,23 @@
             return runtime.resolveUtilSheetReportDatasetKey(sheetType, datasetKey);
         }
         return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+    }
+
+    function getManualMemoKey(sheetType = 'meter', datasetKey = 'gas') {
+        return `${normalizeSheetType(sheetType)}:${resolveDatasetKey(sheetType, datasetKey)}`;
+    }
+
+    function getManualMemoText(modal, sheetType = 'meter', datasetKey = 'gas') {
+        const key = getManualMemoKey(sheetType, datasetKey);
+        return String(modal?._utilSheetManualMemo?.[key] || '');
+    }
+
+    function buildMemoSectionHtml(insights = [], modal = null, sheetType = 'meter', datasetKey = 'gas') {
+        if (typeof runtime.buildUtilSheetMemoSectionHtml !== 'function') return '';
+        return runtime.buildUtilSheetMemoSectionHtml(insights, {
+            manualMemoText: getManualMemoText(modal, sheetType, datasetKey),
+            manualMemoEditable: true
+        });
     }
 
     function normalizeCompareKey(compareKey = 'month') {
@@ -195,6 +215,74 @@
         extractButton.setAttribute?.('title', sheetType === 'analysis' ? '분석표 추출' : '검침표 추출');
     }
 
+    function buildMonthOptionHtml(monthOptions = [], selectedValue = '') {
+        if (typeof runtime.buildUtilSheetMonthOptionHtml === 'function') {
+            return runtime.buildUtilSheetMonthOptionHtml(monthOptions, selectedValue);
+        }
+        return (Array.isArray(monthOptions) ? monthOptions : []).map(item => `
+            <option value="${escapeHtml(item?.value || '')}"${String(item?.value || '') === String(selectedValue || '') ? ' selected' : ''}>${escapeHtml(item?.label || item?.value || '')}</option>
+        `).join('');
+    }
+
+    function buildAnalysisScopeSelectHtml(datasetKey = 'gas', analysisModel = {}) {
+        if (datasetKey === 'electric' && typeof runtime.buildUtilElectricAnalysisTeamSelectHtml === 'function') {
+            return runtime.buildUtilElectricAnalysisTeamSelectHtml(analysisModel?.teamOption?.key || 'combined');
+        }
+        if (typeof runtime.buildUtilGasAnalysisCategorySelectHtml === 'function') {
+            return runtime.buildUtilGasAnalysisCategorySelectHtml(analysisModel?.categoryOption?.key || 'yusan');
+        }
+        return '';
+    }
+
+    function buildAnalysisHeaderControlsHtml(datasetKey = 'gas', analysisModel = {}, compareKey = 'month') {
+        const normalizedCompareKey = normalizeCompareKey(compareKey);
+        return `
+            <div class="util-sheet-analysis-head-control-row">
+                <div class="util-sheet-analysis-range is-head">
+                    <select class="util-sheet-month-select" data-role="util-sheet-analysis-from" aria-label="${datasetKey === 'electric' ? '전기 분석표 시작월' : '가스 분석표 시작월'}">
+                        ${buildMonthOptionHtml(analysisModel.monthOptions, analysisModel.range?.from)}
+                    </select>
+                    <span class="util-sheet-analysis-range-divider">~</span>
+                    <select class="util-sheet-month-select" data-role="util-sheet-analysis-to" aria-label="${datasetKey === 'electric' ? '전기 분석표 종료월' : '가스 분석표 종료월'}">
+                        ${buildMonthOptionHtml(analysisModel.monthOptions, analysisModel.range?.to)}
+                    </select>
+                </div>
+                <div class="util-sheet-segment is-analysis-head" data-role="util-sheet-modal-compare-toggle">
+                    <button type="button" class="util-sheet-segment-btn${normalizedCompareKey === 'month' ? ' is-active' : ''}" data-role="util-sheet-modal-compare-select" data-compare-key="month" aria-pressed="${normalizedCompareKey === 'month' ? 'true' : 'false'}">전월대비</button>
+                    <button type="button" class="util-sheet-segment-btn${normalizedCompareKey === 'year' ? ' is-active' : ''}" data-role="util-sheet-modal-compare-select" data-compare-key="year" aria-pressed="${normalizedCompareKey === 'year' ? 'true' : 'false'}">전년대비</button>
+                </div>
+                ${buildAnalysisScopeSelectHtml(datasetKey, analysisModel)}
+            </div>
+        `;
+    }
+
+    function setAnalysisHeaderControls(modal, analysisModel = null, datasetKey = 'gas', compareKey = 'month') {
+        const controlsEl = modal?.querySelector?.('[data-role="util-sheet-analysis-header-controls"]') || null;
+        const subEl = modal?.querySelector?.('[data-role="util-sheet-report-sub"]') || null;
+        const primaryControls = modal?.querySelector?.('.util-sheet-report-main-controls') || null;
+        const primaryMonthField = primaryControls?.querySelector?.('[data-role="util-sheet-modal-month"]')?.closest?.('.util-sheet-month-field') || null;
+        const primaryCompareToggle = primaryControls?.querySelector?.('[data-role="util-sheet-modal-compare-toggle"]') || null;
+        const visible = analysisModel && typeof analysisModel === 'object';
+
+        if (controlsEl) {
+            controlsEl.innerHTML = visible ? buildAnalysisHeaderControlsHtml(datasetKey, analysisModel, compareKey) : '';
+            controlsEl.hidden = !visible;
+            controlsEl.toggleAttribute?.('hidden', !visible);
+        }
+        if (subEl) {
+            subEl.hidden = visible;
+            subEl.toggleAttribute?.('hidden', visible);
+        }
+        if (primaryMonthField) {
+            primaryMonthField.hidden = visible;
+            primaryMonthField.toggleAttribute?.('hidden', visible);
+        }
+        if (primaryCompareToggle) {
+            primaryCompareToggle.hidden = visible;
+            primaryCompareToggle.toggleAttribute?.('hidden', visible);
+        }
+    }
+
     function rerenderUtilSheetReportModalIfActive(sheetType, datasetKey) {
         const doc = getDocument();
         if (!doc || typeof doc.getElementById !== 'function') return;
@@ -278,6 +366,7 @@
         UtilSheetAnalysisState.electric.teamKey = electricAnalysisTeamKey;
         UtilSheetMeterState.electricViewKey = electricMeterViewKey;
         syncSheetExtractButton(modal, sheetType);
+        setAnalysisHeaderControls(modal, null, datasetKey, compareKey);
 
         if (typeof runtime.pruneUtilSheetDatasetToggles === 'function') {
             runtime.pruneUtilSheetDatasetToggles(modal);
@@ -392,9 +481,7 @@
             UtilSheetReportMonthState[sheetType] = analysisModel.range.to;
             if (monthSelect) monthSelect.value = analysisModel.range.to;
             const analysisViewState = resolveAnalysisViewState(modal);
-            if (subEl) {
-                subEl.textContent = `범위 ${analysisModel.rangeLabel} / ${analysisModel.compareLabel} / 기준 ${analysisModel.categoryOption?.label || '합산'}`;
-            }
+            setAnalysisHeaderControls(modal, analysisModel, datasetKey, compareKey);
             const analysisDatasetResult = typeof runtime.buildUtilSheetDatasetResult === 'function'
                 ? runtime.buildUtilSheetDatasetResult(datasetKey, analysisModel.range.to)
                 : datasetResult;
@@ -402,7 +489,7 @@
                 ? runtime.buildUtilGasMeterComparisonModel(analysisModel.range.to, compareKey)
                 : null;
             const insights = typeof runtime.resolveUtilSheetMemoItems === 'function'
-                ? runtime.resolveUtilSheetMemoItems(sheetType, datasetKey, analysisDatasetResult, compareKey, gasMeterComparisonModel)
+                ? runtime.resolveUtilSheetMemoItems(sheetType, datasetKey, analysisDatasetResult, compareKey, gasMeterComparisonModel, { analysisModel })
                 : [];
             if (gasMeterComparisonModel?.loading && typeof runtime.ensureUtilGasMeteringStore === 'function') {
                 runtime.ensureUtilGasMeteringStore().then(() => {
@@ -413,7 +500,7 @@
                 ${typeof runtime.buildUtilGasAnalysisBodyHtmlV2 === 'function' ? runtime.buildUtilGasAnalysisBodyHtmlV2(analysisModel, analysisViewState, modal) : ''}
                 ${analysisViewState.fullscreenChart
                     ? ''
-                    : (typeof runtime.buildUtilSheetMemoSectionHtml === 'function' ? runtime.buildUtilSheetMemoSectionHtml(insights) : '')}
+                    : buildMemoSectionHtml(insights, modal, sheetType, datasetKey)}
             `;
             if (typeof runtime.bindUtilSheetAnalysisChartDragScroll === 'function') {
                 runtime.bindUtilSheetAnalysisChartDragScroll(bodyEl);
@@ -441,22 +528,20 @@
             UtilSheetReportMonthState[sheetType] = analysisModel.range.to;
             if (monthSelect) monthSelect.value = analysisModel.range.to;
             const analysisViewState = resolveAnalysisViewState(modal);
-            if (subEl) {
-                subEl.textContent = `범위 ${analysisModel.rangeLabel} / ${analysisModel.compareLabel} / 기준 ${analysisModel.teamOption?.label || '합산'}`;
-            }
+            setAnalysisHeaderControls(modal, analysisModel, datasetKey, compareKey);
             const analysisDatasetResult = analysisModel.datasetResult || (
                 typeof runtime.buildUtilSheetDatasetResult === 'function'
                     ? runtime.buildUtilSheetDatasetResult(datasetKey, analysisModel.range.to)
                     : datasetResult
             );
             const insights = typeof runtime.resolveUtilSheetMemoItems === 'function'
-                ? runtime.resolveUtilSheetMemoItems(sheetType, datasetKey, analysisDatasetResult, compareKey, null)
+                ? runtime.resolveUtilSheetMemoItems(sheetType, datasetKey, analysisDatasetResult, compareKey, null, { analysisModel })
                 : [];
             bodyEl.innerHTML = `
                 ${typeof runtime.buildUtilElectricAnalysisBodyHtmlV2 === 'function' ? runtime.buildUtilElectricAnalysisBodyHtmlV2(analysisModel, analysisViewState, modal) : ''}
                 ${analysisViewState.fullscreenChart
                     ? ''
-                    : (typeof runtime.buildUtilSheetMemoSectionHtml === 'function' ? runtime.buildUtilSheetMemoSectionHtml(insights) : '')}
+                    : buildMemoSectionHtml(insights, modal, sheetType, datasetKey)}
             `;
             if (typeof runtime.bindUtilSheetAnalysisChartDragScroll === 'function') {
                 runtime.bindUtilSheetAnalysisChartDragScroll(bodyEl);
@@ -550,7 +635,7 @@
                     </div>
                 </section>
             `}
-            ${typeof runtime.buildUtilSheetMemoSectionHtml === 'function' ? runtime.buildUtilSheetMemoSectionHtml(insights) : ''}
+            ${buildMemoSectionHtml(insights, modal, sheetType, datasetKey)}
         `;
 
         if (sheetType === 'meter' && datasetKey === 'gas' && typeof runtime.relocateUtilGasGuidanceNote === 'function') {

@@ -1,1 +1,2 @@
 .github/workflows/*.yml text eol=lf
+.github/dependabot.yml text eol=lf

@@ -53,7 +53,7 @@ test('report sheet config registers the shared registry and default state', () =
 });
 test('kpi html loads report sheet config before sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=055');
+  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=056');
   const optionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/options.js?v=053');
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(configIndex >= 0, 'report sheet config loader is missing');

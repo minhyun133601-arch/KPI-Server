@@ -109,6 +109,49 @@
         return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
     }
 
+    function normalizeUtilSheetAnalysisDecimalDigits(value, fallback = null) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return fallback;
+        return Math.max(0, Math.min(4, Math.trunc(number)));
+    }
+
+    function getUtilSheetAnalysisDecimalState(datasetKey = 'gas') {
+        const normalizedKey = normalizeUtilSheetAnalysisDatasetKey(datasetKey);
+        const analysisState = UtilSheetAnalysisState[normalizedKey] || UtilSheetAnalysisState.gas;
+        if (!analysisState.decimalDigits || typeof analysisState.decimalDigits !== 'object') {
+            analysisState.decimalDigits = {};
+        }
+        return analysisState.decimalDigits;
+    }
+
+    function getUtilSheetAnalysisSeriesLabelState(datasetKey = 'gas') {
+        const normalizedKey = normalizeUtilSheetAnalysisDatasetKey(datasetKey);
+        const analysisState = UtilSheetAnalysisState[normalizedKey] || UtilSheetAnalysisState.gas;
+        if (!analysisState.seriesLabelModes || typeof analysisState.seriesLabelModes !== 'object') {
+            analysisState.seriesLabelModes = {};
+        }
+        return analysisState.seriesLabelModes;
+    }
+
+    function getUtilSheetAnalysisDecimalOverride(datasetKey = 'gas', chartKey = '') {
+        const normalizedChartKey = String(chartKey || '').trim();
+        if (!normalizedChartKey) return null;
+        const override = getUtilSheetAnalysisDecimalState(datasetKey)[normalizedChartKey];
+        return normalizeUtilSheetAnalysisDecimalDigits(override, null);
+    }
+
+    function setUtilSheetAnalysisDecimalOverride(datasetKey = 'gas', chartKey = '', decimalDigits = '') {
+        const normalizedChartKey = String(chartKey || '').trim();
+        if (!normalizedChartKey) return;
+        const decimalState = getUtilSheetAnalysisDecimalState(datasetKey);
+        const normalizedDigits = normalizeUtilSheetAnalysisDecimalDigits(decimalDigits, null);
+        if (normalizedDigits === null) {
+            delete decimalState[normalizedChartKey];
+            return;
+        }
+        decimalState[normalizedChartKey] = normalizedDigits;
+    }
+
     function isUtilSheetCustomAnalysisDataset(datasetKey = '') {
         const normalizedKey = String(datasetKey || '').trim();
         return normalizedKey === 'gas' || normalizedKey === 'electric';
@@ -160,7 +203,7 @@
         const options = getUtilGasAnalysisUnitOptions(chartKey);
         const raw = String(unitKey || '').trim().toLowerCase();
         if (options.some(option => option.key === raw)) return raw;
-        if (isUtilElectricAnalysisLineRatioKey(chartKey)) return 'percent';
+        if (isUtilElectricAnalysisLineRatioKey(chartKey)) return 'kg';
         return String(UTIL_GAS_ANALYSIS_DEFAULT_UNITS[chartKey] || options[0]?.key || '');
     }
 
@@ -198,7 +241,17 @@
         return normalizeUtilGasAnalysisDisplayMode(UtilSheetAnalysisState.gas.displayModes?.[chartKey] || UTIL_GAS_ANALYSIS_DEFAULT_DISPLAY_MODES[chartKey] || 'bar');
     }
 
-    function getUtilGasAnalysisShowLabels(isFullscreenChart = false) {
+    function getUtilGasAnalysisShowLabels(chartKey = '', isFullscreenChart = false) {
+        if (typeof chartKey === 'boolean') {
+            isFullscreenChart = chartKey;
+            chartKey = '';
+        }
+        const normalizedKey = String(chartKey || '').trim();
+        if (normalizedKey) {
+            const seriesLabelModes = getUtilSheetAnalysisSeriesLabelState('gas');
+            if (seriesLabelModes[normalizedKey] === true) return true;
+            if (seriesLabelModes[normalizedKey] === false) return false;
+        }
         if (UtilSheetAnalysisState.gas.showLabels === true) return true;
         if (UtilSheetAnalysisState.gas.showLabels === false) return false;
         return isFullscreenChart === true;
@@ -218,7 +271,16 @@
         UtilSheetAnalysisState.gas.displayModes[chartKey] = normalizeUtilGasAnalysisDisplayMode(displayMode);
     }
 
-    function setUtilGasAnalysisShowLabels(showLabels) {
+    function setUtilGasAnalysisShowLabels(chartKey = '', showLabels) {
+        if (typeof chartKey === 'boolean' && showLabels === undefined) {
+            showLabels = chartKey;
+            chartKey = '';
+        }
+        const normalizedKey = String(chartKey || '').trim();
+        if (normalizedKey) {
+            getUtilSheetAnalysisSeriesLabelState('gas')[normalizedKey] = showLabels === true;
+            return;
+        }
         UtilSheetAnalysisState.gas.showLabels = showLabels === true;
     }
 
@@ -234,8 +296,20 @@
         return String(getUtilGasAnalysisUnitOption(chartKey, unitKey)?.label || '');
     }
 
+    function resolveUtilGasAnalysisDefaultDecimals(chartKey = '', unitKey = getUtilGasAnalysisUnitKey(chartKey)) {
+        const options = getUtilGasAnalysisUnitOptions(chartKey);
+        if (!options.length && isUtilGasAnalysisRatioSeriesKey(chartKey)) return 3;
+        return normalizeUtilSheetAnalysisDecimalDigits(getUtilGasAnalysisUnitOption(chartKey, unitKey)?.decimals, 0);
+    }
+
     function getUtilGasAnalysisChartDecimals(chartKey = '', unitKey = getUtilGasAnalysisUnitKey(chartKey)) {
-        return Number(getUtilGasAnalysisUnitOption(chartKey, unitKey)?.decimals) || 0;
+        const override = getUtilSheetAnalysisDecimalOverride('gas', chartKey);
+        if (override !== null) return override;
+        return resolveUtilGasAnalysisDefaultDecimals(chartKey, unitKey);
+    }
+
+    function setUtilGasAnalysisChartDecimals(chartKey = '', decimalDigits = '') {
+        setUtilSheetAnalysisDecimalOverride('gas', chartKey, decimalDigits);
     }
 
     function scaleUtilGasAnalysisChartValue(chartKey = '', value, unitKey = getUtilGasAnalysisUnitKey(chartKey)) {
@@ -276,7 +350,7 @@
             const options = getUtilElectricAnalysisUnitOptions(chartKey);
             const raw = String(unitKey || '').trim().toLowerCase();
             if (options.some(option => option.key === raw)) return raw;
-            return 'percent';
+            return 'kg';
         }
         const options = getUtilElectricAnalysisUnitOptions(chartKey);
         const raw = String(unitKey || '').trim().toLowerCase();
@@ -306,6 +380,12 @@
     }
 
     function getUtilElectricAnalysisShowLabels(chartKey = '', isFullscreenChart = false) {
+        const normalizedKey = String(chartKey || '').trim();
+        if (normalizedKey) {
+            const seriesLabelModes = getUtilSheetAnalysisSeriesLabelState('electric');
+            if (seriesLabelModes[normalizedKey] === true) return true;
+            if (seriesLabelModes[normalizedKey] === false) return false;
+        }
         const stateKey = chartKey === 'electricIntensity' ? 'intensityShowLabels' : 'showLabels';
         if (UtilSheetAnalysisState.electric[stateKey] === true) return true;
         if (UtilSheetAnalysisState.electric[stateKey] === false) return false;
@@ -324,16 +404,30 @@
     }
 
     function setUtilElectricAnalysisShowLabels(chartKey = '', showLabels) {
-        const stateKey = chartKey === 'electricIntensity' ? 'intensityShowLabels' : 'showLabels';
-        UtilSheetAnalysisState.electric[stateKey] = showLabels === true;
+        const normalizedKey = String(chartKey || '').trim();
+        if (normalizedKey) {
+            getUtilSheetAnalysisSeriesLabelState('electric')[normalizedKey] = showLabels === true;
+            return;
+        }
+        UtilSheetAnalysisState.electric.showLabels = showLabels === true;
     }
 
     function getUtilElectricAnalysisChartUnitLabel(chartKey = '', unitKey = getUtilElectricAnalysisUnitKey(chartKey)) {
         return String(getUtilElectricAnalysisUnitOption(chartKey, unitKey)?.label || '');
     }
 
+    function resolveUtilElectricAnalysisDefaultDecimals(chartKey = '', unitKey = getUtilElectricAnalysisUnitKey(chartKey)) {
+        return normalizeUtilSheetAnalysisDecimalDigits(getUtilElectricAnalysisUnitOption(chartKey, unitKey)?.decimals, 0);
+    }
+
     function getUtilElectricAnalysisChartDecimals(chartKey = '', unitKey = getUtilElectricAnalysisUnitKey(chartKey)) {
-        return Number(getUtilElectricAnalysisUnitOption(chartKey, unitKey)?.decimals) || 0;
+        const override = getUtilSheetAnalysisDecimalOverride('electric', chartKey);
+        if (override !== null) return override;
+        return resolveUtilElectricAnalysisDefaultDecimals(chartKey, unitKey);
+    }
+
+    function setUtilElectricAnalysisChartDecimals(chartKey = '', decimalDigits = '') {
+        setUtilSheetAnalysisDecimalOverride('electric', chartKey, decimalDigits);
     }
 
     function scaleUtilElectricAnalysisChartValue(chartKey = '', value, unitKey = getUtilElectricAnalysisUnitKey(chartKey)) {
@@ -345,7 +439,7 @@
     function getUtilSheetAnalysisShowLabels(datasetKey = 'gas', chartKey = '', isFullscreenChart = false) {
         return normalizeUtilSheetAnalysisDatasetKey(datasetKey) === 'electric'
             ? getUtilElectricAnalysisShowLabels(chartKey, isFullscreenChart)
-            : getUtilGasAnalysisShowLabels(isFullscreenChart);
+            : getUtilGasAnalysisShowLabels(chartKey, isFullscreenChart);
     }
 
     function setUtilSheetAnalysisShowLabels(datasetKey = 'gas', chartKey = '', showLabels) {
@@ -353,7 +447,19 @@
             setUtilElectricAnalysisShowLabels(chartKey, showLabels);
             return;
         }
-        setUtilGasAnalysisShowLabels(showLabels);
+        setUtilGasAnalysisShowLabels(chartKey, showLabels);
+    }
+
+    function getUtilSheetAnalysisSeriesShowLabels(datasetKey = 'gas', seriesKey = '') {
+        const normalizedSeriesKey = String(seriesKey || '').trim();
+        if (!normalizedSeriesKey) return false;
+        return getUtilSheetAnalysisSeriesLabelState(datasetKey)[normalizedSeriesKey] === true;
+    }
+
+    function setUtilSheetAnalysisSeriesShowLabels(datasetKey = 'gas', seriesKey = '', showLabels) {
+        const normalizedSeriesKey = String(seriesKey || '').trim();
+        if (!normalizedSeriesKey) return;
+        getUtilSheetAnalysisSeriesLabelState(datasetKey)[normalizedSeriesKey] = showLabels === true;
     }
 
     function setUtilSheetAnalysisUnitKey(datasetKey = 'gas', chartKey = '', unitKey = '') {
@@ -362,6 +468,20 @@
             return;
         }
         setUtilGasAnalysisUnitKey(chartKey, unitKey);
+    }
+
+    function getUtilSheetAnalysisDecimals(datasetKey = 'gas', chartKey = '', unitKey = '') {
+        return normalizeUtilSheetAnalysisDatasetKey(datasetKey) === 'electric'
+            ? getUtilElectricAnalysisChartDecimals(chartKey, unitKey || getUtilElectricAnalysisUnitKey(chartKey))
+            : getUtilGasAnalysisChartDecimals(chartKey, unitKey || getUtilGasAnalysisUnitKey(chartKey));
+    }
+
+    function setUtilSheetAnalysisDecimals(datasetKey = 'gas', chartKey = '', decimalDigits = '') {
+        if (normalizeUtilSheetAnalysisDatasetKey(datasetKey) === 'electric') {
+            setUtilElectricAnalysisChartDecimals(chartKey, decimalDigits);
+            return;
+        }
+        setUtilGasAnalysisChartDecimals(chartKey, decimalDigits);
     }
 
     function setUtilSheetAnalysisDisplayMode(datasetKey = 'gas', chartKey = '', displayMode = '') {
@@ -410,6 +530,7 @@
         setUtilGasAnalysisRatioShowLabels,
         getUtilGasAnalysisChartUnitLabel,
         getUtilGasAnalysisChartDecimals,
+        setUtilGasAnalysisChartDecimals,
         scaleUtilGasAnalysisChartValue,
         resolveUtilGasAnalysisPointValue,
         isUtilElectricAnalysisLineRatioKey,
@@ -424,10 +545,15 @@
         setUtilElectricAnalysisShowLabels,
         getUtilElectricAnalysisChartUnitLabel,
         getUtilElectricAnalysisChartDecimals,
+        setUtilElectricAnalysisChartDecimals,
         scaleUtilElectricAnalysisChartValue,
         getUtilSheetAnalysisShowLabels,
         setUtilSheetAnalysisShowLabels,
+        getUtilSheetAnalysisSeriesShowLabels,
+        setUtilSheetAnalysisSeriesShowLabels,
         setUtilSheetAnalysisUnitKey,
+        getUtilSheetAnalysisDecimals,
+        setUtilSheetAnalysisDecimals,
         setUtilSheetAnalysisDisplayMode,
         getUtilSheetActiveAnalysisDatasetKey
     };

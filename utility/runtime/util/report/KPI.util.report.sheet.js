@@ -172,7 +172,10 @@
         getUtilGasMeterProductionOptions: () => getUtilGasMeterProductionOptions()
     });
     const {
-        buildUtilElectricMeterViewToggleHtml
+        buildUtilElectricMeterViewToggleHtml,
+        buildUtilGasAnalysisCategorySelectHtml,
+        buildUtilElectricAnalysisTeamSelectHtml,
+        buildUtilSheetMonthOptionHtml
     } = utilReportSheetControls;
     const utilReportSheetElectricRuntimeSync = requireApi('KPIUtilReportSheetElectricRuntimeSync', 'KPI.util.report.sheet.js');
     utilReportSheetElectricRuntimeSync.setRuntimeAdapters({
@@ -320,7 +323,10 @@
         scaleUtilElectricAnalysisChartValue,
         getUtilSheetAnalysisShowLabels,
         setUtilSheetAnalysisShowLabels,
+        getUtilSheetAnalysisSeriesShowLabels,
+        setUtilSheetAnalysisSeriesShowLabels,
         setUtilSheetAnalysisUnitKey,
+        setUtilSheetAnalysisDecimals,
         setUtilSheetAnalysisDisplayMode,
         getUtilSheetActiveAnalysisDatasetKey
     } = utilReportSheetAnalysisState;
@@ -346,6 +352,7 @@
         getUtilGasAnalysisChartUnitLabel,
         getUtilGasAnalysisChartDecimals,
         getUtilGasAnalysisUnitOptions,
+        getUtilSheetAnalysisSeriesShowLabels,
         scaleUtilGasAnalysisChartValue
     });
     const {
@@ -489,6 +496,7 @@
         buildUtilGasAnalysisCombinedControlsHtml,
         normalizeUtilSheetAnalysisDatasetKey,
         getUtilSheetAnalysisShowLabels,
+        getUtilSheetAnalysisSeriesShowLabels,
         getUtilGasAnalysisRatioShowLabels,
         buildUtilGasAnalysisSeriesControlHtml,
         buildUtilGasAnalysisPopupOnlyControlHtml,
@@ -533,7 +541,11 @@
         formatUtilSheetCost,
         formatUtilSheetSignedCost,
         formatUtilSheetUnit,
-        formatUtilSheetSignedUnit
+        formatUtilSheetSignedUnit,
+        getWorkTeamCalendarProductionSummaryMap: (dataKey, dateKeys) => {
+            const fn = globalScope.getWorkTeamCalendarProductionSummaryMap;
+            return typeof fn === 'function' ? fn(dataKey, dateKeys) : null;
+        }
     });
     const {
         buildUtilSheetCompareMeta,
@@ -586,6 +598,9 @@
         bindUtilSheetAnalysisInlineTableDrag: (...args) => utilReportSheetWindows.bindUtilSheetAnalysisInlineTableDrag(...args),
         buildUtilElectricAnalysisModel,
         buildUtilElectricAnalysisBodyHtmlV2,
+        buildUtilGasAnalysisCategorySelectHtml,
+        buildUtilElectricAnalysisTeamSelectHtml,
+        buildUtilSheetMonthOptionHtml,
         buildUtilElectricMeterComparisonModel,
         buildUtilElectricMeterTeamDatasetResult,
         buildUtilGasMeterSummaryItems,
@@ -672,10 +687,12 @@
         setUtilGasAnalysisChartFullscreen,
         resolveUtilSheetAnalysisLabelToggleContext,
         setUtilSheetAnalysisShowLabels,
+        setUtilSheetAnalysisSeriesShowLabels,
         setUtilGasAnalysisRatioShowLabels,
         setUtilGasAnalysisFuelInactive,
         applyUtilGasAnalysisRangeSelection,
         setUtilSheetAnalysisUnitKey,
+        setUtilSheetAnalysisDecimals,
         applyUtilGasMeterProductionSelection,
         applyUtilElectricMeterTeamSelection,
         applyUtilElectricAnalysisTeamSelection,
@@ -683,6 +700,12 @@
         buildUtilElectricMeterComparisonModel,
         buildUtilElectricMeterTeamDatasetResult,
         buildUtilElectricMeterComparisonSectionHtml,
+        buildUtilGasAnalysisModel,
+        buildUtilElectricAnalysisModel,
+        buildUtilGasAnalysisBodyHtmlV2,
+        buildUtilElectricAnalysisBodyHtmlV2,
+        resolveUtilSheetMemoItems,
+        buildUtilSheetMemoSectionHtml,
         isUtilSheetCustomAnalysisDataset,
         setUtilSheetAnalysisToMonth,
         syncUtilSheetPanelSelection
@@ -705,11 +728,13 @@
         buildUtilGasAnalysisChartCardHtmlV2,
         resolveUtilSheetAnalysisLabelToggleContext,
         setUtilSheetAnalysisShowLabels,
+        setUtilSheetAnalysisSeriesShowLabels,
         renderUtilSheetReportModal,
         openUtilGasAnalysisRatioTablePopup,
         setUtilGasAnalysisRatioShowLabels,
         setUtilGasAnalysisFuelInactive,
         setUtilSheetAnalysisUnitKey,
+        setUtilSheetAnalysisDecimals,
         setUtilSheetAnalysisDisplayMode,
         applyUtilGasMeterProductionSelection,
         applyUtilElectricMeterTeamSelection,

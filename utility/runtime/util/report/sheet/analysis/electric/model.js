@@ -469,6 +469,102 @@
         return `${sign}${formatDecimal(scaledValue, decimals)}${unitLabel}`;
     }
 
+    function resolveElectricReportMemoTeamKeys(teamOption = null) {
+        const key = String(teamOption?.key || '').trim();
+        if (key === 'combined') return ['team_01_01', 'team_01_02', 'team_02', 'team_03'];
+        return key ? [key] : [];
+    }
+
+    function buildElectricReportMemoLineItems(teamOption = null, monthKeys = [], activeMonthKey = '', referenceMonthKey = '', prevYearMonthKey = '') {
+        const productionTeamNames = Array.isArray(teamOption?.productionTeamNames) ? teamOption.productionTeamNames : [];
+        if (productionTeamNames.length !== 1) return [];
+        const monthSeries = buildUtilElectricAnalysisLineRatioSeries(monthKeys, teamOption, activeMonthKey, referenceMonthKey);
+        const yearSeries = buildUtilElectricAnalysisLineRatioSeries(monthKeys, teamOption, activeMonthKey, prevYearMonthKey);
+        const yearSeriesMap = new Map((Array.isArray(yearSeries) ? yearSeries : []).map(series => [String(series?.key || '').trim(), series]));
+        return (Array.isArray(monthSeries) ? monthSeries : []).map(series => {
+            const yearMatch = yearSeriesMap.get(String(series?.key || '').trim()) || null;
+            return {
+                key: String(series?.key || '').trim(),
+                title: String(series?.title || '').trim(),
+                activeAmount: Number.isFinite(Number(series?.activeAmount)) ? Number(series.activeAmount) : null,
+                prevMonthAmount: Number.isFinite(Number(series?.referenceAmount)) ? Number(series.referenceAmount) : null,
+                prevMonthDeltaAmount: Number.isFinite(Number(series?.deltaAmount)) ? Number(series.deltaAmount) : null,
+                prevMonthRatio: Number.isFinite(Number(series?.referenceRatio)) ? Number(series.referenceRatio) : null,
+                prevMonthDeltaRatio: Number.isFinite(Number(series?.deltaRatio)) ? Number(series.deltaRatio) : null,
+                prevYearAmount: Number.isFinite(Number(yearMatch?.referenceAmount)) ? Number(yearMatch.referenceAmount) : null,
+                prevYearDeltaAmount: Number.isFinite(Number(yearMatch?.deltaAmount)) ? Number(yearMatch.deltaAmount) : null,
+                prevYearRatio: Number.isFinite(Number(yearMatch?.referenceRatio)) ? Number(yearMatch.referenceRatio) : null,
+                prevYearDeltaRatio: Number.isFinite(Number(yearMatch?.deltaRatio)) ? Number(yearMatch.deltaRatio) : null,
+                activeRatio: Number.isFinite(Number(series?.activeRatio)) ? Number(series.activeRatio) : null,
+                points: (Array.isArray(series?.points) ? series.points : []).map(point => ({
+                    monthKey: String(point?.monthKey || point?.key || '').trim(),
+                    amountValue: Number.isFinite(Number(point?.amountValue)) ? Number(point.amountValue) : null,
+                    ratioValue: Number.isFinite(Number(point?.ratioValue)) ? Number(point.ratioValue) : null
+                })).filter(point => point.monthKey)
+            };
+        }).filter(item => item.key && item.title);
+    }
+
+    function buildElectricReportMemoTeam(teamKey = '', monthKeys = [], selectedMonthKey = '', referenceMonthKey = '', prevYearMonthKey = '', activeDatasetResult = null, activeTeamOption = null) {
+        const option = getElectricTeamOption(teamKey);
+        if (!option?.key) return null;
+        const dataset = option.key === activeTeamOption?.key && activeDatasetResult?.hasData
+            ? activeDatasetResult
+            : buildUtilElectricAnalysisScopedDatasetResult(selectedMonthKey, option.key);
+        const rowMap = new Map((Array.isArray(dataset?.allRows) ? dataset.allRows : []).map(row => [String(row?.monthKey || '').trim(), row]));
+        const rows = {};
+        monthKeys.forEach(monthKey => {
+            const row = rowMap.get(monthKey) || {};
+            const electricUsage = Number.isFinite(Number(row?.electricUsage)) ? Number(row.electricUsage) : null;
+            const electricCost = Number.isFinite(Number(row?.electricCost)) ? Number(row.electricCost) : null;
+            const production = Number.isFinite(Number(row?.production)) ? Number(row.production) : null;
+            rows[monthKey] = {
+                electricUsage,
+                electricCost,
+                production,
+                electricIntensity: Number.isFinite(electricUsage) && Number.isFinite(production) && production > 0
+                    ? electricUsage / production
+                    : null
+            };
+        });
+        return {
+            key: option.key,
+            label: option.label || option.key,
+            productionTeamNames: Array.isArray(option.productionTeamNames) ? option.productionTeamNames : [],
+            rows,
+            lineItems: buildElectricReportMemoLineItems(option, monthKeys, selectedMonthKey, referenceMonthKey, prevYearMonthKey)
+        };
+    }
+
+    function buildElectricReportMemoModel(teamOption, datasetResult, monthOptions = [], activeMonthKey = '', referenceMonthKey = '', range = null, rangeKeys = []) {
+        const monthKeys = (Array.isArray(monthOptions) ? monthOptions : [])
+            .map(item => String(item?.value || '').trim())
+            .filter(Boolean);
+        const prevYearMonthKey = shiftMonthKey(activeMonthKey, -12);
+        const teams = resolveElectricReportMemoTeamKeys(teamOption)
+            .map(teamKey => buildElectricReportMemoTeam(teamKey, monthKeys, activeMonthKey, referenceMonthKey, prevYearMonthKey, datasetResult, teamOption))
+            .filter(Boolean);
+        return {
+            datasetKey: 'electric',
+            scopeKey: String(teamOption?.key || '').trim(),
+            scopeLabel: String(teamOption?.label || '').trim(),
+            activeMonthKey,
+            prevMonthKey: shiftMonthKey(activeMonthKey, -1),
+            prevYearKey: prevYearMonthKey,
+            referenceMonthKey,
+            range: {
+                from: String(range?.from || '').trim(),
+                to: String(range?.to || '').trim()
+            },
+            rangeMonthKeys: Array.isArray(rangeKeys) ? rangeKeys : [],
+            monthOptions: (Array.isArray(monthOptions) ? monthOptions : []).map(item => ({
+                value: String(item?.value || '').trim(),
+                label: String(item?.label || '').trim()
+            })).filter(item => item.value),
+            teams
+        };
+    }
+
     const {
         resolveUtilElectricAnalysisPointValue,
         formatUtilElectricAnalysisLineMetricValue,
@@ -739,6 +835,15 @@
 
         setAnalysisRangeState('electric', range.from, range.to);
         UtilSheetAnalysisState.electric.teamKey = teamOption.key;
+        const reportMemo = buildElectricReportMemoModel(
+            teamOption,
+            datasetResult,
+            monthOptions,
+            activeMonthKey,
+            referenceMonthKey,
+            range,
+            rangeKeys
+        );
 
         return {
             hasData: true,
@@ -751,7 +856,8 @@
             charts: intensityChart ? [intensityChart] : [],
             combinedChart,
             summaryItems,
-            datasetResult
+            datasetResult,
+            reportMemo
         };
     }
 

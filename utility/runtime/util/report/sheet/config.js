@@ -81,6 +81,7 @@
             to: '',
             categoryKey: 'yusan',
             showLabels: null,
+            seriesLabelModes: {},
             ratioShowLabels: false,
             inactiveFuels: {
                 lng: false,
@@ -92,6 +93,7 @@
                 gasCost: 'million',
                 production: 'ton'
             },
+            decimalDigits: {},
             displayModes: {
                 lpgUsage: 'bar',
                 lngUsage: 'bar',
@@ -108,6 +110,7 @@
             to: '',
             teamKey: 'combined',
             showLabels: null,
+            seriesLabelModes: {},
             intensityShowLabels: null,
             unitKeys: {
                 electricUsage: 'mwh',
@@ -115,6 +118,7 @@
                 production: 'ton',
                 electricIntensity: 'kwhkg'
             },
+            decimalDigits: {},
             displayModes: {
                 electricUsage: 'bar',
                 electricCost: 'line',

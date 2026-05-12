@@ -15,6 +15,7 @@
         buildUtilGasAnalysisCombinedControlsHtml: null,
         normalizeUtilSheetAnalysisDatasetKey: null,
         getUtilSheetAnalysisShowLabels: null,
+        getUtilSheetAnalysisSeriesShowLabels: null,
         getUtilGasAnalysisRatioShowLabels: null,
         buildUtilGasAnalysisSeriesControlHtml: null,
         buildUtilGasAnalysisPopupOnlyControlHtml: null,
@@ -58,6 +59,25 @@
             return runtime.getUtilSheetAnalysisShowLabels(datasetKey, chartKey, isFullscreenChart);
         }
         return false;
+    }
+
+    function getAnalysisSeriesShowLabels(datasetKey = 'gas', seriesKey = '') {
+        if (typeof runtime.getUtilSheetAnalysisSeriesShowLabels === 'function') {
+            return runtime.getUtilSheetAnalysisSeriesShowLabels(datasetKey, seriesKey) === true;
+        }
+        return false;
+    }
+
+    function buildAnalysisSeriesLabelModes(datasetKey = 'gas', chart = {}) {
+        const labelModes = {};
+        (Array.isArray(chart?.controlItems) ? chart.controlItems : []).forEach(item => {
+            const seriesKey = String(item?.key || '').trim();
+            if (!seriesKey) return;
+            if (getAnalysisSeriesShowLabels(datasetKey, seriesKey)) {
+                labelModes[seriesKey] = true;
+            }
+        });
+        return labelModes;
     }
 
     function getRatioShowLabels() {
@@ -202,6 +222,7 @@
         const isFullscreenChart = viewState?.fullscreenChart === true
             && String(viewState?.chartKey || '').trim() === chartKey;
         const showChartLabels = getAnalysisShowLabels(datasetKey, chartKey, isFullscreenChart);
+        const seriesLabelModes = buildAnalysisSeriesLabelModes(datasetKey, chart);
         const hasVisibleSeries = isCombinedChart
             ? (Array.isArray(chart?.chartDataList) && chart.chartDataList.length > 0)
             : !!(Array.isArray(chart?.points) && chart.points.length);
@@ -225,6 +246,7 @@
                     showLabelToggle: true,
                     labelToggleRole: labelToggleRole || undefined,
                     showLabels: showChartLabels,
+                    seriesLabelModes,
                     tightRange: true,
                     tightPadding: 0.14,
                     hideUnit: true,
@@ -246,7 +268,7 @@
                 chartType: chart.chartType || 'line',
                 showTypeSelect: false,
                 showLabelToggle: true,
-                showLabels: showChartLabels,
+                showLabels: showChartLabels || getAnalysisSeriesShowLabels(datasetKey, chartKey),
                 tightRange: true,
                 tightPadding: 0.14,
                 axisXLabel: '월',
@@ -264,7 +286,8 @@
         const summaryBlockHtml = Array.isArray(chart?.summaryItems) && chart.summaryItems.length
             ? buildUtilSheetAnalysisSummaryGridHtml(
                 chart.summaryItems,
-                Array.isArray(chart?.summaryControlItems) ? chart.summaryControlItems : chart.controlItems
+                Array.isArray(chart?.summaryControlItems) ? chart.summaryControlItems : chart.controlItems,
+                { datasetKey }
             )
             : '';
         const cardClassName = [
@@ -304,6 +327,7 @@
         const isFullscreenChart = viewState?.fullscreenChart === true
             && String(viewState?.chartKey || '').trim() === chartKey;
         const showLabels = getRatioShowLabels();
+        const seriesLabelModes = buildAnalysisSeriesLabelModes('gas', chart);
         const hasVisibleSeries = Array.isArray(chart?.series) && chart.series.length > 0;
         const pointCount = Math.max(0, chart?.controlItems?.[0]?.points?.length || chart?.series?.[0]?.points?.length || 0);
         const chartHtml = !hasVisibleSeries
@@ -318,6 +342,7 @@
                 labelToggleRole: 'util-sheet-analysis-ratio-label-toggle',
                 labelToggleText: '값 표시',
                 showLabels,
+                seriesLabelModes,
                 tightRange: true,
                 tightPadding: 0.18,
                 hideUnit: true,
@@ -338,7 +363,8 @@
         const summaryBlockHtml = Array.isArray(chart?.summaryItems) && chart.summaryItems.length
             ? buildUtilSheetAnalysisSummaryGridHtml(
                 chart.summaryItems,
-                Array.isArray(chart?.summaryControlItems) ? chart.summaryControlItems : chart.controlItems
+                Array.isArray(chart?.summaryControlItems) ? chart.summaryControlItems : chart.controlItems,
+                { datasetKey: 'gas' }
             )
             : '';
         const cardClassName = [
@@ -373,7 +399,8 @@
         `;
     }
 
-    function buildUtilSheetAnalysisSummaryGridHtml(summaryItems = [], controlItems = []) {
+    function buildUtilSheetAnalysisSummaryGridHtml(summaryItems = [], controlItems = [], options = {}) {
+        const datasetKey = normalizeAnalysisDatasetKey(options?.datasetKey || 'gas');
         const items = Array.isArray(summaryItems)
             ? summaryItems.filter(item => item && (item.title || item.valueText || item.secondaryValueText || item.subText || item.metaText))
             : [];
@@ -390,7 +417,7 @@
                     const itemKey = String(item?.key || '').trim();
                     const controlItem = controlMap.get(itemKey) || normalizedControlMap.get(itemKey.toLowerCase()) || null;
                     const controlHtml = controlItem
-                        ? buildGasAnalysisSeriesControlHtml(controlItem)
+                        ? buildGasAnalysisSeriesControlHtml({ ...controlItem, datasetKey })
                         : buildGasAnalysisPopupOnlyControlHtml(item);
                     return `
                     <article class="util-sheet-analysis-summary-card" data-tone="${escapeHtml(item.tone || 'neutral')}">
@@ -432,22 +459,10 @@
                         <div class="util-sheet-section-title">가스비 분석표</div>
                         <div class="util-sheet-section-sub">LPG 사용량, LNG 사용량, 금액, 생산량을 한 그래프에 넣어 비교합니다.</div>
                     </div>
-                    <div class="util-sheet-analysis-toolbar">
-                        ${buildGasAnalysisCategorySelectHtml(model?.categoryOption?.key || 'yusan')}
-                        <div class="util-sheet-analysis-range">
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-from" aria-label="가스비 분석 시작월">
-                                ${buildMonthOptionHtml(model.monthOptions, model.range.from)}
-                            </select>
-                            <span class="util-sheet-analysis-range-divider">~</span>
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-to" aria-label="가스비 분석 종료월">
-                                ${buildMonthOptionHtml(model.monthOptions, model.range.to)}
-                            </select>
-                        </div>
-                    </div>
                 </div>
                 ${floatingTableHtml}
                 <div data-role="util-sheet-analysis-summary-grid">
-                    ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, model.combinedChart?.controlItems)}
+                    ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, model.combinedChart?.controlItems, { datasetKey: 'gas' })}
                 </div>
                 <div class="util-sheet-analysis-grid" data-role="util-sheet-analysis-grid">
                     ${model.combinedChart
@@ -488,22 +503,10 @@
                         <div class="util-sheet-section-title">전기 분석표</div>
                         <div class="util-sheet-section-sub">전기 사용량, 금액, 생산량, 생산량 대비 전기 사용량을 월별 기준으로 비교합니다.</div>
                     </div>
-                    <div class="util-sheet-analysis-toolbar">
-                        ${buildElectricAnalysisTeamSelectHtml(model?.teamOption?.key || 'combined')}
-                        <div class="util-sheet-analysis-range">
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-from" aria-label="전기 분석 시작월">
-                                ${buildMonthOptionHtml(model.monthOptions, model.range.from)}
-                            </select>
-                            <span class="util-sheet-analysis-range-divider">~</span>
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-to" aria-label="전기 분석 종료월">
-                                ${buildMonthOptionHtml(model.monthOptions, model.range.to)}
-                            </select>
-                        </div>
-                    </div>
                 </div>
                 ${floatingTableHtml}
                 <div data-role="util-sheet-analysis-summary-grid">
-                    ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, controlItems)}
+                    ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, controlItems, { datasetKey: 'electric' })}
                 </div>
                 <div class="util-sheet-analysis-grid" data-role="util-sheet-analysis-grid">
                     ${model.combinedChart ? buildUtilGasAnalysisChartCardHtmlV2(model.combinedChart, model, viewState) : ''}
@@ -521,20 +524,8 @@
                         <div class="util-sheet-section-title">가스비 분석표</div>
                         <div class="util-sheet-section-sub">LPG 사용량, LNG 사용량, 금액, 생산량을 한 그래프에서 함께 비교합니다.</div>
                     </div>
-                    <div class="util-sheet-analysis-toolbar">
-                        ${buildGasAnalysisCategorySelectHtml(model?.categoryOption?.key || 'yusan')}
-                        <div class="util-sheet-analysis-range">
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-from" aria-label="가스비 분석 시작월">
-                                ${buildMonthOptionHtml(model.monthOptions, model.range.from)}
-                            </select>
-                            <span class="util-sheet-analysis-range-divider">~</span>
-                            <select class="util-sheet-month-select" data-role="util-sheet-analysis-to" aria-label="가스비 분석 종료월">
-                                ${buildMonthOptionHtml(model.monthOptions, model.range.to)}
-                            </select>
-                        </div>
-                    </div>
                 </div>
-                ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, model.combinedChart?.controlItems)}
+                ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, model.combinedChart?.controlItems, { datasetKey: 'gas' })}
                 <div class="util-sheet-analysis-grid">
                     ${model.combinedChart ? buildUtilGasAnalysisChartCardHtml(model.combinedChart, model) : model.charts.map(chart => buildUtilGasAnalysisChartCardHtml(chart, model)).join('')}
                 </div>

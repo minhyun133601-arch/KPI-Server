@@ -87,6 +87,9 @@ test('report sheet analysis chart controls registry builds labels charts and pop
       }
       return [{ key: 'currency', label: 'KRW' }];
     },
+    getUtilSheetAnalysisSeriesShowLabels(datasetKey, seriesKey) {
+      return String(datasetKey || '').trim() === 'gas' && String(seriesKey || '').trim() === 'usage';
+    },
     scaleUtilGasAnalysisChartValue(chartKey, value) {
       return String(chartKey || '').trim() === 'cost' ? Number(value) / 10 : Number(value);
     },
@@ -128,6 +131,9 @@ test('report sheet analysis chart controls registry builds labels charts and pop
   const combinedControlsHtml = registry.buildUtilGasAnalysisCombinedControlsHtml(combinedChart);
   assert.ok(combinedControlsHtml.includes('util-sheet-analysis-series-controls'));
   assert.ok(combinedControlsHtml.includes('data-role="util-sheet-analysis-unit"'));
+  assert.ok(combinedControlsHtml.includes('data-role="util-sheet-analysis-decimals"'));
+  assert.ok(combinedControlsHtml.includes('data-role="util-sheet-analysis-series-label-toggle"'));
+  assert.ok(/<option value="2" selected>2<\/option>/.test(combinedControlsHtml));
   assert.ok(combinedControlsHtml.includes('data-role="util-sheet-analysis-series-type"'));
 
   const seriesControlsHtml = registry.buildUtilGasAnalysisSeriesControlHtml({
@@ -138,11 +144,15 @@ test('report sheet analysis chart controls registry builds labels charts and pop
     allowInactiveToggle: true,
     unitKey: 'nm3',
     unitOptions: [{ key: 'nm3', label: 'Nm3' }],
+    decimals: 4,
     displayMode: 'bar',
     popupTableKey: 'usage',
   });
   assert.ok(seriesControlsHtml.includes('data-role="util-sheet-analysis-fuel-inactive"'));
   assert.ok(seriesControlsHtml.includes('checked'));
+  assert.ok(seriesControlsHtml.includes('data-role="util-sheet-analysis-series-label-toggle"'));
+  assert.ok(seriesControlsHtml.includes('data-role="util-sheet-analysis-decimals"'));
+  assert.ok(seriesControlsHtml.includes('<option value="4" selected>4</option>'));
   assert.ok(seriesControlsHtml.includes('data-role="util-sheet-analysis-open-ratio-table"'));
 
   const popupOnlyHtml = registry.buildUtilGasAnalysisPopupOnlyControlHtml({
@@ -153,7 +163,9 @@ test('report sheet analysis chart controls registry builds labels charts and pop
   const ratioTableControlsHtml = registry.buildUtilGasAnalysisRatioTableControlHtml({
     key: 'ratio-lng',
     displayMode: 'line',
+    decimals: 3,
   });
+  assert.ok(ratioTableControlsHtml.includes('data-role="util-sheet-analysis-decimals"'));
   assert.ok(ratioTableControlsHtml.includes('data-role="util-sheet-analysis-series-type"'));
   assert.equal(
     registry.buildUtilGasAnalysisRatioTableControlHtml({ key: 'ratio-lng', displayMode: 'line' }, { hideDisplayModeControls: true }),
@@ -164,9 +176,9 @@ test('report sheet analysis chart controls registry builds labels charts and pop
 test('kpi html loads report sheet analysis chart controls between compare-select and electric chart model', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const compareSelectIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/compare-select.js?v=053');
-  const chartControlsIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/chart-controls.js?v=053');
+  const chartControlsIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/chart-controls.js?v=054');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=055');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=059');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(compareSelectIndex >= 0, 'report sheet analysis compare-select loader is missing');

@@ -202,7 +202,18 @@
                 return `<circle class="util-analytics-chart-point" cx="${x}" cy="${y}" r="4" style="fill:${item.color}"${monthAttr}><title>${escapeHtml(tooltipLabel)}</title></circle>`;
             }).join('')).join('');
 
-            const barLabels = showLabels ? barSeries.map((item, seriesIndex) => item.points.map((point, pointIndex) => {
+            const seriesLabelModes = options.seriesLabelModes && typeof options.seriesLabelModes === 'object'
+                ? options.seriesLabelModes
+                : null;
+            const shouldShowSeriesLabels = item => {
+                if (showLabels) return true;
+                if (!seriesLabelModes) return false;
+                const key = String(item?.seriesKey || item?.key || '').trim();
+                return key ? seriesLabelModes[key] === true : false;
+            };
+            const barLabels = barSeries.map((item, seriesIndex) => {
+                if (!shouldShowSeriesLabels(item)) return '';
+                return item.points.map((point, pointIndex) => {
                 const value = Number(point?.value);
                 if (!Number.isFinite(value)) return '';
                 const x = resolveBarLeft(seriesIndex, pointIndex) + (barWidth / 2);
@@ -210,9 +221,12 @@
                 const labelY = Math.max(pad.top + 12, Math.min(item.baseY, y) - 6);
                 const monthAttr = buildUtilChartPointDataAttrs(point, point?.label || '', { seriesKey: item.seriesKey });
                 return `<text class="util-analytics-chart-value" x="${x}" y="${labelY}" text-anchor="middle" style="fill:${item.color}"${monthAttr}>${formatUtilNumber(value, item.decimals)}</text>`;
-            }).join('')).join('') : '';
+                }).join('');
+            }).join('');
 
-            const lineLabels = showLabels ? lineSeries.map((item, seriesIndex) => item.points.map((point, pointIndex) => {
+            const lineLabels = lineSeries.map((item, seriesIndex) => {
+                if (!shouldShowSeriesLabels(item)) return '';
+                return item.points.map((point, pointIndex) => {
                 const value = Number(point?.value);
                 if (!Number.isFinite(value)) return '';
                 const x = mapX(pointIndex);
@@ -221,7 +235,8 @@
                 const labelY = Math.max(pad.top + 12, Math.min(pad.top + plotH - 6, y + offset));
                 const monthAttr = buildUtilChartPointDataAttrs(point, point?.label || '', { seriesKey: item.seriesKey });
                 return `<text class="util-analytics-chart-value" x="${x}" y="${labelY}" text-anchor="middle" style="fill:${item.color}"${monthAttr}>${formatUtilNumber(value, item.decimals)}</text>`;
-            }).join('')).join('') : '';
+                }).join('');
+            }).join('');
 
             const maxXAxisLabels = Number.isFinite(options.maxXAxisLabels)
                 ? Math.max(2, Math.floor(options.maxXAxisLabels))

@@ -52,11 +52,13 @@
         buildUtilGasAnalysisChartCardHtmlV2: null,
         resolveUtilSheetAnalysisLabelToggleContext: null,
         setUtilSheetAnalysisShowLabels: null,
+        setUtilSheetAnalysisSeriesShowLabels: null,
         renderUtilSheetReportModal: null,
         openUtilGasAnalysisRatioTablePopup: null,
         setUtilGasAnalysisRatioShowLabels: null,
         setUtilGasAnalysisFuelInactive: null,
         setUtilSheetAnalysisUnitKey: null,
+        setUtilSheetAnalysisDecimals: null,
         setUtilSheetAnalysisDisplayMode: null,
         applyUtilGasMeterProductionSelection: null,
         applyUtilElectricMeterTeamSelection: null,
@@ -80,6 +82,7 @@
             rerenderAndSync,
             resolveUtilSheetAnalysisLabelToggleContext: (...args) => runtime.resolveUtilSheetAnalysisLabelToggleContext?.(...args) ?? null,
             setUtilSheetAnalysisShowLabels: (...args) => runtime.setUtilSheetAnalysisShowLabels?.(...args),
+            setUtilSheetAnalysisSeriesShowLabels: (...args) => runtime.setUtilSheetAnalysisSeriesShowLabels?.(...args),
             setUtilGasAnalysisRatioShowLabels: (...args) => runtime.setUtilGasAnalysisRatioShowLabels?.(...args),
             applyUtilGasMeterProductionSelection: (...args) => runtime.applyUtilGasMeterProductionSelection?.(...args),
             applyUtilElectricMeterTeamSelection: (...args) => runtime.applyUtilElectricMeterTeamSelection?.(...args),
@@ -87,6 +90,7 @@
             applyUtilGasAnalysisCategorySelection: (...args) => runtime.applyUtilGasAnalysisCategorySelection?.(...args),
             setUtilGasAnalysisFuelInactive: (...args) => runtime.setUtilGasAnalysisFuelInactive?.(...args),
             setUtilSheetAnalysisUnitKey: (...args) => runtime.setUtilSheetAnalysisUnitKey?.(...args),
+            setUtilSheetAnalysisDecimals: (...args) => runtime.setUtilSheetAnalysisDecimals?.(...args),
             getUtilSheetActiveAnalysisDatasetKey: (...args) => runtime.getUtilSheetActiveAnalysisDatasetKey?.(...args) ?? '',
             applyUtilGasAnalysisRangeSelection: (...args) => runtime.applyUtilGasAnalysisRangeSelection?.(...args),
             applyUtilSheetCompareSelection: (...args) => runtime.applyUtilSheetCompareSelection?.(...args),
@@ -575,6 +579,22 @@
                 }
                 return;
             }
+            const seriesLabelToggle = event.target?.closest?.('[data-role="util-sheet-analysis-series-label-toggle"]');
+            if (seriesLabelToggle) {
+                if (typeof runtime.setUtilSheetAnalysisSeriesShowLabels === 'function') {
+                    runtime.setUtilSheetAnalysisSeriesShowLabels(
+                        typeof runtime.getUtilSheetActiveAnalysisDatasetKey === 'function'
+                            ? runtime.getUtilSheetActiveAnalysisDatasetKey(modal)
+                            : '',
+                        seriesLabelToggle.dataset.chartKey || '',
+                        seriesLabelToggle.checked === true
+                    );
+                }
+                if (typeof runtime.renderUtilSheetReportModal === 'function') {
+                    runtime.renderUtilSheetReportModal(modal);
+                }
+                return;
+            }
             const ratioLabelToggle = event.target.closest('[data-role="util-sheet-analysis-ratio-label-toggle"]');
             if (ratioLabelToggle) {
                 if (typeof runtime.setUtilGasAnalysisRatioShowLabels === 'function') {
@@ -603,6 +623,20 @@
                         : '',
                     unitSelect.dataset.chartKey || '',
                     unitSelect.value || ''
+                );
+                if (typeof runtime.renderUtilSheetReportModal === 'function') {
+                    runtime.renderUtilSheetReportModal(modal);
+                }
+                return;
+            }
+            const decimalsSelect = event.target.closest('[data-role="util-sheet-analysis-decimals"]');
+            if (decimalsSelect && typeof runtime.setUtilSheetAnalysisDecimals === 'function') {
+                runtime.setUtilSheetAnalysisDecimals(
+                    typeof runtime.getUtilSheetActiveAnalysisDatasetKey === 'function'
+                        ? runtime.getUtilSheetActiveAnalysisDatasetKey(modal)
+                        : '',
+                    decimalsSelect.dataset.chartKey || '',
+                    decimalsSelect.value || '0'
                 );
                 if (typeof runtime.renderUtilSheetReportModal === 'function') {
                     runtime.renderUtilSheetReportModal(modal);
