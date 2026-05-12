@@ -37,7 +37,11 @@ function createAnalysisRenderContext() {
     Set,
     Map,
     renderUtilIndependentBoundsMultiSeriesChart(series, options = {}) {
-      return `<div class="multi-series-chart" data-series-count="${Array.isArray(series) ? series.length : 0}" data-mode="${String(options.mode || '')}" data-show-labels="${String(options.showLabels === true)}" data-scroll="${String(options.scrollWithinCanvas === true)}">${String(options.chartTitle || '')}</div>`;
+      const seriesLabelKeys = Object.entries(options.seriesLabelModes || {})
+        .filter(([, enabled]) => enabled === true)
+        .map(([key]) => key)
+        .join(',');
+      return `<div class="multi-series-chart" data-series-count="${Array.isArray(series) ? series.length : 0}" data-mode="${String(options.mode || '')}" data-show-labels="${String(options.showLabels === true)}" data-series-label-keys="${seriesLabelKeys}" data-scroll="${String(options.scrollWithinCanvas === true)}">${String(options.chartTitle || '')}</div>`;
     },
     renderUtilTrendChart(points, metricLabel, options = {}) {
       return `<div class="trend-chart" data-point-count="${Array.isArray(points) ? points.length : 0}" data-mode="${String(options.mode || '')}" data-scroll="${String(options.scrollWithinCanvas === true)}" data-metric="${String(metricLabel || '')}">${String(options.chartTitle || '')}</div>`;
@@ -90,11 +94,14 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
     getUtilSheetAnalysisShowLabels(datasetKey, chartKey, isFullscreenChart) {
       return datasetKey === 'electric' || (chartKey === 'combined' && isFullscreenChart === true);
     },
+    getUtilSheetAnalysisSeriesShowLabels(datasetKey, seriesKey) {
+      return String(datasetKey || '').trim() === 'gas' && String(seriesKey || '').trim() === 'combined';
+    },
     getUtilGasAnalysisRatioShowLabels() {
       return true;
     },
     buildUtilGasAnalysisSeriesControlHtml(controlItem) {
-      return `<button class="series-control" data-key="${String(controlItem?.key || '')}">series</button>`;
+      return `<button class="series-control" data-key="${String(controlItem?.key || '')}">series</button><input type="checkbox" data-role="util-sheet-analysis-series-label-toggle" data-chart-key="${String(controlItem?.key || '')}">`;
     },
     buildUtilGasAnalysisPopupOnlyControlHtml(item) {
       return `<button class="popup-only-control" data-key="${String(item?.key || '')}">popup</button>`;
@@ -236,12 +243,16 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
   assert.ok(fullscreenCardHtml.includes('multi-series-chart'));
   assert.ok(fullscreenCardHtml.includes('data-mode="modal"'));
   assert.ok(fullscreenCardHtml.includes('data-scroll="true"'));
-  assert.ok(gasBodyHtml.includes('util-sheet-analysis-gas-category-select'));
+  assert.ok(!gasBodyHtml.includes('util-sheet-analysis-gas-category-select'));
+  assert.ok(!gasBodyHtml.includes('util-sheet-analysis-from'));
   assert.ok(gasBodyHtml.includes('floating-table'));
   assert.ok(gasBodyHtml.includes('ratio-combined'));
   assert.ok(gasBodyHtml.includes('series-control'));
+  assert.ok(gasBodyHtml.includes('data-role="util-sheet-analysis-series-label-toggle"'));
+  assert.ok(gasBodyHtml.includes('data-series-label-keys="combined"'));
   assert.ok(gasBodyHtml.includes('util-sheet-analysis-table-stack'));
-  assert.ok(electricBodyHtml.includes('util-sheet-analysis-electric-team-select'));
+  assert.ok(!electricBodyHtml.includes('util-sheet-analysis-electric-team-select'));
+  assert.ok(!electricBodyHtml.includes('util-sheet-analysis-to'));
   assert.ok(electricBodyHtml.includes('trend-chart'));
   assert.ok(electricBodyHtml.includes('multi-series-chart'));
   assert.ok(electricBodyHtml.includes('data-scroll="true"'));
@@ -251,9 +262,9 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
 
 test('kpi html loads report sheet analysis render between modal render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=055');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=055');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=057');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=057');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=059');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');

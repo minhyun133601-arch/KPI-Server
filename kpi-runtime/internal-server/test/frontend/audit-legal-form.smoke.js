@@ -6,11 +6,14 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
 const legalAssetsPath = path.join(repoRoot, 'audit/runtime/audit/records/KPI.audit.records.legal.assets.js');
+const legalModelPath = path.join(repoRoot, 'audit/runtime/audit/records/KPI.audit.records.legal.model.js');
 const legalPath = path.join(repoRoot, 'audit/runtime/audit/records/KPI.audit.records.legal.js');
 const legalFormPath = path.join(repoRoot, 'audit/runtime/audit/records/KPI.audit.records.legal.form.js');
 const legalAssetsSource = await fs.readFile(legalAssetsPath, 'utf8');
+const legalModelSource = await fs.readFile(legalModelPath, 'utf8');
 const legalFormSource = await fs.readFile(legalFormPath, 'utf8');
 const legalSource = await fs.readFile(legalPath, 'utf8');
+const combinedLegalSource = `${legalModelSource}\n${legalSource}`;
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -86,7 +89,7 @@ function buildLegalRenderer() {
     'document',
     'window',
     'KpiAuditRecordsBrowserAdapter',
-    `${legalAssetsSource}\n${legalFormSource}\n${legalSource}\nreturn { renderAuditLegalFacilityPreview };`
+    `${legalAssetsSource}\n${legalModelSource}\n${legalFormSource}\n${legalSource}\nreturn { renderAuditLegalFacilityPreview };`
   );
   const renderer = factory(escapeHtml, document, window, adapter);
   return { ...renderer, contentContainer };
@@ -188,16 +191,16 @@ test('audit legal facility submit waits for record save and cleans uploaded file
   assert.match(legalFormSource, /정말로 삭제하시겠습니까/);
   assert.match(legalFormSource, /inspectionItems: getAuditLegalDefaultInspectionItems/);
   assert.match(legalFormSource, /data-audit-legal-open-category-inspection/);
-  assert.match(legalSource, /AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS = \['정기검사', '사용검사', '선임'\]/);
-  assert.match(legalSource, /AUDIT_LEGAL_INSPECTION_CYCLE_OPTIONS/);
-  assert.match(legalSource, /function calculateAuditLegalNextDate/);
-  assert.match(legalSource, /data-audit-legal-inspection-input="cycle"/);
-  assert.match(legalSource, /renderAuditLegalCycleOptions/);
-  assert.match(legalSource, /data-audit-legal-file="attachment"/);
-  assert.match(legalSource, /data-audit-legal-inspection-label="lastDate"/);
-  assert.match(legalSource, /data-audit-legal-inspection-label="cycle"/);
-  assert.match(legalSource, /남은 관리 일정/);
-  assert.match(legalSource, /검사\/선임 추가/);
+  assert.match(combinedLegalSource, /AUDIT_LEGAL_DEFAULT_INSPECTION_ITEMS = \['정기검사', '사용검사', '선임'\]/);
+  assert.match(combinedLegalSource, /AUDIT_LEGAL_INSPECTION_CYCLE_OPTIONS/);
+  assert.match(combinedLegalSource, /function calculateAuditLegalNextDate/);
+  assert.match(combinedLegalSource, /data-audit-legal-inspection-input="cycle"/);
+  assert.match(combinedLegalSource, /renderAuditLegalCycleOptions/);
+  assert.match(combinedLegalSource, /data-audit-legal-file="attachment"/);
+  assert.match(combinedLegalSource, /data-audit-legal-inspection-label="lastDate"/);
+  assert.match(combinedLegalSource, /data-audit-legal-inspection-label="cycle"/);
+  assert.match(combinedLegalSource, /남은 관리 일정/);
+  assert.match(combinedLegalSource, /검사\/선임 추가/);
   assert.match(legalFormSource, /applyAuditLegalInspectionFormLabels/);
   assert.match(legalFormSource, /applyAuditLegalInspectionNextDate/);
   assert.match(legalFormSource, /cycle: getAuditLegalInspectionInputValue/);
@@ -205,12 +208,12 @@ test('audit legal facility submit waits for record save and cleans uploaded file
   assert.match(legalFormSource, /data-audit-legal-calendar-shift/);
   assert.match(legalFormSource, /setAuditLegalCalendarMonth/);
   assert.match(legalFormSource, /서버 저장이 완료되지 않아 법정설비 등록을 취소했습니다/);
-  assert.match(legalSource, /AUDIT_LEGAL_CATEGORY_INSPECTION_FORM_ID/);
-  assert.match(legalSource, /calendarExpanded: true/);
-  assert.match(legalSource, /value: 'elevator', label: '승강기'/);
+  assert.match(combinedLegalSource, /AUDIT_LEGAL_CATEGORY_INSPECTION_FORM_ID/);
+  assert.match(combinedLegalSource, /calendarExpanded: true/);
+  assert.match(combinedLegalSource, /value: 'elevator', label: '승강기'/);
   assert.match(legalFormSource, /data-audit-legal-calendar-toggle/);
-  assert.match(legalSource, /data-audit-legal-calendar-year/);
-  assert.match(legalSource, /data-audit-legal-calendar-month/);
+  assert.match(combinedLegalSource, /data-audit-legal-calendar-year/);
+  assert.match(combinedLegalSource, /data-audit-legal-calendar-month/);
   assert.doesNotMatch(legalSource, /function bindAuditLegalEntryEvents/);
   assert.doesNotMatch(legalSource, /Server write permission is required/);
   assert.doesNotMatch(legalSource, /File upload failed/);

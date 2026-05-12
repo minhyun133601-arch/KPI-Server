@@ -28,6 +28,7 @@
         getUtilGasAnalysisChartUnitLabel: null,
         getUtilGasAnalysisChartDecimals: null,
         getUtilGasAnalysisUnitOptions: null,
+        getUtilSheetAnalysisSeriesShowLabels: null,
         scaleUtilGasAnalysisChartValue: null
     };
 
@@ -92,11 +93,38 @@
         return [];
     }
 
+    function getSeriesShowLabels(datasetKey = 'gas', seriesKey = '') {
+        if (typeof runtime.getUtilSheetAnalysisSeriesShowLabels === 'function') {
+            return runtime.getUtilSheetAnalysisSeriesShowLabels(datasetKey, seriesKey) === true;
+        }
+        return false;
+    }
+
     function scaleGasValue(chartKey = '', value, unitKey = '') {
         if (typeof runtime.scaleUtilGasAnalysisChartValue === 'function') {
             return runtime.scaleUtilGasAnalysisChartValue(chartKey, value, unitKey);
         }
         return Number.isFinite(value) ? value : NaN;
+    }
+
+    function normalizeAnalysisDecimalDigits(value, fallback = 0) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return fallback;
+        return Math.max(0, Math.min(4, Math.trunc(number)));
+    }
+
+    function buildUtilSheetAnalysisDecimalsSelectHtml(item = {}) {
+        if (!item?.key) return '';
+        const fallbackDigits = String(item.key || '').trim().startsWith('ratio-') ? 3 : 0;
+        const selectedDigits = normalizeAnalysisDecimalDigits(item.decimals, fallbackDigits);
+        const optionsHtml = [0, 1, 2, 3, 4]
+            .map(digits => `<option value="${digits}" ${digits === selectedDigits ? 'selected' : ''}>${digits}</option>`)
+            .join('');
+        return `
+            <select class="util-sheet-analysis-series-select util-sheet-analysis-decimals-select" data-role="util-sheet-analysis-decimals" data-chart-key="${escapeHtml(item.key)}" aria-label="${escapeHtml(item.title || item.label || item.key)} decimal places">
+                ${optionsHtml}
+            </select>
+        `;
     }
 
     function buildUtilGasAnalysisSeriesLabel(chart = {}) {
@@ -196,6 +224,16 @@
                                     `).join('')}
                                 </select>
                             ` : ''}
+                            ${buildUtilSheetAnalysisDecimalsSelectHtml(item)}
+                            <label class="util-sheet-analysis-summary-control-label">
+                                <input
+                                    type="checkbox"
+                                    data-role="util-sheet-analysis-series-label-toggle"
+                                    data-chart-key="${escapeHtml(item.key)}"
+                                    ${getSeriesShowLabels(item.datasetKey || 'gas', item.key) ? 'checked' : ''}
+                                >
+                                <span>레이블</span>
+                            </label>
                             <div class="util-sheet-analysis-series-mode">
                                 ${UTIL_GAS_ANALYSIS_DISPLAY_OPTIONS.map(option => `
                                     <button
@@ -218,6 +256,18 @@
     function buildUtilGasAnalysisSeriesControlHtml(item) {
         if (!item || !item.key) return '';
         const unitOptions = Array.isArray(item.unitOptions) ? item.unitOptions : [];
+        const datasetKey = String(item.datasetKey || 'gas').trim() || 'gas';
+        const labelToggleHtml = `
+            <label class="util-sheet-analysis-summary-control-label">
+                <input
+                    type="checkbox"
+                    data-role="util-sheet-analysis-series-label-toggle"
+                    data-chart-key="${escapeHtml(item.key)}"
+                    ${getSeriesShowLabels(datasetKey, item.key) ? 'checked' : ''}
+                >
+                <span>레이블</span>
+            </label>
+        `;
         return `
             <div class="util-sheet-analysis-summary-controls">
                 ${item.allowInactiveToggle === true ? `
@@ -239,6 +289,8 @@
                             `).join('')}
                         </select>
                     ` : ''}
+                    ${labelToggleHtml}
+                    ${buildUtilSheetAnalysisDecimalsSelectHtml(item)}
                     <div class="util-sheet-analysis-series-mode">
                         ${UTIL_GAS_ANALYSIS_DISPLAY_OPTIONS.map(option => `
                             <button
@@ -285,6 +337,7 @@
         return `
             <div class="util-sheet-analysis-summary-controls">
                 <div class="util-sheet-analysis-summary-control-actions">
+                    ${buildUtilSheetAnalysisDecimalsSelectHtml(item)}
                     <div class="util-sheet-analysis-series-mode">
                         ${UTIL_GAS_ANALYSIS_DISPLAY_OPTIONS.map(option => `
                             <button

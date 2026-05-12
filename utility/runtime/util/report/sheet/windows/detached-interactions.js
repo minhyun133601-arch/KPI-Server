@@ -15,6 +15,7 @@
         rerenderAndSync: null,
         resolveUtilSheetAnalysisLabelToggleContext: null,
         setUtilSheetAnalysisShowLabels: null,
+        setUtilSheetAnalysisSeriesShowLabels: null,
         setUtilGasAnalysisRatioShowLabels: null,
         applyUtilGasMeterProductionSelection: null,
         applyUtilElectricMeterTeamSelection: null,
@@ -22,6 +23,7 @@
         applyUtilGasAnalysisCategorySelection: null,
         setUtilGasAnalysisFuelInactive: null,
         setUtilSheetAnalysisUnitKey: null,
+        setUtilSheetAnalysisDecimals: null,
         getUtilSheetActiveAnalysisDatasetKey: null,
         applyUtilGasAnalysisRangeSelection: null,
         applyUtilSheetCompareSelection: null,
@@ -133,6 +135,21 @@
             }
             if (!modal) return;
 
+            const seriesLabelToggle = event.target?.closest?.('[data-role="util-sheet-analysis-series-label-toggle"]');
+            if (seriesLabelToggle) {
+                if (typeof runtime.setUtilSheetAnalysisSeriesShowLabels === 'function') {
+                    runtime.setUtilSheetAnalysisSeriesShowLabels(
+                        typeof runtime.getUtilSheetActiveAnalysisDatasetKey === 'function'
+                            ? runtime.getUtilSheetActiveAnalysisDatasetKey(modal)
+                            : '',
+                        seriesLabelToggle.dataset.chartKey || '',
+                        seriesLabelToggle.checked === true
+                    );
+                }
+                rerenderAndSync(modal);
+                return;
+            }
+
             const ratioLabelToggle = event.target?.closest?.('[data-role="util-sheet-analysis-ratio-label-toggle"]');
             if (ratioLabelToggle) {
                 if (typeof runtime.setUtilGasAnalysisRatioShowLabels === 'function') {
@@ -186,6 +203,20 @@
                             : '',
                         unitSelect.dataset.chartKey || '',
                         unitSelect.value || ''
+                    );
+                }
+                rerenderAndSync(modal);
+                return;
+            }
+            const decimalsSelect = event.target?.closest?.('[data-role="util-sheet-analysis-decimals"]');
+            if (decimalsSelect) {
+                if (typeof runtime.setUtilSheetAnalysisDecimals === 'function') {
+                    runtime.setUtilSheetAnalysisDecimals(
+                        typeof runtime.getUtilSheetActiveAnalysisDatasetKey === 'function'
+                            ? runtime.getUtilSheetActiveAnalysisDatasetKey(modal)
+                            : '',
+                        decimalsSelect.dataset.chartKey || '',
+                        decimalsSelect.value || '0'
                     );
                 }
                 rerenderAndSync(modal);

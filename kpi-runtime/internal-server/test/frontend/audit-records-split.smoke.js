@@ -21,6 +21,7 @@ const splitFiles = [
   'KPI.audit.records.lux-fullscreen.js',
   'KPI.audit.records.lux-workspace.js',
   'KPI.audit.records.legal.assets.js',
+  'KPI.audit.records.legal.model.js',
   'KPI.audit.records.legal.form.js',
   'KPI.audit.records.legal.js',
   'KPI.audit.records.batch-actions.js',

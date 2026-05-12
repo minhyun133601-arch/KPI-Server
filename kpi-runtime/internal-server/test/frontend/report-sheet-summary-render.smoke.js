@@ -312,6 +312,8 @@ test('report sheet summary render registry builds badges, stats, compare, matrix
   assert.ok(recentTableHtml.includes('SHORT:2026-04'));
   assert.ok(memoHtml.includes('LNG'));
   assert.ok(memoHtml.includes('LNG'));
+  assert.ok(memoHtml.includes('data-role="util-sheet-report-manual-memo"'));
+  assert.ok(summaryRender.buildUtilSheetMemoSectionHtml([], { manualMemoText: 'manual note' }).includes('manual note'));
   assert.equal(memoItems.length, 4);
   assert.ok(typeof memoItems[0] === 'string' && memoItems[0].length > 0);
   assert.equal(gasSummaryItems.length, 3);
@@ -323,11 +325,173 @@ test('report sheet summary render registry builds badges, stats, compare, matrix
   assert.ok(electricSummaryBlockHtml.includes('util-sheet-meter-electric-team-select'));
 });
 
+test('analysis report memo items follow compare toggle and collapse aggregate gas scopes', () => {
+  const context = createSummaryRenderContext();
+  const summaryRender = context.KPIUtilReportSheetSummaryRender;
+  const calendarCalls = [];
+
+  summaryRender.setRuntimeAdapters({
+    escapeUtilSheetHtml(value) {
+      return String(value ?? '').replace(/&/g, '&amp;');
+    },
+    calculateUtilSheetPercentDelta(currentValue, referenceValue) {
+      const current = Number(currentValue);
+      const reference = Number(referenceValue);
+      if (!Number.isFinite(current) || !Number.isFinite(reference) || reference === 0) return null;
+      return ((current - reference) / reference) * 100;
+    },
+    formatUtilReportMonthLong(monthKey) {
+      return `LONG:${String(monthKey || '')}`;
+    },
+    formatUtilSheetQuantity(value, unit, fallback = '-') {
+      return Number.isFinite(Number(value)) ? `${Number(value).toLocaleString('ko-KR')}${unit}` : fallback;
+    },
+    formatUtilSheetSignedQuantity(value, unit, fallback = '-') {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return fallback;
+      return `${number >= 0 ? '+' : ''}${number.toLocaleString('ko-KR')}${unit}`;
+    },
+    formatUtilSheetInteger(value, fallback = '-') {
+      return Number.isFinite(Number(value)) ? String(Number(value)) : fallback;
+    },
+    getWorkTeamCalendarProductionSummaryMap(dataKey, dateKeys) {
+      calendarCalls.push({ dataKey, dateKeys });
+      return new Map([
+        ['2026-03-01', { count: 1, totalAmount: 10, isOffday: false }],
+        ['2026-03-02', { count: 0, totalAmount: 0, isOffday: true }],
+        ['2026-03-03', { count: 1, totalAmount: 0, isOffday: false }],
+      ]);
+    },
+  });
+
+  const analysisModel = {
+    range: { from: '2026-02', to: '2026-03' },
+    reportMemo: {
+      datasetKey: 'gas',
+      activeMonthKey: '2026-03',
+      prevMonthKey: '2026-02',
+      prevYearKey: '2025-03',
+      range: { from: '2026-02', to: '2026-03' },
+      monthOptions: [{ value: '2025-03' }, { value: '2026-02' }, { value: '2026-03' }],
+      teams: [{
+        key: 'team_03',
+        label: 'Team 3',
+        rows: {
+          '2025-03': { production: 90 },
+          '2026-02': { production: 120 },
+          '2026-03': { production: 140 },
+        },
+        lineItems: [{
+          key: 'line-a',
+          title: 'Line A',
+          activeAmount: 140,
+          prevMonthAmount: 180,
+          prevYearAmount: 90,
+        }],
+      }],
+    },
+  };
+
+  const monthItems = summaryRender.resolveUtilSheetMemoItems('analysis', 'gas', {}, 'month', null, { analysisModel });
+  const monthJoined = monthItems.join('\n');
+  assert.match(monthJoined, /Team 3/);
+  assert.match(monthJoined, /140kg/);
+  assert.match(monthJoined, /16\.7%/);
+  assert.match(monthJoined, /\+20kg/);
+  assert.doesNotMatch(monthJoined, /55\.6%/);
+  assert.doesNotMatch(monthJoined, /\+50kg/);
+  assert.match(monthJoined, /Line A/);
+  assert.equal(monthItems.length, 2);
+  assert.ok(monthItems[0].includes('Team 3 생산량'));
+  assert.ok(monthItems[0].includes('라인별 품목:'));
+  assert.ok(!monthItems[0].includes('Team 3 라인별'));
+  assert.ok(monthItems[1].includes('생산일'));
+  assert.ok(!monthItems[1].includes('Team 3'));
+  const monthLineItemIndex = monthItems.findIndex((item) => item.includes('Line A'));
+  const monthWorkdayIndex = monthItems.findIndex((item) => item.includes('생산일'));
+  assert.ok(monthLineItemIndex >= 0, 'line item memo should be present');
+  assert.ok(monthWorkdayIndex > monthLineItemIndex, 'workday memo should be last in team memo block');
+  assert.equal(calendarCalls.length, 1);
+  assert.equal(calendarCalls[0].dataKey, 'work_team_calendar_team3');
+  assert.equal(calendarCalls[0].dateKeys[0], '2026-03-01');
+  assert.equal(calendarCalls[0].dateKeys.at(-1), '2026-03-31');
+
+  const monthHtml = summaryRender.buildUtilSheetMemoSectionHtml(monthItems);
+  assert.ok(monthHtml.includes('data-role="util-sheet-report-memo-section"'));
+  assert.ok(monthHtml.includes('data-role="util-sheet-report-memo-list"'));
+  assert.ok(monthHtml.includes('data-role="util-sheet-report-manual-memo"'));
+  assert.ok(monthHtml.includes('util-sheet-memo-arrow is-up'));
+  assert.ok(monthHtml.includes('util-sheet-memo-arrow is-down'));
+
+  const yearItems = summaryRender.resolveUtilSheetMemoItems('analysis', 'gas', {}, 'year', null, { analysisModel });
+  const yearJoined = yearItems.join('\n');
+  assert.match(yearJoined, /55\.6%/);
+  assert.match(yearJoined, /\+50kg/);
+  assert.doesNotMatch(yearJoined, /16\.7%/);
+  assert.doesNotMatch(yearJoined, /\+20kg/);
+
+  const yusanModel = {
+    range: { from: '2026-02', to: '2026-03' },
+    reportMemo: {
+      datasetKey: 'gas',
+      scopeKey: 'yusan',
+      scopeLabel: 'Yusan',
+      activeMonthKey: '2026-03',
+      prevMonthKey: '2026-02',
+      prevYearKey: '2025-03',
+      monthOptions: [{ value: '2025-03' }, { value: '2026-02' }, { value: '2026-03' }],
+      teams: [
+        {
+          key: 'team_a',
+          label: 'Team A',
+          rows: {
+            '2025-03': { production: 100 },
+            '2026-02': { production: 150 },
+            '2026-03': { production: 200 },
+          },
+          lineItems: [{ title: 'A', activeAmount: 200, prevMonthAmount: 150, prevYearAmount: 100 }],
+        },
+        {
+          key: 'team_b',
+          label: 'Team B',
+          rows: {
+            '2025-03': { production: 200 },
+            '2026-02': { production: 250 },
+            '2026-03': { production: 300 },
+          },
+          lineItems: [{ title: 'B', activeAmount: 300, prevMonthAmount: 250, prevYearAmount: 200 }],
+        },
+      ],
+    },
+  };
+  const yusanItems = summaryRender.resolveUtilSheetMemoItems('analysis', 'gas', {}, 'month', null, { analysisModel: yusanModel });
+  assert.equal(yusanItems.length, 1);
+  assert.match(yusanItems[0], /Yusan/);
+  assert.match(yusanItems[0], /500kg/);
+  assert.match(yusanItems[0], /25\.0%/);
+  assert.doesNotMatch(yusanItems[0], /Team A|Team B|Line A|Line B/);
+
+  const combinedModel = {
+    ...yusanModel,
+    reportMemo: {
+      ...yusanModel.reportMemo,
+      scopeKey: 'combined',
+      scopeLabel: 'Total',
+    },
+  };
+  const combinedItems = summaryRender.resolveUtilSheetMemoItems('analysis', 'gas', {}, 'year', null, { analysisModel: combinedModel });
+  assert.equal(combinedItems.length, 1);
+  assert.match(combinedItems[0], /Total/);
+  assert.match(combinedItems[0], /500kg/);
+  assert.match(combinedItems[0], /66\.7%/);
+  assert.doesNotMatch(combinedItems[0], /Team A|Team B|Line A|Line B/);
+});
+
 test('kpi html loads report sheet summary render between analysis render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=055');
-  const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=055');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=057');
+  const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=062');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=059');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(analysisRenderIndex >= 0, 'report sheet analysis render loader is missing');

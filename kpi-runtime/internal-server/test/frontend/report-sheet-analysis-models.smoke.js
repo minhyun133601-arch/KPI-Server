@@ -333,13 +333,28 @@ test('report sheet analysis model registries build electric and gas analysis mod
     normalizeUtilSheetCompareKey(compareKey = 'month') {
       return String(compareKey || '').trim() === 'year' ? 'year' : 'month';
     },
-    getUtilGasAnalysisCategoryOption() {
-      return {
-        key: 'yusan',
-        label: 'yusan',
-        productionTeamNames: ['A'],
-        showLpgCard: true
+    getUtilGasAnalysisCategoryOption(categoryKey = 'yusan') {
+      const options = {
+        team_01_02: {
+          key: 'team_01_02',
+          label: 'Team 1-2',
+          productionTeamNames: ['A'],
+          showLpgCard: true
+        },
+        team_03: {
+          key: 'team_03',
+          label: 'Team 3',
+          productionTeamNames: ['B'],
+          showLpgCard: false
+        },
+        yusan: {
+          key: 'yusan',
+          label: 'yusan',
+          productionTeamNames: ['A'],
+          showLpgCard: true
+        }
       };
+      return options[String(categoryKey || 'yusan').trim()] || options.yusan;
     },
     normalizeUtilSheetAnalysisRange(monthOptions, fromValue = '', toValue = '', fallbackToValue = '') {
       const values = (Array.isArray(monthOptions) ? monthOptions : []).map((item) => String(item?.value || ''));
@@ -459,8 +474,13 @@ test('report sheet analysis model registries build electric and gas analysis mod
   assert.equal(electricSummaryByKey.get('electricCost')?.valueText, '1,452 KRW');
   assert.equal(electricSummaryByKey.get('production')?.valueText, '120.0 kg');
   assert.match(electricSummaryByKey.get('electricCost')?.metaText || '', /LONG:2026-03/);
-  assert.doesNotMatch(electricSummaryByKey.get('electricCost')?.metaText || '', /범위 누적/);
+  assert.doesNotMatch(electricSummaryByKey.get('electricCost')?.metaText || '', /踰붿쐞 ?꾩쟻/);
 
+  assert.equal(electricModel.reportMemo.datasetKey, 'electric');
+  assert.equal(electricModel.reportMemo.prevMonthKey, '2026-02');
+  assert.equal(electricModel.reportMemo.teams.map((team) => team.key).join(','), 'team-a');
+  assert.equal(electricModel.reportMemo.teams[0].rows['2026-03'].production, 120);
+  assert.equal(electricModel.reportMemo.teams[0].lineItems[0].title, 'line1');
   assert.equal(gasModel.hasData, true);
   assert.equal(gasModel.categoryOption.key, 'yusan');
   assert.ok(gasModel.combinedChart);
@@ -473,7 +493,12 @@ test('report sheet analysis model registries build electric and gas analysis mod
   assert.equal(gasSummaryByKey.get('production')?.valueText, '221.0 kg');
   assert.deepEqual(gasModel.monthOptions.map((item) => item.value), ['2026-01', '2026-02', '2026-03']);
   assert.match(gasSummaryByKey.get('gasCost')?.metaText || '', /LONG:2026-03/);
-  assert.doesNotMatch(gasSummaryByKey.get('gasCost')?.metaText || '', /범위 합계|범위 누적/);
+  assert.doesNotMatch(gasSummaryByKey.get('gasCost')?.metaText || '', /踰붿쐞 ?⑷퀎|踰붿쐞 ?꾩쟻/);
+  assert.equal(gasModel.reportMemo.datasetKey, 'gas');
+  assert.equal(gasModel.reportMemo.prevMonthKey, '2026-02');
+  assert.equal(gasModel.reportMemo.teams.map((team) => team.key).join(','), 'team_01_02,team_03');
+  assert.equal(gasModel.reportMemo.teams[0].rows['2026-03'].production, 221);
+  assert.equal(gasModel.reportMemo.teams[0].lineItems[0].title, 'line1');
   assert.equal(config.UtilSheetAnalysisState.gas.categoryKey, 'yusan');
   assert.equal(config.UtilSheetAnalysisState.gas.from, '2026-01');
   assert.equal(config.UtilSheetAnalysisState.gas.to, '2026-03');
@@ -481,13 +506,13 @@ test('report sheet analysis model registries build electric and gas analysis mod
 
 test('kpi html loads report sheet analysis model scripts before analysis render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=057');
   const rangeRatioIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/range-ratio.js?v=054');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
-  const electricModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/model.js?v=055');
-  const gasModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/gas/model.js?v=055');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=055');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=055');
+  const electricModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/model.js?v=056');
+  const gasModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/gas/model.js?v=056');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=057');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=059');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');

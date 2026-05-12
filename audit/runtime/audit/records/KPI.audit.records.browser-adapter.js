@@ -101,6 +101,11 @@
         }
     }
 
+    function confirmUser(message) {
+        const confirmFn = root.confirm || globalScope.confirm;
+        return typeof confirmFn === 'function' ? confirmFn.call(root, message) : true;
+    }
+
     function getLegalAssetsApi() {
         return root.KpiAuditLegalAssets && typeof root.KpiAuditLegalAssets === 'object'
             ? root.KpiAuditLegalAssets
@@ -145,6 +150,7 @@
         fetch: fetchFromRoot,
         hasFetch,
         alert: alertUser,
+        confirm: confirmUser,
         getLegalAssetsApi,
         ensureLegalAssetsApi,
         resolveUrl,

@@ -113,20 +113,40 @@ test('report sheet analysis state registry normalizes analysis range and shared 
   registry.setUtilGasAnalysisFuelInactive('lpg', true);
   assert.equal(registry.isUtilGasAnalysisFuelInactive('lpg'), true);
 
+  assert.equal(registry.getUtilGasAnalysisChartDecimals('gasCost', 'million'), 1);
+  assert.equal(registry.getUtilGasAnalysisChartDecimals('ratio-lng'), 3);
+  assert.equal(registry.getUtilGasAnalysisUnitKey('productionLineRatio::1?� 1?�트::SD'), 'kg');
+  assert.equal(registry.getUtilElectricAnalysisUnitKey('productionLineRatio::1?� 1?�트::SD'), 'kg');
+  registry.setUtilSheetAnalysisDecimals('gas', 'gasCost', 4);
+  assert.equal(registry.getUtilGasAnalysisChartDecimals('gasCost', 'million'), 4);
+  assert.equal(config.UtilSheetAnalysisState.gas.decimalDigits.gasCost, 4);
+  registry.setUtilSheetAnalysisDecimals('electric', 'electricIntensity', 2);
+  assert.equal(registry.getUtilElectricAnalysisChartDecimals('electricIntensity', 'kwhkg'), 2);
+  registry.setUtilSheetAnalysisDecimals('electric', 'electricUsage', 9);
+  assert.equal(registry.getUtilSheetAnalysisDecimals('electric', 'electricUsage', 'mwh'), 4);
+
   assert.equal(registry.getUtilSheetActiveAnalysisDatasetKey({ dataset: { datasetKey: 'gas' } }), 'gas');
   assert.equal(registry.getUtilSheetActiveAnalysisDatasetKey({ dataset: {} }), 'electric');
 
   assert.equal(registry.getUtilSheetAnalysisShowLabels('gas', '', true), true);
+  assert.equal(registry.getUtilSheetAnalysisShowLabels('gas', 'lngUsage', false), false);
+  registry.setUtilSheetAnalysisSeriesShowLabels('gas', 'lngUsage', true);
+  assert.equal(registry.getUtilSheetAnalysisSeriesShowLabels('gas', 'lngUsage'), true);
+  assert.equal(registry.getUtilSheetAnalysisShowLabels('gas', 'lngUsage', false), true);
+  assert.equal(registry.getUtilSheetAnalysisShowLabels('gas', 'lpgUsage', false), false);
+  registry.setUtilSheetAnalysisShowLabels('electric', 'combined', true);
+  assert.equal(registry.getUtilSheetAnalysisShowLabels('electric', 'combined', false), true);
+  assert.equal(registry.getUtilSheetAnalysisShowLabels('electric', 'electricIntensity', false), false);
   registry.setUtilGasAnalysisRatioShowLabels(true);
   assert.equal(registry.getUtilGasAnalysisRatioShowLabels(), true);
 });
 
 test('kpi html loads report sheet analysis state before analysis models and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=054');
-  const analysisStateIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/state.js?v=053');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=057');
+  const analysisStateIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/state.js?v=055');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=055');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=059');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');

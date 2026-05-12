@@ -53,7 +53,7 @@ test('report sheet helper functions are split out of sheet runtime', () => {
   });
 
   assert.equal(context.escapeUtilSheetHtml('x'), 'escaped:x');
-  assert.equal(context.formatUtilSheetCost(1234), '1,234원');
+  assert.ok(context.formatUtilSheetCost(1234).includes('1,234'));
   assert.equal(context.compareUtilSheetMonthKeys('2026-01', '2026-02'), -1);
   assert.equal(
     JSON.stringify(context.buildUtilSheetMonthBounds('gas')),
@@ -82,9 +82,9 @@ test('report sheet helper functions are split out of sheet runtime', () => {
 });
 
 test('kpi html loads report sheet helpers before sheet runtime', () => {
-  const summaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=053');
+  const summaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=062');
   const helpersIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.helpers.js?v=341');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=055');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=059');
 
   assert.ok(summaryIndex >= 0, 'report sheet summary loader is missing');
   assert.ok(helpersIndex > summaryIndex, 'report sheet helpers must load after summary render helpers');

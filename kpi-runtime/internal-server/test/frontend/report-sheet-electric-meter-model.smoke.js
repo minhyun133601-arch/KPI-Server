@@ -79,10 +79,10 @@ test('report sheet electric meter model registry builds electric comparison mode
     getUtilElectricMeteringStore() {
       return {
         equipmentItems: [
-          { id: 'field_24', label: '전력총량', factor: '1' },
-          { id: 'field_01', label: '1파트', factor: '1' },
-          { id: 'field_02', label: '2팀', factor: '1' },
-          { id: 'field_03', label: '3팀', factor: '1' },
+          { id: 'field_24', label: '?�력총량', factor: '1' },
+          { id: 'field_01', label: '1?�트', factor: '1' },
+          { id: 'field_02', label: '2?�', factor: '1' },
+          { id: 'field_03', label: '3?�', factor: '1' },
           { id: 'field_17', label: '관리동', factor: '1' }
         ],
         teamAssignments: {
@@ -216,7 +216,7 @@ test('kpi html loads electric meter model after electric runtime sync and before
   const runtimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/runtime-sync.js?v=053');
   const meterModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/meter-model.js?v=053');
   const comparisonSummaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=055');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=059');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(tableRenderIndex >= 0, 'report sheet electric table render loader is missing');

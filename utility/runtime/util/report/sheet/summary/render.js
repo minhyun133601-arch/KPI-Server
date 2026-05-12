@@ -36,7 +36,8 @@
         formatUtilSheetCost: null,
         formatUtilSheetSignedCost: null,
         formatUtilSheetUnit: null,
-        formatUtilSheetSignedUnit: null
+        formatUtilSheetSignedUnit: null,
+        getWorkTeamCalendarProductionSummaryMap: null
     };
 
     const utilReportSheetControls = runtimeAdapter.requireApi(
@@ -151,6 +152,197 @@
             return runtime.calculateUtilSheetPercentDelta(currentValue, referenceValue);
         }
         return null;
+    }
+
+    function finiteNumber(value) {
+        const number = Number(value);
+        return Number.isFinite(number) ? number : null;
+    }
+
+    function formatPercentValue(value, fallback = '-') {
+        const number = finiteNumber(value);
+        if (!Number.isFinite(number)) return fallback;
+        const sign = number > 0 ? '+' : '';
+        return `${sign}${number.toLocaleString('ko-KR', {
+            maximumFractionDigits: 1,
+            minimumFractionDigits: 1
+        })}%`;
+    }
+
+    function formatDeltaDirection(value) {
+        const number = finiteNumber(value);
+        if (!Number.isFinite(number) || number === 0) return '변동 없음';
+        return number > 0 ? '증가' : '감소';
+    }
+
+    function formatDeltaArrowMarker(value) {
+        const number = finiteNumber(value);
+        if (!Number.isFinite(number) || number === 0) return '[[memo-delta-flat]]';
+        return number > 0 ? '[[memo-delta-up]]' : '[[memo-delta-down]]';
+    }
+
+    function formatDeltaSummary(currentValue, referenceValue, unit = 'kg') {
+        const current = finiteNumber(currentValue);
+        const reference = finiteNumber(referenceValue);
+        if (!Number.isFinite(current) || !Number.isFinite(reference)) return '-';
+        const delta = current - reference;
+        const percent = calculatePercentDelta(current, reference);
+        const percentText = Number.isFinite(finiteNumber(percent))
+            ? `${Math.abs(finiteNumber(percent)).toLocaleString('ko-KR', {
+                maximumFractionDigits: 1,
+                minimumFractionDigits: 1
+            })}%`
+            : '-';
+        return `${formatDeltaArrowMarker(delta)} ${percentText} ${formatDeltaDirection(delta)}(${formatSignedQuantity(delta, unit)})`;
+    }
+
+    function parseMonthKeyParts(monthKey = '') {
+        const match = /^(20\d{2}|19\d{2})-(\d{2})$/.exec(String(monthKey || '').trim());
+        if (!match) return null;
+        return {
+            year: Number(match[1]),
+            month: Number(match[2])
+        };
+    }
+
+    function getMonthDateKeys(monthKey = '') {
+        const parsed = parseMonthKeyParts(monthKey);
+        if (!parsed) return [];
+        const lastDay = new Date(parsed.year, parsed.month, 0).getDate();
+        return Array.from({ length: lastDay }, (_, index) => (
+            `${parsed.year}-${String(parsed.month).padStart(2, '0')}-${String(index + 1).padStart(2, '0')}`
+        ));
+    }
+
+    function resolveMemoTeamCalendarKey(teamKey = '') {
+        return {
+            team_01_01: 'work_team_calendar_team1_part1',
+            team_01_02: 'work_team_calendar_team1_part2',
+            team_02: 'work_team_calendar_team2',
+            team_03: 'work_team_calendar_team3'
+        }[String(teamKey || '').trim()] || '';
+    }
+
+    function getMemoMonthKeys(reportMemo = {}, range = null) {
+        const options = Array.isArray(reportMemo?.monthOptions) ? reportMemo.monthOptions : [];
+        const allKeys = options.map(item => String(item?.value || '').trim()).filter(Boolean);
+        if (!allKeys.length) return [];
+        const from = String(range?.from || reportMemo?.range?.from || reportMemo?.activeMonthKey || '').trim();
+        const to = String(range?.to || reportMemo?.range?.to || reportMemo?.activeMonthKey || '').trim();
+        return allKeys.filter(monthKey => (
+            (!from || monthKey >= from)
+            && (!to || monthKey <= to)
+        ));
+    }
+
+    function summarizeMemoWorkDays(team = {}, monthKeys = []) {
+        if (!team || !Array.isArray(monthKeys) || !monthKeys.length) return null;
+        if (!team.workDaysByMonth || typeof team.workDaysByMonth !== 'object') {
+            const dataKey = resolveMemoTeamCalendarKey(team.key);
+            if (dataKey && typeof runtime.getWorkTeamCalendarProductionSummaryMap === 'function') {
+                team.workDaysByMonth = team.workDaysByMonth || {};
+                monthKeys.forEach(monthKey => {
+                    if (team.workDaysByMonth[monthKey]) return;
+                    const summaryMap = runtime.getWorkTeamCalendarProductionSummaryMap(dataKey, getMonthDateKeys(monthKey));
+                    if (!(summaryMap instanceof Map)) return;
+                    let productionDays = 0;
+                    let offDays = 0;
+                    summaryMap.forEach(summary => {
+                        if (Number(summary?.count || 0) > 0 || Number(summary?.totalAmount || 0) > 0) {
+                            productionDays += 1;
+                        } else if (summary?.isOffday === true) {
+                            offDays += 1;
+                        }
+                    });
+                    team.workDaysByMonth[monthKey] = { productionDays, offDays };
+                });
+            }
+        }
+        const values = monthKeys.map(monthKey => team.workDaysByMonth?.[monthKey]).filter(Boolean);
+        if (!values.length) return null;
+        return values.reduce((acc, value) => ({
+            productionDays: acc.productionDays + (Number(value?.productionDays) || 0),
+            offDays: acc.offDays + (Number(value?.offDays) || 0)
+        }), { productionDays: 0, offDays: 0 });
+    }
+
+    function getMemoRow(team = {}, monthKey = '') {
+        return team?.rows?.[String(monthKey || '').trim()] || {};
+    }
+
+    function buildLineChangeText(item = {}, referenceKey = 'prevMonth') {
+        const activeAmount = finiteNumber(item?.activeAmount);
+        const referenceAmount = finiteNumber(item?.[`${referenceKey}Amount`]);
+        if (!Number.isFinite(activeAmount) || !Number.isFinite(referenceAmount)) return '-';
+        return formatDeltaSummary(activeAmount, referenceAmount, 'kg');
+    }
+
+    function getMemoCompareMeta(compareKey = 'month') {
+        const normalizedCompareKey = normalizeCompareKey(compareKey);
+        return normalizedCompareKey === 'year'
+            ? { key: 'year', label: '전년대비', rowKey: 'prevYearKey', linePrefix: 'prevYear' }
+            : { key: 'month', label: '전월대비', rowKey: 'prevMonthKey', linePrefix: 'prevMonth' };
+    }
+
+    function buildMemoTeamLineText(team = {}, compareKey = 'month') {
+        const compareMeta = getMemoCompareMeta(compareKey);
+        const lineItems = (Array.isArray(team?.lineItems) ? team.lineItems : [])
+            .filter(item => Number.isFinite(finiteNumber(item?.activeAmount)))
+            .slice(0, 4);
+        if (!lineItems.length) return '';
+        return `라인별 품목: ${lineItems.map(item => (
+            `${item.title} ${buildLineChangeText(item, compareMeta.linePrefix)}`
+        )).join(' / ')}`;
+    }
+
+    function sumMemoTeamRows(teams = [], monthKey = '', field = 'production') {
+        const values = (Array.isArray(teams) ? teams : [])
+            .map(team => finiteNumber(getMemoRow(team, monthKey)?.[field]))
+            .filter(Number.isFinite);
+        if (!values.length) return null;
+        return values.reduce((sum, value) => sum + value, 0);
+    }
+
+    function buildAnalysisReportMemoItems(analysisModel = null, datasetKey = 'gas', compareKey = 'month') {
+        const reportMemo = analysisModel?.reportMemo;
+        if (!reportMemo || typeof reportMemo !== 'object') return [];
+        const range = analysisModel?.range || reportMemo.range || {};
+        const monthKeys = getMemoMonthKeys(reportMemo, range);
+        const activeMonthKey = String(range?.to || reportMemo.activeMonthKey || '').trim();
+        const compareMeta = getMemoCompareMeta(compareKey);
+        const teams = Array.isArray(reportMemo.teams) ? reportMemo.teams : [];
+        const items = [];
+        const scopeKey = String(reportMemo.scopeKey || '').trim();
+        if (datasetKey === 'gas' && (scopeKey === 'yusan' || scopeKey === 'combined')) {
+            const activeProduction = sumMemoTeamRows(teams, activeMonthKey, 'production');
+            const referenceProduction = sumMemoTeamRows(teams, String(reportMemo[compareMeta.rowKey] || '').trim(), 'production');
+            if (Number.isFinite(activeProduction)) {
+                items.push(`${reportMemo.scopeLabel || (scopeKey === 'combined' ? '합계' : '유산')} 전체 생산량 ${formatQuantity(activeProduction, 'kg')} ${compareMeta.label} ${formatDeltaSummary(activeProduction, referenceProduction, 'kg')}`);
+            }
+            return items;
+        }
+        teams.forEach(team => {
+            const teamLabel = team.label || team.key;
+            const activeRow = getMemoRow(team, activeMonthKey);
+            const referenceRow = getMemoRow(team, String(reportMemo[compareMeta.rowKey] || '').trim());
+            const activeProduction = finiteNumber(activeRow?.production);
+            const lineText = buildMemoTeamLineText(team, compareMeta.key);
+            if (Number.isFinite(activeProduction)) {
+                const compareText = formatDeltaSummary(activeProduction, referenceRow?.production, 'kg');
+                const productionText = `${teamLabel} 생산량 ${formatQuantity(activeProduction, 'kg')} ${compareMeta.label} ${compareText}`;
+                items.push(lineText ? `${productionText} / ${lineText}` : productionText);
+            } else if (lineText) {
+                items.push(`${teamLabel} ${lineText}`);
+            }
+            const workDays = summarizeMemoWorkDays(team, activeMonthKey ? [activeMonthKey] : monthKeys.slice(-1));
+            if (workDays) {
+                items.push(`생산일 ${formatInteger(workDays.productionDays)}일 휴무일 ${formatInteger(workDays.offDays)}일`);
+            }
+        });
+        if (!items.length) {
+            return [`${datasetKey === 'electric' ? '전기' : '가스'} 분석표에서 선택한 팀과 기간 기준으로 보고 메모를 만들 수 있는 데이터가 부족합니다.`];
+        }
+        return items;
     }
 
     function getCompareLabel(compareKey = 'month') {
@@ -475,22 +667,53 @@
         `;
     }
 
-    function buildUtilSheetMemoSectionHtml(insights = []) {
+    function buildUtilSheetManualMemoHtml(options = {}) {
+        const manualMemoText = String(options?.manualMemoText || '');
+        const manualMemoEnabled = options?.manualMemoEnabled !== false;
+        const manualMemoEditable = options?.manualMemoEditable !== false;
+        if (!manualMemoEnabled && !manualMemoText.trim()) return '';
+        if (manualMemoEditable) {
+            return `
+                <div class="util-sheet-manual-memo" data-role="util-sheet-report-manual-memo-wrap">
+                    <label class="util-sheet-manual-memo-label" for="util-sheet-report-manual-memo">작성 메모</label>
+                    <textarea id="util-sheet-report-manual-memo" class="util-sheet-manual-memo-input" data-role="util-sheet-report-manual-memo" rows="4" placeholder="보고 메모를 직접 입력하세요.">${escapeHtml(manualMemoText)}</textarea>
+                </div>
+            `;
+        }
+        if (!manualMemoText.trim()) return '';
+        return `
+            <div class="util-sheet-manual-memo" data-role="util-sheet-report-manual-memo-wrap">
+                <div class="util-sheet-manual-memo-label">작성 메모</div>
+                <div class="util-sheet-manual-memo-text" data-role="util-sheet-report-manual-memo-text">${escapeHtml(manualMemoText).replace(/\n/g, '<br>')}</div>
+            </div>
+        `;
+    }
+
+    function buildMemoInsightHtml(item) {
+        return escapeHtml(item)
+            .replace(/\[\[memo-delta-up\]\]/g, '<span class="util-sheet-memo-arrow is-up" aria-label="증가">▲</span>')
+            .replace(/\[\[memo-delta-down\]\]/g, '<span class="util-sheet-memo-arrow is-down" aria-label="감소">▼</span>')
+            .replace(/\[\[memo-delta-flat\]\]/g, '<span class="util-sheet-memo-arrow is-flat" aria-label="변동 없음">→</span>');
+    }
+
+    function buildUtilSheetMemoSectionHtml(insights = [], options = {}) {
         const items = Array.isArray(insights)
             ? insights.filter(item => String(item || '').trim())
             : [];
-        if (!items.length) return '';
+        const manualMemoHtml = buildUtilSheetManualMemoHtml(options);
+        if (!items.length && !manualMemoHtml) return '';
         return `
-            <section class="util-sheet-section util-sheet-memo-section">
+            <section class="util-sheet-section util-sheet-memo-section" data-role="util-sheet-report-memo-section">
                 <div class="util-sheet-section-head">
                     <div>
                         <div class="util-sheet-section-title">요약 메모</div>
                         <div class="util-sheet-section-sub">현재 집계 데이터를 기준으로 주요 변화만 짧게 정리했습니다.</div>
                     </div>
                 </div>
-                <ul class="util-sheet-note-list">
-                    ${items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+                <ul class="util-sheet-note-list" data-role="util-sheet-report-memo-list">
+                    ${items.map(item => `<li>${buildMemoInsightHtml(item)}</li>`).join('')}
                 </ul>
+                ${manualMemoHtml}
             </section>
         `;
     }
@@ -542,8 +765,10 @@
         ];
     }
 
-    function resolveUtilSheetMemoItems(sheetType, datasetKey, datasetResult, compareKey = 'month', gasMeterComparisonModel = null) {
-        void compareKey;
+    function resolveUtilSheetMemoItems(sheetType, datasetKey, datasetResult, compareKey = 'month', gasMeterComparisonModel = null, context = {}) {
+        if (sheetType === 'analysis' && context?.analysisModel?.reportMemo) {
+            return buildAnalysisReportMemoItems(context.analysisModel, datasetKey, compareKey);
+        }
         if (datasetKey === 'gas' && gasMeterComparisonModel?.ready) {
             return buildUtilGasMeterInsights(datasetResult, gasMeterComparisonModel);
         }

@@ -18,8 +18,14 @@
     const {
         UtilSheetCompareState,
         UtilSheetReportState,
-        UtilSheetReportMonthState
+        UtilSheetReportMonthState,
+        UtilSheetAnalysisState
     } = utilReportSheetConfig;
+    const utilReportSheetOptions = runtimeAdapter.getApi('KPIUtilReportSheetOptions') || {};
+    const {
+        UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS = [],
+        UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS = []
+    } = utilReportSheetOptions;
 
     const runtime = {
         pruneUtilSheetDatasetToggles: null,
@@ -44,10 +50,12 @@
         setUtilGasAnalysisChartFullscreen: null,
         resolveUtilSheetAnalysisLabelToggleContext: null,
         setUtilSheetAnalysisShowLabels: null,
+        setUtilSheetAnalysisSeriesShowLabels: null,
         setUtilGasAnalysisRatioShowLabels: null,
         setUtilGasAnalysisFuelInactive: null,
         applyUtilGasAnalysisRangeSelection: null,
         setUtilSheetAnalysisUnitKey: null,
+        setUtilSheetAnalysisDecimals: null,
         applyUtilGasMeterProductionSelection: null,
         applyUtilElectricMeterTeamSelection: null,
         applyUtilElectricAnalysisTeamSelection: null,
@@ -55,6 +63,12 @@
         buildUtilElectricMeterComparisonModel: null,
         buildUtilElectricMeterTeamDatasetResult: null,
         buildUtilElectricMeterComparisonSectionHtml: null,
+        buildUtilGasAnalysisModel: null,
+        buildUtilElectricAnalysisModel: null,
+        buildUtilGasAnalysisBodyHtmlV2: null,
+        buildUtilElectricAnalysisBodyHtmlV2: null,
+        resolveUtilSheetMemoItems: null,
+        buildUtilSheetMemoSectionHtml: null,
         isUtilSheetCustomAnalysisDataset: null,
         setUtilSheetAnalysisToMonth: null,
         syncUtilSheetPanelSelection: null
@@ -67,6 +81,7 @@
 
     function rerenderAndSync(modal) {
         if (!modal) return;
+        captureVisibleManualMemo(modal);
         if (typeof runtime.renderUtilSheetReportModal === 'function') {
             runtime.renderUtilSheetReportModal(modal);
         }
@@ -99,6 +114,37 @@
         return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
     }
 
+    function getManualMemoKey(sheetType = 'meter', datasetKey = 'gas') {
+        return `${normalizeSheetType(sheetType)}:${resolveDatasetKey(sheetType, datasetKey)}`;
+    }
+
+    function getManualMemoStore(modal) {
+        if (!modal) return {};
+        if (!modal._utilSheetManualMemo || typeof modal._utilSheetManualMemo !== 'object') {
+            modal._utilSheetManualMemo = {};
+        }
+        return modal._utilSheetManualMemo;
+    }
+
+    function setManualMemoText(modal, sheetType = 'meter', datasetKey = 'gas', text = '') {
+        if (!modal) return;
+        const store = getManualMemoStore(modal);
+        store[getManualMemoKey(sheetType, datasetKey)] = String(text || '');
+    }
+
+    function getManualMemoText(modal, sheetType = 'meter', datasetKey = 'gas') {
+        const store = getManualMemoStore(modal);
+        return String(store[getManualMemoKey(sheetType, datasetKey)] || '');
+    }
+
+    function captureVisibleManualMemo(modal) {
+        const control = modal?.querySelector?.('[data-role="util-sheet-report-manual-memo"]') || null;
+        if (!control) return;
+        const sheetType = normalizeSheetType(modal?.dataset?.sheetType || 'meter');
+        const datasetKey = resolveDatasetKey(sheetType, modal?.dataset?.datasetKey || UtilSheetReportState[sheetType] || 'gas');
+        setManualMemoText(modal, sheetType, datasetKey, control.value || '');
+    }
+
     function getAlternateSheetType(sheetType = 'meter') {
         if (typeof runtime.getUtilSheetAlternateType === 'function') {
             return runtime.getUtilSheetAlternateType(sheetType);
@@ -127,15 +173,6 @@
         return resolveDatasetKey('analysis', modal?.dataset?.datasetKey || UtilSheetReportState.analysis || 'gas');
     }
 
-    function normalizeElectricMeterViewKey(viewKey = 'meter') {
-        if (typeof runtime.normalizeUtilElectricMeterViewKey === 'function') {
-            return runtime.normalizeUtilElectricMeterViewKey(viewKey);
-        }
-        const normalized = String(viewKey || '').trim();
-        if (normalized === 'allocation' || normalized === 'team') return normalized;
-        return 'meter';
-    }
-
     function findClosest(target, selector) {
         if (!target || typeof target.closest !== 'function') return null;
         return target.closest(selector);
@@ -145,6 +182,15 @@
         if (typeof runtime.syncUtilSheetPanelSelection === 'function') {
             runtime.syncUtilSheetPanelSelection(sheetType, datasetKey);
         }
+    }
+
+    function shiftMonthKey(monthKey = '', offset = 0) {
+        const match = /^(\d{4})-(\d{2})$/.exec(String(monthKey || '').trim());
+        if (!match) return String(monthKey || '').trim();
+        const date = new Date(Number(match[1]), Number(match[2]) - 1 + Number(offset || 0), 1);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        return `${year}-${month}`;
     }
 
     function getTextContent(root, selector, fallback = '') {
@@ -293,53 +339,11 @@
             }
             cloneControl.value = sourceControl.value;
             cloneControl.setAttribute?.('value', sourceControl.value || '');
+            if (tagName === 'textarea') {
+                cloneControl.textContent = sourceControl.value || '';
+                cloneControl.defaultValue = sourceControl.value || '';
+            }
         });
-    }
-
-    function buildElectricMeterExtractViewsHtml(modal) {
-        const datasetKey = resolveDatasetKey('meter', modal?.dataset?.datasetKey || UtilSheetReportState.meter || 'gas');
-        if (datasetKey !== 'electric') return '';
-        if (
-            typeof runtime.buildUtilElectricMeterComparisonModel !== 'function'
-            || typeof runtime.buildUtilElectricMeterTeamDatasetResult !== 'function'
-            || typeof runtime.buildUtilElectricMeterComparisonSectionHtml !== 'function'
-        ) {
-            return '';
-        }
-        const monthKey = String(modal?.dataset?.monthKey || UtilSheetReportMonthState.meter || '').trim();
-        const compareKey = normalizeCompareKey(modal?.dataset?.compareKey || UtilSheetCompareState.meter || 'month');
-        const teamKey = String(modal?.dataset?.electricMeterTeamKey || '').trim() || 'combined';
-        const activeViewKey = normalizeElectricMeterViewKey(modal?.dataset?.electricMeterViewKey || 'meter');
-        const comparisonModel = runtime.buildUtilElectricMeterComparisonModel(monthKey, compareKey, teamKey);
-        const teamDatasetResult = runtime.buildUtilElectricMeterTeamDatasetResult(monthKey, teamKey);
-        const viewKeys = ['meter', 'allocation', 'team'];
-        const viewsHtml = viewKeys.map(viewKey => {
-            const viewHtml = runtime.buildUtilElectricMeterComparisonSectionHtml(comparisonModel, teamDatasetResult, viewKey);
-            return `
-                <div class="util-sheet-electric-extract-view" data-role="util-sheet-electric-extract-view" data-view-key="${escapeHtml(viewKey)}"${viewKey === activeViewKey ? '' : ' hidden'}>
-                    ${viewHtml}
-                </div>
-            `;
-        }).join('');
-        return `
-            <div class="util-sheet-electric-extract-views" data-role="util-sheet-electric-extract-views" data-active-view="${escapeHtml(activeViewKey)}">
-                ${viewsHtml}
-            </div>
-        `;
-    }
-
-    function injectElectricMeterExtractViews(modal, clone, sheetType = 'meter') {
-        const normalizedSheetType = normalizeSheetType(sheetType || modal?.dataset?.sheetType);
-        const datasetKey = resolveDatasetKey(normalizedSheetType, modal?.dataset?.datasetKey || UtilSheetReportState[normalizedSheetType] || 'gas');
-        if (normalizedSheetType !== 'meter' || datasetKey !== 'electric') return false;
-        const body = clone?.querySelector?.('[data-role="util-sheet-report-body"]');
-        if (!body) return false;
-        const viewsHtml = buildElectricMeterExtractViewsHtml(modal);
-        if (!viewsHtml) return false;
-        const heroHtml = String(body.querySelector?.('.util-sheet-section.is-hero')?.outerHTML || '');
-        const memoHtml = String(body.querySelector?.('.util-sheet-memo-section')?.outerHTML || '');
-        body.innerHTML = `${heroHtml}${viewsHtml}${memoHtml}`;
-        return true;
     }
 
     function buildVisibleReportCardHtml(modal, sheetType = 'meter') {
@@ -349,32 +353,34 @@
         if (!card || typeof card.cloneNode !== 'function') return '';
         const clone = card.cloneNode(true);
         syncFormControlState(card, clone);
-        injectElectricMeterExtractViews(modal, clone, normalizedSheetType);
         const datasetKey = resolveDatasetKey(normalizedSheetType, modal?.dataset?.datasetKey || UtilSheetReportState[normalizedSheetType] || 'gas');
-        Array.from(clone?.querySelectorAll?.(
-            [
-                '[data-role="util-sheet-report-sub"]',
-                '[data-role="util-sheet-report-kicker"]',
-                '.util-sheet-report-main-controls',
-                '[data-role="util-sheet-report-print"]',
-                '[data-role="util-sheet-report-close"]',
-                '[data-role="util-sheet-report-expand"]',
-                '[data-role="util-sheet-billing-preview-toggle"]',
-                normalizedSheetType === 'meter' && datasetKey === 'electric' ? '' : '[data-role="util-sheet-meter-electric-view-toggle"]',
-                '.util-sheet-meter-summary-toolbar',
-                normalizedSheetType === 'analysis' ? '.util-sheet-analysis-toolbar' : ''
-            ].filter(Boolean).join(', ')
-        ) || []).forEach(node => node?.remove?.());
+        const removableSelectors = [
+            '[data-role="util-sheet-report-sub"]',
+            '[data-role="util-sheet-report-kicker"]',
+            '.util-sheet-report-main-controls',
+            '[data-role="util-sheet-report-print"]',
+            '[data-role="util-sheet-report-close"]',
+            '[data-role="util-sheet-report-expand"]',
+            '[data-role="util-sheet-extract-options"]',
+            '[data-role="util-sheet-billing-preview-toggle"]',
+            '[data-role="util-sheet-meter-electric-view-toggle"]',
+            normalizedSheetType === 'meter' ? '.util-sheet-meter-summary-toolbar' : ''
+        ].filter(Boolean).join(', ');
+        Array.from(clone?.querySelectorAll?.(removableSelectors) || []).forEach(node => node?.remove?.());
         Array.from(clone?.querySelectorAll?.('[id]') || []).forEach(node => node?.removeAttribute?.('id'));
         return String(clone?.outerHTML || '');
     }
 
-    function buildExtractFileName(modal) {
-        const datasetKey = resolveDatasetKey('meter', modal?.dataset?.datasetKey || UtilSheetReportState.meter || 'gas');
-        const monthKey = String(modal?.dataset?.monthKey || UtilSheetReportMonthState.meter || 'current')
+    function toExtractFileKey(value, fallback = 'current') {
+        return String(value || fallback || 'current')
             .trim()
             .replace(/[^0-9a-zA-Z_-]+/g, '-')
-            .replace(/^-+|-+$/g, '') || 'current';
+            .replace(/^-+|-+$/g, '') || fallback || 'current';
+    }
+
+    function buildExtractFileName(modal) {
+        const datasetKey = resolveDatasetKey('meter', modal?.dataset?.datasetKey || UtilSheetReportState.meter || 'gas');
+        const monthKey = toExtractFileKey(modal?.dataset?.monthKey || UtilSheetReportMonthState.meter, 'current');
         return `utility-meter-${datasetKey}-${monthKey}.html`;
     }
 
@@ -383,10 +389,266 @@
         const model = modal?._utilSheetAnalysisModel || {};
         const fromKey = String(model?.range?.from || '').trim();
         const toKey = String(model?.range?.to || modal?.dataset?.monthKey || UtilSheetReportMonthState.analysis || 'current').trim();
-        const rangeKey = `${fromKey || 'from'}-${toKey || 'current'}`
-            .replace(/[^0-9a-zA-Z_-]+/g, '-')
-            .replace(/^-+|-+$/g, '') || 'current';
+        const rangeKey = toExtractFileKey(`${fromKey || 'from'}-${toKey || 'current'}`, 'current');
         return `utility-analysis-${datasetKey}-${rangeKey}.html`;
+    }
+
+    function buildCombinedExtractFileName(modal, meterMonthKey = '') {
+        const datasetKey = resolveDatasetKey('meter', modal?.dataset?.datasetKey || UtilSheetReportState.meter || 'gas');
+        const model = modal?._utilSheetAnalysisModel || {};
+        const fromKey = String(model?.range?.from || '').trim();
+        const toKey = String(model?.range?.to || meterMonthKey || modal?.dataset?.monthKey || 'current').trim();
+        const rangeKey = toExtractFileKey(`${fromKey || meterMonthKey || 'from'}-${toKey || 'current'}`, 'current');
+        return `utility-report-${datasetKey}-${rangeKey}.html`;
+    }
+
+    function getCurrentExtractMonthKey(modal) {
+        const sheetType = normalizeSheetType(modal?.dataset?.sheetType);
+        return String(
+            modal?.dataset?.monthKey
+            || UtilSheetReportMonthState[sheetType]
+            || UtilSheetReportMonthState.meter
+            || UtilSheetReportMonthState.analysis
+            || ''
+        ).trim();
+    }
+
+    function snapshotModalExtractState(modal) {
+        captureVisibleManualMemo(modal);
+        const dataset = modal?.dataset || {};
+        return {
+            dataset: { ...dataset },
+            reportState: { ...UtilSheetReportState },
+            reportMonthState: { ...UtilSheetReportMonthState },
+            compareState: { ...UtilSheetCompareState },
+            analysisState: snapshotAnalysisState(),
+            analysisModel: modal?._utilSheetAnalysisModel || null,
+            manualMemo: { ...(modal?._utilSheetManualMemo || {}) }
+        };
+    }
+
+    function restoreObjectState(target = {}, snapshot = {}) {
+        Object.keys(target || {}).forEach(key => {
+            if (!Object.prototype.hasOwnProperty.call(snapshot || {}, key)) {
+                delete target[key];
+            }
+        });
+        Object.entries(snapshot || {}).forEach(([key, value]) => {
+            target[key] = value;
+        });
+    }
+
+    function restoreModalExtractState(modal, snapshot) {
+        if (!modal || !snapshot) return;
+        const currentDataset = modal.dataset || {};
+        Object.keys(currentDataset).forEach(key => {
+            if (!Object.prototype.hasOwnProperty.call(snapshot.dataset || {}, key)) {
+                delete currentDataset[key];
+            }
+        });
+        Object.entries(snapshot.dataset || {}).forEach(([key, value]) => {
+            currentDataset[key] = value;
+        });
+        restoreObjectState(UtilSheetReportState, snapshot.reportState);
+        restoreObjectState(UtilSheetReportMonthState, snapshot.reportMonthState);
+        restoreObjectState(UtilSheetCompareState, snapshot.compareState);
+        restoreAnalysisState(snapshot.analysisState);
+        modal._utilSheetAnalysisModel = snapshot.analysisModel || null;
+        modal._utilSheetManualMemo = { ...(snapshot.manualMemo || {}) };
+        if (typeof runtime.renderUtilSheetReportModal === 'function') {
+            runtime.renderUtilSheetReportModal(modal);
+        }
+        if (typeof runtime.syncUtilSheetDetachedReportWindow === 'function') {
+            runtime.syncUtilSheetDetachedReportWindow(modal);
+        }
+        if (typeof runtime.syncUtilSheetReportWindowState === 'function') {
+            runtime.syncUtilSheetReportWindowState(modal);
+        }
+    }
+
+    function applyAnalysisExtractDefaultRange(datasetKey = 'gas', monthKey = '') {
+        const normalizedDatasetKey = resolveDatasetKey('analysis', datasetKey);
+        const toKey = String(monthKey || '').trim();
+        const fromKey = toKey ? shiftMonthKey(toKey, -1) : '';
+        const state = UtilSheetAnalysisState[normalizedDatasetKey];
+        if (!state) return;
+        state.from = fromKey;
+        state.to = toKey;
+    }
+
+    function renderModalForExtract(modal, sheetType = 'meter', datasetKey = 'gas', monthKey = '', compareKey = 'month') {
+        if (!modal || typeof runtime.renderUtilSheetReportModal !== 'function') return false;
+        const normalizedSheetType = normalizeSheetType(sheetType);
+        const normalizedDatasetKey = resolveDatasetKey(normalizedSheetType, datasetKey);
+        const normalizedMonthKey = String(monthKey || '').trim();
+        modal.dataset.sheetType = normalizedSheetType;
+        modal.dataset.datasetKey = normalizedDatasetKey;
+        modal.dataset.monthKey = normalizedMonthKey;
+        modal.dataset.compareKey = normalizeCompareKey(compareKey);
+        if (normalizedSheetType === 'analysis') {
+            applyAnalysisExtractDefaultRange(normalizedDatasetKey, normalizedMonthKey);
+        }
+        runtime.renderUtilSheetReportModal(modal);
+        return true;
+    }
+
+    function getAnalysisScopeOptions(datasetKey = 'gas', model = {}) {
+        const normalizedDatasetKey = resolveDatasetKey('analysis', datasetKey);
+        const sourceOptions = normalizedDatasetKey === 'electric'
+            ? UTIL_ELECTRIC_ANALYSIS_TEAM_OPTIONS
+            : UTIL_GAS_ANALYSIS_CATEGORY_OPTIONS;
+        const options = (Array.isArray(sourceOptions) ? sourceOptions : [])
+            .map(option => ({
+                key: String(option?.key || '').trim(),
+                label: String(option?.selectLabel || option?.label || option?.key || '').trim()
+            }))
+            .filter(option => option.key);
+        if (options.length) return options;
+
+        const fallbackKey = normalizedDatasetKey === 'electric'
+            ? String(model?.teamOption?.key || '').trim()
+            : String(model?.categoryOption?.key || '').trim();
+        const fallbackLabel = normalizedDatasetKey === 'electric'
+            ? String(model?.teamOption?.label || fallbackKey || '').trim()
+            : String(model?.categoryOption?.selectLabel || model?.categoryOption?.label || fallbackKey || '').trim();
+        return fallbackKey ? [{ key: fallbackKey, label: fallbackLabel || fallbackKey }] : [];
+    }
+
+    function getAnalysisModelScopeKey(datasetKey = 'gas', model = {}) {
+        return resolveDatasetKey('analysis', datasetKey) === 'electric'
+            ? String(model?.teamOption?.key || '').trim()
+            : String(model?.categoryOption?.key || '').trim();
+    }
+
+    function getAnalysisModelMonthEdge(model = {}, edge = 'from') {
+        const monthOptions = Array.isArray(model?.monthOptions) ? model.monthOptions : [];
+        if (!monthOptions.length) return String(model?.range?.[edge] || '').trim();
+        const index = edge === 'to' ? monthOptions.length - 1 : 0;
+        return String(monthOptions[index]?.value || model?.range?.[edge] || '').trim();
+    }
+
+    function snapshotAnalysisState() {
+        return {
+            gas: {
+                from: String(UtilSheetAnalysisState.gas?.from || '').trim(),
+                to: String(UtilSheetAnalysisState.gas?.to || '').trim(),
+                categoryKey: String(UtilSheetAnalysisState.gas?.categoryKey || '').trim()
+            },
+            electric: {
+                from: String(UtilSheetAnalysisState.electric?.from || '').trim(),
+                to: String(UtilSheetAnalysisState.electric?.to || '').trim(),
+                teamKey: String(UtilSheetAnalysisState.electric?.teamKey || '').trim()
+            }
+        };
+    }
+
+    function restoreAnalysisState(snapshot) {
+        if (!snapshot || typeof snapshot !== 'object') return;
+        if (UtilSheetAnalysisState.gas) {
+            UtilSheetAnalysisState.gas.from = snapshot.gas?.from || '';
+            UtilSheetAnalysisState.gas.to = snapshot.gas?.to || '';
+            UtilSheetAnalysisState.gas.categoryKey = snapshot.gas?.categoryKey || UtilSheetAnalysisState.gas.categoryKey;
+        }
+        if (UtilSheetAnalysisState.electric) {
+            UtilSheetAnalysisState.electric.from = snapshot.electric?.from || '';
+            UtilSheetAnalysisState.electric.to = snapshot.electric?.to || '';
+            UtilSheetAnalysisState.electric.teamKey = snapshot.electric?.teamKey || UtilSheetAnalysisState.electric.teamKey;
+        }
+    }
+
+    function setAnalysisStateForExtractModel(datasetKey = 'gas', scopeKey = '', fromKey = '', toKey = '') {
+        const normalizedDatasetKey = resolveDatasetKey('analysis', datasetKey);
+        const state = UtilSheetAnalysisState[normalizedDatasetKey];
+        if (!state) return;
+        state.from = String(fromKey || '').trim();
+        state.to = String(toKey || '').trim();
+        if (normalizedDatasetKey === 'electric') {
+            state.teamKey = String(scopeKey || state.teamKey || '').trim();
+        } else {
+            state.categoryKey = String(scopeKey || state.categoryKey || '').trim();
+        }
+    }
+
+    function attachAnalysisExtractBodyHtml(model = {}, datasetKey = 'gas', modal = null, compareKey = 'month') {
+        if (!model || typeof model !== 'object') return model;
+        const normalizedDatasetKey = resolveDatasetKey('analysis', datasetKey);
+        const analysisBodyHtml = normalizedDatasetKey === 'electric'
+            ? (typeof runtime.buildUtilElectricAnalysisBodyHtmlV2 === 'function'
+                ? runtime.buildUtilElectricAnalysisBodyHtmlV2(model, {}, modal)
+                : '')
+            : (typeof runtime.buildUtilGasAnalysisBodyHtmlV2 === 'function'
+                ? runtime.buildUtilGasAnalysisBodyHtmlV2(model, {}, modal)
+                : '');
+        const memoItems = typeof runtime.resolveUtilSheetMemoItems === 'function'
+            ? runtime.resolveUtilSheetMemoItems(
+                'analysis',
+                normalizedDatasetKey,
+                model.datasetResult || {},
+                compareKey,
+                null,
+                { analysisModel: model }
+            )
+            : [];
+        const manualMemoText = getManualMemoText(modal, 'analysis', normalizedDatasetKey);
+        const memoHtml = typeof runtime.buildUtilSheetMemoSectionHtml === 'function'
+            ? runtime.buildUtilSheetMemoSectionHtml(memoItems, {
+                manualMemoText,
+                manualMemoEditable: true
+            })
+            : '';
+        const bodyHtml = `${analysisBodyHtml || ''}${memoHtml || ''}`;
+        return bodyHtml ? { ...model, bodyHtml, manualMemoText } : model;
+    }
+
+    function buildAnalysisExtractPayload(modal, datasetKey = 'gas') {
+        const normalizedDatasetKey = resolveDatasetKey('analysis', datasetKey);
+        const baseModel = modal?._utilSheetAnalysisModel || {};
+        const compareKey = normalizeCompareKey(modal?.dataset?.compareKey || UtilSheetCompareState.analysis || 'month');
+        const selectedMonthKey = String(baseModel?.range?.to || modal?.dataset?.monthKey || UtilSheetReportMonthState.analysis || '').trim();
+        const fullFrom = getAnalysisModelMonthEdge(baseModel, 'from');
+        const fullTo = getAnalysisModelMonthEdge(baseModel, 'to');
+        const activeScopeKey = getAnalysisModelScopeKey(normalizedDatasetKey, baseModel);
+        const scopeOptions = getAnalysisScopeOptions(normalizedDatasetKey, baseModel);
+        const scopeModels = {};
+        const snapshot = snapshotAnalysisState();
+
+        try {
+            scopeOptions.forEach(option => {
+                const scopeKey = String(option?.key || '').trim();
+                if (!scopeKey) return;
+                setAnalysisStateForExtractModel(normalizedDatasetKey, scopeKey, fullFrom, fullTo);
+                const nextModel = normalizedDatasetKey === 'electric'
+                    ? (typeof runtime.buildUtilElectricAnalysisModel === 'function'
+                        ? runtime.buildUtilElectricAnalysisModel(selectedMonthKey || fullTo, compareKey, scopeKey)
+                        : null)
+                    : (typeof runtime.buildUtilGasAnalysisModel === 'function'
+                        ? runtime.buildUtilGasAnalysisModel(selectedMonthKey || fullTo, compareKey)
+                        : null);
+                if (nextModel?.hasData) {
+                    scopeModels[scopeKey] = attachAnalysisExtractBodyHtml(nextModel, normalizedDatasetKey, modal, compareKey);
+                }
+            });
+        } finally {
+            restoreAnalysisState(snapshot);
+        }
+
+        if (activeScopeKey && !scopeModels[activeScopeKey]) {
+            scopeModels[activeScopeKey] = attachAnalysisExtractBodyHtml(baseModel, normalizedDatasetKey, modal, compareKey);
+        }
+
+        return {
+            datasetKey: normalizedDatasetKey,
+            compareKey,
+            model: attachAnalysisExtractBodyHtml(baseModel, normalizedDatasetKey, modal, compareKey),
+            manualMemoText: getManualMemoText(modal, 'analysis', normalizedDatasetKey),
+            scopeOptions,
+            scopeModels,
+            activeScopeKey,
+            activeRange: {
+                from: String(baseModel?.range?.from || fullFrom || '').trim(),
+                to: String(baseModel?.range?.to || fullTo || '').trim()
+            }
+        };
     }
 
     function stringifyExtractJson(value) {
@@ -444,16 +706,27 @@
         return true;
     }
 
-    function buildAnalysisExtractRuntimeScript(model = {}, datasetKey = 'gas') {
-        const payloadJson = stringifyExtractJson({
-            datasetKey,
-            model
-        });
+    function buildAnalysisExtractRuntimeScript(extractPayload = {}) {
+        const payloadJson = stringifyExtractJson(extractPayload);
         const runtimeSource = function utilSheetAnalysisExtractRuntime() {
             const rootScope = this || {};
             const payload = rootScope.__UTIL_SHEET_ANALYSIS_EXTRACT__ || {};
-            const model = payload.model || {};
-            const state = { unitKeys: {}, displayModes: {}, labelModes: {} };
+            const datasetKey = String(payload.datasetKey || 'gas').trim() === 'electric' ? 'electric' : 'gas';
+            const scopeModels = payload.scopeModels && typeof payload.scopeModels === 'object'
+                ? payload.scopeModels
+                : {};
+            let model = payload.model || {};
+            let activeScopeKey = String(payload.activeScopeKey || '').trim()
+                || String(datasetKey === 'electric'
+                    ? (model?.teamOption?.key || '')
+                    : (model?.categoryOption?.key || '')).trim();
+            let activeRange = {
+                from: String(payload.activeRange?.from || model?.range?.from || '').trim(),
+                to: String(payload.activeRange?.to || model?.range?.to || '').trim()
+            };
+            const activeCompareKey = String(payload.compareKey || '').trim() === 'year' ? 'year' : 'month';
+            const state = { unitKeys: {}, displayModes: {}, labelModes: {}, seriesLabelModes: {} };
+            let manualMemoText = String(payload.manualMemoText || model?.manualMemoText || '');
             const dirtyChartKeys = {};
             const originalChartFrames = {};
 
@@ -502,6 +775,72 @@
                 ));
             }
 
+            function compareMonthKey(left = '', right = '') {
+                return String(left || '').localeCompare(String(right || ''), 'ko');
+            }
+
+            function getMonthKeys() {
+                const optionKeys = (Array.isArray(model?.monthOptions) ? model.monthOptions : [])
+                    .map(item => String(item?.value || '').trim())
+                    .filter(Boolean);
+                if (optionKeys.length) return optionKeys;
+                return Array.from(new Set(allControlItems()
+                    .flatMap(item => Array.isArray(item?.points) ? item.points : [])
+                    .map(point => String(point?.monthKey || point?.key || '').trim())
+                    .filter(Boolean))).sort(compareMonthKey);
+            }
+
+            function normalizeActiveRange() {
+                const monthKeys = getMonthKeys();
+                if (!monthKeys.length) {
+                    activeRange = { from: '', to: '' };
+                    return activeRange;
+                }
+                const fallbackFrom = String(model?.range?.from || monthKeys[0] || '').trim();
+                const fallbackTo = String(model?.range?.to || monthKeys[monthKeys.length - 1] || '').trim();
+                const from = monthKeys.includes(activeRange.from) ? activeRange.from : (monthKeys.includes(fallbackFrom) ? fallbackFrom : monthKeys[0]);
+                const to = monthKeys.includes(activeRange.to) ? activeRange.to : (monthKeys.includes(fallbackTo) ? fallbackTo : monthKeys[monthKeys.length - 1]);
+                activeRange = compareMonthKey(from, to) > 0
+                    ? { from: to, to }
+                    : { from, to };
+                return activeRange;
+            }
+
+            function formatMonthShort(monthKey = '') {
+                const text = String(monthKey || '').trim();
+                const match = /^(20\d{2}|19\d{2})-(\d{2})$/.exec(text);
+                if (!match) return text;
+                return `${match[1].slice(2)}.${Number(match[2])}`;
+            }
+
+            function getActiveRangeLabel() {
+                const range = normalizeActiveRange();
+                if (!range.from && !range.to) return String(model?.rangeLabel || '').trim();
+                if (!range.from || range.from === range.to) return formatMonthShort(range.to || range.from);
+                return `${formatMonthShort(range.from)} ~ ${formatMonthShort(range.to)}`;
+            }
+
+            function formatReportMemoMonth(monthKey = '') {
+                const text = String(monthKey || '').trim();
+                const match = /^(20\d{2}|19\d{2})-(\d{2})$/.exec(text);
+                if (!match) return text;
+                return `${match[1]}.${match[2]}`;
+            }
+
+            function getReportMemoRangeLabel() {
+                const range = normalizeActiveRange();
+                if (!range.from && !range.to) return String(model?.rangeLabel || '').trim();
+                if (!range.from || range.from === range.to) return formatReportMemoMonth(range.to || range.from);
+                return `${formatReportMemoMonth(range.from)} ~ ${formatReportMemoMonth(range.to)}`;
+            }
+
+            function isPointInActiveRange(point) {
+                const range = normalizeActiveRange();
+                const pointKey = String(point?.monthKey || point?.key || '').trim();
+                if (!pointKey || !range.from || !range.to) return true;
+                return compareMonthKey(pointKey, range.from) >= 0 && compareMonthKey(pointKey, range.to) <= 0;
+            }
+
             function getUnitOption(item, unitKey) {
                 const options = Array.isArray(item?.unitOptions) ? item.unitOptions : [];
                 return options.find(option => option?.key === unitKey)
@@ -514,85 +853,7 @@
                     };
             }
 
-            function getUsageProductionRatioKeys(seriesKey = '') {
-                const normalizedKey = String(seriesKey || '').trim();
-                if (normalizedKey === 'electricIntensity') {
-                    return { numeratorKey: 'electricUsage', denominatorKey: 'production' };
-                }
-                if (normalizedKey === 'ratio-lpg') {
-                    return { numeratorKey: 'lpgUsage', denominatorKey: 'production' };
-                }
-                if (normalizedKey === 'ratio-lng') {
-                    return { numeratorKey: 'lngUsage', denominatorKey: 'production' };
-                }
-                return null;
-            }
-
-            function findControlItemByKey(seriesKey = '') {
-                const normalizedKey = String(seriesKey || '').trim();
-                if (!normalizedKey) return null;
-                return allControlItems().find(item => String(item?.key || '').trim() === normalizedKey) || null;
-            }
-
-            function getSelectedUnitOption(seriesKey = '') {
-                const controlItem = findControlItemByKey(seriesKey);
-                if (!controlItem) return null;
-                const unitKey = state.unitKeys[seriesKey] || controlItem.unitKey || '';
-                return getUnitOption(controlItem, unitKey);
-            }
-
-            function resolveUsageProductionRatioDecimals(item, numeratorOption, denominatorOption) {
-                if (Number.isFinite(Number(item?.decimals))) return Number(item.decimals);
-                const numeratorDecimals = Number(numeratorOption?.decimals);
-                const denominatorDecimals = Number(denominatorOption?.decimals);
-                if (String(denominatorOption?.key || '').trim() === 'ton') return 1;
-                if (Number.isFinite(numeratorDecimals) || Number.isFinite(denominatorDecimals)) {
-                    return Math.max(1, Math.min(4, (Number.isFinite(numeratorDecimals) ? numeratorDecimals : 0) + 3));
-                }
-                return 3;
-            }
-
-            function getEffectiveUnitOption(item, unitKey) {
-                const ratioKeys = getUsageProductionRatioKeys(item?.key);
-                if (!ratioKeys) return getUnitOption(item, unitKey);
-                const numeratorOption = getSelectedUnitOption(ratioKeys.numeratorKey) || { key: '', label: item?.metricLabel || '', scale: 1, decimals: 0 };
-                const denominatorOption = getSelectedUnitOption(ratioKeys.denominatorKey) || { key: 'kg', label: 'kg', scale: 1, decimals: 0 };
-                const numeratorLabel = String(numeratorOption?.label || item?.unitLabel || item?.metricLabel || '').trim();
-                const denominatorLabel = String(denominatorOption?.label || 'kg').trim();
-                return {
-                    key: `${numeratorOption?.key || ''}/${denominatorOption?.key || ''}`,
-                    label: [numeratorLabel, denominatorLabel].filter(Boolean).join('/'),
-                    scale: 1,
-                    decimals: resolveUsageProductionRatioDecimals(item, numeratorOption, denominatorOption)
-                };
-            }
-
-            function scaleUsageProductionRatioValue(item, value) {
-                const ratioKeys = getUsageProductionRatioKeys(item?.key);
-                const baseValue = finite(value);
-                if (!ratioKeys || !Number.isFinite(baseValue)) return baseValue;
-                const numeratorOption = getSelectedUnitOption(ratioKeys.numeratorKey) || {};
-                const denominatorOption = getSelectedUnitOption(ratioKeys.denominatorKey) || {};
-                const numeratorScale = Number(numeratorOption?.scale) || 1;
-                const denominatorScale = Number(denominatorOption?.scale) || 1;
-                return baseValue * denominatorScale / numeratorScale;
-            }
-
             function resolvePointValue(item, point, unitKey, sourcePoint = null) {
-                if (getUsageProductionRatioKeys(item?.key)) {
-                    const sourceRatioValue = finite(sourcePoint?.ratioValue);
-                    const pointRatioValue = finite(point?.ratioValue);
-                    const sourcePointValue = finite(sourcePoint?.value);
-                    const pointValue = finite(point?.value);
-                    const raw = String(item?.key || '').trim() === 'electricIntensity'
-                        ? (Number.isFinite(pointRatioValue)
-                            ? pointRatioValue
-                            : (Number.isFinite(pointValue) ? pointValue : (Number.isFinite(sourceRatioValue) ? sourceRatioValue : sourcePointValue)))
-                        : (Number.isFinite(sourceRatioValue)
-                            ? sourceRatioValue
-                            : (Number.isFinite(pointRatioValue) ? pointRatioValue : (Number.isFinite(sourcePointValue) ? sourcePointValue : pointValue)));
-                    return scaleUsageProductionRatioValue(item, raw);
-                }
                 const option = getUnitOption(item, unitKey);
                 const scale = Number(option?.scale) || 1;
                 let raw = NaN;
@@ -660,10 +921,6 @@
             }
 
             function resolveSeriesDecimals(item, unitKey, sourceSeries, chart) {
-                if (getUsageProductionRatioKeys(item?.key)) {
-                    const unitOption = getEffectiveUnitOption(item, unitKey);
-                    if (Number.isFinite(Number(unitOption?.decimals))) return Number(unitOption.decimals);
-                }
                 const unitOption = findExplicitUnitOption(item, unitKey);
                 if (Number.isFinite(Number(unitOption?.decimals))) return Number(unitOption.decimals);
                 if (Number.isFinite(Number(item?.decimals))) return Number(item.decimals);
@@ -676,7 +933,7 @@
                 return (Array.isArray(chart?.controlItems) ? chart.controlItems : [])
                     .map((item, index) => {
                         const unitKey = state.unitKeys[item.key] || item.unitKey || '';
-                        const unitOption = getEffectiveUnitOption(item, unitKey);
+                        const unitOption = getUnitOption(item, unitKey);
                         const displayMode = state.displayModes[item.key] || item.displayMode || item.chartType || 'bar';
                         const sourceSeries = findSourceSeries(chart, item, index);
                         const decimals = resolveSeriesDecimals(item, unitKey, sourceSeries, chart);
@@ -689,14 +946,28 @@
                             decimals,
                             lineDash: item.lineDash || '',
                             lineWidth: Number.isFinite(Number(item?.lineWidth)) ? Number(item.lineWidth) : 3,
-                            points: (Array.isArray(item.points) ? item.points : []).map((point, pointIndex) => ({
-                                key: point?.monthKey || point?.key || point?.label || '',
-                                label: point?.label || point?.monthKey || point?.key || '',
-                                value: resolvePointValue(item, point, unitKey, findSourcePoint(sourceSeries, point, pointIndex))
-                            }))
+                            points: (Array.isArray(item.points) ? item.points : [])
+                                .filter(isPointInActiveRange)
+                                .map((point, pointIndex) => ({
+                                    key: point?.monthKey || point?.key || point?.label || '',
+                                    label: point?.label || point?.monthKey || point?.key || '',
+                                    value: resolvePointValue(item, point, unitKey, findSourcePoint(sourceSeries, point, pointIndex))
+                                }))
                         };
                     })
                     .filter(item => item.type !== 'none' && item.points.length);
+            }
+
+            function buildSeriesLabelModes(chart = {}) {
+                const labelModes = {};
+                (Array.isArray(chart?.controlItems) ? chart.controlItems : []).forEach(item => {
+                    const seriesKey = String(item?.key || '').trim();
+                    if (!seriesKey) return;
+                    if (state.seriesLabelModes[seriesKey] === true) {
+                        labelModes[seriesKey] = true;
+                    }
+                });
+                return labelModes;
             }
 
             function getAxisBounds(values, options = {}) {
@@ -916,7 +1187,18 @@
                     const tooltipLabel = `${item.label} · ${point?.label || ''} · ${formatNumber(value, item.decimals)}`;
                     return `<circle class="util-analytics-chart-point" cx="${x}" cy="${y}" r="4" style="fill:${escapeHtml(item.color)}" ${pointAttrs}><title>${escapeHtml(tooltipLabel)}</title></circle>`;
                 }).join('')).join('');
-                const barLabels = showLabels ? barSeries.map((item, seriesIndex) => item.points.map((point, pointIndex) => {
+                const seriesLabelModes = options.seriesLabelModes && typeof options.seriesLabelModes === 'object'
+                    ? options.seriesLabelModes
+                    : null;
+                const shouldShowSeriesLabels = item => {
+                    if (showLabels) return true;
+                    if (!seriesLabelModes) return false;
+                    const key = String(item?.seriesKey || item?.key || '').trim();
+                    return key ? seriesLabelModes[key] === true : false;
+                };
+                const barLabels = barSeries.map((item, seriesIndex) => {
+                    if (!shouldShowSeriesLabels(item)) return '';
+                    return item.points.map((point, pointIndex) => {
                     const value = finite(point?.value);
                     if (!Number.isFinite(value)) return '';
                     const x = resolveBarLeft(seriesIndex, pointIndex) + (barWidth / 2);
@@ -924,8 +1206,11 @@
                     const labelY = Math.max(pad.top + 12, Math.min(item.baseY, y) - 6);
                     const pointAttrs = buildPointAttrs(point, point?.label || '', { seriesKey: item.seriesKey || item.key });
                     return `<text class="util-analytics-chart-value" x="${x}" y="${labelY}" text-anchor="middle" style="fill:${escapeHtml(item.color)}" ${pointAttrs}>${formatNumber(value, item.decimals)}</text>`;
-                }).join('')).join('') : '';
-                const lineLabels = showLabels ? lineSeries.map((item, seriesIndex) => item.points.map((point, pointIndex) => {
+                    }).join('');
+                }).join('');
+                const lineLabels = lineSeries.map((item, seriesIndex) => {
+                    if (!shouldShowSeriesLabels(item)) return '';
+                    return item.points.map((point, pointIndex) => {
                     const value = finite(point?.value);
                     if (!Number.isFinite(value)) return '';
                     const x = mapX(pointIndex);
@@ -934,7 +1219,8 @@
                     const labelY = Math.max(pad.top + 12, Math.min(pad.top + plotH - 6, y + offset));
                     const pointAttrs = buildPointAttrs(point, point?.label || '', { seriesKey: item.seriesKey || item.key });
                     return `<text class="util-analytics-chart-value" x="${x}" y="${labelY}" text-anchor="middle" style="fill:${escapeHtml(item.color)}" ${pointAttrs}>${formatNumber(value, item.decimals)}</text>`;
-                }).join('')).join('') : '';
+                    }).join('');
+                }).join('');
                 const maxXAxisLabels = Number.isFinite(Number(options.maxXAxisLabels)) ? Math.max(2, Math.floor(Number(options.maxXAxisLabels))) : (isModal ? 12 : 6);
                 const labelEvery = Math.max(1, Math.ceil(pointCount / maxXAxisLabels));
                 const xAxisLabelY = height - (isModal ? 48 : 20);
@@ -1022,16 +1308,18 @@
                 const series = buildSeries(chart);
                 const chartKey = String(chart.key || '').trim();
                 const showLabels = state.labelModes[chartKey] === true;
+                const seriesLabelModes = buildSeriesLabelModes(chart);
                 const fullscreen = card.classList.contains('is-extract-fullscreen');
                 const pointCount = Math.max(0, series?.[0]?.points?.length || 0);
                 frame.innerHTML = renderIndependentBoundsMultiSeriesChart(series, {
                     mode: fullscreen ? 'modal' : undefined,
                     chartTitle: chart.title,
-                    periodLabel: model.rangeLabel,
+                    periodLabel: getActiveRangeLabel(),
                     inlinePeriodLegend: true,
                     decimals: chart.decimals,
                     showLabelToggle: true,
                     showLabels,
+                    seriesLabelModes,
                     tightRange: true,
                     tightPadding: chart.key === 'ratio-combined' ? 0.18 : 0.16,
                     hideUnit: true,
@@ -1040,36 +1328,57 @@
                     showYearBands: false,
                     maxXAxisLabels: fullscreen ? Math.max(2, pointCount) : 12,
                     forceWidth: fullscreen
-                        ? Math.max(1260, pointCount * 88 + 340)
-                        : Math.max(chart.key === 'ratio-combined' ? 900 : 860, pointCount * 62 + 260),
+                        ? Math.min(22000, Math.max(1260, pointCount * 88 + 340))
+                        : Math.min(18000, Math.max(chart.key === 'ratio-combined' ? 900 : 860, pointCount * 62 + 260)),
                     height: fullscreen ? 640 : (chart.key === 'ratio-combined' ? 300 : 380),
                     rightPad: chart.key === 'ratio-combined' ? 28 : undefined
                 });
                 bindAnalysisChartDragScroll(frame);
             }
+            function getAnalysisRoot() {
+                return document.querySelector('[data-role="util-sheet-combined-section"][data-combined-sheet-type="analysis"]')
+                    || document;
+            }
 
-            function getAffectedSeriesKeys(seriesKey = '') {
-                const normalizedKey = String(seriesKey || '').trim();
-                const affected = new Set(normalizedKey ? [normalizedKey] : []);
-                if (normalizedKey === 'electricUsage' || normalizedKey === 'production') affected.add('electricIntensity');
-                if (normalizedKey === 'lpgUsage' || normalizedKey === 'production') affected.add('ratio-lpg');
-                if (normalizedKey === 'lngUsage' || normalizedKey === 'production') affected.add('ratio-lng');
-                return affected;
+            function queryAnalysis(selector) {
+                const root = getAnalysisRoot();
+                return root?.querySelector?.(selector) || null;
+            }
+
+            function queryAnalysisAll(selector) {
+                const root = getAnalysisRoot();
+                return Array.from(root?.querySelectorAll?.(selector) || []);
+            }
+
+            function getManualMemoControl() {
+                return queryAnalysis('[data-role="util-sheet-report-manual-memo"]');
+            }
+
+            function captureManualMemo() {
+                const control = getManualMemoControl();
+                if (!control) return;
+                manualMemoText = String(control.value || '');
+            }
+
+            function applyManualMemo() {
+                const control = getManualMemoControl();
+                if (control && control.value !== manualMemoText) {
+                    control.value = manualMemoText;
+                }
             }
 
             function renderAffectedCharts(seriesKey) {
-                const affectedSeriesKeys = getAffectedSeriesKeys(seriesKey);
                 allCharts().forEach(chart => {
                     const controls = Array.isArray(chart.controlItems) ? chart.controlItems : [];
-                    if (seriesKey && !controls.some(item => affectedSeriesKeys.has(String(item?.key || '').trim()))) return;
+                    if (seriesKey && !controls.some(item => item.key === seriesKey)) return;
                     dirtyChartKeys[String(chart.key || '')] = true;
-                    document.querySelectorAll(`[data-analysis-chart-key="${escapeSelector(String(chart.key))}"]`)
+                    queryAnalysisAll(`[data-analysis-chart-key="${escapeSelector(String(chart.key))}"]`)
                         .forEach(card => renderChart(chart, card));
                 });
             }
 
             function setModeButtonState(seriesKey) {
-                document.querySelectorAll('[data-role="util-sheet-analysis-series-type"]').forEach(button => {
+                queryAnalysisAll('[data-role="util-sheet-analysis-series-type"]').forEach(button => {
                     if (button.dataset.chartKey !== seriesKey) return;
                     const active = button.dataset.chartType === state.displayModes[seriesKey];
                     button.classList.toggle('is-active', active);
@@ -1078,8 +1387,16 @@
             }
 
             function setUnitSelectState(seriesKey) {
-                document.querySelectorAll('[data-role="util-sheet-analysis-unit"]').forEach(select => {
+                queryAnalysisAll('[data-role="util-sheet-analysis-unit"]').forEach(select => {
                     if (select.dataset.chartKey === seriesKey) select.value = state.unitKeys[seriesKey] || '';
+                });
+            }
+
+            function syncSeriesLabelToggles() {
+                queryAnalysisAll('[data-role="util-sheet-analysis-series-label-toggle"]').forEach(toggle => {
+                    const seriesKey = String(toggle?.dataset?.chartKey || '').trim();
+                    if (!seriesKey) return;
+                    toggle.checked = state.seriesLabelModes[seriesKey] === true;
                 });
             }
 
@@ -1089,7 +1406,7 @@
             }
 
             function captureOriginalChartFrames() {
-                document.querySelectorAll('[data-analysis-chart-key]').forEach(card => {
+                queryAnalysisAll('[data-analysis-chart-key]').forEach(card => {
                     const chartKey = String(card?.dataset?.analysisChartKey || '').trim();
                     const frame = card?.querySelector?.('.util-sheet-analysis-chart-frame');
                     if (!chartKey || !frame) return;
@@ -1214,28 +1531,6 @@
                 });
             }
 
-            function getMonthTableRowUnitLabel(row, table, controlItem, kind) {
-                if (kind === 'ratio' && getUsageProductionRatioKeys(controlItem?.key)) {
-                    return getEffectiveUnitOption(controlItem, state.unitKeys[controlItem.key] || controlItem.unitKey || '')?.label || '';
-                }
-                return row?.unitLabel || table?.unitLabel || controlItem?.unitLabel || '';
-            }
-
-            function getMonthTableCellValue(cell, controlItem, kind) {
-                if (kind === 'ratio' && getUsageProductionRatioKeys(controlItem?.key)) {
-                    return scaleUsageProductionRatioValue(controlItem, cell);
-                }
-                return finite(cell);
-            }
-
-            function getMonthTableCellDecimals(row, table, controlItem, kind) {
-                if (kind === 'ratio' && getUsageProductionRatioKeys(controlItem?.key)) {
-                    const unitOption = getEffectiveUnitOption(controlItem, state.unitKeys[controlItem.key] || controlItem.unitKey || '');
-                    return Number.isFinite(Number(unitOption?.decimals)) ? Number(unitOption.decimals) : 3;
-                }
-                return Number.isFinite(Number(row?.decimals)) ? Number(row.decimals) : (kind === 'ratio' ? 3 : Number(table?.decimals || controlItem?.decimals || 0));
-            }
-
             function buildMonthTableHtml(table, controlItem, kind) {
                 const monthHeaders = Array.from({ length: 12 }, (_, index) => `<th>${index + 1}월</th>`).join('');
                 const rows = Array.isArray(table?.rows) ? table.rows : [];
@@ -1247,11 +1542,11 @@
                     <tr>
                         <th>
                             <div class="util-sheet-analysis-table-row-title">${escapeHtml(String(row.year || '').slice(-2))}年 ${escapeHtml(row.label || tableTitle)}</div>
-                            <div class="util-sheet-analysis-table-row-unit">(${escapeHtml(getMonthTableRowUnitLabel(row, table, controlItem, kind))})</div>
+                            <div class="util-sheet-analysis-table-row-unit">(${escapeHtml(row.unitLabel || table?.unitLabel || controlItem?.unitLabel || '')})</div>
                         </th>
                         ${(Array.isArray(row.cells) ? row.cells : []).map(cell => {
-                            const value = getMonthTableCellValue(cell, controlItem, kind);
-                            const decimals = getMonthTableCellDecimals(row, table, controlItem, kind);
+                            const value = finite(cell);
+                            const decimals = Number.isFinite(Number(row?.decimals)) ? Number(row.decimals) : (kind === 'ratio' ? 3 : Number(table?.decimals || controlItem?.decimals || 0));
                             return `<td class="${Number.isFinite(value) ? 'is-strong' : 'is-empty'}">${Number.isFinite(value) ? escapeHtml(formatNumber(value, decimals)) : ''}</td>`;
                         }).join('')}
                     </tr>
@@ -1279,10 +1574,10 @@
 
             function buildMetricTableModel(controlItem, sourceChart = null) {
                 const item = controlItem || null;
-                const points = Array.isArray(item?.points) ? item.points : [];
+                const points = (Array.isArray(item?.points) ? item.points : []).filter(isPointInActiveRange);
                 if (!item?.key || !points.length) return null;
                 const unitKey = state.unitKeys[item.key] || item.unitKey || '';
-                const unitOption = getEffectiveUnitOption(item, unitKey);
+                const unitOption = getUnitOption(item, unitKey);
                 const monthKeys = points.map(point => String(point?.monthKey || point?.key || '').trim()).filter(Boolean);
                 const activeMonthSet = new Set(monthKeys);
                 const chartControlItems = Array.isArray(sourceChart?.controlItems) ? sourceChart.controlItems : [];
@@ -1430,34 +1725,10 @@
                 handle.addEventListener('lostpointercapture', finishDrag);
             }
 
-            function buildDataTablePanelBodyHtml(tableEntry) {
-                return `
-                    <div class="util-sheet-analysis-inline-table-panel-body">
-                        <div class="util-sheet-analysis-inline-table-toolbar">
-                            <button type="button" class="util-sheet-analysis-inline-table-handle" data-role="util-sheet-analysis-inline-table-drag" aria-label="???대룞" title="???대룞">
-                                <i class="fa-solid fa-grip-lines" aria-hidden="true"></i>
-                            </button>
-                            <button type="button" class="util-sheet-analysis-inline-table-close" data-role="util-sheet-analysis-inline-table-close" aria-label="???リ린" title="???リ린"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                        </div>
-                        ${buildMonthTableHtml(tableEntry.table, tableEntry.controlItem, tableEntry.kind)}
-                    </div>
-                `;
-            }
-
-            function refreshOpenDataTables() {
-                document.querySelectorAll('[data-role="util-sheet-analysis-inline-table-panel"]').forEach(panel => {
-                    const tableEntry = resolveTableEntry(panel.getAttribute('data-table-key') || panel.dataset.tableKey || '');
-                    if (!tableEntry?.table) return;
-                    panel.innerHTML = buildDataTablePanelBodyHtml(tableEntry);
-                    panel.dataset.inlineDragBound = '';
-                    bindDataTableDrag(panel);
-                });
-            }
-
             function openDataTable(tableKey, triggerButton) {
                 const tableEntry = resolveTableEntry(tableKey);
                 if (!tableEntry?.table) return;
-                document.querySelectorAll('[data-role="util-sheet-analysis-inline-table-panel"]').forEach(panel => panel.remove());
+                queryAnalysisAll('[data-role="util-sheet-analysis-inline-table-panel"]').forEach(panel => panel.remove());
                 const panel = document.createElement('div');
                 panel.className = 'util-sheet-analysis-inline-table-panel';
                 panel.setAttribute('data-role', 'util-sheet-analysis-inline-table-panel');
@@ -1474,11 +1745,292 @@
                     </div>
                 `;
                 const host = triggerButton?.closest?.('[data-role="util-sheet-analysis-section"]')
-                    || document.querySelector('[data-role="util-sheet-analysis-section"]')
+                    || queryAnalysis('[data-role="util-sheet-analysis-section"]')
                     || document.body;
                 positionDataTablePanel(panel, triggerButton, host);
                 host.appendChild(panel);
                 bindDataTableDrag(panel);
+            }
+
+            function getAnalysisBody() {
+                const root = getAnalysisRoot();
+                return root?.querySelector?.('[data-role="util-sheet-report-body"]')
+                    || document.querySelector('[data-role="util-sheet-report-body"]')
+                    || document.body;
+            }
+
+            function getScopeKeyFromModel(nextModel = model) {
+                return String(datasetKey === 'electric'
+                    ? (nextModel?.teamOption?.key || '')
+                    : (nextModel?.categoryOption?.key || '')).trim();
+            }
+
+            function getModelForScope(scopeKey = '') {
+                const normalizedScopeKey = String(scopeKey || '').trim();
+                return scopeModels[normalizedScopeKey] || (getScopeKeyFromModel(model) === normalizedScopeKey ? model : null);
+            }
+
+            function syncExtractRangeControls() {
+                const range = normalizeActiveRange();
+                queryAnalysisAll('[data-role="util-sheet-analysis-from"]').forEach(select => {
+                    select.value = range.from || select.value || '';
+                });
+                queryAnalysisAll('[data-role="util-sheet-analysis-to"]').forEach(select => {
+                    select.value = range.to || select.value || '';
+                });
+                const selector = datasetKey === 'electric'
+                    ? '[data-role="util-sheet-analysis-electric-team-select"]'
+                    : '[data-role="util-sheet-analysis-gas-category-select"]';
+                queryAnalysisAll(selector).forEach(select => {
+                    select.value = activeScopeKey || getScopeKeyFromModel() || select.value || '';
+                });
+            }
+
+            function resetExtractStateFromDocument() {
+                const previousLabelModes = { ...state.labelModes };
+                const previousSeriesLabelModes = { ...state.seriesLabelModes };
+                state.unitKeys = {};
+                state.displayModes = {};
+                state.labelModes = {};
+                state.seriesLabelModes = {};
+                Object.keys(dirtyChartKeys).forEach(key => { delete dirtyChartKeys[key]; });
+                Object.keys(originalChartFrames).forEach(key => { delete originalChartFrames[key]; });
+                initializeState();
+                Object.assign(state.labelModes, previousLabelModes);
+                Object.assign(state.seriesLabelModes, previousSeriesLabelModes);
+                syncSeriesLabelToggles();
+                captureOriginalChartFrames();
+                bindAnalysisChartDragScroll(getAnalysisRoot());
+            }
+
+            function updateChartRangeLabels() {
+                const rangeLabel = getActiveRangeLabel();
+                queryAnalysisAll('.util-sheet-analysis-chart-card:not(.is-ratio-combined) .util-sheet-analysis-chart-sub')
+                    .forEach(node => { node.textContent = rangeLabel; });
+            }
+
+            function findControlItemByKey(key = '') {
+                const normalizedKey = String(key || '').trim().toLowerCase();
+                if (!normalizedKey) return null;
+                return allControlItems().find(item => String(item?.key || '').trim().toLowerCase() === normalizedKey) || null;
+            }
+
+            function resolveSummaryTotalText(summaryItem = null) {
+                const key = String(summaryItem?.key || '').trim();
+                const controlItem = findControlItemByKey(key);
+                if (!controlItem) return String(summaryItem?.valueText || '').trim();
+                const unitKey = state.unitKeys[key] || controlItem.unitKey || '';
+                const unitOption = getUnitOption(controlItem, unitKey);
+                const sourceChart = findControlItemChart(controlItem);
+                const sourceSeries = findSourceSeries(sourceChart, controlItem, 0);
+                const values = (Array.isArray(controlItem.points) ? controlItem.points : [])
+                    .filter(isPointInActiveRange)
+                    .map((point, index) => resolvePointValue(controlItem, point, unitKey, findSourcePoint(sourceSeries, point, index)))
+                    .filter(Number.isFinite);
+                if (!values.length) return String(summaryItem?.valueText || '').trim();
+                const total = values.reduce((sum, value) => sum + value, 0);
+                const decimals = Number.isFinite(Number(unitOption?.decimals)) ? Number(unitOption.decimals) : Number(controlItem.decimals || 0);
+                const label = String(unitOption?.label || controlItem.unitLabel || controlItem.metricLabel || '').trim();
+                return `${formatNumber(total, decimals)}${label}`;
+            }
+
+            function formatMemoQuantity(value, unit = 'kg') {
+                const number = finite(value);
+                return Number.isFinite(number) ? `${formatNumber(number, 0)}${unit}` : '-';
+            }
+
+            function formatMemoSignedQuantity(value, unit = 'kg') {
+                const number = finite(value);
+                if (!Number.isFinite(number)) return '-';
+                const sign = number > 0 ? '+' : '';
+                return `${sign}${formatNumber(number, 0)}${unit}`;
+            }
+
+            function calculateMemoPercentDelta(currentValue, referenceValue) {
+                const current = finite(currentValue);
+                const reference = finite(referenceValue);
+                if (!Number.isFinite(current) || !Number.isFinite(reference) || reference === 0) return NaN;
+                return ((current - reference) / Math.abs(reference)) * 100;
+            }
+
+            function formatMemoPercent(value) {
+                const number = finite(value);
+                if (!Number.isFinite(number)) return '-';
+                const sign = number > 0 ? '+' : '';
+                return `${sign}${formatNumber(number, 1)}%`;
+            }
+
+            function formatMemoDirection(value) {
+                const number = finite(value);
+                if (!Number.isFinite(number) || number === 0) return '변동 없음';
+                return number > 0 ? '증가' : '감소';
+            }
+
+            function formatMemoArrowMarker(value) {
+                const number = finite(value);
+                if (!Number.isFinite(number) || number === 0) return '[[memo-delta-flat]]';
+                return number > 0 ? '[[memo-delta-up]]' : '[[memo-delta-down]]';
+            }
+
+            function formatMemoDelta(currentValue, referenceValue, unit = 'kg') {
+                const current = finite(currentValue);
+                const reference = finite(referenceValue);
+                if (!Number.isFinite(current) || !Number.isFinite(reference)) return '-';
+                const delta = current - reference;
+                const percent = calculateMemoPercentDelta(current, reference);
+                const percentText = Number.isFinite(percent) ? `${formatNumber(Math.abs(percent), 1)}%` : '-';
+                return `${formatMemoArrowMarker(delta)} ${percentText} ${formatMemoDirection(delta)}(${formatMemoSignedQuantity(delta, unit)})`;
+            }
+
+            function getReportMemoMonthKeys(reportMemo = {}) {
+                const range = normalizeActiveRange();
+                return (Array.isArray(reportMemo?.monthOptions) ? reportMemo.monthOptions : [])
+                    .map(item => String(item?.value || '').trim())
+                    .filter(monthKey => monthKey && (!range.from || monthKey >= range.from) && (!range.to || monthKey <= range.to));
+            }
+
+            function getReportMemoRow(team = {}, monthKey = '') {
+                return team?.rows?.[String(monthKey || '').trim()] || {};
+            }
+
+            function sumReportMemoWorkDays(team = {}, monthKeys = []) {
+                const values = (Array.isArray(monthKeys) ? monthKeys : [])
+                    .map(monthKey => team?.workDaysByMonth?.[monthKey])
+                    .filter(Boolean);
+                if (!values.length) return null;
+                return values.reduce((acc, item) => ({
+                    productionDays: acc.productionDays + (Number(item?.productionDays) || 0),
+                    offDays: acc.offDays + (Number(item?.offDays) || 0)
+                }), { productionDays: 0, offDays: 0 });
+            }
+
+            function getReportMemoCompareMeta(compareKey = 'month') {
+                return String(compareKey || '').trim() === 'year'
+                    ? { key: 'year', label: '전년대비', rowKey: 'prevYearKey', linePrefix: 'prevYear' }
+                    : { key: 'month', label: '전월대비', rowKey: 'prevMonthKey', linePrefix: 'prevMonth' };
+            }
+
+            function buildReportMemoLineText(team = {}, compareKey = 'month') {
+                const compareMeta = getReportMemoCompareMeta(compareKey);
+                const lineItems = (Array.isArray(team?.lineItems) ? team.lineItems : [])
+                    .filter(item => Number.isFinite(finite(item?.activeAmount)))
+                    .slice(0, 4);
+                if (!lineItems.length) return '';
+                return `라인별 품목: ${lineItems.map(item => (
+                    `${item.title} ${formatMemoDelta(item.activeAmount, item?.[`${compareMeta.linePrefix}Amount`], 'kg')}`
+                )).join(' / ')}`;
+            }
+
+            function sumReportMemoTeamRows(teams = [], monthKey = '', field = 'production') {
+                const values = (Array.isArray(teams) ? teams : [])
+                    .map(team => finite(getReportMemoRow(team, monthKey)?.[field]))
+                    .filter(Number.isFinite);
+                return values.length ? values.reduce((sum, value) => sum + value, 0) : NaN;
+            }
+
+            function buildReportMemoItems() {
+                const reportMemo = model?.reportMemo;
+                if (!reportMemo || typeof reportMemo !== 'object') return [];
+                const range = normalizeActiveRange();
+                const monthKeys = getReportMemoMonthKeys(reportMemo);
+                const activeMonthKey = String(range.to || reportMemo.activeMonthKey || '').trim();
+                const compareMeta = getReportMemoCompareMeta(activeCompareKey);
+                const items = [];
+                const teams = Array.isArray(reportMemo.teams) ? reportMemo.teams : [];
+                const scopeKey = String(reportMemo.scopeKey || '').trim();
+                if (model?.datasetKey === 'gas' && (scopeKey === 'yusan' || scopeKey === 'combined')) {
+                    const activeProduction = sumReportMemoTeamRows(teams, activeMonthKey, 'production');
+                    const referenceProduction = sumReportMemoTeamRows(teams, String(reportMemo[compareMeta.rowKey] || '').trim(), 'production');
+                    if (Number.isFinite(activeProduction)) {
+                        items.push(`${reportMemo.scopeLabel || (scopeKey === 'combined' ? '합계' : '유산')} 전체 생산량 ${formatMemoQuantity(activeProduction, 'kg')} ${compareMeta.label} ${formatMemoDelta(activeProduction, referenceProduction, 'kg')}`);
+                    }
+                    return items;
+                }
+                teams.forEach(team => {
+                    const teamLabel = team.label || team.key;
+                    const activeRow = getReportMemoRow(team, activeMonthKey);
+                    const referenceRow = getReportMemoRow(team, String(reportMemo[compareMeta.rowKey] || '').trim());
+                    const activeProduction = finite(activeRow?.production);
+                    const lineText = buildReportMemoLineText(team, compareMeta.key);
+                    if (Number.isFinite(activeProduction)) {
+                        const productionText = `${teamLabel} 생산량 ${formatMemoQuantity(activeProduction, 'kg')} ${compareMeta.label} ${formatMemoDelta(activeProduction, referenceRow?.production, 'kg')}`;
+                        items.push(lineText ? `${productionText} / ${lineText}` : productionText);
+                    } else if (lineText) {
+                        items.push(`${teamLabel} ${lineText}`);
+                    }
+                    const workDays = sumReportMemoWorkDays(team, activeMonthKey ? [activeMonthKey] : monthKeys.slice(-1));
+                    if (workDays) {
+                        items.push(`생산일 ${formatNumber(workDays.productionDays, 0)}일 휴무일 ${formatNumber(workDays.offDays, 0)}일`);
+                    }
+                });
+                return items;
+            }
+
+            function buildReportMemoInsightHtml(item) {
+                return escapeHtml(item)
+                    .replace(/\[\[memo-delta-up\]\]/g, '<span class="util-sheet-memo-arrow is-up" aria-label="증가">▲</span>')
+                    .replace(/\[\[memo-delta-down\]\]/g, '<span class="util-sheet-memo-arrow is-down" aria-label="감소">▼</span>')
+                    .replace(/\[\[memo-delta-flat\]\]/g, '<span class="util-sheet-memo-arrow is-flat" aria-label="변동 없음">→</span>');
+            }
+
+            function updateReportMemo() {
+                const list = queryAnalysis('[data-role="util-sheet-report-memo-list"]');
+                if (!list) return;
+                const items = buildReportMemoItems();
+                if (!items.length) return;
+                list.innerHTML = items.map(item => `<li>${buildReportMemoInsightHtml(item)}</li>`).join('');
+            }
+
+            function updateSummaryCards() {
+                const cards = queryAnalysisAll('.util-sheet-analysis-summary-card');
+                const items = Array.isArray(model?.summaryItems) ? model.summaryItems : [];
+                cards.forEach((card, index) => {
+                    const item = items[index] || null;
+                    if (!item) return;
+                    const valueNode = card.querySelector('.util-sheet-analysis-summary-value');
+                    if (valueNode) {
+                        const nextText = resolveSummaryTotalText(item);
+                        if (nextText) valueNode.textContent = nextText;
+                    }
+                    const metaNodes = Array.from(card.querySelectorAll('.util-sheet-analysis-summary-meta'));
+                    const rangeLabel = getActiveRangeLabel();
+                    const lastMeta = metaNodes[metaNodes.length - 1] || null;
+                    if (lastMeta && rangeLabel) {
+                        lastMeta.textContent = rangeLabel;
+                    }
+                });
+                updateReportMemo();
+            }
+
+            function renderAllChartsForActiveRange() {
+                normalizeActiveRange();
+                updateChartRangeLabels();
+                allCharts().forEach(chart => {
+                    dirtyChartKeys[String(chart.key || '')] = true;
+                    queryAnalysisAll(`[data-analysis-chart-key="${escapeSelector(String(chart.key))}"]`)
+                        .forEach(card => renderChart(chart, card));
+                });
+                updateSummaryCards();
+                bindAnalysisChartDragScroll(getAnalysisRoot());
+            }
+
+            function renderAnalysisBodyForScope(scopeKey = '') {
+                const nextModel = getModelForScope(scopeKey);
+                if (!nextModel) return false;
+                const body = getAnalysisBody();
+                const previousRange = { ...activeRange };
+                captureManualMemo();
+                model = nextModel;
+                activeScopeKey = String(scopeKey || getScopeKeyFromModel(nextModel) || activeScopeKey || '').trim();
+                activeRange = previousRange;
+                if (body && typeof body.innerHTML === 'string' && typeof model.bodyHtml === 'string' && model.bodyHtml) {
+                    body.innerHTML = model.bodyHtml;
+                }
+                applyManualMemo();
+                syncExtractRangeControls();
+                resetExtractStateFromDocument();
+                renderAllChartsForActiveRange();
+                return true;
             }
 
             function initializeState() {
@@ -1486,12 +2038,12 @@
                     state.unitKeys[item.key] = item.unitKey || '';
                     state.displayModes[item.key] = item.displayMode || item.chartType || 'bar';
                 });
-                document.querySelectorAll('[data-role="util-sheet-analysis-unit"]').forEach(select => {
+                queryAnalysisAll('[data-role="util-sheet-analysis-unit"]').forEach(select => {
                     const seriesKey = select.dataset.chartKey || '';
                     if (!seriesKey) return;
                     state.unitKeys[seriesKey] = select.value || state.unitKeys[seriesKey] || '';
                 });
-                document.querySelectorAll('[data-role="util-sheet-analysis-series-type"]').forEach(button => {
+                queryAnalysisAll('[data-role="util-sheet-analysis-series-type"]').forEach(button => {
                     const seriesKey = button.dataset.chartKey || '';
                     if (!seriesKey) return;
                     const active = button.classList.contains('is-active') || button.getAttribute('aria-pressed') === 'true';
@@ -1500,9 +2052,14 @@
                     }
                 });
                 allCharts().forEach(chart => {
-                    const card = document.querySelector(`[data-analysis-chart-key="${escapeSelector(String(chart.key))}"]`);
+                    const card = queryAnalysis(`[data-analysis-chart-key="${escapeSelector(String(chart.key))}"]`);
                     const checked = card?.querySelector?.('[data-chart-label-toggle], [data-role="util-sheet-analysis-ratio-label-toggle"], [data-role="util-sheet-analysis-electric-combined-label-toggle"], [data-role="util-sheet-analysis-electric-intensity-label-toggle"]')?.checked === true;
                     state.labelModes[chart.key] = checked;
+                });
+                queryAnalysisAll('[data-role="util-sheet-analysis-series-label-toggle"]').forEach(toggle => {
+                    const seriesKey = String(toggle?.dataset?.chartKey || '').trim();
+                    if (!seriesKey) return;
+                    state.seriesLabelModes[seriesKey] = toggle.checked === true;
                 });
             }
 
@@ -1542,13 +2099,39 @@
 
             document.addEventListener('change', event => {
                 const target = event.target;
+                const rangeSelect = target?.closest?.('[data-role="util-sheet-analysis-from"], [data-role="util-sheet-analysis-to"]');
+                if (rangeSelect) {
+                    const fromSelect = queryAnalysis('[data-role="util-sheet-analysis-from"]');
+                    const toSelect = queryAnalysis('[data-role="util-sheet-analysis-to"]');
+                    activeRange = {
+                        from: String(fromSelect?.value || activeRange.from || '').trim(),
+                        to: String(toSelect?.value || activeRange.to || '').trim()
+                    };
+                    syncExtractRangeControls();
+                    renderAllChartsForActiveRange();
+                    return;
+                }
+                const scopeSelect = target?.closest?.('[data-role="util-sheet-analysis-gas-category-select"], [data-role="util-sheet-analysis-electric-team-select"]');
+                if (scopeSelect) {
+                    renderAnalysisBodyForScope(scopeSelect.value || '');
+                    return;
+                }
                 const unitSelect = target?.closest?.('[data-role="util-sheet-analysis-unit"]');
                 if (unitSelect) {
                     const seriesKey = unitSelect.dataset.chartKey || '';
                     state.unitKeys[seriesKey] = unitSelect.value || '';
                     setUnitSelectState(seriesKey);
                     renderAffectedCharts(seriesKey);
-                    refreshOpenDataTables();
+                    updateSummaryCards();
+                    return;
+                }
+                const seriesLabelToggle = target?.closest?.('[data-role="util-sheet-analysis-series-label-toggle"]');
+                if (seriesLabelToggle) {
+                    const seriesKey = String(seriesLabelToggle.dataset.chartKey || '').trim();
+                    if (!seriesKey) return;
+                    state.seriesLabelModes[seriesKey] = seriesLabelToggle.checked === true;
+                    syncSeriesLabelToggles();
+                    renderAffectedCharts(seriesKey);
                     return;
                 }
                 const labelToggle = target?.closest?.('[data-chart-label-toggle], [data-role="util-sheet-analysis-ratio-label-toggle"], [data-role="util-sheet-analysis-electric-combined-label-toggle"], [data-role="util-sheet-analysis-electric-intensity-label-toggle"]');
@@ -1557,13 +2140,22 @@
                     state.labelModes[chartKey] = labelToggle.checked === true;
                     dirtyChartKeys[chartKey] = true;
                     const chart = allCharts().find(item => item.key === chartKey);
-                    document.querySelectorAll(`[data-analysis-chart-key="${escapeSelector(chartKey)}"]`).forEach(card => renderChart(chart, card));
+                    queryAnalysisAll(`[data-analysis-chart-key="${escapeSelector(chartKey)}"]`).forEach(card => renderChart(chart, card));
                 }
             });
 
+            document.addEventListener('input', event => {
+                if (!event.target?.closest?.('[data-role="util-sheet-report-manual-memo"]')) return;
+                captureManualMemo();
+            });
+
+            activeScopeKey = activeScopeKey || getScopeKeyFromModel(model);
+            normalizeActiveRange();
+            applyManualMemo();
+            syncExtractRangeControls();
             captureOriginalChartFrames();
             initializeState();
-            bindAnalysisChartDragScroll(document);
+            bindAnalysisChartDragScroll(getAnalysisRoot());
         };
         return `
             <script type="application/json" id="util-sheet-analysis-extract-data">${payloadJson}</script>
@@ -1572,45 +2164,6 @@
                 (${runtimeSource})();
             </script>
         `;
-    }
-
-    function buildMeterExtractRuntimeScript(datasetKey = 'gas') {
-        if (datasetKey !== 'electric') return '';
-        const runtimeSource = function utilSheetElectricMeterExtractRuntime() {
-            function normalizeViewKey(viewKey) {
-                const normalized = String(viewKey || '').trim();
-                return normalized === 'allocation' || normalized === 'team' ? normalized : 'meter';
-            }
-
-            function setActiveView(shell, viewKey) {
-                if (!shell) return;
-                const activeViewKey = normalizeViewKey(viewKey || shell.dataset.activeView || 'meter');
-                shell.dataset.activeView = activeViewKey;
-                shell.querySelectorAll('[data-role="util-sheet-electric-extract-view"]').forEach(view => {
-                    const isActive = view.dataset.viewKey === activeViewKey;
-                    view.hidden = !isActive;
-                    view.toggleAttribute?.('hidden', !isActive);
-                });
-                shell.querySelectorAll('[data-role="util-sheet-meter-electric-view-select"]').forEach(button => {
-                    const isActive = button.dataset.viewKey === activeViewKey;
-                    button.classList.toggle('is-active', isActive);
-                    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-                });
-            }
-
-            document.addEventListener('click', event => {
-                const button = event.target?.closest?.('[data-role="util-sheet-meter-electric-view-select"]');
-                if (!button) return;
-                const shell = button.closest('[data-role="util-sheet-electric-extract-views"]')
-                    || document.querySelector('[data-role="util-sheet-electric-extract-views"]');
-                setActiveView(shell, button.dataset.viewKey || 'meter');
-            });
-
-            document.querySelectorAll('[data-role="util-sheet-electric-extract-views"]').forEach(shell => {
-                setActiveView(shell, shell.dataset.activeView || 'meter');
-            });
-        };
-        return `<script>(${runtimeSource})();</script>`;
     }
 
     function buildMeterExtractDocumentHtml(modal, reportCardHtml = '') {
@@ -1643,7 +2196,6 @@
                     .util-sheet-meter-extract-body .util-sheet-meter-table-card { box-shadow: none; }
                     .util-sheet-meter-extract-body .util-sheet-report-window-actions:empty { display: none; }
                     .util-sheet-meter-extract-body [data-role="util-sheet-billing-preview-toggle"] { display: none !important; }
-                    .util-sheet-meter-extract-body .util-sheet-electric-extract-view[hidden] { display: none !important; }
                     ${getExtractIconFallbackCss()}
                     @media print {
                         .util-sheet-meter-extract-page { padding: 0; }
@@ -1661,7 +2213,6 @@
                         ${reportCardHtml}
                     </section>
                 </main>
-                ${buildMeterExtractRuntimeScript(datasetKey)}
             </body>
             </html>
         `;
@@ -1671,7 +2222,7 @@
         const title = getTextContent(modal, '[data-role="util-sheet-report-title"]', '분석표');
         const datasetKey = resolveDatasetKey('analysis', modal?.dataset?.datasetKey || UtilSheetReportState.analysis || 'gas');
         const datasetLabel = datasetKey === 'electric' ? '전력비' : '가스';
-        const model = modal?._utilSheetAnalysisModel || {};
+        const extractPayload = buildAnalysisExtractPayload(modal, datasetKey);
         return `
             <!doctype html>
             <html lang="ko">
@@ -1709,8 +2260,7 @@
                     .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-panel { position: absolute; top: 4.35rem; right: 0.35rem; z-index: 10000; width: min(680px, calc(100% - 0.7rem)); max-width: 100%; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-panel-body { max-height: min(58vh, 640px); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-toolbar { position: sticky; top: 0; background: #ffffff; z-index: 1; }
-                    .util-sheet-meter-extract-body [data-role="util-sheet-billing-preview-toggle"],
-                    .util-sheet-meter-extract-body .util-sheet-analysis-toolbar { display: none !important; }
+                    .util-sheet-meter-extract-body [data-role="util-sheet-billing-preview-toggle"] { display: none !important; }
                     ${getExtractIconFallbackCss()}
                     @media print {
                         .util-sheet-meter-extract-page { padding: 0; }
@@ -1728,26 +2278,167 @@
                         ${reportCardHtml}
                     </section>
                 </main>
-                ${buildAnalysisExtractRuntimeScript(model, datasetKey)}
+                ${buildAnalysisExtractRuntimeScript(extractPayload)}
             </body>
             </html>
         `;
     }
 
-    function openUtilSheetReportExtract(modal) {
-        const sheetType = normalizeSheetType(modal?.dataset?.sheetType);
-        if (sheetType !== 'meter' && sheetType !== 'analysis') return false;
-        const reportCardHtml = buildVisibleReportCardHtml(modal, sheetType);
-        if (!reportCardHtml) {
-            runtimeAdapter.alert('추출할 보고서 화면이 없습니다.');
-            return false;
+    function buildCombinedExtractToggleScript() {
+        const runtimeSource = function utilSheetCombinedExtractToggle() {
+            function normalizeSheetType(sheetType) {
+                return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+            }
+
+            function setActiveSheet(sheetType) {
+                const activeSheetType = normalizeSheetType(sheetType);
+                document.querySelectorAll('[data-role="util-sheet-combined-section"]').forEach(section => {
+                    const active = normalizeSheetType(section.dataset.combinedSheetType) === activeSheetType;
+                    section.hidden = !active;
+                    section.toggleAttribute?.('hidden', !active);
+                });
+                document.querySelectorAll('[data-role="util-sheet-combined-tab"]').forEach(button => {
+                    const active = normalizeSheetType(button.dataset.combinedSheetType) === activeSheetType;
+                    button.classList.toggle('is-active', active);
+                    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+                });
+                document.documentElement.dataset.activeCombinedSheet = activeSheetType;
+            }
+
+            document.addEventListener('click', event => {
+                const button = event.target?.closest?.('[data-role="util-sheet-combined-tab"]');
+                if (!button) return;
+                event.preventDefault();
+                setActiveSheet(button.dataset.combinedSheetType);
+            });
+
+            setActiveSheet('meter');
+        };
+        return `<script>(${runtimeSource})();</script>`;
+    }
+
+    function buildCombinedExtractDocumentHtml(modal, options = {}) {
+        const datasetKey = resolveDatasetKey('meter', options.datasetKey || modal?.dataset?.datasetKey || 'gas');
+        const datasetLabel = datasetKey === 'electric' ? '전력비' : '가스';
+        const meterTitle = String(options.meterTitle || '검침표').trim();
+        const analysisTitle = String(options.analysisTitle || '분석표').trim();
+        const meterReportCardHtml = String(options.meterReportCardHtml || '').trim();
+        const analysisReportCardHtml = String(options.analysisReportCardHtml || '').trim();
+        const extractPayload = buildAnalysisExtractPayload(modal, datasetKey);
+        return `
+            <!doctype html>
+            <html lang="ko">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>${escapeHtml(datasetLabel)} 보고서</title>
+                ${getHeadAssetsHtml()}
+                <style>
+                    html, body { min-height: 100%; height: auto !important; overflow-x: auto !important; overflow-y: auto !important; }
+                    body { margin: 0; background: #ffffff; color: #0f172a; }
+                    .util-sheet-meter-extract-page { min-height: 100vh; height: auto !important; padding: 24px; background: #ffffff; overflow: visible !important; }
+                    .util-sheet-meter-extract-head { display: grid; gap: 4px; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid #dbe4f3; }
+                    .util-sheet-meter-extract-kicker { font-size: 12px; font-weight: 900; color: #2563eb; letter-spacing: 0.08em; text-transform: uppercase; }
+                    .util-sheet-meter-extract-title { font-size: 22px; font-weight: 900; color: #0f172a; }
+                    .util-sheet-combined-extract-switch { width: min(1440px, calc(100vw - 48px)); margin: 0 auto 18px; display: flex; align-items: center; gap: 0.25rem; padding: 4px; border: 1px solid #bfdbfe; border-radius: 8px; background: #eff6ff; }
+                    .util-sheet-combined-extract-tab { min-height: 34px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #1d4ed8; padding: 0 16px; font-size: 0.82rem; font-weight: 900; cursor: pointer; }
+                    .util-sheet-combined-extract-tab:hover { background: rgba(255, 255, 255, 0.72); border-color: #bfdbfe; }
+                    .util-sheet-combined-extract-tab.is-active { background: #ffffff; border-color: #60a5fa; color: #0f172a; box-shadow: 0 6px 14px rgba(37, 99, 235, 0.12); }
+                    .util-sheet-combined-extract-section { display: grid; gap: 12px; margin: 0 auto 28px; }
+                    .util-sheet-combined-extract-section[hidden] { display: none !important; }
+                    .util-sheet-combined-extract-section + .util-sheet-combined-extract-section { padding-top: 24px; border-top: 1px dashed #cbd5e1; }
+                    .util-sheet-meter-extract-body { display: block; overflow: visible !important; }
+                    .util-sheet-meter-extract-body .util-sheet-report-card { width: min(1440px, calc(100vw - 48px)); height: auto !important; min-height: 0 !important; max-height: none !important; margin: 0 auto; box-shadow: none; overflow: visible !important; flex: none !important; }
+                    .util-sheet-meter-extract-body .util-sheet-report-head { position: static; }
+                    .util-sheet-meter-extract-body .util-sheet-report-body { height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important; flex: none !important; }
+                    .util-sheet-meter-extract-body .util-sheet-section,
+                    .util-sheet-meter-extract-body .util-sheet-meter-table-stack,
+                    .util-sheet-meter-extract-body .util-sheet-analysis-section,
+                    .util-sheet-meter-extract-body .util-sheet-analysis-grid,
+                    .util-sheet-meter-extract-body .util-sheet-analysis-table-stack { height: auto !important; max-height: none !important; overflow: visible !important; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-section { position: relative; }
+                    .util-sheet-meter-extract-body .util-sheet-table-wrap,
+                    .util-sheet-meter-extract-body .util-analytics-chart-canvas { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; overscroll-behavior-x: contain; scrollbar-gutter: stable both-edges; cursor: grab; touch-action: pan-x; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart.is-modal { width: 100% !important; min-width: 100% !important; max-width: 100% !important; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart-canvas { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart [data-role="util-chart-month-hit"] { cursor: grab; }
+                    .util-sheet-meter-extract-body .util-analytics-chart-canvas.is-dragging { cursor: grabbing; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart-canvas.is-dragging [data-role="util-chart-month-hit"] { cursor: grabbing; }
+                    .util-sheet-analysis-extract-fullscreen { overflow: hidden !important; }
+                    .util-sheet-analysis-chart-card.is-extract-fullscreen { position: fixed !important; inset: 12px !important; z-index: 9999 !important; max-height: calc(100vh - 24px) !important; overflow: auto !important; background: #ffffff !important; box-shadow: 0 24px 80px rgba(15, 23, 42, 0.34) !important; }
+                    .util-sheet-analysis-chart-card.is-extract-fullscreen .util-sheet-analysis-chart-frame { min-height: 760px; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-panel { position: absolute; top: 4.35rem; right: 0.35rem; z-index: 10000; width: min(680px, calc(100% - 0.7rem)); max-width: 100%; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-panel-body { max-height: min(58vh, 640px); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; }
+                    .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-toolbar { position: sticky; top: 0; background: #ffffff; z-index: 1; }
+                    .util-sheet-meter-extract-body .util-sheet-meter-table-card { box-shadow: none; }
+                    .util-sheet-meter-extract-body .util-sheet-report-window-actions:empty { display: none; }
+                    .util-sheet-meter-extract-body [data-role="util-sheet-billing-preview-toggle"] { display: none !important; }
+                    ${getExtractIconFallbackCss()}
+                    @media print {
+                        .util-sheet-meter-extract-page { padding: 0; }
+                        .util-sheet-meter-extract-head { break-after: avoid; }
+                        .util-sheet-combined-extract-section.is-analysis { break-before: page; }
+                    }
+                </style>
+            </head>
+            <body>
+                <main class="util-sheet-meter-extract-page util-sheet-combined-extract-page">
+                    <nav class="util-sheet-combined-extract-switch" aria-label="보기 선택">
+                        <button type="button" class="util-sheet-combined-extract-tab is-active" data-role="util-sheet-combined-tab" data-combined-sheet-type="meter" aria-pressed="true">검침</button>
+                        <button type="button" class="util-sheet-combined-extract-tab" data-role="util-sheet-combined-tab" data-combined-sheet-type="analysis" aria-pressed="false">분석</button>
+                    </nav>
+                    <section class="util-sheet-combined-extract-section is-meter" data-role="util-sheet-combined-section" data-combined-sheet-type="meter" aria-label="${escapeHtml(meterTitle)}">
+                        <div class="util-sheet-meter-extract-body">
+                            ${meterReportCardHtml}
+                        </div>
+                    </section>
+                    <section class="util-sheet-combined-extract-section is-analysis" data-role="util-sheet-combined-section" data-combined-sheet-type="analysis" aria-label="${escapeHtml(analysisTitle)}">
+                        <div class="util-sheet-meter-extract-body">
+                            ${analysisReportCardHtml}
+                        </div>
+                    </section>
+                </main>
+                ${buildAnalysisExtractRuntimeScript(extractPayload)}
+                ${buildCombinedExtractToggleScript()}
+            </body>
+            </html>
+        `;
+    }
+
+    function setExtractOptionsVisible(modal, visible = false) {
+        const panel = modal?.querySelector?.('[data-role="util-sheet-extract-options"]') || null;
+        if (!panel) return false;
+        panel.hidden = visible !== true;
+        panel.toggleAttribute?.('hidden', visible !== true);
+        modal.dataset.extractOptionsOpen = visible === true ? 'true' : 'false';
+        return true;
+    }
+
+    function getSelectedExtractSheetTypes(modal) {
+        const checkboxes = Array.from(modal?.querySelectorAll?.('[data-role="util-sheet-extract-option"]') || []);
+        return Array.from(new Set(checkboxes
+            .filter(checkbox => checkbox?.checked === true)
+            .map(checkbox => normalizeSheetType(checkbox?.dataset?.extractSheetType))
+            .filter(sheetType => sheetType === 'meter' || sheetType === 'analysis')));
+    }
+
+    function openUtilSheetExtractOptions(modal) {
+        if (!modal) return false;
+        const activeSheetType = normalizeSheetType(modal.dataset.sheetType);
+        Array.from(modal.querySelectorAll?.('[data-role="util-sheet-extract-option"]') || []).forEach(checkbox => {
+            checkbox.checked = normalizeSheetType(checkbox.dataset.extractSheetType) === activeSheetType;
+        });
+        if (!setExtractOptionsVisible(modal, true)) {
+            return runUtilSheetReportExtract(modal, [activeSheetType]);
         }
-        const html = sheetType === 'analysis'
-            ? buildAnalysisExtractDocumentHtml(modal, reportCardHtml)
-            : buildMeterExtractDocumentHtml(modal, reportCardHtml);
-        const fileName = sheetType === 'analysis'
-            ? buildAnalysisExtractFileName(modal)
-            : buildExtractFileName(modal);
+        return true;
+    }
+
+    function closeUtilSheetExtractOptions(modal) {
+        return setExtractOptionsVisible(modal, false);
+    }
+
+    function downloadOrPreviewExtractHtml(fileName, html) {
         if (downloadHtmlFile(fileName, html)) {
             return true;
         }
@@ -1756,6 +2447,92 @@
             return false;
         }
         return true;
+    }
+
+    function buildExtractDocumentForSheetType(modal, sheetType, datasetKey, monthKey, compareKey) {
+        const normalizedSheetType = normalizeSheetType(sheetType);
+        const previousSheetType = normalizeSheetType(modal?.dataset?.sheetType);
+        const rendered = renderModalForExtract(modal, normalizedSheetType, datasetKey, monthKey, compareKey);
+        if (!rendered && previousSheetType !== normalizedSheetType) return null;
+        const reportCardHtml = buildVisibleReportCardHtml(modal, normalizedSheetType);
+        if (!reportCardHtml) return null;
+        return normalizedSheetType === 'analysis'
+            ? {
+                fileName: buildAnalysisExtractFileName(modal),
+                html: buildAnalysisExtractDocumentHtml(modal, reportCardHtml)
+            }
+            : {
+                fileName: buildExtractFileName(modal),
+                html: buildMeterExtractDocumentHtml(modal, reportCardHtml)
+            };
+    }
+
+    function buildCombinedExtractDocument(modal, datasetKey, monthKey, compareKey) {
+        const normalizedDatasetKey = resolveDatasetKey('meter', datasetKey);
+        if (!renderModalForExtract(modal, 'meter', normalizedDatasetKey, monthKey, compareKey)) {
+            return null;
+        }
+        const meterTitle = getTextContent(modal, '[data-role="util-sheet-report-title"]', '검침표');
+        const meterReportCardHtml = buildVisibleReportCardHtml(modal, 'meter');
+        if (!meterReportCardHtml) return null;
+
+        if (!renderModalForExtract(modal, 'analysis', normalizedDatasetKey, monthKey, compareKey)) {
+            return null;
+        }
+        const analysisTitle = getTextContent(modal, '[data-role="util-sheet-report-title"]', '분석표');
+        const analysisReportCardHtml = buildVisibleReportCardHtml(modal, 'analysis');
+        if (!analysisReportCardHtml) return null;
+
+        return {
+            fileName: buildCombinedExtractFileName(modal, monthKey),
+            html: buildCombinedExtractDocumentHtml(modal, {
+                datasetKey: normalizedDatasetKey,
+                meterTitle,
+                analysisTitle,
+                meterReportCardHtml,
+                analysisReportCardHtml
+            })
+        };
+    }
+
+    function runUtilSheetReportExtract(modal, selectedSheetTypes = null) {
+        if (!modal) return false;
+        const sheetTypes = Array.isArray(selectedSheetTypes) && selectedSheetTypes.length
+            ? selectedSheetTypes.map(normalizeSheetType)
+            : getSelectedExtractSheetTypes(modal);
+        const uniqueSheetTypes = Array.from(new Set(sheetTypes)).filter(sheetType => sheetType === 'meter' || sheetType === 'analysis');
+        if (!uniqueSheetTypes.length) {
+            runtimeAdapter.alert('추출할 항목을 선택해 주세요.');
+            return false;
+        }
+        const snapshot = snapshotModalExtractState(modal);
+        const originalSheetType = normalizeSheetType(snapshot.dataset?.sheetType || modal.dataset.sheetType);
+        const datasetKey = resolveDatasetKey(originalSheetType, snapshot.dataset?.datasetKey || UtilSheetReportState[originalSheetType] || 'gas');
+        const monthKey = getCurrentExtractMonthKey(modal);
+        const compareKey = normalizeCompareKey(snapshot.dataset?.compareKey || UtilSheetCompareState[originalSheetType] || 'month');
+        let success = true;
+
+        try {
+            const documentResults = uniqueSheetTypes.includes('meter') && uniqueSheetTypes.includes('analysis')
+                ? [buildCombinedExtractDocument(modal, datasetKey, monthKey, compareKey)]
+                : uniqueSheetTypes.map(sheetType => buildExtractDocumentForSheetType(modal, sheetType, datasetKey, monthKey, compareKey));
+
+            documentResults.forEach(documentResult => {
+                if (!documentResult?.html || !documentResult?.fileName) {
+                    success = false;
+                    runtimeAdapter.alert('추출할 보고서 화면을 만들 수 없습니다.');
+                    return;
+                }
+                if (!downloadOrPreviewExtractHtml(documentResult.fileName, documentResult.html)) {
+                    success = false;
+                }
+            });
+        } finally {
+            restoreModalExtractState(modal, snapshot);
+            closeUtilSheetExtractOptions(modal);
+        }
+
+        return success;
     }
 
     function ensureUtilSheetReportModal() {
@@ -1778,6 +2555,7 @@
                         <div class="util-sheet-report-head-kicker" data-role="util-sheet-report-kicker">GAS REPORT</div>
                         <div class="util-sheet-report-head-title" data-role="util-sheet-report-title">보고서</div>
                         <div class="util-sheet-report-head-sub" data-role="util-sheet-report-sub">기준: -</div>
+                        <div class="util-sheet-analysis-head-controls" data-role="util-sheet-analysis-header-controls" hidden></div>
                     </div>
                     <div class="util-sheet-report-head-actions">
                         <div class="util-sheet-report-main-controls">
@@ -1801,7 +2579,33 @@
                                 <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-modal-compare-select" data-compare-key="year" aria-pressed="false">전년대비</button>
                             </div>
                         </div>
-                        <button type="button" class="work-btn" data-role="util-sheet-report-print" aria-label="검침표 추출" title="검침표 추출">추출</button>
+                        <button type="button" class="work-btn" data-role="util-sheet-report-print" aria-label="추출" title="추출">추출</button>
+                        <div class="util-sheet-extract-options" data-role="util-sheet-extract-options" role="dialog" aria-modal="true" aria-label="추출 선택" hidden>
+                            <div class="util-sheet-extract-options-card">
+                                <div class="util-sheet-extract-options-head">
+                                    <div class="util-sheet-extract-options-title">추출 선택</div>
+                                    <button type="button" class="util-sheet-report-icon-btn is-close" data-role="util-sheet-extract-cancel" aria-label="취소" title="취소">
+                                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                                <div class="util-sheet-extract-options-body">
+                                    <fieldset class="util-sheet-extract-options-group">
+                                        <legend>추출 항목</legend>
+                                        <label class="util-sheet-extract-option">
+                                            <input type="checkbox" data-role="util-sheet-extract-option" data-extract-sheet-type="meter">
+                                            <span>검침표</span>
+                                        </label>
+                                        <label class="util-sheet-extract-option">
+                                            <input type="checkbox" data-role="util-sheet-extract-option" data-extract-sheet-type="analysis">
+                                            <span>분석표</span>
+                                        </label>
+                                    </fieldset>
+                                </div>
+                                <div class="util-sheet-extract-options-actions">
+                                    <button type="button" class="work-btn" data-role="util-sheet-extract-run">확인</button>
+                                </div>
+                            </div>
+                        </div>
                         <div class="util-sheet-report-window-actions">
                             <button type="button" class="util-sheet-report-icon-btn" data-role="util-sheet-report-expand" aria-label="전체화면" title="전체화면">
                                 <i class="fa-solid fa-expand" data-role="util-sheet-report-expand-icon" aria-hidden="true"></i>
@@ -1835,7 +2639,15 @@
                 return;
             }
             if (findClosest(target, '[data-role="util-sheet-report-print"]')) {
-                openUtilSheetReportExtract(modal);
+                openUtilSheetExtractOptions(modal);
+                return;
+            }
+            if (findClosest(target, '[data-role="util-sheet-extract-cancel"]')) {
+                closeUtilSheetExtractOptions(modal);
+                return;
+            }
+            if (findClosest(target, '[data-role="util-sheet-extract-run"]')) {
+                runUtilSheetReportExtract(modal);
                 return;
             }
             if (findClosest(target, '[data-role="util-sheet-report-expand"]')) {
@@ -1919,6 +2731,12 @@
 
         modal.addEventListener('keydown', event => {
             if (event?.key !== 'Escape') return;
+            if (modal.dataset.extractOptionsOpen === 'true') {
+                event.preventDefault?.();
+                event.stopPropagation?.();
+                closeUtilSheetExtractOptions(modal);
+                return;
+            }
             if (modal.classList?.contains?.('is-analysis-chart-fullscreen')) {
                 event.preventDefault?.();
                 event.stopPropagation?.();
@@ -1933,6 +2751,14 @@
             }
         });
 
+        modal.addEventListener('input', event => {
+            const manualMemo = findClosest(event?.target || null, '[data-role="util-sheet-report-manual-memo"]');
+            if (!manualMemo) return;
+            const sheetType = normalizeSheetType(modal.dataset.sheetType || 'meter');
+            const datasetKey = resolveDatasetKey(sheetType, modal.dataset.datasetKey || UtilSheetReportState[sheetType] || 'gas');
+            setManualMemoText(modal, sheetType, datasetKey, manualMemo.value || '');
+        });
+
         modal.addEventListener('change', event => {
             const target = event?.target || null;
             const labelToggleContext = typeof runtime.resolveUtilSheetAnalysisLabelToggleContext === 'function'
@@ -1943,6 +2769,16 @@
                     labelToggleContext.datasetKey,
                     labelToggleContext.chartKey,
                     labelToggleContext.toggleEl.checked === true
+                );
+                rerenderAndSync(modal);
+                return;
+            }
+            const seriesLabelToggle = findClosest(target, '[data-role="util-sheet-analysis-series-label-toggle"]');
+            if (seriesLabelToggle && typeof runtime.setUtilSheetAnalysisSeriesShowLabels === 'function') {
+                runtime.setUtilSheetAnalysisSeriesShowLabels(
+                    getActiveAnalysisDatasetKey(modal),
+                    seriesLabelToggle.dataset.chartKey || '',
+                    seriesLabelToggle.checked === true
                 );
                 rerenderAndSync(modal);
                 return;
@@ -1973,6 +2809,16 @@
                     getActiveAnalysisDatasetKey(modal),
                     unitSelect.dataset.chartKey || '',
                     unitSelect.value || ''
+                );
+                rerenderAndSync(modal);
+                return;
+            }
+            const decimalsSelect = findClosest(target, '[data-role="util-sheet-analysis-decimals"]');
+            if (decimalsSelect && typeof runtime.setUtilSheetAnalysisDecimals === 'function') {
+                runtime.setUtilSheetAnalysisDecimals(
+                    getActiveAnalysisDatasetKey(modal),
+                    decimalsSelect.dataset.chartKey || '',
+                    decimalsSelect.value || '0'
                 );
                 rerenderAndSync(modal);
                 return;

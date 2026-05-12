@@ -209,10 +209,7 @@
         function confirmAuditLegalFacilityDelete(facilityName) {
             const targetName = facilityName || '선택한 설비';
             const message = `${targetName}을(를) 정말로 삭제하시겠습니까?`;
-            if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-                return window.confirm(message);
-            }
-            return true;
+            return auditLegalBrowser?.confirm?.(message) !== false;
         }
 
         async function deleteAuditLegalFacility(category, data, facilityId) {
