@@ -708,7 +708,7 @@ test('report sheet modal shell extraction can select meter and analysis together
   assert.deepEqual(harness.alertMessages, []);
 });
 
-test('report sheet modal shell extraction keeps electric meter output static', () => {
+test('report sheet modal shell extraction renders electric meter output statically', () => {
   const { context, harness } = createModalShellContext();
   const modalShell = context.KPIUtilReportSheetModalShell;
 
@@ -812,17 +812,21 @@ test('report sheet modal shell extraction keeps electric meter output static', (
   assert.deepEqual(harness.clickedDownloads, [
     { href: 'blob:meter-report', download: 'utility-meter-electric-2026-02.html' },
   ]);
-  assert.deepEqual(comparisonCalls, []);
+  assert.deepEqual(comparisonCalls, [{
+    model: { ready: true, monthKey: '2026-02', compareKey: 'year', teamKey: 'combined' },
+    teamDatasetResult: { option: { key: 'combined', label: 'COMBINED_TEAM' }, latestRow: { monthKey: '2026-02' } },
+    viewKey: 'team',
+  }]);
 
   const html = String(harness.blobParts[0] || '');
   assert.doesNotMatch(html, /utilSheetElectricMeterExtractRuntime/);
   assert.doesNotMatch(html, /data-role="util-sheet-electric-extract-views"/);
-  assert.doesNotMatch(html, /data-active-view="team"/);
-  assert.match(html, /OLD_HERO/);
-  assert.match(html, /OLD_VIEW/);
+  assert.match(html, /data-rendered-electric-view="team"/);
+  assert.doesNotMatch(html, /OLD_HERO/);
+  assert.doesNotMatch(html, /OLD_VIEW/);
   assert.doesNotMatch(html, /ELECTRIC_METER_VIEW/);
   assert.doesNotMatch(html, /ELECTRIC_ALLOCATION_VIEW/);
-  assert.doesNotMatch(html, /ELECTRIC_TEAM_VIEW/);
+  assert.match(html, /ELECTRIC_TEAM_VIEW/);
   assert.deepEqual(harness.alertMessages, []);
 });
 
@@ -1066,11 +1070,11 @@ test('kpi html loads report sheet modal shell before modal render and sheet.js',
   );
 
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=053');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=076');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=057');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=057');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=059');
+  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=055');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=085');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=061');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=062');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');

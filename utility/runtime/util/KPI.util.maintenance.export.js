@@ -29,8 +29,9 @@
                     : null;
                 if (costs) {
                     let hasDetailValue = false;
-                    Object.keys(costs).forEach(key => {
-                        const numeric = parseUtilAmount(costs[key]);
+                    Object.keys(costs).forEach(rawKey => {
+                        const key = rawKey === 'outsourcing' ? 'labor' : rawKey;
+                        const numeric = parseUtilAmount(costs[rawKey]);
                         if (!Number.isFinite(numeric)) return;
                         totals[key] = (Number(totals[key]) || 0) + numeric;
                         hasValue = true;

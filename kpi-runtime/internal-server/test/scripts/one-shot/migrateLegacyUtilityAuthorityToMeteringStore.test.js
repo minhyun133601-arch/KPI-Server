@@ -4,7 +4,9 @@ import test from 'node:test';
 import {
   GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LNG_KEY,
   WASTE_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY,
+  WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY,
   WASTE_BUKJEONG_TEAM_KEY,
+  WASTE_YUSAN_TEAM_KEY,
 } from '../../../src/scripts/one-shot/migrateLegacyUtilityAuthorityToMeteringStore/constants.js';
 import { migrateGasAuthorityValues, migrateWasteAuthorityValues } from '../../../src/scripts/one-shot/migrateLegacyUtilityAuthorityToMeteringStore/migrators.js';
 import { buildSummary, extractLegacyMonthlyRows } from '../../../src/scripts/one-shot/migrateLegacyUtilityAuthorityToMeteringStore/store.js';
@@ -89,4 +91,29 @@ test('migrateWasteAuthorityValues writes usage and fallback billing amount for w
   );
   assert.equal(summary.wasteUsageWritten, 1);
   assert.equal(summary.wasteSettlementWritten, 1);
+});
+
+test('migrateWasteAuthorityValues maps legacy yusan outsourcing to labor', () => {
+  const store = {
+    resourceDatasets: {
+      waste: {
+        billingSettlementEntries: {},
+        teamMonthlyEntries: {},
+      },
+    },
+  };
+  const legacyTeamMaps = new Map([
+    ['유산', new Map([['2026-04', { usage: 7, cost: 500, costs: { outsourcing: 500 } }]])],
+  ]);
+  const summary = buildSummary();
+
+  migrateWasteAuthorityValues(store, legacyTeamMaps, summary, { overwrite: true });
+
+  const fields =
+    store.resourceDatasets.waste.billingSettlementEntries['2026-04'].scopes[
+      WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY
+    ].fields;
+  assert.equal(store.resourceDatasets.waste.teamMonthlyEntries['2026-04'][WASTE_YUSAN_TEAM_KEY], 7);
+  assert.equal(fields.labor, '500');
+  assert.equal(fields.outsourcing, undefined);
 });

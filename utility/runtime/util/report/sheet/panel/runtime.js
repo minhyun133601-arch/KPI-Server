@@ -27,6 +27,7 @@
         escapeUtilSheetHtml: null,
         renderUtilSheetPanel: null,
         openUtilSheetReportModal: null,
+        openUtilSheetMonthlyReportExtractOptions: null,
         closeUtilActionMenus: null
     };
 
@@ -278,6 +279,24 @@
         const root = scope || runtimeAdapter.getDocument();
         if (!root?.querySelectorAll) return;
 
+        root.querySelectorAll('[data-role="util-sheet-monthly-report-panel"]').forEach(panel => {
+            if (panel.dataset.bound === 'true') return;
+            panel.dataset.bound = 'true';
+            const openMonthlyReport = event => {
+                if (event?.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+                event?.preventDefault?.();
+                const doc = runtimeAdapter.getDocument();
+                if (typeof runtime.closeUtilActionMenus === 'function' && doc) {
+                    runtime.closeUtilActionMenus(doc);
+                }
+                if (typeof runtime.openUtilSheetMonthlyReportExtractOptions === 'function') {
+                    runtime.openUtilSheetMonthlyReportExtractOptions();
+                }
+            };
+            panel.addEventListener('click', openMonthlyReport);
+            panel.addEventListener('keydown', openMonthlyReport);
+        });
+
         root.querySelectorAll('[data-role="util-sheet-panel"]').forEach(panel => {
             const sheetType = normalizeUtilSheetType(panel.dataset.sheetType);
             panel.dataset.sheetType = sheetType;
@@ -294,12 +313,14 @@
                 if (button.dataset.bound === 'true') return;
                 button.dataset.bound = 'true';
                 button.addEventListener('click', () => {
-                    const nextSheetType = getUtilSheetAlternateType(panel.dataset.sheetType);
-                    panel.dataset.sheetType = nextSheetType;
-                    panel.dataset.datasetKey = resolveUtilSheetReportDatasetKey(
-                        nextSheetType,
-                        panel.dataset.datasetKey || UtilSheetReportState[nextSheetType]
+                    const currentSheetType = normalizeUtilSheetType(panel.dataset.sheetType);
+                    const currentDatasetKey = resolveUtilSheetReportDatasetKey(
+                        currentSheetType,
+                        panel.dataset.datasetKey || UtilSheetReportState[currentSheetType] || 'gas'
                     );
+                    const nextSheetType = getUtilSheetAlternateType(currentSheetType);
+                    panel.dataset.sheetType = nextSheetType;
+                    panel.dataset.datasetKey = resolveUtilSheetReportDatasetKey(nextSheetType, currentDatasetKey);
                     panel.dataset.monthKey = String(UtilSheetReportMonthState[nextSheetType] || panel.dataset.monthKey || '').trim();
                     panel.dataset.compareKey = normalizeUtilSheetCompareKey(UtilSheetCompareState[nextSheetType] || panel.dataset.compareKey || 'month');
                     if (typeof runtime.renderUtilSheetPanel === 'function') {

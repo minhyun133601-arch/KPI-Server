@@ -227,7 +227,12 @@ export function sumLegacyCosts(legacyTeamMaps, monthValue, teamNames) {
 export function writeWasteLegacyFields(costs, configByTeam, fallbackCost) {
   const fields = {};
   configByTeam.allowedCostKeys.forEach((fieldKey) => {
-    const numericValue = roundWholeNumber(costs?.[fieldKey]);
+    const rawValue = costs?.[fieldKey];
+    const sourceValue =
+      fieldKey === 'labor' && (rawValue === null || rawValue === undefined)
+        ? costs?.outsourcing
+        : rawValue;
+    const numericValue = roundWholeNumber(sourceValue);
     if (Number.isFinite(numericValue)) {
       fields[fieldKey] = numericValue;
     }

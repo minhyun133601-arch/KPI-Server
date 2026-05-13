@@ -238,7 +238,13 @@
             if (!row || !costs || typeof costs !== 'object') return false;
             let changed = false;
             const currentCosts = row.costs && typeof row.costs === 'object' ? row.costs : {};
-            const nextKeys = new Set([...Object.keys(currentCosts), ...Object.keys(costs)]);
+            const normalizedCosts = {};
+            Object.entries(costs).forEach(([rawKey, rawValue]) => {
+                const key = rawKey === 'outsourcing' ? 'labor' : rawKey;
+                if (!key) return;
+                normalizedCosts[key] = rawValue;
+            });
+            const nextKeys = new Set([...Object.keys(currentCosts), ...Object.keys(normalizedCosts)]);
             if (!row.costs || typeof row.costs !== 'object') {
                 row.costs = {};
                 changed = true;
@@ -248,7 +254,7 @@
             let hasComponentValue = false;
             nextKeys.forEach((key) => {
                 if (key === 'total') return;
-                const nextValue = normalizeUtilMetricValue(costs[key]);
+                const nextValue = normalizeUtilMetricValue(normalizedCosts[key]);
                 const currentValue = normalizeUtilMetricValue(row.costs[key]);
                 if (currentValue !== nextValue) {
                     row.costs[key] = nextValue;
@@ -260,7 +266,7 @@
                 }
             });
 
-            const explicitTotal = normalizeUtilMetricValue(costs.total);
+            const explicitTotal = normalizeUtilMetricValue(normalizedCosts.total);
             const resolvedTotal = explicitTotal !== null
                 ? explicitTotal
                 : hasComponentValue

@@ -85,7 +85,9 @@ function createTeamMonthlyContext() {
       return 'waste_bukjeong';
     },
     getWasteBillingSettlementTeamKeyForScope(scopeKey) {
-      return scopeKey === 'waste_bukjeong' ? 'waste_bukjeong' : '';
+      if (scopeKey === 'waste_bukjeong') return 'waste_bukjeong';
+      if (scopeKey === 'waste_yusan') return 'waste_yusan';
+      return '';
     },
     getWasteBillingSettlementManualCostFieldKeys() {
       return ['water', 'labor'];
@@ -159,5 +161,28 @@ test('team monthly runtime builds waste billing fallback entries from portal-lik
   assert.equal(fallbackEntry.completed, false);
   assert.equal(fallbackEntry.fields.water, '1200');
   assert.equal(fallbackEntry.fields.labor, '300');
+  assert.equal(fallbackEntry.fields.billing_amount, '2500');
+});
+
+test('team monthly runtime maps legacy yusan outsourcing fallback to labor', () => {
+  const { context } = createTeamMonthlyContext();
+
+  context.findWastePortalMonthRow = () => ({
+    cost: '2500',
+    costs: {
+      water: '1200',
+      outsourcing: '300',
+    },
+  });
+
+  const fallbackEntry = context.buildWasteBillingSettlementFallbackEntry(
+    '2026-04',
+    'waste_yusan'
+  );
+
+  assert.ok(fallbackEntry);
+  assert.equal(fallbackEntry.fields.water, '1200');
+  assert.equal(fallbackEntry.fields.labor, '300');
+  assert.equal(fallbackEntry.fields.outsourcing, undefined);
   assert.equal(fallbackEntry.fields.billing_amount, '2500');
 });

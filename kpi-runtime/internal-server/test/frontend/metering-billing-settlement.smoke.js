@@ -61,6 +61,12 @@ function createBillingSettlementContext(options = {}) {
     'billing_amount',
     'usage_fee',
     'discount',
+    'water',
+    'share',
+    'sludge',
+    'resin',
+    'labor',
+    'outsourcing',
   ]);
 
   const context = {
@@ -322,6 +328,10 @@ function createBillingSettlementContext(options = {}) {
       return ['usage_fee'];
     },
     getWasteBillingSettlementBillingAmountComponents() {
+      if (options.wasteBillingAmountComponents) {
+        return options.wasteBillingAmountComponents;
+      }
+
       return [
         { key: 'usage_fee', sign: 1 },
         { key: 'discount', sign: -1 },
@@ -430,6 +440,43 @@ test('billing settlement derives missing gas calorific value from preserved bill
 
   assert.equal(fields.calorific_value, '43.211');
   assert.equal(fields.billed_quantity_mj, '432.110');
+});
+
+test('billing settlement reads legacy yusan outsourcing as labor', () => {
+  const { context } = createBillingSettlementContext({
+    resourceType: 'waste',
+    currentScopeKey: 'waste_yusan',
+    resourceTypeByScope: { waste_yusan: 'waste' },
+    fields: [
+      { key: 'water' },
+      { key: 'share' },
+      { key: 'sludge' },
+      { key: 'resin' },
+      { key: 'labor' },
+      { key: 'unit_price' },
+      { key: 'billing_amount' },
+    ],
+    wasteBillingAmountComponents: [
+      { key: 'water', sign: 1 },
+      { key: 'share', sign: 1 },
+      { key: 'sludge', sign: 1 },
+      { key: 'resin', sign: 1 },
+      { key: 'labor', sign: 1 },
+    ],
+  });
+
+  const fields = context.resolveBillingSettlementFields(
+    {
+      water: '100',
+      outsourcing: '25',
+    },
+    '2026-04',
+    'waste_yusan'
+  );
+
+  assert.equal(fields.labor, '25');
+  assert.equal(fields.outsourcing, undefined);
+  assert.equal(fields.billing_amount, '125');
 });
 
 test('billing settlement completion state excludes calorific value when gas usage base is missing', () => {

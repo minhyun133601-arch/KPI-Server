@@ -16,11 +16,10 @@
             tone: ''
         };
         const GLOBAL_RECENT_UPDATE_STORAGE_KEY = 'kpi:global-recent-update';
-        const DASHBOARD_SECTION_ORDER = ['work', 'util', 'audit', 'data', 'productionReport', 'owner'];
+        const DASHBOARD_SECTION_ORDER = ['work', 'util', 'audit', 'data', 'owner'];
         const DASHBOARD_SECTION_SOFT = Object.freeze({
             util: '#fff7ed',
             work: '#ecfdf5',
-            productionReport: '#e8f1f8',
             audit: '#fef2f2',
             data: '#f8fafc',
             owner: '#f5f3ff'
@@ -35,7 +34,6 @@
                 util: false,
                 audit: false,
                 data: false,
-                productionReport: false,
                 owner: false
             }
         };

@@ -16,6 +16,8 @@
         buildUtilReportMonthlyRows: null,
         shiftUtilSheetMonthKey: null,
         compareUtilSheetMonthKeys: null,
+        normalizeUtilSheetCompareKey: null,
+        getUtilSheetCompareLabel: null,
         renderUtilIndependentBoundsMultiSeriesChart: null,
         formatUtilReportMonthLong: null,
         formatUtilReportMonthShort: null
@@ -23,22 +25,35 @@
 
     const WASTE_METER_SITE_SPECS = Object.freeze([
         Object.freeze({
-            key: 'yusan',
-            label: '유산',
-            wasteTeam: '유산',
-            productionTeam: '유산',
-            productionDateLabel: '1 ~ 31',
-            color: '#7c3aed'
-        }),
-        Object.freeze({
             key: 'bukjeong',
             label: '북정',
             wasteTeam: '북정',
             productionTeam: '북정',
             productionDateLabel: '16 ~ 15',
             color: '#be185d'
+        }),
+        Object.freeze({
+            key: 'yusan',
+            label: '유산',
+            wasteTeam: '유산',
+            productionTeam: '유산',
+            productionDateLabel: '1 ~ 31',
+            color: '#7c3aed'
         })
     ]);
+    const WASTE_METER_SITE_OPTIONS = Object.freeze([
+        Object.freeze({ key: 'all', label: '합계' }),
+        ...WASTE_METER_SITE_SPECS.map(siteSpec => Object.freeze({
+            key: siteSpec.key,
+            label: siteSpec.label
+        }))
+    ]);
+    const WASTE_METER_AGGREGATE_SITE_SPEC = Object.freeze({
+        key: 'all',
+        label: '합계',
+        productionDateLabel: '북정 16 ~ 15 · 유산 1 ~ 31',
+        color: '#0f766e'
+    });
 
     const WASTE_METER_ROWS = Object.freeze([
         Object.freeze({ group: '폐수', label: '생산량 (kg)', key: 'production', type: 'quantity', unit: 'kg' }),
@@ -108,6 +123,12 @@
         return `${sign}${percent.toFixed(1)}%`;
     }
 
+    function getDeltaClass(value) {
+        const number = finite(value);
+        if (!Number.isFinite(number) || number === 0) return 'is-delta-flat';
+        return number > 0 ? 'is-delta-up' : 'is-delta-down';
+    }
+
     function shiftMonthKey(monthKey = '', offset = 0) {
         return typeof runtime.shiftUtilSheetMonthKey === 'function'
             ? runtime.shiftUtilSheetMonthKey(monthKey, offset)
@@ -120,6 +141,19 @@
             : String(left || '').localeCompare(String(right || ''), 'ko');
     }
 
+    function normalizeCompareKey(compareKey = 'month') {
+        return typeof runtime.normalizeUtilSheetCompareKey === 'function'
+            ? runtime.normalizeUtilSheetCompareKey(compareKey)
+            : (String(compareKey || '').trim() === 'year' ? 'year' : 'month');
+    }
+
+    function getCompareLabel(compareKey = 'month') {
+        const normalizedCompareKey = normalizeCompareKey(compareKey);
+        return typeof runtime.getUtilSheetCompareLabel === 'function'
+            ? runtime.getUtilSheetCompareLabel(normalizedCompareKey)
+            : (normalizedCompareKey === 'year' ? '전년대비' : '전월대비');
+    }
+
     function formatMonthLong(monthKey = '') {
         return typeof runtime.formatUtilReportMonthLong === 'function'
             ? runtime.formatUtilReportMonthLong(monthKey)
@@ -130,6 +164,19 @@
         return typeof runtime.buildUtilSheetMonthBounds === 'function'
             ? runtime.buildUtilSheetMonthBounds('waste')
             : null;
+    }
+
+    function normalizeWasteMeterSiteKey(siteKey = 'all') {
+        const normalizedKey = String(siteKey || '').trim();
+        return WASTE_METER_SITE_OPTIONS.some(option => option.key === normalizedKey)
+            ? normalizedKey
+            : 'all';
+    }
+
+    function getWasteMeterSiteOption(siteKey = 'all') {
+        const normalizedKey = normalizeWasteMeterSiteKey(siteKey);
+        return WASTE_METER_SITE_OPTIONS.find(option => option.key === normalizedKey)
+            || WASTE_METER_SITE_OPTIONS[0];
     }
 
     function buildSiteRows(bounds, siteSpec) {
@@ -153,9 +200,88 @@
             .some(value => Number.isFinite(Number(value)) && Number(value) > 0);
     }
 
+    function sumFiniteValues(rows = [], selector) {
+        let hasValue = false;
+        const total = (Array.isArray(rows) ? rows : []).reduce((sum, row) => {
+            const value = finite(typeof selector === 'function' ? selector(row) : null);
+            if (!Number.isFinite(value)) return sum;
+            hasValue = true;
+            return sum + value;
+        }, 0);
+        return hasValue ? total : null;
+    }
+
+    function mergeWasteRowsForMonth(monthKey = '', rows = []) {
+        const sourceRows = (Array.isArray(rows) ? rows : []).filter(Boolean);
+        const firstRow = sourceRows[0] || {};
+        const normalizedMonthKey = String(monthKey || firstRow?.monthKey || '').trim();
+        const monthMatch = /^(\d{4})-(\d{2})$/.exec(normalizedMonthKey);
+        const production = sumFiniteValues(sourceRows, row => row?.production);
+        const wasteUsage = sumFiniteValues(sourceRows, row => row?.wasteUsage);
+        const wasteCost = sumFiniteValues(sourceRows, row => row?.wasteCost);
+        const detailKeys = new Set();
+        sourceRows.forEach(row => {
+            Object.keys(row?.wasteCostDetails || {}).forEach(key => detailKeys.add(key));
+        });
+        const wasteCostDetails = {};
+        Array.from(detailKeys).forEach(key => {
+            const total = sumFiniteValues(sourceRows, row => row?.wasteCostDetails?.[key]);
+            if (Number.isFinite(total)) wasteCostDetails[key] = total;
+        });
+
+        return {
+            monthKey: normalizedMonthKey,
+            year: Number.isFinite(Number(firstRow?.year)) ? Number(firstRow.year) : Number(monthMatch?.[1]),
+            month: Number.isFinite(Number(firstRow?.month)) ? Number(firstRow.month) : Number(monthMatch?.[2]),
+            production,
+            wasteUsage,
+            wasteCost,
+            wasteUnit: Number.isFinite(wasteCost) && Number.isFinite(production) && production > 0
+                ? wasteCost / production
+                : null,
+            wasteCostDetails
+        };
+    }
+
+    function buildAggregateRows(siteModels = []) {
+        const rowsByMonth = new Map();
+        (Array.isArray(siteModels) ? siteModels : []).forEach(model => {
+            (Array.isArray(model?.rows) ? model.rows : []).forEach(row => {
+                const monthKey = String(row?.monthKey || '').trim();
+                if (!monthKey) return;
+                if (!rowsByMonth.has(monthKey)) rowsByMonth.set(monthKey, []);
+                rowsByMonth.get(monthKey).push(row);
+            });
+        });
+        return Array.from(rowsByMonth.entries())
+            .sort(([leftKey], [rightKey]) => compareMonthKeys(leftKey, rightKey))
+            .map(([monthKey, rows]) => mergeWasteRowsForMonth(monthKey, rows));
+    }
+
+    function buildSiteResult(siteSpec = {}, rows = [], activeMonthKey = '', referenceMonthKey = '') {
+        const rowMap = new Map((Array.isArray(rows) ? rows : []).map(row => [String(row?.monthKey || '').trim(), row]));
+        return {
+            ...siteSpec,
+            rows,
+            currentRow: rowMap.get(activeMonthKey) || null,
+            referenceRow: rowMap.get(referenceMonthKey) || null,
+            chartSeries: buildYearSeries(rows, activeMonthKey, siteSpec)
+        };
+    }
+
     function getMetricValue(row = {}, metric = {}) {
         if (!row) return null;
-        if (metric.detailKey) return finite(row?.wasteCostDetails?.[metric.detailKey]);
+        if (metric.detailKey) {
+            if (metric.detailKey === 'labor') {
+                const laborValue = finite(row?.wasteCostDetails?.labor);
+                const legacyOutsourcingValue = finite(row?.wasteCostDetails?.outsourcing);
+                if (Number.isFinite(laborValue) || Number.isFinite(legacyOutsourcingValue)) {
+                    return (Number.isFinite(laborValue) ? laborValue : 0)
+                        + (Number.isFinite(legacyOutsourcingValue) ? legacyOutsourcingValue : 0);
+                }
+            }
+            return finite(row?.wasteCostDetails?.[metric.detailKey]);
+        }
         return finite(row?.[metric.key]);
     }
 
@@ -195,17 +321,25 @@
         }));
     }
 
-    function buildUtilWasteMeterModel(selectedMonthKey = '') {
+    function buildUtilWasteMeterModel(selectedMonthKey = '', siteKey = 'all', compareKey = 'month') {
         const bounds = buildMonthBounds();
+        const siteOption = getWasteMeterSiteOption(siteKey);
+        const normalizedCompareKey = normalizeCompareKey(compareKey);
         if (!bounds) {
             return {
                 hasData: false,
                 monthKey: '',
+                compareKey: normalizedCompareKey,
+                compareLabel: getCompareLabel(normalizedCompareKey),
+                siteOption,
                 sites: []
             };
         }
 
-        const siteModels = WASTE_METER_SITE_SPECS.map(siteSpec => {
+        const selectedSiteSpecs = siteOption.key === 'all'
+            ? WASTE_METER_SITE_SPECS
+            : WASTE_METER_SITE_SPECS.filter(siteSpec => siteSpec.key === siteOption.key);
+        const siteModels = selectedSiteSpecs.map(siteSpec => {
             const rows = buildSiteRows(bounds, siteSpec);
             return { siteSpec, rows };
         });
@@ -217,23 +351,20 @@
         const activeMonthKey = availableMonthKeys.includes(selectedMonthKey)
             ? selectedMonthKey
             : (availableMonthKeys[availableMonthKeys.length - 1] || selectedMonthKey || bounds.to);
-        const previousYearKey = shiftMonthKey(activeMonthKey, -12);
+        const referenceMonthKey = shiftMonthKey(activeMonthKey, normalizedCompareKey === 'year' ? -12 : -1);
 
         return {
             hasData: Boolean(activeMonthKey),
             monthKey: activeMonthKey,
             monthLabel: formatMonthLong(activeMonthKey),
-            previousYearKey,
-            sites: siteModels.map(model => {
-                const rowMap = new Map(model.rows.map(row => [String(row?.monthKey || '').trim(), row]));
-                return {
-                    ...model.siteSpec,
-                    rows: model.rows,
-                    currentRow: rowMap.get(activeMonthKey) || null,
-                    referenceRow: rowMap.get(previousYearKey) || null,
-                    chartSeries: buildYearSeries(model.rows, activeMonthKey, model.siteSpec)
-                };
-            })
+            compareKey: normalizedCompareKey,
+            compareLabel: getCompareLabel(normalizedCompareKey),
+            referenceMonthKey,
+            previousYearKey: referenceMonthKey,
+            siteOption,
+            sites: siteOption.key === 'all'
+                ? [buildSiteResult(WASTE_METER_AGGREGATE_SITE_SPEC, buildAggregateRows(siteModels), activeMonthKey, referenceMonthKey)]
+                : siteModels.map(model => buildSiteResult(model.siteSpec, model.rows, activeMonthKey, referenceMonthKey))
         };
     }
 
@@ -256,14 +387,15 @@
             const delta = Number.isFinite(currentValue) && Number.isFinite(referenceValue)
                 ? currentValue - referenceValue
                 : null;
+            const deltaClass = getDeltaClass(delta);
             return `
                 <tr>
                     <th class="is-group">${escapeHtml(metric.group || '')}</th>
                     <th>${escapeHtml(metric.label)}</th>
                     <td>${escapeHtml(formatMetricValue(referenceValue, metric))}</td>
                     <td>${escapeHtml(formatMetricValue(currentValue, metric))}</td>
-                    <td>${escapeHtml(formatMetricDelta(delta, metric))}</td>
-                    <td>${escapeHtml(formatPercent(currentValue, referenceValue))}</td>
+                    <td class="${escapeHtml(deltaClass)}">${escapeHtml(formatMetricDelta(delta, metric))}</td>
+                    <td class="${escapeHtml(deltaClass)}">${escapeHtml(formatPercent(currentValue, referenceValue))}</td>
                     <td></td>
                 </tr>
             `;
@@ -279,8 +411,8 @@
                 <th colspan="2">총 계</th>
                 <td>${escapeHtml(formatCost(referenceTotal))}</td>
                 <td>${escapeHtml(formatCost(currentTotal))}</td>
-                <td>${escapeHtml(formatSignedCost(totalDelta))}</td>
-                <td>${escapeHtml(formatPercent(currentTotal, referenceTotal))}</td>
+                <td class="${escapeHtml(getDeltaClass(totalDelta))}">${escapeHtml(formatSignedCost(totalDelta))}</td>
+                <td class="${escapeHtml(getDeltaClass(totalDelta))}">${escapeHtml(formatPercent(currentTotal, referenceTotal))}</td>
                 <td></td>
             </tr>
         `;
@@ -301,7 +433,7 @@
             axisXLabel: '월',
             showYearBands: false,
             maxXAxisLabels: 12,
-            forceWidth: 720,
+            forceWidth: 900,
             scrollWithinCanvas: true,
             height: 300
         });
@@ -319,7 +451,7 @@
                         <div class="util-sheet-meter-table-title-wrap">
                             <span class="util-sheet-meter-table-badge" aria-hidden="true"><i class="fa-solid fa-table-cells-large"></i></span>
                             <div>
-                                <div class="util-sheet-meter-table-title">${index + 1}. ${escapeHtml(site.label)} (폐수 비용) 분석</div>
+                                <div class="util-sheet-meter-table-title">${escapeHtml(site.label)} 폐수 검침표</div>
                                 <div class="util-sheet-meter-table-sub">유틸리티 기입 폐수 데이터를 기준으로 가능한 값만 채웁니다.</div>
                             </div>
                         </div>
@@ -356,18 +488,26 @@
                         ${renderWasteChart(site)}
                     </div>
                 </div>
-                <div class="util-sheet-meter-table-card is-waste-note">
-                    <div class="util-sheet-meter-table-title">특이사항</div>
-                    <div class="util-sheet-waste-note-box"></div>
-                </div>
             </article>
         `;
     }
 
-    function buildUtilWasteMeterSectionHtml(model = {}) {
+    function buildUtilWasteMeterSectionHtml(model = {}, options = {}) {
+        const controlsHtml = String(options?.controlsHtml || '');
+        const siteLabel = model?.siteOption?.label || '합계';
+        const siteSubText = model?.siteOption?.key === 'all'
+            ? '북정과 유산 값을 합산해 한 장으로 정리합니다.'
+            : `${siteLabel} 양식만 선택 기준에 맞춰 정리합니다.`;
         if (!model?.hasData) {
             return `
                 <section class="util-sheet-section util-sheet-waste-meter-section">
+                    <div class="util-sheet-section-head">
+                        <div>
+                            <div class="util-sheet-section-title">폐수 검침표</div>
+                            <div class="util-sheet-section-sub">선택한 폐수 기준의 검침표 데이터가 없습니다.</div>
+                        </div>
+                        ${controlsHtml}
+                    </div>
                     <div class="util-sheet-empty">폐수 검침표 양식을 표시할 기준월 데이터가 없습니다.</div>
                 </section>
             `;
@@ -377,8 +517,9 @@
                 <div class="util-sheet-section-head">
                     <div>
                         <div class="util-sheet-section-title">폐수 검침표</div>
-                        <div class="util-sheet-section-sub">${escapeHtml(model.monthLabel || model.monthKey || '')} 기준, 유산과 북정 양식을 참고표 형태로 정리합니다.</div>
+                        <div class="util-sheet-section-sub">${escapeHtml(model.monthLabel || model.monthKey || '')} · ${escapeHtml(siteLabel)} 기준, ${escapeHtml(siteSubText)}</div>
                     </div>
+                    ${controlsHtml}
                 </div>
                 <div class="util-sheet-waste-meter-stack">
                     ${(Array.isArray(model.sites) ? model.sites : []).map((site, index) => buildUtilWasteMeterSiteHtml({ ...site, monthKey: model.monthKey }, index)).join('')}

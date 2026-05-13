@@ -431,38 +431,6 @@ const dataFlows = [
     ],
     tags: ['생산일보', 'production daily', 'util_production_daily', 'util.production.daily', 'source metadata', 'no source file bytes'],
   },
-  {
-    id: 'monthly-performance-report',
-    tone: 'green',
-    title: { ko: '월간 실적보고', en: 'Monthly Performance Report' },
-    summary: {
-      ko: '현재는 Repository Map 옆 운영 콘솔 항목이 아니라 KPI 화면의 별도 팝업 진입점입니다. 팀 선택 UI만 있고, 아직 DB 저장 경로는 없습니다.',
-      en: 'Currently this is a KPI popup entry point with team selection only. It does not yet have a DB storage path.',
-    },
-    status: {
-      ko: '저장 미연결. 작업내역 work_history_records를 원천으로 쓰지 않도록 분리된 상태입니다.',
-      en: 'Storage not wired. It is intentionally separated from work_history_records.',
-    },
-    chain: ['KPI section launcher', 'monthly-performance-report-popup.html', 'team selection UI', 'no persistence yet'],
-    ui: [
-      'kpi-runtime/sections/KPI.sections.production-report.js',
-      'kpi-runtime/sections/monthly-performance-report-popup.html',
-    ],
-    runtime: [{ ko: '없음: 저장 API 미연결', en: 'None: persistence API not wired yet' }],
-    storage: [{ ko: '없음: DB record/table 미정', en: 'None: DB record/table not decided yet' }],
-    assets: [{ ko: '없음', en: 'None' }],
-    permissions: [{
-      ko: '미정: 저장 기능 추가 시 별도 permission_key 필요',
-      en: 'TBD: needs a permission_key when persistence is added',
-    }],
-    sharedGroups: ['no-storage'],
-    imageRefs: [{ ko: '없음: 이미지/첨부 참조 필드 미정', en: 'None: image/attachment reference fields are not decided yet' }],
-    source: [
-      'kpi-runtime/internal-server/test/frontend/production-report-section.smoke.js',
-      'kpi-runtime/internal-server/e2e/kpi-browser.playwright.js',
-    ],
-    tags: ['월간 실적보고', 'monthly performance', 'no persistence', 'popup'],
-  },
 ];
 
 const sharedStorageGroups = [
@@ -515,16 +483,6 @@ const sharedStorageGroups = [
       en: 'SQL-queryable daily production data uses util_production_daily_* tables instead of one JSON record.',
     },
     flowIds: ['utility-production-daily'],
-  },
-  {
-    id: 'no-storage',
-    tone: 'rose',
-    title: { ko: '저장 미연결 항목', en: 'No-persistence items' },
-    summary: {
-      ko: '월간 실적보고는 현재 팝업 진입점만 있고, 아직 DB record/table과 permission_key가 정해지지 않았습니다.',
-      en: 'Monthly Performance Report currently has only a popup entry point; DB record/table and permission_key are not decided yet.',
-    },
-    flowIds: ['monthly-performance-report'],
   },
 ];
 

@@ -382,8 +382,9 @@
                 const costs = (entry?.costs && typeof entry.costs === 'object') ? entry.costs : null;
                 if (costs) {
                     Object.entries(costs).forEach(([rawKey, rawValue]) => {
-                        const key = String(rawKey || '').trim();
+                        let key = String(rawKey || '').trim();
                         if (!key) return;
+                        if (key === 'outsourcing') key = 'labor';
                         const value = Number(rawValue);
                         if (!Number.isFinite(value)) return;
                         totals[key] = (totals[key] || 0) + value;

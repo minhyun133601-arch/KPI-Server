@@ -13,7 +13,6 @@ const sectionSourcePaths = [
   path.join(repoRoot, 'utility', 'runtime', 'util', 'sections', 'KPI.sections.util.js'),
   path.join(repoRoot, 'data-entry', 'runtime', 'data', 'sections', 'KPI.sections.data.js'),
   path.join(repoRoot, 'audit', 'runtime', 'audit', 'sections', 'KPI.sections.audit.js'),
-  path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.production-report.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.owner.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.section.registry.js'),
 ];
@@ -50,12 +49,11 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.equal(typeof factories.util, 'function');
   assert.equal(typeof factories.audit, 'function');
   assert.equal(typeof factories.data, 'function');
-  assert.equal(typeof factories.productionReport, 'function');
   assert.equal(typeof factories.owner, 'function');
   assert.equal(typeof registry.registerSections, 'function');
 
   const appData = registry.registerSections({});
-  assert.deepEqual(Object.keys(appData), ['work', 'util', 'audit', 'data', 'productionReport', 'owner']);
+  assert.deepEqual(Object.keys(appData), ['work', 'util', 'audit', 'data', 'owner']);
   assert.equal(appData.work.name, '팀별내역서');
   assert.equal(appData.util.name, '유틸리티');
   assert.equal(appData.audit.name, '오디트');
@@ -64,7 +62,6 @@ test('section factory adapter registers dashboard sections without direct sectio
     JSON.stringify(['audit_lux', 'audit_legal_facility'])
   );
   assert.equal(appData.data.name, '데이터 관리');
-  assert.equal(appData.productionReport.directLaunch, true);
   assert.equal(appData.owner.ownerOnly, true);
 
   const nonAdapterSources = sectionSources
@@ -80,12 +77,11 @@ test('kpi html loads section factory adapter before all section factories', () =
   const adapterIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.factory-adapter.js?v=1');
   const buildersIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.builders.js?v=215');
   const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=231');
-  const utilIndex = kpiHtml.indexOf('utility/runtime/util/sections/KPI.sections.util.js?v=241');
+  const utilIndex = kpiHtml.indexOf('utility/runtime/util/sections/KPI.sections.util.js?v=242');
   const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=6');
   const auditIndex = kpiHtml.indexOf('audit/runtime/audit/sections/KPI.sections.audit.js?v=4');
-  const productionIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.production-report.js?v=1');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
-  const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=1');
+  const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=2');
 
   assert.ok(adapterIndex >= 0, 'section factory adapter loader is missing');
   assert.ok(buildersIndex > adapterIndex, 'section builders must load after adapter');
@@ -93,7 +89,7 @@ test('kpi html loads section factory adapter before all section factories', () =
   assert.ok(utilIndex > workIndex, 'util section must load after work section');
   assert.ok(dataIndex > utilIndex, 'data section must load after util section');
   assert.ok(auditIndex > dataIndex, 'audit section must load after data section');
-  assert.ok(productionIndex > auditIndex, 'production section must load after audit section');
-  assert.ok(ownerIndex > productionIndex, 'owner section must load after production section');
+  assert.equal(kpiHtml.indexOf('KPI.sections.production-report.js'), -1, 'production report section loader must stay removed');
+  assert.ok(ownerIndex > auditIndex, 'owner section must load after audit section');
   assert.ok(registryIndex > ownerIndex, 'section registry must load after section factories');
 });

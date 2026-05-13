@@ -146,6 +146,21 @@ function findWastePortalMonthRow(teamKey, monthValue = state.currentMonth) {
   return null;
 }
 
+function getWasteBillingSettlementFallbackCostValue(costFields, scopeKey, fieldKey) {
+  const value = costFields?.[fieldKey];
+  const yusanWasteScopeKey = typeof WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY !== "undefined"
+    ? WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY
+    : "waste_yusan";
+  if (
+    fieldKey === "labor" &&
+    String(scopeKey ?? "").trim() === yusanWasteScopeKey &&
+    (value === "" || value === null || value === undefined)
+  ) {
+    return costFields?.outsourcing;
+  }
+  return value;
+}
+
 function buildWasteBillingSettlementFallbackEntry(
   monthValue = state.currentMonth,
   scopeKey = getCurrentBillingSettlementScope(RESOURCE_TYPES.WASTE)
@@ -159,7 +174,10 @@ function buildWasteBillingSettlementFallbackEntry(
   const fields = {};
   const costFields = isPlainObject(monthRow.costs) ? monthRow.costs : {};
   getWasteBillingSettlementManualCostFieldKeys(scopeKey).forEach((fieldKey) => {
-    const numericValue = normalizeTeamMonthlyAmountValue(costFields[fieldKey], null);
+    const numericValue = normalizeTeamMonthlyAmountValue(
+      getWasteBillingSettlementFallbackCostValue(costFields, scopeKey, fieldKey),
+      null
+    );
     if (Number.isFinite(numericValue)) {
       fields[fieldKey] = String(numericValue);
     }

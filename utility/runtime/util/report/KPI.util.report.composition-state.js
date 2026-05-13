@@ -122,7 +122,7 @@
                 if (!item?.key) return;
                 optionMap.set(item.key, { key: item.key, label: item.label || UTIL_REPORT_WASTE_DETAIL_LABELS[item.key] || item.key });
             });
-            ['outsourcing', 'labor'].forEach(key => {
+            ['labor'].forEach(key => {
                 optionMap.set(key, {
                     key,
                     label: UTIL_REPORT_WASTE_DETAIL_LABELS[key] || key

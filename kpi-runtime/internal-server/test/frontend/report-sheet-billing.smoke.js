@@ -108,7 +108,7 @@ test('report sheet billing registry resolves scoped gas billing descriptors from
 test('kpi html loads report sheet billing before sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
-  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=057');
+  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=058');
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(billingIndex >= 0, 'report sheet billing loader is missing');
   assert.ok(billingIndex > adapterIndex, 'report sheet billing must load after report runtime adapter');

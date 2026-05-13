@@ -132,6 +132,10 @@ test('report sheet modal actions registry updates compare and fullscreen state t
     normalizeUtilGasAnalysisCategoryKey(value) {
       return String(value || '').trim() || 'yusan';
     },
+    normalizeUtilWasteAnalysisSiteKey(value) {
+      const key = String(value || '').trim();
+      return key === 'bukjeong' || key === 'yusan' ? key : 'all';
+    },
     normalizeUtilGasAnalysisFullscreenChartKey(currentModal, chartKey) {
       assert.equal(currentModal, modal);
       return String(chartKey || '').trim() || 'combined';
@@ -170,6 +174,16 @@ test('report sheet modal actions registry updates compare and fullscreen state t
   assert.equal(modal.dataset.compareKey, 'year');
   assert.equal(config.UtilSheetCompareState.analysis, 'year');
   assert.deepEqual(panelSyncArgs, { sheetType: 'analysis', datasetKey: 'gas' });
+
+  modalActions.applyUtilWasteMeterSiteSelection(modal, 'bukjeong');
+  assert.equal(modal.dataset.wasteMeterSiteKey, 'bukjeong');
+  assert.equal(modal.dataset.wasteAnalysisSiteKey, 'bukjeong');
+  assert.equal(config.UtilSheetAnalysisState.waste.siteKey, 'bukjeong');
+
+  modalActions.applyUtilWasteAnalysisSiteSelection(modal, 'yusan');
+  assert.equal(modal.dataset.wasteMeterSiteKey, 'yusan');
+  assert.equal(modal.dataset.wasteAnalysisSiteKey, 'yusan');
+  assert.equal(config.UtilSheetAnalysisState.waste.siteKey, 'yusan');
 
   const fullscreenEnabled = modalActions.setUtilGasAnalysisChartFullscreen(modal, 'combined', true);
   assert.equal(fullscreenEnabled, true);
@@ -212,8 +226,8 @@ test('report sheet modal actions registry updates compare and fullscreen state t
 
 test('kpi html loads report sheet modal actions before sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=053');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=076');
+  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=055');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=085');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');

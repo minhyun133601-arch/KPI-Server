@@ -12,19 +12,17 @@
 
         function getWasteCostModesByTeam(teamName) {
             const selection = resolveUtilDeleteTeamSelectionValue(teamName);
-            const includeLabor = selection === '전체' || selection === '1팀 1파트' || String(teamName || '').includes('북정');
-            const includeOutsourcing = selection === '전체'
+            const includeLabor = selection === '전체'
                 || selection === '유산'
+                || selection === '1팀 1파트'
                 || selection === '1팀 2파트'
                 || selection === '2팀'
                 || selection === '3팀'
+                || String(teamName || '').includes('북정')
                 || String(teamName || '').includes('유산');
             const modes = UTIL_WASTE_COST_BASE.slice();
             if (includeLabor) {
                 modes.push({ key: 'labor', label: '인건비 (원)' });
-            }
-            if (includeOutsourcing) {
-                modes.push({ key: 'outsourcing', label: '위탁관리비 (원)' });
             }
             return modes;
         }

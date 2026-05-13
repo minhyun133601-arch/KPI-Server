@@ -46,6 +46,23 @@ test('metering app config owns constants while app owns mutable boot state', asy
   assert.match(appSource, /function renderSummary\(\)/);
 });
 
+test('metering waste yusan settlement uses the labor cost field', async () => {
+  const configSource = await fs.readFile(appConfigPath, 'utf8');
+  const yusanFieldsBlock = configSource.slice(
+    configSource.indexOf('const WASTE_BILLING_SETTLEMENT_FIELDS_YUSAN'),
+    configSource.indexOf('const WASTE_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS_BUKJEONG')
+  );
+  const yusanComponentsBlock = configSource.slice(
+    configSource.indexOf('const WASTE_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS_YUSAN'),
+    configSource.indexOf('const BILLING_SETTLEMENT_FIELDS')
+  );
+
+  assert.match(yusanFieldsBlock, /\{ key: "labor", label: "인건비" \}/);
+  assert.doesNotMatch(yusanFieldsBlock, /outsourcing|위탁관리비/);
+  assert.match(yusanComponentsBlock, /\{ key: "labor", sign: 1 \}/);
+  assert.doesNotMatch(yusanComponentsBlock, /outsourcing/);
+});
+
 test('metering app split keeps both runtime files below the worklog threshold', async () => {
   const configSource = await fs.readFile(appConfigPath, 'utf8');
   const appSource = await fs.readFile(appPath, 'utf8');

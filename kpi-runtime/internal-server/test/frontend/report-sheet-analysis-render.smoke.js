@@ -89,7 +89,8 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
       return `<div class="combined-controls">${String(chart?.key || '')}</div>`;
     },
     normalizeUtilSheetAnalysisDatasetKey(datasetKey) {
-      return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+      const key = String(datasetKey || '').trim();
+      return key === 'electric' || key === 'waste' ? key : 'gas';
     },
     getUtilSheetAnalysisShowLabels(datasetKey, chartKey, isFullscreenChart) {
       return datasetKey === 'electric' || (chartKey === 'combined' && isFullscreenChart === true);
@@ -222,6 +223,56 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
       }
     ]
   };
+  const wasteModel = {
+    datasetKey: 'waste',
+    rangeLabel: '2026-01 ~ 2026-03',
+    siteOption: { key: 'all' },
+    monthOptions: gasModel.monthOptions,
+    range: gasModel.range,
+    summaryItems: [
+      { key: 'wasteUsage', title: 'Waste Usage', valueText: '820', tone: 'waste', icon: 'fa-water' },
+      { key: 'wasteCost', title: 'Waste Cost', valueText: '720', tone: 'cost', icon: 'fa-coins' },
+      { key: 'production', title: 'Waste Production', valueText: '220', tone: 'production', icon: 'fa-industry' }
+    ],
+    combinedChart: {
+      key: 'combined',
+      title: 'Main Waste Chart',
+      tone: 'waste',
+      icon: 'fa-chart-column',
+      color: '#7c3aed',
+      decimals: 0,
+      series: [{ seriesKey: 'wasteUsage', points: [{ value: 100 }, { value: 120 }, { value: 140 }] }],
+      chartDataList: [{ key: 'wasteUsage' }],
+      controlItems: [{ key: 'wasteUsage' }]
+    },
+    charts: [{
+      key: 'wasteCost.breakdown',
+      title: 'Waste Breakdown Chart',
+      tone: 'cost',
+      icon: 'fa-chart-pie',
+      color: '#dc2626',
+      decimals: 0,
+      series: [{ seriesKey: 'wasteCost.water', points: [{ value: 10 }, { value: 12 }, { value: 14 }] }],
+      chartDataList: [{ key: 'wasteCost.water' }],
+      controlItems: [
+        { key: 'wasteCost.water', title: 'Water Cost', unitOptions: [{ key: 'million', label: 'million' }], unitKey: 'million', displayMode: 'bar', popupTableKey: 'wasteCost.water' },
+        { key: 'wasteCost.share', title: 'Wastewater Cost', unitOptions: [{ key: 'million', label: 'million' }], unitKey: 'million', displayMode: 'bar', popupTableKey: 'wasteCost.share' },
+        { key: 'wasteCost.sludge', title: 'Sludge Cost', unitOptions: [{ key: 'million', label: 'million' }], unitKey: 'million', displayMode: 'bar', popupTableKey: 'wasteCost.sludge' },
+        { key: 'wasteCost.resin', title: 'Resin Cost', unitOptions: [{ key: 'million', label: 'million' }], unitKey: 'million', displayMode: 'bar', popupTableKey: 'wasteCost.resin' },
+        { key: 'wasteCost.labor', title: 'Labor Cost', unitOptions: [{ key: 'million', label: 'million' }], unitKey: 'million', displayMode: 'bar', popupTableKey: 'wasteCost.labor' }
+      ],
+      summaryItems: [
+        { key: 'wasteCost.water', title: 'Water Cost', valueText: '14', tone: 'cost', icon: 'fa-droplet' },
+        { key: 'wasteCost.share', title: 'Wastewater Cost', valueText: '24', tone: 'cost', icon: 'fa-water' },
+        { key: 'wasteCost.sludge', title: 'Sludge Cost', valueText: '34', tone: 'cost', icon: 'fa-layer-group' },
+        { key: 'wasteCost.resin', title: 'Resin Cost', valueText: '44', tone: 'cost', icon: 'fa-recycle' },
+        { key: 'wasteCost.labor', title: 'Labor Cost', valueText: '54', tone: 'cost', icon: 'fa-user-gear' }
+      ],
+      summaryControlItems: [
+        { key: 'wasteCost.water', title: 'Water Cost', unitOptions: [{ key: 'million', label: 'million' }], unitKey: 'million', displayMode: 'bar', popupTableKey: 'wasteCost.water' }
+      ]
+    }]
+  };
 
   const fullscreenCardHtml = analysisRender.buildUtilGasAnalysisChartCardHtmlV2(
     gasModel.combinedChart,
@@ -236,6 +287,11 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
   const electricBodyHtml = analysisRender.buildUtilElectricAnalysisBodyHtmlV2(
     electricModel,
     { fullscreenChart: false, inlineTableKey: 'ratio-combined' },
+    {}
+  );
+  const wasteBodyHtml = analysisRender.buildUtilWasteAnalysisBodyHtmlV2(
+    wasteModel,
+    { fullscreenChart: false, inlineTableKey: '' },
     {}
   );
 
@@ -258,13 +314,18 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
   assert.ok(electricBodyHtml.includes('data-scroll="true"'));
   assert.ok(electricBodyHtml.includes(productionLineKey));
   assert.ok(electricBodyHtml.includes('Line 1'));
+  assert.equal((wasteBodyHtml.match(/util-sheet-analysis-summary-card/g) || []).length, 8);
+  assert.ok(wasteBodyHtml.indexOf('Waste Usage') < wasteBodyHtml.indexOf('Main Waste Chart'));
+  assert.ok(wasteBodyHtml.indexOf('Waste Breakdown Chart') < wasteBodyHtml.indexOf('Water Cost'));
+  assert.ok(wasteBodyHtml.indexOf('Water Cost') < wasteBodyHtml.indexOf('<div class="util-sheet-analysis-chart-surface"', wasteBodyHtml.indexOf('Waste Breakdown Chart')));
+  assert.ok(wasteBodyHtml.includes('data-key="wasteCost.water"'));
 });
 
 test('kpi html loads report sheet analysis render between modal render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=057');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=057');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=059');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=061');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=062');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');

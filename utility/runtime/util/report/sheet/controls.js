@@ -140,6 +140,28 @@
         `;
     }
 
+    function buildUtilWasteMeterSiteSelectHtml(selectedKey = 'all') {
+        const normalizedKey = normalizeUtilWasteAnalysisSiteKey(selectedKey);
+        const orderedOptions = ['all', 'bukjeong', 'yusan']
+            .map(key => UTIL_WASTE_ANALYSIS_SITE_OPTIONS.find(option => option.key === key))
+            .filter(Boolean);
+        return `
+            <div class="util-sheet-meter-summary-toolbar">
+                <label class="util-sheet-meter-summary-control">
+                    <span class="util-sheet-meter-summary-control-label">기준</span>
+                    <select class="util-sheet-meter-summary-select" data-role="util-sheet-meter-waste-site-select" aria-label="폐수 검침표 기준">
+                        ${orderedOptions.map(option => {
+                            const label = option.key === 'all' ? '합계' : option.label;
+                            return `
+                            <option value="${escapeHtml(option.key)}"${option.key === normalizedKey ? ' selected' : ''}>${escapeHtml(label)}</option>
+                        `;
+                        }).join('')}
+                    </select>
+                </label>
+            </div>
+        `;
+    }
+
     function buildUtilElectricMeterViewToggleHtml(selectedViewKey = 'meter') {
         const normalizedViewKey = normalizeUtilElectricMeterViewKey(selectedViewKey);
         return `
@@ -164,6 +186,7 @@
         buildUtilElectricAnalysisTeamSelectHtml,
         buildUtilGasAnalysisCategorySelectHtml,
         buildUtilWasteAnalysisSiteSelectHtml,
+        buildUtilWasteMeterSiteSelectHtml,
         buildUtilElectricMeterViewToggleHtml,
         buildUtilSheetMonthOptionHtml
     };

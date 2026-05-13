@@ -443,9 +443,17 @@
         return value / scale;
     }
 
+    function normalizeUtilWasteAnalysisChartBaseKey(chartKey = '') {
+        const normalizedKey = String(chartKey || '').trim();
+        return normalizedKey.startsWith('wasteCost.') || normalizedKey.startsWith('wasteCost:')
+            ? 'wasteCost'
+            : normalizedKey;
+    }
+
     function getUtilWasteAnalysisUnitOptions(chartKey = '') {
-        return Array.isArray(UTIL_WASTE_ANALYSIS_UNIT_OPTIONS[chartKey])
-            ? UTIL_WASTE_ANALYSIS_UNIT_OPTIONS[chartKey]
+        const baseKey = normalizeUtilWasteAnalysisChartBaseKey(chartKey);
+        return Array.isArray(UTIL_WASTE_ANALYSIS_UNIT_OPTIONS[baseKey])
+            ? UTIL_WASTE_ANALYSIS_UNIT_OPTIONS[baseKey]
             : [];
     }
 
@@ -453,7 +461,8 @@
         const options = getUtilWasteAnalysisUnitOptions(chartKey);
         const raw = String(unitKey || '').trim().toLowerCase();
         if (options.some(option => option.key === raw)) return raw;
-        return String(UTIL_WASTE_ANALYSIS_DEFAULT_UNITS[chartKey] || options[0]?.key || '');
+        const baseKey = normalizeUtilWasteAnalysisChartBaseKey(chartKey);
+        return String(UTIL_WASTE_ANALYSIS_DEFAULT_UNITS[baseKey] || options[0]?.key || '');
     }
 
     function getUtilWasteAnalysisUnitOption(chartKey = '', unitKey = '') {
@@ -467,9 +476,17 @@
     }
 
     function getUtilWasteAnalysisDisplayMode(chartKey = '') {
+        const baseKey = normalizeUtilWasteAnalysisChartBaseKey(chartKey);
+        const normalizedKey = String(chartKey || '').trim();
+        const defaultMode = baseKey === 'wasteCost'
+            && normalizedKey
+            && normalizedKey !== 'wasteCost'
+            && normalizedKey !== 'wasteCost.total'
+            ? 'bar'
+            : UTIL_WASTE_ANALYSIS_DEFAULT_DISPLAY_MODES[baseKey];
         return normalizeUtilGasAnalysisDisplayMode(
             UtilSheetAnalysisState.waste.displayModes?.[chartKey]
-            || UTIL_WASTE_ANALYSIS_DEFAULT_DISPLAY_MODES[chartKey]
+            || defaultMode
             || 'bar'
         );
     }

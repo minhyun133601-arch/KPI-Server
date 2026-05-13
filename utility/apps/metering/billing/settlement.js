@@ -74,13 +74,24 @@ function resolveBillingSettlementFields(
   );
   const preservedUnitPrice = normalizeBillingSettlementInputValue(rawFields?.unit_price);
   const preservedBillingAmount = normalizeBillingSettlementInputValue(rawFields?.billing_amount);
+  const yusanWasteScopeKey = typeof WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY !== "undefined"
+    ? WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY
+    : "waste_yusan";
 
   settlementFields.forEach((field) => {
     if (autoCalculatedFieldKeys.has(field.key)) {
       return;
     }
 
-    const fieldValue = normalizeBillingSettlementInputValue(rawFields?.[field.key]);
+    let fieldValue = normalizeBillingSettlementInputValue(rawFields?.[field.key]);
+    if (
+      !fieldValue &&
+      resourceType === RESOURCE_TYPES.WASTE &&
+      normalizeText(scopeKey) === yusanWasteScopeKey &&
+      field.key === "labor"
+    ) {
+      fieldValue = normalizeBillingSettlementInputValue(rawFields?.outsourcing);
+    }
     if (fieldValue) {
       if (field.key === "calorific_value") {
         const numericValue = parseBillingSettlementNumericValue(fieldValue);

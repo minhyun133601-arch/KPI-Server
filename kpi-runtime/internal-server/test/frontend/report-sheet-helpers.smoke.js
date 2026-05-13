@@ -82,9 +82,9 @@ test('report sheet helper functions are split out of sheet runtime', () => {
 });
 
 test('kpi html loads report sheet helpers before sheet runtime', () => {
-  const summaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=062');
+  const summaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=063');
   const helpersIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.helpers.js?v=341');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=059');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=062');
 
   assert.ok(summaryIndex >= 0, 'report sheet summary loader is missing');
   assert.ok(helpersIndex > summaryIndex, 'report sheet helpers must load after summary render helpers');

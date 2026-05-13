@@ -400,23 +400,6 @@ test.describe('KPI browser smoke', () => {
       );
       await page.waitForTimeout(1000);
 
-      const monthlyPopupPromise = page.waitForEvent('popup');
-      await clickSidebarButton(page, '월간 실적보고');
-      const monthlyPopup = await monthlyPopupPromise;
-      await monthlyPopup.waitForLoadState('domcontentloaded');
-      await expect(monthlyPopup.locator('body')).toContainText('월간 실적보고');
-      await expect(monthlyPopup.locator('[data-report-utility-button="electric"]')).toBeVisible();
-      await expect(monthlyPopup.locator('[data-report-analysis-panel="electric"]')).toBeVisible();
-      await expect(monthlyPopup.locator('[data-report-analysis-panel="electric"] [data-report-summary]')).toContainText(
-        '생산량'
-      );
-      await monthlyPopup.locator('[data-report-utility-button="gas"]').click();
-      await expect(monthlyPopup.locator('[data-report-analysis-panel="gas"]')).toBeVisible();
-      await expect(monthlyPopup.locator('[data-report-analysis-panel="gas"] [data-report-summary]')).toContainText(
-        'LPG 사용량'
-      );
-      await monthlyPopup.close();
-
       await clickSidebarButton(page, '설비 이력 카드');
       await expect(page.locator('#content-container')).toContainText('설비 현황');
       await expect(page.locator('.data-equipment-page')).toBeVisible();

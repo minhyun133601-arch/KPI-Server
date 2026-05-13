@@ -85,7 +85,7 @@ const WASTE_BILLING_SETTLEMENT_FIELDS_YUSAN = [
   { key: "share", label: "폐수 분담금" },
   { key: "sludge", label: "폐수오니 처리비용" },
   { key: "resin", label: "혼합수지 처리비용" },
-  { key: "outsourcing", label: "위탁관리비" },
+  { key: "labor", label: "인건비" },
   { key: "unit_price", label: "단가" },
   { key: "billing_amount", label: "총비용" },
 ];
@@ -101,7 +101,7 @@ const WASTE_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS_YUSAN = Object.freeze([
   { key: "share", sign: 1 },
   { key: "sludge", sign: 1 },
   { key: "resin", sign: 1 },
-  { key: "outsourcing", sign: 1 },
+  { key: "labor", sign: 1 },
 ]);
 const BILLING_SETTLEMENT_FIELDS = [
   ...new Map(

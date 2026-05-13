@@ -33,7 +33,7 @@ export const WASTE_TEAM_CONFIG = Object.freeze({
   유산: Object.freeze({
     teamKey: WASTE_YUSAN_TEAM_KEY,
     scopeKey: WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY,
-    allowedCostKeys: Object.freeze(['water', 'share', 'sludge', 'resin', 'outsourcing']),
+    allowedCostKeys: Object.freeze(['water', 'share', 'sludge', 'resin', 'labor']),
   }),
   북정: Object.freeze({
     teamKey: WASTE_BUKJEONG_TEAM_KEY,

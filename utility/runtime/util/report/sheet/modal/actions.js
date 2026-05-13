@@ -174,6 +174,20 @@
             ? runtime.normalizeUtilWasteAnalysisSiteKey(siteKey)
             : String(siteKey || 'all').trim() || 'all';
         modal.dataset.wasteAnalysisSiteKey = normalizedKey;
+        modal.dataset.wasteMeterSiteKey = normalizedKey;
+        if (UtilSheetAnalysisState.waste) {
+            UtilSheetAnalysisState.waste.siteKey = normalizedKey;
+        }
+        rerenderAndSync(modal);
+    }
+
+    function applyUtilWasteMeterSiteSelection(modal, siteKey = 'all') {
+        if (!modal) return;
+        const normalizedKey = typeof runtime.normalizeUtilWasteAnalysisSiteKey === 'function'
+            ? runtime.normalizeUtilWasteAnalysisSiteKey(siteKey)
+            : String(siteKey || 'all').trim() || 'all';
+        modal.dataset.wasteMeterSiteKey = normalizedKey;
+        modal.dataset.wasteAnalysisSiteKey = normalizedKey;
         if (UtilSheetAnalysisState.waste) {
             UtilSheetAnalysisState.waste.siteKey = normalizedKey;
         }
@@ -382,6 +396,7 @@
         applyUtilElectricAnalysisTeamSelection,
         applyUtilGasAnalysisCategorySelection,
         applyUtilWasteAnalysisSiteSelection,
+        applyUtilWasteMeterSiteSelection,
         applyUtilElectricMeterViewSelection,
         setUtilGasAnalysisInlineTablePositionFromTrigger,
         setUtilGasAnalysisChartFullscreen,

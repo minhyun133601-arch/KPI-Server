@@ -24,6 +24,7 @@
         buildUtilSheetMonthBounds: null,
         isUtilSheetSettledRow: null,
         compareUtilSheetMonthKeys: null,
+        summarizeUtilSheetRows: null,
         getUtilSheetAnalysisRangeState: null,
         normalizeUtilSheetCompareKey: null,
         normalizeUtilSheetAnalysisRange: null,
@@ -50,6 +51,15 @@
         formatUtilReportMonthLong: null,
         formatUtilReportMonthShort: null
     };
+
+    const WASTE_COST_CHART_SPECS = Object.freeze([
+        Object.freeze({ key: 'wasteCost.total', detailKey: '', title: '처리 비용 총계', icon: 'fa-coins', color: '#dc2626' }),
+        Object.freeze({ key: 'wasteCost.water', detailKey: 'water', title: '상수', icon: 'fa-droplet', color: '#0891b2' }),
+        Object.freeze({ key: 'wasteCost.share', detailKey: 'share', title: '폐수', icon: 'fa-water', color: '#7c3aed' }),
+        Object.freeze({ key: 'wasteCost.sludge', detailKey: 'sludge', title: '폐수오니', icon: 'fa-layer-group', color: '#854d0e' }),
+        Object.freeze({ key: 'wasteCost.resin', detailKey: 'resin', title: '폐합성수지', icon: 'fa-recycle', color: '#15803d' }),
+        Object.freeze({ key: 'wasteCost.labor', detailKey: 'labor', title: '인건비', icon: 'fa-user-gear', color: '#be185d' })
+    ]);
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
@@ -84,6 +94,26 @@
             return runtime.compareUtilSheetMonthKeys(left, right);
         }
         return String(left || '').localeCompare(String(right || ''), 'ko');
+    }
+
+    function summarizeRows(rows = [], spec = UTIL_SHEET_DATASET_SPECS.waste) {
+        if (typeof runtime.summarizeUtilSheetRows === 'function') {
+            return runtime.summarizeUtilSheetRows(rows, spec);
+        }
+        const summary = (Array.isArray(rows) ? rows : []).reduce((acc, row) => {
+            acc.usage += Number.isFinite(row?.[spec.usageKey]) ? row[spec.usageKey] : 0;
+            acc.cost += Number.isFinite(row?.[spec.costKey]) ? row[spec.costKey] : 0;
+            if (Number.isFinite(row?.production) && row.production > 0) {
+                acc.production += row.production;
+            }
+            return acc;
+        }, {
+            usage: 0,
+            cost: 0,
+            production: 0
+        });
+        summary.unit = summary.production > 0 ? summary.cost / summary.production : null;
+        return summary;
     }
 
     function shiftMonthKey(monthKey = '', offset = 0) {
@@ -159,12 +189,6 @@
             : fallback;
     }
 
-    function formatDecimal(value, decimals = 3, fallback = '-') {
-        return typeof runtime.formatUtilSheetDecimal === 'function'
-            ? runtime.formatUtilSheetDecimal(value, decimals, fallback)
-            : fallback;
-    }
-
     function buildCompareSub(compareLabel, monthKey, deltaText) {
         return typeof runtime.buildUtilGasAnalysisCompareSub === 'function'
             ? runtime.buildUtilGasAnalysisCompareSub(compareLabel, monthKey, deltaText)
@@ -234,6 +258,26 @@
         const production = finite(row?.production);
         if (!Number.isFinite(usage) || !Number.isFinite(production) || production <= 0) return null;
         return usage / (production / 1000);
+    }
+
+    function getWasteCostDetailValue(row = {}, detailKey = '') {
+        const normalizedKey = String(detailKey || '').trim();
+        if (!normalizedKey) return finite(row?.wasteCost);
+        if (normalizedKey === 'labor') {
+            const laborValue = finite(row?.wasteCostDetails?.labor);
+            const legacyOutsourcingValue = finite(row?.wasteCostDetails?.outsourcing);
+            if (Number.isFinite(laborValue) || Number.isFinite(legacyOutsourcingValue)) {
+                return (Number.isFinite(laborValue) ? laborValue : 0)
+                    + (Number.isFinite(legacyOutsourcingValue) ? legacyOutsourcingValue : 0);
+            }
+        }
+        return finite(row?.wasteCostDetails?.[normalizedKey]);
+    }
+
+    function hasWasteCostDetail(rows = [], detailKey = '') {
+        const normalizedKey = String(detailKey || '').trim();
+        if (!normalizedKey) return true;
+        return (Array.isArray(rows) ? rows : []).some(row => Number.isFinite(getWasteCostDetailValue(row, normalizedKey)));
     }
 
     function hasWasteRowData(row = {}) {
@@ -307,6 +351,14 @@
         const prevYearRow = latestRow
             ? rows.find(row => row.year === latestRow.year - 1 && row.month === latestRow.month) || null
             : null;
+        const currentYearRows = latestRow
+            ? rows.filter(row => row.year === latestRow.year && row.month <= latestRow.month)
+            : [];
+        const previousYearRows = latestRow
+            ? rows.filter(row => row.year === latestRow.year - 1 && row.month <= latestRow.month)
+            : [];
+        const currentYearSummary = summarizeRows(currentYearRows, spec);
+        const previousYearSummary = summarizeRows(previousYearRows, spec);
         const latestUsage = finite(latestRow?.wasteUsage);
         const latestCost = finite(latestRow?.wasteCost);
         const latestProduction = finite(latestRow?.production);
@@ -332,6 +384,8 @@
             latestRow,
             prevMonthRow,
             prevYearRow,
+            currentYearSummary,
+            previousYearSummary,
             latestUsage,
             latestCost,
             latestProduction,
@@ -408,6 +462,7 @@
             title: options.title || '폐수 방류량 · 비용 · 생산량',
             icon: options.icon || 'fa-chart-column',
             tone: options.tone || 'waste',
+            color: options.color || visibleCharts[0]?.color || controlItems[0]?.color || '#1d4ed8',
             periodLabel: rangeLabel,
             decimals: maxDecimals,
             series,
@@ -415,21 +470,6 @@
             controlItems,
             hasVisibleSeries: visibleCharts.length > 0
         };
-    }
-
-    function formatWasteIntensity(value, fallback = '-') {
-        const unitKey = getWasteUnitKey('wasteIntensity');
-        const scaledValue = scaleWasteValue('wasteIntensity', value, unitKey);
-        if (!Number.isFinite(scaledValue)) return fallback;
-        return `${formatDecimal(scaledValue, getWasteChartDecimals('wasteIntensity', unitKey), fallback)}${getWasteUnitLabel('wasteIntensity', unitKey)}`;
-    }
-
-    function formatWasteSignedIntensity(value, fallback = '-') {
-        const unitKey = getWasteUnitKey('wasteIntensity');
-        const scaledValue = scaleWasteValue('wasteIntensity', value, unitKey);
-        if (!Number.isFinite(scaledValue)) return fallback;
-        const sign = scaledValue > 0 ? '+' : '';
-        return `${sign}${formatDecimal(scaledValue, getWasteChartDecimals('wasteIntensity', unitKey), fallback)}${getWasteUnitLabel('wasteIntensity', unitKey)}`;
     }
 
     function buildUtilWasteAnalysisModel(selectedMonthKey = '', compareKey = 'month', siteKey = 'all') {
@@ -487,11 +527,6 @@
         const activeUsage = finite(activeRow?.wasteUsage);
         const activeCost = finite(activeRow?.wasteCost);
         const activeProduction = finite(activeRow?.production);
-        const activeIntensity = calculateWasteIntensity(activeRow || {});
-        const referenceIntensity = calculateWasteIntensity(referenceRow || {});
-        const intensityDelta = Number.isFinite(activeIntensity) && Number.isFinite(referenceIntensity)
-            ? activeIntensity - referenceIntensity
-            : null;
 
         const charts = [
             {
@@ -549,37 +584,50 @@
                 )
             }
         ];
-        const intensityChartBase = {
-            key: 'wasteIntensity',
-            title: '생산량 대비 폐수 방류량',
-            icon: 'fa-gauge-high',
-            tone: 'waste',
-            metricLabel: '㎥/ton',
-            decimals: 3,
-            color: '#4c1d95',
-            chartType: 'line',
-            lineWidth: 3.2,
-            points: rangeKeys.map(monthKey => createPoint(monthKey, calculateWasteIntensity(rowMap.get(monthKey) || {})))
-        };
-        const combinedChart = buildWasteCombinedChart(charts, rangeLabel);
-        const intensityChart = buildWasteCombinedChart([intensityChartBase], rangeLabel, {
-            key: 'wasteIntensity',
-            title: '생산량 대비 폐수 방류량',
-            icon: 'fa-gauge-high',
-            tone: 'waste'
+        const costBreakdownChartBases = WASTE_COST_CHART_SPECS
+            .filter(detailSpec => detailSpec.detailKey)
+            .filter(detailSpec => detailSpec.optional !== true)
+            .filter(detailSpec => hasWasteCostDetail(rangeRows, detailSpec.detailKey))
+            .map(detailSpec => ({
+                key: detailSpec.key,
+                detailKey: detailSpec.detailKey,
+                title: detailSpec.title,
+                icon: detailSpec.icon,
+                tone: 'cost',
+                metricLabel: '원',
+                decimals: 0,
+                color: detailSpec.color,
+                chartType: 'bar',
+                points: rangeKeys.map(monthKey => createPoint(monthKey, getWasteCostDetailValue(rowMap.get(monthKey), detailSpec.detailKey)))
+            }));
+        const costBreakdownChart = buildWasteCombinedChart(costBreakdownChartBases, rangeLabel, {
+            key: 'wasteCost.breakdown',
+            title: '처리비용 세부 항목',
+            icon: 'fa-chart-pie',
+            tone: 'cost',
+            color: '#dc2626'
         });
-        if (intensityChart) {
-            intensityChart.summaryItems = [{
-                key: 'wasteIntensity',
-                title: '생산량 대비 폐수 방류량',
-                valueText: formatWasteIntensity(activeIntensity),
-                subText: buildCompareSub(compareLabel, range.to, formatWasteSignedIntensity(intensityDelta)),
-                icon: 'fa-gauge-high',
-                tone: 'waste',
+        const costDetailSummaryItems = costBreakdownChartBases.map(chartBase => {
+            const activeValue = getWasteCostDetailValue(activeRow, chartBase.detailKey);
+            const referenceValue = getWasteCostDetailValue(referenceRow, chartBase.detailKey);
+            const delta = Number.isFinite(activeValue) && Number.isFinite(referenceValue)
+                ? activeValue - referenceValue
+                : null;
+            return {
+                key: chartBase.key,
+                title: chartBase.title,
+                valueText: formatCost(activeValue),
+                subText: buildCompareSub(compareLabel, range.to, formatSignedCost(delta)),
+                icon: chartBase.icon,
+                tone: 'cost',
                 metaText: selectedMonthMetaText
-            }];
-            intensityChart.summaryControlItems = intensityChart.controlItems;
+            };
+        });
+        if (costBreakdownChart) {
+            costBreakdownChart.summaryItems = costDetailSummaryItems;
+            costBreakdownChart.summaryControlItems = costBreakdownChart.controlItems;
         }
+        const combinedChart = buildWasteCombinedChart(charts, rangeLabel);
 
         const summaryItems = [
             {
@@ -622,7 +670,7 @@
             rangeLabel,
             monthOptions,
             compareLabel,
-            charts: intensityChart ? [intensityChart] : [],
+            charts: costBreakdownChart ? [costBreakdownChart] : [],
             combinedChart,
             summaryItems,
             datasetResult

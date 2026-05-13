@@ -495,15 +495,16 @@
                 const costs = (entry?.costs && typeof entry.costs === 'object') ? entry.costs : null;
                 if (!costs) return;
                 Object.entries(costs).forEach(([rawKey, rawValue]) => {
-                    const key = String(rawKey || '').trim();
+                    let key = String(rawKey || '').trim();
                     if (!key || key === 'total') return;
+                    if (key === 'outsourcing') key = 'labor';
                     const value = Number(rawValue);
                     if (!Number.isFinite(value) || value <= 0) return;
                     detailMap.set(key, (detailMap.get(key) || 0) + value);
                 });
             });
 
-            const fixedOrder = ['water', 'share', 'sludge', 'resin', 'outsourcing', 'labor'];
+            const fixedOrder = ['water', 'share', 'sludge', 'resin', 'labor'];
             const extraKeys = Array.from(detailMap.keys())
                 .filter(key => !fixedOrder.includes(key))
                 .sort((a, b) => a.localeCompare(b, 'ko'));

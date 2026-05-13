@@ -524,6 +524,7 @@
     }
 
     function buildUtilWasteAnalysisBodyHtmlV2(model, viewState = {}, modal = null) {
+        const controlsHtml = String(viewState?.controlsHtml || '');
         const sectionClassName = [
             'util-sheet-section',
             'util-sheet-analysis-section',
@@ -546,8 +547,9 @@
                 <div class="util-sheet-section-head util-sheet-analysis-section-head">
                     <div>
                         <div class="util-sheet-section-title">폐수 분석표</div>
-                        <div class="util-sheet-section-sub">방류량, 처리 비용, 생산량, 생산량 대비 폐수 방류량을 월별 기준으로 비교합니다.</div>
+                        <div class="util-sheet-section-sub">방류량, 처리 비용, 생산량과 처리비용 세부 항목을 월별 기준으로 비교합니다.</div>
                     </div>
+                    ${controlsHtml}
                 </div>
                 ${floatingTableHtml}
                 <div data-role="util-sheet-analysis-summary-grid">

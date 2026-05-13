@@ -179,6 +179,7 @@
         buildUtilGasAnalysisCategorySelectHtml,
         buildUtilElectricAnalysisTeamSelectHtml,
         buildUtilWasteAnalysisSiteSelectHtml,
+        buildUtilWasteMeterSiteSelectHtml,
         buildUtilSheetMonthOptionHtml
     } = utilReportSheetControls;
     const utilReportSheetElectricRuntimeSync = requireApi('KPIUtilReportSheetElectricRuntimeSync', 'KPI.util.report.sheet.js');
@@ -303,6 +304,9 @@
     const utilReportSheetModalActions = requireApi('KPIUtilReportSheetModalActions', 'KPI.util.report.sheet.js');
     const utilReportSheetModalShell = requireApi('KPIUtilReportSheetModalShell', 'KPI.util.report.sheet.js');
     const utilReportSheetModalRender = requireApi('KPIUtilReportSheetModalRender', 'KPI.util.report.sheet.js');
+    utilReportSheetPanelRuntime.setRuntimeAdapters({
+        openUtilSheetMonthlyReportExtractOptions: (...args) => utilReportSheetModalShell.openUtilSheetMonthlyReportExtractOptions?.(...args)
+    });
     const utilReportSheetAnalysisState = requireApi('KPIUtilReportSheetAnalysisState', 'KPI.util.report.sheet.js');
     utilReportSheetAnalysisState.setRuntimeAdapters({
         compareUtilSheetMonthKeys,
@@ -671,6 +675,7 @@
         buildUtilGasAnalysisCategorySelectHtml,
         buildUtilElectricAnalysisTeamSelectHtml,
         buildUtilWasteAnalysisSiteSelectHtml,
+        buildUtilWasteMeterSiteSelectHtml,
         buildUtilSheetMonthOptionHtml,
         buildUtilElectricMeterComparisonModel,
         buildUtilElectricMeterTeamDatasetResult,
@@ -725,6 +730,7 @@
         applyUtilElectricAnalysisTeamSelection,
         applyUtilGasAnalysisCategorySelection,
         applyUtilWasteAnalysisSiteSelection,
+        applyUtilWasteMeterSiteSelection,
         applyUtilElectricMeterViewSelection,
         setUtilGasAnalysisInlineTablePositionFromTrigger,
         setUtilGasAnalysisChartFullscreen,
@@ -771,7 +777,11 @@
         setUtilSheetAnalysisDecimals,
         applyUtilGasMeterProductionSelection,
         applyUtilElectricMeterTeamSelection,
+        applyUtilWasteMeterSiteSelection,
         applyUtilElectricAnalysisTeamSelection,
+        hasUtilElectricMeteringStore,
+        ensureUtilElectricMeteringStore,
+        ensureUtilElectricReportDataSync,
         normalizeUtilElectricMeterViewKey,
         buildUtilElectricMeterComparisonModel,
         buildUtilElectricMeterTeamDatasetResult,
@@ -784,6 +794,7 @@
         buildUtilWasteAnalysisBodyHtmlV2,
         resolveUtilSheetMemoItems,
         buildUtilSheetMemoSectionHtml,
+        buildUtilSheetDatasetResult,
         isUtilSheetCustomAnalysisDataset,
         setUtilSheetAnalysisToMonth,
         syncUtilSheetPanelSelection
@@ -816,6 +827,7 @@
         setUtilSheetAnalysisDisplayMode,
         applyUtilGasMeterProductionSelection,
         applyUtilElectricMeterTeamSelection,
+        applyUtilWasteMeterSiteSelection,
         applyUtilElectricAnalysisTeamSelection,
         applyUtilGasAnalysisCategorySelection,
         applyUtilWasteAnalysisSiteSelection,

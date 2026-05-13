@@ -35,7 +35,6 @@
         "utility/runtime/util/sections/KPI.sections.util.js",
         "data-entry/runtime/data/sections/KPI.sections.data.js",
         "audit/runtime/audit/sections/KPI.sections.audit.js",
-        "kpi-runtime/sections/KPI.sections.production-report.js",
         "kpi-runtime/sections/KPI.sections.owner.js",
         "kpi-runtime/sections/KPI.section.registry.js"
       ]

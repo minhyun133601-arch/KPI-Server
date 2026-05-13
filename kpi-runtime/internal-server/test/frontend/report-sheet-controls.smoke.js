@@ -76,6 +76,7 @@ test('report sheet controls registry builds select, toggle, and month option htm
   const electricSelectHtml = controls.buildUtilElectricMeterTeamSelectHtml('team_02');
   const analysisTeamHtml = controls.buildUtilElectricAnalysisTeamSelectHtml('team_03');
   const gasCategoryHtml = controls.buildUtilGasAnalysisCategorySelectHtml('yusan');
+  const wasteMeterSiteHtml = controls.buildUtilWasteMeterSiteSelectHtml('bukjeong');
   const viewToggleHtml = controls.buildUtilElectricMeterViewToggleHtml('team');
   const monthOptionHtml = controls.buildUtilSheetMonthOptionHtml([
     { value: '2026-03', label: '2026-03' },
@@ -87,6 +88,9 @@ test('report sheet controls registry builds select, toggle, and month option htm
   assert.ok(electricSelectHtml.includes('util-sheet-meter-electric-team-select'));
   assert.ok(analysisTeamHtml.includes('util-sheet-analysis-electric-team-select'));
   assert.ok(gasCategoryHtml.includes('util-sheet-analysis-gas-category-select'));
+  assert.ok(wasteMeterSiteHtml.includes('util-sheet-meter-waste-site-select'));
+  assert.ok(wasteMeterSiteHtml.includes('합계'));
+  assert.ok(wasteMeterSiteHtml.includes('value="bukjeong" selected'));
   assert.ok(viewToggleHtml.includes('data-view-key="team"'));
   assert.ok(viewToggleHtml.includes('is-active'));
   assert.ok(monthOptionHtml.includes('value="2026-04" selected'));
@@ -94,7 +98,7 @@ test('report sheet controls registry builds select, toggle, and month option htm
 
 test('kpi html loads report sheet controls after options and before billing', () => {
   const optionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/options.js?v=053');
-  const controlsIndex = kpiHtml.indexOf('runtime/util/report/sheet/controls.js?v=053');
+  const controlsIndex = kpiHtml.indexOf('runtime/util/report/sheet/controls.js?v=054');
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
 
   assert.ok(optionsIndex >= 0, 'report sheet options loader is missing');
