@@ -68,13 +68,28 @@ function createDataSyncContext(options = {}) {
       util_wastewater_data: {
         teams: createLegacyWasteTeams(),
       },
+      util_production_daily: options.productionDailyState ?? {},
     },
     KpiMeteringBridge: {
       ensureIntegratedMeteringRuntime: async () => ({
-        getWasteUtilityDatasetSnapshot: () => options.snapshot ?? { months: [], teams: {} },
+        getElectricUtilityDatasetSnapshot: () => options.electricSnapshot ?? { months: [], teams: {} },
+        getGasUtilityDatasetSnapshot: () => options.gasSnapshot ?? { months: [], teams: {} },
+        getWasteUtilityDatasetSnapshot: () => options.snapshot ?? options.wasteSnapshot ?? { months: [], teams: {} },
       }),
     },
     document: {},
+    resolveUtilProductionCell(teamName, yearValue, row) {
+      const monthValue = Number(String(row?.label || '').match(/\d+/)?.[0]);
+      if (!Number.isFinite(monthValue)) return { value: null };
+      const team = (options.productionDailyState?.teams || []).find((item) => item.name === teamName);
+      const total = (team?.entries || []).reduce((sum, entry) => {
+        const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(String(entry.date || ''));
+        if (!match || Number(match[1]) !== Number(yearValue) || Number(match[2]) !== monthValue) return sum;
+        const amount = Number(entry.amount ?? entry.production ?? entry.value);
+        return Number.isFinite(amount) ? sum + amount : sum;
+      }, 0);
+      return total > 0 ? { value: total } : { value: null };
+    },
     rebuildUtilEntryCollections() {
       rebuildCount += 1;
     },
@@ -90,7 +105,11 @@ function createDataSyncContext(options = {}) {
       dataSyncSource,
       dataSyncProductionSource,
       'globalThis.__testExports = {',
+      '  getElectricData: () => UTIL_ELECTRIC_DATA,',
+      '  getGasData: () => UTIL_GAS_DATA,',
       '  getWasteData: () => UTIL_WASTE_DATA,',
+      '  syncUtilElectricDataFromMetering,',
+      '  syncUtilGasDataFromMetering,',
       '  syncUtilWasteDataFromMetering,',
       '  normalizeUtilMetricValue,',
       '  parseUtilAmount,',
@@ -107,6 +126,12 @@ function findWasteMonthRow(context, teamName = '유산') {
   const team = context.__testExports.getWasteData().find((item) => item.name === teamName);
   const year = team?.years?.find((item) => String(item.label) === '2026');
   return year?.rows?.find((item) => item.label === '4월') || null;
+}
+
+function findDatasetMonthRow(dataset, teamName, yearValue, monthValue) {
+  const team = dataset.find((item) => item.name === teamName);
+  const year = team?.years?.find((item) => Number(item.label) === Number(yearValue));
+  return year?.rows?.find((item) => String(item.label || '').match(/\d+/)?.[0] === String(monthValue)) || null;
 }
 
 test('util data sync preserves legacy wastewater data when metering store is not hydrated', async () => {
@@ -160,6 +185,36 @@ test('util data sync locks numeric normalization for blanks strings decimals neg
   assert.equal(parseUtilAmount(''), null);
   assert.equal(parseUtilAmount(null), null);
   assert.equal(parseUtilAmount('not-a-number'), null);
+});
+
+test('util data sync fills electric gas and waste production from daily production records', async () => {
+  const context = createDataSyncContext({
+    localAppStore: { resourceDatasets: { waste: {} } },
+    productionDailyState: {
+      teams: [
+        { name: 'TeamA', entries: [{ date: '2026-04-01', team: 'TeamA', amount: 123 }] },
+        { name: 'GasTeam', entries: [{ date: '2026-04-02', team: 'GasTeam', amount: 234 }] },
+        { name: 'WasteTeam', entries: [{ date: '2026-04-03', team: 'WasteTeam', amount: 345 }] },
+      ],
+    },
+    electricSnapshot: {
+      teams: { TeamA: { '2026-04': { usage: 10, cost: 100 } } },
+    },
+    gasSnapshot: {
+      teams: { GasTeam: { '2026-04': { usage: 20, cost: 200 } } },
+    },
+    wasteSnapshot: {
+      teams: { WasteTeam: { '2026-04': { usage: 30, cost: 300 } } },
+    },
+  });
+
+  assert.equal(await context.__testExports.syncUtilElectricDataFromMetering({ force: true }), true);
+  assert.equal(await context.__testExports.syncUtilGasDataFromMetering({ force: true }), true);
+  assert.equal(await context.__testExports.syncUtilWasteDataFromMetering({ force: true }), true);
+
+  assert.equal(findDatasetMonthRow(context.__testExports.getElectricData(), 'TeamA', 2026, 4)?.production, 123);
+  assert.equal(findDatasetMonthRow(context.__testExports.getGasData(), 'GasTeam', 2026, 4)?.production, 234);
+  assert.equal(findDatasetMonthRow(context.__testExports.getWasteData(), 'WasteTeam', 2026, 4)?.production, 345);
 });
 
 test('util data sync browser adapter loads before data sync runtime', () => {

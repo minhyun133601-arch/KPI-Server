@@ -1,6 +1,15 @@
 ((root) => {
   const entries = [
     {
+      date: '2026-05-15',
+      tag: 'report-deck/template',
+      title: '공무환경팀 PPT형 보고서 템플릿',
+      summary:
+        '보고서 메뉴를 공무환경팀 실적보고서 참조 파일의 9장 흐름에 맞춘 PPT형 전체화면 덱으로 바꾸고, 실제 수치 없이 빈 표·차트·이미지 자리만 유지하는 재사용 템플릿을 추가했습니다.',
+      detail:
+        '표지, 목차, 가스·전기 분석, 폐수 분석, 공사 및 정비, 주요 계획 순서로 슬라이드를 구성했습니다. DB 필드 패널은 화면에서 제거했고 수정 버튼을 눌렀을 때만 문구를 편집해 report_runtime.cover 공용 레코드에 저장합니다. 전체화면 버튼은 브라우저 Fullscreen API로 슬라이드만 16:9 전체화면 표시합니다. 검증 기준: section factory smoke, util runtime browser-adapter smoke, report runtime adapter smoke, report browser smoke, format, lint, git diff --check.',
+    },
+    {
       date: '2026-05-11',
       tag: 'equipment-history-print/account-admin',
       title: '설비이력카드 A4 출력과 사용자 계정 관리',

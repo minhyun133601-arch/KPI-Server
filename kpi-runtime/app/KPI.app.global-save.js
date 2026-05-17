@@ -122,6 +122,30 @@
             return (key === 's' || code === 'KeyS') && (evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey;
         }
 
+        function completeReportDeckEditShortcut(evt) {
+            const targetRoot = typeof evt?.target?.closest === 'function'
+                ? evt.target.closest('[data-report-deck-editor][data-report-edit-mode="editing"]')
+                : null;
+            const activeRoot = targetRoot || (
+                typeof document !== 'undefined'
+                    ? document.querySelector?.('[data-report-deck-editor][data-report-edit-mode="editing"]')
+                    : null
+            );
+            if (!activeRoot) return false;
+            let completeEvent = null;
+            if (typeof CustomEvent === 'function') {
+                completeEvent = new CustomEvent('kpi:report-deck-complete-edit', {
+                    cancelable: true
+                });
+            } else if (typeof document !== 'undefined' && typeof document.createEvent === 'function') {
+                completeEvent = document.createEvent('Event');
+                completeEvent.initEvent('kpi:report-deck-complete-edit', false, true);
+            }
+            if (!completeEvent) return false;
+            activeRoot.dispatchEvent(completeEvent);
+            return completeEvent.defaultPrevented === true || activeRoot.dataset?.reportEditMode !== 'editing';
+        }
+
         function scheduleGlobalSaveUiRefresh(options = {}) {
             if (globalSaveRefreshTimer) {
                 clearTimeout(globalSaveRefreshTimer);
@@ -208,6 +232,11 @@
             browser?.addWindowEventListener?.('keydown', evt => {
                 if (evt.defaultPrevented) return;
                 if (!isGlobalSaveShortcut(evt)) return;
+                if (completeReportDeckEditShortcut(evt)) {
+                    evt.preventDefault();
+                    evt.stopPropagation();
+                    return;
+                }
                 evt.preventDefault();
                 evt.stopPropagation();
                 void triggerGlobalSave({ trigger: 'shortcut' });

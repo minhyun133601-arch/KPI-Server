@@ -73,7 +73,8 @@
     const UtilSheetMeterState = {
         gasProductionKey: 'combined',
         electricTeamKey: 'combined',
-        electricViewKey: 'meter'
+        electricViewKey: 'meter',
+        wasteShowLabels: false
     };
     const UtilSheetRuntimeState = {
         gasMeteringPromise: null,
@@ -294,7 +295,8 @@
     const UTIL_GAS_BILLING_SCOPE_KEYS = Object.freeze({
         bukjeong: 'gas_bukjeong',
         yusanLng: 'yusan_lng',
-        yusanLpg: 'yusan_lpg'
+        yusanLpg: 'yusan_lpg',
+        yusanLpgConversion: 'yusan_lpg_conversion'
     });
     const UTIL_ELECTRIC_BILLING_DOCUMENT_DIRECTORY = '전기 청구서';
     const UTIL_GAS_BILLING_DOCUMENT_DIRECTORY = '가스 청구서';
@@ -306,7 +308,8 @@
     const UTIL_GAS_BILLING_SCOPE_LABELS = Object.freeze({
         [UTIL_GAS_BILLING_SCOPE_KEYS.bukjeong]: '북정',
         [UTIL_GAS_BILLING_SCOPE_KEYS.yusanLng]: 'LNG',
-        [UTIL_GAS_BILLING_SCOPE_KEYS.yusanLpg]: 'LPG'
+        [UTIL_GAS_BILLING_SCOPE_KEYS.yusanLpg]: 'LPG',
+        [UTIL_GAS_BILLING_SCOPE_KEYS.yusanLpgConversion]: 'LPG 환산'
     });
     const UTIL_GAS_RATIO_CHART_COLORS = Object.freeze([
         '#ea580c',

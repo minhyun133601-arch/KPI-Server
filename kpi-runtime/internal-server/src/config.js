@@ -60,6 +60,9 @@ function normalizeRuntimeEnvironment(raw) {
   if (normalized === 'dev' || normalized === 'development') {
     return 'development';
   }
+  if (normalized === 'local-experiment' || normalized === 'local_experiment' || normalized === 'experiment') {
+    return 'local-experiment';
+  }
   return '';
 }
 
@@ -72,7 +75,10 @@ function resolveDefaultEnvFilePath() {
     ? [path.join(projectRoot, '.env.production.local'), path.join(projectRoot, '.env')]
     : runtimeEnvironment === 'development'
       ? [path.join(projectRoot, '.env.development.local'), path.join(projectRoot, '.env')]
+      : runtimeEnvironment === 'local-experiment'
+        ? [path.join(projectRoot, '.env.local-experiment'), path.join(projectRoot, '.env')]
       : [
+          path.join(projectRoot, '.env.local-experiment'),
           path.join(projectRoot, '.env.production.local'),
           path.join(projectRoot, '.env.development.local'),
           path.join(projectRoot, '.env')

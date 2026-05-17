@@ -2,11 +2,13 @@ import { getDbTableList } from './ops-service.overview.mjs';
 import {
   commandsRoot,
   ensureRuntimeReady,
+  envFilePath,
   getNextOccurrenceFromTimeText,
   internalServerLogsDir,
   internalServerScripts,
   launchTrackedServerAction,
   openExternalWindow,
+  openLocalExperimentDbConsole,
   resolveStalePendingServerActionIfNeeded,
   runNodeScript,
   runPowerShellScript,
@@ -14,6 +16,7 @@ import {
   runStartLifecycleJob,
   safeJsonParse,
   shutdownScheduleStateFile,
+  stopLocalPostgresCluster,
   writeJsonFile
 } from './ops-service.runtime.mjs';
 async function actionServerStart() {
@@ -41,15 +44,13 @@ async function actionServerStart() {
 }
 
 async function actionServerStop() {
-  const stopServerResult = await runPowerShellScript(internalServerScripts.stopServer, ['-Environment', 'Production'], {
+  const stopServerResult = await runPowerShellScript(internalServerScripts.stopServer, ['-EnvFile', envFilePath], {
     timeoutMs: 60000
   });
-  const stopDbResult = await runPowerShellScript(internalServerScripts.stopLocalPostgres, [], {
-    timeoutMs: 60000
-  });
+  const stopDbResult = await stopLocalPostgresCluster();
   return {
     ok: true,
-    summary: 'KPI 서버와 로컬 PostgreSQL 종료 요청이 완료되었습니다.',
+    summary: 'KPI 로컬 실험 서버와 PostgreSQL 종료 요청이 완료되었습니다.',
     output: [stopServerResult.stdout, stopDbResult.stdout, stopServerResult.stderr, stopDbResult.stderr]
       .filter(Boolean)
       .join('\n')
@@ -200,17 +201,7 @@ async function actionManageUser(payload) {
 }
 
 async function actionOpenDbConsole() {
-  openExternalWindow('cmd.exe', [
-    '/c',
-    'start',
-    '',
-    'powershell.exe',
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    internalServerScripts.openDbConsole
-  ]);
+  openLocalExperimentDbConsole();
   return {
     ok: true,
     summary: 'DB 콘솔 창을 열었습니다.'

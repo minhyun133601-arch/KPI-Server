@@ -32,6 +32,7 @@ const BILLING_DOCUMENT_ACCEPT = ".pdf,application/pdf";
 const GAS_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY = "gas_bukjeong";
 const GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LNG_KEY = "yusan_lng";
 const GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_KEY = "yusan_lpg";
+const GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_CONVERSION_KEY = "yusan_lpg_conversion";
 const WASTE_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY = "waste_bukjeong";
 const WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY = "waste_yusan";
 const GAS_YUSAN_LNG_TEAM_KEY = "gas_yusan_lng";
@@ -70,6 +71,9 @@ const GAS_LPG_BILLING_SETTLEMENT_FIELDS = [
   { key: "vat", label: "세액" },
   { key: "unit_price", label: "단가" },
   { key: "billing_amount", label: "총액" },
+];
+const GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FIELDS = [
+  { key: "billing_amount", label: "LPG 환산 정산값" },
 ];
 const WASTE_BILLING_SETTLEMENT_FIELDS_BUKJEONG = [
   { key: "water", label: "용수비" },
@@ -131,6 +135,7 @@ const GAS_LPG_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set([
   "unit_price",
   "billing_amount",
 ]);
+const GAS_LPG_CONVERSION_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set([]);
 const WASTE_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set([
   "unit_price",
   "billing_amount",
@@ -193,6 +198,7 @@ const GAS_LPG_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
   unit_price: "공급가액 ÷ LPG사용량",
   billing_amount: "공급가액 + 세액",
 });
+const GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({});
 const WASTE_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
   unit_price: "총비용 ÷ 해당 월 사용량",
   billing_amount: "입력한 세부 비용 합계",
@@ -218,6 +224,11 @@ const BILLING_SETTLEMENT_SCOPE_DEFINITIONS_BY_RESOURCE = Object.freeze({
       key: GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_KEY,
       label: "유산 LPG 정산",
       shortLabel: "유산 LPG",
+    }),
+    Object.freeze({
+      key: GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_CONVERSION_KEY,
+      label: "LPG 환산",
+      shortLabel: "LPG 환산",
     }),
   ]),
   waste: Object.freeze([
@@ -717,6 +728,7 @@ const GAS_SETTLEMENT_SCOPE_TEAM_KEYS = Object.freeze({
     "team_03",
   ]),
   [GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_KEY]: Object.freeze([GAS_YUSAN_LPG_TEAM_KEY]),
+  [GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_CONVERSION_KEY]: Object.freeze([]),
 });
 const GAS_CORRECTION_TARGET_IDS = new Set(["gas_field_03", "gas_field_04", "gas_field_06"]);
 const GAS_CORRECTION_SOURCE_IDS = ["gas_field_03", "gas_field_04", "gas_field_06"];

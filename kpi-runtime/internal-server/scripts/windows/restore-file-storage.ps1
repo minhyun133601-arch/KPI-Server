@@ -1,5 +1,6 @@
 param(
   [string]$BackupPath,
+  [switch]$Merge,
   [switch]$Force
 )
 
@@ -28,6 +29,7 @@ function Get-ConfiguredStorageRoot {
   param([string]$ServerDir)
 
   $candidatePaths = @(
+    (Join-Path $ServerDir '.env.local-experiment'),
     (Join-Path $ServerDir '.env.production.local'),
     (Join-Path $ServerDir '.env.development.local'),
     (Join-Path $ServerDir '.env')
@@ -89,25 +91,31 @@ $summary = [ordered]@{
   mode = if ($Force) { 'restore' } else { 'preview' }
   sourceRoot = $sourceRoot
   targetRoot = $targetRoot
+  merge = [bool]$Merge
   fileCount = $sourceFiles.Count
   totalBytes = ($sourceFiles | Measure-Object -Property Length -Sum).Sum
 }
 
 if (-not $Force) {
-  $summary['note'] = 'Add -Force to overwrite the configured storage-root files directory from this backup.'
+  $summary['note'] = 'Add -Force to overwrite the configured storage-root files directory from this backup, or add -Force -Merge to copy files into the existing directory.'
   $summary | ConvertTo-Json -Depth 6
   exit 0
 }
 
-$preRestoreRoot = Join-Path $storageRoot ('backups\pre-restore-file-storage\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
-if (Test-Path $targetRoot) {
-  New-Item -ItemType Directory -Path $preRestoreRoot -Force | Out-Null
-  Copy-Item -Path $targetRoot -Destination $preRestoreRoot -Recurse -Force
-  Remove-Item -Path $targetRoot -Recurse -Force
+if ($Merge) {
+  New-Item -ItemType Directory -Path $targetRoot -Force | Out-Null
+  Copy-Item -Path (Join-Path $sourceRoot '*') -Destination $targetRoot -Recurse -Force
+} else {
+  $preRestoreRoot = Join-Path $storageRoot ('backups\pre-restore-file-storage\' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+  if (Test-Path $targetRoot) {
+    New-Item -ItemType Directory -Path $preRestoreRoot -Force | Out-Null
+    Copy-Item -Path $targetRoot -Destination $preRestoreRoot -Recurse -Force
+    Remove-Item -Path $targetRoot -Recurse -Force
+  }
+
+  New-Item -ItemType Directory -Path (Split-Path -Parent $targetRoot) -Force | Out-Null
+  Copy-Item -Path $sourceRoot -Destination $targetRoot -Recurse -Force
+  $summary['preRestoreBackupRoot'] = if (Test-Path $preRestoreRoot) { $preRestoreRoot } else { $null }
 }
 
-New-Item -ItemType Directory -Path (Split-Path -Parent $targetRoot) -Force | Out-Null
-Copy-Item -Path $sourceRoot -Destination $targetRoot -Recurse -Force
-
-$summary['preRestoreBackupRoot'] = if (Test-Path $preRestoreRoot) { $preRestoreRoot } else { $null }
 $summary | ConvertTo-Json -Depth 6

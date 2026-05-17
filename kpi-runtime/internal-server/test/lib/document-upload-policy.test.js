@@ -107,6 +107,25 @@ test('document upload policy accepts image category by safe extension or mime bo
   }, 'unsupported_type');
 });
 
+test('document upload policy bounds report runtime images', () => {
+  const baseInput = {
+    ownerDomain: 'report.runtime',
+    fileCategory: 'image',
+    base64Data: Buffer.from('report-image').toString('base64'),
+  };
+
+  assert.doesNotThrow(() => validateDocumentUploadPolicy({
+    ...baseInput,
+    originalName: 'slide.png',
+    mimeType: 'image/png',
+  }));
+  assertRejectsUpload({
+    ...baseInput,
+    originalName: 'slide.exe',
+    mimeType: 'application/octet-stream',
+  }, 'unsupported_type');
+});
+
 test('document upload policy keeps managed attachment office and hwp types bounded', () => {
   const baseInput = {
     ownerDomain: 'work.history',

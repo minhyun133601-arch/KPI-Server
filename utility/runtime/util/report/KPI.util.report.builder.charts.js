@@ -1,3 +1,9 @@
+        function toUtilReportBuilderChartNumber(value) {
+            if (value === null || value === undefined || value === '') return NaN;
+            const number = Number(value);
+            return Number.isFinite(number) ? number : NaN;
+        }
+
         function renderUtilIndependentBoundsMultiSeriesChart(seriesList, options = {}) {
             const isModal = options.mode === 'modal';
             const frameExtraHeight = Number.isFinite(options.frameExtraHeight) ? Number(options.frameExtraHeight) : (isModal ? 176 : 92);
@@ -77,7 +83,7 @@
 
             const series = filteredSeries.map(item => {
                 const values = item.points
-                    .map(point => Number(point?.value))
+                    .map(point => toUtilReportBuilderChartNumber(point?.value))
                     .filter(value => Number.isFinite(value));
                 const axisOptions = {
                     ...defaultAxisOptions,
@@ -158,7 +164,7 @@
             };
 
             const barRects = barSeries.map((item, seriesIndex) => item.points.map((point, pointIndex) => {
-                const value = Number(point?.value);
+                const value = toUtilReportBuilderChartNumber(point?.value);
                 if (!Number.isFinite(value)) return '';
                 const left = resolveBarLeft(seriesIndex, pointIndex);
                 const y = item.mapY(value);
@@ -174,7 +180,7 @@
                 let path = '';
                 let startNew = true;
                 item.points.forEach((point, pointIndex) => {
-                    const value = Number(point?.value);
+                    const value = toUtilReportBuilderChartNumber(point?.value);
                     if (!Number.isFinite(value)) {
                         startNew = true;
                         return;
@@ -193,7 +199,7 @@
             }).join('');
 
             const linePoints = lineSeries.map(item => item.points.map((point, pointIndex) => {
-                const value = Number(point?.value);
+                const value = toUtilReportBuilderChartNumber(point?.value);
                 if (!Number.isFinite(value)) return '';
                 const x = mapX(pointIndex);
                 const y = item.mapY(value);
@@ -214,7 +220,7 @@
             const barLabels = barSeries.map((item, seriesIndex) => {
                 if (!shouldShowSeriesLabels(item)) return '';
                 return item.points.map((point, pointIndex) => {
-                const value = Number(point?.value);
+                const value = toUtilReportBuilderChartNumber(point?.value);
                 if (!Number.isFinite(value)) return '';
                 const x = resolveBarLeft(seriesIndex, pointIndex) + (barWidth / 2);
                 const y = item.mapY(value);
@@ -227,7 +233,7 @@
             const lineLabels = lineSeries.map((item, seriesIndex) => {
                 if (!shouldShowSeriesLabels(item)) return '';
                 return item.points.map((point, pointIndex) => {
-                const value = Number(point?.value);
+                const value = toUtilReportBuilderChartNumber(point?.value);
                 if (!Number.isFinite(value)) return '';
                 const x = mapX(pointIndex);
                 const y = item.mapY(value);

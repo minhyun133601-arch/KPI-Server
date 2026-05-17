@@ -115,8 +115,8 @@ test('report sheet analysis state registry normalizes analysis range and shared 
 
   assert.equal(registry.getUtilGasAnalysisChartDecimals('gasCost', 'million'), 1);
   assert.equal(registry.getUtilGasAnalysisChartDecimals('ratio-lng'), 3);
-  assert.equal(registry.getUtilGasAnalysisUnitKey('productionLineRatio::1?� 1?�트::SD'), 'kg');
-  assert.equal(registry.getUtilElectricAnalysisUnitKey('productionLineRatio::1?� 1?�트::SD'), 'kg');
+  assert.equal(registry.getUtilGasAnalysisUnitKey('productionLineRatio::1?占?1?占쏀듃::SD'), 'kg');
+  assert.equal(registry.getUtilElectricAnalysisUnitKey('productionLineRatio::1?占?1?占쏀듃::SD'), 'kg');
   registry.setUtilSheetAnalysisDecimals('gas', 'gasCost', 4);
   assert.equal(registry.getUtilGasAnalysisChartDecimals('gasCost', 'million'), 4);
   assert.equal(config.UtilSheetAnalysisState.gas.decimalDigits.gasCost, 4);
@@ -143,10 +143,10 @@ test('report sheet analysis state registry normalizes analysis range and shared 
 
 test('kpi html loads report sheet analysis state before analysis models and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=061');
-  const analysisStateIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/state.js?v=056');
-  const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=062');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=065');
+  const analysisStateIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/state.js?v=057');
+  const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=054');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=063');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalRenderIndex >= 0, 'report sheet modal render loader is missing');

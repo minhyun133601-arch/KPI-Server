@@ -2,6 +2,7 @@ import { isOwnerRole } from '../../services/auth.js';
 import {
   CURRENT_PORTAL_DATA_RECORDS,
   PORTAL_DATA_MODULE_KEY,
+  REPORT_RUNTIME_MODULE_KEY,
   WORK_RUNTIME_BOOTSTRAP_RECORDS,
   WORK_RUNTIME_MODULE_KEY,
 } from '../portal-data-registry.js';
@@ -142,6 +143,15 @@ export async function buildPortalRuntimeConfig(auth, permissionProbe) {
       readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_PRODUCTION_DAILY, 'read'),
       writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_PRODUCTION_DAILY, 'write'),
       archive: { enabled: false },
+    },
+    report: {
+      enabled: true,
+      apiBase: '/api',
+      moduleKey: REPORT_RUNTIME_MODULE_KEY,
+      recordKey: 'cover',
+      permissionKey: PERMISSION_KEYS.UTIL_METERING_APP,
+      readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_METERING_APP, 'read'),
+      writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.UTIL_METERING_APP, 'write'),
     },
     audit: await buildAuditRuntimeConfig(auth, permissionProbe),
     data: await buildDataRuntimeConfig(auth, permissionProbe),

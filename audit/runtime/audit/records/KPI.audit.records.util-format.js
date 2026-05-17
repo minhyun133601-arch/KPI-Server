@@ -21,7 +21,6 @@
         const UtilEnergyState = {
             linkEnabled: true,
             linkGasMode: 'mj',
-            chartPopupEnabled: false,
             displayDecimals: 2,
             electricTeam: 'all',
             gasTeam: 'all',
@@ -30,12 +29,7 @@
             electricFactor: UTIL_ENERGY_DEFAULTS.electricFinal,
             gasLNG: UTIL_ENERGY_DEFAULTS.gasLNG,
             gasLPG: UTIL_ENERGY_DEFAULTS.gasLPG,
-            toeFactor: UTIL_ENERGY_DEFAULTS.toeMJ,
-            chartMetric: 'total_mj',
-            chartElectricTeam: 'all',
-            chartGasTeam: 'all',
-            chartFrom: '',
-            chartTo: ''
+            toeFactor: UTIL_ENERGY_DEFAULTS.toeMJ
         };
 
         function normalizeUtilEnergyDecimals(value, fallback = 2) {

@@ -240,8 +240,19 @@ test('report sheet modal shell registry creates the shared modal and routes type
   assert.match(reportSheetModalShellSource, /KPIUtilReportRuntimeAdapter/);
   assert.match(reportSheetModalShellSource, /util-sheet-extract-options-card/);
   assert.match(reportSheetModalShellSource, /data-role="util-sheet-extract-run"/);
+  assert.match(reportSheetModalShellSource, /util-sheet-waste-meter-label-toggle/);
+  assert.match(reportSheetModalShellSource, /setUtilWasteMeterShowLabels/);
+  assert.match(reportSheetModalShellSource, /is-monthly-choice-only/);
+  assert.match(reportSheetModalShellSource, /data-role="util-sheet-monthly-extract-dataset"/);
+  assert.match(reportSheetModalShellSource, /applyMonthlyExtractPreview/);
+  assert.ok(reportSheetModalShellSource.includes('>\uAC00\uC2A4</span>'));
+  assert.ok(reportSheetModalShellSource.includes('>\uC804\uAE30</span>'));
+  assert.ok(reportSheetModalShellSource.includes('>\uD3D0\uC218</span>'));
+  assert.match(reportSheetModalShellSource, /data-role="util-sheet-monthly-extract-dataset" data-extract-dataset-key="gas" checked/);
   assert.doesNotMatch(reportSheetModalShellSource, /util-sheet-extract-actions/);
   assert.match(meteringCssSource, /\.util-sheet-extract-options \{ position: fixed;/);
+  assert.match(meteringCssSource, /\.util-sheet-extract-options\.is-monthly-choice-only \{ align-items: flex-start; justify-content: flex-end; pointer-events: none; background: rgba\(248, 250, 252, 0\.34\);/);
+  assert.match(meteringCssSource, /\.util-sheet-extract-option\.is-active \{ border-color: #2563eb;/);
   config.UtilSheetReportMonthState.analysis = '2026-05';
   config.UtilSheetCompareState.analysis = 'year';
 
@@ -251,6 +262,7 @@ test('report sheet modal shell registry creates the shared modal and routes type
   let windowStateSyncCount = 0;
   let closeCount = 0;
   let panelSyncArgs = null;
+  let wasteMeterLabelArgs = null;
 
   modalShell.setRuntimeAdapters({
     pruneUtilSheetDatasetToggles(modal) {
@@ -299,6 +311,9 @@ test('report sheet modal shell registry creates the shared modal and routes type
     syncUtilSheetPanelSelection(sheetType, datasetKey) {
       panelSyncArgs = { sheetType, datasetKey };
     },
+    setUtilWasteMeterShowLabels(currentModal, showLabels) {
+      wasteMeterLabelArgs = { modal: currentModal, showLabels };
+    },
   });
 
   const modal = modalShell.ensureUtilSheetReportModal();
@@ -337,6 +352,13 @@ test('report sheet modal shell registry creates the shared modal and routes type
   modal.listeners.change({ target: monthSelect });
   assert.equal(config.UtilSheetReportMonthState.analysis, '2026-06');
   assert.deepEqual(panelSyncArgs, { sheetType: 'analysis', datasetKey: 'electric' });
+
+  const wasteMeterLabelToggle = createTarget({
+    '[data-role="util-sheet-waste-meter-label-toggle"]': true,
+  });
+  wasteMeterLabelToggle.checked = true;
+  modal.listeners.change({ target: wasteMeterLabelToggle });
+  assert.deepEqual(wasteMeterLabelArgs, { modal, showLabels: true });
 
   const closeButton = createTarget({
     '[data-role="util-sheet-report-close"]': true,
@@ -708,6 +730,296 @@ test('report sheet modal shell extraction can select meter and analysis together
   assert.deepEqual(harness.alertMessages, []);
 });
 
+test('report sheet modal shell monthly report opens first and extracts selected datasets and sheet types', () => {
+  const { context, harness } = createModalShellContext();
+  const modalShell = context.KPIUtilReportSheetModalShell;
+  const config = context.KPIUtilReportSheetConfig;
+
+  const monthOptions = [
+    { value: '2026-03', label: '2026.03' },
+    { value: '2026-04', label: '2026.04' },
+    { value: '2026-05', label: '2026.05' },
+  ];
+  const makeAnalysisModel = (datasetKey, range) => ({
+    hasData: true,
+    datasetKey,
+    categoryOption: { key: 'yusan', label: 'yusan', selectLabel: 'yusan' },
+    teamOption: { key: 'combined', label: 'combined', selectLabel: 'combined' },
+    siteOption: { key: 'all', label: 'all', selectLabel: 'all' },
+    range,
+    rangeLabel: `${range.from} ~ ${range.to}`,
+    monthOptions,
+    summaryItems: [],
+    charts: [],
+    combinedChart: { key: 'combined', title: 'Combined', controlItems: [], series: [] },
+    ratioCombinedChart: { key: 'ratio-combined', title: 'Ratio', controlItems: [], series: [] },
+  });
+  const renderCalls = [];
+
+  modalShell.setRuntimeAdapters({
+    normalizeUtilSheetType(sheetType) {
+      return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+    },
+    resolveUtilSheetReportDatasetKey(sheetType, datasetKey) {
+      void sheetType;
+      const normalizedDatasetKey = String(datasetKey || '').trim();
+      return normalizedDatasetKey === 'electric' || normalizedDatasetKey === 'waste'
+        ? normalizedDatasetKey
+        : 'gas';
+    },
+    normalizeUtilSheetCompareKey(compareKey) {
+      return String(compareKey || '').trim() === 'year' ? 'year' : 'month';
+    },
+    buildUtilSheetDatasetResult() {
+      return { monthOptions };
+    },
+    renderUtilSheetReportModal(modal) {
+      const sheetType = modal.dataset.sheetType;
+      const datasetKey = modal.dataset.datasetKey;
+      const state = config.UtilSheetAnalysisState[datasetKey] || {};
+      renderCalls.push({
+        sheetType,
+        datasetKey,
+        monthKey: modal.dataset.monthKey,
+        from: state.from,
+        to: state.to,
+      });
+      config.UtilSheetReportState[sheetType] = datasetKey;
+      config.UtilSheetReportMonthState[sheetType] = modal.dataset.monthKey;
+      config.UtilSheetCompareState[sheetType] = modal.dataset.compareKey;
+      modal._utilSheetAnalysisModel = sheetType === 'analysis'
+        ? makeAnalysisModel(datasetKey, { from: state.from, to: state.to })
+        : null;
+    },
+    syncUtilSheetPanelSelection(sheetType, datasetKey) {
+      renderCalls.push({ sheetType, datasetKey, panelSync: true });
+    },
+    buildUtilGasAnalysisModel(monthKey) {
+      const state = config.UtilSheetAnalysisState.gas;
+      return makeAnalysisModel('gas', { from: state.from || '2026-03', to: state.to || monthKey });
+    },
+    buildUtilElectricAnalysisModel(monthKey) {
+      const state = config.UtilSheetAnalysisState.electric;
+      return makeAnalysisModel('electric', { from: state.from || '2026-03', to: state.to || monthKey });
+    },
+    buildUtilWasteAnalysisModel(monthKey) {
+      const state = config.UtilSheetAnalysisState.waste;
+      return makeAnalysisModel('waste', { from: state.from || '2026-03', to: state.to || monthKey });
+    },
+    buildUtilGasAnalysisBodyHtmlV2(model) {
+      return `<div>ANALYSIS_BODY_${model.datasetKey}_${model.range.from}_${model.range.to}</div>`;
+    },
+    buildUtilElectricAnalysisBodyHtmlV2(model) {
+      return `<div>ANALYSIS_BODY_${model.datasetKey}_${model.range.from}_${model.range.to}</div>`;
+    },
+    buildUtilWasteAnalysisBodyHtmlV2(model) {
+      return `<div>ANALYSIS_BODY_${model.datasetKey}_${model.range.from}_${model.range.to}</div>`;
+    },
+  });
+
+  const modal = modalShell.ensureUtilSheetReportModal();
+  const panel = {
+    hidden: true,
+    toggleAttribute(name, force) {
+      if (name === 'hidden') this.hidden = force === true;
+    },
+  };
+  const fromSelect = { innerHTML: '', value: '', disabled: false };
+  const toSelect = { innerHTML: '', value: '', disabled: false };
+  const monthlyCheckboxes = ['gas', 'electric', 'waste'].map(datasetKey => ({
+    dataset: { extractDatasetKey: datasetKey },
+    checked: true,
+  }));
+  const monthlySheetTypeCheckboxes = ['meter', 'analysis'].map(sheetType => ({
+    dataset: { extractSheetType: sheetType },
+    checked: true,
+  }));
+
+  const reportCard = {
+    querySelectorAll(selector) {
+      return selector === 'input, textarea, select' ? [] : [];
+    },
+    cloneNode(deep) {
+      assert.equal(deep, true);
+      return {
+        querySelectorAll(selector) {
+          if (selector === 'input, textarea, select' || selector === '[id]') return [];
+          return [];
+        },
+        querySelector() {
+          return null;
+        },
+        get outerHTML() {
+          const sheetType = modal.dataset.sheetType;
+          const datasetKey = modal.dataset.datasetKey;
+          const range = modal._utilSheetAnalysisModel?.range || {};
+          return `
+            <section class="util-sheet-report-card" data-card-sheet-type="${sheetType}" data-card-dataset-key="${datasetKey}">
+              <div class="util-sheet-report-body" data-role="util-sheet-report-body">
+                ${sheetType === 'analysis'
+                  ? `<div>ANALYSIS_CARD_${datasetKey}_${range.from}_${range.to}</div>`
+                  : `<div>METER_CARD_${datasetKey}_${modal.dataset.monthKey}</div>`}
+              </div>
+            </section>
+          `;
+        },
+      };
+    },
+  };
+  const title = {
+    get textContent() {
+      return `${modal.dataset.datasetKey}_${modal.dataset.sheetType}`;
+    },
+  };
+
+  modal.querySelector = (selector) => ({
+    '[data-role="util-sheet-monthly-extract-options"]': panel,
+    '[data-role="util-sheet-monthly-extract-from"]': fromSelect,
+    '[data-role="util-sheet-monthly-extract-to"]': toSelect,
+    '.util-sheet-report-card': reportCard,
+    '[data-role="util-sheet-report-title"]': title,
+  }[selector] || null);
+  modal.querySelectorAll = (selector) => (
+    selector === '[data-role="util-sheet-monthly-extract-dataset"]'
+      ? monthlyCheckboxes
+      : selector === '[data-role="util-sheet-monthly-extract-sheet-type"]'
+        ? monthlySheetTypeCheckboxes
+      : []
+  );
+
+  modal.dataset.sheetType = 'meter';
+  modal.dataset.datasetKey = 'electric';
+  modal.dataset.monthKey = '2026-05';
+  modal.listeners.click({
+    target: createTarget({
+      '[data-role="util-sheet-report-print"]': true,
+    }),
+  });
+  assert.equal(panel.hidden, false);
+  assert.equal(modal.dataset.monthlyExtractOptionsOpen, 'true');
+  assert.equal(modal.dataset.monthlyExtractDatasetKey, 'electric');
+  assert.deepEqual(monthlyCheckboxes.map(checkbox => checkbox.checked), [true, true, true]);
+  assert.deepEqual(monthlySheetTypeCheckboxes.map(checkbox => checkbox.checked), [true, true]);
+  panel.hidden = true;
+  modal.dataset.monthlyExtractOptionsOpen = 'false';
+
+  assert.equal(modalShell.openUtilSheetMonthlyReportExtractOptions(), true);
+  assert.equal(panel.hidden, true);
+  assert.equal(modal.dataset.monthlyReportMode, 'true');
+  assert.equal(modal.dataset.monthlyExtractStandalone, 'false');
+  assert.equal(modal.dataset.datasetKey, 'gas');
+  assert.equal(modal.dataset.monthKey, '2026-05');
+  assert.equal(fromSelect.value, '2026-04');
+  assert.equal(toSelect.value, '2026-05');
+  assert.deepEqual(monthlyCheckboxes.map(checkbox => checkbox.checked), [true, true, true]);
+  assert.deepEqual(monthlySheetTypeCheckboxes.map(checkbox => checkbox.checked), [true, true]);
+
+  modal.listeners.click({
+    target: createTarget({
+      '[data-role="util-sheet-report-print"]': true,
+    }),
+  });
+  assert.equal(panel.hidden, false);
+  assert.equal(modal.dataset.monthlyExtractOptionsOpen, 'true');
+
+  modal.listeners.click({
+    target: createTarget({
+      '[data-role="util-sheet-monthly-extract-run"]': true,
+    }),
+  });
+  assert.deepEqual(harness.clickedDownloads.map(item => item.download), [
+    '유틸리티 분석-2026-04-2026-05.html',
+  ]);
+  assert.deepEqual(harness.alertMessages, []);
+  harness.clickedDownloads = [];
+  modal.listeners.click({
+    target: createTarget({
+      '[data-role="util-sheet-monthly-extract-cancel"]': true,
+    }),
+  });
+  assert.equal(panel.hidden, true);
+
+  modal.listeners.click({
+    target: createTarget({
+      '[data-role="util-sheet-monthly-review-dataset"]': true,
+    }, { extractDatasetKey: 'electric' }),
+  });
+  assert.equal(modal.dataset.monthlyExtractDatasetKey, 'electric');
+  assert.equal(modal.dataset.datasetKey, 'electric');
+  assert.ok(renderCalls.some(call => call.sheetType === 'meter' && call.datasetKey === 'electric'));
+
+  modal.listeners.click({
+    target: createTarget({
+      '[data-role="util-sheet-monthly-review-dataset"]': true,
+    }, { extractDatasetKey: 'waste' }),
+  });
+  assert.equal(modal.dataset.monthlyExtractDatasetKey, 'waste');
+  assert.equal(modal.dataset.datasetKey, 'waste');
+  assert.equal(modal.dataset.monthlyExtractReviewedKeys, 'gas,electric,waste');
+
+  modal.listeners.click({
+    target: createTarget({
+      '[data-role="util-sheet-report-print"]': true,
+    }),
+  });
+  assert.equal(panel.hidden, false);
+  assert.deepEqual(monthlyCheckboxes.map(checkbox => checkbox.checked), [true, true, true]);
+
+  monthlyCheckboxes[0].checked = false;
+  monthlyCheckboxes[1].checked = true;
+  monthlyCheckboxes[2].checked = false;
+  modal.listeners.change({
+    target: createTarget({
+      '[data-role="util-sheet-monthly-extract-dataset"]': true,
+    }, { extractDatasetKey: 'electric' }),
+  });
+  assert.equal(modal.dataset.monthlyExtractDatasets, 'electric');
+
+  monthlySheetTypeCheckboxes[0].checked = false;
+  monthlySheetTypeCheckboxes[1].checked = true;
+  modal.listeners.change({
+    target: createTarget({
+      '[data-role="util-sheet-monthly-extract-sheet-type"]': true,
+    }, { extractSheetType: 'analysis' }),
+  });
+  assert.equal(modal.dataset.monthlyExtractSheetTypes, 'analysis');
+
+  fromSelect.value = '2026-03';
+  toSelect.value = '2026-05';
+  modal.listeners.change({
+    target: createTarget({
+      '[data-role="util-sheet-monthly-extract-from"], [data-role="util-sheet-monthly-extract-to"]': true,
+    }),
+  });
+  assert.equal(modal.dataset.monthlyExtractFrom, '2026-03');
+  assert.equal(modal.dataset.monthlyExtractTo, '2026-05');
+
+  modal.listeners.click({
+    target: createTarget({
+      '[data-role="util-sheet-monthly-extract-run"]': true,
+    }),
+  });
+
+  assert.deepEqual(harness.clickedDownloads.map(item => item.download), [
+    '유틸리티 분석-2026-03-2026-05.html',
+  ]);
+  assert.equal(panel.hidden, false);
+  assert.equal(modal.dataset.monthlyExtractOptionsOpen, 'true');
+  assert.equal(modal.dataset.monthlyExtractStandalone, 'false');
+  const html = String(harness.blobParts[0] || '');
+  assert.match(html, /<title>유틸리티 분석<\/title>/);
+  assert.match(html, /<div class="util-sheet-monthly-title">유틸리티 분석<\/div>/);
+  assert.match(html, /util-sheet-monthly-dataset-tab/);
+  assert.match(html, /ANALYSIS_CARD_electric_2026-03_2026-05/);
+  assert.match(html, /ANALYSIS_BODY_electric_2026-03_2026-05/);
+  assert.doesNotMatch(html, /METER_CARD_electric_2026-05/);
+  assert.doesNotMatch(html, /METER_CARD_gas_2026-05/);
+  assert.doesNotMatch(html, /METER_CARD_waste_2026-05/);
+  assert.doesNotMatch(html, /ANALYSIS_BODY_gas_2026-03_2026-05/);
+  assert.doesNotMatch(html, /ANALYSIS_BODY_waste_2026-03_2026-05/);
+  assert.deepEqual(harness.alertMessages, []);
+});
+
 test('report sheet modal shell extraction renders electric meter output statically', () => {
   const { context, harness } = createModalShellContext();
   const modalShell = context.KPIUtilReportSheetModalShell;
@@ -827,6 +1139,8 @@ test('report sheet modal shell extraction renders electric meter output statical
   assert.doesNotMatch(html, /ELECTRIC_METER_VIEW/);
   assert.doesNotMatch(html, /ELECTRIC_ALLOCATION_VIEW/);
   assert.match(html, /ELECTRIC_TEAM_VIEW/);
+  assert.doesNotMatch(html, /data-role="util-sheet-report-template-section"/);
+  assert.doesNotMatch(html, /util-sheet-blank-template-table/);
   assert.deepEqual(harness.alertMessages, []);
 });
 
@@ -963,7 +1277,6 @@ test('report sheet modal shell extraction downloads analysis html with standalon
                   </div>
                 `}
                 <div class="util-sheet-analysis-summary-controls">
-                  <select data-role="util-sheet-analysis-unit" data-chart-key="lngUsage"><option value="nm3">Nm3</option></select>
                   <select data-role="util-sheet-analysis-decimals" data-chart-key="lngUsage"><option value="0">0</option><option value="2">2</option></select>
                   <input type="checkbox" data-role="util-sheet-analysis-series-label-toggle" data-chart-key="lngUsage" checked>
                   <button data-role="util-sheet-analysis-series-type" data-chart-key="lngUsage" data-chart-type="line">LINE</button>
@@ -1017,7 +1330,7 @@ test('report sheet modal shell extraction downloads analysis html with standalon
   assert.match(html, /data-role="util-sheet-analysis-to"/);
   assert.match(html, /analysisExtractDragBound/);
   assert.match(html, /const chartInlineStyle = \[/);
-  assert.match(html, /width:100%;max-width:100%;overflow-x:auto;overflow-y:visible/);
+  assert.match(html, /width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden/);
   assert.match(html, /let nextScrollLeft = Math\.min\(maxScrollLeft, Math\.max\(0, startScrollLeft - diffX\)\)/);
   assert.match(html, /scrollDocument\.addEventListener\('pointermove', handlePointerMove, \{ passive: false \}\)/);
   assert.match(html, /nextScrollLeft >= maxScrollLeft - 24/);
@@ -1027,7 +1340,7 @@ test('report sheet modal shell extraction downloads analysis html with standalon
   assert.match(html, /function bindDataTableDrag/);
   assert.match(html, /panel\.style\.left = `\$\{Math\.round\(clampedLeft\)\}px`/);
   assert.match(html, /function buildMonthTableHtml/);
-  assert.match(html, /data-role="util-sheet-analysis-unit"/);
+  assert.doesNotMatch(html, /data-role="util-sheet-analysis-unit"/);
   assert.match(html, /data-role="util-sheet-analysis-decimals"/);
   assert.match(html, /decimalDigits/);
   assert.match(html, /function setDecimalSelectState/);
@@ -1041,7 +1354,28 @@ test('report sheet modal shell extraction downloads analysis html with standalon
   assert.match(html, /data-role="util-sheet-analysis-open-ratio-table"/);
   assert.match(html, /data-role="util-sheet-analysis-gas-category-select"/);
   assert.match(html, /data-testid="original-rendered-chart"/);
+  assert.doesNotMatch(html, /data-role="util-sheet-report-template-section"/);
+  assert.doesNotMatch(html, /util-sheet-blank-template-table/);
   assert.match(html, /is-extract-fullscreen/);
+  assert.match(html, /html\.util-sheet-analysis-extract-fullscreen/);
+  assert.match(html, /util-sheet-analysis-chart-card\.is-extract-fullscreen \{ position: fixed !important;[^}]*display: grid !important;[^}]*align-content: start !important;[^}]*max-height: calc\(100vh - 24px\) !important;[^}]*overflow: hidden !important;/);
+  assert.match(html, /util-sheet-analysis-chart-card\.is-extract-fullscreen \.util-sheet-analysis-chart-frame \{ min-height: 0 !important; height: var\(--extract-chart-frame-height, 816px\) !important; max-height: var\(--extract-chart-frame-height, 816px\) !important;/);
+  assert.match(html, /util-sheet-analysis-chart-card\.is-extract-fullscreen \.util-analytics-chart-canvas svg \{ width: var\(--chart-width, 1260px\) !important; height: var\(--chart-height, 640px\) !important;/);
+  assert.match(html, /const chartKind = chart\.key === 'ratio-combined'/);
+  assert.match(html, /const chartHeight = fullscreen/);
+  assert.match(html, /card\.style\.setProperty\('--extract-chart-frame-height', `\$\{chartHeight \+ 176\}px`\)/);
+  assert.match(html, /height: chartHeight/);
+  assert.match(reportSheetModalShellSource, /function stripReportTemplateSectionsHtml/);
+  assert.match(reportSheetModalShellSource, /function ensureReportTemplateAtBodyEnd/);
+  assert.match(html, /function renderInlineChartCard\(card\)/);
+  assert.match(html, /renderInlineChartCard\(node\);/);
+  assert.match(html, /document\.documentElement\?\.classList\?\.toggle\?\.\('util-sheet-analysis-extract-fullscreen', enabled\)/);
+  assert.doesNotMatch(html, /min-height: 760px/);
+  assert.doesNotMatch(html, /if \(!dirtyChartKeys\[chartKey\]\) return;/);
+  assert.match(html, /if \(!active && !dirtyChartKeys\[chartKey\] && restoreOriginalChartFrame\(card\)\) return;/);
+  assert.match(reportSheetModalShellSource, /min-height: 560px/);
+  assert.match(reportSheetModalShellSource, /\.util-sheet-meter-extract-body \.util-sheet-waste-meter-card \{ grid-template-columns: minmax\(0, 1fr\);/);
+  assert.doesNotMatch(reportSheetModalShellSource, /\.util-sheet-meter-extract-body \.util-sheet-waste-meter-card \{ grid-template-columns: minmax\(500px,/);
   assert.match(html, /util-analytics-chart-canvas\.is-dragging/);
   assert.match(html, /util-sheet-analysis-chart-surface \.util-analytics-chart\.is-modal \{ width: 100% !important; min-width: 100% !important; max-width: 100% !important;/);
   assert.match(html, /util-sheet-analysis-chart-surface \.util-analytics-chart-canvas \{ width: 100% !important; max-width: 100% !important; min-width: 0 !important;/);
@@ -1070,11 +1404,11 @@ test('kpi html loads report sheet modal shell before modal render and sheet.js',
   );
 
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=055');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=085');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=061');
+  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=057');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=095');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=065');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=062');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=063');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');

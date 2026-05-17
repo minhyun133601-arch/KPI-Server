@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { CURRENT_PORTAL_DATA_RECORDS, WORK_RUNTIME_BOOTSTRAP_RECORDS } from '../../src/lib/portal-data-registry.js';
+import {
+  CURRENT_PORTAL_DATA_RECORDS,
+  REPORT_RUNTIME_MODULE_KEY,
+  REPORT_RUNTIME_RECORDS,
+  WORK_RUNTIME_BOOTSTRAP_RECORDS,
+  getModuleRecordPermissionKey,
+} from '../../src/lib/portal-data-registry.js';
 import { buildPortalDataBootstrapPayload } from '../../src/lib/portal-bootstrap/payload.js';
 import { injectPortalDataBootstrap } from '../../src/lib/portal-bootstrap/static.js';
 
@@ -54,4 +60,13 @@ test('buildPortalDataBootstrapPayload copies known records and mirrors audit reg
   assert.deepEqual(payload.portalData.data_equipment_history_card, { equipmentList: [] });
   assert.equal(payload.importedMeta.length, 2);
   assert.equal(payload.missing.length, 0);
+});
+
+test('report runtime cover record resolves to the utility shared permission key', () => {
+  assert.equal(REPORT_RUNTIME_MODULE_KEY, 'report_runtime');
+  assert.deepEqual(REPORT_RUNTIME_RECORDS.map((record) => record.recordKey), ['cover']);
+  assert.equal(getModuleRecordPermissionKey('report_runtime', 'cover'), 'util.metering.app');
+  assert.equal(getModuleRecordPermissionKey('report_runtime', 'report_2026_05'), 'util.metering.app');
+  assert.equal(getModuleRecordPermissionKey('report_runtime', 'report_2026_5'), '');
+  assert.equal(getModuleRecordPermissionKey('portal_data', 'report_2026_05'), '');
 });

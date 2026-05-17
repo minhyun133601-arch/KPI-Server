@@ -122,6 +122,18 @@ function normalizeGasBillingSettlementRoundingAdjustmentValue(value) {
   return String(Math.abs(numericValue));
 }
 
+function isBillingSettlementDecimalPreservingField(
+  fieldKey,
+  resourceType = getCurrentResourceType(),
+  scopeKey = DEFAULT_BILLING_SETTLEMENT_SCOPE_KEY
+) {
+  return (
+    resourceType === RESOURCE_TYPES.GAS &&
+    isGasLpgConversionBillingSettlementScope(scopeKey) &&
+    fieldKey === "billing_amount"
+  );
+}
+
 function normalizeBillingSettlementStoredValue(
   fieldKey,
   value,
@@ -154,6 +166,10 @@ function normalizeBillingSettlementStoredValue(
     return numericValue.toFixed(3);
   }
 
+  if (isBillingSettlementDecimalPreservingField(fieldKey, resourceType, scopeKey)) {
+    return String(numericValue);
+  }
+
   return String(roundCalculatedUsage(numericValue));
 }
 
@@ -180,6 +196,10 @@ function formatBillingSettlementFieldDisplayValue(
     fieldKey === "calorific_value"
   ) {
     return formatFixedDecimalNumber(numericValue, 3);
+  }
+
+  if (isBillingSettlementDecimalPreservingField(fieldKey, resourceType, scopeKey)) {
+    return normalizedValue;
   }
 
   if (fieldKey === "unit_price") {

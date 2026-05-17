@@ -29,7 +29,7 @@
             label: '북정',
             wasteTeam: '북정',
             productionTeam: '북정',
-            productionDateLabel: '16 ~ 15',
+            productionDateLabel: '북정',
             color: '#be185d'
         }),
         Object.freeze({
@@ -37,7 +37,7 @@
             label: '유산',
             wasteTeam: '유산',
             productionTeam: '유산',
-            productionDateLabel: '1 ~ 31',
+            productionDateLabel: '유산',
             color: '#7c3aed'
         })
     ]);
@@ -51,7 +51,7 @@
     const WASTE_METER_AGGREGATE_SITE_SPEC = Object.freeze({
         key: 'all',
         label: '합계',
-        productionDateLabel: '북정 16 ~ 15 · 유산 1 ~ 31',
+        productionDateLabel: '유산 · 북정',
         color: '#0f766e'
     });
 
@@ -418,28 +418,32 @@
         `;
     }
 
-    function renderWasteChart(site = {}) {
+    function renderWasteChart(site = {}, options = {}) {
         if (typeof runtime.renderUtilIndependentBoundsMultiSeriesChart !== 'function') {
             return '<div class="util-sheet-empty">그래프 렌더러를 찾지 못했습니다.</div>';
         }
         return runtime.renderUtilIndependentBoundsMultiSeriesChart(site.chartSeries || [], {
+            mode: 'modal',
             chartTitle: `${site.label} 폐수 (㎥) / 톤`,
             periodLabel: '전년 동일 월 기준',
             inlinePeriodLegend: true,
             decimals: 3,
-            showLabels: false,
+            showLabelToggle: true,
+            labelToggleRole: 'util-sheet-waste-meter-label-toggle',
+            labelToggleText: '레이블',
+            showLabels: options.showLabels === true,
             hideUnit: true,
             topCenterTitle: `${site.label} 폐수 (㎥) / 톤`,
             axisXLabel: '월',
             showYearBands: false,
             maxXAxisLabels: 12,
-            forceWidth: 900,
+            forceWidth: 1600,
             scrollWithinCanvas: true,
-            height: 300
+            height: 360
         });
     }
 
-    function buildUtilWasteMeterSiteHtml(site = {}, index = 0) {
+    function buildUtilWasteMeterSiteHtml(site = {}, index = 0, options = {}) {
         const currentYear = String(site.monthKey || site.currentRow?.monthKey || '').slice(2, 4);
         const currentMonth = String(site.monthKey || site.currentRow?.monthKey || '').slice(5, 7);
         const referenceYear = String(site.referenceRow?.monthKey || '').slice(2, 4);
@@ -485,7 +489,7 @@
                         </div>
                     </div>
                     <div class="util-report-chart-shell util-sheet-analysis-chart-frame theme-total" style="--util-chart-accent:${escapeHtml(site.color || '#7c3aed')};--util-chart-bar:${escapeHtml(site.color || '#7c3aed')};">
-                        ${renderWasteChart(site)}
+                        ${renderWasteChart(site, options)}
                     </div>
                 </div>
             </article>
@@ -522,7 +526,7 @@
                     ${controlsHtml}
                 </div>
                 <div class="util-sheet-waste-meter-stack">
-                    ${(Array.isArray(model.sites) ? model.sites : []).map((site, index) => buildUtilWasteMeterSiteHtml({ ...site, monthKey: model.monthKey }, index)).join('')}
+                    ${(Array.isArray(model.sites) ? model.sites : []).map((site, index) => buildUtilWasteMeterSiteHtml({ ...site, monthKey: model.monthKey }, index, options)).join('')}
                 </div>
             </section>
         `;

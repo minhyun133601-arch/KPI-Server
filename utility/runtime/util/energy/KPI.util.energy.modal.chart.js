@@ -402,10 +402,6 @@
                                 <div class="util-energy-modal-sub" data-role="util-energy-modal-sub">기간: -</div>
                             </div>
                             <div class="util-energy-modal-actions">
-                                <label class="util-energy-modal-switch">
-                                    <input type="checkbox" data-role="util-energy-modal-enable-chart-popup">
-                                    <span>차트 팝업 사용</span>
-                                </label>
                                 <button type="button" class="util-report-modal-btn" data-role="util-energy-modal-print">인쇄</button>
                                 <button type="button" class="util-report-modal-close" data-role="util-energy-modal-close">닫기</button>
                             </div>
@@ -419,7 +415,6 @@
                             </div>
                             <div class="util-tabs util-energy-main-tabs">
                                 <button type="button" class="util-tab-btn" data-tab="energy-converter"><i class="fa-solid fa-sliders"></i> 환산 계산</button>
-                                <button type="button" class="util-tab-btn" data-tab="energy-trend"><i class="fa-solid fa-chart-line"></i> 추세 그래프</button>
                             </div>
                             <div class="util-tab-panels">
                                 <div class="util-tab-panel" data-panel="energy-converter">
@@ -484,33 +479,6 @@
                                         <div class="util-energy-note"><strong>메모:</strong> 가스 열량계수는 고지서 MJ/단위를 우선 사용하세요.</div>
                                     </div>
                                 </div>
-                                <div class="util-tab-panel" data-panel="energy-trend">
-                                    <div class="util-analytics util-energy-trend-shell util-energy-chart" data-util-energy-chart>
-                                        <div class="util-analytics-header"><div class="util-analytics-header-title"><i class="fa-solid fa-chart-line"></i><span>열량/TOE 추세</span></div></div>
-                                        <div class="util-analytics-desc">기간·팀·계수 기준으로 월별 열량 추세를 확인합니다.</div>
-                                        <div class="util-analytics-form">
-                                            <div class="util-analytics-field"><span class="util-analytics-label">전기 팀</span><select class="util-analytics-select" data-role="energy-chart-electric-team"></select></div>
-                                            <div class="util-analytics-field"><span class="util-analytics-label">가스 팀</span><select class="util-analytics-select" data-role="energy-chart-gas-team"></select></div>
-                                            <div class="util-analytics-field"><span class="util-analytics-label">기간</span><div class="util-analytics-range"><select class="util-analytics-select" data-role="energy-chart-from"></select><span class="util-analytics-divider">~</span><select class="util-analytics-select" data-role="energy-chart-to"></select></div></div>
-                                            <div class="util-analytics-field"><span class="util-analytics-label">지표</span><select class="util-analytics-select" data-role="energy-chart-metric"><option value="total_mj">총열량 (MJ)</option><option value="total_gj">총열량 (GJ)</option><option value="total_toe">총열량 (TOE)</option><option value="electric_mj">전기 (MJ)</option><option value="gas_mj">가스 (MJ)</option></select></div>
-                                            <div class="util-analytics-field"><span class="util-analytics-label">소수 표시</span><select class="util-analytics-select" data-role="energy-chart-display-decimals"><option value="0">0자리</option><option value="1">1자리</option><option value="2">2자리</option><option value="3">3자리</option><option value="4">4자리</option></select></div>
-                                            <div class="util-analytics-field"><span class="util-analytics-label">전기 계수 (MJ/kWh)</span><input type="text" inputmode="decimal" class="util-analytics-select" data-role="energy-chart-electric-factor" data-format-decimals="2"></div>
-                                            <div class="util-analytics-field"><span class="util-analytics-label">LNG 계수 (MJ/m³)</span><input type="text" inputmode="decimal" class="util-analytics-select" data-role="energy-chart-lng-factor" data-format-decimals="3"></div>
-                                            <div class="util-analytics-field"><span class="util-analytics-label">LPG 계수 (MJ/kg)</span><input type="text" inputmode="decimal" class="util-analytics-select" data-role="energy-chart-lpg-factor" data-format-decimals="3"></div>
-                                            <div class="util-analytics-field"><span class="util-analytics-label">TOE 기준 (MJ)</span><input type="text" inputmode="decimal" class="util-analytics-select" data-role="energy-chart-toe-factor" data-format-decimals="0"></div>
-                                        </div>
-                                        <div class="util-analytics-result">
-                                            <div class="util-analytics-summary">
-                                                <span class="util-analytics-tag"><i class="fa-solid fa-calendar-days"></i>기간</span><span class="util-analytics-value" data-role="energy-chart-range">-</span>
-                                                <span class="util-analytics-tag"><i class="fa-solid fa-layer-group"></i>합계</span><span class="util-analytics-value" data-role="energy-chart-total">-</span>
-                                                <span class="util-analytics-tag"><i class="fa-solid fa-chart-line"></i>월평균</span><span class="util-analytics-value" data-role="energy-chart-avg">-</span>
-                                                <span class="util-analytics-tag"><i class="fa-solid fa-list"></i>월수</span><span class="util-analytics-value" data-role="energy-chart-count">-</span>
-                                                <button type="button" class="util-analytics-toggle" data-role="energy-chart-open">그래프 크게 보기</button>
-                                            </div>
-                                            <div class="util-analytics-chart-shell"><div data-role="energy-chart"></div></div>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -520,7 +488,6 @@
             document.body.appendChild(modal);
             initUtilTabs(modal);
             initUtilEnergyConverter(modal);
-            initUtilEnergyChart(modal);
 
             modal.addEventListener('click', event => {
                 if (event.target === modal) {
@@ -537,17 +504,6 @@
                     printUtilEnergyModalChartPage();
                 }
             });
-
-            const popupToggle = modal.querySelector('[data-role="util-energy-modal-enable-chart-popup"]');
-            if (popupToggle) {
-                popupToggle.addEventListener('change', () => {
-                    UtilEnergyState.chartPopupEnabled = !!popupToggle.checked;
-                    syncUtilEnergyChartPopupControls(modal);
-                    modal.querySelectorAll('[data-util-energy-chart]').forEach(panel => {
-                        renderUtilEnergyChart(panel);
-                    });
-                });
-            }
 
             if (useUtilEnergyModalChartRootFlag('__utilEnergyModalEscapeBound')) {
                 addUtilEnergyModalChartEventListener('keydown', event => {

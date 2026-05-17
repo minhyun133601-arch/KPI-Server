@@ -325,14 +325,20 @@
         return value / scale;
     }
 
+    function toUtilSheetAnalysisPointNumber(value) {
+        if (value === null || value === undefined || value === '') return NaN;
+        const number = Number(value);
+        return Number.isFinite(number) ? number : NaN;
+    }
+
     function resolveUtilGasAnalysisPointValue(chart = {}, point = null, unitKey = '') {
         if (isUtilElectricAnalysisLineRatioKey(chart?.key)) {
             if (unitKey === 'kg' || unitKey === 'ton') {
-                return Number(point?.amountValue);
+                return toUtilSheetAnalysisPointNumber(point?.amountValue);
             }
-            return Number(point?.ratioValue);
+            return toUtilSheetAnalysisPointNumber(point?.ratioValue);
         }
-        return Number(point?.value);
+        return toUtilSheetAnalysisPointNumber(point?.value);
     }
 
     function isUtilElectricAnalysisLineRatioKey(chartKey = '') {

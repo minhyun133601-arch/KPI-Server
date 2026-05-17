@@ -12,8 +12,13 @@ function buildElectricMonthlyTeamSnapshot(monthValue, store = state.store) {
       const teams = {};
 
       ELECTRIC_UTILITY_SNAPSHOT_TEAM_KEYS.forEach((teamKey) => {
-        const rawUsage = getTeamMonthlyUsage(teamKey);
-        const rawCost = calculateTeamAmount(teamKey, normalizedMonth);
+        const rawUsage = getTeamBoardMonthlyUsage(teamKey, {
+          monthValue: normalizedMonth,
+          selectionOnly: true,
+        });
+        const rawCost = calculateTeamAmount(teamKey, normalizedMonth, {
+          selectionOnly: true,
+        });
         teams[teamKey] = {
           usage: Number.isFinite(rawUsage) ? Math.round(rawUsage) : null,
           cost: Number.isFinite(rawCost) ? Math.round(rawCost) : null,
@@ -50,8 +55,13 @@ function buildElectricUtilityDatasetSnapshot(store = state.store) {
       monthValues.forEach((monthValue) => {
         state.currentMonth = monthValue;
         ELECTRIC_UTILITY_SNAPSHOT_TEAM_KEYS.forEach((teamKey) => {
-          const rawUsage = getTeamMonthlyUsage(teamKey);
-          const rawCost = calculateTeamAmount(teamKey, monthValue);
+          const rawUsage = getTeamBoardMonthlyUsage(teamKey, {
+            monthValue,
+            selectionOnly: true,
+          });
+          const rawCost = calculateTeamAmount(teamKey, monthValue, {
+            selectionOnly: true,
+          });
           teams[teamKey][monthValue] = {
             usage: Number.isFinite(rawUsage) ? Math.round(rawUsage) : null,
             cost: Number.isFinite(rawCost) ? Math.round(rawCost) : null,
@@ -83,16 +93,16 @@ function buildGasUtilityDatasetSnapshot(store = state.store) {
     monthValues[0],
     () => {
       const teams = Object.fromEntries(
-        [
-          ...Object.keys(GAS_UTILITY_SNAPSHOT_DIRECT_TEAM_NAMES),
-          ...Object.keys(GAS_UTILITY_SNAPSHOT_TEAM_EQUIPMENT_IDS),
-        ].map((teamName) => [teamName, {}])
+        Object.values(GAS_UTILITY_SNAPSHOT_TEAM_NAMES_BY_KEY).map((teamName) => [teamName, {}])
       );
 
       monthValues.forEach((monthValue) => {
         state.currentMonth = monthValue;
-        Object.entries(GAS_UTILITY_SNAPSHOT_DIRECT_TEAM_NAMES).forEach(([teamName, teamKey]) => {
-          const usage = getDirectTeamMonthlyUsage(teamKey, monthValue, RESOURCE_TYPES.GAS);
+        Object.entries(GAS_UTILITY_SNAPSHOT_TEAM_NAMES_BY_KEY).forEach(([teamKey, teamName]) => {
+          const usage = getTeamBoardMonthlyUsage(teamKey, {
+            monthValue,
+            selectionOnly: true,
+          });
           const rawCost = calculateGasUtilitySnapshotTeamCost(teamName, usage, monthValue);
           if (
             !hasStoredTeamMonthlyUsageOverride(teamKey, monthValue, RESOURCE_TYPES.GAS) &&
@@ -107,20 +117,6 @@ function buildGasUtilityDatasetSnapshot(store = state.store) {
             cost: Number.isFinite(rawCost) ? Math.round(rawCost) : null,
           };
         });
-        Object.entries(GAS_UTILITY_SNAPSHOT_TEAM_EQUIPMENT_IDS).forEach(
-          ([teamName, equipmentIds]) => {
-            const usage = calculateGasUtilitySnapshotTeamUsage(equipmentIds);
-            const rawCost = calculateGasUtilitySnapshotTeamCost(teamName, usage, monthValue);
-            if (!Number.isFinite(usage) && !Number.isFinite(rawCost)) {
-              return;
-            }
-
-            teams[teamName][monthValue] = {
-              usage: Number.isFinite(usage) ? Math.round(usage) : null,
-              cost: Number.isFinite(rawCost) ? Math.round(rawCost) : null,
-            };
-          }
-        );
       });
 
       return {

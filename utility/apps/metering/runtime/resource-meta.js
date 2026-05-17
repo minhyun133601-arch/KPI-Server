@@ -76,11 +76,24 @@ function isGasBillingSettlementScope(scopeKey) {
     GAS_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY,
     GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LNG_KEY,
     GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_KEY,
+    GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_CONVERSION_KEY,
   ].includes(normalizeText(scopeKey));
 }
 
 function isGasLpgBillingSettlementScope(scopeKey) {
   return normalizeText(scopeKey) === GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_KEY;
+}
+
+function isGasLpgConversionBillingSettlementScope(scopeKey) {
+  return normalizeText(scopeKey) === GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_CONVERSION_KEY;
+}
+
+function supportsBillingDocumentForSettlementScope(
+  resourceType = getCurrentResourceType(),
+  scopeKey = getCurrentBillingSettlementScope(resourceType)
+) {
+  return supportsBillingDocumentForResource(resourceType) &&
+    !isGasLpgConversionBillingSettlementScope(scopeKey);
 }
 
 function isWasteBillingSettlementScope(scopeKey) {
@@ -132,6 +145,9 @@ function getBillingSettlementFields(
   const normalizedResourceType = normalizeResourceType(resourceType);
   const normalizedScopeKey = normalizeBillingSettlementScope(scopeKey, normalizedResourceType);
   if (normalizedResourceType === RESOURCE_TYPES.GAS) {
+    if (isGasLpgConversionBillingSettlementScope(normalizedScopeKey)) {
+      return GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FIELDS;
+    }
     return isGasLpgBillingSettlementScope(normalizedScopeKey)
       ? GAS_LPG_BILLING_SETTLEMENT_FIELDS
       : GAS_BILLING_SETTLEMENT_FIELDS;
@@ -152,6 +168,9 @@ function getBillingSettlementAutoCalculatedFieldKeySet(
 ) {
   const normalizedResourceType = normalizeResourceType(resourceType);
   if (normalizedResourceType === RESOURCE_TYPES.GAS) {
+    if (isGasLpgConversionBillingSettlementScope(scopeKey)) {
+      return GAS_LPG_CONVERSION_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS;
+    }
     return isGasLpgBillingSettlementScope(scopeKey)
       ? GAS_LPG_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS
       : GAS_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS;
@@ -183,6 +202,9 @@ function getBillingSettlementZeroDefaultFieldKeys(
 ) {
   const normalizedResourceType = normalizeResourceType(resourceType);
   if (normalizedResourceType === RESOURCE_TYPES.GAS) {
+    if (isGasLpgConversionBillingSettlementScope(scopeKey)) {
+      return [];
+    }
     return isGasLpgBillingSettlementScope(scopeKey)
       ? []
       : GAS_BILLING_SETTLEMENT_ZERO_DEFAULT_FIELD_KEYS;
@@ -202,9 +224,11 @@ function getBillingSettlementFormulaGuide(
 ) {
   const normalizedResourceType = normalizeResourceType(resourceType);
   if (normalizedResourceType === RESOURCE_TYPES.GAS) {
-    const guides = isGasLpgBillingSettlementScope(scopeKey)
-      ? GAS_LPG_BILLING_SETTLEMENT_FORMULA_GUIDES
-      : GAS_BILLING_SETTLEMENT_FORMULA_GUIDES;
+    const guides = isGasLpgConversionBillingSettlementScope(scopeKey)
+      ? GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FORMULA_GUIDES
+      : isGasLpgBillingSettlementScope(scopeKey)
+        ? GAS_LPG_BILLING_SETTLEMENT_FORMULA_GUIDES
+        : GAS_BILLING_SETTLEMENT_FORMULA_GUIDES;
     return guides[fieldKey] || "";
   }
 

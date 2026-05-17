@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -148,8 +148,8 @@ test('utility report runtime adapter wraps global access for report sheet hosts'
 test('utility report adapter loads before report runtime and sheet modules', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const reportStateIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.state.options.js?v=340');
-  const sheetConfigIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=056');
-  const sheetHostIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=062');
+  const sheetConfigIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=058');
+  const sheetHostIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=063');
 
   assert.ok(adapterIndex >= 0, 'utility report runtime adapter loader is missing');
   assert.ok(reportStateIndex > adapterIndex, 'report state modules must load after the runtime adapter');

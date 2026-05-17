@@ -350,7 +350,9 @@ test('report sheet modal render registry normalizes meter modal state and rerend
   assert.ok(extractButton.attrs['aria-label'].length > 0);
   assert.ok(body.innerHTML.includes('summary-1'));
   assert.ok(body.innerHTML.includes('compare-block'));
-  assert.ok(body.innerHTML.includes('memo-1'));
+  assert.ok(!body.innerHTML.includes('memo-1'));
+  assert.doesNotMatch(body.innerHTML, /data-role="util-sheet-report-template-section"/);
+  assert.doesNotMatch(body.innerHTML, /util-sheet-blank-template-table/);
   assert.equal(config.UtilSheetReportState.meter, 'gas');
   assert.equal(config.UtilSheetReportMonthState.meter, '2026-04');
   assert.equal(pruneCount, 1);
@@ -365,6 +367,8 @@ test('report sheet modal render registry normalizes meter modal state and rerend
   modalRender.rerenderUtilSheetReportModalIfActive('meter', 'gas');
 
   assert.ok(body.innerHTML.includes('summary-2'));
+  assert.doesNotMatch(body.innerHTML, /util-sheet-blank-template-table/);
+  assert.doesNotMatch(body.innerHTML, /data-role="util-sheet-report-template-section"/);
   assert.equal(pruneCount, 2);
   assert.equal(typeSyncCount, 2);
   assert.equal(datasetSyncCount, 2);
@@ -373,6 +377,289 @@ test('report sheet modal render registry normalizes meter modal state and rerend
   assert.equal(detachedSyncCount, 3);
   assert.equal(windowStateSyncCount, 3);
   assert.equal(relocateCount, 2);
+});
+
+test('report sheet modal render omits blank template from every utility sheet body', () => {
+  const context = createModalRenderContext();
+  const modalRender = context.KPIUtilReportSheetModalRender;
+  const config = context.KPIUtilReportSheetConfig;
+
+  config.UtilSheetRuntimeState.gasDataSyncedOnce = true;
+  config.UtilSheetRuntimeState.electricDataSyncedOnce = true;
+
+  const wasteMeterOptions = [];
+
+  modalRender.setRuntimeAdapters({
+    normalizeUtilSheetType(sheetType) {
+      return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+    },
+    resolveUtilSheetReportDatasetKey(sheetType, datasetKey) {
+      void sheetType;
+      const key = String(datasetKey || '').trim();
+      return key === 'electric' || key === 'waste' ? key : 'gas';
+    },
+    getUtilSheetPresentation(sheetType, datasetKey) {
+      return {
+        kicker: `${sheetType}:${datasetKey}`,
+        title: `${sheetType}:${datasetKey}`,
+      };
+    },
+    normalizeUtilSheetCompareKey() {
+      return 'month';
+    },
+    normalizeUtilGasMeterProductionKey() {
+      return 'combined';
+    },
+    normalizeUtilGasAnalysisCategoryKey() {
+      return 'yusan';
+    },
+    normalizeUtilElectricMeterTeamKey() {
+      return 'combined';
+    },
+    normalizeUtilElectricAnalysisTeamKey() {
+      return 'combined';
+    },
+    normalizeUtilWasteAnalysisSiteKey() {
+      return 'all';
+    },
+    normalizeUtilElectricMeterViewKey() {
+      return 'meter';
+    },
+    isUtilSheetCustomAnalysisDataset(datasetKey) {
+      return ['gas', 'electric', 'waste'].includes(String(datasetKey || '').trim());
+    },
+    buildUtilSheetDatasetResult(datasetKey) {
+      return {
+        hasData: true,
+        monthOptions: [{ value: '2026-04', label: '2026-04' }],
+        activeMonthKey: '2026-04',
+        latestMonthLabel: '2026-04',
+        spec: { label: datasetKey },
+      };
+    },
+    pruneUtilSheetDatasetToggles() {},
+    syncUtilSheetTypeButtons() {},
+    syncUtilSheetDatasetButtons() {},
+    syncUtilSheetCompareButtons() {},
+    syncUtilSheetAnalysisChartPopup() {},
+    syncUtilSheetDetachedReportWindow() {},
+    syncUtilSheetReportWindowState() {},
+    getUtilSheetDetachedReportWindow() {
+      return null;
+    },
+    hasUtilElectricMeteringStore() {
+      return true;
+    },
+    buildUtilSheetMonthOptionHtml(monthOptions, selectedValue) {
+      return monthOptions.map(item => `<option value="${item.value}"${item.value === selectedValue ? ' selected' : ''}>${item.label}</option>`).join('');
+    },
+    buildUtilSheetCompareMeta() {
+      return { label: 'COMPARE' };
+    },
+    buildUtilSheetBadgesHtml() {
+      return '<span>BADGE</span>';
+    },
+    buildUtilGasMeterComparisonModel() {
+      return { loading: false };
+    },
+    buildUtilGasMeterSummaryItems() {
+      return [{ label: 'gas', value: '1' }];
+    },
+    buildUtilGasMeterSummaryBlockHtml() {
+      return '<section data-testid="meter-main-gas">GAS_METER_MAIN</section>';
+    },
+    buildUtilGasMeterComparisonSectionHtml() {
+      return '<section data-testid="meter-detail-gas">GAS_METER_DETAIL</section>';
+    },
+    buildUtilElectricMeterComparisonModel() {
+      return { loading: false };
+    },
+    buildUtilElectricMeterTeamDatasetResult() {
+      return { teamKey: 'combined' };
+    },
+    buildUtilElectricMeterSummaryItems() {
+      return [{ label: 'electric', value: '1' }];
+    },
+    buildUtilElectricMeterSummaryBlockHtml() {
+      return '<section data-testid="meter-main-electric">ELECTRIC_METER_MAIN</section>';
+    },
+    buildUtilElectricMeterComparisonSectionHtml() {
+      return '<section data-testid="meter-detail-electric">ELECTRIC_METER_DETAIL</section>';
+    },
+    buildUtilWasteMeterModel() {
+      return { siteOption: { key: 'all' } };
+    },
+    buildUtilWasteMeterSectionHtml(model, options = {}) {
+      void model;
+      wasteMeterOptions.push(options);
+      return '<section data-testid="meter-main-waste">WASTE_METER_MAIN</section>';
+    },
+    buildUtilWasteMeterSiteSelectHtml() {
+      return '';
+    },
+    normalizeUtilGasAnalysisFullscreenChartKey() {
+      return '';
+    },
+    getUtilGasAnalysisInlineRatioTableKey() {
+      return '';
+    },
+    buildUtilGasAnalysisCategorySelectHtml() {
+      return '';
+    },
+    buildUtilElectricAnalysisTeamSelectHtml() {
+      return '';
+    },
+    buildUtilWasteAnalysisSiteSelectHtml() {
+      return '';
+    },
+    buildUtilGasAnalysisModel() {
+      return {
+        hasData: true,
+        range: { from: '2026-03', to: '2026-04' },
+        monthOptions: [{ value: '2026-04', label: '2026-04' }],
+        categoryOption: { key: 'yusan' },
+      };
+    },
+    buildUtilElectricAnalysisModel() {
+      return {
+        hasData: true,
+        range: { from: '2026-03', to: '2026-04' },
+        monthOptions: [{ value: '2026-04', label: '2026-04' }],
+        teamOption: { key: 'combined' },
+      };
+    },
+    buildUtilWasteAnalysisModel() {
+      return {
+        hasData: true,
+        range: { from: '2026-03', to: '2026-04' },
+        monthOptions: [{ value: '2026-04', label: '2026-04' }],
+        siteOption: { key: 'all' },
+      };
+    },
+    buildUtilGasAnalysisBodyHtmlV2() {
+      return '<section data-testid="analysis-main-gas">GAS_ANALYSIS_MAIN</section>';
+    },
+    buildUtilElectricAnalysisBodyHtmlV2() {
+      return '<section data-testid="analysis-main-electric">ELECTRIC_ANALYSIS_MAIN</section>';
+    },
+    buildUtilWasteAnalysisBodyHtmlV2() {
+      return '<section data-testid="analysis-main-waste">WASTE_ANALYSIS_MAIN</section>';
+    },
+    bindUtilSheetAnalysisChartDragScroll() {},
+    bindUtilSheetAnalysisInlineTableDrag() {},
+    relocateUtilGasGuidanceNote() {},
+  });
+
+  [
+    ['meter', 'gas', 'GAS_METER_DETAIL'],
+    ['meter', 'electric', 'ELECTRIC_METER_DETAIL'],
+    ['meter', 'waste', 'WASTE_METER_MAIN'],
+    ['analysis', 'gas', 'GAS_ANALYSIS_MAIN'],
+    ['analysis', 'electric', 'ELECTRIC_ANALYSIS_MAIN'],
+    ['analysis', 'waste', 'WASTE_ANALYSIS_MAIN'],
+  ].forEach(([sheetType, datasetKey, marker]) => {
+    const { modal, body } = createModalHarness();
+    modal.dataset.sheetType = sheetType;
+    modal.dataset.datasetKey = datasetKey;
+    modal.dataset.monthKey = '2026-04';
+    modalRender.renderUtilSheetReportModal(modal);
+
+    assert.ok(body.innerHTML.includes(marker), `${sheetType}:${datasetKey} must render its report body`);
+    assert.doesNotMatch(body.innerHTML, /data-role="util-sheet-report-template-section"/);
+    assert.doesNotMatch(body.innerHTML, /util-sheet-blank-template-table/);
+  });
+
+  assert.equal(wasteMeterOptions[0].showLabels, false);
+
+  config.UtilSheetMeterState.wasteShowLabels = true;
+  const { modal, body } = createModalHarness();
+  modal.dataset.sheetType = 'meter';
+  modal.dataset.datasetKey = 'waste';
+  modal.dataset.monthKey = '2026-04';
+  modalRender.renderUtilSheetReportModal(modal);
+  assert.ok(body.innerHTML.includes('WASTE_METER_MAIN'));
+  assert.equal(wasteMeterOptions.at(-1).showLabels, true);
+});
+
+test('report sheet modal render omits blank template from no-data pre-extraction fallbacks', () => {
+  const context = createModalRenderContext();
+  const modalRender = context.KPIUtilReportSheetModalRender;
+  const config = context.KPIUtilReportSheetConfig;
+
+  config.UtilSheetRuntimeState.gasDataSyncedOnce = true;
+  config.UtilSheetRuntimeState.electricDataSyncedOnce = true;
+
+  modalRender.setRuntimeAdapters({
+    normalizeUtilSheetType(sheetType) {
+      return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+    },
+    resolveUtilSheetReportDatasetKey(sheetType, datasetKey) {
+      void sheetType;
+      const key = String(datasetKey || '').trim();
+      return key === 'electric' || key === 'waste' ? key : 'gas';
+    },
+    getUtilSheetPresentation(sheetType, datasetKey) {
+      return {
+        kicker: `${sheetType}:${datasetKey}`,
+        title: `${sheetType}:${datasetKey}`,
+      };
+    },
+    normalizeUtilSheetCompareKey() {
+      return 'month';
+    },
+    normalizeUtilGasMeterProductionKey() {
+      return 'combined';
+    },
+    normalizeUtilGasAnalysisCategoryKey() {
+      return 'yusan';
+    },
+    normalizeUtilElectricMeterTeamKey() {
+      return 'combined';
+    },
+    normalizeUtilElectricAnalysisTeamKey() {
+      return 'combined';
+    },
+    normalizeUtilWasteAnalysisSiteKey() {
+      return 'all';
+    },
+    normalizeUtilElectricMeterViewKey() {
+      return 'meter';
+    },
+    buildUtilSheetDatasetResult() {
+      return {
+        hasData: false,
+        monthOptions: [{ value: '2026-04', label: '2026-04' }],
+        activeMonthKey: '2026-04',
+        latestMonthLabel: '2026-04',
+      };
+    },
+    pruneUtilSheetDatasetToggles() {},
+    syncUtilSheetTypeButtons() {},
+    syncUtilSheetDatasetButtons() {},
+    syncUtilSheetCompareButtons() {},
+    syncUtilSheetAnalysisChartPopup() {},
+    syncUtilSheetDetachedReportWindow() {},
+    syncUtilSheetReportWindowState() {},
+  });
+
+  [
+    ['meter', 'gas'],
+    ['meter', 'electric'],
+    ['meter', 'waste'],
+    ['analysis', 'gas'],
+    ['analysis', 'electric'],
+    ['analysis', 'waste'],
+  ].forEach(([sheetType, datasetKey]) => {
+    const { modal, body } = createModalHarness();
+    modal.dataset.sheetType = sheetType;
+    modal.dataset.datasetKey = datasetKey;
+    modal.dataset.monthKey = '2026-04';
+    modalRender.renderUtilSheetReportModal(modal);
+
+    assert.ok(body.innerHTML.includes('util-sheet-empty'), `${sheetType}:${datasetKey} must render a fallback body`);
+    assert.doesNotMatch(body.innerHTML, /data-role="util-sheet-report-template-section"/);
+    assert.doesNotMatch(body.innerHTML, /util-sheet-blank-template-table/);
+  });
 });
 
 test('report sheet modal render syncs gas data before showing no-data fallback', () => {
@@ -533,13 +820,13 @@ test('report sheet gas runtime sync forces one metering sync per report session'
 
 test('kpi html loads report sheet modal render between modal shell and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=056');
-  const gasScopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=053');
+  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=058');
+  const gasScopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=055');
   const gasRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/runtime-sync.js?v=054');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=085');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=061');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=095');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=065');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=062');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=063');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(configIndex >= 0, 'report sheet config loader is missing');

@@ -431,6 +431,48 @@ const dataFlows = [
     ],
     tags: ['생산일보', 'production daily', 'util_production_daily', 'util.production.daily', 'source metadata', 'no source file bytes'],
   },
+  {
+    id: 'report-cover',
+    tone: 'indigo',
+    title: { ko: '공용 보고서 표지', en: 'Shared Report Cover' },
+    summary: {
+      ko: '보고서 메뉴의 PPT 표지 문구는 브라우저 로컬 저장이 아니라 report_runtime.cover module record로 저장되어 같은 서버 사용자가 공유합니다.',
+      en: 'The PPT cover text in the Report menu is stored as the report_runtime.cover module record, not browser-local storage, so users share it through the same server.',
+    },
+    status: {
+      ko: '기입 가능. 표지 제목, 날짜, 부서명, 결재란 문구가 app_module_records payload로 저장됩니다.',
+      en: 'Writable. Cover title, date, department, and approval-cell text are stored in the app_module_records payload.',
+    },
+    chain: ['Report UI', 'report deck editor', '/api/modules/report_runtime/records/cover', 'app_module_records(report_runtime.cover)'],
+    ui: [
+      'kpi-runtime/sections/KPI.sections.report.js',
+      'utility/runtime/util/KPI.util.runtime.js',
+      'utility/runtime/util/KPI.util.runtime.browser-adapter.js',
+    ],
+    runtime: [
+      '/api/modules/report_runtime/records/cover',
+      'kpi-runtime/internal-server/src/lib/portal-bootstrap/runtime-config.js',
+      'kpi-runtime/internal-server/src/lib/portal-data-registry.js',
+    ],
+    storage: [
+      'app_module_records(module_key=report_runtime, record_key=cover)',
+    ],
+    assets: [
+      { ko: '없음: 표지 문구는 JSON payload이며 파일 업로드를 만들지 않음', en: 'None: cover text is JSON payload and does not create file uploads' },
+    ],
+    permissions: ['util.metering.app'],
+    sharedGroups: ['report-runtime'],
+    imageRefs: [
+      { ko: '없음: documentId / previewUrl / downloadUrl 참조 없음', en: 'None: no documentId / previewUrl / downloadUrl references' },
+    ],
+    source: [
+      'kpi-runtime/sections/KPI.sections.report.js',
+      'utility/runtime/util/KPI.util.runtime.js',
+      'kpi-runtime/internal-server/src/lib/portal-data-registry.js',
+      'kpi-runtime/internal-server/src/lib/portal-bootstrap/runtime-config.js',
+    ],
+    tags: ['보고서', 'report', 'report_runtime', 'cover', 'app_module_records', 'util.metering.app'],
+  },
 ];
 
 const sharedStorageGroups = [
@@ -483,6 +525,16 @@ const sharedStorageGroups = [
       en: 'SQL-queryable daily production data uses util_production_daily_* tables instead of one JSON record.',
     },
     flowIds: ['utility-production-daily'],
+  },
+  {
+    id: 'report-runtime',
+    tone: 'indigo',
+    title: { ko: 'report_runtime 공용 보고서 저장소', en: 'report_runtime shared report storage' },
+    summary: {
+      ko: 'PPT형 보고서 표지처럼 여러 사용자가 같이 수정하는 보고서 문구를 app_module_records에 저장합니다.',
+      en: 'Report text edited by multiple users, such as the PPT-style cover, is stored in app_module_records.',
+    },
+    flowIds: ['report-cover'],
   },
 ];
 
@@ -542,6 +594,18 @@ const appModuleRecordGroups = [
       { recordKey: 'waste_v1', feature: { ko: '폐수 검침 권위본', en: 'Wastewater metering authority' }, permissionKey: 'util.metering.app' },
       { recordKey: 'production_v1', feature: { ko: '생산량 검침 권위본', en: 'Production metering authority' }, permissionKey: 'util.metering.app' },
       { recordKey: 'shared_store_v1', feature: { ko: '레거시 통합 저장 호환 키', en: 'Legacy shared-store compatibility key' }, permissionKey: 'util.metering.app' },
+    ],
+  },
+  {
+    moduleKey: 'report_runtime',
+    tone: 'indigo',
+    summary: {
+      ko: '공용 보고서 화면의 PPT 표지 편집 상태 저장 묶음입니다.',
+      en: 'Storage bundle for the shared report screen PPT cover editor.',
+    },
+    source: 'kpi-runtime/internal-server/src/lib/portal-data-registry.js',
+    records: [
+      { recordKey: 'cover', feature: { ko: '공용 보고서 표지 문구', en: 'Shared report cover text' }, permissionKey: 'util.metering.app' },
     ],
   },
 ];

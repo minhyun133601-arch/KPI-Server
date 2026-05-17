@@ -153,6 +153,9 @@ function createBillingSettlementContext(options = {}) {
     isGasLpgBillingSettlementScope(scopeKey) {
       return scopeKey === 'gas_lpg';
     },
+    isGasLpgConversionBillingSettlementScope(scopeKey) {
+      return scopeKey === 'gas_lpg_conversion';
+    },
     GAS_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY: 'bukjeong',
     GAS_SETTLEMENT_SCOPE_TEAM_KEYS: options.gasSettlementScopeTeamKeys || {
       default: ['gas_team'],
@@ -371,6 +374,31 @@ test('billing settlement normalizes gas rounding adjustment before storing', () 
   assert.equal(
     context.normalizeBillingSettlementStoredValue('rounding_adjustment', '-12', 'gas', 'default'),
     '12'
+  );
+});
+
+test('billing settlement preserves LPG conversion settlement decimals', () => {
+  const { context } = createBillingSettlementContext({
+    resourceType: 'gas',
+  });
+
+  assert.equal(
+    context.normalizeBillingSettlementStoredValue(
+      'billing_amount',
+      '12345.67',
+      'gas',
+      'gas_lpg_conversion'
+    ),
+    '12345.67'
+  );
+  assert.equal(
+    context.formatBillingSettlementFieldDisplayValue(
+      'billing_amount',
+      '12345.67',
+      'gas',
+      'gas_lpg_conversion'
+    ),
+    '12345.67'
   );
 });
 

@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -180,6 +180,9 @@ test('report sheet modal actions registry updates compare and fullscreen state t
   assert.equal(modal.dataset.wasteAnalysisSiteKey, 'bukjeong');
   assert.equal(config.UtilSheetAnalysisState.waste.siteKey, 'bukjeong');
 
+  modalActions.setUtilWasteMeterShowLabels(modal, true);
+  assert.equal(config.UtilSheetMeterState.wasteShowLabels, true);
+
   modalActions.applyUtilWasteAnalysisSiteSelection(modal, 'yusan');
   assert.equal(modal.dataset.wasteMeterSiteKey, 'yusan');
   assert.equal(modal.dataset.wasteAnalysisSiteKey, 'yusan');
@@ -226,8 +229,8 @@ test('report sheet modal actions registry updates compare and fullscreen state t
 
 test('kpi html loads report sheet modal actions before sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=055');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=085');
+  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=057');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=095');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');

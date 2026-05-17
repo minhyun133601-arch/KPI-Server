@@ -2,6 +2,7 @@ import { PERMISSION_KEYS } from './permission-registry.js';
 
 export const PORTAL_DATA_MODULE_KEY = 'portal_data';
 export const WORK_RUNTIME_MODULE_KEY = 'work_runtime';
+export const REPORT_RUNTIME_MODULE_KEY = 'report_runtime';
 
 export const CURRENT_PORTAL_DATA_RECORDS = Object.freeze([
   {
@@ -89,6 +90,14 @@ export const WORK_RUNTIME_BOOTSTRAP_RECORDS = Object.freeze([
   },
 ]);
 
+export const REPORT_RUNTIME_RECORDS = Object.freeze([
+  {
+    recordKey: 'cover',
+    permissionKey: PERMISSION_KEYS.UTIL_METERING_APP,
+    sourceKey: 'report_cover',
+  },
+]);
+
 const KNOWN_MODULE_RECORD_DEFINITIONS = Object.freeze([
   ...CURRENT_PORTAL_DATA_RECORDS.map((record) => ({
     ...record,
@@ -97,6 +106,10 @@ const KNOWN_MODULE_RECORD_DEFINITIONS = Object.freeze([
   ...WORK_RUNTIME_BOOTSTRAP_RECORDS.map((record) => ({
     ...record,
     moduleKey: WORK_RUNTIME_MODULE_KEY,
+  })),
+  ...REPORT_RUNTIME_RECORDS.map((record) => ({
+    ...record,
+    moduleKey: REPORT_RUNTIME_MODULE_KEY,
   })),
 ]);
 
@@ -112,6 +125,15 @@ export function findModuleRecordDefinition(moduleKey, recordKey) {
   );
 }
 
+export function isReportRuntimeMonthRecordKey(recordKey) {
+  return /^report_\d{4}_\d{2}$/.test(String(recordKey || '').trim());
+}
+
 export function getModuleRecordPermissionKey(moduleKey, recordKey) {
-  return findModuleRecordDefinition(moduleKey, recordKey)?.permissionKey || '';
+  const definition = findModuleRecordDefinition(moduleKey, recordKey);
+  if (definition?.permissionKey) return definition.permissionKey;
+  if (String(moduleKey || '').trim() === REPORT_RUNTIME_MODULE_KEY && isReportRuntimeMonthRecordKey(recordKey)) {
+    return PERMISSION_KEYS.UTIL_METERING_APP;
+  }
+  return '';
 }

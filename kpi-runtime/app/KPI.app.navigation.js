@@ -186,12 +186,18 @@
                 const isActive = entry.id === activeEntry?.id;
                 const navCategories = getSectionNavigationCategories(entry.section);
                 const shouldKeepDirectLaunchSubmenuVisible = entry.section?.directLaunch === true && navCategories.length > 0;
+                const shouldOpenDefaultCategoryFromMain = entry.section?.openDefaultCategoryOnMain === true
+                    && Array.isArray(entry.section?.categories)
+                    && entry.section.categories.length > 0;
+                const hideNavigationChevron = entry.section?.hideNavigationChevron === true;
                 const actionIcon = entry.section?.directLaunch === true
                     ? 'fa-arrow-up-right-from-square'
-                    : 'fa-chevron-right';
+                    : (shouldOpenDefaultCategoryFromMain ? 'fa-arrow-right' : 'fa-chevron-right');
                 const sectionAction = entry.section?.directLaunch === true
                     ? `openSection('${entry.id}')`
-                    : `setDashboardSection('${entry.id}')`;
+                    : (shouldOpenDefaultCategoryFromMain
+                        ? `openSection('${entry.id}')`
+                        : `setDashboardSection('${entry.id}')`);
                 return `
                     <div class="dashboard-tree-group${isActive ? ' active' : ''}${shouldKeepDirectLaunchSubmenuVisible ? ' is-expanded' : ''}" style="--section-color:${entry.accent}; --section-soft:${entry.softAccent};">
                         <button type="button" class="dashboard-tree-main${isActive ? ' active' : ''}" onclick="${sectionAction}">
@@ -201,7 +207,7 @@
                                     <span class="dashboard-side-button-label">${escapeDashboardHtml(entry.section.name || entry.id)}</span>
                                 </span>
                             </span>
-                            <span class="dashboard-tree-chevron"><i class="fas ${actionIcon}"></i></span>
+                            ${hideNavigationChevron ? '' : `<span class="dashboard-tree-chevron"><i class="fas ${actionIcon}"></i></span>`}
                         </button>
                         <div class="dashboard-tree-submenu">
                             ${navCategories.map(({ category, index }) => {
@@ -326,6 +332,28 @@
             ].join(':');
         }
 
+        function getAppPopupModeFromHash(hash = '') {
+            const value = String(hash || '').trim();
+            if (!value.startsWith('#kpi?')) return '';
+            const params = new URLSearchParams(value.slice(5));
+            return String(params.get('popup') || '').trim();
+        }
+
+        function getAppPopupMode() {
+            const locationMeta = browser?.getLocationMeta?.() || {};
+            const hashMode = getAppPopupModeFromHash(locationMeta.hash);
+            if (hashMode) return hashMode;
+            const search = String(locationMeta.search || '').replace(/^\?/, '');
+            if (!search) return '';
+            const params = new URLSearchParams(search);
+            return String(params.get('kpiPopup') || '').trim();
+        }
+
+        function syncAppPopupModeClass() {
+            const popupMode = getAppPopupMode();
+            document.body?.classList?.toggle?.('is-report-popup', popupMode === 'report');
+        }
+
         function buildAppHistoryUrl(route = null) {
             const normalized = sanitizeAppHistoryRoute(route);
             const params = new URLSearchParams();
@@ -344,6 +372,8 @@
                     params.set('navTeam', normalized.navTeamDataKey);
                 }
             }
+            const popupMode = getAppPopupMode();
+            if (popupMode) params.set('popup', popupMode);
             const locationMeta = browser?.getLocationMeta?.() || {};
             const basePath = `${locationMeta.pathname || ''}${locationMeta.search || ''}`;
             return `${basePath || ''}#kpi?${params.toString()}`;
@@ -406,6 +436,7 @@
 
         function applyAppHistoryRoute(route = null) {
             const normalized = sanitizeAppHistoryRoute(route);
+            syncAppPopupModeClass();
             AppHistoryState.applying = true;
             try {
                 if (normalized.view === 'home') {
@@ -453,6 +484,7 @@
         }
 
         function initializeAppHistoryState() {
+            syncAppPopupModeClass();
             const existingState = browser?.getCurrentHistoryState?.();
             const locationMeta = browser?.getLocationMeta?.() || {};
             const initialRoute = isAppHistoryState(existingState)

@@ -35,6 +35,7 @@
         "utility/runtime/util/sections/KPI.sections.util.js",
         "data-entry/runtime/data/sections/KPI.sections.data.js",
         "audit/runtime/audit/sections/KPI.sections.audit.js",
+        "kpi-runtime/sections/KPI.sections.report.js",
         "kpi-runtime/sections/KPI.sections.owner.js",
         "kpi-runtime/sections/KPI.section.registry.js"
       ]
@@ -152,7 +153,6 @@
       "scripts": [
         "utility/runtime/util/energy/KPI.util.energy.browser-adapter.js",
         "utility/runtime/util/energy/KPI.util.energy.dual.js",
-        "utility/runtime/util/energy/KPI.util.energy.chart.js",
         "utility/runtime/util/energy/KPI.util.energy.tabs.js",
         "utility/runtime/util/energy/KPI.util.energy.trend-chart.js",
         "utility/runtime/util/energy/KPI.util.energy.segmented-chart.js",

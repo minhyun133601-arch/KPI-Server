@@ -84,7 +84,7 @@ test('report sheet gas scoped metrics registry exposes production options and me
 
   registry.setRuntimeAdapters({
     getUtilGasBillingScopeKeys() {
-      return { bukjeong: 'bukjeong' };
+      return { bukjeong: 'bukjeong', yusanLpgConversion: 'lpg_conversion' };
     },
     getUtilGasAnalysisCategoryOption() {
       return {
@@ -107,8 +107,11 @@ test('report sheet gas scoped metrics registry exposes production options and me
     isUtilGasAnalysisFuelInactive() {
       return false;
     },
-    getUtilGasBillingScopeFields() {
-      return { billing_amount: '12345' };
+    getUtilGasBillingScopeFields(_monthKey, scopeKey) {
+      if (scopeKey === 'lpg_conversion') {
+        return { billing_amount: '45678.9' };
+      }
+      return { power_charge: '12000', billing_amount: '12345' };
     },
     parseUtilGasMeterNumber(value) {
       return Number(value);
@@ -130,8 +133,8 @@ test('report sheet gas scoped metrics registry exposes production options and me
     },
     buildUtilGasBillingSummaryModel() {
       return {
-        lng: { totalAmount: 60000 },
-        lpg: { totalAmount: 20000 }
+        lng: { supplyAmount: 60000, totalAmount: 65000 },
+        lpg: { supplyAmount: 20000, totalAmount: 22000 }
       };
     },
     sumUtilGasMeterColumnValues(columns, valueKey, fieldIds) {
@@ -158,7 +161,7 @@ test('report sheet gas scoped metrics registry exposes production options and me
   assert.equal(registry.getUtilGasMeterScopedUsageMetric('2026-01', 'lng', 'combined'), 200);
   assert.equal(
     registry.getUtilGasMeterScopedCost(
-      { lng: { totalAmount: 60000 } },
+      { lng: { supplyAmount: 60000, totalAmount: 65000 } },
       {
         columns: [
           { id: 'gas_field_03', correctedUsage: 10 },
@@ -172,7 +175,8 @@ test('report sheet gas scoped metrics registry exposes production options and me
     30000
   );
   assert.equal(registry.getUtilGasProductionMetric('2026-01', combinedOption.teamNames), 125);
-  assert.equal(registry.getUtilGasAnalysisBukjeongBillingAmount('2026-01'), 12345);
+  assert.equal(registry.getUtilGasAnalysisBukjeongBillingAmount('2026-01'), 12000);
+  assert.equal(registry.getUtilGasAnalysisYusanLpgConversionAmount('2026-01'), 45678.9);
 
   const metricMap = registry.buildUtilGasAnalysisMetricMap(['2026-01'], { key: 'yusan' });
   const metric = metricMap.get('2026-01');
@@ -180,18 +184,19 @@ test('report sheet gas scoped metrics registry exposes production options and me
   assert.equal(metric.lngUsage, 200);
   assert.equal(metric.lpgUsage, 40);
   assert.equal(metric.production, 125);
-  assert.equal(metric.lngCost, 72345);
+  assert.equal(metric.lngCost, 72000);
   assert.equal(metric.lpgCost, 20000);
-  assert.equal(metric.gasCost, 92345);
+  assert.equal(metric.lpgConversionCost, 45678.9);
+  assert.equal(metric.gasCost, 92000);
 });
 
 test('kpi html loads gas scoped metrics after gas comparison summary and before panel runtime', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
   const comparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/comparison-summary.js?v=053');
-  const scopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=053');
+  const scopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=055');
   const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=056');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=062');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=063');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(billingIndex >= 0, 'report sheet billing loader is missing');

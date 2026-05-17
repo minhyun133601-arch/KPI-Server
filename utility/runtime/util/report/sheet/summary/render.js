@@ -48,6 +48,8 @@
         buildUtilGasMeterProductionSelectHtml: buildGasMeterProductionSelectControlHtml,
         buildUtilElectricMeterTeamSelectHtml: buildElectricMeterTeamSelectControlHtml
     } = utilReportSheetControls;
+    // Temporarily suppress report memo UI until meter and analysis sheet formats are unified.
+    const UTIL_SHEET_REPORT_MEMO_ENABLED = false;
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
@@ -696,7 +698,78 @@
             .replace(/\[\[memo-delta-flat\]\]/g, '<span class="util-sheet-memo-arrow is-flat" aria-label="변동 없음">→</span>');
     }
 
+    const REPORT_TEMPLATE_SPECS = Object.freeze({
+        gas: {
+            title: '가스',
+            groupLabel: '(LNG)',
+            usageLabelHtml: '사용량 (m&sup3;)'
+        },
+        electric: {
+            title: '전기',
+            groupLabel: '(전기)',
+            usageLabelHtml: '사용량 (kWh)'
+        },
+        waste: {
+            title: '폐수',
+            groupLabel: '(폐수)',
+            usageLabelHtml: '방류량 (m&sup3;)'
+        }
+    });
+
+    function normalizeReportTemplateSheetType(sheetType = 'meter') {
+        return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+    }
+
+    function normalizeReportTemplateDatasetKey(datasetKey = 'gas') {
+        const normalizedKey = String(datasetKey || '').trim();
+        return normalizedKey === 'electric' || normalizedKey === 'waste' ? normalizedKey : 'gas';
+    }
+
+    function buildUtilSheetReportTemplateSectionHtml(sheetType = 'meter', datasetKey = 'gas') {
+        if (String(sheetType ?? '') || String(datasetKey ?? '') || !String(sheetType ?? '')) return '';
+        const normalizedSheetType = normalizeReportTemplateSheetType(sheetType);
+        const normalizedDatasetKey = normalizeReportTemplateDatasetKey(datasetKey);
+        const spec = REPORT_TEMPLATE_SPECS[normalizedDatasetKey] || REPORT_TEMPLATE_SPECS.gas;
+        const rowLabels = [
+            '생산량 (kg)',
+            spec.usageLabelHtml,
+            '사용 금액 (원)'
+        ];
+        const emptyCellsHtml = '<td class="util-sheet-blank-template-empty"></td>'.repeat(5);
+        return `
+            <section class="util-sheet-section util-sheet-blank-template-section" data-role="util-sheet-report-template-section" data-sheet-type="${escapeHtml(normalizedSheetType)}" data-dataset-key="${escapeHtml(normalizedDatasetKey)}">
+                <div class="util-sheet-table-wrap util-sheet-blank-template-wrap">
+                    <table class="util-sheet-blank-template-table" aria-label="${escapeHtml(spec.title)} 빈 보고서 양식">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="util-sheet-blank-template-resource-head">${escapeHtml(spec.title)}</th>
+                                <th scope="col">구분</th>
+                                <th scope="col">전년월</th>
+                                <th scope="col">당년월</th>
+                                <th scope="col">증감</th>
+                                <th scope="col">증감률</th>
+                                <th scope="col">비고</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowLabels.map((labelHtml, index) => `
+                                <tr>
+                                    ${index === 0 ? `<th scope="rowgroup" rowspan="${rowLabels.length}" class="util-sheet-blank-template-group">${escapeHtml(spec.groupLabel)}</th>` : ''}
+                                    <th scope="row" class="util-sheet-blank-template-metric">${labelHtml}</th>
+                                    ${emptyCellsHtml}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        `;
+    }
+
     function buildUtilSheetMemoSectionHtml(insights = [], options = {}) {
+        if (!UTIL_SHEET_REPORT_MEMO_ENABLED) {
+            return '';
+        }
         const items = Array.isArray(insights)
             ? insights.filter(item => String(item || '').trim())
             : [];
@@ -971,6 +1044,7 @@
         buildUtilSheetCompareCardsHtml,
         buildUtilSheetMatrixHtml,
         buildUtilSheetRecentTableHtml,
+        buildUtilSheetReportTemplateSectionHtml,
         buildUtilSheetMemoSectionHtml
     });
     runtimeAdapter.exportApi('KPIUtilReportSheetSummaryRender', api);

@@ -107,14 +107,20 @@
         return String(chartKey || '').trim().startsWith(UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_PREFIX);
     }
 
+    function toElectricPointNumber(value) {
+        if (value === null || value === undefined || value === '') return NaN;
+        const number = Number(value);
+        return Number.isFinite(number) ? number : NaN;
+    }
+
     function resolveUtilElectricAnalysisPointValue(chart = {}, point = null, unitKey = '') {
         if (isUtilElectricAnalysisLineRatioKey(chart?.key)) {
             if (unitKey === 'kg' || unitKey === 'ton') {
-                return Number(point?.amountValue);
+                return toElectricPointNumber(point?.amountValue);
             }
-            return Number(point?.ratioValue);
+            return toElectricPointNumber(point?.ratioValue);
         }
-        return Number(point?.value);
+        return toElectricPointNumber(point?.value);
     }
 
     function formatUtilElectricAnalysisLineMetricValue(value, unitKey = 'percent', fallback = '-') {

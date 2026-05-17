@@ -106,6 +106,11 @@
         }
         return Number.isFinite(value) ? value : NaN;
     }
+    function toAnalysisPointNumber(value) {
+        if (value === null || value === undefined || value === '') return NaN;
+        const number = Number(value);
+        return Number.isFinite(number) ? number : NaN;
+    }
 
     function normalizeAnalysisDecimalDigits(value, fallback = 0) {
         const number = Number(value);
@@ -164,7 +169,7 @@
                 key: point?.monthKey || point?.key || point?.label || '',
                 monthKey: point?.monthKey || point?.key || '',
                 label: point?.label || '',
-                value: scaleGasValue(chart.key, Number(point?.value), chart.unitKey)
+                value: scaleGasValue(chart.key, toAnalysisPointNumber(point?.value), chart.unitKey)
             }))
         }));
 
@@ -185,7 +190,7 @@
                     key: pointKey,
                     monthKey: pointKey,
                     label: formatMonthLong(pointKey),
-                    value: scaleGasValue(chart.key, Number(point?.value), chart.unitKey)
+                    value: scaleGasValue(chart.key, toAnalysisPointNumber(point?.value), chart.unitKey)
                 };
             })
         }));
@@ -217,13 +222,6 @@
                             <span>${escapeHtml(item.title)}</span>
                         </div>
                         <div class="util-sheet-analysis-series-actions">
-                            ${Array.isArray(item.unitOptions) && item.unitOptions.length ? `
-                                <select class="util-sheet-analysis-series-select" data-role="util-sheet-analysis-unit" data-chart-key="${escapeHtml(item.key)}" aria-label="${escapeHtml(item.title)} 단위 선택">
-                                    ${item.unitOptions.map(option => `
-                                        <option value="${escapeHtml(option.key)}" ${option.key === item.unitKey ? 'selected' : ''}>${escapeHtml(option.label)}</option>
-                                    `).join('')}
-                                </select>
-                            ` : ''}
                             ${buildUtilSheetAnalysisDecimalsSelectHtml(item)}
                             <label class="util-sheet-analysis-summary-control-label">
                                 <input
@@ -255,7 +253,6 @@
 
     function buildUtilGasAnalysisSeriesControlHtml(item) {
         if (!item || !item.key) return '';
-        const unitOptions = Array.isArray(item.unitOptions) ? item.unitOptions : [];
         const datasetKey = String(item.datasetKey || 'gas').trim() || 'gas';
         const labelToggleHtml = `
             <label class="util-sheet-analysis-summary-control-label">
@@ -282,13 +279,6 @@
                     </label>
                 ` : ''}
                 <div class="util-sheet-analysis-summary-control-actions">
-                    ${unitOptions.length ? `
-                        <select class="util-sheet-analysis-series-select" data-role="util-sheet-analysis-unit" data-chart-key="${escapeHtml(item.key)}" aria-label="${escapeHtml(item.title)} 단위 선택">
-                            ${unitOptions.map(option => `
-                                <option value="${escapeHtml(option.key)}" ${option.key === item.unitKey ? 'selected' : ''}>${escapeHtml(option.label)}</option>
-                            `).join('')}
-                        </select>
-                    ` : ''}
                     ${labelToggleHtml}
                     ${buildUtilSheetAnalysisDecimalsSelectHtml(item)}
                     <div class="util-sheet-analysis-series-mode">

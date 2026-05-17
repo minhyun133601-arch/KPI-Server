@@ -1,3 +1,41 @@
+        function getUtilChartAxisBounds(values, options = {}) {
+            const validValues = (Array.isArray(values) ? values : []).map(Number).filter(Number.isFinite);
+            if (!validValues.length) return { min: 0, max: 1 };
+            let min = Math.min(...validValues);
+            let max = Math.max(...validValues);
+            if (min === max) {
+                const offset = Math.max(1, Math.abs(max) * 0.12);
+                min -= offset;
+                max += offset;
+            }
+            const tightRange = options.tightRange !== false;
+            const paddingRatio = Number.isFinite(Number(options.tightPadding)) ? Number(options.tightPadding) : 0.16;
+            const padding = Math.max(0, (max - min) * (tightRange ? paddingRatio : 0.08));
+            min -= padding;
+            max += padding;
+            if (min > 0 && options.includeZero !== false && tightRange !== true) min = 0;
+            if (max < 0 && options.includeZero !== false && tightRange !== true) max = 0;
+            if (min === max) max = min + 1;
+            return { min, max };
+        }
+
+        function getUtilChartLeftPad(minVal, maxVal, decimals = 0, options = {}) {
+            const fallback = Number.isFinite(options.fallback) ? Number(options.fallback) : 74;
+            const minPad = Number.isFinite(options.minPad) ? Number(options.minPad) : fallback;
+            const maxPad = Number.isFinite(options.maxPad) ? Number(options.maxPad) : 260;
+            const fontSize = Number.isFinite(options.fontSize) ? Number(options.fontSize) : 12;
+            const anchorOffset = Number.isFinite(options.anchorOffset) ? Number(options.anchorOffset) : 14;
+            const extra = Number.isFinite(options.extra) ? Number(options.extra) : 12;
+            const digitCount = [minVal, maxVal].reduce((maxLength, value) => {
+                const text = Number.isFinite(value)
+                    ? formatUtilNumber(value, Number.isFinite(decimals) ? decimals : 0)
+                    : '';
+                return Math.max(maxLength, text.length);
+            }, 0);
+            const estimated = Math.ceil((digitCount * fontSize * 0.58) + anchorOffset + extra);
+            return Math.max(minPad, Math.min(maxPad, Math.max(fallback, estimated)));
+        }
+
         function renderUtilTrendChart(points, metricLabel, options = {}) {
             const decimals = Number.isFinite(options.decimals) ? options.decimals : null;
             const showLabels = options.showLabels !== false && options.tooltipOnly !== true;

@@ -1,23 +1,3 @@
-        function getUtilSidebarReportShortcutTeam(itemKey = '') {
-            const normalizedItemKey = normalizeUtilReportBuilderItemKey(itemKey || UtilReportState.builderItemKey || 'electric');
-            const directSection = document.querySelector(`[data-util-dual="${normalizedItemKey}"] [data-util-dual-section="combined"]`);
-            const activeTeam = String(directSection?.dataset?.reportTeam || directSection?.dataset?.activeTeam || '').trim();
-            if (activeTeam) return activeTeam;
-            if (normalizedItemKey === 'electric') return UtilReportState.electricTeam === 'all' ? '전체' : (UtilReportState.electricTeam || '전체');
-            if (normalizedItemKey === 'gas') return UtilReportState.gasTeam === 'all' ? '전체' : (UtilReportState.gasTeam || '전체');
-            if (normalizedItemKey === 'waste') return UtilReportState.wasteTeam === 'all' ? '전체' : (UtilReportState.wasteTeam || '전체');
-            return UtilReportBuilderVizState.team || '전체';
-        }
-
-        function openUtilSidebarReportShortcut(itemKey = '') {
-            const normalizedItemKey = normalizeUtilReportBuilderItemKey(itemKey || 'electric');
-            const directSection = getUtilDualCombinedSection(normalizedItemKey);
-            if (directSection) {
-                syncUtilReportBuilderVizStateFromDualSection(directSection, normalizedItemKey);
-            }
-            openUtilReportBuilderModal(normalizedItemKey, getUtilSidebarReportShortcutTeam(normalizedItemKey));
-        }
-
         function getActiveUtilityTeamSelectorItemKey() {
             if (getNavigationSelectionSectionId() !== 'util') return '';
             const categoryIndex = getNavigationSelectionCategoryIndex('util');
@@ -151,16 +131,22 @@
                         }
                         const renderableCategories = getSidebarRenderableCategories(sectionEntry);
                         const shouldKeepDirectLaunchSubmenuVisible = sectionEntry.section?.directLaunch === true && renderableCategories.length > 0;
+                        const shouldOpenDefaultCategoryFromMain = sectionEntry.section?.openDefaultCategoryOnMain === true
+                            && Array.isArray(sectionEntry.section?.categories)
+                            && sectionEntry.section.categories.length > 0;
                         const isExpanded = isUtilityTeamSelectorSection
                             || SidebarTreeState.expandedSections[sectionEntry.id] === true
                             || shouldKeepDirectLaunchSubmenuVisible;
                         const isActiveSection = selectedSectionId === sectionEntry.id;
+                        const hideNavigationChevron = sectionEntry.section?.hideNavigationChevron === true;
                         const actionIcon = sectionEntry.section?.directLaunch === true
                             ? 'fa-arrow-up-right-from-square'
-                            : 'fa-chevron-right';
+                            : (shouldOpenDefaultCategoryFromMain ? 'fa-arrow-right' : 'fa-chevron-right');
                         const sectionAction = sectionEntry.section?.directLaunch === true
                             ? `openSection('${sectionEntry.id}')`
-                            : `toggleSidebarSection('${sectionEntry.id}')`;
+                            : (shouldOpenDefaultCategoryFromMain
+                                ? `openSection('${sectionEntry.id}')`
+                                : `toggleSidebarSection('${sectionEntry.id}')`);
                         return `
                             <div class="sidebar-group${isExpanded ? ' is-expanded' : ''}" style="--cat-color:${sectionEntry.accent}; --cat-soft:${sectionEntry.softAccent};">
                                 <button type="button" class="sidebar-group-toggle${isActiveSection ? ' is-active' : ''}" onclick="${sectionAction}">
@@ -168,7 +154,7 @@
                                         <span class="sidebar-group-icon"><i class="fas ${escapeDashboardHtml(sectionEntry.section.icon || 'fa-folder-open')}"></i></span>
                                         <span class="sidebar-group-label">${escapeDashboardHtml(sectionEntry.section.name || sectionEntry.id)}</span>
                                     </span>
-                                    <span class="sidebar-group-chevron"><i class="fas ${actionIcon}"></i></span>
+                                    ${hideNavigationChevron ? '' : `<span class="sidebar-group-chevron"><i class="fas ${actionIcon}"></i></span>`}
                                 </button>
                                 <div class="sidebar-group-items">
                                     ${renderableCategories.map(({ category, index }) => {
@@ -286,6 +272,43 @@
             return Math.max(minimum, Math.min(maximum, parsed));
         }
 
+        function buildRouteLaunchUrl(route = null, popupMode = '') {
+            const normalized = sanitizeAppHistoryRoute(route);
+            if (normalized.view === 'home') return '';
+            const params = new URLSearchParams();
+            params.set('view', normalized.view);
+            if (normalized.sectionId) params.set('section', normalized.sectionId);
+            if (normalized.view === 'category') {
+                params.set('category', String(normalized.categoryIndex));
+                if (normalized.teamDataKey) params.set('team', normalized.teamDataKey);
+                if (normalized.navSectionId && normalized.navSectionId !== normalized.sectionId) {
+                    params.set('navSection', normalized.navSectionId);
+                }
+                if (Number(normalized.navCategoryIndex) !== Number(normalized.categoryIndex)) {
+                    params.set('navCategory', String(normalized.navCategoryIndex));
+                }
+                if (normalized.navTeamDataKey && normalized.navTeamDataKey !== normalized.teamDataKey) {
+                    params.set('navTeam', normalized.navTeamDataKey);
+                }
+            }
+            const normalizedPopupMode = String(popupMode || '').trim();
+            if (normalizedPopupMode) params.set('popup', normalizedPopupMode);
+            const locationMeta = browser?.getLocationMeta?.() || {};
+            const basePath = String(locationMeta.href || '').split('#')[0]
+                || `${locationMeta.pathname || ''}${locationMeta.search || ''}`
+                || './';
+            return `${basePath}#kpi?${params.toString()}`;
+        }
+
+        function resolveCategoryLaunchUrl(category = null) {
+            const explicitUrl = String(category?.launchUrl || '').trim();
+            if (explicitUrl) return explicitUrl;
+            return buildRouteLaunchUrl(
+                category?.launchRoute || null,
+                String(category?.launchPopupMode || '').trim()
+            );
+        }
+
         function buildCategoryPopupFeatures(category = null) {
             const {
                 availableWidth,
@@ -302,10 +325,15 @@
                 hostWidth: 1600,
                 hostHeight: 1000
             };
-            const popupWidth = parseLaunchDimension(category?.launchWindowWidth, Math.min(1540, availableWidth), 1040, Math.max(1040, availableWidth));
-            const popupHeight = parseLaunchDimension(category?.launchWindowHeight, Math.min(980, availableHeight), 760, Math.max(760, availableHeight));
-            const popupLeft = hostLeft + Math.max(24, Math.round((hostWidth - popupWidth) / 2));
-            const popupTop = hostTop + Math.max(24, Math.round((hostHeight - popupHeight) / 2));
+            const fillScreen = category?.launchFillScreen === true;
+            const popupWidth = fillScreen
+                ? availableWidth
+                : parseLaunchDimension(category?.launchWindowWidth, Math.min(1540, availableWidth), 1040, Math.max(1040, availableWidth));
+            const popupHeight = fillScreen
+                ? availableHeight
+                : parseLaunchDimension(category?.launchWindowHeight, Math.min(980, availableHeight), 760, Math.max(760, availableHeight));
+            const popupLeft = fillScreen ? hostLeft : hostLeft + Math.max(24, Math.round((hostWidth - popupWidth) / 2));
+            const popupTop = fillScreen ? hostTop : hostTop + Math.max(24, Math.round((hostHeight - popupHeight) / 2));
             return [
                 'popup=yes',
                 `width=${popupWidth}`,
@@ -318,7 +346,7 @@
         }
 
         function openCategoryLaunch(category = null) {
-            const launchUrl = String(category?.launchUrl || '').trim();
+            const launchUrl = resolveCategoryLaunchUrl(category);
             if (!launchUrl) return false;
             const launchTarget = String(category?.launchTarget || '').trim().toLowerCase();
             const launchWindowName = String(category?.launchWindowName || '').trim();
@@ -457,12 +485,6 @@
             // Util/equip follow-up initialization is owned by the domain runtime files.
             KpiRuntime?.runSectionInitializers?.(dataId, renderContext);
             KpiRuntime?.runViewChangeHandlers?.(renderContext);
-            if (
-                ['electric', 'gas', 'waste'].includes(utilityItemKey)
-                && browser?.canSyncUtilReportBuilderVizPopup?.() === true
-            ) {
-                browser?.syncUtilReportBuilderVizPopupFromSelection?.(utilityItemKey);
-            }
             mainScroll.scrollTop = 0;
             scheduleGlobalSaveUiRefresh({ forceDefault: true });
             syncAppHistoryAfterNavigation(options);

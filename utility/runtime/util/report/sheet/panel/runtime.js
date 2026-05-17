@@ -279,24 +279,6 @@
         const root = scope || runtimeAdapter.getDocument();
         if (!root?.querySelectorAll) return;
 
-        root.querySelectorAll('[data-role="util-sheet-monthly-report-panel"]').forEach(panel => {
-            if (panel.dataset.bound === 'true') return;
-            panel.dataset.bound = 'true';
-            const openMonthlyReport = event => {
-                if (event?.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
-                event?.preventDefault?.();
-                const doc = runtimeAdapter.getDocument();
-                if (typeof runtime.closeUtilActionMenus === 'function' && doc) {
-                    runtime.closeUtilActionMenus(doc);
-                }
-                if (typeof runtime.openUtilSheetMonthlyReportExtractOptions === 'function') {
-                    runtime.openUtilSheetMonthlyReportExtractOptions();
-                }
-            };
-            panel.addEventListener('click', openMonthlyReport);
-            panel.addEventListener('keydown', openMonthlyReport);
-        });
-
         root.querySelectorAll('[data-role="util-sheet-panel"]').forEach(panel => {
             const sheetType = normalizeUtilSheetType(panel.dataset.sheetType);
             panel.dataset.sheetType = sheetType;

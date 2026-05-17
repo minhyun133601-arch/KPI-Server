@@ -51,6 +51,7 @@
         applyUtilGasAnalysisCategorySelection: null,
         applyUtilWasteAnalysisSiteSelection: null,
         applyUtilWasteMeterSiteSelection: null,
+        setUtilWasteMeterShowLabels: null,
         applyUtilElectricMeterViewSelection: null,
         setUtilGasAnalysisChartFullscreen: null,
         resolveUtilSheetAnalysisLabelToggleContext: null,
@@ -90,6 +91,7 @@
     };
 
     const MONTHLY_EXTRACT_DATASET_KEYS = Object.freeze(['gas', 'electric', 'waste']);
+    const MONTHLY_EXTRACT_SHEET_TYPES = Object.freeze(['meter', 'analysis']);
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
@@ -228,6 +230,65 @@
             .replace(/'/g, '&#39;');
     }
 
+    const REPORT_TEMPLATE_SPECS = Object.freeze({
+        gas: {
+            title: '가스',
+            groupLabel: '(LNG)',
+            usageLabelHtml: '사용량 (m&sup3;)'
+        },
+        electric: {
+            title: '전기',
+            groupLabel: '(전기)',
+            usageLabelHtml: '사용량 (kWh)'
+        },
+        waste: {
+            title: '폐수',
+            groupLabel: '(폐수)',
+            usageLabelHtml: '방류량 (m&sup3;)'
+        }
+    });
+
+    function buildReportTemplateSectionHtml(sheetType = 'meter', datasetKey = 'gas') {
+        if (String(sheetType ?? '') || String(datasetKey ?? '') || !String(sheetType ?? '')) return '';
+        const normalizedSheetType = normalizeSheetType(sheetType);
+        const normalizedDatasetKey = resolveDatasetKey(normalizedSheetType, datasetKey);
+        const spec = REPORT_TEMPLATE_SPECS[normalizedDatasetKey] || REPORT_TEMPLATE_SPECS.gas;
+        const rowLabels = [
+            '생산량 (kg)',
+            spec.usageLabelHtml,
+            '사용 금액 (원)'
+        ];
+        const emptyCellsHtml = '<td class="util-sheet-blank-template-empty"></td>'.repeat(5);
+        return `
+            <section class="util-sheet-section util-sheet-blank-template-section" data-role="util-sheet-report-template-section" data-sheet-type="${escapeHtml(normalizedSheetType)}" data-dataset-key="${escapeHtml(normalizedDatasetKey)}">
+                <div class="util-sheet-table-wrap util-sheet-blank-template-wrap">
+                    <table class="util-sheet-blank-template-table" aria-label="${escapeHtml(spec.title)} 빈 보고서 양식">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="util-sheet-blank-template-resource-head">${escapeHtml(spec.title)}</th>
+                                <th scope="col">구분</th>
+                                <th scope="col">전년월</th>
+                                <th scope="col">당년월</th>
+                                <th scope="col">증감</th>
+                                <th scope="col">증감률</th>
+                                <th scope="col">비고</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowLabels.map((labelHtml, index) => `
+                                <tr>
+                                    ${index === 0 ? `<th scope="rowgroup" rowspan="${rowLabels.length}" class="util-sheet-blank-template-group">${escapeHtml(spec.groupLabel)}</th>` : ''}
+                                    <th scope="row" class="util-sheet-blank-template-metric">${labelHtml}</th>
+                                    ${emptyCellsHtml}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        `;
+    }
+
     function getStylesheetHref(node) {
         const attrValue = typeof node?.getAttribute === 'function'
             ? String(node.getAttribute('href') || '').trim()
@@ -333,14 +394,48 @@
 
     function getWasteMeterExtractCss() {
         return `
-            .util-sheet-meter-extract-body .util-sheet-waste-meter-card { grid-template-columns: minmax(500px, 0.78fr) minmax(640px, 1.22fr); align-items: start; }
-            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste-chart { min-width: 0; }
-            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste-chart .util-report-chart-shell { width: 100%; max-width: 100%; min-height: 520px; overflow-x: auto !important; overflow-y: visible !important; }
+            .util-sheet-meter-extract-body .util-sheet-waste-meter-card { grid-template-columns: minmax(0, 1fr); align-items: start; }
+            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste,
+            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste-chart { width: 100%; min-width: 0; }
+            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste-chart .util-report-chart-shell { width: 100%; max-width: 100%; min-height: 560px; overflow-x: auto !important; overflow-y: hidden !important; }
             .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste-chart .util-analytics-chart.is-modal { width: 100% !important; min-width: 100% !important; max-width: 100% !important; }
-            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste-chart .util-analytics-chart-canvas { width: 100% !important; max-width: 100% !important; min-width: 0 !important; overflow-x: auto !important; overflow-y: visible !important; }
-            @media (max-width: 1159px) {
-                .util-sheet-meter-extract-body .util-sheet-waste-meter-card { grid-template-columns: 1fr; }
-            }
+            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste-chart .util-analytics-chart-canvas { width: 100% !important; max-width: 100% !important; min-width: 0 !important; overflow-x: auto !important; overflow-y: hidden !important; }
+        `;
+    }
+
+    function getReportTemplateExtractCss() {
+        if (runtimeAdapter) return '';
+        return `
+            .util-sheet-blank-template-section { border-color: #111827; background: #ffffff; box-shadow: none; padding: 0; overflow: hidden; }
+            .util-sheet-blank-template-wrap { max-height: none; overflow-x: auto; }
+            .util-sheet-blank-template-table { width: 100%; min-width: 720px; border-collapse: collapse; table-layout: fixed; background: #ffffff; color: #0f172a; font-size: 12px; font-weight: 900; }
+            .util-sheet-blank-template-table th,
+            .util-sheet-blank-template-table td { height: 34px; border: 2px solid #111827; padding: 6px 8px; text-align: center; vertical-align: middle; line-height: 1.22; }
+            .util-sheet-blank-template-table thead th,
+            .util-sheet-blank-template-resource-head,
+            .util-sheet-blank-template-group,
+            .util-sheet-blank-template-metric { background: #eaf2ff; }
+            .util-sheet-blank-template-table thead th { white-space: nowrap; }
+            .util-sheet-blank-template-resource-head,
+            .util-sheet-blank-template-group { width: 96px; }
+            .util-sheet-blank-template-metric { width: 126px; }
+            .util-sheet-blank-template-empty { background: #ffffff; color: transparent; }
+        `;
+    }
+
+    function getAnalysisExtractFullscreenCss() {
+        return `
+            html.util-sheet-analysis-extract-fullscreen,
+            body.util-sheet-analysis-extract-fullscreen { height: 100% !important; overflow: hidden !important; }
+            body.util-sheet-analysis-extract-fullscreen .util-sheet-meter-extract-page { height: 100vh !important; overflow: hidden !important; }
+            .util-sheet-analysis-chart-card.is-extract-fullscreen { position: fixed !important; inset: 12px !important; z-index: 9999 !important; display: grid !important; align-content: start !important; gap: 0.7rem !important; width: auto !important; height: auto !important; min-height: 0 !important; max-height: calc(100vh - 24px) !important; overflow: hidden !important; box-sizing: border-box !important; padding: 16px !important; background: #ffffff !important; box-shadow: 0 24px 80px rgba(15, 23, 42, 0.34) !important; }
+            .util-sheet-analysis-chart-card.is-extract-fullscreen .util-sheet-analysis-chart-head,
+            .util-sheet-analysis-chart-card.is-extract-fullscreen .util-sheet-analysis-summary-grid { position: sticky !important; top: 0 !important; z-index: 6 !important; padding-bottom: 0.55rem !important; background: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(248, 250, 252, 0.96) 72%, rgba(248, 250, 252, 0) 100%) !important; }
+            .util-sheet-analysis-chart-card.is-extract-fullscreen .util-sheet-analysis-chart-surface { min-height: 0 !important; height: auto !important; overflow-x: auto !important; overflow-y: hidden !important; padding-bottom: 0 !important; }
+            .util-sheet-analysis-chart-card.is-extract-fullscreen .util-sheet-analysis-chart-frame { min-height: 0 !important; height: var(--extract-chart-frame-height, 816px) !important; max-height: var(--extract-chart-frame-height, 816px) !important; overflow: hidden !important; }
+            .util-sheet-analysis-chart-card.is-extract-fullscreen .util-analytics-chart { width: 100% !important; min-width: 100% !important; max-width: 100% !important; min-height: 100% !important; height: 100% !important; overflow: hidden !important; }
+            .util-sheet-analysis-chart-card.is-extract-fullscreen .util-analytics-chart-canvas { min-height: 0 !important; max-height: none !important; width: 100% !important; max-width: 100% !important; overflow-x: auto !important; overflow-y: hidden !important; }
+            .util-sheet-analysis-chart-card.is-extract-fullscreen .util-analytics-chart-canvas svg { width: var(--chart-width, 1260px) !important; height: var(--chart-height, 640px) !important; max-width: none !important; max-height: none !important; }
         `;
     }
 
@@ -467,6 +562,21 @@
         return true;
     }
 
+    function stripReportTemplateSectionsHtml(html = '') {
+        return String(html || '').replace(
+            /<section\b(?=[^>]*data-role="util-sheet-report-template-section")[\s\S]*?<\/section>/g,
+            ''
+        );
+    }
+
+    function ensureReportTemplateAtBodyEnd(clone, sheetType = 'meter', datasetKey = 'gas') {
+        if (!clone || typeof clone.querySelector !== 'function') return false;
+        const bodyEl = clone.querySelector('[data-role="util-sheet-report-body"]');
+        if (!bodyEl || typeof bodyEl.innerHTML !== 'string') return false;
+        bodyEl.innerHTML = stripReportTemplateSectionsHtml(bodyEl.innerHTML);
+        return true;
+    }
+
     function normalizeElectricMeterViewKey(viewKey = 'meter') {
         if (typeof runtime.normalizeUtilElectricMeterViewKey === 'function') {
             return runtime.normalizeUtilElectricMeterViewKey(viewKey);
@@ -532,6 +642,7 @@
         applyReportBodyHtmlOverride(clone, options?.bodyHtmlOverride, {
             mode: options?.bodyHtmlOverrideMode || (normalizedSheetType === 'analysis' ? 'analysis' : 'replace')
         });
+        ensureReportTemplateAtBodyEnd(clone, normalizedSheetType, datasetKey);
         const removableSelectors = [
             '[data-role="util-sheet-report-sub"]',
             '[data-role="util-sheet-report-kicker"]',
@@ -789,25 +900,8 @@
                 : (typeof runtime.buildUtilGasAnalysisBodyHtmlV2 === 'function'
                     ? runtime.buildUtilGasAnalysisBodyHtmlV2(model, {}, modal)
                     : ''));
-        const memoItems = typeof runtime.resolveUtilSheetMemoItems === 'function'
-            ? runtime.resolveUtilSheetMemoItems(
-                'analysis',
-                normalizedDatasetKey,
-                model.datasetResult || {},
-                compareKey,
-                null,
-                { analysisModel: model }
-            )
-            : [];
-        const manualMemoText = getManualMemoText(modal, 'analysis', normalizedDatasetKey);
-        const memoHtml = typeof runtime.buildUtilSheetMemoSectionHtml === 'function'
-            ? runtime.buildUtilSheetMemoSectionHtml(memoItems, {
-                manualMemoText,
-                manualMemoEditable: true
-            })
-            : '';
-        const bodyHtml = `${analysisBodyHtml || ''}${memoHtml || ''}`;
-        return bodyHtml ? { ...model, bodyHtml, manualMemoText } : model;
+        const bodyHtml = analysisBodyHtml || '';
+        return bodyHtml ? { ...model, bodyHtml } : model;
     }
 
     function buildFallbackAnalysisExtractModel(modal, datasetKey = 'gas', compareKey = 'month') {
@@ -1322,7 +1416,7 @@
                     'min-width:100%',
                     'max-width:100%'
                 ].join(';');
-                const canvasInlineStyle = ' style="width:100%;max-width:100%;overflow-x:auto;overflow-y:visible;"';
+                const canvasInlineStyle = ' style="width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;"';
                 const pad = {
                     left: Number.isFinite(Number(options.leftPad)) ? Number(options.leftPad) : (isModal ? 72 : 56),
                     right: Number.isFinite(Number(options.rightPad)) ? Number(options.rightPad) : (isModal ? 44 : 26),
@@ -1568,6 +1662,19 @@
                 const seriesLabelModes = buildSeriesLabelModes(chart);
                 const fullscreen = card.classList.contains('is-extract-fullscreen');
                 const pointCount = Math.max(0, series?.[0]?.points?.length || 0);
+                const chartKind = chart.key === 'ratio-combined'
+                    ? 'ratio'
+                    : ((Array.isArray(chart?.controlItems) && chart.controlItems.length) ? 'multi' : 'single');
+                const chartHeight = fullscreen
+                    ? (chartKind === 'single' ? 520 : 640)
+                    : (chartKind === 'ratio' ? 300 : (chartKind === 'single' ? 292 : 380));
+                if (fullscreen) {
+                    card.style.setProperty('--extract-chart-height', `${chartHeight}px`);
+                    card.style.setProperty('--extract-chart-frame-height', `${chartHeight + 176}px`);
+                } else {
+                    card.style.removeProperty('--extract-chart-height');
+                    card.style.removeProperty('--extract-chart-frame-height');
+                }
                 frame.innerHTML = renderIndependentBoundsMultiSeriesChart(series, {
                     mode: fullscreen ? 'modal' : undefined,
                     chartTitle: chart.title,
@@ -1585,9 +1692,9 @@
                     showYearBands: false,
                     maxXAxisLabels: fullscreen ? Math.max(2, pointCount) : 12,
                     forceWidth: fullscreen
-                        ? Math.min(22000, Math.max(1260, pointCount * 88 + 340))
-                        : Math.min(18000, Math.max(chart.key === 'ratio-combined' ? 900 : 860, pointCount * 62 + 260)),
-                    height: fullscreen ? 640 : (chart.key === 'ratio-combined' ? 300 : 380),
+                        ? Math.min(22000, Math.max(chartKind === 'single' ? 980 : 1260, pointCount * (chartKind === 'single' ? 82 : 88) + (chartKind === 'single' ? 260 : 340)))
+                        : Math.min(18000, Math.max(chartKind === 'ratio' ? 900 : (chartKind === 'single' ? 560 : 860), pointCount * (chartKind === 'ratio' ? 56 : (chartKind === 'single' ? 58 : 62)) + (chartKind === 'ratio' ? 220 : (chartKind === 'single' ? 180 : 260)))),
+                    height: chartHeight,
                     rightPad: chart.key === 'ratio-combined' ? 28 : undefined
                 });
                 bindAnalysisChartDragScroll(frame);
@@ -1643,12 +1750,6 @@
                 });
             }
 
-            function setUnitSelectState(seriesKey) {
-                queryAnalysisAll('[data-role="util-sheet-analysis-unit"]').forEach(select => {
-                    if (select.dataset.chartKey === seriesKey) select.value = state.unitKeys[seriesKey] || '';
-                });
-            }
-
             function setDecimalSelectState(seriesKey) {
                 queryAnalysisAll('[data-role="util-sheet-analysis-decimals"]').forEach(select => {
                     if (select.dataset.chartKey !== seriesKey) return;
@@ -1696,6 +1797,25 @@
                 frame.innerHTML = originalChartFrames[chartKey];
                 bindAnalysisChartDragScroll(frame);
                 return true;
+            }
+
+            function renderInlineChartCard(card) {
+                const chartKey = String(card?.dataset?.analysisChartKey || '').trim();
+                if (!chartKey) return;
+                const chart = allCharts().find(item => String(item?.key || '').trim() === chartKey);
+                if (dirtyChartKeys[chartKey]) {
+                    renderChart(chart, card);
+                    return;
+                }
+                if (!restoreOriginalChartFrame(card)) {
+                    renderChart(chart, card);
+                }
+            }
+
+            function setFullscreenDocumentState(active) {
+                const enabled = active === true || !!document.querySelector('.is-extract-fullscreen');
+                document.body?.classList?.toggle?.('util-sheet-analysis-extract-fullscreen', enabled);
+                document.documentElement?.classList?.toggle?.('util-sheet-analysis-extract-fullscreen', enabled);
             }
 
             function getChartDragScrollTargets(root = null) {
@@ -2384,11 +2504,6 @@
                     state.unitKeys[item.key] = item.unitKey || '';
                     state.displayModes[item.key] = item.displayMode || item.chartType || 'bar';
                 });
-                queryAnalysisAll('[data-role="util-sheet-analysis-unit"]').forEach(select => {
-                    const seriesKey = select.dataset.chartKey || '';
-                    if (!seriesKey) return;
-                    state.unitKeys[seriesKey] = select.value || state.unitKeys[seriesKey] || '';
-                });
                 queryAnalysisAll('[data-role="util-sheet-analysis-series-type"]').forEach(button => {
                     const seriesKey = button.dataset.chartKey || '';
                     if (!seriesKey) return;
@@ -2425,10 +2540,13 @@
                     if (!card) return;
                     const chartKey = String(card.dataset.analysisChartKey || '').trim();
                     const active = !card.classList.contains('is-extract-fullscreen');
-                    document.querySelectorAll('.is-extract-fullscreen').forEach(node => node.classList.remove('is-extract-fullscreen'));
-                    document.body.classList.toggle('util-sheet-analysis-extract-fullscreen', active);
+                    document.querySelectorAll('.is-extract-fullscreen').forEach(node => {
+                        if (node === card) return;
+                        node.classList.remove('is-extract-fullscreen');
+                        renderInlineChartCard(node);
+                    });
                     card.classList.toggle('is-extract-fullscreen', active);
-                    if (!dirtyChartKeys[chartKey]) return;
+                    setFullscreenDocumentState(active);
                     if (!active && !dirtyChartKeys[chartKey] && restoreOriginalChartFrame(card)) return;
                     renderChart(allCharts().find(chart => chart.key === chartKey), card);
                     return;
@@ -2460,17 +2578,6 @@
                 const scopeSelect = target?.closest?.('[data-role="util-sheet-analysis-gas-category-select"], [data-role="util-sheet-analysis-electric-team-select"], [data-role="util-sheet-analysis-waste-site-select"]');
                 if (scopeSelect) {
                     renderAnalysisBodyForScope(scopeSelect.value || '');
-                    return;
-                }
-                const unitSelect = target?.closest?.('[data-role="util-sheet-analysis-unit"]');
-                if (unitSelect) {
-                    const seriesKey = unitSelect.dataset.chartKey || '';
-                    state.unitKeys[seriesKey] = unitSelect.value || '';
-                    setUnitSelectState(seriesKey);
-                    setDecimalSelectState(seriesKey);
-                    renderAffectedCharts(seriesKey);
-                    updateSummaryCards();
-                    refreshInlineDataTables();
                     return;
                 }
                 const decimalsSelect = target?.closest?.('[data-role="util-sheet-analysis-decimals"]');
@@ -2540,16 +2647,65 @@
         return 'fa-fire-flame-curved';
     }
 
-    function buildMonthlyExtractMonthOptions() {
+    function normalizeMonthlyExtractDatasetKeyList(datasetKeys = [], fallbackKeys = MONTHLY_EXTRACT_DATASET_KEYS) {
+        const source = Array.isArray(datasetKeys) ? datasetKeys : [datasetKeys];
+        const normalizedKeys = source
+            .map(datasetKey => String(datasetKey || '').trim())
+            .filter(Boolean)
+            .map(datasetKey => normalizeMonthlyExtractDatasetKey(datasetKey))
+            .filter(datasetKey => MONTHLY_EXTRACT_DATASET_KEYS.includes(datasetKey));
+        const uniqueKeys = Array.from(new Set(normalizedKeys));
+        if (uniqueKeys.length) return uniqueKeys;
+        return Array.isArray(fallbackKeys) ? [...fallbackKeys] : [];
+    }
+
+    function getMonthlyExtractSelectedDatasetKeysFromState(modal) {
+        if (!modal?.dataset || !Object.prototype.hasOwnProperty.call(modal.dataset, 'monthlyExtractDatasets')) {
+            return [...MONTHLY_EXTRACT_DATASET_KEYS];
+        }
+        return String(modal.dataset.monthlyExtractDatasets || '')
+            .split(',')
+            .map(value => String(value || '').trim())
+            .filter(Boolean)
+            .map(value => normalizeMonthlyExtractDatasetKey(value))
+            .filter(datasetKey => MONTHLY_EXTRACT_DATASET_KEYS.includes(datasetKey))
+            .filter((datasetKey, index, values) => values.indexOf(datasetKey) === index);
+    }
+
+    function normalizeMonthlyExtractSheetTypeList(sheetTypes = [], fallbackTypes = MONTHLY_EXTRACT_SHEET_TYPES) {
+        const source = Array.isArray(sheetTypes) ? sheetTypes : [sheetTypes];
+        const normalizedTypes = source
+            .map(sheetType => normalizeSheetType(sheetType))
+            .filter(sheetType => MONTHLY_EXTRACT_SHEET_TYPES.includes(sheetType));
+        const uniqueTypes = Array.from(new Set(normalizedTypes));
+        if (uniqueTypes.length) return uniqueTypes;
+        return Array.isArray(fallbackTypes) ? [...fallbackTypes] : [];
+    }
+
+    function getMonthlyExtractSelectedSheetTypesFromState(modal) {
+        if (!modal?.dataset || !Object.prototype.hasOwnProperty.call(modal.dataset, 'monthlyExtractSheetTypes')) {
+            return [...MONTHLY_EXTRACT_SHEET_TYPES];
+        }
+        return String(modal.dataset.monthlyExtractSheetTypes || '')
+            .split(',')
+            .map(value => String(value || '').trim())
+            .filter(Boolean)
+            .map(value => normalizeSheetType(value))
+            .filter(sheetType => MONTHLY_EXTRACT_SHEET_TYPES.includes(sheetType))
+            .filter((sheetType, index, values) => values.indexOf(sheetType) === index);
+    }
+
+    function buildMonthlyExtractMonthOptions(datasetKeys = MONTHLY_EXTRACT_DATASET_KEYS) {
         if (typeof runtime.buildUtilSheetDatasetResult !== 'function') return [];
-        const optionMaps = MONTHLY_EXTRACT_DATASET_KEYS.map(datasetKey => {
+        const normalizedDatasetKeys = normalizeMonthlyExtractDatasetKeyList(datasetKeys, MONTHLY_EXTRACT_DATASET_KEYS);
+        const optionMaps = normalizedDatasetKeys.map(datasetKey => {
             const result = runtime.buildUtilSheetDatasetResult(datasetKey, '');
             const options = Array.isArray(result?.monthOptions) ? result.monthOptions : [];
             return new Map(options
                 .map(option => [String(option?.value || '').trim(), String(option?.label || option?.value || '').trim()])
                 .filter(([value]) => value));
         }).filter(map => map.size);
-        if (optionMaps.length !== MONTHLY_EXTRACT_DATASET_KEYS.length) return [];
+        if (optionMaps.length !== normalizedDatasetKeys.length) return [];
         const commonValues = Array.from(optionMaps[0].keys())
             .filter(value => optionMaps.every(map => map.has(value)))
             .sort((left, right) => String(left || '').localeCompare(String(right || ''), 'ko'));
@@ -2581,9 +2737,105 @@
         return { from: safeFrom, to: safeTo };
     }
 
+    function normalizeMonthlyExtractDatasetKey(datasetKey = 'gas') {
+        const rawDatasetKey = String(datasetKey || '').trim();
+        const normalizedDatasetKey = MONTHLY_EXTRACT_DATASET_KEYS.includes(rawDatasetKey)
+            ? rawDatasetKey
+            : resolveDatasetKey('meter', datasetKey || 'gas');
+        return MONTHLY_EXTRACT_DATASET_KEYS.includes(normalizedDatasetKey)
+            ? normalizedDatasetKey
+            : 'gas';
+    }
+
+    function getMonthlyExtractActiveDatasetKey(modal) {
+        return normalizeMonthlyExtractDatasetKey(
+            modal?.dataset?.monthlyExtractDatasetKey
+            || modal?.dataset?.datasetKey
+            || UtilSheetReportState.meter
+            || 'gas'
+        );
+    }
+
+    function getMonthlyExtractReviewedDatasetKeys(modal) {
+        const values = String(modal?.dataset?.monthlyExtractReviewedKeys || '')
+            .split(',')
+            .map(value => String(value || '').trim())
+            .filter(Boolean)
+            .map(value => normalizeMonthlyExtractDatasetKey(value))
+            .filter(datasetKey => MONTHLY_EXTRACT_DATASET_KEYS.includes(datasetKey));
+        return Array.from(new Set(values));
+    }
+
+    function setMonthlyExtractReviewedDatasetKeys(modal, datasetKeys = []) {
+        if (!modal?.dataset) return [];
+        const values = (Array.isArray(datasetKeys) ? datasetKeys : [datasetKeys])
+            .map(datasetKey => String(datasetKey || '').trim())
+            .filter(Boolean)
+            .map(datasetKey => normalizeMonthlyExtractDatasetKey(datasetKey))
+            .filter(datasetKey => MONTHLY_EXTRACT_DATASET_KEYS.includes(datasetKey));
+        const uniqueValues = Array.from(new Set(values));
+        modal.dataset.monthlyExtractReviewedKeys = uniqueValues.join(',');
+        return uniqueValues;
+    }
+
+    function markMonthlyExtractDatasetReviewed(modal, datasetKey = '') {
+        const reviewedKeys = getMonthlyExtractReviewedDatasetKeys(modal);
+        const normalizedDatasetKey = normalizeMonthlyExtractDatasetKey(datasetKey || getMonthlyExtractActiveDatasetKey(modal));
+        if (!reviewedKeys.includes(normalizedDatasetKey)) {
+            reviewedKeys.push(normalizedDatasetKey);
+        }
+        return setMonthlyExtractReviewedDatasetKeys(modal, reviewedKeys);
+    }
+
+    function syncMonthlyExtractDatasetControls(modal) {
+        if (!modal) return 'gas';
+        const activeDatasetKey = getMonthlyExtractActiveDatasetKey(modal);
+        const reviewedKeys = getMonthlyExtractReviewedDatasetKeys(modal);
+        const selectedKeys = getMonthlyExtractSelectedDatasetKeysFromState(modal);
+        Array.from(modal.querySelectorAll?.('[data-role="util-sheet-monthly-extract-dataset"]') || []).forEach(checkbox => {
+            const datasetKey = normalizeMonthlyExtractDatasetKey(checkbox.dataset.extractDatasetKey);
+            checkbox.checked = selectedKeys.includes(datasetKey);
+        });
+        const selectedSheetTypes = getMonthlyExtractSelectedSheetTypesFromState(modal);
+        Array.from(modal.querySelectorAll?.('[data-role="util-sheet-monthly-extract-sheet-type"]') || []).forEach(checkbox => {
+            const sheetType = normalizeSheetType(checkbox.dataset.extractSheetType);
+            checkbox.checked = selectedSheetTypes.includes(sheetType);
+        });
+        Array.from(modal.querySelectorAll?.('[data-role="util-sheet-monthly-extract-dataset-preview"]') || []).forEach(button => {
+            const datasetKey = normalizeMonthlyExtractDatasetKey(button.dataset.extractDatasetKey);
+            const isActive = datasetKey === activeDatasetKey;
+            button.classList?.toggle?.('is-active', isActive);
+            button.classList?.toggle?.('is-selected', selectedKeys.includes(datasetKey));
+            button.classList?.toggle?.('is-reviewed', reviewedKeys.includes(datasetKey));
+            button.setAttribute?.('aria-pressed', isActive ? 'true' : 'false');
+            button.dataset.reviewed = reviewedKeys.includes(datasetKey) ? 'true' : 'false';
+        });
+        const runButton = modal.querySelector?.('[data-role="util-sheet-monthly-extract-run"]') || null;
+        if (runButton) {
+            runButton.textContent = selectedKeys.length === MONTHLY_EXTRACT_DATASET_KEYS.length ? '통합 추출' : '선택 추출';
+        }
+        const reviewControls = modal.querySelector?.('[data-role="util-sheet-monthly-review-controls"]') || null;
+        if (reviewControls) {
+            const isMonthlyMode = modal.dataset.monthlyReportMode === 'true';
+            reviewControls.hidden = !isMonthlyMode;
+            reviewControls.toggleAttribute?.('hidden', !isMonthlyMode);
+            Array.from(reviewControls.querySelectorAll?.('[data-role="util-sheet-monthly-review-dataset"]') || []).forEach(button => {
+                const datasetKey = normalizeMonthlyExtractDatasetKey(button.dataset.extractDatasetKey || button.dataset.datasetKey);
+                const isActive = datasetKey === activeDatasetKey;
+                button.classList?.toggle?.('is-active', isActive);
+                button.classList?.toggle?.('is-selected', selectedKeys.includes(datasetKey));
+                button.classList?.toggle?.('is-reviewed', reviewedKeys.includes(datasetKey));
+                button.setAttribute?.('aria-pressed', isActive ? 'true' : 'false');
+                button.dataset.reviewed = reviewedKeys.includes(datasetKey) ? 'true' : 'false';
+            });
+        }
+        return activeDatasetKey;
+    }
+
     function populateMonthlyExtractOptions(modal) {
         if (!modal) return { monthOptions: [], range: { from: '', to: '' } };
-        const monthOptions = buildMonthlyExtractMonthOptions();
+        const selectedDatasetKeys = getMonthlyExtractSelectedDatasetKeysFromState(modal);
+        const monthOptions = buildMonthlyExtractMonthOptions(selectedDatasetKeys.length ? selectedDatasetKeys : MONTHLY_EXTRACT_DATASET_KEYS);
         const range = normalizeMonthlyExtractRange(
             monthOptions,
             modal.dataset.monthlyExtractFrom,
@@ -2603,23 +2855,54 @@
             toSelect.value = range.to;
             toSelect.disabled = !monthOptions.length;
         }
-        Array.from(modal.querySelectorAll?.('[data-role="util-sheet-monthly-extract-dataset"]') || []).forEach(checkbox => {
-            const datasetKey = resolveDatasetKey('meter', checkbox.dataset.extractDatasetKey);
-            if (modal.dataset.monthlyExtractDatasets) {
-                checkbox.checked = modal.dataset.monthlyExtractDatasets
-                    .split(',')
-                    .map(value => value.trim())
-                    .filter(Boolean)
-                    .includes(datasetKey);
-            }
-        });
+        modal.dataset.monthlyExtractDatasetKey = getMonthlyExtractActiveDatasetKey(modal);
+        syncMonthlyExtractDatasetControls(modal);
         return { monthOptions, range };
+    }
+
+    function applyMonthlyExtractPreview(modal, datasetKey = '', options = {}) {
+        if (!modal) return { datasetKey: 'gas', range: { from: '', to: '' } };
+        const selectedDatasetKeys = getMonthlyExtractSelectedDatasetKeysFromState(modal);
+        const monthOptions = Array.isArray(options?.monthOptions)
+            ? options.monthOptions
+            : buildMonthlyExtractMonthOptions(selectedDatasetKeys.length ? selectedDatasetKeys : MONTHLY_EXTRACT_DATASET_KEYS);
+        const fromValue = Object.prototype.hasOwnProperty.call(options || {}, 'from')
+            ? options.from
+            : (modal.querySelector?.('[data-role="util-sheet-monthly-extract-from"]')?.value || modal.dataset.monthlyExtractFrom || '');
+        const toValue = Object.prototype.hasOwnProperty.call(options || {}, 'to')
+            ? options.to
+            : (modal.querySelector?.('[data-role="util-sheet-monthly-extract-to"]')?.value || modal.dataset.monthlyExtractTo || '');
+        const range = normalizeMonthlyExtractRange(monthOptions, fromValue, toValue);
+        const activeDatasetKey = normalizeMonthlyExtractDatasetKey(datasetKey || getMonthlyExtractActiveDatasetKey(modal));
+        const sheetType = normalizeSheetType(modal.dataset.sheetType || 'meter');
+
+        modal.dataset.monthlyExtractDatasetKey = activeDatasetKey;
+        modal.dataset.monthlyExtractFrom = range.from;
+        modal.dataset.monthlyExtractTo = range.to;
+        modal.dataset.sheetType = sheetType;
+        modal.dataset.datasetKey = activeDatasetKey;
+        modal.dataset.monthKey = range.to || modal.dataset.monthKey || '';
+        modal.dataset.compareKey = normalizeCompareKey(modal.dataset.compareKey || UtilSheetCompareState[sheetType] || 'month');
+
+        if (sheetType === 'analysis' && (range.from || range.to)) {
+            setAnalysisStateForExtractModel(activeDatasetKey, '', range.from || range.to, range.to || modal.dataset.monthKey || '');
+        }
+        if (options?.render !== false && typeof runtime.renderUtilSheetReportModal === 'function') {
+            runtime.renderUtilSheetReportModal(modal);
+        }
+        if (options?.markReviewed !== false) {
+            markMonthlyExtractDatasetReviewed(modal, activeDatasetKey);
+        }
+        syncMonthlyExtractDatasetControls(modal);
+        syncPanelSelection(sheetType, activeDatasetKey);
+        return { datasetKey: activeDatasetKey, range };
     }
 
     function buildMeterExtractDocumentHtml(modal, reportCardHtml = '') {
         const title = getTextContent(modal, '[data-role="util-sheet-report-title"]', '검침표');
         const datasetKey = resolveDatasetKey('meter', modal?.dataset?.datasetKey || UtilSheetReportState.meter || 'gas');
         const datasetLabel = getExtractDatasetLabel(datasetKey);
+        const templateHtml = '';
         return `
             <!doctype html>
             <html lang="ko">
@@ -2647,6 +2930,7 @@
                     .util-sheet-meter-extract-body .util-sheet-report-window-actions:empty { display: none; }
                     .util-sheet-meter-extract-body [data-role="util-sheet-billing-preview-toggle"] { display: none !important; }
                     ${getWasteMeterExtractCss()}
+                    ${getReportTemplateExtractCss()}
                     ${getExtractIconFallbackCss()}
                     @media print {
                         .util-sheet-meter-extract-page { padding: 0; }
@@ -2662,6 +2946,7 @@
                     </header>
                     <section class="util-sheet-meter-extract-body">
                         ${reportCardHtml}
+                        ${templateHtml}
                     </section>
                 </main>
             </body>
@@ -2674,6 +2959,7 @@
         const datasetKey = resolveDatasetKey('analysis', modal?.dataset?.datasetKey || UtilSheetReportState.analysis || 'gas');
         const datasetLabel = getExtractDatasetLabel(datasetKey);
         const resolvedExtractPayload = extractPayload || buildAnalysisExtractPayload(modal, datasetKey);
+        const templateHtml = '';
         return `
             <!doctype html>
             <html lang="ko">
@@ -2698,20 +2984,19 @@
                     .util-sheet-meter-extract-body .util-sheet-analysis-grid,
                     .util-sheet-meter-extract-body .util-sheet-analysis-table-stack { height: auto !important; max-height: none !important; overflow: visible !important; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-section { position: relative; }
-                    .util-sheet-meter-extract-body .util-sheet-table-wrap,
-                    .util-sheet-meter-extract-body .util-analytics-chart-canvas { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; overscroll-behavior-x: contain; scrollbar-gutter: stable both-edges; cursor: grab; touch-action: pan-x; }
+                    .util-sheet-meter-extract-body .util-sheet-table-wrap { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; overscroll-behavior-x: contain; scrollbar-gutter: stable both-edges; }
+                    .util-sheet-meter-extract-body .util-analytics-chart-canvas { max-height: none !important; overflow-x: auto !important; overflow-y: hidden !important; overscroll-behavior-x: contain; scrollbar-gutter: stable both-edges; cursor: grab; touch-action: pan-x; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart.is-modal { width: 100% !important; min-width: 100% !important; max-width: 100% !important; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart-canvas { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart [data-role="util-chart-month-hit"] { cursor: grab; }
                     .util-sheet-meter-extract-body .util-analytics-chart-canvas.is-dragging { cursor: grabbing; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart-canvas.is-dragging [data-role="util-chart-month-hit"] { cursor: grabbing; }
-                    .util-sheet-analysis-extract-fullscreen { overflow: hidden !important; }
-                    .util-sheet-analysis-chart-card.is-extract-fullscreen { position: fixed !important; inset: 12px !important; z-index: 9999 !important; max-height: calc(100vh - 24px) !important; overflow: auto !important; background: #ffffff !important; box-shadow: 0 24px 80px rgba(15, 23, 42, 0.34) !important; }
-                    .util-sheet-analysis-chart-card.is-extract-fullscreen .util-sheet-analysis-chart-frame { min-height: 760px; }
+                    ${getAnalysisExtractFullscreenCss()}
                     .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-panel { position: absolute; top: 4.35rem; right: 0.35rem; z-index: 10000; width: min(680px, calc(100% - 0.7rem)); max-width: 100%; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-panel-body { max-height: min(58vh, 640px); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-toolbar { position: sticky; top: 0; background: #ffffff; z-index: 1; }
                     .util-sheet-meter-extract-body [data-role="util-sheet-billing-preview-toggle"] { display: none !important; }
+                    ${getReportTemplateExtractCss()}
                     ${getExtractIconFallbackCss()}
                     @media print {
                         .util-sheet-meter-extract-page { padding: 0; }
@@ -2727,6 +3012,7 @@
                     </header>
                     <section class="util-sheet-meter-extract-body">
                         ${reportCardHtml}
+                        ${templateHtml}
                     </section>
                 </main>
                 ${buildAnalysisExtractRuntimeScript(resolvedExtractPayload)}
@@ -2775,7 +3061,40 @@
         const analysisTitle = String(options.analysisTitle || '분석표').trim();
         const meterReportCardHtml = String(options.meterReportCardHtml || '').trim();
         const analysisReportCardHtml = String(options.analysisReportCardHtml || '').trim();
-        const extractPayload = options.extractPayload || buildAnalysisExtractPayload(modal, datasetKey);
+        const extractPayload = analysisReportCardHtml
+            ? (options.extractPayload || buildAnalysisExtractPayload(modal, datasetKey))
+            : null;
+        const sheetItems = [
+            meterReportCardHtml ? {
+                key: 'meter',
+                className: 'is-meter',
+                title: meterTitle,
+                tabLabel: '검침',
+                bodyHtml: meterReportCardHtml,
+                templateHtml: ''
+            } : null,
+            analysisReportCardHtml ? {
+                key: 'analysis',
+                className: 'is-analysis',
+                title: analysisTitle,
+                tabLabel: '분석',
+                bodyHtml: analysisReportCardHtml,
+                templateHtml: ''
+            } : null
+        ].filter(Boolean);
+        if (!sheetItems.length) return '';
+        const firstSheetKey = sheetItems[0].key;
+        const tabsHtml = sheetItems.map(item => `
+                        <button type="button" class="util-sheet-combined-extract-tab${item.key === firstSheetKey ? ' is-active' : ''}" data-role="util-sheet-combined-tab" data-combined-sheet-type="${escapeHtml(item.key)}" aria-pressed="${item.key === firstSheetKey ? 'true' : 'false'}">${escapeHtml(item.tabLabel)}</button>
+        `).join('');
+        const sectionsHtml = sheetItems.map(item => `
+                    <section class="util-sheet-combined-extract-section ${escapeHtml(item.className)}" data-role="util-sheet-combined-section" data-combined-sheet-type="${escapeHtml(item.key)}" aria-label="${escapeHtml(item.title)}"${item.key === firstSheetKey ? '' : ' hidden'}>
+                        <div class="util-sheet-meter-extract-body">
+                            ${item.bodyHtml}
+                            ${item.templateHtml}
+                        </div>
+                    </section>
+        `).join('');
         return `
             <!doctype html>
             <html lang="ko">
@@ -2808,16 +3127,14 @@
                     .util-sheet-meter-extract-body .util-sheet-analysis-grid,
                     .util-sheet-meter-extract-body .util-sheet-analysis-table-stack { height: auto !important; max-height: none !important; overflow: visible !important; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-section { position: relative; }
-                    .util-sheet-meter-extract-body .util-sheet-table-wrap,
-                    .util-sheet-meter-extract-body .util-analytics-chart-canvas { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; overscroll-behavior-x: contain; scrollbar-gutter: stable both-edges; cursor: grab; touch-action: pan-x; }
+                    .util-sheet-meter-extract-body .util-sheet-table-wrap { max-height: none !important; overflow-x: auto !important; overflow-y: visible !important; overscroll-behavior-x: contain; scrollbar-gutter: stable both-edges; }
+                    .util-sheet-meter-extract-body .util-analytics-chart-canvas { max-height: none !important; overflow-x: auto !important; overflow-y: hidden !important; overscroll-behavior-x: contain; scrollbar-gutter: stable both-edges; cursor: grab; touch-action: pan-x; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart.is-modal { width: 100% !important; min-width: 100% !important; max-width: 100% !important; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart-canvas { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart [data-role="util-chart-month-hit"] { cursor: grab; }
                     .util-sheet-meter-extract-body .util-analytics-chart-canvas.is-dragging { cursor: grabbing; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-chart-surface .util-analytics-chart-canvas.is-dragging [data-role="util-chart-month-hit"] { cursor: grabbing; }
-                    .util-sheet-analysis-extract-fullscreen { overflow: hidden !important; }
-                    .util-sheet-analysis-chart-card.is-extract-fullscreen { position: fixed !important; inset: 12px !important; z-index: 9999 !important; max-height: calc(100vh - 24px) !important; overflow: auto !important; background: #ffffff !important; box-shadow: 0 24px 80px rgba(15, 23, 42, 0.34) !important; }
-                    .util-sheet-analysis-chart-card.is-extract-fullscreen .util-sheet-analysis-chart-frame { min-height: 760px; }
+                    ${getAnalysisExtractFullscreenCss()}
                     .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-panel { position: absolute; top: 4.35rem; right: 0.35rem; z-index: 10000; width: min(680px, calc(100% - 0.7rem)); max-width: 100%; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-panel-body { max-height: min(58vh, 640px); overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable both-edges; }
                     .util-sheet-meter-extract-body .util-sheet-analysis-inline-table-toolbar { position: sticky; top: 0; background: #ffffff; z-index: 1; }
@@ -2825,6 +3142,7 @@
                     .util-sheet-meter-extract-body .util-sheet-report-window-actions:empty { display: none; }
                     .util-sheet-meter-extract-body [data-role="util-sheet-billing-preview-toggle"] { display: none !important; }
                     ${getWasteMeterExtractCss()}
+                    ${getReportTemplateExtractCss()}
                     ${getExtractIconFallbackCss()}
                     @media print {
                         .util-sheet-meter-extract-page { padding: 0; }
@@ -2836,22 +3154,12 @@
             <body>
                 <main class="util-sheet-meter-extract-page util-sheet-combined-extract-page">
                     <nav class="util-sheet-combined-extract-switch" aria-label="보기 선택">
-                        <button type="button" class="util-sheet-combined-extract-tab is-active" data-role="util-sheet-combined-tab" data-combined-sheet-type="meter" aria-pressed="true">검침</button>
-                        <button type="button" class="util-sheet-combined-extract-tab" data-role="util-sheet-combined-tab" data-combined-sheet-type="analysis" aria-pressed="false">분석</button>
+                        ${tabsHtml}
                     </nav>
-                    <section class="util-sheet-combined-extract-section is-meter" data-role="util-sheet-combined-section" data-combined-sheet-type="meter" aria-label="${escapeHtml(meterTitle)}">
-                        <div class="util-sheet-meter-extract-body">
-                            ${meterReportCardHtml}
-                        </div>
-                    </section>
-                    <section class="util-sheet-combined-extract-section is-analysis" data-role="util-sheet-combined-section" data-combined-sheet-type="analysis" aria-label="${escapeHtml(analysisTitle)}">
-                        <div class="util-sheet-meter-extract-body">
-                            ${analysisReportCardHtml}
-                        </div>
-                    </section>
+                    ${sectionsHtml}
                 </main>
-                ${buildAnalysisExtractRuntimeScript(extractPayload)}
-                ${buildCombinedExtractToggleScript()}
+                ${analysisReportCardHtml ? buildAnalysisExtractRuntimeScript(extractPayload) : ''}
+                ${sheetItems.length > 1 ? buildCombinedExtractToggleScript() : ''}
             </body>
             </html>
         `;
@@ -2933,26 +3241,39 @@
 
     function buildCombinedExtractParts(modal, datasetKey, monthKey, compareKey, options = {}) {
         const normalizedDatasetKey = resolveDatasetKey('meter', datasetKey);
-        if (!renderModalForExtract(modal, 'meter', normalizedDatasetKey, monthKey, compareKey)) {
-            return null;
-        }
-        const meterTitle = getTextContent(modal, '[data-role="util-sheet-report-title"]', '검침표');
-        const meterReportCardHtml = buildVisibleReportCardHtml(modal, 'meter', {
-            bodyHtmlOverride: buildMeterExtractBodyHtmlOverride(modal, 'meter', normalizedDatasetKey, monthKey, compareKey),
-            bodyHtmlOverrideMode: 'electric-meter'
-        });
-        if (!meterReportCardHtml) return null;
+        const sheetTypes = normalizeMonthlyExtractSheetTypeList(options?.sheetTypes || MONTHLY_EXTRACT_SHEET_TYPES, MONTHLY_EXTRACT_SHEET_TYPES);
+        let meterTitle = '';
+        let meterReportCardHtml = '';
+        let analysisTitle = '';
+        let analysisReportCardHtml = '';
+        let analysisExtractPayload = null;
 
-        if (!renderModalForExtract(modal, 'analysis', normalizedDatasetKey, monthKey, compareKey, options)) {
-            return null;
+        if (sheetTypes.includes('meter')) {
+            if (!renderModalForExtract(modal, 'meter', normalizedDatasetKey, monthKey, compareKey)) {
+                return null;
+            }
+            meterTitle = getTextContent(modal, '[data-role="util-sheet-report-title"]', '검침표');
+            meterReportCardHtml = buildVisibleReportCardHtml(modal, 'meter', {
+                bodyHtmlOverride: buildMeterExtractBodyHtmlOverride(modal, 'meter', normalizedDatasetKey, monthKey, compareKey),
+                bodyHtmlOverrideMode: 'electric-meter'
+            });
+            if (!meterReportCardHtml) return null;
         }
-        const analysisTitle = getTextContent(modal, '[data-role="util-sheet-report-title"]', '분석표');
-        const analysisExtractPayload = buildAnalysisExtractPayload(modal, normalizedDatasetKey);
-        const analysisReportCardHtml = buildVisibleReportCardHtml(modal, 'analysis', {
-            headerControlsHtml: buildAnalysisExtractHeaderControlsHtml(normalizedDatasetKey, analysisExtractPayload?.model, compareKey),
-            bodyHtmlOverride: buildAnalysisExtractBodyHtmlOverride(normalizedDatasetKey, analysisExtractPayload?.model)
-        });
-        if (!analysisReportCardHtml) return null;
+
+        if (sheetTypes.includes('analysis')) {
+            if (!renderModalForExtract(modal, 'analysis', normalizedDatasetKey, monthKey, compareKey, options)) {
+                return null;
+            }
+            analysisTitle = getTextContent(modal, '[data-role="util-sheet-report-title"]', '분석표');
+            analysisExtractPayload = buildAnalysisExtractPayload(modal, normalizedDatasetKey);
+            analysisReportCardHtml = buildVisibleReportCardHtml(modal, 'analysis', {
+                headerControlsHtml: buildAnalysisExtractHeaderControlsHtml(normalizedDatasetKey, analysisExtractPayload?.model, compareKey),
+                bodyHtmlOverride: buildAnalysisExtractBodyHtmlOverride(normalizedDatasetKey, analysisExtractPayload?.model)
+            });
+            if (!analysisReportCardHtml) return null;
+        }
+
+        if (!meterReportCardHtml && !analysisReportCardHtml) return null;
 
         return {
             datasetKey: normalizedDatasetKey,
@@ -2976,14 +3297,15 @@
                 analysisTitle: parts.analysisTitle,
                 meterReportCardHtml: parts.meterReportCardHtml,
                 analysisReportCardHtml: parts.analysisReportCardHtml,
-                extractPayload: parts.analysisExtractPayload
+                extractPayload: parts.analysisExtractPayload,
+                sheetTypes: options?.sheetTypes
             })
         };
     }
 
     function buildMonthlyExtractFileName(fromKey = '', toKey = '') {
         const rangeKey = toExtractFileKey(`${fromKey || 'from'}-${toKey || 'current'}`, 'current');
-        return `monthly-utility-report-${rangeKey}.html`;
+        return `유틸리티 분석-${rangeKey}.html`;
     }
 
     function buildMonthlyExtractToggleScript() {
@@ -3117,7 +3439,7 @@
             <head>
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>월간 실적보고</title>
+                <title>유틸리티 분석</title>
                 ${getHeadAssetsHtml()}
                 <style>
                     html, body { min-height: 100%; height: auto !important; overflow-x: hidden; overflow-y: auto; }
@@ -3146,8 +3468,8 @@
                 <main class="util-sheet-monthly-page">
                     <header class="util-sheet-monthly-head">
                         <div>
-                            <div class="util-sheet-monthly-kicker">MONTHLY PERFORMANCE REPORT</div>
-                            <div class="util-sheet-monthly-title">월간 실적보고</div>
+                            <div class="util-sheet-monthly-kicker">UTILITY ANALYSIS</div>
+                            <div class="util-sheet-monthly-title">유틸리티 분석</div>
                         </div>
                         <div class="util-sheet-monthly-range">${escapeHtml(fromKey || '-')} ~ ${escapeHtml(toKey || '-')}</div>
                     </header>
@@ -3163,7 +3485,12 @@
     }
 
     function getSelectedMonthlyExtractDatasetKeys(modal) {
-        const values = Array.from(modal?.querySelectorAll?.('[data-role="util-sheet-monthly-extract-dataset"]') || [])
+        const controls = Array.from(modal?.querySelectorAll?.('[data-role="util-sheet-monthly-extract-dataset"]') || []);
+        if (!controls.length) {
+            const selectedFromState = getMonthlyExtractSelectedDatasetKeysFromState(modal);
+            return selectedFromState.length ? selectedFromState : [getMonthlyExtractActiveDatasetKey(modal)];
+        }
+        const values = controls
             .filter(checkbox => checkbox?.checked === true)
             .map(checkbox => resolveDatasetKey('meter', checkbox.dataset.extractDatasetKey))
             .filter(datasetKey => MONTHLY_EXTRACT_DATASET_KEYS.includes(datasetKey));
@@ -3179,26 +3506,65 @@
         return true;
     }
 
+    function getSelectedMonthlyExtractSheetTypes(modal) {
+        const controls = Array.from(modal?.querySelectorAll?.('[data-role="util-sheet-monthly-extract-sheet-type"]') || []);
+        if (!controls.length) {
+            const selectedFromState = getMonthlyExtractSelectedSheetTypesFromState(modal);
+            return selectedFromState.length ? selectedFromState : [...MONTHLY_EXTRACT_SHEET_TYPES];
+        }
+        const values = controls
+            .filter(checkbox => checkbox?.checked === true)
+            .map(checkbox => normalizeSheetType(checkbox.dataset.extractSheetType))
+            .filter(sheetType => MONTHLY_EXTRACT_SHEET_TYPES.includes(sheetType));
+        return Array.from(new Set(values));
+    }
+
+    function openMonthlyExtractOptionsFromModal(modal) {
+        if (!modal) return false;
+        modal.dataset.monthlyExtractDatasetKey = normalizeMonthlyExtractDatasetKey(modal.dataset.datasetKey || getMonthlyExtractActiveDatasetKey(modal));
+        if (!Object.prototype.hasOwnProperty.call(modal.dataset, 'monthlyExtractDatasets')) {
+            modal.dataset.monthlyExtractDatasets = MONTHLY_EXTRACT_DATASET_KEYS.join(',');
+        }
+        if (!Object.prototype.hasOwnProperty.call(modal.dataset, 'monthlyExtractSheetTypes')) {
+            modal.dataset.monthlyExtractSheetTypes = MONTHLY_EXTRACT_SHEET_TYPES.join(',');
+        }
+        const { monthOptions, range } = populateMonthlyExtractOptions(modal);
+        applyMonthlyExtractPreview(modal, modal.dataset.monthlyExtractDatasetKey, {
+            monthOptions,
+            from: range.from,
+            to: range.to,
+            render: false
+        });
+        return setMonthlyExtractOptionsVisible(modal, true);
+    }
+
     function openUtilSheetMonthlyReportExtractOptions() {
         const modal = ensureUtilSheetReportModal();
         if (!modal) return false;
-        const { range } = populateMonthlyExtractOptions(modal);
+        const activeDatasetKey = 'gas';
+        modal.dataset.monthlyReportMode = 'true';
         modal.dataset.sheetType = 'meter';
-        modal.dataset.datasetKey = 'gas';
+        modal.dataset.datasetKey = activeDatasetKey;
+        modal.dataset.monthlyExtractDatasetKey = activeDatasetKey;
+        modal.dataset.monthlyExtractDatasets = MONTHLY_EXTRACT_DATASET_KEYS.join(',');
+        modal.dataset.monthlyExtractSheetTypes = MONTHLY_EXTRACT_SHEET_TYPES.join(',');
+        const { range } = populateMonthlyExtractOptions(modal);
         modal.dataset.monthKey = range.to || modal.dataset.monthKey || '';
         modal.dataset.compareKey = normalizeCompareKey(modal.dataset.compareKey || UtilSheetCompareState.meter || 'month');
+        setMonthlyExtractReviewedDatasetKeys(modal, [activeDatasetKey]);
         if (typeof runtime.renderUtilSheetReportModal === 'function') {
             runtime.renderUtilSheetReportModal(modal);
         }
         populateMonthlyExtractOptions(modal);
-        modal.dataset.monthlyExtractStandalone = 'true';
+        modal.dataset.monthlyExtractStandalone = 'false';
         modal.classList.add('is-open');
-        setMonthlyExtractOptionsVisible(modal, true);
+        setMonthlyExtractOptionsVisible(modal, false);
         return true;
     }
 
     function closeUtilSheetMonthlyExtractOptions(modal) {
-        const wasStandalone = modal?.dataset?.monthlyExtractStandalone === 'true';
+        const wasStandalone = modal?.dataset?.monthlyExtractStandalone === 'true'
+            && modal?.dataset?.monthlyReportMode !== 'true';
         if (modal?.dataset) {
             modal.dataset.monthlyExtractStandalone = 'false';
         }
@@ -3210,17 +3576,22 @@
 
     function runUtilSheetMonthlyReportExtract(modal, options = {}) {
         if (!modal) return false;
-        const monthOptions = buildMonthlyExtractMonthOptions();
+        const datasetKeys = getSelectedMonthlyExtractDatasetKeys(modal);
+        const sheetTypes = getSelectedMonthlyExtractSheetTypes(modal);
+        const monthOptions = buildMonthlyExtractMonthOptions(datasetKeys.length ? datasetKeys : MONTHLY_EXTRACT_DATASET_KEYS);
         const fromSelect = modal.querySelector?.('[data-role="util-sheet-monthly-extract-from"]') || null;
         const toSelect = modal.querySelector?.('[data-role="util-sheet-monthly-extract-to"]') || null;
         const range = normalizeMonthlyExtractRange(monthOptions, fromSelect?.value, toSelect?.value);
         if (!range.from || !range.to) {
-            runtimeAdapter.alert('가스비, 전력비, 폐수를 모두 추출할 수 있는 기간이 없습니다.');
+            runtimeAdapter.alert('가스, 전기, 폐수를 확인할 수 있는 기간이 없습니다.');
             return false;
         }
-        const datasetKeys = getSelectedMonthlyExtractDatasetKeys(modal);
         if (!datasetKeys.length) {
             runtimeAdapter.alert('추출할 항목을 선택해 주세요.');
+            return false;
+        }
+        if (!sheetTypes.length) {
+            runtimeAdapter.alert('추출할 표 유형을 선택해 주세요.');
             return false;
         }
         if (!options?.skipElectricPrepare) {
@@ -3234,21 +3605,22 @@
         let success = true;
 
         try {
-            const documentItems = datasetKeys.map(datasetKey => {
-                const documentResult = buildCombinedExtractDocument(modal, datasetKey, range.to, compareKey, {
+            const documentItems = datasetKeys.map(currentDatasetKey => {
+                const documentResult = buildCombinedExtractDocument(modal, currentDatasetKey, range.to, compareKey, {
                     rangeFrom: range.from,
-                    rangeTo: range.to
+                    rangeTo: range.to,
+                    sheetTypes
                 });
                 return documentResult?.html
                     ? {
-                        datasetKey,
-                        datasetLabel: getExtractDatasetLabel(datasetKey),
+                        datasetKey: currentDatasetKey,
+                        datasetLabel: getExtractDatasetLabel(currentDatasetKey),
                         html: documentResult.html
                     }
                     : null;
             }).filter(Boolean);
             if (documentItems.length !== datasetKeys.length) {
-                runtimeAdapter.alert('월간 실적보고 추출 화면을 만들 수 없습니다.');
+                runtimeAdapter.alert('월간 실적 보고 추출 화면을 만들 수 없습니다.');
                 success = false;
             } else {
                 const html = buildMonthlyExtractDocumentHtml(documentItems, range);
@@ -3256,8 +3628,8 @@
             }
         } finally {
             restoreModalExtractState(modal, snapshot);
-            setMonthlyExtractOptionsVisible(modal, false);
-            modal.dataset.monthlyExtractStandalone = 'false';
+            populateMonthlyExtractOptions(modal);
+            setMonthlyExtractOptionsVisible(modal, true);
         }
 
         return success;
@@ -3354,6 +3726,11 @@
                                 <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-modal-compare-select" data-compare-key="month" aria-pressed="true">전월대비</button>
                                 <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-modal-compare-select" data-compare-key="year" aria-pressed="false">전년대비</button>
                             </div>
+                            <div class="util-sheet-segment is-dataset is-monthly-review" data-role="util-sheet-monthly-review-controls" aria-label="월간 실적 보고 확인 항목" hidden>
+                                <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-monthly-review-dataset" data-dataset-key="gas" data-extract-dataset-key="gas" aria-pressed="true">가스</button>
+                                <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-monthly-review-dataset" data-dataset-key="electric" data-extract-dataset-key="electric" aria-pressed="false">전기</button>
+                                <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-monthly-review-dataset" data-dataset-key="waste" data-extract-dataset-key="waste" aria-pressed="false">폐수</button>
+                            </div>
                         </div>
                         <button type="button" class="work-btn" data-role="util-sheet-report-print" aria-label="추출" title="추출">추출</button>
                         <div class="util-sheet-extract-options" data-role="util-sheet-extract-options" role="dialog" aria-modal="true" aria-label="추출 선택" hidden>
@@ -3382,10 +3759,10 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="util-sheet-extract-options" data-role="util-sheet-monthly-extract-options" role="dialog" aria-modal="true" aria-label="월간 실적보고 추출 선택" hidden>
+                        <div class="util-sheet-extract-options is-monthly-choice-only" data-role="util-sheet-monthly-extract-options" role="dialog" aria-modal="true" aria-label="월간 실적 보고 추출 선택" hidden>
                             <div class="util-sheet-extract-options-card is-monthly">
                                 <div class="util-sheet-extract-options-head">
-                                    <div class="util-sheet-extract-options-title">월간 실적보고 추출</div>
+                                    <div class="util-sheet-extract-options-title">월간 실적 보고 선택</div>
                                     <button type="button" class="util-sheet-report-icon-btn is-close" data-role="util-sheet-monthly-extract-cancel" aria-label="취소" title="취소">
                                         <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                                     </button>
@@ -3394,31 +3771,50 @@
                                     <fieldset class="util-sheet-extract-options-group">
                                         <legend>기간</legend>
                                         <div class="util-sheet-extract-range">
-                                            <select class="util-sheet-month-select" data-role="util-sheet-monthly-extract-from" aria-label="월간 실적보고 시작월"></select>
+                                            <select class="util-sheet-month-select" data-role="util-sheet-monthly-extract-from" aria-label="월간 실적 보고 시작월"></select>
                                             <span class="util-sheet-analysis-range-divider">~</span>
-                                            <select class="util-sheet-month-select" data-role="util-sheet-monthly-extract-to" aria-label="월간 실적보고 종료월"></select>
+                                            <select class="util-sheet-month-select" data-role="util-sheet-monthly-extract-to" aria-label="월간 실적 보고 종료월"></select>
                                         </div>
                                     </fieldset>
                                     <fieldset class="util-sheet-extract-options-group">
-                                        <legend>항목</legend>
-                                        <label class="util-sheet-extract-option">
-                                            <input type="checkbox" data-role="util-sheet-monthly-extract-dataset" data-extract-dataset-key="gas" checked>
-                                            <span>가스비</span>
-                                        </label>
-                                        <label class="util-sheet-extract-option">
-                                            <input type="checkbox" data-role="util-sheet-monthly-extract-dataset" data-extract-dataset-key="electric" checked>
-                                            <span>전력비</span>
-                                        </label>
-                                        <label class="util-sheet-extract-option">
-                                            <input type="checkbox" data-role="util-sheet-monthly-extract-dataset" data-extract-dataset-key="waste" checked>
-                                            <span>폐수</span>
-                                        </label>
+                                        <legend>추출 항목</legend>
+                                        <div class="util-sheet-monthly-dataset-actions" role="group" aria-label="월간 실적 보고 추출 항목">
+                                            <label class="util-sheet-extract-option util-sheet-monthly-dataset-btn">
+                                                <input type="checkbox" data-role="util-sheet-monthly-extract-dataset" data-extract-dataset-key="gas" checked>
+                                                <i class="fa-solid fa-fire-flame-curved" aria-hidden="true"></i>
+                                                <span>가스</span>
+                                            </label>
+                                            <label class="util-sheet-extract-option util-sheet-monthly-dataset-btn">
+                                                <input type="checkbox" data-role="util-sheet-monthly-extract-dataset" data-extract-dataset-key="electric" checked>
+                                                <i class="fa-solid fa-bolt" aria-hidden="true"></i>
+                                                <span>전기</span>
+                                            </label>
+                                            <label class="util-sheet-extract-option util-sheet-monthly-dataset-btn">
+                                                <input type="checkbox" data-role="util-sheet-monthly-extract-dataset" data-extract-dataset-key="waste" checked>
+                                                <i class="fa-solid fa-water" aria-hidden="true"></i>
+                                                <span>폐수</span>
+                                            </label>
+                                        </div>
                                     </fieldset>
-                                    <div class="util-sheet-extract-options-note">가스비·전력비·폐수 모두 추출 가능한 공통 기간만 표시합니다. 선택한 항목은 한 HTML 파일 안에서 탭으로 전환됩니다.</div>
+                                    <fieldset class="util-sheet-extract-options-group">
+                                        <legend>표 유형</legend>
+                                        <div class="util-sheet-monthly-dataset-actions is-sheet-type" role="group" aria-label="월간 실적 보고 표 유형">
+                                            <label class="util-sheet-extract-option util-sheet-monthly-dataset-btn">
+                                                <input type="checkbox" data-role="util-sheet-monthly-extract-sheet-type" data-extract-sheet-type="meter" checked>
+                                                <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+                                                <span>검침표</span>
+                                            </label>
+                                            <label class="util-sheet-extract-option util-sheet-monthly-dataset-btn">
+                                                <input type="checkbox" data-role="util-sheet-monthly-extract-sheet-type" data-extract-sheet-type="analysis" checked>
+                                                <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
+                                                <span>분석표</span>
+                                            </label>
+                                        </div>
+                                    </fieldset>
                                 </div>
                                 <div class="util-sheet-extract-options-actions">
                                     <button type="button" class="work-btn" data-role="util-sheet-monthly-extract-cancel">취소</button>
-                                    <button type="button" class="work-btn primary" data-role="util-sheet-monthly-extract-run">추출</button>
+                                    <button type="button" class="work-btn primary" data-role="util-sheet-monthly-extract-run">통합 추출</button>
                                 </div>
                             </div>
                         </div>
@@ -3455,7 +3851,9 @@
                 return;
             }
             if (findClosest(target, '[data-role="util-sheet-report-print"]')) {
-                openUtilSheetExtractOptions(modal);
+                if (!openMonthlyExtractOptionsFromModal(modal)) {
+                    openUtilSheetExtractOptions(modal);
+                }
                 return;
             }
             if (findClosest(target, '[data-role="util-sheet-extract-cancel"]')) {
@@ -3468,6 +3866,26 @@
             }
             if (findClosest(target, '[data-role="util-sheet-monthly-extract-cancel"]')) {
                 closeUtilSheetMonthlyExtractOptions(modal);
+                return;
+            }
+            const monthlyReviewButton = findClosest(target, '[data-role="util-sheet-monthly-review-dataset"]');
+            if (monthlyReviewButton) {
+                const { monthOptions, range } = populateMonthlyExtractOptions(modal);
+                applyMonthlyExtractPreview(modal, monthlyReviewButton.dataset.extractDatasetKey || monthlyReviewButton.dataset.datasetKey, {
+                    monthOptions,
+                    from: range.from,
+                    to: range.to
+                });
+                return;
+            }
+            const monthlyDatasetPreview = findClosest(target, '[data-role="util-sheet-monthly-extract-dataset-preview"]');
+            if (monthlyDatasetPreview) {
+                const { monthOptions, range } = populateMonthlyExtractOptions(modal);
+                applyMonthlyExtractPreview(modal, monthlyDatasetPreview.dataset.extractDatasetKey, {
+                    monthOptions,
+                    from: range.from,
+                    to: range.to
+                });
                 return;
             }
             if (findClosest(target, '[data-role="util-sheet-monthly-extract-run"]')) {
@@ -3555,6 +3973,10 @@
                 const nextDatasetKey = getAlternateDatasetKey(modal.dataset.datasetKey, sheetType);
                 modal.dataset.datasetKey = nextDatasetKey;
                 UtilSheetReportState[sheetType] = nextDatasetKey;
+                if (modal.dataset.monthlyReportMode === 'true') {
+                    modal.dataset.monthlyExtractDatasetKey = nextDatasetKey;
+                    markMonthlyExtractDatasetReviewed(modal, nextDatasetKey);
+                }
                 rerenderAndSync(modal);
                 syncPanelSelection(sheetType, nextDatasetKey);
                 return;
@@ -3641,6 +4063,11 @@
                 rerenderAndSync(modal);
                 return;
             }
+            const wasteMeterLabelToggle = findClosest(target, '[data-role="util-sheet-waste-meter-label-toggle"]');
+            if (wasteMeterLabelToggle && typeof runtime.setUtilWasteMeterShowLabels === 'function') {
+                runtime.setUtilWasteMeterShowLabels(modal, wasteMeterLabelToggle.checked === true);
+                return;
+            }
             const fuelInactiveToggle = findClosest(target, '[data-role="util-sheet-analysis-fuel-inactive"]');
             if (fuelInactiveToggle && typeof runtime.setUtilGasAnalysisFuelInactive === 'function') {
                 runtime.setUtilGasAnalysisFuelInactive(
@@ -3653,16 +4080,6 @@
             const rangeField = findClosest(target, '[data-role="util-sheet-analysis-from"], [data-role="util-sheet-analysis-to"]');
             if (rangeField && typeof runtime.applyUtilGasAnalysisRangeSelection === 'function') {
                 runtime.applyUtilGasAnalysisRangeSelection(modal, modal);
-                return;
-            }
-            const unitSelect = findClosest(target, '[data-role="util-sheet-analysis-unit"]');
-            if (unitSelect && typeof runtime.setUtilSheetAnalysisUnitKey === 'function') {
-                runtime.setUtilSheetAnalysisUnitKey(
-                    getActiveAnalysisDatasetKey(modal),
-                    unitSelect.dataset.chartKey || '',
-                    unitSelect.value || ''
-                );
-                rerenderAndSync(modal);
                 return;
             }
             const decimalsSelect = findClosest(target, '[data-role="util-sheet-analysis-decimals"]');
@@ -3709,15 +4126,34 @@
             if (monthlyRangeSelect) {
                 const fromValue = modal.querySelector?.('[data-role="util-sheet-monthly-extract-from"]')?.value || '';
                 const toValue = modal.querySelector?.('[data-role="util-sheet-monthly-extract-to"]')?.value || '';
-                const range = normalizeMonthlyExtractRange(buildMonthlyExtractMonthOptions(), fromValue, toValue);
+                const selectedDatasetKeys = getSelectedMonthlyExtractDatasetKeys(modal);
+                const monthOptions = buildMonthlyExtractMonthOptions(selectedDatasetKeys.length ? selectedDatasetKeys : MONTHLY_EXTRACT_DATASET_KEYS);
+                const range = normalizeMonthlyExtractRange(monthOptions, fromValue, toValue);
                 modal.dataset.monthlyExtractFrom = range.from;
                 modal.dataset.monthlyExtractTo = range.to;
                 populateMonthlyExtractOptions(modal);
+                applyMonthlyExtractPreview(modal, getMonthlyExtractActiveDatasetKey(modal), {
+                    monthOptions,
+                    from: range.from,
+                    to: range.to
+                });
                 return;
             }
             const monthlyDatasetCheckbox = findClosest(target, '[data-role="util-sheet-monthly-extract-dataset"]');
             if (monthlyDatasetCheckbox) {
-                modal.dataset.monthlyExtractDatasets = getSelectedMonthlyExtractDatasetKeys(modal).join(',');
+                const selectedDatasetKeys = getSelectedMonthlyExtractDatasetKeys(modal);
+                modal.dataset.monthlyExtractDatasets = selectedDatasetKeys.join(',');
+                if (selectedDatasetKeys.length && !selectedDatasetKeys.includes(getMonthlyExtractActiveDatasetKey(modal))) {
+                    modal.dataset.monthlyExtractDatasetKey = selectedDatasetKeys[0];
+                }
+                populateMonthlyExtractOptions(modal);
+                syncMonthlyExtractDatasetControls(modal);
+                return;
+            }
+            const monthlySheetTypeCheckbox = findClosest(target, '[data-role="util-sheet-monthly-extract-sheet-type"]');
+            if (monthlySheetTypeCheckbox) {
+                modal.dataset.monthlyExtractSheetTypes = getSelectedMonthlyExtractSheetTypes(modal).join(',');
+                syncMonthlyExtractDatasetControls(modal);
                 return;
             }
             const monthSelect = findClosest(target, '[data-role="util-sheet-modal-month"]');
@@ -3730,10 +4166,23 @@
             const monthKey = String(monthSelect.value || '').trim();
             modal.dataset.monthKey = monthKey;
             UtilSheetReportMonthState[sheetType] = monthKey;
+            if (modal.dataset.monthlyReportMode === 'true') {
+                const selectedDatasetKeys = getMonthlyExtractSelectedDatasetKeysFromState(modal);
+                const range = normalizeMonthlyExtractRange(
+                    buildMonthlyExtractMonthOptions(selectedDatasetKeys.length ? selectedDatasetKeys : MONTHLY_EXTRACT_DATASET_KEYS),
+                    modal.dataset.monthlyExtractFrom,
+                    monthKey
+                );
+                modal.dataset.monthlyExtractDatasetKey = datasetKey;
+                modal.dataset.monthlyExtractFrom = range.from;
+                modal.dataset.monthlyExtractTo = range.to;
+                setMonthlyExtractReviewedDatasetKeys(modal, [datasetKey]);
+            }
             if (sheetType === 'analysis' && isCustomAnalysisDataset(datasetKey) && typeof runtime.setUtilSheetAnalysisToMonth === 'function') {
                 runtime.setUtilSheetAnalysisToMonth(datasetKey, monthKey);
             }
             rerenderAndSync(modal);
+            syncMonthlyExtractDatasetControls(modal);
             syncPanelSelection(sheetType, datasetKey);
         });
 

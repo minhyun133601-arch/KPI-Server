@@ -109,14 +109,6 @@
         root.KpiOpenOwnerToolWindow = openOwnerToolWindow;
     }
 
-    function syncUtilReportBuilderVizPopupFromSelection(itemKey) {
-        return root.syncUtilReportBuilderVizPopupFromSelection?.(itemKey);
-    }
-
-    function canSyncUtilReportBuilderVizPopup() {
-        return typeof root.syncUtilReportBuilderVizPopupFromSelection === 'function';
-    }
-
     root.KpiAppBrowserAdapter = Object.freeze({
         getRuntime,
         markGlobalSaveShell,
@@ -139,9 +131,7 @@
         getUtilSidebarSelectionWorkDataKey,
         getWindowPlacement,
         openWindow,
-        exposeOwnerToolWindow,
-        syncUtilReportBuilderVizPopupFromSelection,
-        canSyncUtilReportBuilderVizPopup
+        exposeOwnerToolWindow
     });
 
     if (globalScope && globalScope !== root) {

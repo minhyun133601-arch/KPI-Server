@@ -161,7 +161,8 @@
 
         function applyUtilGasMeteringSnapshot(snapshot) {
             const nextDataset = buildUtilDatasetFromSnapshot(snapshot, UTIL_GAS_METERING_TEAM_NAMES, {
-                resolveTeamName: (teamName) => teamName
+                resolveTeamName: (teamName) => teamName,
+                gasContext: true
             });
             return replaceUtilDataset(UTIL_GAS_DATA, nextDataset);
         }

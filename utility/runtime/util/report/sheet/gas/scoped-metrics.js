@@ -275,12 +275,12 @@
             ? scopeOption
             : getUtilGasMeterProductionOption(scopeOption);
         if (fuelKey === 'lpg') {
-            const lpgAmount = Number(summary?.lpg?.totalAmount);
+            const lpgAmount = Number(summary?.lpg?.supplyAmount);
             if (!option?.hasLpg) return 0;
             return Number.isFinite(lpgAmount) ? lpgAmount : null;
         }
 
-        const lngAmount = Number(summary?.lng?.totalAmount);
+        const lngAmount = Number(summary?.lng?.supplyAmount);
         if (!Number.isFinite(lngAmount)) return null;
         if (normalizeUtilGasMeterProductionKey(option?.key) === 'combined') {
             return lngAmount;
@@ -338,6 +338,15 @@
     function getUtilGasAnalysisBukjeongBillingAmount(monthKey = '') {
         const scopeKeys = getGasBillingScopeKeys();
         const fields = getGasBillingScopeFields(monthKey, scopeKeys.bukjeong);
+        return parseGasMeterNumber(fields?.power_charge);
+    }
+
+    function getUtilGasAnalysisYusanLpgConversionAmount(monthKey = '') {
+        const scopeKeys = getGasBillingScopeKeys();
+        const fields = getGasBillingScopeFields(
+            monthKey,
+            scopeKeys.yusanLpgConversion || 'yusan_lpg_conversion'
+        );
         return parseGasMeterNumber(fields?.billing_amount);
     }
 
@@ -380,6 +389,9 @@
             const lpgCost = option.showLpgCard
                 ? getUtilGasMeterScopedCost(billingSummary, monthTable, 'lpg', meterScopeOption)
                 : null;
+            const lpgConversionCost = option.showLpgCard
+                ? getUtilGasAnalysisYusanLpgConversionAmount(monthKey)
+                : null;
             const activeCostValues = [];
             if (!isGasFuelInactive('lng') && Number.isFinite(lngCost)) {
                 activeCostValues.push(lngCost);
@@ -404,6 +416,7 @@
                 },
                 lngCost,
                 lpgCost,
+                lpgConversionCost,
                 gasCost
             });
         });
@@ -425,6 +438,7 @@
         getUtilGasAnalysisProductionValue,
         buildUtilGasAnalysisProductionMap,
         getUtilGasAnalysisBukjeongBillingAmount,
+        getUtilGasAnalysisYusanLpgConversionAmount,
         buildUtilGasAnalysisMetricMap
     });
     runtimeAdapter.exportApi('KPIUtilReportSheetGasScopedMetrics', api);

@@ -28,6 +28,7 @@ function createUtilitySnapshotsContext() {
   let currentResourceType = 'electric';
   let clearTimelineCacheCount = 0;
   let loadedStore = null;
+  const electricAmountCalls = [];
   const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   const normalizeResourceType = (value) => {
     const normalized = String(value ?? '').trim();
@@ -63,6 +64,10 @@ function createUtilitySnapshotsContext() {
 
   const gasBoardUsageByKey = {
     'gas_team_lng:2026-03:false': 4.2,
+    'team_01_01:2026-03:true': 11.4,
+    'gas_team_lng:2026-03:true': 9.3,
+    'gas_team_lpg:2026-03:true': 3.5,
+    'team_03:2026-03:true': 8.8,
   };
 
   const electricUsageByKey = {
@@ -292,6 +297,7 @@ function createUtilitySnapshotsContext() {
     getTeamBoardMonthlyUsage(teamKey, options = {}) {
       return (
         gasBoardUsageByKey[`${teamKey}:${options.monthValue}:${options.selectionOnly === true}`] ??
+        electricUsageByKey[`${options.monthValue}:${teamKey}`] ??
         null
       );
     },
@@ -301,7 +307,12 @@ function createUtilitySnapshotsContext() {
     getTeamMonthlyUsage(teamKey) {
       return electricUsageByKey[`${context.state.currentMonth}:${teamKey}`] ?? null;
     },
-    calculateTeamAmount(teamKey, monthValue) {
+    calculateTeamAmount(teamKey, monthValue, options = {}) {
+      electricAmountCalls.push({
+        teamKey,
+        monthValue,
+        selectionOnly: options.selectionOnly === true,
+      });
       return electricCostByKey[`${monthValue}:${teamKey}`] ?? null;
     },
     hasStoredTeamMonthlyUsageOverride() {
@@ -315,6 +326,9 @@ function createUtilitySnapshotsContext() {
     },
     __getClearTimelineCacheCount() {
       return clearTimelineCacheCount;
+    },
+    __getElectricAmountCalls() {
+      return [...electricAmountCalls];
     },
   };
 
@@ -411,6 +425,7 @@ test('utility snapshots build electric monthly and dataset snapshots from detach
     usage: 50,
     cost: 505,
   });
+  assert.ok(context.__getElectricAmountCalls().every((call) => call.selectionOnly));
 
   const datasetSnapshot = context.buildElectricUtilityDatasetSnapshot(store);
   assert.deepEqual(Array.from(datasetSnapshot.months), ['2026-01', '2026-02']);

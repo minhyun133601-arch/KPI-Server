@@ -18,11 +18,32 @@ function countLines(source) {
   return source.trimEnd().split(/\r?\n/).length;
 }
 
-test('kpi html loads split energy chart helpers before host runtimes', () => {
+const removedEnergyChartFileName = ['KPI.util.energy', 'chart.js'].join('.');
+const removedModalChartTokens = [
+  ['data-util-energy', 'chart'].join('-'),
+  ['energy', 'chart', 'open'].join('-'),
+  ['util-energy-modal-enable', 'chart-popup'].join('-'),
+  ['initUtilEnergy', 'Chart'].join(''),
+  ['renderUtilEnergy', 'Chart'].join(''),
+  ['chartPopup', 'Enabled'].join(''),
+];
+const removedDualChartTokens = [
+  ['data-util-energy', 'chart'].join('-'),
+  ['energy', 'chart', 'open'].join('-'),
+  ['syncUtilEnergy', 'ChartPopupControls'].join(''),
+  ['buildUtilEnergy', 'MonthlySeries'].join(''),
+];
+
+function assertSourceOmitsTokens(source, tokens) {
+  for (const token of tokens) {
+    assert.equal(source.includes(token), false, `${token} should stay removed`);
+  }
+}
+
+test('kpi html loads split energy helpers before host runtimes', () => {
   const orderedFiles = [
     'KPI.util.energy.browser-adapter.js',
     'KPI.util.energy.dual.js',
-    'KPI.util.energy.chart.js',
     'KPI.util.energy.tabs.js',
     'KPI.util.energy.trend-chart.js',
     'KPI.util.energy.segmented-chart.js',
@@ -38,6 +59,7 @@ test('kpi html loads split energy chart helpers before host runtimes', () => {
     assert.ok(currentIndex > previousIndex, `${fileName} should load after the previous energy script`);
     previousIndex = currentIndex;
   }
+  assert.equal(kpiHtmlSource.includes(removedEnergyChartFileName), false);
 });
 
 test('energy renderer split moves chart renderers out of the host file', async () => {
@@ -71,28 +93,33 @@ test('energy tabs routes browser globals through the data-sync adapter', async (
 
   assert.doesNotMatch(tabsSource, /window\./);
   assert.doesNotMatch(tabsSource, new RegExp(globalObjectName));
+  assert.doesNotMatch(tabsSource, /data-util-report-inline-open/);
+  assert.doesNotMatch(tabsSource, /toggleUtilInlineReport/);
+  assert.doesNotMatch(tabsSource, /syncUtilReportBuilderVizStateFromDualSection/);
   assert.match(tabsSource, /KpiUtilDataSyncBrowserAdapter/);
   assert.match(tabsSource, /addUtilEnergyTabsEventListener/);
   assert.match(tabsSource, /hasUtilEnergyTabsSpreadsheetApi/);
 });
 
-test('energy chart, modal, and override route browser globals through the energy adapter', async () => {
+test('energy modal and override route browser globals through the energy adapter', async () => {
   const adapterSource = await readEnergyFile('KPI.util.energy.browser-adapter.js');
-  const chartSource = await readEnergyFile('KPI.util.energy.chart.js');
+  const dualSource = await readEnergyFile('KPI.util.energy.dual.js');
   const modalSource = await readEnergyFile('KPI.util.energy.modal.chart.js');
   const overrideSource = await readEnergyFile('KPI.util.energy.tabs.override.js');
 
-  for (const source of [chartSource, modalSource, overrideSource]) {
+  for (const source of [modalSource, overrideSource]) {
     assert.doesNotMatch(source, /window\./);
     assert.doesNotMatch(source, new RegExp(globalObjectName));
     assert.match(source, /KpiUtilEnergyBrowserAdapter/);
   }
   assert.match(adapterSource, new RegExp(globalObjectName));
-  assert.match(chartSource, /useUtilEnergyChartRootFlag/);
   assert.match(modalSource, /openUtilEnergyModalChartPopup/);
   assert.match(modalSource, /printUtilEnergyModalChartPage/);
+  assertSourceOmitsTokens(modalSource, removedModalChartTokens);
+  assertSourceOmitsTokens(dualSource, removedDualChartTokens);
   assert.match(overrideSource, /exposeUtilEnergyTabsOverrideApi/);
   assert.match(overrideSource, /setUtilEnergyTabsOverrideRenderer/);
+  assert.doesNotMatch(overrideSource, /overrideToggleUtilInlineReport/);
 });
 
 test('energy browser adapter exposes root-bound browser operations', async () => {

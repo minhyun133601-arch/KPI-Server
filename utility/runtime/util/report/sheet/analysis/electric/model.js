@@ -121,6 +121,12 @@
         return String(compareKey || '').trim() === 'year' ? 'year' : 'month';
     }
 
+    function toElectricModelPointNumber(value) {
+        if (value === null || value === undefined || value === '') return null;
+        const number = Number(value);
+        return Number.isFinite(number) ? number : null;
+    }
+
     function normalizeRange(monthOptions, fromValue = '', toValue = '', fallbackToValue = '') {
         if (typeof runtime.normalizeUtilSheetAnalysisRange === 'function') {
             return runtime.normalizeUtilSheetAnalysisRange(monthOptions, fromValue, toValue, fallbackToValue);
@@ -498,8 +504,8 @@
                 activeRatio: Number.isFinite(Number(series?.activeRatio)) ? Number(series.activeRatio) : null,
                 points: (Array.isArray(series?.points) ? series.points : []).map(point => ({
                     monthKey: String(point?.monthKey || point?.key || '').trim(),
-                    amountValue: Number.isFinite(Number(point?.amountValue)) ? Number(point.amountValue) : null,
-                    ratioValue: Number.isFinite(Number(point?.ratioValue)) ? Number(point.ratioValue) : null
+                    amountValue: toElectricModelPointNumber(point?.amountValue),
+                    ratioValue: toElectricModelPointNumber(point?.ratioValue)
                 })).filter(point => point.monthKey)
             };
         }).filter(item => item.key && item.title);

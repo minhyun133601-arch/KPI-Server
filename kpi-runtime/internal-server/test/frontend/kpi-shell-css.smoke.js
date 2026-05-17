@@ -23,8 +23,8 @@ const styleEntries = [
     relativeSegments: ['shell', 'dashboard.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/shell/shell-chrome.css?v=057`,
-    manifestHref: './styles/shell/shell-chrome.css?v=057',
+    href: `${runtimeDirName}/app/styles/shell/shell-chrome.css?v=058`,
+    manifestHref: './styles/shell/shell-chrome.css?v=058',
     fileName: 'shell-chrome.css',
     relativeSegments: ['shell', 'shell-chrome.css'],
   },
@@ -35,8 +35,8 @@ const styleEntries = [
     relativeSegments: ['work', 'work.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/metering/metering.css?v=067`,
-    manifestHref: './styles/metering/metering.css?v=067',
+    href: `${runtimeDirName}/app/styles/metering/metering.css?v=072`,
+    manifestHref: './styles/metering/metering.css?v=072',
     fileName: 'metering.css',
     relativeSegments: ['metering', 'metering.css'],
   },
@@ -92,6 +92,7 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['dashboard.css'], /\.dashboard-version-badge\s*\{/);
 
   assert.match(styleContents['shell-chrome.css'], /#viewer\s*\{/);
+  assert.match(styleContents['shell-chrome.css'], /body\.is-report-popup\s+#dashboard/);
   assert.match(styleContents['shell-chrome.css'], /\.viewer-header\s*\{/);
   assert.match(styleContents['shell-chrome.css'], /\.global-save-dock\s*\{/);
   assert.match(styleContents['shell-chrome.css'], /\.runtime-auth-bar\s*\{/);
@@ -101,6 +102,8 @@ test('split shell css keeps key selectors in the expected files', () => {
 
   assert.match(styleContents['metering.css'], /\.util-tabs-wrap\s*\{/);
   assert.match(styleContents['metering.css'], /\.month-panel\s*\{/);
+  assert.match(styleContents['metering.css'], /\.util-sheet-waste-meter-card\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
+  assert.doesNotMatch(styleContents['metering.css'], /\.util-sheet-waste-meter-card\s*\{[^}]*minmax\(500px,/s);
 
   assert.match(styleContents['audit.css'], /\.audit-panel\s*\{/);
   assert.match(styleContents['audit.css'], /\.print-sheet\s*\{/);

@@ -194,6 +194,12 @@
         rerenderAndSync(modal);
     }
 
+    function setUtilWasteMeterShowLabels(modal, showLabels = false) {
+        if (!modal) return;
+        UtilSheetMeterState.wasteShowLabels = showLabels === true;
+        rerenderAndSync(modal);
+    }
+
     function applyUtilElectricMeterViewSelection(modal, viewKey = 'meter') {
         if (!modal) return;
         const normalizedKey = typeof runtime.normalizeUtilElectricMeterViewKey === 'function'
@@ -330,6 +336,18 @@
         modal.dataset.datasetKey = normalizedDatasetKey;
         modal.dataset.monthKey = String(monthKey || UtilSheetReportMonthState[normalizedSheetType] || '').trim();
         modal.dataset.compareKey = normalizeCompareKey(compareKey || UtilSheetCompareState[normalizedSheetType] || 'month');
+        modal.dataset.monthlyReportMode = 'false';
+        modal.dataset.monthlyExtractOptionsOpen = 'false';
+        const monthlyOptions = modal.querySelector?.('[data-role="util-sheet-monthly-extract-options"]') || null;
+        if (monthlyOptions) {
+            monthlyOptions.hidden = true;
+            monthlyOptions.toggleAttribute?.('hidden', true);
+        }
+        const monthlyReviewControls = modal.querySelector?.('[data-role="util-sheet-monthly-review-controls"]') || null;
+        if (monthlyReviewControls) {
+            monthlyReviewControls.hidden = true;
+            monthlyReviewControls.toggleAttribute?.('hidden', true);
+        }
         if (
             normalizedSheetType === 'analysis'
             && typeof runtime.isUtilSheetCustomAnalysisDataset === 'function'
@@ -397,6 +415,7 @@
         applyUtilGasAnalysisCategorySelection,
         applyUtilWasteAnalysisSiteSelection,
         applyUtilWasteMeterSiteSelection,
+        setUtilWasteMeterShowLabels,
         applyUtilElectricMeterViewSelection,
         setUtilGasAnalysisInlineTablePositionFromTrigger,
         setUtilGasAnalysisChartFullscreen,

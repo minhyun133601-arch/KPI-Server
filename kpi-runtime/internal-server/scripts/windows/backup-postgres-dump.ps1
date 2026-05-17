@@ -27,6 +27,7 @@ function Get-EnvFilePaths {
   param([string]$ServerDir)
 
   $candidatePaths = @(
+    (Join-Path $ServerDir '.env.local-experiment'),
     (Join-Path $ServerDir '.env.production.local'),
     (Join-Path $ServerDir '.env.development.local'),
     (Join-Path $ServerDir '.env')
@@ -63,6 +64,17 @@ function Get-EnvFileValue {
 }
 
 function Resolve-PostgresDumpPath {
+  $configuredBinDir = Get-EnvFileValue -ServerDir $serverDir -Key 'KPI_POSTGRES_BIN_DIR'
+  if (-not [string]::IsNullOrWhiteSpace($env:KPI_POSTGRES_BIN_DIR)) {
+    $configuredBinDir = $env:KPI_POSTGRES_BIN_DIR
+  }
+  if (-not [string]::IsNullOrWhiteSpace($configuredBinDir)) {
+    $configuredPath = Convert-ToAbsolutePath -BaseDir $serverDir -PathValue (Join-Path $configuredBinDir 'pg_dump.exe')
+    if (Test-Path $configuredPath) {
+      return (Resolve-Path $configuredPath).Path
+    }
+  }
+
   $pathCommand = Get-Command pg_dump -ErrorAction SilentlyContinue
   if ($pathCommand) {
     return $pathCommand.Source

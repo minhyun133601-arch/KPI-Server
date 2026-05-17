@@ -218,22 +218,6 @@
                                 <div class="util-report-kpi-grid" data-role="util-sheet-preview" hidden></div>
                                 <div class="util-report-preview-note" data-role="util-sheet-note" hidden></div>
                             </div>
-                            <div class="util-sheet-panel is-monthly-report" data-role="util-sheet-monthly-report-panel" role="button" tabindex="0" aria-label="월간 실적보고 통합 추출">
-                                <div class="util-sheet-header">
-                                    <div class="util-sheet-title-block">
-                                        <div class="util-sheet-kicker">MONTHLY REPORT</div>
-                                        <div class="util-sheet-title-row">
-                                            <span class="util-sheet-title-icon is-overview" aria-hidden="true"><i class="fa-solid fa-calendar-check"></i></span>
-                                            <div class="util-report-title">월간 실적보고</div>
-                                        </div>
-                                        <div class="util-report-desc">기간과 가스비·전력비·폐수를 선택해 검침표와 분석표를 한 파일로 추출합니다.</div>
-                                    </div>
-                                    <div class="util-sheet-actions">
-                                        <button type="button" class="work-btn primary" data-role="util-sheet-monthly-report-open"><i class="fa-solid fa-file-export" aria-hidden="true"></i><span>추출</span></button>
-                                    </div>
-                                </div>
-                                <div class="util-report-preview-note">추출본 안에서 가스·전기·폐수 탭으로 이동하고, 각 항목 안에서 검침표·분석표를 전환합니다.</div>
-                            </div>
                         </div>
                     `
                 }

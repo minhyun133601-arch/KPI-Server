@@ -103,6 +103,16 @@
         root.addEventListener?.(type, listener, options);
     }
 
+    function dispatchEvent(type, detail = {}) {
+        const name = String(type || '').trim();
+        if (!name || typeof root.dispatchEvent !== 'function') return false;
+        const event = typeof root.CustomEvent === 'function'
+            ? new root.CustomEvent(name, { detail })
+            : { type: name, detail };
+        root.dispatchEvent(event);
+        return true;
+    }
+
     function postMessage(target, message) {
         if (!target || typeof target.postMessage !== 'function') return false;
         target.postMessage(message, getLocationOrigin());
@@ -156,6 +166,7 @@
         setTimer,
         useRootFlag,
         addEventListener,
+        dispatchEvent,
         postMessage,
         fetchResource,
         setUtilityServerRuntimeLastError,

@@ -9,6 +9,13 @@
         function hasUtilEnergyTabsSpreadsheetApi() {
             return Boolean(utilEnergyTabsBrowser?.getSpreadsheetApi?.());
         }
+        function closeUtilActionMenus(root = document) {
+            const scope = root || document;
+            scope.querySelectorAll?.('[data-util-action-menu][open], .util-action-menu[open]').forEach(menu => {
+                menu.open = false;
+                menu.removeAttribute('open');
+            });
+        }
 
         function renderUtilDualTabs(scope) {
             const root = scope || document;
@@ -21,7 +28,6 @@
                 const combinedSection = wrapper.querySelector('[data-util-dual-section="combined"]');
                 const combinedContent = wrapper.querySelector('[data-util-dual-content="combined"]');
                 const controls = combinedSection?.querySelector('[data-util-dual-controls]');
-                const isGas = key === 'gas';
                 if (!tabs || !combinedSection || !combinedContent) return;
 
                 tabs.innerHTML = data.map((team, index) => `
@@ -53,16 +59,15 @@
                     });
                     combinedSection.dataset.activeTeam = team.name || '';
                     combinedSection.dataset.datasetKey = key;
-                    if (!combinedSection.dataset.usageUnitKey) combinedSection.dataset.usageUnitKey = normalizeUtilDualUsageUnitKey('', key);
-                    if (!combinedSection.dataset.costUnitKey) combinedSection.dataset.costUnitKey = 'krw';
-                    if (!combinedSection.dataset.productionUnitKey) combinedSection.dataset.productionUnitKey = 'kg';
+                    combinedSection.dataset.usageUnitKey = '';
+                    combinedSection.dataset.costUnitKey = 'krw';
+                    combinedSection.dataset.productionUnitKey = 'kg';
                     if (!combinedSection.dataset.usageDecimals) combinedSection.dataset.usageDecimals = '0';
                     if (!combinedSection.dataset.costDecimals) combinedSection.dataset.costDecimals = '0';
                     if (!combinedSection.dataset.productionDecimals) combinedSection.dataset.productionDecimals = '0';
-                    if (!combinedSection.dataset.ratioNumerator) combinedSection.dataset.ratioNumerator = 'usage';
-                    if (!combinedSection.dataset.ratioDenominator) combinedSection.dataset.ratioDenominator = 'production';
+                    combinedSection.dataset.ratioNumerator = 'usage';
+                    combinedSection.dataset.ratioDenominator = 'production';
                     if (!combinedSection.dataset.ratioDecimals) combinedSection.dataset.ratioDecimals = '3';
-                    if (isGas && !combinedSection.dataset.gasConvert) combinedSection.dataset.gasConvert = 'off';
                     const teamCostModes = config.costModesByTeam
                         ? (config.costModesByTeam(team.name) || [])
                         : (config.costModes || []);
@@ -73,7 +78,6 @@
                             combinedSection.dataset.costMode = defaultCostMode;
                         }
                     }
-                    const gasConvertMode = isGas ? (combinedSection.dataset.gasConvert || 'off') : 'off';
                     if (!combinedSection._yearOpenStateByTeam) combinedSection._yearOpenStateByTeam = {};
                     const teamStateKey = String(team.name || '__default__');
                     if (!combinedSection._yearOpenStateByTeam[teamStateKey]) {
@@ -98,37 +102,20 @@
                             </div>
                         `;
                     }).join('');
-                    const reportShortcutHtml = `
-                        <div class="util-year-tab-group is-report">
-                            <button type="button" class="util-year-tab-btn is-report" data-util-report-inline-open="${escapeHtml(key)}">그래프</button>
-                        </div>
-                    `;
                     const yearTablesHtml = yearMeta
                         .map(meta => renderUtilDualTable(meta.year, config, team.name, {
                             datasetKey: key,
-                            gasConvert: gasConvertMode,
                             yearKey: meta.yearKey,
                             isYearOpen: meta.isOpen
                         }))
                         .join('');
                     combinedContent.innerHTML = `
-                        <div class="util-year-tabs">${yearTabsHtml}${reportShortcutHtml}</div>
+                        <div class="util-year-tabs">${yearTabsHtml}</div>
                         ${yearTablesHtml}
                     `;
                     syncUtilDualSelects(combinedSection);
                     applyUtilCostMode(combinedSection);
                     applyUtilDualConversion(combinedSection);
-                    combinedContent.querySelectorAll('[data-unit]').forEach(select => {
-                        select.addEventListener('change', () => {
-                            const type = select.dataset.unit;
-                            if (type === 'usage') combinedSection.dataset.usageUnitKey = normalizeUtilDualUsageUnitKey(select.value, key);
-                            if (type === 'cost') combinedSection.dataset.costUnitKey = normalizeUtilReportCostUnitKey(select.value);
-                            if (type === 'production') combinedSection.dataset.productionUnitKey = normalizeUtilReportProductionUnitKey(select.value);
-                            syncUtilDualSelects(combinedSection);
-                            applyUtilCostMode(combinedSection);
-                            applyUtilDualConversion(combinedSection);
-                        });
-                    });
                     combinedSection.querySelectorAll('[data-cost-mode]').forEach(select => {
                         select.addEventListener('change', () => {
                             combinedSection.dataset.costMode = select.value;
@@ -145,15 +132,6 @@
                             if (type === 'production') combinedSection.dataset.productionDecimals = select.value;
                             if (type === 'ratio') combinedSection.dataset.ratioDecimals = select.value;
                             combinedSection.dataset.reportDecimals = select.value;
-                            syncUtilDualSelects(combinedSection);
-                            applyUtilCostMode(combinedSection);
-                            applyUtilDualConversion(combinedSection);
-                        });
-                    });
-                    combinedSection.querySelectorAll('[data-ratio-part]').forEach(select => {
-                        select.addEventListener('change', () => {
-                            const part = select.dataset.ratioPart === 'denominator' ? 'ratioDenominator' : 'ratioNumerator';
-                            combinedSection.dataset[part] = normalizeUtilDualRatioMetricKey(select.value);
                             syncUtilDualSelects(combinedSection);
                             applyUtilCostMode(combinedSection);
                             applyUtilDualConversion(combinedSection);
@@ -199,15 +177,6 @@
                             if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         });
                     });
-                    const reportShortcutButton = combinedContent.querySelector('[data-util-report-inline-open]');
-                    if (reportShortcutButton) {
-                        reportShortcutButton.addEventListener('click', event => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            syncUtilReportBuilderVizStateFromDualSection(combinedSection, key);
-                            toggleUtilInlineReport(key, combinedSection.dataset.activeTeam || data[0]?.name || '');
-                        });
-                    }
                     combinedContent.querySelectorAll('[data-year-action]').forEach(button => {
                         button.addEventListener('click', () => {
                             const action = String(button.dataset.yearAction || '').trim();
@@ -307,48 +276,16 @@
                                     <button type="button" class="util-action-menu-item" data-util-export-open>추출</button>
                                 </div>
                             </details>
-                            ${buildUtilDualUnitControlHtml(key)}
+                            ${buildUtilDualDisplayControlHtml()}
                             <input type="file" data-production-upload-input accept=".xlsx,.xls" multiple style="display:none;">
                         `;
-                        const gasControlHtml = isGas ? `
-                            <label class="util-dual-control">
-                                LNG/LPG 환산
-                                <select class="util-table-select util-table-select-sm" data-gas-convert>
-                                    <option value="off">끄기</option>
-                                    <option value="on">켜기</option>
-                                </select>
-                            </label>
-                            <details class="util-help">
-                                <summary>?</summary>
-                                <div class="util-help-panel">
-                                    <div><strong>환산 기준(순발열량)</strong></div>
-                                    <ul>
-                                        <li>LPG(kg) × 1.201 = LNG(m³)</li>
-                                        <li>LNG(m³) ÷ 1.201 = LPG(kg)</li>
-                                    </ul>
-                                    <div>환산 적용 시 사용량/비용/생산량이 동일 비율로 변환됩니다.</div>
-                                </div>
-                            </details>
-                        ` : '';
                         controls.innerHTML = `
                             ${productionControlHtml}
-                            ${gasControlHtml}
                         `;
                         const actionMenu = controls.querySelector('[data-util-action-menu]');
                         const closeActionMenu = () => {
                             if (actionMenu) actionMenu.open = false;
                         };
-                        controls.querySelectorAll('[data-unit]').forEach(select => {
-                            select.addEventListener('change', () => {
-                                const type = select.dataset.unit;
-                                if (type === 'usage') combinedSection.dataset.usageUnitKey = normalizeUtilDualUsageUnitKey(select.value, key);
-                                if (type === 'cost') combinedSection.dataset.costUnitKey = normalizeUtilReportCostUnitKey(select.value);
-                                if (type === 'production') combinedSection.dataset.productionUnitKey = normalizeUtilReportProductionUnitKey(select.value);
-                                syncUtilDualSelects(combinedSection);
-                                applyUtilCostMode(combinedSection);
-                                applyUtilDualConversion(combinedSection);
-                            });
-                        });
                         controls.querySelectorAll('[data-decimals]').forEach(select => {
                             select.addEventListener('change', () => {
                                 const type = select.dataset.decimals;
@@ -466,16 +403,7 @@
                         syncUtilDualSelects(combinedSection);
                         applyUtilCostMode(combinedSection);
                         applyUtilDualConversion(combinedSection);
-                        const gasSelect = controls.querySelector('[data-gas-convert]');
-                        if (gasSelect) {
-                            gasSelect.addEventListener('change', () => {
-                                combinedSection.dataset.gasConvert = gasSelect.value;
-                                renderTeam(combinedSection.dataset.activeTeam || data[0]?.name);
-                            });
-                        }
                     }
-                    const gasSelect = controls.querySelector('[data-gas-convert]');
-                    if (gasSelect) gasSelect.value = combinedSection.dataset.gasConvert || 'off';
                     syncProductionControlState();
                 }
 
@@ -617,64 +545,4 @@
                 points.push({ key, label, value });
             }
             return points;
-        }
-
-        function getUtilChartAxisBounds(values, options = {}) {
-            const validValues = (values || []).filter(Number.isFinite);
-            if (!validValues.length) return { min: 0, max: 1 };
-            const rawMin = Math.min(...validValues);
-            const rawMax = Math.max(...validValues);
-            const hasFixedMin = Number.isFinite(Number(options.min));
-            const hasFixedMax = Number.isFinite(Number(options.max));
-            const fixedMin = hasFixedMin ? Number(options.min) : NaN;
-            const fixedMax = hasFixedMax ? Number(options.max) : NaN;
-            if (hasFixedMin && hasFixedMax && fixedMax > fixedMin) {
-                return { min: fixedMin, max: fixedMax };
-            }
-
-            const useTightRange = options.tightRange === true;
-            let min;
-            let max;
-            if (!useTightRange) {
-                min = Math.min(0, rawMin);
-                max = getUtilNiceMax(Math.max(rawMax, 0));
-            } else if (rawMin === rawMax) {
-                const delta = Math.abs(rawMax || 1) * 0.2;
-                min = rawMin - delta;
-                max = rawMax + delta;
-            } else {
-                const paddingRatio = Number.isFinite(options.tightPadding) ? options.tightPadding : 0.16;
-                const margin = (rawMax - rawMin) * paddingRatio;
-                min = rawMin - margin;
-                max = rawMax + margin;
-            }
-
-            if (hasFixedMin) min = fixedMin;
-            if (hasFixedMax) max = fixedMax;
-            if (!Number.isFinite(min) || !Number.isFinite(max)) {
-                min = rawMin;
-                max = rawMax + 1;
-            }
-            if (max <= min) {
-                const delta = Math.max(1, Math.abs((max || min || 1) * 0.2));
-                if (hasFixedMax && !hasFixedMin) min = max - delta;
-                else max = min + delta;
-            }
-            return { min, max };
-        }
-
-        function getUtilChartLeftPad(minVal, maxVal, decimals, options = {}) {
-            const fallback = Number.isFinite(options.fallback) ? options.fallback : 72;
-            const fontSize = Number.isFinite(options.fontSize) ? options.fontSize : 12;
-            const anchorOffset = Number.isFinite(options.anchorOffset) ? options.anchorOffset : 12;
-            const extra = Number.isFinite(options.extra) ? options.extra : 12;
-            const minPad = Number.isFinite(options.minPad) ? options.minPad : fallback;
-            const sampleValues = [minVal, maxVal, (minVal + maxVal) / 2].filter(Number.isFinite);
-            if (!sampleValues.length) return fallback;
-            const maxLen = sampleValues.reduce((acc, value) => (
-                Math.max(acc, formatUtilNumber(value, decimals).length)
-            ), 0);
-            const charWidth = fontSize * 0.64;
-            const estimated = Math.ceil((maxLen * charWidth) + anchorOffset + extra);
-            return Math.max(fallback, minPad, estimated);
         }

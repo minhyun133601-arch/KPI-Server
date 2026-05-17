@@ -21,6 +21,7 @@ const ATTACHMENT_ROOT_FOLDER = '첨부파일';
 const WORK_HISTORY_FALLBACK_STORAGE_FOLDER = Object.freeze([ATTACHMENT_ROOT_FOLDER, '작업내역', '기타']);
 const EQUIPMENT_ASSET_ROOT_FOLDER = 'equipment-assets';
 const STORAGE_FOLDER_BY_OWNER_DOMAIN = Object.freeze({
+  'report.runtime': Object.freeze([ATTACHMENT_ROOT_FOLDER, 'report-runtime', 'images']),
   'audit.lux.evidence': Object.freeze([ATTACHMENT_ROOT_FOLDER, 'Audit', '조도 스캔본']),
   'work.team_calendar': Object.freeze([ATTACHMENT_ROOT_FOLDER, '작업내역', '캘린더 첨부'])
 });

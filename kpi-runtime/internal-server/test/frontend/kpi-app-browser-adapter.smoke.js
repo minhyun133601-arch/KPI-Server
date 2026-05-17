@@ -65,7 +65,6 @@ function createContext(options = {}) {
     opened: [],
     destroyed: 0,
     sidebarCalls: [],
-    syncedItems: [],
     historyStates: [],
     historyBackCalls: 0,
   };
@@ -143,9 +142,6 @@ function createContext(options = {}) {
           opened.focused = true;
         },
       };
-    },
-    syncUtilReportBuilderVizPopupFromSelection(itemKey) {
-      state.syncedItems.push(itemKey);
     },
   };
   context.window = options.withWindow === false ? null : context;
@@ -226,9 +222,8 @@ test('app browser adapter wraps runtime storage location events popups and bridg
 
   adapter.exposeOwnerToolWindow(() => true);
   assert.equal(typeof context.KpiOpenOwnerToolWindow, 'function');
-  assert.equal(adapter.canSyncUtilReportBuilderVizPopup(), true);
-  adapter.syncUtilReportBuilderVizPopupFromSelection('gas');
-  assert.deepEqual(state.syncedItems, ['gas']);
+  assert.equal(Object.prototype.hasOwnProperty.call(adapter, 'canSyncUtilReportBuilderVizPopup'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(adapter, 'syncUtilReportBuilderVizPopupFromSelection'), false);
 });
 
 test('app browser adapter registers on the root object when no window object exists', () => {
@@ -282,6 +277,8 @@ test('app shell records internal navigation in browser history and restores on b
   assert.match(globalSaveSource, /navigateAppBack\(\)/);
   assert.match(globalSaveSource, /function isGlobalSaveShortcut\(evt\)/);
   assert.match(globalSaveSource, /code === 'KeyS'/);
+  assert.match(globalSaveSource, /function completeReportDeckEditShortcut\(evt\)/);
+  assert.match(globalSaveSource, /kpi:report-deck-complete-edit/);
   assert.match(globalSaveSource, /\uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4\./);
   assert.match(appSource, /bindAppHistoryNavigation\(\);/);
   assert.match(appSource, /goHome\(\{ __skipHistory: true \}\);/);

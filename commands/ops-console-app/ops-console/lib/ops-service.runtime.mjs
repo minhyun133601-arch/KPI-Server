@@ -9,6 +9,7 @@ import {
   internalServerDir,
   internalServerLogsDir,
   internalServerScripts,
+  localExperimentPostgresDataDir,
   postgresLogFile,
   shutdownScheduleStateFile,
   startupScriptFile,
@@ -19,9 +20,8 @@ import { commandRegistry } from './command-registry.mjs';
 const execFileAsync = promisify(execFile);
 const scheduledStartTaskName = 'KPI Internal Server Scheduled Start';
 const serverActionLogFile = path.join(appLogsDir, 'server-actions.log');
-const postgresDataDir = path.join(internalServerDir, 'var', 'central-runtime', 'postgres', 'data');
+const postgresDataDir = resolveConfiguredPostgresDataDir();
 const postmasterPidPath = path.join(postgresDataDir, 'postmaster.pid');
-const postgresPort = 5434;
 const serverActionStaleTimeoutMs = 10 * 60 * 1000;
 let pendingServerAction = null;
 
@@ -49,10 +49,70 @@ function parseEnvFile(filePath) {
   return map;
 }
 
+function getRuntimeEnv() {
+  return parseEnvFile(envFilePath);
+}
+
+function getChildProcessEnv() {
+  return {
+    ...process.env,
+    ...getRuntimeEnv(),
+    KPI_RUNTIME_ENV: 'local-experiment'
+  };
+}
+
+function parseDatabaseUrl(databaseUrl) {
+  const uri = new URL(databaseUrl);
+  const [rawUser = '', rawPassword = ''] = uri.username || uri.password
+    ? [uri.username, uri.password]
+    : String(uri.username || '').split(':', 2);
+
+  return {
+    host: uri.hostname || '127.0.0.1',
+    port: uri.port ? Number.parseInt(uri.port, 10) : 5432,
+    database: decodeURIComponent(uri.pathname.replace(/^\/+/, '')),
+    user: decodeURIComponent(rawUser),
+    password: decodeURIComponent(rawPassword)
+  };
+}
+
+function getDatabaseConnection() {
+  const env = getRuntimeEnv();
+  const databaseUrl = env.KPI_DATABASE_URL || '';
+  if (!databaseUrl) {
+    return {
+      host: '127.0.0.1',
+      port: 55432,
+      database: '',
+      user: '',
+      password: ''
+    };
+  }
+  return parseDatabaseUrl(databaseUrl);
+}
+
 function getServerPort() {
-  const env = parseEnvFile(envFilePath);
+  const env = getRuntimeEnv();
   const parsed = Number.parseInt(String(env.KPI_SERVER_PORT || ''), 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 3100;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 18080;
+}
+
+function getPostgresPort() {
+  const parsed = getDatabaseConnection().port;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 55432;
+}
+
+function resolveInternalServerPath(rawPath) {
+  const trimmed = String(rawPath || '').trim();
+  if (!trimmed) {
+    return '';
+  }
+  return path.isAbsolute(trimmed) ? trimmed : path.resolve(internalServerDir, trimmed);
+}
+
+function resolveConfiguredPostgresDataDir() {
+  const env = getRuntimeEnv();
+  return resolveInternalServerPath(env.KPI_POSTGRES_DATA_DIR) || localExperimentPostgresDataDir;
 }
 
 function getServerUrls() {
@@ -112,6 +172,7 @@ async function runNodeScript(relativePath, args = [], options = {}) {
     [scriptPath, ...args],
     {
       cwd: internalServerDir,
+      env: getChildProcessEnv(),
       windowsHide: true,
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024,
@@ -125,14 +186,52 @@ async function runNodeScript(relativePath, args = [], options = {}) {
   };
 }
 
-function openExternalWindow(command, args, cwd = internalServerDir) {
+function openExternalWindow(command, args, cwd = internalServerDir, options = {}) {
   const child = spawn(command, args, {
     cwd,
     detached: true,
     stdio: 'ignore',
-    windowsHide: false
+    windowsHide: false,
+    env: options.env || process.env
   });
   child.unref();
+}
+
+function quotePowerShellSingleQuotedString(value) {
+  return `'${String(value || '').replaceAll("'", "''")}'`;
+}
+
+function openLocalExperimentDbConsole() {
+  const psqlPath = resolvePostgresBinary('psql.exe');
+  if (!psqlPath) {
+    throw new Error('psql_not_found');
+  }
+
+  const database = getDatabaseConnection();
+  if (!database.database || !database.user) {
+    throw new Error('local_experiment_database_url_invalid');
+  }
+
+  const commandText = [
+    "$Host.UI.RawUI.WindowTitle = 'KPI local experiment DB'",
+    `& ${quotePowerShellSingleQuotedString(psqlPath)}`,
+    `-h ${quotePowerShellSingleQuotedString(database.host)}`,
+    `-p ${database.port}`,
+    `-U ${quotePowerShellSingleQuotedString(database.user)}`,
+    `-d ${quotePowerShellSingleQuotedString(database.database)}`
+  ].join(' ');
+
+  openExternalWindow(
+    'powershell.exe',
+    ['-NoProfile', '-NoExit', '-Command', commandText],
+    internalServerDir,
+    {
+      env: {
+        ...process.env,
+        PGPASSWORD: database.password
+      }
+    }
+  );
 }
 
 function safeJsonParse(text) {
@@ -316,13 +415,14 @@ async function resolveStalePendingServerActionIfNeeded() {
     `[${actionKey}] timed out after ${serverActionStaleTimeoutMs}ms (serverHealthy=${health.ok} postgresReady=${postgresState.ok})`
   );
   finishPendingServerAction(actionId, {
-    summary: `${getServerActionFailureSummary(actionKey)} ?쒓컙 珥덇낵`,
+    summary: `${getServerActionFailureSummary(actionKey)} Check the server action log.`,
     lastExitCode: -1,
     error: 'server_action_timeout'
   });
 }
 
 async function waitForPostgresStopped(timeoutMs = 30000, pollMs = 1000) {
+  const postgresPort = getPostgresPort();
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const postgresState = await getPostgresReadyState();
@@ -372,7 +472,7 @@ async function removeStalePostmasterPidIfSafe() {
 
   const postgresState = await getPostgresReadyState();
   if (postgresState.ok) {
-    throw new Error('postgres_still_accepting_connections');
+    return false;
   }
 
   const firstPidLine = fs.readFileSync(postmasterPidPath, 'utf8')
@@ -385,38 +485,42 @@ async function removeStalePostmasterPidIfSafe() {
   }
 
   fs.unlinkSync(postmasterPidPath);
-  appendServerActionLog('[server.recover] removed stale postmaster.pid');
+  appendServerActionLog('[postgres] removed stale local-experiment postmaster.pid');
   return true;
 }
 
 function startInternalServerProcess() {
-  const child = spawn(process.execPath, ['src/server.js'], {
-    cwd: internalServerDir,
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: true,
-    env: {
-      ...process.env,
-      KPI_RUNTIME_ENV: 'production'
-    }
-  });
-  child.unref();
-  appendServerActionLog(`[server-process] spawned pid=${child.pid}`);
-  return child.pid;
+  fs.mkdirSync(internalServerLogsDir, { recursive: true });
+  const stdoutFd = fs.openSync(path.join(internalServerLogsDir, 'server.stdout.log'), 'a');
+  const stderrFd = fs.openSync(path.join(internalServerLogsDir, 'server.stderr.log'), 'a');
+  try {
+    const child = spawn(process.execPath, ['src/server.js'], {
+      cwd: internalServerDir,
+      detached: true,
+      stdio: ['ignore', stdoutFd, stderrFd],
+      windowsHide: true,
+      env: getChildProcessEnv()
+    });
+    child.unref();
+    appendServerActionLog(`[server-process] spawned pid=${child.pid}`);
+    return child.pid;
+  } finally {
+    fs.closeSync(stdoutFd);
+    fs.closeSync(stderrFd);
+  }
 }
 
 async function runStartLifecycleJob(actionKey, actionId) {
   appendServerActionLog(`[${actionKey}] ensuring old listener is cleared`);
-  const stopResult = await runPowerShellScript(internalServerScripts.stopServer, ['-Environment', 'Production'], {
+  const stopResult = await runPowerShellScript(internalServerScripts.stopServer, ['-EnvFile', envFilePath], {
     timeoutMs: 60000
   });
   appendScriptResultToServerActionLog(actionKey, stopResult);
 
-  appendServerActionLog(`[${actionKey}] initializing runtime`);
-  const initResult = await runPowerShellScript(internalServerScripts.initializeRuntime, [], {
-    timeoutMs: 180000
-  });
-  appendScriptResultToServerActionLog(actionKey, initResult);
+  appendServerActionLog(`[${actionKey}] starting local-experiment postgres`);
+  const startPostgresResult = await startLocalPostgresCluster();
+  appendScriptResultToServerActionLog(actionKey, startPostgresResult);
+  await waitForPostgresReady(30000);
 
   const pid = startInternalServerProcess();
   updatePendingServerAction(actionId, { pid });
@@ -427,15 +531,13 @@ async function runStartLifecycleJob(actionKey, actionId) {
 
 async function runRecoverLifecycleJob(actionKey, actionId) {
   appendServerActionLog(`[${actionKey}] stopping current node server`);
-  const stopServerResult = await runPowerShellScript(internalServerScripts.stopServer, ['-Environment', 'Production'], {
+  const stopServerResult = await runPowerShellScript(internalServerScripts.stopServer, ['-EnvFile', envFilePath], {
     timeoutMs: 60000
   });
   appendScriptResultToServerActionLog(actionKey, stopServerResult);
 
-  appendServerActionLog(`[${actionKey}] stopping local postgres`);
-  const stopPostgresResult = await runPowerShellScript(internalServerScripts.stopLocalPostgres, [], {
-    timeoutMs: 60000
-  });
+  appendServerActionLog(`[${actionKey}] stopping local-experiment postgres`);
+  const stopPostgresResult = await stopLocalPostgresCluster();
   appendScriptResultToServerActionLog(actionKey, stopPostgresResult);
 
   await sleep(2000);
@@ -444,17 +546,12 @@ async function runRecoverLifecycleJob(actionKey, actionId) {
 
   const clusterVersionFile = path.join(postgresDataDir, 'PG_VERSION');
   if (!fs.existsSync(clusterVersionFile) || !fs.existsSync(envFilePath)) {
-    appendServerActionLog(`[${actionKey}] runtime bootstrap fallback`);
-    const initResult = await runPowerShellScript(internalServerScripts.initializeRuntime, [], {
-      timeoutMs: 180000
-    });
-    appendScriptResultToServerActionLog(actionKey, initResult);
-  } else {
-    appendServerActionLog(`[${actionKey}] starting local postgres cluster`);
-    const startPostgresResult = await startLocalPostgresCluster();
-    appendScriptResultToServerActionLog(actionKey, startPostgresResult);
-    await waitForPostgresReady(30000);
+    throw new Error('local_experiment_runtime_missing');
   }
+  appendServerActionLog(`[${actionKey}] starting local-experiment postgres`);
+  const startPostgresResult = await startLocalPostgresCluster();
+  appendScriptResultToServerActionLog(actionKey, startPostgresResult);
+  await waitForPostgresReady(30000);
 
   const pid = startInternalServerProcess();
   updatePendingServerAction(actionId, { pid });
@@ -589,6 +686,7 @@ async function requestJson(url) {
 }
 
 async function getPostgresReadyState() {
+  const postgresPort = getPostgresPort();
   const executable = resolvePostgresBinary('pg_isready.exe');
   if (!executable) {
     return {
@@ -617,11 +715,34 @@ async function getPostgresReadyState() {
 }
 
 function resolvePostgresBinary(fileName) {
+  const env = getRuntimeEnv();
+  const configuredBinDir = resolveInternalServerPath(env.KPI_POSTGRES_BIN_DIR);
+  const portableBinDir = path.join(
+    internalServerDir,
+    'var',
+    'local-experiment',
+    'tools',
+    'postgresql-17.9-3',
+    'pgsql',
+    'bin'
+  );
+  const currentPortableBinDir = path.join(
+    internalServerDir,
+    'var',
+    'local-experiment',
+    'tools',
+    'postgresql-17.10-1',
+    'pgsql',
+    'bin'
+  );
   const candidates = [
+    configuredBinDir ? path.join(configuredBinDir, fileName) : '',
+    path.join(portableBinDir, fileName),
+    path.join(currentPortableBinDir, fileName),
     path.join('C:\\Program Files\\PostgreSQL\\17\\bin', fileName),
     path.join('C:\\Program Files\\PostgreSQL\\16\\bin', fileName)
-  ];
-  return candidates.find((candidate) => fs.existsSync(candidate)) || '';
+  ].filter(Boolean);
+  return [...new Set(candidates)].find((candidate) => fs.existsSync(candidate)) || '';
 }
 
 async function waitForPostgresReady(timeoutMs = 30000, pollMs = 1000) {
@@ -639,6 +760,7 @@ async function waitForPostgresReady(timeoutMs = 30000, pollMs = 1000) {
 }
 
 async function startLocalPostgresCluster() {
+  const postgresPort = getPostgresPort();
   const pgCtlPath = resolvePostgresBinary('pg_ctl.exe');
   if (!pgCtlPath) {
     throw new Error('pg_ctl_not_found');
@@ -651,6 +773,9 @@ async function startLocalPostgresCluster() {
       stderr: ''
     };
   }
+
+  await removeStalePostmasterPidIfSafe();
+  fs.mkdirSync(path.dirname(postgresLogFile), { recursive: true });
 
   const child = spawn(
     pgCtlPath,
@@ -670,6 +795,51 @@ async function startLocalPostgresCluster() {
     stdout: `Local KPI PostgreSQL started on port ${postgresPort}.`,
     stderr: ''
   };
+}
+
+async function stopLocalPostgresCluster() {
+  const postgresPort = getPostgresPort();
+  const pgCtlPath = resolvePostgresBinary('pg_ctl.exe');
+  if (!pgCtlPath) {
+    throw new Error('pg_ctl_not_found');
+  }
+
+  const clusterVersionFile = path.join(postgresDataDir, 'PG_VERSION');
+  if (!fs.existsSync(clusterVersionFile)) {
+    return {
+      stdout: 'Local experiment PostgreSQL cluster was not initialized.',
+      stderr: ''
+    };
+  }
+
+  try {
+    const { stdout, stderr } = await execFileAsync(
+      pgCtlPath,
+      ['-D', postgresDataDir, 'stop', '-m', 'fast'],
+      {
+        cwd: internalServerDir,
+        windowsHide: true,
+        encoding: 'utf8',
+        maxBuffer: 4 * 1024 * 1024,
+        timeout: 30000
+      }
+    );
+    await waitForPostgresStopped(30000);
+    return {
+      stdout: String(stdout || `Local experiment PostgreSQL stopped on port ${postgresPort}.`).trim(),
+      stderr: String(stderr || '').trim()
+    };
+  } catch (error) {
+    const postgresState = await getPostgresReadyState();
+    const listening = await isPortListening(postgresPort);
+    if (!postgresState.ok && !listening) {
+      return {
+        stdout: `Local experiment PostgreSQL is not listening on port ${postgresPort}.`,
+        stderr: String(error.stderr || '').trim()
+      };
+    }
+    throw error;
+  }
 }
 
 async function getStartupTaskRegistered() {
@@ -739,9 +909,16 @@ async function getComputerScheduleState() {
 }
 
 async function ensureRuntimeReady() {
-  return runPowerShellScript(internalServerScripts.initializeRuntime, [], {
-    timeoutMs: 180000
-  });
+  if (!fs.existsSync(envFilePath)) {
+    throw new Error('local_experiment_env_file_missing');
+  }
+
+  const clusterVersionFile = path.join(postgresDataDir, 'PG_VERSION');
+  if (!fs.existsSync(clusterVersionFile)) {
+    throw new Error('local_experiment_postgres_cluster_missing');
+  }
+
+  return startLocalPostgresCluster();
 }
 
 async function listUsers() {
@@ -780,6 +957,7 @@ export {
   launchTrackedServerAction,
   listUsersWhenAvailable,
   openExternalWindow,
+  openLocalExperimentDbConsole,
   postgresLogFile,
   requestJson,
   resolveStalePendingServerActionIfNeeded,
@@ -790,6 +968,7 @@ export {
   safeJsonParse,
   serverActionLogFile,
   shutdownScheduleStateFile,
+  stopLocalPostgresCluster,
   tailFile,
   writeJsonFile
 };

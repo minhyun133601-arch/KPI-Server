@@ -166,6 +166,12 @@
         return Number.isFinite(value) ? value : null;
     }
 
+    function toPopupPointNumber(value) {
+        if (value === null || value === undefined || value === '') return NaN;
+        const number = Number(value);
+        return Number.isFinite(number) ? number : NaN;
+    }
+
     function resolveGasPointValue(controlItem, point, unitKey = '') {
         if (typeof runtime.resolveUtilGasAnalysisPointValue === 'function') {
             return runtime.resolveUtilGasAnalysisPointValue(controlItem, point, unitKey);
@@ -276,7 +282,7 @@
             if (normalizedDatasetKey === 'waste') {
                 return scaleWasteValue(
                     chartKey,
-                    Number(point?.value),
+                    toPopupPointNumber(point?.value),
                     unitKey
                 );
             }

@@ -30,16 +30,16 @@
             UtilReportState.compareYear = normalizeUtilReportCompareYear(UtilReportState.compareYear, compareOptions);
             UtilReportState.chartYear = '';
 
-            const chartMetricKey = resolveUtilReportChartMetricKey();
-            const chartMetric = getUtilReportMetricOption(chartMetricKey);
-            const chartLabel = getUtilReportMetricLabel(chartMetricKey, UtilReportState.unitKey);
-            const chartPoints = buildUtilReportMetricPointsByYear(result, chartMetricKey, UtilReportState.unitKey, UtilReportState.chartYear);
-            const chartCompareYear = UtilReportState.compareYear;
-            const seriesColors = getUtilReportSeriesColors(chartMetricKey);
+            const activeMetricKey = resolveUtilReportChartMetricKey();
+            const activeMetricOption = getUtilReportMetricOption(activeMetricKey);
+            const activeMetricLabel = getUtilReportMetricLabel(activeMetricKey, UtilReportState.unitKey);
+            const activeMetricPoints = buildUtilReportMetricPointsByYear(result, activeMetricKey, UtilReportState.unitKey, UtilReportState.chartYear);
+            const activeCompareYear = UtilReportState.compareYear;
+            const seriesColors = getUtilReportSeriesColors(activeMetricKey);
             const chartCurrentColor = seriesColors.current;
             const chartPrevColor = seriesColors.prev;
-            const compareSeries = chartCompareYear
-                ? buildUtilReportCompareSeries(result, chartMetricKey, UtilReportState.unitKey, chartCompareYear)
+            const compareSeries = activeCompareYear
+                ? buildUtilReportCompareSeries(result, activeMetricKey, UtilReportState.unitKey, activeCompareYear)
                 : null;
             const compareSeriesForChart = Array.isArray(compareSeries) && compareSeries.length
                 ? compareSeries.map((item, index) => ({
@@ -47,8 +47,8 @@
                     color: index === 0 ? chartPrevColor : chartCurrentColor
                 }))
                 : null;
-            const theme = getUtilReportMetricTheme(chartMetricKey);
-            const visibleChartPointCount = compareSeriesForChart?.[0]?.points?.length || chartPoints.length || 0;
+            const theme = getUtilReportMetricTheme(activeMetricKey);
+            const visibleChartPointCount = compareSeriesForChart?.[0]?.points?.length || activeMetricPoints.length || 0;
             const chartNeedsExtendedWidth = UtilReportState.chartFullscreen === true || visibleChartPointCount > 16;
             const modalMaxXAxisLabels = chartNeedsExtendedWidth ? Math.max(12, visibleChartPointCount) : 12;
             if (chartMetaEl) {
@@ -177,7 +177,7 @@
                 if (isBuilderCustomMode) {
                     chartEl.innerHTML = renderUtilReportBuilderCustomCharts(result);
                 } else {
-                    const isProductionMetric = chartMetric.type === 'production';
+                    const isProductionMetric = activeMetricOption.type === 'production';
                     const yAxisLabel = isProductionMetric
                         ? `생산량 (${getUtilReportProductionUnitLabel(UtilReportState.productionUnitKey)})`
                         : `비용 (${getUtilReportUnitLabel(UtilReportState.unitKey)})`;
@@ -191,7 +191,7 @@
                             tightRange: true,
                             tightPadding: 0.14,
                             decimals: UtilReportState.decimals,
-                            unitLabel: chartLabel,
+                            unitLabel: activeMetricLabel,
                             minWidth: chartMinWidth,
                             pointSpacing: 60,
                             height: chartHeight,
@@ -211,7 +211,7 @@
                             rightPad: UtilReportState.chartFullscreen === true ? 108 : 86,
                             forceWidth: chartForceWidth
                         })
-                        : renderUtilTrendChart(chartPoints, chartLabel, {
+                        : renderUtilTrendChart(activeMetricPoints, activeMetricLabel, {
                             mode: 'modal',
                             chartType: UtilReportState.chartType,
                             showTypeSelect: false,

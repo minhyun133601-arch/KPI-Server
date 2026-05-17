@@ -471,6 +471,33 @@
             UTIL_PRODUCTION_DAILY_INDEX = buildUtilProductionDailyIndex(UTIL_PRODUCTION_DAILY_DATA);
         }
 
+        function refreshUtilProductionLinkedDatasets() {
+            const syncTasks = [
+                typeof syncUtilElectricDataFromMetering === 'function'
+                    ? syncUtilElectricDataFromMetering({ force: true })
+                    : null,
+                typeof syncUtilGasDataFromMetering === 'function'
+                    ? syncUtilGasDataFromMetering({ force: true })
+                    : null,
+                typeof syncUtilWasteDataFromMetering === 'function'
+                    ? syncUtilWasteDataFromMetering({ force: true })
+                    : null
+            ].filter(Boolean);
+
+            return Promise.all(syncTasks.map(task => Promise.resolve(task).catch((error) => {
+                console.error('Failed to refresh utility production-linked dataset.', error);
+                return false;
+            }))).then(() => {
+                if (typeof refreshUtilAuthorityDerivedViews === 'function') {
+                    refreshUtilAuthorityDerivedViews();
+                }
+                utilProductionImportBrowser?.dispatchEvent?.('util-production-data-updated', {
+                    source: 'production-import'
+                });
+                return true;
+            });
+        }
+
         function formatUtilDailyDateKey(parsedDate) {
             return `${parsedDate.year}-${String(parsedDate.month).padStart(2, '0')}-${String(parsedDate.day).padStart(2, '0')}`;
         }
@@ -604,6 +631,7 @@
                 });
                 refreshUtilProductionDailyIndex();
                 savePromise = Promise.resolve(persistUtilProductionDailyState());
+                savePromise = savePromise.then(() => refreshUtilProductionLinkedDatasets());
                 if (typeof refreshUtilProductionArchiveCountBadges === 'function') {
                     refreshUtilProductionArchiveCountBadges();
                 }

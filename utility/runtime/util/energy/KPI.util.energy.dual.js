@@ -1,68 +1,330 @@
-        const UTIL_GAS_LPG_TO_LNG_FACTOR = 1.201;
-
-        function getGasConversionFactor(section) {
-            const normalizedDatasetKey = normalizeUtilDualDatasetKey(section?.dataset?.datasetKey || '');
-            if (normalizedDatasetKey !== 'gas') return 1;
-            const gasConvertMode = String(section?.dataset?.gasConvert || 'off').trim().toLowerCase();
-            if (gasConvertMode !== 'on') return 1;
-            const activeTeam = String(section?.dataset?.activeTeam || '');
-            return getGasTypeByTeam(activeTeam) === 'lpg' ? UTIL_GAS_LPG_TO_LNG_FACTOR : 1;
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
-        function getGasConvertedUsageLabel(teamName) {
-            const gasType = getGasTypeByTeam(teamName);
-            if (gasType === 'lpg') return '환산 사용량 (LNG m³)';
-            if (gasType === 'lng') return '사용량 (LNG m³)';
-            return '환산 사용량 (LNG m³)';
+        function normalizeUtilDualDatasetKey(datasetKey) {
+            const raw = String(datasetKey || '').trim().toLowerCase();
+            if (raw === 'electric' || raw === 'gas' || raw === 'waste') return raw;
+            if (raw.includes('gas')) return 'gas';
+            if (raw.includes('waste')) return 'waste';
+            return 'electric';
+        }
+
+        function makeUtilYearKey(label, index = 0) {
+            const normalizedLabel = String(label || '').replace(/[^\dA-Za-z_-]/g, '');
+            return normalizedLabel ? `year-${normalizedLabel}` : `year-${Number(index) || 0}`;
+        }
+
+        function normalizeUtilDualRatioMetricKey(metricKey) {
+            const raw = String(metricKey || '').trim().toLowerCase();
+            if (raw === 'production') return 'production';
+            if (raw === 'cost' || raw.endsWith('_cost')) return 'cost';
+            return 'usage';
+        }
+
+        function getUtilDualRatioMetricOptionsHtml(selectedKey = 'usage', disabledKey = '') {
+            const selected = normalizeUtilDualRatioMetricKey(selectedKey);
+            const disabled = normalizeUtilDualRatioMetricKey(disabledKey);
+            return [
+                { key: 'usage', label: '사용량' },
+                { key: 'cost', label: '비용' },
+                { key: 'production', label: '생산량' }
+            ].map(option => {
+                const isDisabled = option.key === disabled && option.key !== selected;
+                return `<option value="${option.key}"${option.key === selected ? ' selected' : ''}${isDisabled ? ' disabled' : ''}>${option.label}</option>`;
+            }).join('');
+        }
+
+        function getUtilDualUsageUnitOptions(datasetKey) {
+            const normalizedDatasetKey = normalizeUtilDualDatasetKey(datasetKey);
+            if (typeof getUtilReportBuilderVizUsageUnitOptions === 'function') {
+                return getUtilReportBuilderVizUsageUnitOptions(normalizedDatasetKey);
+            }
+            if (normalizedDatasetKey === 'gas') return [{ key: 'm3', label: 'm³', scale: 1 }, { key: 'km3', label: '천m³', scale: 1000 }];
+            if (normalizedDatasetKey === 'waste') return [{ key: 'wm3', label: 'm³', scale: 1 }, { key: 'kwm3', label: '천m³', scale: 1000 }];
+            return [{ key: 'kwh', label: 'kWh', scale: 1 }, { key: 'mwh', label: 'MWh', scale: 1000 }];
+        }
+
+        function normalizeUtilDualUsageUnitKey(unitKey, datasetKey = 'electric') {
+            if (typeof normalizeUtilReportBuilderVizUsageUnitKey === 'function') {
+                return normalizeUtilReportBuilderVizUsageUnitKey(unitKey, normalizeUtilDualDatasetKey(datasetKey));
+            }
+            const raw = String(unitKey || '').trim().toLowerCase();
+            const options = getUtilDualUsageUnitOptions(datasetKey);
+            return options.some(option => option.key === raw) ? raw : String(options[0]?.key || 'kwh');
+        }
+
+        function getUtilDualUsageUnitLabel(unitKey, datasetKey = 'electric') {
+            if (typeof getUtilReportBuilderVizUsageLabel === 'function') {
+                return getUtilReportBuilderVizUsageLabel(unitKey, normalizeUtilDualDatasetKey(datasetKey));
+            }
+            const normalizedUnitKey = normalizeUtilDualUsageUnitKey(unitKey, datasetKey);
+            const option = getUtilDualUsageUnitOptions(datasetKey).find(item => item.key === normalizedUnitKey);
+            return String(option?.label || normalizedUnitKey || '');
+        }
+
+        function getUtilDualRatioLabel(datasetKey = 'electric') {
+            const normalizedDatasetKey = normalizeUtilDualDatasetKey(datasetKey);
+            if (normalizedDatasetKey === 'gas') return '가스량 / 생산량';
+            if (normalizedDatasetKey === 'waste') return '폐수량 / 생산량';
+            return '전력량 / 생산량';
+        }
+
+        function buildUtilDualDisplayControlHtml() {
+            return `
+                <div class="util-year-decimals">
+                    <button type="button" class="util-year-decimals-btn" data-decimals-toggle aria-expanded="false">자리수</button>
+                    <div class="util-year-decimals-popover" data-decimals-popover hidden>
+                        <div class="util-year-decimals-grid">
+                            ${buildUtilDualDecimalsRowHtml('사용', 'usage', '0')}
+                            ${buildUtilDualDecimalsRowHtml('비용', 'cost', '0')}
+                            ${buildUtilDualDecimalsRowHtml('생산', 'production', '0')}
+                            ${buildUtilDualDecimalsRowHtml('비율', 'ratio', '3', true)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function buildUtilDualDecimalsRowHtml(label, key, defaultValue, ratioOnly = false) {
+            const options = [0, 1, 2, 3].map(value => `<option value="${value}"${String(value) === String(defaultValue) ? ' selected' : ''}>${value}</option>`).join('');
+            return `
+                <label class="util-year-decimals-row${ratioOnly ? ' is-ratio-decimals' : ''}">
+                    <span class="name">${escapeHtml(label)}</span>
+                    ${ratioOnly ? '' : '<span class="meta">소수</span>'}
+                    <select class="util-table-select util-table-select-sm" data-decimals="${escapeHtml(key)}">${options}</select>
+                </label>
+            `;
+        }
+
+        function closeUtilDualDecimalsPopovers(root = document) {
+            const scope = root || document;
+            scope.querySelectorAll?.('[data-decimals-popover]').forEach(popover => {
+                popover.hidden = true;
+            });
+            scope.querySelectorAll?.('[data-decimals-toggle]').forEach(button => {
+                button.setAttribute('aria-expanded', 'false');
+            });
+        }
+
+        function setUtilNumericCellDisplay(cell, value) {
+            if (!cell) return;
+            const text = String(value ?? '');
+            const valueEl = cell.querySelector?.('.util-num-value');
+            if (valueEl) {
+                valueEl.textContent = text;
+                return;
+            }
+            cell.textContent = text;
+        }
+
+        function parseUtilDualNumber(value) {
+            if (typeof parseUtilAmount === 'function') return parseUtilAmount(value);
+            const numeric = Number(String(value ?? '').replace(/,/g, '').trim());
+            return Number.isFinite(numeric) ? numeric : NaN;
+        }
+
+        function formatUtilDualNumber(value, decimals = 0) {
+            if (!Number.isFinite(value)) return '';
+            if (typeof formatUtilNumber === 'function') return formatUtilNumber(value, decimals);
+            return value.toLocaleString('ko-KR', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        }
+
+        function getUtilDualCostValue(row, costMode = 'total') {
+            const mode = String(costMode || 'total').trim() || 'total';
+            if (mode !== 'total' && row?.costs && Object.prototype.hasOwnProperty.call(row.costs, mode)) {
+                return parseUtilDualNumber(row.costs[mode]);
+            }
+            return parseUtilDualNumber(row?.cost);
+        }
+
+        function buildUtilDualCostValues(row) {
+            const values = {};
+            const total = parseUtilDualNumber(row?.cost);
+            if (Number.isFinite(total)) values.total = total;
+            if (row?.costs && typeof row.costs === 'object') {
+                Object.entries(row.costs).forEach(([key, value]) => {
+                    const numeric = parseUtilDualNumber(value);
+                    if (Number.isFinite(numeric)) values[String(key)] = numeric;
+                });
+            }
+            return values;
+        }
+
+        function setUtilDualCostCellValue(cell, costMode = 'total') {
+            if (!cell) return;
+            let values = {};
+            try {
+                values = JSON.parse(cell.dataset.costValues || '{}') || {};
+            } catch (error) {
+                values = {};
+            }
+            const mode = String(costMode || 'total').trim() || 'total';
+            const rawValue = Number(values[mode]);
+            const fallbackValue = Number(values.total);
+            const nextValue = Number.isFinite(rawValue) ? rawValue : fallbackValue;
+            cell.dataset.value = Number.isFinite(nextValue) ? String(nextValue) : '';
+        }
+
+        function applyUtilCostMode(section) {
+            if (!section) return;
+            const costMode = String(section.dataset.costMode || 'total').trim() || 'total';
+            section.querySelectorAll?.('[data-cost-mode]').forEach(select => {
+                select.value = costMode;
+            });
+            section.querySelectorAll?.('.util-num[data-col="cost"]').forEach(cell => {
+                setUtilDualCostCellValue(cell, costMode);
+            });
+            section.querySelectorAll?.('.util-num[data-col="ratio"]').forEach(cell => {
+                setUtilDualCostCellValue(cell, costMode);
+                cell.dataset.ratioCost = cell.dataset.value || '';
+            });
+        }
+
+        function syncUtilDualSelects(section) {
+            if (!section) return;
+            const datasetKey = normalizeUtilDualDatasetKey(section.dataset.datasetKey || section.closest?.('[data-util-dual]')?.dataset?.utilDual || '');
+
+            section.dataset.datasetKey = datasetKey;
+            section.dataset.usageUnitKey = '';
+            section.dataset.costUnitKey = 'krw';
+            section.dataset.productionUnitKey = 'kg';
+            section.dataset.ratioNumerator = 'usage';
+            section.dataset.ratioDenominator = 'production';
+
+            section.querySelectorAll?.('[data-decimals="usage"]').forEach(select => { select.value = section.dataset.usageDecimals || '0'; });
+            section.querySelectorAll?.('[data-decimals="cost"]').forEach(select => { select.value = section.dataset.costDecimals || '0'; });
+            section.querySelectorAll?.('[data-decimals="production"]').forEach(select => { select.value = section.dataset.productionDecimals || '0'; });
+            section.querySelectorAll?.('[data-decimals="ratio"]').forEach(select => { select.value = section.dataset.ratioDecimals || '3'; });
+        }
+
+        function isUtilDualSummaryRow(row, index) {
+            const label = String(row?.label || '').trim();
+            if (label.includes('평균') || label.includes('합계')) return true;
+            return Number(index) >= 12;
+        }
+
+        function getUtilDualRowClass(row, index) {
+            const label = String(row?.label || '').trim();
+            if (label.includes('평균')) return ' class="util-row-average"';
+            if (label.includes('합계')) return ' class="util-row-total"';
+            if (Number(index) === 12) return ' class="util-row-average"';
+            if (Number(index) > 12) return ' class="util-row-total"';
+            return '';
+        }
+
+        function buildUtilDualNumericHtml(value, col, attrs = {}) {
+            const numeric = parseUtilDualNumber(value);
+            const attrHtml = Object.entries(attrs)
+                .map(([key, attrValue]) => ` data-${key}="${escapeHtml(attrValue)}"`)
+                .join('');
+            return `
+                <span class="util-num" data-col="${escapeHtml(col)}" data-value="${Number.isFinite(numeric) ? escapeHtml(String(numeric)) : ''}"${attrHtml}>
+                    <span class="util-num-value">${Number.isFinite(numeric) ? escapeHtml(formatUtilDualNumber(numeric, 0)) : ''}</span>
+                </span>
+            `;
+        }
+
+        function buildUtilDualCostModeSelectHtml(config, teamName, currentMode = 'total') {
+            const modes = typeof config?.costModesByTeam === 'function'
+                ? config.costModesByTeam(teamName)
+                : (Array.isArray(config?.costModes) ? config.costModes : []);
+            if (!Array.isArray(modes) || !modes.length) {
+                return `<span class="util-head-label">${escapeHtml(config?.costLabel || '비용')}</span>`;
+            }
+            return `
+                <select class="util-table-select util-table-select-sm" data-cost-mode>
+                    ${modes.map(mode => `<option value="${escapeHtml(mode.key)}"${mode.key === currentMode ? ' selected' : ''}>${escapeHtml(mode.label || mode.key)}</option>`).join('')}
+                </select>
+            `;
+        }
+
+        function renderUtilDualTable(year, config = {}, teamName = '', options = {}) {
+            const rows = Array.isArray(year?.rows) ? year.rows : [];
+            const yearKey = String(options.yearKey || makeUtilYearKey(year?.label, 0));
+            const datasetKey = normalizeUtilDualDatasetKey(options.datasetKey || '');
+            const costMode = String(options.costMode || config.costModeKey || 'total').trim() || 'total';
+            const yearLabelRaw = String(year?.label || '').trim();
+            const yearLabel = yearLabelRaw.endsWith('년') ? yearLabelRaw : `${yearLabelRaw}년`;
+            const usageLabel = typeof config.usageLabelByTeam === 'function'
+                ? config.usageLabelByTeam(teamName)
+                : (config.usageLabel || '사용량');
+            const bodyRows = rows.map((row, index) => {
+                const usageValue = parseUtilDualNumber(row?.usage);
+                const productionValue = parseUtilDualNumber(row?.production);
+                const costValues = buildUtilDualCostValues(row);
+                const costValue = getUtilDualCostValue(row, costMode);
+                const ratioAttrs = {
+                    'ratio-usage': Number.isFinite(usageValue) ? String(usageValue) : '',
+                    'ratio-cost': Number.isFinite(costValue) ? String(costValue) : '',
+                    'ratio-production': Number.isFinite(productionValue) ? String(productionValue) : '',
+                    'cost-values': JSON.stringify(costValues)
+                };
+                return `
+                    <tr${getUtilDualRowClass(row, index)}>
+                        <td>${escapeHtml(row?.label || '')}</td>
+                        <td>${buildUtilDualNumericHtml(row?.usage, 'usage')}</td>
+                        <td>${buildUtilDualNumericHtml(costValue, 'cost', { 'cost-values': JSON.stringify(costValues) })}</td>
+                        <td>${buildUtilDualNumericHtml(row?.production, 'production')}</td>
+                        <td>${buildUtilDualNumericHtml('', 'ratio', ratioAttrs)}</td>
+                    </tr>
+                `;
+            }).join('');
+            return `
+                <div class="util-year-card${options.isYearOpen === false ? ' is-collapsed' : ''}" data-util-year-card="${escapeHtml(yearKey)}">
+                    <div class="util-year-head">
+                        <div class="util-year-title">${escapeHtml(yearLabel)} ${escapeHtml(teamName)}</div>
+                        <div class="util-year-head-controls">
+                            <button type="button" class="util-year-toggle-btn" data-year-toggle="${escapeHtml(yearKey)}" aria-label="연도 표 열기 닫기">${options.isYearOpen === false ? '+' : '-'}</button>
+                        </div>
+                    </div>
+                    <div class="util-year-body">
+                        <table class="util-table util-dual-data-table">
+                            <thead>
+                                <tr class="util-table-head">
+                                    <th>월</th>
+                                    <th><span class="util-head-cell"><span class="util-head-label">${escapeHtml(usageLabel)}</span><span class="util-head-sub">${escapeHtml(getUtilDualUsageUnitLabel('', datasetKey))}</span></span></th>
+                                    <th class="util-th-cost-mode"><span class="util-head-cell util-head-cell-cost-mode">${buildUtilDualCostModeSelectHtml(config, teamName, costMode)}</span></th>
+                                    <th><span class="util-head-cell"><span class="util-head-label">${escapeHtml(config.productionLabel || '생산량')}</span></span></th>
+                                     <th>
+                                         <span class="util-head-cell util-head-cell-ratio">
+                                             <span class="util-head-label">비율</span>
+                                             <span class="util-head-sub">${escapeHtml(getUtilDualRatioLabel(datasetKey))}</span>
+                                         </span>
+                                     </th>
+                                </tr>
+                            </thead>
+                            <tbody>${bodyRows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
         }
 
         function applyUtilDualConversion(section) {
             if (!section) return;
-            const datasetKey = normalizeUtilDualDatasetKey(section.dataset.datasetKey || '');
-            const usageUnitKey = normalizeUtilDualUsageUnitKey(section.dataset.usageUnitKey || '', datasetKey);
-            const costUnitKey = normalizeUtilReportCostUnitKey(section.dataset.costUnitKey || 'krw');
-            const productionUnitKey = normalizeUtilReportProductionUnitKey(section.dataset.productionUnitKey || 'kg');
-            const usageFactor = getUtilDualUsageUnitScale(usageUnitKey, datasetKey);
-            const costFactor = getUtilReportScale(costUnitKey);
-            const productionFactor = getUtilReportProductionScale(productionUnitKey);
             const usageDecimals = parseInt(section.dataset.usageDecimals || section.querySelector('[data-decimals="usage"]')?.value || '0', 10);
             const costDecimals = parseInt(section.dataset.costDecimals || section.querySelector('[data-decimals="cost"]')?.value || '0', 10);
             const productionDecimals = parseInt(section.dataset.productionDecimals || section.querySelector('[data-decimals="production"]')?.value || '0', 10);
-            const ratioNumerator = normalizeUtilDualRatioMetricKey(
-                section.dataset.ratioNumerator || section.querySelector('[data-ratio-part="numerator"]')?.value || 'usage'
-            );
-            const ratioDenominator = normalizeUtilDualRatioMetricKey(
-                section.dataset.ratioDenominator || section.querySelector('[data-ratio-part="denominator"]')?.value || 'production'
-            );
             const ratioDecimals = parseInt(section.dataset.ratioDecimals || section.querySelector('[data-decimals="ratio"]')?.value || '3', 10);
-            const gasFactor = getGasConversionFactor(section);
-            const convertMetricValue = (metricKey, rawValue) => {
-                const raw = parseUtilAmount(rawValue);
-                if (!Number.isFinite(raw)) return NaN;
-                const factor = metricKey === 'cost'
-                    ? costFactor
-                    : (metricKey === 'production' ? productionFactor : usageFactor);
-                const scaled = factor ? raw / factor : raw;
-                return scaled * gasFactor;
-            };
-            const getRatioRawValue = (cell, metricKey) => {
-                if (!cell) return NaN;
-                if (metricKey === 'cost') return parseUtilAmount(cell.dataset.ratioCost);
-                if (metricKey === 'production') return parseUtilAmount(cell.dataset.ratioProduction);
-                return parseUtilAmount(cell.dataset.ratioUsage);
-            };
             section.querySelectorAll('.util-num').forEach(cell => {
                 const col = cell.dataset.col;
                 if (col === 'ratio') {
-                    const numeratorRaw = getRatioRawValue(cell, ratioNumerator);
-                    const denominatorRaw = getRatioRawValue(cell, ratioDenominator);
-                    const numeratorValue = convertMetricValue(ratioNumerator, numeratorRaw);
-                    const denominatorValue = convertMetricValue(ratioDenominator, denominatorRaw);
-                    if (!Number.isFinite(numeratorValue) || !Number.isFinite(denominatorValue) || Math.abs(denominatorValue) < 1e-12) {
+                    const usageValue = parseUtilAmount(cell.dataset.ratioUsage);
+                    const productionValue = parseUtilAmount(cell.dataset.ratioProduction);
+                    if (!Number.isFinite(usageValue) || !Number.isFinite(productionValue) || Math.abs(productionValue) < 1e-12) {
                         setUtilNumericCellDisplay(cell, '');
                         return;
                     }
-                    setUtilNumericCellDisplay(cell, formatUtilNumber(numeratorValue / denominatorValue, ratioDecimals));
+                    setUtilNumericCellDisplay(cell, formatUtilNumber(usageValue / productionValue, ratioDecimals));
                     return;
                 }
                 const raw = parseUtilAmount(cell.dataset.value);
@@ -70,11 +332,8 @@
                     setUtilNumericCellDisplay(cell, '');
                     return;
                 }
-                const factor = col === 'cost' ? costFactor : (col === 'production' ? productionFactor : usageFactor);
                 const decimals = col === 'cost' ? costDecimals : (col === 'production' ? productionDecimals : usageDecimals);
-                const scaled = factor ? raw / factor : raw;
-                const converted = scaled * gasFactor;
-                setUtilNumericCellDisplay(cell, formatUtilNumber(converted, decimals));
+                setUtilNumericCellDisplay(cell, formatUtilNumber(raw, decimals));
             });
         }
 
@@ -203,12 +462,6 @@
             if (!UtilEnergyState.to || !months.some(item => item.value === UtilEnergyState.to)) {
                 UtilEnergyState.to = toDefault;
             }
-            if (!UtilEnergyState.chartFrom || !months.some(item => item.value === UtilEnergyState.chartFrom)) {
-                UtilEnergyState.chartFrom = UtilEnergyState.from;
-            }
-            if (!UtilEnergyState.chartTo || !months.some(item => item.value === UtilEnergyState.chartTo)) {
-                UtilEnergyState.chartTo = UtilEnergyState.to;
-            }
             return months;
         }
 
@@ -218,8 +471,8 @@
         }
 
         function getUtilEnergyRangeLabel() {
-            const from = UtilEnergyState.from || UtilEnergyState.chartFrom || '';
-            const to = UtilEnergyState.to || UtilEnergyState.chartTo || '';
+            const from = UtilEnergyState.from || '';
+            const to = UtilEnergyState.to || '';
             if (from && to) return `${from} ~ ${to}`;
             return '-';
         }
@@ -239,24 +492,6 @@
         function initUtilEnergyLauncher(scope) {
             const root = scope || document;
             refreshUtilEnergyLauncherSummary(root);
-            syncUtilEnergyChartPopupControls(root);
-        }
-
-        function syncUtilEnergyChartPopupControls(scope) {
-            const root = scope || document;
-            root.querySelectorAll('[data-role="util-energy-modal-enable-chart-popup"]').forEach(toggle => {
-                toggle.checked = !!UtilEnergyState.chartPopupEnabled;
-            });
-            root.querySelectorAll('[data-role="energy-chart-open"]').forEach(button => {
-                const enabled = !!UtilEnergyState.chartPopupEnabled;
-                button.classList.toggle('is-hidden', !enabled);
-                if (!enabled) {
-                    button.disabled = true;
-                    button.setAttribute('aria-hidden', 'true');
-                } else {
-                    button.removeAttribute('aria-hidden');
-                }
-            });
         }
 
         function syncUtilEnergyModalHeader(modal) {
@@ -288,10 +523,6 @@
             if (displayDecimalsSelect) {
                 UtilEnergyState.displayDecimals = normalizeUtilEnergyDecimals(displayDecimalsSelect.value, UtilEnergyState.displayDecimals);
             }
-            UtilEnergyState.chartElectricTeam = UtilEnergyState.electricTeam;
-            UtilEnergyState.chartGasTeam = UtilEnergyState.gasTeam;
-            UtilEnergyState.chartFrom = UtilEnergyState.from;
-            UtilEnergyState.chartTo = UtilEnergyState.to;
         }
 
         function syncUtilEnergyLinkedControls(scope) {
@@ -344,24 +575,6 @@
                 syncUtilEnergyFields(panel);
             });
 
-            root.querySelectorAll('[data-util-energy-chart]').forEach(panel => {
-                const electricTeam = UtilEnergyState.chartElectricTeam || UtilEnergyState.electricTeam || 'all';
-                const gasTeam = UtilEnergyState.chartGasTeam || UtilEnergyState.gasTeam || 'all';
-                const fromValue = UtilEnergyState.chartFrom || UtilEnergyState.from;
-                const toValue = UtilEnergyState.chartTo || UtilEnergyState.to;
-                setFieldValue(panel.querySelector('[data-role="energy-chart-electric-team"]'), electricTeam);
-                setFieldValue(panel.querySelector('[data-role="energy-chart-gas-team"]'), gasTeam);
-                setFieldValue(panel.querySelector('[data-role="energy-chart-from"]'), fromValue);
-                setFieldValue(panel.querySelector('[data-role="energy-chart-to"]'), toValue);
-                setFieldValue(panel.querySelector('[data-role="energy-chart-metric"]'), UtilEnergyState.chartMetric || 'total_mj');
-                setFieldValue(panel.querySelector('[data-role="energy-chart-electric-factor"]'), UtilEnergyState.electricFactor);
-                setFieldValue(panel.querySelector('[data-role="energy-chart-lng-factor"]'), UtilEnergyState.gasLNG);
-                setFieldValue(panel.querySelector('[data-role="energy-chart-lpg-factor"]'), UtilEnergyState.gasLPG);
-                setFieldValue(panel.querySelector('[data-role="energy-chart-toe-factor"]'), UtilEnergyState.toeFactor);
-                setFieldValue(panel.querySelector('[data-role="energy-chart-display-decimals"]'), UtilEnergyState.displayDecimals);
-            });
-
-            syncUtilEnergyChartPopupControls(root);
             refreshUtilEnergyLauncherSummary(root);
         }
 
@@ -659,9 +872,6 @@
                     updateUtilEnergyPanel(panel);
                     syncUtilEnergyLinkedControls(root);
                     syncUtilEnergyModalHeader(panel.closest('#util-energy-modal'));
-                    root.querySelectorAll('[data-util-energy-chart]').forEach(chartPanel => {
-                        renderUtilEnergyChart(chartPanel);
-                    });
                 };
 
                 refresh();
@@ -672,67 +882,4 @@
                     el.addEventListener('change', handler);
                 });
             });
-        }
-
-        function buildUtilEnergyMonthlySeries(options) {
-            const points = [];
-            const entriesElectric = UTIL_ELECTRIC_ENTRIES || [];
-            const entriesGas = UTIL_GAS_ENTRIES || [];
-            const { fromKey, toKey, electricTeam, gasTeam, electricFactor, gasLNG, gasLPG } = options;
-            const dataMap = new Map();
-
-            for (let key = fromKey; key <= toKey; key += 1) {
-                dataMap.set(key, { electricMJ: 0, gasMJ: 0, hasElectric: false, hasGas: false });
-            }
-
-            entriesElectric.forEach(entry => {
-                if (electricTeam && electricTeam !== 'all' && entry.team !== electricTeam) return;
-                const key = getUtilEntryKey(entry);
-                if (!key || key < fromKey || key > toKey) return;
-                const usageVal = Number(entry.usage);
-                if (!Number.isFinite(usageVal)) return;
-                const row = dataMap.get(key);
-                if (!row) return;
-                row.electricMJ += usageVal * electricFactor;
-                row.hasElectric = true;
-            });
-
-            entriesGas.forEach(entry => {
-                if (gasTeam && gasTeam !== 'all' && entry.team !== gasTeam) return;
-                const key = getUtilEntryKey(entry);
-                if (!key || key < fromKey || key > toKey) return;
-                const usageVal = Number(entry.usage);
-                if (!Number.isFinite(usageVal)) return;
-                const row = dataMap.get(key);
-                if (!row) return;
-                const factor = getGasFactorByTeam(entry.team, { lng: gasLNG, lpg: gasLPG });
-                row.gasMJ += usageVal * factor;
-                row.hasGas = true;
-            });
-
-            let total = 0;
-            let count = 0;
-            for (let key = fromKey; key <= toKey; key += 1) {
-                const year = Math.floor((key - 1) / 12);
-                const month = key - year * 12;
-                const label = `${year}-${String(month).padStart(2, '0')}`;
-                const row = dataMap.get(key);
-                const hasData = row && (row.hasElectric || row.hasGas);
-                const electricMJ = row?.electricMJ || 0;
-                const gasMJ = row?.gasMJ || 0;
-                const totalMJ = electricMJ + gasMJ;
-                points.push({
-                    key,
-                    label,
-                    electricMJ,
-                    gasMJ,
-                    totalMJ,
-                    hasData
-                });
-                if (hasData) {
-                    total += totalMJ;
-                    count += 1;
-                }
-            }
-            return { points, totalMJ: total, count };
         }

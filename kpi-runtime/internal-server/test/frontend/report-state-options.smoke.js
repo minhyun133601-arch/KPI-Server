@@ -45,7 +45,7 @@ test('report state options are split out of the state runtime', () => {
 });
 
 test('kpi html loads report state options before report state', () => {
-  const energyModalIndex = kpiHtml.indexOf('runtime/util/energy/KPI.util.energy.modal.chart.js?v=332');
+  const energyModalIndex = kpiHtml.indexOf('runtime/util/energy/KPI.util.energy.modal.chart.js?v=333');
   const optionsIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.state.options.js?v=340');
   const stateIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.state.js?v=335');
   const builderSyncIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.builder.sync.js?v=334');

@@ -218,6 +218,11 @@
             ? runtime.scaleUtilWasteAnalysisChartValue(chartKey, value, unitKey)
             : value;
     }
+    function toWastePointNumber(value) {
+        if (value === null || value === undefined || value === '') return NaN;
+        const number = Number(value);
+        return Number.isFinite(number) ? number : NaN;
+    }
 
     function getWasteDisplayMode(chartKey = '') {
         return typeof runtime.getUtilWasteAnalysisDisplayMode === 'function'
@@ -432,7 +437,7 @@
                 key: point?.monthKey || point?.key || point?.label || '',
                 monthKey: point?.monthKey || point?.key || '',
                 label: point?.label || '',
-                value: scaleWasteValue(chart.key, Number(point?.value), chart.unitKey)
+                value: scaleWasteValue(chart.key, toWastePointNumber(point?.value), chart.unitKey)
             }))
         }));
         const chartDataList = visibleCharts.map(chart => ({
@@ -452,7 +457,7 @@
                     key: pointKey,
                     monthKey: pointKey,
                     label: formatMonthLong(pointKey),
-                    value: scaleWasteValue(chart.key, Number(point?.value), chart.unitKey)
+                    value: scaleWasteValue(chart.key, toWastePointNumber(point?.value), chart.unitKey)
                 };
             })
         }));

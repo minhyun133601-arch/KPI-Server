@@ -20,6 +20,7 @@
         applyUtilGasMeterProductionSelection: null,
         applyUtilElectricMeterTeamSelection: null,
         applyUtilWasteMeterSiteSelection: null,
+        setUtilWasteMeterShowLabels: null,
         applyUtilElectricAnalysisTeamSelection: null,
         applyUtilGasAnalysisCategorySelection: null,
         applyUtilWasteAnalysisSiteSelection: null,
@@ -181,6 +182,13 @@
                 }
                 return;
             }
+            const wasteMeterLabelToggle = event.target?.closest?.('[data-role="util-sheet-waste-meter-label-toggle"]');
+            if (wasteMeterLabelToggle) {
+                if (typeof runtime.setUtilWasteMeterShowLabels === 'function') {
+                    runtime.setUtilWasteMeterShowLabels(modal, wasteMeterLabelToggle.checked === true);
+                }
+                return;
+            }
             const electricAnalysisTeamSelect = event.target?.closest?.('[data-role="util-sheet-analysis-electric-team-select"]');
             if (electricAnalysisTeamSelect) {
                 if (typeof runtime.applyUtilElectricAnalysisTeamSelection === 'function') {
@@ -206,20 +214,6 @@
             if (fuelInactiveToggle) {
                 if (typeof runtime.setUtilGasAnalysisFuelInactive === 'function') {
                     runtime.setUtilGasAnalysisFuelInactive(fuelInactiveToggle.dataset.fuelKey || '', fuelInactiveToggle.checked === true);
-                }
-                rerenderAndSync(modal);
-                return;
-            }
-            const unitSelect = event.target?.closest?.('[data-role="util-sheet-analysis-unit"]');
-            if (unitSelect) {
-                if (typeof runtime.setUtilSheetAnalysisUnitKey === 'function') {
-                    runtime.setUtilSheetAnalysisUnitKey(
-                        typeof runtime.getUtilSheetActiveAnalysisDatasetKey === 'function'
-                            ? runtime.getUtilSheetActiveAnalysisDatasetKey(modal)
-                            : '',
-                        unitSelect.dataset.chartKey || '',
-                        unitSelect.value || ''
-                    );
                 }
                 rerenderAndSync(modal);
                 return;

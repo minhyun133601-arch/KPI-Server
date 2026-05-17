@@ -57,6 +57,7 @@ function createResourceMetaContext() {
         { key: 'gas_bukjeong', shortLabel: '북정 LNG', label: '북정 LNG 정산' },
         { key: 'gas_yusan_lng', shortLabel: '유산 LNG', label: '유산 LNG 정산' },
         { key: 'gas_yusan_lpg', shortLabel: '유산 LPG', label: '유산 LPG 정산' },
+        { key: 'gas_yusan_lpg_conversion', shortLabel: 'LPG 환산', label: 'LPG 환산' },
       ],
       waste: [
         { key: 'waste_bukjeong', shortLabel: '북정', label: '북정 폐수' },
@@ -67,6 +68,7 @@ function createResourceMetaContext() {
     GAS_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY: 'gas_bukjeong',
     GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LNG_KEY: 'gas_yusan_lng',
     GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_KEY: 'gas_yusan_lpg',
+    GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_CONVERSION_KEY: 'gas_yusan_lpg_conversion',
     WASTE_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY: 'waste_bukjeong',
     WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY: 'waste_yusan',
     WASTE_BUKJEONG_TEAM_KEY: 'waste-team-bukjeong',
@@ -88,6 +90,9 @@ function createResourceMetaContext() {
       { key: 'lpg_usage_base' },
       { key: 'billing_amount' },
     ],
+    GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FIELDS: [
+      { key: 'billing_amount' },
+    ],
     WASTE_BILLING_SETTLEMENT_FIELDS_BUKJEONG: [
       { key: 'usage' },
       { key: 'billing_amount' },
@@ -105,6 +110,7 @@ function createResourceMetaContext() {
     ],
     GAS_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS: new Set(['auto_total']),
     GAS_LPG_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS: new Set(['billing_amount']),
+    GAS_LPG_CONVERSION_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS: new Set(),
     WASTE_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS: new Set(['billing_amount']),
     ELECTRIC_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS: new Set(['auto_total']),
     GAS_BILLING_SETTLEMENT_ZERO_DEFAULT_FIELD_KEYS: ['usage_base'],
@@ -112,6 +118,7 @@ function createResourceMetaContext() {
     GAS_LPG_BILLING_SETTLEMENT_FORMULA_GUIDES: {
       billing_amount: 'LPG 총액',
     },
+    GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FORMULA_GUIDES: {},
     GAS_BILLING_SETTLEMENT_FORMULA_GUIDES: {
       auto_total: 'LNG 자동합계',
     },
@@ -177,6 +184,18 @@ test('resource meta resolves billing settlement scopes, field sets, and guides',
   assert.deepEqual(
     context.getBillingSettlementFields('gas', 'gas_yusan_lpg').map((field) => field.key),
     ['lpg_usage_base', 'billing_amount']
+  );
+  assert.deepEqual(
+    context.getBillingSettlementFields('gas', 'gas_yusan_lpg_conversion').map((field) => field.key),
+    ['billing_amount']
+  );
+  assert.deepEqual(
+    Array.from(context.getBillingSettlementZeroDefaultFieldKeys('gas', 'gas_yusan_lpg_conversion')),
+    []
+  );
+  assert.equal(
+    context.supportsBillingDocumentForSettlementScope('gas', 'gas_yusan_lpg_conversion'),
+    false
   );
   assert.deepEqual(
     context.getBillingSettlementManualFieldKeys('electric', 'electric_default'),

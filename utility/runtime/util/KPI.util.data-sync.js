@@ -177,6 +177,31 @@
             return true;
         }
 
+        function resolveUtilDatasetProductionValue(teamName, yearValue, row, options = {}) {
+            if (typeof resolveUtilProductionCell === 'function') {
+                const resolved = resolveUtilProductionCell(teamName, yearValue, row, {
+                    gasContext: options.gasContext === true
+                });
+                const resolvedValue = normalizeUtilMetricValue(resolved?.value);
+                if (resolvedValue !== null) return resolvedValue;
+            }
+            return normalizeUtilMetricValue(row?.production);
+        }
+
+        function applyUtilDatasetProductionValues(teamNode, yearNode, options = {}) {
+            if (!teamNode || !yearNode || !Array.isArray(yearNode.rows)) return false;
+            const yearValue = parseUtilYearLabel(yearNode.label);
+            if (!Number.isFinite(yearValue)) return false;
+            let changed = false;
+            yearNode.rows.forEach((row) => {
+                const month = parseUtilMonthLabel(row?.label);
+                if (!month) return;
+                const productionValue = resolveUtilDatasetProductionValue(teamNode.name, yearValue, row, options);
+                changed = setUtilMetricValue(row, 'production', productionValue) || changed;
+            });
+            return changed;
+        }
+
         function recalculateUtilYearSummaryRows(rows) {
             if (!Array.isArray(rows)) return false;
             let changed = false;
@@ -242,6 +267,7 @@
                     const monthRow = ensureUtilMonthRow(yearNode.rows, monthNumber);
                     setUtilMetricValue(monthRow, 'usage', usageValue);
                     setUtilMetricValue(monthRow, 'cost', costValue);
+                    setUtilMetricValue(monthRow, 'production', monthData?.production);
                     if (applyAdditionalMonthData) {
                         applyAdditionalMonthData(monthRow, monthData, teamName);
                     }
@@ -258,6 +284,7 @@
                     if (!Array.isArray(yearNode?.rows)) {
                         yearNode.rows = createDefaultUtilYearRows();
                     }
+                    applyUtilDatasetProductionValues(teamNode, yearNode, options);
                     recalculateUtilYearSummaryRows(yearNode.rows);
                 });
             });

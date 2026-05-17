@@ -97,6 +97,12 @@
         return Number.isFinite(value) ? value : NaN;
     }
 
+    function toRatioPointNumber(value) {
+        if (value === null || value === undefined || value === '') return NaN;
+        const number = Number(value);
+        return Number.isFinite(number) ? number : NaN;
+    }
+
     function buildCompareSub(compareLabel, monthKey, deltaText) {
         if (typeof runtime.buildUtilGasAnalysisCompareSub === 'function') {
             return runtime.buildUtilGasAnalysisCompareSub(compareLabel, monthKey, deltaText);
@@ -356,7 +362,7 @@
             const referencePoint = (Array.isArray(controlItem?.points) ? controlItem.points : [])
                 .find(point => String(point?.monthKey || point?.key || '').trim() === String(options?.referenceMonthKey || '').trim());
             const finiteValues = (Array.isArray(controlItem?.points) ? controlItem.points : [])
-                .map(point => Number(point?.value))
+                .map(point => toRatioPointNumber(point?.value))
                 .filter(Number.isFinite);
             const averageValue = finiteValues.length
                 ? finiteValues.reduce((sum, value) => sum + value, 0) / finiteValues.length

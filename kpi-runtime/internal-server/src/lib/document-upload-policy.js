@@ -7,6 +7,7 @@ const DOCUMENT_POLICY_OWNER_DOMAINS = new Set([
   'audit.lux.evidence',
   'data.equipment_history',
   'metering.billing_document',
+  'report.runtime',
   'work.history',
   'work.team_calendar'
 ]);

@@ -63,6 +63,7 @@
         applyUtilGasMeterProductionSelection: null,
         applyUtilElectricMeterTeamSelection: null,
         applyUtilWasteMeterSiteSelection: null,
+        setUtilWasteMeterShowLabels: null,
         applyUtilElectricAnalysisTeamSelection: null,
         applyUtilGasAnalysisCategorySelection: null,
         applyUtilWasteAnalysisSiteSelection: null,
@@ -89,6 +90,7 @@
             applyUtilGasMeterProductionSelection: (...args) => runtime.applyUtilGasMeterProductionSelection?.(...args),
             applyUtilElectricMeterTeamSelection: (...args) => runtime.applyUtilElectricMeterTeamSelection?.(...args),
             applyUtilWasteMeterSiteSelection: (...args) => runtime.applyUtilWasteMeterSiteSelection?.(...args),
+            setUtilWasteMeterShowLabels: (...args) => runtime.setUtilWasteMeterShowLabels?.(...args),
             applyUtilElectricAnalysisTeamSelection: (...args) => runtime.applyUtilElectricAnalysisTeamSelection?.(...args),
             applyUtilGasAnalysisCategorySelection: (...args) => runtime.applyUtilGasAnalysisCategorySelection?.(...args),
             applyUtilWasteAnalysisSiteSelection: (...args) => runtime.applyUtilWasteAnalysisSiteSelection?.(...args),
@@ -614,20 +616,6 @@
                 if (typeof runtime.setUtilGasAnalysisFuelInactive === 'function') {
                     runtime.setUtilGasAnalysisFuelInactive(fuelInactiveToggle.dataset.fuelKey || '', fuelInactiveToggle.checked === true);
                 }
-                if (typeof runtime.renderUtilSheetReportModal === 'function') {
-                    runtime.renderUtilSheetReportModal(modal);
-                }
-                return;
-            }
-            const unitSelect = event.target.closest('[data-role="util-sheet-analysis-unit"]');
-            if (unitSelect && typeof runtime.setUtilSheetAnalysisUnitKey === 'function') {
-                runtime.setUtilSheetAnalysisUnitKey(
-                    typeof runtime.getUtilSheetActiveAnalysisDatasetKey === 'function'
-                        ? runtime.getUtilSheetActiveAnalysisDatasetKey(modal)
-                        : '',
-                    unitSelect.dataset.chartKey || '',
-                    unitSelect.value || ''
-                );
                 if (typeof runtime.renderUtilSheetReportModal === 'function') {
                     runtime.renderUtilSheetReportModal(modal);
                 }

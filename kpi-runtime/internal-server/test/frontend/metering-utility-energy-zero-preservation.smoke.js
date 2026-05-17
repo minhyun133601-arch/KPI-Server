@@ -10,10 +10,6 @@ const dualSource = await fs.readFile(
   path.join(repoRoot, 'utility/runtime/util/energy/KPI.util.energy.dual.js'),
   'utf8'
 );
-const chartSource = await fs.readFile(
-  path.join(repoRoot, 'utility/runtime/util/energy/KPI.util.energy.chart.js'),
-  'utf8'
-);
 
 function createField(value = '') {
   return {
@@ -28,14 +24,7 @@ function createField(value = '') {
 
 function createPanel(fields = {}) {
   const fieldMap = new Map(Object.entries(fields).map(([role, value]) => [role, createField(value)]));
-  ['energy-chart-range', 'energy-chart-total', 'energy-chart-avg', 'energy-chart-count', 'energy-chart'].forEach((role) => {
-    if (!fieldMap.has(role)) fieldMap.set(role, { textContent: '', innerHTML: '', dataset: {}, classList: { toggle() {} } });
-  });
-  if (!fieldMap.has('energy-chart-open')) {
-    fieldMap.set('energy-chart-open', { disabled: false, classList: { toggle() {} } });
-  }
   return {
-    _energyChartData: null,
     querySelector(selector) {
       const match = /\[data-role="([^"]+)"\]/.exec(selector);
       return match ? fieldMap.get(match[1]) || null : null;
@@ -71,7 +60,6 @@ function createRuntime() {
     UtilEnergyState: {
       linkEnabled: true,
       linkGasMode: 'mj',
-      chartPopupEnabled: false,
       displayDecimals: 2,
       electricTeam: 'all',
       gasTeam: 'all',
@@ -81,11 +69,6 @@ function createRuntime() {
       gasLNG: 42.705,
       gasLPG: 50,
       toeFactor: 41868,
-      chartMetric: 'total_mj',
-      chartElectricTeam: 'all',
-      chartGasTeam: 'all',
-      chartFrom: '2026-01',
-      chartTo: '2026-01',
     },
     parseUtilNumericValue(value) {
       const raw = String(value ?? '').trim();
@@ -106,15 +89,11 @@ function createRuntime() {
     formatUtilNumber(value) {
       return String(value);
     },
-    renderUtilTrendChart() {
-      return '<div></div>';
-    },
   };
   context.window = context;
   context.globalThis = context;
   vm.createContext(context);
   vm.runInContext(dualSource, context, { filename: 'KPI.util.energy.dual.js' });
-  vm.runInContext(chartSource, context, { filename: 'KPI.util.energy.chart.js' });
   return context;
 }
 
@@ -136,27 +115,4 @@ test('utility energy link factors preserve an explicit zero instead of falling b
 
   assert.equal(context.UtilEnergyState.gasLNG, 0);
   assert.equal(context.UtilEnergyState.gasLPG, 0);
-});
-
-test('utility energy chart factors preserve an explicit zero instead of falling back', () => {
-  const context = createRuntime();
-  context.__panel = createPanel({
-    'energy-chart-from': '2026-01',
-    'energy-chart-to': '2026-01',
-    'energy-chart-electric-team': 'all',
-    'energy-chart-gas-team': 'all',
-    'energy-chart-metric': 'total_mj',
-    'energy-chart-display-decimals': '2',
-    'energy-chart-electric-factor': '0',
-    'energy-chart-lng-factor': '0',
-    'energy-chart-lpg-factor': '0',
-    'energy-chart-toe-factor': '0',
-  });
-
-  vm.runInContext('renderUtilEnergyChart(__panel)', context);
-
-  assert.equal(context.UtilEnergyState.electricFactor, 0);
-  assert.equal(context.UtilEnergyState.gasLNG, 0);
-  assert.equal(context.UtilEnergyState.gasLPG, 0);
-  assert.equal(context.UtilEnergyState.toeFactor, 0);
 });

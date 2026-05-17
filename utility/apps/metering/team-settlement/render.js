@@ -166,7 +166,10 @@ function renderTeamSettlementSection() {
   const scopeTitle = getBillingSettlementScopeTitle(scopeKey);
   const resourceType = getCurrentResourceType();
   const settlementEntry = getBillingSettlementEntry(monthValue, scopeKey);
-  const supportsBillingDocument = supportsBillingDocumentForResource(resourceType);
+  const supportsBillingDocument =
+    typeof supportsBillingDocumentForSettlementScope === "function"
+      ? supportsBillingDocumentForSettlementScope(resourceType, scopeKey)
+      : supportsBillingDocumentForResource(resourceType);
   const billingDocument = supportsBillingDocument
     ? getBillingDocumentForMonth(monthValue, scopeKey)
     : null;

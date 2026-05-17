@@ -474,9 +474,7 @@
                                 gasToggleWrap.className = 'util-dual-control';
                                 gasToggleWrap.setAttribute('data-gas-team-view-wrap', '');
                                 gasToggleWrap.innerHTML = `1팀 2파트<select class="util-table-select util-table-select-sm" data-gas-team-view><option value="lng">LNG</option><option value="lpg">LPG</option><option value="total">합산</option></select>`;
-                                const convertControl = controls.querySelector('[data-gas-convert]')?.closest('.util-dual-control');
-                                if (convertControl) controls.insertBefore(gasToggleWrap, convertControl);
-                                else controls.appendChild(gasToggleWrap);
+                                controls.appendChild(gasToggleWrap);
                                 gasToggleWrap.querySelector('[data-gas-team-view]')?.addEventListener('change', () => {
                                     const nextValue = String(gasToggleWrap.querySelector('[data-gas-team-view]')?.value || 'total').trim().toLowerCase();
                                     combinedSection.dataset.utilGasTeamView = ['lng', 'lpg', 'total'].includes(nextValue) ? nextValue : 'total';
@@ -502,69 +500,23 @@
             renderUtilDualTabs = renderUtilDualTabsWithSidebarSelection;
         }
 
-        const originalSyncUtilReportBuilderVizStateFromDualSection = syncUtilReportBuilderVizStateFromDualSection;
-        syncUtilReportBuilderVizStateFromDualSection = function overrideSyncUtilReportBuilderVizStateFromDualSection(section, datasetKey = '') {
-            if (section?.dataset?.reportTeam) {
-                const originalActiveTeam = section.dataset.activeTeam;
-                section.dataset.activeTeam = section.dataset.reportTeam;
-                try {
-                    return originalSyncUtilReportBuilderVizStateFromDualSection(section, datasetKey);
-                } finally {
-                    section.dataset.activeTeam = originalActiveTeam;
-                }
-            }
-            return originalSyncUtilReportBuilderVizStateFromDualSection(section, datasetKey);
-        };
-
-        const originalToggleUtilInlineReport = toggleUtilInlineReport;
-        toggleUtilInlineReport = function overrideToggleUtilInlineReport(itemKey = '', teamName = '') {
-            const normalizedItemKey = normalizeUtilDualDatasetKey(
-                itemKey || UtilReportBuilderVizState.itemKey || UtilReportState.builderItemKey || 'electric'
-            );
-            const section = typeof getUtilDualCombinedSection === 'function'
-                ? getUtilDualCombinedSection(normalizedItemKey)
-                : null;
-            const popup = typeof getUtilReportBuilderVizPopupWindow === 'function'
-                ? getUtilReportBuilderVizPopupWindow()
-                : null;
-            const inlineModal = document.getElementById('util-report-builder-viz-modal');
-            const isFreshOpen = (!popup || popup.closed)
-                && !inlineModal?.classList?.contains?.('is-open');
-            if (section) {
-                syncUtilReportBuilderVizStateFromDualSection(section, normalizedItemKey);
-            }
-            if (isFreshOpen && typeof resetUtilReportBuilderVizRangeToFull === 'function') {
-                resetUtilReportBuilderVizRangeToFull();
-            }
-            if (isFreshOpen) {
-                UtilReportBuilderVizState.hasGenerated = true;
-                UtilReportBuilderVizState.isDirty = false;
-                UtilReportBuilderVizState.focusMonthKey = '';
-                UtilReportBuilderVizState.focusSeriesKey = '';
-                UtilReportBuilderVizState.detailFocusSeriesKey = '';
-                UtilReportBuilderVizState.pendingDetailScroll = false;
-            }
-            const nextTeam = String(section?.dataset?.reportTeam || teamName || '').trim();
-            return originalToggleUtilInlineReport(normalizedItemKey, nextTeam);
-        };
-
         const originalSyncUtilDualSectionFromReportBuilderViz = syncUtilDualSectionFromReportBuilderViz;
         syncUtilDualSectionFromReportBuilderViz = function overrideSyncUtilDualSectionFromReportBuilderViz(itemKey = UtilReportBuilderVizState.itemKey) {
             const normalizedItemKey = normalizeUtilDualDatasetKey(itemKey);
             const section = getUtilDualCombinedSection(normalizedItemKey);
             if (section) {
                 section.dataset.datasetKey = normalizedItemKey;
-                section.dataset.usageUnitKey = normalizeUtilDualUsageUnitKey(UtilReportBuilderVizState.usageUnitKey, normalizedItemKey);
-                section.dataset.costUnitKey = normalizeUtilReportCostUnitKey(UtilReportBuilderVizState.costUnitKey);
-                section.dataset.productionUnitKey = normalizeUtilReportProductionUnitKey(UtilReportBuilderVizState.productionUnitKey);
+                section.dataset.usageUnitKey = '';
+                section.dataset.costUnitKey = 'krw';
+                section.dataset.productionUnitKey = 'kg';
                 section.dataset.usageDecimals = String(getUtilReportBuilderVizMetricDecimals('usage'));
                 section.dataset.costDecimals = String(getUtilReportBuilderVizMetricDecimals('cost'));
                 section.dataset.productionDecimals = String(getUtilReportBuilderVizMetricDecimals('production'));
                 section.dataset.ratioDecimals = String(getUtilReportBuilderVizMetricDecimals('ratio'));
                 section.dataset.reportDecimals = section.dataset.usageDecimals;
                 section.dataset.reportShowLabels = UtilReportBuilderVizState.showLabels === true ? 'true' : 'false';
-                section.dataset.ratioNumerator = resolveUtilDualRatioMetricKeyByGraphMetric(normalizedItemKey, UtilReportState.graphNumeratorMetric, 'usage');
-                section.dataset.ratioDenominator = resolveUtilDualRatioMetricKeyByGraphMetric(normalizedItemKey, UtilReportState.graphDenominatorMetric, 'production');
+                section.dataset.ratioNumerator = 'usage';
+                section.dataset.ratioDenominator = 'production';
                 const nextTeam = normalizeUtilReportBuilderTeam(UtilReportBuilderVizState.team, normalizedItemKey);
                 if (applyUtilReportTeamToUtilitySelection(normalizedItemKey, nextTeam)) {
                     return;

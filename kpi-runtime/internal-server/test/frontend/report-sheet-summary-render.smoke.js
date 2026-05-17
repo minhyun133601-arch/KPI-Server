@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -56,7 +56,7 @@ function createSummaryRenderContext() {
   return context;
 }
 
-test('report sheet summary render registry builds badges, stats, compare, matrix, recent, and memo blocks', () => {
+test('report sheet summary render registry builds badges, stats, compare, matrix, recent, and suppresses memo blocks', () => {
   const context = createSummaryRenderContext();
   const controls = context.KPIUtilReportSheetControls;
   const summaryRender = context.KPIUtilReportSheetSummaryRender;
@@ -261,7 +261,7 @@ test('report sheet summary render registry builds badges, stats, compare, matrix
   const compareCardsHtml = summaryRender.buildUtilSheetCompareCardsHtml(datasetResult);
   const matrixHtml = summaryRender.buildUtilSheetMatrixHtml(datasetResult);
   const recentTableHtml = summaryRender.buildUtilSheetRecentTableHtml(datasetResult);
-  const memoHtml = summaryRender.buildUtilSheetMemoSectionHtml(['????ш끽維뽳쭩??????????????醫롫윪???????醫롫윥???亦껋꼦維뽬뜎??????????????醫롫윪??', 'LNG ??????關?쒎첎?嫄????耀붾굝???壤굿?怨쀫ぁ????醫롫짗??????????????醫롫윪??']);
+  const memoHtml = summaryRender.buildUtilSheetMemoSectionHtml(['??????썹땟戮녹????????????????ル∥?????????ル∥????雅?퍔瑗?땟戮щ쐩???????????????ル∥???', 'LNG ?????????롮쾸?椰?????遺얘턁???鶯ㅺ동???⑥ャ걖?????ル∥吏???????????????ル∥???']);
   const memoItems = summaryRender.resolveUtilSheetMemoItems('meter', 'gas', datasetResult, 'month', {
     ready: true,
     selectedTable: {
@@ -310,10 +310,15 @@ test('report sheet summary render registry builds badges, stats, compare, matrix
   assert.ok(matrixHtml.includes('<th>01'));
   assert.ok(recentTableHtml.includes('SHORT:2026-04'));
   assert.ok(recentTableHtml.includes('SHORT:2026-04'));
-  assert.ok(memoHtml.includes('LNG'));
-  assert.ok(memoHtml.includes('LNG'));
-  assert.ok(memoHtml.includes('data-role="util-sheet-report-manual-memo"'));
-  assert.ok(summaryRender.buildUtilSheetMemoSectionHtml([], { manualMemoText: 'manual note' }).includes('manual note'));
+  assert.equal(memoHtml, '');
+  assert.ok(!memoHtml.includes('util-sheet-report-memo-section'));
+  const electricTemplateHtml = summaryRender.buildUtilSheetMemoSectionHtml([], {
+    sheetType: 'analysis',
+    datasetKey: 'electric',
+    manualMemoText: 'manual note',
+  });
+  assert.equal(electricTemplateHtml, '');
+  assert.ok(!electricTemplateHtml.includes('manual note'));
   assert.equal(memoItems.length, 4);
   assert.ok(typeof memoItems[0] === 'string' && memoItems[0].length > 0);
   assert.equal(gasSummaryItems.length, 3);
@@ -402,13 +407,11 @@ test('analysis report memo items follow compare toggle and collapse aggregate ga
   assert.doesNotMatch(monthJoined, /\+50kg/);
   assert.match(monthJoined, /Line A/);
   assert.equal(monthItems.length, 2);
-  assert.ok(monthItems[0].includes('Team 3 생산량'));
-  assert.ok(monthItems[0].includes('라인별 품목:'));
-  assert.ok(!monthItems[0].includes('Team 3 라인별'));
-  assert.ok(monthItems[1].includes('생산일'));
+  assert.ok(monthItems[0].includes('Team 3'));
+  assert.ok(monthItems[0].includes('Line A'));
   assert.ok(!monthItems[1].includes('Team 3'));
   const monthLineItemIndex = monthItems.findIndex((item) => item.includes('Line A'));
-  const monthWorkdayIndex = monthItems.findIndex((item) => item.includes('생산일'));
+  const monthWorkdayIndex = monthItems.findIndex((item, index) => index !== monthLineItemIndex && !item.includes('Line A'));
   assert.ok(monthLineItemIndex >= 0, 'line item memo should be present');
   assert.ok(monthWorkdayIndex > monthLineItemIndex, 'workday memo should be last in team memo block');
   assert.equal(calendarCalls.length, 1);
@@ -416,12 +419,12 @@ test('analysis report memo items follow compare toggle and collapse aggregate ga
   assert.equal(calendarCalls[0].dateKeys[0], '2026-03-01');
   assert.equal(calendarCalls[0].dateKeys.at(-1), '2026-03-31');
 
-  const monthHtml = summaryRender.buildUtilSheetMemoSectionHtml(monthItems);
-  assert.ok(monthHtml.includes('data-role="util-sheet-report-memo-section"'));
-  assert.ok(monthHtml.includes('data-role="util-sheet-report-memo-list"'));
-  assert.ok(monthHtml.includes('data-role="util-sheet-report-manual-memo"'));
-  assert.ok(monthHtml.includes('util-sheet-memo-arrow is-up'));
-  assert.ok(monthHtml.includes('util-sheet-memo-arrow is-down'));
+  const monthHtml = summaryRender.buildUtilSheetMemoSectionHtml(monthItems, {
+    sheetType: 'analysis',
+    datasetKey: 'gas',
+  });
+  assert.equal(monthHtml, '');
+  assert.ok(!monthHtml.includes('util-sheet-report-memo-section'));
 
   const yearItems = summaryRender.resolveUtilSheetMemoItems('analysis', 'gas', {}, 'year', null, { analysisModel });
   const yearJoined = yearItems.join('\n');
@@ -490,8 +493,8 @@ test('analysis report memo items follow compare toggle and collapse aggregate ga
 test('kpi html loads report sheet summary render between analysis render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
-  const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=063');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=062');
+  const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=064');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=063');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(analysisRenderIndex >= 0, 'report sheet analysis render loader is missing');
