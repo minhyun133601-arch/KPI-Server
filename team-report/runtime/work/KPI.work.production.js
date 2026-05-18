@@ -88,6 +88,11 @@
                     const dateKey = String(entry?.dateLabel || '').trim();
                     if (!dateKeySet.has(dateKey)) return;
                     const amount = parseUtilAmount(entry?.amount);
+                    const moistureExcludedYield = parseUtilPercentAmount(entry?.moistureExcludedYield);
+                    const workTime = parseUtilAmount(entry?.workTime);
+                    const operationTime = parseUtilAmount(entry?.operationTime);
+                    const equipmentCapa = parseUtilAmount(entry?.equipmentCapa);
+                    const equipmentUtilization = parseUtilPercentAmount(entry?.equipmentUtilization);
                     const dedupeKey = String(entry?.entryKey || '').trim() || [
                         dateKey,
                         String(entry?.teamName || sourceTeam || '').trim(),
@@ -103,9 +108,11 @@
                         lineName: String(entry?.lineName || '').trim(),
                         productName: String(entry?.productName || '').trim(),
                         amount: Number.isFinite(amount) ? amount : null,
-                        moistureExcludedYield: Number.isFinite(parseUtilPercentAmount(entry?.moistureExcludedYield)) ? parseUtilPercentAmount(entry?.moistureExcludedYield) : null,
-                        equipmentCapa: Number.isFinite(parseUtilAmount(entry?.equipmentCapa)) ? parseUtilAmount(entry?.equipmentCapa) : null,
-                        equipmentUtilization: Number.isFinite(parseUtilPercentAmount(entry?.equipmentUtilization)) ? parseUtilPercentAmount(entry?.equipmentUtilization) : null,
+                        moistureExcludedYield: Number.isFinite(moistureExcludedYield) ? moistureExcludedYield : null,
+                        workTime: Number.isFinite(workTime) ? workTime : null,
+                        operationTime: Number.isFinite(operationTime) ? operationTime : null,
+                        equipmentCapa: Number.isFinite(equipmentCapa) ? equipmentCapa : null,
+                        equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null,
                         entryKey: dedupeKey
                     });
                 });
@@ -146,7 +153,15 @@
                         const itemYieldLabel = formatWorkTeamCalendarYieldLabel(item?.moistureExcludedYield);
                         const itemCapaLabel = formatWorkTeamCalendarCapaLabel(item?.equipmentCapa);
                         const itemUtilizationLabel = formatWorkTeamCalendarUtilizationLabel(item?.equipmentUtilization);
-                        const metricParts = [itemYieldLabel || '수율 -', itemCapaLabel || 'CAPA -', itemUtilizationLabel || '가동률 -'];
+                        const itemWorkTimeLabel = formatWorkTeamCalendarWorkTimeLabel(item?.workTime);
+                        const itemOperationTimeLabel = formatWorkTeamCalendarOperationTimeLabel(item?.operationTime);
+                        const metricParts = [
+                            itemYieldLabel || '수율 -',
+                            itemCapaLabel || 'CAPA -',
+                            itemUtilizationLabel || '가동률 -',
+                            itemWorkTimeLabel || '조업시간 -',
+                            itemOperationTimeLabel || '가동시간 -'
+                        ];
                         const metricChipHtml = metricParts.map(label => `<span class="work-team-calendar-production-chip">${escapeHtml(label)}</span>`).join('');
                         const amountLabel = Number.isFinite(Number(item.amount))
                             ? `${formatUtilNumber(Number(item.amount), 0)} kg`
@@ -192,6 +207,8 @@
                     moistureExcludedYieldRate: Number.isFinite(parseUtilPercentAmount(group?.moistureExcludedYieldRate)) ? parseUtilPercentAmount(group?.moistureExcludedYieldRate) : null,
                     totalEquipmentCapa: Number.isFinite(parseUtilAmount(group?.totalEquipmentCapa)) ? parseUtilAmount(group?.totalEquipmentCapa) : null,
                     utilizationRate: Number.isFinite(parseUtilPercentAmount(group?.utilizationRate)) ? parseUtilPercentAmount(group?.utilizationRate) : null,
+                    totalWorkTime: Number.isFinite(parseUtilAmount(group?.totalWorkTime)) ? parseUtilAmount(group?.totalWorkTime) : null,
+                    totalOperationTime: Number.isFinite(parseUtilAmount(group?.totalOperationTime)) ? parseUtilAmount(group?.totalOperationTime) : null,
                     isOffday: false
                 });
             });

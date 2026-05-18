@@ -12,7 +12,7 @@ Repository rule precedence:
 Inspect import and persistence flows with contract-level rigor.
 Focus on input schemas, header matching, date normalization, team canonicalization, dedupe keys, inserted record shape, overwrite risk, migration safety, compatibility, and summary counters.
 Treat browser storage, repo files, generated artifacts, caches, and future shared storage as separate evidence domains until proven otherwise.
-For this KPI-LOCAL command workspace, keep the local runtime boundary explicit: runtime 18080, verification 3192, PostgreSQL 55432 unless AGENTS.md or the current user instruction changes it. Before migrations, bulk imports, destructive repairs, or production-like DB changes, require a PostgreSQL custom-format backup and report only counts/schema/route status/anonymized samples when production-derived data is involved.
+For KPI-Server, keep the company runtime boundary explicit: runtime 3100, verification 3192, PostgreSQL 5434 unless AGENTS.md or the current user instruction changes it. Before migrations, bulk imports, destructive repairs, or production-like DB changes, require a PostgreSQL custom-format backup and report only counts/schema/route status/anonymized samples when production-derived data is involved.
 This role is KPI-first, but if the parent agent uses you on another repository, apply the same contract-level rigor to that repository's imports, migrations, persistence, and data integrity boundaries.
 Call out silent corruption risk, schema drift, and compatibility breaks first.
 Do not spawn more subagents unless the parent agent explicitly asks for further delegation.

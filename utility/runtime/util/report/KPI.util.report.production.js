@@ -51,7 +51,12 @@
                             String(entry?.dateLabel || '').trim(),
                             normalizeUtilDedupeText(lineNameRaw || ''),
                             normalizeUtilDedupeText(productNameRaw || ''),
-                            canonicalizeUtilDedupeMetric(amount)
+                            canonicalizeUtilDedupeMetric(amount),
+                            canonicalizeUtilDedupeMetric(entry?.moistureExcludedYield ?? entry?.moistureFreeYield ?? entry?.yieldExcludingMoisture ?? entry?.yieldRate),
+                            canonicalizeUtilDedupeMetric(entry?.workTime ?? entry?.inputTime ?? entry?.feedTime ?? entry?.loadingTime ?? entry?.injectionTime),
+                            canonicalizeUtilDedupeMetric(entry?.operationTime ?? entry?.operatingTime ?? entry?.runtime ?? entry?.runTime ?? entry?.operationHours),
+                            canonicalizeUtilDedupeMetric(entry?.equipmentCapa ?? entry?.capa ?? entry?.equipmentCapacity),
+                            canonicalizeUtilDedupeMetric(entry?.equipmentUtilization ?? entry?.operationRate ?? entry?.equipmentRate ?? entry?.utilizationRate)
                         ].join('|');
                         if (dedupeSet.has(dedupeKey)) return;
                         dedupeSet.add(dedupeKey);
@@ -137,7 +142,12 @@
                             String(entry?.dateLabel || '').trim(),
                             normalizeUtilDedupeText(lineNameRaw || ''),
                             normalizeUtilDedupeText(productNameRaw || ''),
-                            canonicalizeUtilDedupeMetric(amount)
+                            canonicalizeUtilDedupeMetric(amount),
+                            canonicalizeUtilDedupeMetric(entry?.moistureExcludedYield ?? entry?.moistureFreeYield ?? entry?.yieldExcludingMoisture ?? entry?.yieldRate),
+                            canonicalizeUtilDedupeMetric(entry?.workTime ?? entry?.inputTime ?? entry?.feedTime ?? entry?.loadingTime ?? entry?.injectionTime),
+                            canonicalizeUtilDedupeMetric(entry?.operationTime ?? entry?.operatingTime ?? entry?.runtime ?? entry?.runTime ?? entry?.operationHours),
+                            canonicalizeUtilDedupeMetric(entry?.equipmentCapa ?? entry?.capa ?? entry?.equipmentCapacity),
+                            canonicalizeUtilDedupeMetric(entry?.equipmentUtilization ?? entry?.operationRate ?? entry?.equipmentRate ?? entry?.utilizationRate)
                         ].join('|');
                         if (dedupeSet.has(dedupeKey)) return;
                         dedupeSet.add(dedupeKey);

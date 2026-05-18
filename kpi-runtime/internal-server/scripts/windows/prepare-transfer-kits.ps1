@@ -30,9 +30,9 @@ function Get-EnvFileValue {
   )
 
   $candidatePaths = @(
-    (Join-Path $ServerDir '.env.local-experiment'),
     (Join-Path $ServerDir '.env.production.local'),
     (Join-Path $ServerDir '.env.development.local'),
+    (Join-Path $ServerDir '.env.local-experiment'),
     (Join-Path $ServerDir '.env')
   ) | Select-Object -Unique
 

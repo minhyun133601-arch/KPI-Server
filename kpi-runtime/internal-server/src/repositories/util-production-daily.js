@@ -16,6 +16,8 @@ export async function listUtilProductionDailyEntries() {
         product_name,
         amount,
         moisture_excluded_yield,
+        work_time,
+        operation_time,
         equipment_capa,
         equipment_utilization,
         source_archive_id,
@@ -114,9 +116,9 @@ export async function replaceUtilProductionDailyState({
       await client.query(
         `insert into ${UTIL_PRODUCTION_ENTRY_TABLE}
             (dedupe_key, production_date, team_name, line_name, product_name, amount, moisture_excluded_yield,
-             equipment_capa, equipment_utilization, source_archive_id, source_fingerprint, source_file_name)
+             work_time, operation_time, equipment_capa, equipment_utilization, source_archive_id, source_fingerprint, source_file_name)
          values
-            ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8::numeric, $9::numeric, $10, $11, $12)`,
+            ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8::numeric, $9::numeric, $10::numeric, $11::numeric, $12, $13, $14)`,
         [
           entry.dedupeKey,
           entry.date,
@@ -125,6 +127,8 @@ export async function replaceUtilProductionDailyState({
           entry.productName,
           entry.amount,
           entry.moistureExcludedYield,
+          entry.workTime,
+          entry.operationTime,
           entry.equipmentCapa,
           entry.equipmentUtilization,
           entry.sourceArchiveId,
@@ -168,6 +172,8 @@ export async function replaceUtilProductionDailyState({
           product_name,
           amount,
           moisture_excluded_yield,
+          work_time,
+          operation_time,
           equipment_capa,
           equipment_utilization,
           source_archive_id,

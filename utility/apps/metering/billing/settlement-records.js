@@ -142,6 +142,29 @@ function getBillingSettlementSourceFields(entry) {
   return isPlainObject(entry.fields) ? entry.fields : entry;
 }
 
+const BILLING_SETTLEMENT_ENTRY_META_FIELD_KEYS = new Set([
+  "completed",
+  "fields",
+  "monthValue",
+  "scopes",
+  "updatedAt",
+]);
+
+function getBillingSettlementEntryValueFieldKeys(entry) {
+  const fields = getBillingSettlementSourceFields(entry);
+  return Object.keys(fields).filter((fieldKey) => {
+    if (BILLING_SETTLEMENT_ENTRY_META_FIELD_KEYS.has(fieldKey)) {
+      return false;
+    }
+
+    return Boolean(normalizeBillingSettlementInputValue(fields[fieldKey]));
+  });
+}
+
+function hasBillingSettlementEntryStoredValues(entry) {
+  return getBillingSettlementEntryValueFieldKeys(entry).length > 0;
+}
+
 function mergeBillingSettlementFieldValues(presetEntry, currentEntry) {
   const mergedFields = {
     ...getBillingSettlementSourceFields(presetEntry),
@@ -359,4 +382,98 @@ function getBillingSettlementAvailableMonthRangeText() {
   const firstMonth = monthValues[0];
   const lastMonth = monthValues[monthValues.length - 1];
   return firstMonth === lastMonth ? firstMonth : `${firstMonth}~${lastMonth}`;
+}
+
+function completeBillingSettlementEntriesWithStoredValues(rawEntries, options = {}) {
+  if (!isPlainObject(rawEntries)) {
+    return {
+      entries: {},
+      completedCount: 0,
+    };
+  }
+
+  const updatedAt = normalizeText(options.updatedAt) || new Date().toISOString();
+  const nextEntries = {};
+  let completedCount = 0;
+
+  Object.entries(rawEntries).forEach(([rawMonthValue, rawEntry]) => {
+    const monthValue = normalizeMonthValue(rawMonthValue);
+    const monthRecord = normalizeBillingSettlementEntry(monthValue, rawEntry);
+    if (!monthValue || !monthRecord) {
+      return;
+    }
+
+    const nextScopeEntries = {};
+    Object.entries(getBillingSettlementScopeRawMap(monthRecord)).forEach(([scopeKey, scopeEntry]) => {
+      const entry = normalizeBillingSettlementLeafEntry(monthValue, scopeEntry, scopeKey);
+      if (!entry) {
+        return;
+      }
+
+      const shouldComplete = hasBillingSettlementEntryStoredValues(entry);
+      nextScopeEntries[scopeKey] =
+        shouldComplete && entry.completed !== true
+          ? {
+              ...entry,
+              completed: true,
+              updatedAt: normalizeText(entry.updatedAt) || updatedAt,
+            }
+          : entry;
+
+      if (shouldComplete && entry.completed !== true) {
+        completedCount += 1;
+      }
+    });
+
+    const nextRecord = buildBillingSettlementMonthRecord(monthValue, nextScopeEntries);
+    if (nextRecord) {
+      nextEntries[monthValue] = nextRecord;
+    }
+  });
+
+  return {
+    entries: nextEntries,
+    completedCount,
+  };
+}
+
+function completeStoreBillingSettlementEntriesWithStoredValues(store = state.store, options = {}) {
+  if (!isPlainObject(store)) {
+    return 0;
+  }
+
+  const updatedAt = normalizeText(options.updatedAt) || new Date().toISOString();
+  let completedCount = 0;
+
+  if (isPlainObject(store.resourceDatasets)) {
+    Object.values(store.resourceDatasets).forEach((dataset) => {
+      if (!isPlainObject(dataset)) {
+        return;
+      }
+
+      const result = completeBillingSettlementEntriesWithStoredValues(
+        dataset.billingSettlementEntries,
+        { updatedAt }
+      );
+      dataset.billingSettlementEntries = result.entries;
+      completedCount += result.completedCount;
+    });
+
+    const activeResourceType = normalizeResourceType(store.resourceType);
+    const activeDataset = store.resourceDatasets[activeResourceType];
+    if (isPlainObject(activeDataset)) {
+      store.billingSettlementEntries = isPlainObject(activeDataset.billingSettlementEntries)
+        ? activeDataset.billingSettlementEntries
+        : {};
+    }
+    return completedCount;
+  }
+
+  const result = completeBillingSettlementEntriesWithStoredValues(store.billingSettlementEntries, {
+    updatedAt,
+  });
+  store.billingSettlementEntries = result.entries;
+  completedCount = result.completedCount;
+
+  return completedCount;
 }

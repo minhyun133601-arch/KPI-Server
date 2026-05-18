@@ -217,6 +217,26 @@ function completeCurrentBillingSettlementEntryForManualSave() {
   return true;
 }
 
+function completeCurrentEquipmentEntryForManualSave(options = {}) {
+  const trigger = normalizeText(options.trigger).toLowerCase();
+  const shouldComplete = options.completeCurrentEntry === true || trigger === "shortcut";
+  if (!shouldComplete || getCurrentMode() !== MODES.EQUIPMENT || !state.selectedDate) {
+    return false;
+  }
+
+  if (
+    typeof getCurrentEntryDayStatus !== "function" ||
+    typeof setCurrentEntryDayStatus !== "function" ||
+    getCurrentEntryDayStatus() === "completed"
+  ) {
+    return false;
+  }
+
+  setCurrentEntryDayStatus("completed");
+  state.cleanStatusText = "기입 값을 저장 완료 처리했습니다.";
+  return true;
+}
+
 function scheduleEquipmentLocalAutosave() {
   if (getCurrentMode() !== MODES.EQUIPMENT || !state.selectedDate) {
     return;

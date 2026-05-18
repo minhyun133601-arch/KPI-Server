@@ -393,6 +393,11 @@ function buildKpiBridgeRows() {
     lineName: row.values[LINE_VALUE_INDEX] ?? "",
     productName: row.values[3] ?? "",
     amount: row.values[PRODUCTION_VALUE_INDEX] ?? "",
+    moistureExcludedYield: row.moistureExcludedYield ?? "",
+    workTime: row.workTime ?? row.inputTime ?? "",
+    operationTime: row.operationTime ?? "",
+    equipmentCapa: row.equipmentCapa ?? "",
+    equipmentUtilization: row.equipmentUtilization ?? "",
     sourceFileName: String(row.fileName || "").trim(),
     sourceFingerprint: String(fileMetaMap.get(String(row.fileName || "").trim())?.fingerprint || ""),
   }));
@@ -483,6 +488,8 @@ function handleKpiImportResultMessage(event) {
   if (data.ok) {
     const addedText = formatNumber(Number(data.addedCount) || 0);
     const skippedText = formatNumber(Number(data.skippedCount) || 0);
+    const replacedText = formatNumber(Number(data.replacedCount) || 0);
+    const replacedNotice = Number(data.replacedCount) > 0 ? `, 기존 ${replacedText}건 교체` : "";
     const failedFiles = Array.isArray(data.failedFiles)
       ? data.failedFiles
           .map((item) => {
@@ -494,7 +501,7 @@ function handleKpiImportResultMessage(event) {
     const failedNotice = failedFiles.length
       ? `, 형식 오류 제외 ${formatNumber(failedFiles.length)}개 (${failedFiles.join(", ")})`
       : "";
-    setStatus(`생산량 기입 완료: 기존 생산량 유지, 신규 ${addedText}건 추가, 중복 제외 ${skippedText}건${failedNotice}`);
+    setStatus(`생산량 기입 완료: ${addedText}건 기입${replacedNotice}, 중복 제외 ${skippedText}건${failedNotice}`);
     return;
   }
   const message = data.message ? String(data.message) : "생산량 기입에 실패했습니다.";

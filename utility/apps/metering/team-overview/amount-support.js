@@ -245,15 +245,11 @@ function calculateElectricManageDisplayAmount(monthValue = state.currentMonth, o
     return null;
   }
 
-  return sumFiniteValues([
-    calculateTeamEquipmentVariableChargeSum("team_04", monthValue, options),
-    calculateTeamBaseChargeAllocationSum("team_04", monthValue, options),
-  ]);
+  return calculateTeamEquipmentVariableChargeSum("team_04", monthValue, options);
 }
 
 function getElectricManageDisplayDetailText(monthValue = state.currentMonth, options = {}) {
   const variableChargeSum = calculateTeamEquipmentVariableChargeSum("team_04", monthValue, options);
-  const baseChargeAllocationSum = calculateTeamBaseChargeAllocationSum("team_04", monthValue, options);
   const amount = calculateElectricManageDisplayAmount(monthValue, options);
 
   if (!Number.isFinite(amount)) {
@@ -263,9 +259,6 @@ function getElectricManageDisplayDetailText(monthValue = state.currentMonth, opt
   const parts = [];
   if (Number.isFinite(variableChargeSum)) {
     parts.push(`설비별 사용요금 합계 ${formatSettlementAmount(variableChargeSum)}`);
-  }
-  if (Number.isFinite(baseChargeAllocationSum)) {
-    parts.push(`기본요금 배부 ${formatSettlementAmount(baseChargeAllocationSum)}`);
   }
   if (getElectricOtherCostDescriptors(monthValue).length) {
     parts.push("그 외 비용은 별도 카드에서 표시합니다.");
@@ -308,7 +301,6 @@ function calculateTeamAmount(teamKey, monthValue = state.currentMonth, options =
 
   const components = [
     calculateTeamEquipmentVariableChargeSum(teamKey, monthValue, options),
-    calculateTeamBaseChargeAllocationSum(teamKey, monthValue, options),
   ];
 
   if (teamKey === "team_04") {
@@ -391,15 +383,11 @@ function getTeamAmountDetailText(teamKey, options = {}, monthValue = state.curre
     const scopedEntry = getBillingSettlementEntry(monthValue, "bukjeong");
     const scopedFields = scopedEntry?.fields || {};
     const electricityChargeTotal = resolveBillingSettlementElectricityChargeTotalValue(scopedFields);
-    const baseCharge = getBillingSettlementNumericField("base_charge", monthValue, "bukjeong");
-    if (Number.isFinite(electricityChargeTotal) || Number.isFinite(baseCharge)) {
-      const parts = [`북정 기준 팀 1팀 1파트`];
-      if (Number.isFinite(electricityChargeTotal)) {
-        parts.push(`북정 전기요금계 ${formatSettlementAmount(electricityChargeTotal)}`);
-      }
-      if (Number.isFinite(baseCharge)) {
-        parts.push(`북정 기본요금 ${formatSettlementAmount(baseCharge)}`);
-      }
+    if (Number.isFinite(electricityChargeTotal)) {
+      const parts = [
+        `북정 기준 팀 1팀 1파트`,
+        `북정 전기요금계 ${formatSettlementAmount(electricityChargeTotal)}`,
+      ];
       parts.push("북정 그 외 비용은 별도 카드에서 표시합니다.");
       parts.push(`북정 금액 ${formatSettlementAmount(amount)}`);
       return parts.join("\n");
@@ -423,7 +411,6 @@ function getTeamAmountDetailText(teamKey, options = {}, monthValue = state.curre
 
   const teamLabel = getTeamDisplayLabel(teamKey) || "팀";
   const variableChargeSum = calculateTeamEquipmentVariableChargeSum(teamKey, monthValue, options);
-  const baseChargeAllocationSum = calculateTeamBaseChargeAllocationSum(teamKey, monthValue, options);
   const vat = getBillingSettlementNumericField("vat", monthValue);
   const electricPowerFund = getBillingSettlementNumericField("electric_power_fund", monthValue);
   const tvReceptionFee = getBillingSettlementNumericField("tv_reception_fee", monthValue);
@@ -438,10 +425,6 @@ function getTeamAmountDetailText(teamKey, options = {}, monthValue = state.curre
 
   if (Number.isFinite(variableChargeSum)) {
     parts.push(`설비별 사용요금 합계 ${formatSettlementAmount(variableChargeSum)}`);
-  }
-
-  if (Number.isFinite(baseChargeAllocationSum)) {
-    parts.push(`기본요금 배부 ${formatSettlementAmount(baseChargeAllocationSum)}`);
   }
 
   if (teamKey === "team_04") {

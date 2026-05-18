@@ -14,6 +14,9 @@ const kpiHtml = await fs.readFile(new URL('../../../../KPI.html', import.meta.ur
 
 test('util production upload shared date offset is zero-day', () => {
   assert.match(dataSyncProductionSource, /const UTIL_PRODUCTION_UPLOAD_DATE_OFFSET_DAYS = 0;/);
+  assert.match(dataSyncProductionSource, /function parseUtilExcelDateText\(value, options = \{\}\)/);
+  assert.match(dataSyncProductionSource, /parseUtilExcelDateText\(cell\.w, \{ referenceYear: cell\.v\.getUTCFullYear\(\) \}\)/);
+  assert.match(productionImportSource, /parseUtilExcelDateText\(cell\.w, \{ referenceYear: cell\.v\.getUTCFullYear\(\) \}\)/);
   assert.match(
     productionImportSource,
     /const dateObj = applyUtilDateOffset\(parsedDate, UTIL_PRODUCTION_UPLOAD_DATE_OFFSET_DAYS\);/

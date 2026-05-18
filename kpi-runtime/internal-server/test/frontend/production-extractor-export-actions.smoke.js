@@ -105,6 +105,11 @@ test('production extractor export actions normalize stored bridge rows determini
         lineName: '2호기',
         productName: '시럽',
         amount: 5,
+        moistureExcludedYield: null,
+        workTime: null,
+        operationTime: null,
+        equipmentCapa: null,
+        equipmentUtilization: null,
       },
       {
         date: '2026-04-10',
@@ -112,6 +117,11 @@ test('production extractor export actions normalize stored bridge rows determini
         lineName: '1호기',
         productName: '베이스',
         amount: 12,
+        moistureExcludedYield: null,
+        workTime: null,
+        operationTime: null,
+        equipmentCapa: null,
+        equipmentUtilization: null,
       },
     ]
   );
@@ -119,13 +129,37 @@ test('production extractor export actions normalize stored bridge rows determini
     api.normalizeStoredTeamList(['C팀', 'A팀'], normalized),
     ['A팀', 'B팀', 'C팀']
   );
+  const withMetrics = api.normalizeStoredRowsPayload(
+    {
+      parseDateText(value) {
+        return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? new Date(`${value}T00:00:00Z`) : null;
+      },
+      parseProductionValue(value) {
+        const parsed = Number(String(value).replace('%', ''));
+        return Number.isFinite(parsed) ? parsed : null;
+      },
+      formatYmd(date) {
+        return date.toISOString().slice(0, 10);
+      },
+    },
+    [
+      { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '97%' },
+      { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '98%' },
+      { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '98%', workTime: '6', operationTime: '4' },
+      { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '98%', workTime: '6.0', operationTime: 4 },
+      { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '98%', workTime: '6', operationTime: '5' },
+    ]
+  );
+  assert.equal(withMetrics.length, 4);
+  assert.equal(withMetrics[2].workTime, 6);
+  assert.equal(withMetrics[2].operationTime, 4);
 });
 
 test('production extractor html loads export actions before app and KPI bridge busts the embed cache', () => {
-  const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=16');
+  const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=18');
   const viewModelIndex = productionExtractorHtml.indexOf('runtime/view-model.js?v=1');
   const renderIndex = productionExtractorHtml.indexOf('runtime/render.js?v=1');
-  const appIndex = productionExtractorHtml.indexOf('app.js?v=16');
+  const appIndex = productionExtractorHtml.indexOf('app.js?v=20');
 
   assert.ok(exportActionsIndex >= 0, 'split runtime loader is missing');
   assert.ok(viewModelIndex > exportActionsIndex, 'view model split must load after runtime/export-actions.js');
@@ -133,7 +167,7 @@ test('production extractor html loads export actions before app and KPI bridge b
   assert.ok(appIndex > renderIndex, 'app.js must load after split runtime files');
   assert.match(
     productionExtractorBridgeSource,
-    /production-extractor\.html\?embed=1&v=16/
+    /production-extractor\.html\?embed=1&v=20/
   );
 });
 

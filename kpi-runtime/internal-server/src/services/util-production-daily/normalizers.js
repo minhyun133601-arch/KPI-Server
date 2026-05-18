@@ -93,6 +93,11 @@ function canonicalizeMetric(value) {
 export function buildEntryDedupeKey(entry) {
   const date = normalizeDateKey(entry?.date);
   const amount = canonicalizeMetric(entry?.amount);
+  const moistureExcludedYield = canonicalizeMetric(entry?.moistureExcludedYield);
+  const workTime = canonicalizeMetric(entry?.workTime ?? entry?.inputTime);
+  const operationTime = canonicalizeMetric(entry?.operationTime);
+  const equipmentCapa = canonicalizeMetric(entry?.equipmentCapa);
+  const equipmentUtilization = canonicalizeMetric(entry?.equipmentUtilization);
   const teamKey = normalizeTeamName(entry?.teamName).toLowerCase();
   if (!date || amount === '' || !teamKey) {
     return '';
@@ -103,6 +108,11 @@ export function buildEntryDedupeKey(entry) {
     normalizeDedupeText(entry?.lineName),
     normalizeDedupeText(entry?.productName),
     amount,
+    moistureExcludedYield,
+    workTime,
+    operationTime,
+    equipmentCapa,
+    equipmentUtilization,
   ].join('|');
 }
 
@@ -122,6 +132,12 @@ export function normalizeEntry(input, fallbackTeamName = '') {
     amount,
     moistureExcludedYield: normalizeNumber(
       input?.moistureExcludedYield ?? input?.moistureFreeYield ?? input?.yieldExcludingMoisture ?? input?.yieldRate
+    ),
+    workTime: normalizeNumber(
+      input?.workTime ?? input?.inputTime ?? input?.feedTime ?? input?.loadingTime ?? input?.injectionTime
+    ),
+    operationTime: normalizeNumber(
+      input?.operationTime ?? input?.operatingTime ?? input?.runtime ?? input?.runTime ?? input?.operationHours
     ),
     equipmentCapa: normalizeNumber(
       input?.equipmentCapa ?? input?.capa ?? input?.equipmentCapacity

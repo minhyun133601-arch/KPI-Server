@@ -534,12 +534,45 @@ test('performManualSave appends manual save history on successful save', async (
   assert.equal(actionCalls, 1);
 });
 
+test('performManualSave marks the current equipment date complete for shortcut saves', async () => {
+  const context = createSaveValidationContext();
+  let currentDayStatus = '';
+
+  setBinding(context, 'getCurrentEntryDayStatus', () => currentDayStatus);
+  setBinding(context, 'setCurrentEntryDayStatus', (status) => {
+    currentDayStatus = status;
+    context.elements.entryCompleteCheckbox.checked = status === 'completed';
+  });
+  setBinding(context, 'readEquipmentFormData', () => ({
+    values: { field_1: '42' },
+    statuses: {},
+    fieldDayStatuses: {},
+  }));
+  setBinding(context, 'supportsSharedServerPersistence', () => true);
+  setBinding(context, 'waitForQueuedPersistence', async () => {});
+  setBinding(context, 'createFormSnapshot', () => `snapshot:${currentDayStatus}`);
+  setBinding(context, 'updateDirtyState', () => {});
+  setBinding(context, 'updateActionState', () => {});
+
+  const didSave = await context.performManualSave({ trigger: 'shortcut' });
+
+  assert.equal(didSave, true);
+  assert.equal(currentDayStatus, 'completed');
+  assert.equal(context.elements.entryCompleteCheckbox.checked, true);
+  assert.equal(context.state.store.equipmentEntries['2026-04-18'].dayStatus, 'completed');
+  assert.equal(context.state.store.equipmentEntries['2026-04-18'].completed, true);
+  assert.deepEqual(context.state.store.equipmentEntries['2026-04-18'].values, {
+    field_1: '42',
+  });
+});
+
 test('performManualSave syncs pending team drafts before persisting team mode', async () => {
   const context = createSaveValidationContext({
     currentMode: 'team',
   });
   const helperCalls = [];
   const completionCalls = [];
+  const storedValueCompletionCalls = [];
   const persistCalls = [];
 
   setBinding(context, 'syncPendingMeteringDraftInputs', (options = {}) => {
@@ -549,6 +582,10 @@ test('performManualSave syncs pending team drafts before persisting team mode', 
   setBinding(context, 'completeCurrentBillingSettlementEntryForManualSave', () => {
     completionCalls.push(true);
     return true;
+  });
+  setBinding(context, 'completeStoreBillingSettlementEntriesWithStoredValues', (store) => {
+    storedValueCompletionCalls.push(store);
+    return 2;
   });
   setBinding(context, 'supportsSharedServerPersistence', () => true);
   setBinding(context, 'waitForQueuedPersistence', async () => {});
@@ -566,6 +603,7 @@ test('performManualSave syncs pending team drafts before persisting team mode', 
   assert.equal(didSave, true);
   assert.deepEqual(helperCalls, [{}]);
   assert.deepEqual(completionCalls, [true]);
+  assert.equal(storedValueCompletionCalls.length, 1);
   assert.equal(persistCalls.length, 2);
   assert.equal(context.state.loadedSnapshot, 'snapshot-after-team-save');
   assert.equal(context.state.store.manualSaveHistory[0].mode, 'team');
@@ -722,10 +760,10 @@ test('handleGlobalKeydown closes billing preview on Escape before other shortcut
 
 test('handleGlobalKeydown routes Ctrl+S to manual save', () => {
   const context = createSaveValidationContext();
-  const triggers = [];
+  const saveOptions = [];
 
   setBinding(context, 'performManualSave', (options = {}) => {
-    triggers.push(options.trigger || '');
+    saveOptions.push({ ...options });
     return Promise.resolve(true);
   });
 
@@ -747,7 +785,7 @@ test('handleGlobalKeydown routes Ctrl+S to manual save', () => {
 
   context.handleGlobalKeydown(event);
 
-  assert.deepEqual(triggers, ['shortcut']);
+  assert.deepEqual(saveOptions, [{ trigger: 'shortcut', completeCurrentEntry: true }]);
   assert.equal(event.preventDefaultCalled, true);
   assert.equal(event.stopPropagationCalled, true);
 });

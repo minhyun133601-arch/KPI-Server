@@ -73,6 +73,8 @@ function createContext(options = {}) {
   };
   const context = {
     console,
+    setTimeout,
+    clearTimeout,
     window: null,
     ['global' + 'This']: null,
     __KPI_SERVER_RUNTIME_CONFIG__: {
@@ -276,6 +278,89 @@ function createReportDeckContainer() {
       return selector === '[data-report-overview-cancel]' ? this : null;
     },
   };
+  const memoTeamSelect = {
+    value: 'team_01_01',
+    closest(selector) {
+      return selector === '[data-report-memo-team]' ? this : null;
+    },
+  };
+  const memoMetricSelect = {
+    value: 'production',
+    innerHTML: '',
+    closest(selector) {
+      return selector === '[data-report-memo-metric]' ? this : null;
+    },
+  };
+  const memoLines = { dataset: {}, innerHTML: '' };
+  const memoCandidates = { innerHTML: '' };
+  const memoManualInput = {
+    value: '',
+    closest(selector) {
+      return selector === '[data-report-memo-manual-input]' ? this : null;
+    },
+  };
+  const memoManualAddButton = {
+    closest(selector) {
+      return selector === '[data-report-memo-manual-add]' ? this : null;
+    },
+  };
+  const memoDialog = {
+    hidden: true,
+    dataset: {},
+    __reportMemoCandidates: [],
+    querySelector(selector) {
+      if (selector === '[data-report-memo-team]') return memoTeamSelect;
+      if (selector === '[data-report-memo-metric]') return memoMetricSelect;
+      if (selector === '[data-report-memo-lines]') return memoLines;
+      if (selector === '[data-report-memo-candidates]') return memoCandidates;
+      if (selector === '[data-report-memo-manual-input]') return memoManualInput;
+      return null;
+    },
+  };
+  const memoTargets = [{
+    dataset: {
+      reportMemoKey: 'slide3GasMemo',
+      reportMemoDefaultTeam: 'team_01_01',
+      reportMemoDefaultMetric: 'production',
+    },
+    attributes: {},
+    setAttribute(name, value) {
+      this.attributes[name] = value;
+      this[name] = value;
+    },
+    closest(selector) {
+      return selector === '[data-report-memo-key]' ? this : null;
+    },
+  }];
+  const memoContents = [{
+    dataset: { reportMemoContent: 'slide3GasMemo' },
+    innerHTML: '',
+  }];
+  const createStyleCapture = () => ({
+    values: {},
+    setProperty(name, value) {
+      this.values[name] = value;
+    },
+    getPropertyValue(name) {
+      return this.values[name] || '';
+    },
+  });
+  const analysisColumns = Array.from({ length: 6 }, () => ({ style: createStyleCapture() }));
+  const wasteLayouts = Array.from({ length: 2 }, () => ({ style: createStyleCapture() }));
+  const memoLineInput = {
+    dataset: { reportMemoLineInput: '0' },
+    value: '',
+    closest(selector) {
+      return selector === '[data-report-memo-line-input]' ? this : null;
+    },
+  };
+  const memoManualLineInput = {
+    dataset: { reportMemoLineInput: '1' },
+    value: '',
+    closest(selector) {
+      return selector === '[data-report-memo-line-input]' ? this : null;
+    },
+  };
   const dateInput = {
     value: '',
     disabled: true,
@@ -354,6 +439,30 @@ function createReportDeckContainer() {
       delete this[name];
     },
   }));
+  const planImagePlaceholders = Object.fromEntries(planImages.map((image) => [
+    image.dataset.reportPlanImage,
+    { textContent: '' },
+  ]));
+  const planImageSourceLabels = Object.fromEntries(planImages.map((image) => [
+    image.dataset.reportPlanImage,
+    { textContent: '', hidden: true },
+  ]));
+  const planImagePasteButtons = planImages.map((image) => ({
+    dataset: { reportPlanImagePaste: image.dataset.reportPlanImage },
+    textContent: '',
+    disabled: true,
+    attributes: {},
+    setAttribute(name, value) {
+      this.attributes[name] = value;
+      this[name] = value;
+    },
+    closest(selector) {
+      if (selector === '[data-report-plan-image-paste]') return this;
+      return selector === '[data-report-plan-image-frame]'
+        ? planImageFrames[image.dataset.reportPlanImage] || null
+        : null;
+    },
+  }));
   const planSlides = ['slide8', 'slide9'].map((slideKey) => ({
     dataset: { reportPlanSlide: slideKey },
     querySelectorAll(selector) {
@@ -372,15 +481,47 @@ function createReportDeckContainer() {
       dataset: {},
       querySelector(selector) {
         if (selector === '[data-report-plan-image-input]') {
-          return planImageInputs.find((input) => input.dataset.reportPlanImageKey === image.dataset.reportPlanImage) || null;
+          return planImageInputs.find((input) => input.dataset.reportPlanImageKey === image.dataset.reportPlanImage)
+            || planImageInputs[planImages.indexOf(image)]
+            || null;
+        }
+        if (selector === '[data-report-plan-image-upload]') {
+          return planImageUploadButtons.find((button) => button.dataset.reportPlanImageUpload === image.dataset.reportPlanImage)
+            || planImageUploadButtons[planImages.indexOf(image)]
+            || null;
         }
         if (selector === '[data-report-plan-image-clear]') {
-          return planImageClearButtons.find((button) => button.dataset.reportPlanImageClear === image.dataset.reportPlanImage) || null;
+          return planImageClearButtons.find((button) => button.dataset.reportPlanImageClear === image.dataset.reportPlanImage)
+            || planImageClearButtons[planImages.indexOf(image)]
+            || null;
+        }
+        if (selector === '[data-report-plan-image]') {
+          return image;
+        }
+        if (selector === '[data-report-plan-image-placeholder]') {
+          return planImagePlaceholders[image.dataset.reportPlanImage] || null;
+        }
+        if (selector === '[data-report-plan-image-source-label]') return null;
+        if (selector === '[data-report-plan-image-paste]') {
+          return planImagePasteButtons.find((button) => button.dataset.reportPlanImagePaste === image.dataset.reportPlanImage)
+            || planImagePasteButtons[planImages.indexOf(image)]
+            || null;
         }
         return null;
       },
+      closest(selector) {
+        return selector === '[data-report-plan-image-frame]' ? this : null;
+      },
+      focusCount: 0,
+      focus() {
+        this.focusCount += 1;
+      },
       setAttribute(name, value) {
-        this.dataset[name.replace(/^data-/, '').replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = value;
+        if (String(name).startsWith('data-')) {
+          this.dataset[name.replace(/^data-/, '').replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = value;
+          return;
+        }
+        this[name] = value;
       },
     },
   ]));
@@ -389,8 +530,26 @@ function createReportDeckContainer() {
     disabled: true,
     files: [],
     value: '',
+    clickCount: 0,
+    click() {
+      this.clickCount += 1;
+    },
     closest(selector) {
-      return selector === '[data-report-plan-image-input]' ? this : null;
+      if (selector === '[data-report-plan-image-input]') return this;
+      return selector === '[data-report-plan-image-frame]'
+        ? planImageFrames[image.dataset.reportPlanImage] || null
+        : null;
+    },
+  }));
+  const planImageUploadButtons = planImages.map((image) => ({
+    dataset: { reportPlanImageUpload: image.dataset.reportPlanImage },
+    disabled: true,
+    closest(selector) {
+      if (selector === '[data-report-plan-image-upload]') return this;
+      if (String(selector).includes('[data-report-plan-image-choice]')) return this;
+      return selector === '[data-report-plan-image-frame]'
+        ? planImageFrames[image.dataset.reportPlanImage] || null
+        : null;
     },
   }));
   const planImageClearButtons = planImages.map((image) => ({
@@ -584,6 +743,8 @@ function createReportDeckContainer() {
       if (selector === '[data-report-save-status]') return status;
       if (selector === '[data-report-month-select]') return monthSelect;
       if (selector === '[data-report-overview-dialog]') return overviewDialog;
+      if (selector === '[data-report-memo-dialog]') return memoDialog;
+      if (selector === '[data-report-memo-key="slide3GasMemo"]') return memoTargets[0];
       if (selector === '[data-report-slide-counter]') return counter;
       if (selector === '[data-report-stage]') return stage;
       const frameMatch = selector.match(/^\[data-report-plan-image-frame="([^"]+)"\]$/);
@@ -597,11 +758,17 @@ function createReportDeckContainer() {
       if (selector === '[data-report-plan-count-select]') return planCountSelects;
       if (selector === '[data-report-plan-slide]') return planSlides;
       if (selector === '[data-report-plan-image]') return planImages;
-      if (selector === '[data-report-plan-add-slot], [data-report-plan-image-input]') return [
+      if (selector === '[data-report-plan-image-frame]') return Object.values(planImageFrames);
+      if (selector === '[data-report-plan-add-slot], [data-report-plan-image-input], [data-report-plan-image-upload]') return [
         ...planAddSlotButtons,
         ...planImageInputs,
+        ...planImageUploadButtons,
       ];
       if (selector === '[data-report-plan-add-slot]') return planAddSlotButtons;
+      if (selector === '[data-report-memo-key]') return memoTargets;
+      if (selector === '[data-report-memo-content]') return memoContents;
+      if (selector === '.report-bukjeong-analysis-column, .report-analysis-column') return analysisColumns;
+      if (selector === '.report-waste-auto-layout') return wasteLayouts;
       if (selector === '[data-report-edit-toggle]') return [editButton];
       if (selector === '[data-report-chart-highlight-toggle]') return [chartHighlightButton, chartHighlightRangeButton];
       if (selector === '[data-report-chart-highlight-reset]') return [chartHighlightResetButton];
@@ -664,14 +831,31 @@ function createReportDeckContainer() {
     overviewKindButtons,
     overviewSaveButton,
     overviewCancelButton,
+    memoTeamSelect,
+    memoMetricSelect,
+    memoLines,
+    memoCandidates,
+    memoManualInput,
+    memoManualAddButton,
+    memoDialog,
+    memoTargets,
+    memoContents,
+    analysisColumns,
+    wasteLayouts,
+    memoLineInput,
+    memoManualLineInput,
     dateInput,
     planCountSelects,
     planAddSlotButtons,
     planSlotCells,
     planDeleteButtons,
     planImages,
+    planImagePlaceholders,
+    planImageSourceLabels,
+    planImagePasteButtons,
     planImageFrames,
     planImageInputs,
+    planImageUploadButtons,
     planImageClearButtons,
     autoChartPlots,
     slides,
@@ -692,6 +876,11 @@ async function flushMicrotasks() {
   await Promise.resolve();
   await Promise.resolve();
   await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function getCurrentReportMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
 function createCompletedSettlement(monthValue) {
@@ -744,12 +933,18 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.match(adapterSource, /data-report-export-viewer/);
   assert.match(adapterSource, /data-report-export-fullscreen/);
   assert.match(adapterSource, /data-report-export-print/);
+  assert.doesNotMatch(adapterSource, /function buildReportDeckExportMemoOverviewDialog/);
+  assert.doesNotMatch(adapterSource, /data-report-memo-overview-toggle>특이사항/);
+  assert.doesNotMatch(adapterSource, /deck\.appendChild\(buildReportDeckExportMemoOverviewDialog/);
+  assert.doesNotMatch(adapterSource, /const memoOverviewButton = event\.target\.closest\?\.\('\[data-report-memo-overview-toggle\]'\);/);
   assert.match(adapterSource, /report-print-viewer/);
   assert.match(adapterSource, /report-print-page/);
   assert.match(adapterSource, /report-print-slide-frame/);
   assert.match(adapterSource, /REPORT_DECK_PRINT_PAGE_WIDTH\s*=\s*'297mm'/);
   assert.match(adapterSource, /REPORT_DECK_PRINT_PAGE_HEIGHT\s*=\s*'210mm'/);
-  assert.match(adapterSource, /REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT\s*=\s*'167\.0625mm'/);
+  assert.match(adapterSource, /REPORT_DECK_PRINT_PAGE_MARGIN\s*=\s*'10mm'/);
+  assert.match(adapterSource, /REPORT_DECK_PRINT_SLIDE_CSS_WIDTH\s*=\s*'277mm'/);
+  assert.match(adapterSource, /REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT\s*=\s*'155\.8125mm'/);
   assert.match(adapterSource, /REPORT_DECK_CAPTURE_SLIDE_WIDTH\s*=\s*2560/);
   assert.match(adapterSource, /REPORT_DECK_CAPTURE_SLIDE_HEIGHT\s*=\s*1440/);
   assert.match(adapterSource, /captureReportDeckSlideImageUrl/);
@@ -761,9 +956,12 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.match(adapterSource, /normalizeReportDeckPositiveMetric/);
   assert.match(runtimeSource, /formatReportDeckAutoPercentOrBlank/);
   assert.match(runtimeSource, /formatReportDeckAutoNumberOrBlank/);
+  assert.match(runtimeSource, /slide3Title:\s*'1\. 북 정 \(가스, 전기 비용\) 분석'/);
+  assert.match(runtimeSource, /slide4Title:\s*'1\. 유 산 \(가스, 전기 비용\) 분석'/);
   assert.match(runtimeSource, /String\(rowKey\) === '2'/);
   assert.match(adapterSource, /@page \{ size: \$\{REPORT_DECK_PRINT_PAGE_WIDTH\} \$\{REPORT_DECK_PRINT_PAGE_HEIGHT\}; margin: 0; \}/);
-  assert.match(adapterSource, /height:\s*\$\{REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT\} !important; margin: 0 auto !important/);
+  assert.match(adapterSource, /padding:\s*\$\{REPORT_DECK_PRINT_PAGE_MARGIN\} !important/);
+  assert.match(adapterSource, /width:\s*\$\{REPORT_DECK_PRINT_SLIDE_CSS_WIDTH\} !important; height:\s*\$\{REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT\} !important; max-width:\s*100% !important; max-height:\s*100% !important; margin:\s*0 auto !important/);
   assert.match(adapterSource, /\*::-webkit-scrollbar \{ width: 0 !important; height: 0 !important; display: none !important; \}/);
   assert.equal(registered.bootTasks.size, 3);
   assert.ok(registered.closers.size >= 10);
@@ -804,6 +1002,16 @@ test('report deck auto chart labels render above markers and avoid only differen
   assert.match(runtimeSource, /function countReportDeckChartLabelCollisions/);
   assert.match(runtimeSource, /existing\.text === candidate\.text/);
   assert.match(runtimeSource, /baseLabelY: y - 11/);
+  assert.match(runtimeSource, /function alignReportDeckSameValueLabels/);
+  assert.match(runtimeSource, /function sortReportDeckChartLabelsByValue/);
+  assert.match(runtimeSource, /const offsets = \[0, 16, -16, 26, -26, 36, -36, 46, -46\];/);
+  assert.match(runtimeSource, /sortReportDeckChartLabelsByValue\(labelItems\)\.forEach/);
+  assert.match(runtimeSource, /placedByInputOrder\.set\(index, chosen\);/);
+  assert.match(runtimeSource, /value,\s*baseLabelY: y - 11/);
+  assert.match(runtimeSource, /function renderReportDeckChartDualColorValueLabel/);
+  assert.match(runtimeSource, /report-auto-chart-label-dual-outline/);
+  assert.match(runtimeSource, /stroke-width="2\.6"/);
+  assert.match(runtimeSource, /const labels = renderReportDeckChartValueLabels\(placedLabels\);/);
   assert.match(runtimeSource, /\$\{markers\}\s+\$\{labels\}\s+\$\{hitTargets\.join\(''\)\}/);
   assert.doesNotMatch(runtimeSource, /function buildReportDeckChartHighlightMarkerSvg/);
   assert.doesNotMatch(runtimeSource, /function buildReportDeckChartHighlightRingSvg/);
@@ -815,6 +1023,8 @@ test('report deck auto chart labels render above markers and avoid only differen
   assert.match(runtimeSource, /function clearReportDeckChartHighlights/);
   assert.match(runtimeSource, /report-chart-highlight-range/);
   assert.match(runtimeSource, /is-range-start/);
+  assert.match(runtimeSource, /if \(normalizedDelta === 0\) return escapeReportDeckHtml\('\\uB3D9\\uC77C'\);/);
+  assert.match(runtimeSource, /if \(total <= 6\) return \[3, total - 3\];\s*return \[4, total - 4\];/);
   assert.match(runtimeSource, /buildReportDeckProductionYieldAnalysis/);
   assert.match(runtimeSource, /const plotLeft = 34;/);
   assert.match(runtimeSource, /const plotBottom = 52;/);
@@ -911,6 +1121,117 @@ test('report deck memo dialogs defer heavy work and cache repeated candidate res
   assert.match(adapterSource, /'electricRows'/);
   assert.match(adapterSource, /'lineValueMaps'/);
   assert.match(adapterSource, /'wasteRows'/);
+});
+
+test('report deck memo dialog edits existing lines and appends manual entries', async () => {
+  const fetchCalls = [];
+  const deckDom = createReportDeckContainer();
+  const { registered } = createContext({
+    fetchImpl: async (url, options = {}) => {
+      fetchCalls.push({ url, options });
+      if (url === '/api/shared-store') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            store: createReportDeckSharedStore(),
+          }),
+        };
+      }
+      if (options.method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            record: {
+              payload: {
+                reportDate: '2025.12.15',
+                slide3GasMemo: 'Existing memo',
+              },
+              version: 1,
+              updated_at: '2026-05-15T00:00:00.000Z',
+            },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          record: {
+            payload: JSON.parse(options.body).payload,
+            version: 2,
+            updated_at: '2026-05-15T00:01:00.000Z',
+          },
+        }),
+      };
+    },
+  });
+
+  registered.initializers.get('report')({
+    category: { content: '' },
+    container: deckDom.container,
+  });
+  await flushMicrotasks();
+
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+  deckDom.listeners.click({
+    target: deckDom.memoTargets[0],
+    preventDefault() {},
+  });
+
+  assert.equal(deckDom.memoDialog.hidden, false);
+  assert.match(deckDom.memoLines.innerHTML, /data-report-memo-line-input="0"/);
+
+  deckDom.memoLineInput.value = '';
+  deckDom.listeners.input({ target: deckDom.memoLineInput });
+  deckDom.memoLineInput.value = 'Edited memo';
+  deckDom.listeners.input({ target: deckDom.memoLineInput });
+  assert.match(deckDom.memoContents[0].innerHTML, /Edited memo/);
+
+  deckDom.memoManualInput.value = 'Manual memo\nSecond manual memo';
+  deckDom.listeners.click({
+    target: deckDom.memoManualAddButton,
+    preventDefault() {},
+  });
+
+  assert.equal(deckDom.memoManualInput.value, '');
+  assert.match(deckDom.memoLines.innerHTML, /Manual memo/);
+  assert.match(deckDom.memoLines.innerHTML, /Second manual memo/);
+  assert.match(deckDom.memoLines.innerHTML, /<textarea[^>]+data-report-memo-line-input="1"[^>]*>Manual memo<\/textarea>/);
+
+  deckDom.memoManualLineInput.value = 'Manual memo revised';
+  deckDom.listeners.input({ target: deckDom.memoManualLineInput });
+  assert.match(deckDom.memoContents[0].innerHTML, /Manual memo revised/);
+
+  deckDom.listeners.keydown({
+    key: 's',
+    code: 'KeyS',
+    ctrlKey: true,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+  await flushMicrotasks();
+
+  const saveCall = fetchCalls.filter(call => call.options?.method === 'PUT').at(-1);
+  assert.ok(saveCall, 'report memo save request was not sent');
+  const savedPayload = JSON.parse(saveCall.options.body).payload;
+  assert.equal(savedPayload.slide3GasMemo, 'Edited memo\nManual memo revised\nSecond manual memo');
+  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-table-row'), '27.1%');
+  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-chart-row'), '58.7%');
+  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-memo-row'), '10.3%');
+  assert.equal(deckDom.analysisColumns[5].style.getPropertyValue('--report-analysis-memo-row'), '10.3%');
+  assert.equal(deckDom.wasteLayouts[0].style.getPropertyValue('--report-waste-main-row'), '83.5%');
+  assert.equal(deckDom.wasteLayouts[1].style.getPropertyValue('--report-waste-memo-row'), '6.5%');
 });
 
 test('util runtime browser adapter builds production team 1 start chart model from daily entries', async () => {
@@ -1218,6 +1539,10 @@ test('util runtime browser adapter builds bukjeong report analysis model from sh
   assert.equal(model.gas.rows.usage.previous, 8);
   assert.equal(model.gas.rows.usage.monthDelta, 1);
   assert.equal(model.gas.rows.usage.monthRate, 1 / 8);
+  assert.equal(model.gas.rows.unit.reference, 10 / 100);
+  assert.equal(model.gas.rows.unit.current, 9 / 80);
+  assert.equal(model.gas.rows.unit.previous, 8 / 75);
+  assert.equal(model.gas.rows.unit.delta, (9 / 80) - (10 / 100));
   assert.equal(model.gas.rows.cost.reference, 950);
   assert.equal(model.gas.rows.cost.current, 850);
   assert.equal(model.gas.rows.cost.delta, -100);
@@ -1228,6 +1553,8 @@ test('util runtime browser adapter builds bukjeong report analysis model from sh
   assert.equal(model.electric.rows.usage.previous, 15);
   assert.equal(model.electric.rows.usage.monthDelta, 1);
   assert.equal(model.electric.rows.usage.monthRate, 1 / 15);
+  assert.equal(model.electric.rows.unit.current, 16 / 80);
+  assert.equal(model.electric.rows.unit.previous, 15 / 75);
   assert.equal(model.electric.rows.cost.current, 90);
   assert.equal(model.gas.chart.series[2].points[3].value, 9 / 80);
   assert.equal(model.gas.chart.series[2].points[4].value, null);
@@ -1529,6 +1856,10 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
   assert.equal(model.rows.usage.previous, 60);
   assert.equal(model.rows.usage.monthDelta, 4);
   assert.equal(model.rows.usage.monthRate, 4 / 60);
+  assert.equal(model.rows.unit.reference, 70 / 1000);
+  assert.equal(model.rows.unit.current, 64 / 800);
+  assert.equal(model.rows.unit.previous, 60 / 780);
+  assert.equal(model.rows.unit.monthDelta, (64 / 800) - (60 / 780));
   assert.equal(model.rows.amount.reference, 9300);
   assert.equal(model.rows.amount.current, 8600);
   assert.equal(model.rows.amount.delta, -700);
@@ -1652,8 +1983,11 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(JSON.stringify(production.availableMetricKeys), JSON.stringify([
     'production',
     'electric',
+    'electric_unit',
     'lng',
+    'lng_unit',
     'lpg',
+    'lpg_unit',
     'yield_rate',
     'operation_rate',
     'production_days',
@@ -1675,12 +2009,33 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(electric.candidates[0].direction, 'mixed');
   assert.match(electric.candidates[0].text, /전력량 100kWh 전월대비 10kWh, 11\.1% ↑, 전년대비 20kWh, 16\.7% ↓/);
 
+  const electricUnit = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'electric_unit',
+  });
+  assert.equal(electricUnit.candidates[0].direction, 'down');
+  assert.match(electricUnit.candidates[0].text, /생산량 대비 전력량 0\.100kWh\/kg 전월대비 0\.013kWh\/kg, 11\.1% ↓, 전년대비 0\.009kWh\/kg, 8\.3% ↓/);
+
+  const lngUnit = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'lng_unit',
+  });
+  assert.equal(lngUnit.candidates[0].direction, 'mixed');
+  assert.match(lngUnit.candidates[0].text, /생산량 대비 LNG 0\.070m³\/kg 전월대비 0\.011m³\/kg, 13\.8% ↓, 전년대비 0\.002m³\/kg, 2\.7% ↑/);
+
   const lpg = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'lpg',
   });
   assert.equal(lpg.candidates[0].direction, 'mixed');
   assert.match(lpg.candidates[0].text, /LPG 사용량 50kg 전월대비 10kg, 16\.7% ↓, 전년대비 10kg, 25\.0% ↑/);
+
+  const lpgUnit = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'lpg_unit',
+  });
+  assert.equal(lpgUnit.candidates[0].direction, 'mixed');
+  assert.match(lpgUnit.candidates[0].text, /생산량 대비 LPG 0\.050kg\/kg 전월대비 0\.025kg\/kg, 33\.3% ↓, 전년대비 0\.014kg\/kg, 37\.5% ↑/);
 
   const otherTeamLpg = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_02',
@@ -1690,6 +2045,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(JSON.stringify(otherTeamLpg.availableMetricKeys), JSON.stringify([
     'production',
     'electric',
+    'electric_unit',
     'yield_rate',
     'operation_rate',
     'production_days',
@@ -1709,6 +2065,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(JSON.stringify(otherTeamLng.availableMetricKeys), JSON.stringify([
     'production',
     'electric',
+    'electric_unit',
     'yield_rate',
     'operation_rate',
     'production_days',
@@ -1728,7 +2085,9 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(JSON.stringify(lineProduction.availableMetricKeys), JSON.stringify([
     'production',
     'electric',
+    'electric_unit',
     'lng',
+    'lng_unit',
     'yield_rate',
     'operation_rate',
     'production_days',
@@ -1868,13 +2227,20 @@ test('util runtime browser adapter builds report memo candidates for production 
     teamKey: 'team_01_02',
     metricKey: 'product_count',
   });
-  assert.match(productCountResult.candidates[0].text, /1팀 2파트 고유 품목수 2개 전월대비 1개, 100\.0% ↑, 전년대비 0개, 0\.0% -/);
+  assert.match(productCountResult.candidates[0].text, /1팀 2파트 고유 품목수 2개 전월대비 1개, 100\.0% ↑, 전년대비 동일/);
+
+  const productionDaysResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'production_days',
+  });
+  assert.equal(productionDaysResult.candidates[0].segments[1].direction, 'flat');
+  assert.match(productionDaysResult.candidates[0].text, /1팀 2파트 생산일수 2일 전월대비 1일, 100\.0% ↑, 전년대비 동일/);
 
   const offDaysResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'off_days',
   });
-  assert.match(offDaysResult.candidates[0].text, /1팀 2파트 휴무일수 1일 전월대비 1일, 50\.0% ↓, 전년대비 0일, 0\.0% -/);
+  assert.match(offDaysResult.candidates[0].text, /1팀 2파트 휴무일수 1일 전월대비 1일, 50\.0% ↓, 전년대비 동일/);
 });
 
 test('util runtime browser adapter limits waste memo candidates to waste slides', async () => {
@@ -2012,6 +2378,10 @@ test('util runtime browser adapter builds waste report analysis model from sheet
   assert.equal(model.rows.usage.previous, 15);
   assert.equal(model.rows.usage.monthDelta, 1);
   assert.equal(model.rows.usage.monthRate, 1 / 15);
+  assert.equal(model.rows.unit.reference, 20 / 1);
+  assert.equal(model.rows.unit.current, 16 / 0.8);
+  assert.equal(model.rows.unit.previous, 15 / 0.76);
+  assert.equal(model.rows.unit.monthDelta, (16 / 0.8) - (15 / 0.76));
   assert.equal(model.rows.water.delta, -10);
   assert.equal(model.rows.water.previous, 85);
   assert.equal(model.rows.water.monthDelta, 5);
@@ -2111,7 +2481,8 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.monthSelect.value, '2025-12');
   assert.equal(deckDom.monthSelect.disabled, false);
   assert.match(deckDom.monthSelect.innerHTML, /2025-12/);
-  assert.doesNotMatch(deckDom.monthSelect.innerHTML, /2026-01/);
+  assert.match(deckDom.monthSelect.innerHTML, /2026-01/);
+  assert.equal(deckDom.monthSelect.innerHTML.includes(getCurrentReportMonthKey()), true);
   assert.equal(fetchCalls[0].url, '/api/shared-store');
   assert.equal(fetchCalls[1].url, '/api/modules/report_runtime/records/report_2025_12');
   assert.equal(deckDom.root.dataset.reportEditMode, 'view');
@@ -2157,6 +2528,8 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(dateField.contenteditable, 'false');
   assert.equal(deckDom.dateInput.disabled, true);
   assert.equal(deckDom.planImageInputs[0].disabled, true);
+  assert.equal(deckDom.planImageInputs[1].disabled, true);
+  assert.equal(deckDom.planImagePlaceholders.slide8BeforeImage2.textContent, '');
   deckDom.listeners.click({
     target: deckDom.editButton,
     preventDefault() {},
@@ -2175,6 +2548,8 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(dateField.contenteditable, 'false');
   assert.equal(deckDom.dateInput.disabled, true);
   assert.equal(deckDom.planImageInputs[0].disabled, true);
+  assert.equal(deckDom.planImageInputs[1].disabled, true);
+  assert.equal(deckDom.planImagePlaceholders.slide8BeforeImage2.textContent, '');
   assert.equal(deckDom.editButton.textContent, '수정');
 
   titleField.textContent = '수정된 공유 보고서';
@@ -2196,7 +2571,7 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(team1ContentsItem1Field.contenteditable, 'true');
   assert.equal(dateField.contenteditable, 'false');
   assert.equal(deckDom.dateInput.disabled, false);
-  assert.equal(deckDom.planImageInputs[0].disabled, false);
+  assert.equal(deckDom.planImageInputs[0].disabled, true);
   assert.equal(deckDom.editButton.textContent, '완료');
 
   titleField.textContent = '수정된 공유 보고서';
@@ -2421,6 +2796,142 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.slides[1].classList.active, true);
 });
 
+test('report deck overview blank amount renders self handled text', async () => {
+  const fetchCalls = [];
+  const deckDom = createReportDeckContainer();
+  const { registered } = createContext({
+    fetchImpl: async (url, options = {}) => {
+      fetchCalls.push({ url, options });
+      if (url === '/api/shared-store') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            store: createReportDeckSharedStore(),
+          }),
+        };
+      }
+      if (options.method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            record: {
+              payload: {
+                reportDate: '2026.05.15',
+              },
+              version: 1,
+              updated_at: '2026-05-15T00:00:00.000Z',
+            },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          record: {
+            payload: JSON.parse(options.body).payload,
+            version: 2,
+            updated_at: '2026-05-15T00:01:00.000Z',
+          },
+        }),
+      };
+    },
+  });
+
+  registered.initializers.get('report')({
+    category: { content: '' },
+    container: deckDom.container,
+  });
+  await flushMicrotasks();
+
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+
+  const slide8OverviewField = deckDom.fields.find((field) => field.dataset.reportField === 'slide8Item1Text');
+  deckDom.listeners.click({
+    target: slide8OverviewField,
+    preventDefault() {},
+  });
+  deckDom.overviewDialogFields.team.value = '공무환경팀';
+  deckDom.overviewDialogFields.title.value = '보일러 배관 보수';
+  deckDom.overviewDialogFields.effect.value = '누수 예방';
+  deckDom.overviewDialogFields.date.value = '2026-05-20';
+  deckDom.overviewDialogFields.amount.value = '';
+  deckDom.listeners.click({
+    target: deckDom.overviewSaveButton,
+    preventDefault() {},
+  });
+  await flushMicrotasks();
+
+  assert.equal(slide8OverviewField.textContent, '공무환경팀\n보일러 배관 보수\n▶ 효과 : 누수 예방\n▶ 완료 날짜 : 05.20 完\n▶ 금액 : 자체 처리');
+
+  const slide9SummaryField = {
+    dataset: { reportPlanSummary: 'slide9', reportPlanSourceSlot: '1' },
+    textContent: '',
+    closest(selector) {
+      return selector === '[data-report-plan-summary]' ? this : null;
+    },
+    setAttribute(name, value) {
+      this[name] = value;
+    },
+    blur() {},
+  };
+  deckDom.listeners.click({
+    target: slide9SummaryField,
+    preventDefault() {},
+  });
+  deckDom.listeners.click({
+    target: deckDom.overviewKindButtons[1],
+    preventDefault() {},
+  });
+  deckDom.overviewDialogFields.team.value = '1팀 2파트';
+  deckDom.overviewDialogFields.title.value = '압축공기 라인 개선';
+  deckDom.overviewDialogFields.detail.value = '작업 안정화';
+  deckDom.overviewDialogFields.date.value = '2026-06-01';
+  deckDom.overviewDialogFields.amount.value = '';
+  deckDom.listeners.click({
+    target: deckDom.overviewSaveButton,
+    preventDefault() {},
+  });
+  await flushMicrotasks();
+
+  deckDom.listeners.keydown({
+    key: 's',
+    code: 'KeyS',
+    ctrlKey: true,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+  await flushMicrotasks();
+
+  const savedPayload = JSON.parse(fetchCalls[2].options.body).payload;
+  assert.equal(savedPayload.slide8Item1Amount, '');
+  assert.equal(savedPayload.slide8Item1Text, '공무환경팀\n보일러 배관 보수\n▶ 효과 : 누수 예방\n▶ 완료 날짜 : 05.20 完\n▶ 금액 : 자체 처리');
+  assert.equal(savedPayload.slide9Item1Amount, '');
+  assert.equal(savedPayload.slide9Item1Text, '1팀 2파트\n압축공기 라인 개선\n▶ 목적 : 작업 안정화\n▶ 예상 날짜 : 26.06월 중\n▶ 예상 금액 : 자체 처리');
+
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+  deckDom.listeners.click({
+    target: deckDom.planAddSlotButtons[0],
+    preventDefault() {},
+  });
+  assert.equal(deckDom.overviewDialog.hidden, false);
+  assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlot, '2');
+});
+
 test('report deck editor externalizes inline image data before saving records', async () => {
   const fetchCalls = [];
   const deckDom = createReportDeckContainer();
@@ -2517,6 +3028,239 @@ test('report deck editor externalizes inline image data before saving records', 
   assert.equal(savedBody.payload.slide8BeforeImage1, '/api/files/doc-inline-image-1/view');
   assert.equal(deckDom.planImages[0].src, '/api/files/doc-inline-image-1/view');
   assert.equal(deckDom.status.textContent, '저장 완료');
+});
+
+test('report deck editor accepts clipboard image paste into plan image slots', async () => {
+  const fetchCalls = [];
+  const deckDom = createReportDeckContainer();
+  const { context, registered } = createContext({
+    fetchImpl: async (url, options = {}) => {
+      fetchCalls.push({ url, options });
+      if (url === '/api/shared-store') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            store: createReportDeckSharedStore(),
+          }),
+        };
+      }
+      if (url === '/api/files/base64') {
+        return {
+          ok: true,
+          status: 201,
+          json: async () => ({
+            ok: true,
+            document: { id: 'doc-paste-image-1' },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          record: {
+            payload: {
+              title: 'Clipboard image report',
+              reportDate: '2025.12.15',
+            },
+            version: 1,
+            updated_at: '2026-05-15T00:00:00.000Z',
+          },
+        }),
+      };
+    },
+  });
+  context.FileReader = class {
+    readAsDataURL(file) {
+      this.result = `data:${file?.type || 'image/png'};base64,UEFTVEU=`;
+      this.onload?.();
+    }
+  };
+
+  registered.initializers.get('report')({
+    category: { content: '' },
+    container: deckDom.container,
+  });
+  await flushMicrotasks();
+
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.root.dataset.reportEditMode, 'editing');
+  assert.equal(deckDom.planImageInputs[0].disabled, false);
+  assert.equal(deckDom.planImageUploadButtons[0].disabled, false);
+  assert.equal(deckDom.planImagePasteButtons[0].disabled, false);
+  assert.equal(deckDom.planImagePlaceholders.slide8BeforeImage1.textContent, '이미지 첨부 또는 붙여넣기');
+
+  let clickPrevented = false;
+  deckDom.listeners.click({
+    target: deckDom.planImages[0],
+    preventDefault() {
+      clickPrevented = true;
+    },
+  });
+  assert.equal(clickPrevented, true);
+  assert.equal(deckDom.planImageInputs[0].clickCount, 0);
+  assert.equal(deckDom.planImageFrames.slide8BeforeImage1.focusCount, 1);
+  assert.equal(deckDom.planImageFrames.slide8BeforeImage1.dataset.reportPlanPasteTarget, 'true');
+
+  let pasteButtonPrevented = false;
+  deckDom.listeners.click({
+    target: deckDom.planImagePasteButtons[0],
+    preventDefault() {
+      pasteButtonPrevented = true;
+    },
+  });
+  assert.equal(pasteButtonPrevented, true);
+  assert.equal(deckDom.planImageFrames.slide8BeforeImage1.focusCount, 2);
+  assert.equal(deckDom.status.textContent, '붙여넣을 이미지 칸 선택됨');
+
+  let pastePrevented = false;
+  deckDom.listeners.paste({
+    target: deckDom.planImages[0],
+    clipboardData: {
+      items: [{
+        type: 'image/png',
+        getAsFile() {
+          return { name: 'clipboard.png', type: 'image/png' };
+        },
+      }],
+      files: [],
+    },
+    preventDefault() {
+      pastePrevented = true;
+    },
+  });
+  await flushMicrotasks();
+  await flushMicrotasks();
+
+  assert.equal(pastePrevented, true);
+  const uploadCall = fetchCalls.find((call) => call.url === '/api/files/base64');
+  assert.ok(uploadCall, 'clipboard image upload was not called');
+  const uploadBody = JSON.parse(uploadCall.options.body);
+  assert.equal(uploadBody.ownerDomain, 'report.runtime');
+  assert.equal(uploadBody.ownerKey, 'report_2025_12');
+  assert.equal(uploadBody.originalName, 'clipboard.png');
+  assert.equal(uploadBody.mimeType, 'image/png');
+  assert.equal(uploadBody.base64Data, 'UEFTVEU=');
+  assert.equal(uploadBody.metadata.fieldKey, 'slide8BeforeImage1');
+  assert.equal(deckDom.planImages[0].src, '/api/files/doc-paste-image-1/view');
+  assert.equal(deckDom.planImageFrames.slide8BeforeImage1.dataset.hasImage, 'true');
+  assert.equal(deckDom.planImageInputs[0].disabled, true);
+  assert.equal(deckDom.planImageUploadButtons[0].disabled, true);
+  assert.equal(deckDom.planImagePasteButtons[0].disabled, true);
+
+  deckDom.listeners.keydown({
+    key: 's',
+    code: 'KeyS',
+    ctrlKey: true,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+  await flushMicrotasks();
+  assert.equal(deckDom.root.dataset.reportEditMode, 'view');
+
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.root.dataset.reportEditMode, 'editing');
+  assert.equal(deckDom.planImageInputs[0].disabled, true);
+  assert.equal(deckDom.planImageUploadButtons[0].disabled, true);
+  assert.equal(deckDom.planImagePasteButtons[0].disabled, true);
+
+  let disabledPasteButtonPrevented = false;
+  deckDom.listeners.click({
+    target: deckDom.planImagePasteButtons[0],
+    preventDefault() {
+      disabledPasteButtonPrevented = true;
+    },
+  });
+  assert.equal(disabledPasteButtonPrevented, true);
+  assert.equal(deckDom.root.dataset.reportEditMode, 'editing');
+  assert.equal(deckDom.planImageInputs[0].disabled, true);
+  assert.equal(deckDom.planImageInputs[0].clickCount, 0);
+  assert.equal(deckDom.planImageFrames.slide8BeforeImage1.focusCount, 3);
+
+  let uploadClickPrevented = false;
+  deckDom.listeners.click({
+    target: deckDom.planImages[0],
+    preventDefault() {
+      uploadClickPrevented = true;
+    },
+  });
+  assert.equal(uploadClickPrevented, true);
+  assert.equal(deckDom.planImageInputs[0].clickCount, 0);
+  assert.equal(deckDom.planImageFrames.slide8BeforeImage1.focusCount, 3);
+
+  let replacePastePrevented = false;
+  deckDom.listeners.paste({
+    target: deckDom.planImages[0],
+    clipboardData: {
+      items: [{
+        type: 'image/png',
+        getAsFile() {
+          return { name: 'replacement.png', type: 'image/png' };
+        },
+      }],
+      files: [],
+    },
+    preventDefault() {
+      replacePastePrevented = true;
+    },
+  });
+  await flushMicrotasks();
+  await flushMicrotasks();
+  assert.equal(replacePastePrevented, true);
+  assert.equal(fetchCalls.filter((call) => call.url === '/api/files/base64').length, 1);
+  assert.equal(deckDom.planImages[0].src, '/api/files/doc-paste-image-1/view');
+
+  let clearPrevented = false;
+  deckDom.listeners.click({
+    target: deckDom.planImageClearButtons[0],
+    preventDefault() {
+      clearPrevented = true;
+    },
+  });
+  assert.equal(clearPrevented, true);
+  assert.equal(deckDom.planImageFrames.slide8BeforeImage1.dataset.hasImage, 'false');
+  assert.equal(deckDom.planImageInputs[0].disabled, false);
+  assert.equal(deckDom.planImageUploadButtons[0].disabled, false);
+  assert.equal(deckDom.planImagePasteButtons[0].disabled, false);
+  assert.equal(deckDom.status.textContent, '저장 필요');
+
+  let attachClickPrevented = false;
+  deckDom.listeners.click({
+    target: deckDom.planImageUploadButtons[0],
+    preventDefault() {
+      attachClickPrevented = true;
+    },
+  });
+  assert.equal(attachClickPrevented, false);
+  assert.equal(deckDom.planImageInputs[0].clickCount, 0);
+
+  deckDom.planImageInputs[0].files = [{ name: 'manual-upload.png', type: 'image/png' }];
+  deckDom.listeners.change({
+    target: deckDom.planImageInputs[0],
+  });
+  await flushMicrotasks();
+  await flushMicrotasks();
+
+  const uploadCalls = fetchCalls.filter((call) => call.url === '/api/files/base64');
+  assert.equal(uploadCalls.length, 2);
+  const finalUploadBody = JSON.parse(uploadCalls.at(-1).options.body);
+  assert.equal(finalUploadBody.originalName, 'manual-upload.png');
+  assert.equal(deckDom.planImageInputs[0].disabled, true);
+  assert.equal(deckDom.planImageUploadButtons[0].disabled, true);
+  assert.equal(deckDom.planImagePasteButtons[0].disabled, true);
+  assert.equal(deckDom.status.textContent, '저장 필요');
 });
 
 test('report deck editor sorts slide8 overview columns by team order', async () => {

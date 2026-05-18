@@ -48,6 +48,24 @@ function createProductionImportContext() {
             sourceFileName: 'old.xlsx',
             sourceFingerprint: 'old-fingerprint',
           },
+          {
+            date: '2026-05-01',
+            team: '기존팀',
+            lineName: 'OLD SAME DATE',
+            productName: 'OLD SAME DATE',
+            amount: 999,
+            sourceFileName: 'old-same-date.xlsx',
+            sourceFingerprint: 'old-same-date-fingerprint',
+          },
+          {
+            date: '2026-05-01',
+            team: '1? 1?뚰듃',
+            lineName: 'OLD SAME TEAM',
+            productName: 'OLD SAME TEAM',
+            amount: '',
+            sourceFileName: 'old-same-team.xlsx',
+            sourceFingerprint: 'old-same-team-fingerprint',
+          },
         ],
       },
     ],
@@ -146,8 +164,24 @@ test('production import source routes browser globals through the data-sync adap
   assert.match(productionImportSource, /writePortalRecord\?\.\('util_production_daily'/);
 });
 
-test('production import merge keeps existing rows and archive metadata while deduping incoming rows', () => {
+test('production import merge replaces existing same-date and team rows while deduping incoming rows', () => {
   const context = createProductionImportContext();
+  const targetTeam = '1? 1?뚰듃';
+  const replacementTeam = context.UTIL_ELECTRIC_DATA[0].name || targetTeam;
+  context.__testExports.getTeams().push({
+    name: replacementTeam,
+    entries: [
+      {
+        date: '2026-05-01',
+        team: replacementTeam,
+        lineName: 'OLD SAME TEAM',
+        productName: 'OLD SAME TEAM',
+        amount: 111,
+        sourceFileName: 'old-same-team.xlsx',
+        sourceFingerprint: 'old-same-team-fingerprint',
+      },
+    ],
+  });
 
   const result = context.__testExports.mergeUtilProductionExtractorRows([
     {
@@ -164,6 +198,8 @@ test('production import merge keeps existing rows and archive metadata while ded
       productName: '제품A',
       amount: 50,
       moistureExcludedYield: 98,
+      workTime: 6,
+      operationTime: 4.5,
     },
     {
       date: '2026-05-02',
@@ -183,24 +219,34 @@ test('production import merge keeps existing rows and archive metadata while ded
 
   const teams = JSON.parse(JSON.stringify(context.__testExports.getTeams()));
 
-  assert.equal(result.addedCount, 3);
+  assert.equal(result.addedCount, 4);
   assert.equal(result.skippedCount, 0);
-  assert.equal(result.patchedCount, 1);
+  assert.equal(result.patchedCount, 0);
+  assert.equal(result.replacedCount, 1);
   assert.deepEqual(result.addedTeams, ['1팀 1파트', '2팀']);
   assert.deepEqual(
     teams.map((team) => team.name),
     ['기존팀', '1팀 1파트', '2팀']
   );
-  assert.equal(teams[0].entries.length, 1);
+  const serializedTeams = JSON.stringify(teams);
+  assert.equal(teams[0].entries.length, 2);
   assert.equal(teams[0].entries[0].amount, 10);
   assert.equal(teams[0].entries[0].sourceFileName, 'old.xlsx');
-  assert.equal(teams[1].entries.length, 2);
+  assert.equal(teams[0].entries[1].amount, 999);
+  assert.equal(teams[0].entries[1].sourceFileName, 'old-same-date.xlsx');
+  assert.equal(serializedTeams.includes('old-same-date.xlsx'), true);
+  assert.equal(serializedTeams.includes('old-same-team.xlsx'), false);
+  assert.equal(teams[1].entries.length, 3);
   assert.equal(teams[1].entries[0].amount, 50);
   assert.equal(teams[1].entries[0].lineName, 'MSD');
-  assert.equal(teams[1].entries[0].moistureExcludedYield, 98);
   assert.equal(teams[1].entries[0].sourceFileName, '');
-  assert.equal(teams[1].entries[1].amount, 70);
+  assert.equal(teams[1].entries[1].amount, 50);
   assert.equal(teams[1].entries[1].lineName, 'MSD');
+  assert.equal(teams[1].entries[1].moistureExcludedYield, 98);
+  assert.equal(teams[1].entries[1].workTime, 6);
+  assert.equal(teams[1].entries[1].operationTime, 4.5);
+  assert.equal(teams[1].entries[2].amount, 70);
+  assert.equal(teams[1].entries[2].lineName, 'MSD');
   assert.equal(teams[2].entries.length, 1);
   assert.equal(teams[2].entries[0].amount, 60);
   assert.equal(context.__testExports.getArchives().length, 1);

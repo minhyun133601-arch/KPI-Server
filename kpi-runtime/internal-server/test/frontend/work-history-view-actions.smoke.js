@@ -270,6 +270,60 @@ test('work history page buttons dispatch to numbered pagination state', () => {
   assert.deepEqual(calls, [{ prefix: 'team1part1', page: 2 }]);
 });
 
+test('work history record modal ignores backdrop clicks while editing', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  const recordModal = {
+    id: 'recordModal',
+    classList: createClassList(['modal', 'show']),
+    closest() {
+      return null;
+    },
+  };
+  context.__elements.set('recordModal', recordModal);
+
+  let defaultPrevented = false;
+  view.handleRootClick({
+    target: recordModal,
+    preventDefault() {
+      defaultPrevented = true;
+    },
+  });
+
+  assert.equal(defaultPrevented, true);
+  assert.equal(recordModal.classList.contains('show'), true);
+});
+
+test('work history Ctrl+S saves the open record modal', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  let saveOptions = null;
+  view.isRecordModalOpen = () => true;
+  view.saveRecord = (options) => {
+    saveOptions = options;
+    return true;
+  };
+
+  let defaultPrevented = false;
+  let propagationStopped = false;
+  view.handleRootKeydown({
+    key: 's',
+    ctrlKey: true,
+    metaKey: false,
+    target: createFormElement(''),
+    preventDefault() {
+      defaultPrevented = true;
+    },
+    stopPropagation() {
+      propagationStopped = true;
+    },
+  });
+
+  assert.equal(defaultPrevented, true);
+  assert.equal(propagationStopped, true);
+  assert.equal(saveOptions?.invokedByShortcut, true);
+});
+
 test('work history overlay close confirms when the record form has unsaved edits', () => {
   const context = createContext();
   const view = context.KpiWorkHistory.view;

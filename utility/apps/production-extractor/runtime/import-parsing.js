@@ -1,6 +1,14 @@
 "use strict";
 
 (function attachProductionExtractorImportParsing(globalScope) {
+  const SUPPLEMENTAL_DEDUPE_COLS = {
+    moistureExcludedYield: "N",
+    workTime: "J",
+    operationTime: "L",
+    equipmentCapa: "V",
+    equipmentUtilization: "W",
+  };
+
   function normalizeHeader(text) {
     return String(text || "")
       .toLowerCase()
@@ -89,6 +97,8 @@
     if (!cell) return "";
 
     if (cell.v instanceof Date) {
+      const displayDate = parseDateText(cell.w, { referenceYear: cell.v.getUTCFullYear() });
+      if (displayDate) return formatYmd(displayDate);
       const normalizedDate = normalizeExcelJsDate(cell.v);
       if (normalizedDate) return formatYmd(normalizedDate);
       return formatYmd(cell.v);
@@ -102,16 +112,8 @@
     return cell.v;
   }
 
-  function parseDateText(value) {
-    if (value === null || value === undefined) return null;
-    const text = String(value).trim();
-    const match = text.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
-    if (!match) return null;
-
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-
+  function makeCalendarDate(year, month, day) {
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
     const date = new Date(year, month - 1, day);
     if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
       return null;
@@ -120,9 +122,53 @@
     return date;
   }
 
+  function normalizeTextYear(value) {
+    const year = Number(value);
+    if (!Number.isFinite(year)) return null;
+    if (String(value).trim().length === 2) return 2000 + year;
+    return year;
+  }
+
+  function parseDateText(value, options = {}) {
+    if (value === null || value === undefined) return null;
+    const text = String(value).trim();
+    if (!text) return null;
+
+    const yearFirst = text.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+    if (yearFirst) {
+      return makeCalendarDate(Number(yearFirst[1]), Number(yearFirst[2]), Number(yearFirst[3]));
+    }
+
+    const monthDayYear = text.match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b/);
+    if (monthDayYear) {
+      return makeCalendarDate(
+        normalizeTextYear(monthDayYear[3]),
+        Number(monthDayYear[1]),
+        Number(monthDayYear[2]),
+      );
+    }
+
+    const referenceYear = Number(options.referenceYear);
+    if (!Number.isFinite(referenceYear)) return null;
+
+    const koreanMonthDay = text.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일?/);
+    if (koreanMonthDay) {
+      return makeCalendarDate(referenceYear, Number(koreanMonthDay[1]), Number(koreanMonthDay[2]));
+    }
+
+    const monthDay = text.match(/\b(\d{1,2})[./-](\d{1,2})\b/);
+    if (monthDay) {
+      return makeCalendarDate(referenceYear, Number(monthDay[1]), Number(monthDay[2]));
+    }
+
+    return null;
+  }
+
   function parseDate(context, cell, fallbackValue) {
     if (cell) {
       if (cell.v instanceof Date) {
+        const fromDisplay = parseDateText(cell.w, { referenceYear: cell.v.getUTCFullYear() });
+        if (fromDisplay) return fromDisplay;
         const normalizedDate = normalizeExcelJsDate(cell.v);
         if (normalizedDate) return normalizedDate;
         return stripTime(cell.v);
@@ -209,11 +255,37 @@
     return String(value).trim().replace(/\s+/g, " ").toLowerCase();
   }
 
+  function canonicalizeSupplementalMetricForDedup(context, value) {
+    const numeric = context.parseProductionValue?.(value);
+    if (Number.isFinite(numeric)) {
+      const text = String(value ?? "").trim();
+      if (!text.includes("%") && numeric >= 0 && numeric <= 1) return `N:${numeric * 100}`;
+      return `N:${numeric}`;
+    }
+    if (value === null || value === undefined) return "";
+    if (typeof value === "number" && Number.isFinite(value)) return `N:${value}`;
+    return String(value).trim().replace(/\s+/g, " ").toLowerCase();
+  }
+
+  function canonicalizeAmountMetricForDedup(context, value) {
+    const numeric = context.parseProductionValue?.(value);
+    if (Number.isFinite(numeric)) return `N:${numeric}`;
+    if (value === null || value === undefined) return "";
+    if (typeof value === "number" && Number.isFinite(value)) return `N:${value}`;
+    return String(value).trim().replace(/\s+/g, " ").toLowerCase();
+  }
+
   function buildRowDedupKey(context, row) {
     const values = Array.isArray(row?.values) ? row.values : [];
-    return values
-      .map((value, index) => canonicalizeValueForDedup(context, value, index))
-      .join("||");
+    const baseKey = values.map((value, index) => canonicalizeValueForDedup(context, value, index));
+    baseKey.push(
+      canonicalizeSupplementalMetricForDedup(context, row?.moistureExcludedYield),
+      canonicalizeAmountMetricForDedup(context, row?.workTime),
+      canonicalizeAmountMetricForDedup(context, row?.operationTime),
+      canonicalizeSupplementalMetricForDedup(context, row?.equipmentCapa),
+      canonicalizeSupplementalMetricForDedup(context, row?.equipmentUtilization),
+    );
+    return baseKey.join("||");
   }
 
   function deduplicateRows(context, rows) {
@@ -292,6 +364,31 @@
       for (let rowNumber = context.DATA_START_ROW; rowNumber <= lastRow; rowNumber += 1) {
         const values = context.TARGET_COLS.map((col) => getCellDisplayValue(context, worksheet, `${col}${rowNumber}`));
         if (!hasData(values)) continue;
+        const moistureExcludedYield = getCellDisplayValue(
+          context,
+          worksheet,
+          `${SUPPLEMENTAL_DEDUPE_COLS.moistureExcludedYield}${rowNumber}`,
+        );
+        const workTime = getCellDisplayValue(
+          context,
+          worksheet,
+          `${SUPPLEMENTAL_DEDUPE_COLS.workTime}${rowNumber}`,
+        );
+        const operationTime = getCellDisplayValue(
+          context,
+          worksheet,
+          `${SUPPLEMENTAL_DEDUPE_COLS.operationTime}${rowNumber}`,
+        );
+        const equipmentCapa = getCellDisplayValue(
+          context,
+          worksheet,
+          `${SUPPLEMENTAL_DEDUPE_COLS.equipmentCapa}${rowNumber}`,
+        );
+        const equipmentUtilization = getCellDisplayValue(
+          context,
+          worksheet,
+          `${SUPPLEMENTAL_DEDUPE_COLS.equipmentUtilization}${rowNumber}`,
+        );
 
         const dateCell = worksheet[`A${rowNumber}`];
         const parsedDate = parseDate(context, dateCell, values[0]);
@@ -317,6 +414,11 @@
           sheetName,
           rowNumber,
           values,
+          moistureExcludedYield,
+          workTime,
+          operationTime,
+          equipmentCapa,
+          equipmentUtilization,
           dateObj,
           teamKey: values[context.TEAM_VALUE_INDEX],
           lineKey: values[context.LINE_VALUE_INDEX],

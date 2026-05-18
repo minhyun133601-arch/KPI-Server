@@ -165,21 +165,9 @@ function formatEquipmentUsage(equipmentId) {
 }
 
 function calculateEquipmentBaseChargeAllocation(equipmentId, monthValue = state.currentMonth) {
-  const equipment = getEquipmentItem(equipmentId);
-  if (!isEquipmentUsageShareTarget(equipment)) {
-    return null;
-  }
-
-  const usage = calculateDisplayedEquipmentMonthlyUsage(equipmentId).value;
-  const totalPowerUsage = calculateTotalPowerMonthlyUsageWindow(monthValue).value;
-  const baseCharge = getBillingSettlementBaseCharge(monthValue);
-  const usageShare = calculateUsageShare(usage, totalPowerUsage);
-
-  if (!Number.isFinite(baseCharge) || !Number.isFinite(usageShare)) {
-    return null;
-  }
-
-  return baseCharge * usageShare;
+  void equipmentId;
+  void monthValue;
+  return null;
 }
 
 function calculateEquipmentVariableCharge(equipmentId, monthValue = state.currentMonth) {
@@ -204,22 +192,7 @@ function calculateEquipmentUsageCharge(equipmentId, monthValue = state.currentMo
   }
 
   const variableCharge = calculateEquipmentVariableCharge(equipmentId, monthValue);
-  const baseChargeAllocation = calculateEquipmentBaseChargeAllocation(equipmentId, monthValue);
-
-  let totalCharge = 0;
-  let hasChargeComponent = false;
-
-  if (Number.isFinite(variableCharge)) {
-    totalCharge += variableCharge;
-    hasChargeComponent = true;
-  }
-
-  if (Number.isFinite(baseChargeAllocation)) {
-    totalCharge += baseChargeAllocation;
-    hasChargeComponent = true;
-  }
-
-  return hasChargeComponent ? totalCharge : null;
+  return Number.isFinite(variableCharge) ? variableCharge : null;
 }
 
 function formatSettlementAmount(value) {
@@ -246,10 +219,6 @@ function getEquipmentUsageChargeDetailText(equipmentId, monthValue = state.curre
 
   const usage = calculateDisplayedEquipmentMonthlyUsage(equipmentId).value;
   const unitPrice = getBillingSettlementUnitPrice(monthValue);
-  const baseCharge = getBillingSettlementBaseCharge(monthValue);
-  const totalPowerUsage = calculateTotalPowerMonthlyUsageWindow(monthValue).value;
-  const usageShare = calculateUsageShare(usage, totalPowerUsage);
-  const baseChargeAllocation = calculateEquipmentBaseChargeAllocation(equipmentId, monthValue);
   const variableCharge = calculateEquipmentVariableCharge(equipmentId, monthValue);
   const charge = calculateEquipmentUsageCharge(equipmentId, monthValue);
 
@@ -263,18 +232,6 @@ function getEquipmentUsageChargeDetailText(equipmentId, monthValue = state.curre
     parts.push(
       `사용량요금 ${formatWholeNumber(usage)} x 단가 ${formatNumber(unitPrice)} = ${formatSettlementAmount(
         variableCharge
-      )}`
-    );
-  }
-
-  if (
-    Number.isFinite(baseCharge) &&
-    Number.isFinite(usageShare) &&
-    Number.isFinite(baseChargeAllocation)
-  ) {
-    parts.push(
-      `기본요금 배분 ${formatUsageShare(usageShare)} x ${formatSettlementAmount(baseCharge)} = ${formatSettlementAmount(
-        baseChargeAllocation
       )}`
     );
   }

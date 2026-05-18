@@ -29,17 +29,17 @@ test('ops console can manage existing non-owner accounts without bulk promotion'
     readRepoFile('kpi-runtime', 'internal-server', 'src', 'scripts', 'manageUserAccount.js')
   ]);
 
-  assert.match(commandRegistrySource, /key: 'account\.manageUser'/);
-  assert.match(commandRegistrySource, /optionsSource: 'managedUsers'/);
-  assert.match(commandRegistrySource, /value: 'viewer'[\s\S]*value: 'admin'[\s\S]*value: 'delete'/);
-  assert.doesNotMatch(commandRegistrySource, /key: 'account\.deleteUser'/);
+  assert.match(commandRegistrySource, /key: ["']account\.manageUser["']/);
+  assert.match(commandRegistrySource, /optionsSource: ["']managedUsers["']/);
+  assert.match(commandRegistrySource, /value: ["']viewer["'][\s\S]*value: ["']admin["'][\s\S]*value: ["']delete["']/);
+  assert.doesNotMatch(commandRegistrySource, /key: ["']account\.deleteUser["']/);
   assert.doesNotMatch(commandRegistrySource, /account\.promoteViewersToAdmin/);
   assert.doesNotMatch(commandRegistrySource, /뷰어 전체 어드민 승격/);
 
   assert.match(opsActionsSource, /function actionManageUser/);
   assert.match(opsActionsSource, /manageUserAccount\.js/);
-  assert.match(opsActionsSource, /'account\.manageUser': actionManageUser/);
-  assert.doesNotMatch(opsActionsSource, /'account\.deleteUser': actionDeleteUser/);
+  assert.match(opsActionsSource, /["']account\.manageUser["']: actionManageUser/);
+  assert.doesNotMatch(opsActionsSource, /["']account\.deleteUser["']: actionDeleteUser/);
   assert.doesNotMatch(opsActionsSource, /actionPromoteViewersToAdmin|promoteViewerUsersToAdmin/);
 
   assert.match(appSource, /command\.kind === 'action' \? buildActionItem\(command\) : buildFormItem\(command\)/);
@@ -47,7 +47,7 @@ test('ops console can manage existing non-owner accounts without bulk promotion'
   assert.match(appSource, /!roles\.includes\('owner'\)/);
   assert.match(appSource, /optionsSource === 'managedUsers'/);
   assert.match(appSource, /overviewCache\.users = payload\.users \|\| \[\]/);
-  assert.match(appConfigSource, /'account\.manageUser': '적용'/);
+  assert.match(appConfigSource, /["']account\.manageUser["']: ["']적용["']/);
   assert.match(appConfigSource, /noManageableUsers/);
   assert.doesNotMatch(appConfigSource, /account\.promoteViewersToAdmin|Viewer accounts were promoted to admin/);
   assert.match(indexHtml, /\/app\.js\?v=20260511b/);

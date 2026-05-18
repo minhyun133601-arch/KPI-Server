@@ -78,9 +78,10 @@
         const rows = [
             { key: 'production', label: '생산량<br>(kg)' },
             { key: 'usage', label: usageLabel },
+            { key: 'unit', label: '&#50896;&#45800;&#50948;' },
             { key: 'cost', label: '사용 금액<br>(원)' }
         ].map(row => `
-            <tr>
+            <tr${row.key === 'unit' ? ' class="report-auto-unit-row"' : ''}>
                 <th class="report-auto-row-label">${row.label}</th>
                 <td data-report-auto-value="${kind}.${row.key}.current"></td>
                 <td data-report-auto-value="${kind}.${row.key}.reference"></td>
@@ -93,7 +94,7 @@
             <table class="report-auto-metric-table" data-report-auto-table="${kind}">
                 <tbody>
                     <tr>
-                        <th class="report-auto-resource-cell" rowspan="4">${resourceLabel}</th>
+                        <th class="report-auto-resource-cell" rowspan="5">${resourceLabel}</th>
                         <th class="report-auto-row-label">${scopeLabel}</th>
                         <th data-report-auto-month-label="current"></th>
                         <th data-report-auto-month-label="reference"></th>
@@ -155,16 +156,17 @@
         const fieldRole = `${slideKey}Image`;
         return `
             <td class="report-plan-image-cell" data-report-plan-slot="${slideKey}.${slotIndex}" data-report-plan-local-slot="${slotIndex}">
-                <div class="report-plan-image-frame" data-report-plan-image-frame>
+                <div class="report-plan-image-frame" data-report-plan-image-frame role="button" tabindex="-1" aria-label="이미지 첨부">
                     <img data-report-plan-image data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}" alt="">
-                    <span class="report-plan-image-placeholder"></span>
-                    <div class="report-plan-image-actions">
-                        <label>
-                            <span>이미지</span>
+                    <span class="report-plan-image-placeholder" data-report-plan-image-placeholder>이미지</span>
+                    <div class="report-plan-image-choice" data-report-plan-image-choice>
+                        <label class="report-plan-image-choice-button" data-report-plan-image-upload data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}">
+                            <span>첨부</span>
                             <input type="file" accept="image/*" data-report-plan-image-input data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}" disabled>
                         </label>
-                        <button type="button" data-report-plan-image-clear data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}">삭제</button>
+                        <button type="button" class="report-plan-image-choice-button" data-report-plan-image-paste data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}">붙여넣기</button>
                     </div>
+                    <button type="button" class="report-plan-image-clear-button" data-report-plan-image-clear data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}" aria-label="이미지 삭제" title="이미지 삭제">X</button>
                 </div>
             </td>
         `;
@@ -174,16 +176,17 @@
         const fieldRole = `slide8${phaseKey}Image`;
         return `
             <td class="report-plan-image-cell report-status-image-cell" data-report-plan-slot="slide8.${slotIndex}" data-report-plan-local-slot="${slotIndex}">
-                <div class="report-plan-image-frame" data-report-plan-image-frame>
+                <div class="report-plan-image-frame" data-report-plan-image-frame role="button" tabindex="-1" aria-label="이미지 첨부">
                     <img data-report-plan-image data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}" alt="">
-                    <span class="report-plan-image-placeholder"></span>
-                    <div class="report-plan-image-actions">
-                        <label>
-                            <span>이미지</span>
+                    <span class="report-plan-image-placeholder" data-report-plan-image-placeholder>이미지</span>
+                    <div class="report-plan-image-choice" data-report-plan-image-choice>
+                        <label class="report-plan-image-choice-button" data-report-plan-image-upload data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}">
+                            <span>첨부</span>
                             <input type="file" accept="image/*" data-report-plan-image-input data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}" disabled>
                         </label>
-                        <button type="button" data-report-plan-image-clear data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}">삭제</button>
+                        <button type="button" class="report-plan-image-choice-button" data-report-plan-image-paste data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}">붙여넣기</button>
                     </div>
+                    <button type="button" class="report-plan-image-clear-button" data-report-plan-image-clear data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}" aria-label="이미지 삭제" title="이미지 삭제">X</button>
                 </div>
             </td>
         `;
@@ -237,7 +240,7 @@
                             ${afterCells}
                         </tr>
                         <tr class="report-status-summary-row">
-                            <th data-report-slide8-overview="next">개<br>요</th>
+                            <th data-report-slide8-overview="next">개 요</th>
                             ${summaryCells}
                         </tr>
                     </tbody>
@@ -402,7 +405,7 @@
                     </div>
                 </div>
                 <div class="report-slide-footer"></div>
-                <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                 <div class="report-slide-page-number" data-report-page-number>5/9</div>
             </article>
         `;
@@ -412,9 +415,10 @@
         const rows = [
             { key: 'production', label: '생산량<br>(kg)' },
             { key: 'usage', label: '사용량<br>(kg)' },
+            { key: 'unit', label: '&#50896;&#45800;&#50948;' },
             { key: 'amount', label: '사용 금액<br>(원)' }
         ].map(row => `
-            <tr>
+            <tr${row.key === 'unit' ? ' class="report-auto-unit-row"' : ''}>
                 <th class="report-auto-row-label">${row.label}</th>
                 <td data-report-yusan-lpg-value="${row.key}.current"></td>
                 <td data-report-yusan-lpg-value="${row.key}.reference"></td>
@@ -427,7 +431,7 @@
             <table class="report-auto-metric-table report-yusan-lpg-table" data-report-yusan-lpg-table="left">
                 <tbody>
                     <tr>
-                        <th class="report-auto-resource-cell" rowspan="4">가스<br><span>(LPG)</span></th>
+                        <th class="report-auto-resource-cell" rowspan="5">가스<br><span>(LPG)</span></th>
                         <th class="report-auto-row-label">1팀 2파트</th>
                         <th data-report-yusan-lpg-month-label="current"></th>
                         <th data-report-yusan-lpg-month-label="reference"></th>
@@ -442,9 +446,12 @@
     }
 
     function buildYusanLpgCostTable() {
+        const formatRowLabel = (label, index) => index === 2
+            ? `${label}<small class="report-yusan-lpg-ratio-formula">LPG실사용/<br>LNG환산</small>`
+            : label;
         const rows = ['LPG', 'LNG', '비율'].map((label, index) => `
             <tr>
-                <th class="report-auto-row-label">${label}</th>
+                <th class="report-auto-row-label">${formatRowLabel(label, index)}</th>
                 <td data-report-yusan-lpg-cost-value="${index}.current"></td>
                 <td data-report-yusan-lpg-cost-value="${index}.reference"></td>
                 <td class="report-auto-delta-cell report-auto-compare-cell" data-report-yusan-lpg-cost-value="${index}.yoy"></td>
@@ -503,9 +510,9 @@
             analysisKey: 'bukjeong-utility',
             sectionKey: 'slide3Section',
             titleKey: 'slide3Title',
-            scopeLabel: '북정',
-            gasChartTitle: '북정 LNG (m³) / 생산량(kg)',
-            electricChartTitle: '북정 전기 (kWh) / 생산량(kg)'
+            scopeLabel: '북 정',
+            gasChartTitle: '북 정 LNG (m³) / 생산량(kg)',
+            electricChartTitle: '북 정 전기 (kWh) / 생산량(kg)'
         });
     }
 
@@ -516,9 +523,9 @@
             analysisKey: 'yusan-utility',
             sectionKey: 'slide4Section',
             titleKey: 'slide4Title',
-            scopeLabel: '유산',
-            gasChartTitle: '유산 LNG (m³) / 생산량(kg)',
-            electricChartTitle: '유산 전기 (kWh) / 생산량(kg)'
+            scopeLabel: '유 산',
+            gasChartTitle: '유 산 LNG (m³) / 생산량(kg)',
+            electricChartTitle: '유 산 전기 (kWh) / 생산량(kg)'
         });
     }
 
@@ -540,7 +547,7 @@
                     </div>
                 </div>
                 <div class="report-slide-footer"></div>
-                <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                 <div class="report-slide-page-number" data-report-page-number>${config.pageNumber}</div>
             </article>
         `;
@@ -603,7 +610,7 @@
             <table class="report-waste-auto-table" data-report-waste-auto-table>
                 <tbody>
                     <tr>
-                        <th class="report-waste-auto-group" rowspan="3">폐수</th>
+                        <th class="report-waste-auto-group" rowspan="4">폐수</th>
                         <th class="report-waste-auto-row-label">${scopeLabel}</th>
                         <th data-report-waste-auto-month-label="current"></th>
                         <th data-report-waste-auto-month-label="reference"></th>
@@ -626,6 +633,14 @@
                         <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="usage.yoy"></td>
                         <td data-report-waste-auto-value="usage.previous"></td>
                         <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="usage.mom"></td>
+                    </tr>
+                    <tr class="report-waste-auto-unit-row">
+                        <th class="report-waste-auto-row-label">&#50896;&#45800;&#50948;</th>
+                        <td data-report-waste-auto-value="unit.current"></td>
+                        <td data-report-waste-auto-value="unit.reference"></td>
+                        <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="unit.yoy"></td>
+                        <td data-report-waste-auto-value="unit.previous"></td>
+                        <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="unit.mom"></td>
                     </tr>
                     ${costRows}
                     <tr>
@@ -658,7 +673,7 @@
                     </div>
                 </div>
                 <div class="report-slide-footer"></div>
-                <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                 <div class="report-slide-page-number" data-report-page-number>${config.pageNumber}</div>
             </article>
         `;
@@ -691,6 +706,10 @@
                     </label>
                 </div>
                 <div class="report-memo-lines" data-report-memo-lines></div>
+                <div class="report-memo-manual" data-report-memo-manual>
+                    <textarea data-report-memo-manual-input rows="2" placeholder="&#53945;&#51060;&#49324;&#54637; &#51649;&#51217; &#51077;&#47141;"></textarea>
+                    <button type="button" data-report-memo-manual-add>&#51649;&#51217; &#52628;&#44032;</button>
+                </div>
                 <div class="report-memo-candidates" data-report-memo-candidates></div>
                 <div class="report-memo-dialog-actions">
                     <button type="button" data-report-memo-clear>내용 비우기</button>
@@ -888,7 +907,7 @@
                     })}
                 </div>
                 <div class="report-slide-footer"></div>
-                <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                 <div class="report-slide-page-number" data-report-page-number>3/6</div>
             </article>
         `;
@@ -1010,7 +1029,7 @@
                     })}
                 </div>
                 <div class="report-slide-footer"></div>
-                <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                 <div class="report-slide-page-number" data-report-page-number>4/6</div>
             </article>
         `;
@@ -1106,7 +1125,7 @@
                 </div>
                 <div class="report-production-direct-note">※ 직접노무비/kg 상승요인은 추후 연동 데이터 기준으로 산출</div>
                 <div class="report-slide-footer"></div>
-                <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                 <div class="report-slide-page-number" data-report-page-number>5/6</div>
             </article>
         `;
@@ -1280,7 +1299,7 @@ ${colgroup}
                     })}
                 </div>
                 <div class="report-slide-footer"></div>
-                <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                 <div class="report-slide-page-number" data-report-page-number>6/6</div>
             </article>
         `;
@@ -1353,7 +1372,7 @@ ${colgroup}
                     </table>
                 </div>
                 <div class="report-slide-footer"></div>
-                <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
             </article>
         `;
     }
@@ -1547,7 +1566,7 @@ ${colgroup}
                     ${teams.map(team => buildProductionContentsColumn(team.title, team.items, { jumpTarget: team.jumpTarget, jumpView: team.jumpView, pageRange: team.pageRange })).join('')}
                 </div>
                 <div class="report-slide-footer"></div>
-                <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
             </article>
         `;
     }
@@ -1701,7 +1720,7 @@ ${colgroup}
                     ${buildSlideHeader('slide8Section', 'slide8Title')}
                     ${buildReportStatusTable(0)}
                     <div class="report-slide-footer"></div>
-                    <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                    <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                     <div class="report-slide-page-number" data-report-page-number>8/9</div>
                 </article>
             `,
@@ -1710,7 +1729,7 @@ ${colgroup}
                     ${buildSlideHeader('slide8Section', 'slide8Title')}
                     ${buildReportStatusTable(1)}
                     <div class="report-slide-footer"></div>
-                    <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                    <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                     <div class="report-slide-page-number" data-report-page-number>9/9</div>
                 </article>
             `,
@@ -1719,7 +1738,7 @@ ${colgroup}
                     ${buildSlideHeader('slide9Section', 'slide9Title')}
                     ${buildReportPlanTable('slide9', 0)}
                     <div class="report-slide-footer"></div>
-                    <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                    <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                     <div class="report-slide-page-number" data-report-page-number>9/9</div>
                 </article>
             `,
@@ -1728,7 +1747,7 @@ ${colgroup}
                     ${buildSlideHeader('slide9Section', 'slide9Title')}
                     ${buildReportPlanTable('slide9', 1)}
                     <div class="report-slide-footer"></div>
-                    <img class="report-slide-logo is-bottom" src="shared-assets/logo.jpg" alt="">
+                    <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                     <div class="report-slide-page-number" data-report-page-number>9/9</div>
                 </article>
             `
@@ -1805,7 +1824,7 @@ ${colgroup}
                 .report-slide [data-report-field] { outline: 0; min-height: 1em; }
                 .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active [data-report-field] { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 3px; }
                 .report-slide-footer { position: absolute; left: 0; right: 0; bottom: 0; height: 5.2%; background: linear-gradient(90deg, #07366c 0%, #07366c 40%, #73a900 100%); }
-                .report-slide-logo.is-bottom { left: 3.1%; bottom: 0.6%; width: 9.4%; height: 3.8%; filter: brightness(0) invert(1); opacity: 0.96; }
+                .report-slide-logo.is-bottom { left: 2.2%; bottom: 0.16%; width: 22%; height: 4.9%; z-index: 2; filter: none; opacity: 0.98; }
                 .report-production-contents-title { position: absolute; left: 7.7%; top: 11%; color: #020617; font-size: 62px; font-weight: 900; line-height: 1; letter-spacing: 0; }
                 .report-production-contents-grid { position: absolute; left: 5.9%; right: 5.7%; top: 28.2%; bottom: 18.6%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; color: #020617; }
                 .report-production-contents-team { position: relative; min-width: 0; box-sizing: border-box; align-self: start; display: block; appearance: none; -webkit-appearance: none; border: 0; border-left: 0; background: transparent; padding: 0 28px 0 24px; color: inherit; text-align: left; font: inherit; }
@@ -1829,15 +1848,16 @@ ${colgroup}
                 .report-template-title { position: absolute; left: 3.4%; top: 2.55%; min-width: 30%; height: 4.4%; color: #020617; font-size: 22px; font-weight: 900; line-height: 1.05; }
                 .report-slide-section { position: absolute; right: 5.8%; top: 0.4%; width: 10%; height: 3.6%; color: #020617; font-size: 18px; font-weight: 900; text-align: right; }
                 .report-two-column-grid { position: absolute; left: 3.4%; right: 2.9%; top: 8.4%; bottom: 8.8%; display: grid; grid-template-columns: 1fr 1fr; gap: 5.2%; }
-                .report-analysis-column { display: grid; grid-template-rows: 25% 53% 18%; gap: 2.6%; min-width: 0; }
+                .report-analysis-column { display: grid; grid-template-rows: var(--report-analysis-table-row, 28%) var(--report-analysis-chart-row, 62%) var(--report-analysis-memo-row, 6%); gap: 2.6%; min-width: 0; }
                 .report-bukjeong-analysis-grid { position: absolute; left: 3.4%; right: 2.9%; top: 8.4%; bottom: 8.8%; display: grid; grid-template-columns: 1fr 1fr; gap: 5.2%; }
-                .report-bukjeong-analysis-column { display: grid; grid-template-rows: 25% 53% 18%; gap: 2.6%; min-width: 0; }
+                .report-bukjeong-analysis-column { display: grid; grid-template-rows: var(--report-analysis-table-row, 28%) var(--report-analysis-chart-row, 62%) var(--report-analysis-memo-row, 6%); gap: 2.6%; min-width: 0; }
                 .report-auto-metric-table { width: 100%; height: 100%; border: 1.4px solid #111827; border-collapse: collapse; table-layout: fixed; background: #ffffff; color: #020617; font-size: 12.5px; font-weight: 900; line-height: 1.04; }
                 .report-auto-metric-table th, .report-auto-metric-table td { border: 1px solid #111827; padding: 1px 3px; text-align: center; vertical-align: middle; }
                 .report-auto-metric-table th { background: #dbe5f1; }
                 .report-auto-resource-cell { width: 14%; font-size: 15px; line-height: 1.4; }
                 .report-auto-resource-cell span { display: inline-block; font-size: 14px; }
                 .report-auto-row-label { width: 14%; font-size: 12.5px; }
+                .report-auto-unit-row .report-auto-row-label { font-size: 12px; }
                 .report-auto-note-cell { width: 14%; background: #ffffff; }
                 .report-auto-delta-cell { color: #2f75b5; white-space: nowrap; }
                 .report-auto-compare-cell { font-size: 11.5px; line-height: 1.05; white-space: normal; }
@@ -1872,10 +1892,10 @@ ${colgroup}
                 .report-auto-memo-box { display: grid; grid-template-columns: 13.5% 1fr; min-height: 0; border: 1.4px solid #111827; background: #ffffff; color: #020617; }
                 .report-auto-memo-box strong { display: grid; place-items: center; border-right: 1px solid #111827; font-size: 15px; font-weight: 900; }
                 .report-auto-memo-blank { min-width: 0; }
-                .report-auto-memo-content { display: grid; align-content: start; gap: 4px; padding: 7px 9px; overflow: hidden; color: #020617; font-size: 14px; font-weight: 900; line-height: 1.22; text-align: left; word-break: keep-all; }
+                .report-auto-memo-content { display: grid; align-content: start; gap: 4px; padding: 5px 8px; overflow: hidden; color: #020617; font-size: 11.2px; font-weight: 900; line-height: 1.2; text-align: left; word-break: keep-all; }
                 .report-auto-memo-content[data-empty="true"]::before { content: ""; }
-                .report-auto-memo-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
-                .report-auto-memo-line-text { min-width: 0; }
+                .report-auto-memo-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; }
+                .report-auto-memo-line-text { min-width: 0; white-space: nowrap; }
                 .report-auto-memo-line.is-up, .report-auto-memo-line.is-down { color: #111827; }
                 .report-auto-memo-line.is-flat, .report-auto-memo-line.is-mixed { color: #111827; }
                 .report-auto-memo-segment.is-up { color: #c00000; }
@@ -1893,7 +1913,7 @@ ${colgroup}
                 .report-deck-editor[data-report-edit-mode="editing"] [data-report-memo-key] { cursor: pointer; }
                 .report-deck-editor[data-report-edit-mode="editing"] [data-report-memo-key]:focus-visible,
                 .report-deck-editor[data-report-edit-mode="editing"] [data-report-memo-key]:hover { outline: 2px solid rgba(37, 99, 235, 0.42); outline-offset: 2px; }
-                .report-memo-dialog { position: absolute; right: 18px; top: 54px; z-index: 20; width: 470px; max-width: calc(100vw - 36px); border: 1px solid #94a3b8; border-radius: 6px; background: #ffffff; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.24); color: #0f172a; padding: 10px; }
+                .report-memo-dialog { position: absolute; right: 18px; top: 54px; z-index: 20; width: 720px; max-width: calc(100vw - 36px); border: 1px solid #94a3b8; border-radius: 6px; background: #ffffff; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.24); color: #0f172a; padding: 10px; }
                 .report-memo-dialog[hidden] { display: none !important; }
                 .report-memo-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
                 .report-memo-dialog-head strong { color: #0f172a; font-size: 15px; font-weight: 900; }
@@ -1902,14 +1922,20 @@ ${colgroup}
                 .report-memo-controls label { display: grid; gap: 4px; color: #334155; font-size: 12px; font-weight: 900; }
                 .report-memo-controls select { height: 30px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 0 8px; font-size: 13px; font-weight: 900; }
                 .report-memo-lines { display: grid; gap: 5px; margin-bottom: 8px; max-height: 118px; overflow: auto; }
-                .report-memo-line-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px; border: 1px solid #e2e8f0; border-radius: 5px; background: #ffffff; padding: 5px 6px; }
+                .report-memo-line-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px; border: 1px solid #e2e8f0; border-radius: 5px; background: #ffffff; padding: 5px 6px; }
                 .report-memo-line-text { min-width: 0; color: #111827; font-size: 12px; font-weight: 900; line-height: 1.25; overflow-wrap: anywhere; }
+                .report-memo-line-input { width: 100%; min-width: 0; min-height: 38px; max-height: 96px; border: 1px solid #dbe4f3; border-radius: 4px; background: #f8fafc; color: #111827; padding: 6px 7px; font-size: 12px; font-weight: 900; line-height: 1.25; resize: vertical; box-sizing: border-box; }
+                .report-memo-line-input:focus { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 1px; border-color: #60a5fa; background: #ffffff; }
                 .report-memo-line-row button { min-height: 24px; padding: 0 7px; color: #475569; }
                 .report-memo-lines-empty { min-height: 30px; display: grid; place-items: center; border: 1px dashed #cbd5e1; border-radius: 5px; color: #64748b; font-size: 12px; font-weight: 900; }
+                .report-memo-manual { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: stretch; margin-bottom: 8px; }
+                .report-memo-manual textarea { width: 100%; min-width: 0; min-height: 48px; max-height: 92px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 7px 8px; font-size: 12px; font-weight: 900; line-height: 1.35; resize: vertical; box-sizing: border-box; }
+                .report-memo-manual textarea:focus { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 1px; border-color: #60a5fa; }
+                .report-memo-manual button { min-width: 72px; }
                 .report-memo-candidates { display: grid; gap: 6px; max-height: 172px; overflow: auto; }
-                .report-memo-candidate { width: 100%; min-height: 36px !important; display: grid !important; grid-template-columns: 22px minmax(0, 1fr); align-items: center; justify-content: stretch; gap: 6px; border-color: #dbe4f3 !important; background: #f8fafc !important; padding: 6px 8px !important; text-align: left; white-space: normal; line-height: 1.25; color: #111827 !important; }
+                .report-memo-candidate { width: 100%; min-height: 30px !important; display: grid !important; grid-template-columns: 22px minmax(0, 1fr); align-items: center; justify-content: stretch; gap: 6px; border-color: #dbe4f3 !important; background: #f8fafc !important; padding: 4px 8px !important; text-align: left; white-space: nowrap; font-size: 11.2px; line-height: 1.16; color: #111827 !important; }
                 .report-memo-candidate-add { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #cbd5e1; border-radius: 50%; background: #ffffff; color: #0f172a; font-size: 15px; font-weight: 900; line-height: 1; }
-                .report-memo-candidate-text { min-width: 0; color: #111827; }
+                .report-memo-candidate-text { min-width: 0; color: #111827; white-space: nowrap; }
                 .report-memo-candidate.is-up, .report-memo-candidate.is-down { color: #111827 !important; }
                 .report-memo-candidate.is-flat, .report-memo-candidate.is-mixed { color: #111827 !important; }
                 .report-memo-empty { min-height: 34px; display: grid; place-items: center; border: 1px dashed #cbd5e1; border-radius: 5px; color: #64748b; font-size: 12px; font-weight: 900; }
@@ -1930,14 +1956,17 @@ ${colgroup}
                 .report-memo-overview-empty { min-height: 86px; display: grid; place-items: center; border: 1px dashed #cbd5e1; border-radius: 6px; color: #64748b; font-size: 13px; font-weight: 900; text-align: center; }
                 .report-lpg-trend-note { position: absolute; left: calc(3.4% + ((100% - 3.4% - 2.9% - 5.2%) / 2) + 5.2% - 2px); right: 2.9%; top: 5.3%; height: 2.3%; display: flex; align-items: flex-end; justify-content: flex-start; color: #ff0000; font-size: 20px; font-weight: 900; text-align: left; line-height: 1; }
                 .report-yusan-lpg-grid { top: 8.4%; bottom: 8.8%; }
-                .report-yusan-lpg-analysis-slide .report-bukjeong-analysis-column { grid-template-rows: 25% 53% 18%; gap: 2.6%; min-height: 0; }
+                .report-yusan-lpg-analysis-slide .report-bukjeong-analysis-column { grid-template-rows: var(--report-analysis-table-row, 28%) var(--report-analysis-chart-row, 62%) var(--report-analysis-memo-row, 6%); gap: 2.6%; min-height: 0; }
                 .report-yusan-lpg-analysis-slide .report-yusan-lpg-table, .report-yusan-lpg-analysis-slide .report-lpg-chart, .report-yusan-lpg-analysis-slide .report-yusan-lpg-memo { width: 100%; height: 100%; min-width: 0; min-height: 0; align-self: stretch; justify-self: stretch; }
-                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table tbody > tr:first-child { height: 15.9%; }
-                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table tbody > tr:not(:first-child) { height: 28.033333%; }
+                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table[data-report-yusan-lpg-table="left"] tbody > tr:first-child { height: 14%; }
+                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table[data-report-yusan-lpg-table="left"] tbody > tr:not(:first-child) { height: 21.5%; }
+                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table[data-report-yusan-lpg-table="right"] tbody > tr:first-child { height: 15.9%; }
+                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table[data-report-yusan-lpg-table="right"] tbody > tr:not(:first-child) { height: 28.033333%; }
                 .report-yusan-lpg-analysis-slide .report-yusan-lpg-table .report-auto-resource-cell,
                 .report-yusan-lpg-analysis-slide .report-yusan-lpg-table .report-auto-row-label,
                 .report-yusan-lpg-analysis-slide .report-yusan-lpg-table .report-auto-note-cell { width: 14%; }
                 .report-yusan-lpg-cost-resource small { display: block; margin-top: 3px; color: #020617; font-size: 10px; font-weight: 900; line-height: 1.12; }
+                .report-yusan-lpg-ratio-formula { display: block; margin-top: 3px; color: #334155; font-size: 9.5px; font-weight: 900; line-height: 1.12; white-space: normal; }
                 .report-yusan-lpg-memo { grid-template-columns: 13.5% 1fr; }
                 .report-slide-page-number { position: absolute; right: 1.6%; bottom: 1.2%; z-index: 2; color: #020617; font-size: 16px; font-weight: 500; line-height: 1; }
                 .report-template-table { width: 100%; height: 100%; border: 1.4px solid #111827; border-collapse: collapse; table-layout: fixed; background: #ffffff; color: #020617; }
@@ -1958,7 +1987,7 @@ ${colgroup}
                 .report-waste-table { min-height: 0; }
                 .report-waste-grid .report-chart-box { min-height: 0; }
                 .report-waste-memo { grid-column: 1 / 3; }
-                .report-waste-auto-layout { position: absolute; left: 3.4%; right: 2.8%; top: 8.2%; bottom: 8.8%; display: grid; grid-template-columns: 47% 47%; grid-template-rows: 72% 18%; gap: 5% 6%; }
+                .report-waste-auto-layout { position: absolute; left: 3.4%; right: 2.8%; top: 8.2%; bottom: 8.8%; display: grid; grid-template-columns: 47% 47%; grid-template-rows: var(--report-waste-main-row, 83.5%) var(--report-waste-memo-row, 6.5%); gap: 5% 6%; }
                 .report-waste-auto-table-wrap { min-height: 0; }
                 .report-waste-auto-table { width: 100%; height: 100%; border: 1.4px solid #111827; border-collapse: collapse; table-layout: fixed; background: #ffffff; color: #020617; font-size: 12.5px; font-weight: 900; line-height: 1.04; }
                 .report-waste-auto-table th, .report-waste-auto-table td { border: 1px solid #111827; padding: 1px 3px; text-align: center; vertical-align: middle; }
@@ -1966,6 +1995,7 @@ ${colgroup}
                 .report-waste-auto-group { width: 14%; font-size: 15px; line-height: 1.4; }
                 .report-waste-auto-group span { display: inline-block; font-size: 14px; }
                 .report-waste-auto-row-label { width: 14%; font-size: 12.5px; }
+                .report-waste-auto-unit-row .report-waste-auto-row-label { font-size: 12px; }
                 .report-waste-auto-total-label { font-size: 13px; }
                 .report-waste-auto-chart { min-height: 0; }
                 .report-waste-auto-memo { grid-column: 1 / 3; display: grid; grid-template-columns: 13% 1fr; min-height: 0; border: 1.4px solid #111827; background: #ffffff; color: #020617; }
@@ -1980,7 +2010,7 @@ ${colgroup}
                 .report-photo-placeholder { width: 100%; height: 100%; min-height: 76px; border: 1px solid #94a3b8; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
                 .report-floating-photos { display: grid; gap: 3%; min-height: 0; }
                 .report-floating-photos .report-photo-placeholder { min-height: 0; }
-                .report-plan-layout { position: absolute; left: 1.2%; right: 1.5%; top: 10.5%; bottom: 10.5%; min-height: 0; --report-plan-table-width: 100%; --report-plan-label-width: 4.6%; --report-plan-slot-width: 23.85%; }
+                .report-plan-layout { position: absolute; left: 3.4%; right: 2.9%; top: 8.4%; bottom: 8.8%; min-height: 0; --report-plan-table-width: 100%; --report-plan-label-width: 4.6%; --report-plan-slot-width: 23.85%; }
                 .report-plan-layout[data-report-plan-slot-count="0"] { --report-plan-table-width: 7.4%; --report-plan-label-width: 100%; --report-plan-slot-width: 0%; }
                 .report-plan-layout[data-report-plan-slot-count="1"] { --report-plan-table-width: 28.45%; --report-plan-label-width: 16.17%; --report-plan-slot-width: 83.83%; }
                 .report-plan-layout[data-report-plan-slot-count="2"] { --report-plan-table-width: 52.3%; --report-plan-label-width: 8.8%; --report-plan-slot-width: 45.6%; }
@@ -1990,45 +2020,49 @@ ${colgroup}
                 .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-plan-count-control { display: block; }
                 .report-plan-count-control button { display: inline-flex; align-items: center; justify-content: center; height: 30px; border: 1px solid #2563eb; border-radius: 6px; background: #eff6ff; padding: 0 10px; color: #1d4ed8; font-size: 12px; font-weight: 900; cursor: pointer; }
                 .report-plan-count-control button:disabled { border-color: #cbd5e1; background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
-                .report-plan-table { width: var(--report-plan-table-width); height: 100%; border: 1.5px solid #111827; border-collapse: collapse; table-layout: fixed; background: #ffffff; color: #020617; }
+                .report-plan-table { width: var(--report-plan-table-width); height: 100%; border: 1.5px solid #111827; border-collapse: collapse; table-layout: fixed; background: #ffffff; color: #020617; overflow: hidden; }
                 .report-plan-label-col { width: var(--report-plan-label-width); }
                 .report-plan-slot-col { width: var(--report-plan-slot-width); }
                 .report-plan-table th, .report-plan-table td { border: 1.3px solid #111827; padding: 0; text-align: center; vertical-align: middle; }
                 .report-plan-table th { background: #f4b183; color: #020617; font-size: 18px; font-weight: 900; line-height: 1.1; }
                 .report-plan-table thead th { height: 9.8%; }
                 .report-plan-table tbody th { width: var(--report-plan-label-width); padding: 0 4px; letter-spacing: 0; word-break: keep-all; white-space: pre-line; }
-                .report-plan-image-row { height: 60%; }
-                .report-plan-summary-row { height: 30.2%; }
-                .report-plan-image-cell { padding: 7px !important; }
-                .report-plan-image-frame { position: relative; width: 100%; height: 100%; display: grid; place-items: center; overflow: hidden; border: 3px solid #111827; background: #ffffff; box-shadow: 2px 2px 3px rgba(15, 23, 42, 0.35); }
-                .report-plan-image-frame img { display: none; width: 100%; height: 100%; object-fit: cover; }
+                .report-plan-image-row { height: 72%; }
+                .report-plan-summary-row { height: 18.2%; }
+                .report-plan-image-cell { position: relative; min-height: 0; padding: 7px !important; overflow: hidden; line-height: 0; }
+                .report-plan-image-frame { position: absolute; inset: 7px; width: auto; height: auto; min-width: 0; min-height: 0; display: grid; place-items: center; overflow: hidden; border: 3px solid #111827; background: #ffffff; box-shadow: 2px 2px 3px rgba(15, 23, 42, 0.35); }
+                .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-plan-image-frame { cursor: pointer; }
+                .report-plan-image-frame img { display: none; width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; object-position: center; }
                 .report-plan-image-frame[data-has-image="true"] img { display: block; }
-                .report-plan-image-placeholder { width: 100%; height: 100%; display: block; background: #ffffff; }
+                .report-plan-image-placeholder { width: 100%; height: 100%; display: grid; place-items: center; background: #ffffff; color: #64748b; font-size: 13px; font-weight: 900; line-height: 1.25; text-align: center; white-space: pre-line; }
                 .report-plan-image-frame[data-has-image="true"] .report-plan-image-placeholder { display: none; }
-                .report-plan-image-actions { position: absolute; inset: auto 8px 8px 8px; display: none; justify-content: center; gap: 6px; pointer-events: auto; }
-                .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-plan-image-actions { display: flex; }
-                .report-plan-image-actions label, .report-plan-image-actions button { min-width: 54px; height: 26px; border: 1px solid #2563eb; border-radius: 5px; background: rgba(255, 255, 255, 0.95); color: #1d4ed8; font-size: 12px; font-weight: 900; line-height: 24px; text-align: center; cursor: pointer; }
-                .report-plan-image-actions button { border-color: #ef4444; color: #b91c1c; }
-                .report-plan-image-actions input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-                .report-plan-summary-cell { position: relative; padding: 22px 10px 12px !important; text-align: left !important; vertical-align: top !important; }
-                .report-plan-summary-text { width: 100%; height: 100%; outline: 0; overflow: hidden; color: #020617; font-size: 15px; font-weight: 900; line-height: 1.92; text-align: left; white-space: pre-wrap; word-break: keep-all; }
+                .report-plan-image-choice { position: absolute; inset: 0; z-index: 2; display: none; align-items: center; justify-content: center; gap: 8px; pointer-events: none; }
+                .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-plan-image-frame[data-has-image="false"] .report-plan-image-choice { display: flex; }
+                .report-plan-image-choice-button { display: inline-flex; align-items: center; justify-content: center; min-width: 58px; height: 28px; border: 1px solid #2563eb; border-radius: 5px; background: rgba(255, 255, 255, 0.96); color: #1d4ed8; padding: 0 9px; font-size: 12px; font-weight: 900; line-height: 1; text-align: center; cursor: pointer; pointer-events: auto; }
+                .report-plan-image-choice-button[data-report-plan-image-paste] { border-color: #64748b; color: #334155; }
+                .report-plan-image-choice-button[aria-disabled="true"], .report-plan-image-choice-button:disabled { opacity: 0.55; cursor: not-allowed; }
+                .report-plan-image-choice [data-report-plan-image-input] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+                .report-plan-image-clear-button { position: absolute; right: 8px; top: 8px; z-index: 3; display: none; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid rgba(185, 28, 28, 0.65); border-radius: 50%; background: rgba(255, 255, 255, 0.94); color: #b91c1c; padding: 0; font-size: 12px; font-weight: 900; line-height: 1; cursor: pointer; }
+                .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-plan-image-frame[data-has-image="true"] .report-plan-image-clear-button { display: inline-flex; }
+                .report-plan-summary-cell { position: relative; padding: 12px 9px 8px !important; text-align: left !important; vertical-align: top !important; }
+                .report-plan-summary-text { width: 100%; height: 100%; outline: 0; overflow: hidden; color: #020617; font-size: 15px; font-weight: 900; line-height: 1.55; text-align: left; white-space: pre-wrap; word-break: keep-all; }
                 .report-plan-delete-slot { position: absolute; right: 7px; bottom: 6px; display: none; height: 24px; border: 1px solid #fecaca; border-radius: 5px; background: #fff1f2; color: #b91c1c; padding: 0 8px; font-size: 11px; font-weight: 900; cursor: pointer; }
                 .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-plan-summary-cell[data-report-plan-active="true"] .report-plan-delete-slot { display: inline-flex; align-items: center; justify-content: center; }
                 .report-deck-editor[data-report-edit-mode="editing"] [data-report-slide8-overview] { cursor: pointer; }
                 .report-plan-table col[data-report-plan-active="false"], .report-plan-table th[data-report-plan-active="false"], .report-plan-table td[data-report-plan-active="false"] { display: none; }
-                .report-status-layout { left: 1.3%; right: 1.5%; top: 10.5%; bottom: 10.5%; }
+                .report-status-layout { left: 3.4%; right: 2.9%; top: 8.4%; bottom: 8.8%; }
                 .report-status-table { border-width: 1.5px; }
                 .report-status-table .report-status-label-col { width: var(--report-plan-label-width); }
                 .report-status-table .report-status-slot-col { width: var(--report-plan-slot-width); }
                 .report-status-table th { background: #cfe8f7; color: #020617; font-size: 18px; font-weight: 900; line-height: 1.15; }
                 .report-status-table thead th { height: 9.8%; }
-                .report-status-table tbody th { width: var(--report-plan-label-width); padding: 0 4px; background: #cfe8f7; font-size: 20px; font-weight: 900; line-height: 1.18; word-break: keep-all; white-space: normal; }
-                .report-status-before-row, .report-status-after-row { height: 30%; }
-                .report-status-summary-row { height: 30.2%; }
+                .report-status-table tbody th { width: var(--report-plan-label-width); padding: 0 4px; background: #cfe8f7; font-size: 20px; font-weight: 900; line-height: 1.18; word-break: keep-all; white-space: nowrap; }
+                .report-status-before-row, .report-status-after-row { height: 36%; }
+                .report-status-summary-row { height: 18.2%; }
                 .report-status-table .report-plan-image-cell { padding: 5px !important; }
-                .report-status-table .report-plan-image-frame { border-width: 3px; box-shadow: 2px 2px 3px rgba(15, 23, 42, 0.35); }
-                .report-status-table .report-plan-summary-cell { padding: 20px 9px 12px !important; }
-                .report-status-table .report-plan-summary-text { font-size: 15px; line-height: 1.9; }
+                .report-status-table .report-plan-image-frame { inset: 5px; border-width: 3px; box-shadow: 2px 2px 3px rgba(15, 23, 42, 0.35); }
+                .report-status-table .report-plan-summary-cell { padding: 12px 8px 8px !important; }
+                .report-status-table .report-plan-summary-text { font-size: 15px; line-height: 1.5; }
                 .report-production-start-layout { position: absolute; left: 3.4%; right: 2.9%; top: 8.4%; bottom: 8.8%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 5.2%; }
                 .report-production-start-layout::before, .report-production-labor-layout::before, .report-production-yield-layout::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; z-index: 0; width: 2px; transform: translateX(-50%); background: #f59e0b; pointer-events: none; }
                 .report-production-start-column { position: relative; min-width: 0; display: grid; grid-template-rows: 8% 13.2% 9.8% 24.8% 6.2% minmax(0, 1fr); align-items: stretch; min-height: 0; }
@@ -2169,9 +2203,9 @@ ${colgroup}
                     .report-deck-editor[data-report-print-mode="true"] .report-deck-workspace,
                     .report-deck-editor[data-report-print-mode="true"] .report-deck-stage { display: block !important; width: 297mm !important; height: auto !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; background: #ffffff !important; overflow: visible !important; }
                     .report-deck-editor[data-report-print-mode="true"] .report-slide { display: none !important; }
-                    .report-deck-editor[data-report-print-mode="true"] .report-slide[data-report-print-visible="true"] { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; width: 297mm !important; height: 167.0625mm !important; max-width: none !important; aspect-ratio: auto !important; margin: 21.46875mm 0 !important; border: 0 !important; box-shadow: none !important; break-after: page; page-break-after: always; overflow: hidden !important; }
+                    .report-deck-editor[data-report-print-mode="true"] .report-slide[data-report-print-visible="true"] { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; width: 277mm !important; height: 155.8125mm !important; max-width: none !important; aspect-ratio: auto !important; margin: 27.09375mm 10mm !important; border: 0 !important; box-shadow: none !important; break-after: page; page-break-after: always; overflow: hidden !important; }
                     .report-deck-editor[data-report-print-mode="true"] .report-slide[data-report-print-last="true"] { break-after: auto; page-break-after: auto; }
-                    .report-deck-editor[data-report-print-mode="true"] .report-plan-image-actions,
+                    .report-deck-editor[data-report-print-mode="true"] .report-plan-image-choice,
                     .report-deck-editor[data-report-print-mode="true"] .report-plan-count-control,
                     .report-deck-editor[data-report-print-mode="true"] .report-slide-date-input,
                     .report-deck-editor[data-report-print-mode="true"] .report-chart-highlight-controls,

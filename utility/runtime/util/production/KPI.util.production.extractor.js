@@ -42,9 +42,9 @@
                         </div>
                     </div>
                     <div class="util-production-modal-body util-production-extractor-body">
-                        <div class="util-production-extractor-tip">추출 완료 후 <strong>유틸리티 기입</strong> 버튼을 누르면 기존 생산량은 유지하고 중복 행만 제외해 새 파일 행을 추가합니다.</div>
-                        <iframe class="util-production-extractor-frame" data-role="frame" src="utility/apps/production-extractor/production-extractor.html?embed=1&v=16" title="유틸리티 기입" loading="lazy"></iframe>
-                        <div class="util-production-extractor-status" data-role="status">대기 중: 추출 실행 후 유틸리티 기입 버튼을 누르면 기존 생산량은 유지하고 중복 행만 제외해 추가합니다.</div>
+                        <div class="util-production-extractor-tip">추출 완료 후 <strong>유틸리티 기입</strong> 버튼을 누르면 새 파일에 포함된 날짜와 팀의 기존 생산량을 지우고 추출값으로 다시 기입합니다.</div>
+                        <iframe class="util-production-extractor-frame" data-role="frame" src="utility/apps/production-extractor/production-extractor.html?embed=1&v=20" title="유틸리티 기입" loading="lazy"></iframe>
+                        <div class="util-production-extractor-status" data-role="status">대기 중: 추출 실행 후 유틸리티 기입 버튼을 누르면 같은 날짜와 팀의 기존 생산량을 새 추출값으로 교체합니다.</div>
                     </div>
                 </div>
             `;
@@ -73,7 +73,7 @@
             const modal = ensureUtilProductionExtractorModal();
             UtilProductionBridgeState.activeTeam = String(teamName || '').trim();
             UtilProductionBridgeState.onApplied = typeof onApplied === 'function' ? onApplied : null;
-            setUtilProductionExtractorStatus('대기 중: 추출 실행 후 유틸리티 기입 버튼을 누르면 기존 생산량은 유지하고 중복 행만 제외해 추가합니다.');
+            setUtilProductionExtractorStatus('대기 중: 추출 실행 후 유틸리티 기입 버튼을 누르면 같은 날짜와 팀의 기존 생산량을 새 추출값으로 교체합니다.');
             modal.classList.add('is-open');
         }
 
@@ -100,6 +100,11 @@
                             (team?.entries || []).forEach(entry => {
                                 const parsedDate = parseUtilDateKey(entry?.date);
                                 const amount = parseUtilAmount(entry?.amount ?? entry?.production ?? entry?.value);
+                                const moistureExcludedYield = parseUtilPercentAmount(entry?.moistureExcludedYield ?? entry?.moistureFreeYield ?? entry?.yieldExcludingMoisture ?? entry?.yieldRate);
+                                const workTime = parseUtilAmount(entry?.workTime ?? entry?.inputTime ?? entry?.feedTime ?? entry?.loadingTime ?? entry?.injectionTime);
+                                const operationTime = parseUtilAmount(entry?.operationTime ?? entry?.operatingTime ?? entry?.runtime ?? entry?.runTime ?? entry?.operationHours);
+                                const equipmentCapa = parseUtilAmount(entry?.equipmentCapa ?? entry?.capa ?? entry?.equipmentCapacity);
+                                const equipmentUtilization = parseUtilPercentAmount(entry?.equipmentUtilization ?? entry?.operationRate ?? entry?.equipmentRate ?? entry?.utilizationRate);
                                 const lineName = String(entry?.lineName ?? entry?.line ?? '').trim();
                                 const productName = String(entry?.productName ?? entry?.product ?? entry?.itemName ?? '').trim();
                                 const teamName = String(entry?.team ?? fallbackTeam).trim();
@@ -109,7 +114,12 @@
                                     team: teamName,
                                     lineName,
                                     productName,
-                                    amount
+                                    amount,
+                                    moistureExcludedYield: Number.isFinite(moistureExcludedYield) ? moistureExcludedYield : null,
+                                    workTime: Number.isFinite(workTime) ? workTime : null,
+                                    operationTime: Number.isFinite(operationTime) ? operationTime : null,
+                                    equipmentCapa: Number.isFinite(equipmentCapa) ? equipmentCapa : null,
+                                    equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null
                                 };
                                 const key = buildUtilProductionDailyEntryKey(normalizedRow);
                                 if (!key || rowMap.has(key)) return;
@@ -175,7 +185,7 @@
                     });
                     const archiveResult = { savedCount: 0, failedCount: 0, unsupported: false };
                     let saved = true;
-                    if (startDayChanged && result.addedCount === 0 && result.patchedCount === 0) {
+                    if (startDayChanged && result.addedCount === 0 && result.patchedCount === 0 && result.replacedCount === 0) {
                         saved = await Promise.resolve(persistUtilProductionDailyState());
                     } else if (result.savePromise && typeof result.savePromise.then === 'function') {
                         saved = await result.savePromise;
@@ -189,8 +199,11 @@
                     const patchedNotice = result.patchedCount > 0
                         ? `, 수율/CAPA/가동률 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
                         : '';
-                    const statusText = `기입 완료: 기존 생산량 유지, 신규 ${result.addedCount.toLocaleString('ko-KR')}건 추가, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`;
-                    setUtilProductionExtractorStatus(statusText, result.addedCount === 0 && result.patchedCount === 0);
+                    const replacedNotice = result.replacedCount > 0
+                        ? `, 기존 ${result.replacedCount.toLocaleString('ko-KR')}건 교체`
+                        : '';
+                    const statusText = `기입 완료: ${result.addedCount.toLocaleString('ko-KR')}건 기입${replacedNotice}, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`;
+                    setUtilProductionExtractorStatus(statusText, result.addedCount === 0 && result.patchedCount === 0 && result.replacedCount === 0);
                     if (typeof UtilProductionBridgeState.onApplied === 'function') {
                         UtilProductionBridgeState.onApplied({
                             ...result,
@@ -199,7 +212,7 @@
                             unlinkedExcludedCount: 0
                         });
                     }
-                    if (typeof setLastModified === 'function' && (result.addedCount > 0 || startDayChanged)) {
+                    if (typeof setLastModified === 'function' && (result.addedCount > 0 || result.replacedCount > 0 || startDayChanged)) {
                         setLastModified('유틸리티 관리');
                     }
                     postUtilProductionExtractorMessage(event.source, {
@@ -207,6 +220,7 @@
                         ok: true,
                         addedCount: result.addedCount,
                         skippedCount: result.skippedCount,
+                        replacedCount: result.replacedCount,
                         failedFiles,
                         archivedCount: 0,
                         archiveFailedCount: 0,
@@ -360,6 +374,8 @@
                 productName: item.productName || '',
                 metricValue: item?.[detailConfig.metricKey],
                 moistureExcludedYield: Number.isFinite(parseUtilPercentAmount(item?.moistureExcludedYield)) ? parseUtilPercentAmount(item?.moistureExcludedYield) : null,
+                workTime: Number.isFinite(parseUtilAmount(item?.workTime ?? item?.inputTime)) ? parseUtilAmount(item?.workTime ?? item?.inputTime) : null,
+                operationTime: Number.isFinite(parseUtilAmount(item?.operationTime)) ? parseUtilAmount(item?.operationTime) : null,
                 equipmentCapa: Number.isFinite(parseUtilAmount(item?.equipmentCapa)) ? parseUtilAmount(item?.equipmentCapa) : null,
                 equipmentUtilization: Number.isFinite(parseUtilPercentAmount(item?.equipmentUtilization)) ? parseUtilPercentAmount(item?.equipmentUtilization) : null,
                 entryKey: String(item?.entryKey || '').trim()

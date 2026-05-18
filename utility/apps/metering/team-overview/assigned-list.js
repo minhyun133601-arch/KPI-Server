@@ -122,10 +122,11 @@ function getTeamSharedCompressorChipDescriptor(teamKey, monthValue = state.curre
   }
 
   const team = getTeamGroup(teamKey);
+  const teamLabel = getTeamDisplayLabel(team) || team?.label || "";
   return {
     id: SHARED_COMPRESSOR_VIRTUAL_ID,
     selectionId: SHARED_COMPRESSOR_VIRTUAL_ID,
-    label: SHARED_COMPRESSOR_VIRTUAL_LABEL,
+    label: teamLabel ? `${teamLabel} 컴프레셔` : SHARED_COMPRESSOR_VIRTUAL_LABEL,
     iconKey: team?.iconKey || "equipment",
     usageText: formatDailyUsage(
       calculateTeamSharedCompressorSettlementUsage(teamKey, monthValue)

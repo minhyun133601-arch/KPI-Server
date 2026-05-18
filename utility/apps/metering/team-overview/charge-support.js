@@ -2,12 +2,27 @@ function getTeamChargeEquipmentIds(teamKey, options = {}) {
   return options.selectionOnly ? getTeamCalendarSelection(teamKey) : getTeamAssignedEquipmentIds(teamKey);
 }
 
+function isConfiguredSharedCompressorSettlementMonth(normalizedMonth) {
+  const configuredMonths =
+    typeof SHARED_COMPRESSOR_SETTLEMENT_MONTHS !== "undefined"
+      ? SHARED_COMPRESSOR_SETTLEMENT_MONTHS
+      : null;
+  if (configuredMonths instanceof Set && configuredMonths.size > 0) {
+    return configuredMonths.has(normalizedMonth);
+  }
+  if (Array.isArray(configuredMonths) && configuredMonths.length > 0) {
+    return configuredMonths.includes(normalizedMonth);
+  }
+
+  return compareMonthValues(normalizedMonth, SHARED_COMPRESSOR_SETTLEMENT_START_MONTH) >= 0;
+}
+
 function shouldApplySharedCompressorSettlement(monthValue = state.currentMonth) {
   const normalizedMonth = normalizeMonthValue(monthValue);
   return (
     !isGasResourceType() &&
     Boolean(normalizedMonth) &&
-    compareMonthValues(normalizedMonth, SHARED_COMPRESSOR_SETTLEMENT_START_MONTH) >= 0
+    isConfiguredSharedCompressorSettlementMonth(normalizedMonth)
   );
 }
 
@@ -95,14 +110,8 @@ function calculateSharedCompressorSettlementVariableChargeSum(monthValue = state
 }
 
 function calculateSharedCompressorSettlementBaseChargeSum(monthValue = state.currentMonth) {
-  if (!shouldApplySharedCompressorSettlement(monthValue)) {
-    return null;
-  }
-
-  const values = getSharedCompressorSettlementSourceIds().map((equipmentId) =>
-    calculateEquipmentBaseChargeAllocation(equipmentId, monthValue)
-  );
-  return sumFiniteValues(values);
+  void monthValue;
+  return null;
 }
 
 function getTeamSharedCompressorSettlementValue(
@@ -141,20 +150,12 @@ function calculateTeamSharedCompressorSettlementCharge(
   monthValue = state.currentMonth,
   options = {}
 ) {
-  const variableCharge = getTeamSharedCompressorSettlementValue(
+  return getTeamSharedCompressorSettlementValue(
     teamKey,
     calculateSharedCompressorSettlementVariableChargeSum(monthValue),
     monthValue,
     options
   );
-  const baseCharge = getTeamSharedCompressorSettlementValue(
-    teamKey,
-    calculateSharedCompressorSettlementBaseChargeSum(monthValue),
-    monthValue,
-    options
-  );
-
-  return sumFiniteValues([variableCharge, baseCharge]);
 }
 
 function getTeamSharedCompressorSettlementChargeText(teamKey, monthValue = state.currentMonth) {
@@ -183,19 +184,10 @@ function getTeamSharedCompressorSettlementDetailText(teamKey, monthValue = state
       calculateSharedCompressorSettlementVariableChargeSum(monthValue),
       monthValue
     );
-    const baseCharge = getTeamSharedCompressorSettlementValue(
-      teamKey,
-      calculateSharedCompressorSettlementBaseChargeSum(monthValue),
-      monthValue
-    );
     const charge = calculateTeamSharedCompressorSettlementCharge(teamKey, monthValue);
 
     if (Number.isFinite(variableCharge)) {
       parts.push(`사용량요금 ${formatSettlementAmount(variableCharge)}`);
-    }
-
-    if (Number.isFinite(baseCharge)) {
-      parts.push(`기본요금 배분 ${formatSettlementAmount(baseCharge)}`);
     }
 
     if (Number.isFinite(charge)) {
@@ -229,23 +221,8 @@ function calculateTeamEquipmentVariableChargeSum(teamKey, monthValue = state.cur
 }
 
 function calculateTeamBaseChargeAllocationSum(teamKey, monthValue = state.currentMonth, options = {}) {
-  const allocations = getTeamChargeEquipmentIdsExcludingSharedCompressor(teamKey, monthValue, options)
-    .map((equipmentId) => calculateEquipmentBaseChargeAllocation(equipmentId, monthValue))
-    .filter((value) => Number.isFinite(value));
-  const sharedAllocation = getTeamSharedCompressorSettlementValue(
-    teamKey,
-    calculateSharedCompressorSettlementBaseChargeSum(monthValue),
-    monthValue,
-    options
-  );
-
-  if (Number.isFinite(sharedAllocation)) {
-    allocations.push(sharedAllocation);
-  }
-
-  if (!allocations.length) {
-    return null;
-  }
-
-  return allocations.reduce((sum, value) => sum + value, 0);
+  void teamKey;
+  void monthValue;
+  void options;
+  return null;
 }

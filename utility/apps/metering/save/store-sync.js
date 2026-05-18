@@ -121,12 +121,28 @@ async function performManualSave(options = {}) {
   if (currentMode === MODES.TEAM) {
     syncPendingMeteringDraftInputs();
     completeCurrentBillingSettlementEntryForManualSave();
+    syncActiveResourceDatasetToStore(state.store);
+    const completedSettlementCount =
+      typeof completeStoreBillingSettlementEntriesWithStoredValues === "function"
+        ? completeStoreBillingSettlementEntriesWithStoredValues(state.store)
+        : 0;
+    if (completedSettlementCount > 0) {
+      state.cleanStatusText = `${completedSettlementCount}개 정산 입력을 저장 완료 처리했습니다.`;
+      renderTeamMode();
+      if (typeof renderSettlementReadinessPanel === "function") {
+        renderSettlementReadinessPanel();
+      }
+    }
   }
 
   let didSave = false;
 
   if (currentMode === MODES.EQUIPMENT) {
     if (state.selectedDate) {
+      completeCurrentEquipmentEntryForManualSave({
+        trigger,
+        completeCurrentEntry: options.completeCurrentEntry === true,
+      });
       didSave = saveCurrentEquipmentEntry({ allowValidationIssues: true });
       if (!didSave) {
         updateDirtyState();

@@ -120,6 +120,7 @@ test('report sheet electric comparison summary registry builds electric billing 
                   lagging_power_factor_charge: '50',
                   internet_discount: '150',
                   base_charge: '5000',
+                  electricity_charge_total: '10700',
                   vat: '1500',
                   electric_power_fund: '300',
                   tv_reception_fee: '250',
@@ -290,7 +291,7 @@ test('report sheet electric comparison summary registry builds electric billing 
 
   const summary = registry.buildUtilElectricBillingSummaryModel(model);
   assert.equal(summary.monthKey, '2026-03');
-  assert.match(summary.items[0].valueText, /10,700\uC6D0/u);
+  assert.match(summary.items[0].valueText, /15,700\uC6D0/u);
   assert.match(summary.items[1].valueText, /177\.50\uC6D0\/kWh/u);
   assert.match(summary.items[2].valueText, /17,750\uC6D0/u);
 

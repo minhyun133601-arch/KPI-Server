@@ -164,9 +164,9 @@
         productionTeam3YieldSection: 'Ⅰ. 생산 3팀',
         productionTeam3YieldTitle: '2. 생산지표 2-2 수율',
         slide3Section: 'Ⅰ. 공무환경팀',
-        slide3Title: '1. 북정 (가스, 전기 비용) 분석',
+        slide3Title: '1. 북 정 (가스, 전기 비용) 분석',
         slide4Section: 'Ⅰ. 공무환경팀',
-        slide4Title: '1. 유산 (가스, 전기 비용) 분석',
+        slide4Title: '1. 유 산 (가스, 전기 비용) 분석',
         slide5Section: 'Ⅰ. 공무환경팀',
         slide5Title: '1. 유산 (가스 비용) 분석',
         slide6Section: 'Ⅱ. 공무환경팀',
@@ -334,6 +334,7 @@
     });
     const REPORT_DECK_COMPLETE_EDIT_EVENT = 'kpi:report-deck-complete-edit';
     const REPORT_DECK_MONTH_RECORD_PREFIX = 'report_';
+    const REPORT_DECK_OPEN_MONTH_START = '2024-01';
     const REPORT_DECK_SETTLEMENT_SCOPE_REQUIREMENTS = Object.freeze({
         electric: Object.freeze(['yusan', 'bukjeong']),
         gas: Object.freeze(['gas_bukjeong', 'yusan_lng', 'yusan_lpg']),
@@ -341,6 +342,7 @@
     });
     const REPORT_DECK_SLIDE8_OVERVIEW_TEAMS = Object.freeze(['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀']);
     const REPORT_DECK_PLAN_MAX_ITEMS = 8;
+    const REPORT_DECK_SELF_HANDLED_AMOUNT_LABEL = '자체 처리';
     const REPORT_DECK_MEMO_TEAM_OPTIONS = Object.freeze([
         Object.freeze({ key: 'team_01_01', label: '1팀 1파트' }),
         Object.freeze({ key: 'team_01_02', label: '1팀 2파트' }),
@@ -350,8 +352,11 @@
     const REPORT_DECK_MEMO_METRIC_OPTIONS = Object.freeze([
         Object.freeze({ key: 'production', label: '생산량' }),
         Object.freeze({ key: 'electric', label: '전력량' }),
+        Object.freeze({ key: 'electric_unit', label: '생산량 대비 전력량' }),
         Object.freeze({ key: 'lng', label: 'LNG' }),
+        Object.freeze({ key: 'lng_unit', label: '생산량 대비 LNG' }),
         Object.freeze({ key: 'lpg', label: 'LPG' }),
+        Object.freeze({ key: 'lpg_unit', label: '생산량 대비 LPG' }),
         Object.freeze({ key: 'yield_rate', label: '수율' }),
         Object.freeze({ key: 'operation_rate', label: '가동률' }),
         Object.freeze({ key: 'production_days', label: '생산일수' }),
@@ -382,6 +387,14 @@
         'waste_cost_resin',
         'waste_cost_labor'
     ]);
+    const REPORT_DECK_MEMO_ANALYSIS_MEMO_KEYS = Object.freeze([
+        'slide3GasMemo',
+        'slide3ElectricMemo',
+        'slide4GasMemo',
+        'slide4ElectricMemo',
+        'slide5LpgMemo',
+        'slide5CostMemo'
+    ]);
     const REPORT_DECK_MEMO_WASTE_MEMO_KEYS = Object.freeze(['slide6WasteMemo', 'slide7WasteMemo']);
     const REPORT_DECK_MEMO_PRODUCTION_LINES = Object.freeze({
         team_01_01: Object.freeze(['SD', 'MSD']),
@@ -390,10 +403,10 @@
         team_03: Object.freeze(['Bottle', '기타'])
     });
     const REPORT_DECK_MEMO_TEAM_METRIC_KEYS = Object.freeze({
-        team_01_01: Object.freeze(['production', 'electric', 'lng', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_01_02: Object.freeze(['production', 'electric', 'lng', 'lpg', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_02: Object.freeze(['production', 'electric', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_03: Object.freeze(['production', 'electric', 'lng', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
+        team_01_01: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_01_02: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', 'lpg', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_02: Object.freeze(['production', 'electric', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_03: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
     });
 
     function normalizeReportDeckDate(value) {
@@ -466,6 +479,30 @@
             return '';
         }
         return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}`;
+    }
+
+    function getReportDeckCurrentMonth() {
+        const now = new Date();
+        return normalizeReportDeckMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+    }
+
+    function buildReportDeckMonthRange(startMonthValue, endMonthValue) {
+        const startMonth = normalizeReportDeckMonth(startMonthValue);
+        const endMonth = normalizeReportDeckMonth(endMonthValue);
+        if (!startMonth || !endMonth || startMonth.localeCompare(endMonth) > 0) return [];
+        const startYear = Number.parseInt(startMonth.slice(0, 4), 10);
+        const startMonthNumber = Number.parseInt(startMonth.slice(5, 7), 10);
+        const endYear = Number.parseInt(endMonth.slice(0, 4), 10);
+        const endMonthNumber = Number.parseInt(endMonth.slice(5, 7), 10);
+        const months = [];
+        for (let year = startYear; year <= endYear; year += 1) {
+            const from = year === startYear ? startMonthNumber : 1;
+            const to = year === endYear ? endMonthNumber : 12;
+            for (let month = from; month <= to; month += 1) {
+                months.push(`${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}`);
+            }
+        }
+        return months;
     }
 
     function normalizeReportDeckDepartment(value) {
@@ -610,7 +647,9 @@
         if (entry.title) lines.push(entry.title);
         if (entry.effect) lines.push(`▶ 효과 : ${entry.effect}`);
         if (entry.date) lines.push(`▶ 완료 날짜 : ${formatReportDeckOverviewDate(entry.date)}`);
-        if (entry.amount) lines.push(`▶ 금액 : ${formatReportDeckOverviewAmount(entry.amount)}`);
+        if (entry.amount || (entry.team && entry.title && entry.effect && entry.date)) {
+            lines.push(`▶ 금액 : ${formatReportDeckOverviewAmount(entry.amount) || REPORT_DECK_SELF_HANDLED_AMOUNT_LABEL}`);
+        }
         return lines.length ? lines.join('\n') : String(entry.text || '');
     }
 
@@ -696,7 +735,9 @@
         if (entry.title) lines.push(entry.title);
         if (entry.detail) lines.push(`▶ ${getReportDeckSlide9KindLabel(entry.kind)} : ${entry.detail}`);
         if (entry.date) lines.push(`▶ 예상 날짜 : ${formatReportDeckPlanExpectedDate(entry.date)}`);
-        if (entry.amount) lines.push(`▶ 예상 금액 : ${formatReportDeckOverviewAmount(entry.amount)}`);
+        if (entry.amount || (entry.team && entry.title && entry.detail && entry.date)) {
+            lines.push(`▶ 예상 금액 : ${formatReportDeckOverviewAmount(entry.amount) || REPORT_DECK_SELF_HANDLED_AMOUNT_LABEL}`);
+        }
         return lines.length ? lines.join('\n') : String(entry.text || '');
     }
 
@@ -831,9 +872,17 @@
             .sort((left, right) => right.localeCompare(left));
     }
 
+    function buildReportDeckOpenMonthsUntilCurrent() {
+        const currentMonth = getReportDeckCurrentMonth();
+        const startMonth = REPORT_DECK_OPEN_MONTH_START.localeCompare(currentMonth) <= 0
+            ? REPORT_DECK_OPEN_MONTH_START
+            : currentMonth;
+        return buildReportDeckMonthRange(startMonth, currentMonth).reverse();
+    }
+
     function normalizeReportDeckState(input = {}) {
         const source = input && typeof input === 'object' ? input : {};
-        return Object.keys(REPORT_DECK_DEFAULT).reduce((state, key) => {
+        const normalizedState = Object.keys(REPORT_DECK_DEFAULT).reduce((state, key) => {
             const rawValue = Object.prototype.hasOwnProperty.call(source, key)
                 ? source[key]
                 : REPORT_DECK_DEFAULT[key];
@@ -846,6 +895,12 @@
             }
             return state;
         }, {});
+        Object.keys(source).forEach(key => {
+            if (isReportDeckPlanImageSourceKey(key)) {
+                normalizedState[key] = normalizeReportDeckPlanImageSource(source[key]);
+            }
+        });
+        return normalizedState;
     }
 
     function getReportDeckRuntimeConfig() {
@@ -881,7 +936,7 @@
         meta.recordKey = buildReportDeckMonthRecordKey(meta.selectedMonth);
         select.innerHTML = months.length > 0
             ? months.map(month => `<option value="${month}">${formatReportDeckMonthLabel(month)}</option>`).join('')
-            : `<option value="">${meta.monthPlaceholder || '정산 완료 월 없음'}</option>`;
+            : `<option value="">${meta.monthPlaceholder || '선택 가능 월 없음'}</option>`;
         select.disabled = months.length === 0;
         select.value = meta.selectedMonth || '';
         root.dataset.reportMonth = meta.selectedMonth || '';
@@ -1034,11 +1089,70 @@
         )).join('') + addButtonHtml;
     }
 
+    function countReportDeckMemoLayoutLines(value = '') {
+        return String(value || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).length;
+    }
+
+    function getReportDeckMemoGroupLayoutLineCount(state = {}, keys = []) {
+        return keys.reduce((max, key) => Math.max(max, countReportDeckMemoLayoutLines(state?.[key])), 0);
+    }
+
+    function formatReportDeckLayoutPercent(value) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return '0%';
+        return `${Number(number.toFixed(1))}%`;
+    }
+
+    function setReportDeckLayoutPercentVariable(element, name, value) {
+        if (!element?.style || typeof element.style.setProperty !== 'function') return;
+        element.style.setProperty(name, formatReportDeckLayoutPercent(value));
+    }
+
+    function getReportDeckAnalysisLayoutRows(lineCount = 0) {
+        const count = Math.max(0, Math.min(Number(lineCount) || 0, 6));
+        const memo = count <= 0 ? 6 : Math.min(14.5, 6.5 + (count * 1.25));
+        const table = Math.max(24.5, 28 - (count * 0.3));
+        return {
+            table,
+            memo,
+            chart: Math.max(0, 96 - table - memo)
+        };
+    }
+
+    function getReportDeckWasteLayoutRows(lineCount = 0) {
+        const count = Math.max(0, Math.min(Number(lineCount) || 0, 6));
+        const memo = count <= 0 ? 6.5 : Math.min(16, 6.5 + (count * 1.4));
+        return {
+            main: Math.max(0, 90 - memo),
+            memo
+        };
+    }
+
+    function applyReportDeckMemoResponsiveLayout(root, state = {}) {
+        const analysisRows = getReportDeckAnalysisLayoutRows(
+            getReportDeckMemoGroupLayoutLineCount(state, REPORT_DECK_MEMO_ANALYSIS_MEMO_KEYS)
+        );
+        Array.from(root?.querySelectorAll?.('.report-bukjeong-analysis-column, .report-analysis-column') || []).forEach(column => {
+            setReportDeckLayoutPercentVariable(column, '--report-analysis-table-row', analysisRows.table);
+            setReportDeckLayoutPercentVariable(column, '--report-analysis-chart-row', analysisRows.chart);
+            setReportDeckLayoutPercentVariable(column, '--report-analysis-memo-row', analysisRows.memo);
+        });
+
+        const wasteRows = getReportDeckWasteLayoutRows(
+            getReportDeckMemoGroupLayoutLineCount(state, REPORT_DECK_MEMO_WASTE_MEMO_KEYS)
+        );
+        Array.from(root?.querySelectorAll?.('.report-waste-auto-layout') || []).forEach(layout => {
+            setReportDeckLayoutPercentVariable(layout, '--report-waste-main-row', wasteRows.main);
+            setReportDeckLayoutPercentVariable(layout, '--report-waste-memo-row', wasteRows.memo);
+        });
+    }
+
     function syncReportDeckMemoControls(root, state) {
         Array.from(root?.querySelectorAll?.('[data-report-memo-content]') || []).forEach(container => {
             const key = String(container?.dataset?.reportMemoContent || '').trim();
             renderReportDeckMemoContent(container, key && Object.prototype.hasOwnProperty.call(state, key) ? state[key] : '', key);
         });
+        applyReportDeckMemoResponsiveLayout(root, state);
     }
 
     function normalizeReportDeckMemoTeamKey(value = '') {
@@ -1265,10 +1379,46 @@
         return String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
     }
 
+    function getReportDeckMemoDialogTargetKey(dialog) {
+        return String(dialog?.dataset?.reportMemoTarget || '').trim();
+    }
+
+    function clearReportDeckMemoManualInput(dialog) {
+        const input = dialog?.querySelector?.('[data-report-memo-manual-input]');
+        if (input) input.value = '';
+    }
+
+    function setReportDeckMemoLines(root, state, meta, dialog, key, lines = [], options = {}) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
+        state[normalizedKey] = (Array.isArray(lines) ? lines : [])
+            .map(line => String(line || '').trim())
+            .filter(Boolean)
+            .join('\n');
+        syncReportDeckMemoControls(root, state);
+        if (options.syncDialog !== false) {
+            syncReportDeckMemoDialogLines(dialog, state);
+        }
+        markReportDeckDirty(root, state, meta);
+        return true;
+    }
+
+    function appendReportDeckMemoLines(root, state, meta, dialog, key, addedLines = []) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
+        const lines = getReportDeckMemoLines(state[normalizedKey]);
+        const nextLines = lines.concat(
+            (Array.isArray(addedLines) ? addedLines : [])
+                .map(line => String(line || '').trim())
+                .filter(Boolean)
+        );
+        return setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, nextLines);
+    }
+
     function syncReportDeckMemoDialogLines(dialog, state) {
         const list = dialog?.querySelector?.('[data-report-memo-lines]');
         if (!list) return;
-        const key = String(dialog?.dataset?.reportMemoTarget || '').trim();
+        const key = getReportDeckMemoDialogTargetKey(dialog);
         const lines = key && Object.prototype.hasOwnProperty.call(state, key)
             ? getReportDeckMemoLines(state[key])
             : [];
@@ -1279,7 +1429,7 @@
         }
         list.innerHTML = lines.map((line, index) => (
             `<div class="report-memo-line-row" data-report-memo-line-row="${index}">`
-                + `<span class="report-memo-line-text ${getReportDeckMemoLineClass(line)}">${renderReportDeckMemoLineHtml(line)}</span>`
+                + `<textarea class="report-memo-line-input ${getReportDeckMemoLineClass(line)}" data-report-memo-line-input="${index}" rows="2" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1}">${escapeReportDeckHtml(line)}</textarea>`
                 + `<button type="button" data-report-memo-delete-line="${index}">삭제</button>`
             + '</div>'
         )).join('');
@@ -1370,6 +1520,7 @@
         dialog.dataset.reportMemoTarget = key;
         syncReportDeckMemoMetricOptions(dialog, memoTarget.dataset.reportMemoDefaultMetric || metricSelect?.value);
         syncReportDeckMemoDialogLines(dialog, state);
+        clearReportDeckMemoManualInput(dialog);
         dialog.hidden = false;
         void refreshReportDeckMemoDialog(root, state, meta);
         teamSelect?.focus?.();
@@ -1386,6 +1537,74 @@
         const count = Number.parseInt(String(value || ''), 10);
         if (!Number.isInteger(count)) return 0;
         return Math.max(0, Math.min(REPORT_DECK_PLAN_MAX_ITEMS, count));
+    }
+
+    function isReportDeckPlanImageSourceKey(key) {
+        return /^slide(?:8(?:Before|After)?Image|9Image)\d+Source$/.test(String(key || '').trim());
+    }
+
+    function getReportDeckPlanImageSourceKey(key) {
+        const imageKey = String(key || '').trim();
+        return imageKey ? `${imageKey}Source` : '';
+    }
+
+    function normalizeReportDeckPlanImageSource(value) {
+        const normalized = String(value || '').trim().toLowerCase();
+        return normalized === 'paste' || normalized === 'upload' ? normalized : '';
+    }
+
+    function getReportDeckPlanImagePlaceholderText(root) {
+        if (root?.dataset?.reportEditMode !== 'editing') return '';
+        return '이미지 첨부 또는 붙여넣기';
+    }
+
+    function canUseReportDeckPlanImageAttachment(root, frame) {
+        return Boolean(
+            root?.dataset?.reportEditMode === 'editing'
+            && frame?.dataset?.hasImage !== 'true'
+            && getReportDeckPlanImageKeyFromFrame(frame)
+        );
+    }
+
+    function canUseReportDeckPlanImagePaste(root, frame) {
+        return Boolean(
+            root?.dataset?.reportEditMode === 'editing'
+            && frame?.dataset?.hasImage !== 'true'
+            && getReportDeckPlanImageKeyFromFrame(frame)
+        );
+    }
+
+    function syncReportDeckPlanImageAttachmentState(root) {
+        Array.from(root?.querySelectorAll?.('[data-report-plan-image-frame]') || []).forEach(frame => {
+            const hasEditableImageKey = Boolean(
+                root?.dataset?.reportEditMode === 'editing'
+                && getReportDeckPlanImageKeyFromFrame(frame)
+            );
+            const canReceiveNewImage = hasEditableImageKey && frame?.dataset?.hasImage !== 'true';
+            const canAttach = canUseReportDeckPlanImageAttachment(root, frame);
+            frame.setAttribute?.('aria-disabled', canReceiveNewImage ? 'false' : 'true');
+            frame.setAttribute?.('tabindex', canReceiveNewImage ? '0' : '-1');
+            const input = getReportDeckPlanImageInputFromFrame(frame);
+            if (input) input.disabled = !canAttach;
+            const uploadButton = frame?.querySelector?.('[data-report-plan-image-upload]');
+            if (uploadButton) {
+                uploadButton.disabled = !canReceiveNewImage;
+                uploadButton.setAttribute?.('aria-disabled', canReceiveNewImage ? 'false' : 'true');
+            }
+            const pasteButton = frame?.querySelector?.('[data-report-plan-image-paste]');
+            if (pasteButton) {
+                pasteButton.disabled = !canReceiveNewImage;
+                pasteButton.setAttribute?.('aria-disabled', canReceiveNewImage ? 'false' : 'true');
+            }
+        });
+    }
+
+    function syncReportDeckPlanImageModeHints(root) {
+        Array.from(root?.querySelectorAll?.('[data-report-plan-image-frame]') || []).forEach(frame => {
+            const placeholder = frame?.querySelector?.('[data-report-plan-image-placeholder]');
+            if (placeholder) placeholder.textContent = getReportDeckPlanImagePlaceholderText(root);
+        });
+        syncReportDeckPlanImageAttachmentState(root);
     }
 
     function buildReportDeckPlanPageCounts(totalCount) {
@@ -1465,9 +1684,20 @@
             image.dataset.reportPlanImage = key;
             const frame = image.closest?.('[data-report-plan-image-frame]');
             const input = frame?.querySelector?.('[data-report-plan-image-input]');
+            const uploadButton = frame?.querySelector?.('[data-report-plan-image-upload]');
+            const pasteButton = frame?.querySelector?.('[data-report-plan-image-paste]');
             const clearButton = frame?.querySelector?.('[data-report-plan-image-clear]');
+            const placeholder = frame?.querySelector?.('[data-report-plan-image-placeholder]');
+            const source = normalizeReportDeckPlanImageSource(state[getReportDeckPlanImageSourceKey(key)]);
             if (input) input.dataset.reportPlanImageKey = key;
+            if (uploadButton) uploadButton.dataset.reportPlanImageUpload = key;
+            if (pasteButton) pasteButton.dataset.reportPlanImagePaste = key;
             if (clearButton) clearButton.dataset.reportPlanImageClear = key;
+            if (placeholder) placeholder.textContent = getReportDeckPlanImagePlaceholderText(root);
+            if (frame?.dataset) {
+                frame.dataset.reportPlanImageKey = key;
+                frame.dataset.reportPlanImageSource = source;
+            }
             if (value) {
                 image.src = value;
                 image.removeAttribute?.('hidden');
@@ -1478,7 +1708,83 @@
                 frame?.setAttribute?.('data-has-image', 'false');
             }
         });
+        syncReportDeckPlanImageModeHints(root);
         syncReportDeckDynamicSlides(root);
+    }
+
+    function getReportDeckPlanImageFrameFromTarget(target) {
+        return target?.closest?.('[data-report-plan-image-frame]') || null;
+    }
+
+    function getReportDeckPlanImageInputFromFrame(frame) {
+        return frame?.querySelector?.('[data-report-plan-image-input]') || null;
+    }
+
+    function getReportDeckPlanImageKeyFromFrame(frame) {
+        const frameKey = String(frame?.dataset?.reportPlanImageKey || '').trim();
+        if (frameKey) return frameKey;
+        const inputKey = String(getReportDeckPlanImageInputFromFrame(frame)?.dataset?.reportPlanImageKey || '').trim();
+        if (inputKey) return inputKey;
+        return String(frame?.querySelector?.('[data-report-plan-image]')?.dataset?.reportPlanImage || '').trim();
+    }
+
+    function getReportDeckPlanImageFrames(root) {
+        return Array.from(root?.querySelectorAll?.('[data-report-plan-image-frame]') || []);
+    }
+
+    function setReportDeckActivePlanImageFrame(root, frame) {
+        root.__reportDeckActivePlanImageFrame = frame || null;
+        getReportDeckPlanImageFrames(root).forEach(item => {
+            if (item?.dataset) item.dataset.reportPlanPasteTarget = item === frame ? 'true' : 'false';
+        });
+    }
+
+    function isReportDeckUsablePlanImageFrame(frame, state) {
+        const key = getReportDeckPlanImageKeyFromFrame(frame);
+        return Boolean(key && Object.prototype.hasOwnProperty.call(state, key));
+    }
+
+    function hasReportDeckPlanImageValue(state, key) {
+        return Boolean(String(state?.[key] || '').trim());
+    }
+
+    function getReportDeckPasteCandidateFrames(root) {
+        const frames = getReportDeckPlanImageFrames(root);
+        const activeSlide = root?.querySelector?.('.report-slide.is-active');
+        if (!activeSlide || typeof activeSlide.contains !== 'function') return frames;
+        const activeFrames = frames.filter(frame => activeSlide.contains(frame));
+        return activeFrames.length ? activeFrames : frames;
+    }
+
+    function resolveReportDeckPasteImageFrame(root, state, target) {
+        const targetFrame = getReportDeckPlanImageFrameFromTarget(target);
+        if (isReportDeckUsablePlanImageFrame(targetFrame, state)) {
+            return canUseReportDeckPlanImagePaste(root, targetFrame) ? targetFrame : null;
+        }
+        if (isReportDeckUsablePlanImageFrame(root.__reportDeckActivePlanImageFrame, state)) {
+            return canUseReportDeckPlanImagePaste(root, root.__reportDeckActivePlanImageFrame)
+                ? root.__reportDeckActivePlanImageFrame
+                : null;
+        }
+        const frames = getReportDeckPasteCandidateFrames(root);
+        return frames.find(frame => isReportDeckUsablePlanImageFrame(frame, state) && canUseReportDeckPlanImagePaste(root, frame) && frame?.dataset?.hasImage !== 'true')
+            || null;
+    }
+
+    function isReportDeckImageFile(file) {
+        const type = String(file?.type || '').toLowerCase();
+        if (type.startsWith('image/')) return true;
+        return /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif)$/i.test(String(file?.name || ''));
+    }
+
+    function getReportDeckClipboardImageFile(event) {
+        const items = Array.from(event?.clipboardData?.items || []);
+        for (const item of items) {
+            if (!String(item?.type || '').toLowerCase().startsWith('image/')) continue;
+            const file = item.getAsFile?.();
+            if (file) return file;
+        }
+        return Array.from(event?.clipboardData?.files || []).find(isReportDeckImageFile) || null;
     }
 
     function getReportDeckOverviewDialog(root) {
@@ -1610,12 +1916,12 @@
 
     function isReportDeckSlide8OverviewComplete(state, slotIndex) {
         const entry = getReportDeckSlide8OverviewEntry(state, slotIndex);
-        return Boolean(entry.team && entry.title && entry.effect && entry.date && entry.amount);
+        return Boolean(entry.team && entry.title && entry.effect && entry.date);
     }
 
     function isReportDeckSlide9OverviewComplete(state, slotIndex) {
         const entry = getReportDeckSlide9OverviewEntry(state, slotIndex);
-        return Boolean(entry.team && entry.title && entry.detail && entry.date && entry.amount);
+        return Boolean(entry.team && entry.title && entry.detail && entry.date);
     }
 
     function isReportDeckPlanSlotComplete(state, slideKey, slotIndex) {
@@ -2017,6 +2323,8 @@
     }
 
     function formatReportDeckAutoComparisonHtml(deltaValue, rateValue, formatDelta = formatReportDeckAutoSignedNumber, formatRate = formatReportDeckAutoSignedRate) {
+        const normalizedDelta = toReportDeckFiniteNumber(deltaValue);
+        if (normalizedDelta === 0) return escapeReportDeckHtml('\uB3D9\uC77C');
         const deltaText = formatDelta(deltaValue);
         const rateText = formatRate(rateValue);
         return `${escapeReportDeckHtml(deltaText)}<span>${escapeReportDeckHtml(rateText)}</span>`;
@@ -2096,96 +2404,125 @@
         });
     }
 
+    function getReportDeckAutoMetricRowDecimals(rowKey) {
+        return String(rowKey || '').trim() === 'unit' ? 3 : 0;
+    }
+
+    function getReportDeckAutoMetricRowComparisonOptions(rowKey) {
+        const decimals = getReportDeckAutoMetricRowDecimals(rowKey);
+        return decimals > 0
+            ? { formatDelta: value => formatReportDeckAutoSignedNumber(value, decimals) }
+            : {};
+    }
+
     function renderReportDeckAutoMetricRow(root, resourceKey, rowKey, rowModel) {
         const row = rowModel || {};
+        const decimals = getReportDeckAutoMetricRowDecimals(rowKey);
+        const comparisonOptions = getReportDeckAutoMetricRowComparisonOptions(rowKey);
         setReportDeckAutoCellText(
             root,
             `[data-report-auto-value="${resourceKey}.${rowKey}.reference"]`,
-            formatReportDeckAutoNumber(row.reference)
+            formatReportDeckAutoNumber(row.reference, decimals)
         );
         setReportDeckAutoCellText(
             root,
             `[data-report-auto-value="${resourceKey}.${rowKey}.current"]`,
-            formatReportDeckAutoNumber(row.current)
+            formatReportDeckAutoNumber(row.current, decimals)
         );
         renderReportDeckAutoComparisonCell(
             root,
             `[data-report-auto-value="${resourceKey}.${rowKey}.yoy"]`,
-            row
+            row,
+            'delta',
+            'rate',
+            comparisonOptions
         );
         setReportDeckAutoCellText(
             root,
             `[data-report-auto-value="${resourceKey}.${rowKey}.previous"]`,
-            formatReportDeckAutoNumber(row.previous)
+            formatReportDeckAutoNumber(row.previous, decimals)
         );
         renderReportDeckAutoComparisonCell(
             root,
             `[data-report-auto-value="${resourceKey}.${rowKey}.mom"]`,
             row,
             'monthDelta',
-            'monthRate'
+            'monthRate',
+            comparisonOptions
         );
     }
 
     function renderReportDeckWasteMetricRow(root, rowKey, rowModel) {
         const row = rowModel || {};
+        const decimals = getReportDeckAutoMetricRowDecimals(rowKey);
+        const comparisonOptions = getReportDeckAutoMetricRowComparisonOptions(rowKey);
         setReportDeckAutoCellText(
             root,
             `[data-report-waste-auto-value="${rowKey}.current"]`,
-            formatReportDeckAutoNumber(row.current)
+            formatReportDeckAutoNumber(row.current, decimals)
         );
         setReportDeckAutoCellText(
             root,
             `[data-report-waste-auto-value="${rowKey}.reference"]`,
-            formatReportDeckAutoNumber(row.reference)
+            formatReportDeckAutoNumber(row.reference, decimals)
         );
         renderReportDeckAutoComparisonCell(
             root,
             `[data-report-waste-auto-value="${rowKey}.yoy"]`,
-            row
+            row,
+            'delta',
+            'rate',
+            comparisonOptions
         );
         setReportDeckAutoCellText(
             root,
             `[data-report-waste-auto-value="${rowKey}.previous"]`,
-            formatReportDeckAutoNumber(row.previous)
+            formatReportDeckAutoNumber(row.previous, decimals)
         );
         renderReportDeckAutoComparisonCell(
             root,
             `[data-report-waste-auto-value="${rowKey}.mom"]`,
             row,
             'monthDelta',
-            'monthRate'
+            'monthRate',
+            comparisonOptions
         );
     }
 
     function renderReportDeckYusanLpgMetricRow(root, rowKey, rowModel) {
         const row = rowModel || {};
+        const decimals = getReportDeckAutoMetricRowDecimals(rowKey);
+        const comparisonOptions = getReportDeckAutoMetricRowComparisonOptions(rowKey);
         setReportDeckAutoCellText(
             root,
             `[data-report-yusan-lpg-value="${rowKey}.reference"]`,
-            formatReportDeckAutoNumber(row.reference)
+            formatReportDeckAutoNumber(row.reference, decimals)
         );
         setReportDeckAutoCellText(
             root,
             `[data-report-yusan-lpg-value="${rowKey}.current"]`,
-            formatReportDeckAutoNumber(row.current)
+            formatReportDeckAutoNumber(row.current, decimals)
         );
         renderReportDeckAutoComparisonCell(
             root,
             `[data-report-yusan-lpg-value="${rowKey}.yoy"]`,
-            row
+            row,
+            'delta',
+            'rate',
+            comparisonOptions
         );
         setReportDeckAutoCellText(
             root,
             `[data-report-yusan-lpg-value="${rowKey}.previous"]`,
-            formatReportDeckAutoNumber(row.previous)
+            formatReportDeckAutoNumber(row.previous, decimals)
         );
         renderReportDeckAutoComparisonCell(
             root,
             `[data-report-yusan-lpg-value="${rowKey}.mom"]`,
             row,
             'monthDelta',
-            'monthRate'
+            'monthRate',
+            comparisonOptions
         );
     }
 
@@ -2462,12 +2799,37 @@
         }, 0);
     }
 
+    function getReportDeckChartLabelPlacementValue(label) {
+        const value = toReportDeckFiniteNumber(label?.value);
+        if (value !== null) return value;
+        const parsedText = toReportDeckFiniteNumber(String(label?.text || '').replace(/,/g, ''));
+        if (parsedText !== null) return parsedText;
+        const y = toReportDeckFiniteNumber(label?.y);
+        return y === null ? Number.NEGATIVE_INFINITY : -y;
+    }
+
+    function sortReportDeckChartLabelsByValue(labelItems) {
+        return (Array.isArray(labelItems) ? labelItems : [])
+            .map((item, index) => ({ item, index, value: getReportDeckChartLabelPlacementValue(item) }))
+            .sort((left, right) => {
+                if (right.value !== left.value) return right.value - left.value;
+                const leftY = toReportDeckFiniteNumber(left.item?.y) ?? Number.POSITIVE_INFINITY;
+                const rightY = toReportDeckFiniteNumber(right.item?.y) ?? Number.POSITIVE_INFINITY;
+                if (leftY !== rightY) return leftY - rightY;
+                const leftX = toReportDeckFiniteNumber(left.item?.x) ?? Number.POSITIVE_INFINITY;
+                const rightX = toReportDeckFiniteNumber(right.item?.x) ?? Number.POSITIVE_INFINITY;
+                if (leftX !== rightX) return leftX - rightX;
+                return left.index - right.index;
+            });
+    }
+
     function placeReportDeckChartValueLabels(labelItems, plotTop, plotBottomY) {
         const placed = [];
-        const offsets = [0, -16, 16, -26, 26, -36, 36, -46, 46];
+        const placedByInputOrder = new Map();
+        const offsets = [0, 16, -16, 26, -26, 36, -36, 46, -46];
         const minY = plotTop + 12;
         const maxY = plotBottomY - 8;
-        return (Array.isArray(labelItems) ? labelItems : []).map(item => {
+        sortReportDeckChartLabelsByValue(labelItems).forEach(({ item, index }) => {
             const baseY = Number(item?.baseLabelY) || 0;
             const candidates = offsets.reduce((list, offset) => {
                 const labelY = Math.max(minY, Math.min(maxY, baseY + offset));
@@ -2493,8 +2855,78 @@
             const chosen = best || { ...item, labelY: Math.max(minY, Math.min(maxY, baseY)) };
             delete chosen.collisionCount;
             placed.push(chosen);
-            return chosen;
+            placedByInputOrder.set(index, chosen);
         });
+        return Array.from({ length: Array.isArray(labelItems) ? labelItems.length : 0 }, (_, index) => placedByInputOrder.get(index))
+            .filter(Boolean);
+    }
+
+    function getReportDeckChartSameValueLabelKey(label) {
+        const x = Number(label?.x) || 0;
+        const text = String(label?.text || '');
+        return `${x.toFixed(2)}::${text}`;
+    }
+
+    function alignReportDeckSameValueLabels(placedLabels) {
+        const groups = new Map();
+        (Array.isArray(placedLabels) ? placedLabels : []).forEach(label => {
+            const key = getReportDeckChartSameValueLabelKey(label);
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(label);
+        });
+        groups.forEach(group => {
+            if (group.length < 2) return;
+            const labelY = group.reduce((sum, label) => sum + (Number(label?.labelY) || 0), 0) / group.length;
+            group.forEach(label => {
+                label.labelY = labelY;
+            });
+        });
+        return placedLabels;
+    }
+
+    function getReportDeckChartLabelColors(labels) {
+        return (Array.isArray(labels) ? labels : []).reduce((colors, label) => {
+            const color = String(label?.color || '').trim();
+            if (color && !colors.includes(color)) colors.push(color);
+            return colors;
+        }, []);
+    }
+
+    function renderReportDeckChartSingleValueLabel(label) {
+        return `
+            <text class="report-auto-chart-label" x="${label.x.toFixed(2)}" y="${label.labelY.toFixed(2)}" text-anchor="middle" fill="${escapeReportDeckSvgText(label.color)}">${escapeReportDeckSvgText(label.text)}</text>
+        `;
+    }
+
+    function renderReportDeckChartDualColorValueLabel(label, colors) {
+        const strokeColor = colors[0] || label.color;
+        const fillColor = colors[1] || label.color;
+        return `
+            <text class="report-auto-chart-label report-auto-chart-label-dual-outline" x="${label.x.toFixed(2)}" y="${label.labelY.toFixed(2)}" text-anchor="middle" fill="none" stroke="${escapeReportDeckSvgText(strokeColor)}" stroke-width="2.6" stroke-linejoin="round">${escapeReportDeckSvgText(label.text)}</text>
+            <text class="report-auto-chart-label report-auto-chart-label-dual-fill" x="${label.x.toFixed(2)}" y="${label.labelY.toFixed(2)}" text-anchor="middle" fill="${escapeReportDeckSvgText(fillColor)}">${escapeReportDeckSvgText(label.text)}</text>
+        `;
+    }
+
+    function renderReportDeckChartValueLabels(placedLabels) {
+        const groups = new Map();
+        const order = [];
+        alignReportDeckSameValueLabels(Array.isArray(placedLabels) ? placedLabels : []).forEach(label => {
+            const key = getReportDeckChartSameValueLabelKey(label);
+            if (!groups.has(key)) {
+                groups.set(key, []);
+                order.push(key);
+            }
+            groups.get(key).push(label);
+        });
+        return order.map(key => {
+            const group = groups.get(key) || [];
+            const label = group[0];
+            if (!label) return '';
+            const colors = getReportDeckChartLabelColors(group);
+            return colors.length > 1
+                ? renderReportDeckChartDualColorValueLabel(label, colors)
+                : renderReportDeckChartSingleValueLabel(label);
+        }).join('');
     }
 
     function buildReportDeckAutoChartSvg(chart, options = {}) {
@@ -2580,6 +3012,7 @@
                 labelItems.push({
                     x,
                     y,
+                    value,
                     baseLabelY: y - 11,
                     text: formatReportDeckChartValue(value),
                     color: item.color,
@@ -2593,10 +3026,7 @@
             })
         )).join('');
         const placedLabels = placeReportDeckChartValueLabels(labelItems, plotTop, plotTop + plotHeight);
-        const labels = placedLabels
-            .map(label => `
-                <text class="report-auto-chart-label" x="${label.x.toFixed(2)}" y="${label.labelY.toFixed(2)}" text-anchor="middle" fill="${escapeReportDeckSvgText(label.color)}">${escapeReportDeckSvgText(label.text)}</text>
-            `).join('');
+        const labels = renderReportDeckChartValueLabels(placedLabels);
         const emptyText = values.length
             ? ''
             : `<text class="report-auto-chart-empty" x="${width / 2}" y="${plotTop + (plotHeight / 2)}" text-anchor="middle">데이터 없음</text>`;
@@ -2746,6 +3176,7 @@
                 labelItems.push({
                     x,
                     y,
+                    value,
                     baseLabelY: y - 10,
                     text: formatReportDeckProductionChartValue(value, valueDecimals),
                     color: item.color,
@@ -2759,9 +3190,7 @@
             })
         )).join('');
         const placedLabels = placeReportDeckChartValueLabels(labelItems, plotTop, plotTop + plotHeight);
-        const labels = placedLabels.map(label => `
-            <text class="report-auto-chart-label" x="${label.x.toFixed(2)}" y="${label.labelY.toFixed(2)}" text-anchor="middle" fill="${escapeReportDeckSvgText(label.color)}">${escapeReportDeckSvgText(label.text)}</text>
-        `).join('');
+        const labels = renderReportDeckChartValueLabels(placedLabels);
         const emptyText = values.length
             ? ''
             : `<text class="report-auto-chart-empty" x="${width / 2}" y="${plotTop + (plotHeight / 2)}" text-anchor="middle">데이터 없음</text>`;
@@ -2824,6 +3253,7 @@
                 labelItems.push({
                     x,
                     y,
+                    value,
                     baseLabelY: y - 11,
                     text: formatReportDeckChartValue(value),
                     color: item.color
@@ -2831,10 +3261,7 @@
                 return buildReportDeckChartMarkerSvg(x, y, item.color, item.marker);
             })
         )).join('');
-        const labels = placeReportDeckChartValueLabels(labelItems, plotTop, plotTop + plotHeight)
-            .map(label => `
-                <text class="report-auto-chart-label" x="${label.x.toFixed(2)}" y="${label.labelY.toFixed(2)}" text-anchor="middle" fill="${escapeReportDeckSvgText(label.color)}">${escapeReportDeckSvgText(label.text)}</text>
-            `).join('');
+        const labels = renderReportDeckChartValueLabels(placeReportDeckChartValueLabels(labelItems, plotTop, plotTop + plotHeight));
         const emptyText = values.length
             ? ''
             : `<text class="report-auto-chart-empty" x="${width / 2}" y="${plotTop + (plotHeight / 2)}" text-anchor="middle">?곗씠???놁쓬</text>`;
@@ -2871,7 +3298,7 @@
         setReportDeckAutoCellText(root, '[data-report-auto-month-label="reference"]', model.monthLabels?.reference || '');
         setReportDeckAutoCellText(root, '[data-report-auto-month-label="current"]', model.monthLabels?.current || '');
         setReportDeckAutoCellText(root, '[data-report-auto-month-label="previous"]', model.monthLabels?.previous || '');
-        ['production', 'usage', 'cost'].forEach(rowKey => {
+        ['production', 'usage', 'unit', 'cost'].forEach(rowKey => {
             renderReportDeckAutoMetricRow(root, 'gas', rowKey, model.gas?.rows?.[rowKey]);
             renderReportDeckAutoMetricRow(root, 'electric', rowKey, model.electric?.rows?.[rowKey]);
         });
@@ -2902,7 +3329,7 @@
         setReportDeckAutoCellText(root, '[data-report-waste-auto-month-label="current"]', model.monthLabels?.current || '');
         setReportDeckAutoCellText(root, '[data-report-waste-auto-month-label="reference"]', model.monthLabels?.reference || '');
         setReportDeckAutoCellText(root, '[data-report-waste-auto-month-label="previous"]', model.monthLabels?.previous || '');
-        ['production', 'usage', 'water', 'share', 'sludge', 'resin', 'labor', 'total'].forEach(rowKey => {
+        ['production', 'usage', 'unit', 'water', 'share', 'sludge', 'resin', 'labor', 'total'].forEach(rowKey => {
             renderReportDeckWasteMetricRow(root, rowKey, model.rows?.[rowKey]);
         });
         const persistedChartKey = `auto:${String(root?.dataset?.reportAutoAnalysis || model.scopeKey || 'bukjeong-waste').trim() || 'bukjeong-waste'}:waste`;
@@ -2926,7 +3353,7 @@
         setReportDeckAutoCellText(root, '[data-report-yusan-lpg-cost-month-label="reference"]', model.monthLabels?.reference || '');
         setReportDeckAutoCellText(root, '[data-report-yusan-lpg-cost-month-label="current"]', model.monthLabels?.current || '');
         setReportDeckAutoCellText(root, '[data-report-yusan-lpg-cost-month-label="previous"]', model.monthLabels?.previous || '');
-        ['production', 'usage', 'amount'].forEach(rowKey => {
+        ['production', 'usage', 'unit', 'amount'].forEach(rowKey => {
             renderReportDeckYusanLpgMetricRow(root, rowKey, model.rows?.[rowKey]);
         });
         ['0', '1', '2'].forEach(rowKey => {
@@ -3091,9 +3518,13 @@
         Array.from(root?.querySelectorAll?.('[data-report-date-input]') || []).forEach(input => {
             input.disabled = !isEditing;
         });
-        Array.from(root?.querySelectorAll?.('[data-report-plan-add-slot], [data-report-plan-image-input]') || []).forEach(input => {
+        Array.from(root?.querySelectorAll?.('[data-report-plan-add-slot]') || []).forEach(input => {
             input.disabled = !isEditing;
         });
+        syncReportDeckPlanImageModeHints(root);
+        if (!isEditing) {
+            setReportDeckActivePlanImageFrame(root, null);
+        }
         Array.from(root?.querySelectorAll?.('[data-report-edit-toggle]') || []).forEach(button => {
             button.classList?.toggle?.('is-active', isEditing);
             button.setAttribute?.('aria-pressed', isEditing ? 'true' : 'false');
@@ -3517,22 +3948,80 @@
         });
     }
 
-    async function updateReportDeckPlanImage(root, state, meta, input) {
-        const key = String(input?.dataset?.reportPlanImageKey || '').trim();
-        const file = input?.files?.[0] || null;
-        if (!key || !Object.prototype.hasOwnProperty.call(state, key) || !file) return false;
+    async function updateReportDeckPlanImageFile(root, state, meta, key, file, input = null, options = {}) {
+        if (
+            !key
+            || !Object.prototype.hasOwnProperty.call(state, key)
+            || hasReportDeckPlanImageValue(state, key)
+            || !isReportDeckImageFile(file)
+        ) {
+            if (input) input.value = '';
+            if (key && hasReportDeckPlanImageValue(state, key)) {
+                setReportDeckStatus(root, 'dirty', '이미지는 삭제 후 다시 등록하세요');
+            }
+            return false;
+        }
         try {
             const imageData = await readReportDeckImageFile(file, meta, key);
             if (!imageData) return false;
             state[key] = imageData;
+            const sourceKey = getReportDeckPlanImageSourceKey(key);
+            const sourceValue = normalizeReportDeckPlanImageSource(options.source);
+            if (sourceKey && sourceValue) {
+                state[sourceKey] = sourceValue;
+            }
             syncReportDeckPlanControls(root, state);
             markReportDeckDirty(root, state, meta);
-            input.value = '';
+            if (input) input.value = '';
+            if (options.saveImmediately === true) {
+                meta.saveSequence += 1;
+                await saveReportDeckStateToServer(root, state, meta, meta.saveSequence, {
+                    showSavedMessage: true
+                });
+            }
             return true;
         } catch (error) {
             setReportDeckStatus(root, 'error', getReportDeckImageErrorText(error));
             return false;
         }
+    }
+
+    async function updateReportDeckPlanImage(root, state, meta, input) {
+        const key = String(input?.dataset?.reportPlanImageKey || '').trim();
+        const file = input?.files?.[0] || null;
+        const frame = getReportDeckPlanImageFrameFromTarget(input);
+        const isEditing = root?.dataset?.reportEditMode === 'editing';
+        const canAttach = canUseReportDeckPlanImageAttachment(root, frame);
+        if (!canAttach) return false;
+        return updateReportDeckPlanImageFile(root, state, meta, key, file, input, {
+            source: 'upload',
+            saveImmediately: !isEditing
+        });
+    }
+
+    async function pasteReportDeckPlanImage(root, state, meta, event) {
+        const file = getReportDeckClipboardImageFile(event);
+        if (!file) return false;
+        const targetFrame = getReportDeckPlanImageFrameFromTarget(event?.target);
+        const targetKey = getReportDeckPlanImageKeyFromFrame(targetFrame);
+        const activeKey = getReportDeckPlanImageKeyFromFrame(root.__reportDeckActivePlanImageFrame);
+        if (
+            (isReportDeckUsablePlanImageFrame(targetFrame, state) && hasReportDeckPlanImageValue(state, targetKey))
+            || (!targetFrame && isReportDeckUsablePlanImageFrame(root.__reportDeckActivePlanImageFrame, state) && hasReportDeckPlanImageValue(state, activeKey))
+        ) {
+            event?.preventDefault?.();
+            setReportDeckStatus(root, 'dirty', '이미지는 삭제 후 다시 등록하세요');
+            return false;
+        }
+        const frame = resolveReportDeckPasteImageFrame(root, state, event?.target);
+        const key = getReportDeckPlanImageKeyFromFrame(frame);
+        if (!key) return false;
+        event?.preventDefault?.();
+        setReportDeckActivePlanImageFrame(root, frame);
+        frame?.focus?.();
+        return updateReportDeckPlanImageFile(root, state, meta, key, file, null, {
+            source: 'paste'
+        });
     }
 
     async function completeReportDeckEdit(root, state, meta) {
@@ -3597,7 +4086,7 @@
         meta.monthPlaceholder = '월 확인 중';
         syncReportDeckMonthSelect(root, meta);
         if (typeof browser?.fetchMeteringSharedStore !== 'function') {
-            meta.monthPlaceholder = '정산 완료 월 없음';
+            meta.monthPlaceholder = '선택 가능 월 없음';
             syncReportDeckMonthSelect(root, meta);
             setReportDeckStatus(root, 'offline', '정산 월 확인 불가');
             return false;
@@ -3606,10 +4095,13 @@
         try {
             const result = await browser.fetchMeteringSharedStore();
             meta.sharedStore = result?.store || null;
-            const months = buildReportDeckSettledMonthsFromStore(result?.store || {});
+            const months = buildReportDeckOpenMonthsUntilCurrent();
+            const settledMonths = buildReportDeckSettledMonthsFromStore(result?.store || {});
             meta.months = months;
-            meta.monthPlaceholder = months.length ? '' : '정산 완료 월 없음';
-            meta.selectedMonth = months.includes(meta.selectedMonth) ? meta.selectedMonth : months[0] || '';
+            meta.monthPlaceholder = months.length ? '' : '선택 가능 월 없음';
+            meta.selectedMonth = months.includes(meta.selectedMonth)
+                ? meta.selectedMonth
+                : (settledMonths.find(month => months.includes(month)) || months[0] || '');
             meta.recordKey = meta.selectedMonth ? buildReportDeckMonthRecordKey(meta.selectedMonth) : '';
             syncReportDeckMonthSelect(root, meta);
             if (!meta.selectedMonth) {
@@ -3776,12 +4268,9 @@
             if (memoClearButton && root.dataset.reportEditMode === 'editing') {
                 event.preventDefault();
                 const dialog = getReportDeckMemoDialog(root);
-                const key = String(dialog?.dataset?.reportMemoTarget || '').trim();
+                const key = getReportDeckMemoDialogTargetKey(dialog);
                 if (key && Object.prototype.hasOwnProperty.call(state, key)) {
-                    state[key] = '';
-                    syncReportDeckMemoControls(root, state);
-                    syncReportDeckMemoDialogLines(dialog, state);
-                    markReportDeckDirty(root, state, meta);
+                    setReportDeckMemoLines(root, state, meta, dialog, key, []);
                 }
                 return;
             }
@@ -3796,10 +4285,7 @@
                     const lines = getReportDeckMemoLines(state[key]);
                     if (index >= 0 && index < lines.length) {
                         lines.splice(index, 1);
-                        state[key] = lines.join('\n');
-                        syncReportDeckMemoControls(root, state);
-                        syncReportDeckMemoDialogLines(dialog, state);
-                        markReportDeckDirty(root, state, meta);
+                        setReportDeckMemoLines(root, state, meta, dialog, key, lines);
                     }
                 }
                 return;
@@ -3818,20 +4304,28 @@
                 return;
             }
 
+            const memoManualAddButton = event.target?.closest?.('[data-report-memo-manual-add]');
+            if (memoManualAddButton && root.dataset.reportEditMode === 'editing') {
+                event.preventDefault();
+                const dialog = getReportDeckMemoDialog(root);
+                const key = getReportDeckMemoDialogTargetKey(dialog);
+                const input = dialog?.querySelector?.('[data-report-memo-manual-input]');
+                const addedLines = getReportDeckMemoLines(input?.value || '');
+                if (key && addedLines.length && appendReportDeckMemoLines(root, state, meta, dialog, key, addedLines)) {
+                    clearReportDeckMemoManualInput(dialog);
+                }
+                return;
+            }
+
             const memoCandidateButton = event.target?.closest?.('[data-report-memo-candidate]');
             if (memoCandidateButton && root.dataset.reportEditMode === 'editing') {
                 event.preventDefault();
                 const dialog = getReportDeckMemoDialog(root);
-                const key = String(dialog?.dataset?.reportMemoTarget || '').trim();
+                const key = getReportDeckMemoDialogTargetKey(dialog);
                 const index = Number.parseInt(String(memoCandidateButton.dataset.reportMemoCandidate || ''), 10);
                 const candidate = Array.isArray(dialog?.__reportMemoCandidates) ? dialog.__reportMemoCandidates[index] : null;
                 if (key && candidate?.text && Object.prototype.hasOwnProperty.call(state, key)) {
-                    const lines = getReportDeckMemoLines(state[key]);
-                    lines.push(String(candidate.text || '').trim());
-                    state[key] = lines.join('\n');
-                    syncReportDeckMemoControls(root, state);
-                    syncReportDeckMemoDialogLines(dialog, state);
-                    markReportDeckDirty(root, state, meta);
+                    appendReportDeckMemoLines(root, state, meta, dialog, key, [candidate.text]);
                 }
                 return;
             }
@@ -3913,6 +4407,30 @@
                 return;
             }
 
+            const imagePasteButton = event.target?.closest?.('[data-report-plan-image-paste]');
+            if (imagePasteButton && root.dataset.reportEditMode === 'editing') {
+                event.preventDefault();
+                if (imagePasteButton.disabled) return;
+                const imageFrame = getReportDeckPlanImageFrameFromTarget(imagePasteButton);
+                if (imageFrame && canUseReportDeckPlanImagePaste(root, imageFrame)) {
+                    setReportDeckActivePlanImageFrame(root, imageFrame);
+                    imageFrame.focus?.();
+                    setReportDeckStatus(root, 'dirty', '붙여넣을 이미지 칸 선택됨');
+                }
+                return;
+            }
+
+            const imageFrame = getReportDeckPlanImageFrameFromTarget(event.target);
+            const imageFrameAction = event.target?.closest?.('[data-report-plan-image-choice], [data-report-plan-image-clear]');
+            if (imageFrame && !imageFrameAction && root.dataset.reportEditMode === 'editing' && getReportDeckPlanImageKeyFromFrame(imageFrame)) {
+                event.preventDefault();
+                if (canUseReportDeckPlanImagePaste(root, imageFrame)) {
+                    setReportDeckActivePlanImageFrame(root, imageFrame);
+                    imageFrame.focus?.();
+                }
+                return;
+            }
+
             const fullscreenButton = event.target?.closest?.('[data-report-fullscreen]');
             if (fullscreenButton) {
                 event.preventDefault();
@@ -3966,6 +4484,22 @@
                 }
                 return;
             }
+            const memoLineInput = event.target?.closest?.('[data-report-memo-line-input]');
+            if (memoLineInput) {
+                if (root.dataset.reportEditMode === 'editing') {
+                    const dialog = getReportDeckMemoDialog(root);
+                    const key = getReportDeckMemoDialogTargetKey(dialog);
+                    const index = Number.parseInt(String(memoLineInput.dataset.reportMemoLineInput || ''), 10);
+                    if (key && Number.isInteger(index) && Object.prototype.hasOwnProperty.call(state, key)) {
+                        const lines = getReportDeckMemoLines(state[key]);
+                        if (index >= 0) {
+                            lines[index] = String(memoLineInput.value || '');
+                            setReportDeckMemoLines(root, state, meta, dialog, key, lines, { syncDialog: false });
+                        }
+                    }
+                }
+                return;
+            }
             const overviewField = event.target?.closest?.('[data-report-slide8-overview]');
             if (overviewField) {
                 syncReportDeckFields(root, state, meta);
@@ -3975,6 +4509,11 @@
             const fieldTargetKey = String(fieldTarget?.dataset?.reportField || '').trim();
             if (isReportDeckLockedFieldKey(fieldTargetKey)) {
                 syncReportDeckFields(root, state, meta);
+                return;
+            }
+            const planImageInput = event.target?.closest?.('[data-report-plan-image-input]');
+            if (planImageInput) {
+                void updateReportDeckPlanImage(root, state, meta, planImageInput);
                 return;
             }
             if (root.dataset.reportEditMode !== 'editing') return;
@@ -3993,11 +4532,6 @@
                     syncReportDeckPlanControls(root, state);
                     markReportDeckDirty(root, state, meta);
                 }
-                return;
-            }
-            const planImageInput = event.target?.closest?.('[data-report-plan-image-input]');
-            if (planImageInput) {
-                void updateReportDeckPlanImage(root, state, meta, planImageInput);
                 return;
             }
             const planSummary = event.target?.closest?.('[data-report-plan-summary]');
@@ -4021,6 +4555,10 @@
 
         root.addEventListener?.('input', handleReportDeckInput);
         root.addEventListener?.('change', handleReportDeckInput);
+        root.addEventListener?.('paste', event => {
+            if (event?.defaultPrevented || root.dataset.reportEditMode !== 'editing') return;
+            void pasteReportDeckPlanImage(root, state, meta, event);
+        });
         root.addEventListener?.(REPORT_DECK_COMPLETE_EDIT_EVENT, event => {
             if (root.dataset.reportEditMode === 'editing') {
                 event.preventDefault?.();

@@ -318,6 +318,8 @@ test('work shared draft and summary helpers keep draft state readable after the 
     moistureExcludedYieldRate: 91.2,
     totalEquipmentCapa: 320,
     utilizationRate: 77.5,
+    totalWorkTime: 18.25,
+    totalOperationTime: 14.5,
   });
 
   assert.equal(snapshot.title, '열교환기 점검');
@@ -328,6 +330,8 @@ test('work shared draft and summary helpers keep draft state readable after the 
   assert.match(metricLine, /수율/);
   assert.match(metricLine, /CAPA/);
   assert.match(metricLine, /가동률/);
+  assert.match(metricLine, /조업시간/);
+  assert.match(metricLine, /가동시간/);
 });
 
 test('work shared team calendar state reads runtime globals through the browser adapter', () => {
@@ -343,8 +347,8 @@ test('kpi html loads shared split files before production bootstrap', () => {
   const sharedIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.js?v=239');
   const categoriesIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.categories.js?v=1');
   const stateIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.state.js?v=1');
-  const summaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.summary.js?v=1');
-  const productionIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=238');
+  const summaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.summary.js?v=2');
+  const productionIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=239');
 
   assert.ok(sharedIndex >= 0, 'work shared loader is missing');
   assert.ok(categoriesIndex > sharedIndex, 'shared categories must load after shared.js');

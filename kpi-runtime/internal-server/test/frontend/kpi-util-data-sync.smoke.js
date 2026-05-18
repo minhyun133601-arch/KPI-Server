@@ -220,8 +220,8 @@ test('util data sync fills electric gas and waste production from daily producti
 test('util data sync browser adapter loads before data sync runtime', () => {
   const adapterIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.data-sync.browser-adapter.js?v=1');
   const dataSyncIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.data-sync.js?v=206');
-  const productionIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.data-sync.production.js?v=1');
-  const productionImportIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.production-import.js?v=2');
+  const productionIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.data-sync.production.js?v=3');
+  const productionImportIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.production-import.js?v=5');
 
   assert.ok(adapterIndex >= 0, 'util data sync browser adapter loader is missing');
   assert.ok(dataSyncIndex > adapterIndex, 'util data sync runtime must load after its browser adapter');

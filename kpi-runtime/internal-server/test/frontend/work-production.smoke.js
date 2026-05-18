@@ -188,6 +188,8 @@ function createContext() {
           productName: 'Item A',
           amount: 200,
           moistureExcludedYield: 91,
+          workTime: 8.5,
+          operationTime: 7.25,
           equipmentCapa: 250,
           equipmentUtilization: 80,
         },
@@ -198,6 +200,8 @@ function createContext() {
           productName: 'Item B',
           amount: 150,
           moistureExcludedYield: 88,
+          workTime: 6,
+          operationTime: 5.5,
           equipmentCapa: 200,
           equipmentUtilization: 75,
         },
@@ -316,6 +320,8 @@ function createContext() {
     const list = Array.isArray(items) ? items : [];
     const totalAmount = list.reduce((sum, item) => sum + (parseNumericValue(item.amount) || 0), 0);
     const totalEquipmentCapa = list.reduce((sum, item) => sum + (parseNumericValue(item.equipmentCapa) || 0), 0);
+    const totalWorkTime = list.reduce((sum, item) => sum + (parseNumericValue(item.workTime) || 0), 0);
+    const totalOperationTime = list.reduce((sum, item) => sum + (parseNumericValue(item.operationTime) || 0), 0);
     const moistureExcludedYieldRate = list.length
       ? list.reduce((sum, item) => sum + (parseNumericValue(item.moistureExcludedYield) || 0), 0) / list.length
       : null;
@@ -327,10 +333,16 @@ function createContext() {
       totalEquipmentCapa,
       moistureExcludedYieldRate,
       utilizationRate,
+      totalWorkTime,
+      totalOperationTime,
     };
   });
   overrideBinding(context, 'getWorkTeamCalendarProductionMetricLine', (group) => {
-    return `Yield ${context.formatUtilNumber(group?.moistureExcludedYieldRate || 0, 0)}`;
+    return [
+      `Yield ${context.formatUtilNumber(group?.moistureExcludedYieldRate || 0, 0)}`,
+      `Work ${context.formatUtilNumber(group?.totalWorkTime || 0, 1)}`,
+      `Run ${context.formatUtilNumber(group?.totalOperationTime || 0, 1)}`,
+    ].join(' · ');
   });
   overrideBinding(context, 'formatWorkTeamCalendarYieldLabel', (value) => `Yield ${context.formatUtilNumber(value || 0, 0)}`);
   overrideBinding(context, 'formatWorkTeamCalendarCapaLabel', (value) => `CAPA ${context.formatUtilNumber(value || 0, 0)}`);
@@ -339,6 +351,8 @@ function createContext() {
     'formatWorkTeamCalendarUtilizationLabel',
     (value) => `Util ${context.formatUtilNumber(value || 0, 0)}`
   );
+  overrideBinding(context, 'formatWorkTeamCalendarWorkTimeLabel', (value) => `Work ${context.formatUtilNumber(value || 0, 1)}`);
+  overrideBinding(context, 'formatWorkTeamCalendarOperationTimeLabel', (value) => `Run ${context.formatUtilNumber(value || 0, 1)}`);
   overrideBinding(context, 'escapeHtml', (value) => {
     return String(value || '')
       .replaceAll('&', '&amp;')
@@ -414,12 +428,31 @@ test('work production split files expose utility, history, and draft helpers tog
   const historyHtml = context.renderWorkTeamCalendarGroupedHistoryHtml('work_team_calendar_overview', [
     '2026-04-15',
   ]);
+  const productionGroups = context.getWorkTeamCalendarProductionGroups('work_team_calendar_team1_part1', [
+    '2026-04-15',
+    '2026-04-16',
+  ]);
+  const productionHtml = context.renderWorkTeamCalendarProductionGroupsHtml(
+    productionGroups,
+    context.getWorkTeamCalendarCategory('work_team_calendar_team1_part1')
+  );
+  const overviewProductionHtml = context.renderWorkTeamCalendarProductionTeamGroupsHtml(
+    'work_team_calendar_team1_part1',
+    ['2026-04-15'],
+    context.getWorkTeamCalendarCategory('work_team_calendar_team1_part1')
+  );
 
   assert.equal(typeof context.getWorkTeamCalendarUtilitySummary, 'function');
   assert.equal(typeof context.renderWorkTeamCalendarGroupedHistoryHtml, 'function');
   assert.equal(typeof context.getWorkTeamCalendarDraftForDates, 'function');
   assert.equal(summary.electric.usageText, '120 kWh');
   assert.equal(summary.production.totalAmountText, '350kg');
+  assert.equal(productionGroups[0].totalWorkTime, 8.5);
+  assert.equal(productionGroups[0].totalOperationTime, 7.25);
+  assert.match(productionHtml, /Work 8\.5/);
+  assert.match(productionHtml, /Run 7\.3/);
+  assert.match(overviewProductionHtml, /Work 8\.5/);
+  assert.match(overviewProductionHtml, /Run 7\.3/);
   assert.match(summary.workEntryCountText, /^1건/);
   assert.equal(summary.workCostText, '10만원');
   assert.equal(historySummary.starCount, 1);
@@ -471,10 +504,10 @@ test('work production draft uses the browser adapter for storage capabilities', 
 });
 
 test('kpi html loads work production split files before team calendar bootstrap', () => {
-  const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=238');
+  const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=239');
   const adapterIndex = kpiHtml.indexOf('runtime/work/KPI.work.browser-adapter.js?v=1');
   const historyIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.history.js?v=4');
-  const overviewIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.overview.js?v=1');
+  const overviewIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.overview.js?v=2');
   const draftIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.draft.js?v=1');
   const teamCalendarIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.js?v=237');
   const equipmentSummaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.equipment-summary.js?v=1');

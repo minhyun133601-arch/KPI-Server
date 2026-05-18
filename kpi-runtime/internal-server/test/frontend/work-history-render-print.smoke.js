@@ -226,7 +226,7 @@ test('kpi html loads work history render print between render and view bootstrap
   const paginationIndex = kpiHtml.indexOf('runtime/work/history/render/pagination.js?v=1');
   const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=235');
   const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=234');
-  const actionsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.js?v=236');
+  const actionsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.js?v=237');
   const searchIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.search.js?v=3');
   const recordIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.record.js?v=4');
   const documentIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.document.js?v=3');

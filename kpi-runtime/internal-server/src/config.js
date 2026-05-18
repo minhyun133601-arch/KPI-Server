@@ -53,7 +53,9 @@ function readOptionalString(value) {
 }
 
 function normalizeRuntimeEnvironment(raw) {
-  const normalized = String(raw || '').trim().toLowerCase();
+  const normalized = String(raw || '')
+    .trim()
+    .toLowerCase();
   if (normalized === 'prod' || normalized === 'production') {
     return 'production';
   }
@@ -67,22 +69,21 @@ function normalizeRuntimeEnvironment(raw) {
 }
 
 function resolveDefaultEnvFilePath() {
-  const runtimeEnvironment = normalizeRuntimeEnvironment(
-    process.env.KPI_RUNTIME_ENV || process.env.NODE_ENV
-  );
+  const runtimeEnvironment = normalizeRuntimeEnvironment(process.env.KPI_RUNTIME_ENV || process.env.NODE_ENV);
 
-  const candidatePaths = runtimeEnvironment === 'production'
-    ? [path.join(projectRoot, '.env.production.local'), path.join(projectRoot, '.env')]
-    : runtimeEnvironment === 'development'
-      ? [path.join(projectRoot, '.env.development.local'), path.join(projectRoot, '.env')]
-      : runtimeEnvironment === 'local-experiment'
-        ? [path.join(projectRoot, '.env.local-experiment'), path.join(projectRoot, '.env')]
-      : [
-          path.join(projectRoot, '.env.local-experiment'),
-          path.join(projectRoot, '.env.production.local'),
-          path.join(projectRoot, '.env.development.local'),
-          path.join(projectRoot, '.env')
-        ];
+  const candidatePaths =
+    runtimeEnvironment === 'production'
+      ? [path.join(projectRoot, '.env.production.local'), path.join(projectRoot, '.env')]
+      : runtimeEnvironment === 'development'
+        ? [path.join(projectRoot, '.env.development.local'), path.join(projectRoot, '.env')]
+        : runtimeEnvironment === 'local-experiment'
+          ? [path.join(projectRoot, '.env.local-experiment'), path.join(projectRoot, '.env')]
+          : [
+              path.join(projectRoot, '.env.production.local'),
+              path.join(projectRoot, '.env.development.local'),
+              path.join(projectRoot, '.env.local-experiment'),
+              path.join(projectRoot, '.env'),
+            ];
 
   for (const candidatePath of candidatePaths) {
     if (fs.existsSync(candidatePath)) {
@@ -131,14 +132,13 @@ export const config = {
   contentSecurityPolicy: readOptionalString(process.env.KPI_CONTENT_SECURITY_POLICY),
   frameOptions: readOptionalString(process.env.KPI_FRAME_OPTIONS) || 'SAMEORIGIN',
   permissionsPolicy:
-    readOptionalString(process.env.KPI_PERMISSIONS_POLICY) ||
-    'camera=(), microphone=(), geolocation=()',
+    readOptionalString(process.env.KPI_PERMISSIONS_POLICY) || 'camera=(), microphone=(), geolocation=()',
   strictTransportSecurityEnabled: readBoolean(process.env.KPI_HSTS_ENABLED, false),
   storageRoot: normalizeStorageRoot(process.env.KPI_STORAGE_ROOT),
-  maxJsonBodyBytes: 40 * 1024 * 1024
+  maxJsonBodyBytes: 40 * 1024 * 1024,
 };
 
 export const runtimePaths = {
   filesRoot: path.join(config.storageRoot, 'files'),
-  logsRoot: path.join(config.storageRoot, 'logs')
+  logsRoot: path.join(config.storageRoot, 'logs'),
 };

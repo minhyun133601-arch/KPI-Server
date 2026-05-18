@@ -52,8 +52,7 @@ function getTotalPowerCardChargePool(monthValue = state.currentMonth) {
 
   const rawFields = getBillingSettlementEntry(monthValue)?.fields || {};
   const electricityChargeTotal = resolveBillingSettlementElectricityChargeTotalValue(rawFields);
-  const baseCharge = getBillingSettlementBaseCharge(monthValue);
-  return sumFiniteValues([electricityChargeTotal, baseCharge]);
+  return Number.isFinite(electricityChargeTotal) ? electricityChargeTotal : null;
 }
 
 function getTotalPowerCardAmountValue(monthValue = state.currentMonth, options = {}) {
@@ -207,7 +206,7 @@ function getTotalPowerCardDescriptorDetailText(item, monthValue = state.currentM
 
   if (Number.isFinite(chargePool) && Number.isFinite(charge) && Number.isFinite(usageShare)) {
     parts.push(
-      `전기요금계+기본요금 ${formatSettlementAmount(chargePool)} x ${formatUsageShare(
+      `전기요금계 ${formatSettlementAmount(chargePool)} x ${formatUsageShare(
         usageShare
       )} = ${formatSettlementAmount(charge)}`
     );

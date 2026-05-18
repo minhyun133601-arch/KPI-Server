@@ -51,6 +51,69 @@ test('normalizeStateSnapshot clamps period and dedupes entries', () => {
   assert.equal(snapshot.archives[0].folderName, 'default');
 });
 
+test('normalizeStateSnapshot keeps same production rows when supplemental metrics differ', () => {
+  const snapshot = normalizeStateSnapshot({
+    teams: [
+      {
+        name: 'Team A',
+        entries: [
+          {
+            date: '2026-04-01',
+            amount: 12.5,
+            lineName: 'Line 1',
+            productName: 'Product A',
+            moistureExcludedYield: 97,
+          },
+          {
+            date: '2026-04-01',
+            amount: '12.5',
+            lineName: 'Line 1',
+            productName: 'Product A',
+            moistureExcludedYield: '97.0',
+          },
+          {
+            date: '2026-04-01',
+            amount: 12.5,
+            lineName: 'Line 1',
+            productName: 'Product A',
+            moistureExcludedYield: 98,
+          },
+          {
+            date: '2026-04-01',
+            amount: 12.5,
+            lineName: 'Line 1',
+            productName: 'Product A',
+            equipmentUtilization: 88,
+          },
+          {
+            date: '2026-04-01',
+            amount: 12.5,
+            lineName: 'Line 1',
+            productName: 'Product A',
+            workTime: 6,
+          },
+          {
+            date: '2026-04-01',
+            amount: 12.5,
+            lineName: 'Line 1',
+            productName: 'Product A',
+            workTime: '6.0',
+          },
+          {
+            date: '2026-04-01',
+            amount: 12.5,
+            lineName: 'Line 1',
+            productName: 'Product A',
+            operationTime: 4.5,
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(snapshot.entries.length, 5);
+});
+
 test('buildStatePayload groups rows by team and derives archive summary', () => {
   const payload = buildStatePayload(
     {
@@ -66,6 +129,8 @@ test('buildStatePayload groups rows by team and derives archive summary', () => 
         product_name: '제품A',
         amount: '10',
         moisture_excluded_yield: '9.5',
+        work_time: '6',
+        operation_time: '4.5',
         equipment_capa: '15',
         equipment_utilization: '66.7',
         source_archive_id: 'archive-a',
@@ -79,6 +144,8 @@ test('buildStatePayload groups rows by team and derives archive summary', () => 
         product_name: '제품B',
         amount: '20',
         moisture_excluded_yield: '18',
+        work_time: '7',
+        operation_time: '5.5',
         equipment_capa: '30',
         equipment_utilization: '70',
         source_archive_id: 'archive-a',
@@ -106,6 +173,8 @@ test('buildStatePayload groups rows by team and derives archive summary', () => 
 
   assert.equal(payload.periodDefault.startDay, 5);
   assert.equal(payload.meta.version, 2);
+  assert.equal(payload.teams[0].entries[0].workTime, 6);
+  assert.equal(payload.teams[0].entries[0].operationTime, 4.5);
   assert.deepEqual(payload.teams.map((team) => team.name), ['A조', 'B조']);
   assert.equal(payload.archives.length, 1);
   assert.deepEqual(payload.archives[0].teams, ['A조', 'B조']);

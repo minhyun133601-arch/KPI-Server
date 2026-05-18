@@ -73,7 +73,7 @@ const GAS_LPG_BILLING_SETTLEMENT_FIELDS = [
   { key: "billing_amount", label: "총액" },
 ];
 const GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FIELDS = [
-  { key: "billing_amount", label: "LPG 환산 정산값" },
+  { key: "billing_amount", label: "LNG 환산 정산값" },
 ];
 const WASTE_BILLING_SETTLEMENT_FIELDS_BUKJEONG = [
   { key: "water", label: "용수비" },
@@ -135,7 +135,9 @@ const GAS_LPG_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set([
   "unit_price",
   "billing_amount",
 ]);
-const GAS_LPG_CONVERSION_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set([]);
+const GAS_LPG_CONVERSION_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set(
+  []
+);
 const WASTE_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set([
   "unit_price",
   "billing_amount",
@@ -153,6 +155,7 @@ const GAS_BILLING_SETTLEMENT_ZERO_DEFAULT_FIELD_KEYS = [
   "rounding_adjustment",
 ];
 const ELECTRIC_BILLING_SETTLEMENT_TOTAL_COMPONENTS = [
+  { key: "base_charge", sign: 1 },
   { key: "power_charge", sign: 1 },
   { key: "climate_environment_charge", sign: 1 },
   { key: "fuel_adjustment_charge", sign: 1 },
@@ -162,7 +165,6 @@ const ELECTRIC_BILLING_SETTLEMENT_TOTAL_COMPONENTS = [
 ];
 const BILLING_SETTLEMENT_TOTAL_COMPONENTS = ELECTRIC_BILLING_SETTLEMENT_TOTAL_COMPONENTS;
 const ELECTRIC_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS = [
-  { key: "base_charge", sign: 1 },
   { key: "electricity_charge_total", sign: 1 },
   { key: "vat", sign: 1 },
   { key: "electric_power_fund", sign: 1 },
@@ -184,10 +186,10 @@ const BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS =
   ELECTRIC_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS;
 const ELECTRIC_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
   electricity_charge_total:
-    "전력량요금 + 기후환경요금 + 연료비조정액 + 조작수수료 + 지상역률료 - 인터넷할인",
+    "기본요금 + 전력량요금 + 기후환경요금 + 연료비조정액 + 조작수수료 + 지상역률료 - 인터넷할인",
   unit_price: "전기요금계 ÷ 해당 월 전력총량",
   billing_amount:
-    "기본요금 + 전기요금계 + 부가가치세 + 전력기금 + TV수신료 - 원단위 절삭",
+    "전기요금계 + 부가가치세 + 전력기금 + TV수신료 - 원단위 절삭",
 });
 const GAS_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
   billed_quantity_mj: "해당 월 사용량 x 열량(MJ/Nm3)",
@@ -227,8 +229,8 @@ const BILLING_SETTLEMENT_SCOPE_DEFINITIONS_BY_RESOURCE = Object.freeze({
     }),
     Object.freeze({
       key: GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_CONVERSION_KEY,
-      label: "LPG 환산",
-      shortLabel: "LPG 환산",
+      label: "LNG 환산",
+      shortLabel: "LNG 환산",
     }),
   ]),
   waste: Object.freeze([
@@ -448,12 +450,19 @@ const ELECTRIC_TOTAL_SUMMARY_TEAM_KEYS = Object.freeze([
 
 const TEAM_AMOUNT_ADJUSTMENTS = Object.freeze({});
 
+const SHARED_COMPRESSOR_SETTLEMENT_MONTHS = new Set(["2026-02", "2026-03"]);
 const SHARED_COMPRESSOR_SETTLEMENT_START_MONTH = "9999-12";
 const SHARED_COMPRESSOR_VIRTUAL_ID = "shared_compressor_total";
-const SHARED_COMPRESSOR_VIRTUAL_LABEL = "???? ??";
-const SHARED_COMPRESSOR_SETTLEMENT_RATIOS = Object.freeze({});
-const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_IDS_BY_TEAM = Object.freeze({});
-const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_ID_SET = new Set();
+const SHARED_COMPRESSOR_VIRTUAL_LABEL = "컴프레셔 배분";
+const SHARED_COMPRESSOR_SETTLEMENT_RATIOS = Object.freeze({
+  team_01_02: 0.72,
+  team_02: 0.28,
+});
+const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_IDS_BY_TEAM = Object.freeze({
+  team_01_02: Object.freeze(["field_10", "field_11"]),
+  team_02: Object.freeze(["field_14"]),
+});
+const SHARED_COMPRESSOR_SETTLEMENT_SOURCE_ID_SET = new Set(["field_10", "field_11", "field_14"]);
 
 const ICON_SVGS = {
   drying: `

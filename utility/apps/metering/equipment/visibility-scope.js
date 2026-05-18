@@ -1,3 +1,7 @@
+const EQUIPMENT_SUMMARY_EXCLUDED_LABEL_KEYS = new Set(
+  ["액상 컴프"].map(normalizeEquipmentFactorLabel)
+);
+
 function getAllEquipmentIds() {
   return state.store.equipmentItems.map((item) => item.id);
 }
@@ -39,6 +43,14 @@ function isSummaryOnlyEquipment(equipment) {
 
   const labelKey = normalizeEquipmentFactorLabel(equipment.label);
   return SUMMARY_ONLY_DEFAULT_IDS.has(equipment.id) || SUMMARY_ONLY_LABEL_KEYS.has(labelKey);
+}
+
+function isEquipmentSummaryExcludedByLabel(equipment) {
+  if (!equipment) {
+    return false;
+  }
+
+  return EQUIPMENT_SUMMARY_EXCLUDED_LABEL_KEYS.has(normalizeEquipmentFactorLabel(equipment.label));
 }
 
 function getEquipmentFirstRecordedMonth(equipmentId) {
@@ -158,6 +170,7 @@ function isReactiveSummaryEquipment(equipment) {
 function isExcludedFromEquipmentSummary(equipment) {
   return (
     isOtherEquipment(equipment) ||
+    isEquipmentSummaryExcludedByLabel(equipment) ||
     isActivePowerEquipment(equipment) ||
     isReactivePowerEquipment(equipment) ||
     isSummaryOnlyEquipment(equipment)

@@ -41,6 +41,12 @@ test('metering app config owns constants while app owns mutable boot state', asy
   assert.match(configSource, /const PRESET_IMPORT_VERSION = 6/);
   assert.match(configSource, /const RESOURCE_TYPES = \{/);
   assert.match(configSource, /const ENTRY_DAY_STATUS_META = \{/);
+  assert.match(configSource, /const SHARED_COMPRESSOR_SETTLEMENT_MONTHS = new Set\(\["2026-02", "2026-03"\]\)/);
+  assert.match(configSource, /team_01_02:\s*0\.72/);
+  assert.match(configSource, /team_02:\s*0\.28/);
+  assert.match(configSource, /team_01_02:\s*Object\.freeze\(\["field_10", "field_11"\]\)/);
+  assert.match(configSource, /team_02:\s*Object\.freeze\(\["field_14"\]\)/);
+  assert.match(configSource, /new Set\(\["field_10", "field_11", "field_14"\]\)/);
   assert.doesNotMatch(appSource, /const PRESET_IMPORT_VERSION = 6/);
   assert.match(appSource, /const state = \{/);
   assert.match(appSource, /function renderSummary\(\)/);

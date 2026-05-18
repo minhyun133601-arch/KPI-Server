@@ -38,6 +38,7 @@ function createVisibilityScopeContext() {
     store: {
       equipmentItems: [
         { id: 'normal_01', label: '일반 설비' },
+        { id: 'liquid_compressor', label: '액상 컴프' },
         { id: 'active_default', label: '활성 기본' },
         { id: 'reactive_label', label: '무효전력' },
         { id: 'excluded_default', label: '제외 기본' },
@@ -220,6 +221,7 @@ test('equipment visibility scope resolves context dates and summary id filters',
 
   assert.deepEqual(toPlainValue(context.getAllEquipmentIds()), [
     'normal_01',
+    'liquid_compressor',
     'active_default',
     'reactive_label',
     'excluded_default',
@@ -247,9 +249,11 @@ test('equipment visibility scope routes usage-share and tracked-id sets by resou
 
   assert.equal(context.isExcludedFromEquipmentSummary({ id: 'active_default', label: '활성 기본' }), true);
   assert.equal(context.isExcludedFromEquipmentSummary({ id: 'other_equipment', label: '기타' }), true);
+  assert.equal(context.isExcludedFromEquipmentSummary({ id: 'liquid_compressor', label: '액상 컴프' }), true);
   assert.equal(context.isEquipmentUsageShareTarget({ id: 'normal_01', label: '일반 설비' }), true);
   assert.equal(context.isEquipmentUsageShareTarget({ id: 'active_default', label: '활성 기본' }), false);
   assert.equal(context.isEquipmentUsageShareTarget({ id: 'other_equipment', label: '기타' }), true);
+  assert.equal(context.isEquipmentUsageShareTarget({ id: 'liquid_compressor', label: '액상 컴프' }), false);
 
   assert.deepEqual(toPlainValue(context.getGasOverallTrackedEquipmentIds()), []);
   assert.deepEqual(toPlainValue(context.getDefaultCalendarTrackedEquipmentIds()), [

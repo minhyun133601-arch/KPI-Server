@@ -447,7 +447,7 @@ test('team overview summary resolves amount, share, and ordered team helpers', (
   const context = createTeamOverviewContext();
 
   assert.equal(context.getTeamBoardDisplayLabel('total_power'), '유산 전력 총량');
-  assert.equal(context.calculateElectricOverviewTeamAmount('team_01_01', '2026-04'), 600);
+  assert.equal(context.calculateElectricOverviewTeamAmount('team_01_01', '2026-04'), 550);
   assert.equal(context.getElectricOverviewTeamAmountText('team_02', '2026-04'), '금액 amt:320');
   assert.equal(
     context.getElectricOverviewTeamShareText('team_02', '2026-04'),

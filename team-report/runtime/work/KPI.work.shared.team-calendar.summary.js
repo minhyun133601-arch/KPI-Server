@@ -129,11 +129,17 @@
             let hasEquipmentCapa = false;
             let utilizationSum = 0;
             let utilizationCount = 0;
+            let totalWorkTime = 0;
+            let hasWorkTime = false;
+            let totalOperationTime = 0;
+            let hasOperationTime = false;
             list.forEach(item => {
                 const amount = parseUtilAmount(item?.amount);
                 const moistureExcludedYield = parseUtilPercentAmount(item?.moistureExcludedYield);
                 const equipmentCapa = parseUtilAmount(item?.equipmentCapa);
                 const equipmentUtilization = parseUtilPercentAmount(item?.equipmentUtilization);
+                const workTime = parseUtilAmount(item?.workTime);
+                const operationTime = parseUtilAmount(item?.operationTime);
                 if (Number.isFinite(amount)) totalAmount += amount;
                 if (Number.isFinite(moistureExcludedYield)) {
                     yieldSum += moistureExcludedYield;
@@ -150,6 +156,14 @@
                 if (Number.isFinite(equipmentUtilization)) {
                     utilizationSum += equipmentUtilization;
                     utilizationCount += 1;
+                }
+                if (Number.isFinite(workTime)) {
+                    totalWorkTime += workTime;
+                    hasWorkTime = true;
+                }
+                if (Number.isFinite(operationTime)) {
+                    totalOperationTime += operationTime;
+                    hasOperationTime = true;
                 }
             });
             let utilizationRate = null;
@@ -169,7 +183,9 @@
                 totalAmount,
                 moistureExcludedYieldRate,
                 totalEquipmentCapa: hasEquipmentCapa ? totalEquipmentCapa : null,
-                utilizationRate
+                utilizationRate,
+                totalWorkTime: hasWorkTime ? totalWorkTime : null,
+                totalOperationTime: hasOperationTime ? totalOperationTime : null
             };
         }
 
@@ -191,11 +207,25 @@
             return `수율 ${formatUtilNumber(numeric, 1)}%`;
         }
 
+        function formatWorkTeamCalendarWorkTimeLabel(value) {
+            const numeric = parseUtilAmount(value);
+            if (!Number.isFinite(numeric)) return '';
+            return `조업시간 ${formatUtilNumber(numeric, 1)}시간`;
+        }
+
+        function formatWorkTeamCalendarOperationTimeLabel(value) {
+            const numeric = parseUtilAmount(value);
+            if (!Number.isFinite(numeric)) return '';
+            return `가동시간 ${formatUtilNumber(numeric, 1)}시간`;
+        }
+
         function getWorkTeamCalendarProductionMetricLine(summary) {
             const yieldLabel = formatWorkTeamCalendarYieldLabel(summary?.moistureExcludedYieldRate) || '수율 -';
             const capaLabel = formatWorkTeamCalendarCapaLabel(summary?.totalEquipmentCapa) || 'CAPA -';
             const utilizationLabel = formatWorkTeamCalendarUtilizationLabel(summary?.utilizationRate) || '가동률 -';
-            return `${yieldLabel} · ${capaLabel} · ${utilizationLabel}`;
+            const workTimeLabel = formatWorkTeamCalendarWorkTimeLabel(summary?.totalWorkTime) || '조업시간 -';
+            const operationTimeLabel = formatWorkTeamCalendarOperationTimeLabel(summary?.totalOperationTime) || '가동시간 -';
+            return `${yieldLabel} · ${capaLabel} · ${utilizationLabel} · ${workTimeLabel} · ${operationTimeLabel}`;
         }
 
         function getWorkTeamCalendarProductionCueLabel(summary) {

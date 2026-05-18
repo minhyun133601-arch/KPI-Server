@@ -223,8 +223,8 @@
     function resolveUtilElectricityChargeTotalValue(monthKey = '', scopeKey = 'yusan') {
         const fields = getUtilElectricBillingFields(monthKey, scopeKey);
         const existingValue = parseNumber(fields?.electricity_charge_total);
-        if (Number.isFinite(existingValue)) return existingValue;
         const components = [
+            { key: 'base_charge', sign: 1 },
             { key: 'power_charge', sign: 1 },
             { key: 'climate_environment_charge', sign: 1 },
             { key: 'fuel_adjustment_charge', sign: 1 },
@@ -234,12 +234,37 @@
         ];
         let total = 0;
         let hasValue = false;
+        let hasMeaningfulChargeComponent = false;
         components.forEach(component => {
             const value = parseNumber(fields?.[component.key]);
             if (!Number.isFinite(value)) return;
             total += value * component.sign;
             hasValue = true;
+            if (component.key !== 'base_charge' && value !== 0) {
+                hasMeaningfulChargeComponent = true;
+            }
         });
+        if (hasValue && hasMeaningfulChargeComponent) return total;
+
+        const billingAmount = parseNumber(fields?.billing_amount);
+        if (Number.isFinite(billingAmount)) {
+            let derivedValue = billingAmount;
+            let hasSupportingValue = false;
+            [
+                { key: 'vat', sign: -1 },
+                { key: 'electric_power_fund', sign: -1 },
+                { key: 'tv_reception_fee', sign: -1 },
+                { key: 'rounding_adjustment', sign: 1 }
+            ].forEach(component => {
+                const value = parseNumber(fields?.[component.key]);
+                if (!Number.isFinite(value)) return;
+                derivedValue += value * component.sign;
+                hasSupportingValue = true;
+            });
+            if (hasSupportingValue) return derivedValue;
+        }
+
+        if (Number.isFinite(existingValue)) return existingValue;
         return hasValue ? total : null;
     }
 
@@ -247,7 +272,6 @@
         const directValue = getUtilElectricBillingNumericField(monthKey, 'billing_amount', scopeKey);
         if (Number.isFinite(directValue)) return directValue;
         const components = [
-            getUtilElectricBillingNumericField(monthKey, 'base_charge', scopeKey),
             resolveUtilElectricityChargeTotalValue(monthKey, scopeKey),
             getUtilElectricBillingNumericField(monthKey, 'vat', scopeKey),
             getUtilElectricBillingNumericField(monthKey, 'electric_power_fund', scopeKey),
@@ -485,7 +509,7 @@
                     valueText: formatCost(electricityChargeTotal),
                     metaText: `${monthLabel} · 유산 기준`,
                     subText: '전기 정산항목 자동 계산값',
-                    helpText: '전력량요금 + 기후환경요금 + 연료비조정액 + 조작수수료 + 지상역률료 - 인터넷할인',
+                    helpText: '기본요금 + 전력량요금 + 기후환경요금 + 연료비조정액 + 조작수수료 + 지상역률료 - 인터넷할인',
                     tone: 'cost',
                     icon: 'fa-bolt'
                 },
@@ -505,7 +529,7 @@
                     valueText: formatCost(billingAmount),
                     metaText: `${monthLabel} · 유산 기준`,
                     subText: '실청구 기준 합계',
-                    helpText: '기본요금 + 전기요금계 + 부가가치세 + 전력기금 + TV수신료 - 원단위 절삭',
+                    helpText: '전기요금계 + 부가가치세 + 전력기금 + TV수신료 - 원단위 절삭',
                     tone: 'cost',
                     icon: 'fa-file-invoice'
                 }
@@ -548,7 +572,7 @@
         ], {
             title: '설비 배부 요약',
             subText: '합산 기준으로 설비별 사용량, 비중, 배부 금액을 정리했습니다.',
-            note: '전력총량 기준으로 비율을 계산했고, 사용요금은 유산 기본요금과 전기요금계를 기준으로 배부했습니다.'
+            note: '전력총량 기준으로 비율을 계산했고, 사용요금은 기본요금이 포함된 전기요금계를 기준으로 배부했습니다.'
         });
     }
 

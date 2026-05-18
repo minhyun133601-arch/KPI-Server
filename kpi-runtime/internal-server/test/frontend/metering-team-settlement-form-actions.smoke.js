@@ -231,6 +231,11 @@ function createTeamSettlementFormActionsContext(options = {}) {
     getBillingSettlementResourceType() {
       return options.resourceType || 'gas';
     },
+    isBillingSettlementDecimalPreservingField(fieldKey, resourceType, scopeKey) {
+      return typeof options.isBillingSettlementDecimalPreservingField === 'function'
+        ? options.isBillingSettlementDecimalPreservingField(fieldKey, resourceType, scopeKey)
+        : false;
+    },
     getBillingSettlementAutoCalculatedFieldKeySet() {
       return new Set(options.autoCalculatedFieldKeys || ['unit_price']);
     },
@@ -381,6 +386,26 @@ test('team settlement form actions keep active manual input raw while refreshing
   assert.equal(input.value, '43.210');
   assert.equal(billedQuantityInput.value, 'auto:billed_quantity_mj:432.110');
   assert.equal(calls.setBillingSettlementEntryForScope[0].entry.fields.calorific_value, '43.210');
+});
+
+test('team settlement form actions format LNG conversion amount while typing', () => {
+  const { context, calls } = createTeamSettlementFormActionsContext({
+    activeTeamSettlementScope: 'gas_lpg_conversion',
+    autoCalculatedFieldKeys: [],
+    zeroDefaultFieldKeys: [],
+    isBillingSettlementDecimalPreservingField(fieldKey, _resourceType, scopeKey) {
+      return fieldKey === 'billing_amount' && scopeKey === 'gas_lpg_conversion';
+    },
+    resolveFields(nextRawFields) {
+      return { ...nextRawFields };
+    },
+  });
+  const input = createMockInput('billing_amount', '150693518');
+
+  context.handleTeamSettlementFieldInput({ target: input, type: 'input' });
+
+  assert.equal(calls.setBillingSettlementEntryForScope.length, 1);
+  assert.equal(input.value, 'fmt:billing_amount:150693518');
 });
 
 test('team settlement form actions preserve auto-calculated inputs as read-only display values', () => {

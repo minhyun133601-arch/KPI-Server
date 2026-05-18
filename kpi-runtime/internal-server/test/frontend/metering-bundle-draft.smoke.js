@@ -174,6 +174,9 @@ test('metering bundle draft compiles as one script without runtime rewiring', as
   assert.match(draft.bundleText, /metering bundle draft: .*apps\/metering\/team-settlement\/form-actions\.js/);
   assert.match(draft.bundleText, /metering bundle draft: .*apps\/metering\/runtime\/bootstrap\.js/);
   assert.match(draft.bundleText, /metering bundle draft: .*apps\/metering\/runtime\/mount\.js/);
+  assert.match(draft.bundleText, /REPORT_SETTLEMENT_READINESS_ITEMS/);
+  assert.match(draft.bundleText, /settlementReadinessPanel/);
+  assert.match(draft.bundleText, /completeStoreBillingSettlementEntriesWithStoredValues/);
 });
 
 test('metering bundle draft includes billing settlement records before app boot', async () => {

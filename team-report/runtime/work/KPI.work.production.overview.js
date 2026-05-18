@@ -129,7 +129,15 @@
                                         const itemYieldLabel = formatWorkTeamCalendarYieldLabel(item?.moistureExcludedYield);
                                         const itemCapaLabel = formatWorkTeamCalendarCapaLabel(item?.equipmentCapa);
                                         const itemUtilizationLabel = formatWorkTeamCalendarUtilizationLabel(item?.equipmentUtilization);
-                                        const metricParts = [itemYieldLabel || '수율 -', itemCapaLabel || 'CAPA -', itemUtilizationLabel || '가동률 -'];
+                                        const itemWorkTimeLabel = formatWorkTeamCalendarWorkTimeLabel(item?.workTime);
+                                        const itemOperationTimeLabel = formatWorkTeamCalendarOperationTimeLabel(item?.operationTime);
+                                        const metricParts = [
+                                            itemYieldLabel || '수율 -',
+                                            itemCapaLabel || 'CAPA -',
+                                            itemUtilizationLabel || '가동률 -',
+                                            itemWorkTimeLabel || '조업시간 -',
+                                            itemOperationTimeLabel || '가동시간 -'
+                                        ];
                                         const metricChipHtml = metricParts.map(label => `<span class="work-team-calendar-production-chip">${escapeHtml(label)}</span>`).join('');
                                         const amountLabel = Number.isFinite(Number(item.amount))
                                             ? `${formatUtilNumber(Number(item.amount), 0)} kg`

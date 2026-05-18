@@ -134,6 +134,21 @@ function isBillingSettlementDecimalPreservingField(
   );
 }
 
+function formatBillingSettlementDecimalDisplayValue(value) {
+  const normalizedValue = normalizeBillingSettlementInputValue(value).replace(/,/g, "");
+  const numericValue = parseBillingSettlementNumericValue(normalizedValue);
+  if (!Number.isFinite(numericValue)) {
+    return normalizeBillingSettlementInputValue(value);
+  }
+
+  const numericText = String(numericValue);
+  const [rawIntegerPart, decimalPart] = numericText.split(".");
+  const sign = rawIntegerPart.startsWith("-") ? "-" : "";
+  const integerPart = rawIntegerPart.replace(/^-/, "");
+  const groupedIntegerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return decimalPart ? `${sign}${groupedIntegerPart}.${decimalPart}` : `${sign}${groupedIntegerPart}`;
+}
+
 function normalizeBillingSettlementStoredValue(
   fieldKey,
   value,
@@ -199,7 +214,7 @@ function formatBillingSettlementFieldDisplayValue(
   }
 
   if (isBillingSettlementDecimalPreservingField(fieldKey, resourceType, scopeKey)) {
-    return normalizedValue;
+    return formatBillingSettlementDecimalDisplayValue(normalizedValue);
   }
 
   if (fieldKey === "unit_price") {
@@ -222,6 +237,17 @@ function calculateBillingSettlementElectricityChargeTotalValue(rawFields) {
   return calculateBillingSettlementSignedTotalValue(rawFields, BILLING_SETTLEMENT_TOTAL_COMPONENTS);
 }
 
+function hasMeaningfulBillingSettlementElectricityChargeComponent(rawFields) {
+  return BILLING_SETTLEMENT_TOTAL_COMPONENTS.some(({ key }) => {
+    if (key === "base_charge") {
+      return false;
+    }
+
+    const numericValue = parseBillingSettlementNumericValue(rawFields?.[key]);
+    return Number.isFinite(numericValue) && numericValue !== 0;
+  });
+}
+
 function deriveBillingSettlementElectricityChargeTotalFromBillingAmountValue(rawFields) {
   const billingAmount = parseBillingSettlementNumericValue(rawFields?.billing_amount);
   if (!Number.isFinite(billingAmount)) {
@@ -239,7 +265,6 @@ function deriveBillingSettlementElectricityChargeTotalFromBillingAmountValue(raw
     derivedValue += numericValue * sign;
   };
 
-  applyAdjustment("base_charge", -1);
   applyAdjustment("vat", -1);
   applyAdjustment("electric_power_fund", -1);
   applyAdjustment("tv_reception_fee", -1);
@@ -250,7 +275,10 @@ function deriveBillingSettlementElectricityChargeTotalFromBillingAmountValue(raw
 
 function resolveBillingSettlementElectricityChargeTotalValue(rawFields) {
   const calculatedValue = calculateBillingSettlementElectricityChargeTotalValue(rawFields);
-  if (Number.isFinite(calculatedValue)) {
+  if (
+    Number.isFinite(calculatedValue) &&
+    hasMeaningfulBillingSettlementElectricityChargeComponent(rawFields)
+  ) {
     return calculatedValue;
   }
 
@@ -260,7 +288,11 @@ function resolveBillingSettlementElectricityChargeTotalValue(rawFields) {
   }
 
   const existingValue = parseBillingSettlementNumericValue(rawFields?.electricity_charge_total);
-  return Number.isFinite(existingValue) ? existingValue : null;
+  if (Number.isFinite(existingValue)) {
+    return existingValue;
+  }
+
+  return Number.isFinite(calculatedValue) ? calculatedValue : null;
 }
 
 function calculateBillingSettlementUnitPrice(

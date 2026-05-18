@@ -3,7 +3,9 @@
     if (!root || root.KpiUtilRuntimeBrowserAdapter) return;
     const REPORT_DECK_PRINT_PAGE_WIDTH = '297mm';
     const REPORT_DECK_PRINT_PAGE_HEIGHT = '210mm';
-    const REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT = '167.0625mm';
+    const REPORT_DECK_PRINT_PAGE_MARGIN = '10mm';
+    const REPORT_DECK_PRINT_SLIDE_CSS_WIDTH = '277mm';
+    const REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT = '155.8125mm';
     const REPORT_DECK_CAPTURE_SLIDE_WIDTH = 2560;
     const REPORT_DECK_CAPTURE_SLIDE_HEIGHT = 1440;
     const REPORT_DECK_MEMO_TEAMS = Object.freeze([
@@ -15,8 +17,11 @@
     const REPORT_DECK_MEMO_METRICS = Object.freeze({
         production: Object.freeze({ key: 'production', label: '생산량', unit: 'kg' }),
         electric: Object.freeze({ key: 'electric', label: '전력량', unit: 'kWh' }),
+        electric_unit: Object.freeze({ key: 'electric_unit', label: '생산량 대비 전력량', unit: 'kWh/kg', decimals: 3 }),
         lng: Object.freeze({ key: 'lng', label: 'LNG 사용량', unit: 'm³' }),
+        lng_unit: Object.freeze({ key: 'lng_unit', label: '생산량 대비 LNG', unit: 'm³/kg', decimals: 3 }),
         lpg: Object.freeze({ key: 'lpg', label: 'LPG 사용량', unit: 'kg' }),
+        lpg_unit: Object.freeze({ key: 'lpg_unit', label: '생산량 대비 LPG', unit: 'kg/kg', decimals: 3 }),
         yield_rate: Object.freeze({ key: 'yield_rate', label: '수율', unit: '%p', deltaMode: 'percentagePoint' }),
         operation_rate: Object.freeze({ key: 'operation_rate', label: '가동률', unit: '%p', deltaMode: 'percentagePoint' }),
         production_days: Object.freeze({ key: 'production_days', label: '생산일수', unit: '일' }),
@@ -48,6 +53,11 @@
         'waste_cost_labor'
     ]);
     const REPORT_DECK_MEMO_WASTE_MEMO_KEYS = Object.freeze(['slide6WasteMemo', 'slide7WasteMemo']);
+    const REPORT_DECK_MEMO_UNIT_METRIC_BASE = Object.freeze({
+        electric_unit: 'electric',
+        lng_unit: 'lng',
+        lpg_unit: 'lpg'
+    });
     const REPORT_DECK_MEMO_WASTE_OVERVIEW_SCOPES = Object.freeze([
         Object.freeze({ key: 'waste_bukjeong', label: '북정 폐수', memoKey: 'slide6WasteMemo', teamKey: 'team_01_01' }),
         Object.freeze({ key: 'waste_yusan', label: '유산 폐수', memoKey: 'slide7WasteMemo', teamKey: 'team_01_02' })
@@ -59,10 +69,10 @@
         team_03: Object.freeze(['Bottle', '기타'])
     });
     const REPORT_DECK_MEMO_TEAM_METRIC_KEYS = Object.freeze({
-        team_01_01: Object.freeze(['production', 'electric', 'lng', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_01_02: Object.freeze(['production', 'electric', 'lng', 'lpg', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_02: Object.freeze(['production', 'electric', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_03: Object.freeze(['production', 'electric', 'lng', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
+        team_01_01: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_01_02: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', 'lpg', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_02: Object.freeze(['production', 'electric', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_03: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
     });
 
     function getRuntime() {
@@ -313,7 +323,7 @@
             element.removeAttribute?.('contenteditable');
             element.removeAttribute?.('spellcheck');
         });
-        Array.from(slide?.querySelectorAll?.('.report-plan-image-actions, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-clear], [data-report-memo-overview-toggle]') || []).forEach(element => {
+        Array.from(slide?.querySelectorAll?.('.report-plan-image-choice, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear]') || []).forEach(element => {
             element.remove?.();
         });
     }
@@ -411,12 +421,12 @@
             html, body { width: ${REPORT_DECK_PRINT_PAGE_WIDTH}; min-height: ${REPORT_DECK_PRINT_PAGE_HEIGHT}; margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             body.report-print-body { font-family: Arial, "Malgun Gothic", sans-serif; }
             .report-print-viewer { display: block !important; width: ${REPORT_DECK_PRINT_PAGE_WIDTH} !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; background: #ffffff !important; }
-            .report-print-page { position: relative !important; display: flex !important; align-items: center !important; justify-content: center !important; width: ${REPORT_DECK_PRINT_PAGE_WIDTH} !important; height: ${REPORT_DECK_PRINT_PAGE_HEIGHT} !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; background: #ffffff !important; break-after: page; page-break-after: always; }
+            .report-print-page { position: relative !important; display: flex !important; align-items: center !important; justify-content: center !important; width: ${REPORT_DECK_PRINT_PAGE_WIDTH} !important; height: ${REPORT_DECK_PRINT_PAGE_HEIGHT} !important; margin: 0 !important; padding: ${REPORT_DECK_PRINT_PAGE_MARGIN} !important; overflow: hidden !important; background: #ffffff !important; break-after: page; page-break-after: always; }
             .report-print-page:last-child, .report-print-page[data-report-print-last="true"] { break-after: auto; page-break-after: auto; }
-            .report-print-slide-frame { position: relative !important; flex: 0 0 auto !important; width: ${REPORT_DECK_PRINT_PAGE_WIDTH} !important; height: ${REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT} !important; margin: 0 auto !important; padding: 0 !important; overflow: hidden !important; background: #ffffff !important; }
-            .report-print-slide-image { display: block !important; width: ${REPORT_DECK_PRINT_PAGE_WIDTH} !important; height: ${REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT} !important; object-fit: contain !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: #ffffff !important; }
-            .report-print-viewer .report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; width: ${REPORT_DECK_PRINT_PAGE_WIDTH} !important; height: ${REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT} !important; max-width: none !important; aspect-ratio: auto !important; border: 0 !important; box-shadow: none !important; break-after: auto !important; page-break-after: auto !important; overflow: hidden !important; background: #ffffff !important; }
-            .report-print-viewer .report-plan-image-actions,
+            .report-print-slide-frame { position: relative !important; flex: 0 0 auto !important; width: ${REPORT_DECK_PRINT_SLIDE_CSS_WIDTH} !important; height: ${REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT} !important; max-width: 100% !important; max-height: 100% !important; margin: 0 auto !important; padding: 0 !important; overflow: hidden !important; background: #ffffff !important; }
+            .report-print-slide-image { display: block !important; width: 100% !important; height: 100% !important; object-fit: contain !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: #ffffff !important; }
+            .report-print-viewer .report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; width: ${REPORT_DECK_PRINT_SLIDE_CSS_WIDTH} !important; height: ${REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT} !important; max-width: 100% !important; max-height: 100% !important; aspect-ratio: auto !important; border: 0 !important; box-shadow: none !important; break-after: auto !important; page-break-after: auto !important; overflow: hidden !important; background: #ffffff !important; }
+            .report-print-viewer .report-plan-image-choice,
             .report-print-viewer .report-plan-count-control,
             .report-print-viewer .report-slide-date-input,
             .report-print-viewer .report-chart-highlight-controls,
@@ -467,7 +477,7 @@
             html, body { margin: 0 !important; padding: 0 !important; width: ${REPORT_DECK_CAPTURE_SLIDE_WIDTH}px !important; height: ${REPORT_DECK_CAPTURE_SLIDE_HEIGHT}px !important; overflow: hidden !important; background: #ffffff !important; }
             .report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; left: 0 !important; top: 0 !important; width: ${REPORT_DECK_CAPTURE_SLIDE_WIDTH}px !important; height: ${REPORT_DECK_CAPTURE_SLIDE_HEIGHT}px !important; max-width: none !important; min-width: 0 !important; min-height: 0 !important; aspect-ratio: auto !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; transform: none !important; overflow: hidden !important; background: #ffffff !important; }
             .report-slide.is-active { display: block !important; }
-            .report-plan-image-actions, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-export-html] { display: none !important; }
+            .report-plan-image-choice, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-export-html] { display: none !important; }
             [data-report-field] { outline: 0 !important; }
         `;
     }
@@ -694,16 +704,14 @@ ${getNodeOuterHtml(deck)}
             .report-export-viewer .report-deck-toolbar { min-height: 40px; }
             .report-export-viewer .report-deck-stage { padding: 0; }
             .report-export-viewer .report-slide { width: min(100%, calc(177.777vh - 86px)); max-width: none; border: 0; box-shadow: none; }
-            .report-export-viewer .report-plan-image-actions,
+            .report-export-viewer .report-plan-image-choice,
             .report-export-viewer .report-plan-count-control,
             .report-export-viewer .report-slide-date-input,
             .report-export-viewer .report-chart-highlight-controls,
             .report-export-viewer .report-chart-highlight-toggle,
             .report-export-viewer .report-chart-highlight-reset,
-            .report-export-viewer .report-memo-overview-dialog,
             .report-export-viewer [data-report-plan-image-input],
-            .report-export-viewer [data-report-plan-image-clear],
-            .report-export-viewer [data-report-memo-overview-toggle] { display: none !important; }
+            .report-export-viewer [data-report-plan-image-clear] { display: none !important; }
             .report-export-viewer [data-report-field] { outline: 0 !important; }
             .report-export-viewer:fullscreen { width: 100vw; height: 100vh; min-height: 0; grid-template-rows: minmax(0, 1fr); gap: 0; padding: 0; background: #111827; }
             .report-export-viewer:fullscreen .report-deck-toolbar,
@@ -721,7 +729,7 @@ ${getNodeOuterHtml(deck)}
                 .report-export-viewer .report-deck-sidebar { display: none !important; }
                 .report-export-viewer .report-deck-workspace,
                 .report-export-viewer .report-deck-stage { display: block !important; width: ${REPORT_DECK_PRINT_PAGE_WIDTH} !important; height: auto !important; min-height: 0 !important; padding: 0 !important; border: 0 !important; background: #ffffff !important; overflow: visible !important; }
-                .report-export-viewer .report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; width: ${REPORT_DECK_PRINT_PAGE_WIDTH} !important; height: ${REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT} !important; max-width: none !important; aspect-ratio: auto !important; margin: 21.46875mm 0 !important; border: 0 !important; box-shadow: none !important; break-after: page; page-break-after: always; overflow: hidden !important; }
+                .report-export-viewer .report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; width: ${REPORT_DECK_PRINT_SLIDE_CSS_WIDTH} !important; height: ${REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT} !important; max-width: none !important; aspect-ratio: auto !important; margin: 27.09375mm ${REPORT_DECK_PRINT_PAGE_MARGIN} !important; border: 0 !important; box-shadow: none !important; break-after: page; page-break-after: always; overflow: hidden !important; }
                 .report-export-viewer .report-slide:last-child { break-after: auto; page-break-after: auto; }
                 .report-export-viewer img:not([src]),
                 .report-export-viewer img[src=""] { visibility: hidden !important; }
@@ -798,7 +806,7 @@ ${getNodeOuterHtml(deck)}
             element.removeAttribute('contenteditable');
             element.removeAttribute('spellcheck');
         });
-        clone.querySelectorAll?.('.report-plan-image-actions, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-clear], [data-report-memo-overview-toggle]')?.forEach(element => {
+        clone.querySelectorAll?.('.report-plan-image-choice, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-memo-overview-toggle]')?.forEach(element => {
             element.remove();
         });
         return clone;
@@ -810,7 +818,7 @@ ${getNodeOuterHtml(deck)}
         'html, body { margin: 0 !important; padding: 0 !important; width: ' + captureWidth + 'px !important; height: ' + captureHeight + 'px !important; overflow: hidden !important; background: #ffffff !important; }',
         '.report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; left: 0 !important; top: 0 !important; width: ' + captureWidth + 'px !important; height: ' + captureHeight + 'px !important; max-width: none !important; min-width: 0 !important; min-height: 0 !important; aspect-ratio: auto !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; transform: none !important; overflow: hidden !important; background: #ffffff !important; }',
         '.report-slide.is-active { display: block !important; }',
-        '.report-plan-image-actions, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-export-html] { display: none !important; }',
+        '.report-plan-image-choice, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-export-html] { display: none !important; }',
         '[data-report-field] { outline: 0 !important; }'
     ].join('\\n');
     const buildCaptureHost = slide => {
@@ -1260,6 +1268,14 @@ ${buildReportDeckExportScript()}
         return REPORT_DECK_MEMO_WASTE_METRIC_KEYS.includes(String(metricKey || '').trim());
     }
 
+    function getReportDeckMemoUnitBaseMetricKey(metricKey = '') {
+        return REPORT_DECK_MEMO_UNIT_METRIC_BASE[String(metricKey || '').trim()] || '';
+    }
+
+    function isReportDeckMemoUnitMetricKey(metricKey = '') {
+        return Boolean(getReportDeckMemoUnitBaseMetricKey(metricKey));
+    }
+
     function getReportDeckMemoWasteScopeKeyFromMemoKey(memoKey = '') {
         const normalizedMemoKey = String(memoKey || '').trim();
         if (normalizedMemoKey === 'slide7WasteMemo') return 'yusan';
@@ -1310,12 +1326,18 @@ ${buildReportDeckExportScript()}
         const number = toFiniteNumber(value);
         if (number === null) return '';
         const absValue = Math.abs(number);
-        const maximumFractionDigits = metric.deltaMode === 'percentagePoint'
+        const fixedDecimals = Number.isInteger(metric.decimals) ? Math.max(0, Math.min(metric.decimals, 6)) : null;
+        const displayValue = fixedDecimals !== null
+            ? Math.round((absValue + 1e-12) * (10 ** fixedDecimals)) / (10 ** fixedDecimals)
+            : absValue;
+        const maximumFractionDigits = fixedDecimals !== null
+            ? fixedDecimals
+            : metric.deltaMode === 'percentagePoint'
             ? 1
             : (metric.key === 'lng' || absValue < 100 ? 1 : 0);
-        return absValue.toLocaleString('ko-KR', {
+        return displayValue.toLocaleString('ko-KR', {
             maximumFractionDigits,
-            minimumFractionDigits: 0
+            minimumFractionDigits: fixedDecimals !== null ? fixedDecimals : 0
         });
     }
 
@@ -1323,12 +1345,18 @@ ${buildReportDeckExportScript()}
         const number = toFiniteNumber(value);
         if (number === null) return '';
         const absValue = Math.abs(number);
-        const maximumFractionDigits = metric.deltaMode === 'percentagePoint'
+        const fixedDecimals = Number.isInteger(metric.decimals) ? Math.max(0, Math.min(metric.decimals, 6)) : null;
+        const displayValue = fixedDecimals !== null
+            ? Math.sign(number) * (Math.round((absValue + 1e-12) * (10 ** fixedDecimals)) / (10 ** fixedDecimals))
+            : number;
+        const maximumFractionDigits = fixedDecimals !== null
+            ? fixedDecimals
+            : metric.deltaMode === 'percentagePoint'
             ? 1
             : (metric.key === 'lng' || absValue < 100 ? 1 : 0);
-        return number.toLocaleString('ko-KR', {
+        return displayValue.toLocaleString('ko-KR', {
             maximumFractionDigits,
-            minimumFractionDigits: 0
+            minimumFractionDigits: fixedDecimals !== null ? fixedDecimals : 0
         });
     }
 
@@ -1364,6 +1392,17 @@ ${buildReportDeckExportScript()}
         const direction = getReportDeckMemoDirection(pair.delta);
         const arrow = getReportDeckMemoArrow(direction);
         const deltaText = `${formatReportDeckMemoNumber(pair.delta, metric)}${metric.unit || ''}`;
+        if (direction === 'flat') {
+            return {
+                basis: basisLabel,
+                direction,
+                text: `${basisLabel} \uB3D9\uC77C`,
+                reference: pair.reference,
+                current: pair.current,
+                delta: pair.delta,
+                rate: pair.rate
+            };
+        }
         if (metric.deltaMode === 'percentagePoint') {
             return {
                 basis: basisLabel,
@@ -1436,6 +1475,41 @@ ${buildReportDeckExportScript()}
         return toFiniteNumber(value);
     }
 
+    function getReportDeckMemoRatioValue(usage, production) {
+        const usageValue = toFiniteNumber(usage);
+        const productionValue = toFiniteNumber(production);
+        return usageValue !== null && productionValue !== null && productionValue > 0
+            ? usageValue / productionValue
+            : null;
+    }
+
+    function getReportDeckMemoGasMetricMap(monthInfo, team, optionApi, gasApi, memoBuildCache = null) {
+        if (!monthInfo || typeof gasApi?.buildUtilGasAnalysisMetricMap !== 'function') return null;
+        const option = optionApi?.getUtilGasAnalysisCategoryOption?.(team.key) || { key: team.key };
+        const monthKeys = [
+            toReportDeckMonthKey(monthInfo.year - 1, monthInfo.month),
+            getReportDeckRelativeMonthKey(monthInfo, -1),
+            monthInfo.key
+        ];
+        const cacheKey = `${team.key || team.label || ''}|${monthKeys.join(',')}`;
+        return readReportDeckMemoBuildCache(
+            memoBuildCache,
+            'gasMetricMaps',
+            cacheKey,
+            () => gasApi.buildUtilGasAnalysisMetricMap(monthKeys, option) || null
+        );
+    }
+
+    function getReportDeckMemoGasUnitValue(monthKey, team, fuelKey, optionApi, gasApi, memoBuildCache = null, monthInfo = null) {
+        const metricMap = getReportDeckMemoGasMetricMap(monthInfo, team, optionApi, gasApi, memoBuildCache);
+        const metric = metricMap instanceof Map ? metricMap.get(monthKey) || {} : {};
+        const usageFromMap = fuelKey === 'lpg' ? metric?.lpgUsage : metric?.lngUsage;
+        const usage = toFiniteNumber(usageFromMap) ?? getReportDeckMemoGasUsageValue(monthKey, team, fuelKey, optionApi, gasApi);
+        const production = toFiniteNumber(metric?.ratioProduction?.[fuelKey] ?? metric?.production)
+            ?? getReportDeckMemoProductionValue(monthKey, team, gasApi);
+        return getReportDeckMemoRatioValue(usage, production);
+    }
+
     function getReportDeckMemoElectricRows(monthInfo, team, optionApi, electricApi, memoBuildCache = null) {
         if (!monthInfo || typeof electricApi?.buildUtilElectricAnalysisScopedRows !== 'function') return [];
         const option = optionApi?.getUtilElectricAnalysisTeamOption?.(team.key) || {
@@ -1456,6 +1530,13 @@ ${buildReportDeckExportScript()}
 
     function getReportDeckMemoElectricValue(rowMap, monthKey) {
         return toFiniteNumber(rowMap instanceof Map ? rowMap.get(monthKey)?.electricUsage : null);
+    }
+
+    function getReportDeckMemoElectricUnitValue(rowMap, monthKey, team, gasApi) {
+        const usage = getReportDeckMemoElectricValue(rowMap, monthKey);
+        const rowProduction = readReportDeckElectricRow(rowMap, monthKey, 'production');
+        const production = rowProduction !== null ? rowProduction : getReportDeckMemoProductionValue(monthKey, team, gasApi);
+        return getReportDeckMemoRatioValue(usage, production);
     }
 
     function getReportDeckMemoProductionLineValueMap(monthKeys = [], team, lineName = '', optionApi, electricApi, memoBuildCache = null) {
@@ -1749,6 +1830,7 @@ ${buildReportDeckExportScript()}
         const currentMonthKey = activeMonthInfo.key;
         let readValue = () => null;
         let candidateSubject = team;
+        const unitBaseMetricKey = getReportDeckMemoUnitBaseMetricKey(metricKey);
 
         if (metric.lineName) {
             const lineValueMap = getReportDeckMemoProductionLineValueMap(
@@ -1762,16 +1844,21 @@ ${buildReportDeckExportScript()}
             readValue = monthKey => toFiniteNumber(lineValueMap.get(monthKey));
         } else if (REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS.includes(metricKey)) {
             readValue = monthKey => readReportDeckMemoProductionStatValue(monthKey, team, metricKey, memoBuildCache);
-        } else if (metricKey === 'electric') {
+        } else if (metricKey === 'electric' || metricKey === 'electric_unit') {
             const rows = getReportDeckMemoElectricRows(activeMonthInfo, team, optionApi, electricApi, memoBuildCache);
             const rowMap = new Map((Array.isArray(rows) ? rows : [])
                 .map(row => [String(row?.monthKey || '').trim(), row])
                 .filter(([key]) => key));
-            readValue = monthKey => getReportDeckMemoElectricValue(rowMap, monthKey);
+            readValue = metricKey === 'electric_unit'
+                ? monthKey => getReportDeckMemoElectricUnitValue(rowMap, monthKey, team, gasApi)
+                : monthKey => getReportDeckMemoElectricValue(rowMap, monthKey);
         } else if (metricKey === 'production') {
             readValue = monthKey => getReportDeckMemoProductionValue(monthKey, team, gasApi);
-        } else if (metricKey === 'lng' || metricKey === 'lpg') {
-            readValue = monthKey => getReportDeckMemoGasUsageValue(monthKey, team, metricKey, optionApi, gasApi);
+        } else if (metricKey === 'lng' || metricKey === 'lpg' || unitBaseMetricKey === 'lng' || unitBaseMetricKey === 'lpg') {
+            const fuelKey = unitBaseMetricKey || metricKey;
+            readValue = isReportDeckMemoUnitMetricKey(metricKey)
+                ? monthKey => getReportDeckMemoGasUnitValue(monthKey, team, fuelKey, optionApi, gasApi, memoBuildCache, activeMonthInfo)
+                : monthKey => getReportDeckMemoGasUsageValue(monthKey, team, fuelKey, optionApi, gasApi);
         } else if (isReportDeckMemoWasteMetricKey(metricKey)) {
             const wasteApi = root.KPIUtilReportSheetAnalysisWasteModel || null;
             const scopeConfig = getReportDeckWasteScopeConfig(getReportDeckMemoWasteScopeKeyFromMemoKey(options.memoKey));
@@ -1934,6 +2021,27 @@ ${buildReportDeckExportScript()}
         const numerator = toFiniteNumber(numeratorValue);
         const denominator = toFiniteNumber(denominatorValue);
         return numerator !== null && denominator !== null && denominator !== 0 ? numerator / denominator : null;
+    }
+
+    function divideReportDeckPositiveMetricValues(numeratorValue, denominatorValue) {
+        const numerator = toFiniteNumber(numeratorValue);
+        const denominator = normalizeReportDeckPositiveMetric(denominatorValue);
+        return numerator !== null && denominator !== null ? numerator / denominator : null;
+    }
+
+    function buildReportDeckRatioMetricComparison(
+        referenceNumerator,
+        currentNumerator,
+        previousNumerator,
+        referenceDenominator,
+        currentDenominator,
+        previousDenominator
+    ) {
+        return buildReportDeckMetricComparison(
+            divideReportDeckPositiveMetricValues(referenceNumerator, referenceDenominator),
+            divideReportDeckPositiveMetricValues(currentNumerator, currentDenominator),
+            divideReportDeckPositiveMetricValues(previousNumerator, previousDenominator)
+        );
     }
 
     function normalizeReportDeckPositiveMetric(value) {
@@ -2619,6 +2727,10 @@ ${buildReportDeckExportScript()}
             const usageCharge = readReportDeckGasUsageCharge(monthKey, scopeConfig);
             return usageCharge !== null ? usageCharge : readReportDeckGasLngCost(gasMetricMap, monthKey);
         };
+        const readGasUnitProduction = monthKey => {
+            const metric = gasMetricMap.get(monthKey) || {};
+            return toFiniteNumber(metric?.ratioProduction?.lng ?? metric.production);
+        };
 
         const gasRows = {
             production: buildReportDeckMetricComparison(
@@ -2630,6 +2742,14 @@ ${buildReportDeckExportScript()}
                 readReportDeckMetric(gasMetricMap, referenceMonthKey, 'lngUsage'),
                 readReportDeckMetric(gasMetricMap, activeMonthInfo.key, 'lngUsage'),
                 readReportDeckMetric(gasMetricMap, previousMonthKey, 'lngUsage')
+            ),
+            unit: buildReportDeckRatioMetricComparison(
+                readReportDeckMetric(gasMetricMap, referenceMonthKey, 'lngUsage'),
+                readReportDeckMetric(gasMetricMap, activeMonthInfo.key, 'lngUsage'),
+                readReportDeckMetric(gasMetricMap, previousMonthKey, 'lngUsage'),
+                readGasUnitProduction(referenceMonthKey),
+                readGasUnitProduction(activeMonthInfo.key),
+                readGasUnitProduction(previousMonthKey)
             ),
             cost: buildReportDeckMetricComparison(
                 readGasCost(referenceMonthKey),
@@ -2647,6 +2767,14 @@ ${buildReportDeckExportScript()}
                 readReportDeckElectricRow(electricRowMap, referenceMonthKey, 'electricUsage'),
                 readReportDeckElectricRow(electricRowMap, activeMonthInfo.key, 'electricUsage'),
                 readReportDeckElectricRow(electricRowMap, previousMonthKey, 'electricUsage')
+            ),
+            unit: buildReportDeckRatioMetricComparison(
+                readReportDeckElectricRow(electricRowMap, referenceMonthKey, 'electricUsage'),
+                readReportDeckElectricRow(electricRowMap, activeMonthInfo.key, 'electricUsage'),
+                readReportDeckElectricRow(electricRowMap, previousMonthKey, 'electricUsage'),
+                readReportDeckElectricRow(electricRowMap, referenceMonthKey, 'production'),
+                readReportDeckElectricRow(electricRowMap, activeMonthInfo.key, 'production'),
+                readReportDeckElectricRow(electricRowMap, previousMonthKey, 'production')
             ),
             cost: buildReportDeckMetricComparison(
                 readReportDeckElectricRow(electricRowMap, referenceMonthKey, 'electricCost'),
@@ -2728,6 +2856,10 @@ ${buildReportDeckExportScript()}
         const gasMetricMap = typeof gasApi.buildUtilGasAnalysisMetricMap === 'function'
             ? gasApi.buildUtilGasAnalysisMetricMap(timeline.monthKeys, gasOption)
             : new Map();
+        const readLpgUnitProduction = monthKey => {
+            const metric = gasMetricMap.get(monthKey) || {};
+            return toFiniteNumber(metric?.ratioProduction?.lpg ?? metric.production);
+        };
         const readLpgConversionCost = monthKey => readReportDeckGasLpgConversionCost(gasMetricMap, monthKey);
 
         const rows = {
@@ -2740,6 +2872,14 @@ ${buildReportDeckExportScript()}
                 readReportDeckMetric(gasMetricMap, referenceMonthKey, 'lpgUsage'),
                 readReportDeckMetric(gasMetricMap, activeMonthInfo.key, 'lpgUsage'),
                 readReportDeckMetric(gasMetricMap, previousMonthKey, 'lpgUsage')
+            ),
+            unit: buildReportDeckRatioMetricComparison(
+                readReportDeckMetric(gasMetricMap, referenceMonthKey, 'lpgUsage'),
+                readReportDeckMetric(gasMetricMap, activeMonthInfo.key, 'lpgUsage'),
+                readReportDeckMetric(gasMetricMap, previousMonthKey, 'lpgUsage'),
+                readLpgUnitProduction(referenceMonthKey),
+                readLpgUnitProduction(activeMonthInfo.key),
+                readLpgUnitProduction(previousMonthKey)
             ),
             amount: buildReportDeckMetricComparison(
                 readReportDeckGasLpgCost(gasMetricMap, referenceMonthKey),
@@ -2854,6 +2994,11 @@ ${buildReportDeckExportScript()}
                 readReportDeckWasteRow(wasteRowMap, referenceMonthKey, 'wasteUsage'),
                 readReportDeckWasteRow(wasteRowMap, activeMonthInfo.key, 'wasteUsage'),
                 readReportDeckWasteRow(wasteRowMap, previousMonthKey, 'wasteUsage')
+            ),
+            unit: buildReportDeckMetricComparison(
+                calculateReportDeckWasteIntensity(wasteRowMap.get(referenceMonthKey) || {}),
+                calculateReportDeckWasteIntensity(wasteRowMap.get(activeMonthInfo.key) || {}),
+                calculateReportDeckWasteIntensity(wasteRowMap.get(previousMonthKey) || {})
             ),
             water: buildDetailPair('water'),
             share: buildDetailPair('share'),

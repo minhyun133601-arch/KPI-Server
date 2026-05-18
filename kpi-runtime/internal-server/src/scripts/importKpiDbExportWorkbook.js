@@ -295,6 +295,14 @@ function asNumeric(row, key) {
   return value ? value : null;
 }
 
+function asFirstNumeric(row, keys) {
+  for (const key of keys) {
+    const value = asNumeric(row, key);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
 function asJson(row, key, fallback = {}) {
   const value = String(getJoinedField(row, key) ?? '').trim();
   if (!value) {
@@ -744,9 +752,9 @@ async function importUtilEntries(client, rows, maps, force) {
       existing ? 'updated' : 'inserted',
       `insert into util_production_daily_entries
         (id, dedupe_key, production_date, team_name, line_name, product_name,
-         amount, moisture_excluded_yield, equipment_capa, equipment_utilization,
+         amount, moisture_excluded_yield, work_time, operation_time, equipment_capa, equipment_utilization,
          source_archive_id, source_fingerprint, source_file_name, created_at, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
        on conflict (dedupe_key) do update set
         production_date = excluded.production_date,
         team_name = excluded.team_name,
@@ -754,6 +762,8 @@ async function importUtilEntries(client, rows, maps, force) {
         product_name = excluded.product_name,
         amount = excluded.amount,
         moisture_excluded_yield = excluded.moisture_excluded_yield,
+        work_time = excluded.work_time,
+        operation_time = excluded.operation_time,
         equipment_capa = excluded.equipment_capa,
         equipment_utilization = excluded.equipment_utilization,
         source_archive_id = excluded.source_archive_id,
@@ -769,6 +779,8 @@ async function importUtilEntries(client, rows, maps, force) {
         asText(row, 'product_name'),
         asNumeric(row, 'amount'),
         asNumeric(row, 'moisture_excluded_yield'),
+        asFirstNumeric(row, ['work_time', 'input_time']),
+        asNumeric(row, 'operation_time'),
         asNumeric(row, 'equipment_capa'),
         asNumeric(row, 'equipment_utilization'),
         asNullableText(row, 'source_archive_id'),

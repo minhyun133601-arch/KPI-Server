@@ -426,6 +426,8 @@ const dataFlows = [
     ],
     source: [
       'kpi-runtime/internal-server/src/db/migrations/004_util_production_daily_tables.sql',
+      'kpi-runtime/internal-server/src/db/migrations/005_util_production_daily_time_metrics.sql',
+      'kpi-runtime/internal-server/src/db/migrations/006_util_production_daily_work_time.sql',
       'kpi-runtime/internal-server/src/lib/portal-bootstrap/runtime-config.js',
       'utility/runtime/util/production/KPI.util.production.extractor.js',
     ],

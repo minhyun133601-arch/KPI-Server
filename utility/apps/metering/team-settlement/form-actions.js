@@ -11,8 +11,20 @@ function alertTeamSettlementFormAction(message) {
   }
 }
 
-function shouldPreserveTeamSettlementManualInputDisplay(event) {
-  return event?.type === "input";
+function shouldPreserveTeamSettlementManualInputDisplay(
+  event,
+  fieldKey,
+  resourceType,
+  scopeKey
+) {
+  if (event?.type !== "input") {
+    return false;
+  }
+
+  return !(
+    typeof isBillingSettlementDecimalPreservingField === "function" &&
+    isBillingSettlementDecimalPreservingField(fieldKey, resourceType, scopeKey)
+  );
 }
 
 function handleTeamSettlementFieldInput(event) {
@@ -83,7 +95,7 @@ function handleTeamSettlementFieldInput(event) {
   state.cleanStatusText = "정산 값을 수정했습니다. 저장해 주세요.";
   updateDirtyState();
 
-  if (!shouldPreserveTeamSettlementManualInputDisplay(event)) {
+  if (!shouldPreserveTeamSettlementManualInputDisplay(event, fieldKey, resourceType, scopeKey)) {
     if (!nextValue && zeroDefaultFieldKeys.includes(fieldKey) && nextFields[fieldKey]) {
       input.value = formatBillingSettlementFieldDisplayValue(
         fieldKey,

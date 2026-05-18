@@ -314,15 +314,15 @@ test('amount-support filters zero gas descriptors and selectionOnly gas amount/d
   );
 });
 
-test('amount-support calculates electric manage display amount and detail text from variable and base allocations', () => {
+test('amount-support calculates electric manage display amount and detail text from variable allocations', () => {
   const context = createAmountSupportContext();
 
-  assert.equal(context.calculateElectricManageDisplayAmount('2026-04'), 1200);
+  assert.equal(context.calculateElectricManageDisplayAmount('2026-04'), 1000);
   assert.match(
     context.getElectricManageDisplayDetailText('2026-04'),
     /설비별 사용요금 합계 1000/
   );
-  assert.match(
+  assert.doesNotMatch(
     context.getElectricManageDisplayDetailText('2026-04'),
     /기본요금 배부 200/
   );
@@ -332,7 +332,7 @@ test('amount-support calculates electric manage display amount and detail text f
   );
   assert.match(
     context.getElectricManageDisplayDetailText('2026-04'),
-    /관리동 금액 1200/
+    /관리동 금액 1000/
   );
 });
 
@@ -348,17 +348,17 @@ test('amount-support routes team amount text/detail for gas, waste, electric gen
   assert.equal(context.getTeamAmountDetailText('waste_a'), '폐기물상세 55');
 
   context.__setResourceType('electric');
-  assert.equal(context.calculateTeamAmount('team_02'), 595);
-  assert.equal(context.getTeamAmountText('team_02'), '금액 595');
+  assert.equal(context.calculateTeamAmount('team_02'), 495);
+  assert.equal(context.getTeamAmountText('team_02'), '금액 495');
   assert.match(context.getTeamAmountDetailText('team_02'), /설비별 사용요금 합계 500/);
-  assert.match(context.getTeamAmountDetailText('team_02'), /기본요금 배부 100/);
+  assert.doesNotMatch(context.getTeamAmountDetailText('team_02'), /기본요금 배부 100/);
   assert.match(context.getTeamAmountDetailText('team_02'), /금액 보정 -5/);
-  assert.match(context.getTeamAmountDetailText('team_02'), /2팀 금액 595/);
+  assert.match(context.getTeamAmountDetailText('team_02'), /2팀 금액 495/);
 
-  assert.equal(context.getTeamAmountText('team_04'), '금액 1200');
+  assert.equal(context.getTeamAmountText('team_04'), '금액 1000');
   assert.equal(context.getTeamAmountText('bukjeong_power'), '금액 440');
   assert.match(context.getTeamAmountDetailText('team_01_01'), /북정 기준 팀 1팀 1파트/);
   assert.match(context.getTeamAmountDetailText('team_01_01'), /북정 전기요금계 700/);
-  assert.match(context.getTeamAmountDetailText('team_01_01'), /북정 기본요금 80/);
+  assert.doesNotMatch(context.getTeamAmountDetailText('team_01_01'), /북정 기본요금 80/);
   assert.match(context.getTeamAmountDetailText('team_01_01'), /북정 금액 330/);
 });

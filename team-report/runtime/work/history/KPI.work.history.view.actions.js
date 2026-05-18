@@ -18,6 +18,7 @@
         root.addEventListener('change', handleRootChange);
         root.addEventListener('input', handleRootInput);
         root.addEventListener('keydown', handleRootKeydown, true);
+        if (!state.keyboardShortcutBound) { state.keyboardShortcutBound = true; browser.addWindowEventListener('keydown', handleRootKeydown, true); }
         if (!state.viewportResizeBound) {
             state.viewportResizeBound = true;
             browser.addWindowEventListener('resize', handleWindowResize);
@@ -181,9 +182,7 @@
         }
 
         if (event.target.classList.contains('modal')) {
-            if (event.target.id === 'recordModal') {
-                view.closeRecordModal?.();
-            }
+            if (event.target.id === 'recordModal') { event.preventDefault?.(); return; }
             if (event.target.id === 'deleteModal') {
                 view.closeDeleteModal?.();
             }

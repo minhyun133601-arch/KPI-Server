@@ -352,7 +352,7 @@
                                     const nextTeam = (addedTeams.length && !addedTeams.includes(activeTeam))
                                         ? addedTeams[0]
                                         : activeTeam;
-                                    if ((result.addedCount > 0 || result.patchedCount > 0) && typeof setLastModified === 'function') {
+                                    if ((result.addedCount > 0 || result.patchedCount > 0 || result.replacedCount > 0) && typeof setLastModified === 'function') {
                                         setLastModified('유틸리티 관리');
                                     }
                                     renderTeam(nextTeam || data[0]?.name);
@@ -363,7 +363,10 @@
                                     const patchedNotice = result.patchedCount > 0
                                         ? `\n수율/CAPA/가동률 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
                                         : '';
-                                    alert(`기입 완료: 기존 생산량 유지, 신규 ${result.addedCount.toLocaleString('ko-KR')}건 추가, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`);
+                                    const replacedNotice = result.replacedCount > 0
+                                        ? `, 기존 ${result.replacedCount.toLocaleString('ko-KR')}건 교체`
+                                        : '';
+                                    alert(`기입 완료: ${result.addedCount.toLocaleString('ko-KR')}건 기입${replacedNotice}, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`);
                                 } catch (error) {
                                     alert(`기입 실패: ${error?.message || '알 수 없는 오류'}`);
                                 } finally {

@@ -1,6 +1,15 @@
 ((root) => {
   const entries = [
     {
+      date: '2026-05-18',
+      tag: 'production-import/time-metrics',
+      title: '생산량 엑셀 조업시간/가동시간 추출',
+      summary:
+        '생산량 기입 엑셀의 J열 조업시간과 L열 가동시간을 기존 보조값처럼 추출해 브리지, 저장, 중복판별, 보고서 집계 경로에 보존하도록 확장했습니다.',
+      detail:
+        'util_production_daily_entries에 nullable 시간 컬럼을 추가하는 005 마이그레이션과 work_time/operation_time 기준을 맞추는 006 마이그레이션을 만들고, 적용 전 PostgreSQL 덤프 백업을 생성했습니다. 기존 행은 시간이 비어 있는 상태로 유지되며, 새 시트 재기입부터 같은 날짜/팀/라인/품명/생산량에 조업시간 또는 가동시간이 다르면 별도 보조 중복키로 판별됩니다. 검증 기준: production extractor/import/state/report/work smoke, format, lint, server-structure, git diff --check, npm run verify.',
+    },
+    {
       date: '2026-05-15',
       tag: 'report-deck/template',
       title: '공무환경팀 PPT형 보고서 템플릿',

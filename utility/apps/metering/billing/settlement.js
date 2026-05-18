@@ -118,9 +118,13 @@ function resolveBillingSettlementFields(
   }
 
   if (resourceType === RESOURCE_TYPES.ELECTRIC) {
-    const electricityChargeTotal = calculateBillingSettlementElectricityChargeTotal(fields);
-    if (electricityChargeTotal) {
-      fields.electricity_charge_total = electricityChargeTotal;
+    const resolvedElectricityChargeTotal = resolveBillingSettlementElectricityChargeTotalValue({
+      ...fields,
+      electricity_charge_total: preservedElectricityChargeTotal,
+      billing_amount: preservedBillingAmount,
+    });
+    if (Number.isFinite(resolvedElectricityChargeTotal)) {
+      fields.electricity_charge_total = formatNumber(resolvedElectricityChargeTotal);
     } else if (preservedElectricityChargeTotal) {
       fields.electricity_charge_total = preservedElectricityChargeTotal;
     }
@@ -161,10 +165,10 @@ function resolveBillingSettlementFields(
     } else if (preservedBillingAmount) {
       fields.billing_amount = preservedBillingAmount;
     }
-  } else if (preservedBillingAmount) {
-    fields.billing_amount = preservedBillingAmount;
   } else if (billingAmount) {
     fields.billing_amount = billingAmount;
+  } else if (preservedBillingAmount) {
+    fields.billing_amount = preservedBillingAmount;
   }
 
   return fields;

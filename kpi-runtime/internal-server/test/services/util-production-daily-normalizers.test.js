@@ -61,6 +61,41 @@ test('buildEntryDedupeKey normalizes team whitespace parentheses and explicit ze
       amount: '0',
     })
   );
+  assert.notEqual(
+    buildEntryDedupeKey(baseEntry),
+    buildEntryDedupeKey({
+      ...baseEntry,
+      moistureExcludedYield: 98,
+    })
+  );
+  assert.notEqual(
+    buildEntryDedupeKey(baseEntry),
+    buildEntryDedupeKey({
+      ...baseEntry,
+      workTime: 6,
+    })
+  );
+  assert.notEqual(
+    buildEntryDedupeKey(baseEntry),
+    buildEntryDedupeKey({
+      ...baseEntry,
+      operationTime: 4.5,
+    })
+  );
+  assert.notEqual(
+    buildEntryDedupeKey(baseEntry),
+    buildEntryDedupeKey({
+      ...baseEntry,
+      equipmentCapa: 120,
+    })
+  );
+  assert.notEqual(
+    buildEntryDedupeKey(baseEntry),
+    buildEntryDedupeKey({
+      ...baseEntry,
+      equipmentUtilization: 85,
+    })
+  );
 });
 
 test('normalizeEntry preserves production and value aliases including zero', () => {
@@ -78,6 +113,8 @@ test('normalizeEntry preserves production and value aliases including zero', () 
     itemName: '제품B',
     value: '12.5',
     yieldRate: '9.5',
+    workTime: '6',
+    operatingTime: '4.5',
     equipmentCapacity: '20',
     utilizationRate: '62.5',
   });
@@ -85,6 +122,8 @@ test('normalizeEntry preserves production and value aliases including zero', () 
   assert.equal(productionEntry.amount, 0);
   assert.equal(valueEntry.amount, 12.5);
   assert.equal(valueEntry.moistureExcludedYield, 9.5);
+  assert.equal(valueEntry.workTime, 6);
+  assert.equal(valueEntry.operationTime, 4.5);
   assert.equal(valueEntry.equipmentCapa, 20);
   assert.equal(valueEntry.equipmentUtilization, 62.5);
 });

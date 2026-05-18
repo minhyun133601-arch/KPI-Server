@@ -154,21 +154,21 @@ test('team overview total power prorates selection-only amount from usage share'
 
   assert.equal(context.getTotalPowerCardMonthlyUsage('2026-04'), 50);
   assert.equal(context.getTotalPowerCardMonthlyUsage('2026-04', { selectionOnly: true }), 20);
-  assert.equal(context.getTotalPowerCardAmountValue('2026-04', { selectionOnly: true }), 40);
+  assert.equal(context.getTotalPowerCardAmountValue('2026-04', { selectionOnly: true }), 32);
   assert.equal(
     context.getTotalPowerCardAmountText('2026-04', { selectionOnly: true }),
-    '금액 amt:40'
+    '금액 amt:32'
   );
 });
 
 test('team overview total power builds overall electric amount text and detail', () => {
   const context = createTotalPowerContext();
 
-  assert.equal(context.getElectricTeamModeOverallAmountValue('2026-04'), 135);
-  assert.equal(context.getElectricTeamModeOverallAmountText('2026-04'), '총액 amt:135');
+  assert.equal(context.getElectricTeamModeOverallAmountValue('2026-04'), 115);
+  assert.equal(context.getElectricTeamModeOverallAmountText('2026-04'), '총액 amt:115');
   assert.equal(
     context.getElectricTeamModeOverallAmountDetailText('2026-04'),
-    '북정 amt:30\n유산 amt:100\n그 외 비용 amt:5\n합계 amt:135'
+    '북정 amt:30\n유산 amt:80\n그 외 비용 amt:5\n합계 amt:115'
   );
 });
 
@@ -186,10 +186,10 @@ test('team overview total power builds descriptor share, charge, and detail text
   );
   assert.equal(
     context.getTotalPowerCardDescriptorChargeText(descriptor, '2026-04', { selectionOnly: true }),
-    '금액 amt:40'
+    '금액 amt:32'
   );
   assert.equal(
     context.getTotalPowerCardDescriptorDetailText(descriptor, '2026-04', { selectionOnly: true }),
-    '전력총량 whole:50 중 whole:20 = share:40%\n전기요금계+기본요금 amt:100 x share:40% = amt:40'
+    '전력총량 whole:50 중 whole:20 = share:40%\n전기요금계 amt:80 x share:40% = amt:32'
   );
 });

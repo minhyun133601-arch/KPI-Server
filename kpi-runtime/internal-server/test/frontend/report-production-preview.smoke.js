@@ -37,7 +37,7 @@ test('report production preview is split out of production calculation runtime',
 });
 
 test('kpi html loads production preview between production calculations and runner', () => {
-  const productionIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.production.js?v=334');
+  const productionIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.production.js?v=335');
   const previewIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.production-preview.js?v=339');
   const runnerIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runner.js?v=331');
 

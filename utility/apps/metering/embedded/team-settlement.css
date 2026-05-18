@@ -131,6 +131,115 @@
   font-size: 0.86rem;
 }
 
+.settlement-readiness-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(16, 33, 42, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.settlement-readiness-panel.is-hidden {
+  display: none;
+}
+
+.settlement-readiness-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settlement-readiness-head h3,
+.settlement-readiness-eyebrow {
+  margin: 0;
+}
+
+.settlement-readiness-head h3 {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.settlement-readiness-eyebrow {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.settlement-readiness-pill {
+  flex-shrink: 0;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(180, 83, 9, 0.1);
+  color: #92400e;
+  font-size: 0.76rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.settlement-readiness-pill.is-ready {
+  background: rgba(32, 113, 80, 0.12);
+  color: #207150;
+}
+
+.settlement-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 8px;
+}
+
+.settlement-readiness-item {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(16, 33, 42, 0.07);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.86);
+}
+
+.settlement-readiness-label,
+.settlement-readiness-detail {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.settlement-readiness-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.settlement-readiness-status {
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.settlement-readiness-detail {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.settlement-readiness-item.is-ready {
+  border-color: rgba(32, 113, 80, 0.18);
+  background: rgba(32, 113, 80, 0.08);
+}
+
+.settlement-readiness-item.is-pending {
+  border-color: rgba(180, 83, 9, 0.2);
+  background: rgba(253, 230, 138, 0.22);
+}
+
+.settlement-readiness-item.is-missing {
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
 .team-settlement-section {
   display: grid;
   gap: 12px;

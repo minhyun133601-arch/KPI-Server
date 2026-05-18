@@ -1,3 +1,55 @@
+# 2026-05-18 Patch Note
+
+## Report Export Memo Removal
+
+Goal: 보고서 HTML 추출본에서는 특이사항 버튼과 특이사항 전체 확인 팝업을 제외하고, 편집 화면의 특이사항 기능은 유지합니다.
+
+Touched areas: report deck export viewer builder/script, KPI shell asset cache version, util runtime browser adapter smoke test.
+
+Verification: `node --check` for the changed report export adapter and smoke test passed; targeted `util-runtime-browser-adapter` and `section-factory-adapter` smoke tests passed; `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `npm run smoke:kpi-browser`, and `git diff --check` passed.
+
+Risk: 추출본에서는 특이사항 모아보기만 제거되며, 슬라이드 본문 안에 이미 배치된 값/표/그래프는 그대로 유지됩니다.
+
+---
+
+## Team Calendar Production Time Metrics
+
+Goal: `24.01~26.02` 엑셀 폴더의 J열 조업시간, L열 가동시간이 생산량/수율/가동률처럼 시트 삽입 후 팀별내역서 생산 상세와 요약에서 확인되도록 연결합니다.
+
+Touched areas: team calendar production grouping, production metric summary labels, overview team production chips, KPI shell asset cache version, work production/shared smoke tests.
+
+Verification: inspected 28 workbook headers and non-empty J/L counts; targeted `node --check` passed; targeted work/production extractor/import smoke tests passed; `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, and `npm run smoke:kpi-browser` passed from `kpi-runtime/internal-server`; `git diff --check` passed.
+
+Risk: 기존 저장 데이터에 J/L 값이 없는 행은 팀별내역서에서 `조업시간 -`, `가동시간 -`으로 표시되고, 값이 있는 시트를 다시 기입하면 합계가 표시됩니다.
+
+---
+
+## Report Deck PDF Print Fit
+
+Goal: 공무환경팀 보고서 PDF 인쇄가 모든 페이지에서 슬라이드를 스크린샷처럼 캡처하고 A4 가로 페이지 여백 안에 비율 유지로 축소 배치되도록 맞춥니다.
+
+Touched areas: report deck browser adapter print snapshot CSS, report section print fallback CSS, KPI shell asset cache version, report print smoke expectations.
+
+Verification: `node --check` for changed report print files passed; targeted `util-runtime-browser-adapter`, `section-factory-adapter`, and `kpi-shell-css` smoke tests passed; `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `npm run smoke:kpi-browser`, and `git diff --check` passed.
+
+Risk: 샘플 `C:\Users\user\Desktop\이런식으로.pdf` 파일은 0바이트라 직접 비교하지 못했고, 요청 설명 기준으로 10mm 좌우 안전 여백과 중앙 정렬된 16:9 프레임을 적용했습니다.
+
+---
+
+## Production Sheet Time Metrics
+
+Goal: 생산량 기입 엑셀에서 기존 보조값과 같은 규칙으로 J열 조업시간, L열 가동시간을 추출하고 저장/중복판별/보고서 집계 경로에 보존합니다.
+
+Touched areas: production extractor parsing/export bridge, utility production import and data sync, production report dedupe, structured util production daily repository/state/normalizers, DB migration, DB export/import fingerprint scripts, related smoke tests.
+
+Data change: PostgreSQL dumps `kpi-runtime/internal-server/var/prod/backups/postgres-dumps/postgres-dump-20260518-174952.dump` and `kpi-runtime/internal-server/var/prod/backups/postgres-dumps/postgres-dump-20260518-180652.dump` created before schema migrations. Applied migration `005_util_production_daily_time_metrics.sql`, then corrected the first time metric to `work_time` with `006_util_production_daily_work_time.sql`.
+
+Verification: `node --check` for changed JS passed; targeted production extractor/import/state/report/work smoke tests passed; DB column check confirmed `work_time` and `operation_time`; `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `git diff --check`, and `npm run verify` passed.
+
+Risk: Existing historical rows keep blank time values until a sheet containing J/L values is re-imported. New imports treat differing 조업시간/가동시간 as distinct supplemental dedupe fields, matching the existing hidden metric behavior.
+
+---
+
 # 2026-05-11 Patch Note
 
 Status: 설비이력카드 A4 출력과 운영툴 사용자 계정 관리를 반영했습니다.

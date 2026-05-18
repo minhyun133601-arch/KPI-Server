@@ -74,7 +74,7 @@ function handleGlobalKeydown(event) {
   if (isSaveShortcut) {
     event.preventDefault();
     event.stopPropagation();
-    void performManualSave({ trigger: "shortcut" });
+    void performManualSave({ trigger: "shortcut", completeCurrentEntry: true });
     return;
   }
 

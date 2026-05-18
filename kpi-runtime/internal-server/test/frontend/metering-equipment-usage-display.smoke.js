@@ -303,7 +303,7 @@ test('usage-display renders other and gas usage detail text', () => {
   const otherDetailText = context.getEquipmentUsageDetailText('other_01');
   assert.match(otherDetailText, /전력총량 월 합계 100/);
   assert.match(otherDetailText, /기타 30/);
-  assert.match(otherDetailText, /최종 금액 150/);
+  assert.match(otherDetailText, /최종 금액 90/);
 
   context.__setResourceType('gas');
   const gasDetailText = context.getEquipmentUsageDetailText('gas_01');
@@ -324,21 +324,21 @@ test('usage-display returns the missing-reading message when monthly usage is un
 test('usage-display calculates settlement charges and hides details when billing is incomplete', () => {
   const context = createUsageDisplayContext();
 
-  assert.equal(context.calculateEquipmentBaseChargeAllocation('electric_01'), 30);
+  assert.equal(context.calculateEquipmentBaseChargeAllocation('electric_01'), null);
   assert.equal(context.calculateEquipmentVariableCharge('electric_01'), 45);
-  assert.equal(context.calculateEquipmentUsageCharge('electric_01'), 75);
-  assert.equal(context.getEquipmentUsageChargeText('electric_01'), '금액 75');
+  assert.equal(context.calculateEquipmentUsageCharge('electric_01'), 45);
+  assert.equal(context.getEquipmentUsageChargeText('electric_01'), '금액 45');
   assert.match(
     context.getEquipmentUsageChargeDetailText('electric_01'),
     /사용량요금 15 x 단가 3 = 45/
   );
-  assert.match(
+  assert.doesNotMatch(
     context.getEquipmentUsageChargeDetailText('electric_01'),
     /기본요금 배분 30.0% x 100 = 30/
   );
   assert.match(
     context.getEquipmentUsageChargeDetailText('electric_01'),
-    /최종 금액 75/
+    /최종 금액 45/
   );
   assert.equal(context.calculateEquipmentUsageCharge('reactive_summary'), null);
 

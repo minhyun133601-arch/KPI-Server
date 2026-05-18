@@ -12,17 +12,17 @@ const TABLES = [
     name: 'app_users',
     columns: ['id', 'username', 'display_name', 'is_active', 'created_at', 'updated_at'],
     excludedColumns: ['password_hash'],
-    orderBy: ['id']
+    orderBy: ['id'],
   },
   {
     name: 'app_user_roles',
     columns: ['user_id', 'role_key', 'created_at'],
-    orderBy: ['user_id', 'role_key']
+    orderBy: ['user_id', 'role_key'],
   },
   {
     name: 'app_user_sheet_permissions',
     columns: ['id', 'user_id', 'permission_key', 'can_read', 'can_write', 'expires_at', 'created_at', 'updated_at'],
-    orderBy: ['user_id', 'permission_key']
+    orderBy: ['user_id', 'permission_key'],
   },
   {
     name: 'app_module_records',
@@ -35,9 +35,9 @@ const TABLES = [
       'version',
       'updated_by_user_id',
       'created_at',
-      'updated_at'
+      'updated_at',
     ],
-    orderBy: ['module_key', 'record_key']
+    orderBy: ['module_key', 'record_key'],
   },
   {
     name: 'app_documents',
@@ -54,14 +54,14 @@ const TABLES = [
       'storage_rel_path',
       'metadata',
       'uploaded_by_user_id',
-      'created_at'
+      'created_at',
     ],
-    orderBy: ['id']
+    orderBy: ['id'],
   },
   {
     name: 'util_production_daily_state',
     columns: ['state_key', 'period_start_day', 'version', 'updated_by_user_id', 'created_at', 'updated_at'],
-    orderBy: ['state_key']
+    orderBy: ['state_key'],
   },
   {
     name: 'util_production_daily_archives',
@@ -79,9 +79,9 @@ const TABLES = [
       'preview_url',
       'download_url',
       'created_at',
-      'updated_at'
+      'updated_at',
     ],
-    orderBy: ['id']
+    orderBy: ['id'],
   },
   {
     name: 'util_production_daily_entries',
@@ -94,16 +94,18 @@ const TABLES = [
       'product_name',
       'amount',
       'moisture_excluded_yield',
+      'work_time',
+      'operation_time',
       'equipment_capa',
       'equipment_utilization',
       'source_archive_id',
       'source_fingerprint',
       'source_file_name',
       'created_at',
-      'updated_at'
+      'updated_at',
     ],
-    orderBy: ['dedupe_key']
-  }
+    orderBy: ['dedupe_key'],
+  },
 ];
 
 function readArg(name) {
@@ -131,13 +133,17 @@ function resolveDefaultServerDir() {
 function resolveServerDir() {
   const explicit = readArg('server-dir');
   const candidate = explicit
-    ? (path.isAbsolute(explicit) ? explicit : path.resolve(process.cwd(), explicit))
+    ? path.isAbsolute(explicit)
+      ? explicit
+      : path.resolve(process.cwd(), explicit)
     : resolveDefaultServerDir();
   return path.resolve(candidate);
 }
 
 function normalizeRuntimeEnvironment(raw) {
-  const normalized = String(raw || '').trim().toLowerCase();
+  const normalized = String(raw || '')
+    .trim()
+    .toLowerCase();
   if (normalized === 'prod' || normalized === 'production') return 'production';
   if (normalized === 'dev' || normalized === 'development') return 'development';
   if (normalized === 'local-experiment' || normalized === 'local_experiment' || normalized === 'experiment') {
@@ -147,9 +153,7 @@ function normalizeRuntimeEnvironment(raw) {
 }
 
 function getEnvFilePaths(serverDir) {
-  const runtimeEnvironment = normalizeRuntimeEnvironment(
-    process.env.KPI_RUNTIME_ENV || process.env.NODE_ENV
-  );
+  const runtimeEnvironment = normalizeRuntimeEnvironment(process.env.KPI_RUNTIME_ENV || process.env.NODE_ENV);
   if (runtimeEnvironment === 'production') {
     return [path.join(serverDir, '.env.production.local'), path.join(serverDir, '.env')];
   }
@@ -160,10 +164,10 @@ function getEnvFilePaths(serverDir) {
     return [path.join(serverDir, '.env.local-experiment'), path.join(serverDir, '.env')];
   }
   return [
-    path.join(serverDir, '.env.local-experiment'),
     path.join(serverDir, '.env.production.local'),
     path.join(serverDir, '.env.development.local'),
-    path.join(serverDir, '.env')
+    path.join(serverDir, '.env.local-experiment'),
+    path.join(serverDir, '.env'),
   ];
 }
 
@@ -228,16 +232,14 @@ function sha256Text(value) {
 
 async function describeSourceFile(sourceFileArg, serverDir) {
   if (!sourceFileArg) return null;
-  const sourcePath = path.isAbsolute(sourceFileArg)
-    ? sourceFileArg
-    : path.resolve(serverDir, sourceFileArg);
+  const sourcePath = path.isAbsolute(sourceFileArg) ? sourceFileArg : path.resolve(serverDir, sourceFileArg);
   try {
     const stat = await fs.stat(sourcePath);
     if (!stat.isFile()) {
       return {
         path: sourcePath,
         exists: false,
-        reason: 'not_a_file'
+        reason: 'not_a_file',
       };
     }
     const buffer = await fs.readFile(sourcePath);
@@ -246,14 +248,14 @@ async function describeSourceFile(sourceFileArg, serverDir) {
       exists: true,
       bytes: stat.size,
       sha256: crypto.createHash('sha256').update(buffer).digest('hex'),
-      lastModified: stat.mtime.toISOString()
+      lastModified: stat.mtime.toISOString(),
     };
   } catch (error) {
     if (error?.code === 'ENOENT') {
       return {
         path: sourcePath,
         exists: false,
-        reason: 'not_found'
+        reason: 'not_found',
       };
     }
     throw error;
@@ -287,7 +289,7 @@ async function fingerprintTable(client, tableSpec) {
       sha256: null,
       columns: tableSpec.columns,
       excludedColumns: tableSpec.excludedColumns || [],
-      missingColumns: tableSpec.columns
+      missingColumns: tableSpec.columns,
     };
   }
 
@@ -302,7 +304,7 @@ async function fingerprintTable(client, tableSpec) {
       sha256: null,
       columns: tableSpec.columns,
       excludedColumns: tableSpec.excludedColumns || [],
-      missingColumns
+      missingColumns,
     };
   }
 
@@ -332,7 +334,7 @@ async function fingerprintTable(client, tableSpec) {
     sha256: hash.digest('hex'),
     columns: tableSpec.columns,
     excludedColumns: tableSpec.excludedColumns || [],
-    missingColumns: []
+    missingColumns: [],
   };
 }
 
@@ -343,24 +345,24 @@ function buildSummary(tables) {
     rowCount: table.rowCount,
     sha256: table.sha256,
     columns: table.columns,
-    excludedColumns: table.excludedColumns
+    excludedColumns: table.excludedColumns,
   }));
   return {
     tableCount: tables.length,
     okTableCount: tables.filter((table) => table.ok).length,
     totalRows: tables.reduce((sum, table) => sum + (Number(table.rowCount) || 0), 0),
-    sha256: sha256Text(stableStringify({
-      fingerprintVersion: FINGERPRINT_VERSION,
-      tables: comparableTables
-    }))
+    sha256: sha256Text(
+      stableStringify({
+        fingerprintVersion: FINGERPRINT_VERSION,
+        tables: comparableTables,
+      })
+    ),
   };
 }
 
 async function writeOutput(outputArg, serverDir, payload) {
   if (!outputArg) return '';
-  const outputPath = path.isAbsolute(outputArg)
-    ? outputArg
-    : path.resolve(serverDir, outputArg);
+  const outputPath = path.isAbsolute(outputArg) ? outputArg : path.resolve(serverDir, outputArg);
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
   return outputPath;
@@ -377,7 +379,7 @@ async function main() {
   const pool = new pg.Pool({
     connectionString: databaseUrl,
     max: 1,
-    idleTimeoutMillis: 30000
+    idleTimeoutMillis: 30000,
   });
 
   let payload;
@@ -404,22 +406,21 @@ async function main() {
           name: database.rows[0]?.database_name || '',
           user: database.rows[0]?.user_name || '',
           schema: database.rows[0]?.schema_name || '',
-          serverTime: database.rows[0]?.server_time instanceof Date
-            ? database.rows[0].server_time.toISOString()
-            : String(database.rows[0]?.server_time || '')
+          serverTime:
+            database.rows[0]?.server_time instanceof Date
+              ? database.rows[0].server_time.toISOString()
+              : String(database.rows[0]?.server_time || ''),
         },
         policy: {
           purpose: 'Compare export-compatible KPI business data between the office DB and the home working DB.',
           ignoredState: ['app_sessions', 'app_audit_log'],
           excludedColumnsByTable: Object.fromEntries(
-            TABLES
-              .filter((table) => table.excludedColumns?.length)
-              .map((table) => [table.name, table.excludedColumns])
-          )
+            TABLES.filter((table) => table.excludedColumns?.length).map((table) => [table.name, table.excludedColumns])
+          ),
         },
         sourceFile,
         summary: buildSummary(tables),
-        tables
+        tables,
       };
     } finally {
       client.release();
@@ -440,9 +441,15 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(JSON.stringify({
-    ok: false,
-    error: error.message
-  }, null, 2));
+  console.error(
+    JSON.stringify(
+      {
+        ok: false,
+        error: error.message,
+      },
+      null,
+      2
+    )
+  );
   process.exitCode = 1;
 });

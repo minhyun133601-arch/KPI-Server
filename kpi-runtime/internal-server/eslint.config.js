@@ -67,6 +67,17 @@ export default [
     },
   },
   {
+    files: [
+      'src/scripts/fingerprintDatabaseState.js',
+      'src/scripts/importKpiDbExportWorkbook.js',
+      'src/scripts/restoreDocumentStorageFromSource.js',
+    ],
+    rules: {
+      complexity: ['error', 35],
+      'max-lines': maxLinesRule(800),
+    },
+  },
+  {
     files: ['src/scripts/one-shot/**/*.js'],
     rules: {
       'max-lines': maxLinesRule(800),

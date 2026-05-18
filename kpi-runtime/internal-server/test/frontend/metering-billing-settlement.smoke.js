@@ -91,6 +91,7 @@ function createBillingSettlementContext(options = {}) {
       WASTE: 'waste',
     },
     BILLING_SETTLEMENT_TOTAL_COMPONENTS: [
+      { key: 'base_charge', sign: 1 },
       { key: 'energy_charge', sign: 1 },
       { key: 'fuel_adjustment', sign: 1 },
     ],
@@ -105,7 +106,6 @@ function createBillingSettlementContext(options = {}) {
     ],
     ELECTRIC_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS: [
       { key: 'electricity_charge_total', sign: 1 },
-      { key: 'base_charge', sign: 1 },
       { key: 'vat', sign: 1 },
       { key: 'electric_power_fund', sign: 1 },
       { key: 'tv_reception_fee', sign: 1 },
@@ -398,7 +398,16 @@ test('billing settlement preserves LPG conversion settlement decimals', () => {
       'gas',
       'gas_lpg_conversion'
     ),
-    '12345.67'
+    '12,345.67'
+  );
+  assert.equal(
+    context.formatBillingSettlementFieldDisplayValue(
+      'billing_amount',
+      '150693518',
+      'gas',
+      'gas_lpg_conversion'
+    ),
+    '150,693,518'
   );
 });
 
@@ -416,7 +425,48 @@ test('billing settlement derives electricity charge total from billing amount wh
     rounding_adjustment: '2',
   });
 
-  assert.equal(derived, 132);
+  assert.equal(derived, 182);
+});
+
+test('billing settlement recalculates electric billing amount over stale auto value', () => {
+  const { context } = createBillingSettlementContext({
+    resourceType: 'electric',
+    usageBaseValue: 25,
+    fields: [
+      { key: 'base_charge' },
+      { key: 'energy_charge' },
+      { key: 'fuel_adjustment' },
+      { key: 'vat' },
+      { key: 'electric_power_fund' },
+      { key: 'tv_reception_fee' },
+      { key: 'rounding_adjustment' },
+      { key: 'electricity_charge_total' },
+      { key: 'unit_price' },
+      { key: 'billing_amount' },
+    ],
+  });
+
+  const fields = toPlain(
+    context.resolveBillingSettlementFields(
+      {
+        base_charge: '50',
+        energy_charge: '100',
+        fuel_adjustment: '5',
+        vat: '10',
+        electric_power_fund: '0',
+        tv_reception_fee: '0',
+        rounding_adjustment: '0',
+        electricity_charge_total: '110',
+        billing_amount: '60',
+      },
+      '2026-04',
+      'default'
+    )
+  );
+
+  assert.equal(fields.electricity_charge_total, '155');
+  assert.equal(fields.unit_price, '6.2');
+  assert.equal(fields.billing_amount, '165');
 });
 
 test('billing settlement resolves gas fields with calculated quantity, unit price, and billing amount', () => {
@@ -575,7 +625,7 @@ test('billing settlement support resolves resource scope and numeric helpers fro
   assert.equal(context.getBillingSettlementResourceType('waste_scope', 'electric'), 'waste');
   assert.equal(context.getBillingSettlementUsageBaseValue('2026-04', 'default'), 25);
   assert.equal(context.getBillingSettlementNumericField('base_charge', '2026-04', 'default'), 120);
-  assert.equal(context.getBillingSettlementUnitPrice('2026-04', 'default'), 4);
+  assert.equal(context.getBillingSettlementUnitPrice('2026-04', 'default'), 8.8);
   assert.equal(context.getBillingSettlementBaseCharge('2026-04'), 120);
   assert.equal(context.isBillingSettlementCompleted('2026-04', 'default'), true);
 });
@@ -592,6 +642,14 @@ test('billing settlement calculation helpers preserve zero totals and reject inv
       fuel_adjustment: '0',
     }),
     '0'
+  );
+  assert.equal(
+    context.calculateBillingSettlementElectricityChargeTotal({
+      base_charge: '50',
+      energy_charge: '100',
+      fuel_adjustment: '5',
+    }),
+    '155'
   );
   assert.equal(
     context.calculateBillingSettlementElectricityChargeTotal({
@@ -613,16 +671,16 @@ test('billing settlement calculation helpers preserve zero totals and reject inv
   assert.equal(
     context.calculateBillingSettlementBillingAmount(
       {
-        electricity_charge_total: '0',
-        base_charge: '0',
-        vat: '0',
+        electricity_charge_total: '155',
+        base_charge: '50',
+        vat: '10',
         electric_power_fund: '0',
         tv_reception_fee: '0',
         rounding_adjustment: '0',
       },
       'default'
     ),
-    '0'
+    '165'
   );
   assert.equal(
     context.calculateBillingSettlementSignedTotalValue(
@@ -691,6 +749,8 @@ test('billing settlement records normalize scoped entries and expose the month r
     electric_power_fund: '6',
     tv_reception_fee: '6',
     rounding_adjustment: '3',
+    electricity_charge_total: '229',
+    unit_price: '22.9',
     billing_amount: '250',
   });
   assert.equal(context.getBillingSettlementAvailableMonthRangeText(), '2026-04~2026-05');
@@ -744,4 +804,66 @@ test('billing settlement records add and remove scoped entries through the store
 
   assert.equal(context.state.store.billingSettlementEntries['2026-04'], undefined);
   assert.equal(context.getBillingSettlementAvailableMonthRangeText(), '');
+});
+
+test('billing settlement records complete stored value entries on manual save', () => {
+  const { context } = createBillingSettlementContext({
+    resourceType: 'electric',
+    currentScopeKey: 'default',
+  });
+
+  context.state.store = {
+    resourceType: 'electric',
+    resourceDatasets: {
+      electric: {
+        billingSettlementEntries: {
+          '2026-04': {
+            scopes: {
+              default: {
+                fields: {
+                  base_charge: '100',
+                },
+                completed: false,
+              },
+              bukjeong: {
+                fields: {},
+                completed: false,
+              },
+            },
+          },
+        },
+      },
+      gas: {
+        billingSettlementEntries: {
+          '2026-04': {
+            scopes: {
+              gas_lpg: {
+                fields: {
+                  power_charge: '30',
+                },
+                completed: false,
+              },
+            },
+          },
+        },
+      },
+    },
+    billingSettlementEntries: {},
+  };
+
+  const completedCount = context.completeStoreBillingSettlementEntriesWithStoredValues(
+    context.state.store,
+    { updatedAt: '2026-04-30T00:00:00.000Z' }
+  );
+
+  assert.equal(completedCount, 2);
+  assert.equal(context.state.store.resourceDatasets.electric.billingSettlementEntries['2026-04'].completed, true);
+  assert.equal(
+    context.state.store.resourceDatasets.gas.billingSettlementEntries['2026-04'].scopes.gas_lpg.completed,
+    true
+  );
+  assert.deepEqual(
+    context.state.store.billingSettlementEntries,
+    context.state.store.resourceDatasets.electric.billingSettlementEntries
+  );
 });

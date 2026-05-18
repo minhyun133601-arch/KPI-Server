@@ -388,6 +388,8 @@
                 lineName: String(entry.lineName ?? entry.line ?? entry.lineNm ?? '').trim(),
                 productName: String(entry.productName ?? entry.itemName ?? entry.product ?? '').trim(),
                 moistureExcludedYield: entry.moistureExcludedYield ?? entry.moistureFreeYield ?? entry.yieldExcludingMoisture ?? entry.yieldRate ?? null,
+                workTime: entry.workTime ?? entry.inputTime ?? entry.feedTime ?? entry.loadingTime ?? entry.injectionTime ?? null,
+                operationTime: entry.operationTime ?? entry.operatingTime ?? entry.runtime ?? entry.runTime ?? entry.operationHours ?? null,
                 equipmentCapa: entry.equipmentCapa ?? entry.capa ?? entry.equipmentCapacity ?? null,
                 equipmentUtilization: entry.equipmentUtilization ?? entry.operationRate ?? entry.equipmentRate ?? entry.utilizationRate ?? null,
                 team,
@@ -718,6 +720,8 @@
             const cell = worksheet?.[address];
             if (!cell) return '';
             if (cell.v instanceof Date) {
+                const displayDate = parseUtilExcelDateText(cell.w, { referenceYear: cell.v.getUTCFullYear() });
+                if (displayDate) return formatUtilYmd(displayDate);
                 const normalizedDate = normalizeUtilExcelJsDate(cell.v);
                 if (normalizedDate) return formatUtilYmd(normalizedDate);
                 return formatUtilYmd(cell.v);
@@ -731,16 +735,46 @@
             return cell.v;
         }
 
-        function parseUtilExcelDateText(value) {
-            if (value === null || value === undefined) return null;
-            const text = String(value).trim();
-            const match = text.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
-            if (!match) return null;
-            const year = Number(match[1]);
-            const month = Number(match[2]);
-            const day = Number(match[3]);
+        function makeUtilExcelCalendarDate(year, month, day) {
+            if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
             const date = new Date(year, month - 1, day);
             if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
             if (year < 1990 || year > 2100) return null;
             return date;
+        }
+
+        function normalizeUtilExcelTextYear(value) {
+            const year = Number(value);
+            if (!Number.isFinite(year)) return null;
+            if (String(value).trim().length === 2) return 2000 + year;
+            return year;
+        }
+
+        function parseUtilExcelDateText(value, options = {}) {
+            if (value === null || value === undefined) return null;
+            const text = String(value).trim();
+            if (!text) return null;
+            const yearFirst = text.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+            if (yearFirst) {
+                return makeUtilExcelCalendarDate(Number(yearFirst[1]), Number(yearFirst[2]), Number(yearFirst[3]));
+            }
+            const monthDayYear = text.match(/\b(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})\b/);
+            if (monthDayYear) {
+                return makeUtilExcelCalendarDate(
+                    normalizeUtilExcelTextYear(monthDayYear[3]),
+                    Number(monthDayYear[1]),
+                    Number(monthDayYear[2])
+                );
+            }
+            const referenceYear = Number(options.referenceYear);
+            if (!Number.isFinite(referenceYear)) return null;
+            const koreanMonthDay = text.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일?/);
+            if (koreanMonthDay) {
+                return makeUtilExcelCalendarDate(referenceYear, Number(koreanMonthDay[1]), Number(koreanMonthDay[2]));
+            }
+            const monthDay = text.match(/\b(\d{1,2})[./-](\d{1,2})\b/);
+            if (monthDay) {
+                return makeUtilExcelCalendarDate(referenceYear, Number(monthDay[1]), Number(monthDay[2]));
+            }
+            return null;
         }

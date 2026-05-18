@@ -56,10 +56,8 @@ function resolveBukjeongSettlementAmount(monthValue = state.currentMonth) {
   const scopedEntry = getBillingSettlementEntry(monthValue, "bukjeong");
   const scopedFields = scopedEntry?.fields || {};
   const electricityChargeTotal = resolveBillingSettlementElectricityChargeTotalValue(scopedFields);
-  const baseCharge = getBillingSettlementNumericField("base_charge", monthValue, "bukjeong");
-  const scopedChargePool = sumFiniteValues([electricityChargeTotal, baseCharge]);
-  if (Number.isFinite(scopedChargePool)) {
-    return scopedChargePool;
+  if (Number.isFinite(electricityChargeTotal)) {
+    return electricityChargeTotal;
   }
 
   return calculateBukjeongLegacySettlementAmount(monthValue);

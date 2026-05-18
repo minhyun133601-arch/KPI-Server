@@ -57,7 +57,11 @@ function createResourceMetaContext() {
         { key: 'gas_bukjeong', shortLabel: '북정 LNG', label: '북정 LNG 정산' },
         { key: 'gas_yusan_lng', shortLabel: '유산 LNG', label: '유산 LNG 정산' },
         { key: 'gas_yusan_lpg', shortLabel: '유산 LPG', label: '유산 LPG 정산' },
-        { key: 'gas_yusan_lpg_conversion', shortLabel: 'LPG 환산', label: 'LPG 환산' },
+        {
+          key: 'gas_yusan_lpg_conversion',
+          shortLabel: 'LNG 환산',
+          label: 'LNG 환산',
+        },
       ],
       waste: [
         { key: 'waste_bukjeong', shortLabel: '북정', label: '북정 폐수' },

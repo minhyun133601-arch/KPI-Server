@@ -387,7 +387,7 @@ test('assigned list composes shared compressor and total-power chip descriptors'
   const sharedDescriptor = context.getTeamSharedCompressorChipDescriptor('team_general', '2026-04');
   assert.equal(sharedDescriptor?.id, 'shared_compressor');
   assert.equal(sharedDescriptor?.selectionId, 'shared_compressor');
-  assert.equal(sharedDescriptor?.label, '공용 콤프레샤');
+  assert.equal(sharedDescriptor?.label, '일반팀 컴프레셔');
   assert.equal(sharedDescriptor?.iconKey, 'equipment');
   assert.equal(sharedDescriptor?.usageText, 'usage:12');
   assert.equal(sharedDescriptor?.chargeText, 'amt:12');
