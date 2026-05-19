@@ -326,6 +326,300 @@
     }
   }
 
+  function getColumnIndex(column) {
+    const letters = String(column || "")
+      .trim()
+      .toUpperCase();
+    if (!letters) return -1;
+    let index = 0;
+    for (const char of letters) {
+      const code = char.charCodeAt(0);
+      if (code < 65 || code > 90) return -1;
+      index = index * 26 + (code - 64);
+    }
+    return index - 1;
+  }
+
+  function parseDelimitedTableText(text) {
+    const rows = [];
+    let row = [];
+    let cell = "";
+    let inQuotes = false;
+    const source = String(text || "");
+
+    for (let index = 0; index < source.length; index += 1) {
+      const char = source[index];
+      const nextChar = source[index + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          cell += '"';
+          index += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (!inQuotes && char === "\t") {
+        row.push(cell);
+        cell = "";
+        continue;
+      }
+
+      if (!inQuotes && (char === "\n" || char === "\r")) {
+        if (char === "\r" && nextChar === "\n") index += 1;
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = "";
+        continue;
+      }
+
+      cell += char;
+    }
+
+    if (cell !== "" || row.length > 0) {
+      row.push(cell);
+      rows.push(row);
+    }
+
+    if (rows[0]?.[0]) {
+      rows[0][0] = String(rows[0][0]).replace(/^\uFEFF/, "");
+    }
+
+    return rows;
+  }
+
+  function getRowValueByColumn(row, column) {
+    const index = getColumnIndex(column);
+    if (index < 0 || !Array.isArray(row)) return "";
+    return normalizeValue(row[index]);
+  }
+
+  function getRowValueByIndex(row, index) {
+    if (!Number.isInteger(index) || index < 0 || !Array.isArray(row)) return "";
+    return normalizeValue(row[index]);
+  }
+
+  function getTargetValuesFromPastedRow(context, row) {
+    return context.TARGET_COLS.map((col) => getRowValueByColumn(row, col));
+  }
+
+  function normalizePastedHeaderKey(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/\s+/g, "")
+      .replace(/[._\-()<>[\]{}]/g, "");
+  }
+
+  function getPastedHeaderKind(value) {
+    const key = normalizePastedHeaderKey(value);
+    if (!key) return "";
+    if (key.includes("생산일자") || key === "date" || key.includes("productiondate")) return "date";
+    if (key.includes("라인명") || key === "라인" || key === "line" || key.includes("linename")) return "line";
+    if (key === "팀" || key.endsWith("팀") || key === "team") return "team";
+    if (key.includes("코드") || key === "code" || key.includes("itemcode") || key.includes("productcode")) return "productCode";
+    if (key.includes("품명") || key.includes("제품명") || key === "product" || key.includes("productname") || key.includes("itemname")) return "productName";
+    if (key.includes("생산량") || key === "amount" || key.includes("productionamount")) return "amount";
+    if (key.includes("조업시간") || key === "worktime" || key.includes("inputtime")) return "workTime";
+    if (key.includes("가동시간") || key === "operationtime" || key === "runtime" || key === "runtimehours") return "operationTime";
+    if (key.includes("수율수분제외") || key.includes("수분제외") || key.includes("moistureexcluded") || key.includes("yield")) return "moistureExcludedYield";
+    if (key.includes("설비capa") || key === "capa" || key.includes("equipmentcapa") || key.includes("capacity")) return "equipmentCapa";
+    if (key.includes("설비가동율") || key.includes("설비가동률") || key.includes("가동율") || key.includes("가동률") || key.includes("utilization")) return "equipmentUtilization";
+    return "";
+  }
+
+  function buildPastedColumnMap(row) {
+    const map = {};
+    (Array.isArray(row) ? row : []).forEach((value, index) => {
+      const kind = getPastedHeaderKind(value);
+      if (!kind || Number.isInteger(map[kind])) return;
+      map[kind] = index;
+    });
+    return map;
+  }
+
+  function hasPastedSemanticHeader(row) {
+    const map = buildPastedColumnMap(row);
+    return Number.isInteger(map.date)
+      && Number.isInteger(map.team)
+      && Number.isInteger(map.line)
+      && Number.isInteger(map.productName)
+      && Number.isInteger(map.amount);
+  }
+
+  function getPastedCanonicalValues(context, row, columnMap = null) {
+    if (columnMap && Number.isInteger(columnMap.date) && Number.isInteger(columnMap.amount)) {
+      const values = new Array(context.TARGET_COLS.length).fill("");
+      values[0] = getRowValueByIndex(row, columnMap.date);
+      values[context.TEAM_VALUE_INDEX] = getRowValueByIndex(row, columnMap.team);
+      values[context.LINE_VALUE_INDEX] = getRowValueByIndex(row, columnMap.line);
+      if (Number.isInteger(context.PRODUCT_CODE_VALUE_INDEX)) {
+        values[context.PRODUCT_CODE_VALUE_INDEX] = getRowValueByIndex(row, columnMap.productCode);
+      }
+      if (Number.isInteger(context.PRODUCT_NAME_VALUE_INDEX)) {
+        values[context.PRODUCT_NAME_VALUE_INDEX] = getRowValueByIndex(row, columnMap.productName);
+      }
+      values[context.PRODUCTION_VALUE_INDEX] = getRowValueByIndex(row, columnMap.amount);
+      return values;
+    }
+    return getTargetValuesFromPastedRow(context, row);
+  }
+
+  function isTemplateHeaderRow(context, fileName, sheetName, row) {
+    try {
+      validateTemplateHeaders(context, fileName, sheetName, getTargetValuesFromPastedRow(context, row));
+      return true;
+    } catch (_error) {
+      return hasPastedSemanticHeader(row);
+    }
+  }
+
+  function findPastedHeaderRowIndex(context, fileName, sheetName, tableRows) {
+    const expectedIndex = Number(context.HEADER_ROW) - 1;
+    if (
+      Number.isInteger(expectedIndex) &&
+      expectedIndex >= 0 &&
+      expectedIndex < tableRows.length &&
+      isTemplateHeaderRow(context, fileName, sheetName, tableRows[expectedIndex])
+    ) {
+      return expectedIndex;
+    }
+
+    return tableRows.findIndex((row) => hasData(row) && isTemplateHeaderRow(context, fileName, sheetName, row));
+  }
+
+  function normalizeReferenceYear(value) {
+    const year = Number(value);
+    if (!Number.isFinite(year)) return null;
+    const normalized = Math.floor(year);
+    return normalized >= 1990 && normalized <= 2100 ? normalized : null;
+  }
+
+  function parsePastedDate(context, value, referenceYear) {
+    const parsedTextDate = parseDateText(value, { referenceYear });
+    if (parsedTextDate) return parsedTextDate;
+
+    const numeric = Number(String(value ?? "").trim());
+    if (isLikelyExcelDateSerial(numeric) && typeof context.XLSX?.SSF?.parse_date_code === "function") {
+      const parsed = context.XLSX.SSF.parse_date_code(numeric);
+      if (parsed) return makeCalendarDate(parsed.y, parsed.m, parsed.d);
+    }
+
+    return null;
+  }
+
+  function getPastedReferenceYear(context, tableRows, dateColumn, options = {}) {
+    const requestedYear = normalizeReferenceYear(options.referenceYear);
+    if (requestedYear) return requestedYear;
+
+    const columnMap = options.columnMap || null;
+    for (const row of tableRows) {
+      const value = columnMap && Number.isInteger(columnMap.date)
+        ? getRowValueByIndex(row, columnMap.date)
+        : getRowValueByColumn(row, dateColumn);
+      const parsed = parsePastedDate(context, value, null);
+      if (parsed) return parsed.getFullYear();
+    }
+
+    return new Date().getFullYear();
+  }
+
+  function parsePastedTableText(context, text, options = {}) {
+    const fileName = String(options.fileName || "붙여넣기").trim() || "붙여넣기";
+    const sheetName = String(options.sheetName || "붙여넣기").trim() || "붙여넣기";
+    const tableRows = parseDelimitedTableText(text);
+    if (!tableRows.some((row) => hasData(row))) {
+      throw new Error("붙여넣은 내용이 비어있습니다.");
+    }
+
+    const headerRowIndex = findPastedHeaderRowIndex(context, fileName, sheetName, tableRows);
+    const columnMap = headerRowIndex >= 0 ? buildPastedColumnMap(tableRows[headerRowIndex]) : null;
+    const headerValues = headerRowIndex >= 0
+      ? getPastedCanonicalValues(context, tableRows[headerRowIndex], columnMap)
+      : context.TARGET_COLS.map((col) => `${col}열`);
+    const dataStartIndex = headerRowIndex >= 0 ? headerRowIndex + 1 : 0;
+    const dateColumn = context.TARGET_COLS[0] || "A";
+    const referenceYear = getPastedReferenceYear(context, tableRows.slice(dataStartIndex), dateColumn, {
+      ...options,
+      columnMap,
+    });
+    const rows = [];
+    let minDate = null;
+    let maxDate = null;
+
+    for (let rowIndex = dataStartIndex; rowIndex < tableRows.length; rowIndex += 1) {
+      const sourceRow = tableRows[rowIndex];
+      const values = getPastedCanonicalValues(context, sourceRow, columnMap);
+      if (!hasData(values)) continue;
+      if (isTemplateHeaderRow(context, fileName, sheetName, sourceRow)) continue;
+
+      const parsedDate = parsePastedDate(context, values[0], referenceYear);
+      const dateObj = applyDateOffset(parsedDate, context.PRODUCTION_DATE_OFFSET_DAYS);
+      values[0] = dateObj ? formatYmd(dateObj) : normalizeValue(values[0]);
+
+      const lineValue = normalizeValue(values[context.LINE_VALUE_INDEX]);
+      const teamValue = normalizeValue(values[context.TEAM_VALUE_INDEX]);
+      values[context.TEAM_VALUE_INDEX] = resolveProductionTeamValue(teamValue, lineValue);
+      values[context.LINE_VALUE_INDEX] = lineValue === "" ? "라인 없음" : String(lineValue);
+      const productCode = Number.isInteger(context.PRODUCT_CODE_VALUE_INDEX)
+        ? normalizeValue(values[context.PRODUCT_CODE_VALUE_INDEX])
+        : "";
+
+      const moistureExcludedYield = getRowValueByIndex(sourceRow, columnMap?.moistureExcludedYield)
+        || getRowValueByColumn(sourceRow, SUPPLEMENTAL_DEDUPE_COLS.moistureExcludedYield);
+      const workTime = getRowValueByIndex(sourceRow, columnMap?.workTime)
+        || getRowValueByColumn(sourceRow, SUPPLEMENTAL_DEDUPE_COLS.workTime);
+      const operationTime = getRowValueByIndex(sourceRow, columnMap?.operationTime)
+        || getRowValueByColumn(sourceRow, SUPPLEMENTAL_DEDUPE_COLS.operationTime);
+      const equipmentCapa = getRowValueByIndex(sourceRow, columnMap?.equipmentCapa)
+        || getRowValueByColumn(sourceRow, SUPPLEMENTAL_DEDUPE_COLS.equipmentCapa);
+      const equipmentUtilization = getRowValueByIndex(sourceRow, columnMap?.equipmentUtilization)
+        || getRowValueByColumn(sourceRow, SUPPLEMENTAL_DEDUPE_COLS.equipmentUtilization);
+
+      if (dateObj) {
+        if (!minDate || dateObj < minDate) minDate = dateObj;
+        if (!maxDate || dateObj > maxDate) maxDate = dateObj;
+      }
+
+      const periodInfo = dateObj
+        ? getPeriodInfo(context, dateObj, options.cycleStartDay)
+        : { key: "NO_DATE", label: "날짜 없음", start: null };
+
+      rows.push({
+        fileName,
+        sheetName,
+        rowNumber: rowIndex + 1,
+        values,
+        productCode,
+        moistureExcludedYield,
+        workTime,
+        operationTime,
+        equipmentCapa,
+        equipmentUtilization,
+        dateObj,
+        teamKey: values[context.TEAM_VALUE_INDEX],
+        lineKey: values[context.LINE_VALUE_INDEX],
+        periodKey: periodInfo.key,
+        periodLabel: periodInfo.label,
+        periodStart: periodInfo.start,
+      });
+    }
+
+    if (!rows.length) {
+      throw new Error("붙여넣은 내용에서 기입 가능한 생산량 데이터가 없습니다.");
+    }
+
+    return {
+      fileName,
+      headers: headerValues,
+      rows,
+      productionRangeLabel: buildDateRangeLabel(context, minDate, maxDate),
+      sheetCount: 1,
+    };
+  }
+
   async function parseExcelFile(context, file, cycleStartDay) {
     const buffer = await file.arrayBuffer();
     const workbook = context.XLSX.read(buffer, { type: "array", cellDates: true });
@@ -459,6 +753,7 @@
     normalizeValue,
     parseDateText,
     parseExcelFile,
+    parsePastedTableText,
     sanitizeCycleDay,
     validateTemplateHeaders,
   };

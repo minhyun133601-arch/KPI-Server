@@ -31,23 +31,103 @@ test('report production preview is split out of production calculation runtime',
     filename: 'KPI.util.report.production-preview.js',
   });
 
-  assert.equal(typeof context.enhanceUtilReportOverviewCards, 'function');
   assert.equal(typeof context.renderUtilReportPreview, 'function');
+  assert.equal(typeof context.enhanceUtilReportOverviewCards, 'undefined');
   assert.doesNotMatch(productionSource, /function\s+renderUtilReportPreview/);
 });
 
 test('kpi html loads production preview between production calculations and runner', () => {
-  const productionIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.production.js?v=336');
-  const previewIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.production-preview.js?v=340');
-  const runnerIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runner.js?v=331');
+  const productionIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.production.js?v=337');
+  const previewIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.production-preview.js?v=342');
+  const runnerIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runner.js?v=332');
 
   assert.ok(productionIndex >= 0, 'report production loader is missing');
   assert.ok(previewIndex > productionIndex, 'report production preview must load after production calculations');
   assert.ok(runnerIndex > previewIndex, 'report production preview must load before report runner');
 });
 
-test('report overview preview renders yusan production share cards without changing gas scope', () => {
-  const calls = [];
+test('report production calculations sum normal and rework entries while keeping true duplicates collapsed', () => {
+  const context = {
+    console,
+    window: {},
+    UtilReportState: {
+      from: '2026-04',
+      to: '2026-04',
+      productionTeam: 'all',
+    },
+    UTIL_REPORT_PRODUCTION_TEAM_BASE: ['Team A'],
+    getUtilReportMonthRange: () => [{ year: 2026, month: 4, key: '2026-04' }],
+    resolveUtilReportProductionTeamsByFilter: () => ['Team A'],
+    normalizeUtilReportProductionLineBucket: (_teamName, lineName) => lineName || 'Unassigned',
+    normalizeUtilDedupeText: (value) => String(value ?? '').trim().replace(/\s+/g, ' ').toLowerCase(),
+    canonicalizeUtilDedupeMetric: (value) => {
+      const number = Number(String(value ?? '').replace(/,/g, '').trim());
+      return Number.isFinite(number) ? String(number) : '';
+    },
+    getUtilReportDisplayTeamLabel: (teamName) => teamName,
+    toUtilMonthKey: (year, month) => `${year}-${String(month).padStart(2, '0')}`,
+    listUtilDailyEntriesByMetric: () => ({
+      entries: [
+        {
+          dateLabel: '2026-04-01',
+          teamName: 'Team A',
+          lineName: 'Line 1',
+          productCode: 'P-1',
+          productName: 'Product A',
+          amount: 100,
+          moistureExcludedYield: 95,
+          workTime: 8,
+          operationTime: 7,
+          equipmentCapa: 120,
+          equipmentUtilization: 83.3,
+        },
+        {
+          dateLabel: '2026-04-01',
+          teamName: 'Team A',
+          lineName: 'Line 1',
+          productCode: 'P-1',
+          productName: 'Product A',
+          amount: 100,
+          moistureExcludedYield: 95,
+          workTime: 8,
+          operationTime: 7,
+          equipmentCapa: 120,
+          equipmentUtilization: 83.3,
+        },
+        {
+          dateLabel: '2026-04-01',
+          teamName: 'Team A',
+          lineName: 'Line 1',
+          productionKind: 'rework',
+          productCode: 'P-1',
+          productName: 'Product A',
+          amount: 100,
+          moistureExcludedYield: 95,
+          workTime: 8,
+          operationTime: 7,
+          equipmentCapa: 120,
+          equipmentUtilization: 83.3,
+        },
+      ],
+    }),
+  };
+  context.globalThis = context;
+  context.window = context;
+  vm.createContext(context);
+  vm.runInContext(productionSource, context, {
+    filename: 'KPI.util.report.production.js',
+  });
+
+  const composition = context.buildUtilReportProductionProductCompositionData('', 'all');
+  assert.equal(composition.total, 200);
+  assert.equal(composition.items.length, 1);
+  assert.equal(composition.items[0].value, 200);
+
+  const { totalSeriesMap } = context.buildUtilReportProductionProductSeriesMap('', 'all');
+  assert.equal(totalSeriesMap.get('2026-04'), 200);
+});
+
+test('report overview preview suppresses cost share cards in the contents entry', () => {
   const context = {
     console,
     window: {},
@@ -69,19 +149,8 @@ test('report overview preview renders yusan production share cards without chang
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     }),
-    buildUtilReportMonthlyRows: (state) => {
-      calls.push({ categoryKey: state.categoryKey, productionTeam: state.productionTeam });
-      const productionByTeam = {
-        '1팀 2파트': 1000,
-        '2팀': 900,
-        '3팀': 600,
-      };
-      return {
-        rows: [{ monthKey: '2026-03' }, { monthKey: '2026-04' }],
-        summary: {
-          production: productionByTeam[state.productionTeam] || 0,
-        },
-      };
+    buildUtilReportMonthlyRows: () => {
+      throw new Error('overview preview must not build extra production share cards');
     },
   };
   context.globalThis = context;
@@ -121,16 +190,8 @@ test('report overview preview renders yusan production share cards without chang
 
   context.renderUtilReportPreview(panel, result);
 
-  assert.equal(gridEl.hidden, false);
-  assert.match(gridEl.innerHTML, /유산 생산량/);
-  assert.match(gridEl.innerHTML, /1팀 2파트 \+ 2팀 \+ 3팀/);
-  assert.match(gridEl.innerHTML, /1팀 2파트/);
-  assert.match(gridEl.innerHTML, /2팀/);
-  assert.match(gridEl.innerHTML, /3팀/);
-  assert.match(gridEl.innerHTML, /40\.0%/);
-  assert.match(gridEl.innerHTML, /36\.0%/);
-  assert.match(gridEl.innerHTML, /24\.0%/);
-  assert.deepEqual(calls.map(item => item.productionTeam), ['1팀 2파트', '2팀', '3팀']);
-  assert.ok(calls.every(item => item.categoryKey === 'production'));
-  assert.match(noteEl.textContent, /가스 유산 기준은 기존처럼 1팀 2파트 \+ 3팀/);
+  assert.equal(gridEl.hidden, true);
+  assert.equal(gridEl.innerHTML, '');
+  assert.equal(noteEl.hidden, true);
+  assert.equal(noteEl.textContent, '');
 });

@@ -85,6 +85,22 @@ function normalizeDedupeText(value) {
   return normalizeText(value).replace(/\s+/g, ' ').toLowerCase();
 }
 
+export function normalizeProductionKind(value) {
+  const normalized = normalizeText(value).toLowerCase().replace(/[\s_-]+/g, '');
+  if (
+    normalized === 'rework' ||
+    normalized === 'reprocessed' ||
+    normalized === 'reprocessedproduct' ||
+    normalized === 'reprocess' ||
+    normalized === 'reworkproduct' ||
+    normalized === '\uC7AC\uAC00\uACF5' ||
+    normalized === '\uC7AC\uAC00\uACF5\uD488'
+  ) {
+    return 'rework';
+  }
+  return 'normal';
+}
+
 function canonicalizeMetric(value) {
   const numericValue = normalizeNumber(value);
   return Number.isFinite(numericValue) ? String(numericValue) : '';
@@ -103,6 +119,9 @@ export function buildEntryDedupeKey(entry) {
     return '';
   }
   return [
+    normalizeProductionKind(
+      entry?.productionKind ?? entry?.production_kind ?? entry?.productionType ?? entry?.production_type ?? entry?.kind
+    ),
     date,
     teamKey,
     normalizeDedupeText(entry?.lineName),
@@ -129,6 +148,9 @@ export function normalizeEntry(input, fallbackTeamName = '') {
     date,
     teamName,
     lineName: normalizeText(input?.lineName ?? input?.line ?? input?.lineNm),
+    productionKind: normalizeProductionKind(
+      input?.productionKind ?? input?.production_kind ?? input?.productionType ?? input?.production_type ?? input?.kind
+    ),
     productCode: normalizeText(input?.productCode ?? input?.itemCode ?? input?.product_code ?? input?.code),
     productName: normalizeText(input?.productName ?? input?.itemName ?? input?.product),
     amount,

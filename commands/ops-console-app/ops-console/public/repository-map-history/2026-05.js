@@ -7,7 +7,7 @@
       summary:
         '원격 origin/main 최신 기능을 fast-forward로 흡수한 뒤 로컬 실험본 운영 경계를 KPI 18080, PostgreSQL 55432, .env.local-experiment, var/local-experiment 기준으로 다시 맞췄습니다.',
       detail:
-        '마이그레이션 전 로컬 PostgreSQL custom dump를 생성하고 005/006 util production daily time metric 마이그레이션을 kpi_local_experiment에 적용했습니다. Ops Console과 서버 실행/중지/DB 콘솔/계정 보조 스크립트의 기본값이 로컬 실험본 env를 우선하도록 정리되었고, 서버는 http://127.0.0.1:18080, Ops Console은 http://127.0.0.1:3215에서 확인했습니다. Follow-up: 상위 유틸리티 메뉴를 제거하고 데이터 관리 > 유틸리티 기입/분석으로 재배치했으며, 생산량 기입/삭제/추출은 팀별내역서 생산량 카드 안으로 이동했습니다. 생산량 import/parser/API/DB/report 값 경로는 유지했습니다. 검증 기준: format, lint, npm test, server-structure, root smoke, Playwright browser smoke, ops console health/overview/DB tables, git diff --check.',
+        '마이그레이션 전 로컬 PostgreSQL custom dump를 생성하고 005/006 util production daily time metric 마이그레이션을 kpi_local_experiment에 적용했습니다. Ops Console과 서버 실행/중지/DB 콘솔/계정 보조 스크립트의 기본값이 로컬 실험본 env를 우선하도록 정리되었고, 서버는 http://127.0.0.1:18080, Ops Console은 http://127.0.0.1:3215에서 확인했습니다. Follow-up: 상위 유틸리티 메뉴를 제거하고 데이터 관리 > 유틸리티 기입/분석으로 재배치했으며, 생산량 기입/삭제/추출은 팀별내역서 생산량 카드 안으로 이동했습니다. 생산량 import/parser/API/DB/report 값 경로는 유지했습니다. 추가로 production_kind normal/rework를 저장/중복키/표시 경로에 붙여 정상 기입과 재가공품 기입을 분리했고, 재가공품은 팀별내역서 생산 상세에서 배지로 표시됩니다. 총괄비율/분석/보고서의 생산량 계산은 정상+재가공품 합산 기준으로 유지합니다. 적용 전 로컬 PostgreSQL custom dump를 만들고 008_util_production_daily_production_kind.sql을 적용했습니다. 검증 기준: format, lint, npm test, server-structure, root smoke, Playwright browser smoke, ops console health/overview/DB tables, git diff --check.',
     },
     {
       date: '2026-05-18',

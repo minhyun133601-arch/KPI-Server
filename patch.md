@@ -1,6 +1,28 @@
 # 2026-05-19 Patch Note
 
-Update: 총괄 비율 미리보기 카드에 유산 생산량과 1팀 2파트/2팀/3팀 생산량 비율을 추가했습니다. 가스 분석의 유산 기준은 2팀을 제외한 기존 `1팀 2파트 + 3팀` 규칙을 유지합니다.
+## Production Import Normal/Rework Split
+
+Goal: 작업내역서 생산량 카드의 기입 단계를 정상/재가공품으로 분리하고, 재가공품 생산량이 팀별내역서 상세에서 즉시 구분되게 표시합니다.
+
+Touched areas: work production action menu/import bridge, utility production import/index/dedupe, util production daily repository/state/normalizers, DB export/import/fingerprint scripts, production detail modal, work CSS, KPI asset cache versions, related frontend/service smoke tests, Data Reference map.
+
+Data change: PostgreSQL dump `kpi-runtime/internal-server/var/local-experiment/storage/backups/postgres-dumps/postgres-dump-20260519-125715.dump` created before migration. Applied `008_util_production_daily_production_kind.sql` to add `production_kind` with default `normal`. Existing rows remain normal until rework imports are entered.
+
+Update: 총괄비율, 분석, 보고서에서 쓰는 생산량 기준은 정상 + 재가공품 합산으로 고정했습니다. fallback 중복 제거 키에도 `production_kind`를 포함해 같은 정상 행은 한 번만 세고, 같은 값의 재가공품 행은 합산되게 했습니다.
+
+Verification: `node --check` for changed JS, targeted production/work/state/data-sync smoke tests, `npm run backup:postgres-dump`, `npm run db:migrate`, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `npm test`, and `git diff --check` passed.
+
+Risk: full `npm run verify` was not run because it includes legacy cleanup steps that can touch unrelated local data; equivalent format/lint/server-structure/full test coverage was run separately.
+
+---
+
+Update: 총괄 비율 미리보기 목차/카드는 비용 구성비 4개만 남기고 유산 생산량/팀별 비율 카드는 제거했습니다. 유산 생산량 비율 계산은 특이사항 후보와 보고서 계산 경로에서만 유지합니다.
+
+Update: 총괄 비율 모달의 선/막대 그래프 영역을 제거하고, 상단 필터 아래에 원형 그래프 2열과 하단 상세표만 남기는 구조로 정리했습니다. 모달 전용 차트 스크립트, 차트 핸들러, 스크롤 보조 코드, 관련 CSS/테스트/부트 매니페스트 참조도 제거했습니다.
+
+Update: 작업내역서 생산량 관리에 정상/재가공품 붙여넣기 기입을 추가했습니다. 엑셀 표를 그대로 붙여넣은 뒤 `Ctrl+S` 또는 `완료`로 저장하면 기존 파일 기입과 같은 파서 보정, 중복 제거, `mergeUtilProductionExtractorRows` 저장 경로를 사용합니다.
+
+Update: 붙여넣기 파서를 `2팀 1.xlsx`처럼 엑셀에서 1행부터 전체 선택한 시트 복사본에 맞춰 보정했습니다. 상단 메타 행을 건너뛰고 헤더명으로 생산일자/팀/라인/코드/품명/생산량과 조업시간/가동시간/수율/CAPA/가동률 열을 찾아 저장 경로에 넘깁니다.
 
 ## Utility Section Removal And Work Production Actions
 
@@ -407,3 +429,11 @@ Verification: PostgreSQL dump created before deletion; migration added `product_
 Risk: the local Excel re-import file remains untracked in the workspace; existing unrelated dirty files from earlier UI work were not reverted.
 
 Follow-up: production import replacement now uses one full entry key only: date, team, line, product code, product name, amount, yield, work time, operation time, CAPA, and utilization must all match before an existing row is overwritten. Same-date/team rows with any different value are preserved.
+
+Follow-up: work report production management was reduced to `정상`, `재가공품`, and `삭제`. `정상` and `재가공품` now use only the Excel copy/paste modal, and the old direct file-attach entry path was removed from the work report runtime.
+
+Verification update: `smoke:work-production`, `work-team-calendar-render.smoke.js`, `smoke:work-shared`, `format:check`, `lint`, `verify:server-structure`, `npm test`, `git diff --check`, and `smoke:kpi-browser` passed after the paste-only menu cleanup.
+
+Follow-up: data management analysis overview was simplified so the `총괄 비율` entry no longer renders total/electric/gas/waste amount and share preview cards or the extra preview note.
+
+Verification update: section factory, report production preview, shell CSS smoke checks, `format:check`, `lint`, `verify:server-structure`, `npm test`, `git diff --check`, and `smoke:kpi-browser` passed after the overview cleanup.

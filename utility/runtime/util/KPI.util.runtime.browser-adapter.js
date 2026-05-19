@@ -1658,6 +1658,25 @@ ${buildReportDeckExportScript()}
         return normalizeReportDeckDateKey(entry?.dateLabel || entry?.date || entry?.productionDate);
     }
 
+    function normalizeReportDeckProductionKind(value) {
+        const normalized = String(value ?? '')
+            .trim()
+            .toLowerCase()
+            .replace(/[\s_-]+/g, '');
+        if (
+            normalized === 'rework'
+            || normalized === 'reprocess'
+            || normalized === 'reprocessed'
+            || normalized === 'reprocessedproduct'
+            || normalized === 'reworkproduct'
+            || normalized === '\uC7AC\uAC00\uACF5'
+            || normalized === '\uC7AC\uAC00\uACF5\uD488'
+        ) {
+            return 'rework';
+        }
+        return 'normal';
+    }
+
     function getReportDeckProductionEntryDedupeKey(entry = {}, teamLabel = '') {
         const entryKey = String(entry?.entryKey || '').trim();
         if (entryKey) return entryKey;
@@ -1665,9 +1684,15 @@ ${buildReportDeckExportScript()}
             getReportDeckProductionEntryDateKey(entry),
             normalizeReportDeckProductionText(entry?.teamName || entry?.team || teamLabel),
             normalizeReportDeckProductionText(entry?.lineName || entry?.line || ''),
+            normalizeReportDeckProductionKind(entry?.productionKind ?? entry?.production_kind ?? entry?.productionType ?? entry?.production_type ?? entry?.kind),
             normalizeReportDeckProductionText(entry?.productCode || entry?.itemCode || entry?.code || ''),
             normalizeReportDeckProductionText(entry?.productName || entry?.product || entry?.itemName || ''),
-            String(parseReportDeckProductionAmount(entry?.amount ?? entry?.production ?? entry?.value) ?? '')
+            String(parseReportDeckProductionAmount(entry?.amount ?? entry?.production ?? entry?.value) ?? ''),
+            String(parseReportDeckProductionPercent(entry?.moistureExcludedYield ?? entry?.moistureFreeYield ?? entry?.yieldExcludingMoisture ?? entry?.yieldRate) ?? ''),
+            String(parseReportDeckProductionAmount(entry?.workTime ?? entry?.inputTime ?? entry?.feedTime ?? entry?.loadingTime ?? entry?.injectionTime) ?? ''),
+            String(parseReportDeckProductionAmount(entry?.operationTime ?? entry?.operatingTime ?? entry?.runtime ?? entry?.runTime ?? entry?.operationHours) ?? ''),
+            String(parseReportDeckProductionAmount(entry?.equipmentCapa ?? entry?.capa ?? entry?.equipmentCapacity) ?? ''),
+            String(parseReportDeckProductionPercent(entry?.equipmentUtilization ?? entry?.operationRate ?? entry?.equipmentRate ?? entry?.utilizationRate) ?? '')
         ].join('::');
     }
 

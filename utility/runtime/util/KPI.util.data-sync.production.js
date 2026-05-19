@@ -377,6 +377,25 @@
             queueUtilWasteDataSync({ force: true, delay: 0 });
         }
 
+        function normalizeUtilProductionCloneKind(value) {
+            const normalized = String(value ?? '')
+                .trim()
+                .toLowerCase()
+                .replace(/[\s_-]+/g, '');
+            if (
+                normalized === 'rework'
+                || normalized === 'reprocess'
+                || normalized === 'reprocessed'
+                || normalized === 'reprocessedproduct'
+                || normalized === 'reworkproduct'
+                || normalized === '\uC7AC\uAC00\uACF5'
+                || normalized === '\uC7AC\uAC00\uACF5\uD488'
+            ) {
+                return 'rework';
+            }
+            return 'normal';
+        }
+
         function cloneUtilProductionTeamEntry(entry, fallbackTeam = '') {
             if (!entry || typeof entry !== 'object') return null;
             const date = String(entry.date || '').trim();
@@ -386,6 +405,8 @@
                 date,
                 amount: entry.amount ?? entry.production ?? entry.value ?? null,
                 lineName: String(entry.lineName ?? entry.line ?? entry.lineNm ?? '').trim(),
+                productionKind: normalizeUtilProductionCloneKind(entry.productionKind ?? entry.production_kind ?? entry.kind),
+                productCode: String(entry.productCode ?? entry.itemCode ?? entry.product_code ?? entry.code ?? '').trim(),
                 productName: String(entry.productName ?? entry.itemName ?? entry.product ?? '').trim(),
                 moistureExcludedYield: entry.moistureExcludedYield ?? entry.moistureFreeYield ?? entry.yieldExcludingMoisture ?? entry.yieldRate ?? null,
                 workTime: entry.workTime ?? entry.inputTime ?? entry.feedTime ?? entry.loadingTime ?? entry.injectionTime ?? null,

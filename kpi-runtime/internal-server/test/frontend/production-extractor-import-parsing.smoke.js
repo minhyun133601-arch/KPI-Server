@@ -47,6 +47,7 @@ test('production extractor import parsing registers the parsing API and date hel
   const api = context.KPIProductionExtractorImportParsing;
 
   assert.equal(typeof api?.parseExcelFile, 'function');
+  assert.equal(typeof api?.parsePastedTableText, 'function');
   assert.equal(typeof api?.deduplicateRows, 'function');
   assert.equal(api.sanitizeCycleDay('99'), 31);
   assert.equal(api.sanitizeCycleDay('x'), 15);
@@ -286,8 +287,205 @@ test('production extractor import parsing prefers Excel display date over shifte
   assert.equal(parsed.rows[0].equipmentUtilization, '87%');
 });
 
+test('production extractor import parsing converts pasted Excel table text into import rows', () => {
+  const context = createImportParsingContext();
+  const api = context.KPIProductionExtractorImportParsing;
+  const header = ['date', 'team', 'line', 'code', 'product', 'amount', '', '', '', 'work', '', 'operation', '', 'yield', '', '', '', '', '', '', '', 'capa', 'rate'].join('\t');
+  const row = ['04/01', '1T', 'SD', 'CODE-A', 'Item', '12', '', '', '', '6', '', '4.5', '', '98%', '', '', '', '', '', '', '', '120', '87%'].join('\t');
+  const parsed = api.parsePastedTableText(
+    {
+      TARGET_COLS: ['A', 'B', 'C', 'D', 'E', 'F'],
+      HEADER_ROW: 3,
+      DATA_START_ROW: 4,
+      TEAM_VALUE_INDEX: 1,
+      LINE_VALUE_INDEX: 2,
+      PRODUCT_CODE_VALUE_INDEX: 3,
+      PRODUCT_NAME_VALUE_INDEX: 4,
+      PRODUCTION_VALUE_INDEX: 5,
+      PRODUCTION_DATE_OFFSET_DAYS: 0,
+      REQUIRED_HEADER_RULES: {
+        A: [/date/],
+        B: [/team/],
+        C: [/line/],
+        D: [/code/],
+        E: [/product/],
+        F: [/amount/],
+      },
+      parseProductionValue(value) {
+        const parsedValue = Number(value);
+        return Number.isFinite(parsedValue) ? parsedValue : null;
+      },
+    },
+    ['memo', '', header, row].join('\n'),
+    {
+      fileName: 'clipboard',
+      referenceYear: 2026,
+      sheetName: 'paste',
+    }
+  );
+
+  assert.equal(parsed.rows.length, 1);
+  assert.equal(parsed.rows[0].values[0], '2026-04-01');
+  assert.equal(parsed.rows[0].values[3], 'CODE-A');
+  assert.equal(parsed.rows[0].productCode, 'CODE-A');
+  assert.equal(parsed.rows[0].moistureExcludedYield, '98%');
+  assert.equal(parsed.rows[0].workTime, '6');
+  assert.equal(parsed.rows[0].operationTime, '4.5');
+  assert.equal(parsed.rows[0].equipmentCapa, '120');
+  assert.equal(parsed.rows[0].equipmentUtilization, '87%');
+  assert.equal(parsed.productionRangeLabel, '2026-04-01 ~ 2026-04-01');
+});
+
+test('production extractor import parsing accepts a full Ctrl+A sheet paste from row 1', () => {
+  const context = createImportParsingContext();
+  const api = context.KPIProductionExtractorImportParsing;
+  const header = [
+    'a.생산일자',
+    'b.팀',
+    'c.라인명',
+    'd.코드',
+    'e.품명',
+    '생산량(kg)',
+    '인원정규',
+    '인원용역',
+    '인원계',
+    '조업시간',
+    '조업생산량/時',
+    '가동시간',
+    '가동생산량/時',
+    '수율(수분제외)(%)',
+    '노동생산성',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '설비Capa',
+    '설비가동율(%)',
+  ].join('\t');
+  const row = [
+    '45293',
+    '2팀(P1)-소포장',
+    '로타리 1호기',
+    '1211427',
+    '복숭아아이스티플러스 1KG',
+    '4776',
+    '4.2',
+    '0',
+    '4.2',
+    '5.8',
+    '823.5',
+    '5',
+    '945.7',
+    '99.5',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '8004',
+    '59.7%',
+  ].join('\t');
+  const parsed = api.parsePastedTableText(
+    {
+      XLSX: {
+        SSF: {
+          parse_date_code(value) {
+            return Number(value) === 45293 ? { y: 2024, m: 1, d: 2 } : null;
+          },
+        },
+      },
+      TARGET_COLS: ['A', 'B', 'C', 'D', 'E', 'F'],
+      HEADER_ROW: 3,
+      DATA_START_ROW: 4,
+      TEAM_VALUE_INDEX: 1,
+      LINE_VALUE_INDEX: 2,
+      PRODUCT_CODE_VALUE_INDEX: 3,
+      PRODUCT_NAME_VALUE_INDEX: 4,
+      PRODUCTION_VALUE_INDEX: 5,
+      PRODUCTION_DATE_OFFSET_DAYS: 0,
+      REQUIRED_HEADER_RULES: {
+        A: [/생산일자/],
+        B: [/팀/],
+        C: [/라인명/, /라인/],
+        D: [/코드/],
+        E: [/품명/],
+        F: [/생산량/],
+      },
+      parseProductionValue(value) {
+        const parsedValue = Number(String(value).replace('%', ''));
+        return Number.isFinite(parsedValue) ? parsedValue : null;
+      },
+    },
+    ['종합 생산효율', '기간 :2024-01/01 ~ 2026-04/30', header, row].join('\n'),
+    {
+      fileName: '2팀 1 붙여넣기',
+      sheetName: '붙여넣기',
+    }
+  );
+
+  assert.equal(parsed.rows.length, 1);
+  assert.equal(parsed.rows[0].values[0], '2024-01-02');
+  assert.equal(parsed.rows[0].values[1], '2팀(P1)-소포장');
+  assert.equal(parsed.rows[0].values[2], '로타리 1호기');
+  assert.equal(parsed.rows[0].values[3], '1211427');
+  assert.equal(parsed.rows[0].values[4], '복숭아아이스티플러스 1KG');
+  assert.equal(parsed.rows[0].values[5], '4776');
+  assert.equal(parsed.rows[0].moistureExcludedYield, '99.5');
+  assert.equal(parsed.rows[0].workTime, '5.8');
+  assert.equal(parsed.rows[0].operationTime, '5');
+  assert.equal(parsed.rows[0].equipmentCapa, '8004');
+  assert.equal(parsed.rows[0].equipmentUtilization, '59.7%');
+  assert.equal(parsed.rows[0].rowNumber, 4);
+});
+
+test('production extractor import parsing uses headers when pasted result columns are compact', () => {
+  const context = createImportParsingContext();
+  const api = context.KPIProductionExtractorImportParsing;
+  const parsed = api.parsePastedTableText(
+    {
+      TARGET_COLS: ['A', 'B', 'C', 'D', 'E', 'F'],
+      HEADER_ROW: 3,
+      DATA_START_ROW: 4,
+      TEAM_VALUE_INDEX: 1,
+      LINE_VALUE_INDEX: 2,
+      PRODUCT_CODE_VALUE_INDEX: 3,
+      PRODUCT_NAME_VALUE_INDEX: 4,
+      PRODUCTION_VALUE_INDEX: 5,
+      PRODUCTION_DATE_OFFSET_DAYS: 0,
+      REQUIRED_HEADER_RULES: {
+        A: [/생산일자/],
+        B: [/팀/],
+        C: [/라인/],
+        D: [/코드/],
+        E: [/품명/],
+        F: [/생산량/],
+      },
+      parseProductionValue(value) {
+        const parsedValue = Number(value);
+        return Number.isFinite(parsedValue) ? parsedValue : null;
+      },
+    },
+    [
+      '생성일시\t2026. 5. 19.',
+      '생산일자\t팀\t라인명\t품명\t생산량',
+      '2026-04-01\t2팀\t로타리 1호기\t제품 A\t1000',
+    ].join('\n'),
+    {
+      fileName: 'compact',
+      sheetName: 'paste',
+    }
+  );
+
+  assert.equal(parsed.rows.length, 1);
+  assert.deepEqual(parsed.rows[0].values, ['2026-04-01', '2팀', '로타리 1호기', '', '제품 A', '1000']);
+});
+
 test('production extractor html loads import parsing before export actions and app', () => {
-  const importParsingIndex = productionExtractorHtml.indexOf('runtime/import-parsing.js?v=20');
+  const importParsingIndex = productionExtractorHtml.indexOf('runtime/import-parsing.js?v=22');
   const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=18');
   const viewModelIndex = productionExtractorHtml.indexOf('runtime/view-model.js?v=1');
   const renderIndex = productionExtractorHtml.indexOf('runtime/render.js?v=1');

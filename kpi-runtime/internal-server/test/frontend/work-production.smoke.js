@@ -198,6 +198,7 @@ function createContext() {
           dateLabel: '2026-04-16',
           teamName: '1팀 1파트',
           lineName: 'Line B',
+          productionKind: 'rework',
           productName: 'Item B',
           amount: 150,
           moistureExcludedYield: 88,
@@ -449,11 +450,13 @@ test('work production split files expose utility, history, and draft helpers tog
   assert.equal(summary.electric.usageText, '120 kWh');
   assert.equal(summary.production.totalAmountText, '350kg');
   assert.equal(productionGroups[0].items[0].productCode, 'A-001');
+  assert.equal(productionGroups[1].items[0].productionKind, 'rework');
   assert.equal(productionGroups[0].totalWorkTime, 8.5);
   assert.equal(productionGroups[0].totalOperationTime, 7.25);
   assert.match(productionHtml, /Work 8\.5/);
   assert.match(productionHtml, /Run 7\.3/);
   assert.match(productionHtml, /코드 A-001/);
+  assert.match(productionHtml, /\uC7AC\uAC00\uACF5\uD488/);
   assert.match(overviewProductionHtml, /Work 8\.5/);
   assert.match(overviewProductionHtml, /Run 7\.3/);
   assert.match(summary.workEntryCountText, /^1건/);
@@ -468,8 +471,15 @@ test('work production split files expose utility, history, and draft helpers tog
   assert.match(historyHtml, /work-team-calendar-team-group/);
 
   const actionHtml = context.renderWorkProductionActionMenuHtml({ summary: true });
-  assert.match(actionHtml, /data-work-production-action="entry"/);
+  assert.match(actionHtml, /data-work-production-action="paste"/);
+  assert.match(actionHtml, /data-work-production-kind="normal"/);
+  assert.match(actionHtml, /data-work-production-kind="rework"/);
+  assert.match(actionHtml, /openWorkProductionPasteModal\(event, 'normal'\)[^>]*>정상</);
+  assert.match(actionHtml, /openWorkProductionPasteModal\(event, 'rework'\)[^>]*>재가공품</);
   assert.match(actionHtml, /data-work-production-action="delete"/);
+  assert.doesNotMatch(actionHtml, /data-work-production-action="entry"/);
+  assert.doesNotMatch(actionHtml, /openWorkProductionEntryModal/);
+  assert.doesNotMatch(actionHtml, /정상 기입|정상 붙여넣기|재가공품 기입|재가공품 붙여넣기/);
   assert.doesNotMatch(actionHtml, /data-work-production-action="export"/);
 
   const alerts = [];
@@ -501,10 +511,12 @@ test('work production split files expose utility, history, and draft helpers tog
   assert.match(alerts.at(-1), /2/);
 });
 
-test('work production direct entry keeps extractor parsing and merge payload shape', async () => {
+test('work production pasted entry keeps extractor parsing and merge payload shape', async () => {
   const context = createContext();
   const alerts = [];
   let mergeRows = null;
+  let parseText = '';
+  let parseOptions = null;
   context.alert = (message) => alerts.push(String(message || ''));
   context.XLSX = {};
   context.DEFAULT_UTIL_PRODUCTION_PERIOD = { startDay: 1 };
@@ -513,23 +525,24 @@ test('work production direct entry keeps extractor parsing and merge payload sha
   context.UTIL_PRODUCTION_ARCHIVE_META = [];
   context.UTIL_PRODUCTION_DAILY_STATE = { meta: {}, periodDefault: { startDay: 1 }, teams: [], archives: [] };
   context.KPIProductionExtractorImportParsing = {
-    async parseExcelFile(parseContext, file, startDay) {
-      assert.equal(startDay, 1);
+    parsePastedTableText(parseContext, text, options) {
       assert.deepEqual(Array.from(parseContext.TARGET_COLS), ['A', 'B', 'C', 'D', 'E', 'F']);
+      parseText = text;
+      parseOptions = options;
       return {
         rows: [
           {
-            fileName: file.name,
-            values: ['2026-04-02', '1팀', 'MSD', 'P-001', 'Product A', '123'],
-            productCode: 'P-001',
-            moistureExcludedYield: '98.5%',
+            fileName: options.fileName,
+            values: ['2026-04-03', '2팀', 'S/D', 'P-002', 'Product B', '456'],
+            productCode: 'P-002',
+            moistureExcludedYield: '99.1%',
             workTime: '24',
-            operationTime: '22.5',
-            equipmentCapa: '72000',
-            equipmentUtilization: '98.6%',
-            dateObj: new Date('2026-04-02T00:00:00Z'),
-            teamKey: '1팀',
-            lineKey: 'MSD',
+            operationTime: '23',
+            equipmentCapa: '51000',
+            equipmentUtilization: '95%',
+            dateObj: new Date('2026-04-03T00:00:00Z'),
+            teamKey: '2팀',
+            lineKey: 'S/D',
             rowNumber: 4,
           },
         ],
@@ -539,8 +552,10 @@ test('work production direct entry keeps extractor parsing and merge payload sha
       return { rows, removedCount: 0 };
     },
   };
-  context.mergeUtilProductionExtractorRows = (rows) => {
+  let mergeOptions = null;
+  context.mergeUtilProductionExtractorRows = (rows, options) => {
     mergeRows = rows;
+    mergeOptions = options;
     return {
       addedCount: 1,
       skippedCount: 0,
@@ -554,25 +569,71 @@ test('work production direct entry keeps extractor parsing and merge payload sha
   context.renderWorkTeamCalendarModal = () => {};
   context.setLastModified = () => {};
 
-  assert.equal(await context.importWorkProductionEntryFiles([{ name: 'sample.xlsx', size: 10, lastModified: 11 }]), true);
+  assert.equal(
+    await context.importWorkProductionPastedText('clipboard payload', {
+      productionKind: 'normal',
+    }),
+    true
+  );
+  assert.equal(parseText, 'clipboard payload');
+  assert.equal(parseOptions.referenceYear, 2026);
+  assert.equal(parseOptions.cycleStartDay, 1);
+  assert.equal(parseOptions.fileName, '정상 붙여넣기');
+  assert.equal(mergeOptions.productionKind, 'normal');
   assert.deepEqual(JSON.parse(JSON.stringify(mergeRows)), [
     {
-      date: '2026-04-02',
-      team: '1팀',
-      lineName: 'MSD',
-      productCode: 'P-001',
-      productName: 'Product A',
-      amount: '123',
-      moistureExcludedYield: '98.5%',
+      date: '2026-04-03',
+      team: '2팀',
+      lineName: 'S/D',
+      productionKind: 'normal',
+      productCode: 'P-002',
+      productName: 'Product B',
+      amount: '456',
+      moistureExcludedYield: '99.1%',
       workTime: '24',
-      operationTime: '22.5',
-      equipmentCapa: '72000',
-      equipmentUtilization: '98.6%',
-      sourceFileName: 'sample.xlsx',
-      sourceFingerprint: 'sample.xlsx|10|11',
+      operationTime: '23',
+      equipmentCapa: '51000',
+      equipmentUtilization: '95%',
+      sourceFileName: '정상 붙여넣기',
+      sourceFingerprint: '',
     },
   ]);
   assert.match(alerts.at(-1), /기입 완료/);
+});
+
+test('work production paste modal Ctrl+S submits the active modal', () => {
+  const context = createContext();
+  let defaultPrevented = false;
+  let propagationStopped = false;
+  let submittedModal = null;
+  overrideBinding(context, 'submitWorkProductionPasteModal', (modal) => {
+    submittedModal = modal;
+    return Promise.resolve(true);
+  });
+
+  assert.equal(
+    context.handleWorkProductionPasteKeydown({
+      key: 's',
+      ctrlKey: true,
+      metaKey: false,
+      preventDefault() {
+        defaultPrevented = true;
+      },
+      stopPropagation() {
+        propagationStopped = true;
+      },
+      currentTarget: {
+        closest(selector) {
+          assert.equal(selector, '#work-production-paste-modal');
+          return { id: 'active-paste-modal' };
+        },
+      },
+    }),
+    true
+  );
+  assert.equal(defaultPrevented, true);
+  assert.equal(propagationStopped, true);
+  assert.equal(submittedModal.id, 'active-paste-modal');
 });
 
 test('work production draft helpers update member and title state through the shared draft store', () => {
@@ -614,7 +675,7 @@ test('work production draft uses the browser adapter for storage capabilities', 
 });
 
 test('kpi html loads work production split files before team calendar bootstrap', () => {
-  const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=243');
+  const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=246');
   const adapterIndex = kpiHtml.indexOf('runtime/work/KPI.work.browser-adapter.js?v=1');
   const historyIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.history.js?v=4');
   const overviewIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.overview.js?v=2');

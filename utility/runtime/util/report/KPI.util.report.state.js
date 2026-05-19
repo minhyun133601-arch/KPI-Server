@@ -53,7 +53,6 @@
             scopeKey: 'total',
             metricKey: 'total_cost',
             chartType: 'bar',
-            chartFullscreen: false,
             showChartLabels: false,
             compareYear: '',
             chartYear: '',

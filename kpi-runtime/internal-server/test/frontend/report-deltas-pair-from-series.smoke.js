@@ -79,8 +79,64 @@ function loadProductionLineBucket() {
   return fn;
 }
 
+function loadProductionMonthlyValueMap() {
+  const blankLineSource = extractFunctionSource(
+    deltasSource,
+    'isUtilReportBlankProductionLineName'
+  );
+  const bucketSource = extractFunctionSource(
+    deltasSource,
+    'normalizeUtilReportProductionLineBucket'
+  );
+  const kindSource = extractFunctionSource(
+    deltasSource,
+    'normalizeUtilReportProductionKind'
+  );
+  const monthlyMapSource = extractFunctionSource(
+    deltasSource,
+    'buildUtilReportProductionProductMonthlyValueMap'
+  );
+  const wrapped = `(function () {
+    function normalizeUtilDedupeText(value) {
+      return String(value ?? '').trim().replace(/\\s+/g, ' ').toLowerCase();
+    }
+    function canonicalizeUtilDedupeMetric(value) {
+      const number = Number(String(value ?? '').replace(/,/g, '').trim());
+      return Number.isFinite(number) ? String(number) : '';
+    }
+    function normalizeUtilReportProductionSourceTeamName(teamName) {
+      return String(teamName || '').trim();
+    }
+    let testEntries = [];
+    function resolveUtilReportProductionTeamsByFilter() {
+      return ['Team A'];
+    }
+    function listUtilDailyEntriesByMetric() {
+      return { entries: testEntries };
+    }
+    ${blankLineSource}
+    ${bucketSource}
+    ${kindSource}
+    ${monthlyMapSource}
+    return {
+      buildUtilReportProductionProductMonthlyValueMap,
+      setEntries(entries) {
+        testEntries = Array.isArray(entries) ? entries : [];
+      },
+    };
+  })()`;
+  const api = vm.runInThisContext(wrapped, {
+    filename: 'KPI.util.report.deltas.production-monthly.extract.js',
+  });
+  if (typeof api?.buildUtilReportProductionProductMonthlyValueMap !== 'function') {
+    throw new Error('buildUtilReportProductionProductMonthlyValueMap did not load as function');
+  }
+  return api;
+}
+
 const buildDeltaPair = loadBuildDeltaPair();
 const normalizeProductionLineBucket = loadProductionLineBucket();
+const productionMonthlyValueMapApi = loadProductionMonthlyValueMap();
 
 test('extraction sentinel: deltas.js still defines buildUtilReportDeltaPairFromSeries with delta/prev rate formula', () => {
   assert.match(
@@ -100,6 +156,54 @@ test('1팀 1파트 production line bucket treats blank or MSD line names as MSD'
   assert.equal(normalizeProductionLineBucket('1팀 1파트', '라인 없음', '일반 품목'), 'MSD');
   assert.equal(normalizeProductionLineBucket('1팀 1파트', 'MSD 건조', '일반 품목'), 'MSD');
   assert.equal(normalizeProductionLineBucket('1팀 1파트', 'S/D 건조', '일반 품목'), 'SD');
+});
+
+test('production monthly value map sums normal and rework while keeping true duplicates collapsed', () => {
+  productionMonthlyValueMapApi.setEntries([
+    {
+      dateLabel: '2026-04-01',
+      teamName: 'Team A',
+      lineName: 'Line 1',
+      productCode: 'P-1',
+      productName: 'Product A',
+      amount: 100,
+      moistureExcludedYield: 95,
+      workTime: 8,
+      operationTime: 7,
+      equipmentCapa: 120,
+      equipmentUtilization: 83.3,
+    },
+    {
+      dateLabel: '2026-04-01',
+      teamName: 'Team A',
+      lineName: 'Line 1',
+      productCode: 'P-1',
+      productName: 'Product A',
+      amount: 100,
+      moistureExcludedYield: 95,
+      workTime: 8,
+      operationTime: 7,
+      equipmentCapa: 120,
+      equipmentUtilization: 83.3,
+    },
+    {
+      dateLabel: '2026-04-01',
+      teamName: 'Team A',
+      lineName: 'Line 1',
+      productionKind: 'rework',
+      productCode: 'P-1',
+      productName: 'Product A',
+      amount: 100,
+      moistureExcludedYield: 95,
+      workTime: 8,
+      operationTime: 7,
+      equipmentCapa: 120,
+      equipmentUtilization: 83.3,
+    },
+  ]);
+
+  const valueMap = productionMonthlyValueMapApi.buildUtilReportProductionProductMonthlyValueMap(2026, 4, 'all');
+  assert.equal(Object.values(valueMap).reduce((sum, value) => sum + value, 0), 200);
 });
 
 test('empty series -> both mom and yoy are null', () => {

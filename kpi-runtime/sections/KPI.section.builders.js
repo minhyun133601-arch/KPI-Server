@@ -15,40 +15,15 @@
                 <div class="util-sheet-panel is-overview" data-role="util-report-panel">
                     <div class="util-sheet-header">
                         <div class="util-sheet-title-block">
-                            <div class="util-sheet-kicker">유틸리티 요약</div>
                             <div class="util-sheet-title-row">
                                 <span class="util-sheet-title-icon is-overview" aria-hidden="true"><i class="fa-solid fa-chart-pie"></i></span>
                                 <div class="util-report-title">총괄 비율</div>
                             </div>
-                            <div class="util-report-desc">기존 총괄 리포트 모달로 바로 이동할 수 있습니다.</div>
                         </div>
                         <div class="util-sheet-actions">
                             <button type="button" class="work-btn primary" data-role="util-report-open-modal"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>이동</span></button>
                         </div>
                     </div>
-                    <div class="util-report-kpi-grid" hidden>
-                        <div class="util-report-kpi">
-                            <span class="util-report-kpi-label">총액</span>
-                            <strong class="util-report-kpi-value" data-role="util-report-total-cost">-</strong>
-                            <span class="util-report-kpi-sub" data-role="util-report-total-share">-</span>
-                        </div>
-                        <div class="util-report-kpi">
-                            <span class="util-report-kpi-label">전기</span>
-                            <strong class="util-report-kpi-value" data-role="util-report-electric-cost">-</strong>
-                            <span class="util-report-kpi-sub" data-role="util-report-electric-share">-</span>
-                        </div>
-                        <div class="util-report-kpi">
-                            <span class="util-report-kpi-label">가스</span>
-                            <strong class="util-report-kpi-value" data-role="util-report-gas-cost">-</strong>
-                            <span class="util-report-kpi-sub" data-role="util-report-gas-share">-</span>
-                        </div>
-                        <div class="util-report-kpi">
-                            <span class="util-report-kpi-label">폐수</span>
-                            <strong class="util-report-kpi-value" data-role="util-report-waste-cost">-</strong>
-                            <span class="util-report-kpi-sub" data-role="util-report-waste-share">-</span>
-                        </div>
-                    </div>
-                    <div class="util-report-preview-note" data-role="util-report-note">총액 대비 구성비를 먼저 보고 기존 총괄 리포트로 이동합니다.</div>
                 </div>
                 <div class="util-sheet-panel is-meter is-combined" data-role="util-sheet-panel" data-sheet-type="meter" data-dataset-key="gas">
                     <div class="util-sheet-header">

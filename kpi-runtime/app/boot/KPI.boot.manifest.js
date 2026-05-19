@@ -192,7 +192,6 @@
         "utility/runtime/util/report/KPI.util.report.builder.modal.js",
         "utility/runtime/util/report/KPI.util.report.graph-modal.js",
         "utility/runtime/util/report/KPI.util.report.secondary-modals.js",
-        "utility/runtime/util/report/KPI.util.report.modal.chart-section.js",
         "utility/runtime/util/report/KPI.util.report.modal.composition-overview.js",
         "utility/runtime/util/report/KPI.util.report.modal.render.js",
         "utility/runtime/util/report/KPI.util.report.panel.js"

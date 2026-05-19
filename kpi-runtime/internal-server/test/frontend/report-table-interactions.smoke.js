@@ -38,17 +38,16 @@ test('report table interactions are split out of table rendering runtime', () =>
     filename: 'KPI.util.report.table-interactions.js',
   });
 
-  assert.equal(typeof context.bindUtilReportChartDragScroll, 'function');
   assert.equal(typeof context.focusUtilReportDetailRowByMonth, 'function');
-  assert.doesNotMatch(tablesSource, /function\s+bindUtilReportChartDragScroll/);
   assert.doesNotMatch(tablesSource, /function\s+focusUtilReportDetailRowByMonth/);
+  assert.doesNotMatch(tableInteractionsSource, /function\s+bindUtilReportChartDragScroll/);
   assert.doesNotMatch(tableInteractionsSource, /window\.|globalThis/);
   assert.match(tableInteractionsSource, /KPIUtilReportRuntimeAdapter/);
 });
 
 test('kpi html loads report table interactions after tables and before detached runtime', () => {
   const tablesIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.tables.js');
-  const interactionsIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.table-interactions.js?v=339');
+  const interactionsIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.table-interactions.js?v=340');
   const detachedIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.detached.js?v=338');
 
   assert.ok(tablesIndex >= 0, 'report tables loader is missing');

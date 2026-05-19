@@ -413,6 +413,8 @@ const dataFlows = [
     storage: [
       'util_production_daily_state',
       'util_production_daily_entries',
+      { ko: 'util_production_daily_entries: 생산일자/팀/라인/구분(normal|rework)/코드/품명/생산량/수율/조업시간/가동시간/CAPA/가동률 기준 행 저장', en: 'util_production_daily_entries: row storage by date/team/line/kind(normal|rework)/code/product/amount/yield/work time/operation time/CAPA/utilization' },
+      { ko: '총괄비율/분석/보고서 생산량 집계는 normal + rework 합산 기준', en: 'Overall ratio, analysis, and report production totals sum normal + rework rows' },
       { ko: 'util_production_daily_archives: 원본 파일명/지문/크기 메타데이터만 저장', en: 'util_production_daily_archives: source file name/fingerprint/size metadata only' },
       { ko: '원본 시트 파일 바이트는 저장하지 않음', en: 'Source sheet file bytes are not stored' },
     ],
@@ -428,6 +430,8 @@ const dataFlows = [
       'kpi-runtime/internal-server/src/db/migrations/004_util_production_daily_tables.sql',
       'kpi-runtime/internal-server/src/db/migrations/005_util_production_daily_time_metrics.sql',
       'kpi-runtime/internal-server/src/db/migrations/006_util_production_daily_work_time.sql',
+      'kpi-runtime/internal-server/src/db/migrations/007_util_production_daily_product_code.sql',
+      'kpi-runtime/internal-server/src/db/migrations/008_util_production_daily_production_kind.sql',
       'kpi-runtime/internal-server/src/lib/portal-bootstrap/runtime-config.js',
       'utility/runtime/util/production/KPI.util.production.extractor.js',
     ],

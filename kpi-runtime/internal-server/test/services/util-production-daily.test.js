@@ -129,6 +129,7 @@ test('buildStatePayload groups rows by team and derives archive summary', () => 
         production_date: '2026-04-01',
         team_name: 'A조',
         line_name: '1호기',
+        production_kind: 'rework',
         product_code: 'P-A',
         product_name: '제품A',
         amount: '10',
@@ -177,6 +178,7 @@ test('buildStatePayload groups rows by team and derives archive summary', () => 
 
   assert.equal(payload.periodDefault.startDay, 5);
   assert.equal(payload.meta.version, 2);
+  assert.equal(payload.teams[0].entries[0].productionKind, 'rework');
   assert.equal(payload.teams[0].entries[0].productCode, 'P-A');
   assert.equal(payload.teams[0].entries[0].workTime, 6);
   assert.equal(payload.teams[0].entries[0].operationTime, 4.5);

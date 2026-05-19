@@ -349,6 +349,54 @@ test('production import merge treats different product codes as distinct daily r
   );
 });
 
+test('production import merge treats normal and rework rows as distinct daily rows', () => {
+  const context = createProductionImportContext();
+  context.__testExports.getTeams().push({
+    name: 'Team X',
+    entries: [
+      {
+        date: '2026-05-04',
+        team: 'Team X',
+        lineName: 'Line X',
+        productCode: 'CODE-X',
+        productName: 'Product X',
+        amount: 100,
+        moistureExcludedYield: 98.5,
+        workTime: 24,
+        operationTime: 22.5,
+        equipmentCapa: 72000,
+        equipmentUtilization: 98.6,
+      },
+    ],
+  });
+
+  const result = context.__testExports.mergeUtilProductionExtractorRows([
+    {
+      date: '2026-05-04',
+      team: 'Team X',
+      lineName: 'Line X',
+      productionKind: 'rework',
+      productCode: 'CODE-X',
+      productName: 'Product X',
+      amount: 100,
+      moistureExcludedYield: 98.5,
+      workTime: 24,
+      operationTime: 22.5,
+      equipmentCapa: 72000,
+      equipmentUtilization: 98.6,
+    },
+  ]);
+
+  const team = context.__testExports.getTeams().find((item) => item.name === 'Team X');
+  assert.equal(result.addedCount, 1);
+  assert.equal(result.replacedCount, 0);
+  assert.equal(team.entries.length, 2);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(team.entries.map((entry) => entry.productionKind || 'normal').sort())),
+    ['normal', 'rework']
+  );
+});
+
 test('production import delete removes matching daily entries and queues a save', async () => {
   const context = createProductionImportContext();
   const result = context.__testExports.mergeUtilProductionExtractorRows([

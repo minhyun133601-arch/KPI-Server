@@ -6,6 +6,31 @@
             return utilProductionExtractorBrowser?.useRootFlag?.(flagName) === true;
         }
 
+        function normalizeUtilProductionDetailKind(value) {
+            const normalized = String(value ?? '')
+                .trim()
+                .toLowerCase()
+                .replace(/[\s_-]+/g, '');
+            if (
+                normalized === 'rework'
+                || normalized === 'reprocess'
+                || normalized === 'reprocessed'
+                || normalized === 'reprocessedproduct'
+                || normalized === 'reworkproduct'
+                || normalized === '\uC7AC\uAC00\uACF5'
+                || normalized === '\uC7AC\uAC00\uACF5\uD488'
+            ) {
+                return 'rework';
+            }
+            return 'normal';
+        }
+
+        function getUtilProductionDetailKindLabel(kind) {
+            return normalizeUtilProductionDetailKind(kind) === 'rework'
+                ? '\uC7AC\uAC00\uACF5\uD488'
+                : '\uC815\uC0C1';
+        }
+
         function resolveUtilProductionPeriodStartDay(options = {}) {
             void options;
             return DEFAULT_UTIL_PRODUCTION_PERIOD.startDay;
@@ -126,6 +151,7 @@
                 dateLabel: item.dateLabel,
                 teamName: item.teamName || teamName || '',
                 lineName: item.lineName || '',
+                productionKind: normalizeUtilProductionDetailKind(item.productionKind ?? item.production_kind ?? item.kind),
                 productCode: item.productCode || '',
                 productName: item.productName || '',
                 metricValue: item?.[detailConfig.metricKey],
@@ -228,6 +254,7 @@
                     <td>${escapeHtml(item.dateLabel)}</td>
                     <td>${escapeHtml(item.teamName || detail.teamName || '-')}</td>
                     <td>${escapeHtml(item.lineName || '-')}</td>
+                    <td>${item.productionKind === 'rework' ? `<span class="work-team-calendar-production-kind is-rework">${escapeHtml(getUtilProductionDetailKindLabel(item.productionKind))}</span>` : escapeHtml(getUtilProductionDetailKindLabel(item.productionKind))}</td>
                     <td>${escapeHtml(item.productCode || '-')}</td>
                     <td>${escapeHtml(item.productName || '-')}</td>
                     <td>${formatUtilNumber(item.metricValue)}</td>
@@ -242,6 +269,7 @@
                             <th>생산일자</th>
                             <th>팀</th>
                             <th>라인명</th>
+                            <th>\uAD6C\uBD84</th>
                             <th>코드</th>
                             <th>품명</th>
                             <th>${escapeHtml(detail.metricLabel)}</th>

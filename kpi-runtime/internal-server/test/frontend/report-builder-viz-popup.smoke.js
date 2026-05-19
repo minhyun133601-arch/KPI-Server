@@ -307,7 +307,7 @@ test('report modal base routes browser access through the report adapter', () =>
 test('kpi html loads report builder visualization popup after detached runtime', () => {
   const detachedIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.detached.js?v=338');
   const popupIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.builder-viz-popup.js?v=339');
-  const modalBaseIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.modal.base.js?v=331');
+  const modalBaseIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.modal.base.js?v=332');
 
   assert.ok(detachedIndex >= 0, 'report detached loader is missing');
   assert.ok(popupIndex > detachedIndex, 'builder visualization popup must load after detached runtime');

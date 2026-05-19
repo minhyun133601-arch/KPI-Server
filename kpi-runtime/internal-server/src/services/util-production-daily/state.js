@@ -9,6 +9,7 @@ import {
   normalizeDateKey,
   normalizeEntry,
   normalizeNumber,
+  normalizeProductionKind,
   normalizeText,
   normalizeTimestamp,
 } from './normalizers.js';
@@ -79,6 +80,7 @@ function groupEntriesByTeam(entries) {
     teamMap.get(teamName).push({
       date: entry.date,
       amount: entry.amount,
+      productionKind: entry.productionKind,
       lineName: entry.lineName,
       productCode: entry.productCode,
       productName: entry.productName,
@@ -106,6 +108,10 @@ function groupEntriesByTeam(entries) {
         const lineDiff = normalizeText(left.lineName).localeCompare(normalizeText(right.lineName), 'ko');
         if (lineDiff !== 0) {
           return lineDiff;
+        }
+        const kindDiff = normalizeText(left.productionKind).localeCompare(normalizeText(right.productionKind), 'ko');
+        if (kindDiff !== 0) {
+          return kindDiff;
         }
         const productDiff = normalizeText(left.productName).localeCompare(normalizeText(right.productName), 'ko');
         if (productDiff !== 0) {
@@ -136,6 +142,7 @@ export function buildStatePayload(stateRow, entryRows, archiveRows) {
     .map((row) => ({
       date: normalizeDateKey(row.production_date),
       teamName: normalizeText(row.team_name),
+      productionKind: normalizeProductionKind(row.production_kind),
       lineName: normalizeText(row.line_name),
       productCode: normalizeText(row.product_code),
       productName: normalizeText(row.product_name),

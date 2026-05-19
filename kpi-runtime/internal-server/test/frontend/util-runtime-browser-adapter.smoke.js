@@ -2231,6 +2231,62 @@ test('util runtime browser adapter builds report memo overview with current valu
   assert.match(joined, /전력량 100kWh 전월대비 10kWh, 11\.1% ↑, 전년대비 20kWh, 16\.7% ↓/);
 });
 
+test('util runtime browser adapter sums normal and rework detail rows for report production stats', async () => {
+  const { context } = createContext();
+  const makeEntry = (dateLabel, productionKind = 'normal') => ({
+    dateLabel,
+    lineName: 'ICA',
+    productCode: 'P-1',
+    productName: 'Product A',
+    amount: 100,
+    moistureExcludedYield: 95,
+    workTime: 8,
+    operationTime: 7,
+    equipmentCapa: 120,
+    equipmentUtilization: 83.3,
+    productionKind,
+  });
+  const periodByMonth = new Map([
+    ['2025-04', { startDate: new Date(2025, 3, 1), endDate: new Date(2025, 3, 2) }],
+    ['2026-03', { startDate: new Date(2026, 2, 1), endDate: new Date(2026, 2, 2) }],
+    ['2026-04', { startDate: new Date(2026, 3, 1), endDate: new Date(2026, 3, 2) }],
+  ]);
+  const entriesByMonth = new Map([
+    ['2025-04', [
+      makeEntry('2025-04-01'),
+    ]],
+    ['2026-03', [
+      makeEntry('2026-03-01'),
+    ]],
+    ['2026-04', [
+      makeEntry('2026-04-01'),
+      makeEntry('2026-04-01'),
+      makeEntry('2026-04-01', 'rework'),
+    ]],
+  ]);
+  context.listUtilDailyEntriesByMetric = (_teamName, year, month, metricKey) => {
+    assert.equal(metricKey, 'amount');
+    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+    return {
+      period: periodByMonth.get(monthKey),
+      entries: entriesByMonth.get(monthKey) || [],
+    };
+  };
+
+  const result = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'work_time',
+    skipUtilityReady: true,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].segments[0].reference, 8);
+  assert.equal(result.candidates[0].segments[0].current, 16);
+  assert.equal(result.candidates[0].segments[1].reference, 8);
+  assert.equal(result.candidates[0].segments[1].current, 16);
+});
+
 test('util runtime browser adapter builds report memo candidates for production stats', async () => {
   const { context } = createContext();
   const makeEntry = (dateLabel, amount, productName, moistureExcludedYield, equipmentCapa, workTime = null, operationTime = null) => ({

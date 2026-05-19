@@ -52,6 +52,25 @@
                 .toLowerCase();
         }
 
+        function normalizeUtilProductionKind(value) {
+            const normalized = String(value ?? '')
+                .trim()
+                .toLowerCase()
+                .replace(/[\s_-]+/g, '');
+            if (
+                normalized === 'rework'
+                || normalized === 'reprocess'
+                || normalized === 'reprocessed'
+                || normalized === 'reprocessedproduct'
+                || normalized === 'reworkproduct'
+                || normalized === '\uC7AC\uAC00\uACF5'
+                || normalized === '\uC7AC\uAC00\uACF5\uD488'
+            ) {
+                return 'rework';
+            }
+            return 'normal';
+        }
+
         function canonicalizeUtilDedupeMetric(value) {
             const parsed = parseUtilAmount(value);
             return Number.isFinite(parsed) ? String(parsed) : '';
@@ -86,7 +105,7 @@
             }
         }
 
-        async function parseUtilProductionExcelFile(file, fallbackTeamName) {
+        async function parseUtilProductionExcelFile(file, fallbackTeamName, options = {}) {
             const spreadsheetApi = getUtilProductionImportSpreadsheetApi();
             if (!spreadsheetApi) throw new Error('엑셀 라이브러리 로드 실패');
             const buffer = await file.arrayBuffer();
@@ -100,6 +119,7 @@
                 file?.size,
                 file?.lastModified
             );
+            const productionKind = normalizeUtilProductionKind(options?.productionKind ?? options?.kind);
             const rows = [];
             let parsedSheetCount = 0;
             workbook.SheetNames.forEach(sheetName => {
@@ -138,6 +158,7 @@
                         date: formatUtilYmd(dateObj),
                         team: String(resolvedTeam || fallbackTeamName || teamValue || '').trim(),
                         lineName,
+                        productionKind,
                         productCode,
                         productName,
                         amount: Number.isFinite(amount) ? amount : null,
@@ -158,12 +179,12 @@
             return rows;
         }
 
-        async function parseUtilProductionExcelFiles(files, fallbackTeamName) {
+        async function parseUtilProductionExcelFiles(files, fallbackTeamName, options = {}) {
             const normalizedFallbackTeam = String(fallbackTeamName || '').trim();
             const targetFiles = Array.isArray(files) ? files : [];
             const parsedList = await Promise.all(targetFiles.map(async file => {
                 try {
-                    const rows = await parseUtilProductionExcelFile(file, normalizedFallbackTeam);
+                    const rows = await parseUtilProductionExcelFile(file, normalizedFallbackTeam, options);
                     return {
                         ok: true,
                         fileName: String(file?.name || '').trim(),
@@ -368,6 +389,7 @@
                     const hasMetricValue = Number.isFinite(amount);
                     if (!parsed || !hasMetricValue) return;
                     const lineName = String(entry?.lineName ?? entry?.line ?? entry?.lineNm ?? '').trim();
+                    const productionKind = normalizeUtilProductionKind(entry?.productionKind ?? entry?.production_kind ?? entry?.kind);
                     const productCode = String(entry?.productCode ?? entry?.itemCode ?? entry?.code ?? '').trim();
                     const productName = String(entry?.productName ?? entry?.itemName ?? entry?.product ?? '').trim();
                     const teamName = String(entry?.team ?? team?.name ?? '').trim();
@@ -375,6 +397,7 @@
                         date: formatUtilDailyDateKey(parsed),
                         team: teamName || team?.name || '',
                         lineName,
+                        productionKind,
                         productCode,
                         productName,
                         amount,
@@ -396,6 +419,7 @@
                         equipmentCapa: Number.isFinite(equipmentCapa) ? equipmentCapa : null,
                         equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null,
                         lineName,
+                        productionKind,
                         productCode,
                         productName,
                         teamName,
@@ -552,9 +576,11 @@
             const hasMetricValue = amount !== '';
             if (!parsedDate || !hasMetricValue || !teamKey) return '';
             const lineName = normalizeUtilDedupeText(entry?.lineName ?? entry?.line ?? entry?.lineNm ?? '');
+            const productionKind = normalizeUtilProductionKind(entry?.productionKind ?? entry?.production_kind ?? entry?.kind);
             const productCode = normalizeUtilDedupeText(entry?.productCode ?? entry?.itemCode ?? entry?.code ?? '');
             const productName = normalizeUtilDedupeText(entry?.productName ?? entry?.itemName ?? entry?.product ?? '');
             return [
+                productionKind,
                 formatUtilDailyDateKey(parsedDate),
                 teamKey,
                 lineName,
@@ -631,6 +657,7 @@
                 const rawLineName = String(row?.lineName ?? row?.line ?? row?.values?.[2] ?? '').trim();
                 const productCode = String(row?.productCode ?? row?.itemCode ?? row?.code ?? row?.values?.[3] ?? '').trim();
                 const productName = String(row?.productName ?? row?.product ?? row?.itemName ?? row?.values?.[4] ?? '').trim();
+                const productionKind = normalizeUtilProductionKind(row?.productionKind ?? row?.production_kind ?? row?.kind ?? options?.productionKind);
                 const rawTeamName = String(row?.team ?? row?.teamName ?? row?.values?.[1] ?? '').trim();
                 const teamName = resolveUtilUploadTeamName(rawTeamName, fallbackTeam, `${rawLineName} ${productName}`, rawLineName);
                 const lineName = normalizeUtilProductionStoredLineName(teamName, rawLineName);
@@ -648,6 +675,7 @@
                     equipmentCapa: Number.isFinite(equipmentCapa) ? equipmentCapa : null,
                     equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null,
                     lineName,
+                    productionKind,
                     productCode,
                     productName,
                     team: teamName,

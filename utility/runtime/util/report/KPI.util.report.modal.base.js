@@ -38,7 +38,6 @@
         function bindUtilReportModalControls(modal) {
             if (!modal) return;
             bindUtilReportInlineInsightControls(modal);
-            bindUtilReportModalBodyDrag(modal);
             bindUtilReportDonutRowDrag(modal);
             if (modal.dataset.bound === 'true') return;
             modal.dataset.bound = 'true';
@@ -46,16 +45,6 @@
             modal.addEventListener('change', event => {
                 const role = event.target?.getAttribute?.('data-role') || '';
                 if (!role.startsWith('util-report-modal-')) return;
-                if (role === 'util-report-modal-year-color') {
-                    const yearType = event.target?.getAttribute?.('data-year-type') === 'prev' ? 'prev' : 'current';
-                    const defaultColor = yearType === 'prev' ? '#334155' : '#1d4ed8';
-                    const nextColor = normalizeUtilReportColor(event.target.value, defaultColor);
-                    if (yearType === 'prev') UtilReportState.prevYearColor = nextColor;
-                    else UtilReportState.currentYearColor = nextColor;
-                    event.target.value = nextColor;
-                    runUtilReportFromState({ renderModal: true });
-                    return;
-                }
                 if (role === 'util-report-modal-category') {
                     const categoryValue = String(event.target?.value || '').trim();
                     UtilReportState.categoryKey = normalizeUtilReportCategory(categoryValue);
@@ -113,20 +102,6 @@
                     if (focusUtilReportDetailRowByMonth(modal, { monthToken, monthKey, seriesKey }, { scroll: true })) {
                         return;
                     }
-                }
-                const chartFullscreenToggleBtn = event.target.closest('[data-role="util-report-modal-chart-fullscreen-toggle"]');
-                if (chartFullscreenToggleBtn) {
-                    UtilReportState.chartFullscreen = !(UtilReportState.chartFullscreen === true);
-                    syncUtilReportModalControls(modal);
-                    renderUtilReportModal(UtilReportState.lastResult || runUtilReportFromState({ renderModal: false }));
-                    return;
-                }
-                const chartTypeToggleBtn = event.target.closest('[data-role="util-report-modal-chart-type-toggle"]');
-                if (chartTypeToggleBtn) {
-                    UtilReportState.chartType = UtilReportState.chartType === 'line' ? 'bar' : 'line';
-                    syncUtilReportChartTypeToggleButton(chartTypeToggleBtn, UtilReportState.chartType);
-                    runUtilReportFromState({ renderModal: true });
-                    return;
                 }
                 const totalCompositionToggleBtn = event.target.closest('[data-role="util-report-composition-toggle-view"]');
                 if (totalCompositionToggleBtn) {
@@ -347,73 +322,48 @@
                         </div>
                     </div>
                     <div class="util-report-modal-body">
-                        <div class="util-report-chart-shell" data-role="util-report-modal-chart-shell">
-                            <div class="util-report-chart-inline-controls">
-                                <div class="util-report-chart-inline-left">
-                                    <div class="util-report-modal-group util-report-modal-group-category">
-                                        <div class="util-report-modal-field">
-                                            <label>항목</label>
-                                            <select data-role="util-report-modal-category">
-                                                <option value="cost">비용</option>
-                                                <option value="production">생산량</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="util-report-modal-group util-report-modal-group-period">
-                                        <div class="util-report-modal-field">
-                                            <label>시작</label>
-                                            <select data-role="util-report-modal-from"></select>
-                                        </div>
-                                        <div class="util-report-modal-field">
-                                            <label>끝</label>
-                                            <select data-role="util-report-modal-to"></select>
-                                        </div>
-                                        <div class="util-report-modal-field">
-                                            <label>기준년도</label>
-                                            <select data-role="util-report-modal-compare-year"></select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="util-report-chart-inline-right">
-                                    <div class="util-report-modal-group util-report-modal-group-display">
-                                        <div class="util-report-modal-field">
-                                            <label>단위</label>
-                                            <select data-role="util-report-modal-unit">
-                                                <option value="krw">원</option>
-                                                <option value="thousand">천원</option>
-                                                <option value="million">백만원</option>
-                                            </select>
-                                        </div>
-                                        <div class="util-report-modal-field">
-                                            <label>소수</label>
-                                            <select data-role="util-report-modal-decimals">
-                                                <option value="0">0</option>
-                                                <option value="1">1</option>
-                                                <option value="2">2</option>
-                                                <option value="3">3</option>
-                                            </select>
-                                        </div>
-                                        <div class="util-report-modal-field util-report-modal-field-check">
-                                            <label>레이블</label>
-                                            <label class="util-report-modal-checkbox">
-                                                <input type="checkbox" data-role="util-report-modal-show-labels" />
-                                                <span>표시</span>
-                                            </label>
-                                        </div>
-                                        <div class="util-report-modal-field">
-                                            <label>그래프</label>
-                                            <button type="button" class="util-report-chart-type-toggle" data-role="util-report-modal-chart-type-toggle" data-chart-type="bar">막대</button>
-                                        </div>
-                                        <div class="util-report-modal-field">
-                                            <label>화면</label>
-                                            <button type="button" class="util-report-chart-type-toggle util-report-chart-icon-toggle" data-role="util-report-modal-chart-fullscreen-toggle" aria-label="차트 확대" title="차트 확대"><i class="fas fa-expand" aria-hidden="true"></i></button>
-                                        </div>
-                                    </div>
+                        <div class="util-report-modal-toolbar" data-role="util-report-modal-toolbar">
+                            <div class="util-report-modal-group util-report-modal-group-category">
+                                <div class="util-report-modal-field">
+                                    <label>항목</label>
+                                    <select data-role="util-report-modal-category">
+                                        <option value="cost">비용</option>
+                                        <option value="production">생산량</option>
+                                    </select>
                                 </div>
                             </div>
-                            <div class="util-report-chart-host-wrap" data-role="util-report-modal-chart-wrap">
-                                <div class="util-report-chart-host" data-role="util-report-modal-chart"></div>
-                                <div class="util-report-chart-inline-meta" data-role="util-report-modal-chart-meta"></div>
+                            <div class="util-report-modal-group util-report-modal-group-period">
+                                <div class="util-report-modal-field">
+                                    <label>시작</label>
+                                    <select data-role="util-report-modal-from"></select>
+                                </div>
+                                <div class="util-report-modal-field">
+                                    <label>끝</label>
+                                    <select data-role="util-report-modal-to"></select>
+                                </div>
+                                <div class="util-report-modal-field">
+                                    <label>기준년도</label>
+                                    <select data-role="util-report-modal-compare-year"></select>
+                                </div>
+                            </div>
+                            <div class="util-report-modal-group util-report-modal-group-display">
+                                <div class="util-report-modal-field">
+                                    <label>단위</label>
+                                    <select data-role="util-report-modal-unit">
+                                        <option value="krw">원</option>
+                                        <option value="thousand">천원</option>
+                                        <option value="million">백만원</option>
+                                    </select>
+                                </div>
+                                <div class="util-report-modal-field">
+                                    <label>소수</label>
+                                    <select data-role="util-report-modal-decimals">
+                                        <option value="0">0</option>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                         <div class="util-report-donut-row">
@@ -427,7 +377,7 @@
                             <div class="util-report-inline-insight-head">
                                 <div class="util-report-inline-insight-meta">
                                     <div class="util-report-inline-insight-title">상세표</div>
-                                    <div class="util-report-inline-insight-note">차트/원형그래프를 눌러 기준을 바꾸고, 상단 표 분리 버튼으로 별도 창을 켜고 끕니다.</div>
+                                    <div class="util-report-inline-insight-note">원형그래프를 눌러 기준을 바꾸고, 상단 표 분리 버튼으로 별도 창을 켜고 끕니다.</div>
                                 </div>
                             </div>
                             <div data-role="util-report-inline-body"></div>
@@ -463,8 +413,8 @@
                 });
             }
 
-            if (!getUtilReportModalRootFlag('__utilReportChartResizeBound')) {
-                setUtilReportModalRootFlag('__utilReportChartResizeBound', true);
+            if (!getUtilReportModalRootFlag('__utilReportModalResizeBound')) {
+                setUtilReportModalRootFlag('__utilReportModalResizeBound', true);
                 addUtilReportModalGlobalListener('resize', () => {
                     const opened = document.getElementById('util-report-modal');
                     if (!opened || !opened.classList.contains('is-open')) return;
@@ -494,8 +444,6 @@
         function closeUtilReportModal() {
             const modal = document.getElementById('util-report-modal');
             if (!modal) return;
-            UtilReportState.chartFullscreen = false;
-            modal.classList.remove('is-chart-fullscreen');
             modal.classList.remove('is-open');
             closeUtilReportDetachedTableWindow();
             closeUtilReportBuilderModal(true);
@@ -591,26 +539,6 @@
             if (key === 'waste_cost') return `폐수 비용 (${getUtilReportUnitLabel(UtilReportState.unitKey)})`;
             if (key === 'production') return `생산량 (${getUtilReportProductionUnitLabel(UtilReportState.productionUnitKey)})`;
             return getUtilReportMetricLabel(key, UtilReportState.unitKey);
-        }
-
-        function buildUtilReportUsagePerProductionPoints(result, itemKey = 'electric') {
-            const normalizedItemKey = normalizeUtilReportBuilderItemKey(itemKey);
-            const usagePropKey = normalizedItemKey === 'gas'
-                ? 'gasUsage'
-                : (normalizedItemKey === 'waste' ? 'wasteUsage' : 'electricUsage');
-            const rows = Array.isArray(result?.rows) ? result.rows : [];
-            return rows.map(row => {
-                const usage = Number(row?.[usagePropKey]);
-                const production = Number(row?.production);
-                const value = Number.isFinite(usage) && Number.isFinite(production) && production > 0
-                    ? usage / production
-                    : NaN;
-                return {
-                    key: row?.monthKey,
-                    label: formatUtilReportMonthShort(row?.monthKey),
-                    value
-                };
-            });
         }
 
         function renderUtilReportBuilderVizIsolatedChart(points, isolatedSeriesKey, options = {}) {

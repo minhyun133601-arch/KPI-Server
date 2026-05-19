@@ -349,7 +349,7 @@ test('kpi html loads shared split files before production bootstrap', () => {
   const categoriesIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.categories.js?v=2');
   const stateIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.state.js?v=1');
   const summaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.summary.js?v=2');
-  const productionIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=243');
+  const productionIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=246');
 
   assert.ok(sharedIndex >= 0, 'work shared loader is missing');
   assert.ok(categoriesIndex > sharedIndex, 'shared categories must load after shared.js');

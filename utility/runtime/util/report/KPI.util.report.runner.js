@@ -192,10 +192,6 @@
             const unitRaw = modal.querySelector('[data-role="util-report-modal-unit"]')?.value
                 || (categoryKey === 'production' ? UtilReportState.productionUnitKey : UtilReportState.unitKey);
             const decimals = Number(modal.querySelector('[data-role="util-report-modal-decimals"]')?.value || UtilReportState.decimals);
-            const chartType = modal.querySelector('[data-role="util-report-modal-chart-type-toggle"]')?.dataset?.chartType
-                || modal.querySelector('[data-role="util-report-modal-chart-type"]')?.value
-                || UtilReportState.chartType;
-            const showChartLabelsInput = modal.querySelector('[data-role="util-report-modal-show-labels"]');
             const compareYearRaw = modal.querySelector('[data-role="util-report-modal-compare-year"]')?.value ?? UtilReportState.compareYear;
 
             const range = normalizeMonthRange(from, to);
@@ -226,8 +222,6 @@
             UtilReportState.decimals = Number.isFinite(decimals) ? Math.max(0, Math.min(4, Math.floor(decimals))) : 0;
             UtilReportState.metricKey = resolveUtilReportMetricKey(scopeKey, categoryKey);
             UtilReportState.activeMetricCard = UtilReportState.metricKey;
-            UtilReportState.chartType = chartType === 'line' ? 'line' : 'bar';
-            UtilReportState.showChartLabels = showChartLabelsInput ? showChartLabelsInput.checked : (UtilReportState.showChartLabels === true);
             UtilReportState.compareYear = String(compareYearRaw || '').trim();
             UtilReportState.builderCustomMode = false;
         }
@@ -245,10 +239,6 @@
             const categorySelect = modal.querySelector('[data-role="util-report-modal-category"]');
             const unitSelect = modal.querySelector('[data-role="util-report-modal-unit"]');
             const decimalsSelect = modal.querySelector('[data-role="util-report-modal-decimals"]');
-            const chartTypeSelect = modal.querySelector('[data-role="util-report-modal-chart-type"]');
-            const chartTypeToggleBtn = modal.querySelector('[data-role="util-report-modal-chart-type-toggle"]');
-            const chartFullscreenToggleBtn = modal.querySelector('[data-role="util-report-modal-chart-fullscreen-toggle"]');
-            const showLabelsCheckbox = modal.querySelector('[data-role="util-report-modal-show-labels"]');
             const compareYearSelect = modal.querySelector('[data-role="util-report-modal-compare-year"]');
             const overviewResetBtn = modal.querySelector('[data-role="util-report-modal-reset-overview"]');
 
@@ -301,12 +291,6 @@
                 syncUtilReportUnitSelectOptions(unitSelect, UtilReportState.categoryKey);
             }
             if (decimalsSelect) decimalsSelect.value = String(UtilReportState.decimals);
-            if (chartTypeSelect) chartTypeSelect.value = UtilReportState.chartType;
-            syncUtilReportChartTypeToggleButton(chartTypeToggleBtn, UtilReportState.chartType);
-            UtilReportState.chartFullscreen = UtilReportState.chartFullscreen === true;
-            syncUtilReportChartFullscreenToggleButton(chartFullscreenToggleBtn, UtilReportState.chartFullscreen);
-            modal.classList.toggle('is-chart-fullscreen', UtilReportState.chartFullscreen);
-            if (showLabelsCheckbox) showLabelsCheckbox.checked = UtilReportState.showChartLabels === true;
 
             const compareBaseResult = UtilReportState.lastResult || buildUtilReportMonthlyRows(UtilReportState);
             const compareOptions = getUtilReportCompareYearOptions(compareBaseResult);

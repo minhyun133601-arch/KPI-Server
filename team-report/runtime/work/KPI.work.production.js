@@ -1,6 +1,11 @@
         const WORK_TEAM_CALENDAR_OVERVIEW_KEY = 'work_team_calendar_overview';
         const WORK_PRODUCTION_ENTRY_LAST_MODIFIED_LABEL = '\uD300\uBCC4\uB0B4\uC5ED\uC11C';
-        const WORK_PRODUCTION_ENTRY_INPUT_ID = 'work-production-entry-file-input';
+        const WORK_PRODUCTION_PASTE_MODAL_ID = 'work-production-paste-modal';
+        const WORK_PRODUCTION_KIND_NORMAL = 'normal';
+        const WORK_PRODUCTION_KIND_REWORK = 'rework';
+        const WorkProductionImportState = {
+            productionKind: WORK_PRODUCTION_KIND_NORMAL
+        };
         const WORK_PRODUCTION_IMPORT_CONTEXT = Object.freeze({
             TARGET_COLS: ['A', 'B', 'C', 'D', 'E', 'F'],
             HEADER_ROW: 3,
@@ -20,6 +25,35 @@
                 F: [/생산량/]
             }
         });
+
+        function normalizeWorkProductionKind(value) {
+            const normalized = String(value ?? '')
+                .trim()
+                .toLowerCase()
+                .replace(/[\s_-]+/g, '');
+            if (
+                normalized === WORK_PRODUCTION_KIND_REWORK
+                || normalized === 'reprocess'
+                || normalized === 'reprocessed'
+                || normalized === 'reprocessedproduct'
+                || normalized === 'reworkproduct'
+                || normalized === '\uC7AC\uAC00\uACF5'
+                || normalized === '\uC7AC\uAC00\uACF5\uD488'
+            ) {
+                return WORK_PRODUCTION_KIND_REWORK;
+            }
+            return WORK_PRODUCTION_KIND_NORMAL;
+        }
+
+        function getWorkProductionKindLabel(kind) {
+            return normalizeWorkProductionKind(kind) === WORK_PRODUCTION_KIND_REWORK
+                ? '\uC7AC\uAC00\uACF5\uD488'
+                : '\uC815\uC0C1';
+        }
+
+        function isWorkProductionReworkKind(kind) {
+            return normalizeWorkProductionKind(kind) === WORK_PRODUCTION_KIND_REWORK;
+        }
 
         function refreshWorkProductionAfterMutation() {
             if (typeof refreshUtilProductionDailyIndex === 'function') {
@@ -79,34 +113,20 @@
             return compareWorkProductionRowsByFallback(left, right);
         }
 
-        function buildWorkProductionFileMetaMap(files) {
-            const map = new Map();
-            (files || []).forEach(file => {
-                const fileName = String(file?.name || '').trim();
-                if (!fileName) return;
-                const size = Number(file?.size) || 0;
-                const lastModified = Number(file?.lastModified) || 0;
-                map.set(fileName, {
-                    fileName,
-                    fingerprint: `${fileName.toLowerCase()}|${size}|${lastModified}`
-                });
-            });
-            return map;
-        }
-
-        function buildWorkProductionBridgeRows(rows, files) {
-            const fileMetaMap = buildWorkProductionFileMetaMap(files);
+        function buildWorkProductionBridgeRows(rows, options = {}) {
             const productionIndex = WORK_PRODUCTION_IMPORT_CONTEXT.PRODUCTION_VALUE_INDEX;
             const teamIndex = WORK_PRODUCTION_IMPORT_CONTEXT.TEAM_VALUE_INDEX;
             const lineIndex = WORK_PRODUCTION_IMPORT_CONTEXT.LINE_VALUE_INDEX;
             const productCodeIndex = WORK_PRODUCTION_IMPORT_CONTEXT.PRODUCT_CODE_VALUE_INDEX;
             const productNameIndex = WORK_PRODUCTION_IMPORT_CONTEXT.PRODUCT_NAME_VALUE_INDEX;
+            const defaultProductionKind = normalizeWorkProductionKind(options?.productionKind);
             return (rows || []).map(row => {
                 const fileName = String(row?.fileName || '').trim();
                 return {
                     date: row?.values?.[0] ?? '',
                     team: row?.values?.[teamIndex] ?? '',
                     lineName: row?.values?.[lineIndex] ?? '',
+                    productionKind: normalizeWorkProductionKind(row?.productionKind ?? row?.kind ?? defaultProductionKind),
                     productCode: row?.productCode ?? row?.values?.[productCodeIndex] ?? '',
                     productName: row?.values?.[productNameIndex] ?? '',
                     amount: row?.values?.[productionIndex] ?? '',
@@ -116,7 +136,7 @@
                     equipmentCapa: row?.equipmentCapa ?? '',
                     equipmentUtilization: row?.equipmentUtilization ?? '',
                     sourceFileName: fileName,
-                    sourceFingerprint: String(fileMetaMap.get(fileName)?.fingerprint || '')
+                    sourceFingerprint: String(row?.sourceFingerprint || row?.fingerprint || row?.fileFingerprint || '')
                 };
             });
         }
@@ -147,58 +167,34 @@
             if (typeof refreshUtilProductionArchiveCountBadges === 'function') refreshUtilProductionArchiveCountBadges();
         }
 
-        async function importWorkProductionEntryFiles(fileList) {
-            const files = Array.from(fileList || []).filter(Boolean);
-            if (!files.length) return false;
-            const parsingApi = getWorkProductionImportParsingApi();
-            if (!parsingApi || typeof parsingApi.parseExcelFile !== 'function') {
-                alert('생산량 기입 기능을 불러오지 못했습니다.');
-                return false;
-            }
-            if (typeof mergeUtilProductionExtractorRows !== 'function') {
-                alert('생산량 저장 기능을 불러오지 못했습니다.');
-                return false;
-            }
+        function buildWorkProductionImportSuccessMessage(result) {
+            const patchedNotice = result.patchedCount > 0
+                ? `, 보조값 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
+                : '';
+            const replacedNotice = result.replacedCount > 0
+                ? `, 기존 ${result.replacedCount.toLocaleString('ko-KR')}건 교체`
+                : '';
+            return `기입 완료: ${result.addedCount.toLocaleString('ko-KR')}건 기입${replacedNotice}, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}`;
+        }
 
-            const parseContext = getWorkProductionImportContext();
-            const parsedResults = await Promise.all(files.map(async file => {
-                try {
-                    return {
-                        ok: true,
-                        fileName: String(file?.name || '').trim(),
-                        parsed: await parsingApi.parseExcelFile(parseContext, file, DEFAULT_UTIL_PRODUCTION_PERIOD.startDay)
-                    };
-                } catch (error) {
-                    return {
-                        ok: false,
-                        fileName: String(file?.name || '').trim(),
-                        message: String(error?.message || '형식 오류')
-                    };
-                }
-            }));
-            const parsedFiles = parsedResults
-                .filter(item => item.ok && item.parsed)
-                .map(item => item.parsed);
-            const failedFiles = parsedResults
-                .filter(item => !item.ok)
-                .map(item => ({
-                    fileName: item.fileName || '이름 없는 파일',
-                    message: item.message || '형식 오류'
-                }));
-            if (!parsedFiles.length) {
-                const failedNames = failedFiles.map(item => item.fileName).filter(Boolean).join(', ');
-                throw new Error(failedNames ? `형식 오류 파일: ${failedNames}` : '기입 가능한 생산량 데이터가 없습니다.');
-            }
+        function getWorkProductionPasteReferenceYear() {
+            const dataKey = String(WorkState?.teamCalendarModal || WorkState?.teamCalendarHubDataKey || '').trim();
+            const monthKey = typeof getWorkTeamCalendarActiveMonth === 'function'
+                ? String(getWorkTeamCalendarActiveMonth(dataKey) || '').trim()
+                : '';
+            const year = Number(monthKey.slice(0, 4));
+            if (Number.isFinite(year) && year >= 1990 && year <= 2100) return year;
+            return new Date().getFullYear();
+        }
 
-            let rows = [];
-            parsedFiles.forEach(parsed => {
-                rows.push(...(Array.isArray(parsed?.rows) ? parsed.rows : []));
-            });
-            const dedup = typeof parsingApi.deduplicateRows === 'function'
+        async function commitWorkProductionEntryRows(rows, options = {}) {
+            const parsingApi = options.parsingApi || getWorkProductionImportParsingApi();
+            const parseContext = options.parseContext || getWorkProductionImportContext();
+            const productionKind = normalizeWorkProductionKind(options?.productionKind ?? WorkProductionImportState.productionKind);
+            const dedup = typeof parsingApi?.deduplicateRows === 'function'
                 ? parsingApi.deduplicateRows(parseContext, rows)
                 : { rows, removedCount: 0 };
-            rows = (dedup.rows || []).sort(compareWorkProductionRowsByDateAsc);
-
+            const sortedRows = (dedup.rows || []).sort(compareWorkProductionRowsByDateAsc);
             const rollbackSnapshot = {
                 dailyData: JSON.parse(JSON.stringify(UTIL_PRODUCTION_DAILY_DATA || [])),
                 archiveMeta: JSON.parse(JSON.stringify(UTIL_PRODUCTION_ARCHIVE_META || [])),
@@ -211,8 +207,9 @@
                 const previousStartDay = UtilProductionState.startDay;
                 UtilProductionState.startDay = DEFAULT_UTIL_PRODUCTION_PERIOD.startDay;
                 const startDayChanged = previousStartDay !== UtilProductionState.startDay;
-                const result = mergeUtilProductionExtractorRows(buildWorkProductionBridgeRows(rows, files), {
-                    fallbackTeam: ''
+                const result = mergeUtilProductionExtractorRows(buildWorkProductionBridgeRows(sortedRows, { productionKind }), {
+                    fallbackTeam: '',
+                    productionKind
                 });
                 let saved = true;
                 if (startDayChanged && result.addedCount === 0 && result.patchedCount === 0 && result.replacedCount === 0) {
@@ -227,54 +224,148 @@
                     setLastModified(WORK_PRODUCTION_ENTRY_LAST_MODIFIED_LABEL);
                 }
                 refreshWorkProductionAfterMutation();
-                const failedNotice = failedFiles.length
-                    ? `, 형식 오류 제외 ${failedFiles.length.toLocaleString('ko-KR')}개`
-                    : '';
-                const patchedNotice = result.patchedCount > 0
-                    ? `, 보조값 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
-                    : '';
-                const replacedNotice = result.replacedCount > 0
-                    ? `, 기존 ${result.replacedCount.toLocaleString('ko-KR')}건 교체`
-                    : '';
-                alert(`기입 완료: ${result.addedCount.toLocaleString('ko-KR')}건 기입${replacedNotice}, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`);
-                return true;
+                return { result };
             } catch (error) {
                 restoreWorkProductionImportSnapshot(rollbackSnapshot);
                 throw error;
             }
         }
 
-        function ensureWorkProductionEntryInput() {
-            let input = document.getElementById(WORK_PRODUCTION_ENTRY_INPUT_ID);
-            if (input) return input;
-            input = document.createElement('input');
-            input.id = WORK_PRODUCTION_ENTRY_INPUT_ID;
-            input.type = 'file';
-            input.accept = '.xlsx,.xls';
-            input.multiple = true;
-            input.hidden = true;
-            input.addEventListener('change', async () => {
-                const files = Array.from(input.files || []);
-                input.value = '';
-                if (!files.length) return;
-                try {
-                    await importWorkProductionEntryFiles(files);
-                } catch (error) {
-                    alert(`생산량 기입 실패: ${error?.message || '알 수 없는 오류'}`);
-                }
+        async function importWorkProductionPastedText(pastedText, options = {}) {
+            const text = String(pastedText || '');
+            if (!text.trim()) throw new Error('붙여넣은 내용이 없습니다.');
+            const productionKind = normalizeWorkProductionKind(options?.productionKind ?? WorkProductionImportState.productionKind);
+            const parsingApi = getWorkProductionImportParsingApi();
+            if (!parsingApi || typeof parsingApi.parsePastedTableText !== 'function') {
+                alert('생산량 붙여넣기 기능을 불러오지 못했습니다.');
+                return false;
+            }
+            if (typeof mergeUtilProductionExtractorRows !== 'function') {
+                alert('생산량 저장 기능을 불러오지 못했습니다.');
+                return false;
+            }
+
+            const parseContext = getWorkProductionImportContext();
+            const parsed = parsingApi.parsePastedTableText(parseContext, text, {
+                cycleStartDay: DEFAULT_UTIL_PRODUCTION_PERIOD.startDay,
+                fileName: `${getWorkProductionKindLabel(productionKind)} 붙여넣기`,
+                referenceYear: getWorkProductionPasteReferenceYear(),
+                sheetName: '붙여넣기'
             });
-            document.body.appendChild(input);
-            return input;
+            const { result } = await commitWorkProductionEntryRows(parsed.rows, {
+                parsingApi,
+                parseContext,
+                productionKind
+            });
+            alert(buildWorkProductionImportSuccessMessage(result));
+            return true;
         }
 
-        function openWorkProductionEntryModal(event) {
+        function closeWorkProductionPasteModal(event) {
             if (event && typeof event.stopPropagation === 'function') {
                 event.stopPropagation();
             }
             if (event && typeof event.preventDefault === 'function') {
                 event.preventDefault();
             }
-            ensureWorkProductionEntryInput().click();
+            document.getElementById(WORK_PRODUCTION_PASTE_MODAL_ID)?.remove();
+            return true;
+        }
+
+        function setWorkProductionPasteModalBusy(modal, busy) {
+            if (!modal || typeof modal.querySelectorAll !== 'function') return;
+            modal.querySelectorAll('[data-work-production-paste-control]').forEach(node => {
+                node.disabled = busy;
+            });
+            const textarea = modal.querySelector('[data-work-production-paste-text]');
+            if (textarea) textarea.disabled = busy;
+        }
+
+        async function submitWorkProductionPasteModal(modal = document.getElementById(WORK_PRODUCTION_PASTE_MODAL_ID)) {
+            if (!modal) return false;
+            const textarea = modal.querySelector('[data-work-production-paste-text]');
+            const pastedText = String(textarea?.value || '');
+            if (!pastedText.trim()) {
+                alert('붙여넣은 내용이 없습니다.');
+                textarea?.focus?.();
+                return false;
+            }
+            const productionKind = normalizeWorkProductionKind(modal.dataset.productionKind);
+            setWorkProductionPasteModalBusy(modal, true);
+            try {
+                const imported = await importWorkProductionPastedText(pastedText, { productionKind });
+                if (imported) closeWorkProductionPasteModal();
+                return imported;
+            } catch (error) {
+                alert(`생산량 붙여넣기 실패: ${error?.message || '알 수 없는 오류'}`);
+                return false;
+            } finally {
+                if (document.getElementById(WORK_PRODUCTION_PASTE_MODAL_ID) === modal) {
+                    setWorkProductionPasteModalBusy(modal, false);
+                }
+            }
+        }
+
+        function handleWorkProductionPasteKeydown(event) {
+            const key = String(event?.key || '').toLowerCase();
+            if ((event?.ctrlKey || event?.metaKey) && key === 's') {
+                event.preventDefault?.();
+                event.stopPropagation?.();
+                const modal = event.currentTarget?.closest?.(`#${WORK_PRODUCTION_PASTE_MODAL_ID}`)
+                    || document.getElementById(WORK_PRODUCTION_PASTE_MODAL_ID);
+                void submitWorkProductionPasteModal(modal);
+                return true;
+            }
+            if (key === 'escape') {
+                closeWorkProductionPasteModal(event);
+                return true;
+            }
+            return false;
+        }
+
+        function openWorkProductionPasteModal(event, productionKind = WORK_PRODUCTION_KIND_NORMAL) {
+            if (event && typeof event.stopPropagation === 'function') {
+                event.stopPropagation();
+            }
+            if (event && typeof event.preventDefault === 'function') {
+                event.preventDefault();
+            }
+            closeWorkProductionPasteModal();
+            const normalizedKind = normalizeWorkProductionKind(productionKind);
+            WorkProductionImportState.productionKind = normalizedKind;
+            const modal = document.createElement('div');
+            modal.id = WORK_PRODUCTION_PASTE_MODAL_ID;
+            modal.className = 'work-production-paste-modal';
+            modal.dataset.productionKind = normalizedKind;
+            const kindLabel = getWorkProductionKindLabel(normalizedKind);
+            modal.innerHTML = `
+                <section class="work-production-paste-dialog" role="dialog" aria-modal="true" aria-labelledby="work-production-paste-title">
+                    <div class="work-production-paste-head">
+                        <div>
+                            <div id="work-production-paste-title" class="work-production-paste-title">${kindLabel} 생산량</div>
+                            <div class="work-production-paste-subtitle">붙여넣기</div>
+                        </div>
+                        <button type="button" class="work-production-paste-icon-btn" aria-label="닫기" data-work-production-paste-control data-work-production-paste-close>&times;</button>
+                    </div>
+                    <textarea class="work-production-paste-textarea" data-work-production-paste-text spellcheck="false" placeholder="엑셀 표 붙여넣기"></textarea>
+                    <div class="work-production-paste-actions">
+                        <button type="button" class="work-production-paste-btn" data-work-production-paste-control data-work-production-paste-close>취소</button>
+                        <button type="button" class="work-production-paste-btn is-primary" data-work-production-paste-control data-work-production-paste-submit>완료</button>
+                    </div>
+                </section>
+            `;
+            modal.addEventListener('click', clickEvent => {
+                if (clickEvent.target === modal) closeWorkProductionPasteModal(clickEvent);
+            });
+            modal.addEventListener('keydown', handleWorkProductionPasteKeydown);
+            modal.querySelectorAll('[data-work-production-paste-close]').forEach(node => {
+                node.addEventListener('click', closeWorkProductionPasteModal);
+            });
+            modal.querySelector('[data-work-production-paste-submit]')?.addEventListener('click', () => {
+                void submitWorkProductionPasteModal(modal);
+            });
+            document.body.appendChild(modal);
+            setTimeout(() => modal.querySelector('[data-work-production-paste-text]')?.focus?.(), 0);
             return true;
         }
 
@@ -330,7 +421,8 @@
                 <details class="work-team-calendar-production-action-menu${extraClass}">
                     <summary class="work-team-calendar-production-action-toggle" aria-label="생산량 관리">관리</summary>
                     <div class="work-team-calendar-production-action-list">
-                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="entry" onclick="openWorkProductionEntryModal(event)"${disabled}>기입</button>
+                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="paste" data-work-production-kind="normal" onclick="openWorkProductionPasteModal(event, 'normal')"${disabled}>정상</button>
+                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="paste" data-work-production-kind="rework" onclick="openWorkProductionPasteModal(event, 'rework')"${disabled}>재가공품</button>
                         <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="delete" onclick="openWorkProductionDeleteModal(event)"${disabled}>삭제</button>
                     </div>
                 </details>
@@ -430,10 +522,12 @@
                     const operationTime = parseUtilAmount(entry?.operationTime);
                     const equipmentCapa = parseUtilAmount(entry?.equipmentCapa);
                     const equipmentUtilization = parseUtilPercentAmount(entry?.equipmentUtilization);
+                    const productionKind = normalizeWorkProductionKind(entry?.productionKind ?? entry?.production_kind ?? entry?.kind);
                     const dedupeKey = String(entry?.entryKey || '').trim() || [
                         dateKey,
                         String(entry?.teamName || sourceTeam || '').trim(),
                         String(entry?.lineName || '').trim(),
+                        productionKind,
                         String(entry?.productCode || entry?.itemCode || '').trim(),
                         String(entry?.productName || '').trim(),
                         Number.isFinite(amount) ? amount : ''
@@ -444,6 +538,7 @@
                         dateKey,
                         teamName: String(entry?.teamName || sourceTeam || '').trim(),
                         lineName: String(entry?.lineName || '').trim(),
+                        productionKind,
                         productCode: String(entry?.productCode || entry?.itemCode || '').trim(),
                         productName: String(entry?.productName || '').trim(),
                         amount: Number.isFinite(amount) ? amount : null,
@@ -461,6 +556,8 @@
                 items.sort((a, b) => {
                     const lineDiff = String(a.lineName || '').localeCompare(String(b.lineName || ''), 'ko');
                     if (lineDiff !== 0) return lineDiff;
+                    const kindDiff = normalizeWorkProductionKind(a.productionKind).localeCompare(normalizeWorkProductionKind(b.productionKind), 'ko');
+                    if (kindDiff !== 0) return kindDiff;
                     return String(a.productName || '').localeCompare(String(b.productName || ''), 'ko');
                 });
                 return {
@@ -490,6 +587,10 @@
                     ? items.map(item => {
                         const productName = item.productName || emptyLabel;
                         const productCode = String(item?.productCode || '').trim();
+                        const isRework = isWorkProductionReworkKind(item?.productionKind);
+                        const kindBadgeHtml = isRework
+                            ? `<span class="work-team-calendar-production-kind is-rework">${escapeHtml(getWorkProductionKindLabel(item?.productionKind))}</span>`
+                            : '';
                         const itemYieldLabel = formatWorkTeamCalendarYieldLabel(item?.moistureExcludedYield);
                         const itemCapaLabel = formatWorkTeamCalendarCapaLabel(item?.equipmentCapa);
                         const itemUtilizationLabel = formatWorkTeamCalendarUtilizationLabel(item?.equipmentUtilization);
@@ -509,7 +610,10 @@
                         return `
                             <div class="work-team-calendar-production-item">
                                 <div class="work-team-calendar-production-main">
-                                    <div class="work-team-calendar-production-name">${escapeHtml(productName)}</div>
+                                    <div class="work-team-calendar-production-name-row">
+                                        <div class="work-team-calendar-production-name">${escapeHtml(productName)}</div>
+                                        ${kindBadgeHtml}
+                                    </div>
                                     <div class="work-team-calendar-production-meta">${escapeHtml([
                                         item.lineName || '라인 미입력',
                                         productCode ? `코드 ${productCode}` : ''
@@ -795,6 +899,7 @@
                         dateKey,
                         String(entry?.teamName || sourceTeam || '').trim(),
                         String(entry?.lineName || '').trim(),
+                        normalizeWorkProductionKind(entry?.productionKind ?? entry?.production_kind ?? entry?.kind),
                         String(entry?.productCode || entry?.itemCode || '').trim(),
                         String(entry?.productName || '').trim()
                     ].join('::');

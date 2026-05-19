@@ -29,14 +29,14 @@ const styleEntries = [
     relativeSegments: ['shell', 'shell-chrome.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/work/work.css?v=064`,
-    manifestHref: './styles/work/work.css?v=064',
+    href: `${runtimeDirName}/app/styles/work/work.css?v=066`,
+    manifestHref: './styles/work/work.css?v=066',
     fileName: 'work.css',
     relativeSegments: ['work', 'work.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/metering/metering.css?v=072`,
-    manifestHref: './styles/metering/metering.css?v=072',
+    href: `${runtimeDirName}/app/styles/metering/metering.css?v=074`,
+    manifestHref: './styles/metering/metering.css?v=074',
     fileName: 'metering.css',
     relativeSegments: ['metering', 'metering.css'],
   },

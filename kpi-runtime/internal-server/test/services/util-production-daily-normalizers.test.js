@@ -11,6 +11,7 @@ import {
   normalizeDateKey,
   normalizeEntry,
   normalizeNumber,
+  normalizeProductionKind,
 } from '../../src/services/util-production-daily/normalizers.js';
 import { buildStatePayload } from '../../src/services/util-production-daily/state.js';
 
@@ -42,6 +43,14 @@ test('normalizeDateKey rejects impossible calendar dates', () => {
   assert.equal(normalizeDateKey('2026-13-01'), '');
 });
 
+test('normalizeProductionKind keeps normal and rework import classes stable', () => {
+  assert.equal(normalizeProductionKind(''), 'normal');
+  assert.equal(normalizeProductionKind('normal'), 'normal');
+  assert.equal(normalizeProductionKind('rework'), 'rework');
+  assert.equal(normalizeProductionKind('reprocessed_product'), 'rework');
+  assert.equal(normalizeProductionKind('\uC7AC\uAC00\uACF5\uD488'), 'rework');
+});
+
 test('buildEntryDedupeKey normalizes team whitespace parentheses and explicit zero', () => {
   const baseEntry = {
     date: '2026-04-01',
@@ -59,6 +68,13 @@ test('buildEntryDedupeKey normalizes team whitespace parentheses and explicit ze
       lineName: '1 호기',
       productName: '제품 A',
       amount: '0',
+    })
+  );
+  assert.notEqual(
+    buildEntryDedupeKey(baseEntry),
+    buildEntryDedupeKey({
+      ...baseEntry,
+      productionKind: 'rework',
     })
   );
   assert.notEqual(
@@ -118,6 +134,7 @@ test('normalizeEntry preserves production and value aliases including zero', () 
     date: '2026-04-02',
     teamName: 'B팀',
     lineNm: '2호기',
+    productionType: 'rework',
     itemCode: 'P-125',
     itemName: '제품B',
     value: '12.5',
@@ -130,6 +147,8 @@ test('normalizeEntry preserves production and value aliases including zero', () 
 
   assert.equal(productionEntry.amount, 0);
   assert.equal(valueEntry.amount, 12.5);
+  assert.equal(productionEntry.productionKind, 'normal');
+  assert.equal(valueEntry.productionKind, 'rework');
   assert.equal(valueEntry.productCode, 'P-125');
   assert.equal(valueEntry.moistureExcludedYield, 9.5);
   assert.equal(valueEntry.workTime, 6);

@@ -751,14 +751,16 @@ async function importUtilEntries(client, rows, maps, force) {
       stats,
       existing ? 'updated' : 'inserted',
       `insert into util_production_daily_entries
-        (id, dedupe_key, production_date, team_name, line_name, product_name,
+        (id, dedupe_key, production_date, team_name, line_name, production_kind, product_code, product_name,
          amount, moisture_excluded_yield, work_time, operation_time, equipment_capa, equipment_utilization,
          source_archive_id, source_fingerprint, source_file_name, created_at, updated_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
        on conflict (dedupe_key) do update set
         production_date = excluded.production_date,
         team_name = excluded.team_name,
         line_name = excluded.line_name,
+        production_kind = excluded.production_kind,
+        product_code = excluded.product_code,
         product_name = excluded.product_name,
         amount = excluded.amount,
         moisture_excluded_yield = excluded.moisture_excluded_yield,
@@ -776,6 +778,8 @@ async function importUtilEntries(client, rows, maps, force) {
         asText(row, 'production_date'),
         asText(row, 'team_name'),
         asText(row, 'line_name'),
+        asText(row, 'production_kind') || 'normal',
+        asText(row, 'product_code'),
         asText(row, 'product_name'),
         asNumeric(row, 'amount'),
         asNumeric(row, 'moisture_excluded_yield'),
