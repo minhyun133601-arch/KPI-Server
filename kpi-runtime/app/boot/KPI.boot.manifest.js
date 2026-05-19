@@ -32,7 +32,6 @@
         "kpi-runtime/sections/KPI.section.factory-adapter.js",
         "kpi-runtime/sections/KPI.section.builders.js",
         "team-report/runtime/work/sections/KPI.sections.work.js",
-        "utility/runtime/util/sections/KPI.sections.util.js",
         "data-entry/runtime/data/sections/KPI.sections.data.js",
         "audit/runtime/audit/sections/KPI.sections.audit.js",
         "kpi-runtime/sections/KPI.sections.report.js",
@@ -67,6 +66,7 @@
         "utility/runtime/util/KPI.util.data-sync.browser-adapter.js",
         "utility/runtime/util/KPI.util.data-sync.js",
         "utility/runtime/util/KPI.util.data-sync.production.js",
+        "utility/apps/production-extractor/runtime/import-parsing.js",
         "utility/runtime/util/KPI.util.production-import.js",
         "utility/runtime/util/production/KPI.util.production.extractor.js",
         "utility/runtime/util/production/KPI.util.production.dataset-tools.js",
@@ -242,13 +242,6 @@
       "scripts": [
         "utility/runtime/util/report/KPI.util.report.sheet.helpers.js",
         "utility/runtime/util/report/KPI.util.report.sheet.js"
-      ]
-    },
-    {
-      "key": "energyOverride",
-      "label": "Utility energy override tail",
-      "scripts": [
-        "utility/runtime/util/energy/KPI.util.energy.tabs.override.js"
       ]
     },
     {

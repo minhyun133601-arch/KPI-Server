@@ -444,6 +444,19 @@
         .work-team-calendar-production-count { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: var(--team-tint, #eff6ff); color: var(--team-accent, #2563eb); font-size: 0.68rem; font-weight: 900; }
         .work-team-calendar-production-summary { font-size: 0.7rem; font-weight: 800; color: #475569; }
         .work-team-calendar-production-summary.is-offday { color: #c2410c; }
+        .work-team-calendar-production-card-actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+        .work-team-calendar-production-action-menu { position: relative; display: inline-flex; }
+        .work-team-calendar-production-action-toggle { list-style: none; min-height: 32px; padding: 6px 10px; border-radius: 10px; border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a; font-size: 0.7rem; font-weight: 900; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; user-select: none; }
+        .work-team-calendar-production-action-toggle::-webkit-details-marker { display: none; }
+        .work-team-calendar-production-action-toggle::after { content: "\\f107"; font-family: "Font Awesome 6 Free"; font-weight: 900; font-size: 0.66rem; color: #64748b; }
+        .work-team-calendar-production-action-menu[open] .work-team-calendar-production-action-toggle { border-color: var(--team-accent, #2563eb); color: var(--team-accent, #2563eb); box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08); }
+        .work-team-calendar-production-action-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; min-width: 92px; padding: 5px; border-radius: 12px; border: 1px solid #dbe7f4; background: #ffffff; box-shadow: 0 18px 34px rgba(15, 23, 42, 0.16); display: grid; gap: 4px; }
+        .work-team-calendar-utility-chip .work-team-calendar-production-action-menu { justify-self: start; margin-top: 5px; }
+        .work-team-calendar-utility-chip .work-team-calendar-production-action-toggle { min-height: 26px; padding: 4px 9px; border-radius: 999px; border-color: rgba(255, 255, 255, 0.28); background: rgba(255, 255, 255, 0.12); color: #ffffff; }
+        .work-team-calendar-utility-chip .work-team-calendar-production-action-menu[open] .work-team-calendar-production-action-toggle { border-color: rgba(255, 255, 255, 0.58); color: #ffffff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 16px rgba(15, 23, 42, 0.16); }
+        .work-team-calendar-production-action-btn { width: 100%; min-height: 30px; padding: 5px 9px; border: 0; border-radius: 8px; background: transparent; color: #334155; font-size: 0.7rem; font-weight: 900; text-align: left; cursor: pointer; }
+        .work-team-calendar-production-action-btn:hover { background: var(--team-tint, #eff6ff); color: var(--team-accent, #2563eb); }
+        .work-team-calendar-production-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
         .work-team-calendar-production-list { display: grid; gap: 7px; }
         .work-team-calendar-production-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 14px; border: 1px solid #e2e8f0; background: #ffffff; }
         .work-team-calendar-production-item.is-utility-detail-card { align-items: flex-start; justify-content: flex-start; }

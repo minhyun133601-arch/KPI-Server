@@ -265,6 +265,7 @@ test('work shared split files expose category, state, and summary helpers togeth
   assert.equal(typeof context.getWorkTeamCalendarActiveMonth, 'function');
   assert.equal(typeof context.getWorkTeamCalendarDraftSnapshot, 'function');
   assert.equal(typeof context.getWorkTeamCalendarProductionMetricLine, 'function');
+  assert.equal(Object.prototype.hasOwnProperty.call(context, 'getWorkTeamCalendarUtilityVisibleDataKeys'), false);
 
   const detailCategories = context.getWorkTeamCalendarDisplayCategoryList();
   assert.ok(detailCategories.some((entry) => entry.dataKey === 'work_team_calendar_team1_part1'));
@@ -345,10 +346,10 @@ test('work shared team calendar state reads runtime globals through the browser 
 
 test('kpi html loads shared split files before production bootstrap', () => {
   const sharedIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.js?v=239');
-  const categoriesIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.categories.js?v=1');
+  const categoriesIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.categories.js?v=2');
   const stateIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.state.js?v=1');
   const summaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.summary.js?v=2');
-  const productionIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=239');
+  const productionIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=241');
 
   assert.ok(sharedIndex >= 0, 'work shared loader is missing');
   assert.ok(categoriesIndex > sharedIndex, 'shared categories must load after shared.js');

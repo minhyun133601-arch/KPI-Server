@@ -367,7 +367,14 @@
         function openUtilMetricExportModal(options = {}) {
             const datasetKey = String(options.datasetKey || '').trim();
             if (!datasetKey) return;
-            const monthOptions = listUtilDatasetYearMonths(datasetKey);
+            const preferredItemKeys = normalizeUtilMetricSelectionKeys(
+                Array.isArray(options.itemKeys) ? options.itemKeys : (options.itemKey || 'all'),
+                ['all']
+            );
+            const isProductionOnlyExport = preferredItemKeys.length === 1 && preferredItemKeys[0] === 'production';
+            const monthOptions = isProductionOnlyExport && typeof listUtilProductionYearMonths === 'function'
+                ? listUtilProductionYearMonths()
+                : listUtilDatasetYearMonths(datasetKey);
             if (!monthOptions.length) {
                 alert('추출 가능한 기간 데이터가 없습니다.');
                 return;
@@ -382,19 +389,25 @@
             const teamSelect = modal.querySelector('[data-role="team"]');
             if (startSelect) {
                 startSelect.innerHTML = monthOptions.map(month => `<option value="${month}">${month}</option>`).join('');
-                startSelect.value = monthOptions[0];
+                startSelect.value = monthOptions.includes(options.fromYm) ? options.fromYm : monthOptions[0];
             }
             if (endSelect) {
                 endSelect.innerHTML = monthOptions.map(month => `<option value="${month}">${month}</option>`).join('');
-                endSelect.value = monthOptions[monthOptions.length - 1];
+                endSelect.value = monthOptions.includes(options.toYm) ? options.toYm : monthOptions[monthOptions.length - 1];
+                if (startSelect && startSelect.value && endSelect.value && startSelect.value > endSelect.value) {
+                    endSelect.value = startSelect.value;
+                }
             }
             if (teamSelect) {
                 const teamOptions = buildUtilExportTeamOptions(datasetKey);
                 teamSelect.innerHTML = teamOptions.map(team => `<option value="${team}">${team}</option>`).join('');
-                teamSelect.value = teamOptions[0] || '';
+                const preferredTeam = String(options.teamName || '').trim();
+                teamSelect.value = preferredTeam && teamOptions.includes(preferredTeam)
+                    ? preferredTeam
+                    : (teamOptions[0] || '');
             }
-            modal.dataset.selectedItemKeys = serializeUtilMetricSelectionKeys(['all'], ['all']);
-            syncUtilMetricToggleButtons(modal, ['all'], 'export-item-toggle');
+            modal.dataset.selectedItemKeys = serializeUtilMetricSelectionKeys(preferredItemKeys, ['all']);
+            syncUtilMetricToggleButtons(modal, preferredItemKeys, 'export-item-toggle');
             const syncExportSummary = () => {
                 const selectedItemKeys = normalizeUtilMetricSelectionKeys(modal.dataset.selectedItemKeys || 'none', []);
                 syncUtilMetricToggleButtons(modal, selectedItemKeys, 'export-item-toggle');

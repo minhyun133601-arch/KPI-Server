@@ -75,18 +75,6 @@
         return root.KpiMeteringBridge?.destroyIntegratedMeteringMount?.();
     }
 
-    function applyUtilSidebarSelectionToCurrentView(itemKey, teamDataKey) {
-        return root.applyUtilSidebarSelectionToCurrentView?.(itemKey, teamDataKey);
-    }
-
-    function canApplyUtilSidebarSelection() {
-        return typeof root.applyUtilSidebarSelectionToCurrentView === 'function';
-    }
-
-    function getUtilSidebarSelectionWorkDataKey(itemKey) {
-        return root.getUtilSidebarSelectionWorkDataKey?.(itemKey);
-    }
-
     function getWindowPlacement() {
         const screen = root.screen || {};
         const availableWidth = Number(screen.availWidth) || Number(root.outerWidth) || 1600;
@@ -126,9 +114,6 @@
         replaceHistoryState,
         goHistoryBack,
         destroyIntegratedMeteringMount,
-        applyUtilSidebarSelectionToCurrentView,
-        canApplyUtilSidebarSelection,
-        getUtilSidebarSelectionWorkDataKey,
         getWindowPlacement,
         openWindow,
         exposeOwnerToolWindow

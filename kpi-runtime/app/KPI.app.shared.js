@@ -16,9 +16,8 @@
             tone: ''
         };
         const GLOBAL_RECENT_UPDATE_STORAGE_KEY = 'kpi:global-recent-update';
-        const DASHBOARD_SECTION_ORDER = ['work', 'util', 'audit', 'data', 'report', 'owner'];
+        const DASHBOARD_SECTION_ORDER = ['work', 'audit', 'data', 'report', 'owner'];
         const DASHBOARD_SECTION_SOFT = Object.freeze({
-            util: '#fff7ed',
             work: '#ecfdf5',
             audit: '#fef2f2',
             data: '#f8fafc',
@@ -32,7 +31,6 @@
         const SidebarTreeState = {
             expandedSections: {
                 work: true,
-                util: false,
                 audit: false,
                 data: false,
                 report: false,

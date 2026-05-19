@@ -11,7 +11,7 @@ const maintenanceExportSource = await fs.readFile(
   'utf8'
 );
 
-test('utility data-management delete is pinned to production only while export keeps all metric toggles', () => {
+test('production maintenance delete is pinned to production while export keeps all metric toggles', () => {
   assert.doesNotMatch(
     maintenanceDeleteSource,
     /buildUtilMetricToggleButtonsHtml\(\['all'\], 'delete-item-toggle'\)/
@@ -19,8 +19,12 @@ test('utility data-management delete is pinned to production only while export k
   assert.match(maintenanceDeleteSource, /class="util-production-toggle-btn is-active" aria-pressed="true" disabled>/);
   assert.match(maintenanceDeleteSource, /const selectedItemKeys = \['production'\];/);
   assert.match(maintenanceDeleteSource, /const metricKeys = \['production'\];/);
+  assert.match(maintenanceDeleteSource, /function listUtilProductionYearMonths/);
+  assert.match(maintenanceDeleteSource, /const datasetMonthOptions = listUtilProductionYearMonths\(\);/);
   assert.match(
     maintenanceExportSource,
     /buildUtilMetricToggleButtonsHtml\(\['all'\], 'export-item-toggle'\)/
   );
+  assert.match(maintenanceExportSource, /isProductionOnlyExport/);
+  assert.match(maintenanceExportSource, /listUtilProductionYearMonths\(\)/);
 });

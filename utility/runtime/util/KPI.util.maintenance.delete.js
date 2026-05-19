@@ -62,6 +62,34 @@
             return Array.from(monthSet).sort((a, b) => a.localeCompare(b, 'ko'));
         }
 
+        function listUtilProductionYearMonths() {
+            const monthSet = new Set();
+            const dailyData = typeof UTIL_PRODUCTION_DAILY_DATA !== 'undefined'
+                ? UTIL_PRODUCTION_DAILY_DATA
+                : [];
+            const dailyIndex = typeof UTIL_PRODUCTION_DAILY_INDEX !== 'undefined'
+                ? UTIL_PRODUCTION_DAILY_INDEX
+                : {};
+            (dailyData || []).forEach(team => {
+                (team?.entries || []).forEach(entry => {
+                    const dateKey = String(entry?.dateLabel || entry?.date || '').trim();
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+                        monthSet.add(dateKey.slice(0, 7));
+                    }
+                });
+            });
+            Object.values(dailyIndex || {}).forEach(entries => {
+                if (!Array.isArray(entries)) return;
+                entries.forEach(entry => {
+                    const dateKey = String(entry?.dateLabel || entry?.date || '').trim();
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+                        monthSet.add(dateKey.slice(0, 7));
+                    }
+                });
+            });
+            return Array.from(monthSet).sort((a, b) => a.localeCompare(b, 'ko'));
+        }
+
         function listUtilDeleteYearMonths() {
             const currentMonth = getCurrentMonthKey();
             const ranged = buildUtilYearMonthRange(UTIL_DELETE_MIN_MONTH, currentMonth).map(item => item.key);
@@ -69,7 +97,8 @@
         }
 
         function getUtilDeleteDefaultRange(datasetKey = '') {
-            const datasetMonthOptions = listUtilDatasetYearMonths(datasetKey);
+            void datasetKey;
+            const datasetMonthOptions = listUtilProductionYearMonths();
             const monthOptions = datasetMonthOptions.length
                 ? datasetMonthOptions
                 : listUtilDeleteYearMonths();
@@ -373,7 +402,7 @@
                 teamSelect.value = safeTeam;
             }
 
-            const datasetMonthOptions = listUtilDatasetYearMonths(safeDataset);
+            const datasetMonthOptions = listUtilProductionYearMonths();
             const monthOptions = datasetMonthOptions.length
                 ? datasetMonthOptions
                 : listUtilDeleteYearMonths();

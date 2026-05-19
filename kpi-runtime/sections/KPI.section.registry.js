@@ -1,5 +1,5 @@
 (function () {
-    const SECTION_ORDER = ['work', 'util', 'audit', 'data', 'report', 'owner'];
+    const SECTION_ORDER = ['work', 'audit', 'data', 'report', 'owner'];
 
     function registerSections(AppData) {
         const factories = KpiSectionFactoryAdapter.getFactories();

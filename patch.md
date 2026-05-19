@@ -1,5 +1,19 @@
 # 2026-05-19 Patch Note
 
+## Utility Section Removal And Work Production Actions
+
+Goal: remove the top-level Utility dashboard section, keep utility usage/cost entry and analysis under Data Management, and move the production entry control into the work team calendar `Total Production` summary card as a direct Excel picker.
+
+Touched areas: dashboard section registry/builders, Data Management section content, work team calendar production summary actions, direct production Excel import path, production maintenance export/delete defaults, legacy utility initializer/sidebar/energy override cleanup, KPI boot manifest and cache versions, related frontend smoke tests.
+
+Data change: none. Production import uses the existing extractor parsing columns and `mergeUtilProductionExtractorRows` save path, so imported values/report metrics remain on the same data path, including `work_time`, `operation_time`, `workTime`, and `operationTime`.
+
+Verification: targeted section/work/production/maintenance/energy/production-extractor/repository-map smoke tests, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, targeted work/production extractor Node tests, `npm test` including 743 Node tests, `npm run smoke:kpi-browser`, and `git diff --check` passed.
+
+Risk: no DB/schema/data migration was made in this cleanup. `추출` is intentionally left as a placeholder alert until the extraction rule is discussed.
+
+---
+
 ## Local Experiment Upstream Sync
 
 Goal: `minhyun133601-arch/KPI-Server.git` 최신 `origin/main` 기능을 이 워크스페이스에 흡수하고, 로컬 실험본 규칙인 KPI `18080`, PostgreSQL `55432`, `.env.local-experiment`, `var/local-experiment` 경계를 다시 맞췄습니다.

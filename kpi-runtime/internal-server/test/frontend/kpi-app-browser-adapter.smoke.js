@@ -64,7 +64,6 @@ function createContext(options = {}) {
     events: [],
     opened: [],
     destroyed: 0,
-    sidebarCalls: [],
     historyStates: [],
     historyBackCalls: 0,
   };
@@ -118,13 +117,6 @@ function createContext(options = {}) {
       destroyIntegratedMeteringMount() {
         state.destroyed += 1;
       },
-    },
-    applyUtilSidebarSelectionToCurrentView(itemKey, teamDataKey) {
-      state.sidebarCalls.push({ itemKey, teamDataKey });
-      return true;
-    },
-    getUtilSidebarSelectionWorkDataKey(itemKey) {
-      return `${itemKey}:team`;
     },
     screen: {
       availWidth: 1200,
@@ -200,10 +192,9 @@ test('app browser adapter wraps runtime storage location events popups and bridg
 
   adapter.destroyIntegratedMeteringMount();
   assert.equal(state.destroyed, 1);
-  assert.equal(adapter.canApplyUtilSidebarSelection(), true);
-  assert.equal(adapter.applyUtilSidebarSelectionToCurrentView('electric', 'team1'), true);
-  assert.deepEqual(state.sidebarCalls, [{ itemKey: 'electric', teamDataKey: 'team1' }]);
-  assert.equal(adapter.getUtilSidebarSelectionWorkDataKey('electric'), 'electric:team');
+  assert.equal(Object.prototype.hasOwnProperty.call(adapter, 'canApplyUtilSidebarSelection'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(adapter, 'applyUtilSidebarSelectionToCurrentView'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(adapter, 'getUtilSidebarSelectionWorkDataKey'), false);
 
   const placement = adapter.getWindowPlacement();
   assert.equal(placement.availableWidth, 1200);

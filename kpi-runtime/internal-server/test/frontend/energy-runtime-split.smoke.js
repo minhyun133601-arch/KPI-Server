@@ -60,6 +60,7 @@ test('kpi html loads split energy helpers before host runtimes', () => {
     previousIndex = currentIndex;
   }
   assert.equal(kpiHtmlSource.includes(removedEnergyChartFileName), false);
+  assert.equal(kpiHtmlSource.includes('KPI.util.energy.tabs.override.js'), false);
 });
 
 test('energy renderer split moves chart renderers out of the host file', async () => {
@@ -98,28 +99,22 @@ test('energy tabs routes browser globals through the data-sync adapter', async (
   assert.doesNotMatch(tabsSource, /syncUtilReportBuilderVizStateFromDualSection/);
   assert.match(tabsSource, /KpiUtilDataSyncBrowserAdapter/);
   assert.match(tabsSource, /addUtilEnergyTabsEventListener/);
-  assert.match(tabsSource, /hasUtilEnergyTabsSpreadsheetApi/);
+  assert.doesNotMatch(tabsSource, /data-production-upload-open/);
 });
 
-test('energy modal and override route browser globals through the energy adapter', async () => {
+test('energy modal routes browser globals through the energy adapter', async () => {
   const adapterSource = await readEnergyFile('KPI.util.energy.browser-adapter.js');
   const dualSource = await readEnergyFile('KPI.util.energy.dual.js');
   const modalSource = await readEnergyFile('KPI.util.energy.modal.chart.js');
-  const overrideSource = await readEnergyFile('KPI.util.energy.tabs.override.js');
 
-  for (const source of [modalSource, overrideSource]) {
-    assert.doesNotMatch(source, /window\./);
-    assert.doesNotMatch(source, new RegExp(globalObjectName));
-    assert.match(source, /KpiUtilEnergyBrowserAdapter/);
-  }
+  assert.doesNotMatch(modalSource, /window\./);
+  assert.doesNotMatch(modalSource, new RegExp(globalObjectName));
+  assert.match(modalSource, /KpiUtilEnergyBrowserAdapter/);
   assert.match(adapterSource, new RegExp(globalObjectName));
   assert.match(modalSource, /openUtilEnergyModalChartPopup/);
   assert.match(modalSource, /printUtilEnergyModalChartPage/);
   assertSourceOmitsTokens(modalSource, removedModalChartTokens);
   assertSourceOmitsTokens(dualSource, removedDualChartTokens);
-  assert.match(overrideSource, /exposeUtilEnergyTabsOverrideApi/);
-  assert.match(overrideSource, /setUtilEnergyTabsOverrideRenderer/);
-  assert.doesNotMatch(overrideSource, /overrideToggleUtilInlineReport/);
 });
 
 test('energy browser adapter exposes root-bound browser operations', async () => {
@@ -159,13 +154,9 @@ test('energy browser adapter exposes root-bound browser operations', async () =>
   adapter.printPage();
   assert.equal(calls.at(-1).type, 'print');
 
-  const replacement = () => 'replacement';
-  assert.equal(adapter.getRenderUtilDualTabs(), context.renderUtilDualTabs);
-  assert.equal(adapter.setRenderUtilDualTabs(replacement), replacement);
-  assert.equal(context.renderUtilDualTabs, replacement);
-
-  adapter.exposeApi({ getEnergyTestValue: () => 42 });
-  assert.equal(context.getEnergyTestValue(), 42);
+  assert.equal(Object.prototype.hasOwnProperty.call(adapter, 'getRenderUtilDualTabs'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(adapter, 'setRenderUtilDualTabs'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(adapter, 'exposeApi'), false);
 });
 
 test('split energy files stay below the worklog threshold', async () => {

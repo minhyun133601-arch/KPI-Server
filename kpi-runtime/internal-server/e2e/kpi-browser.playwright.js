@@ -284,14 +284,9 @@ test.describe('KPI browser smoke', () => {
       await utilityPopupCloseButton.click();
       await expect(page.getByRole('button', { name: /유틸리티 팝업 닫기/ })).toHaveCount(0);
 
-      await clickSidebarButton(page, '전기');
-      await expect(page.locator('#content-container')).toContainText('전기 사용량과 비용');
-
-      await clickSidebarButton(page, '가스');
-      await expect(page.locator('#content-container')).toContainText('가스 사용량과 비용');
-
-      await clickSidebarButton(page, '폐수');
-      await expect(page.locator('#content-container')).toContainText('폐수 사용량과 비용');
+      await clickSidebarButton(page, '데이터 관리');
+      await clickSidebarButton(page, '유틸리티 기입');
+      await expectIntegratedMeteringTitle(page, /월간 (전기 기입|가스 검침|폐수 기입|생산량 기입) 시트/);
 
       await clickSidebarButton(page, '분석');
       await expect(page.locator('#content-container')).toContainText('총괄 비율');

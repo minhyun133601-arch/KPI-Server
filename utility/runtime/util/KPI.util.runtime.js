@@ -5,23 +5,33 @@
     const runtime = browser?.getRuntime?.();
     if (!runtime) return;
 
-    runtime.registerSectionInitializer('util', ({ category, container }) => {
-        renderUtilDualTabs(container);
-        initUnifiedUtilAnalytics(container);
-        initUtilAnalyticsRepeaters(container);
-        initUtilTabs(container);
-        initUtilEnergyLauncher(container);
+    function initializeUtilityEntrySurface({ container } = {}) {
+        void browser?.initIntegratedMetering?.(container);
+    }
+
+    function initializeUtilityAnalysisSurface({ container } = {}) {
         initUtilReportPanel(container);
         initUtilSheetReports(container);
+    }
 
-        const isUtilReportPanel = typeof category?.content === 'string'
-            && category.content.includes('data-role="util-report-panel"');
-        if (isUtilReportPanel && typeof UtilReportState !== 'undefined' && UtilReportState.openOnReportTab !== false) {
-            const result = runUtilReport(container, { renderModal: false });
-            openUtilReportModal(result);
+    function getDataUtilitySurface(context = {}) {
+        if (context.sectionId !== 'data') return '';
+        return String(context.category?.utilitySurface || '').trim();
+    }
+
+    function isUtilitySaveSurface(context = {}) {
+        return getDataUtilitySurface(context) === 'entry';
+    }
+
+    runtime.registerSectionInitializer('data', (context = {}) => {
+        const surface = getDataUtilitySurface(context);
+        if (surface === 'entry') {
+            initializeUtilityEntrySurface(context);
+            return;
         }
-
-        void browser?.initIntegratedMetering?.(container);
+        if (surface === 'analysis') {
+            initializeUtilityAnalysisSurface(context);
+        }
     });
 
     runtime.registerSectionInitializer('report', ({ container }) => {
@@ -42,7 +52,7 @@
     });
 
     runtime.registerSaveProvider('util-shared-save', (context = {}) => {
-        if (context.sectionId !== 'util') return null;
+        if (!isUtilitySaveSurface(context)) return null;
 
         const meteringHost = context.container?.querySelector?.('[data-kpi-metering-root]');
         const meteringMounted = !!(meteringHost && meteringHost.shadowRoot);
@@ -102,7 +112,6 @@
         ['util-metric-export', () => typeof closeUtilMetricExportModal === 'function' && closeUtilMetricExportModal()],
         ['util-selective-delete', () => typeof closeUtilSelectiveDeleteModal === 'function' && closeUtilSelectiveDeleteModal()],
         ['util-production-detail', () => typeof closeUtilProductionDetailModal === 'function' && closeUtilProductionDetailModal()],
-        ['util-production-extractor', () => typeof closeUtilProductionExtractorModal === 'function' && closeUtilProductionExtractorModal()],
         ['util-production-archive', () => typeof closeUtilProductionArchiveModal === 'function' && closeUtilProductionArchiveModal()]
     ].forEach(([key, closer]) => {
         runtime.registerShortcutCloser(key, closer);

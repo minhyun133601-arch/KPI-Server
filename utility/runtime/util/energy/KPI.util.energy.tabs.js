@@ -6,9 +6,6 @@
             utilEnergyTabsBrowser?.addEventListener?.(type, listener, options);
         }
 
-        function hasUtilEnergyTabsSpreadsheetApi() {
-            return Boolean(utilEnergyTabsBrowser?.getSpreadsheetApi?.());
-        }
         function closeUtilActionMenus(root = document) {
             const scope = root || document;
             scope.querySelectorAll?.('[data-util-action-menu][open], .util-action-menu[open]').forEach(menu => {
@@ -267,25 +264,7 @@
                 if (controls) {
                     if (!controls.dataset.ready) {
                         controls.dataset.ready = 'true';
-                        const productionControlHtml = `
-                            <details class="util-action-menu" data-util-action-menu>
-                                <summary class="util-detail-btn">데이터 관리</summary>
-                                <div class="util-action-menu-list">
-                                    <button type="button" class="util-action-menu-item" data-production-upload-open>생산량 기입</button>
-                                    <button type="button" class="util-action-menu-item" data-util-delete-open>삭제</button>
-                                    <button type="button" class="util-action-menu-item" data-util-export-open>추출</button>
-                                </div>
-                            </details>
-                            ${buildUtilDualDisplayControlHtml()}
-                            <input type="file" data-production-upload-input accept=".xlsx,.xls" multiple style="display:none;">
-                        `;
-                        controls.innerHTML = `
-                            ${productionControlHtml}
-                        `;
-                        const actionMenu = controls.querySelector('[data-util-action-menu]');
-                        const closeActionMenu = () => {
-                            if (actionMenu) actionMenu.open = false;
-                        };
+                        controls.innerHTML = buildUtilDualDisplayControlHtml();
                         controls.querySelectorAll('[data-decimals]').forEach(select => {
                             select.addEventListener('change', () => {
                                 const type = select.dataset.decimals;
@@ -315,94 +294,6 @@
                                 event.stopPropagation();
                             });
                         });
-                        const exportOpenButton = controls.querySelector('[data-util-export-open]');
-                        if (exportOpenButton) {
-                            exportOpenButton.addEventListener('click', () => {
-                                closeActionMenu();
-                                openUtilMetricExportModal({ datasetKey: key });
-                            });
-                        }
-                        const productionUploadInput = controls.querySelector('[data-production-upload-input]');
-                        const productionUploadButton = controls.querySelector('[data-production-upload-open]');
-                        const deleteOpenButton = controls.querySelector('[data-util-delete-open]');
-                        if (productionUploadButton && productionUploadInput) {
-                            productionUploadButton.addEventListener('click', () => {
-                                closeActionMenu();
-                                if (!hasUtilEnergyTabsSpreadsheetApi()) {
-                                    alert('엑셀 라이브러리 로드 실패: 네트워크 상태를 확인해주세요.');
-                                    return;
-                                }
-                                productionUploadInput.click();
-                            });
-                            productionUploadInput.addEventListener('change', async () => {
-                                const files = Array.from(productionUploadInput.files || []);
-                                if (!files.length) return;
-                                try {
-                                    productionUploadButton.disabled = true;
-                                    productionUploadInput.disabled = true;
-                                    const activeTeam = combinedSection.dataset.activeTeam || data[0]?.name || '';
-                                    const parsed = await parseUtilProductionExcelFiles(files, activeTeam);
-                                    const result = mergeUtilProductionExtractorRows(parsed.rows, {
-                                        fallbackTeam: activeTeam
-                                    });
-                                    const addedTeams = Array.isArray(result.addedTeams) ? result.addedTeams.filter(Boolean) : [];
-                                    const failedFileNames = Array.isArray(parsed.failedFiles)
-                                        ? parsed.failedFiles.map(item => String(item?.fileName || '').trim()).filter(Boolean)
-                                        : [];
-                                    const nextTeam = (addedTeams.length && !addedTeams.includes(activeTeam))
-                                        ? addedTeams[0]
-                                        : activeTeam;
-                                    if ((result.addedCount > 0 || result.patchedCount > 0 || result.replacedCount > 0) && typeof setLastModified === 'function') {
-                                        setLastModified('유틸리티 관리');
-                                    }
-                                    renderTeam(nextTeam || data[0]?.name);
-                                    syncProductionControlState();
-                                    const failedNotice = failedFileNames.length
-                                        ? `\n형식 오류 제외 ${failedFileNames.length.toLocaleString('ko-KR')}개: ${failedFileNames.join(', ')}`
-                                        : '';
-                                    const patchedNotice = result.patchedCount > 0
-                                        ? `\n수율/CAPA/가동률 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
-                                        : '';
-                                    const replacedNotice = result.replacedCount > 0
-                                        ? `, 기존 ${result.replacedCount.toLocaleString('ko-KR')}건 교체`
-                                        : '';
-                                    alert(`기입 완료: ${result.addedCount.toLocaleString('ko-KR')}건 기입${replacedNotice}, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`);
-                                } catch (error) {
-                                    alert(`기입 실패: ${error?.message || '알 수 없는 오류'}`);
-                                } finally {
-                                    productionUploadInput.value = '';
-                                    productionUploadButton.disabled = false;
-                                    productionUploadInput.disabled = false;
-                                }
-                            });
-                        }
-                        if (deleteOpenButton) {
-                            deleteOpenButton.addEventListener('click', () => {
-                                closeActionMenu();
-                                const activeTeam = combinedSection.dataset.activeTeam || data[0]?.name || '';
-                                const defaultRange = getUtilDeleteDefaultRange();
-                                openUtilSelectiveDeleteModal({
-                                    datasetKey: key,
-                                    teamName: activeTeam,
-                                    fromYm: defaultRange.fromYm,
-                                    toYm: defaultRange.toYm,
-                                    onApplied: result => {
-                                        if (typeof setLastModified === 'function') {
-                                            setLastModified('유틸리티 관리');
-                                        }
-                                        const nextTeam = combinedSection.dataset.activeTeam || data[0]?.name || '';
-                                        renderTeam(nextTeam);
-                                        syncProductionControlState();
-                                        refreshUtilViewsAfterDataMutation(root);
-                                        if (result?.removedProductionCount > 0) {
-                                            alert(`생산량 ${result.removedProductionCount.toLocaleString('ko-KR')}건을 삭제했습니다.`);
-                                        } else {
-                                            alert('선택한 항목을 삭제했습니다.');
-                                        }
-                                    }
-                                });
-                            });
-                        }
                         syncUtilDualSelects(combinedSection);
                         applyUtilCostMode(combinedSection);
                         applyUtilDualConversion(combinedSection);

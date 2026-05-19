@@ -110,6 +110,11 @@
             const productionMetricClass = productionItemCount > 0
                 ? ''
                 : (selectedProductionSummary?.isOffday ? ' is-offday' : '');
+            const productionSummaryActionMenuHtml = typeof renderWorkProductionActionMenuHtml === 'function'
+                ? renderWorkProductionActionMenuHtml({
+                    summary: true
+                })
+                : '';
             const detailTitle = hasDateSelection
                 ? getWorkTeamCalendarSelectionLabel(selectedDateKeys, selectedDate)
                 : '';
@@ -242,6 +247,7 @@
                             <span class="work-team-calendar-utility-label">총 생산량</span>
                             <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.production?.totalAmountText || '-')}</span>
                             <span class="work-team-calendar-utility-meta">${escapeHtml(utilitySummary.production?.itemCountText || '-')}</span>
+                            ${productionSummaryActionMenuHtml}
                         </div>
                         ${workUtilityChipHtml}
                         ${equipmentUtilityChipHtml}
@@ -296,6 +302,7 @@
                         <span class="work-team-calendar-utility-value">${escapeHtml(valueText || '-')}</span>
                         <span class="work-team-calendar-utility-meta">${escapeHtml(metaText || '-')}</span>
                         ${isActionMetric ? `<span class="work-team-calendar-utility-hint">${escapeHtml(hintText)}</span>` : ''}
+                        ${metricKey === 'production' ? productionSummaryActionMenuHtml : ''}
                     `;
                     if (!isActionMetric) {
                         return `<div class="work-team-calendar-utility-chip">${bodyHtml}</div>`;
@@ -691,9 +698,11 @@
                                             </div>
                                         ` : ''}
                                         <div class="work-team-calendar-field">
-                                            <div class="work-team-calendar-field-head" style="justify-content:${isOverviewCalendar ? 'space-between' : 'flex-end'};">
-                                                ${isOverviewCalendar ? '<span class="work-team-calendar-field-label">팀별 생산 품목</span>' : ''}
-                                                <button type="button" class="work-team-calendar-editor-btn" onclick="clearWorkTeamCalendarSelection()" aria-label="선택 해제"><i class="fas fa-xmark"></i>선택 해제</button>
+                                            <div class="work-team-calendar-field-head">
+                                                <span class="work-team-calendar-field-label">${isOverviewCalendar ? '팀별 생산 품목' : '생산량'}</span>
+                                                <div class="work-team-calendar-production-card-actions">
+                                                    <button type="button" class="work-team-calendar-editor-btn" onclick="clearWorkTeamCalendarSelection()" aria-label="선택 해제"><i class="fas fa-xmark"></i>선택 해제</button>
+                                                </div>
                                             </div>
                                             ${productionMetricText ? `<div class="work-team-calendar-production-summary${productionMetricClass}">${escapeHtml(productionMetricText)}</div>` : ''}
                                             <div class="work-team-calendar-production-groups">${productionGroupsHtml}</div>

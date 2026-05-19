@@ -463,6 +463,83 @@ test('work production split files expose utility, history, and draft helpers tog
   assert.match(historyHtml, /10만원/);
   assert.match(historyHtml, /work-team-calendar-work-pill is-kpi/);
   assert.match(historyHtml, /work-team-calendar-team-group/);
+
+  const actionHtml = context.renderWorkProductionActionMenuHtml({ summary: true });
+  assert.match(actionHtml, /data-work-production-action="entry"/);
+  assert.match(actionHtml, /data-work-production-action="export"/);
+  assert.doesNotMatch(actionHtml, /data-work-production-action="delete"/);
+});
+
+test('work production direct entry keeps extractor parsing and merge payload shape', async () => {
+  const context = createContext();
+  const alerts = [];
+  let mergeRows = null;
+  context.alert = (message) => alerts.push(String(message || ''));
+  context.XLSX = {};
+  context.DEFAULT_UTIL_PRODUCTION_PERIOD = { startDay: 1 };
+  context.UtilProductionState = { startDay: 1 };
+  context.UTIL_PRODUCTION_DAILY_DATA = [];
+  context.UTIL_PRODUCTION_ARCHIVE_META = [];
+  context.UTIL_PRODUCTION_DAILY_STATE = { meta: {}, periodDefault: { startDay: 1 }, teams: [], archives: [] };
+  context.KPIProductionExtractorImportParsing = {
+    async parseExcelFile(parseContext, file, startDay) {
+      assert.equal(startDay, 1);
+      assert.deepEqual(Array.from(parseContext.TARGET_COLS), ['A', 'B', 'C', 'E', 'F']);
+      return {
+        rows: [
+          {
+            fileName: file.name,
+            values: ['2026-04-02', '1팀', 'MSD', 'Product A', '123'],
+            moistureExcludedYield: '98.5%',
+            workTime: '24',
+            operationTime: '22.5',
+            equipmentCapa: '72000',
+            equipmentUtilization: '98.6%',
+            dateObj: new Date('2026-04-02T00:00:00Z'),
+            teamKey: '1팀',
+            lineKey: 'MSD',
+            rowNumber: 4,
+          },
+        ],
+      };
+    },
+    deduplicateRows(parseContext, rows) {
+      return { rows, removedCount: 0 };
+    },
+  };
+  context.mergeUtilProductionExtractorRows = (rows) => {
+    mergeRows = rows;
+    return {
+      addedCount: 1,
+      skippedCount: 0,
+      patchedCount: 0,
+      replacedCount: 0,
+      savePromise: Promise.resolve(true),
+    };
+  };
+  context.persistUtilProductionDailyState = () => true;
+  context.refreshUtilProductionDailyIndex = () => {};
+  context.renderWorkTeamCalendarModal = () => {};
+  context.setLastModified = () => {};
+
+  assert.equal(await context.importWorkProductionEntryFiles([{ name: 'sample.xlsx', size: 10, lastModified: 11 }]), true);
+  assert.deepEqual(JSON.parse(JSON.stringify(mergeRows)), [
+    {
+      date: '2026-04-02',
+      team: '1팀',
+      lineName: 'MSD',
+      productName: 'Product A',
+      amount: '123',
+      moistureExcludedYield: '98.5%',
+      workTime: '24',
+      operationTime: '22.5',
+      equipmentCapa: '72000',
+      equipmentUtilization: '98.6%',
+      sourceFileName: 'sample.xlsx',
+      sourceFingerprint: 'sample.xlsx|10|11',
+    },
+  ]);
+  assert.match(alerts.at(-1), /기입 완료/);
 });
 
 test('work production draft helpers update member and title state through the shared draft store', () => {
@@ -504,14 +581,14 @@ test('work production draft uses the browser adapter for storage capabilities', 
 });
 
 test('kpi html loads work production split files before team calendar bootstrap', () => {
-  const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=239');
+  const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=241');
   const adapterIndex = kpiHtml.indexOf('runtime/work/KPI.work.browser-adapter.js?v=1');
   const historyIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.history.js?v=4');
   const overviewIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.overview.js?v=2');
   const draftIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.draft.js?v=1');
   const teamCalendarIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.js?v=237');
   const equipmentSummaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.equipment-summary.js?v=1');
-  const teamCalendarRenderIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.render.js?v=5');
+  const teamCalendarRenderIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.render.js?v=7');
 
   assert.ok(baseIndex >= 0, 'work production loader is missing');
   assert.ok(adapterIndex > baseIndex, 'work browser adapter must load after production.js');

@@ -27,6 +27,7 @@ assert.ok(teamCalendarPath, 'work team calendar source is missing');
 const workDir = path.dirname(teamCalendarPath);
 const teamCalendarSourcePaths = [
   path.join(workDir, 'KPI.work.browser-adapter.js'),
+  path.join(workDir, 'KPI.work.production.js'),
   teamCalendarPath,
   path.join(workDir, 'KPI.work.team-calendar.selection.js'),
   path.join(workDir, 'KPI.work.team-calendar.draft-actions.js'),
@@ -332,6 +333,10 @@ test('work team calendar single-date production popup renders the metric line on
 
   const metricOccurrences = modal.innerHTML.split(metricLine).length - 1;
   assert.equal(metricOccurrences, 1);
+  assert.match(modal.innerHTML, /work-team-calendar-production-action-menu/);
+  assert.match(modal.innerHTML, /data-work-production-action="entry"/);
+  assert.match(modal.innerHTML, /data-work-production-action="export"/);
+  assert.doesNotMatch(modal.innerHTML, /data-work-production-action="delete"/);
 });
 
 test('work team calendar offday cells keep production and history cues in the flag slot', () => {

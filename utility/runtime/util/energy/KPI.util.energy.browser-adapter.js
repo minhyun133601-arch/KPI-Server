@@ -6,21 +6,6 @@
         root.addEventListener?.(type, listener, options);
     }
 
-    function exposeApi(api) {
-        if (!api || typeof api !== 'object') return {};
-        Object.entries(api).forEach(([key, value]) => {
-            const name = String(key || '').trim();
-            if (name) root[name] = value;
-        });
-        return api;
-    }
-
-    function getRenderUtilDualTabs(fallback = null) {
-        return typeof root.renderUtilDualTabs === 'function'
-            ? root.renderUtilDualTabs
-            : (typeof fallback === 'function' ? fallback : null);
-    }
-
     function openPopup(url, target, features) {
         return typeof root.open === 'function'
             ? root.open(url, target, features)
@@ -29,12 +14,6 @@
 
     function printPage() {
         root.print?.();
-    }
-
-    function setRenderUtilDualTabs(renderer) {
-        if (typeof renderer !== 'function') return null;
-        root.renderUtilDualTabs = renderer;
-        return root.renderUtilDualTabs;
     }
 
     function useRootFlag(flagName) {
@@ -46,11 +25,8 @@
 
     root.KpiUtilEnergyBrowserAdapter = Object.freeze({
         addEventListener,
-        exposeApi,
-        getRenderUtilDualTabs,
         openPopup,
         printPage,
-        setRenderUtilDualTabs,
         useRootFlag
     });
 

@@ -926,7 +926,7 @@ function createReportDeckSharedStore() {
 test('util runtime browser adapter registers init boot save and closer hooks', async () => {
   const { context, registered } = createContext();
 
-  assert.equal(typeof registered.initializers.get('util'), 'function');
+  assert.equal(typeof registered.initializers.get('data'), 'function');
   assert.equal(typeof registered.initializers.get('report'), 'function');
   assert.equal(typeof context.KpiUtilRuntimeBrowserAdapter.exportReportDeckSingleHtml, 'function');
   assert.equal(typeof context.KpiUtilRuntimeBrowserAdapter.printReportDeckPdf, 'function');
@@ -966,13 +966,30 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.equal(registered.bootTasks.size, 3);
   assert.ok(registered.closers.size >= 10);
 
-  const utilContainer = {};
-  registered.initializers.get('util')({
-    category: { content: '' },
-    container: utilContainer,
+  const dataUtilityContainer = {};
+  registered.initializers.get('data')({
+    sectionId: 'data',
+    category: { utilitySurface: 'entry', content: '' },
+    container: dataUtilityContainer,
   });
   assert.equal(registered.meteringInitCount, 1);
-  assert.equal(registered.sheetReportContainers[0], utilContainer);
+  assert.equal(registered.sheetReportContainers.length, 0);
+
+  const dataAnalysisContainer = {};
+  registered.initializers.get('data')({
+    sectionId: 'data',
+    category: { utilitySurface: 'analysis', content: '' },
+    container: dataAnalysisContainer,
+  });
+  assert.equal(registered.meteringInitCount, 1);
+  assert.equal(registered.sheetReportContainers[0], dataAnalysisContainer);
+
+  registered.initializers.get('data')({
+    sectionId: 'data',
+    category: { content: '' },
+    container: {},
+  });
+  assert.equal(registered.meteringInitCount, 1);
 
   const reportContainer = {};
   registered.initializers.get('report')({
@@ -983,7 +1000,8 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
 
   const providerFactory = registered.saveProviders.get('util-shared-save');
   const provider = providerFactory({
-    sectionId: 'util',
+    sectionId: 'data',
+    category: { utilitySurface: 'entry' },
     container: {
       querySelector(selector) {
         return selector === '[data-kpi-metering-root]' ? { shadowRoot: {} } : null;
@@ -996,6 +1014,12 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.deepEqual(await provider.perform({ trigger: 'manual' }), { ok: true, trigger: 'manual' });
   assert.equal(registered.manualSaveCalls.length, 1);
   assert.equal(registered.manualSaveCalls[0]?.trigger, 'manual');
+
+  assert.equal(providerFactory({
+    sectionId: 'data',
+    category: { utilitySurface: 'analysis' },
+    container: {},
+  }), null);
 });
 
 test('report deck auto chart labels render above markers and avoid only different-value overlaps', () => {
@@ -3502,14 +3526,19 @@ test('util runtime browser adapter supports no-window and disabled-write branche
     meteringWriteEnabled: false,
   });
 
-  assert.equal(typeof registered.initializers.get('util'), 'function');
+  assert.equal(typeof registered.initializers.get('data'), 'function');
   assert.doesNotThrow(() => {
-    registered.initializers.get('util')({ category: { content: '' }, container: {} });
+    registered.initializers.get('data')({
+      sectionId: 'data',
+      category: { utilitySurface: 'entry', content: '' },
+      container: {},
+    });
   });
 
   const providerFactory = registered.saveProviders.get('util-shared-save');
   const provider = providerFactory({
-    sectionId: 'util',
+    sectionId: 'data',
+    category: { utilitySurface: 'entry' },
     container: {
       querySelector(selector) {
         return selector === '[data-kpi-metering-root]' ? { shadowRoot: {} } : null;
@@ -3530,7 +3559,8 @@ test('util runtime save provider falls back to production persistence only when 
   const providerFactory = withFallback.registered.saveProviders.get('util-shared-save');
 
   const productionProvider = providerFactory({
-    sectionId: 'util',
+    sectionId: 'data',
+    category: { utilitySurface: 'entry' },
     container: {
       querySelector(selector) {
         return selector === '[data-kpi-metering-root]' ? { shadowRoot: {} } : null;
@@ -3545,7 +3575,11 @@ test('util runtime save provider falls back to production persistence only when 
 
   const withoutFallback = createContext({ includeMeteringApp: false });
   const emptyProviderFactory = withoutFallback.registered.saveProviders.get('util-shared-save');
-  assert.equal(emptyProviderFactory({ sectionId: 'util', container: {} }), null);
+  assert.equal(emptyProviderFactory({
+    sectionId: 'data',
+    category: { utilitySurface: 'entry' },
+    container: {},
+  }), null);
 });
 
 test('kpi html and boot manifest load util runtime browser adapter before util runtime', () => {

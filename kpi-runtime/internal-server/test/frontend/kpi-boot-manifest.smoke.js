@@ -59,7 +59,6 @@ test('boot manifest groups cover the current static KPI script order', () => {
     'reportRuntime',
     'reportSheet',
     'reportSheetTail',
-    'energyOverride',
     'utilityAnalytics',
     'workRenderers',
     'appBootstrap',

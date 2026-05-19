@@ -1,43 +1,13 @@
-        function getActiveUtilityTeamSelectorItemKey() {
-            if (getNavigationSelectionSectionId() !== 'util') return '';
-            const categoryIndex = getNavigationSelectionCategoryIndex('util');
-            const category = Array.isArray(AppData?.util?.categories) ? AppData.util.categories[categoryIndex] : null;
-            const itemKey = String(category?.reportShortcutKey || '').trim().toLowerCase();
-            return ['electric', 'gas', 'waste'].includes(itemKey) ? itemKey : '';
-        }
-
         function getSidebarTeamCategories(sectionEntry, category = null) {
             if (sectionEntry?.id !== 'work' || category?.view !== 'team_calendar') return [];
             if (typeof getWorkTeamCalendarCategoryList === 'function') {
-                const teamCategories = getWorkTeamCalendarCategoryList();
-                const activeUtilityItemKey = getActiveUtilityTeamSelectorItemKey();
-                if (!activeUtilityItemKey) return teamCategories;
-                const currentMode = typeof getWorkTeamCalendarMode === 'function'
-                    ? getWorkTeamCalendarMode()
-                    : 'detail';
-                const visibleKeys = typeof getWorkTeamCalendarUtilityVisibleDataKeys === 'function'
-                    ? getWorkTeamCalendarUtilityVisibleDataKeys(currentMode, activeUtilityItemKey)
-                    : ['work_team_calendar_team1_part1', 'work_team_calendar_team1_part2', 'work_team_calendar_team2', 'work_team_calendar_team3', 'work_team_calendar_overview'];
-                return teamCategories
-                    .filter((teamCategory) => visibleKeys.includes(String(teamCategory?.dataKey || '').trim()))
-                    .map((teamCategory) => {
-                        if (String(teamCategory?.dataKey || '').trim() !== 'work_team_calendar_overview') {
-                            return teamCategory;
-                        }
-                        return {
-                            ...teamCategory,
-                            title: '통합',
-                            processLabel: '통합',
-                            processTag: '통합'
-                        };
-                    });
+                return getWorkTeamCalendarCategoryList();
             }
             return Array.isArray(sectionEntry.section?.teamCategories) ? sectionEntry.section.teamCategories : [];
         }
 
         function getSidebarTeamModeToggleHtml(sectionEntry, category = null, categoryIndex = -1) {
             if (sectionEntry?.id !== 'work' || category?.view !== 'team_calendar') return '';
-            if (getActiveUtilityTeamSelectorItemKey() === 'waste') return '';
             const modeMeta = typeof getWorkTeamCalendarModeMeta === 'function'
                 ? getWorkTeamCalendarModeMeta()
                 : { mode: 'detail', label: '\uD300\uBCC4', nextLabel: '\uACF5\uC815\uBCC4' };
@@ -65,15 +35,7 @@
 
         function toggleSidebarWorkTeamMode() {
             if (typeof toggleWorkTeamCalendarDisplayMode !== 'function') return;
-            const activeUtilityItemKey = getActiveUtilityTeamSelectorItemKey();
-            const targetDataKey = toggleWorkTeamCalendarDisplayMode();
-            if (
-                activeUtilityItemKey
-                && targetDataKey
-                && browser?.canApplyUtilSidebarSelection?.() === true
-            ) {
-                browser?.applyUtilSidebarSelectionToCurrentView?.(activeUtilityItemKey, targetDataKey);
-            }
+            toggleWorkTeamCalendarDisplayMode();
         }
 
         function getActiveSidebarTeamDataKey(sectionId = '', categoryIndex = -1) {
@@ -90,15 +52,6 @@
         }
 
         function openSidebarTeamCategory(sectionId, categoryIndex = 0, teamDataKey = '') {
-            const activeUtilityItemKey = getActiveUtilityTeamSelectorItemKey();
-            if (
-                sectionId === 'work'
-                && activeUtilityItemKey
-                && browser?.canApplyUtilSidebarSelection?.() === true
-            ) {
-                const handled = browser?.applyUtilSidebarSelectionToCurrentView?.(activeUtilityItemKey, teamDataKey);
-                if (handled) return;
-            }
             selectCategory(sectionId, categoryIndex, {
                 teamDataKey: String(teamDataKey || '').trim()
             });
@@ -113,10 +66,6 @@
             if (!sidebar) return;
             const sections = ensureSidebarTreeState(getDashboardSections());
             const selectedSectionId = getNavigationSelectionSectionId();
-            const activeUtilityItemKey = getActiveUtilityTeamSelectorItemKey();
-            const utilitySelectedTeamDataKey = activeUtilityItemKey
-                ? String(browser?.getUtilSidebarSelectionWorkDataKey?.(activeUtilityItemKey) || '').trim()
-                : '';
             sidebar.innerHTML = `
                 <div class="sidebar-tree-shell">
                     <button id="viewer-sidebar-toggle" type="button" class="sidebar-group-toggle sidebar-viewer-toggle" onclick="toggleViewerSidebar()" aria-label="닫기" title="닫기" aria-pressed="false">
@@ -125,17 +74,12 @@
                         </span>
                     </button>
                     ${sections.map(sectionEntry => {
-                        const isUtilityTeamSelectorSection = sectionEntry.id === 'work' && !!activeUtilityItemKey;
-                        if (isUtilityTeamSelectorSection) {
-                            SidebarTreeState.expandedSections.work = true;
-                        }
                         const renderableCategories = getSidebarRenderableCategories(sectionEntry);
                         const shouldKeepDirectLaunchSubmenuVisible = sectionEntry.section?.directLaunch === true && renderableCategories.length > 0;
                         const shouldOpenDefaultCategoryFromMain = sectionEntry.section?.openDefaultCategoryOnMain === true
                             && Array.isArray(sectionEntry.section?.categories)
                             && sectionEntry.section.categories.length > 0;
-                        const isExpanded = isUtilityTeamSelectorSection
-                            || SidebarTreeState.expandedSections[sectionEntry.id] === true
+                        const isExpanded = SidebarTreeState.expandedSections[sectionEntry.id] === true
                             || shouldKeepDirectLaunchSubmenuVisible;
                         const isActiveSection = selectedSectionId === sectionEntry.id;
                         const hideNavigationChevron = sectionEntry.section?.hideNavigationChevron === true;
@@ -168,8 +112,7 @@
                                                     ${teamCategories.map((teamCategory, teamIndex) => {
                                                         const teamColor = teamCategory.color || categoryColor;
                                                         const teamDataKey = String(teamCategory.dataKey || '').trim();
-                                                        const isActiveTeam = (isActiveCategory && activeTeamDataKey === teamDataKey)
-                                                            || (sectionEntry.id === 'work' && utilitySelectedTeamDataKey === teamDataKey);
+                                                        const isActiveTeam = isActiveCategory && activeTeamDataKey === teamDataKey;
                                                         return `
                                                             <button type="button" class="sidebar-item sidebar-item-nested sidebar-item-team${isActiveTeam ? ' active' : ''}" style="--cat-color:${teamColor};" onclick="openSidebarTeamCategory('${sectionEntry.id}', ${index}, '${teamCategory.dataKey}')" id="cat-btn-${sectionEntry.id}-${index}-team-${teamIndex}"${isActiveTeam ? ' aria-current="page"' : ''}>
                                                                 <span class="sidebar-item-main">
@@ -389,9 +332,6 @@
             const data = AppData[dataId];
             if (!data || !Array.isArray(data.categories) || !data.categories[index]) return;
             const category = data.categories[index];
-            const utilityItemKey = dataId === 'util'
-                ? String(category?.reportShortcutKey || '').trim().toLowerCase()
-                : '';
             const requestedNavSectionId = String(options.__navSectionId || dataId || '').trim();
             const navSectionId = getDashboardSections().some((entry) => entry.id === requestedNavSectionId)
                 ? requestedNavSectionId
@@ -436,12 +376,6 @@
             activeSectionId = dataId;
             activeCategoryIndex = index;
             SidebarTreeState.expandedSections[dataId] = options.keepSidebarCollapsed === true ? false : true;
-            if (['electric', 'gas', 'waste'].includes(utilityItemKey)) {
-                SidebarTreeState.expandedSections.work = true;
-                if (utilityItemKey === 'waste' && typeof applyWorkTeamCalendarMode === 'function') {
-                    applyWorkTeamCalendarMode('group');
-                }
-            }
             activeRenderContext = renderContext;
             renderDashboardSideNav();
             const activeTeamDataKey = options.teamDataKey

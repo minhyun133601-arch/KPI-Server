@@ -39,35 +39,6 @@
             };
         }
 
-        function getWorkTeamCalendarUtilityVisibleDataKeys(mode = '', itemKey = '') {
-            const normalizedMode = WORK_TEAM_CALENDAR_MODE_ORDER.includes(String(mode || '').trim().toLowerCase())
-                ? String(mode || '').trim().toLowerCase()
-                : getWorkTeamCalendarMode();
-            const normalizedItemKey = String(itemKey || '').trim().toLowerCase();
-            if (normalizedItemKey === 'waste') {
-                return [
-                    WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY,
-                    WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY,
-                    'work_team_calendar_overview'
-                ];
-            }
-            if (normalizedMode === WORK_TEAM_CALENDAR_MODE_GROUP) {
-                return [
-                    WORK_TEAM_CALENDAR_GROUP_BUKJEONG_KEY,
-                    WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY,
-                    'work_team_calendar_overview'
-                ];
-            }
-            if (normalizedMode === WORK_TEAM_CALENDAR_MODE_PROCESS) {
-                return normalizedItemKey === 'gas'
-                    ? [WORK_TEAM_CALENDAR_PROCESS_DRY_KEY, WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY, 'work_team_calendar_overview']
-                    : WORK_TEAM_CALENDAR_PROCESS_KEYS.concat('work_team_calendar_overview');
-            }
-            return normalizedItemKey === 'gas'
-                ? ['work_team_calendar_team1_part1', 'work_team_calendar_team1_part2', 'work_team_calendar_team3', 'work_team_calendar_overview']
-                : ['work_team_calendar_team1_part1', 'work_team_calendar_team1_part2', 'work_team_calendar_team2', 'work_team_calendar_team3', 'work_team_calendar_overview'];
-        }
-
         function resolveWorkTeamCalendarSourceDataKeys(dataKey) {
             const normalized = String(dataKey || '').trim();
             if (!normalized) return [];

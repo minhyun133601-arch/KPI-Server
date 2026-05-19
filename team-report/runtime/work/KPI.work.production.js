@@ -1,4 +1,301 @@
         const WORK_TEAM_CALENDAR_OVERVIEW_KEY = 'work_team_calendar_overview';
+        const WORK_PRODUCTION_ENTRY_LAST_MODIFIED_LABEL = '\uD300\uBCC4\uB0B4\uC5ED\uC11C';
+        const WORK_PRODUCTION_ENTRY_INPUT_ID = 'work-production-entry-file-input';
+        const WORK_PRODUCTION_IMPORT_CONTEXT = Object.freeze({
+            TARGET_COLS: ['A', 'B', 'C', 'E', 'F'],
+            HEADER_ROW: 3,
+            DATA_START_ROW: 4,
+            TEAM_VALUE_INDEX: 1,
+            LINE_VALUE_INDEX: 2,
+            PRODUCTION_VALUE_INDEX: 4,
+            PRODUCTION_DATE_OFFSET_DAYS: 0,
+            REQUIRED_HEADER_RULES: {
+                A: [/생산일자/],
+                B: [/팀/],
+                C: [/라인명/, /라인/],
+                E: [/품명/],
+                F: [/생산량/]
+            }
+        });
+
+        function refreshWorkProductionAfterMutation() {
+            if (typeof refreshUtilProductionDailyIndex === 'function') {
+                refreshUtilProductionDailyIndex();
+            }
+            if (typeof renderWorkTeamCalendarModal === 'function') {
+                renderWorkTeamCalendarModal();
+            }
+        }
+
+        function parseWorkProductionImportValue(value) {
+            if (typeof value === 'number' && Number.isFinite(value)) return value;
+            if (value === null || value === undefined) return null;
+            const text = String(value).trim();
+            if (!text) return null;
+            const match = text.replaceAll(',', '').match(/-?\d+(?:\.\d+)?/);
+            if (!match) return null;
+            const numeric = Number(match[0]);
+            return Number.isFinite(numeric) ? numeric : null;
+        }
+
+        function getWorkProductionImportContext() {
+            return {
+                XLSX,
+                ...WORK_PRODUCTION_IMPORT_CONTEXT,
+                parseProductionValue: parseWorkProductionImportValue
+            };
+        }
+
+        function getWorkProductionImportParsingApi() {
+            return typeof KPIProductionExtractorImportParsing !== 'undefined'
+                ? KPIProductionExtractorImportParsing
+                : null;
+        }
+
+        function compareWorkProductionRowsByFallback(left, right) {
+            const teamDiff = String(left?.teamKey || '').localeCompare(String(right?.teamKey || ''), 'ko');
+            if (teamDiff !== 0) return teamDiff;
+            const lineDiff = String(left?.lineKey || '').localeCompare(String(right?.lineKey || ''), 'ko');
+            if (lineDiff !== 0) return lineDiff;
+            const fileDiff = String(left?.fileName || '').localeCompare(String(right?.fileName || ''), 'ko');
+            if (fileDiff !== 0) return fileDiff;
+            const sheetDiff = String(left?.sheetName || '').localeCompare(String(right?.sheetName || ''), 'ko');
+            if (sheetDiff !== 0) return sheetDiff;
+            return (Number(left?.rowNumber) || 0) - (Number(right?.rowNumber) || 0);
+        }
+
+        function compareWorkProductionRowsByDateAsc(left, right) {
+            if (left?.dateObj && right?.dateObj) {
+                const diff = left.dateObj - right.dateObj;
+                if (diff !== 0) return diff;
+            } else if (!left?.dateObj && right?.dateObj) {
+                return 1;
+            } else if (left?.dateObj && !right?.dateObj) {
+                return -1;
+            }
+            return compareWorkProductionRowsByFallback(left, right);
+        }
+
+        function buildWorkProductionFileMetaMap(files) {
+            const map = new Map();
+            (files || []).forEach(file => {
+                const fileName = String(file?.name || '').trim();
+                if (!fileName) return;
+                const size = Number(file?.size) || 0;
+                const lastModified = Number(file?.lastModified) || 0;
+                map.set(fileName, {
+                    fileName,
+                    fingerprint: `${fileName.toLowerCase()}|${size}|${lastModified}`
+                });
+            });
+            return map;
+        }
+
+        function buildWorkProductionBridgeRows(rows, files) {
+            const fileMetaMap = buildWorkProductionFileMetaMap(files);
+            const productionIndex = WORK_PRODUCTION_IMPORT_CONTEXT.PRODUCTION_VALUE_INDEX;
+            const teamIndex = WORK_PRODUCTION_IMPORT_CONTEXT.TEAM_VALUE_INDEX;
+            const lineIndex = WORK_PRODUCTION_IMPORT_CONTEXT.LINE_VALUE_INDEX;
+            return (rows || []).map(row => {
+                const fileName = String(row?.fileName || '').trim();
+                return {
+                    date: row?.values?.[0] ?? '',
+                    team: row?.values?.[teamIndex] ?? '',
+                    lineName: row?.values?.[lineIndex] ?? '',
+                    productName: row?.values?.[3] ?? '',
+                    amount: row?.values?.[productionIndex] ?? '',
+                    moistureExcludedYield: row?.moistureExcludedYield ?? '',
+                    workTime: row?.workTime ?? row?.inputTime ?? '',
+                    operationTime: row?.operationTime ?? '',
+                    equipmentCapa: row?.equipmentCapa ?? '',
+                    equipmentUtilization: row?.equipmentUtilization ?? '',
+                    sourceFileName: fileName,
+                    sourceFingerprint: String(fileMetaMap.get(fileName)?.fingerprint || '')
+                };
+            });
+        }
+
+        function restoreWorkProductionImportSnapshot(snapshot) {
+            if (!snapshot) return;
+            if (Array.isArray(UTIL_PRODUCTION_DAILY_DATA)) {
+                UTIL_PRODUCTION_DAILY_DATA.length = 0;
+                snapshot.dailyData.forEach(item => UTIL_PRODUCTION_DAILY_DATA.push(item));
+            }
+            if (Array.isArray(UTIL_PRODUCTION_ARCHIVE_META)) {
+                UTIL_PRODUCTION_ARCHIVE_META.length = 0;
+                snapshot.archiveMeta.forEach(item => UTIL_PRODUCTION_ARCHIVE_META.push(item));
+            }
+            if (typeof UtilProductionState === 'object' && UtilProductionState) {
+                UtilProductionState.startDay = snapshot.startDay;
+            }
+            if (typeof UTIL_PRODUCTION_DAILY_STATE === 'object' && UTIL_PRODUCTION_DAILY_STATE) {
+                UTIL_PRODUCTION_DAILY_STATE.meta = snapshot.stateMeta;
+                UTIL_PRODUCTION_DAILY_STATE.periodDefault = snapshot.periodDefault;
+                UTIL_PRODUCTION_DAILY_STATE.teams = UTIL_PRODUCTION_DAILY_DATA;
+                UTIL_PRODUCTION_DAILY_STATE.archives = UTIL_PRODUCTION_ARCHIVE_META;
+            }
+            if (typeof KpiUtilDataSyncBrowserAdapter !== 'undefined') {
+                KpiUtilDataSyncBrowserAdapter.writeExistingPortalRecord?.('util_production_daily', UTIL_PRODUCTION_DAILY_STATE);
+            }
+            if (typeof refreshUtilProductionDailyIndex === 'function') refreshUtilProductionDailyIndex();
+            if (typeof refreshUtilProductionArchiveCountBadges === 'function') refreshUtilProductionArchiveCountBadges();
+        }
+
+        async function importWorkProductionEntryFiles(fileList) {
+            const files = Array.from(fileList || []).filter(Boolean);
+            if (!files.length) return false;
+            const parsingApi = getWorkProductionImportParsingApi();
+            if (!parsingApi || typeof parsingApi.parseExcelFile !== 'function') {
+                alert('생산량 기입 기능을 불러오지 못했습니다.');
+                return false;
+            }
+            if (typeof mergeUtilProductionExtractorRows !== 'function') {
+                alert('생산량 저장 기능을 불러오지 못했습니다.');
+                return false;
+            }
+
+            const parseContext = getWorkProductionImportContext();
+            const parsedResults = await Promise.all(files.map(async file => {
+                try {
+                    return {
+                        ok: true,
+                        fileName: String(file?.name || '').trim(),
+                        parsed: await parsingApi.parseExcelFile(parseContext, file, DEFAULT_UTIL_PRODUCTION_PERIOD.startDay)
+                    };
+                } catch (error) {
+                    return {
+                        ok: false,
+                        fileName: String(file?.name || '').trim(),
+                        message: String(error?.message || '형식 오류')
+                    };
+                }
+            }));
+            const parsedFiles = parsedResults
+                .filter(item => item.ok && item.parsed)
+                .map(item => item.parsed);
+            const failedFiles = parsedResults
+                .filter(item => !item.ok)
+                .map(item => ({
+                    fileName: item.fileName || '이름 없는 파일',
+                    message: item.message || '형식 오류'
+                }));
+            if (!parsedFiles.length) {
+                const failedNames = failedFiles.map(item => item.fileName).filter(Boolean).join(', ');
+                throw new Error(failedNames ? `형식 오류 파일: ${failedNames}` : '기입 가능한 생산량 데이터가 없습니다.');
+            }
+
+            let rows = [];
+            parsedFiles.forEach(parsed => {
+                rows.push(...(Array.isArray(parsed?.rows) ? parsed.rows : []));
+            });
+            const dedup = typeof parsingApi.deduplicateRows === 'function'
+                ? parsingApi.deduplicateRows(parseContext, rows)
+                : { rows, removedCount: 0 };
+            rows = (dedup.rows || []).sort(compareWorkProductionRowsByDateAsc);
+
+            const rollbackSnapshot = {
+                dailyData: JSON.parse(JSON.stringify(UTIL_PRODUCTION_DAILY_DATA || [])),
+                archiveMeta: JSON.parse(JSON.stringify(UTIL_PRODUCTION_ARCHIVE_META || [])),
+                stateMeta: JSON.parse(JSON.stringify(UTIL_PRODUCTION_DAILY_STATE?.meta || {})),
+                periodDefault: JSON.parse(JSON.stringify(UTIL_PRODUCTION_DAILY_STATE?.periodDefault || {})),
+                startDay: UtilProductionState.startDay
+            };
+
+            try {
+                const previousStartDay = UtilProductionState.startDay;
+                UtilProductionState.startDay = DEFAULT_UTIL_PRODUCTION_PERIOD.startDay;
+                const startDayChanged = previousStartDay !== UtilProductionState.startDay;
+                const result = mergeUtilProductionExtractorRows(buildWorkProductionBridgeRows(rows, files), {
+                    fallbackTeam: ''
+                });
+                let saved = true;
+                if (startDayChanged && result.addedCount === 0 && result.patchedCount === 0 && result.replacedCount === 0) {
+                    saved = await Promise.resolve(persistUtilProductionDailyState());
+                } else if (result.savePromise && typeof result.savePromise.then === 'function') {
+                    saved = await result.savePromise;
+                }
+                if (saved !== true) {
+                    throw new Error('서버 저장이 완료되지 않았습니다.');
+                }
+                if (typeof setLastModified === 'function' && (result.addedCount > 0 || result.replacedCount > 0 || startDayChanged)) {
+                    setLastModified(WORK_PRODUCTION_ENTRY_LAST_MODIFIED_LABEL);
+                }
+                refreshWorkProductionAfterMutation();
+                const failedNotice = failedFiles.length
+                    ? `, 형식 오류 제외 ${failedFiles.length.toLocaleString('ko-KR')}개`
+                    : '';
+                const patchedNotice = result.patchedCount > 0
+                    ? `, 보조값 보완 ${result.patchedCount.toLocaleString('ko-KR')}건`
+                    : '';
+                const replacedNotice = result.replacedCount > 0
+                    ? `, 기존 ${result.replacedCount.toLocaleString('ko-KR')}건 교체`
+                    : '';
+                alert(`기입 완료: ${result.addedCount.toLocaleString('ko-KR')}건 기입${replacedNotice}, 중복 제외 ${result.skippedCount.toLocaleString('ko-KR')}건${patchedNotice}${failedNotice}`);
+                return true;
+            } catch (error) {
+                restoreWorkProductionImportSnapshot(rollbackSnapshot);
+                throw error;
+            }
+        }
+
+        function ensureWorkProductionEntryInput() {
+            let input = document.getElementById(WORK_PRODUCTION_ENTRY_INPUT_ID);
+            if (input) return input;
+            input = document.createElement('input');
+            input.id = WORK_PRODUCTION_ENTRY_INPUT_ID;
+            input.type = 'file';
+            input.accept = '.xlsx,.xls';
+            input.multiple = true;
+            input.hidden = true;
+            input.addEventListener('change', async () => {
+                const files = Array.from(input.files || []);
+                input.value = '';
+                if (!files.length) return;
+                try {
+                    await importWorkProductionEntryFiles(files);
+                } catch (error) {
+                    alert(`생산량 기입 실패: ${error?.message || '알 수 없는 오류'}`);
+                }
+            });
+            document.body.appendChild(input);
+            return input;
+        }
+
+        function openWorkProductionEntryModal(event) {
+            if (event && typeof event.stopPropagation === 'function') {
+                event.stopPropagation();
+            }
+            if (event && typeof event.preventDefault === 'function') {
+                event.preventDefault();
+            }
+            ensureWorkProductionEntryInput().click();
+            return true;
+        }
+
+        function acknowledgeWorkProductionExportPending(event) {
+            if (event && typeof event.stopPropagation === 'function') {
+                event.stopPropagation();
+            }
+            if (event && typeof event.preventDefault === 'function') {
+                event.preventDefault();
+            }
+            alert('생산량 추출은 기준을 정한 뒤 다음 단계에서 연결하겠습니다.');
+            return false;
+        }
+
+        function renderWorkProductionActionMenuHtml(options = {}) {
+            const disabled = options.disabled === true ? ' disabled' : '';
+            const extraClass = options.summary === true ? ' is-summary' : '';
+            return `
+                <details class="work-team-calendar-production-action-menu${extraClass}">
+                    <summary class="work-team-calendar-production-action-toggle" aria-label="생산량 관리">관리</summary>
+                    <div class="work-team-calendar-production-action-list">
+                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="entry" onclick="openWorkProductionEntryModal(event)"${disabled}>기입</button>
+                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="export" onclick="acknowledgeWorkProductionExportPending(event)"${disabled}>추출</button>
+                    </div>
+                </details>
+            `;
+        }
 
         function isWorkTeamCalendarOverview(dataKey) {
             return String(dataKey || '').trim() === WORK_TEAM_CALENDAR_OVERVIEW_KEY;

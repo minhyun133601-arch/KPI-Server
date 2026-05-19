@@ -1,4 +1,7 @@
 (function () {
+    const buildUtilityDataEntryContent = KpiSectionFactoryAdapter.getBuilder('buildUtilityDataEntryContent');
+    const buildUtilityAnalysisContent = KpiSectionFactoryAdapter.getBuilder('buildUtilityAnalysisContent');
+
     KpiSectionFactoryAdapter.registerFactory('data', function buildDataSection() {
         const AppData = {};
         AppData.data = {
@@ -12,12 +15,18 @@
                     title: '유틸리티 기입',
                     icon: 'fa-pen-to-square',
                     color: '#0f766e',
-                    desc: '유틸리티 기입 화면 바로가기',
-                    shortcutTarget: {
-                        sectionId: 'util',
-                        title: '유틸리티 기입',
-                        options: { keepSidebarCollapsed: true }
-                    }
+                    desc: '전기, 가스, 폐수 검침 데이터와 비용을 기입합니다.',
+                    viewerMode: 'full-bleed',
+                    utilitySurface: 'entry',
+                    content: buildUtilityDataEntryContent()
+                },
+                {
+                    title: '분석',
+                    icon: 'fa-chart-column',
+                    color: '#0ea5e9',
+                    desc: '총괄 비율과 가스·전기·폐수 검침표·분석표',
+                    utilitySurface: 'analysis',
+                    content: buildUtilityAnalysisContent()
                 },
                 {
                     title: '작업 이력 기입',
