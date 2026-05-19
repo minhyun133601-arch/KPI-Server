@@ -5,6 +5,10 @@
     const REPORT_PRODUCTION_TEAM3_VIEW = 'production-team-3';
     const REPORT_PUBLIC_WORKS_VIEW = 'public-works';
     const REPORT_INITIAL_SLIDE_COUNT = 2;
+    const REPORT_SAFETY_SLOTS_PER_PAGE = 8;
+    const REPORT_SAFETY_COLUMNS_PER_ROW = 4;
+    const REPORT_SAFETY_PAGE_COUNT = 2;
+    const REPORT_SAFETY_HAZARD_OPTIONS = ['미끄럼', '넘어짐', '끼임', '충돌', '낙하/비래', '베임/찔림', '화재', '감전', '누출', '화상'];
     const SLIDE_NAV_ITEMS = [
         { view: REPORT_HQ_VIEW, label: '표지' },
         { view: REPORT_HQ_VIEW, label: '본부 목차' },
@@ -33,6 +37,8 @@
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '가스 비용 분석' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '폐수 비용 분석' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '폐수 비용 분석' },
+        { view: REPORT_PUBLIC_WORKS_VIEW, label: '자율 안전 신고제' },
+        { view: REPORT_PUBLIC_WORKS_VIEW, label: '자율 안전 신고제' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '공사 및 정비' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '공사 및 정비' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '주요 계획' },
@@ -172,10 +178,11 @@
         `;
     }
 
-    function buildReportStatusImageSlot(slotIndex, phaseKey) {
-        const fieldRole = `slide8${phaseKey}Image`;
+    function buildReportPhaseImageSlot(slideKey, slotIndex, phaseKey, extraCellClass = '') {
+        const fieldRole = `${slideKey}${phaseKey}Image`;
+        const extraClass = extraCellClass ? ` ${extraCellClass}` : '';
         return `
-            <td class="report-plan-image-cell report-status-image-cell" data-report-plan-slot="slide8.${slotIndex}" data-report-plan-local-slot="${slotIndex}">
+            <td class="report-plan-image-cell${extraClass}" data-report-plan-slot="${slideKey}.${slotIndex}" data-report-plan-local-slot="${slotIndex}">
                 <div class="report-plan-image-frame" data-report-plan-image-frame role="button" tabindex="-1" aria-label="이미지 첨부">
                     <img data-report-plan-image data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}" alt="">
                     <span class="report-plan-image-placeholder" data-report-plan-image-placeholder>이미지</span>
@@ -192,6 +199,28 @@
         `;
     }
 
+    function buildReportStatusImageSlot(slotIndex, phaseKey) {
+        return buildReportPhaseImageSlot('slide8', slotIndex, phaseKey, 'report-status-image-cell');
+    }
+
+    function buildReportSafetyImageFrame(slotIndex, phaseKey) {
+        const fieldRole = `slide10${phaseKey}Image`;
+        return `
+            <div class="report-plan-image-frame report-safety-image-frame" data-report-plan-image-frame role="button" tabindex="-1" aria-label="이미지 첨부">
+                <img data-report-plan-image data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}" alt="">
+                <span class="report-plan-image-placeholder" data-report-plan-image-placeholder>이미지</span>
+                <div class="report-plan-image-choice" data-report-plan-image-choice>
+                    <label class="report-plan-image-choice-button" data-report-plan-image-upload data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}">
+                        <span>첨부</span>
+                        <input type="file" accept="image/*" data-report-plan-image-input data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}" disabled>
+                    </label>
+                    <button type="button" class="report-plan-image-choice-button" data-report-plan-image-paste data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}">붙여넣기</button>
+                </div>
+                <button type="button" class="report-plan-image-clear-button" data-report-plan-image-clear data-report-plan-image-role="${fieldRole}" data-report-plan-local-slot="${slotIndex}" aria-label="이미지 삭제" title="이미지 삭제">X</button>
+            </div>
+        `;
+    }
+
     function buildReportPlanSummarySlot(slideKey, slotIndex) {
         const overviewToken = slideKey === 'slide8' ? ` data-report-slide8-overview="${slotIndex}"` : '';
         return `
@@ -199,6 +228,76 @@
                 <div class="report-plan-summary-text" data-report-plan-summary="${slideKey}" data-report-plan-local-slot="${slotIndex}"${overviewToken} contenteditable="false" spellcheck="false"></div>
                 <button type="button" class="report-plan-delete-slot" data-report-plan-delete-slot="${slideKey}" data-report-plan-local-slot="${slotIndex}">삭제</button>
             </td>
+        `;
+    }
+
+    function buildReportSafetyImageCell(slotIndex, phaseKey) {
+        return `
+            <td class="report-safety-image-cell" data-report-plan-slot="slide10.${slotIndex}" data-report-plan-local-slot="${slotIndex}">
+                ${buildReportSafetyImageFrame(slotIndex, phaseKey)}
+            </td>
+        `;
+    }
+
+    function buildReportSafetySummaryCell(slotIndex) {
+        return `
+            <td class="report-safety-summary-cell" data-report-plan-slot="slide10.${slotIndex}" data-report-plan-local-slot="${slotIndex}">
+                <div class="report-safety-summary-text" data-report-plan-summary="slide10" data-report-plan-local-slot="${slotIndex}" contenteditable="false" spellcheck="false"></div>
+                <button type="button" class="report-plan-delete-slot report-safety-delete-slot" data-report-plan-delete-slot="slide10" data-report-plan-local-slot="${slotIndex}">삭제</button>
+            </td>
+        `;
+    }
+
+    function buildReportSafetyTable(rowIndex = 0) {
+        const firstSlotIndex = rowIndex * REPORT_SAFETY_COLUMNS_PER_ROW + 1;
+        const slotIndexes = Array.from({ length: REPORT_SAFETY_COLUMNS_PER_ROW }, (_, index) => firstSlotIndex + index);
+        const headerCells = slotIndexes.map((slotIndex, index) => {
+            const teamAttrs = index === 0
+                ? ` class="report-safety-row-team" data-report-plan-row-team="slide10" data-report-plan-row-index="${rowIndex}"`
+                : '';
+            return `<th${teamAttrs} data-report-plan-slot="slide10.${slotIndex}" data-report-plan-local-slot="${slotIndex}"></th>`;
+        }).join('');
+        return `
+            <table class="report-safety-table" data-report-safety-row="${rowIndex}" aria-label="자율 안전 신고제">
+                <colgroup>
+                    <col class="report-safety-label-col">
+                    ${slotIndexes.map(slotIndex => `<col class="report-safety-slot-col" data-report-plan-slot="slide10.${slotIndex}" data-report-plan-local-slot="${slotIndex}">`).join('')}
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="report-safety-label-head" aria-hidden="true"></th>
+                        ${headerCells}
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="report-safety-before-row">
+                        <th>전</th>
+                        ${slotIndexes.map(slotIndex => buildReportSafetyImageCell(slotIndex, 'Before')).join('')}
+                    </tr>
+                    <tr class="report-safety-after-row">
+                        <th>후</th>
+                        ${slotIndexes.map(slotIndex => buildReportSafetyImageCell(slotIndex, 'After')).join('')}
+                    </tr>
+                    <tr class="report-safety-summary-row">
+                        <th>개요</th>
+                        ${slotIndexes.map(slotIndex => buildReportSafetySummaryCell(slotIndex)).join('')}
+                    </tr>
+                </tbody>
+            </table>
+        `;
+    }
+
+    function buildReportSafetyPage(pageIndex = 0) {
+        return `
+            <article class="report-slide report-template-slide report-safety-slide" data-report-slide-page="10" data-report-slide-view="${REPORT_PUBLIC_WORKS_VIEW}" data-report-dynamic-slide="slide10" data-report-dynamic-page="${pageIndex}" data-report-optional-page="slide10" data-report-slide-label="자율 안전 신고제"${pageIndex > 0 ? ' hidden' : ''}>
+                ${buildSlideHeader('slide10Section', 'slide10Title')}
+                <div class="report-safety-layout" data-report-plan-slide="slide10" data-report-plan-page="${pageIndex}">
+                    ${Array.from({ length: REPORT_SAFETY_SLOTS_PER_PAGE / REPORT_SAFETY_COLUMNS_PER_ROW }, (_, rowIndex) => buildReportSafetyTable(rowIndex)).join('')}
+                </div>
+                <div class="report-slide-footer"></div>
+                <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
+                <div class="report-slide-page-number" data-report-page-number>10/10</div>
+            </article>
         `;
     }
 
@@ -253,6 +352,9 @@
         const teamOptions = ['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀']
             .map(team => `<option value="${team}">${team}</option>`)
             .join('');
+        const hazardOptions = REPORT_SAFETY_HAZARD_OPTIONS
+            .map(hazard => `<option value="${hazard}">${hazard}</option>`)
+            .join('');
         return `
             <div class="report-overview-dialog" data-report-overview-dialog hidden>
                 <div class="report-overview-panel" role="dialog" aria-modal="true" aria-labelledby="report-overview-title">
@@ -261,17 +363,21 @@
                         <button type="button" data-report-overview-cancel aria-label="닫기">×</button>
                     </div>
                     <div class="report-overview-form">
-                        <label>
+                        <label data-report-overview-team-row>
                             <span>팀</span>
                             <select data-report-overview-team>${teamOptions}</select>
                         </label>
-                        <label>
+                        <label data-report-overview-title-row>
                             <span>제목</span>
                             <input type="text" data-report-overview-title>
                         </label>
                         <label data-report-overview-mode="slide8">
                             <span>효과</span>
                             <input type="text" data-report-overview-effect>
+                        </label>
+                        <label data-report-overview-mode="slide10" data-report-overview-hazard-row>
+                            <span>예방</span>
+                            <select data-report-overview-hazard>${hazardOptions}</select>
                         </label>
                         <div class="report-overview-toggle-row" data-report-overview-mode="slide9">
                             <span>구분</span>
@@ -285,11 +391,11 @@
                             <span>원인/목적</span>
                             <input type="text" data-report-overview-detail>
                         </label>
-                        <label>
+                        <label data-report-overview-date-row>
                             <span data-report-overview-date-label>완료 날짜</span>
                             <input type="date" data-report-overview-date>
                         </label>
-                        <label>
+                        <label data-report-overview-amount-row>
                             <span data-report-overview-amount-label>금액</span>
                             <span class="report-overview-amount-field">
                                 <input type="number" step="any" inputmode="decimal" data-report-overview-amount placeholder="예: 3.4">
@@ -1434,7 +1540,7 @@ ${colgroup}
 
     function buildContentsListItems(items = []) {
         return items.map(item => (
-            `<li>${buildContentsListItemContent(item)}</li>`
+            `<li${item?.optionalPage ? ` data-report-optional-content="${item.optionalPage}" hidden` : ''}>${buildContentsListItemContent(item)}</li>`
         )).join('');
     }
 
@@ -1580,8 +1686,9 @@ ${colgroup}
                     ${buildContentsListItems([
                         { fieldKey: 'contentsItem1', text: '에너지 실적' },
                         { fieldKey: 'contentsItem2', text: '폐수처리장 운영실적' },
-                        { fieldKey: 'contentsItem3', text: '공사 및 정비현황' },
-                        { fieldKey: 'contentsItem4', text: '주요계획', nextMonth: true }
+                        { fieldKey: 'contentsItem5', text: '자율 안전 신고제', optionalPage: 'slide10' },
+                        { fieldKey: 'contentsItem3', text: '공사 및 정비현황', optionalPage: 'slide8' },
+                        { fieldKey: 'contentsItem4', text: '주요계획', nextMonth: true, optionalPage: 'slide9' }
                     ])}
                 </ol>
             </article>
@@ -1715,8 +1822,9 @@ ${colgroup}
             buildAnalysisSlide(5, 'slide5Section', 'slide5Title', '가스 (LPG)', '비용'),
             buildWasteSlide(6, 'slide6Section', 'slide6Title', '폐수'),
             buildWasteSlide(7, 'slide7Section', 'slide7Title', '폐수'),
+            ...Array.from({ length: REPORT_SAFETY_PAGE_COUNT }, (_, pageIndex) => buildReportSafetyPage(pageIndex)),
             `
-                <article class="report-slide report-template-slide" data-report-slide-page="8" data-report-slide-view="${REPORT_PUBLIC_WORKS_VIEW}" data-report-dynamic-slide="slide8" data-report-dynamic-page="0" data-report-slide-label="공사 및 정비">
+                <article class="report-slide report-template-slide" data-report-slide-page="8" data-report-slide-view="${REPORT_PUBLIC_WORKS_VIEW}" data-report-dynamic-slide="slide8" data-report-dynamic-page="0" data-report-optional-page="slide8" data-report-slide-label="공사 및 정비">
                     ${buildSlideHeader('slide8Section', 'slide8Title')}
                     ${buildReportStatusTable(0)}
                     <div class="report-slide-footer"></div>
@@ -1725,7 +1833,7 @@ ${colgroup}
                 </article>
             `,
             `
-                <article class="report-slide report-template-slide" data-report-slide-page="-1" data-report-slide-view="${REPORT_PUBLIC_WORKS_VIEW}" data-report-dynamic-slide="slide8" data-report-dynamic-page="1" data-report-slide-label="공사 및 정비" hidden>
+                <article class="report-slide report-template-slide" data-report-slide-page="-1" data-report-slide-view="${REPORT_PUBLIC_WORKS_VIEW}" data-report-dynamic-slide="slide8" data-report-dynamic-page="1" data-report-optional-page="slide8" data-report-slide-label="공사 및 정비" hidden>
                     ${buildSlideHeader('slide8Section', 'slide8Title')}
                     ${buildReportStatusTable(1)}
                     <div class="report-slide-footer"></div>
@@ -1734,7 +1842,7 @@ ${colgroup}
                 </article>
             `,
             `
-                <article class="report-slide report-template-slide" data-report-slide-page="9" data-report-slide-view="${REPORT_PUBLIC_WORKS_VIEW}" data-report-dynamic-slide="slide9" data-report-dynamic-page="0" data-report-slide-label="주요 계획">
+                <article class="report-slide report-template-slide" data-report-slide-page="9" data-report-slide-view="${REPORT_PUBLIC_WORKS_VIEW}" data-report-dynamic-slide="slide9" data-report-dynamic-page="0" data-report-optional-page="slide9" data-report-slide-label="주요 계획">
                     ${buildSlideHeader('slide9Section', 'slide9Title')}
                     ${buildReportPlanTable('slide9', 0)}
                     <div class="report-slide-footer"></div>
@@ -1743,7 +1851,7 @@ ${colgroup}
                 </article>
             `,
             `
-                <article class="report-slide report-template-slide" data-report-slide-page="-1" data-report-slide-view="${REPORT_PUBLIC_WORKS_VIEW}" data-report-dynamic-slide="slide9" data-report-dynamic-page="1" data-report-slide-label="주요 계획" hidden>
+                <article class="report-slide report-template-slide" data-report-slide-page="-1" data-report-slide-view="${REPORT_PUBLIC_WORKS_VIEW}" data-report-dynamic-slide="slide9" data-report-dynamic-page="1" data-report-optional-page="slide9" data-report-slide-label="주요 계획" hidden>
                     ${buildSlideHeader('slide9Section', 'slide9Title')}
                     ${buildReportPlanTable('slide9', 1)}
                     <div class="report-slide-footer"></div>
@@ -2063,6 +2171,34 @@ ${colgroup}
                 .report-status-table .report-plan-image-frame { inset: 5px; border-width: 3px; box-shadow: 2px 2px 3px rgba(15, 23, 42, 0.35); }
                 .report-status-table .report-plan-summary-cell { padding: 12px 8px 8px !important; }
                 .report-status-table .report-plan-summary-text { font-size: 15px; line-height: 1.5; }
+                .report-safety-layout { position: absolute; left: 3.4%; right: 2.9%; top: 8.4%; bottom: 8.8%; min-height: 0; display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 1.1%; }
+                .report-safety-table { width: 100%; height: 100%; border: 1.5px solid #1e3a5f; border-collapse: collapse; table-layout: fixed; background: #ffffff; color: #020617; }
+                .report-safety-label-col { width: 4.6%; }
+                .report-safety-slot-col { width: 23.85%; }
+                .report-safety-table th, .report-safety-table td { border: 1px solid #94a3b8; padding: 0; text-align: center; vertical-align: middle; }
+                .report-safety-table thead th { height: 11%; background: #5d9bd3; color: #ffffff; font-size: 18px; font-weight: 900; line-height: 1.1; }
+                .report-safety-table .report-safety-row-team { padding: 0 8px; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+                .report-safety-table tbody th { background: #d9e2f1; color: #020617; font-size: 20px; font-weight: 900; line-height: 1; text-align: center; }
+                .report-safety-before-row, .report-safety-after-row { height: 36%; }
+                .report-safety-summary-row { height: 17%; }
+                .report-safety-image-cell { position: relative; min-width: 0; min-height: 0; padding: 4px !important; }
+                .report-safety-image-frame { inset: 4px; border-width: 1.4px; box-shadow: none; }
+                .report-safety-summary-cell { position: relative; padding: 4px 6px !important; text-align: left !important; vertical-align: middle !important; }
+                .report-safety-summary-text { min-width: 0; max-height: 100%; overflow: hidden; color: #020617; font-size: 12px; font-weight: 900; line-height: 1.18; text-align: center; white-space: nowrap; text-overflow: ellipsis; word-break: keep-all; }
+                .report-safety-delete-slot { right: 4px; bottom: 3px; height: 22px; }
+                .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-safety-summary-cell[data-report-plan-active="true"] .report-safety-delete-slot { display: inline-flex; align-items: center; justify-content: center; }
+                .report-slide[data-report-output-prepared="true"] .report-safety-table[data-report-plan-row-filled="false"],
+                .report-deck-editor[data-report-print-mode="true"] .report-safety-table[data-report-plan-row-filled="false"] { display: none; }
+                .report-slide[data-report-output-prepared="true"] .report-safety-table col[data-report-plan-filled="false"],
+                .report-slide[data-report-output-prepared="true"] .report-safety-table th[data-report-plan-filled="false"],
+                .report-slide[data-report-output-prepared="true"] .report-safety-table td[data-report-plan-filled="false"],
+                .report-deck-editor[data-report-print-mode="true"] .report-safety-table col[data-report-plan-filled="false"],
+                .report-deck-editor[data-report-print-mode="true"] .report-safety-table th[data-report-plan-filled="false"],
+                .report-deck-editor[data-report-print-mode="true"] .report-safety-table td[data-report-plan-filled="false"] { display: none; }
+                .report-slide[data-report-output-prepared="true"] .report-safety-layout[data-report-plan-filled-row-count="1"],
+                .report-deck-editor[data-report-print-mode="true"] .report-safety-layout[data-report-plan-filled-row-count="1"] { grid-template-rows: minmax(0, 1fr); }
+                .report-deck-editor:not([data-report-edit-mode="editing"]) [data-report-add-page] { display: none; }
+                .report-deck-editor[data-report-slide10-enabled="true"] [data-report-add-page="slide10"] { display: none; }
                 .report-production-start-layout { position: absolute; left: 3.4%; right: 2.9%; top: 8.4%; bottom: 8.8%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 5.2%; }
                 .report-production-start-layout::before, .report-production-labor-layout::before, .report-production-yield-layout::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; z-index: 0; width: 2px; transform: translateX(-50%); background: #f59e0b; pointer-events: none; }
                 .report-production-start-column { position: relative; min-width: 0; display: grid; grid-template-rows: 8% 13.2% 9.8% 24.8% 6.2% minmax(0, 1fr); align-items: stretch; min-height: 0; }
@@ -2226,6 +2362,9 @@ ${colgroup}
                 .report-overview-form { display: grid; gap: 10px; padding: 14px; }
                 .report-overview-form label { display: grid; grid-template-columns: 82px minmax(0, 1fr); align-items: center; gap: 10px; color: #0f172a; font-size: 13px; font-weight: 900; }
                 .report-overview-form [hidden] { display: none !important; }
+                .report-overview-dialog[data-report-overview-slide-key="slide10"] [data-report-overview-date-row] { order: 1; }
+                .report-overview-dialog[data-report-overview-slide-key="slide10"] [data-report-overview-amount-row] { order: 2; }
+                .report-overview-dialog[data-report-overview-slide-key="slide10"] [data-report-overview-hazard-row] { order: 3; }
                 .report-overview-form input, .report-overview-form select { width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; color: #0f172a; padding: 0 10px; font-size: 13px; font-weight: 800; }
                 .report-overview-toggle-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); align-items: center; gap: 10px; color: #0f172a; font-size: 13px; font-weight: 900; }
                 .report-overview-toggle { display: grid; grid-template-columns: 1fr 1fr; width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #ffffff; }
@@ -2264,6 +2403,7 @@ ${colgroup}
                         </label>
                         <button type="button" class="report-deck-action-button" data-report-memo-overview-toggle>특이사항</button>
                         <button type="button" class="report-deck-action-button" data-report-edit-toggle aria-pressed="false">수정</button>
+                        <button type="button" class="report-deck-action-button" data-report-add-page="slide10">페이지 추가</button>
                         <button type="button" class="report-deck-action-button" data-report-print-pdf>PDF인쇄</button>
                         <button type="button" class="report-deck-action-button" data-report-export-html>HTML추출</button>
                         <button type="button" class="report-deck-action-button" data-report-fullscreen>전체화면</button>

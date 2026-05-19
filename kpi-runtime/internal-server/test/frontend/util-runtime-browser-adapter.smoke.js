@@ -226,9 +226,22 @@ function createReportDeckContainer() {
       },
     },
     effect: { value: '' },
+    hazard: {
+      value: '미끄럼',
+      focusCount: 0,
+      focus() {
+        this.focusCount += 1;
+      },
+    },
     kind: { value: 'cause' },
     detail: { value: '' },
-    date: { value: '' },
+    date: {
+      value: '',
+      focusCount: 0,
+      focus() {
+        this.focusCount += 1;
+      },
+    },
     amount: {
       value: '',
       customValidity: '',
@@ -368,7 +381,7 @@ function createReportDeckContainer() {
       return selector === '[data-report-date-input]' ? this : null;
     },
   };
-  const planCountSelects = ['slide8SlotCount', 'slide9SlotCount'].map((key) => ({
+  const planCountSelects = ['slide8SlotCount', 'slide9SlotCount', 'slide10SlotCount'].map((key) => ({
     dataset: { reportPlanCountSelect: key },
     value: '',
     disabled: true,
@@ -376,19 +389,29 @@ function createReportDeckContainer() {
       return selector === '[data-report-plan-count-select]' ? this : null;
     },
   }));
-  const planAddSlotButtons = ['slide8', 'slide9'].map((slideKey) => ({
+  const planAddSlotButtons = ['slide8', 'slide9', 'slide10'].map((slideKey) => ({
     dataset: { reportPlanAddSlot: slideKey },
     disabled: true,
     closest(selector) {
       return selector === '[data-report-plan-add-slot]' ? this : null;
     },
   }));
+  const addPageButton = {
+    dataset: { reportAddPage: 'slide10' },
+    disabled: true,
+    closest(selector) {
+      return selector === '[data-report-add-page]' ? this : null;
+    },
+  };
   const planSlotCells = [
     ...[1, 2, 3, 4].map((slotIndex) => ({
       dataset: { reportPlanSlot: `slide8.${slotIndex}`, reportPlanLocalSlot: String(slotIndex) },
     })),
     ...[1, 2, 3, 4].map((slotIndex) => ({
       dataset: { reportPlanSlot: `slide9.${slotIndex}`, reportPlanLocalSlot: String(slotIndex) },
+    })),
+    ...[1, 2, 3, 4, 5, 6].map((slotIndex) => ({
+      dataset: { reportPlanSlot: `slide10.${slotIndex}`, reportPlanLocalSlot: String(slotIndex) },
     })),
   ];
   const planDeleteButtons = [
@@ -414,7 +437,26 @@ function createReportDeckContainer() {
         return null;
       },
     })),
+    ...[1, 2, 3, 4, 5, 6].map((slotIndex) => ({
+      dataset: { reportPlanDeleteSlot: 'slide10', reportPlanLocalSlot: String(slotIndex) },
+      disabled: false,
+      closest(selector) {
+        if (selector === '[data-report-plan-delete-slot]') return this;
+        if (selector === '[data-report-plan-slot]') {
+          return planSlotCells.find((cell) => cell.dataset.reportPlanSlot === `slide10.${slotIndex}`) || null;
+        }
+        return null;
+      },
+    })),
   ];
+  const planRowTables = Array.from({ length: 2 }, () => ({ dataset: {} }));
+  const planRowLabels = Array.from({ length: 2 }, (_, rowIndex) => ({
+    dataset: { reportPlanRowTeam: 'slide10', reportPlanRowIndex: String(rowIndex) },
+    textContent: '',
+    closest(selector) {
+      return selector === '.report-safety-table' ? planRowTables[rowIndex] || null : null;
+    },
+  }));
   const planImages = [
     'slide8BeforeImage1',
     'slide8BeforeImage2',
@@ -428,6 +470,18 @@ function createReportDeckContainer() {
     'slide9Image2',
     'slide9Image3',
     'slide9Image4',
+    'slide10BeforeImage1',
+    'slide10BeforeImage2',
+    'slide10BeforeImage3',
+    'slide10BeforeImage4',
+    'slide10BeforeImage5',
+    'slide10BeforeImage6',
+    'slide10AfterImage1',
+    'slide10AfterImage2',
+    'slide10AfterImage3',
+    'slide10AfterImage4',
+    'slide10AfterImage5',
+    'slide10AfterImage6',
   ].map((key) => ({
     dataset: { reportPlanImage: key },
     src: '',
@@ -463,8 +517,8 @@ function createReportDeckContainer() {
         : null;
     },
   }));
-  const planSlides = ['slide8', 'slide9'].map((slideKey) => ({
-    dataset: { reportPlanSlide: slideKey },
+  const planSlides = ['slide8', 'slide9', 'slide10'].map((slideKey) => ({
+    dataset: { reportPlanSlide: slideKey, reportPlanPage: '0' },
     querySelectorAll(selector) {
       if (selector === '[data-report-plan-slot]') {
         return planSlotCells.filter((cell) => cell.dataset.reportPlanSlot.startsWith(`${slideKey}.`));
@@ -472,7 +526,15 @@ function createReportDeckContainer() {
       if (selector === '[data-report-plan-delete-slot]') {
         return planDeleteButtons.filter((button) => button.dataset.reportPlanDeleteSlot === slideKey);
       }
+      if (selector === '[data-report-plan-row-team]') {
+        return slideKey === 'slide10' ? planRowLabels : [];
+      }
       return [];
+    },
+    closest(selector) {
+      if (selector !== '[data-report-slide-page]') return null;
+      if (slideKey === 'slide10') return slides[10] || null;
+      return null;
     },
   }));
   const planImageFrames = Object.fromEntries(planImages.map((image) => [
@@ -683,6 +745,7 @@ function createReportDeckContainer() {
     'reviewedBy3',
     'approvedBy',
     'contentsItem4',
+    'contentsItem5',
     'productionTeam1ContentsTitle',
     'productionTeam1ContentsItem1',
     'productionTeam1ContentsItem2',
@@ -690,6 +753,7 @@ function createReportDeckContainer() {
     'productionTeam1ContentsItem4',
     'slide8Title',
     'slide9Title',
+    'slide10Title',
     'slide8Item1Text',
     'slide8Item2Text',
     'slide8Item3Text',
@@ -765,6 +829,7 @@ function createReportDeckContainer() {
         ...planImageUploadButtons,
       ];
       if (selector === '[data-report-plan-add-slot]') return planAddSlotButtons;
+      if (selector === '[data-report-add-page]') return [addPageButton];
       if (selector === '[data-report-memo-key]') return memoTargets;
       if (selector === '[data-report-memo-content]') return memoContents;
       if (selector === '.report-bukjeong-analysis-column, .report-analysis-column') return analysisColumns;
@@ -782,13 +847,15 @@ function createReportDeckContainer() {
       return [];
     },
   };
-  const slides = Array.from({ length: 10 }, (_, index) => {
+  const slides = Array.from({ length: 11 }, (_, index) => {
     const pageNumber = { textContent: '' };
     return {
       dataset: {
         reportSlidePage: String(index),
         reportSlideView: index < 2 ? 'hq' : 'public-works',
+        ...(index === 10 ? { reportOptionalPage: 'slide10' } : {}),
       },
+      hidden: false,
       pageNumber,
       classList: makeClassList(),
       setAttribute(name, value) {
@@ -799,7 +866,7 @@ function createReportDeckContainer() {
       },
     };
   });
-  const navButtons = Array.from({ length: 10 }, (_, index) => ({
+  const navButtons = Array.from({ length: 11 }, (_, index) => ({
     dataset: { reportSlideTarget: String(index) },
     classList: makeClassList(),
     setAttribute(name, value) {
@@ -847,8 +914,11 @@ function createReportDeckContainer() {
     dateInput,
     planCountSelects,
     planAddSlotButtons,
+    addPageButton,
     planSlotCells,
     planDeleteButtons,
+    planRowTables,
+    planRowLabels,
     planImages,
     planImagePlaceholders,
     planImageSourceLabels,
@@ -933,6 +1003,7 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.match(adapterSource, /data-report-export-viewer/);
   assert.match(adapterSource, /data-report-export-fullscreen/);
   assert.match(adapterSource, /data-report-export-print/);
+  assert.match(adapterSource, /data-report-output-prepared/);
   assert.doesNotMatch(adapterSource, /function buildReportDeckExportMemoOverviewDialog/);
   assert.doesNotMatch(adapterSource, /data-report-memo-overview-toggle>특이사항/);
   assert.doesNotMatch(adapterSource, /deck\.appendChild\(buildReportDeckExportMemoOverviewDialog/);
@@ -2601,8 +2672,8 @@ test('report deck editor loads and saves through server module records', async (
   const contentsItem4Field = deckDom.fields.find((field) => field.dataset.reportField === 'contentsItem4');
   assert.equal(titleField.textContent, '12월 실적 보고');
   assert.equal(departmentField.textContent, '생산본부');
-  assert.equal(slide8TitleField.textContent, '3. 12월 공사 및 정비 현황 1/1');
-  assert.equal(slide9TitleField.textContent, '4. 1월 주요 계획 1/1');
+  assert.equal(slide8TitleField.textContent, '3. 12월 공사 및 정비 현황');
+  assert.equal(slide9TitleField.textContent, '4. 1월 주요 계획');
   assert.equal(dateField.textContent, '2026.01.15');
   assert.equal(team1ContentsTitleField.textContent, 'Contents');
   assert.equal(team1ContentsItem1Field.textContent, '생산실적(생산량)');
@@ -2636,6 +2707,7 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.slides[0].dataset.reportPrintVisible, 'true');
   assert.equal(deckDom.slides[2].dataset.reportPrintVisible, 'true');
   assert.equal(deckDom.slides[9].dataset.reportPrintVisible, 'true');
+  assert.equal(deckDom.slides[10].dataset.reportPrintVisible, 'false');
   assert.equal(deckDom.slides[9].dataset.reportPrintLast, 'true');
   deckDom.listeners.click({
     target: deckDom.productionContentsJumpButton,
@@ -2643,11 +2715,12 @@ test('report deck editor loads and saves through server module records', async (
   });
   assert.equal(deckDom.root.dataset.reportActiveView, 'public-works');
   assert.equal(deckDom.root.dataset.reportActiveSlide, '0');
-  assert.equal(deckDom.counter.textContent, '1 / 8');
+  assert.equal(deckDom.counter.textContent, '1 / 9');
   assert.equal(deckDom.reportReturnButton.hidden, false);
   assert.equal(deckDom.slides[2].classList.active, true);
-  assert.equal(deckDom.slides[2].pageNumber.textContent, '1/8');
-  assert.equal(deckDom.slides[9].pageNumber.textContent, '8/8');
+  assert.equal(deckDom.slides[2].pageNumber.textContent, '1/9');
+  assert.equal(deckDom.slides[9].pageNumber.textContent, '8/9');
+  assert.equal(deckDom.slides[10].pageNumber.textContent, '9/9');
   deckDom.listeners.click({
     target: deckDom.printButton,
     preventDefault() {},
@@ -2658,6 +2731,7 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.slides[0].dataset.reportPrintVisible, 'false');
   assert.equal(deckDom.slides[2].dataset.reportPrintVisible, 'true');
   assert.equal(deckDom.slides[9].dataset.reportPrintVisible, 'true');
+  assert.equal(deckDom.slides[10].dataset.reportPrintVisible, 'false');
   assert.equal(deckDom.slides[9].dataset.reportPrintLast, 'true');
   assert.equal(titleField.contenteditable, 'false');
   assert.equal(dateField.contenteditable, 'false');
@@ -2725,7 +2799,7 @@ test('report deck editor loads and saves through server module records', async (
   });
   await flushMicrotasks();
   assert.equal(fetchCalls.length, 2);
-  assert.equal(slide8TitleField.textContent, '3. 12월 공사 및 정비 현황 1/1');
+  assert.equal(slide8TitleField.textContent, '3. 12월 공사 및 정비 현황');
   assert.equal(deckDom.status.textContent, '');
 
   team1ContentsItem1Field.textContent = '생산량 실적';
@@ -2844,8 +2918,8 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(fetchCalls[2].options.method, 'PUT');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.title, '12월 실적 보고');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.productionTeam1ContentsItem1, '생산량 실적');
-  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Title, '3. 12월 공사 및 정비 현황 1/1');
-  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Title, '4. 1월 주요 계획 1/1');
+  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Title, '3. 12월 공사 및 정비 현황');
+  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Title, '4. 1월 주요 계획');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.reportDate, '2026.01.16');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8SlotCount, '3');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Team, '공무환경팀');
@@ -2877,8 +2951,8 @@ test('report deck editor loads and saves through server module records', async (
   await flushMicrotasks();
   assert.equal(fetchCalls[3].url, '/api/modules/report_runtime/records/report_2025_11');
   assert.equal(titleField.textContent, '11월 실적 보고');
-  assert.equal(slide8TitleField.textContent, '3. 11월 공사 및 정비 현황 1/1');
-  assert.equal(slide9TitleField.textContent, '4. 12월 주요 계획 1/1');
+  assert.equal(slide8TitleField.textContent, '3. 11월 공사 및 정비 현황');
+  assert.equal(slide9TitleField.textContent, '4. 12월 주요 계획');
   assert.equal(dateField.textContent, '2025.12.15');
   assert.equal(deckDom.root.dataset.reportMonth, '2025-11');
   assert.equal(deckDom.root.dataset.reportRecordKey, 'report_2025_11');
@@ -2888,7 +2962,7 @@ test('report deck editor loads and saves through server module records', async (
     preventDefault() {},
   });
   assert.equal(deckDom.root.dataset.reportActiveSlide, '3');
-  assert.equal(deckDom.counter.textContent, '4 / 8');
+  assert.equal(deckDom.counter.textContent, '4 / 9');
   assert.equal(deckDom.slides[5].classList.active, true);
 
   deckDom.listeners.keydown({
@@ -2905,10 +2979,10 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.stage.focusCount, 2);
 
   deckDom.listeners.click({
-    target: deckDom.navButtons[7],
+    target: deckDom.navButtons[8],
     preventDefault() {},
   });
-  assert.equal(deckDom.root.dataset.reportActiveSlide, '7');
+  assert.equal(deckDom.root.dataset.reportActiveSlide, '8');
   assert.equal(deckDom.root.ownerDocument.fullscreenElement, deckDom.root);
 
   deckDom.listeners.keydown({
@@ -2916,7 +2990,7 @@ test('report deck editor loads and saves through server module records', async (
     preventDefault() {},
   });
   assert.equal(deckDom.root.dataset.reportActiveSlide, '0');
-  assert.equal(deckDom.counter.textContent, '1 / 8');
+  assert.equal(deckDom.counter.textContent, '1 / 9');
   assert.equal(deckDom.root.ownerDocument.exitCount, 1);
   assert.equal(deckDom.root.ownerDocument.fullscreenElement, null);
 
@@ -3573,6 +3647,165 @@ test('report deck plan slot add requires saved complete overview and delete remo
   assert.equal(savedPayload.slide8SlotCount, '1');
   assert.equal(savedPayload.slide8Item1Title, '저장된 작업');
   assert.equal(savedPayload.slide8Item2Title, '');
+});
+
+test('report deck safety page stays visible but blank output omits it and saves slide10 data', async () => {
+  const fetchCalls = [];
+  const deckDom = createReportDeckContainer();
+  const { registered } = createContext({
+    fetchImpl: async (url, options = {}) => {
+      fetchCalls.push({ url, options });
+      if (url === '/api/shared-store') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            store: createReportDeckSharedStore(),
+          }),
+        };
+      }
+      if (options.method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            record: {
+              payload: { reportDate: '2025.12.15' },
+              version: 1,
+              updated_at: '2026-05-15T00:00:00.000Z',
+            },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, record: { payload: JSON.parse(options.body).payload } }),
+      };
+    },
+  });
+
+  registered.initializers.get('report')({
+    category: { content: '' },
+    container: deckDom.container,
+  });
+  await flushMicrotasks();
+
+  assert.equal(deckDom.slides[10].hidden, false);
+  assert.equal(deckDom.root.dataset.reportSlide10Enabled, 'true');
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.addPageButton.disabled, true);
+  deckDom.listeners.click({
+    target: deckDom.printButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.slides[10].hidden, false);
+  assert.equal(deckDom.slides[10].dataset.reportPrintVisible, 'false');
+  assert.equal(deckDom.slides[10].dataset.reportPrintPageText, undefined);
+  assert.equal(deckDom.root.dataset.reportPrintSlide8Visible, 'false');
+  assert.equal(deckDom.root.dataset.reportPrintSlide9Visible, 'false');
+  assert.equal(deckDom.root.dataset.reportPrintSlide10Visible, 'false');
+  assert.equal(deckDom.slides[9].dataset.reportPrintLast, 'true');
+  deckDom.listeners.click({
+    target: deckDom.productionContentsJumpButton,
+    preventDefault() {},
+  });
+  const slide10SafetySummaryCell = {
+    dataset: { reportPlanSourceSlot: '5', reportPlanLocalSlot: '5' },
+    closest(selector) {
+      return selector === '.report-safety-summary-cell' ? this : null;
+    },
+  };
+  deckDom.listeners.click({
+    target: slide10SafetySummaryCell,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.overviewDialog.hidden, false);
+  assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlideKey, 'slide10');
+  assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlot, '5');
+  assert.equal(deckDom.overviewDialogFields.team.value, '1팀 2파트');
+  assert.equal(deckDom.overviewDialogFields.date.focusCount, 1);
+  deckDom.listeners.click({
+    target: deckDom.overviewCancelButton,
+    preventDefault() {},
+  });
+  const slide10SummaryField = {
+    dataset: { reportPlanSummary: 'slide10', reportPlanSourceSlot: '1' },
+    textContent: '',
+    closest(selector) {
+      return selector === '[data-report-plan-summary]' ? this : null;
+    },
+    setAttribute(name, value) {
+      this[name] = value;
+    },
+    blur() {},
+  };
+  deckDom.listeners.click({
+    target: slide10SummaryField,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.root.dataset.reportActiveView, 'public-works');
+  assert.equal(deckDom.overviewDialog.hidden, false);
+  assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlideKey, 'slide10');
+  assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlot, '1');
+  assert.equal(deckDom.overviewDialogFields.date.focusCount, 2);
+
+  deckDom.overviewDialogFields.team.value = '3팀';
+  deckDom.overviewDialogFields.title.value = '배관 주변 정리';
+  deckDom.overviewDialogFields.effect.value = '통행 위험 제거';
+  deckDom.overviewDialogFields.hazard.value = '미끄럼';
+  deckDom.overviewDialogFields.date.value = '2025-12-27';
+  deckDom.overviewDialogFields.amount.value = '';
+  deckDom.listeners.click({
+    target: deckDom.overviewSaveButton,
+    preventDefault() {},
+  });
+  await flushMicrotasks();
+  assert.equal(deckDom.planRowLabels[0].textContent, deckDom.overviewDialogFields.team.value);
+  assert.equal(deckDom.planRowLabels[0].dataset.reportPlanRowFilled, 'true');
+  assert.equal(deckDom.planRowTables[0].dataset.reportPlanRowFilled, 'true');
+  assert.equal(
+    deckDom.planSlotCells.find((cell) => cell.dataset.reportPlanSlot === 'slide10.1')?.dataset.reportPlanFilled,
+    'true'
+  );
+  assert.equal(
+    deckDom.planSlotCells.find((cell) => cell.dataset.reportPlanSlot === 'slide10.2')?.dataset.reportPlanFilled,
+    'false'
+  );
+  deckDom.listeners.click({
+    target: deckDom.printButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.slides[10].dataset.reportPrintVisible, 'true');
+  assert.equal(deckDom.slides[10].dataset.reportPrintPageText, '9/9');
+  assert.equal(deckDom.root.dataset.reportPrintSlide10Visible, 'true');
+
+  deckDom.listeners.keydown({
+    key: 's',
+    code: 'KeyS',
+    ctrlKey: true,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+  await flushMicrotasks();
+  const savedPayload = JSON.parse(fetchCalls.at(-1).options.body).payload;
+  assert.equal(savedPayload.slide10Enabled, 'true');
+  assert.equal(savedPayload.slide10SlotCount, '1');
+  assert.equal(savedPayload.slide10Item1Team, '3팀');
+  assert.equal(savedPayload.slide10Item1Title, '');
+  assert.equal(savedPayload.slide10Item1Effect, '미끄럼');
+  assert.equal(savedPayload.slide10Item1Date, '2025-12-27');
+  assert.equal(savedPayload.slide10Item1Text, '12.27 完, 자체처리, 미끄럼 예방');
+  assert.equal(savedPayload.slide10BeforeImage16, '');
+  assert.equal(savedPayload.slide10AfterImage16, '');
 });
 
 test('util runtime browser adapter supports no-window and disabled-write branches', async () => {

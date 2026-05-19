@@ -1,5 +1,19 @@
 # 2026-05-19 Patch Note
 
+## Report Deck Safety Page
+
+Goal: 공무환경팀 보고서에서 `자율 안전 신고제`를 공사 및 정비/주요 계획보다 앞에 배치하고, 전/후/개요 전용 좌측 열 + 팀명 첫 작업칸 헤더 + 4열 작업 표형 양식으로 전/후 이미지와 한 줄 개요를 관리합니다.
+
+Touched areas: report section slide template/CSS, report deck runtime state/edit controls, report deck save payload defaults, report export output filtering, related frontend smoke tests, Repository Map history.
+
+Data change: none. 새 페이지는 기존 `report_runtime` 월별 payload에 `slide10*` 필드로 저장됩니다. 자율 안전 신고제는 최대 16건까지 저장하고 개요는 `날짜 完, 자체처리 또는 n 백만원 소요, 위험성 예방` 한 줄로 표시합니다. 자율 안전 신고제 개요 입력창은 날짜, 비용, 예방 위험 순서로 열리고 빈 개요칸을 눌러도 바로 입력할 수 있습니다. 자율 안전 신고제, 공사 및 정비(`slide8`), 주요 계획(`slide9`)은 입력이 없으면 PDF/HTML 추출 대상과 추출 페이지 번호에서 제외됩니다. 자율 안전 신고제 출력본은 입력된 작업칸과 입력된 팀 행만 보이도록 비어 있는 칸/행을 숨깁니다. 세 항목의 대제목 번호는 실제 입력 여부에 따라 `3`부터 자동으로 당겨지고, `1/1` 표기는 제거했습니다.
+
+Verification: `node --check` for changed report JS/tests, targeted `section-factory-adapter` and `util-runtime-browser-adapter` smoke tests, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, and `KPI_BASE_URL=http://127.0.0.1:18080/ npm run smoke:kpi-browser` passed.
+
+Risk: visual fine-tuning is based on the requested 4-column table layout and existing report deck style; no separate PDF sample export was compared in this pass.
+
+---
+
 ## Production Import Normal/Rework Split
 
 Goal: 작업내역서 생산량 카드의 기입 단계를 정상/재가공품으로 분리하고, 재가공품 생산량이 팀별내역서 상세에서 즉시 구분되게 표시합니다.

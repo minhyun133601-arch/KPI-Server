@@ -323,7 +323,27 @@
         return readBlobAsDataUrl(blob);
     }
 
-    function cleanReportDeckExportSlide(slide, isActive = false) {
+    function applyReportDeckPreparedOutputState(clone, sourceSlide = null, editorRoot = null) {
+        clone?.setAttribute?.('data-report-output-prepared', 'true');
+        const pageText = String(sourceSlide?.dataset?.reportPrintPageText || '').trim();
+        if (pageText) {
+            const pageNumber = clone?.querySelector?.('[data-report-page-number]');
+            if (pageNumber) pageNumber.textContent = pageText;
+        }
+        const optionalVisibility = {
+            slide8: String(editorRoot?.dataset?.reportPrintSlide8Visible || '') === 'true',
+            slide9: String(editorRoot?.dataset?.reportPrintSlide9Visible || '') === 'true',
+            slide10: String(editorRoot?.dataset?.reportPrintSlide10Visible || '') === 'true'
+        };
+        Array.from(clone?.querySelectorAll?.('[data-report-optional-content]') || []).forEach(element => {
+            const optionalKey = String(element?.dataset?.reportOptionalContent || '').trim();
+            if (Object.prototype.hasOwnProperty.call(optionalVisibility, optionalKey)) {
+                element.hidden = !optionalVisibility[optionalKey];
+            }
+        });
+    }
+
+    function cleanReportDeckExportSlide(slide, isActive = false, sourceSlide = null, editorRoot = null) {
         slide?.classList?.toggle?.('is-active', isActive === true);
         slide?.setAttribute?.('aria-hidden', isActive === true ? 'false' : 'true');
         Array.from(slide?.querySelectorAll?.('[contenteditable]') || []).forEach(element => {
@@ -333,6 +353,7 @@
         Array.from(slide?.querySelectorAll?.('.report-plan-image-choice, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear]') || []).forEach(element => {
             element.remove?.();
         });
+        applyReportDeckPreparedOutputState(slide, sourceSlide, editorRoot);
     }
 
     function buildReportDeckExportNav(doc, editorRoot, slides = []) {
@@ -402,7 +423,7 @@
         stage.tabIndex = 0;
         slides.forEach((slide, index) => {
             const clone = slide.cloneNode(true);
-            cleanReportDeckExportSlide(clone, index === 0);
+            cleanReportDeckExportSlide(clone, index === 0, slide, editorRoot);
             stage.appendChild(clone);
         });
 
@@ -504,7 +525,7 @@
         host.appendChild(style);
 
         const clone = slide.cloneNode(true);
-        cleanReportDeckExportSlide(clone, true);
+        cleanReportDeckExportSlide(clone, true, slide, editorRoot);
         clone.classList?.add?.('is-active');
         clone.removeAttribute?.('hidden');
         clone.setAttribute?.('aria-hidden', 'false');
@@ -1004,10 +1025,11 @@ ${getNodeOuterHtml(deck)}
         }
         const allSlides = Array.from(editorRoot?.querySelectorAll?.('[data-report-slide-page]') || [])
             .filter(slide => slide.hidden !== true && String(slide?.dataset?.reportSlidePage || '') !== '-1');
+        const preparedSlides = allSlides.filter(slide => String(slide?.dataset?.reportPrintVisible || '') === 'true');
         const hasViewMetadata = allSlides.some(slide => String(slide?.dataset?.reportSlideView || '').trim());
         const activeView = String(editorRoot?.dataset?.reportActiveView || '').trim();
-        let slides = allSlides;
-        if (hasViewMetadata && activeView && activeView !== 'hq') {
+        let slides = preparedSlides.length ? preparedSlides : allSlides;
+        if (!preparedSlides.length && hasViewMetadata && activeView && activeView !== 'hq') {
             const viewSlides = allSlides.filter(slide => String(slide?.dataset?.reportSlideView || '').trim() === activeView);
             if (viewSlides.length) {
                 slides = viewSlides;
