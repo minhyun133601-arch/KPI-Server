@@ -1,15 +1,15 @@
 # AGENTS.md
 
 Created: `2026-04-03`
-Revised: `2026-05-18` - company server runtime port contract restored
+Revised: `2026-05-19` - local experiment runtime contract restored after upstream sync
 
-This file is the repository-level execution contract for AI agents working in `KPI-Server`. It stays short, direct, and English-only so agent behavior is consistent. User-facing explanations should normally be Korean unless the user asks for another language.
+This file is the repository-level execution contract for AI agents working in this desktop `KPI-LOCAL` command workspace. It stays short, direct, and English-only so agent behavior is consistent. User-facing explanations should normally be Korean unless the user asks for another language.
 
 ## 1. Purpose
 
-`KPI-Server` is the company-use KPI runtime repository. It absorbs reviewed refactor work from the desktop `kpi-local/KPI-local-main` reference, but it is not the local experiment workspace and must not inherit local-experiment ports, runtime names, or handoff artifacts.
+`KPI-LOCAL` is the local command and experiment workspace for the KPI runtime.
 
-Agents must treat this repository as the active company worktree. Implement the current user request with the smallest coherent change, verify the affected path, and avoid long-running status-document churn.
+Agents must treat this repository as the active local worktree. Implement the current user request with the smallest coherent change, verify the affected path, and avoid long-running status-document churn.
 
 ## 2. Authority
 
@@ -23,25 +23,22 @@ Agents must treat this repository as the active company worktree. Implement the 
 - `patch.md` is the short daily private patch note that feeds the Repository Map daily history. It is not a public Repository Map tree item.
 - `server-apply-handoff/` and worklog-style handoff documents are not standing public documentation in this repo unless the user explicitly asks for them.
 
-## 3. Company Runtime Boundary
+## 3. Local Runtime Boundary
 
-Default local/company ports and names:
+Default local command ports and names:
 
-- KPI runtime: `3100`
+- KPI local runtime: `18080`
 - Ops console: `3215-3218`
 - Verification runtime: `3192`
-- PostgreSQL: `5434`
-- Production env file: `kpi-runtime/internal-server/.env.production.local`
+- PostgreSQL: `55432`
+- Local experiment env file: `kpi-runtime/internal-server/.env.local-experiment`
 - Development env file: `kpi-runtime/internal-server/.env.development.local`
 - Runtime state root: `kpi-runtime/internal-server/var`
 
-Do not replace these with local-experiment ports such as `18080`, `18081-18084`, `18092`, or `55432` unless the user explicitly asks in the current conversation.
+For this command workspace, the local server port follows the local experiment environment, not the central/company default. When using `.env.local-experiment`, keep the KPI server on `127.0.0.1:18080` and PostgreSQL on `127.0.0.1:55432`; do not temporarily switch the server to `3100` for checks. Run root smoke checks with `KPI_BASE_URL=http://127.0.0.1:18080/`.
 
-Use company start/stop commands by default:
+Use local command start/stop commands by default:
 
-- `kpi-runtime/internal-server/scripts/windows/start-central-stack.ps1`
-- `kpi-runtime/internal-server/scripts/windows/stop-server.ps1`
-- `kpi-runtime/internal-server/scripts/windows/stop-local-postgres.ps1`
 - `commands/open-ops-console.cmd`
 - `commands/close-ops-console.cmd`
 
@@ -53,7 +50,7 @@ Desktop `kpi-local/KPI-local-main` is a read-only reference unless the user expl
 
 - Do not modify its files, Git state, runtime data, or secrets.
 - Do not copy `.git`, `node_modules`, `var`, `.env*`, logs, dumps, uploads, screenshots, OAuth cache, PATs, private notes, or production-derived originals.
-- When absorbing files, reshape local-experiment ports, env names, storage roots, and scripts to this repository's company contract.
+- When absorbing files, keep local command workspace ports, env names, storage roots, and scripts aligned with this repository's local contract.
 - Keep reference clone folders out of this repo's tracked parent Git state.
 
 ## 5. Agent Working Contract

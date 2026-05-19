@@ -43,20 +43,26 @@ export const legacyStartupShortcutFile = startupProgramsDir
   : "";
 export const internalServerVarDir = path.join(internalServerDir, "var");
 export const internalServerLogsDir = path.join(internalServerVarDir, "logs");
-export const centralRuntimeDir = path.join(
+export const localExperimentDir = path.join(
   internalServerVarDir,
-  "central-runtime",
+  "local-experiment",
 );
-export const centralPostgresDir = path.join(centralRuntimeDir, "postgres");
-export const centralPostgresDataDir = path.join(centralPostgresDir, "data");
+export const localExperimentPostgresDir = path.join(
+  localExperimentDir,
+  "postgres",
+);
+export const localExperimentPostgresDataDir = path.join(
+  localExperimentPostgresDir,
+  "data",
+);
 export const postgresLogFile = path.join(
-  centralPostgresDir,
+  localExperimentPostgresDir,
   "logs",
   "postgres.log",
 );
 export const envFilePath = path.join(
   internalServerDir,
-  ".env.production.local",
+  ".env.local-experiment",
 );
 
 export const internalServerScripts = {

@@ -1,5 +1,5 @@
 param(
-  [string]$BaseUrl = 'http://127.0.0.1:3100',
+  [string]$BaseUrl = 'http://127.0.0.1:18080',
   [string]$OutputPath
 )
 
@@ -31,6 +31,7 @@ function Get-ConfiguredStorageRoot {
   param([string]$ServerDir)
 
   $candidatePaths = @(
+    (Join-Path $ServerDir '.env.local-experiment'),
     (Join-Path $ServerDir '.env.production.local'),
     (Join-Path $ServerDir '.env.development.local'),
     (Join-Path $ServerDir '.env')

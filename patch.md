@@ -1,3 +1,19 @@
+# 2026-05-19 Patch Note
+
+## Local Experiment Upstream Sync
+
+Goal: `minhyun133601-arch/KPI-Server.git` 최신 `origin/main` 기능을 이 워크스페이스에 흡수하고, 로컬 실험본 규칙인 KPI `18080`, PostgreSQL `55432`, `.env.local-experiment`, `var/local-experiment` 경계를 다시 맞췄습니다.
+
+Touched areas: root/agent runtime contracts, ops console runtime/env paths and labels, local PostgreSQL/server helper scripts, root/browser smoke defaults, DB fingerprint/env selection helpers.
+
+Data change: PostgreSQL dump `kpi-runtime/internal-server/var/local-experiment/storage/backups/postgres-dumps/postgres-dump-20260519-085631.dump` created before schema migration. Applied `005_util_production_daily_time_metrics.sql` and `006_util_production_daily_work_time.sql` to `kpi_local_experiment`.
+
+Verification: `npm run backup:postgres-dump`, `npm run db:migrate`, `npm run format:check`, `npm run lint`, `npm test`, `npm run verify:server-structure`, `npm run smoke:kpi-root`, `npm run smoke:kpi-browser`, ops console health/overview/DB tables checks, `node --check` for ops console MJS files, `git diff --check`, and Desktop KPI folder count check passed.
+
+Risk: central-runtime helper scripts remain in the repo for their explicit workflow names, but the default local experiment server/ops console path now reads `.env.local-experiment` and runs on `18080`/`55432`.
+
+---
+
 # 2026-05-18 Patch Note
 
 ## Report Export Memo Removal

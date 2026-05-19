@@ -351,6 +351,7 @@
     ]);
     const REPORT_DECK_MEMO_METRIC_OPTIONS = Object.freeze([
         Object.freeze({ key: 'production', label: '생산량' }),
+        Object.freeze({ key: 'yusan_production_share', label: '유산 생산량 비율' }),
         Object.freeze({ key: 'electric', label: '전력량' }),
         Object.freeze({ key: 'electric_unit', label: '생산량 대비 전력량' }),
         Object.freeze({ key: 'lng', label: 'LNG' }),
@@ -359,6 +360,8 @@
         Object.freeze({ key: 'lpg_unit', label: '생산량 대비 LPG' }),
         Object.freeze({ key: 'yield_rate', label: '수율' }),
         Object.freeze({ key: 'operation_rate', label: '가동률' }),
+        Object.freeze({ key: 'work_time', label: '조업시간' }),
+        Object.freeze({ key: 'operation_time', label: '가동시간' }),
         Object.freeze({ key: 'production_days', label: '생산일수' }),
         Object.freeze({ key: 'off_days', label: '휴무일수' }),
         Object.freeze({ key: 'product_count', label: '고유 품목수' }),
@@ -371,9 +374,12 @@
         Object.freeze({ key: 'waste_cost_labor', label: '인건비' })
     ]);
     const REPORT_DECK_MEMO_LINE_METRIC_PREFIX = 'production_line::';
+    const REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY = 'yusan_production_share';
     const REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS = Object.freeze([
         'yield_rate',
         'operation_rate',
+        'work_time',
+        'operation_time',
         'production_days',
         'off_days',
         'product_count'
@@ -404,9 +410,9 @@
     });
     const REPORT_DECK_MEMO_TEAM_METRIC_KEYS = Object.freeze({
         team_01_01: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_01_02: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', 'lpg', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_02: Object.freeze(['production', 'electric', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_03: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
+        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', 'lng', 'lng_unit', 'lpg', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
     });
 
     function normalizeReportDeckDate(value) {

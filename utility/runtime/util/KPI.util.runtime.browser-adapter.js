@@ -16,6 +16,7 @@
     ]);
     const REPORT_DECK_MEMO_METRICS = Object.freeze({
         production: Object.freeze({ key: 'production', label: '생산량', unit: 'kg' }),
+        yusan_production_share: Object.freeze({ key: 'yusan_production_share', label: '유산 생산량 비율', unit: '%p', deltaMode: 'percentagePoint' }),
         electric: Object.freeze({ key: 'electric', label: '전력량', unit: 'kWh' }),
         electric_unit: Object.freeze({ key: 'electric_unit', label: '생산량 대비 전력량', unit: 'kWh/kg', decimals: 3 }),
         lng: Object.freeze({ key: 'lng', label: 'LNG 사용량', unit: 'm³' }),
@@ -24,6 +25,8 @@
         lpg_unit: Object.freeze({ key: 'lpg_unit', label: '생산량 대비 LPG', unit: 'kg/kg', decimals: 3 }),
         yield_rate: Object.freeze({ key: 'yield_rate', label: '수율', unit: '%p', deltaMode: 'percentagePoint' }),
         operation_rate: Object.freeze({ key: 'operation_rate', label: '가동률', unit: '%p', deltaMode: 'percentagePoint' }),
+        work_time: Object.freeze({ key: 'work_time', label: '조업시간', unit: '시간', decimals: 1 }),
+        operation_time: Object.freeze({ key: 'operation_time', label: '가동시간', unit: '시간', decimals: 1 }),
         production_days: Object.freeze({ key: 'production_days', label: '생산일수', unit: '일' }),
         off_days: Object.freeze({ key: 'off_days', label: '휴무일수', unit: '일' }),
         product_count: Object.freeze({ key: 'product_count', label: '고유 품목수', unit: '개' }),
@@ -36,9 +39,13 @@
         waste_cost_labor: Object.freeze({ key: 'waste_cost_labor', label: '인건비', unit: '원', wasteDetailKey: 'labor' })
     });
     const REPORT_DECK_MEMO_LINE_METRIC_PREFIX = 'production_line::';
+    const REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY = 'yusan_production_share';
+    const REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_TEAM_KEYS = Object.freeze(['team_01_02', 'team_02', 'team_03']);
     const REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS = Object.freeze([
         'yield_rate',
         'operation_rate',
+        'work_time',
+        'operation_time',
         'production_days',
         'off_days',
         'product_count'
@@ -70,9 +77,9 @@
     });
     const REPORT_DECK_MEMO_TEAM_METRIC_KEYS = Object.freeze({
         team_01_01: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_01_02: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', 'lpg', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_02: Object.freeze(['production', 'electric', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_03: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
+        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', 'lng', 'lng_unit', 'lpg', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
     });
 
     function getRuntime() {
@@ -1461,11 +1468,34 @@ ${buildReportDeckExportScript()}
         return [];
     }
 
-    function getReportDeckMemoProductionValue(monthKey, team, gasApi) {
-        const value = typeof gasApi?.getUtilGasAnalysisProductionValue === 'function'
-            ? gasApi.getUtilGasAnalysisProductionValue(monthKey, [team.label])
+    function getReportDeckMemoProductionValueForTeamNames(monthKey, teamNames = [], gasApi, memoBuildCache = null) {
+        const normalizedTeamNames = (Array.isArray(teamNames) ? teamNames : [])
+            .map(teamName => String(teamName || '').trim())
+            .filter(Boolean);
+        if (!normalizedTeamNames.length || typeof gasApi?.getUtilGasAnalysisProductionValue !== 'function') return null;
+        const cacheKey = `${monthKey}|${normalizedTeamNames.join(',')}`;
+        return readReportDeckMemoBuildCache(
+            memoBuildCache,
+            'productionValues',
+            cacheKey,
+            () => toFiniteNumber(gasApi.getUtilGasAnalysisProductionValue(monthKey, normalizedTeamNames))
+        );
+    }
+
+    function getReportDeckMemoProductionValue(monthKey, team, gasApi, memoBuildCache = null) {
+        return getReportDeckMemoProductionValueForTeamNames(monthKey, [team.label], gasApi, memoBuildCache);
+    }
+
+    function getReportDeckMemoYusanProductionShareValue(monthKey, team, gasApi, memoBuildCache = null) {
+        const teamKey = normalizeReportDeckMemoTeamKey(team?.key);
+        if (!REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_TEAM_KEYS.includes(teamKey)) return null;
+        const teamProduction = getReportDeckMemoProductionValue(monthKey, team, gasApi, memoBuildCache);
+        const yusanTeamNames = REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_TEAM_KEYS
+            .map(key => getReportDeckMemoTeam(key).label);
+        const yusanProduction = getReportDeckMemoProductionValueForTeamNames(monthKey, yusanTeamNames, gasApi, memoBuildCache);
+        return teamProduction !== null && yusanProduction !== null && yusanProduction > 0
+            ? (teamProduction / yusanProduction) * 100
             : null;
-        return toFiniteNumber(value);
     }
 
     function getReportDeckMemoGasUsageValue(monthKey, team, metricKey, optionApi, gasApi) {
@@ -1506,7 +1536,7 @@ ${buildReportDeckExportScript()}
         const usageFromMap = fuelKey === 'lpg' ? metric?.lpgUsage : metric?.lngUsage;
         const usage = toFiniteNumber(usageFromMap) ?? getReportDeckMemoGasUsageValue(monthKey, team, fuelKey, optionApi, gasApi);
         const production = toFiniteNumber(metric?.ratioProduction?.[fuelKey] ?? metric?.production)
-            ?? getReportDeckMemoProductionValue(monthKey, team, gasApi);
+            ?? getReportDeckMemoProductionValue(monthKey, team, gasApi, memoBuildCache);
         return getReportDeckMemoRatioValue(usage, production);
     }
 
@@ -1716,7 +1746,9 @@ ${buildReportDeckExportScript()}
                 productKey: normalizeReportDeckProductKey(entry?.productName || entry?.product || entry?.itemName || ''),
                 yieldRate: parseReportDeckProductionPercent(entry?.moistureExcludedYield),
                 equipmentCapa: parseReportDeckProductionAmount(entry?.equipmentCapa),
-                operationRate: parseReportDeckProductionPercent(entry?.equipmentUtilization)
+                operationRate: parseReportDeckProductionPercent(entry?.equipmentUtilization),
+                workTime: parseReportDeckProductionAmount(entry?.workTime ?? entry?.inputTime ?? entry?.feedTime ?? entry?.loadingTime ?? entry?.injectionTime),
+                operationTime: parseReportDeckProductionAmount(entry?.operationTime ?? entry?.operatingTime ?? entry?.runtime ?? entry?.runTime ?? entry?.operationHours)
             }))
             .filter(item => item.amount !== null && item.amount > 0);
 
@@ -1731,6 +1763,10 @@ ${buildReportDeckExportScript()}
         let weightedYieldWeight = 0;
         let operationSum = 0;
         let operationCount = 0;
+        let totalWorkTime = 0;
+        let hasWorkTime = false;
+        let totalOperationTime = 0;
+        let hasOperationTime = false;
 
         activeEntries.forEach(item => {
             totalAmount += item.amount;
@@ -1748,6 +1784,14 @@ ${buildReportDeckExportScript()}
                 operationSum += item.operationRate;
                 operationCount += 1;
             }
+            if (item.workTime !== null) {
+                totalWorkTime += item.workTime;
+                hasWorkTime = true;
+            }
+            if (item.operationTime !== null) {
+                totalOperationTime += item.operationTime;
+                hasOperationTime = true;
+            }
         });
 
         const activeRange = getReportDeckMemoProductionActiveDateRange(team);
@@ -1764,6 +1808,8 @@ ${buildReportDeckExportScript()}
             operationRate: hasEquipmentCapa && totalEquipmentCapa > 0
                 ? (totalAmount / totalEquipmentCapa) * 100
                 : (operationCount > 0 ? operationSum / operationCount : null),
+            workTime: hasWorkTime ? totalWorkTime : null,
+            operationTime: hasOperationTime ? totalOperationTime : null,
             productionDays: activeDateSet.size,
             offDays,
             productCount: productSet.size
@@ -1780,6 +1826,8 @@ ${buildReportDeckExportScript()}
         );
         if (metricKey === 'yield_rate') return toFiniteNumber(stats.yieldRate);
         if (metricKey === 'operation_rate') return toFiniteNumber(stats.operationRate);
+        if (metricKey === 'work_time') return toFiniteNumber(stats.workTime);
+        if (metricKey === 'operation_time') return toFiniteNumber(stats.operationTime);
         if (metricKey === 'production_days') return toFiniteNumber(stats.productionDays);
         if (metricKey === 'off_days') return toFiniteNumber(stats.offDays);
         if (metricKey === 'product_count') return toFiniteNumber(stats.productCount);
@@ -1842,6 +1890,8 @@ ${buildReportDeckExportScript()}
                 memoBuildCache
             );
             readValue = monthKey => toFiniteNumber(lineValueMap.get(monthKey));
+        } else if (metricKey === REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY) {
+            readValue = monthKey => getReportDeckMemoYusanProductionShareValue(monthKey, team, gasApi, memoBuildCache);
         } else if (REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS.includes(metricKey)) {
             readValue = monthKey => readReportDeckMemoProductionStatValue(monthKey, team, metricKey, memoBuildCache);
         } else if (metricKey === 'electric' || metricKey === 'electric_unit') {
@@ -1853,7 +1903,7 @@ ${buildReportDeckExportScript()}
                 ? monthKey => getReportDeckMemoElectricUnitValue(rowMap, monthKey, team, gasApi)
                 : monthKey => getReportDeckMemoElectricValue(rowMap, monthKey);
         } else if (metricKey === 'production') {
-            readValue = monthKey => getReportDeckMemoProductionValue(monthKey, team, gasApi);
+            readValue = monthKey => getReportDeckMemoProductionValue(monthKey, team, gasApi, memoBuildCache);
         } else if (metricKey === 'lng' || metricKey === 'lpg' || unitBaseMetricKey === 'lng' || unitBaseMetricKey === 'lpg') {
             const fuelKey = unitBaseMetricKey || metricKey;
             readValue = isReportDeckMemoUnitMetricKey(metricKey)

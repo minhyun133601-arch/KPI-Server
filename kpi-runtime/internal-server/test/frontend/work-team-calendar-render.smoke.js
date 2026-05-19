@@ -91,6 +91,11 @@ function createContext(options = {}) {
   const historySummaryMap =
     options.historySummaryMap
     || new Map([[selectedDateKey, { count: 0, kpiCount: 0 }]]);
+  const isOverviewCalendar = options.isOverviewCalendar ?? true;
+  const productionGroups = Array.isArray(options.productionGroups) ? options.productionGroups : [];
+  const productionGroupsHtml = options.productionGroupsHtml || '<div class="groups">detail</div>';
+  const overviewProductionGroupsHtml = options.overviewProductionGroupsHtml || '<div class="groups">overview</div>';
+  const productionMetricLine = options.productionMetricLine || '';
   const utilitySummary = {
     electric: { usageText: '120 kWh', costText: '10000', canSelect: false, mode: 'all' },
     gas: { usageText: '55 Nm3', costText: '20000', canSelect: false, mode: 'all' },
@@ -218,7 +223,7 @@ function createContext(options = {}) {
   overrideBinding(context, 'getWorkTeamCalendarSelectedDateKeys', () => [selectedDateKey]);
   overrideBinding(context, 'getWorkTeamCalendarPrimarySelectedDate', () => selectedDateKey);
   overrideBinding(context, 'isWorkTeamCalendarDateLocked', () => false);
-  overrideBinding(context, 'isWorkTeamCalendarOverview', () => true);
+  overrideBinding(context, 'isWorkTeamCalendarOverview', () => isOverviewCalendar);
   overrideBinding(context, 'getWorkTeamCalendarUtilityPopupMetric', (dataKey = 'overview') => (
     context.WorkState.teamCalendarUtilityPopup?.[dataKey] || ''
   ));
@@ -240,15 +245,15 @@ function createContext(options = {}) {
   overrideBinding(context, 'getMonthMatrix', () => [new Date(`${selectedDateKey}T00:00:00Z`)]);
   overrideBinding(context, 'getWorkTeamCalendarProductionSummaryMap', () => productionSummaryMap);
   overrideBinding(context, 'getWorkTeamCalendarHistorySummaryMap', () => historySummaryMap);
-  overrideBinding(context, 'getWorkTeamCalendarProductionGroups', () => []);
+  overrideBinding(context, 'getWorkTeamCalendarProductionGroups', () => productionGroups);
   overrideBinding(
     context,
     'renderWorkTeamCalendarProductionTeamGroupsHtml',
-    () => '<div class="groups">overview</div>'
+    () => overviewProductionGroupsHtml
   );
-  overrideBinding(context, 'renderWorkTeamCalendarProductionGroupsHtml', () => '<div class="groups">detail</div>');
+  overrideBinding(context, 'renderWorkTeamCalendarProductionGroupsHtml', () => productionGroupsHtml);
   overrideBinding(context, 'summarizeWorkTeamCalendarProductionMetrics', () => ({ totalAmount: 0 }));
-  overrideBinding(context, 'getWorkTeamCalendarProductionMetricLine', () => '');
+  overrideBinding(context, 'getWorkTeamCalendarProductionMetricLine', () => productionMetricLine);
   overrideBinding(context, 'getWorkTeamCalendarSelectionLabel', () => '2026.04.15');
   overrideBinding(context, 'getWorkTeamCalendarRangeLabel', () => '26.04 ~ 26.04');
   overrideBinding(context, 'formatUtilNumber', (value, digits = 0) => Number(value || 0).toFixed(digits));
@@ -307,6 +312,26 @@ test('work team calendar equipment summary uses selected month maintenance rows'
   assert.match(modal.innerHTML, /Belt check/);
   assert.match(modal.innerHTML, /Waste Pump/);
   assert.match(modal.innerHTML, /Legacy team check/);
+});
+
+test('work team calendar single-date production popup renders the metric line once', () => {
+  const metricLine = '수율 98.5% · CAPA 72,000 · 가동률 98.6% · 조업시간 48.0시간 · 가동시간 46.3시간';
+  const { context, modal } = createContext({
+    isOverviewCalendar: false,
+    productionMetricLine: metricLine,
+    productionGroups: [
+      {
+        dateKey: '2026-04-15',
+        items: [{ productName: 'IN-CO SOPYO CREAMER', amount: 49000 }],
+      },
+    ],
+    productionGroupsHtml: `<div class="work-team-calendar-production-summary">${metricLine}</div>`,
+  });
+
+  context.renderWorkTeamCalendarModal();
+
+  const metricOccurrences = modal.innerHTML.split(metricLine).length - 1;
+  assert.equal(metricOccurrences, 1);
 });
 
 test('work team calendar offday cells keep production and history cues in the flag slot', () => {

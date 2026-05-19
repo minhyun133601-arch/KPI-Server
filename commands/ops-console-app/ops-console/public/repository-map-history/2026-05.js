@@ -1,6 +1,15 @@
 ((root) => {
   const entries = [
     {
+      date: '2026-05-19',
+      tag: 'local-experiment/upstream-sync',
+      title: 'KPI-Server 최신 기능 로컬 실험본 이식',
+      summary:
+        '원격 origin/main 최신 기능을 fast-forward로 흡수한 뒤 로컬 실험본 운영 경계를 KPI 18080, PostgreSQL 55432, .env.local-experiment, var/local-experiment 기준으로 다시 맞췄습니다.',
+      detail:
+        '마이그레이션 전 로컬 PostgreSQL custom dump를 생성하고 005/006 util production daily time metric 마이그레이션을 kpi_local_experiment에 적용했습니다. Ops Console과 서버 실행/중지/DB 콘솔/계정 보조 스크립트의 기본값이 로컬 실험본 env를 우선하도록 정리되었고, 서버는 http://127.0.0.1:18080, Ops Console은 http://127.0.0.1:3215에서 확인했습니다. 검증 기준: format, lint, npm test, server-structure, root smoke, Playwright browser smoke, ops console health/overview/DB tables, git diff --check.',
+    },
+    {
       date: '2026-05-18',
       tag: 'production-import/time-metrics',
       title: '생산량 엑셀 조업시간/가동시간 추출',

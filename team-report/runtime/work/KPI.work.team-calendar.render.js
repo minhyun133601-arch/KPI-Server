@@ -103,9 +103,10 @@
             const selectedProductionSummary = (!isBatchSelection && selectedDate)
                 ? (productionSummaryMap.get(selectedDate) || null)
                 : null;
-            const productionMetricText = productionItemCount > 0
+            const shouldShowProductionOverallMetric = selectedDateKeys.length > 1;
+            const productionMetricText = productionItemCount > 0 && shouldShowProductionOverallMetric
                 ? getWorkTeamCalendarProductionMetricLine(productionOverallSummary)
-                : (selectedProductionSummary?.isOffday ? '\uD734\uBB34' : '');
+                : (selectedProductionSummary?.isOffday && shouldShowProductionOverallMetric ? '\uD734\uBB34' : '');
             const productionMetricClass = productionItemCount > 0
                 ? ''
                 : (selectedProductionSummary?.isOffday ? ' is-offday' : '');

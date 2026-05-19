@@ -9,7 +9,7 @@ import {
   internalServerDir,
   internalServerLogsDir,
   internalServerScripts,
-  centralPostgresDataDir,
+  localExperimentPostgresDataDir,
   postgresLogFile,
   shutdownScheduleStateFile,
   startupScriptFile,
@@ -60,7 +60,7 @@ function getChildProcessEnv() {
   return {
     ...process.env,
     ...getRuntimeEnv(),
-    KPI_RUNTIME_ENV: "production",
+    KPI_RUNTIME_ENV: "local-experiment",
   };
 }
 
@@ -86,7 +86,7 @@ function getDatabaseConnection() {
   if (!databaseUrl) {
     return {
       host: "127.0.0.1",
-      port: 5434,
+      port: 55432,
       database: "",
       user: "",
       password: "",
@@ -98,12 +98,12 @@ function getDatabaseConnection() {
 function getServerPort() {
   const env = getRuntimeEnv();
   const parsed = Number.parseInt(String(env.KPI_SERVER_PORT || ""), 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 3100;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 18080;
 }
 
 function getPostgresPort() {
   const parsed = getDatabaseConnection().port;
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 5434;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 55432;
 }
 
 function resolveInternalServerPath(rawPath) {
@@ -120,7 +120,7 @@ function resolveConfiguredPostgresDataDir() {
   const env = getRuntimeEnv();
   return (
     resolveInternalServerPath(env.KPI_POSTGRES_DATA_DIR) ||
-    centralPostgresDataDir
+    localExperimentPostgresDataDir
   );
 }
 
@@ -525,7 +525,7 @@ async function removeStalePostmasterPidIfSafe() {
 
   fs.unlinkSync(postmasterPidPath);
   appendServerActionLog(
-    "[postgres] removed stale central-runtime postmaster.pid",
+    "[postgres] removed stale local-experiment postmaster.pid",
   );
   return true;
 }
@@ -568,7 +568,7 @@ async function runStartLifecycleJob(actionKey, actionId) {
   );
   appendScriptResultToServerActionLog(actionKey, stopResult);
 
-  appendServerActionLog(`[${actionKey}] starting central-runtime postgres`);
+  appendServerActionLog(`[${actionKey}] starting local-experiment postgres`);
   const startPostgresResult = await startLocalPostgresCluster();
   appendScriptResultToServerActionLog(actionKey, startPostgresResult);
   await waitForPostgresReady(30000);
@@ -591,7 +591,7 @@ async function runRecoverLifecycleJob(actionKey, actionId) {
   );
   appendScriptResultToServerActionLog(actionKey, stopServerResult);
 
-  appendServerActionLog(`[${actionKey}] stopping central-runtime postgres`);
+  appendServerActionLog(`[${actionKey}] stopping local-experiment postgres`);
   const stopPostgresResult = await stopLocalPostgresCluster();
   appendScriptResultToServerActionLog(actionKey, stopPostgresResult);
 
@@ -601,9 +601,9 @@ async function runRecoverLifecycleJob(actionKey, actionId) {
 
   const clusterVersionFile = path.join(postgresDataDir, "PG_VERSION");
   if (!fs.existsSync(clusterVersionFile) || !fs.existsSync(envFilePath)) {
-    throw new Error("central_runtime_missing");
+    throw new Error("local_experiment_runtime_missing");
   }
-  appendServerActionLog(`[${actionKey}] starting central-runtime postgres`);
+  appendServerActionLog(`[${actionKey}] starting local-experiment postgres`);
   const startPostgresResult = await startLocalPostgresCluster();
   appendScriptResultToServerActionLog(actionKey, startPostgresResult);
   await waitForPostgresReady(30000);
@@ -781,7 +781,7 @@ function resolvePostgresBinary(fileName) {
   const portableBinDir = path.join(
     internalServerDir,
     "var",
-    "central-runtime",
+    "local-experiment",
     "tools",
     "postgresql-17.9-3",
     "pgsql",
@@ -790,7 +790,7 @@ function resolvePostgresBinary(fileName) {
   const currentPortableBinDir = path.join(
     internalServerDir,
     "var",
-    "central-runtime",
+    "local-experiment",
     "tools",
     "postgresql-17.10-1",
     "pgsql",

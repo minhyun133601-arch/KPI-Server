@@ -1887,10 +1887,22 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
 test('util runtime browser adapter builds report memo candidates with direction markers', async () => {
   const { context } = createContext();
   const monthly = new Map([
-    ['2025-04', { production: 1100, lng: 75, lpg: 40 }],
-    ['2026-03', { production: 800, lng: 65, lpg: 60 }],
-    ['2026-04', { production: 1000, lng: 70, lpg: 50 }],
+    ['2025-04', { productionByTeam: { '1팀 2파트': 1100, '2팀': 500, '3팀': 400 }, lng: 75, lpg: 40 }],
+    ['2026-03', { productionByTeam: { '1팀 2파트': 800, '2팀': 700, '3팀': 500 }, lng: 65, lpg: 60 }],
+    ['2026-04', { productionByTeam: { '1팀 2파트': 1000, '2팀': 900, '3팀': 600 }, lng: 70, lpg: 50 }],
   ]);
+  const readProduction = (monthKey, teamNames = []) => {
+    const productionByTeam = monthly.get(monthKey)?.productionByTeam || {};
+    let total = 0;
+    let hasValue = false;
+    (Array.isArray(teamNames) ? teamNames : []).forEach(teamName => {
+      const value = Number(productionByTeam[teamName]);
+      if (!Number.isFinite(value)) return;
+      total += value;
+      hasValue = true;
+    });
+    return hasValue ? total : NaN;
+  };
 
   context.KPIUtilReportSheetOptions = {
     getUtilGasAnalysisCategoryOption(value) {
@@ -1929,8 +1941,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
   };
   context.KPIUtilReportSheetGasScopedMetrics = {
     getUtilGasAnalysisProductionValue(monthKey, teamNames) {
-      assert.equal(JSON.stringify(teamNames), JSON.stringify(['1팀 2파트']));
-      return monthly.get(monthKey)?.production ?? NaN;
+      return readProduction(monthKey, teamNames);
     },
     getUtilGasAnalysisTeamUsageValue(monthKey, teamNames) {
       if (teamNames.includes('1팀 2파트 (LPG)')) return monthly.get(monthKey)?.lpg ?? NaN;
@@ -1982,6 +1993,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(production.ok, true);
   assert.equal(JSON.stringify(production.availableMetricKeys), JSON.stringify([
     'production',
+    'yusan_production_share',
     'electric',
     'electric_unit',
     'lng',
@@ -1990,6 +2002,8 @@ test('util runtime browser adapter builds report memo candidates with direction 
     'lpg_unit',
     'yield_rate',
     'operation_rate',
+    'work_time',
+    'operation_time',
     'production_days',
     'off_days',
     'product_count',
@@ -2001,6 +2015,13 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.match(production.candidates[0].text, /1팀 2파트 생산량 1,000kg 전월대비 200kg, 25\.0% ↑, 전년대비 100kg, 9\.1% ↓/);
   assert.equal(production.candidates[0].segments[0].direction, 'up');
   assert.equal(production.candidates[0].segments[1].direction, 'down');
+
+  const yusanShare = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'yusan_production_share',
+  });
+  assert.equal(yusanShare.candidates[0].direction, 'down');
+  assert.match(yusanShare.candidates[0].text, /1팀 2파트 유산 생산량 비율 40% 전월대비 동일, 전년대비 15%p ↓/);
 
   const electric = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
@@ -2044,10 +2065,13 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(otherTeamLpg.ok, true);
   assert.equal(JSON.stringify(otherTeamLpg.availableMetricKeys), JSON.stringify([
     'production',
+    'yusan_production_share',
     'electric',
     'electric_unit',
     'yield_rate',
     'operation_rate',
+    'work_time',
+    'operation_time',
     'production_days',
     'off_days',
     'product_count',
@@ -2057,6 +2081,12 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(otherTeamLpg.metricKey, 'lpg');
   assert.equal(otherTeamLpg.candidates.length, 0);
 
+  const team2YusanShare = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_02',
+    metricKey: 'yusan_production_share',
+  });
+  assert.match(team2YusanShare.candidates[0].text, /2팀 유산 생산량 비율 36% 전월대비 1%p ↑, 전년대비 11%p ↑/);
+
   const otherTeamLng = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_02',
     metricKey: 'lng',
@@ -2064,10 +2094,13 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(otherTeamLng.ok, true);
   assert.equal(JSON.stringify(otherTeamLng.availableMetricKeys), JSON.stringify([
     'production',
+    'yusan_production_share',
     'electric',
     'electric_unit',
     'yield_rate',
     'operation_rate',
+    'work_time',
+    'operation_time',
     'production_days',
     'off_days',
     'product_count',
@@ -2076,6 +2109,12 @@ test('util runtime browser adapter builds report memo candidates with direction 
   ]));
   assert.equal(otherTeamLng.metricKey, 'lng');
   assert.equal(otherTeamLng.candidates.length, 0);
+
+  const team3YusanShare = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_03',
+    metricKey: 'yusan_production_share',
+  });
+  assert.match(team3YusanShare.candidates[0].text, /3팀 유산 생산량 비율 24% 전월대비 1%p ↓, 전년대비 4%p ↑/);
 
   const lineProduction = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_01',
@@ -2090,6 +2129,8 @@ test('util runtime browser adapter builds report memo candidates with direction 
     'lng_unit',
     'yield_rate',
     'operation_rate',
+    'work_time',
+    'operation_time',
     'production_days',
     'off_days',
     'product_count',
@@ -2168,7 +2209,7 @@ test('util runtime browser adapter builds report memo overview with current valu
 
 test('util runtime browser adapter builds report memo candidates for production stats', async () => {
   const { context } = createContext();
-  const makeEntry = (dateLabel, amount, productName, moistureExcludedYield, equipmentCapa) => ({
+  const makeEntry = (dateLabel, amount, productName, moistureExcludedYield, equipmentCapa, workTime = null, operationTime = null) => ({
     dateLabel,
     teamName: '1팀 2파트',
     lineName: 'ICA',
@@ -2176,6 +2217,8 @@ test('util runtime browser adapter builds report memo candidates for production 
     amount,
     moistureExcludedYield,
     equipmentCapa,
+    workTime,
+    operationTime,
   });
   const periodByMonth = new Map([
     ['2025-04', { startDate: new Date(2025, 3, 1), endDate: new Date(2025, 3, 3) }],
@@ -2184,15 +2227,15 @@ test('util runtime browser adapter builds report memo candidates for production 
   ]);
   const entriesByMonth = new Map([
     ['2025-04', [
-      makeEntry('2025-04-01', 100, '제품 A', 85, 200),
-      makeEntry('2025-04-02', 100, '제품 B', 85, 200),
+      makeEntry('2025-04-01', 100, '제품 A', 85, 200, 8, 6),
+      makeEntry('2025-04-02', 100, '제품 B', 85, 200, 10, 8),
     ]],
     ['2026-03', [
-      makeEntry('2026-03-01', 100, '제품 A', 70, 200),
+      makeEntry('2026-03-01', 100, '제품 A', 70, 200, 12, 10),
     ]],
     ['2026-04', [
-      makeEntry('2026-04-01', 100, '제품 A', 90, 200),
-      makeEntry('2026-04-03', 200, '제품 B', 80, 300),
+      makeEntry('2026-04-01', 100, '제품 A', 90, 200, 11.5, 9.5),
+      makeEntry('2026-04-03', 200, '제품 B', 80, 300, 8.5, 6.5),
     ]],
   ]);
   context.listUtilDailyEntriesByMetric = (teamName, year, month, metricKey) => {
@@ -2222,6 +2265,18 @@ test('util runtime browser adapter builds report memo candidates for production 
     metricKey: 'operation_rate',
   });
   assert.match(utilizationResult.candidates[0].text, /1팀 2파트 가동률 60% 전월대비 10%p ↑, 전년대비 10%p ↑/);
+
+  const workTimeResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'work_time',
+  });
+  assert.match(workTimeResult.candidates[0].text, /1팀 2파트 조업시간 20\.0시간 전월대비 8\.0시간, 66\.7% ↑, 전년대비 2\.0시간, 11\.1% ↑/);
+
+  const operationTimeResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'operation_time',
+  });
+  assert.match(operationTimeResult.candidates[0].text, /1팀 2파트 가동시간 16\.0시간 전월대비 6\.0시간, 60\.0% ↑, 전년대비 2\.0시간, 14\.3% ↑/);
 
   const productCountResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',

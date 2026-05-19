@@ -177,6 +177,7 @@ test('ops console keeps demo-style Repository Map and Data Reference Map surface
   assert.doesNotMatch(repositoryMapDataSource, /KPI_REPOSITORY_MAP_DAILY_HISTORY/);
   assert.doesNotMatch(repositoryMapDataSource, /KPI_REPOSITORY_MAP_I18N/);
   assert.match(repositoryMapHistoryMaySource, /KPI_REPOSITORY_MAP_DAILY_HISTORY/);
+  assert.match(repositoryMapHistoryMaySource, /local-experiment\/upstream-sync/);
   assert.match(repositoryMapHistoryMaySource, /frontend\/import/);
   assert.match(repositoryMapHistoryMaySource, /refactor\/split/);
   assert.match(repositoryMapHistoryAprilSource, /privacy gate/);
@@ -191,10 +192,10 @@ test('ops console keeps demo-style Repository Map and Data Reference Map surface
   );
   assert.equal(
     repositoryMapDataContext.window.KPI_REPOSITORY_MAP_DAILY_HISTORY[0].tag,
-    'production-import/time-metrics'
+    'local-experiment/upstream-sync'
   );
 
-  for (const date of ['2026-05-18', '2026-05-15', '2026-05-11', '2026-05-08', '2026-05-07', '2026-05-05', '2026-05-04', '2026-05-02', '2026-05-01']) {
+  for (const date of ['2026-05-19', '2026-05-18', '2026-05-15', '2026-05-11', '2026-05-08', '2026-05-07', '2026-05-05', '2026-05-04', '2026-05-02', '2026-05-01']) {
     assert.equal(
       repositoryMapDataContext.window.KPI_REPOSITORY_MAP_DAILY_HISTORY.filter((entry) => entry.date === date).length,
       1

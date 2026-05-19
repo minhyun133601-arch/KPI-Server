@@ -164,9 +164,9 @@ function getEnvFilePaths(serverDir) {
     return [path.join(serverDir, '.env.local-experiment'), path.join(serverDir, '.env')];
   }
   return [
+    path.join(serverDir, '.env.local-experiment'),
     path.join(serverDir, '.env.production.local'),
     path.join(serverDir, '.env.development.local'),
-    path.join(serverDir, '.env.local-experiment'),
     path.join(serverDir, '.env'),
   ];
 }

@@ -1,4 +1,4 @@
-﻿const baseUrl = process.env.KPI_BASE_URL || 'http://127.0.0.1:3100/';
+const baseUrl = process.env.KPI_BASE_URL || 'http://127.0.0.1:18080/';
 
 function resolveUrl(relativeOrAbsolute) {
   return new URL(relativeOrAbsolute, baseUrl).toString();
@@ -28,23 +28,27 @@ function createSessionClient() {
   let cookieHeader = '';
 
   function readCookieHeader(response) {
-    const cookieLines = typeof response.headers.getSetCookie === 'function'
-      ? response.headers.getSetCookie()
-      : [];
+    const cookieLines = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [];
     if (Array.isArray(cookieLines) && cookieLines.length) {
       return cookieLines
-        .map((line) => String(line || '').split(';')[0].trim())
+        .map((line) =>
+          String(line || '')
+            .split(';')[0]
+            .trim()
+        )
         .filter(Boolean)
         .join('; ');
     }
 
     const fallback = response.headers.get('set-cookie');
-    return String(fallback || '').split(';')[0].trim();
+    return String(fallback || '')
+      .split(';')[0]
+      .trim();
   }
 
   async function request(url, options = {}) {
     const headers = {
-      ...(options.headers || {})
+      ...(options.headers || {}),
     };
     if (cookieHeader) {
       headers.cookie = cookieHeader;
@@ -53,7 +57,7 @@ function createSessionClient() {
     const response = await fetch(url, {
       ...options,
       headers,
-      redirect: options.redirect || 'manual'
+      redirect: options.redirect || 'manual',
     });
 
     const nextCookieHeader = readCookieHeader(response);
@@ -68,7 +72,7 @@ function createSessionClient() {
     request,
     getCookieHeader() {
       return cookieHeader;
-    }
+    },
   };
 }
 
@@ -78,7 +82,7 @@ async function requestText(client, url) {
   return {
     status: response.status,
     text,
-    location: response.headers.get('location')
+    location: response.headers.get('location'),
   };
 }
 
@@ -95,7 +99,7 @@ async function requestJson(client, url, options = {}) {
     status: response.status,
     json,
     text,
-    location: response.headers.get('location')
+    location: response.headers.get('location'),
   };
 }
 
@@ -133,7 +137,7 @@ async function loginIfNeeded(client, bootstrapStatus) {
     return {
       attempted: false,
       authenticated: false,
-      credentialSupplied: false
+      credentialSupplied: false,
     };
   }
 
@@ -148,7 +152,7 @@ async function loginIfNeeded(client, bootstrapStatus) {
     rootBeforeLoginLocation: rootBeforeLogin.location,
     meBeforeLoginStatus: meBeforeLogin.status,
     loginPageStatus: loginPage.status,
-    authenticated: false
+    authenticated: false,
   };
 
   if (!summary.credentialSupplied) {
@@ -158,12 +162,12 @@ async function loginIfNeeded(client, bootstrapStatus) {
   const loginResponse = await requestJson(client, resolveUrl('/api/auth/login'), {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       username,
-      password
-    })
+      password,
+    }),
   });
 
   summary.loginStatus = loginResponse.status;
@@ -188,7 +192,7 @@ async function resolveHtmlSurface(client, bootstrapStatus, authSummary) {
       rootLocation: root.location,
       htmlStatus: root.status,
       htmlText: root.text,
-      surface: 'root'
+      surface: 'root',
     };
   }
 
@@ -204,7 +208,7 @@ async function resolveHtmlSurface(client, bootstrapStatus, authSummary) {
       rootLocation: root.location,
       htmlStatus: loginPage.status,
       htmlText: loginPage.text,
-      surface: 'login_page'
+      surface: 'login_page',
     };
   }
 
@@ -234,9 +238,7 @@ async function main() {
   }
 
   const authFailure =
-    isLoginRequiredMode(bootstrapStatus.json) &&
-    authSummary.credentialSupplied &&
-    !authSummary.authenticated;
+    isLoginRequiredMode(bootstrapStatus.json) && authSummary.credentialSupplied && !authSummary.authenticated;
 
   const summary = {
     ok: failures.length === 0 && !authFailure,
@@ -249,7 +251,7 @@ async function main() {
     rootLocation: htmlSurface.rootLocation,
     auth: authSummary,
     checked: assetUrls.length,
-    failures
+    failures,
   };
 
   console.log(JSON.stringify(summary, null, 2));
@@ -264,7 +266,7 @@ main().catch((error) => {
       {
         ok: false,
         baseUrl,
-        error: error.message
+        error: error.message,
       },
       null,
       2
