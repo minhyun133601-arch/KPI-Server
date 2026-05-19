@@ -768,6 +768,7 @@
                         teamName,
                         String(entry?.dateLabel || '').trim(),
                         normalizeUtilDedupeText(lineNameRaw || ''),
+                        normalizeUtilDedupeText(entry?.productCode ?? entry?.itemCode ?? entry?.code ?? ''),
                         normalizeUtilDedupeText(productNameRaw || ''),
                         canonicalizeUtilDedupeMetric(amount),
                         canonicalizeUtilDedupeMetric(entry?.moistureExcludedYield ?? entry?.moistureFreeYield ?? entry?.yieldExcludingMoisture ?? entry?.yieldRate),

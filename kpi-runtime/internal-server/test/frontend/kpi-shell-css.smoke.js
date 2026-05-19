@@ -29,8 +29,8 @@ const styleEntries = [
     relativeSegments: ['shell', 'shell-chrome.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/work/work.css?v=063`,
-    manifestHref: './styles/work/work.css?v=063',
+    href: `${runtimeDirName}/app/styles/work/work.css?v=064`,
+    manifestHref: './styles/work/work.css?v=064',
     fileName: 'work.css',
     relativeSegments: ['work', 'work.css'],
   },
@@ -99,6 +99,8 @@ test('split shell css keeps key selectors in the expected files', () => {
 
   assert.match(styleContents['work.css'], /\.work-panel\s*\{/);
   assert.match(styleContents['work.css'], /\.work-chooser-shell\s*\{/);
+  assert.doesNotMatch(styleContents['work.css'], /f107/);
+  assert.match(styleContents['work.css'], /\.work-team-calendar-production-action-list\s*\{[^}]*position:\s*static;/s);
 
   assert.match(styleContents['metering.css'], /\.util-tabs-wrap\s*\{/);
   assert.match(styleContents['metering.css'], /\.month-panel\s*\{/);

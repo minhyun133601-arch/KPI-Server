@@ -157,7 +157,7 @@ test('production extractor html loads export actions before app and utility runt
   const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=18');
   const viewModelIndex = productionExtractorHtml.indexOf('runtime/view-model.js?v=1');
   const renderIndex = productionExtractorHtml.indexOf('runtime/render.js?v=1');
-  const appIndex = productionExtractorHtml.indexOf('app.js?v=20');
+  const appIndex = productionExtractorHtml.indexOf('app.js?v=21');
 
   assert.ok(exportActionsIndex >= 0, 'split runtime loader is missing');
   assert.ok(viewModelIndex > exportActionsIndex, 'view model split must load after runtime/export-actions.js');

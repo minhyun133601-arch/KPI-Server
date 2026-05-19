@@ -21,6 +21,7 @@
         }
 
         function getUtilDatasetLabel(datasetKey) {
+            if (datasetKey === 'production') return '생산량';
             if (datasetKey === 'electric') return '전기';
             if (datasetKey === 'gas') return '가스';
             if (datasetKey === 'waste') return '폐수';
@@ -138,6 +139,7 @@
         }
 
         const UTIL_DELETE_DATASET_OPTIONS = [
+            { key: 'production', label: '생산량' },
             { key: 'electric', label: '전기' },
             { key: 'gas', label: '가스' },
             { key: 'waste', label: '폐수' }

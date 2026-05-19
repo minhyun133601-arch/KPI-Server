@@ -65,6 +65,13 @@ test('buildEntryDedupeKey normalizes team whitespace parentheses and explicit ze
     buildEntryDedupeKey(baseEntry),
     buildEntryDedupeKey({
       ...baseEntry,
+      productCode: 'P-001',
+    })
+  );
+  assert.notEqual(
+    buildEntryDedupeKey(baseEntry),
+    buildEntryDedupeKey({
+      ...baseEntry,
       moistureExcludedYield: 98,
     })
   );
@@ -103,6 +110,7 @@ test('normalizeEntry preserves production and value aliases including zero', () 
     date: '2026-04-01',
     team: 'A팀',
     line: '1호기',
+    productCode: 'P-000',
     product: '제품A',
     production: '0',
   });
@@ -110,6 +118,7 @@ test('normalizeEntry preserves production and value aliases including zero', () 
     date: '2026-04-02',
     teamName: 'B팀',
     lineNm: '2호기',
+    itemCode: 'P-125',
     itemName: '제품B',
     value: '12.5',
     yieldRate: '9.5',
@@ -121,6 +130,7 @@ test('normalizeEntry preserves production and value aliases including zero', () 
 
   assert.equal(productionEntry.amount, 0);
   assert.equal(valueEntry.amount, 12.5);
+  assert.equal(valueEntry.productCode, 'P-125');
   assert.equal(valueEntry.moistureExcludedYield, 9.5);
   assert.equal(valueEntry.workTime, 6);
   assert.equal(valueEntry.operationTime, 4.5);

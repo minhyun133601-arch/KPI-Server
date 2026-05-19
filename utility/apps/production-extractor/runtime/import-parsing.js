@@ -399,6 +399,9 @@
         const teamValue = normalizeValue(values[context.TEAM_VALUE_INDEX]);
         values[context.TEAM_VALUE_INDEX] = resolveProductionTeamValue(teamValue, lineValue);
         values[context.LINE_VALUE_INDEX] = lineValue === "" ? "라인 없음" : String(lineValue);
+        const productCode = Number.isInteger(context.PRODUCT_CODE_VALUE_INDEX)
+          ? normalizeValue(values[context.PRODUCT_CODE_VALUE_INDEX])
+          : "";
 
         if (dateObj) {
           if (!minDate || dateObj < minDate) minDate = dateObj;
@@ -414,6 +417,7 @@
           sheetName,
           rowNumber,
           values,
+          productCode,
           moistureExcludedYield,
           workTime,
           operationTime,
@@ -432,7 +436,7 @@
     }
 
     if (parsedSheetCount === 0) {
-      throw new Error(`[${file.name}] 형식에 맞는 시트를 찾지 못했습니다. (3행 A/B/C/E/F 헤더 확인)`);
+      throw new Error(`[${file.name}] 형식에 맞는 시트를 찾지 못했습니다. (3행 A/B/C/D/E/F 헤더 확인)`);
     }
 
     return {

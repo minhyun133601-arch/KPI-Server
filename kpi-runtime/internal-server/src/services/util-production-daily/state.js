@@ -80,6 +80,7 @@ function groupEntriesByTeam(entries) {
       date: entry.date,
       amount: entry.amount,
       lineName: entry.lineName,
+      productCode: entry.productCode,
       productName: entry.productName,
       moistureExcludedYield: entry.moistureExcludedYield,
       workTime: entry.workTime,
@@ -110,6 +111,10 @@ function groupEntriesByTeam(entries) {
         if (productDiff !== 0) {
           return productDiff;
         }
+        const codeDiff = normalizeText(left.productCode).localeCompare(normalizeText(right.productCode), 'ko');
+        if (codeDiff !== 0) {
+          return codeDiff;
+        }
         return Number(left.amount) - Number(right.amount);
       }),
     }));
@@ -132,6 +137,7 @@ export function buildStatePayload(stateRow, entryRows, archiveRows) {
       date: normalizeDateKey(row.production_date),
       teamName: normalizeText(row.team_name),
       lineName: normalizeText(row.line_name),
+      productCode: normalizeText(row.product_code),
       productName: normalizeText(row.product_name),
       amount: normalizeNumber(row.amount),
       moistureExcludedYield: normalizeNumber(row.moisture_excluded_yield),
@@ -223,7 +229,7 @@ export function normalizeStateSnapshot(rawState) {
     const entries = Array.isArray(teamRecord?.entries) ? teamRecord.entries : [];
     entries.forEach((entry) => {
       const normalizedEntry = normalizeEntry(entry, fallbackTeamName);
-      if (!normalizedEntry || entryMap.has(normalizedEntry.dedupeKey)) {
+      if (!normalizedEntry) {
         return;
       }
       entryMap.set(normalizedEntry.dedupeKey, normalizedEntry);

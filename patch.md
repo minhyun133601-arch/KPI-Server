@@ -1,16 +1,18 @@
 # 2026-05-19 Patch Note
 
+Update: 총괄 비율 미리보기 카드에 유산 생산량과 1팀 2파트/2팀/3팀 생산량 비율을 추가했습니다. 가스 분석의 유산 기준은 2팀을 제외한 기존 `1팀 2파트 + 3팀` 규칙을 유지합니다.
+
 ## Utility Section Removal And Work Production Actions
 
-Goal: remove the top-level Utility dashboard section, keep utility usage/cost entry and analysis under Data Management, and move the production entry control into the work team calendar `Total Production` summary card as a direct Excel picker.
+Goal: remove the top-level Utility dashboard section, keep utility usage/cost entry and analysis under Data Management, and move production entry/delete controls into the work team calendar `Total Production` summary card.
 
-Touched areas: dashboard section registry/builders, Data Management section content, work team calendar production summary actions, direct production Excel import path, production maintenance export/delete defaults, legacy utility initializer/sidebar/energy override cleanup, KPI boot manifest and cache versions, related frontend smoke tests.
+Touched areas: dashboard section registry/builders, Data Management section content, work team calendar production summary actions, direct production Excel import/delete paths, production maintenance export/delete defaults, legacy utility initializer/sidebar/energy override cleanup, KPI boot manifest and cache versions, related frontend smoke tests.
 
 Data change: none. Production import uses the existing extractor parsing columns and `mergeUtilProductionExtractorRows` save path, so imported values/report metrics remain on the same data path, including `work_time`, `operation_time`, `workTime`, and `operationTime`.
 
-Verification: targeted section/work/production/maintenance/energy/production-extractor/repository-map smoke tests, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, targeted work/production extractor Node tests, `npm test` including 743 Node tests, `npm run smoke:kpi-browser`, and `git diff --check` passed.
+Verification: targeted section/work/production/maintenance/energy/production-extractor/repository-map smoke tests, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, targeted work/production extractor Node tests, `npm test` including 744 Node tests, `npm run smoke:kpi-browser`, and `git diff --check` passed.
 
-Risk: no DB/schema/data migration was made in this cleanup. `추출` is intentionally left as a placeholder alert until the extraction rule is discussed.
+Risk: no DB/schema/data migration was made in this cleanup. Extraction remains intentionally unconnected until the extraction rule is discussed.
 
 ---
 
@@ -391,3 +393,17 @@ Verification: `node --check` for modal shell passed; targeted report sheet modal
 Follow-up: fixed an analysis export stall risk by limiting heavy interaction variant generation to the active extracted range and stopping combined variant generation immediately at the cap. Added guarded export error handling so a failed export reports a controlled message instead of leaving the UI stuck.
 
 Risk: standalone export prebuilds interaction variants from the active extracted range and caps combined variant generation. Common sequential selector/unit/display/label changes are covered; very large combination sets may still fall back to the latest prebuilt change.
+
+---
+
+## Production Daily Product Code Reset
+
+Goal: accept the D-column product code during production import, keep it in the local production DB, and show it in the team calendar daily production popup before re-import.
+
+Touched areas: production import/extractor parsing, production daily server schema and normalization, team calendar/report dedupe paths, and local production daily DB rows.
+
+Verification: PostgreSQL dump created before deletion; migration added `product_code`; production daily rows were cleared from 9,186 to 0; targeted frontend/service tests passed; browser KPI smoke passed; `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, and `npm test` passed.
+
+Risk: the local Excel re-import file remains untracked in the workspace; existing unrelated dirty files from earlier UI work were not reverted.
+
+Follow-up: production import replacement now uses one full entry key only: date, team, line, product code, product name, amount, yield, work time, operation time, CAPA, and utilization must all match before an existing row is overwritten. Same-date/team rows with any different value are preserved.

@@ -185,6 +185,7 @@ function createContext() {
           dateLabel: '2026-04-15',
           teamName: '1팀 1파트',
           lineName: 'Line A',
+          productCode: 'A-001',
           productName: 'Item A',
           amount: 200,
           moistureExcludedYield: 91,
@@ -447,10 +448,12 @@ test('work production split files expose utility, history, and draft helpers tog
   assert.equal(typeof context.getWorkTeamCalendarDraftForDates, 'function');
   assert.equal(summary.electric.usageText, '120 kWh');
   assert.equal(summary.production.totalAmountText, '350kg');
+  assert.equal(productionGroups[0].items[0].productCode, 'A-001');
   assert.equal(productionGroups[0].totalWorkTime, 8.5);
   assert.equal(productionGroups[0].totalOperationTime, 7.25);
   assert.match(productionHtml, /Work 8\.5/);
   assert.match(productionHtml, /Run 7\.3/);
+  assert.match(productionHtml, /코드 A-001/);
   assert.match(overviewProductionHtml, /Work 8\.5/);
   assert.match(overviewProductionHtml, /Run 7\.3/);
   assert.match(summary.workEntryCountText, /^1건/);
@@ -466,8 +469,36 @@ test('work production split files expose utility, history, and draft helpers tog
 
   const actionHtml = context.renderWorkProductionActionMenuHtml({ summary: true });
   assert.match(actionHtml, /data-work-production-action="entry"/);
-  assert.match(actionHtml, /data-work-production-action="export"/);
-  assert.doesNotMatch(actionHtml, /data-work-production-action="delete"/);
+  assert.match(actionHtml, /data-work-production-action="delete"/);
+  assert.doesNotMatch(actionHtml, /data-work-production-action="export"/);
+
+  const alerts = [];
+  let deleteOptions = null;
+  let modifiedLabel = '';
+  let renderCount = 0;
+  context.alert = (message) => alerts.push(String(message || ''));
+  context.openUtilSelectiveDeleteModal = (options) => {
+    deleteOptions = options;
+    options.onApplied?.({ removedProductionCount: 2 });
+  };
+  overrideBinding(context, 'setLastModified', (label) => {
+    modifiedLabel = String(label || '');
+  });
+  overrideBinding(context, 'renderWorkTeamCalendarModal', () => {
+    renderCount += 1;
+  });
+
+  assert.equal(context.openWorkProductionDeleteModal({
+    stopPropagation() {},
+    preventDefault() {},
+  }), true);
+  assert.equal(deleteOptions.datasetKey, 'production');
+  assert.equal(deleteOptions.teamName, context.getWorkTeamCalendarCategory('work_team_calendar_team1_part1').title);
+  assert.equal(deleteOptions.fromYm, '2026-04');
+  assert.equal(deleteOptions.toYm, '2026-04');
+  assert.equal(modifiedLabel, '팀별내역서');
+  assert.equal(renderCount, 1);
+  assert.match(alerts.at(-1), /2/);
 });
 
 test('work production direct entry keeps extractor parsing and merge payload shape', async () => {
@@ -484,12 +515,13 @@ test('work production direct entry keeps extractor parsing and merge payload sha
   context.KPIProductionExtractorImportParsing = {
     async parseExcelFile(parseContext, file, startDay) {
       assert.equal(startDay, 1);
-      assert.deepEqual(Array.from(parseContext.TARGET_COLS), ['A', 'B', 'C', 'E', 'F']);
+      assert.deepEqual(Array.from(parseContext.TARGET_COLS), ['A', 'B', 'C', 'D', 'E', 'F']);
       return {
         rows: [
           {
             fileName: file.name,
-            values: ['2026-04-02', '1팀', 'MSD', 'Product A', '123'],
+            values: ['2026-04-02', '1팀', 'MSD', 'P-001', 'Product A', '123'],
+            productCode: 'P-001',
             moistureExcludedYield: '98.5%',
             workTime: '24',
             operationTime: '22.5',
@@ -528,6 +560,7 @@ test('work production direct entry keeps extractor parsing and merge payload sha
       date: '2026-04-02',
       team: '1팀',
       lineName: 'MSD',
+      productCode: 'P-001',
       productName: 'Product A',
       amount: '123',
       moistureExcludedYield: '98.5%',
@@ -581,7 +614,7 @@ test('work production draft uses the browser adapter for storage capabilities', 
 });
 
 test('kpi html loads work production split files before team calendar bootstrap', () => {
-  const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=241');
+  const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=243');
   const adapterIndex = kpiHtml.indexOf('runtime/work/KPI.work.browser-adapter.js?v=1');
   const historyIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.history.js?v=4');
   const overviewIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.overview.js?v=2');

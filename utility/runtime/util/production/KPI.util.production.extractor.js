@@ -126,6 +126,7 @@
                 dateLabel: item.dateLabel,
                 teamName: item.teamName || teamName || '',
                 lineName: item.lineName || '',
+                productCode: item.productCode || '',
                 productName: item.productName || '',
                 metricValue: item?.[detailConfig.metricKey],
                 moistureExcludedYield: Number.isFinite(parseUtilPercentAmount(item?.moistureExcludedYield)) ? parseUtilPercentAmount(item?.moistureExcludedYield) : null,
@@ -227,6 +228,7 @@
                     <td>${escapeHtml(item.dateLabel)}</td>
                     <td>${escapeHtml(item.teamName || detail.teamName || '-')}</td>
                     <td>${escapeHtml(item.lineName || '-')}</td>
+                    <td>${escapeHtml(item.productCode || '-')}</td>
                     <td>${escapeHtml(item.productName || '-')}</td>
                     <td>${formatUtilNumber(item.metricValue)}</td>
                 </tr>
@@ -240,6 +242,7 @@
                             <th>생산일자</th>
                             <th>팀</th>
                             <th>라인명</th>
+                            <th>코드</th>
                             <th>품명</th>
                             <th>${escapeHtml(detail.metricLabel)}</th>
                         </tr>

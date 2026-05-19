@@ -2,17 +2,20 @@
         const WORK_PRODUCTION_ENTRY_LAST_MODIFIED_LABEL = '\uD300\uBCC4\uB0B4\uC5ED\uC11C';
         const WORK_PRODUCTION_ENTRY_INPUT_ID = 'work-production-entry-file-input';
         const WORK_PRODUCTION_IMPORT_CONTEXT = Object.freeze({
-            TARGET_COLS: ['A', 'B', 'C', 'E', 'F'],
+            TARGET_COLS: ['A', 'B', 'C', 'D', 'E', 'F'],
             HEADER_ROW: 3,
             DATA_START_ROW: 4,
             TEAM_VALUE_INDEX: 1,
             LINE_VALUE_INDEX: 2,
-            PRODUCTION_VALUE_INDEX: 4,
+            PRODUCT_CODE_VALUE_INDEX: 3,
+            PRODUCT_NAME_VALUE_INDEX: 4,
+            PRODUCTION_VALUE_INDEX: 5,
             PRODUCTION_DATE_OFFSET_DAYS: 0,
             REQUIRED_HEADER_RULES: {
                 A: [/생산일자/],
                 B: [/팀/],
                 C: [/라인명/, /라인/],
+                D: [/코드/],
                 E: [/품명/],
                 F: [/생산량/]
             }
@@ -96,13 +99,16 @@
             const productionIndex = WORK_PRODUCTION_IMPORT_CONTEXT.PRODUCTION_VALUE_INDEX;
             const teamIndex = WORK_PRODUCTION_IMPORT_CONTEXT.TEAM_VALUE_INDEX;
             const lineIndex = WORK_PRODUCTION_IMPORT_CONTEXT.LINE_VALUE_INDEX;
+            const productCodeIndex = WORK_PRODUCTION_IMPORT_CONTEXT.PRODUCT_CODE_VALUE_INDEX;
+            const productNameIndex = WORK_PRODUCTION_IMPORT_CONTEXT.PRODUCT_NAME_VALUE_INDEX;
             return (rows || []).map(row => {
                 const fileName = String(row?.fileName || '').trim();
                 return {
                     date: row?.values?.[0] ?? '',
                     team: row?.values?.[teamIndex] ?? '',
                     lineName: row?.values?.[lineIndex] ?? '',
-                    productName: row?.values?.[3] ?? '',
+                    productCode: row?.productCode ?? row?.values?.[productCodeIndex] ?? '',
+                    productName: row?.values?.[productNameIndex] ?? '',
                     amount: row?.values?.[productionIndex] ?? '',
                     moistureExcludedYield: row?.moistureExcludedYield ?? '',
                     workTime: row?.workTime ?? row?.inputTime ?? '',
@@ -272,15 +278,49 @@
             return true;
         }
 
-        function acknowledgeWorkProductionExportPending(event) {
+        function getWorkProductionDeleteDefaults() {
+            const dataKey = String(WorkState?.teamCalendarModal || WorkState?.teamCalendarHubDataKey || '').trim();
+            const monthKey = typeof getWorkTeamCalendarActiveMonth === 'function'
+                ? String(getWorkTeamCalendarActiveMonth(dataKey) || '').trim()
+                : '';
+            const category = typeof getWorkTeamCalendarCategory === 'function'
+                ? getWorkTeamCalendarCategory(dataKey)
+                : null;
+            const teamName = isWorkTeamCalendarOverview(dataKey)
+                ? '전체'
+                : String(category?.title || '').trim();
+            return {
+                datasetKey: 'production',
+                teamName,
+                fromYm: monthKey,
+                toYm: monthKey
+            };
+        }
+
+        function openWorkProductionDeleteModal(event) {
             if (event && typeof event.stopPropagation === 'function') {
                 event.stopPropagation();
             }
             if (event && typeof event.preventDefault === 'function') {
                 event.preventDefault();
             }
-            alert('생산량 추출은 기준을 정한 뒤 다음 단계에서 연결하겠습니다.');
-            return false;
+            if (typeof openUtilSelectiveDeleteModal !== 'function') {
+                alert('생산량 삭제 기능을 불러오지 못했습니다.');
+                return false;
+            }
+            openUtilSelectiveDeleteModal({
+                ...getWorkProductionDeleteDefaults(),
+                onApplied: result => {
+                    if (typeof setLastModified === 'function') {
+                        setLastModified(WORK_PRODUCTION_ENTRY_LAST_MODIFIED_LABEL);
+                    }
+                    refreshWorkProductionAfterMutation();
+                    if (result?.removedProductionCount > 0) {
+                        alert(`생산량 ${result.removedProductionCount.toLocaleString('ko-KR')}건을 삭제했습니다.`);
+                    }
+                }
+            });
+            return true;
         }
 
         function renderWorkProductionActionMenuHtml(options = {}) {
@@ -291,7 +331,7 @@
                     <summary class="work-team-calendar-production-action-toggle" aria-label="생산량 관리">관리</summary>
                     <div class="work-team-calendar-production-action-list">
                         <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="entry" onclick="openWorkProductionEntryModal(event)"${disabled}>기입</button>
-                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="export" onclick="acknowledgeWorkProductionExportPending(event)"${disabled}>추출</button>
+                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="delete" onclick="openWorkProductionDeleteModal(event)"${disabled}>삭제</button>
                     </div>
                 </details>
             `;
@@ -394,6 +434,7 @@
                         dateKey,
                         String(entry?.teamName || sourceTeam || '').trim(),
                         String(entry?.lineName || '').trim(),
+                        String(entry?.productCode || entry?.itemCode || '').trim(),
                         String(entry?.productName || '').trim(),
                         Number.isFinite(amount) ? amount : ''
                     ].join('::');
@@ -403,6 +444,7 @@
                         dateKey,
                         teamName: String(entry?.teamName || sourceTeam || '').trim(),
                         lineName: String(entry?.lineName || '').trim(),
+                        productCode: String(entry?.productCode || entry?.itemCode || '').trim(),
                         productName: String(entry?.productName || '').trim(),
                         amount: Number.isFinite(amount) ? amount : null,
                         moistureExcludedYield: Number.isFinite(moistureExcludedYield) ? moistureExcludedYield : null,
@@ -447,6 +489,7 @@
                 const rowsHtml = hasItems
                     ? items.map(item => {
                         const productName = item.productName || emptyLabel;
+                        const productCode = String(item?.productCode || '').trim();
                         const itemYieldLabel = formatWorkTeamCalendarYieldLabel(item?.moistureExcludedYield);
                         const itemCapaLabel = formatWorkTeamCalendarCapaLabel(item?.equipmentCapa);
                         const itemUtilizationLabel = formatWorkTeamCalendarUtilizationLabel(item?.equipmentUtilization);
@@ -467,7 +510,10 @@
                             <div class="work-team-calendar-production-item">
                                 <div class="work-team-calendar-production-main">
                                     <div class="work-team-calendar-production-name">${escapeHtml(productName)}</div>
-                                    <div class="work-team-calendar-production-meta">${escapeHtml(item.lineName || '라인 미입력')}</div>
+                                    <div class="work-team-calendar-production-meta">${escapeHtml([
+                                        item.lineName || '라인 미입력',
+                                        productCode ? `코드 ${productCode}` : ''
+                                    ].filter(Boolean).join(' · '))}</div>
                                     <div class="work-team-calendar-production-stat-row">${metricChipHtml}</div>
                                 </div>
                                 <div class="work-team-calendar-production-amount">${escapeHtml(amountLabel)}</div>
@@ -745,7 +791,13 @@
                 entries.forEach(entry => {
                     const dateKey = String(entry?.dateLabel || '').trim();
                     if (!dateKey.startsWith(prefix)) return;
-                    const dedupeKey = String(entry?.entryKey || '').trim() || [dateKey, String(entry?.teamName || sourceTeam || '').trim(), String(entry?.lineName || '').trim(), String(entry?.productName || '').trim()].join('::');
+                    const dedupeKey = String(entry?.entryKey || '').trim() || [
+                        dateKey,
+                        String(entry?.teamName || sourceTeam || '').trim(),
+                        String(entry?.lineName || '').trim(),
+                        String(entry?.productCode || entry?.itemCode || '').trim(),
+                        String(entry?.productName || '').trim()
+                    ].join('::');
                     if (seen.has(dedupeKey)) return;
                     seen.add(dedupeKey);
                     const amount = parseUtilAmount(entry?.amount);

@@ -667,7 +667,7 @@
             return parsed;
         }
 
-        const UTIL_PRODUCTION_UPLOAD_COLS = ['A', 'B', 'C', 'E', 'F'];
+        const UTIL_PRODUCTION_UPLOAD_COLS = ['A', 'B', 'C', 'D', 'E', 'F'];
         const UTIL_PRODUCTION_UPLOAD_HEADER_ROW = 3;
         const UTIL_PRODUCTION_UPLOAD_DATA_START_ROW = 4;
         const UTIL_PRODUCTION_UPLOAD_DATE_OFFSET_DAYS = 0;
@@ -675,6 +675,7 @@
             A: [/생산일자/],
             B: [/팀/],
             C: [/라인명/, /라인/],
+            D: [/코드/],
             E: [/품명/],
             F: [/생산량/]
         };

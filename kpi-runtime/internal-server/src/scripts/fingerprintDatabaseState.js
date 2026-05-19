@@ -91,6 +91,7 @@ const TABLES = [
       'production_date',
       'team_name',
       'line_name',
+      'product_code',
       'product_name',
       'amount',
       'moisture_excluded_yield',

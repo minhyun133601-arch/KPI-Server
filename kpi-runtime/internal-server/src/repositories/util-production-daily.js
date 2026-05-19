@@ -13,6 +13,7 @@ export async function listUtilProductionDailyEntries() {
         production_date,
         team_name,
         line_name,
+        product_code,
         product_name,
         amount,
         moisture_excluded_yield,
@@ -26,7 +27,7 @@ export async function listUtilProductionDailyEntries() {
         created_at,
         updated_at
       from ${UTIL_PRODUCTION_ENTRY_TABLE}
-      order by production_date asc, team_name asc, line_name asc, product_name asc, amount asc`
+      order by production_date asc, team_name asc, line_name asc, product_name asc, product_code asc, amount asc`
   );
   return result.rows;
 }
@@ -115,15 +116,16 @@ export async function replaceUtilProductionDailyState({
     for (const entry of Array.isArray(entries) ? entries : []) {
       await client.query(
         `insert into ${UTIL_PRODUCTION_ENTRY_TABLE}
-            (dedupe_key, production_date, team_name, line_name, product_name, amount, moisture_excluded_yield,
+            (dedupe_key, production_date, team_name, line_name, product_code, product_name, amount, moisture_excluded_yield,
              work_time, operation_time, equipment_capa, equipment_utilization, source_archive_id, source_fingerprint, source_file_name)
          values
-            ($1, $2, $3, $4, $5, $6::numeric, $7::numeric, $8::numeric, $9::numeric, $10::numeric, $11::numeric, $12, $13, $14)`,
+            ($1, $2, $3, $4, $5, $6, $7::numeric, $8::numeric, $9::numeric, $10::numeric, $11::numeric, $12::numeric, $13, $14, $15)`,
         [
           entry.dedupeKey,
           entry.date,
           entry.teamName,
           entry.lineName,
+          entry.productCode,
           entry.productName,
           entry.amount,
           entry.moistureExcludedYield,
@@ -169,6 +171,7 @@ export async function replaceUtilProductionDailyState({
           production_date,
           team_name,
           line_name,
+          product_code,
           product_name,
           amount,
           moisture_excluded_yield,
@@ -182,7 +185,7 @@ export async function replaceUtilProductionDailyState({
           created_at,
           updated_at
         from ${UTIL_PRODUCTION_ENTRY_TABLE}
-        order by production_date asc, team_name asc, line_name asc, product_name asc, amount asc`
+        order by production_date asc, team_name asc, line_name asc, product_name asc, product_code asc, amount asc`
     );
     const archiveResult = await client.query(
       `select

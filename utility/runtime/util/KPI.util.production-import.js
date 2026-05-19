@@ -118,12 +118,13 @@
                     const dateCell = worksheet[`A${rowNumber}`];
                     const parsedDate = parseUtilExcelDate(dateCell, values[0], spreadsheetApi);
                     const dateObj = applyUtilDateOffset(parsedDate, UTIL_PRODUCTION_UPLOAD_DATE_OFFSET_DAYS);
-                    const amount = parseUtilAmount(values[4]);
+                    const amount = parseUtilAmount(values[5]);
                     const hasMetricValue = Number.isFinite(amount);
                     if (!dateObj || !hasMetricValue) continue;
                     const teamValue = normalizeUtilUploadValue(values[1]);
                     const lineValue = normalizeUtilUploadValue(values[2]);
-                    const productValue = normalizeUtilUploadValue(values[3]);
+                    const productCode = String(normalizeUtilUploadValue(values[3]) || '').trim();
+                    const productValue = normalizeUtilUploadValue(values[4]);
                     const moistureExcludedYield = parseUtilPercentAmount(getUtilExcelCellDisplayValue(worksheet, `N${rowNumber}`));
                     const workTime = parseUtilAmount(getUtilExcelCellDisplayValue(worksheet, `J${rowNumber}`));
                     const operationTime = parseUtilAmount(getUtilExcelCellDisplayValue(worksheet, `L${rowNumber}`));
@@ -137,6 +138,7 @@
                         date: formatUtilYmd(dateObj),
                         team: String(resolvedTeam || fallbackTeamName || teamValue || '').trim(),
                         lineName,
+                        productCode,
                         productName,
                         amount: Number.isFinite(amount) ? amount : null,
                         moistureExcludedYield: Number.isFinite(moistureExcludedYield) ? moistureExcludedYield : null,
@@ -366,12 +368,14 @@
                     const hasMetricValue = Number.isFinite(amount);
                     if (!parsed || !hasMetricValue) return;
                     const lineName = String(entry?.lineName ?? entry?.line ?? entry?.lineNm ?? '').trim();
+                    const productCode = String(entry?.productCode ?? entry?.itemCode ?? entry?.code ?? '').trim();
                     const productName = String(entry?.productName ?? entry?.itemName ?? entry?.product ?? '').trim();
                     const teamName = String(entry?.team ?? team?.name ?? '').trim();
                     const dedupeKey = buildUtilProductionDailyEntryKey({
                         date: formatUtilDailyDateKey(parsed),
                         team: teamName || team?.name || '',
                         lineName,
+                        productCode,
                         productName,
                         amount,
                         moistureExcludedYield: Number.isFinite(moistureExcludedYield) ? moistureExcludedYield : null,
@@ -392,6 +396,7 @@
                         equipmentCapa: Number.isFinite(equipmentCapa) ? equipmentCapa : null,
                         equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null,
                         lineName,
+                        productCode,
                         productName,
                         teamName,
                         entryKey: dedupeKey
@@ -547,11 +552,13 @@
             const hasMetricValue = amount !== '';
             if (!parsedDate || !hasMetricValue || !teamKey) return '';
             const lineName = normalizeUtilDedupeText(entry?.lineName ?? entry?.line ?? entry?.lineNm ?? '');
+            const productCode = normalizeUtilDedupeText(entry?.productCode ?? entry?.itemCode ?? entry?.code ?? '');
             const productName = normalizeUtilDedupeText(entry?.productName ?? entry?.itemName ?? entry?.product ?? '');
             return [
                 formatUtilDailyDateKey(parsedDate),
                 teamKey,
                 lineName,
+                productCode,
                 productName,
                 amount,
                 moistureExcludedYield,
@@ -562,11 +569,44 @@
             ].join('|');
         }
 
-        function buildUtilProductionDailyReplacementKey(date, teamName) {
-            const parsedDate = parseUtilDateKey(date);
-            const teamKey = normalizeUtilTeamName(teamName).toLowerCase();
-            if (!parsedDate || !teamKey) return '';
-            return `${formatUtilDailyDateKey(parsedDate)}|${teamKey}`;
+        function removeUtilProductionEntriesByKeySet(keySet) {
+            if (!(keySet instanceof Set) || keySet.size === 0) return 0;
+            const nextEntries = [];
+            let removedCount = 0;
+            (UTIL_PRODUCTION_DAILY_DATA || []).forEach(teamRecord => {
+                const fallbackTeam = String(teamRecord?.name || '').trim();
+                (Array.isArray(teamRecord?.entries) ? teamRecord.entries : []).forEach(entry => {
+                    const entryKey = String(entry?.entryKey || '').trim() || buildUtilProductionDailyEntryKey({
+                        ...entry,
+                        team: entry?.team ?? entry?.teamName ?? fallbackTeam
+                    });
+                    if (entryKey && keySet.has(entryKey)) {
+                        removedCount += 1;
+                        return;
+                    }
+                    nextEntries.push({
+                        ...entry,
+                        team: entry?.team ?? entry?.teamName ?? fallbackTeam
+                    });
+                });
+            });
+            if (removedCount <= 0) return 0;
+            UTIL_PRODUCTION_DAILY_DATA.length = 0;
+            nextEntries.forEach(entry => {
+                const targetTeam = ensureUtilProductionDailyTeamRecord(entry.team);
+                if (!targetTeam) return;
+                targetTeam.entries.push(entry);
+            });
+            refreshUtilProductionDailyIndex();
+            Promise.resolve(persistUtilProductionDailyState())
+                .then(() => refreshUtilProductionLinkedDatasets())
+                .catch(error => {
+                    console.warn('util production delete save failed', error);
+                });
+            if (typeof refreshUtilProductionArchiveCountBadges === 'function') {
+                refreshUtilProductionArchiveCountBadges();
+            }
+            return removedCount;
         }
 
         function mergeUtilProductionExtractorRows(rows, options = {}) {
@@ -577,20 +617,20 @@
             let replacedCount = 0;
             const addedTeamSet = new Set();
             const pendingEntryMap = new Map();
-            const replacementKeySet = new Set();
             const incomingEntries = [];
 
             (rows || []).forEach(row => {
                 const rawDate = row?.date ?? row?.values?.[0] ?? '';
                 const parsedDate = parseUtilDateKey(rawDate);
-                const amount = parseUtilAmount(row?.amount ?? row?.production ?? row?.value ?? row?.values?.[4]);
+                const amount = parseUtilAmount(row?.amount ?? row?.production ?? row?.value ?? row?.values?.[5]);
                 const moistureExcludedYield = parseUtilPercentAmount(row?.moistureExcludedYield ?? row?.moistureFreeYield ?? row?.yieldExcludingMoisture ?? row?.yieldRate);
                 const workTime = parseUtilAmount(row?.workTime ?? row?.inputTime ?? row?.feedTime ?? row?.loadingTime ?? row?.injectionTime);
                 const operationTime = parseUtilAmount(row?.operationTime ?? row?.operatingTime ?? row?.runtime ?? row?.runTime ?? row?.operationHours);
                 const equipmentCapa = parseUtilAmount(row?.equipmentCapa ?? row?.capa ?? row?.equipmentCapacity);
                 const equipmentUtilization = parseUtilPercentAmount(row?.equipmentUtilization ?? row?.operationRate ?? row?.equipmentRate ?? row?.utilizationRate);
                 const rawLineName = String(row?.lineName ?? row?.line ?? row?.values?.[2] ?? '').trim();
-                const productName = String(row?.productName ?? row?.product ?? row?.itemName ?? row?.values?.[3] ?? '').trim();
+                const productCode = String(row?.productCode ?? row?.itemCode ?? row?.code ?? row?.values?.[3] ?? '').trim();
+                const productName = String(row?.productName ?? row?.product ?? row?.itemName ?? row?.values?.[4] ?? '').trim();
                 const rawTeamName = String(row?.team ?? row?.teamName ?? row?.values?.[1] ?? '').trim();
                 const teamName = resolveUtilUploadTeamName(rawTeamName, fallbackTeam, `${rawLineName} ${productName}`, rawLineName);
                 const lineName = normalizeUtilProductionStoredLineName(teamName, rawLineName);
@@ -608,6 +648,7 @@
                     equipmentCapa: Number.isFinite(equipmentCapa) ? equipmentCapa : null,
                     equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null,
                     lineName,
+                    productCode,
                     productName,
                     team: teamName,
                     sourceArchiveId: '',
@@ -620,8 +661,6 @@
                     return;
                 }
                 incomingEntries.push({ entry, dedupeKey });
-                const replacementKey = buildUtilProductionDailyReplacementKey(entry.date, entry.team);
-                if (replacementKey) replacementKeySet.add(replacementKey);
             });
 
             (UTIL_PRODUCTION_DAILY_DATA || []).forEach(teamRecord => {
@@ -632,10 +671,6 @@
                     const teamName = sanitizeUtilUploadTeamName(existingEntry?.team ?? existingEntry?.teamName ?? fallbackExistingTeam);
                     if (!parsedDate || !Number.isFinite(amount) || !teamName) return;
                     const dateKey = formatUtilDailyDateKey(parsedDate);
-                    if (replacementKeySet.has(buildUtilProductionDailyReplacementKey(dateKey, teamName))) {
-                        replacedCount += 1;
-                        return;
-                    }
                     const normalizedEntry = {
                         ...existingEntry,
                         date: dateKey,
@@ -650,33 +685,8 @@
 
             incomingEntries.forEach(({ entry, dedupeKey }) => {
                 if (pendingEntryMap.has(dedupeKey)) {
-                    const existingEntry = pendingEntryMap.get(dedupeKey);
-                    let patched = false;
-                    if (Number.isFinite(entry.moistureExcludedYield) && !Number.isFinite(parseUtilPercentAmount(existingEntry?.moistureExcludedYield))) {
-                        existingEntry.moistureExcludedYield = entry.moistureExcludedYield;
-                        patched = true;
-                    }
-                    if (Number.isFinite(entry.workTime) && !Number.isFinite(parseUtilAmount(existingEntry?.workTime ?? existingEntry?.inputTime))) {
-                        existingEntry.workTime = entry.workTime;
-                        patched = true;
-                    }
-                    if (Number.isFinite(entry.operationTime) && !Number.isFinite(parseUtilAmount(existingEntry?.operationTime))) {
-                        existingEntry.operationTime = entry.operationTime;
-                        patched = true;
-                    }
-                    if (Number.isFinite(entry.equipmentCapa) && !Number.isFinite(parseUtilAmount(existingEntry?.equipmentCapa))) {
-                        existingEntry.equipmentCapa = entry.equipmentCapa;
-                        patched = true;
-                    }
-                    if (Number.isFinite(entry.equipmentUtilization) && !Number.isFinite(parseUtilPercentAmount(existingEntry?.equipmentUtilization))) {
-                        existingEntry.equipmentUtilization = entry.equipmentUtilization;
-                        patched = true;
-                    }
-                    if (patched) {
-                        patchedCount += 1;
-                    } else {
-                        skippedCount += 1;
-                    }
+                    pendingEntryMap.set(dedupeKey, entry);
+                    replacedCount += 1;
                     return;
                 }
                 pendingEntryMap.set(dedupeKey, entry);

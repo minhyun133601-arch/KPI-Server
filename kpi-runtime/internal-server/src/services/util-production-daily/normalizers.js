@@ -106,6 +106,7 @@ export function buildEntryDedupeKey(entry) {
     date,
     teamKey,
     normalizeDedupeText(entry?.lineName),
+    normalizeDedupeText(entry?.productCode),
     normalizeDedupeText(entry?.productName),
     amount,
     moistureExcludedYield,
@@ -128,6 +129,7 @@ export function normalizeEntry(input, fallbackTeamName = '') {
     date,
     teamName,
     lineName: normalizeText(input?.lineName ?? input?.line ?? input?.lineNm),
+    productCode: normalizeText(input?.productCode ?? input?.itemCode ?? input?.product_code ?? input?.code),
     productName: normalizeText(input?.productName ?? input?.itemName ?? input?.product),
     amount,
     moistureExcludedYield: normalizeNumber(

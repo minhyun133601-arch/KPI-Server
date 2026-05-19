@@ -144,6 +144,8 @@ function createProductionImportContext() {
       productionImportSource,
       'globalThis.__testExports = {',
       '  mergeUtilProductionExtractorRows,',
+      '  buildUtilProductionDailyEntryKey,',
+      '  removeUtilProductionEntriesByKeySet,',
       '  getTeams: () => UTIL_PRODUCTION_DAILY_DATA,',
       '  getArchives: () => UTIL_PRODUCTION_ARCHIVE_META,',
       '};',
@@ -164,7 +166,7 @@ test('production import source routes browser globals through the data-sync adap
   assert.match(productionImportSource, /writePortalRecord\?\.\('util_production_daily'/);
 });
 
-test('production import merge replaces existing same-date and team rows while deduping incoming rows', () => {
+test('production import merge keeps same-date team rows unless the full entry key matches', () => {
   const context = createProductionImportContext();
   const targetTeam = '1? 1?뚰듃';
   const replacementTeam = context.UTIL_ELECTRIC_DATA[0].name || targetTeam;
@@ -188,6 +190,7 @@ test('production import merge replaces existing same-date and team rows while de
       date: '2026-05-01',
       team: '1팀 1파트',
       lineName: 'MSD 건조',
+      productCode: 'P-A',
       productName: '제품A',
       amount: 50,
     },
@@ -195,6 +198,7 @@ test('production import merge replaces existing same-date and team rows while de
       date: '2026-05-01',
       team: '1팀 1파트',
       lineName: 'MSD 건조',
+      productCode: 'P-A',
       productName: '제품A',
       amount: 50,
       moistureExcludedYield: 98,
@@ -222,7 +226,7 @@ test('production import merge replaces existing same-date and team rows while de
   assert.equal(result.addedCount, 4);
   assert.equal(result.skippedCount, 0);
   assert.equal(result.patchedCount, 0);
-  assert.equal(result.replacedCount, 1);
+  assert.equal(result.replacedCount, 0);
   assert.deepEqual(result.addedTeams, ['1팀 1파트', '2팀']);
   assert.deepEqual(
     teams.map((team) => team.name),
@@ -235,20 +239,148 @@ test('production import merge replaces existing same-date and team rows while de
   assert.equal(teams[0].entries[1].amount, 999);
   assert.equal(teams[0].entries[1].sourceFileName, 'old-same-date.xlsx');
   assert.equal(serializedTeams.includes('old-same-date.xlsx'), true);
-  assert.equal(serializedTeams.includes('old-same-team.xlsx'), false);
-  assert.equal(teams[1].entries.length, 3);
-  assert.equal(teams[1].entries[0].amount, 50);
-  assert.equal(teams[1].entries[0].lineName, 'MSD');
-  assert.equal(teams[1].entries[0].sourceFileName, '');
+  assert.equal(serializedTeams.includes('old-same-team.xlsx'), true);
+  assert.equal(teams[1].entries.length, 4);
+  assert.equal(teams[1].entries[0].amount, 111);
+  assert.equal(teams[1].entries[0].sourceFileName, 'old-same-team.xlsx');
   assert.equal(teams[1].entries[1].amount, 50);
   assert.equal(teams[1].entries[1].lineName, 'MSD');
-  assert.equal(teams[1].entries[1].moistureExcludedYield, 98);
-  assert.equal(teams[1].entries[1].workTime, 6);
-  assert.equal(teams[1].entries[1].operationTime, 4.5);
-  assert.equal(teams[1].entries[2].amount, 70);
+  assert.equal(teams[1].entries[1].productCode, 'P-A');
+  assert.equal(teams[1].entries[1].sourceFileName, '');
+  assert.equal(teams[1].entries[2].amount, 50);
   assert.equal(teams[1].entries[2].lineName, 'MSD');
+  assert.equal(teams[1].entries[2].moistureExcludedYield, 98);
+  assert.equal(teams[1].entries[2].workTime, 6);
+  assert.equal(teams[1].entries[2].operationTime, 4.5);
+  assert.equal(teams[1].entries[3].amount, 70);
+  assert.equal(teams[1].entries[3].lineName, 'MSD');
   assert.equal(teams[2].entries.length, 1);
   assert.equal(teams[2].entries[0].amount, 60);
   assert.equal(context.__testExports.getArchives().length, 1);
   assert.equal(context.__getQueuedWriteCount(), 1);
+});
+
+test('production import merge replaces only rows with identical production metrics', () => {
+  const context = createProductionImportContext();
+  context.__testExports.getTeams().push({
+    name: '2?',
+    entries: [
+      {
+        date: '2026-05-03',
+        team: '2?',
+        lineName: 'Line 2',
+        productCode: 'CODE-A',
+        productName: 'Product A',
+        amount: 100,
+        moistureExcludedYield: 98.5,
+        workTime: 24,
+        operationTime: 22.5,
+        equipmentCapa: 72000,
+        equipmentUtilization: 98.6,
+        sourceFileName: 'old-exact.xlsx',
+      },
+    ],
+  });
+
+  const result = context.__testExports.mergeUtilProductionExtractorRows([
+    {
+      date: '2026-05-03',
+      team: '2?',
+      lineName: 'Line 2',
+      productCode: 'CODE-A',
+      productName: 'Product A',
+      amount: 100,
+      moistureExcludedYield: 98.5,
+      workTime: 24,
+      operationTime: 22.5,
+      equipmentCapa: 72000,
+      equipmentUtilization: 98.6,
+    },
+    {
+      date: '2026-05-03',
+      team: '2?',
+      lineName: 'Line 2',
+      productCode: 'CODE-A',
+      productName: 'Product A',
+      amount: 100,
+      moistureExcludedYield: 98.6,
+      workTime: 24,
+      operationTime: 22.5,
+      equipmentCapa: 72000,
+      equipmentUtilization: 98.6,
+    },
+  ]);
+
+  const team = context.__testExports.getTeams().find((item) => item.name === '2?');
+  assert.equal(result.addedCount, 1);
+  assert.equal(result.replacedCount, 1);
+  assert.equal(team.entries.length, 2);
+  assert.equal(team.entries[0].moistureExcludedYield, 98.5);
+  assert.equal(team.entries[0].sourceFileName, '');
+  assert.equal(team.entries[1].moistureExcludedYield, 98.6);
+});
+
+test('production import merge treats different product codes as distinct daily rows', () => {
+  const context = createProductionImportContext();
+  const result = context.__testExports.mergeUtilProductionExtractorRows([
+    {
+      date: '2026-05-03',
+      team: '2팀',
+      lineName: '2호기',
+      productCode: 'CODE-A',
+      productName: '같은품명',
+      amount: 100,
+    },
+    {
+      date: '2026-05-03',
+      team: '2팀',
+      lineName: '2호기',
+      productCode: 'CODE-B',
+      productName: '같은품명',
+      amount: 100,
+    },
+  ]);
+
+  const team = context.__testExports.getTeams().find((item) => item.name === '2팀');
+  assert.equal(result.addedCount, 2);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(team.entries.map((entry) => entry.productCode).sort())),
+    ['CODE-A', 'CODE-B']
+  );
+});
+
+test('production import delete removes matching daily entries and queues a save', async () => {
+  const context = createProductionImportContext();
+  const result = context.__testExports.mergeUtilProductionExtractorRows([
+    {
+      date: '2026-05-01',
+      team: '1? 1?뚰듃',
+      lineName: 'MSD',
+      productName: '?쒗뭹A',
+      amount: 50,
+    },
+    {
+      date: '2026-05-02',
+      team: '2?',
+      lineName: 'Line B',
+      productName: '?쒗뭹B',
+      amount: 60,
+    },
+  ]);
+  await result.savePromise;
+
+  const teamsBeforeDelete = context.__testExports.getTeams();
+  const targetEntry = teamsBeforeDelete
+    .flatMap((team) => (team.entries || []).map((entry) => ({ ...entry, team: entry.team || team.name })))
+    .find((entry) => entry.amount === 50);
+  const targetKey = context.__testExports.buildUtilProductionDailyEntryKey(targetEntry);
+
+  const removed = context.__testExports.removeUtilProductionEntriesByKeySet(new Set([targetKey]));
+  await Promise.resolve();
+
+  const teams = JSON.parse(JSON.stringify(context.__testExports.getTeams()));
+  assert.equal(removed, 1);
+  assert.equal(JSON.stringify(teams).includes('?쒗뭹A'), false);
+  assert.equal(JSON.stringify(teams).includes('?쒗뭹B'), true);
+  assert.equal(context.__getQueuedWriteCount(), 2);
 });

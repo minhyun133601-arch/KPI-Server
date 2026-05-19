@@ -1,11 +1,12 @@
 "use strict";
 
-const TARGET_COLS = ["A", "B", "C", "E", "F"];
+const TARGET_COLS = ["A", "B", "C", "D", "E", "F"];
 const HEADER_ROW = 3;
 const DATA_START_ROW = 4;
 const TEAM_VALUE_INDEX = 1;
 const LINE_VALUE_INDEX = 2;
-const PRODUCTION_VALUE_INDEX = 4;
+const PRODUCT_CODE_VALUE_INDEX = 3;
+const PRODUCTION_VALUE_INDEX = 5;
 const PRODUCTION_DATE_OFFSET_DAYS = 0;
 const FIXED_PERIOD_START_DAY = 1;
 
@@ -13,6 +14,7 @@ const REQUIRED_HEADER_RULES = {
   A: [/생산일자/],
   B: [/팀/],
   C: [/라인명/, /라인/],
+  D: [/코드/],
   E: [/품명/],
   F: [/생산량/],
 };
@@ -53,6 +55,7 @@ function getProductionParsingContext() {
     DATA_START_ROW,
     TEAM_VALUE_INDEX,
     LINE_VALUE_INDEX,
+    PRODUCT_CODE_VALUE_INDEX,
     PRODUCTION_VALUE_INDEX,
     PRODUCTION_DATE_OFFSET_DAYS,
     REQUIRED_HEADER_RULES,
@@ -391,7 +394,8 @@ function buildKpiBridgeRows() {
     date: row.values[0] ?? "",
     team: row.values[TEAM_VALUE_INDEX] ?? "",
     lineName: row.values[LINE_VALUE_INDEX] ?? "",
-    productName: row.values[3] ?? "",
+    productCode: row.values[PRODUCT_CODE_VALUE_INDEX] ?? "",
+    productName: row.values[4] ?? "",
     amount: row.values[PRODUCTION_VALUE_INDEX] ?? "",
     moistureExcludedYield: row.moistureExcludedYield ?? "",
     workTime: row.workTime ?? row.inputTime ?? "",

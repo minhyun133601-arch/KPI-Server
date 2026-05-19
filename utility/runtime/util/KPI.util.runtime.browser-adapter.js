@@ -1665,6 +1665,7 @@ ${buildReportDeckExportScript()}
             getReportDeckProductionEntryDateKey(entry),
             normalizeReportDeckProductionText(entry?.teamName || entry?.team || teamLabel),
             normalizeReportDeckProductionText(entry?.lineName || entry?.line || ''),
+            normalizeReportDeckProductionText(entry?.productCode || entry?.itemCode || entry?.code || ''),
             normalizeReportDeckProductionText(entry?.productName || entry?.product || entry?.itemName || ''),
             String(parseReportDeckProductionAmount(entry?.amount ?? entry?.production ?? entry?.value) ?? '')
         ].join('::');

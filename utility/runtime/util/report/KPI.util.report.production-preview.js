@@ -1,11 +1,95 @@
+        const UTIL_REPORT_OVERVIEW_COST_CARDS = [
+            { valueRole: 'util-report-total-cost', shareRole: 'util-report-total-share', label: '총액', icon: 'fa-chart-pie', tone: 'overview-total' },
+            { valueRole: 'util-report-electric-cost', shareRole: 'util-report-electric-share', label: '전기', icon: 'fa-bolt', tone: 'overview-electric' },
+            { valueRole: 'util-report-gas-cost', shareRole: 'util-report-gas-share', label: '가스', icon: 'fa-fire-flame-curved', tone: 'overview-gas' },
+            { valueRole: 'util-report-waste-cost', shareRole: 'util-report-waste-share', label: '폐수', icon: 'fa-water', tone: 'overview-waste' }
+        ];
+        const UTIL_REPORT_YUSAN_PRODUCTION_SHARE_TEAMS = [
+            { label: '1팀 2파트', icon: 'fa-industry' },
+            { label: '2팀', icon: 'fa-boxes-stacked' },
+            { label: '3팀', icon: 'fa-flask' }
+        ];
+
+        function escapeUtilReportPreviewHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function buildUtilReportPreviewKpiCardHtml(item) {
+            const valueRoleAttr = item.valueRole ? ` data-role="${escapeUtilReportPreviewHtml(item.valueRole)}"` : '';
+            const subRoleAttr = item.shareRole ? ` data-role="${escapeUtilReportPreviewHtml(item.shareRole)}"` : '';
+            return `
+                <div class="util-report-kpi" data-tone="${escapeUtilReportPreviewHtml(item.tone || 'neutral')}">
+                    <div class="util-report-kpi-head">
+                        <span class="util-report-kpi-icon" aria-hidden="true"><i class="fa-solid ${escapeUtilReportPreviewHtml(item.icon || 'fa-circle')}"></i></span>
+                        <span class="util-report-kpi-label">${escapeUtilReportPreviewHtml(item.label)}</span>
+                    </div>
+                    <strong class="util-report-kpi-value"${valueRoleAttr}>${escapeUtilReportPreviewHtml(item.value)}</strong>
+                    <span class="util-report-kpi-sub"${subRoleAttr}>${escapeUtilReportPreviewHtml(item.sub || '')}</span>
+                </div>
+            `;
+        }
+
+        function buildUtilReportPreviewProductionState(teamName) {
+            return {
+                ...UtilReportState,
+                categoryKey: 'production',
+                productionTeam: teamName,
+                selectedScopeKeys: Array.isArray(UtilReportState.selectedScopeKeys)
+                    ? UtilReportState.selectedScopeKeys.slice()
+                    : ['electric', 'gas', 'waste']
+            };
+        }
+
+        function getUtilReportPreviewProductionTotal(teamName) {
+            if (typeof buildUtilReportMonthlyRows !== 'function' || typeof UtilReportState !== 'object' || !UtilReportState) {
+                return null;
+            }
+            try {
+                const result = buildUtilReportMonthlyRows(buildUtilReportPreviewProductionState(teamName));
+                const production = Number(result?.summary?.production);
+                return Number.isFinite(production) && production > 0 ? production : 0;
+            } catch (error) {
+                console.warn?.('[KPI] Failed to build utility preview production share.', error);
+                return null;
+            }
+        }
+
+        function buildUtilReportPreviewProductionShareCards() {
+            const teamItems = UTIL_REPORT_YUSAN_PRODUCTION_SHARE_TEAMS.map(team => ({
+                ...team,
+                production: getUtilReportPreviewProductionTotal(team.label)
+            }));
+            if (teamItems.some(item => item.production === null)) return [];
+
+            const totalProduction = teamItems.reduce((sum, item) => sum + (Number(item.production) || 0), 0);
+            if (!Number.isFinite(totalProduction) || totalProduction <= 0) return [];
+
+            const totalCard = {
+                label: '유산 생산량',
+                value: `${formatUtilNumber(totalProduction, 0)} kg`,
+                sub: '1팀 2파트 + 2팀 + 3팀',
+                icon: 'fa-scale-balanced',
+                tone: 'production'
+            };
+            const teamCards = teamItems.map(team => ({
+                label: team.label,
+                value: `${formatUtilNumber((Number(team.production) / totalProduction) * 100, 1)}%`,
+                sub: `${formatUtilNumber(Number(team.production) || 0, 0)} kg`,
+                icon: team.icon,
+                tone: 'production'
+            }));
+            return [totalCard, ...teamCards];
+        }
+
         function enhanceUtilReportOverviewCards(panel) {
             if (!panel || panel.dataset.overviewCardsEnhanced === 'true') return;
-            [
-                { valueRole: 'util-report-total-cost', shareRole: 'util-report-total-share', label: '총액', icon: 'fa-chart-pie', tone: 'overview-total' },
-                { valueRole: 'util-report-electric-cost', shareRole: 'util-report-electric-share', label: '전기', icon: 'fa-bolt', tone: 'overview-electric' },
-                { valueRole: 'util-report-gas-cost', shareRole: 'util-report-gas-share', label: '가스', icon: 'fa-fire-flame-curved', tone: 'overview-gas' },
-                { valueRole: 'util-report-waste-cost', shareRole: 'util-report-waste-share', label: '폐수', icon: 'fa-water', tone: 'overview-waste' }
-            ].forEach(item => {
+            UTIL_REPORT_OVERVIEW_COST_CARDS.forEach(item => {
                 const valueEl = panel.querySelector(`[data-role="${item.valueRole}"]`);
                 const shareEl = panel.querySelector(`[data-role="${item.shareRole}"]`);
                 const cardEl = valueEl?.closest('.util-report-kpi');
@@ -78,6 +162,29 @@
             const formatShare = value => totalCost > 0
                 ? `구성비 ${formatUtilNumber((value / totalCost) * 100, 1)}%`
                 : '구성비 -';
+            const overviewItems = [
+                {
+                    ...UTIL_REPORT_OVERVIEW_COST_CARDS[0],
+                    value: `${formatUtilReportScaled(totalCost, UtilReportState.unitKey, decimals)} ${unitLabel}`,
+                    sub: totalCost > 0 ? '구성비 100.0%' : '구성비 -'
+                },
+                {
+                    ...UTIL_REPORT_OVERVIEW_COST_CARDS[1],
+                    value: `${formatUtilReportScaled(electricCost, UtilReportState.unitKey, decimals)} ${unitLabel}`,
+                    sub: formatShare(electricCost)
+                },
+                {
+                    ...UTIL_REPORT_OVERVIEW_COST_CARDS[2],
+                    value: `${formatUtilReportScaled(gasCost, UtilReportState.unitKey, decimals)} ${unitLabel}`,
+                    sub: formatShare(gasCost)
+                },
+                {
+                    ...UTIL_REPORT_OVERVIEW_COST_CARDS[3],
+                    value: `${formatUtilReportScaled(wasteCost, UtilReportState.unitKey, decimals)} ${unitLabel}`,
+                    sub: formatShare(wasteCost)
+                },
+                ...buildUtilReportPreviewProductionShareCards()
+            ];
 
             if (rangeEl) rangeEl.textContent = result.rangeLabel;
             if (monthCountEl) monthCountEl.textContent = `${formatUtilNumber(result.monthCount)}개월`;
@@ -102,5 +209,9 @@
             if (totalUnitEl) totalUnitEl.textContent = Number.isFinite(result.summary.totalUnit)
                 ? `${formatUtilReportScaled(result.summary.totalUnit, UtilReportState.unitKey, decimals)} ${unitLabel}/kg`
                 : '-';
-            if (noteEl) noteEl.textContent = '';
+            if (kpiGridEl) {
+                kpiGridEl.innerHTML = overviewItems.map(buildUtilReportPreviewKpiCardHtml).join('');
+                kpiGridEl.hidden = !overviewItems.length;
+            }
+            if (noteEl) noteEl.textContent = '총액 구성비와 유산 생산량 비율을 같은 기준월 범위로 표시합니다. 가스 유산 기준은 기존처럼 1팀 2파트 + 3팀을 유지합니다.';
         }

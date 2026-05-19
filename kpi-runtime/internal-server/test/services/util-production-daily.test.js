@@ -15,6 +15,7 @@ test('normalizeStateSnapshot clamps period and dedupes entries', () => {
             amount: '12.5',
             lineName: '1호기',
             productName: '슬러리',
+            sourceFileName: 'first.xlsx',
           },
           {
             date: '2026-04-01',
@@ -22,6 +23,7 @@ test('normalizeStateSnapshot clamps period and dedupes entries', () => {
             lineName: '1호기',
             productName: '슬러리',
             teamName: '유틸팀',
+            sourceFileName: 'second.xlsx',
           },
         ],
       },
@@ -47,6 +49,7 @@ test('normalizeStateSnapshot clamps period and dedupes entries', () => {
   assert.equal(snapshot.periodStartDay, 31);
   assert.equal(snapshot.entries.length, 1);
   assert.equal(snapshot.entries[0].teamName, '유틸팀');
+  assert.equal(snapshot.entries[0].sourceFileName, 'second.xlsx');
   assert.equal(snapshot.archives.length, 1);
   assert.equal(snapshot.archives[0].folderName, 'default');
 });
@@ -126,6 +129,7 @@ test('buildStatePayload groups rows by team and derives archive summary', () => 
         production_date: '2026-04-01',
         team_name: 'A조',
         line_name: '1호기',
+        product_code: 'P-A',
         product_name: '제품A',
         amount: '10',
         moisture_excluded_yield: '9.5',
@@ -173,6 +177,7 @@ test('buildStatePayload groups rows by team and derives archive summary', () => 
 
   assert.equal(payload.periodDefault.startDay, 5);
   assert.equal(payload.meta.version, 2);
+  assert.equal(payload.teams[0].entries[0].productCode, 'P-A');
   assert.equal(payload.teams[0].entries[0].workTime, 6);
   assert.equal(payload.teams[0].entries[0].operationTime, 4.5);
   assert.deepEqual(payload.teams.map((team) => team.name), ['A조', 'B조']);
@@ -205,20 +210,22 @@ test('buildStatePayload sorts grouped entries by date line product and amount', 
       { production_date: '2026-04-02', team_name: 'A조', line_name: '2호기', product_name: 'B', amount: '3' },
       { production_date: '2026-04-01', team_name: 'A조', line_name: '2호기', product_name: 'B', amount: '2' },
       { production_date: '2026-04-01', team_name: 'A조', line_name: '1호기', product_name: 'C', amount: '2' },
-      { production_date: '2026-04-01', team_name: 'A조', line_name: '1호기', product_name: 'A', amount: '2' },
-      { production_date: '2026-04-01', team_name: 'A조', line_name: '1호기', product_name: 'A', amount: '1' },
+      { production_date: '2026-04-01', team_name: 'A조', line_name: '1호기', product_name: 'A', product_code: 'B', amount: '2' },
+      { production_date: '2026-04-01', team_name: 'A조', line_name: '1호기', product_name: 'A', product_code: 'A', amount: '2' },
+      { production_date: '2026-04-01', team_name: 'A조', line_name: '1호기', product_name: 'A', product_code: 'A', amount: '1' },
     ],
     []
   );
 
   assert.deepEqual(
-    payload.teams[0].entries.map((entry) => `${entry.date}/${entry.lineName}/${entry.productName}/${entry.amount}`),
+    payload.teams[0].entries.map((entry) => `${entry.date}/${entry.lineName}/${entry.productName}/${entry.productCode}/${entry.amount}`),
     [
-      '2026-04-01/1호기/A/1',
-      '2026-04-01/1호기/A/2',
-      '2026-04-01/1호기/C/2',
-      '2026-04-01/2호기/B/2',
-      '2026-04-02/2호기/B/3',
+      '2026-04-01/1호기/A/A/1',
+      '2026-04-01/1호기/A/A/2',
+      '2026-04-01/1호기/A/B/2',
+      '2026-04-01/1호기/C//2',
+      '2026-04-01/2호기/B//2',
+      '2026-04-02/2호기/B//3',
     ]
   );
 });
