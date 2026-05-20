@@ -18,8 +18,8 @@ export function normalizeExpectedVersion(value) {
  * Keep request parsing here so route handlers receive plain data and services do
  * not need to know about Node stream details.
  */
-export async function parseBody(req) {
-  return readJsonBody(req, config.maxJsonBodyBytes);
+export async function parseBody(req, maxBytes = config.maxJsonBodyBytes) {
+  return readJsonBody(req, maxBytes);
 }
 
 export function requireAuth(auth) {

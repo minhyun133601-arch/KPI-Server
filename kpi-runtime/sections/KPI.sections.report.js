@@ -1919,9 +1919,15 @@ ${colgroup}
                 .report-deck-month-field { min-height: 30px; display: inline-flex; align-items: center; gap: 6px; color: #334155; font-size: 0.72rem; font-weight: 900; }
                 .report-deck-month-field select { height: 30px; min-width: 112px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; color: #0f172a; padding: 0 24px 0 9px; font-size: 0.74rem; font-weight: 900; }
                 .report-deck-month-field select:disabled { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
-                .report-deck-action-button { min-height: 30px; border: 1px solid #bfdbfe; border-radius: 6px; background: #eff6ff; color: #1d4ed8; padding: 0 11px; font-size: 0.74rem; font-weight: 900; cursor: pointer; }
+                @keyframes reportDeckCaptureSpin { to { transform: rotate(360deg); } }
+                .report-deck-action-button { position: relative; min-height: 30px; border: 1px solid #bfdbfe; border-radius: 6px; background: #eff6ff; color: #1d4ed8; padding: 0 11px; font-size: 0.74rem; font-weight: 900; cursor: pointer; }
                 .report-deck-action-button:disabled { border-color: #cbd5e1; background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
                 .report-deck-action-button.is-active { border-color: #2563eb; background: #2563eb; color: #ffffff; }
+                .report-deck-editor[data-report-capture-busy="true"] [data-report-capture-zip],
+                .report-deck-editor[data-report-capture-busy="true"] [data-report-export-capture-zip] { padding-left: 30px; cursor: wait; opacity: 0.82; }
+                .report-deck-editor[data-report-capture-busy="true"] [data-report-capture-zip]::before,
+                .report-deck-editor[data-report-capture-busy="true"] [data-report-export-capture-zip]::before { content: ""; position: absolute; left: 10px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 999px; animation: reportDeckCaptureSpin 0.75s linear infinite; }
+                .report-deck-editor[data-report-capture-busy="true"] .report-deck-stage { cursor: progress; }
                 .report-deck-workspace { min-height: 0; display: grid; grid-template-columns: 154px minmax(0, 1fr); gap: 0; align-items: stretch; }
                 .report-deck-sidebar { min-height: 0; border: 0; border-right: 1px solid #dbe4f3; border-radius: 0; background: #ffffff; padding: 6px; overflow: auto; }
                 .report-deck-sidebar strong { display: block; margin-bottom: 5px; font-size: 0.76rem; font-weight: 900; color: #0f172a; }
@@ -2477,9 +2483,8 @@ ${colgroup}
                         </label>
                         <button type="button" class="report-deck-action-button" data-report-memo-overview-toggle>특이사항</button>
                         <button type="button" class="report-deck-action-button" data-report-edit-toggle aria-pressed="false">수정</button>
-                        <button type="button" class="report-deck-action-button" data-report-undo-delete disabled>삭제 복구</button>
                         <button type="button" class="report-deck-action-button" data-report-add-page="slide10">페이지 추가</button>
-                        <button type="button" class="report-deck-action-button" data-report-print-pdf>PDF인쇄</button>
+                        <button type="button" class="report-deck-action-button" data-report-capture-zip>&#52897;&#52432;</button>
                         <button type="button" class="report-deck-action-button" data-report-export-html>HTML추출</button>
                         <button type="button" class="report-deck-action-button" data-report-fullscreen>전체화면</button>
                     </div>

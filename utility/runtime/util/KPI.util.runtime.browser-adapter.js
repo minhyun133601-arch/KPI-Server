@@ -6,8 +6,8 @@
     const REPORT_DECK_PRINT_PAGE_MARGIN = '10mm';
     const REPORT_DECK_PRINT_SLIDE_CSS_WIDTH = '277mm';
     const REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT = '155.8125mm';
-    const REPORT_DECK_CAPTURE_SLIDE_WIDTH = 2560;
-    const REPORT_DECK_CAPTURE_SLIDE_HEIGHT = 1440;
+    const REPORT_DECK_CAPTURE_SLIDE_WIDTH = 1920;
+    const REPORT_DECK_CAPTURE_SLIDE_HEIGHT = 1080;
     const REPORT_DECK_MEMO_TEAMS = Object.freeze([
         Object.freeze({ key: 'team_01_01', label: '1팀 1파트' }),
         Object.freeze({ key: 'team_01_02', label: '1팀 2파트' }),
@@ -135,6 +135,11 @@
     function buildReportDeckFileUploadEndpoint() {
         const config = getReportRuntimeConfig();
         return `${config.apiBase.replace(/\/+$/, '')}/files/base64`;
+    }
+
+    function buildReportDeckCaptureZipEndpoint() {
+        const config = getReportRuntimeConfig();
+        return `${config.apiBase.replace(/\/+$/, '')}/report-deck/capture-zip`;
     }
 
     function buildMeteringSharedStoreEndpoint() {
@@ -276,6 +281,13 @@
         return escapeHtmlText(value);
     }
 
+    function serializeReportDeckScriptJson(value) {
+        return JSON.stringify(value ?? null)
+            .replace(/</g, '\\u003c')
+            .replace(/\u2028/g, '\\u2028')
+            .replace(/\u2029/g, '\\u2029');
+    }
+
     function getReportDeckExportStyleText(editorRoot) {
         const previous = editorRoot?.previousElementSibling || null;
         if (String(previous?.tagName || '').toLowerCase() === 'style') {
@@ -404,7 +416,8 @@
                 <span data-report-slide-counter>1 / ${slides.length}</span>
             </div>
             <div class="report-deck-actions">
-                <button type="button" class="report-deck-action-button" data-report-export-print>PDF인쇄</button>
+                <span class="report-deck-save-message" data-report-export-status aria-live="polite"></span>
+                <button type="button" class="report-deck-action-button" data-report-export-capture-zip>캡쳐</button>
                 <button type="button" class="report-deck-action-button" data-report-export-fullscreen>전체화면</button>
             </div>
         `;
@@ -473,6 +486,7 @@
             .report-print-viewer [data-report-edit-toggle],
             .report-print-viewer [data-report-memo-overview-toggle],
             .report-print-viewer [data-report-print-pdf],
+            .report-print-viewer [data-report-capture-zip],
             .report-print-viewer [data-report-export-html],
             .report-print-viewer .report-memo-overview-dialog { display: none !important; }
             .report-print-viewer img:not([src]),
@@ -505,28 +519,51 @@
         return deck;
     }
 
-    function buildReportDeckCaptureCss() {
+    function normalizeReportDeckCaptureViewport(size = {}) {
+        const width = Math.max(320, Math.min(4096, Number.parseInt(String(size.width ?? ''), 10) || REPORT_DECK_CAPTURE_SLIDE_WIDTH));
+        const height = Math.max(320, Math.min(4096, Number.parseInt(String(size.height ?? ''), 10) || REPORT_DECK_CAPTURE_SLIDE_HEIGHT));
+        return { width, height };
+    }
+
+    function getReportDeckCaptureViewport() {
+        const screenWidth = Number.parseInt(String(root.screen?.width ?? ''), 10) || 0;
+        const screenHeight = Number.parseInt(String(root.screen?.height ?? ''), 10) || 0;
+        const innerWidth = Number.parseInt(String(root.innerWidth ?? ''), 10) || 0;
+        const innerHeight = Number.parseInt(String(root.innerHeight ?? ''), 10) || 0;
+        return normalizeReportDeckCaptureViewport({
+            width: screenWidth || innerWidth || REPORT_DECK_CAPTURE_SLIDE_WIDTH,
+            height: screenHeight || innerHeight || REPORT_DECK_CAPTURE_SLIDE_HEIGHT
+        });
+    }
+
+    function buildReportDeckCaptureCss(viewport = {}) {
+        const capture = normalizeReportDeckCaptureViewport(viewport);
+        const slideWidth = Math.min(capture.width, Math.round(capture.height * 16 / 9));
+        const slideHeight = Math.round(slideWidth * 9 / 16);
         return `
-            html, body { margin: 0 !important; padding: 0 !important; width: ${REPORT_DECK_CAPTURE_SLIDE_WIDTH}px !important; height: ${REPORT_DECK_CAPTURE_SLIDE_HEIGHT}px !important; overflow: hidden !important; background: #ffffff !important; }
-            .report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; left: 0 !important; top: 0 !important; width: ${REPORT_DECK_CAPTURE_SLIDE_WIDTH}px !important; height: ${REPORT_DECK_CAPTURE_SLIDE_HEIGHT}px !important; max-width: none !important; min-width: 0 !important; min-height: 0 !important; aspect-ratio: auto !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; transform: none !important; overflow: hidden !important; background: #ffffff !important; }
+            html, body { margin: 0 !important; padding: 0 !important; width: ${capture.width}px !important; height: ${capture.height}px !important; overflow: hidden !important; background: #111827 !important; }
+            .report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; left: 0 !important; top: 0 !important; width: ${slideWidth}px !important; height: ${slideHeight}px !important; max-width: none !important; min-width: 0 !important; min-height: 0 !important; aspect-ratio: 16 / 9 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; transform: none !important; overflow: hidden !important; background: #ffffff !important; }
             .report-slide.is-active { display: block !important; }
-            .report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-export-html] { display: none !important; }
+            .report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-capture-zip], [data-report-export-html] { display: none !important; }
             [data-report-field] { outline: 0 !important; }
         `;
     }
 
-    function buildReportDeckCaptureHost(doc, editorRoot, slide) {
+    function buildReportDeckCaptureHost(doc, editorRoot, slide, viewport = {}) {
+        const capture = normalizeReportDeckCaptureViewport(viewport);
         const host = doc.createElement('div');
         host.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-        host.style.width = `${REPORT_DECK_CAPTURE_SLIDE_WIDTH}px`;
-        host.style.height = `${REPORT_DECK_CAPTURE_SLIDE_HEIGHT}px`;
+        host.style.width = `${capture.width}px`;
+        host.style.height = `${capture.height}px`;
+        host.style.display = 'grid';
+        host.style.placeItems = 'center';
         host.style.margin = '0';
         host.style.padding = '0';
         host.style.overflow = 'hidden';
-        host.style.background = '#ffffff';
+        host.style.background = '#111827';
 
         const style = doc.createElement('style');
-        style.textContent = `${getReportDeckExportStyleText(editorRoot)}\n${buildReportDeckCaptureCss()}`;
+        style.textContent = `${getReportDeckExportStyleText(editorRoot)}\n${buildReportDeckCaptureCss(capture)}`;
         host.appendChild(style);
 
         const clone = slide.cloneNode(true);
@@ -562,12 +599,24 @@
             throw new Error('report_deck_capture_unavailable');
         }
 
-        const host = buildReportDeckCaptureHost(doc, editorRoot, slide);
+        const capture = getReportDeckCaptureViewport();
+        const host = buildReportDeckCaptureHost(doc, editorRoot, slide, capture);
         await inlineReportDeckCaptureImages(host);
         await doc.fonts?.ready?.catch?.(() => {});
         const serializedHost = new XMLSerializerCtor().serializeToString(host);
-        const svgText = `<svg xmlns="http://www.w3.org/2000/svg" width="${REPORT_DECK_CAPTURE_SLIDE_WIDTH}" height="${REPORT_DECK_CAPTURE_SLIDE_HEIGHT}" viewBox="0 0 ${REPORT_DECK_CAPTURE_SLIDE_WIDTH} ${REPORT_DECK_CAPTURE_SLIDE_HEIGHT}"><foreignObject width="100%" height="100%">${serializedHost}</foreignObject></svg>`;
+        const svgText = `<svg xmlns="http://www.w3.org/2000/svg" width="${capture.width}" height="${capture.height}" viewBox="0 0 ${capture.width} ${capture.height}"><foreignObject width="100%" height="100%">${serializedHost}</foreignObject></svg>`;
         return urlApi.createObjectURL(new BlobCtor([svgText], { type: 'image/svg+xml;charset=utf-8' }));
+    }
+
+    async function buildReportDeckCapturePageHtml(editorRoot, slide, viewport = {}) {
+        const doc = editorRoot?.ownerDocument || root.document || globalScope?.document || null;
+        if (!doc || typeof doc.createElement !== 'function') {
+            throw new Error('report_deck_capture_document_unavailable');
+        }
+        const host = buildReportDeckCaptureHost(doc, editorRoot, slide, viewport);
+        await inlineReportDeckCaptureImages(host);
+        await doc.fonts?.ready?.catch?.(() => {});
+        return getNodeOuterHtml(host);
     }
 
     async function buildReportDeckPrintSnapshots(editorRoot, slides = []) {
@@ -602,6 +651,8 @@
         const snapshots = await buildReportDeckPrintSnapshots(editorRoot, slides);
         const deck = buildReportDeckPrintViewer(doc, snapshots);
         const baseHref = String(doc.baseURI || root.location?.href || globalScope?.location?.href || '').trim();
+        const captureZipDataUrl = String(options.captureZipDataUrl || '').trim();
+        const captureZipFileName = String(options.captureZipFileName || options.filename || 'report-capture.zip').replace(/\.html?$/i, '.zip');
         return `<!doctype html>
 <html lang="ko">
 <head>
@@ -771,8 +822,10 @@ ${getNodeOuterHtml(deck)}
         `;
     }
 
-    function buildReportDeckExportScript() {
+    function buildReportDeckExportScript(options = {}) {
         const printOnlyCss = JSON.stringify(buildReportDeckPrintOnlyCss());
+        const captureZipDataUrlJson = JSON.stringify(String(options.captureZipDataUrl || '').trim());
+        const captureZipFileNameJson = JSON.stringify(String(options.captureZipFileName || 'report-capture.zip').trim() || 'report-capture.zip');
         return `
 (() => {
     const root = document.querySelector('[data-report-export-viewer]');
@@ -781,7 +834,50 @@ ${getNodeOuterHtml(deck)}
     const buttons = Array.from(root.querySelectorAll('[data-report-slide-target]'));
     const counter = root.querySelector('[data-report-slide-counter]');
     const stage = root.querySelector('[data-report-stage]');
+    const status = root.querySelector('[data-report-export-status]');
+    const captureButton = root.querySelector('[data-report-export-capture-zip]');
+    const embeddedCaptureZipDataUrl = ${captureZipDataUrlJson};
+    const embeddedCaptureZipFileName = ${captureZipFileNameJson};
     const getCurrent = () => Math.max(0, Math.min(slides.length - 1, Number.parseInt(root.dataset.reportActiveSlide || '0', 10) || 0));
+    const setStatus = (state, text) => {
+        if (!status) return;
+        status.dataset.state = String(state || 'idle');
+        status.textContent = String(text || '');
+    };
+    const setCaptureBusy = busy => {
+        if (busy) {
+            root.dataset.reportCaptureBusy = 'true';
+        } else {
+            delete root.dataset.reportCaptureBusy;
+        }
+        if (captureButton) {
+            captureButton.disabled = Boolean(busy);
+            captureButton.setAttribute('aria-busy', busy ? 'true' : 'false');
+        }
+    };
+    const downloadEmbeddedCaptureZip = () => {
+        if (!embeddedCaptureZipDataUrl) {
+            setStatus('error', '캡쳐 ZIP 없음');
+            return;
+        }
+        setCaptureBusy(true);
+        try {
+            setStatus('saving', '캡쳐 ZIP 다운로드 중');
+            const link = document.createElement('a');
+            link.href = embeddedCaptureZipDataUrl;
+            link.download = embeddedCaptureZipFileName || 'report-capture.zip';
+            link.style.display = 'none';
+            document.body?.appendChild?.(link);
+            link.click?.();
+            link.remove?.();
+            setStatus('saved', '캡쳐 ZIP 다운로드 완료');
+        } catch (error) {
+            void error;
+            setStatus('error', '캡쳐 ZIP 다운로드 실패');
+        } finally {
+            setCaptureBusy(false);
+        }
+    };
     const setSlide = index => {
         if (!slides.length) return;
         const next = Math.max(0, Math.min(slides.length - 1, Number.parseInt(String(index), 10) || 0));
@@ -852,7 +948,7 @@ ${getNodeOuterHtml(deck)}
         'html, body { margin: 0 !important; padding: 0 !important; width: ' + captureWidth + 'px !important; height: ' + captureHeight + 'px !important; overflow: hidden !important; background: #ffffff !important; }',
         '.report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; left: 0 !important; top: 0 !important; width: ' + captureWidth + 'px !important; height: ' + captureHeight + 'px !important; max-width: none !important; min-width: 0 !important; min-height: 0 !important; aspect-ratio: auto !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; transform: none !important; overflow: hidden !important; background: #ffffff !important; }',
         '.report-slide.is-active { display: block !important; }',
-        '.report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-export-html] { display: none !important; }',
+        '.report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-capture-zip], [data-report-export-html] { display: none !important; }',
         '[data-report-field] { outline: 0 !important; }'
     ].join('\\n');
     const buildCaptureHost = slide => {
@@ -983,6 +1079,12 @@ ${getNodeOuterHtml(deck)}
             stage?.focus?.();
             return;
         }
+        const captureZipButton = event.target.closest?.('[data-report-export-capture-zip]');
+        if (captureZipButton) {
+            event.preventDefault();
+            downloadEmbeddedCaptureZip();
+            return;
+        }
         const fullscreenButton = event.target.closest?.('[data-report-export-fullscreen]');
         if (fullscreenButton) {
             event.preventDefault();
@@ -1061,24 +1163,22 @@ ${buildReportDeckExportCss()}
 <body class="report-export-body">
 ${getNodeOuterHtml(deck)}
 <script>
-${buildReportDeckExportScript()}
+${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
 </script>
 </body>
 </html>`;
     }
 
-    function downloadTextFile(fileName, content, mimeType = 'text/plain;charset=utf-8') {
+    function downloadBlobFile(fileName, blob) {
         const doc = root.document || globalScope?.document || null;
-        const BlobCtor = root.Blob || globalScope?.Blob;
         const urlApi = root.URL || globalScope?.URL;
-        if (!doc || typeof doc.createElement !== 'function' || typeof BlobCtor !== 'function' || !urlApi?.createObjectURL) {
+        if (!doc || typeof doc.createElement !== 'function' || !urlApi?.createObjectURL) {
             throw new Error('report_deck_export_download_unavailable');
         }
-        const blob = new BlobCtor([content], { type: mimeType });
         const objectUrl = urlApi.createObjectURL(blob);
         const link = doc.createElement('a');
         link.href = objectUrl;
-        link.download = String(fileName || 'report.html').trim() || 'report.html';
+        link.download = String(fileName || 'report-download').trim() || 'report-download';
         link.style.display = 'none';
         doc.body?.appendChild?.(link);
         link.click?.();
@@ -1088,14 +1188,115 @@ ${buildReportDeckExportScript()}
         }, 0);
     }
 
+    function downloadTextFile(fileName, content, mimeType = 'text/plain;charset=utf-8') {
+        const BlobCtor = root.Blob || globalScope?.Blob;
+        if (typeof BlobCtor !== 'function') {
+            throw new Error('report_deck_export_download_unavailable');
+        }
+        downloadBlobFile(fileName, new BlobCtor([content], { type: mimeType }));
+    }
+
+    async function requestReportDeckCapture(editorRoot, options = {}) {
+        const slides = getReportDeckPrintableSlides(editorRoot);
+        if (!slides.length) {
+            throw new Error('report_deck_capture_slides_unavailable');
+        }
+        if (typeof root.fetch !== 'function') {
+            throw new Error('report_deck_capture_fetch_unavailable');
+        }
+        const fileName = String(options.filename || 'report-capture.zip').trim() || 'report-capture.zip';
+        const format = String(options.format || 'zip').trim().toLowerCase() === 'images' ? 'images' : 'zip';
+        const capture = getReportDeckCaptureViewport();
+        const pages = [];
+        options.onProgress?.({ phase: 'prepare', current: 0, total: slides.length });
+        for (const [index, slide] of slides.entries()) {
+            pages.push(await buildReportDeckCapturePageHtml(editorRoot, slide, capture));
+            options.onProgress?.({ phase: 'prepare', current: index + 1, total: slides.length });
+        }
+        options.onProgress?.({ phase: 'render', current: 0, total: slides.length });
+        const response = await root.fetch(buildReportDeckCaptureZipEndpoint(), {
+            method: 'POST',
+            headers: {
+                Accept: format === 'images' ? 'application/json' : 'application/zip, application/json',
+                'Content-Type': 'application/json'
+            },
+            cache: 'no-store',
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                fileName,
+                width: capture.width,
+                height: capture.height,
+                format,
+                pages
+            })
+        });
+        if (!response.ok) {
+            const error = new Error(`report_deck_capture_zip_failed:${response.status}`);
+            error.status = response.status;
+            error.detail = await response.text().catch(() => '');
+            throw error;
+        }
+        if (format === 'images') {
+            return {
+                ok: true,
+                fileName,
+                imageCount: pages.length,
+                payload: await response.json()
+            };
+        }
+        const zipBlob = await response.blob();
+        return {
+            ok: true,
+            fileName,
+            imageCount: pages.length,
+            blob: zipBlob
+        };
+    }
+
     async function exportReportDeckSingleHtml(editorRoot, options = {}) {
         const fileName = String(options.filename || '공무환경팀 실적보고서.html').trim() || '공무환경팀 실적보고서.html';
-        const html = await buildReportDeckSingleHtml(editorRoot, options);
+        let captureZipDataUrl = '';
+        let captureImageCount = 0;
+        const captureZipFileName = fileName.replace(/\.html?$/i, '.zip');
+        if (options.includeCaptureFiles !== false) {
+            try {
+                const capture = await requestReportDeckCapture(editorRoot, {
+                    filename: captureZipFileName,
+                    format: 'zip',
+                    onProgress: options.onCaptureProgress
+                });
+                captureImageCount = capture.imageCount;
+                captureZipDataUrl = await readBlobAsDataUrl(capture.blob);
+            } catch (error) {
+                void error;
+                captureZipDataUrl = '';
+                captureImageCount = 0;
+            }
+        }
+        const html = await buildReportDeckSingleHtml(editorRoot, { ...options, captureZipDataUrl, captureZipFileName });
         downloadTextFile(fileName, html, 'text/html;charset=utf-8');
         return {
             ok: true,
             fileName,
-            htmlLength: html.length
+            htmlLength: html.length,
+            captureImageCount
+        };
+    }
+
+    async function exportReportDeckCaptureZip(editorRoot, options = {}) {
+        const fileName = String(options.filename || 'report-capture.zip').trim() || 'report-capture.zip';
+        const capture = await requestReportDeckCapture(editorRoot, {
+            filename: fileName,
+            format: 'zip',
+            onProgress: options.onProgress
+        });
+        downloadBlobFile(fileName, capture.blob);
+        return {
+            ok: true,
+            fileName,
+            imageCount: capture.imageCount,
+            bytes: Number(capture.blob?.size) || 0,
+            destination: 'zip'
         };
     }
 
@@ -3365,6 +3566,7 @@ ${buildReportDeckExportScript()}
         uploadReportDeckImage,
         uploadReportDeckImageDataUrl,
         exportReportDeckSingleHtml,
+        exportReportDeckCaptureZip,
         printReportDeckPdf,
         buildReportDeckUtilityAnalysis,
         buildReportDeckBukjeongAnalysis,

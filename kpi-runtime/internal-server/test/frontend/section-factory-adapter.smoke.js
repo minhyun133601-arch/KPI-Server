@@ -208,7 +208,10 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.doesNotMatch(appData.report.categories[0].content, /91\.5|71\.1|35\.8%|64\.2/);
   assert.doesNotMatch(appData.report.categories[0].content, /97\.8|98\.5|100\.5|101\.8/);
   assert.match(appData.report.categories[0].content, /report-deck-save-message/);
-  assert.match(appData.report.categories[0].content, /data-report-print-pdf/);
+  assert.match(appData.report.categories[0].content, /reportDeckCaptureSpin/);
+  assert.match(appData.report.categories[0].content, /data-report-capture-zip/);
+  assert.doesNotMatch(appData.report.categories[0].content, /<button[^>]+data-report-undo-delete/);
+  assert.doesNotMatch(appData.report.categories[0].content, /<button[^>]+data-report-print-pdf/);
   assert.match(appData.report.categories[0].content, /data-report-export-html/);
   assert.match(appData.report.categories[0].content, /data-report-memo-overview-toggle/);
   assert.match(appData.report.categories[0].content, /data-report-memo-dialog/);
@@ -473,7 +476,7 @@ test('kpi html loads section factory adapter before all section factories', () =
   const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=231');
   const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=7');
   const auditIndex = kpiHtml.indexOf('audit/runtime/audit/sections/KPI.sections.audit.js?v=4');
-  const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=94');
+  const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=98');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
   const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=4');
 

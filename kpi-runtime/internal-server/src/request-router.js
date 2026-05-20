@@ -14,6 +14,7 @@ import {
   handleOwnerRepositoryMapScript
 } from './routes/owner-routes.js';
 import { getRouteErrorStatusCode } from './routes/route-errors.js';
+import { handleReportDeckCaptureZip } from './routes/report-capture-routes.js';
 import { handleBillingDocumentUpload, handleSharedStoreGet, handleSharedStorePut } from './routes/shared-store-routes.js';
 import { handleUtilProductionDailyGet, handleUtilProductionDailyPut } from './routes/util-production-routes.js';
 
@@ -61,6 +62,7 @@ const EXACT_ROUTE_HANDLERS = new Map([
   ['GET /api/util-production/daily', handleUtilProductionDailyGet],
   ['PUT /api/util-production/daily', handleUtilProductionDailyPut],
   ['POST /api/billing-document', handleBillingDocumentUpload],
+  ['POST /api/report-deck/capture-zip', handleReportDeckCaptureZip],
   ['GET /api/shared-store', handleSharedStoreGet],
   ['PUT /api/shared-store', handleSharedStorePut],
   ['POST /api/files/base64', handleUploadBase64File]

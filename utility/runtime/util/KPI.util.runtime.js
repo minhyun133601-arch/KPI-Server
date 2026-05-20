@@ -1749,6 +1749,19 @@
         }
     }
 
+    function setReportDeckCaptureBusy(root, isBusy) {
+        if (!root) return;
+        if (isBusy) {
+            root.dataset.reportCaptureBusy = 'true';
+        } else {
+            delete root.dataset.reportCaptureBusy;
+        }
+        Array.from(root.querySelectorAll?.('[data-report-capture-zip]') || []).forEach(button => {
+            button.disabled = Boolean(isBusy);
+            button.setAttribute?.('aria-busy', isBusy ? 'true' : 'false');
+        });
+    }
+
     function syncReportDeckMonthSelect(root, meta = {}) {
         const select = root?.querySelector?.('[data-report-month-select]');
         if (!select) return;
@@ -5069,6 +5082,19 @@
         return `공무환경팀 실적보고서 ${buildReportDeckExportDateToken(state, meta)}.html`;
     }
 
+    function buildReportDeckCaptureZipFileName(state = {}, meta = {}) {
+        return `KPI-report-capture-${buildReportDeckExportDateToken(state, meta)}.zip`;
+    }
+
+    function getReportDeckCaptureProgressText(progress = {}) {
+        const current = Math.max(0, Number.parseInt(String(progress.current ?? '0'), 10) || 0);
+        const total = Math.max(0, Number.parseInt(String(progress.total ?? '0'), 10) || 0);
+        const suffix = total > 0 ? ` ${current}/${total}` : '';
+        if (progress.phase === 'prepare') return `캡쳐 페이지 준비 중${suffix}`;
+        if (progress.phase === 'render') return '캡쳐 이미지 생성 중';
+        return '캡쳐 진행 중';
+    }
+
     async function exportReportDeckSingleHtml(root, state, meta) {
         if (typeof browser?.exportReportDeckSingleHtml !== 'function') {
             setReportDeckStatus(root, 'error', 'HTML 추출 불가');
@@ -5079,7 +5105,10 @@
             prepareReportDeckPdfPrint(root, state);
             await browser.exportReportDeckSingleHtml(root, {
                 filename: buildReportDeckExportFileName(state, meta),
-                title: '공무환경팀 실적보고서'
+                title: '공무환경팀 실적보고서',
+                onCaptureProgress: progress => {
+                    setReportDeckStatus(root, 'saving', `HTML 추출용 ${getReportDeckCaptureProgressText(progress)}`);
+                }
             });
             setReportDeckStatus(root, 'saved', 'HTML 추출 완료');
             return true;
@@ -5087,6 +5116,52 @@
             void error;
             setReportDeckStatus(root, 'error', 'HTML 추출 실패');
             return false;
+        }
+    }
+
+    async function captureReportDeckZip(root, state, meta) {
+        if (typeof browser?.exportReportDeckCaptureZip !== 'function') {
+            setReportDeckStatus(root, 'error', '\uCEA1\uCC98 \uBD88\uAC00');
+            return false;
+        }
+        if (root?.dataset?.reportCaptureBusy === 'true') {
+            return false;
+        }
+        const captureCount = prepareReportDeckPdfPrint(root, state);
+        if (captureCount <= 0) {
+            setReportDeckStatus(root, 'error', '\uCEA1\uCC98\uD560 \uD398\uC774\uC9C0 \uC5C6\uC74C');
+            return false;
+        }
+        setReportDeckCaptureBusy(root, true);
+        setReportDeckStatus(root, 'saving', '\uCEA1\uCC98 \uC900\uBE44 \uC911');
+        try {
+            const result = await browser.exportReportDeckCaptureZip(root, {
+                filename: buildReportDeckCaptureZipFileName(state, meta),
+                onProgress: progress => {
+                    setReportDeckStatus(root, 'saving', getReportDeckCaptureProgressText(progress));
+                }
+            });
+            setReportDeckStatus(root, 'saved', `\uCEA1\uCC98 ZIP \uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC (${result?.imageCount || captureCount}\uC7A5)`);
+            return true;
+        } catch (error) {
+            if (String(error?.name || '') === 'AbortError') {
+                setReportDeckStatus(root, 'idle', '\uCEA1\uCC98 \uCDE8\uC18C');
+                return false;
+            }
+            const status = Number(error?.status) || 0;
+            const message = status === 401
+                ? '\uCEA1\uCC98 ZIP \uC2E4\uD328: \uB2E4\uC2DC \uB85C\uADF8\uC778 \uD544\uC694'
+                : status === 404
+                    ? '\uCEA1\uCC98 ZIP \uC2E4\uD328: \uC11C\uBC84 \uC7AC\uC2DC\uC791 \uD544\uC694'
+                    : status === 413
+                        ? '\uCEA1\uCC98 ZIP \uC2E4\uD328: \uBCF4\uACE0\uC11C \uC774\uBBF8\uC9C0 \uC6A9\uB7C9 \uD07C'
+                        : status
+                            ? `\uCEA1\uCC98 ZIP \uC2E4\uD328: HTTP ${status}`
+                            : '\uCEA1\uCC98 ZIP \uC2E4\uD328';
+            setReportDeckStatus(root, 'error', message);
+            return false;
+        } finally {
+            setReportDeckCaptureBusy(root, false);
         }
     }
 
@@ -5779,6 +5854,13 @@
             if (exportButton) {
                 event.preventDefault();
                 void exportReportDeckSingleHtml(root, state, meta);
+                return;
+            }
+
+            const captureButton = event.target?.closest?.('[data-report-capture-zip]');
+            if (captureButton) {
+                event.preventDefault();
+                void captureReportDeckZip(root, state, meta);
                 return;
             }
 
