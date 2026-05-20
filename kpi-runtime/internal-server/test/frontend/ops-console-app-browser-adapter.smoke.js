@@ -145,12 +145,12 @@ test('ops console app browser adapter wraps browser APIs used by the app shell',
 test('ops console app host routes direct browser access through the adapter', () => {
   assert.match(adapterSource, /export const OpsConsoleAppBrowserAdapter = Object\.freeze/);
   assert.match(appSource, /import \{ OpsConsoleAppBrowserAdapter \} from '\.\/app\.browser-adapter\.js';/);
-  assert.match(indexSource, /src="\/app\.js\?v=20260511b" type="module"/);
+  assert.match(indexSource, /src="\/app\.js\?v=20260520a" type="module"/);
 
   assert.doesNotMatch(appSource, /window\.|globalThis|\blocalStorage\b/);
   assert.doesNotMatch(appSource, /(^|[^\w.])fetch\(/);
   assert.match(appSource, /opsBrowser\.fetch/);
-  assert.match(appSource, /opsBrowser\.postLanguageToFrame/);
+  assert.doesNotMatch(appSource, /opsBrowser\.postLanguageToFrame/);
   assert.match(appSource, /opsBrowser\.replaceLocationHash/);
   assert.match(appSource, /opsBrowser\.addGlobalEventListener/);
 });

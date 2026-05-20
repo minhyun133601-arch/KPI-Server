@@ -1,4 +1,4 @@
-import { actionHeader, commandIconMap, commandLabelMap, commandText, compactDescriptionMap, i18n, iconMap, LANGUAGE_STORAGE_KEY, serverSummaryTranslations, TAB_DATA, TAB_PREVIEW, TAB_REFERENCE, TAB_SERVER } from './app.config.js';
+import { actionHeader, commandIconMap, commandLabelMap, commandText, compactDescriptionMap, i18n, iconMap, LANGUAGE_STORAGE_KEY, serverSummaryTranslations, TAB_DATA, TAB_SERVER } from './app.config.js';
 import { bindDragScroll } from './app.drag-scroll.js';
 import { OpsConsoleAppBrowserAdapter } from './app.browser-adapter.js';
 import { createOpsFormBuilders } from './app.form-actions.js';
@@ -439,27 +439,6 @@ function renderStaticIcons() {
     node.innerHTML = iconSvg(node.dataset.icon);
   });
 }
-function syncRepositoryMapLanguage() {
-  const frames = [
-    { id: 'repositoryMapFrame', path: '/repository-map.html' },
-    { id: 'dataReferenceFrame', path: '/data-reference-map.html' }
-  ];
-  for (const { id, path } of frames) {
-    const frame = $(id);
-    if (!frame) {
-      continue;
-    }
-    const nextSrc = `${path}?lang=${currentLanguage}`;
-    if (frame.getAttribute('src') !== nextSrc) {
-      frame.setAttribute('src', nextSrc);
-    }
-    try {
-      opsBrowser.postLanguageToFrame(frame, currentLanguage);
-    } catch {
-      // The frame is same-origin, but ignore transient reload timing.
-    }
-  }
-}
 function applyLanguage() {
   document.documentElement.lang = currentLanguage === 'en' ? 'en' : 'ko';
   document.title = t('documentTitle');
@@ -474,7 +453,6 @@ function applyLanguage() {
     button.classList.toggle('is-active', isActive);
     button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
-  syncRepositoryMapLanguage();
   if (overviewCache) {
     renderStatus(overviewCache);
     renderUsers(overviewCache.users, overviewCache.usersError);
@@ -618,7 +596,7 @@ function renderCardActions(overview = null) {
 }
 function normalizeTabName(tabName = '') {
   const normalized = String(tabName || '').trim().toLowerCase();
-  if (normalized === TAB_DATA || normalized === TAB_PREVIEW || normalized === TAB_REFERENCE) {
+  if (normalized === TAB_DATA) {
     return normalized;
   }
   return TAB_SERVER;
@@ -638,12 +616,6 @@ async function hydrateTab(tabName) {
   const normalized = normalizeTabName(tabName);
   if (normalized === TAB_SERVER) {
     await loadLog('serverStdout');
-    return;
-  }
-  if (normalized === TAB_PREVIEW) {
-    return;
-  }
-  if (normalized === TAB_REFERENCE) {
     return;
   }
   await loadTables();

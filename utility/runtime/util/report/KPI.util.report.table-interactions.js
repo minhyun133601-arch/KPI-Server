@@ -29,6 +29,63 @@
                 : null;
         }
 
+        function bindUtilReportModalBodyDrag(modal) {
+            if (!modal || modal.dataset.bodyDragBound === 'true') return;
+            const bodyEl = modal.querySelector('.util-report-modal-body');
+            if (!bodyEl) return;
+            modal.dataset.bodyDragBound = 'true';
+
+            let activePointerId = null;
+            let startX = 0;
+            let startY = 0;
+            let startScrollTop = 0;
+            let moved = false;
+
+            const endDrag = () => {
+                if (activePointerId === null) return;
+                activePointerId = null;
+                bodyEl.classList.remove('is-dragging');
+            };
+
+            const isInteractiveTarget = (target) => !!target?.closest?.('input, select, textarea, button, label, a, summary, details, [contenteditable], [data-role="util-report-inline-body"]');
+
+            bodyEl.addEventListener('pointerdown', event => {
+                if (event.pointerType === 'mouse' && event.button !== 0) return;
+                if (!modal.classList.contains('is-chart-fullscreen')) return;
+                if (modal.classList.contains('is-inline-table-detached')) return;
+                if (isInteractiveTarget(event.target)) return;
+                if (bodyEl.scrollHeight <= (bodyEl.clientHeight + 1)) return;
+                activePointerId = event.pointerId;
+                startX = event.clientX;
+                startY = event.clientY;
+                startScrollTop = bodyEl.scrollTop;
+                moved = false;
+                bodyEl.classList.add('is-dragging');
+                if (typeof bodyEl.setPointerCapture === 'function') {
+                    try { bodyEl.setPointerCapture(activePointerId); } catch (err) {}
+                }
+            });
+
+            bodyEl.addEventListener('pointermove', event => {
+                if (activePointerId === null || event.pointerId !== activePointerId) return;
+                const diffY = event.clientY - startY;
+                if (Math.abs(event.clientX - startX) > 2 || Math.abs(diffY) > 2) moved = true;
+                bodyEl.scrollTop = startScrollTop - diffY;
+                if (moved) event.preventDefault();
+            });
+
+            bodyEl.addEventListener('pointerup', event => {
+                if (event.pointerId !== activePointerId) return;
+                endDrag();
+            });
+            bodyEl.addEventListener('pointercancel', event => {
+                if (event.pointerId !== activePointerId) return;
+                endDrag();
+            });
+            bodyEl.addEventListener('lostpointercapture', endDrag);
+            bodyEl.addEventListener('dragstart', event => event.preventDefault());
+        }
+
         function bindUtilReportDonutRowDrag(modal) {
             if (!modal || modal.dataset.donutRowDragBound === 'true') return;
             const donutRow = modal.querySelector('.util-report-donut-row');

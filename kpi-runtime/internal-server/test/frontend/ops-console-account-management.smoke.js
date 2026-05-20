@@ -50,7 +50,7 @@ test('ops console can manage existing non-owner accounts without bulk promotion'
   assert.match(appConfigSource, /["']account\.manageUser["']: ["']적용["']/);
   assert.match(appConfigSource, /noManageableUsers/);
   assert.doesNotMatch(appConfigSource, /account\.promoteViewersToAdmin|Viewer accounts were promoted to admin/);
-  assert.match(indexHtml, /\/app\.js\?v=20260511b/);
+  assert.match(indexHtml, /\/app\.js\?v=20260520a/);
 
   assert.match(userAccountManagementSource, /export async function manageUserAccount/);
   assert.match(userAccountManagementSource, /owner_manage_forbidden/);

@@ -309,7 +309,7 @@
         [UTIL_GAS_BILLING_SCOPE_KEYS.bukjeong]: '북정',
         [UTIL_GAS_BILLING_SCOPE_KEYS.yusanLng]: 'LNG',
         [UTIL_GAS_BILLING_SCOPE_KEYS.yusanLpg]: 'LPG',
-        [UTIL_GAS_BILLING_SCOPE_KEYS.yusanLpgConversion]: 'LPG 환산'
+        [UTIL_GAS_BILLING_SCOPE_KEYS.yusanLpgConversion]: 'LNG 환산 비율'
     });
     const UTIL_GAS_RATIO_CHART_COLORS = Object.freeze([
         '#ea580c',

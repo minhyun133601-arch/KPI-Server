@@ -21,10 +21,33 @@ function shouldPreserveTeamSettlementManualInputDisplay(
     return false;
   }
 
+  if (
+    typeof isGasLpgConversionRatioField === "function" &&
+    isGasLpgConversionRatioField(fieldKey, resourceType, scopeKey)
+  ) {
+    return true;
+  }
+
   return !(
     typeof isBillingSettlementDecimalPreservingField === "function" &&
     isBillingSettlementDecimalPreservingField(fieldKey, resourceType, scopeKey)
   );
+}
+
+function isPendingTeamSettlementRatioDraftValue(value) {
+  const normalizedValue =
+    typeof normalizeGasLpgConversionRatioDraftValue === "function"
+      ? normalizeGasLpgConversionRatioDraftValue(value)
+      : normalizeBillingSettlementInputValue(value);
+  if (!normalizedValue) {
+    return false;
+  }
+
+  const finalValue =
+    typeof normalizeGasLpgConversionRatioValue === "function"
+      ? normalizeGasLpgConversionRatioValue(normalizedValue)
+      : normalizeBillingSettlementStoredValue("conversion_ratio", normalizedValue);
+  return !finalValue;
 }
 
 function handleTeamSettlementFieldInput(event) {
@@ -56,6 +79,24 @@ function handleTeamSettlementFieldInput(event) {
   if (autoCalculatedFieldKeys.has(fieldKey)) {
     input.value = getBillingSettlementEntry(monthValue, scopeKey)?.fields?.[fieldKey] || "";
     return;
+  }
+
+  const isRatioField =
+    typeof isGasLpgConversionRatioField === "function" &&
+    isGasLpgConversionRatioField(fieldKey, resourceType, scopeKey);
+  if (event?.type === "input" && isRatioField) {
+    const draftValue =
+      typeof normalizeGasLpgConversionRatioDraftValue === "function"
+        ? normalizeGasLpgConversionRatioDraftValue(input.value)
+        : input.value;
+    if (input.value !== draftValue) {
+      input.value = draftValue;
+    }
+    if (isPendingTeamSettlementRatioDraftValue(draftValue)) {
+      updateDirtyState();
+      syncTeamSettlementCompletionButtonState();
+      return;
+    }
   }
 
   const currentEntry = getBillingSettlementEntry(monthValue, scopeKey);

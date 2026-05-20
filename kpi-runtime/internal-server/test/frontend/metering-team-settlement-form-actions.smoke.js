@@ -236,6 +236,23 @@ function createTeamSettlementFormActionsContext(options = {}) {
         ? options.isBillingSettlementDecimalPreservingField(fieldKey, resourceType, scopeKey)
         : false;
     },
+    isGasLpgConversionRatioField(fieldKey, resourceType, scopeKey) {
+      return typeof options.isGasLpgConversionRatioField === 'function'
+        ? options.isGasLpgConversionRatioField(fieldKey, resourceType, scopeKey)
+        : false;
+    },
+    normalizeGasLpgConversionRatioDraftValue(value) {
+      if (typeof options.normalizeGasLpgConversionRatioDraftValue === 'function') {
+        return options.normalizeGasLpgConversionRatioDraftValue(value);
+      }
+      return String(value ?? '').trim();
+    },
+    normalizeGasLpgConversionRatioValue(value) {
+      if (typeof options.normalizeGasLpgConversionRatioValue === 'function') {
+        return options.normalizeGasLpgConversionRatioValue(value);
+      }
+      return String(value ?? '').trim();
+    },
     getBillingSettlementAutoCalculatedFieldKeySet() {
       return new Set(options.autoCalculatedFieldKeys || ['unit_price']);
     },
@@ -245,7 +262,10 @@ function createTeamSettlementFormActionsContext(options = {}) {
     getBillingSettlementEntry(monthValue, scopeKey) {
       return entries[`${monthValue}:${scopeKey}`] || null;
     },
-    normalizeBillingSettlementStoredValue(_fieldKey, value) {
+    normalizeBillingSettlementStoredValue(fieldKey, value, resourceType, scopeKey) {
+      if (typeof options.normalizeBillingSettlementStoredValue === 'function') {
+        return options.normalizeBillingSettlementStoredValue(fieldKey, value, resourceType, scopeKey);
+      }
       return String(value ?? '').trim();
     },
     resolveBillingSettlementFields(nextRawFields) {
@@ -388,24 +408,67 @@ test('team settlement form actions keep active manual input raw while refreshing
   assert.equal(calls.setBillingSettlementEntryForScope[0].entry.fields.calorific_value, '43.210');
 });
 
-test('team settlement form actions format LNG conversion amount while typing', () => {
+test('team settlement form actions preserve LNG conversion ratio while typing', () => {
   const { context, calls } = createTeamSettlementFormActionsContext({
     activeTeamSettlementScope: 'gas_lpg_conversion',
+    billingSettlementFieldKeys: ['conversion_ratio'],
     autoCalculatedFieldKeys: [],
     zeroDefaultFieldKeys: [],
+    isGasLpgConversionRatioField(fieldKey, _resourceType, scopeKey) {
+      return fieldKey === 'conversion_ratio' && scopeKey === 'gas_lpg_conversion';
+    },
     isBillingSettlementDecimalPreservingField(fieldKey, _resourceType, scopeKey) {
-      return fieldKey === 'billing_amount' && scopeKey === 'gas_lpg_conversion';
+      return fieldKey === 'conversion_ratio' && scopeKey === 'gas_lpg_conversion';
     },
     resolveFields(nextRawFields) {
       return { ...nextRawFields };
     },
   });
-  const input = createMockInput('billing_amount', '150693518');
+  const input = createMockInput('conversion_ratio', '0.938');
 
   context.handleTeamSettlementFieldInput({ target: input, type: 'input' });
 
   assert.equal(calls.setBillingSettlementEntryForScope.length, 1);
-  assert.equal(input.value, 'fmt:billing_amount:150693518');
+  assert.equal(input.value, '0.938');
+});
+
+test('team settlement form actions keep zero ratio draft while typing', () => {
+  const { context, calls } = createTeamSettlementFormActionsContext({
+    activeTeamSettlementScope: 'gas_lpg_conversion',
+    billingSettlementFieldKeys: ['conversion_ratio'],
+    autoCalculatedFieldKeys: [],
+    zeroDefaultFieldKeys: [],
+    entries: {
+      '2026-04:gas_lpg_conversion': {
+        fields: { conversion_ratio: '0.938' },
+      },
+    },
+    isGasLpgConversionRatioField(fieldKey, _resourceType, scopeKey) {
+      return fieldKey === 'conversion_ratio' && scopeKey === 'gas_lpg_conversion';
+    },
+    normalizeGasLpgConversionRatioDraftValue(value) {
+      return String(value ?? '').trim().replace(/[^\d.]/g, '');
+    },
+    normalizeGasLpgConversionRatioValue(value) {
+      const numericValue = Number(String(value ?? '').trim());
+      return Number.isFinite(numericValue) && numericValue > 0 ? String(numericValue) : '';
+    },
+    normalizeBillingSettlementStoredValue(_fieldKey, value) {
+      const numericValue = Number(String(value ?? '').trim());
+      return Number.isFinite(numericValue) && numericValue > 0 ? String(numericValue) : '';
+    },
+    resolveFields(nextRawFields) {
+      return { ...nextRawFields };
+    },
+  });
+  const input = createMockInput('conversion_ratio', '0.');
+
+  context.handleTeamSettlementFieldInput({ target: input, type: 'input' });
+
+  assert.equal(input.value, '0.');
+  assert.equal(calls.setBillingSettlementEntryForScope.length, 0);
+  assert.equal(calls.deleteBillingSettlementEntryForScope.length, 0);
+  assert.equal(calls.updateDirtyState, 1);
 });
 
 test('team settlement form actions preserve auto-calculated inputs as read-only display values', () => {

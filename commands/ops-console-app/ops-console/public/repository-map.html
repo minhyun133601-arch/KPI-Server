@@ -13,7 +13,6 @@
       --muted: #5f6b7c;
       --blue: #2563eb;
       --green: #16803c;
-      --violet: #7c3aed;
       --radius: 8px;
     }
 
@@ -72,8 +71,7 @@
 
     .subtitle,
     .panel-copy,
-    .role,
-    .history-detail {
+    .role {
       color: var(--muted);
     }
 
@@ -107,7 +105,7 @@
 
     .layout {
       display: grid;
-      grid-template-columns: minmax(0, 1.28fr) minmax(320px, 0.72fr);
+      grid-template-columns: minmax(0, 1fr);
       gap: 14px;
       align-items: start;
     }
@@ -115,10 +113,6 @@
     .panel {
       overflow: hidden;
       border-top: 4px solid var(--green);
-    }
-
-    .panel.history-panel {
-      border-top-color: var(--violet);
     }
 
     .panel-head {
@@ -163,12 +157,6 @@
       border-color: #bfdbfe;
       background: #eff6ff;
       color: #1d4ed8;
-    }
-
-    .badge.patch {
-      border-color: #ddd6fe;
-      background: #f5f3ff;
-      color: #6d28d9;
     }
 
     .badge.data {
@@ -269,37 +257,6 @@
       font-weight: 650;
     }
 
-    .history-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .history-entry {
-      display: grid;
-      gap: 6px;
-      border: 1px solid var(--line);
-      border-left: 4px solid var(--violet);
-      border-radius: var(--radius);
-      padding: 11px 12px;
-      background: #fff;
-    }
-
-    .history-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-    }
-
-    .history-entry h3 {
-      font-size: 0.95rem;
-      letter-spacing: 0;
-    }
-
-    .history-entry p,
-    .history-detail {
-      font-size: 0.82rem;
-    }
-
     .feedback {
       color: var(--muted);
       font-size: 0.84rem;
@@ -318,9 +275,8 @@
     <header>
       <div class="eyebrow">KPI Server</div>
       <h1>Repository Map</h1>
-      <p class="subtitle">폴더 구조와 날짜별 패치 이력만 보여주는 저장소 지도입니다. DB/Storage와 데이터 흐름은 Data Path 탭에서 관리합니다.</p>
+      <p class="subtitle">폴더 구조만 보여주는 저장소 지도입니다.</p>
       <nav class="nav-row" aria-label="Repository map links">
-        <a href="/data-reference-map.html">Data Path</a>
         <button id="refreshButton" type="button">Refresh folder map</button>
       </nav>
     </header>
@@ -345,29 +301,17 @@
         </div>
       </article>
 
-      <aside class="panel history-panel">
-        <div class="panel-head">
-          <h2 class="panel-title">Patch History</h2>
-          <p class="panel-copy">하루 단위 공개 이력만 기록합니다.</p>
-        </div>
-        <div class="body">
-          <div id="historyHost" class="history-list"></div>
-        </div>
-      </aside>
     </section>
   </main>
 
   <script src="/repository-map-data.js"></script>
   <script>
     const staticTree = window.KPI_REPOSITORY_MAP_STATIC_TREE || [];
-    const historyFiles = window.KPI_REPOSITORY_MAP_HISTORY_FILES || [];
-    let historyLoadError = '';
     const isOwnerPage = window.location.pathname.startsWith('/owner/repository-map');
     const ownerMapApiBasePath = isOwnerPage ? '/api/owner/repository-map' : '/api/repository-map';
     const sourceBadge = document.getElementById('sourceBadge');
     const treeFeedback = document.getElementById('treeFeedback');
     const treeHost = document.getElementById('treeHost');
-    const historyHost = document.getElementById('historyHost');
     const expandAllButton = document.getElementById('expandAllButton');
     const collapseAllButton = document.getElementById('collapseAllButton');
 
@@ -441,55 +385,6 @@
       if (children) children.hidden = isOpen;
     }
 
-    function renderHistory() {
-      const dailyHistory = window.KPI_REPOSITORY_MAP_DAILY_HISTORY || [];
-      if (!dailyHistory.length) {
-        const message = historyLoadError || 'No monthly patch history loaded.';
-        historyHost.innerHTML = `<div class="feedback">${escapeHtml(message)}</div>`;
-        return;
-      }
-      historyHost.innerHTML = dailyHistory.map((entry) => `
-        <article class="history-entry">
-          <div class="history-meta">
-            <span class="badge live">${escapeHtml(entry.date)}</span>
-            <span class="badge patch">${escapeHtml(entry.tag)}</span>
-          </div>
-          <h3>${escapeHtml(entry.title)}</h3>
-          <p>${escapeHtml(entry.summary)}</p>
-          <div class="history-detail">${escapeHtml(entry.detail)}</div>
-        </article>
-      `).join('');
-    }
-
-    function resolveHistoryScriptPath(sourcePath) {
-      const normalizedPath = String(sourcePath || '').trim();
-      if (isOwnerPage && normalizedPath.startsWith('/repository-map-history/')) {
-        return normalizedPath.replace('/repository-map-history/', '/owner/repository-map-history/');
-      }
-      return normalizedPath;
-    }
-
-    function loadScript(sourcePath) {
-      return new Promise((resolve, reject) => {
-        const normalizedPath = resolveHistoryScriptPath(sourcePath);
-        if (!normalizedPath) {
-          resolve();
-          return;
-        }
-        const script = document.createElement('script');
-        script.src = normalizedPath;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error(`Failed to load ${normalizedPath}`));
-        document.head.appendChild(script);
-      });
-    }
-
-    async function loadHistoryScripts() {
-      for (const sourcePath of historyFiles) {
-        await loadScript(sourcePath);
-      }
-    }
-
     function getRepositoryMapEndpoints() {
       const host = String(window.location.hostname || '').trim();
       const port = isOwnerPage ? '3100' : '3215';
@@ -555,12 +450,6 @@
     });
 
     async function initialize() {
-      try {
-        await loadHistoryScripts();
-      } catch (error) {
-        historyLoadError = error.message;
-      }
-      renderHistory();
       await loadTree();
     }
 

@@ -19,13 +19,8 @@
       role: 'Local owner console and documentation screens',
       children: [
         { path: 'ops-console/public/index.html', role: 'Owner console tab shell' },
-        { path: 'ops-console/public/repository-map.html', role: 'Repository tab: folder structure and daily patch history' },
-        { path: 'ops-console/public/repository-map-data.js', role: 'Repository tab static tree and monthly history manifest' },
-        { path: 'ops-console/public/repository-map-history/', role: 'Monthly Repository Map patch history files' },
-        { path: 'ops-console/public/data-reference-map.html', role: 'Data Path tab: database/storage contracts and developer data flow' },
-        { path: 'ops-console/public/data-reference-map.css', role: 'Data Path tab style manifest and split CSS' },
-        { path: 'ops-console/public/data-reference-map.content.js', role: 'Data Path tab public content catalog' },
-        { path: 'ops-console/public/data-reference-map.js', role: 'Data Path tab rendering and interactions' },
+        { path: 'ops-console/public/repository-map.html', role: 'Repository tab: folder structure' },
+        { path: 'ops-console/public/repository-map-data.js', role: 'Repository tab static tree manifest' },
       ],
     },
     {
@@ -61,10 +56,5 @@
       path: 'AGENTS.md',
       role: 'Repository execution contract and public-safety boundary',
     },
-  ];
-
-  root.KPI_REPOSITORY_MAP_HISTORY_FILES = [
-    '/repository-map-history/2026-05.js',
-    '/repository-map-history/2026-04.js',
   ];
 })(this);

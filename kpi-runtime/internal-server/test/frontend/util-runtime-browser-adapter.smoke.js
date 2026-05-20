@@ -2106,7 +2106,7 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
           lpgUsage: 70,
           lpgCost: 9300,
           lngCost: 12000,
-          lpgConversionCost: 10000,
+          lpgConversionRatio: 9300 / 10000,
           gasCost: 21300,
           ratioProduction: { lpg: 1000 },
         }],
@@ -2115,7 +2115,7 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
           lpgUsage: 60,
           lpgCost: 8200,
           lngCost: 19000,
-          lpgConversionCost: 15000,
+          lpgConversionRatio: 8200 / 15000,
           gasCost: 27200,
           ratioProduction: { lpg: 780 },
         }],
@@ -2124,7 +2124,7 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
           lpgUsage: 64,
           lpgCost: 8600,
           lngCost: 20000,
-          lpgConversionCost: 16000,
+          lpgConversionRatio: 8600 / 16000,
           gasCost: 28600,
           ratioProduction: { lpg: 800 },
         }],
@@ -2165,9 +2165,9 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
   assert.equal(model.costRows[0].reference, 9300);
   assert.equal(model.costRows[0].current, 8600);
   assert.equal(model.costRows[0].previous, 8200);
-  assert.equal(model.costRows[1].reference, 10000);
-  assert.equal(model.costRows[1].current, 16000);
-  assert.equal(model.costRows[1].previous, 15000);
+  assert.ok(Math.abs(model.costRows[1].reference - 10000) < 1e-9);
+  assert.ok(Math.abs(model.costRows[1].current - 16000) < 1e-9);
+  assert.ok(Math.abs(model.costRows[1].previous - 15000) < 1e-9);
   assert.equal(model.costRows[2].reference, 9300 / 10000);
   assert.equal(model.costRows[2].current, 8600 / 16000);
   assert.equal(model.costRows[2].previous, 8200 / 15000);

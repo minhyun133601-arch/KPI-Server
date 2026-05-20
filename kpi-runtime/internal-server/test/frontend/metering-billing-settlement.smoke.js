@@ -377,38 +377,83 @@ test('billing settlement normalizes gas rounding adjustment before storing', () 
   );
 });
 
-test('billing settlement preserves LPG conversion settlement decimals', () => {
+test('billing settlement accepts only positive LPG conversion ratios', () => {
   const { context } = createBillingSettlementContext({
     resourceType: 'gas',
   });
 
   assert.equal(
     context.normalizeBillingSettlementStoredValue(
-      'billing_amount',
-      '12345.67',
+      'conversion_ratio',
+      '0.938',
       'gas',
       'gas_lpg_conversion'
     ),
-    '12345.67'
+    '0.938'
   );
   assert.equal(
     context.formatBillingSettlementFieldDisplayValue(
-      'billing_amount',
-      '12345.67',
+      'conversion_ratio',
+      '0.938',
       'gas',
       'gas_lpg_conversion'
     ),
-    '12,345.67'
+    '0.938'
   );
   assert.equal(
-    context.formatBillingSettlementFieldDisplayValue(
-      'billing_amount',
-      '150693518',
+    context.normalizeBillingSettlementStoredValue(
+      'conversion_ratio',
+      'abc',
       'gas',
       'gas_lpg_conversion'
     ),
-    '150,693,518'
+    ''
   );
+  assert.equal(
+    context.normalizeBillingSettlementStoredValue(
+      'conversion_ratio',
+      '0',
+      'gas',
+      'gas_lpg_conversion'
+    ),
+    ''
+  );
+});
+
+test('billing settlement keeps LPG conversion ratio drafts parseable while typing', () => {
+  const { context } = createBillingSettlementContext({
+    resourceType: 'gas',
+  });
+
+  assert.equal(context.normalizeGasLpgConversionRatioDraftValue('0'), '0');
+  assert.equal(context.normalizeGasLpgConversionRatioDraftValue('0.'), '0.');
+  assert.equal(context.normalizeGasLpgConversionRatioDraftValue('.9'), '.9');
+  assert.equal(context.normalizeGasLpgConversionRatioDraftValue('1.'), '1.');
+  assert.equal(context.normalizeGasLpgConversionRatioDraftValue('2.5'), '2.5');
+  assert.equal(context.normalizeGasLpgConversionRatioDraftValue('1..25'), '1.25');
+  assert.equal(context.normalizeGasLpgConversionRatioValue('2.5'), '2.5');
+});
+
+test('billing settlement stores only conversion ratio for LPG conversion scope', () => {
+  const { context } = createBillingSettlementContext({
+    resourceType: 'gas',
+    fields: [{ key: 'conversion_ratio' }],
+    autoCalculatedFieldKeys: [],
+    zeroDefaultFieldKeys: [],
+  });
+
+  const fields = context.resolveBillingSettlementFields(
+    {
+      conversion_ratio: '0.75',
+      billing_amount: '12345',
+    },
+    '2026-04',
+    'gas_lpg_conversion'
+  );
+
+  assert.deepEqual(toPlain(fields), {
+    conversion_ratio: '0.75',
+  });
 });
 
 test('billing settlement derives electricity charge total from billing amount when needed', () => {

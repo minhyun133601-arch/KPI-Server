@@ -73,7 +73,7 @@ const GAS_LPG_BILLING_SETTLEMENT_FIELDS = [
   { key: "billing_amount", label: "총액" },
 ];
 const GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FIELDS = [
-  { key: "billing_amount", label: "LNG 환산 정산값" },
+  { key: "conversion_ratio", label: "LPG/LNG 비율" },
 ];
 const WASTE_BILLING_SETTLEMENT_FIELDS_BUKJEONG = [
   { key: "water", label: "용수비" },
@@ -112,6 +112,7 @@ const BILLING_SETTLEMENT_FIELDS = [
     [
       ...ELECTRIC_BILLING_SETTLEMENT_FIELDS,
       ...GAS_BILLING_SETTLEMENT_FIELDS,
+      ...GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FIELDS,
       ...WASTE_BILLING_SETTLEMENT_FIELDS_BUKJEONG,
       ...WASTE_BILLING_SETTLEMENT_FIELDS_YUSAN,
     ]
@@ -200,7 +201,9 @@ const GAS_LPG_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
   unit_price: "공급가액 ÷ LPG사용량",
   billing_amount: "공급가액 + 세액",
 });
-const GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({});
+const GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
+  conversion_ratio: "보고서 LPG동향 비율입니다. LNG 환산 금액 = LPG 총액 ÷ 비율",
+});
 const WASTE_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
   unit_price: "총비용 ÷ 해당 월 사용량",
   billing_amount: "입력한 세부 비용 합계",
@@ -229,8 +232,8 @@ const BILLING_SETTLEMENT_SCOPE_DEFINITIONS_BY_RESOURCE = Object.freeze({
     }),
     Object.freeze({
       key: GAS_BILLING_SETTLEMENT_SCOPE_YUSAN_LPG_CONVERSION_KEY,
-      label: "LNG 환산",
-      shortLabel: "LNG 환산",
+      label: "LNG 환산 비율",
+      shortLabel: "LNG 환산 비율",
     }),
   ]),
   waste: Object.freeze([

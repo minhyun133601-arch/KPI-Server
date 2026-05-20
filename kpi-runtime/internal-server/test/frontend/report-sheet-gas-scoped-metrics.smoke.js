@@ -109,7 +109,7 @@ test('report sheet gas scoped metrics registry exposes production options and me
     },
     getUtilGasBillingScopeFields(_monthKey, scopeKey) {
       if (scopeKey === 'lpg_conversion') {
-        return { billing_amount: '45678.9' };
+        return { conversion_ratio: '0.456789' };
       }
       return { power_charge: '12000', billing_amount: '12345' };
     },
@@ -176,7 +176,7 @@ test('report sheet gas scoped metrics registry exposes production options and me
   );
   assert.equal(registry.getUtilGasProductionMetric('2026-01', combinedOption.teamNames), 125);
   assert.equal(registry.getUtilGasAnalysisBukjeongBillingAmount('2026-01'), 12000);
-  assert.equal(registry.getUtilGasAnalysisYusanLpgConversionAmount('2026-01'), 45678.9);
+  assert.equal(registry.getUtilGasAnalysisYusanLpgConversionRatio('2026-01'), 0.456789);
 
   const metricMap = registry.buildUtilGasAnalysisMetricMap(['2026-01'], { key: 'yusan' });
   const metric = metricMap.get('2026-01');
@@ -186,7 +186,7 @@ test('report sheet gas scoped metrics registry exposes production options and me
   assert.equal(metric.production, 125);
   assert.equal(metric.lngCost, 72000);
   assert.equal(metric.lpgCost, 20000);
-  assert.equal(metric.lpgConversionCost, 45678.9);
+  assert.equal(metric.lpgConversionRatio, 0.456789);
   assert.equal(metric.gasCost, 92000);
 });
 
@@ -194,7 +194,7 @@ test('kpi html loads gas scoped metrics after gas comparison summary and before 
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
   const comparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/comparison-summary.js?v=053');
-  const scopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=055');
+  const scopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=056');
   const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=056');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=063');
 

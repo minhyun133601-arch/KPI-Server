@@ -24,10 +24,9 @@ function collectNodes(node, output = new Map()) {
 }
 
 test('repository map excludes runtime, secret, attachment, and handoff paths', () => {
-  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kpi-repository-map-'));
+    const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kpi-repository-map-'));
   try {
     createFile(path.join(rootDir, 'AGENTS.md'), '# rules\n## policy');
-    createFile(path.join(rootDir, 'patch.md'), '# patch history');
     createFile(path.join(rootDir, 'private-notes.md'), '# private notes');
     createFile(path.join(rootDir, 'reference-clone/AGENTS.md'), '# nested clone rules');
     createFile(path.join(rootDir, 'utility/runtime/util/app.js'), 'export {};\nconsole.log(1);');
@@ -53,7 +52,6 @@ test('repository map excludes runtime, secret, attachment, and handoff paths', (
     assert.equal(nodes.get('AGENTS.md')?.labelKo, '규칙');
     assert.equal(nodes.get('AGENTS.md')?.descKo, 'AI 작업 기준 문서');
     assert.equal(nodes.get('utility/runtime/util/app.js')?.lines, 2);
-    assert.ok(!paths.includes('patch.md'));
     assert.ok(!paths.includes('private-notes.md'));
     assert.ok(!paths.includes('reference-clone/AGENTS.md'));
     assert.ok(!paths.includes('.env.local'));
@@ -73,7 +71,6 @@ test('repository map exclusion predicate handles exact names and prefixes', () =
   assert.equal(isRepositoryMapExcluded('.env.production.local'), true);
   assert.equal(isRepositoryMapExcluded('commands/ops-console-app/var/log.txt'), true);
   assert.equal(isRepositoryMapExcluded('repository-map-handoff/KPI-SERVER-HANDOFF.txt'), true);
-  assert.equal(isRepositoryMapExcluded('patch.md'), true);
   assert.equal(isRepositoryMapExcluded('private-notes.md'), true);
   assert.equal(isRepositoryMapExcluded('reference-clone/AGENTS.md'), true);
 });

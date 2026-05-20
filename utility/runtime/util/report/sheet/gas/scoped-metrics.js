@@ -341,13 +341,13 @@
         return parseGasMeterNumber(fields?.power_charge);
     }
 
-    function getUtilGasAnalysisYusanLpgConversionAmount(monthKey = '') {
+    function getUtilGasAnalysisYusanLpgConversionRatio(monthKey = '') {
         const scopeKeys = getGasBillingScopeKeys();
         const fields = getGasBillingScopeFields(
             monthKey,
             scopeKeys.yusanLpgConversion || 'yusan_lpg_conversion'
         );
-        return parseGasMeterNumber(fields?.billing_amount);
+        return parseGasMeterNumber(fields?.conversion_ratio);
     }
 
     function buildUtilGasAnalysisMetricMap(monthKeys = [], categoryOption = null) {
@@ -389,8 +389,8 @@
             const lpgCost = option.showLpgCard
                 ? getUtilGasMeterScopedCost(billingSummary, monthTable, 'lpg', meterScopeOption)
                 : null;
-            const lpgConversionCost = option.showLpgCard
-                ? getUtilGasAnalysisYusanLpgConversionAmount(monthKey)
+            const lpgConversionRatio = option.showLpgCard
+                ? getUtilGasAnalysisYusanLpgConversionRatio(monthKey)
                 : null;
             const activeCostValues = [];
             if (!isGasFuelInactive('lng') && Number.isFinite(lngCost)) {
@@ -416,7 +416,7 @@
                 },
                 lngCost,
                 lpgCost,
-                lpgConversionCost,
+                lpgConversionRatio,
                 gasCost
             });
         });
@@ -438,7 +438,7 @@
         getUtilGasAnalysisProductionValue,
         buildUtilGasAnalysisProductionMap,
         getUtilGasAnalysisBukjeongBillingAmount,
-        getUtilGasAnalysisYusanLpgConversionAmount,
+        getUtilGasAnalysisYusanLpgConversionRatio,
         buildUtilGasAnalysisMetricMap
     });
     runtimeAdapter.exportApi('KPIUtilReportSheetGasScopedMetrics', api);

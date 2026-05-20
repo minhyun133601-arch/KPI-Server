@@ -200,22 +200,6 @@
               ></span>
               <span data-i18n-key="accountTab">계정 관리</span>
             </button>
-            <button class="tab-button" data-tab="preview" type="button">
-              <span
-                class="ui-icon tab-icon"
-                data-icon="table"
-                aria-hidden="true"
-              ></span>
-              <span>Repository Map</span>
-            </button>
-            <button class="tab-button" data-tab="reference" type="button">
-              <span
-                class="ui-icon tab-icon"
-                data-icon="list"
-                aria-hidden="true"
-              ></span>
-              <span data-i18n-key="dataReferenceTab">데이터 참조 경로</span>
-            </button>
           </nav>
 
           <section
@@ -416,78 +400,6 @@
             </div>
           </section>
 
-          <section class="tab-panel tab-panel-preview" data-tab-panel="preview">
-            <section class="section preview-intro">
-              <div class="section-head section-head-inline preview-intro-head">
-                <div class="section-title-group">
-                  <span
-                    class="ui-icon section-icon"
-                    data-icon="table"
-                    aria-hidden="true"
-                  ></span>
-                  <div>
-                    <h2>Repository Map</h2>
-                    <p data-i18n-key="previewSummary">
-                      현재 저장소 폴더 지도, 포트 경계, 변경 기록을 콘솔 안에서
-                      확인합니다.
-                    </p>
-                  </div>
-                </div>
-                <a
-                  class="secondary-button preview-open-link"
-                  href="/repository-map.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <span data-i18n-key="openNewWindow">새 창</span>
-                </a>
-              </div>
-            </section>
-            <iframe
-              id="repositoryMapFrame"
-              class="preview-frame"
-              src="/repository-map.html"
-              title="Repository Map"
-            ></iframe>
-          </section>
-
-          <section
-            class="tab-panel tab-panel-preview"
-            data-tab-panel="reference"
-          >
-            <section class="section preview-intro">
-              <div class="section-head section-head-inline preview-intro-head">
-                <div class="section-title-group">
-                  <span
-                    class="ui-icon section-icon"
-                    data-icon="list"
-                    aria-hidden="true"
-                  ></span>
-                  <div>
-                    <h2 data-i18n-key="dataReferenceTitle">데이터 참조 경로</h2>
-                    <p data-i18n-key="dataReferenceSummary">
-                      현재 입력 화면별 데이터가 어느 API, DB 레코드, 파일
-                      저장소, 권한키를 거치는지 확인합니다.
-                    </p>
-                  </div>
-                </div>
-                <a
-                  class="secondary-button preview-open-link"
-                  href="/data-reference-map.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <span data-i18n-key="openNewWindow">새 창</span>
-                </a>
-              </div>
-            </section>
-            <iframe
-              id="dataReferenceFrame"
-              class="preview-frame"
-              src="/data-reference-map.html"
-              title="Data Reference Paths"
-            ></iframe>
-          </section>
         </section>
       </main>
     </div>
@@ -523,6 +435,6 @@
       </div>
     </div>
 
-    <script src="/app.js?v=20260511b" type="module"></script>
+    <script src="/app.js?v=20260520a" type="module"></script>
   </body>
 </html>

@@ -4,8 +4,6 @@
 };
 export const TAB_SERVER = "server";
 export const TAB_DATA = "data";
-export const TAB_PREVIEW = "preview";
-export const TAB_REFERENCE = "reference";
 export const LANGUAGE_STORAGE_KEY = "kpi.opsConsole.language";
 export const iconMap = {
   monitor:
@@ -110,7 +108,6 @@ export const i18n = {
     tabAriaLabel: "운영 콘솔 분류",
     serverTab: "서버 관리",
     accountTab: "계정 관리",
-    dataReferenceTab: "데이터 참조 경로",
     logsTitle: "로그 보기",
     logsSummary: "최근 로그 60줄을 바로 확인합니다.",
     serverActionsLog: "서버 액션",
@@ -134,12 +131,6 @@ export const i18n = {
     lastAccessHeader: "최근 접속",
     sessionHeader: "세션",
     loading: "불러오는 중...",
-    previewSummary:
-      "현재 저장소 폴더 지도, 포트 경계, 변경 기록을 콘솔 안에서 확인합니다.",
-    dataReferenceTitle: "데이터 참조 경로",
-    dataReferenceSummary:
-      "현재 입력 화면별 데이터가 어느 API, DB 레코드, 파일 저장소, 권한키를 거치는지 확인합니다.",
-    openNewWindow: "새 창",
     scheduleModalEyebrow: "COMPUTER SCHEDULE",
     closeButton: "닫기",
     done: "완료",
@@ -221,7 +212,6 @@ export const i18n = {
     tabAriaLabel: "Operations console sections",
     serverTab: "Server",
     accountTab: "Accounts",
-    dataReferenceTab: "Data Paths",
     logsTitle: "Logs",
     logsSummary: "Read the latest 60 log lines directly.",
     serverActionsLog: "Server actions",
@@ -245,12 +235,6 @@ export const i18n = {
     lastAccessHeader: "Last access",
     sessionHeader: "Session",
     loading: "Loading...",
-    previewSummary:
-      "Review the current repository folder map, port boundaries, and change history inside this console.",
-    dataReferenceTitle: "Data Reference Paths",
-    dataReferenceSummary:
-      "Review which API, DB record, file store, and permission key each current input screen uses.",
-    openNewWindow: "New window",
     scheduleModalEyebrow: "COMPUTER SCHEDULE",
     closeButton: "Close",
     done: "Done",

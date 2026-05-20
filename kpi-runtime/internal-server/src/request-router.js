@@ -10,7 +10,6 @@ import { handleGetModuleRecord, handleUpsertModuleRecord } from './routes/module
 import {
   handleOwnerAccessOverview,
   handleOwnerRepositoryMap,
-  handleOwnerRepositoryMapHistoryScript,
   handleOwnerRepositoryMapPage,
   handleOwnerRepositoryMapScript
 } from './routes/owner-routes.js';
@@ -102,11 +101,6 @@ const DYNAMIC_ROUTE_MATCHERS = [
     method: 'GET',
     pattern: /^\/api\/files\/([0-9a-f-]+)\/view$/,
     handle: (context, match) => handleDocumentView(context, match[1])
-  },
-  {
-    method: 'GET',
-    pattern: /^\/owner\/repository-map-history\/(\d{4}-\d{2}\.js)$/,
-    handle: (context, match) => handleOwnerRepositoryMapHistoryScript(context, match[1])
   }
 ];
 

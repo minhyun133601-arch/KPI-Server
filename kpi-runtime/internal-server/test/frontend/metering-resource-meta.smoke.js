@@ -59,8 +59,8 @@ function createResourceMetaContext() {
         { key: 'gas_yusan_lpg', shortLabel: '유산 LPG', label: '유산 LPG 정산' },
         {
           key: 'gas_yusan_lpg_conversion',
-          shortLabel: 'LNG 환산',
-          label: 'LNG 환산',
+          shortLabel: 'LNG 환산 비율',
+          label: 'LNG 환산 비율',
         },
       ],
       waste: [
@@ -95,7 +95,7 @@ function createResourceMetaContext() {
       { key: 'billing_amount' },
     ],
     GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FIELDS: [
-      { key: 'billing_amount' },
+      { key: 'conversion_ratio' },
     ],
     WASTE_BILLING_SETTLEMENT_FIELDS_BUKJEONG: [
       { key: 'usage' },
@@ -191,7 +191,7 @@ test('resource meta resolves billing settlement scopes, field sets, and guides',
   );
   assert.deepEqual(
     context.getBillingSettlementFields('gas', 'gas_yusan_lpg_conversion').map((field) => field.key),
-    ['billing_amount']
+    ['conversion_ratio']
   );
   assert.deepEqual(
     Array.from(context.getBillingSettlementZeroDefaultFieldKeys('gas', 'gas_yusan_lpg_conversion')),

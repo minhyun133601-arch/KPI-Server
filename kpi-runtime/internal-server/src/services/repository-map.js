@@ -9,7 +9,7 @@ const RECENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_LINE_COUNT_BYTES = 2 * 1024 * 1024;
 const ALLOWED_DOTFILES = new Set(['.github', '.gitignore', '.gitattributes']);
 const LINE_COUNT_EXTENSIONS = new Set(['.cmd', '.css', '.html', '.js', '.json', '.md', '.mjs', '.ps1', '.txt', '.yml', '.yaml']);
-const EXCLUDED_NAMES = new Set(['.git', '.claude', '.codex', '.next', '.turbo', '__pycache__', 'build', 'coverage', 'dist', 'repository-map-handoff', 'node_modules', 'patch.md', 'var', 'private-notes.md']);
+const EXCLUDED_NAMES = new Set(['.git', '.claude', '.codex', '.next', '.turbo', '__pycache__', 'build', 'coverage', 'dist', 'repository-map-handoff', 'node_modules', 'var', 'private-notes.md']);
 const EXCLUDED_PREFIXES = ['reference-clone', 'commands/ops-console-app/var', 'commands/var', 'repository-map-handoff', 'kpi-runtime/internal-server/node_modules', 'kpi-runtime/internal-server/var'];
 
 const PRIVATE_CONTENT_PREFIXES = ['work-log/', 'team-report/work-log/teams/'];

@@ -61,6 +61,9 @@ function resolveBillingSettlementFields(
     resourceType,
     scopeKey
   );
+  const isGasLpgConversionScope =
+    resourceType === RESOURCE_TYPES.GAS &&
+    isGasLpgConversionBillingSettlementScope(scopeKey);
   const zeroDefaultFieldKeys = getBillingSettlementZeroDefaultFieldKeys(
     resourceType,
     scopeKey
@@ -98,6 +101,11 @@ function resolveBillingSettlementFields(
         fields[field.key] = Number.isFinite(numericValue)
           ? numericValue.toFixed(3)
           : fieldValue;
+      } else if (isGasLpgConversionRatioField(field.key, resourceType, scopeKey)) {
+        const normalizedRatio = normalizeGasLpgConversionRatioValue(fieldValue);
+        if (normalizedRatio) {
+          fields[field.key] = normalizedRatio;
+        }
       } else if (
         resourceType === RESOURCE_TYPES.GAS &&
         field.key === "rounding_adjustment"
@@ -117,6 +125,10 @@ function resolveBillingSettlementFields(
     });
   }
 
+  if (isGasLpgConversionScope) {
+    return fields;
+  }
+
   if (resourceType === RESOURCE_TYPES.ELECTRIC) {
     const resolvedElectricityChargeTotal = resolveBillingSettlementElectricityChargeTotalValue({
       ...fields,
@@ -130,7 +142,11 @@ function resolveBillingSettlementFields(
     }
   }
 
-  if (resourceType === RESOURCE_TYPES.GAS && !isGasLpgBillingSettlementScope(scopeKey)) {
+  if (
+    resourceType === RESOURCE_TYPES.GAS &&
+    !isGasLpgConversionBillingSettlementScope(scopeKey) &&
+    !isGasLpgBillingSettlementScope(scopeKey)
+  ) {
     if (!fields.calorific_value) {
       const derivedCalorificValue =
         deriveBillingSettlementCalorificValueFromBilledQuantityValue(

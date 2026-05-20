@@ -29,7 +29,6 @@
   }
   .status-strip,
   .tab-panel-layout,
-  .tab-panel-preview,
   .activity-column,
   .section-grid,
   .field-row {
@@ -69,10 +68,6 @@
   .language-toggle .language-button {
     flex: 1 1 0;
     width: auto;
-  }
-  .preview-frame {
-    height: 70vh;
-    min-height: 520px;
   }
   .modal-card {
     width: calc(100vw - 24px);

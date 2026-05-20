@@ -2179,10 +2179,10 @@ ${buildReportDeckExportScript()}
         return toFiniteNumber(item?.lpgCost);
     }
 
-    function readReportDeckGasLpgConversionCost(map, monthKey) {
+    function readReportDeckGasLpgConversionRatio(map, monthKey) {
         if (map && typeof map.get === 'function') {
             const item = map.get(monthKey) || null;
-            const metricValue = toFiniteNumber(item?.lpgConversionCost);
+            const metricValue = toFiniteNumber(item?.lpgConversionRatio);
             if (metricValue !== null) return metricValue;
         }
         const billingApi = root.KPIUtilReportSheetBilling || null;
@@ -2195,7 +2195,13 @@ ${buildReportDeckExportScript()}
             monthKey,
             scopeKeys.yusanLpgConversion || 'yusan_lpg_conversion'
         );
-        return parseReportDeckCostNumber(fields?.billing_amount);
+        return parseReportDeckCostNumber(fields?.conversion_ratio);
+    }
+
+    function calculateReportDeckGasLpgConversionCost(actualLpgCost, conversionRatio) {
+        const actualCost = normalizeReportDeckPositiveMetric(actualLpgCost);
+        const ratio = normalizeReportDeckPositiveMetric(conversionRatio);
+        return actualCost !== null && ratio !== null ? actualCost / ratio : null;
     }
 
     function divideReportDeckMetricValues(numeratorValue, denominatorValue) {
@@ -3041,7 +3047,7 @@ ${buildReportDeckExportScript()}
             const metric = gasMetricMap.get(monthKey) || {};
             return toFiniteNumber(metric?.ratioProduction?.lpg ?? metric.production);
         };
-        const readLpgConversionCost = monthKey => readReportDeckGasLpgConversionCost(gasMetricMap, monthKey);
+        const readLpgConversionRatio = monthKey => readReportDeckGasLpgConversionRatio(gasMetricMap, monthKey);
 
         const rows = {
             production: buildReportDeckMetricComparison(
@@ -3068,12 +3074,24 @@ ${buildReportDeckExportScript()}
                 readReportDeckGasLpgCost(gasMetricMap, previousMonthKey)
             )
         };
-        const referenceLpgConversionCost = normalizeReportDeckPositiveMetric(readLpgConversionCost(referenceMonthKey));
-        const currentLpgConversionCost = normalizeReportDeckPositiveMetric(readLpgConversionCost(activeMonthInfo.key));
-        const previousLpgConversionCost = normalizeReportDeckPositiveMetric(readLpgConversionCost(previousMonthKey));
         const referenceActualLpgCost = readReportDeckGasLpgCost(gasMetricMap, referenceMonthKey);
         const currentActualLpgCost = readReportDeckGasLpgCost(gasMetricMap, activeMonthInfo.key);
         const previousActualLpgCost = readReportDeckGasLpgCost(gasMetricMap, previousMonthKey);
+        const referenceLpgConversionRatio = normalizeReportDeckPositiveMetric(readLpgConversionRatio(referenceMonthKey));
+        const currentLpgConversionRatio = normalizeReportDeckPositiveMetric(readLpgConversionRatio(activeMonthInfo.key));
+        const previousLpgConversionRatio = normalizeReportDeckPositiveMetric(readLpgConversionRatio(previousMonthKey));
+        const referenceLpgConversionCost = calculateReportDeckGasLpgConversionCost(
+            referenceActualLpgCost,
+            referenceLpgConversionRatio
+        );
+        const currentLpgConversionCost = calculateReportDeckGasLpgConversionCost(
+            currentActualLpgCost,
+            currentLpgConversionRatio
+        );
+        const previousLpgConversionCost = calculateReportDeckGasLpgConversionCost(
+            previousActualLpgCost,
+            previousLpgConversionRatio
+        );
         const costRows = {
             0: buildReportDeckMetricComparison(
                 referenceActualLpgCost,
@@ -3086,9 +3104,9 @@ ${buildReportDeckExportScript()}
                 previousLpgConversionCost
             ),
             2: buildReportDeckMetricComparison(
-                divideReportDeckMetricValues(referenceActualLpgCost, referenceLpgConversionCost),
-                divideReportDeckMetricValues(currentActualLpgCost, currentLpgConversionCost),
-                divideReportDeckMetricValues(previousActualLpgCost, previousLpgConversionCost)
+                referenceLpgConversionRatio,
+                currentLpgConversionRatio,
+                previousLpgConversionRatio
             )
         };
         const unitSeries = buildReportDeckRatioSeries(timeline, activeMonthInfo, monthKey => {
@@ -3098,11 +3116,7 @@ ${buildReportDeckExportScript()}
             return usage !== null && production !== null && production > 0 ? usage / production : null;
         });
         const costSeries = buildReportDeckRatioSeries(timeline, activeMonthInfo, monthKey => {
-            const actualLpgCost = readReportDeckGasLpgCost(gasMetricMap, monthKey);
-            const lpgConversionCost = readLpgConversionCost(monthKey);
-            return actualLpgCost !== null && lpgConversionCost !== null && lpgConversionCost > 0
-                ? actualLpgCost / lpgConversionCost
-                : null;
+            return normalizeReportDeckPositiveMetric(readLpgConversionRatio(monthKey));
         });
 
         return {
