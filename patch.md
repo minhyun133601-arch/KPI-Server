@@ -1,68 +1,14 @@
 # 2026-05-19 Patch Note
 
-## Report Deck Safety Page
+## Server Latest Selective Apply
 
-Goal: 공무환경팀 보고서에서 `자율 안전 신고제`를 공사 및 정비/주요 계획보다 앞에 배치하고, 전/후/개요 전용 좌측 열 + 팀명 첫 작업칸 헤더 + 4열 작업 표형 양식으로 전/후 이미지와 한 줄 개요를 관리합니다.
+Goal: 원격 최신 변경 중 서버 규칙에 맞는 편의성/생산량 기입 변경만 반영하고, DB `production_kind` 확장과 보고서 모달 대규모 정리는 보류합니다.
 
-Touched areas: report section slide template/CSS, report deck runtime state/edit controls, report deck save payload defaults, report export output filtering, related frontend smoke tests, Repository Map history.
+Touched areas: team calendar production action menu, production paste modal, production extractor import parsing, KPI shell/cache versions, work/production smoke tests, Repository Map history.
 
-Data change: none. 새 페이지는 기존 `report_runtime` 월별 payload에 `slide10*` 필드로 저장됩니다. 자율 안전 신고제는 최대 16건까지 저장하고 개요는 `날짜 完, 자체처리 또는 n 백만원 소요, 위험성 예방` 한 줄로 표시합니다. 자율 안전 신고제 개요 입력창은 날짜, 비용, 예방 위험 순서로 열리고 빈 개요칸을 눌러도 바로 입력할 수 있습니다. 자율 안전 신고제, 공사 및 정비(`slide8`), 주요 계획(`slide9`)은 입력이 없으면 PDF/HTML 추출 대상과 추출 페이지 번호에서 제외됩니다. 자율 안전 신고제 출력본은 입력된 작업칸과 입력된 팀 행만 보이도록 비어 있는 칸/행을 숨깁니다. 세 항목의 대제목 번호는 실제 입력 여부에 따라 `3`부터 자동으로 당겨지고, `1/1` 표기는 제거했습니다.
+Verification: targeted work production/import parsing/calendar render smoke passed; `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `npm test`, `npm run smoke:kpi-root`, `npm run smoke:kpi-browser`, `npm run verify`, and `git diff --check` passed.
 
-Verification: `node --check` for changed report JS/tests, targeted `section-factory-adapter` and `util-runtime-browser-adapter` smoke tests, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, and `KPI_BASE_URL=http://127.0.0.1:18080/ npm run smoke:kpi-browser` passed.
-
-Risk: visual fine-tuning is based on the requested 4-column table layout and existing report deck style; no separate PDF sample export was compared in this pass.
-
----
-
-## Production Import Normal/Rework Split
-
-Goal: 작업내역서 생산량 카드의 기입 단계를 정상/재가공품으로 분리하고, 재가공품 생산량이 팀별내역서 상세에서 즉시 구분되게 표시합니다.
-
-Touched areas: work production action menu/import bridge, utility production import/index/dedupe, util production daily repository/state/normalizers, DB export/import/fingerprint scripts, production detail modal, work CSS, KPI asset cache versions, related frontend/service smoke tests, Data Reference map.
-
-Data change: PostgreSQL dump `kpi-runtime/internal-server/var/local-experiment/storage/backups/postgres-dumps/postgres-dump-20260519-125715.dump` created before migration. Applied `008_util_production_daily_production_kind.sql` to add `production_kind` with default `normal`. Existing rows remain normal until rework imports are entered.
-
-Update: 총괄비율, 분석, 보고서에서 쓰는 생산량 기준은 정상 + 재가공품 합산으로 고정했습니다. fallback 중복 제거 키에도 `production_kind`를 포함해 같은 정상 행은 한 번만 세고, 같은 값의 재가공품 행은 합산되게 했습니다.
-
-Verification: `node --check` for changed JS, targeted production/work/state/data-sync smoke tests, `npm run backup:postgres-dump`, `npm run db:migrate`, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, `npm test`, and `git diff --check` passed.
-
-Risk: full `npm run verify` was not run because it includes legacy cleanup steps that can touch unrelated local data; equivalent format/lint/server-structure/full test coverage was run separately.
-
----
-
-Update: 총괄 비율 미리보기 목차/카드는 비용 구성비 4개만 남기고 유산 생산량/팀별 비율 카드는 제거했습니다. 유산 생산량 비율 계산은 특이사항 후보와 보고서 계산 경로에서만 유지합니다.
-
-Update: 총괄 비율 모달의 선/막대 그래프 영역을 제거하고, 상단 필터 아래에 원형 그래프 2열과 하단 상세표만 남기는 구조로 정리했습니다. 모달 전용 차트 스크립트, 차트 핸들러, 스크롤 보조 코드, 관련 CSS/테스트/부트 매니페스트 참조도 제거했습니다.
-
-Update: 작업내역서 생산량 관리에 정상/재가공품 붙여넣기 기입을 추가했습니다. 엑셀 표를 그대로 붙여넣은 뒤 `Ctrl+S` 또는 `완료`로 저장하면 기존 파일 기입과 같은 파서 보정, 중복 제거, `mergeUtilProductionExtractorRows` 저장 경로를 사용합니다.
-
-Update: 붙여넣기 파서를 `2팀 1.xlsx`처럼 엑셀에서 1행부터 전체 선택한 시트 복사본에 맞춰 보정했습니다. 상단 메타 행을 건너뛰고 헤더명으로 생산일자/팀/라인/코드/품명/생산량과 조업시간/가동시간/수율/CAPA/가동률 열을 찾아 저장 경로에 넘깁니다.
-
-## Utility Section Removal And Work Production Actions
-
-Goal: remove the top-level Utility dashboard section, keep utility usage/cost entry and analysis under Data Management, and move production entry/delete controls into the work team calendar `Total Production` summary card.
-
-Touched areas: dashboard section registry/builders, Data Management section content, work team calendar production summary actions, direct production Excel import/delete paths, production maintenance export/delete defaults, legacy utility initializer/sidebar/energy override cleanup, KPI boot manifest and cache versions, related frontend smoke tests.
-
-Data change: none. Production import uses the existing extractor parsing columns and `mergeUtilProductionExtractorRows` save path, so imported values/report metrics remain on the same data path, including `work_time`, `operation_time`, `workTime`, and `operationTime`.
-
-Verification: targeted section/work/production/maintenance/energy/production-extractor/repository-map smoke tests, `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, targeted work/production extractor Node tests, `npm test` including 744 Node tests, `npm run smoke:kpi-browser`, and `git diff --check` passed.
-
-Risk: no DB/schema/data migration was made in this cleanup. Extraction remains intentionally unconnected until the extraction rule is discussed.
-
----
-
-## Local Experiment Upstream Sync
-
-Goal: `minhyun133601-arch/KPI-Server.git` 최신 `origin/main` 기능을 이 워크스페이스에 흡수하고, 로컬 실험본 규칙인 KPI `18080`, PostgreSQL `55432`, `.env.local-experiment`, `var/local-experiment` 경계를 다시 맞췄습니다.
-
-Touched areas: root/agent runtime contracts, ops console runtime/env paths and labels, local PostgreSQL/server helper scripts, root/browser smoke defaults, DB fingerprint/env selection helpers.
-
-Data change: PostgreSQL dump `kpi-runtime/internal-server/var/local-experiment/storage/backups/postgres-dumps/postgres-dump-20260519-085631.dump` created before schema migration. Applied `005_util_production_daily_time_metrics.sql` and `006_util_production_daily_work_time.sql` to `kpi_local_experiment`.
-
-Verification: `npm run backup:postgres-dump`, `npm run db:migrate`, `npm run format:check`, `npm run lint`, `npm test`, `npm run verify:server-structure`, `npm run smoke:kpi-root`, `npm run smoke:kpi-browser`, ops console health/overview/DB tables checks, `node --check` for ops console MJS files, `git diff --check`, and Desktop KPI folder count check passed.
-
-Risk: central-runtime helper scripts remain in the repo for their explicit workflow names, but the default local experiment server/ops console path now reads `.env.local-experiment` and runs on `18080`/`55432`.
+Risk: `008_util_production_daily_production_kind.sql` and `production_kind` persistence were intentionally not applied, so normal/rework split storage is not included yet. The new production entry flow stores the same normal production rows through the existing server schema.
 
 ---
 
@@ -429,25 +375,3 @@ Verification: `node --check` for modal shell passed; targeted report sheet modal
 Follow-up: fixed an analysis export stall risk by limiting heavy interaction variant generation to the active extracted range and stopping combined variant generation immediately at the cap. Added guarded export error handling so a failed export reports a controlled message instead of leaving the UI stuck.
 
 Risk: standalone export prebuilds interaction variants from the active extracted range and caps combined variant generation. Common sequential selector/unit/display/label changes are covered; very large combination sets may still fall back to the latest prebuilt change.
-
----
-
-## Production Daily Product Code Reset
-
-Goal: accept the D-column product code during production import, keep it in the local production DB, and show it in the team calendar daily production popup before re-import.
-
-Touched areas: production import/extractor parsing, production daily server schema and normalization, team calendar/report dedupe paths, and local production daily DB rows.
-
-Verification: PostgreSQL dump created before deletion; migration added `product_code`; production daily rows were cleared from 9,186 to 0; targeted frontend/service tests passed; browser KPI smoke passed; `npm run format:check`, `npm run lint`, `npm run verify:server-structure`, and `npm test` passed.
-
-Risk: the local Excel re-import file remains untracked in the workspace; existing unrelated dirty files from earlier UI work were not reverted.
-
-Follow-up: production import replacement now uses one full entry key only: date, team, line, product code, product name, amount, yield, work time, operation time, CAPA, and utilization must all match before an existing row is overwritten. Same-date/team rows with any different value are preserved.
-
-Follow-up: work report production management was reduced to `정상`, `재가공품`, and `삭제`. `정상` and `재가공품` now use only the Excel copy/paste modal, and the old direct file-attach entry path was removed from the work report runtime.
-
-Verification update: `smoke:work-production`, `work-team-calendar-render.smoke.js`, `smoke:work-shared`, `format:check`, `lint`, `verify:server-structure`, `npm test`, `git diff --check`, and `smoke:kpi-browser` passed after the paste-only menu cleanup.
-
-Follow-up: data management analysis overview was simplified so the `총괄 비율` entry no longer renders total/electric/gas/waste amount and share preview cards or the extra preview note.
-
-Verification update: section factory, report production preview, shell CSS smoke checks, `format:check`, `lint`, `verify:server-structure`, `npm test`, `git diff --check`, and `smoke:kpi-browser` passed after the overview cleanup.

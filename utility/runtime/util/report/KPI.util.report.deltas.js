@@ -746,25 +746,6 @@
             return lineName || productName || '라인 미지정';
         }
 
-        function normalizeUtilReportProductionKind(value) {
-            const normalized = String(value ?? '')
-                .trim()
-                .toLowerCase()
-                .replace(/[\s_-]+/g, '');
-            if (
-                normalized === 'rework'
-                || normalized === 'reprocess'
-                || normalized === 'reprocessed'
-                || normalized === 'reprocessedproduct'
-                || normalized === 'reworkproduct'
-                || normalized === '\uC7AC\uAC00\uACF5'
-                || normalized === '\uC7AC\uAC00\uACF5\uD488'
-            ) {
-                return 'rework';
-            }
-            return 'normal';
-        }
-
         function buildUtilReportProductionProductMonthlyValueMap(year, month, teamFilter = 'all') {
             const yearValue = Number(year);
             const monthValue = Number(month);
@@ -787,7 +768,6 @@
                         teamName,
                         String(entry?.dateLabel || '').trim(),
                         normalizeUtilDedupeText(lineNameRaw || ''),
-                        normalizeUtilReportProductionKind(entry?.productionKind ?? entry?.production_kind ?? entry?.productionType ?? entry?.production_type ?? entry?.kind),
                         normalizeUtilDedupeText(entry?.productCode ?? entry?.itemCode ?? entry?.code ?? ''),
                         normalizeUtilDedupeText(productNameRaw || ''),
                         canonicalizeUtilDedupeMetric(amount),

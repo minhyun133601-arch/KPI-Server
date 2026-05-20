@@ -153,7 +153,6 @@
       "scripts": [
         "utility/runtime/util/energy/KPI.util.energy.browser-adapter.js",
         "utility/runtime/util/energy/KPI.util.energy.dual.js",
-        "utility/runtime/util/energy/KPI.util.energy.tabs.js",
         "utility/runtime/util/energy/KPI.util.energy.trend-chart.js",
         "utility/runtime/util/energy/KPI.util.energy.segmented-chart.js",
         "utility/runtime/util/energy/KPI.util.energy.multi-series-chart.js",

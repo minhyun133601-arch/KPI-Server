@@ -44,7 +44,6 @@ test('kpi html loads split energy helpers before host runtimes', () => {
   const orderedFiles = [
     'KPI.util.energy.browser-adapter.js',
     'KPI.util.energy.dual.js',
-    'KPI.util.energy.tabs.js',
     'KPI.util.energy.trend-chart.js',
     'KPI.util.energy.segmented-chart.js',
     'KPI.util.energy.multi-series-chart.js',
@@ -60,6 +59,7 @@ test('kpi html loads split energy helpers before host runtimes', () => {
     previousIndex = currentIndex;
   }
   assert.equal(kpiHtmlSource.includes(removedEnergyChartFileName), false);
+  assert.equal(kpiHtmlSource.includes('KPI.util.energy.tabs.js'), false);
   assert.equal(kpiHtmlSource.includes('KPI.util.energy.tabs.override.js'), false);
 });
 
@@ -89,17 +89,19 @@ test('energy report composition moves aggregate helpers out of the modal host fi
   assert.match(compositionSource, /function buildUtilEnergyReportGasTeamComposition/);
 });
 
-test('energy tabs routes browser globals through the data-sync adapter', async () => {
-  const tabsSource = await readEnergyFile('KPI.util.energy.tabs.js');
+test('legacy utility dual tabs stay removed from the runtime surface', async () => {
+  const dataSyncSource = await fs.readFile(
+    path.join(repoRoot, 'utility/runtime/util/KPI.util.data-sync.js'),
+    'utf8'
+  );
+  const adapterSource = await fs.readFile(
+    path.join(repoRoot, 'utility/runtime/util/KPI.util.data-sync.browser-adapter.js'),
+    'utf8'
+  );
 
-  assert.doesNotMatch(tabsSource, /window\./);
-  assert.doesNotMatch(tabsSource, new RegExp(globalObjectName));
-  assert.doesNotMatch(tabsSource, /data-util-report-inline-open/);
-  assert.doesNotMatch(tabsSource, /toggleUtilInlineReport/);
-  assert.doesNotMatch(tabsSource, /syncUtilReportBuilderVizStateFromDualSection/);
-  assert.match(tabsSource, /KpiUtilDataSyncBrowserAdapter/);
-  assert.match(tabsSource, /addUtilEnergyTabsEventListener/);
-  assert.doesNotMatch(tabsSource, /data-production-upload-open/);
+  await assert.rejects(readEnergyFile('KPI.util.energy.tabs.js'), /ENOENT/);
+  assert.doesNotMatch(dataSyncSource, /renderUtilDualTabs/);
+  assert.doesNotMatch(adapterSource, /getRenderUtilDualTabs/);
 });
 
 test('energy modal routes browser globals through the energy adapter', async () => {
@@ -130,9 +132,6 @@ test('energy browser adapter exposes root-bound browser operations', async () =>
     },
     print() {
       calls.push({ type: 'print' });
-    },
-    renderUtilDualTabs() {
-      calls.push({ type: 'render' });
     },
   };
   context[globalObjectName] = context;

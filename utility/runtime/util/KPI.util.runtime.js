@@ -466,7 +466,8 @@
         slide10AfterImage13: '',
         slide10AfterImage14: '',
         slide10AfterImage15: '',
-        slide10AfterImage16: ''
+        slide10AfterImage16: '',
+        slide10DeletedSlotBackups: ''
     });
 
     const REPORT_DECK_FALLBACK_CONFIG = Object.freeze({
@@ -491,9 +492,12 @@
     });
     const REPORT_DECK_SLIDE10_SLOTS_PER_PAGE = 8;
     const REPORT_DECK_SLIDE10_COLUMNS_PER_ROW = 4;
+    const REPORT_DECK_SLIDE10_ROWS_PER_PAGE = 2;
     const REPORT_DECK_SLIDE10_PAGE_COUNT = 2;
+    const REPORT_DECK_SLIDE10_BASE_SLOT_COUNT = REPORT_DECK_SLIDE10_SLOTS_PER_PAGE * REPORT_DECK_SLIDE10_PAGE_COUNT;
+    const REPORT_DECK_SLIDE10_DELETE_BACKUP_LIMIT = 12;
     const REPORT_DECK_SLIDE10_HAZARD_OPTIONS = Object.freeze(['미끄럼', '넘어짐', '끼임', '충돌', '낙하/비래', '베임/찔림', '화재', '감전', '누출', '화상']);
-    const REPORT_DECK_SLIDE10_TEAM_ROWS = Object.freeze(REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.slice(0, 4));
+    const REPORT_DECK_SLIDE10_TEAM_ROWS = Object.freeze(REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.slice());
     const REPORT_DECK_SLIDE10_SELF_HANDLED_AMOUNT_LABEL = '자체처리';
     const REPORT_DECK_SELF_HANDLED_AMOUNT_LABEL = '자체 처리';
     const REPORT_DECK_MEMO_TEAM_OPTIONS = Object.freeze([
@@ -515,6 +519,8 @@
         Object.freeze({ key: 'operation_rate', label: '가동률' }),
         Object.freeze({ key: 'work_time', label: '조업시간' }),
         Object.freeze({ key: 'operation_time', label: '가동시간' }),
+        Object.freeze({ key: 'rework_production', label: '재가공품 생산량' }),
+        Object.freeze({ key: 'rework_production_share', label: '재가공품 비율' }),
         Object.freeze({ key: 'production_days', label: '생산일수' }),
         Object.freeze({ key: 'off_days', label: '휴무일수' }),
         Object.freeze({ key: 'product_count', label: '고유 품목수' }),
@@ -533,6 +539,8 @@
         'operation_rate',
         'work_time',
         'operation_time',
+        'rework_production',
+        'rework_production_share',
         'production_days',
         'off_days',
         'product_count'
@@ -600,6 +608,28 @@
         return normalized ? normalized.replace(/\./g, '-') : raw;
     }
 
+    function normalizeReportDeckOverviewMonth(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return '';
+        const dateMatch = raw.match(/^(\d{4})[.-](\d{1,2})[.-](\d{1,2})$/);
+        if (dateMatch) {
+            const normalized = normalizeReportDeckDate(`${dateMatch[1]}.${dateMatch[2]}.${dateMatch[3]}`);
+            return normalized ? normalized.slice(0, 7).replace(/\./g, '-') : '';
+        }
+        const monthMatch = raw.match(/^(\d{4})[.-](\d{1,2})$/) || raw.match(/^(\d{4})(\d{2})$/);
+        if (monthMatch) return normalizeReportDeckMonth(`${monthMatch[1]}-${monthMatch[2]}`);
+        const displayMatch = raw.match(/^(\d{2}|\d{4})[.-](\d{1,2})월\s*(?:중|中)?$/);
+        if (displayMatch) {
+            const year = displayMatch[1].length === 2 ? `20${displayMatch[1]}` : displayMatch[1];
+            return normalizeReportDeckMonth(`${year}-${displayMatch[2]}`);
+        }
+        return '';
+    }
+
+    function normalizeReportDeckPlanExpectedDateValue(value) {
+        return normalizeReportDeckOverviewMonth(value) || normalizeReportDeckOverviewDate(value);
+    }
+
     function formatReportDeckOverviewDate(value) {
         const normalized = normalizeReportDeckOverviewDate(value);
         const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -607,9 +637,10 @@
     }
 
     function formatReportDeckPlanExpectedDate(value) {
-        const normalized = normalizeReportDeckOverviewDate(value);
-        const match = normalized.match(/^(\d{4})-(\d{2})-\d{2}$/);
-        return match ? `${match[1].slice(2)}.${match[2]}월 중` : normalized;
+        const normalized = normalizeReportDeckOverviewMonth(value);
+        const match = normalized.match(/^(\d{4})-(\d{2})$/);
+        if (match) return `${match[1].slice(2)}.${match[2]}월 中`;
+        return String(value || '').trim().replace(/월\s*중/g, '월 中');
     }
 
     function formatReportDeckOverviewAmount(value) {
@@ -707,13 +738,57 @@
         return parts ? parts.month : null;
     }
 
-    function getReportDeckOptionalSectionNumbers(state = {}) {
+    const REPORT_DECK_OPTIONAL_SECTION_ORDER = Object.freeze(['slide8', 'slide9', 'slide10']);
+
+    function getReportDeckOptionalSectionNumbers(state = {}, includedOptionalPages = null) {
+        const includedSet = includedOptionalPages instanceof Set ? includedOptionalPages : null;
         let nextNumber = 3;
-        return ['slide10', 'slide8', 'slide9'].reduce((numbers, slideKey) => {
+        return REPORT_DECK_OPTIONAL_SECTION_ORDER.reduce((numbers, slideKey) => {
             numbers[slideKey] = nextNumber;
-            if (hasReportDeckOptionalContent(state, slideKey)) nextNumber += 1;
+            const shouldCount = includedSet ? includedSet.has(slideKey) : hasReportDeckOptionalContent(state, slideKey);
+            if (shouldCount) nextNumber += 1;
             return numbers;
         }, {});
+    }
+
+    function formatReportDeckOptionalSectionRoman(sectionNumber = 3) {
+        const value = Number.parseInt(String(sectionNumber || ''), 10);
+        if (!Number.isInteger(value) || value <= 0) return '';
+        const romanGlyphs = {
+            1: 'Ⅰ',
+            2: 'Ⅱ',
+            3: 'Ⅲ',
+            4: 'Ⅳ',
+            5: 'Ⅴ',
+            6: 'Ⅵ',
+            7: 'Ⅶ',
+            8: 'Ⅷ',
+            9: 'Ⅸ',
+            10: 'Ⅹ',
+            11: 'Ⅺ',
+            12: 'Ⅻ'
+        };
+        if (romanGlyphs[value]) return romanGlyphs[value];
+        const romanPairs = [
+            [10, 'Ⅹ'],
+            [9, 'Ⅸ'],
+            [5, 'Ⅴ'],
+            [4, 'Ⅳ'],
+            [1, 'Ⅰ']
+        ];
+        let remaining = value;
+        return romanPairs.reduce((roman, [number, glyph]) => {
+            while (remaining >= number) {
+                roman += glyph;
+                remaining -= number;
+            }
+            return roman;
+        }, '');
+    }
+
+    function buildReportDeckOptionalSectionLabel(sectionNumber = 3) {
+        const roman = formatReportDeckOptionalSectionRoman(sectionNumber);
+        return roman ? `${roman}. 공무환경팀` : '공무환경팀';
     }
 
     function buildReportDeckSlide8TitleForMonth(monthValue, sectionNumber = 3) {
@@ -734,6 +809,25 @@
         return `${sectionNumber}. 자율 안전 신고제`;
     }
 
+    function buildReportDeckOptionalSectionFields(monthValue = '', optionalSectionNumbers = {}) {
+        return {
+            slide8Section: buildReportDeckOptionalSectionLabel(optionalSectionNumbers.slide8),
+            slide8Title: buildReportDeckSlide8TitleForMonth(monthValue, optionalSectionNumbers.slide8),
+            slide9Section: buildReportDeckOptionalSectionLabel(optionalSectionNumbers.slide9),
+            slide9Title: buildReportDeckSlide9TitleForMonth(monthValue, optionalSectionNumbers.slide9),
+            slide10Section: buildReportDeckOptionalSectionLabel(optionalSectionNumbers.slide10),
+            slide10Title: buildReportDeckSlide10TitleForMonth(optionalSectionNumbers.slide10)
+        };
+    }
+
+    function applyReportDeckOptionalSectionFields(state = {}, monthValue = '', includedOptionalPages = null) {
+        Object.assign(state, buildReportDeckOptionalSectionFields(
+            monthValue,
+            getReportDeckOptionalSectionNumbers(state, includedOptionalPages)
+        ));
+        return state;
+    }
+
     function buildReportDeckDateForMonth(monthValue, preferredDateValue = '') {
         const dateParts = getReportDeckMonthParts(monthValue, 1);
         const defaultDate = normalizeReportDeckDate(REPORT_DECK_DEFAULT.reportDate);
@@ -751,11 +845,7 @@
         if (reportDate) state.reportDate = reportDate;
         state.title = buildReportDeckTitleForMonth(monthValue);
         state.department = normalizeReportDeckDepartment(state.department);
-        const optionalSectionNumbers = getReportDeckOptionalSectionNumbers(state);
-        state.slide8Title = buildReportDeckSlide8TitleForMonth(monthValue, optionalSectionNumbers.slide8);
-        state.slide9Title = buildReportDeckSlide9TitleForMonth(monthValue, optionalSectionNumbers.slide9);
-        state.slide10Title = buildReportDeckSlide10TitleForMonth(optionalSectionNumbers.slide10);
-        return state;
+        return applyReportDeckOptionalSectionFields(state, monthValue);
     }
 
     function applyReportDeckDerivedFields(state, meta = {}) {
@@ -766,15 +856,18 @@
         normalizeReportDeckSlide8OverviewOrder(state);
         normalizeReportDeckSlide9OverviewOrder(state);
         normalizeReportDeckSlide10OverviewOrder(state);
-        const optionalSectionNumbers = getReportDeckOptionalSectionNumbers(state);
-        state.slide8Title = buildReportDeckSlide8TitleForMonth(meta.selectedMonth, optionalSectionNumbers.slide8);
-        state.slide9Title = buildReportDeckSlide9TitleForMonth(meta.selectedMonth, optionalSectionNumbers.slide9);
-        state.slide10Title = buildReportDeckSlide10TitleForMonth(optionalSectionNumbers.slide10);
-        return state;
+        return applyReportDeckOptionalSectionFields(state, meta.selectedMonth);
     }
 
     function isReportDeckLockedFieldKey(key) {
-        return key === 'title' || key === 'reportDate' || key === 'slide8Title' || key === 'slide9Title' || key === 'slide10Title';
+        return key === 'title'
+            || key === 'reportDate'
+            || key === 'slide8Section'
+            || key === 'slide8Title'
+            || key === 'slide9Section'
+            || key === 'slide9Title'
+            || key === 'slide10Section'
+            || key === 'slide10Title';
     }
 
     function normalizeReportDeckOverviewTeam(value) {
@@ -798,6 +891,62 @@
     function getReportDeckOverviewTeamOrder(team) {
         const index = REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.indexOf(normalizeReportDeckOverviewTeam(team));
         return index >= 0 ? index : REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.length + 1;
+    }
+
+    function compareReportDeckOverviewDate(leftDate = '', rightDate = '') {
+        const left = String(leftDate || '').trim();
+        const right = String(rightDate || '').trim();
+        if (!left && !right) return 0;
+        if (!left) return 1;
+        if (!right) return -1;
+        if (left < right) return -1;
+        if (left > right) return 1;
+        return 0;
+    }
+
+    function getReportDeckOverviewAmountSortValue(value = '') {
+        const normalized = normalizeReportDeckOverviewAmount(value);
+        if (!normalized) return 0;
+        const number = Number(normalized);
+        return Number.isFinite(number) ? number : 0;
+    }
+
+    function compareReportDeckOverviewEntries(left = {}, right = {}) {
+        const teamDelta = getReportDeckOverviewTeamOrder(left.team) - getReportDeckOverviewTeamOrder(right.team);
+        if (teamDelta) return teamDelta;
+        const dateDelta = compareReportDeckOverviewDate(left.date, right.date);
+        if (dateDelta) return dateDelta;
+        const amountDelta = getReportDeckOverviewAmountSortValue(left.amount) - getReportDeckOverviewAmountSortValue(right.amount);
+        if (amountDelta) return amountDelta;
+        return (left.originalIndex || 0) - (right.originalIndex || 0);
+    }
+
+    function normalizeReportDeckPositiveIndex(value = 1) {
+        const index = Number.parseInt(String(value || ''), 10);
+        if (!Number.isInteger(index) || index < 1) return 1;
+        return index;
+    }
+
+    function isReportDeckSlide10PayloadKey(key = '') {
+        return /^slide10Item\d+(?:Text|Team|Title|Effect|Date|Amount)$/.test(String(key || '').trim())
+            || /^slide10(?:Before|After)Image\d+$/.test(String(key || '').trim());
+    }
+
+    function getReportDeckSlide10PayloadKeyIndex(key = '') {
+        const match = String(key || '').trim().match(/^slide10Item(\d+)(?:Text|Team|Title|Effect|Date|Amount)$|^slide10(?:Before|After)Image(\d+)$/);
+        return match ? normalizeReportDeckPositiveIndex(match[1] || match[2]) : 0;
+    }
+
+    function getReportDeckSlide10StorageMaxIndex(state = {}, options = {}) {
+        const includeBase = options.includeBase !== false;
+        let maxIndex = includeBase ? REPORT_DECK_SLIDE10_BASE_SLOT_COUNT : 0;
+        const count = Number.parseInt(String(state?.slide10SlotCount || ''), 10);
+        if (Number.isInteger(count) && count > maxIndex) maxIndex = count;
+        Object.keys(state || {}).forEach(key => {
+            const index = getReportDeckSlide10PayloadKeyIndex(key);
+            if (index > maxIndex) maxIndex = index;
+        });
+        return Math.max(0, maxIndex);
     }
 
     function isReportDeckSlide8OverviewKey(key = '') {
@@ -877,10 +1026,7 @@
             const entries = Array.from({ length: REPORT_DECK_PLAN_MAX_ITEMS }, (_, index) => getReportDeckSlide8OverviewEntry(state, index + 1));
             const orderedEntries = entries
                 .filter(hasReportDeckSlide8OverviewData)
-                .sort((left, right) => {
-                    const orderDelta = getReportDeckOverviewTeamOrder(left.team) - getReportDeckOverviewTeamOrder(right.team);
-                    return orderDelta || left.originalIndex - right.originalIndex;
-                });
+                .sort(compareReportDeckOverviewEntries);
             const blankEntries = Array.from({ length: REPORT_DECK_PLAN_MAX_ITEMS - orderedEntries.length }, (_, index) => ({
                 originalIndex: orderedEntries.length + index + 1
             }));
@@ -903,7 +1049,7 @@
             title: String(state[`slide9Item${index}Title`] || '').trim(),
             kind: normalizeReportDeckSlide9Kind(state[`slide9Item${index}Kind`]),
             detail: String(state[`slide9Item${index}Detail`] || '').trim(),
-            date: normalizeReportDeckOverviewDate(state[`slide9Item${index}Date`]),
+            date: normalizeReportDeckPlanExpectedDateValue(state[`slide9Item${index}Date`]),
             amount: normalizeReportDeckOverviewAmount(state[`slide9Item${index}Amount`]),
             text: String(state[`slide9Item${index}Text`] || ''),
             image: String(state[`slide9Image${index}`] || ''),
@@ -942,7 +1088,7 @@
             title: String(entry.title || '').trim(),
             kind: normalizeReportDeckSlide9Kind(entry.kind),
             detail: String(entry.detail || '').trim(),
-            date: normalizeReportDeckOverviewDate(entry.date),
+            date: normalizeReportDeckPlanExpectedDateValue(entry.date),
             amount: normalizeReportDeckOverviewAmount(entry.amount),
             text: String(entry.text || ''),
             image: String(entry.image || '')
@@ -964,10 +1110,7 @@
             const entries = Array.from({ length: REPORT_DECK_PLAN_MAX_ITEMS }, (_, index) => getReportDeckSlide9OverviewEntry(state, index + 1));
             const orderedEntries = entries
                 .filter(hasReportDeckSlide9OverviewData)
-                .sort((left, right) => {
-                    const orderDelta = getReportDeckOverviewTeamOrder(left.team) - getReportDeckOverviewTeamOrder(right.team);
-                    return orderDelta || left.originalIndex - right.originalIndex;
-                });
+                .sort(compareReportDeckOverviewEntries);
             const blankEntries = Array.from({ length: REPORT_DECK_PLAN_MAX_ITEMS - orderedEntries.length }, (_, index) => ({
                 originalIndex: orderedEntries.length + index + 1
             }));
@@ -994,7 +1137,7 @@
     }
 
     function getReportDeckSlide10OverviewEntry(state, slotIndex) {
-        const index = Math.max(1, Math.min(getReportDeckPlanMaxItems('slide10'), Number.parseInt(String(slotIndex || ''), 10) || 1));
+        const index = normalizeReportDeckPositiveIndex(slotIndex);
         return {
             team: normalizeReportDeckOverviewTeam(state[`slide10Item${index}Team`]),
             title: String(state[`slide10Item${index}Title`] || '').trim(),
@@ -1008,14 +1151,39 @@
         };
     }
 
-    function formatReportDeckSlide10OverviewText(entry = {}) {
-        if (!entry.effect && !entry.date && !entry.amount) return String(entry.text || '');
+    function getReportDeckSlide10OverviewLines(entry = {}) {
+        const title = String(entry.title || '').trim();
+        if (!title && !entry.effect && !entry.date && !entry.amount) {
+            return { title: '', meta: '', text: String(entry.text || '') };
+        }
         const parts = [];
         if (entry.date) parts.push(formatReportDeckOverviewDate(entry.date));
         const amountText = formatReportDeckOverviewAmount(entry.amount);
         parts.push(amountText ? `${amountText} 소요` : REPORT_DECK_SLIDE10_SELF_HANDLED_AMOUNT_LABEL);
         if (entry.effect) parts.push(`${entry.effect} 예방`);
-        return parts.length ? parts.join(', ') : String(entry.text || '');
+        const meta = parts.join(', ');
+        return {
+            title,
+            meta,
+            text: [title, meta].filter(Boolean).join('\n') || String(entry.text || '')
+        };
+    }
+
+    function formatReportDeckSlide10OverviewText(entry = {}) {
+        return getReportDeckSlide10OverviewLines(entry).text;
+    }
+
+    function renderReportDeckSlide10OverviewSummaryHtml(entry = {}) {
+        const lines = getReportDeckSlide10OverviewLines(entry);
+        if (lines.title || lines.meta) {
+            return [
+                lines.title ? `<span class="report-safety-summary-title">${escapeReportDeckHtml(lines.title)}</span>` : '',
+                lines.meta ? `<span class="report-safety-summary-meta">${escapeReportDeckHtml(lines.meta)}</span>` : ''
+            ].filter(Boolean).join('');
+        }
+        return lines.text
+            ? `<span class="report-safety-summary-meta">${escapeReportDeckHtml(lines.text)}</span>`
+            : '';
     }
 
     function hasReportDeckSlide10OverviewData(entry = {}) {
@@ -1032,7 +1200,7 @@
     }
 
     function setReportDeckSlide10OverviewEntry(state, slotIndex, entry = {}) {
-        const index = Math.max(1, Math.min(getReportDeckPlanMaxItems('slide10'), Number.parseInt(String(slotIndex || ''), 10) || 1));
+        const index = normalizeReportDeckPositiveIndex(slotIndex);
         const normalizedEntry = {
             team: normalizeReportDeckOverviewTeam(entry.team),
             title: String(entry.title || '').trim(),
@@ -1051,6 +1219,110 @@
         state[`slide10Item${index}Text`] = formatReportDeckSlide10OverviewText(normalizedEntry);
         state[`slide10BeforeImage${index}`] = normalizedEntry.beforeImage;
         state[`slide10AfterImage${index}`] = normalizedEntry.afterImage;
+    }
+
+    function parseReportDeckSlide10DeletedSlotBackups(value) {
+        const raw = String(value || '').trim();
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (error) {
+            void error;
+            return [];
+        }
+    }
+
+    function normalizeReportDeckSlide10DeletedSlotBackup(backup = {}) {
+        if (!backup || typeof backup !== 'object') return null;
+        const sourceEntry = backup.entry && typeof backup.entry === 'object' ? backup.entry : backup;
+        const entry = {
+            team: normalizeReportDeckOverviewTeam(sourceEntry.team),
+            title: String(sourceEntry.title || '').trim(),
+            effect: normalizeReportDeckSlide10Hazard(sourceEntry.effect) || String(sourceEntry.effect || '').trim(),
+            date: normalizeReportDeckOverviewDate(sourceEntry.date),
+            amount: normalizeReportDeckOverviewAmount(sourceEntry.amount),
+            text: String(sourceEntry.text || ''),
+            beforeImage: String(sourceEntry.beforeImage || ''),
+            afterImage: String(sourceEntry.afterImage || '')
+        };
+        if (!hasReportDeckSlide10OverviewData(entry)) return null;
+        return {
+            slotIndex: normalizeReportDeckPositiveIndex(backup.slotIndex || backup.sourceIndex || sourceEntry.originalIndex),
+            deletedAt: String(backup.deletedAt || ''),
+            entry
+        };
+    }
+
+    function getReportDeckSlide10DeletedSlotBackups(state = {}) {
+        return parseReportDeckSlide10DeletedSlotBackups(state.slide10DeletedSlotBackups)
+            .map(normalizeReportDeckSlide10DeletedSlotBackup)
+            .filter(Boolean);
+    }
+
+    function setReportDeckSlide10DeletedSlotBackups(state = {}, backups = []) {
+        const normalized = (Array.isArray(backups) ? backups : [])
+            .map(normalizeReportDeckSlide10DeletedSlotBackup)
+            .filter(Boolean)
+            .slice(-REPORT_DECK_SLIDE10_DELETE_BACKUP_LIMIT);
+        state.slide10DeletedSlotBackups = normalized.length ? JSON.stringify(normalized) : '';
+        return normalized;
+    }
+
+    function hasReportDeckSlide10DeletedSlotBackups(state = {}) {
+        return getReportDeckSlide10DeletedSlotBackups(state).length > 0;
+    }
+
+    function pushReportDeckSlide10DeletedSlotBackup(state = {}, slotIndex = 0) {
+        const index = normalizeReportDeckPositiveIndex(slotIndex);
+        const entry = getReportDeckSlide10OverviewEntry(state, index);
+        if (!hasReportDeckSlide10OverviewData(entry)) return false;
+        const backup = {
+            slotIndex: index,
+            deletedAt: new Date().toISOString(),
+            entry: {
+                team: entry.team,
+                title: entry.title,
+                effect: entry.effect,
+                date: entry.date,
+                amount: entry.amount,
+                text: entry.text,
+                beforeImage: entry.beforeImage,
+                afterImage: entry.afterImage
+            }
+        };
+        setReportDeckSlide10DeletedSlotBackups(state, [
+            ...getReportDeckSlide10DeletedSlotBackups(state),
+            backup
+        ]);
+        return true;
+    }
+
+    function popReportDeckSlide10DeletedSlotBackup(state = {}) {
+        const backups = getReportDeckSlide10DeletedSlotBackups(state);
+        const backup = backups.pop() || null;
+        setReportDeckSlide10DeletedSlotBackups(state, backups);
+        return backup;
+    }
+
+    function getReportDeckSlide10RestoreSlotIndex(state = {}, preferredIndex = 0) {
+        const preferred = normalizeReportDeckPositiveIndex(preferredIndex);
+        if (!hasReportDeckSlide10OverviewData(getReportDeckSlide10OverviewEntry(state, preferred))) return preferred;
+        const maxIndex = Math.max(getReportDeckSlide10StorageMaxIndex(state), preferred, REPORT_DECK_SLIDE10_BASE_SLOT_COUNT);
+        for (let index = 1; index <= maxIndex + 1; index += 1) {
+            if (!hasReportDeckSlide10OverviewData(getReportDeckSlide10OverviewEntry(state, index))) return index;
+        }
+        return maxIndex + 1;
+    }
+
+    function restoreReportDeckSlide10OverviewEntry(state = {}, slotIndex = 0, entry = {}) {
+        const index = normalizeReportDeckPositiveIndex(slotIndex);
+        setReportDeckSlide10OverviewEntry(state, index, entry);
+        if (String(entry.text || '').trim()) {
+            state[`slide10Item${index}Text`] = String(entry.text || '');
+        }
+        recomputeReportDeckSlide10SlotCount(state);
+        return index;
     }
 
     function getReportDeckPlanOverviewEntry(state, slideKey, slotIndex) {
@@ -1082,7 +1354,7 @@
     }
 
     function hasReportDeckSlide10Content(state = {}) {
-        return Array.from({ length: getReportDeckPlanMaxItems('slide10') }, (_, index) => index + 1)
+        return Array.from({ length: getReportDeckSlide10StorageMaxIndex(state) }, (_, index) => index + 1)
             .some(index => hasReportDeckSlide10OverviewData(getReportDeckSlide10OverviewEntry(state, index)));
     }
 
@@ -1113,7 +1385,7 @@
 
     function recomputeReportDeckSlide10SlotCount(state = {}) {
         let highestIndex = 0;
-        for (let index = 1; index <= getReportDeckPlanMaxItems('slide10'); index += 1) {
+        for (let index = 1; index <= getReportDeckSlide10StorageMaxIndex(state); index += 1) {
             if (hasReportDeckSlide10OverviewData(getReportDeckSlide10OverviewEntry(state, index))) {
                 highestIndex = index;
             }
@@ -1123,100 +1395,212 @@
         return highestIndex;
     }
 
+    function getReportDeckSlide10RowIndexForSourceIndex(sourceIndex = 0) {
+        const index = Math.max(1, Number.parseInt(String(sourceIndex || '1'), 10) || 1);
+        const rowIndex = Math.floor((index - 1) / REPORT_DECK_SLIDE10_COLUMNS_PER_ROW);
+        return Math.max(0, Math.min(REPORT_DECK_SLIDE10_TEAM_ROWS.length - 1, rowIndex));
+    }
+
+    function getReportDeckSlide10DefaultTeamForSourceIndex(sourceIndex = 0) {
+        return REPORT_DECK_SLIDE10_TEAM_ROWS[getReportDeckSlide10RowIndexForSourceIndex(sourceIndex)] || '';
+    }
+
+    function ensureReportDeckSlide10TeamForSourceIndex(state = {}, sourceIndex = 0) {
+        const index = normalizeReportDeckPositiveIndex(sourceIndex);
+        const teamKey = `slide10Item${index}Team`;
+        if (normalizeReportDeckOverviewTeam(state[teamKey])) return false;
+        const team = getReportDeckSlide10DefaultTeamForSourceIndex(index);
+        if (!team) return false;
+        state[teamKey] = team;
+        return true;
+    }
+
+    function getReportDeckSlide10ImageSourceIndex(key = '') {
+        const match = String(key || '').trim().match(/^slide10(?:Before|After)Image(\d+)$/);
+        return match ? Number.parseInt(match[1], 10) : 0;
+    }
+
+    function clearReportDeckSlide10TeamIfImageOnly(state = {}, sourceIndex = 0) {
+        const index = normalizeReportDeckPositiveIndex(sourceIndex);
+        const entry = getReportDeckSlide10OverviewEntry(state, index);
+        if (
+            entry.team
+            && !entry.title
+            && !entry.effect
+            && !entry.date
+            && !entry.amount
+            && !String(entry.text || '').trim()
+            && !entry.beforeImage
+            && !entry.afterImage
+        ) {
+            state[`slide10Item${index}Team`] = '';
+            return true;
+        }
+        return false;
+    }
+
     function normalizeReportDeckSlide10OverviewOrder(state) {
         if (!state || typeof state !== 'object' || state.__slide10OverviewSorting === true) return;
         state.__slide10OverviewSorting = true;
         try {
-            const maxItems = getReportDeckPlanMaxItems('slide10');
-            const entries = Array.from({ length: maxItems }, (_, index) => getReportDeckSlide10OverviewEntry(state, index + 1));
-            const orderedEntries = entries
-                .filter(hasReportDeckSlide10OverviewData)
-                .sort((left, right) => {
-                    const orderDelta = getReportDeckOverviewTeamOrder(left.team) - getReportDeckOverviewTeamOrder(right.team);
-                    return orderDelta || left.originalIndex - right.originalIndex;
-                });
-            const blankEntries = Array.from({ length: maxItems - orderedEntries.length }, (_, index) => ({
-                originalIndex: orderedEntries.length + index + 1
-            }));
-            [...orderedEntries, ...blankEntries].forEach((entry, index) => {
-                setReportDeckSlide10OverviewEntry(state, index + 1, entry);
-            });
+            const maxItems = getReportDeckSlide10StorageMaxIndex(state);
+            for (let index = 1; index <= maxItems; index += 1) {
+                const entry = getReportDeckSlide10OverviewEntry(state, index);
+                if ((entry.beforeImage || entry.afterImage) && !entry.team) {
+                    ensureReportDeckSlide10TeamForSourceIndex(state, index);
+                }
+            }
             recomputeReportDeckSlide10SlotCount(state);
         } finally {
             delete state.__slide10OverviewSorting;
         }
     }
 
-    function buildReportDeckSlide10Rows(state = {}, options = {}) {
-        const includeEmpty = options.includeEmpty !== false;
-        const maxItems = getReportDeckPlanMaxItems('slide10');
-        const filledEntries = Array.from({ length: maxItems }, (_, index) => getReportDeckSlide10OverviewEntry(state, index + 1))
+    function getReportDeckSlide10FilledEntries(state = {}) {
+        return Array.from({ length: getReportDeckSlide10StorageMaxIndex(state) }, (_, index) => getReportDeckSlide10OverviewEntry(state, index + 1))
             .filter(hasReportDeckSlide10OverviewData)
-            .sort((left, right) => {
-                const orderDelta = getReportDeckOverviewTeamOrder(left.team) - getReportDeckOverviewTeamOrder(right.team);
-                return orderDelta || left.originalIndex - right.originalIndex;
-            });
+            .map(entry => ({
+                ...entry,
+                team: entry.team || getReportDeckSlide10DefaultTeamForSourceIndex(entry.originalIndex)
+            }))
+            .sort(compareReportDeckOverviewEntries);
+    }
+
+    function getReportDeckSlide10RowSizes(count = 0) {
+        const total = Math.max(0, Number.parseInt(String(count || '0'), 10) || 0);
+        if (total <= 0) return [];
+        const rowCount = Math.max(1, Math.ceil(total / REPORT_DECK_SLIDE10_COLUMNS_PER_ROW));
+        const baseSize = Math.floor(total / rowCount);
+        const extraCount = total % rowCount;
+        return Array.from({ length: rowCount }, (_, index) => baseSize + (index < extraCount ? 1 : 0));
+    }
+
+    function buildReportDeckSlide10RowObjects(state = {}, options = {}) {
+        const includeEmpty = options.includeEmpty !== false;
+        const filledEntries = getReportDeckSlide10FilledEntries(state);
+        const hasFilledEntries = filledEntries.length > 0;
         const rows = [];
-        const groupedEntries = new Map();
-        filledEntries.forEach(entry => {
-            const key = normalizeReportDeckOverviewTeam(entry.team) || '__blank__';
-            if (!groupedEntries.has(key)) groupedEntries.set(key, []);
-            groupedEntries.get(key).push(entry);
-        });
-        [...REPORT_DECK_SLIDE8_OVERVIEW_TEAMS, '__blank__'].forEach(team => {
-            const entries = groupedEntries.get(team) || [];
-            for (let index = 0; index < entries.length; index += REPORT_DECK_SLIDE10_COLUMNS_PER_ROW) {
-                const chunk = entries.slice(index, index + REPORT_DECK_SLIDE10_COLUMNS_PER_ROW);
-                rows.push(chunk.map(entry => entry.originalIndex));
+        REPORT_DECK_SLIDE10_TEAM_ROWS.forEach(team => {
+            const teamEntries = filledEntries.filter(entry => entry.team === team);
+            if (!teamEntries.length) {
+                if (includeEmpty && !hasFilledEntries) rows.push({ team, sourceIndexes: [] });
+                return;
             }
+            let offset = 0;
+            getReportDeckSlide10RowSizes(teamEntries.length).forEach(size => {
+                const sourceIndexes = teamEntries.slice(offset, offset + size).map(entry => entry.originalIndex);
+                rows.push({ team, sourceIndexes });
+                offset += size;
+            });
         });
-        if (includeEmpty) {
-            const usedIndexes = new Set(rows.flat().filter(Boolean));
-            const emptyIndexes = Array.from({ length: maxItems }, (_, index) => index + 1)
-                .filter(index => !usedIndexes.has(index));
-            while (rows.length < REPORT_DECK_SLIDE10_PAGE_COUNT * 2) {
-                rows.push(emptyIndexes.splice(0, REPORT_DECK_SLIDE10_COLUMNS_PER_ROW));
-            }
-        }
-        return rows.map(row => Array.from({ length: REPORT_DECK_SLIDE10_COLUMNS_PER_ROW }, (_, index) => row[index] || 0));
+        return rows;
+    }
+
+    function buildReportDeckSlide10Rows(state = {}, options = {}) {
+        return buildReportDeckSlide10RowObjects(state, options)
+            .map(row => Array.from({ length: REPORT_DECK_SLIDE10_COLUMNS_PER_ROW }, (_, index) => row.sourceIndexes[index] || 0));
+    }
+
+    function getReportDeckSlide10RequiredPageCount(state = {}, options = {}) {
+        const rowCount = buildReportDeckSlide10RowObjects(state, { includeEmpty: options.includeEmpty !== false }).length;
+        return Math.max(1, Math.ceil(rowCount / REPORT_DECK_SLIDE10_ROWS_PER_PAGE));
     }
 
     function getReportDeckSlide10PageRows(state = {}, pageIndex = 0, options = {}) {
         const page = Math.max(0, Number.parseInt(String(pageIndex || '0'), 10) || 0);
         const rows = buildReportDeckSlide10Rows(state, options);
-        const start = page * 2;
-        return rows.slice(start, start + 2);
+        const start = page * REPORT_DECK_SLIDE10_ROWS_PER_PAGE;
+        return rows.slice(start, start + REPORT_DECK_SLIDE10_ROWS_PER_PAGE);
+    }
+
+    function getReportDeckSlide10PageRow(state = {}, pageIndex = 0, rowIndex = 0, options = {}) {
+        const page = Math.max(0, Number.parseInt(String(pageIndex || '0'), 10) || 0);
+        const row = Math.max(0, Number.parseInt(String(rowIndex || '0'), 10) || 0);
+        const rows = buildReportDeckSlide10RowObjects(state, { includeEmpty: options.includeEmpty !== false });
+        return rows[page * REPORT_DECK_SLIDE10_ROWS_PER_PAGE + row] || { team: '', sourceIndexes: [] };
     }
 
     function getReportDeckSlide10DefaultTeamForPageRow(pageIndex = 0, rowIndex = 0) {
         const page = Math.max(0, Number.parseInt(String(pageIndex || '0'), 10) || 0);
         const row = Math.max(0, Number.parseInt(String(rowIndex || '0'), 10) || 0);
-        return REPORT_DECK_SLIDE10_TEAM_ROWS[page * 2 + row] || '';
+        return REPORT_DECK_SLIDE10_TEAM_ROWS[(page * REPORT_DECK_SLIDE10_ROWS_PER_PAGE + row) % REPORT_DECK_SLIDE10_TEAM_ROWS.length] || '';
+    }
+
+    function normalizeReportDeckSlide10SourceRowIndex(value = 0) {
+        const rowIndex = Number.parseInt(String(value ?? '0'), 10);
+        if (!Number.isInteger(rowIndex)) return 0;
+        return Math.max(0, Math.min(REPORT_DECK_SLIDE10_TEAM_ROWS.length - 1, rowIndex));
+    }
+
+    function getReportDeckSlide10NextSlotIndexForTeam(state = {}) {
+        const maxIndex = getReportDeckSlide10StorageMaxIndex(state);
+        for (let index = 1; index <= maxIndex + 1; index += 1) {
+            if (!hasReportDeckSlide10OverviewData(getReportDeckSlide10OverviewEntry(state, index))) return index;
+        }
+        return maxIndex + 1;
+    }
+
+    function getReportDeckSafetyAddControl(target) {
+        return target?.closest?.('[data-report-safety-add-control]') || null;
+    }
+
+    function setReportDeckSafetyTeamPickerOpen(control, open) {
+        if (!control?.dataset) return false;
+        const isOpen = open === true;
+        control.dataset.reportSafetyTeamPickerOpen = isOpen ? 'true' : 'false';
+        const menu = control.querySelector?.('[data-report-safety-team-menu]');
+        if (menu) menu.hidden = !isOpen;
+        return true;
+    }
+
+    function closeReportDeckSafetyTeamPickers(root) {
+        Array.from(root?.querySelectorAll?.('[data-report-safety-add-control]') || []).forEach(control => {
+            setReportDeckSafetyTeamPickerOpen(control, false);
+        });
+    }
+
+    function toggleReportDeckSafetyTeamPicker(root, target) {
+        const control = getReportDeckSafetyAddControl(target) || root?.querySelector?.('[data-report-safety-add-control]');
+        if (!control) return false;
+        const shouldOpen = control.dataset?.reportSafetyTeamPickerOpen !== 'true';
+        closeReportDeckSafetyTeamPickers(root);
+        setReportDeckSafetyTeamPickerOpen(control, shouldOpen);
+        if (shouldOpen) {
+            const option = control.querySelector?.('[data-report-safety-team-option]');
+            option?.focus?.();
+        }
+        return true;
+    }
+
+    function getReportDeckSafetyTeamSelectForTarget(root, target) {
+        return getReportDeckSafetyAddControl(target)?.querySelector?.('[data-report-safety-team-select]')
+            || root?.querySelector?.('[data-report-safety-team-select]')
+            || null;
+    }
+
+    function getReportDeckSlide10AddRowIndex(root, target) {
+        const explicitRowIndex = String(target?.dataset?.reportPlanRowSourceIndex || '').trim();
+        if (explicitRowIndex) return normalizeReportDeckSlide10SourceRowIndex(explicitRowIndex);
+        const teamSelect = getReportDeckSafetyTeamSelectForTarget(root, target);
+        return normalizeReportDeckSlide10SourceRowIndex(teamSelect?.value);
+    }
+
+    function getReportDeckSlide10AddTeam(root, target) {
+        return REPORT_DECK_SLIDE10_TEAM_ROWS[getReportDeckSlide10AddRowIndex(root, target)] || REPORT_DECK_SLIDE10_TEAM_ROWS[0] || '';
     }
 
     function getReportDeckSlide10TeamForSourceIndex(state = {}, sourceIndex = 0) {
         const targetIndex = Number.parseInt(String(sourceIndex || ''), 10);
         if (!Number.isInteger(targetIndex) || targetIndex < 1) return REPORT_DECK_SLIDE10_TEAM_ROWS[0] || '';
-        const rows = buildReportDeckSlide10Rows(state, { includeEmpty: true });
-        for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
-            const row = rows[rowIndex] || [];
-            if (!row.includes(targetIndex)) continue;
-            const teamEntry = row
-                .map(index => (index ? getReportDeckSlide10OverviewEntry(state, index) : null))
-                .find(entry => entry && entry.team);
-            if (teamEntry?.team) return teamEntry.team;
-            return REPORT_DECK_SLIDE10_TEAM_ROWS[rowIndex] || REPORT_DECK_SLIDE10_TEAM_ROWS[0] || '';
-        }
-        return REPORT_DECK_SLIDE10_TEAM_ROWS[Math.floor((targetIndex - 1) / REPORT_DECK_SLIDE10_COLUMNS_PER_ROW)]
-            || REPORT_DECK_SLIDE10_TEAM_ROWS[0]
-            || '';
+        const entry = getReportDeckSlide10OverviewEntry(state, targetIndex);
+        return entry.team || getReportDeckSlide10DefaultTeamForSourceIndex(targetIndex) || REPORT_DECK_SLIDE10_TEAM_ROWS[0] || '';
     }
 
-    function getReportDeckSlide10SourceIndexForLocalSlot(state = {}, pageIndex = 0, localSlotIndex = 1) {
+    function getReportDeckSlide10SourceIndexForLocalSlot(state = {}, pageIndex = 0, localSlotIndex = 1, options = {}) {
         const localIndex = Math.max(1, Number.parseInt(String(localSlotIndex || '1'), 10) || 1);
         const rowIndex = Math.floor((localIndex - 1) / REPORT_DECK_SLIDE10_COLUMNS_PER_ROW);
         const columnIndex = (localIndex - 1) % REPORT_DECK_SLIDE10_COLUMNS_PER_ROW;
-        const row = getReportDeckSlide10PageRows(state, pageIndex, { includeEmpty: true })[rowIndex] || [];
+        const row = getReportDeckSlide10PageRows(state, pageIndex, { includeEmpty: options.includeEmpty !== false })[rowIndex] || [];
         return row[columnIndex] || 0;
     }
 
@@ -1237,7 +1621,7 @@
     }
 
     function isReportDeckSlide10OverviewKey(key = '') {
-        return /^slide10Item(?:[1-9]|1[0-6])Text$/.test(String(key || '').trim());
+        return /^slide10Item\d+Text$/.test(String(key || '').trim());
     }
 
     function isReportDeckPlainObject(value) {
@@ -1337,6 +1721,8 @@
         Object.keys(source).forEach(key => {
             if (isReportDeckPlanImageSourceKey(key)) {
                 normalizedState[key] = normalizeReportDeckPlanImageSource(source[key]);
+            } else if (isReportDeckSlide10PayloadKey(key) && !Object.prototype.hasOwnProperty.call(normalizedState, key)) {
+                normalizedState[key] = String(source[key] || '');
             }
         });
         return normalizedState;
@@ -1445,11 +1831,51 @@
         return 'is-flat';
     }
 
-    function getReportDeckMemoSegmentClass(segmentText = '') {
-        const text = String(segmentText || '');
-        if (text.includes('↑') || text.includes('▲')) return 'is-up';
-        if (text.includes('↓') || text.includes('▼')) return 'is-down';
+    function getReportDeckMemoArrowClass(arrowText = '') {
+        const text = String(arrowText || '');
+        if (text === '↑' || text === '▲') return 'is-up';
+        if (text === '↓' || text === '▼') return 'is-down';
         return 'is-flat';
+    }
+
+    function getReportDeckMemoNextValueEnd(text = '', startIndex = 0) {
+        const match = String(text || '').slice(startIndex).match(/^\s*[+-]?(?:\d[\d,]*(?:\.\d+)?|\d*\.\d+)(?:\s*(?:%p|%|백만원|만원|원|㎥|m3|kWh|kg|톤|일|건|개|시간|h))?/i);
+        return match ? startIndex + match[0].length : startIndex;
+    }
+
+    function getReportDeckMemoChangeStart(text = '', cursor = 0, arrowIndex = 0) {
+        const before = String(text || '').slice(cursor, arrowIndex);
+        const numericTail = before.match(/([+-]?(?:\d[\d,]*(?:\.\d+)?|\d*\.\d+)(?:\s*(?:%p|%|백만원|만원|원|㎥|m3|kWh|kg|톤|일|건|개|시간|h))?(?:\s*,\s*[+-]?(?:\d[\d,]*(?:\.\d+)?|\d*\.\d+)(?:\s*(?:%p|%|백만원|만원|원|㎥|m3|kWh|kg|톤|일|건|개|시간|h))?)?\s*)$/i);
+        return numericTail ? arrowIndex - numericTail[1].length : arrowIndex;
+    }
+
+    function renderReportDeckMemoValueHtml(valueText = '', options = {}) {
+        const text = String(valueText || '');
+        const arrowPattern = /[↑▲↓▼]/g;
+        const parts = [];
+        let cursor = 0;
+        let match = arrowPattern.exec(text);
+        while (match) {
+            const arrow = match[0];
+            const arrowIndex = match.index;
+            let changeStart = options.highlightFromSegmentStart ? cursor : getReportDeckMemoChangeStart(text, cursor, arrowIndex);
+            let changeEnd = arrowIndex + arrow.length;
+            if (!text.slice(changeStart, arrowIndex).trim()) {
+                changeStart = arrowIndex;
+                changeEnd = getReportDeckMemoNextValueEnd(text, changeEnd) || changeEnd;
+            }
+            if (changeStart > cursor) {
+                parts.push(escapeReportDeckHtml(text.slice(cursor, changeStart)));
+            }
+            parts.push(`<span class="report-auto-memo-change ${getReportDeckMemoArrowClass(arrow)}">${escapeReportDeckHtml(text.slice(changeStart, changeEnd))}</span>`);
+            cursor = changeEnd;
+            arrowPattern.lastIndex = cursor;
+            match = arrowPattern.exec(text);
+        }
+        if (cursor < text.length) {
+            parts.push(escapeReportDeckHtml(text.slice(cursor)));
+        }
+        return parts.join('');
     }
 
     function findReportDeckMemoBasisIndex(text = '', startIndex = 0) {
@@ -1464,7 +1890,7 @@
         const text = String(lineText || '');
         let cursor = 0;
         let basisIndex = findReportDeckMemoBasisIndex(text, 0);
-        if (basisIndex < 0) return escapeReportDeckHtml(text);
+        if (basisIndex < 0) return renderReportDeckMemoValueHtml(text);
 
         const parts = [];
         while (basisIndex >= 0) {
@@ -1484,12 +1910,10 @@
                 parts.push(`<span class="report-auto-memo-basis">${escapeReportDeckHtml(basisMatch[1])}</span>`);
                 const valueText = `${basisMatch[2] || ''}${basisMatch[3] || ''}`;
                 if (valueText) {
-                    const segmentClass = getReportDeckMemoSegmentClass(valueText);
-                    parts.push(`<span class="report-auto-memo-delta ${segmentClass}">${escapeReportDeckHtml(valueText)}</span>`);
+                    parts.push(`<span class="report-auto-memo-delta">${renderReportDeckMemoValueHtml(valueText, { highlightFromSegmentStart: true })}</span>`);
                 }
             } else {
-                const segmentClass = getReportDeckMemoSegmentClass(segmentText);
-                parts.push(`<span class="report-auto-memo-segment ${segmentClass}">${escapeReportDeckHtml(segmentText)}</span>`);
+                parts.push(`<span class="report-auto-memo-segment">${renderReportDeckMemoValueHtml(segmentText)}</span>`);
             }
             if (separatorText) {
                 parts.push(escapeReportDeckHtml(separatorText));
@@ -1842,6 +2266,22 @@
         return true;
     }
 
+    function moveReportDeckMemoLine(root, state, meta, dialog, key, fromIndex, direction = '') {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
+        const lines = getReportDeckMemoLines(state[normalizedKey]);
+        if (!Number.isInteger(fromIndex) || fromIndex < 0 || fromIndex >= lines.length) return false;
+        const normalizedDirection = String(direction || '').trim().toLowerCase();
+        const offset = normalizedDirection === 'up' ? -1 : normalizedDirection === 'down' ? 1 : 0;
+        if (!offset) return false;
+        const toIndex = fromIndex + offset;
+        if (toIndex < 0 || toIndex >= lines.length) return false;
+        if (toIndex === fromIndex) return false;
+        const [line] = lines.splice(fromIndex, 1);
+        lines.splice(toIndex, 0, line);
+        return setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, lines);
+    }
+
     function appendReportDeckMemoLines(root, state, meta, dialog, key, addedLines = []) {
         const normalizedKey = String(key || '').trim();
         if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
@@ -1869,7 +2309,11 @@
         list.innerHTML = lines.map((line, index) => (
             `<div class="report-memo-line-row" data-report-memo-line-row="${index}">`
                 + `<textarea class="report-memo-line-input ${getReportDeckMemoLineClass(line)}" data-report-memo-line-input="${index}" rows="2" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1}">${escapeReportDeckHtml(line)}</textarea>`
-                + `<button type="button" data-report-memo-delete-line="${index}">삭제</button>`
+                + '<span class="report-memo-line-actions">'
+                    + `<button type="button" data-report-memo-move-line="${index}" data-report-memo-move-direction="up" ${index <= 0 ? 'disabled' : ''} title="&#50948;&#47196;" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1} &#50948;&#47196;">&#9650;</button>`
+                    + `<button type="button" data-report-memo-move-line="${index}" data-report-memo-move-direction="down" ${index >= lines.length - 1 ? 'disabled' : ''} title="&#50500;&#47000;&#47196;" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1} &#50500;&#47000;&#47196;">&#9660;</button>`
+                    + `<button type="button" data-report-memo-delete-line="${index}">삭제</button>`
+                + '</span>'
             + '</div>'
         )).join('');
     }
@@ -1975,6 +2419,7 @@
     function normalizeReportDeckPlanItemCount(value, slideKey = '') {
         const count = Number.parseInt(String(value || ''), 10);
         if (!Number.isInteger(count)) return 0;
+        if (normalizeReportDeckPlanSlideKey(slideKey) === 'slide10') return Math.max(0, count);
         return Math.max(0, Math.min(getReportDeckPlanMaxItems(slideKey), count));
     }
 
@@ -2046,11 +2491,11 @@
         syncReportDeckPlanImageAttachmentState(root);
     }
 
-    function buildReportDeckPlanPageCounts(totalCount, slideKey = '') {
+    function buildReportDeckPlanPageCounts(totalCount, slideKey = '', state = {}) {
         const normalizedSlideKey = normalizeReportDeckPlanSlideKey(slideKey);
         const total = normalizeReportDeckPlanItemCount(totalCount, normalizedSlideKey);
         if (normalizedSlideKey === 'slide10') {
-            return Array.from({ length: REPORT_DECK_SLIDE10_PAGE_COUNT }, () => REPORT_DECK_SLIDE10_SLOTS_PER_PAGE);
+            return Array.from({ length: getReportDeckSlide10RequiredPageCount(state) }, () => REPORT_DECK_SLIDE10_SLOTS_PER_PAGE);
         }
         if (total <= 0) return [0];
         if (total <= 4) return [total];
@@ -2083,15 +2528,68 @@
         });
     }
 
+    function getReportDeckSlide10PageSlides(root) {
+        return Array.from(root?.querySelectorAll?.('[data-report-dynamic-slide="slide10"]') || [])
+            .sort((left, right) => (
+                (Number.parseInt(String(left?.dataset?.reportDynamicPage || '0'), 10) || 0)
+                - (Number.parseInt(String(right?.dataset?.reportDynamicPage || '0'), 10) || 0)
+            ));
+    }
+
+    function configureReportDeckSlide10Page(slide, pageIndex = 0) {
+        if (!slide?.dataset) return;
+        slide.dataset.reportDynamicPage = String(pageIndex);
+        slide.dataset.reportOptionalPage = 'slide10';
+        slide.dataset.reportSlideLabel = '자율 안전 신고제';
+        const layout = slide.querySelector?.('[data-report-plan-slide="slide10"]');
+        if (layout?.dataset) layout.dataset.reportPlanPage = String(pageIndex);
+        Array.from(slide.querySelectorAll?.('[data-report-safety-row]') || []).forEach((table, rowIndex) => {
+            if (table?.dataset) table.dataset.reportSafetyRow = String(rowIndex);
+            Array.from(table.querySelectorAll?.('[data-report-plan-row-team]') || []).forEach(label => {
+                label.dataset.reportPlanRowIndex = String(rowIndex);
+            });
+        });
+    }
+
+    function ensureReportDeckSlide10PageCapacity(root, state = {}) {
+        const targetPageCount = getReportDeckSlide10RequiredPageCount(state);
+        const slides = getReportDeckSlide10PageSlides(root);
+        const template = slides[slides.length - 1] || null;
+        const parent = template?.parentNode || null;
+        if (template?.cloneNode && parent?.insertBefore) {
+            while (slides.length < targetPageCount) {
+                const clone = template.cloneNode(true);
+                configureReportDeckSlide10Page(clone, slides.length);
+                clone.hidden = true;
+                parent.insertBefore(clone, slides[slides.length - 1]?.nextSibling || null);
+                slides.push(clone);
+            }
+        }
+        slides.forEach((slide, index) => {
+            configureReportDeckSlide10Page(slide, index);
+            slide.hidden = index >= targetPageCount;
+        });
+    }
+
+    function syncReportDeckDeleteUndoControls(root, state) {
+        const canRestore = root?.dataset?.reportEditMode === 'editing'
+            && hasReportDeckSlide10DeletedSlotBackups(state);
+        Array.from(root?.querySelectorAll?.('[data-report-undo-delete]') || []).forEach(button => {
+            button.disabled = !canRestore;
+            button.title = canRestore ? '마지막 삭제 칸 복구' : '복구할 삭제 칸 없음';
+        });
+    }
+
     function syncReportDeckPlanControls(root, state) {
         syncReportDeckOptionalPageControls(root, state);
+        ensureReportDeckSlide10PageCapacity(root, state);
         Array.from(root?.querySelectorAll?.('[data-report-plan-slide]') || []).forEach(slide => {
             const slideKey = normalizeReportDeckPlanSlideKey(slide.dataset.reportPlanSlide);
             if (!slideKey) return;
             const pageIndex = Math.max(0, Number.parseInt(String(slide.dataset.reportPlanPage || '0'), 10) || 0);
             const totalCount = normalizeReportDeckPlanItemCount(state[`${slideKey}SlotCount`], slideKey);
             state[`${slideKey}SlotCount`] = String(totalCount);
-            const pageCounts = buildReportDeckPlanPageCounts(totalCount, slideKey);
+            const pageCounts = buildReportDeckPlanPageCounts(totalCount, slideKey, state);
             const pageCount = pageCounts[pageIndex] || 0;
             const displayCount = slideKey === 'slide10'
                 ? REPORT_DECK_SLIDE10_SLOTS_PER_PAGE
@@ -2110,19 +2608,32 @@
             }
             const getSourceIndex = localSlotIndex => (
                 slideKey === 'slide10'
-                    ? getReportDeckSlide10SourceIndexForLocalSlot(state, pageIndex, localSlotIndex)
+                    ? getReportDeckSlide10SourceIndexForLocalSlot(state, pageIndex, localSlotIndex, { includeEmpty: true })
                     : pageStart + localSlotIndex - 1
             );
             const isFilledSourceIndex = sourceIndex => (
                 slideKey === 'slide10'
                     ? sourceIndex >= 1 && hasReportDeckSlide10OverviewData(getReportDeckSlide10OverviewEntry(state, sourceIndex))
                     : sourceIndex >= 1
+                        && sourceIndex <= getReportDeckPlanMaxItems(slideKey)
+                        && hasReportDeckPlanOverviewData(state, slideKey, sourceIndex)
             );
+            const filledSlotCount = Array.from({ length: displayCount }, (_, index) => getSourceIndex(index + 1))
+                .filter(sourceIndex => sourceIndex >= 1 && isFilledSourceIndex(sourceIndex))
+                .length;
             const slidePage = slide.closest?.('[data-report-slide-page]');
             if (slidePage) {
-                slidePage.hidden = slideKey === 'slide10' ? false : pageIndex > 0 && pageCount <= 0;
+                slidePage.hidden = slideKey === 'slide10'
+                    ? pageIndex >= getReportDeckSlide10RequiredPageCount(state)
+                    : pageIndex > 0 && pageCount <= 0;
             }
             slide.dataset.reportPlanSlotCount = String(displayCount);
+            slide.dataset.reportPlanFilledSlotCount = String(filledSlotCount);
+            if (slideKey === 'slide10') {
+                slide.dataset.reportPlanActiveSlotCount = String(filledSlotCount);
+            } else {
+                delete slide.dataset.reportPlanActiveSlotCount;
+            }
             Array.from(slide.querySelectorAll?.('[data-report-plan-slot]') || []).forEach(cell => {
                 const localSlotIndex = Number.parseInt(String(cell.dataset.reportPlanLocalSlot || '').trim(), 10);
                 const sourceIndex = getSourceIndex(localSlotIndex);
@@ -2148,7 +2659,12 @@
                 const filled = active && isFilledSourceIndex(sourceIndex);
                 summary.dataset.reportPlanSourceSlot = active ? String(sourceIndex) : '';
                 summary.dataset.reportPlanFilled = filled ? 'true' : 'false';
-                summary.textContent = active ? String(state[`${slideKey}Item${sourceIndex}Text`] || '') : '';
+                if (slideKey === 'slide10') {
+                    const entry = active ? getReportDeckSlide10OverviewEntry(state, sourceIndex) : {};
+                    summary.innerHTML = active ? renderReportDeckSlide10OverviewSummaryHtml(entry) : '';
+                } else {
+                    summary.textContent = active ? String(state[`${slideKey}Item${sourceIndex}Text`] || '') : '';
+                }
                 if (summary.dataset.reportSlide8Overview !== undefined) {
                     summary.dataset.reportSlide8Overview = active ? String(sourceIndex) : '';
                 }
@@ -2165,15 +2681,43 @@
             if (slideKey === 'slide10') {
                 Array.from(slide.querySelectorAll?.('[data-report-plan-row-team]') || []).forEach(label => {
                     const rowIndex = Math.max(0, Number.parseInt(String(label.dataset.reportPlanRowIndex || '0'), 10) || 0);
-                    const sourceIndexes = slide10PageRows[rowIndex] || [];
+                    const row = getReportDeckSlide10PageRow(state, pageIndex, rowIndex, { includeEmpty: true });
+                    const sourceIndexes = slide10PageRows[rowIndex] || row.sourceIndexes || [];
                     const teamEntry = sourceIndexes
                         .map(index => (index ? getReportDeckSlide10OverviewEntry(state, index) : null))
                         .find(entry => entry && entry.team);
-                    const rowFilled = sourceIndexes.some(index => index && hasReportDeckSlide10OverviewData(getReportDeckSlide10OverviewEntry(state, index)));
-                    label.textContent = teamEntry?.team || getReportDeckSlide10DefaultTeamForPageRow(pageIndex, rowIndex);
+                    const rowFilledSlotCount = sourceIndexes
+                        .filter(index => index && hasReportDeckSlide10OverviewData(getReportDeckSlide10OverviewEntry(state, index)))
+                        .length;
+                    const rowFilled = rowFilledSlotCount > 0;
+                    const teamText = teamEntry?.team || row.team || (hasReportDeckSlide10Content(state) ? '' : getReportDeckSlide10DefaultTeamForPageRow(pageIndex, rowIndex));
+                    const labelText = label.querySelector?.('[data-report-plan-row-team-label]');
+                    if (labelText) {
+                        labelText.textContent = teamText;
+                    } else {
+                        label.textContent = teamText;
+                    }
                     label.dataset.reportPlanRowFilled = rowFilled ? 'true' : 'false';
+                    label.dataset.reportPlanRowActiveSlotCount = String(rowFilledSlotCount);
                     const table = label.closest?.('.report-safety-table');
-                    if (table?.dataset) table.dataset.reportPlanRowFilled = rowFilled ? 'true' : 'false';
+                    if (table?.dataset) {
+                        table.dataset.reportPlanRowFilled = rowFilled ? 'true' : 'false';
+                        table.dataset.reportPlanRowFilledSlotCount = String(rowFilledSlotCount);
+                        table.dataset.reportPlanRowActiveSlotCount = String(rowFilledSlotCount);
+                    }
+                    const addButton = label.querySelector?.('[data-report-plan-add-slot="slide10"]');
+                    if (addButton) {
+                        addButton.disabled = root?.dataset?.reportEditMode !== 'editing';
+                    }
+                });
+                Array.from(slide.querySelectorAll?.('[data-report-safety-team-select]') || []).forEach(select => {
+                    select.disabled = root?.dataset?.reportEditMode !== 'editing';
+                });
+                Array.from(slide.querySelectorAll?.('[data-report-safety-add-toggle]') || []).forEach(button => {
+                    button.disabled = root?.dataset?.reportEditMode !== 'editing';
+                });
+                Array.from(slide.querySelectorAll?.('[data-report-safety-team-option]') || []).forEach(button => {
+                    button.disabled = root?.dataset?.reportEditMode !== 'editing';
                 });
             }
             Array.from(slide.querySelectorAll?.('[data-report-plan-delete-slot]') || []).forEach(button => {
@@ -2186,15 +2730,19 @@
                 button.disabled = !active;
             });
             Array.from(slide.querySelectorAll?.('[data-report-plan-add-slot]') || []).forEach(button => {
-                button.disabled = slideKey === 'slide10' || totalCount >= getReportDeckPlanMaxItems(slideKey);
+                if (slideKey === 'slide10') {
+                    button.disabled = root?.dataset?.reportEditMode !== 'editing';
+                    return;
+                }
+                button.disabled = totalCount >= getReportDeckPlanMaxItems(slideKey);
             });
         });
 
         Array.from(root?.querySelectorAll?.('[data-report-plan-image]') || []).forEach(image => {
             const role = String(image.dataset.reportPlanImageRole || '').trim();
             const sourceIndex = Number.parseInt(String(image.dataset.reportPlanSourceSlot || image.closest?.('[data-report-plan-slot]')?.dataset.reportPlanSourceSlot || '').trim(), 10);
-            const key = role && Number.isInteger(sourceIndex) && sourceIndex >= 1
-                ? `${role}${sourceIndex}`
+            const key = role
+                ? (Number.isInteger(sourceIndex) && sourceIndex >= 1 ? `${role}${sourceIndex}` : '')
                 : String(image.dataset.reportPlanImage || '').trim();
             const value = key ? String(state[key] || '') : '';
             image.dataset.reportPlanImage = key;
@@ -2225,6 +2773,7 @@
             }
         });
         syncReportDeckPlanImageModeHints(root);
+        syncReportDeckDeleteUndoControls(root, state);
         syncReportDeckDynamicSlides(root);
     }
 
@@ -2313,8 +2862,11 @@
 
     function getReportDeckOverviewSlot(root, slotToken, state = {}, slideKey = 'slide8') {
         const normalizedSlideKey = normalizeReportDeckPlanSlideKey(slideKey) || 'slide8';
-        const maxItems = getReportDeckPlanMaxItems(normalizedSlideKey);
+        const maxItems = normalizedSlideKey === 'slide10'
+            ? Math.max(getReportDeckSlide10StorageMaxIndex(state), REPORT_DECK_SLIDE10_BASE_SLOT_COUNT)
+            : getReportDeckPlanMaxItems(normalizedSlideKey);
         const directSlot = Number.parseInt(String(slotToken || ''), 10);
+        if (normalizedSlideKey === 'slide10' && Number.isInteger(directSlot) && directSlot >= 1) return directSlot;
         if (Number.isInteger(directSlot) && directSlot >= 1 && directSlot <= maxItems) return directSlot;
         const activeCount = normalizeReportDeckPlanItemCount(state[`${normalizedSlideKey}SlotCount`], normalizedSlideKey);
         const emptySlot = Array.from({ length: maxItems }, (_, index) => index + 1).find(index => (
@@ -2348,18 +2900,24 @@
             row.hidden = String(row.dataset.reportOverviewMode || '') !== formMode;
         });
         Array.from(dialog.querySelectorAll?.('[data-report-overview-title-row]') || []).forEach(row => {
-            row.hidden = normalizedSlideKey === 'slide10';
+            row.hidden = false;
         });
         Array.from(dialog.querySelectorAll?.('[data-report-overview-team-row]') || []).forEach(row => {
             row.hidden = normalizedSlideKey === 'slide10';
         });
         const dateLabel = dialog.querySelector?.('[data-report-overview-date-label]');
         if (dateLabel) dateLabel.textContent = normalizedSlideKey === 'slide10' ? '날짜' : (normalizedSlideKey === 'slide9' ? '예상 날짜' : '완료 날짜');
+        const dateField = getReportDeckOverviewDialogField(dialog, 'date');
+        if (dateField) {
+            const dateInputType = normalizedSlideKey === 'slide9' ? 'month' : 'date';
+            dateField.type = dateInputType;
+            dateField.setAttribute?.('type', dateInputType);
+        }
         const amountLabel = dialog.querySelector?.('[data-report-overview-amount-label]');
         if (amountLabel) amountLabel.textContent = normalizedSlideKey === 'slide10' ? '비용' : (normalizedSlideKey === 'slide9' ? '예상 금액' : '금액');
     }
 
-    function openReportDeckOverviewDialog(root, state, slotToken, slideKey = 'slide8') {
+    function openReportDeckOverviewDialog(root, state, slotToken, slideKey = 'slide8', options = {}) {
         const dialog = getReportDeckOverviewDialog(root);
         if (!dialog) return false;
         const normalizedSlideKey = normalizeReportDeckPlanSlideKey(slideKey) || 'slide8';
@@ -2375,18 +2933,20 @@
         const dateField = getReportDeckOverviewDialogField(dialog, 'date');
         const amountField = getReportDeckOverviewDialogField(dialog, 'amount');
         const defaultTeam = normalizedSlideKey === 'slide10'
-            ? getReportDeckSlide10TeamForSourceIndex(state, slotIndex)
+            ? (normalizeReportDeckOverviewTeam(options.defaultTeam) || getReportDeckSlide10TeamForSourceIndex(state, slotIndex))
             : REPORT_DECK_SLIDE8_OVERVIEW_TEAMS[0];
         if (teamField) teamField.value = entry.team || defaultTeam;
         if (titleField) titleField.value = entry.title || '';
         if (effectField) effectField.value = entry.effect || '';
         if (hazardField) hazardField.value = normalizeReportDeckSlide10Hazard(entry.effect) || REPORT_DECK_SLIDE10_HAZARD_OPTIONS[0];
         if (detailField) detailField.value = entry.detail || '';
-        if (dateField) dateField.value = entry.date || '';
+        if (dateField) dateField.value = normalizedSlideKey === 'slide9'
+            ? normalizeReportDeckOverviewMonth(entry.date)
+            : (entry.date || '');
         if (amountField) amountField.value = entry.amount || '';
         setReportDeckOverviewKindControls(dialog, entry.kind || 'cause');
         dialog.hidden = false;
-        (normalizedSlideKey === 'slide10' ? dateField : titleField)?.focus?.();
+        titleField?.focus?.();
         return true;
     }
 
@@ -2419,13 +2979,15 @@
         const entry = {
             ...current,
             team: getReportDeckOverviewDialogField(dialog, 'team')?.value || '',
-            title: slideKey === 'slide10' ? '' : (getReportDeckOverviewDialogField(dialog, 'title')?.value || ''),
+            title: getReportDeckOverviewDialogField(dialog, 'title')?.value || '',
             effect: slideKey === 'slide10'
                 ? (getReportDeckOverviewDialogField(dialog, 'hazard')?.value || '')
                 : (getReportDeckOverviewDialogField(dialog, 'effect')?.value || ''),
             kind: getReportDeckOverviewDialogField(dialog, 'kind')?.value || 'cause',
             detail: slideKey === 'slide10' ? '' : (getReportDeckOverviewDialogField(dialog, 'detail')?.value || ''),
-            date: getReportDeckOverviewDialogField(dialog, 'date')?.value || '',
+            date: slideKey === 'slide9'
+                ? normalizeReportDeckPlanExpectedDateValue(getReportDeckOverviewDialogField(dialog, 'date')?.value || '')
+                : (getReportDeckOverviewDialogField(dialog, 'date')?.value || ''),
             amount: normalizedAmount
         };
         setReportDeckPlanOverviewEntry(state, slideKey, slotIndex, entry);
@@ -2465,7 +3027,7 @@
         if (!normalizedSlideKey) return false;
         const countKey = `${normalizedSlideKey}SlotCount`;
         if (normalizedSlideKey === 'slide10') {
-            const targetIndex = Math.max(1, Math.min(getReportDeckPlanMaxItems('slide10'), Number.parseInt(String(slotIndex || ''), 10) || 1));
+            const targetIndex = normalizeReportDeckPositiveIndex(slotIndex);
             setReportDeckSlide10OverviewEntry(state, targetIndex, {});
             recomputeReportDeckSlide10SlotCount(state);
             return true;
@@ -2489,6 +3051,9 @@
     function deleteReportDeckPlanSlot(root, state, meta, slideKey = '', slotIndex = '') {
         const normalizedSlideKey = normalizeReportDeckPlanSlideKey(slideKey);
         if (!normalizedSlideKey) return false;
+        if (normalizedSlideKey === 'slide10') {
+            pushReportDeckSlide10DeletedSlotBackup(state, slotIndex);
+        }
         const deleted = clearReportDeckPlanSlot(state, normalizedSlideKey, slotIndex);
         if (!deleted) return false;
         closeReportDeckOverviewDialog(root);
@@ -2498,12 +3063,45 @@
         return true;
     }
 
-    function addReportDeckPlanSlot(root, state, meta, slideKey = '') {
+    function restoreReportDeckDeletedPlanSlot(root, state, meta) {
+        const backup = popReportDeckSlide10DeletedSlotBackup(state);
+        if (!backup) {
+            syncReportDeckDeleteUndoControls(root, state);
+            setReportDeckStatus(root, 'idle', '');
+            return false;
+        }
+        const slotIndex = getReportDeckSlide10RestoreSlotIndex(state, backup.slotIndex);
+        restoreReportDeckSlide10OverviewEntry(state, slotIndex, backup.entry);
+        closeReportDeckOverviewDialog(root);
+        syncReportDeckFields(root, state, meta);
+        syncReportDeckPlanControls(root, state);
+        markReportDeckDirty(root, state, meta);
+        setReportDeckView(root, 'public-works', Math.max(0, getReportDeckVisibleSlides(root, 'public-works').length - 1));
+        return true;
+    }
+
+    function addReportDeckPlanSlot(root, state, meta, slideKey = '', options = {}) {
         const normalizedSlideKey = normalizeReportDeckPlanSlideKey(slideKey);
         if (!normalizedSlideKey) return false;
         const countKey = `${normalizedSlideKey}SlotCount`;
         const maxItems = getReportDeckPlanMaxItems(normalizedSlideKey);
         const currentCount = normalizeReportDeckPlanItemCount(state[countKey], normalizedSlideKey);
+        if (normalizedSlideKey === 'slide10') {
+            const selectedTeam = normalizeReportDeckOverviewTeam(options.team) || REPORT_DECK_SLIDE10_TEAM_ROWS[normalizeReportDeckSlide10SourceRowIndex(options.rowIndex)] || REPORT_DECK_SLIDE10_TEAM_ROWS[0] || '';
+            const nextSlotIndex = getReportDeckSlide10NextSlotIndexForTeam(state, selectedTeam);
+            if (!nextSlotIndex) {
+                setReportDeckStatus(root, 'error', '칸 추가가 불가능합니다');
+                return false;
+            }
+            state.slide10Enabled = 'true';
+            state.slide10SlotCount = String(Math.max(currentCount, nextSlotIndex));
+            syncReportDeckPlanControls(root, state);
+            markReportDeckDirty(root, state, meta);
+            openReportDeckOverviewDialog(root, state, String(nextSlotIndex), normalizedSlideKey, {
+                defaultTeam: selectedTeam
+            });
+            return true;
+        }
         if (currentCount >= maxItems) {
             setReportDeckStatus(root, 'error', `최대 ${maxItems}칸까지 추가할 수 있습니다`);
             return false;
@@ -2517,7 +3115,6 @@
             return false;
         }
         const nextCount = currentCount + 1;
-        if (normalizedSlideKey === 'slide10') state.slide10Enabled = 'true';
         state[countKey] = String(nextCount);
         syncReportDeckPlanControls(root, state);
         markReportDeckDirty(root, state, meta);
@@ -4069,9 +4666,24 @@
         Array.from(root?.querySelectorAll?.('[data-report-plan-add-slot]') || []).forEach(input => {
             input.disabled = !isEditing;
         });
+        Array.from(root?.querySelectorAll?.('[data-report-safety-team-select]') || []).forEach(input => {
+            input.disabled = !isEditing;
+        });
+        Array.from(root?.querySelectorAll?.('[data-report-safety-add-toggle]') || []).forEach(button => {
+            button.disabled = !isEditing;
+        });
+        Array.from(root?.querySelectorAll?.('[data-report-safety-team-option]') || []).forEach(button => {
+            button.disabled = !isEditing;
+        });
         Array.from(root?.querySelectorAll?.('[data-report-add-page]') || []).forEach(button => {
             button.disabled = String(button.dataset.reportAddPage || '').trim() === 'slide10' || !isEditing;
         });
+        if (!isEditing) {
+            closeReportDeckSafetyTeamPickers(root);
+            Array.from(root?.querySelectorAll?.('[data-report-undo-delete]') || []).forEach(button => {
+                button.disabled = true;
+            });
+        }
         syncReportDeckPlanImageModeHints(root);
         if (!isEditing) {
             setReportDeckActivePlanImageFrame(root, null);
@@ -4169,6 +4781,25 @@
         });
     }
 
+    function ensureReportDeckSlideNavCapacity(root, targetCount = 0) {
+        const nav = root?.querySelector?.('.report-slide-nav');
+        if (!nav?.querySelectorAll || !nav?.appendChild) return;
+        const buttons = Array.from(nav.querySelectorAll('[data-report-slide-target]') || []);
+        const template = buttons[buttons.length - 1] || null;
+        if (!template?.cloneNode) return;
+        while (buttons.length < targetCount) {
+            const clone = template.cloneNode(true);
+            clone.hidden = true;
+            clone.dataset.reportSlideTarget = '-1';
+            const number = clone.querySelector?.('span');
+            const label = clone.querySelector?.('strong');
+            if (number) number.textContent = String(buttons.length + 1).padStart(2, '0');
+            if (label) label.textContent = '';
+            nav.appendChild(clone);
+            buttons.push(clone);
+        }
+    }
+
     function syncReportDeckDynamicSlides(root) {
         const slides = Array.from(root?.querySelectorAll?.('[data-report-slide-page]') || []);
         const visibleSlides = slides.filter(slide => slide.hidden !== true);
@@ -4212,8 +4843,9 @@
             });
         }
 
-        const buttons = Array.from(root?.querySelectorAll?.('[data-report-slide-target]') || []);
         const activeView = getReportDeckActiveView(root);
+        ensureReportDeckSlideNavCapacity(root, getReportDeckVisibleSlides(root, activeView).length);
+        const buttons = Array.from(root?.querySelectorAll?.('[data-report-slide-target]') || []);
         root.dataset.reportActiveView = activeView;
         syncReportDeckReturnControls(root, activeView);
         const activeSlides = getReportDeckVisibleSlides(root, activeView);
@@ -4331,8 +4963,45 @@
         });
     }
 
+    function getReportDeckOutputOptionalPages(printSlides = []) {
+        const includedPages = new Set();
+        printSlides.forEach(slide => {
+            const optionalPageKey = String(slide?.dataset?.reportOptionalPage || '').trim();
+            if (REPORT_DECK_OPTIONAL_SECTION_ORDER.includes(optionalPageKey)) {
+                includedPages.add(optionalPageKey);
+            }
+        });
+        return includedPages;
+    }
+
+    function syncReportDeckOutputOptionalSectionFields(root, state = {}, printSlides = []) {
+        const outputOptionalPages = getReportDeckOutputOptionalPages(printSlides);
+        const fieldValues = buildReportDeckOptionalSectionFields(
+            root?.dataset?.reportMonth || '',
+            getReportDeckOptionalSectionNumbers(state, outputOptionalPages)
+        );
+        Object.entries(fieldValues).forEach(([key, value]) => {
+            Array.from(root?.querySelectorAll?.(`[data-report-field="${key}"]`) || []).forEach(field => {
+                field.textContent = value || '';
+            });
+            Array.from(root?.querySelectorAll?.(`[data-report-field-ref="${key}"]`) || []).forEach(field => {
+                field.textContent = value || '';
+            });
+        });
+        return outputOptionalPages;
+    }
+
+    function syncReportDeckOutputOptionalContents(root, visibility = {}) {
+        Array.from(root?.querySelectorAll?.('[data-report-optional-content]') || []).forEach(element => {
+            const optionalKey = String(element?.dataset?.reportOptionalContent || '').trim();
+            if (!Object.prototype.hasOwnProperty.call(visibility, optionalKey)) return;
+            element.hidden = visibility[optionalKey] !== true;
+        });
+    }
+
     function prepareReportDeckPdfPrint(root, state = {}) {
         syncReportDeckFields(root, state, { selectedMonth: root?.dataset?.reportMonth || '' });
+        syncReportDeckPlanControls(root, state);
         syncReportDeckDynamicSlides(root);
         const activeView = getReportDeckActiveView(root);
         const candidateSlides = activeView === REPORT_DECK_DEFAULT_VIEW
@@ -4344,9 +5013,16 @@
         const lastPrintSlide = printSlides[printSlides.length - 1] || null;
         root.dataset.reportPrintMode = 'true';
         root.dataset.reportPrintView = activeView === REPORT_DECK_DEFAULT_VIEW ? 'all' : activeView;
-        root.dataset.reportPrintSlide8Visible = hasReportDeckOptionalContent(state, 'slide8') ? 'true' : 'false';
-        root.dataset.reportPrintSlide9Visible = hasReportDeckOptionalContent(state, 'slide9') ? 'true' : 'false';
-        root.dataset.reportPrintSlide10Visible = hasReportDeckOptionalContent(state, 'slide10') ? 'true' : 'false';
+        const outputOptionalPages = syncReportDeckOutputOptionalSectionFields(root, state, printSlides);
+        const optionalVisibility = {
+            slide8: outputOptionalPages.has('slide8'),
+            slide9: outputOptionalPages.has('slide9'),
+            slide10: outputOptionalPages.has('slide10')
+        };
+        root.dataset.reportPrintSlide8Visible = optionalVisibility.slide8 ? 'true' : 'false';
+        root.dataset.reportPrintSlide9Visible = optionalVisibility.slide9 ? 'true' : 'false';
+        root.dataset.reportPrintSlide10Visible = optionalVisibility.slide10 ? 'true' : 'false';
+        syncReportDeckOutputOptionalContents(root, optionalVisibility);
         setReportDeckOutputPageNumbers(root, printSlides);
         Array.from(root?.querySelectorAll?.('[data-report-slide-page]') || []).forEach(slide => {
             const printable = printSlideSet.has(slide);
@@ -4557,7 +5233,9 @@
             if (sourceKey && sourceValue) {
                 state[sourceKey] = sourceValue;
             }
-            if (/^slide10(?:Before|After)Image\d+$/.test(key)) {
+            const slide10ImageIndex = getReportDeckSlide10ImageSourceIndex(key);
+            if (slide10ImageIndex) {
+                ensureReportDeckSlide10TeamForSourceIndex(state, slide10ImageIndex);
                 recomputeReportDeckSlide10SlotCount(state);
             }
             syncReportDeckPlanControls(root, state);
@@ -4580,7 +5258,9 @@
         const normalizedKey = String(key || '').trim();
         if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
         state[normalizedKey] = '';
-        if (/^slide10(?:Before|After)Image\d+$/.test(normalizedKey)) {
+        const slide10ImageIndex = getReportDeckSlide10ImageSourceIndex(normalizedKey);
+        if (slide10ImageIndex) {
+            clearReportDeckSlide10TeamIfImageOnly(state, slide10ImageIndex);
             recomputeReportDeckSlide10SlotCount(state);
         }
         return true;
@@ -4764,6 +5444,7 @@
                     void completeReportDeckEdit(root, state, meta);
                 } else {
                     setReportDeckEditMode(root, true);
+                    syncReportDeckPlanControls(root, state);
                     setReportDeckStatus(root, meta.dirty ? 'dirty' : 'idle', meta.dirty ? '저장 필요' : '');
                 }
                 return;
@@ -4875,6 +5556,16 @@
                 return;
             }
 
+            const memoLineMoveButton = event.target?.closest?.('[data-report-memo-move-line]');
+            if (memoLineMoveButton && root.dataset.reportEditMode === 'editing') {
+                event.preventDefault();
+                const dialog = getReportDeckMemoDialog(root);
+                const key = getReportDeckMemoDialogTargetKey(dialog);
+                const index = Number.parseInt(String(memoLineMoveButton.dataset.reportMemoMoveLine || ''), 10);
+                moveReportDeckMemoLine(root, state, meta, dialog, key, index, memoLineMoveButton.dataset.reportMemoMoveDirection);
+                return;
+            }
+
             const memoLineDeleteButton = event.target?.closest?.('[data-report-memo-delete-line]');
             if (memoLineDeleteButton && root.dataset.reportEditMode === 'editing') {
                 event.preventDefault();
@@ -4961,10 +5652,42 @@
                 return;
             }
 
+            const undoDeleteButton = event.target?.closest?.('[data-report-undo-delete]');
+            if (undoDeleteButton && root.dataset.reportEditMode === 'editing') {
+                event.preventDefault();
+                restoreReportDeckDeletedPlanSlot(root, state, meta);
+                return;
+            }
+
+            const safetyAddToggle = event.target?.closest?.('[data-report-safety-add-toggle]');
+            if (safetyAddToggle && root.dataset.reportEditMode === 'editing') {
+                event.preventDefault();
+                toggleReportDeckSafetyTeamPicker(root, safetyAddToggle);
+                return;
+            }
+
+            const safetyTeamOption = event.target?.closest?.('[data-report-safety-team-option]');
+            if (safetyTeamOption && root.dataset.reportEditMode === 'editing') {
+                event.preventDefault();
+                const control = getReportDeckSafetyAddControl(safetyTeamOption);
+                const rowIndex = normalizeReportDeckSlide10SourceRowIndex(safetyTeamOption.dataset.reportSafetyTeamOption);
+                const select = control?.querySelector?.('[data-report-safety-team-select]');
+                if (select) select.value = String(rowIndex);
+                closeReportDeckSafetyTeamPickers(root);
+                addReportDeckPlanSlot(root, state, meta, 'slide10', {
+                    rowIndex,
+                    team: REPORT_DECK_SLIDE10_TEAM_ROWS[rowIndex] || ''
+                });
+                return;
+            }
+
             const addSlotButton = event.target?.closest?.('[data-report-plan-add-slot]');
             if (addSlotButton && root.dataset.reportEditMode === 'editing') {
                 event.preventDefault();
-                addReportDeckPlanSlot(root, state, meta, addSlotButton.dataset.reportPlanAddSlot);
+                addReportDeckPlanSlot(root, state, meta, addSlotButton.dataset.reportPlanAddSlot, {
+                    rowIndex: getReportDeckSlide10AddRowIndex(root, addSlotButton),
+                    team: getReportDeckSlide10AddTeam(root, addSlotButton)
+                });
                 return;
             }
 
@@ -5146,6 +5869,11 @@
                     syncReportDeckPlanControls(root, state);
                     markReportDeckDirty(root, state, meta);
                 }
+                return;
+            }
+            const safetyTeamSelect = event.target?.closest?.('[data-report-safety-team-select]');
+            if (safetyTeamSelect) {
+                syncReportDeckPlanControls(root, state);
                 return;
             }
             const planSummary = event.target?.closest?.('[data-report-plan-summary]');

@@ -27,10 +27,8 @@ function Get-EnvFilePaths {
   param([string]$ServerDir)
 
   $candidatePaths = @(
-    (Join-Path $ServerDir '.env.local-experiment'),
     (Join-Path $ServerDir '.env.production.local'),
     (Join-Path $ServerDir '.env.development.local'),
-    (Join-Path $ServerDir '.env.local-experiment'),
     (Join-Path $ServerDir '.env')
   )
 
@@ -142,7 +140,7 @@ $databaseUrl = if ($env:KPI_DATABASE_URL) {
   Get-EnvFileValue -ServerDir $serverDir -Key 'KPI_DATABASE_URL'
 }
 if ([string]::IsNullOrWhiteSpace($databaseUrl)) {
-  $databaseUrl = 'postgresql://postgres:postgres@127.0.0.1:5432/postgres'
+  $databaseUrl = 'postgresql://postgres:postgres@127.0.0.1:5434/postgres'
 }
 
 $storageRootValue = if ($env:KPI_STORAGE_ROOT) {

@@ -305,15 +305,6 @@
         function refreshUtilAuthorityDerivedViews() {
             const scope = document;
             try {
-                const renderer = utilDataSyncBrowser?.getRenderUtilDualTabs?.()
-                    || (typeof renderUtilDualTabs === 'function' ? renderUtilDualTabs : null);
-                if (renderer) {
-                    renderer(scope);
-                }
-            } catch (error) {
-                console.error('Failed to refresh utility tabs after authority sync.', error);
-            }
-            try {
                 if (typeof refreshUtilViewsAfterDataMutation === 'function') {
                     refreshUtilViewsAfterDataMutation(scope);
                 }

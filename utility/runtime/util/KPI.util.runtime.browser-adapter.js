@@ -27,6 +27,8 @@
         operation_rate: Object.freeze({ key: 'operation_rate', label: '가동률', unit: '%p', deltaMode: 'percentagePoint' }),
         work_time: Object.freeze({ key: 'work_time', label: '조업시간', unit: '시간', decimals: 1 }),
         operation_time: Object.freeze({ key: 'operation_time', label: '가동시간', unit: '시간', decimals: 1 }),
+        rework_production: Object.freeze({ key: 'rework_production', label: '재가공품 생산량', unit: 'kg' }),
+        rework_production_share: Object.freeze({ key: 'rework_production_share', label: '재가공품 비율', unit: '%p', deltaMode: 'percentagePoint' }),
         production_days: Object.freeze({ key: 'production_days', label: '생산일수', unit: '일' }),
         off_days: Object.freeze({ key: 'off_days', label: '휴무일수', unit: '일' }),
         product_count: Object.freeze({ key: 'product_count', label: '고유 품목수', unit: '개' }),
@@ -46,6 +48,8 @@
         'operation_rate',
         'work_time',
         'operation_time',
+        'rework_production',
+        'rework_production_share',
         'production_days',
         'off_days',
         'product_count'
@@ -350,7 +354,7 @@
             element.removeAttribute?.('contenteditable');
             element.removeAttribute?.('spellcheck');
         });
-        Array.from(slide?.querySelectorAll?.('.report-plan-image-choice, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear]') || []).forEach(element => {
+        Array.from(slide?.querySelectorAll?.('.report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear]') || []).forEach(element => {
             element.remove?.();
         });
         applyReportDeckPreparedOutputState(slide, sourceSlide, editorRoot);
@@ -456,6 +460,7 @@
             .report-print-viewer .report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; width: ${REPORT_DECK_PRINT_SLIDE_CSS_WIDTH} !important; height: ${REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT} !important; max-width: 100% !important; max-height: 100% !important; aspect-ratio: auto !important; border: 0 !important; box-shadow: none !important; break-after: auto !important; page-break-after: auto !important; overflow: hidden !important; background: #ffffff !important; }
             .report-print-viewer .report-plan-image-choice,
             .report-print-viewer .report-plan-count-control,
+            .report-print-viewer .report-safety-add-control,
             .report-print-viewer .report-slide-date-input,
             .report-print-viewer .report-chart-highlight-controls,
             .report-print-viewer .report-chart-highlight-toggle,
@@ -505,7 +510,7 @@
             html, body { margin: 0 !important; padding: 0 !important; width: ${REPORT_DECK_CAPTURE_SLIDE_WIDTH}px !important; height: ${REPORT_DECK_CAPTURE_SLIDE_HEIGHT}px !important; overflow: hidden !important; background: #ffffff !important; }
             .report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; left: 0 !important; top: 0 !important; width: ${REPORT_DECK_CAPTURE_SLIDE_WIDTH}px !important; height: ${REPORT_DECK_CAPTURE_SLIDE_HEIGHT}px !important; max-width: none !important; min-width: 0 !important; min-height: 0 !important; aspect-ratio: auto !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; transform: none !important; overflow: hidden !important; background: #ffffff !important; }
             .report-slide.is-active { display: block !important; }
-            .report-plan-image-choice, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-export-html] { display: none !important; }
+            .report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-export-html] { display: none !important; }
             [data-report-field] { outline: 0 !important; }
         `;
     }
@@ -734,6 +739,7 @@ ${getNodeOuterHtml(deck)}
             .report-export-viewer .report-slide { width: min(100%, calc(177.777vh - 86px)); max-width: none; border: 0; box-shadow: none; }
             .report-export-viewer .report-plan-image-choice,
             .report-export-viewer .report-plan-count-control,
+            .report-export-viewer .report-safety-add-control,
             .report-export-viewer .report-slide-date-input,
             .report-export-viewer .report-chart-highlight-controls,
             .report-export-viewer .report-chart-highlight-toggle,
@@ -834,7 +840,7 @@ ${getNodeOuterHtml(deck)}
             element.removeAttribute('contenteditable');
             element.removeAttribute('spellcheck');
         });
-        clone.querySelectorAll?.('.report-plan-image-choice, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-memo-overview-toggle]')?.forEach(element => {
+        clone.querySelectorAll?.('.report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-memo-overview-toggle]')?.forEach(element => {
             element.remove();
         });
         return clone;
@@ -846,7 +852,7 @@ ${getNodeOuterHtml(deck)}
         'html, body { margin: 0 !important; padding: 0 !important; width: ' + captureWidth + 'px !important; height: ' + captureHeight + 'px !important; overflow: hidden !important; background: #ffffff !important; }',
         '.report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; left: 0 !important; top: 0 !important; width: ' + captureWidth + 'px !important; height: ' + captureHeight + 'px !important; max-width: none !important; min-width: 0 !important; min-height: 0 !important; aspect-ratio: auto !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; transform: none !important; overflow: hidden !important; background: #ffffff !important; }',
         '.report-slide.is-active { display: block !important; }',
-        '.report-plan-image-choice, .report-plan-count-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-export-html] { display: none !important; }',
+        '.report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-export-html] { display: none !important; }',
         '[data-report-field] { outline: 0 !important; }'
     ].join('\\n');
     const buildCaptureHost = slide => {
@@ -1259,6 +1265,47 @@ ${buildReportDeckExportScript()}
         };
     }
 
+    function hasReportDeckMemoFiniteValue(value) {
+        return toFiniteNumber(value) !== null;
+    }
+
+    function hasReportDeckMemoPositiveValue(value) {
+        const number = toFiniteNumber(value);
+        return number !== null && number > 0;
+    }
+
+    function getReportDeckMemoRow(rowMap, monthKey = '') {
+        const key = String(monthKey || '').trim();
+        return key && rowMap instanceof Map ? rowMap.get(key) || null : null;
+    }
+
+    function hasReportDeckMemoElectricRowData(rowMap, monthKey = '') {
+        const row = getReportDeckMemoRow(rowMap, monthKey);
+        if (!row) return false;
+        return [
+            row.electricUsage,
+            row.electricCost,
+            row.production,
+            row.totalCost,
+            row.electricUnit,
+            row.totalUnit
+        ].some(hasReportDeckMemoPositiveValue);
+    }
+
+    function hasReportDeckMemoWasteRowData(rowMap, monthKey = '') {
+        const row = getReportDeckMemoRow(rowMap, monthKey);
+        if (!row) return false;
+        const detailValues = isPlainObject(row.wasteCostDetails)
+            ? Object.values(row.wasteCostDetails)
+            : [];
+        return [
+            row.wasteUsage,
+            row.wasteCost,
+            row.production,
+            ...detailValues
+        ].some(hasReportDeckMemoPositiveValue);
+    }
+
     function normalizeReportDeckMemoTeamKey(value = '') {
         const key = String(value || '').trim();
         return REPORT_DECK_MEMO_TEAMS.some(team => team.key === key)
@@ -1453,6 +1500,15 @@ ${buildReportDeckExportScript()}
             delta: pair.delta,
             rate: pair.rate
         };
+    }
+
+    function buildReportDeckMemoComparisonSegmentForMonth(metric, basisLabel, monthKey, readValue, hasMonthData, currentValue) {
+        const referenceValue = typeof readValue === 'function' ? readValue(monthKey) : null;
+        const hasReference = typeof hasMonthData === 'function'
+            ? hasMonthData(monthKey, referenceValue)
+            : hasReportDeckMemoFiniteValue(referenceValue);
+        if (!hasReference) return null;
+        return buildReportDeckMemoComparisonSegment(metric, basisLabel, referenceValue, currentValue);
     }
 
     function getReportDeckMemoCombinedDirection(segments = []) {
@@ -1792,6 +1848,7 @@ ${buildReportDeckExportScript()}
                 amount: parseReportDeckProductionAmount(entry?.amount ?? entry?.production ?? entry?.value),
                 dateKey: getReportDeckProductionEntryDateKey(entry),
                 productKey: normalizeReportDeckProductKey(entry?.productName || entry?.product || entry?.itemName || ''),
+                productionKind: normalizeReportDeckProductionKind(entry?.productionKind ?? entry?.production_kind ?? entry?.productionType ?? entry?.production_type ?? entry?.kind),
                 yieldRate: parseReportDeckProductionPercent(entry?.moistureExcludedYield),
                 equipmentCapa: parseReportDeckProductionAmount(entry?.equipmentCapa),
                 operationRate: parseReportDeckProductionPercent(entry?.equipmentUtilization),
@@ -1799,10 +1856,12 @@ ${buildReportDeckExportScript()}
                 operationTime: parseReportDeckProductionAmount(entry?.operationTime ?? entry?.operatingTime ?? entry?.runtime ?? entry?.runTime ?? entry?.operationHours)
             }))
             .filter(item => item.amount !== null && item.amount > 0);
+        const hasEntries = activeEntries.length > 0;
 
         const activeDateSet = new Set(activeEntries.map(item => item.dateKey).filter(Boolean));
         const productSet = new Set(activeEntries.map(item => item.productKey).filter(Boolean));
         let totalAmount = 0;
+        let reworkAmount = 0;
         let totalEquipmentCapa = 0;
         let hasEquipmentCapa = false;
         let yieldSum = 0;
@@ -1818,6 +1877,9 @@ ${buildReportDeckExportScript()}
 
         activeEntries.forEach(item => {
             totalAmount += item.amount;
+            if (item.productionKind === 'rework') {
+                reworkAmount += item.amount;
+            }
             if (item.yieldRate !== null) {
                 yieldSum += item.yieldRate;
                 yieldCount += 1;
@@ -1850,32 +1912,42 @@ ${buildReportDeckExportScript()}
             : null;
 
         return {
-            yieldRate: weightedYieldWeight > 0
+            hasEntries,
+            yieldRate: hasEntries && weightedYieldWeight > 0
                 ? weightedYieldSum / weightedYieldWeight
-                : (yieldCount > 0 ? yieldSum / yieldCount : null),
-            operationRate: hasEquipmentCapa && totalEquipmentCapa > 0
+                : (hasEntries && yieldCount > 0 ? yieldSum / yieldCount : null),
+            operationRate: hasEntries && hasEquipmentCapa && totalEquipmentCapa > 0
                 ? (totalAmount / totalEquipmentCapa) * 100
-                : (operationCount > 0 ? operationSum / operationCount : null),
-            workTime: hasWorkTime ? totalWorkTime : null,
-            operationTime: hasOperationTime ? totalOperationTime : null,
-            productionDays: activeDateSet.size,
-            offDays,
-            productCount: productSet.size
+                : (hasEntries && operationCount > 0 ? operationSum / operationCount : null),
+            workTime: hasEntries && hasWorkTime ? totalWorkTime : null,
+            operationTime: hasEntries && hasOperationTime ? totalOperationTime : null,
+            reworkProduction: hasEntries ? reworkAmount : null,
+            reworkProductionShare: hasEntries && totalAmount > 0 ? (reworkAmount / totalAmount) * 100 : null,
+            productionDays: hasEntries ? activeDateSet.size : null,
+            offDays: hasEntries ? offDays : null,
+            productCount: hasEntries ? productSet.size : null
         };
     }
 
-    function readReportDeckMemoProductionStatValue(monthKey = '', team = {}, metricKey = '', memoBuildCache = null) {
+    function readReportDeckMemoProductionStats(monthKey = '', team = {}, memoBuildCache = null) {
         const cacheKey = `${team.key || team.label || ''}|${monthKey}`;
-        const stats = readReportDeckMemoBuildCache(
+        return readReportDeckMemoBuildCache(
             memoBuildCache,
             'productionStats',
             cacheKey,
             () => buildReportDeckMemoProductionStats(monthKey, team)
         );
+    }
+
+    function readReportDeckMemoProductionStatValue(monthKey = '', team = {}, metricKey = '', memoBuildCache = null) {
+        const stats = readReportDeckMemoProductionStats(monthKey, team, memoBuildCache);
+        if (stats?.hasEntries !== true) return null;
         if (metricKey === 'yield_rate') return toFiniteNumber(stats.yieldRate);
         if (metricKey === 'operation_rate') return toFiniteNumber(stats.operationRate);
         if (metricKey === 'work_time') return toFiniteNumber(stats.workTime);
         if (metricKey === 'operation_time') return toFiniteNumber(stats.operationTime);
+        if (metricKey === 'rework_production') return toFiniteNumber(stats.reworkProduction);
+        if (metricKey === 'rework_production_share') return toFiniteNumber(stats.reworkProductionShare);
         if (metricKey === 'production_days') return toFiniteNumber(stats.productionDays);
         if (metricKey === 'off_days') return toFiniteNumber(stats.offDays);
         if (metricKey === 'product_count') return toFiniteNumber(stats.productCount);
@@ -1925,6 +1997,7 @@ ${buildReportDeckExportScript()}
         const previousYearKey = toReportDeckMonthKey(activeMonthInfo.year - 1, activeMonthInfo.month);
         const currentMonthKey = activeMonthInfo.key;
         let readValue = () => null;
+        let hasComparisonData = (_monthKey, value) => hasReportDeckMemoFiniteValue(value);
         let candidateSubject = team;
         const unitBaseMetricKey = getReportDeckMemoUnitBaseMetricKey(metricKey);
 
@@ -1938,10 +2011,15 @@ ${buildReportDeckExportScript()}
                 memoBuildCache
             );
             readValue = monthKey => toFiniteNumber(lineValueMap.get(monthKey));
+            hasComparisonData = (_monthKey, value) => hasReportDeckMemoPositiveValue(value);
         } else if (metricKey === REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY) {
             readValue = monthKey => getReportDeckMemoYusanProductionShareValue(monthKey, team, gasApi, memoBuildCache);
         } else if (REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS.includes(metricKey)) {
             readValue = monthKey => readReportDeckMemoProductionStatValue(monthKey, team, metricKey, memoBuildCache);
+            hasComparisonData = (monthKey, value) => {
+                const stats = readReportDeckMemoProductionStats(monthKey, team, memoBuildCache);
+                return stats?.hasEntries === true && hasReportDeckMemoFiniteValue(value);
+            };
         } else if (metricKey === 'electric' || metricKey === 'electric_unit') {
             const rows = getReportDeckMemoElectricRows(activeMonthInfo, team, optionApi, electricApi, memoBuildCache);
             const rowMap = new Map((Array.isArray(rows) ? rows : [])
@@ -1950,6 +2028,8 @@ ${buildReportDeckExportScript()}
             readValue = metricKey === 'electric_unit'
                 ? monthKey => getReportDeckMemoElectricUnitValue(rowMap, monthKey, team, gasApi)
                 : monthKey => getReportDeckMemoElectricValue(rowMap, monthKey);
+            hasComparisonData = (monthKey, value) => hasReportDeckMemoElectricRowData(rowMap, monthKey)
+                && hasReportDeckMemoFiniteValue(value);
         } else if (metricKey === 'production') {
             readValue = monthKey => getReportDeckMemoProductionValue(monthKey, team, gasApi, memoBuildCache);
         } else if (metricKey === 'lng' || metricKey === 'lpg' || unitBaseMetricKey === 'lng' || unitBaseMetricKey === 'lpg') {
@@ -1971,13 +2051,16 @@ ${buildReportDeckExportScript()}
                 .filter(([key]) => key));
             candidateSubject = { label: scopeConfig.label };
             readValue = monthKey => readReportDeckMemoWasteValue(wasteRowMap, monthKey, metric);
+            hasComparisonData = (monthKey, value) => hasReportDeckMemoWasteRowData(wasteRowMap, monthKey)
+                && hasReportDeckMemoFiniteValue(value);
         }
 
         const currentValue = readValue(currentMonthKey);
-        const comparisonSegments = [
-            buildReportDeckMemoComparisonSegment(metric, '전월대비', readValue(previousMonthKey), currentValue),
-            buildReportDeckMemoComparisonSegment(metric, '전년대비', readValue(previousYearKey), currentValue)
-        ].filter(Boolean);
+        const hasCurrentData = hasComparisonData(currentMonthKey, currentValue);
+        const comparisonSegments = hasCurrentData ? [
+            buildReportDeckMemoComparisonSegmentForMonth(metric, '전월대비', previousMonthKey, readValue, hasComparisonData, currentValue),
+            buildReportDeckMemoComparisonSegmentForMonth(metric, '전년대비', previousYearKey, readValue, hasComparisonData, currentValue)
+        ].filter(Boolean) : [];
         const candidate = buildReportDeckMemoCandidate(candidateSubject, metric, comparisonSegments);
         const candidates = candidate ? [candidate] : [];
 

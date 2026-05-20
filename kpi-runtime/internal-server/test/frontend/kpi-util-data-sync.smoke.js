@@ -93,7 +93,6 @@ function createDataSyncContext(options = {}) {
     rebuildUtilEntryCollections() {
       rebuildCount += 1;
     },
-    renderUtilDualTabs() {},
     refreshUtilViewsAfterDataMutation() {},
   };
   context.window = context;
@@ -113,6 +112,8 @@ function createDataSyncContext(options = {}) {
       '  syncUtilWasteDataFromMetering,',
       '  normalizeUtilMetricValue,',
       '  parseUtilAmount,',
+      '  parseUtilMonthValue,',
+      '  buildUtilMonthOptions,',
       '};',
     ].join('\n'),
     context,
@@ -215,6 +216,27 @@ test('util data sync fills electric gas and waste production from daily producti
   assert.equal(findDatasetMonthRow(context.__testExports.getElectricData(), 'TeamA', 2026, 4)?.production, 123);
   assert.equal(findDatasetMonthRow(context.__testExports.getGasData(), 'GasTeam', 2026, 4)?.production, 234);
   assert.equal(findDatasetMonthRow(context.__testExports.getWasteData(), 'WasteTeam', 2026, 4)?.production, 345);
+});
+
+test('util data sync production keeps shared month helpers after utility tab removal', () => {
+  const context = createDataSyncContext();
+  const { parseUtilMonthValue, buildUtilMonthOptions } = context.__testExports;
+
+  assert.equal(JSON.stringify(parseUtilMonthValue('2026-04')), JSON.stringify({ year: 2026, month: 4 }));
+  assert.equal(JSON.stringify(parseUtilMonthValue('2026.04')), JSON.stringify({ year: 2026, month: 4 }));
+  assert.equal(parseUtilMonthValue('2026-13'), null);
+  assert.equal(
+    JSON.stringify(buildUtilMonthOptions([
+      { year: 2026, month: 4, usage: 10 },
+      { year: 2026, month: 4, cost: 1200 },
+      { year: 2026, month: 5 },
+      { year: 2026, month: 3, costs: { power: 0 } },
+    ])),
+    JSON.stringify([
+      { value: '2026-03', year: 2026, month: 3, label: '2026-03' },
+      { value: '2026-04', year: 2026, month: 4, label: '2026-04' },
+    ])
+  );
 });
 
 test('util data sync browser adapter loads before data sync runtime', () => {

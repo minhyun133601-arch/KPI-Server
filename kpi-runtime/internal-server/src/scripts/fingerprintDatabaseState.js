@@ -148,9 +148,6 @@ function normalizeRuntimeEnvironment(raw) {
     .toLowerCase();
   if (normalized === 'prod' || normalized === 'production') return 'production';
   if (normalized === 'dev' || normalized === 'development') return 'development';
-  if (normalized === 'local-experiment' || normalized === 'local_experiment' || normalized === 'experiment') {
-    return 'local-experiment';
-  }
   return '';
 }
 
@@ -161,9 +158,6 @@ function getEnvFilePaths(serverDir) {
   }
   if (runtimeEnvironment === 'development') {
     return [path.join(serverDir, '.env.development.local'), path.join(serverDir, '.env')];
-  }
-  if (runtimeEnvironment === 'local-experiment') {
-    return [path.join(serverDir, '.env.local-experiment'), path.join(serverDir, '.env')];
   }
   return [
     path.join(serverDir, '.env.local-experiment'),

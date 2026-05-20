@@ -1,6 +1,6 @@
 param(
   [string]$SourcePath = '..\..\KPI-DB-export.xlsx',
-  [string]$OutputPath = 'var\local-experiment\storage\office-import-baseline\database-fingerprint.json',
+  [string]$OutputPath = 'var\prod\office-import-baseline\database-fingerprint.json',
   [switch]$KeepScratchSchema
 )
 
@@ -31,7 +31,6 @@ function Get-EnvFilePaths {
   $candidatePaths = @(
     (Join-Path $ServerDir '.env.production.local'),
     (Join-Path $ServerDir '.env.development.local'),
-    (Join-Path $ServerDir '.env.local-experiment'),
     (Join-Path $ServerDir '.env')
   )
 
@@ -212,7 +211,7 @@ $databaseUrl = if ($env:KPI_DATABASE_URL) {
   Get-EnvFileValue -ServerDir $serverDir -Key 'KPI_DATABASE_URL'
 }
 if ([string]::IsNullOrWhiteSpace($databaseUrl)) {
-  $databaseUrl = 'postgresql://postgres:postgres@127.0.0.1:5432/postgres'
+  $databaseUrl = 'postgresql://postgres:postgres@127.0.0.1:5434/postgres'
 }
 
 $connection = Convert-DatabaseUrl -DatabaseUrl $databaseUrl
@@ -227,7 +226,7 @@ try {
   $schemaCreated = $true
 
   $env:KPI_DATABASE_URL = Get-SchemaDatabaseUrl -DatabaseUrl $databaseUrl -SchemaName $scratchSchema
-  $env:KPI_RUNTIME_ENV = 'local-experiment'
+  $env:KPI_RUNTIME_ENV = 'production'
 
   Push-Location $serverDir
   try {

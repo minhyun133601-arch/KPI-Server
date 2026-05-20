@@ -27,7 +27,7 @@ function Convert-ToAbsolutePath {
 function Find-DefaultPackagePath {
   $workspaceRoot = (Resolve-Path (Join-Path $serverDir '..\..\..')).Path
   $candidateRoots = @(
-    (Join-Path $serverDir 'var\local-experiment\storage'),
+    (Join-Path $serverDir 'var\prod'),
     (Join-Path $workspaceRoot 'KPI-TRANSFER-KITS'),
     (Join-Path $env:USERPROFILE 'Desktop'),
     (Join-Path $env:USERPROFILE 'Downloads'),
@@ -75,13 +75,13 @@ $resolvedPackagePath = if ($PackagePath) {
 }
 
 if ([string]::IsNullOrWhiteSpace($resolvedPackagePath)) {
-  throw 'PackagePath is required, or place document-storage-package*.zip in KPI-TRANSFER-KITS, Desktop, Downloads, Documents, or var\local-experiment\storage.'
+  throw 'PackagePath is required, or place document-storage-package*.zip in KPI-TRANSFER-KITS, Desktop, Downloads, Documents, or var\prod.'
 }
 if (-not (Test-Path -LiteralPath $resolvedPackagePath -PathType Leaf)) {
   throw "PackagePath not found: $resolvedPackagePath"
 }
 
-$restoreManifestPath = Join-Path $serverDir "var\local-experiment\storage\document-storage-restore-$timestamp.json"
+$restoreManifestPath = Join-Path $serverDir "var\prod\document-storage-restore-$timestamp.json"
 $restoreArgs = @(
   'src/scripts/restoreDocumentStorageFromSource.js',
   "--source=$resolvedPackagePath",
@@ -104,7 +104,7 @@ try {
 
 $verification = $null
 if ($Force -and $restoreResult.exitCode -eq 0) {
-  $verifyManifestPath = Join-Path $serverDir "var\local-experiment\storage\document-storage-verify-$timestamp.json"
+  $verifyManifestPath = Join-Path $serverDir "var\prod\document-storage-verify-$timestamp.json"
   $verifyArgs = @(
     'src/scripts/verifyDocumentStorage.js',
     "--manifest=$verifyManifestPath"

@@ -744,7 +744,7 @@
     } = utilReportSheetModalActions;
     utilReportSheetPanelRuntime.setRuntimeAdapters({
         openUtilSheetReportModal,
-        closeUtilActionMenus
+        closeUtilActionMenus: typeof closeUtilActionMenus === 'function' ? closeUtilActionMenus : null
     });
     utilReportSheetModalShell.setRuntimeAdapters({
         pruneUtilSheetDatasetToggles,

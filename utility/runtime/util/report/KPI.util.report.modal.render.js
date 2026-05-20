@@ -2,6 +2,9 @@
             const modal = ensureUtilReportModal();
             syncUtilReportModalControls(modal);
             const subEl = modal.querySelector('[data-role="util-report-modal-sub"]');
+            const chartShellEl = modal.querySelector('[data-role="util-report-modal-chart-shell"]');
+            const chartEl = modal.querySelector('[data-role="util-report-modal-chart"]');
+            const chartMetaEl = modal.querySelector('[data-role="util-report-modal-chart-meta"]');
             const totalDonutEl = modal.querySelector('[data-role="util-report-modal-total-donut"]');
             const siteDonutEl = modal.querySelector('[data-role="util-report-modal-site-donut"]');
             const selectedDonutEl = modal.querySelector('[data-role="util-report-modal-selected-donut"]');
@@ -10,8 +13,9 @@
             const inlineInsightEl = modal.querySelector('[data-role="util-report-inline-insight"]');
             const inlineInsightBodyEl = modal.querySelector('[data-role="util-report-inline-body"]');
             const isBuilderCustomMode = UtilReportState.builderCustomMode === true;
+            const isOverviewRatioMode = modal.classList.contains('is-overview-ratio');
             modal.classList.toggle('is-builder-custom', isBuilderCustomMode);
-            UtilReportState.chartYear = '';
+            modal.classList.toggle('is-chart-fullscreen', UtilReportState.chartFullscreen === true);
             syncUtilReportInlineInsightState(modal);
 
             if (subEl) {
@@ -21,6 +25,8 @@
             }
 
             if (!result || !Array.isArray(result.rows) || !result.rows.length) {
+                if (chartEl) chartEl.innerHTML = '<div class="util-analytics-chart util-analytics-chart-empty is-modal"><div class="util-analytics-chart-empty-text">표시할 데이터가 없습니다.</div></div>';
+                if (chartMetaEl) chartMetaEl.innerHTML = '';
                 if (totalDonutEl) totalDonutEl.innerHTML = '<div class="text-sm text-slate-300">구성비 데이터가 없습니다.</div>';
                 if (siteDonutEl) {
                     siteDonutEl.classList.remove('is-hidden');
@@ -45,7 +51,19 @@
                     wasteDetailDonutEl.innerHTML = '';
                 }
                 syncUtilReportDetachedTableWindow(result);
+                syncUtilReportChartScrollState(modal);
                 return;
+            }
+
+            if (isOverviewRatioMode) {
+                if (chartEl) chartEl.innerHTML = '';
+                if (chartMetaEl) chartMetaEl.innerHTML = '';
+            } else {
+                renderUtilReportModalChartSection(result, modal, {
+                    chartShellEl,
+                    chartEl,
+                    chartMetaEl
+                }, isBuilderCustomMode);
             }
 
             if (isBuilderCustomMode) {

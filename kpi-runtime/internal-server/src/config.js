@@ -62,9 +62,6 @@ function normalizeRuntimeEnvironment(raw) {
   if (normalized === 'dev' || normalized === 'development') {
     return 'development';
   }
-  if (normalized === 'local-experiment' || normalized === 'local_experiment' || normalized === 'experiment') {
-    return 'local-experiment';
-  }
   return '';
 }
 
@@ -76,14 +73,11 @@ function resolveDefaultEnvFilePath() {
       ? [path.join(projectRoot, '.env.production.local'), path.join(projectRoot, '.env')]
       : runtimeEnvironment === 'development'
         ? [path.join(projectRoot, '.env.development.local'), path.join(projectRoot, '.env')]
-        : runtimeEnvironment === 'local-experiment'
-          ? [path.join(projectRoot, '.env.local-experiment'), path.join(projectRoot, '.env')]
-          : [
-              path.join(projectRoot, '.env.local-experiment'),
-              path.join(projectRoot, '.env.production.local'),
-              path.join(projectRoot, '.env.development.local'),
-              path.join(projectRoot, '.env'),
-            ];
+        : [
+            path.join(projectRoot, '.env.production.local'),
+            path.join(projectRoot, '.env.development.local'),
+            path.join(projectRoot, '.env'),
+          ];
 
   for (const candidatePath of candidatePaths) {
     if (fs.existsSync(candidatePath)) {
@@ -115,8 +109,8 @@ export const config = {
   localSourceRoot: resolveLocalSourceRoot(),
   envFilePath,
   host: process.env.KPI_SERVER_HOST || '127.0.0.1',
-  port: readInt(process.env.KPI_SERVER_PORT, 18080),
-  databaseUrl: process.env.KPI_DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:55432/postgres',
+  port: readInt(process.env.KPI_SERVER_PORT, 3100),
+  databaseUrl: process.env.KPI_DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:5434/postgres',
   authEnabled: readBoolean(process.env.KPI_AUTH_ENABLED),
   loginEnabled: readBoolean(process.env.KPI_LOGIN_ENABLED),
   cookieName: 'kpi_session',

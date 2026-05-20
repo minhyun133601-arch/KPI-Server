@@ -19,6 +19,7 @@
                                 <span class="util-sheet-title-icon is-overview" aria-hidden="true"><i class="fa-solid fa-chart-pie"></i></span>
                                 <div class="util-report-title">총괄 비율</div>
                             </div>
+                            <div class="util-report-desc">원형 그래프와 월별 표를 확인합니다.</div>
                         </div>
                         <div class="util-sheet-actions">
                             <button type="button" class="work-btn primary" data-role="util-report-open-modal"><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>이동</span></button>

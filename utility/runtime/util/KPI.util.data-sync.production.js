@@ -594,6 +594,29 @@
         const UTIL_PRODUCTION_DAILY_DATA = UTIL_PRODUCTION_DAILY_STATE.teams;
         const UTIL_PRODUCTION_ARCHIVE_META = UTIL_PRODUCTION_DAILY_STATE.archives;
 
+        function parseUtilMonthValue(value) {
+            if (value && typeof value === 'object') {
+                const year = Number(value.year);
+                const month = Number(value.month);
+                if (Number.isFinite(year) && Number.isFinite(month) && month >= 1 && month <= 12) {
+                    return { year, month };
+                }
+            }
+            const text = String(value ?? '').trim();
+            if (!text) return null;
+            const match = text.match(/(\d{4})\D{0,3}(\d{1,2})/);
+            if (!match) return null;
+            const year = Number(match[1]);
+            const month = Number(match[2]);
+            if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return null;
+            return { year, month };
+        }
+
+        function formatUtilMonthValue(year, month) {
+            if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return '';
+            return `${year}-${String(month).padStart(2, '0')}`;
+        }
+
         function parseUtilMonthLabel(label) {
             const match = String(label || '').match(/(\d+)/);
             if (!match) return null;
@@ -647,6 +670,30 @@
                 return Object.values(costs).some(value => hasUtilValueInput(value, requireNonZero));
             }
             return false;
+        }
+
+        function buildUtilMonthOptions(entries) {
+            const monthMap = new Map();
+            (Array.isArray(entries) ? entries : []).forEach(entry => {
+                if (!hasUtilEntryPayload(entry)) return;
+                const parsed = parseUtilMonthValue(entry)
+                    || parseUtilMonthValue(entry?.value)
+                    || parseUtilMonthValue(entry?.key)
+                    || parseUtilMonthValue(entry?.monthValue)
+                    || parseUtilMonthValue(entry?.monthKey)
+                    || parseUtilMonthValue(entry?.label);
+                if (!parsed) return;
+                const value = formatUtilMonthValue(parsed.year, parsed.month);
+                if (!value) return;
+                monthMap.set(value, {
+                    value,
+                    year: parsed.year,
+                    month: parsed.month,
+                    label: value
+                });
+            });
+            return Array.from(monthMap.values())
+                .sort((left, right) => (left.year * 100 + left.month) - (right.year * 100 + right.month));
         }
 
         function clampUtilDay(value, fallback = 1) {

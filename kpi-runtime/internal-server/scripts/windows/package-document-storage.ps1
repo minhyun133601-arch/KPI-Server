@@ -14,7 +14,7 @@ $serverDirCandidate = [System.IO.Path]::GetFullPath((Join-Path $scriptRoot '..\.
 $runningFromServerScripts = Test-Path -LiteralPath (Join-Path $serverDirCandidate 'package.json') -PathType Leaf
 $baseDir = if ($runningFromServerScripts) { $serverDirCandidate } else { $scriptRoot }
 $defaultManifestPath = if ($runningFromServerScripts) {
-  Join-Path $baseDir 'var\local-experiment\storage\document-storage-missing-manifest.json'
+  Join-Path $baseDir 'var\prod\document-storage-missing-manifest.json'
 } else {
   Join-Path $baseDir 'document-storage-missing-manifest.json'
 }
@@ -233,7 +233,7 @@ $resolvedSourcePath = Convert-ToAbsolutePath -BaseDir $baseDir -PathValue $Sourc
 $resolvedManifestPath = Convert-ToAbsolutePath -BaseDir $baseDir -PathValue $(if ($ManifestPath) { $ManifestPath } else { $defaultManifestPath })
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $defaultOutputPath = if ($runningFromServerScripts) {
-  "var\local-experiment\storage\document-storage-package-$timestamp.zip"
+  "var\prod\document-storage-package-$timestamp.zip"
 } else {
   "document-storage-package-$timestamp.zip"
 }
@@ -283,7 +283,7 @@ $missingSource = 0
 $ambiguous = 0
 $packageBytes = [Int64]0
 $tmpRoot = if ($runningFromServerScripts) {
-  Join-Path $baseDir 'var\local-experiment\tmp'
+  Join-Path $baseDir 'var\prod\tmp'
 } else {
   Join-Path $baseDir 'tmp'
 }

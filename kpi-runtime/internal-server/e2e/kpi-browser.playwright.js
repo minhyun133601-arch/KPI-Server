@@ -293,7 +293,18 @@ test.describe('KPI browser smoke', () => {
       const totalRatioOpenButton = page.locator('[data-role="util-report-open-modal"]').first();
       await expect(totalRatioOpenButton).toBeVisible();
       await totalRatioOpenButton.click();
-      await expect(page.locator('#util-report-modal.is-open')).toBeVisible();
+      await expect(page.locator('#util-report-modal.is-open.is-overview-ratio')).toBeVisible();
+      await expect(
+        page.locator('[data-role="util-report-modal-total-donut"] .util-report-composition-donut svg').first()
+      ).toBeVisible();
+      await expect(
+        page.locator('[data-role="util-report-modal-selected-donut"] .util-report-composition-donut svg').first()
+      ).toBeVisible();
+      await expect(page.locator('[data-role="util-report-modal-chart-wrap"]')).toHaveCount(0);
+      await expect(page.locator('[data-role="util-report-modal-chart-type-toggle"]')).toHaveCount(0);
+      await expect(page.locator('[data-role="util-report-modal-chart-fullscreen-toggle"]')).toHaveCount(0);
+      await expect(page.locator('[data-role="util-report-modal-show-labels"]')).toHaveCount(0);
+      await expect(page.locator('[data-role="util-report-inline-body"]')).toBeVisible();
       await page.locator('[data-role="util-report-modal-close"]').click();
       await expect(page.locator('#util-report-modal.is-open')).toHaveCount(0);
       const analysisToggleButton = page

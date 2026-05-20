@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 
 $serverDir = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$defaultManifestPath = Join-Path $serverDir 'var\local-experiment\storage\document-storage-missing-manifest.json'
+$defaultManifestPath = Join-Path $serverDir 'var\prod\document-storage-missing-manifest.json'
 $resolvedManifestPath = if ($ManifestPath) {
   if ([System.IO.Path]::IsPathRooted($ManifestPath)) {
     [System.IO.Path]::GetFullPath($ManifestPath)
@@ -25,7 +25,7 @@ $resolvedOutputPath = if ($OutputPath) {
     [System.IO.Path]::GetFullPath((Join-Path $serverDir $OutputPath))
   }
 } else {
-  Join-Path $serverDir "var\local-experiment\storage\document-storage-export-kit-$timestamp.zip"
+  Join-Path $serverDir "var\prod\document-storage-export-kit-$timestamp.zip"
 }
 
 if (-not (Test-Path -LiteralPath $resolvedManifestPath -PathType Leaf)) {
@@ -46,7 +46,7 @@ $missingCount = if ($manifest.summary.missingCount -ne $null) { [int]$manifest.s
 $missingBytes = if ($manifest.summary.missingBytes -ne $null) { [Int64]$manifest.summary.missingBytes } else { [Int64]0 }
 $documentCount = if ($manifest.summary.documentCount -ne $null) { [int]$manifest.summary.documentCount } else { @($manifest.missing).Count }
 
-$kitRoot = Join-Path $serverDir "var\local-experiment\tmp\document-storage-export-kit-$timestamp"
+$kitRoot = Join-Path $serverDir "var\prod\tmp\document-storage-export-kit-$timestamp"
 New-Item -ItemType Directory -Path $kitRoot -Force | Out-Null
 
 try {
@@ -76,14 +76,14 @@ Create package:
 powershell -ExecutionPolicy Bypass -File .\package-document-storage.ps1 -SourcePath "<office KPI-LOCAL>\kpi-runtime\internal-server\var\local-experiment\storage\files" -ManifestPath .\document-storage-missing-manifest.json -Force -OutputPath .\document-storage-package.zip
 ~~~
 
-Bring document-storage-package.zip back to the home PC. Restore it from the home KPI-LOCAL kpi-runtime\internal-server folder.
+Bring document-storage-package.zip back to the server PC. Restore it from the KPI-Server kpi-runtime\internal-server folder.
 
-Preview on home PC:
+Preview on server PC:
 ~~~powershell
 npm run restore-package:document-storage -- -PackagePath "<path to document-storage-package.zip>"
 ~~~
 
-Restore and verify on home PC:
+Restore and verify on server PC:
 ~~~powershell
 npm run restore-package:document-storage -- -PackagePath "<path to document-storage-package.zip>" -Force
 ~~~

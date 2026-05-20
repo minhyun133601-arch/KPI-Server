@@ -1,3 +1,43 @@
+        function prepareUtilReportOverviewRatioState() {
+            ensureUtilReportStateRange();
+            UtilReportState.builderCustomMode = false;
+            UtilReportState.scopeKey = 'total';
+            UtilReportState.selectedScopeKeys = ['electric', 'gas', 'waste'];
+            UtilReportState.categoryKey = 'cost';
+            UtilReportState.electricTeam = 'all';
+            UtilReportState.gasTeam = 'all';
+            UtilReportState.wasteTeam = 'all';
+            UtilReportState.productionTeam = 'all';
+            UtilReportState.wasteCostModeKey = 'total';
+            UtilReportState.unitKey = typeof normalizeUtilReportCostUnitKey === 'function'
+                ? normalizeUtilReportCostUnitKey(UtilReportState.unitKey || 'krw')
+                : (UtilReportState.unitKey || 'krw');
+            UtilReportState.chartFullscreen = false;
+            UtilReportState.detailMetricOverrideKey = '';
+            UtilReportState.totalCompositionView = 'scope';
+            UtilReportState.costTotalSelectedCompositionView = 'total';
+            if (typeof resetUtilReportSelectedProcessStates === 'function') {
+                resetUtilReportSelectedProcessStates();
+                UtilReportState.costTotalSelectedCompositionView = 'total';
+            }
+            const compositionKeys = typeof getUtilReportCompositionMetricKeys === 'function'
+                ? getUtilReportCompositionMetricKeys('cost')
+                : { total: 'total_cost' };
+            UtilReportState.metricKey = typeof resolveUtilReportMetricKey === 'function'
+                ? resolveUtilReportMetricKey('total', 'cost')
+                : (compositionKeys.total || 'total_cost');
+            UtilReportState.activeMetricCard = UtilReportState.metricKey;
+            UtilReportState.activeSiteCompositionKey = compositionKeys.total || UtilReportState.metricKey;
+            UtilReportState.activeTeamCompositionKey = compositionKeys.total || UtilReportState.metricKey;
+            if (typeof UTIL_REPORT_TEAM_TOTAL_EX_WASTE_TOTAL_KEY !== 'undefined') {
+                UtilReportState.activeTotalTeamCompositionKey = UTIL_REPORT_TEAM_TOTAL_EX_WASTE_TOTAL_KEY;
+            }
+            if (typeof UTIL_REPORT_PROCESS_TOTAL_EX_WASTE_TOTAL_KEY !== 'undefined') {
+                UtilReportState.activeTotalProcessCompositionKey = UTIL_REPORT_PROCESS_TOTAL_EX_WASTE_TOTAL_KEY;
+            }
+            syncUtilReportGraphMetricDefaults();
+        }
+
         function initUtilReportPanel(scope) {
             const root = scope || document;
             const panel = root.querySelector('[data-role="util-report-panel"]');
@@ -30,9 +70,12 @@
             if (openModalButton && openModalButton.dataset.bound !== 'true') {
                 openModalButton.dataset.bound = 'true';
                 openModalButton.addEventListener('click', () => {
-                    closeUtilActionMenus(document);
+                    if (typeof closeUtilActionMenus === 'function') {
+                        closeUtilActionMenus(document);
+                    }
+                    prepareUtilReportOverviewRatioState();
                     const result = runUtilReportFromState({ renderModal: false });
-                    openUtilReportModal(result);
+                    openUtilReportModal(result, { layout: 'overview-ratio' });
                 });
             }
 

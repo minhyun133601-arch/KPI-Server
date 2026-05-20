@@ -29,8 +29,8 @@ const styleEntries = [
     relativeSegments: ['shell', 'shell-chrome.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/work/work.css?v=066`,
-    manifestHref: './styles/work/work.css?v=066',
+    href: `${runtimeDirName}/app/styles/work/work.css?v=065`,
+    manifestHref: './styles/work/work.css?v=065',
     fileName: 'work.css',
     relativeSegments: ['work', 'work.css'],
   },
@@ -106,6 +106,11 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['metering.css'], /\.month-panel\s*\{/);
   assert.match(styleContents['metering.css'], /\.util-sheet-waste-meter-card\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
   assert.doesNotMatch(styleContents['metering.css'], /\.util-sheet-waste-meter-card\s*\{[^}]*minmax\(500px,/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-chart-shell\s*\{[^}]*min-height:\s*0;[^}]*padding:\s*5px;/s);
+  assert.doesNotMatch(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-chart-host-wrap\s*\{\s*display:\s*none;/);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-modal-group-display\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(58px,\s*80px\)\);/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-donut-row\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-inline-insight\s*\{[^}]*min-height:\s*260px;/s);
 
   assert.match(styleContents['audit.css'], /\.audit-panel\s*\{/);
   assert.match(styleContents['audit.css'], /\.print-sheet\s*\{/);

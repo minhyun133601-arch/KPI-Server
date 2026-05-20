@@ -8,6 +8,7 @@
     const REPORT_SAFETY_SLOTS_PER_PAGE = 8;
     const REPORT_SAFETY_COLUMNS_PER_ROW = 4;
     const REPORT_SAFETY_PAGE_COUNT = 2;
+    const REPORT_SAFETY_TEAM_ROWS = ['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀'];
     const REPORT_SAFETY_HAZARD_OPTIONS = ['미끄럼', '넘어짐', '끼임', '충돌', '낙하/비래', '베임/찔림', '화재', '감전', '누출', '화상'];
     const SLIDE_NAV_ITEMS = [
         { view: REPORT_HQ_VIEW, label: '표지' },
@@ -37,12 +38,12 @@
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '가스 비용 분석' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '폐수 비용 분석' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '폐수 비용 분석' },
-        { view: REPORT_PUBLIC_WORKS_VIEW, label: '자율 안전 신고제' },
-        { view: REPORT_PUBLIC_WORKS_VIEW, label: '자율 안전 신고제' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '공사 및 정비' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '공사 및 정비' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '주요 계획' },
-        { view: REPORT_PUBLIC_WORKS_VIEW, label: '주요 계획' }
+        { view: REPORT_PUBLIC_WORKS_VIEW, label: '주요 계획' },
+        { view: REPORT_PUBLIC_WORKS_VIEW, label: '자율 안전 신고제' },
+        { view: REPORT_PUBLIC_WORKS_VIEW, label: '자율 안전 신고제' }
     ];
 
     function buildSkeletonCells(count) {
@@ -89,8 +90,8 @@
         ].map(row => `
             <tr${row.key === 'unit' ? ' class="report-auto-unit-row"' : ''}>
                 <th class="report-auto-row-label">${row.label}</th>
-                <td data-report-auto-value="${kind}.${row.key}.current"></td>
                 <td data-report-auto-value="${kind}.${row.key}.reference"></td>
+                <td data-report-auto-value="${kind}.${row.key}.current"></td>
                 <td class="report-auto-delta-cell report-auto-compare-cell" data-report-auto-value="${kind}.${row.key}.yoy"></td>
                 <td data-report-auto-value="${kind}.${row.key}.previous"></td>
                 <td class="report-auto-delta-cell report-auto-compare-cell" data-report-auto-value="${kind}.${row.key}.mom"></td>
@@ -102,8 +103,8 @@
                     <tr>
                         <th class="report-auto-resource-cell" rowspan="5">${resourceLabel}</th>
                         <th class="report-auto-row-label">${scopeLabel}</th>
-                        <th data-report-auto-month-label="current"></th>
                         <th data-report-auto-month-label="reference"></th>
+                        <th data-report-auto-month-label="current"></th>
                         <th>전년대비</th>
                         <th data-report-auto-month-label="previous"></th>
                         <th>전월대비</th>
@@ -248,20 +249,23 @@
         `;
     }
 
-    function buildReportSafetyTable(rowIndex = 0) {
+    function buildReportSafetyTable(rowIndex = 0, pageIndex = 0) {
         const firstSlotIndex = rowIndex * REPORT_SAFETY_COLUMNS_PER_ROW + 1;
         const slotIndexes = Array.from({ length: REPORT_SAFETY_COLUMNS_PER_ROW }, (_, index) => firstSlotIndex + index);
         const headerCells = slotIndexes.map((slotIndex, index) => {
             const teamAttrs = index === 0
                 ? ` class="report-safety-row-team" data-report-plan-row-team="slide10" data-report-plan-row-index="${rowIndex}"`
                 : '';
-            return `<th${teamAttrs} data-report-plan-slot="slide10.${slotIndex}" data-report-plan-local-slot="${slotIndex}"></th>`;
+            const teamContent = index === 0
+                ? `<span class="report-safety-row-team-label" data-report-plan-row-team-label></span>`
+                : '';
+            return `<th${teamAttrs} data-report-plan-slot="slide10.${slotIndex}" data-report-plan-local-slot="${slotIndex}">${teamContent}</th>`;
         }).join('');
         return `
             <table class="report-safety-table" data-report-safety-row="${rowIndex}" aria-label="자율 안전 신고제">
                 <colgroup>
                     <col class="report-safety-label-col">
-                    ${slotIndexes.map(slotIndex => `<col class="report-safety-slot-col" data-report-plan-slot="slide10.${slotIndex}" data-report-plan-local-slot="${slotIndex}">`).join('')}
+                    ${slotIndexes.map((slotIndex, index) => `<col class="report-safety-slot-col" data-report-plan-slot="slide10.${slotIndex}" data-report-plan-local-slot="${slotIndex}"${index === 0 ? ' data-report-safety-row-anchor="true"' : ''}>`).join('')}
                 </colgroup>
                 <thead>
                     <tr>
@@ -287,12 +291,32 @@
         `;
     }
 
+    function buildReportSafetyAddControl() {
+        const teamOptions = REPORT_SAFETY_TEAM_ROWS
+            .map((team, index) => `<option value="${index}">${team}</option>`)
+            .join('');
+        const teamButtons = REPORT_SAFETY_TEAM_ROWS
+            .map((team, index) => `<button type="button" data-report-safety-team-option="${index}" data-report-plan-row-source-index="${index}">${team}</button>`)
+            .join('');
+        return `
+            <div class="report-safety-add-control" data-report-safety-add-control data-report-safety-team-picker-open="false">
+                <button type="button" class="report-safety-add-toggle" data-report-safety-add-toggle>칸 추가</button>
+                <div class="report-safety-team-menu" data-report-safety-team-menu>
+                    <span>팀 선택</span>
+                    ${teamButtons}
+                </div>
+                <select data-report-safety-team-select aria-label="자율 안전 신고제 팀 선택" hidden>${teamOptions}</select>
+            </div>
+        `;
+    }
+
     function buildReportSafetyPage(pageIndex = 0) {
         return `
             <article class="report-slide report-template-slide report-safety-slide" data-report-slide-page="10" data-report-slide-view="${REPORT_PUBLIC_WORKS_VIEW}" data-report-dynamic-slide="slide10" data-report-dynamic-page="${pageIndex}" data-report-optional-page="slide10" data-report-slide-label="자율 안전 신고제"${pageIndex > 0 ? ' hidden' : ''}>
                 ${buildSlideHeader('slide10Section', 'slide10Title')}
+                ${buildReportSafetyAddControl()}
                 <div class="report-safety-layout" data-report-plan-slide="slide10" data-report-plan-page="${pageIndex}">
-                    ${Array.from({ length: REPORT_SAFETY_SLOTS_PER_PAGE / REPORT_SAFETY_COLUMNS_PER_ROW }, (_, rowIndex) => buildReportSafetyTable(rowIndex)).join('')}
+                    ${Array.from({ length: REPORT_SAFETY_SLOTS_PER_PAGE / REPORT_SAFETY_COLUMNS_PER_ROW }, (_, rowIndex) => buildReportSafetyTable(rowIndex, pageIndex)).join('')}
                 </div>
                 <div class="report-slide-footer"></div>
                 <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
@@ -526,8 +550,8 @@
         ].map(row => `
             <tr${row.key === 'unit' ? ' class="report-auto-unit-row"' : ''}>
                 <th class="report-auto-row-label">${row.label}</th>
-                <td data-report-yusan-lpg-value="${row.key}.current"></td>
                 <td data-report-yusan-lpg-value="${row.key}.reference"></td>
+                <td data-report-yusan-lpg-value="${row.key}.current"></td>
                 <td class="report-auto-delta-cell report-auto-compare-cell" data-report-yusan-lpg-value="${row.key}.yoy"></td>
                 <td data-report-yusan-lpg-value="${row.key}.previous"></td>
                 <td class="report-auto-delta-cell report-auto-compare-cell" data-report-yusan-lpg-value="${row.key}.mom"></td>
@@ -539,8 +563,8 @@
                     <tr>
                         <th class="report-auto-resource-cell" rowspan="5">가스<br><span>(LPG)</span></th>
                         <th class="report-auto-row-label">1팀 2파트</th>
-                        <th data-report-yusan-lpg-month-label="current"></th>
                         <th data-report-yusan-lpg-month-label="reference"></th>
+                        <th data-report-yusan-lpg-month-label="current"></th>
                         <th>전년대비</th>
                         <th data-report-yusan-lpg-month-label="previous"></th>
                         <th>전월대비</th>
@@ -558,8 +582,8 @@
         const rows = ['LPG', 'LNG', '비율'].map((label, index) => `
             <tr>
                 <th class="report-auto-row-label">${formatRowLabel(label, index)}</th>
-                <td data-report-yusan-lpg-cost-value="${index}.current"></td>
                 <td data-report-yusan-lpg-cost-value="${index}.reference"></td>
+                <td data-report-yusan-lpg-cost-value="${index}.current"></td>
                 <td class="report-auto-delta-cell report-auto-compare-cell" data-report-yusan-lpg-cost-value="${index}.yoy"></td>
                 <td data-report-yusan-lpg-cost-value="${index}.previous"></td>
                 <td class="report-auto-delta-cell report-auto-compare-cell" data-report-yusan-lpg-cost-value="${index}.mom"></td>
@@ -571,8 +595,8 @@
                     <tr>
                         <th class="report-auto-resource-cell report-yusan-lpg-cost-resource" rowspan="4">비용<br><span>(원)</span><small>LPG ⇒ LNG<br>환산</small></th>
                         <th class="report-auto-row-label">유 산</th>
-                        <th data-report-yusan-lpg-cost-month-label="current"></th>
                         <th data-report-yusan-lpg-cost-month-label="reference"></th>
+                        <th data-report-yusan-lpg-cost-month-label="current"></th>
                         <th>전년대비</th>
                         <th data-report-yusan-lpg-cost-month-label="previous"></th>
                         <th>전월대비</th>
@@ -705,8 +729,8 @@
             <tr>
                 ${index === 0 ? '<th class="report-waste-auto-group" rowspan="5">처리 비용<br><span>(원)</span></th>' : ''}
                 <th class="report-waste-auto-row-label">${row.label}</th>
-                <td data-report-waste-auto-value="${row.key}.current"></td>
                 <td data-report-waste-auto-value="${row.key}.reference"></td>
+                <td data-report-waste-auto-value="${row.key}.current"></td>
                 <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="${row.key}.yoy"></td>
                 <td data-report-waste-auto-value="${row.key}.previous"></td>
                 <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="${row.key}.mom"></td>
@@ -718,32 +742,32 @@
                     <tr>
                         <th class="report-waste-auto-group" rowspan="4">폐수</th>
                         <th class="report-waste-auto-row-label">${scopeLabel}</th>
-                        <th data-report-waste-auto-month-label="current"></th>
                         <th data-report-waste-auto-month-label="reference"></th>
+                        <th data-report-waste-auto-month-label="current"></th>
                         <th>전년대비</th>
                         <th data-report-waste-auto-month-label="previous"></th>
                         <th>전월대비</th>
                     </tr>
                     <tr>
                         <th class="report-waste-auto-row-label">생산량 (kg)</th>
-                        <td data-report-waste-auto-value="production.current"></td>
                         <td data-report-waste-auto-value="production.reference"></td>
+                        <td data-report-waste-auto-value="production.current"></td>
                         <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="production.yoy"></td>
                         <td data-report-waste-auto-value="production.previous"></td>
                         <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="production.mom"></td>
                     </tr>
                     <tr>
                         <th class="report-waste-auto-row-label">방류량 (m³)</th>
-                        <td data-report-waste-auto-value="usage.current"></td>
                         <td data-report-waste-auto-value="usage.reference"></td>
+                        <td data-report-waste-auto-value="usage.current"></td>
                         <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="usage.yoy"></td>
                         <td data-report-waste-auto-value="usage.previous"></td>
                         <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="usage.mom"></td>
                     </tr>
                     <tr class="report-waste-auto-unit-row">
                         <th class="report-waste-auto-row-label">&#50896;&#45800;&#50948;</th>
-                        <td data-report-waste-auto-value="unit.current"></td>
                         <td data-report-waste-auto-value="unit.reference"></td>
+                        <td data-report-waste-auto-value="unit.current"></td>
                         <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="unit.yoy"></td>
                         <td data-report-waste-auto-value="unit.previous"></td>
                         <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="unit.mom"></td>
@@ -751,8 +775,8 @@
                     ${costRows}
                     <tr>
                         <th class="report-waste-auto-total-label" colspan="2">총 계</th>
-                        <td data-report-waste-auto-value="total.current"></td>
                         <td data-report-waste-auto-value="total.reference"></td>
+                        <td data-report-waste-auto-value="total.current"></td>
                         <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="total.yoy"></td>
                         <td data-report-waste-auto-value="total.previous"></td>
                         <td class="report-auto-delta-cell report-auto-compare-cell" data-report-waste-auto-value="total.mom"></td>
@@ -1686,9 +1710,9 @@ ${colgroup}
                     ${buildContentsListItems([
                         { fieldKey: 'contentsItem1', text: '에너지 실적' },
                         { fieldKey: 'contentsItem2', text: '폐수처리장 운영실적' },
-                        { fieldKey: 'contentsItem5', text: '자율 안전 신고제', optionalPage: 'slide10' },
                         { fieldKey: 'contentsItem3', text: '공사 및 정비현황', optionalPage: 'slide8' },
-                        { fieldKey: 'contentsItem4', text: '주요계획', nextMonth: true, optionalPage: 'slide9' }
+                        { fieldKey: 'contentsItem4', text: '주요계획', nextMonth: true, optionalPage: 'slide9' },
+                        { fieldKey: 'contentsItem5', text: '자율 안전 신고제', optionalPage: 'slide10' }
                     ])}
                 </ol>
             </article>
@@ -1822,7 +1846,6 @@ ${colgroup}
             buildAnalysisSlide(5, 'slide5Section', 'slide5Title', '가스 (LPG)', '비용'),
             buildWasteSlide(6, 'slide6Section', 'slide6Title', '폐수'),
             buildWasteSlide(7, 'slide7Section', 'slide7Title', '폐수'),
-            ...Array.from({ length: REPORT_SAFETY_PAGE_COUNT }, (_, pageIndex) => buildReportSafetyPage(pageIndex)),
             `
                 <article class="report-slide report-template-slide" data-report-slide-page="8" data-report-slide-view="${REPORT_PUBLIC_WORKS_VIEW}" data-report-dynamic-slide="slide8" data-report-dynamic-page="0" data-report-optional-page="slide8" data-report-slide-label="공사 및 정비">
                     ${buildSlideHeader('slide8Section', 'slide8Title')}
@@ -1858,7 +1881,8 @@ ${colgroup}
                     <img class="report-slide-logo is-bottom" src="shared-assets/report-footer-logo.png" alt="">
                     <div class="report-slide-page-number" data-report-page-number>9/9</div>
                 </article>
-            `
+            `,
+            ...Array.from({ length: REPORT_SAFETY_PAGE_COUNT }, (_, pageIndex) => buildReportSafetyPage(pageIndex))
         ].join('');
     }
 
@@ -1896,6 +1920,7 @@ ${colgroup}
                 .report-deck-month-field select { height: 30px; min-width: 112px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; color: #0f172a; padding: 0 24px 0 9px; font-size: 0.74rem; font-weight: 900; }
                 .report-deck-month-field select:disabled { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
                 .report-deck-action-button { min-height: 30px; border: 1px solid #bfdbfe; border-radius: 6px; background: #eff6ff; color: #1d4ed8; padding: 0 11px; font-size: 0.74rem; font-weight: 900; cursor: pointer; }
+                .report-deck-action-button:disabled { border-color: #cbd5e1; background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
                 .report-deck-action-button.is-active { border-color: #2563eb; background: #2563eb; color: #ffffff; }
                 .report-deck-workspace { min-height: 0; display: grid; grid-template-columns: 154px minmax(0, 1fr); gap: 0; align-items: stretch; }
                 .report-deck-sidebar { min-height: 0; border: 0; border-right: 1px solid #dbe4f3; border-radius: 0; background: #ffffff; padding: 6px; overflow: auto; }
@@ -2006,13 +2031,12 @@ ${colgroup}
                 .report-auto-memo-line-text { min-width: 0; white-space: nowrap; }
                 .report-auto-memo-line.is-up, .report-auto-memo-line.is-down { color: #111827; }
                 .report-auto-memo-line.is-flat, .report-auto-memo-line.is-mixed { color: #111827; }
-                .report-auto-memo-segment.is-up { color: #c00000; }
-                .report-auto-memo-segment.is-down { color: #2f75b5; }
-                .report-auto-memo-segment.is-flat { color: #111827; }
+                .report-auto-memo-segment { color: #111827; }
                 .report-auto-memo-basis { color: #111827; }
-                .report-auto-memo-delta.is-up { color: #c00000; }
-                .report-auto-memo-delta.is-down { color: #2f75b5; }
-                .report-auto-memo-delta.is-flat { color: #111827; }
+                .report-auto-memo-delta { color: #111827; }
+                .report-auto-memo-change.is-up { color: #c00000; }
+                .report-auto-memo-change.is-down { color: #2f75b5; }
+                .report-auto-memo-change.is-flat { color: #111827; }
                 .report-auto-memo-add, .report-auto-memo-delete { display: none; align-items: center; justify-content: center; border: 1px solid #2563eb; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 14px; font-weight: 900; line-height: 1; cursor: pointer; }
                 .report-auto-memo-add { width: 26px; height: 26px; margin-top: 1px; }
                 .report-auto-memo-delete { width: 22px; height: 22px; border-color: #fecaca; background: #fff5f5; color: #b91c1c; }
@@ -2021,7 +2045,7 @@ ${colgroup}
                 .report-deck-editor[data-report-edit-mode="editing"] [data-report-memo-key] { cursor: pointer; }
                 .report-deck-editor[data-report-edit-mode="editing"] [data-report-memo-key]:focus-visible,
                 .report-deck-editor[data-report-edit-mode="editing"] [data-report-memo-key]:hover { outline: 2px solid rgba(37, 99, 235, 0.42); outline-offset: 2px; }
-                .report-memo-dialog { position: absolute; right: 18px; top: 54px; z-index: 20; width: 720px; max-width: calc(100vw - 36px); border: 1px solid #94a3b8; border-radius: 6px; background: #ffffff; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.24); color: #0f172a; padding: 10px; }
+                .report-memo-dialog { position: absolute; right: 18px; top: 54px; z-index: 20; width: min(980px, calc(100vw - 36px)); max-height: calc(100vh - 92px); overflow: auto; border: 1px solid #94a3b8; border-radius: 6px; background: #ffffff; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.24); color: #0f172a; padding: 12px; }
                 .report-memo-dialog[hidden] { display: none !important; }
                 .report-memo-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
                 .report-memo-dialog-head strong { color: #0f172a; font-size: 15px; font-weight: 900; }
@@ -2029,18 +2053,20 @@ ${colgroup}
                 .report-memo-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 9px; }
                 .report-memo-controls label { display: grid; gap: 4px; color: #334155; font-size: 12px; font-weight: 900; }
                 .report-memo-controls select { height: 30px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 0 8px; font-size: 13px; font-weight: 900; }
-                .report-memo-lines { display: grid; gap: 5px; margin-bottom: 8px; max-height: 118px; overflow: auto; }
-                .report-memo-line-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px; border: 1px solid #e2e8f0; border-radius: 5px; background: #ffffff; padding: 5px 6px; }
+                .report-memo-lines { display: grid; gap: 6px; margin-bottom: 10px; min-height: 180px; max-height: 320px; overflow: auto; }
+                .report-memo-line-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; border: 1px solid #e2e8f0; border-radius: 5px; background: #ffffff; padding: 6px 7px; }
                 .report-memo-line-text { min-width: 0; color: #111827; font-size: 12px; font-weight: 900; line-height: 1.25; overflow-wrap: anywhere; }
                 .report-memo-line-input { width: 100%; min-width: 0; min-height: 38px; max-height: 96px; border: 1px solid #dbe4f3; border-radius: 4px; background: #f8fafc; color: #111827; padding: 6px 7px; font-size: 12px; font-weight: 900; line-height: 1.25; resize: vertical; box-sizing: border-box; }
                 .report-memo-line-input:focus { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 1px; border-color: #60a5fa; background: #ffffff; }
-                .report-memo-line-row button { min-height: 24px; padding: 0 7px; color: #475569; }
+                .report-memo-line-actions { display: grid; grid-template-columns: repeat(3, auto); gap: 4px; align-items: start; }
+                .report-memo-line-actions button { min-width: 28px; min-height: 26px; padding: 0 7px; color: #475569; }
+                .report-memo-line-actions button:disabled { opacity: 0.35; cursor: default; }
                 .report-memo-lines-empty { min-height: 30px; display: grid; place-items: center; border: 1px dashed #cbd5e1; border-radius: 5px; color: #64748b; font-size: 12px; font-weight: 900; }
                 .report-memo-manual { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: stretch; margin-bottom: 8px; }
                 .report-memo-manual textarea { width: 100%; min-width: 0; min-height: 48px; max-height: 92px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 7px 8px; font-size: 12px; font-weight: 900; line-height: 1.35; resize: vertical; box-sizing: border-box; }
                 .report-memo-manual textarea:focus { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 1px; border-color: #60a5fa; }
                 .report-memo-manual button { min-width: 72px; }
-                .report-memo-candidates { display: grid; gap: 6px; max-height: 172px; overflow: auto; }
+                .report-memo-candidates { display: grid; gap: 6px; max-height: 220px; overflow: auto; }
                 .report-memo-candidate { width: 100%; min-height: 30px !important; display: grid !important; grid-template-columns: 22px minmax(0, 1fr); align-items: center; justify-content: stretch; gap: 6px; border-color: #dbe4f3 !important; background: #f8fafc !important; padding: 4px 8px !important; text-align: left; white-space: nowrap; font-size: 11.2px; line-height: 1.16; color: #111827 !important; }
                 .report-memo-candidate-add { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #cbd5e1; border-radius: 50%; background: #ffffff; color: #0f172a; font-size: 15px; font-weight: 900; line-height: 1; }
                 .report-memo-candidate-text { min-width: 0; color: #111827; white-space: nowrap; }
@@ -2124,6 +2150,16 @@ ${colgroup}
                 .report-plan-layout[data-report-plan-slot-count="2"] { --report-plan-table-width: 52.3%; --report-plan-label-width: 8.8%; --report-plan-slot-width: 45.6%; }
                 .report-plan-layout[data-report-plan-slot-count="3"] { --report-plan-table-width: 76.15%; --report-plan-label-width: 6.04%; --report-plan-slot-width: 31.32%; }
                 .report-plan-layout[data-report-plan-slot-count="4"] { --report-plan-table-width: 100%; --report-plan-label-width: 4.6%; --report-plan-slot-width: 23.85%; }
+                .report-slide[data-report-output-prepared="true"] .report-plan-layout[data-report-plan-filled-slot-count="0"],
+                .report-deck-editor[data-report-print-mode="true"] .report-plan-layout[data-report-plan-filled-slot-count="0"] { --report-plan-table-width: 7.4%; --report-plan-label-width: 100%; --report-plan-slot-width: 0%; }
+                .report-slide[data-report-output-prepared="true"] .report-plan-layout[data-report-plan-filled-slot-count="1"],
+                .report-deck-editor[data-report-print-mode="true"] .report-plan-layout[data-report-plan-filled-slot-count="1"] { --report-plan-table-width: 28.45%; --report-plan-label-width: 16.17%; --report-plan-slot-width: 83.83%; }
+                .report-slide[data-report-output-prepared="true"] .report-plan-layout[data-report-plan-filled-slot-count="2"],
+                .report-deck-editor[data-report-print-mode="true"] .report-plan-layout[data-report-plan-filled-slot-count="2"] { --report-plan-table-width: 52.3%; --report-plan-label-width: 8.8%; --report-plan-slot-width: 45.6%; }
+                .report-slide[data-report-output-prepared="true"] .report-plan-layout[data-report-plan-filled-slot-count="3"],
+                .report-deck-editor[data-report-print-mode="true"] .report-plan-layout[data-report-plan-filled-slot-count="3"] { --report-plan-table-width: 76.15%; --report-plan-label-width: 6.04%; --report-plan-slot-width: 31.32%; }
+                .report-slide[data-report-output-prepared="true"] .report-plan-layout[data-report-plan-filled-slot-count="4"],
+                .report-deck-editor[data-report-print-mode="true"] .report-plan-layout[data-report-plan-filled-slot-count="4"] { --report-plan-table-width: 100%; --report-plan-label-width: 4.6%; --report-plan-slot-width: 23.85%; }
                 .report-plan-count-control { position: absolute; top: -38px; right: 0; z-index: 3; display: none; }
                 .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-plan-count-control { display: block; }
                 .report-plan-count-control button { display: inline-flex; align-items: center; justify-content: center; height: 30px; border: 1px solid #2563eb; border-radius: 6px; background: #eff6ff; padding: 0 10px; color: #1d4ed8; font-size: 12px; font-weight: 900; cursor: pointer; }
@@ -2158,6 +2194,12 @@ ${colgroup}
                 .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-plan-summary-cell[data-report-plan-active="true"] .report-plan-delete-slot { display: inline-flex; align-items: center; justify-content: center; }
                 .report-deck-editor[data-report-edit-mode="editing"] [data-report-slide8-overview] { cursor: pointer; }
                 .report-plan-table col[data-report-plan-active="false"], .report-plan-table th[data-report-plan-active="false"], .report-plan-table td[data-report-plan-active="false"] { display: none; }
+                .report-slide[data-report-output-prepared="true"] .report-plan-table col[data-report-plan-filled="false"],
+                .report-slide[data-report-output-prepared="true"] .report-plan-table th[data-report-plan-filled="false"],
+                .report-slide[data-report-output-prepared="true"] .report-plan-table td[data-report-plan-filled="false"],
+                .report-deck-editor[data-report-print-mode="true"] .report-plan-table col[data-report-plan-filled="false"],
+                .report-deck-editor[data-report-print-mode="true"] .report-plan-table th[data-report-plan-filled="false"],
+                .report-deck-editor[data-report-print-mode="true"] .report-plan-table td[data-report-plan-filled="false"] { display: none; }
                 .report-status-layout { left: 3.4%; right: 2.9%; top: 8.4%; bottom: 8.8%; }
                 .report-status-table { border-width: 1.5px; }
                 .report-status-table .report-status-label-col { width: var(--report-plan-label-width); }
@@ -2172,21 +2214,55 @@ ${colgroup}
                 .report-status-table .report-plan-summary-cell { padding: 12px 8px 8px !important; }
                 .report-status-table .report-plan-summary-text { font-size: 15px; line-height: 1.5; }
                 .report-safety-layout { position: absolute; left: 3.4%; right: 2.9%; top: 8.4%; bottom: 8.8%; min-height: 0; display: grid; grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 1.1%; }
-                .report-safety-table { width: 100%; height: 100%; border: 1.5px solid #1e3a5f; border-collapse: collapse; table-layout: fixed; background: #ffffff; color: #020617; }
-                .report-safety-label-col { width: 4.6%; }
-                .report-safety-slot-col { width: 23.85%; }
+                .report-safety-table { width: var(--report-safety-table-width, 100%); height: 100%; border: 1.5px solid #1e3a5f; border-collapse: collapse; table-layout: fixed; background: #ffffff; color: #020617; --report-safety-label-width: 4.6%; --report-safety-slot-width: 23.85%; }
+                .report-safety-label-col { width: var(--report-safety-label-width); }
+                .report-safety-slot-col { width: var(--report-safety-slot-width); }
+                .report-safety-table[data-report-plan-row-active-slot-count="1"],
+                .report-slide[data-report-output-prepared="true"] .report-safety-table[data-report-plan-row-filled-slot-count="1"],
+                .report-deck-editor[data-report-print-mode="true"] .report-safety-table[data-report-plan-row-filled-slot-count="1"] { --report-safety-table-width: 28.45%; --report-safety-label-width: 16.17%; --report-safety-slot-width: 83.83%; }
+                .report-safety-table[data-report-plan-row-active-slot-count="2"],
+                .report-slide[data-report-output-prepared="true"] .report-safety-table[data-report-plan-row-filled-slot-count="2"],
+                .report-deck-editor[data-report-print-mode="true"] .report-safety-table[data-report-plan-row-filled-slot-count="2"] { --report-safety-table-width: 52.3%; --report-safety-label-width: 8.8%; --report-safety-slot-width: 45.6%; }
+                .report-safety-table[data-report-plan-row-active-slot-count="3"],
+                .report-slide[data-report-output-prepared="true"] .report-safety-table[data-report-plan-row-filled-slot-count="3"],
+                .report-deck-editor[data-report-print-mode="true"] .report-safety-table[data-report-plan-row-filled-slot-count="3"] { --report-safety-table-width: 76.15%; --report-safety-label-width: 6.04%; --report-safety-slot-width: 31.32%; }
+                .report-safety-table[data-report-plan-row-active-slot-count="4"],
+                .report-slide[data-report-output-prepared="true"] .report-safety-table[data-report-plan-row-filled-slot-count="4"],
+                .report-deck-editor[data-report-print-mode="true"] .report-safety-table[data-report-plan-row-filled-slot-count="4"] { --report-safety-table-width: 100%; --report-safety-label-width: 4.6%; --report-safety-slot-width: 23.85%; }
                 .report-safety-table th, .report-safety-table td { border: 1px solid #94a3b8; padding: 0; text-align: center; vertical-align: middle; }
                 .report-safety-table thead th { height: 11%; background: #5d9bd3; color: #ffffff; font-size: 18px; font-weight: 900; line-height: 1.1; }
-                .report-safety-table .report-safety-row-team { padding: 0 8px; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+                .report-safety-table .report-safety-row-team { padding: 0 8px; overflow: hidden; text-align: left; white-space: nowrap; }
+                .report-safety-row-team-label { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+                .report-safety-add-control { position: absolute; left: 3.4%; right: 2.9%; top: 8.4%; z-index: 5; display: none; justify-content: flex-end; align-items: center; gap: 8px; min-height: 30px; }
+                .report-safety-add-control select[hidden] { display: none !important; }
+                .report-safety-add-control button { height: 28px; border: 1px solid #bfdbfe; border-radius: 6px; background: #ffffff; color: #0f172a; padding: 0 9px; font-size: 12px; font-weight: 900; }
+                .report-safety-add-toggle { min-width: 68px; background: #eff6ff !important; color: #1d4ed8 !important; cursor: pointer; }
+                .report-safety-team-menu { display: none; align-items: center; gap: 5px; height: 30px; padding: 0 6px; border: 1px solid #dbe4f3; border-radius: 6px; background: rgba(255, 255, 255, 0.96); box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14); }
+                .report-safety-team-menu span { color: #475569; font-size: 12px; font-weight: 900; white-space: nowrap; }
+                .report-safety-team-menu button { min-width: 62px; cursor: pointer; }
+                .report-safety-add-control[data-report-safety-team-picker-open="true"] .report-safety-team-menu { display: inline-flex; }
+                .report-safety-add-control button:disabled, .report-safety-add-control select:disabled { border-color: #cbd5e1; background: #f8fafc !important; color: #94a3b8 !important; cursor: not-allowed; }
+                .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-safety-add-control { display: flex; }
+                .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-safety-layout { top: 12.2%; }
+                .report-deck-editor[data-report-print-mode="true"] .report-safety-add-control,
+                .report-slide[data-report-output-prepared="true"] .report-safety-add-control { display: none !important; }
                 .report-safety-table tbody th { background: #d9e2f1; color: #020617; font-size: 20px; font-weight: 900; line-height: 1; text-align: center; }
                 .report-safety-before-row, .report-safety-after-row { height: 36%; }
                 .report-safety-summary-row { height: 17%; }
                 .report-safety-image-cell { position: relative; min-width: 0; min-height: 0; padding: 4px !important; }
                 .report-safety-image-frame { inset: 4px; border-width: 1.4px; box-shadow: none; }
-                .report-safety-summary-cell { position: relative; padding: 4px 6px !important; text-align: left !important; vertical-align: middle !important; }
-                .report-safety-summary-text { min-width: 0; max-height: 100%; overflow: hidden; color: #020617; font-size: 12px; font-weight: 900; line-height: 1.18; text-align: center; white-space: nowrap; text-overflow: ellipsis; word-break: keep-all; }
+                .report-safety-summary-cell { position: relative; padding: 2px 4px !important; text-align: left !important; vertical-align: middle !important; }
+                .report-safety-summary-text { min-width: 0; max-height: 100%; overflow: hidden; display: grid; align-content: center; gap: 3px; color: #020617; font-weight: 900; line-height: 1.05; text-align: center; white-space: normal; word-break: keep-all; }
+                .report-safety-summary-title, .report-safety-summary-meta { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                .report-safety-summary-title, .report-safety-summary-meta { font-size: 11px; }
                 .report-safety-delete-slot { right: 4px; bottom: 3px; height: 22px; }
                 .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-safety-summary-cell[data-report-plan-active="true"] .report-safety-delete-slot { display: inline-flex; align-items: center; justify-content: center; }
+                .report-safety-layout[data-report-plan-active-slot-count="0"] { grid-template-rows: repeat(2, 42px); align-content: start; }
+                .report-safety-layout[data-report-plan-active-slot-count="0"] .report-safety-table { height: 42px; }
+                .report-safety-table[data-report-plan-row-active-slot-count="0"] tbody { display: none; }
+                .report-safety-table col[data-report-plan-active="false"]:not([data-report-safety-row-anchor="true"]),
+                .report-safety-table th[data-report-plan-active="false"]:not(.report-safety-row-team),
+                .report-safety-table td[data-report-plan-active="false"] { display: none; }
                 .report-slide[data-report-output-prepared="true"] .report-safety-table[data-report-plan-row-filled="false"],
                 .report-deck-editor[data-report-print-mode="true"] .report-safety-table[data-report-plan-row-filled="false"] { display: none; }
                 .report-slide[data-report-output-prepared="true"] .report-safety-table col[data-report-plan-filled="false"],
@@ -2195,8 +2271,6 @@ ${colgroup}
                 .report-deck-editor[data-report-print-mode="true"] .report-safety-table col[data-report-plan-filled="false"],
                 .report-deck-editor[data-report-print-mode="true"] .report-safety-table th[data-report-plan-filled="false"],
                 .report-deck-editor[data-report-print-mode="true"] .report-safety-table td[data-report-plan-filled="false"] { display: none; }
-                .report-slide[data-report-output-prepared="true"] .report-safety-layout[data-report-plan-filled-row-count="1"],
-                .report-deck-editor[data-report-print-mode="true"] .report-safety-layout[data-report-plan-filled-row-count="1"] { grid-template-rows: minmax(0, 1fr); }
                 .report-deck-editor:not([data-report-edit-mode="editing"]) [data-report-add-page] { display: none; }
                 .report-deck-editor[data-report-slide10-enabled="true"] [data-report-add-page="slide10"] { display: none; }
                 .report-production-start-layout { position: absolute; left: 3.4%; right: 2.9%; top: 8.4%; bottom: 8.8%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 5.2%; }
@@ -2403,6 +2477,7 @@ ${colgroup}
                         </label>
                         <button type="button" class="report-deck-action-button" data-report-memo-overview-toggle>특이사항</button>
                         <button type="button" class="report-deck-action-button" data-report-edit-toggle aria-pressed="false">수정</button>
+                        <button type="button" class="report-deck-action-button" data-report-undo-delete disabled>삭제 복구</button>
                         <button type="button" class="report-deck-action-button" data-report-add-page="slide10">페이지 추가</button>
                         <button type="button" class="report-deck-action-button" data-report-print-pdf>PDF인쇄</button>
                         <button type="button" class="report-deck-action-button" data-report-export-html>HTML추출</button>

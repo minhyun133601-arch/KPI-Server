@@ -162,4 +162,5 @@ test('report sheet host and runtime-sync files no longer touch globals directly'
   assert.doesNotMatch(sheetSource, /globalThis|window\./);
   assert.doesNotMatch(gasRuntimeSyncSource, /globalThis|window\./);
   assert.doesNotMatch(electricRuntimeSyncSource, /globalThis|window\./);
+  assert.match(sheetSource, /typeof closeUtilActionMenus === 'function' \? closeUtilActionMenus : null/);
 });

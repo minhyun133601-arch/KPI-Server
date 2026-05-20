@@ -2,12 +2,12 @@
   const entries = [
     {
       date: '2026-05-19',
-      tag: 'local-experiment/upstream-sync',
-      title: 'KPI-Server 최신 기능 로컬 실험본 이식',
+      tag: 'server-runtime/db-contract',
+      title: '서버 런타임/DB 계약 보정',
       summary:
-        '원격 origin/main 최신 기능을 fast-forward로 흡수한 뒤 로컬 실험본 운영 경계를 KPI 18080, PostgreSQL 55432, .env.local-experiment, var/local-experiment 기준으로 다시 맞췄습니다.',
+        '원격의 로컬 실험 런타임 변경은 그대로 fast-forward하지 않고, 보고서 메모 후보 기능만 흡수하면서 서버 기본 포트 3100, PostgreSQL 5434, .env.production.local, central-runtime 기준을 유지했습니다.',
       detail:
-        '마이그레이션 전 로컬 PostgreSQL custom dump를 생성하고 005/006 util production daily time metric 마이그레이션을 kpi_local_experiment에 적용했습니다. Ops Console과 서버 실행/중지/DB 콘솔/계정 보조 스크립트의 기본값이 로컬 실험본 env를 우선하도록 정리되었고, 서버는 http://127.0.0.1:18080, Ops Console은 http://127.0.0.1:3215에서 확인했습니다. Follow-up: 상위 유틸리티 메뉴를 제거하고 데이터 관리 > 유틸리티 기입/분석으로 재배치했으며, 생산량 기입/삭제/추출은 팀별내역서 생산량 카드 안으로 이동했습니다. 생산량 import/parser/API/DB/report 값 경로는 유지했습니다. 추가로 production_kind normal/rework를 저장/중복키/표시 경로에 붙여 정상 기입과 재가공품 기입을 분리했고, 재가공품은 팀별내역서 생산 상세에서 배지로 표시됩니다. 총괄비율/분석/보고서의 생산량 계산은 정상+재가공품 합산 기준으로 유지합니다. 적용 전 로컬 PostgreSQL custom dump를 만들고 008_util_production_daily_production_kind.sql을 적용했습니다. 공무환경팀 보고서는 자율 안전 신고제를 공사 및 정비/주요 계획 앞에 두고, 전/후/개요 전용 좌측 열 + 팀명 첫 작업칸 헤더 + 4열 작업 표형 양식으로 `slide10*` payload를 저장합니다. 개요는 날짜, 비용, 예방 위험성을 받아 `날짜 完, 자체처리 또는 n 백만원 소요, 위험성 예방` 한 줄로 표시하며, 입력창은 날짜, 비용, 예방 위험 순서로 열리고 빈 개요칸에서도 바로 입력할 수 있습니다. 자율 안전 신고제, 공사 및 정비, 주요 계획은 입력이 없으면 PDF/HTML 추출 대상과 추출 페이지 번호에서 제외하고, 자율 안전 신고제 출력본은 입력된 작업칸과 입력된 팀 행만 보이도록 비어 있는 칸/행을 숨깁니다. 대제목 번호는 실제 입력된 항목만 `3`부터 자동 계산하며 `1/1` 표기를 제거했습니다. 검증 기준: format, lint, npm test, server-structure, root smoke, Playwright browser smoke, ops console health/overview/DB tables, git diff --check.',
+        'DB 백업/복구/전송 보조 스크립트의 기본 env 탐색을 production/development/.env 순서로 정리하고, env 누락 시 PostgreSQL fallback URL을 127.0.0.1:5434로 맞췄습니다. 문서 저장소 패키지 기본 산출 위치도 var/prod 기준으로 통일했습니다. 보고서 메모 후보에는 유산 생산량 비율, 조업시간, 가동시간 지표와 팀 캘린더 생산 팝업 중복 표시 방지를 반영했고, 보고서 특이사항 편집 줄에는 직접 작성 항목까지 위/아래 버튼으로 재정렬할 수 있게 했으며 편집 팝업을 크게 넓혔습니다. 상위 유틸리티 섹션은 제거하고 데이터 관리 안에 유틸리티 기입/분석을 배치했으며, 생산량 기입은 팀별내역서 생산 카드 안에서 직접 처리하도록 옮겼습니다. 생산량 기입 버튼은 엑셀 파일 선택 대신 표 붙여넣기 모달을 열어 Ctrl+A로 복사한 시트 내용을 바로 저장하게 했고, 총괄 비율 화면은 기존 모달로 바로 들어가는 간소화 패널로 정리했습니다.',
     },
     {
       date: '2026-05-18',

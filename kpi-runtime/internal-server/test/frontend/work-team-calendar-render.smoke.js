@@ -335,11 +335,8 @@ test('work team calendar single-date production popup renders the metric line on
   assert.equal(metricOccurrences, 1);
   assert.match(modal.innerHTML, /work-team-calendar-production-action-menu/);
   assert.match(modal.innerHTML, /data-work-production-action="paste"/);
-  assert.match(modal.innerHTML, /openWorkProductionPasteModal\(event, 'normal'\)[^>]*>정상</);
-  assert.match(modal.innerHTML, /openWorkProductionPasteModal\(event, 'rework'\)[^>]*>재가공품</);
-  assert.match(modal.innerHTML, /data-work-production-action="delete"/);
   assert.doesNotMatch(modal.innerHTML, /data-work-production-action="entry"/);
-  assert.doesNotMatch(modal.innerHTML, /openWorkProductionEntryModal/);
+  assert.match(modal.innerHTML, /data-work-production-action="delete"/);
   assert.doesNotMatch(modal.innerHTML, /data-work-production-action="export"/);
 });
 

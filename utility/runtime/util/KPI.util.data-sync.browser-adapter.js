@@ -74,12 +74,6 @@
         return protocol && host ? `${protocol}//${host}` : '*';
     }
 
-    function getRenderUtilDualTabs() {
-        return typeof root.renderUtilDualTabs === 'function'
-            ? root.renderUtilDualTabs
-            : null;
-    }
-
     function ensureIntegratedMeteringRuntime() {
         return root.KpiMeteringBridge?.ensureIntegratedMeteringRuntime?.();
     }
@@ -160,7 +154,6 @@
         getServerRuntimeConfig,
         getLocationProtocol,
         getLocationOrigin,
-        getRenderUtilDualTabs,
         ensureIntegratedMeteringRuntime,
         clearTimer,
         setTimer,
