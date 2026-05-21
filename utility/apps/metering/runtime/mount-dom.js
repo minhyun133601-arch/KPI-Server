@@ -151,6 +151,7 @@ function buildElementRegistry() {
     selectedDateError: queryWithinMountRoot("#selectedDateError"),
     selectedDateSub: queryWithinMountRoot("#selectedDateSub"),
     panelHeadActions: queryWithinMountRoot(".panel-head-actions"),
+    meterSheetOpenBtn: queryWithinMountRoot("#meterSheetOpenBtn"),
     calendarDisplayModeToggleBtn: queryWithinMountRoot("#calendarDisplayModeToggleBtn"),
     clearCardSelectionBtn: queryWithinMountRoot("#clearCardSelectionBtn"),
     entryStatusWrap: queryWithinMountRoot("#entryStatusWrap"),
@@ -239,9 +240,58 @@ function ensureResourcePlaceholderButtons() {
 
 function resolveElements() {
   ensureResourcePlaceholderButtons();
+  ensureMeterSheetOpenButton();
   ensureManualSaveButtons();
   elements = buildElementRegistry();
   return elements;
+}
+
+function createMeterSheetOpenButton() {
+  const button = createDetachedElement("button");
+  button.type = "button";
+  button.id = "meterSheetOpenBtn";
+  button.className = "panel-mode-btn meter-sheet-open-btn is-hidden";
+  button.textContent = "검침표";
+  button.title = "검침표";
+  button.setAttribute("aria-label", "검침표 열기");
+  return button;
+}
+
+function ensureMeterSheetOpenButton() {
+  const panelHeadActions = queryWithinMountRoot(".panel-head-actions");
+  if (!panelHeadActions) {
+    return;
+  }
+
+  let button = queryWithinMountRoot("#meterSheetOpenBtn");
+  if (!button) {
+    button = createMeterSheetOpenButton();
+  }
+
+  if (button.parentElement === panelHeadActions) {
+    return;
+  }
+
+  const addWrap = queryWithinMountRoot("#equipmentAddWrap");
+  if (addWrap?.parentElement === panelHeadActions) {
+    const panelActionChildren = Array.from(panelHeadActions.children || []);
+    const addWrapIndex = panelActionChildren.indexOf(addWrap);
+    const nextAction = addWrapIndex >= 0 ? panelActionChildren[addWrapIndex + 1] || null : null;
+    if (nextAction) {
+      panelHeadActions.insertBefore(button, nextAction);
+    } else {
+      panelHeadActions.appendChild(button);
+    }
+    return;
+  }
+
+  const teamModeBtn = queryWithinMountRoot("#teamModeBtn");
+  if (teamModeBtn?.parentElement === panelHeadActions) {
+    panelHeadActions.insertBefore(button, teamModeBtn);
+    return;
+  }
+
+  panelHeadActions.appendChild(button);
 }
 
 function createManualSaveButton(buttonId, labelText = "저장") {

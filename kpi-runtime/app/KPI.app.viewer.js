@@ -64,7 +64,7 @@
         function renderSidebar() {
             const sidebar = document.getElementById('sidebar');
             if (!sidebar) return;
-            const sections = ensureSidebarTreeState(getDashboardSections());
+            const sections = ensureSidebarTreeState(getDashboardNavigationSections(getDashboardSections()));
             const selectedSectionId = getNavigationSelectionSectionId();
             sidebar.innerHTML = `
                 <div class="sidebar-tree-shell">

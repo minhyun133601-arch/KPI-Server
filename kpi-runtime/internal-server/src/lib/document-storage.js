@@ -53,8 +53,8 @@ function resolveWorkHistoryStorageFolder({ fileCategory }) {
   );
 }
 
-function resolveEquipmentAssetStorageFolder({ ownerDomain, ownerKey, fileCategory, metadata }) {
-  const domainFolder = ownerDomain === 'audit.legal_facility' ? 'legal-facility' : 'equipment-history';
+function resolveEquipmentAssetStorageFolder({ ownerKey, fileCategory, metadata }) {
+  const domainFolder = 'equipment-history';
   const equipmentName = normalizeText(metadata?.equipmentName)
     || normalizeText(metadata?.facilityName)
     || normalizeText(metadata?.facility)
@@ -82,9 +82,8 @@ export function resolveManagedDocumentStorageFolder(input = {}) {
     return resolveWorkHistoryStorageFolder(input);
   }
 
-  if (normalizedOwnerDomain === 'data.equipment_history' || normalizedOwnerDomain === 'audit.legal_facility') {
+  if (normalizedOwnerDomain === 'data.equipment_history') {
     return resolveEquipmentAssetStorageFolder({
-      ownerDomain: normalizedOwnerDomain,
       ownerKey: input.ownerKey,
       fileCategory: input.fileCategory,
       metadata: input.metadata

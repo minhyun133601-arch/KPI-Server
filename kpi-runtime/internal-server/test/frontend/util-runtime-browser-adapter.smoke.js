@@ -81,6 +81,7 @@ function createContext(options = {}) {
     closers: new Map(),
     meteringInitCount: 0,
     manualSaveCalls: [],
+    reportPanelContainers: [],
     sheetReportContainers: [],
     printCount: 0,
   };
@@ -131,7 +132,9 @@ function createContext(options = {}) {
     initUtilAnalyticsRepeaters() {},
     initUtilTabs() {},
     initUtilEnergyLauncher() {},
-    initUtilReportPanel() {},
+    initUtilReportPanel(container) {
+      registered.reportPanelContainers.push(container);
+    },
     initUtilSheetReports(container) {
       registered.sheetReportContainers.push(container);
     },
@@ -1172,16 +1175,30 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
     container: dataUtilityContainer,
   });
   assert.equal(registered.meteringInitCount, 1);
+  assert.equal(registered.reportPanelContainers.length, 0);
   assert.equal(registered.sheetReportContainers.length, 0);
 
-  const dataAnalysisContainer = {};
+  let dataAnalysisModalOpenCount = 0;
+  const dataAnalysisOpenButton = {
+    dataset: {},
+    click() {
+      dataAnalysisModalOpenCount += 1;
+    },
+  };
+  const dataAnalysisContainer = {
+    querySelector(selector) {
+      return selector === '[data-role="util-report-open-modal"]' ? dataAnalysisOpenButton : null;
+    },
+  };
   registered.initializers.get('data')({
     sectionId: 'data',
-    category: { utilitySurface: 'analysis', content: '' },
+    category: { utilitySurface: 'analysis', autoOpenUtilityReportModal: true, content: '' },
     container: dataAnalysisContainer,
   });
   assert.equal(registered.meteringInitCount, 1);
-  assert.equal(registered.sheetReportContainers[0], dataAnalysisContainer);
+  assert.equal(registered.reportPanelContainers[0], dataAnalysisContainer);
+  assert.equal(dataAnalysisModalOpenCount, 1);
+  assert.equal(registered.sheetReportContainers.length, 0);
 
   registered.initializers.get('data')({
     sectionId: 'data',
@@ -1189,13 +1206,14 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
     container: {},
   });
   assert.equal(registered.meteringInitCount, 1);
+  assert.equal(registered.reportPanelContainers.length, 1);
 
   const reportContainer = {};
   registered.initializers.get('report')({
     category: { content: '' },
     container: reportContainer,
   });
-  assert.equal(registered.sheetReportContainers[1], reportContainer);
+  assert.equal(registered.sheetReportContainers[0], reportContainer);
 
   const providerFactory = registered.saveProviders.get('util-shared-save');
   const provider = providerFactory({

@@ -39,14 +39,10 @@
         return true;
     }
 
-    runtime.registerSectionRenderer('audit', (category) => {
-        renderAuditContent(category);
-    });
-
     runtime.registerSaveProvider('audit-record-save', (context = {}) => {
-        if (context.sectionId !== 'audit') return null;
         const dataKey = String(context.category?.dataKey || '').trim();
-        if (dataKey === 'audit_legal_facility') return null;
+        if (dataKey !== 'audit_lux') return null;
+        if (context.sectionId !== 'data') return null;
         if (!dataKey || typeof getAuditData !== 'function' || typeof saveAuditData !== 'function') {
             return null;
         }
@@ -55,11 +51,11 @@
             priority: 90,
             canSave: saveCapability.canWrite,
             buttonLabel: '저장',
-            historyLabel: 'Audit 저장',
-            title: 'Audit 저장',
+            historyLabel: '조도 저장',
+            title: '조도 저장',
             statusText: saveCapability.canWrite
-                ? '현재 Audit 기록을 중앙 서버에 저장합니다.'
-                : '서버 기록이 가능한 환경에서만 Audit 기록을 저장할 수 있습니다.',
+                ? '현재 조도 데이터를 중앙 서버에 저장합니다.'
+                : '서버 기록이 가능한 환경에서만 조도 데이터를 저장할 수 있습니다.',
             perform: async () => {
                 if (!saveCapability.canWrite) return false;
                 if (dataKey === 'audit_lux' && typeof saveAuditLuxWorkspace === 'function') {

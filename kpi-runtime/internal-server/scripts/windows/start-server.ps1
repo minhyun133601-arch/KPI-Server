@@ -1,6 +1,6 @@
 param(
   [switch]$ForceRestart,
-  [ValidateSet('Default', 'LocalExperiment', 'Development', 'Production')]
+  [ValidateSet('Default', 'Development', 'Production')]
   [string]$Environment = 'Default',
   [string]$EnvFile
 )
@@ -65,16 +65,14 @@ function Resolve-EnvFilePath {
   )
 
   if ($EnvFile) {
-    throw 'The -EnvFile override is no longer supported. Copy the portable env file to .env.local-experiment, .env.development.local, .env.production.local, or .env inside kpi-runtime/internal-server.'
+    throw 'The -EnvFile override is no longer supported. Copy the server env file to .env.production.local, .env.development.local, or .env inside kpi-runtime/internal-server.'
   }
 
   $candidatePaths = switch ($Environment) {
-    'LocalExperiment' { @((Join-Path $ServerDir '.env.local-experiment'), (Join-Path $ServerDir '.env')) }
     'Development' { @((Join-Path $ServerDir '.env.development.local'), (Join-Path $ServerDir '.env')) }
     'Production' { @((Join-Path $ServerDir '.env.production.local'), (Join-Path $ServerDir '.env')) }
     default {
       @(
-        (Join-Path $ServerDir '.env.local-experiment'),
         (Join-Path $ServerDir '.env.production.local'),
         (Join-Path $ServerDir '.env.development.local'),
         (Join-Path $ServerDir '.env')
@@ -88,7 +86,7 @@ function Resolve-EnvFilePath {
     }
   }
 
-  throw 'No env file was found. Copy the portable env file to .env.local-experiment, .env.development.local, .env.production.local, or .env inside kpi-runtime/internal-server.'
+  throw 'No env file was found. Copy the server env file to .env.production.local, .env.development.local, or .env inside kpi-runtime/internal-server.'
 }
 
 function Read-EnvMap {
@@ -126,7 +124,14 @@ New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $nodeExecutablePath = Resolve-NodeExecutablePath
 $resolvedEnvFile = Resolve-EnvFilePath -ServerDir $serverDir -Environment $Environment -EnvFile $EnvFile
 $envMap = Read-EnvMap -FilePath $resolvedEnvFile
-$port = 18080
+$serverHost = '127.0.0.1'
+if ($envMap.ContainsKey('KPI_SERVER_HOST')) {
+  $configuredHost = ([string]$envMap['KPI_SERVER_HOST']).Trim()
+  if ($configuredHost) {
+    $serverHost = $configuredHost
+  }
+}
+$port = 3100
 if ($envMap.ContainsKey('KPI_SERVER_PORT')) {
   $parsedPort = 0
   if ([int]::TryParse($envMap['KPI_SERVER_PORT'], [ref]$parsedPort) -and $parsedPort -gt 0) {
@@ -147,12 +152,11 @@ if ($listener) {
 
 $previousRuntimeEnvironment = $env:KPI_RUNTIME_ENV
 try {
-  if ($Environment -eq 'Production') {
+  $resolvedEnvFileName = [System.IO.Path]::GetFileName($resolvedEnvFile)
+  if ($Environment -eq 'Production' -or $resolvedEnvFileName -eq '.env.production.local') {
     $env:KPI_RUNTIME_ENV = 'production'
-  } elseif ($Environment -eq 'Development') {
+  } elseif ($Environment -eq 'Development' -or $resolvedEnvFileName -eq '.env.development.local') {
     $env:KPI_RUNTIME_ENV = 'development'
-  } elseif ($Environment -eq 'LocalExperiment' -or [System.IO.Path]::GetFileName($resolvedEnvFile) -eq '.env.local-experiment') {
-    $env:KPI_RUNTIME_ENV = 'local-experiment'
   } else {
     Remove-Item Env:KPI_RUNTIME_ENV -ErrorAction SilentlyContinue
   }
@@ -180,6 +184,10 @@ Write-Host "Environment: $Environment"
 Write-Host "Env file: $resolvedEnvFile"
 Write-Host "Node: $nodeExecutablePath"
 Write-Host "PID: $($process.Id)"
+Write-Host "Bind: $serverHost`:$port"
 Write-Host "Health: http://127.0.0.1:$port/api/health"
+if ($serverHost -eq '0.0.0.0') {
+  Write-Host "LAN: http://<server-ip>:$port/login"
+}
 Write-Host "Stdout: $stdout"
 Write-Host "Stderr: $stderr"

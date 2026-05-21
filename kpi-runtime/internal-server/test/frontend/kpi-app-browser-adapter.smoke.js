@@ -248,8 +248,14 @@ test('app split source files route browser globals through the browser adapter',
   }
 
   const sharedSource = splitSources.find(entry => entry.sourcePath.endsWith('KPI.app.shared.js'))?.source || '';
+  const navigationSource = splitSources.find(entry => entry.sourcePath.endsWith('KPI.app.navigation.js'))?.source || '';
+  const viewerSource = splitSources.find(entry => entry.sourcePath.endsWith('KPI.app.viewer.js'))?.source || '';
   assert.match(sharedSource, /const browser = typeof KpiAppBrowserAdapter !== 'undefined'/);
   assert.match(sharedSource, /browser\?\.markGlobalSaveShell\?\.\(\)/);
+  assert.match(sharedSource, /function getDashboardNavigationSections\(sections = null\)/);
+  assert.match(sharedSource, /navigationHidden !== true/);
+  assert.match(navigationSource, /getDashboardNavigationSections\(getDashboardSections\(\)\)/);
+  assert.match(viewerSource, /getDashboardNavigationSections\(getDashboardSections\(\)\)/);
 });
 
 test('app shell records internal navigation in browser history and restores on back', () => {
@@ -260,6 +266,8 @@ test('app shell records internal navigation in browser history and restores on b
 
   assert.match(sharedSource, /const AppHistoryState = \{/);
   assert.match(navigationSource, /function bindAppHistoryNavigation\(\)/);
+  assert.match(navigationSource, /popupMode === 'report' \|\| isExperimentPopup/);
+  assert.match(navigationSource, /classList\?\.toggle\?\.\('is-experiment-popup', isExperimentPopup\)/);
   assert.match(navigationSource, /addWindowEventListener\?\.\('popstate', handleAppHistoryPopState\)/);
   assert.match(navigationSource, /browser\?\.pushHistoryState\?\./);
   assert.match(navigationSource, /browser\?\.replaceHistoryState\?\./);

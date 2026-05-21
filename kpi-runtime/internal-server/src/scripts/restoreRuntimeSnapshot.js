@@ -106,6 +106,7 @@ async function getColumnInfo(client, tableName) {
   );
   return result.rows.map((row) => ({
     name: row.column_name,
+    isDate: row.data_type === 'date',
     isJson: row.data_type === 'json' || row.data_type === 'jsonb' || row.udt_name === 'jsonb'
   }));
 }
@@ -115,9 +116,22 @@ async function getCurrentRowCount(client, tableName) {
   return result.rows[0]?.count || 0;
 }
 
+function formatLocalDateValue(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return raw;
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function coerceSnapshotValue(column, value) {
   if (typeof value === 'undefined') return null;
   if (value === null) return null;
+  if (column.isDate) return formatLocalDateValue(value);
   if (column.isJson) return JSON.stringify(value);
   return value;
 }
@@ -134,6 +148,20 @@ async function insertTableRows(client, tableName, rows, columns) {
     const values = columns.map((column) => coerceSnapshotValue(column, row[column.name]));
     await client.query(insertSql, values);
   }
+}
+
+function quoteSqlIdentifier(value) {
+  const identifier = String(value || '').trim();
+  if (!/^[a-z_][a-z0-9_]*$/i.test(identifier)) {
+    throw new Error(`invalid_sql_identifier:${identifier}`);
+  }
+  return `"${identifier.replace(/"/g, '""')}"`;
+}
+
+async function truncateTables(client, tableNames) {
+  if (!tableNames.length) return;
+  const tableSql = tableNames.map(quoteSqlIdentifier).join(', ');
+  await client.query(`truncate table ${tableSql}`);
 }
 
 async function buildPlan(client, snapshot) {
@@ -176,9 +204,7 @@ async function resetSequences(client, tableName, columns) {
 async function executeRestore(client, snapshot, plan) {
   await client.query('begin');
   try {
-    for (const tableName of plan.truncateOrder) {
-      await client.query(`truncate table ${tableName}`);
-    }
+    await truncateTables(client, plan.truncateOrder);
 
     for (const tableName of plan.insertOrder) {
       const snapshotTable = snapshot.tables[tableName] || { rows: [] };

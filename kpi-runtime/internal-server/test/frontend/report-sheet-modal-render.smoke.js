@@ -569,16 +569,15 @@ test('report sheet modal render omits blank template from every utility sheet bo
     assert.doesNotMatch(body.innerHTML, /util-sheet-blank-template-table/);
   });
 
-  assert.equal(wasteMeterOptions[0].showLabels, false);
+  assert.equal('showLabels' in wasteMeterOptions[0], false);
 
-  config.UtilSheetMeterState.wasteShowLabels = true;
   const { modal, body } = createModalHarness();
   modal.dataset.sheetType = 'meter';
   modal.dataset.datasetKey = 'waste';
   modal.dataset.monthKey = '2026-04';
   modalRender.renderUtilSheetReportModal(modal);
   assert.ok(body.innerHTML.includes('WASTE_METER_MAIN'));
-  assert.equal(wasteMeterOptions.at(-1).showLabels, true);
+  assert.equal('showLabels' in wasteMeterOptions.at(-1), false);
 });
 
 test('report sheet modal render omits blank template from no-data pre-extraction fallbacks', () => {
@@ -820,11 +819,11 @@ test('report sheet gas runtime sync forces one metering sync per report session'
 
 test('kpi html loads report sheet modal render between modal shell and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=058');
+  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=059');
   const gasScopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=056');
   const gasRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/runtime-sync.js?v=054');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=095');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=065');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=097');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=066');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=063');
 

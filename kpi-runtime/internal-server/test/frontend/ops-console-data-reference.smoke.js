@@ -12,24 +12,12 @@ function readRepoFile(...segments) {
 }
 
 test('ops console omits repository map and data reference surfaces', async () => {
-  const [
-    indexHtml,
-    appSource,
-    appConfigSource,
-    repositoryMapHtml,
-    repositoryMapDataSource,
-    opsPathsSource,
-    opsRuntimeSource,
-    commandRegistrySource,
-  ] = await Promise.all([
+  const [indexHtml, appSource, appConfigSource, repositoryMapHtml, repositoryMapDataSource] = await Promise.all([
     readRepoFile('commands', 'ops-console-app', 'ops-console', 'public', 'index.html'),
     readRepoFile('commands', 'ops-console-app', 'ops-console', 'public', 'app.js'),
     readRepoFile('commands', 'ops-console-app', 'ops-console', 'public', 'app.config.js'),
     readRepoFile('commands', 'ops-console-app', 'ops-console', 'public', 'repository-map.html'),
     readRepoFile('commands', 'ops-console-app', 'ops-console', 'public', 'repository-map-data.js'),
-    readRepoFile('commands', 'ops-console-app', 'ops-console', 'lib', 'paths.mjs'),
-    readRepoFile('commands', 'ops-console-app', 'ops-console', 'lib', 'ops-service.runtime.mjs'),
-    readRepoFile('commands', 'ops-console-app', 'ops-console', 'lib', 'command-registry.mjs'),
   ]);
 
   const repositoryMapDataContext = {};
@@ -59,11 +47,34 @@ test('ops console omits repository map and data reference surfaces', async () =>
   assert.doesNotMatch(appConfigSource, /previewSummary/);
   assert.doesNotMatch(appConfigSource, /dataReferenceTitle/);
   assert.doesNotMatch(appConfigSource, /dataReferenceSummary/);
-  assert.match(appConfigSource, /KPI 서버 3100/);
+  assert.match(appConfigSource, /KPI server 3100/);
   assert.match(appConfigSource, /DB 5434/);
   assert.match(appConfigSource, /PostgreSQL 5434/);
-  assert.doesNotMatch(appConfigSource, /KPI 서버 18080/);
-  assert.doesNotMatch(appConfigSource, /(?:DB|PostgreSQL) 55432/);
+  assert.doesNotMatch(appConfigSource, /KPI server 18080/);
+  assert.doesNotMatch(appConfigSource, /PostgreSQL 55432/);
+
+  const [opsPathsSource, opsRuntimeSource, commandRegistrySource] = await Promise.all([
+    readRepoFile('commands', 'ops-console-app', 'ops-console', 'lib', 'paths.mjs'),
+    readRepoFile('commands', 'ops-console-app', 'ops-console', 'lib', 'ops-service.runtime.mjs'),
+    readRepoFile('commands', 'ops-console-app', 'ops-console', 'lib', 'command-registry.mjs'),
+  ]);
+  assert.match(opsPathsSource, /\.env\.production\.local/);
+  assert.match(opsPathsSource, /central-runtime/);
+  assert.doesNotMatch(opsPathsSource, /\.env\.local-experiment/);
+  assert.match(opsRuntimeSource, /KPI_RUNTIME_ENV: "production"/);
+  assert.match(opsRuntimeSource, /\? parsed : 3100/);
+  assert.match(opsRuntimeSource, /\? parsed : 5434/);
+  assert.doesNotMatch(opsRuntimeSource, /KPI_RUNTIME_ENV: "local-experiment"/);
+  assert.doesNotMatch(opsRuntimeSource, /\? parsed : 18080/);
+  assert.doesNotMatch(opsRuntimeSource, /\? parsed : 55432/);
+  assert.match(commandRegistrySource, /\.env\.production\.local/);
+  assert.doesNotMatch(commandRegistrySource, /\.env\.local-experiment/);
+  assert.match(indexHtml, /startupTile|startupActions|startupStatus/);
+  assert.match(appSource, /startupTaskRegistered|startup\.register|startup\.unregister/);
+  assert.match(appConfigSource, /startupLabel|startupSummary|startupRegister|startupUnregister/);
+  assert.match(opsPathsSource, /register-startup-task|unregister-startup-task/);
+  assert.match(opsRuntimeSource, /getStartupTaskRegistered|loginStartupTaskName/);
+  assert.match(commandRegistrySource, /startup\.register|startup\.unregister/);
 
   assert.match(repositoryMapHtml, /repository-map-data\.js/);
   assert.match(repositoryMapHtml, /Folder Structure/);
@@ -80,25 +91,6 @@ test('ops console omits repository map and data reference surfaces', async () =>
   assert.doesNotMatch(repositoryMapDataSource, /repository-map-history/);
   assert.doesNotMatch(repositoryMapDataSource, /Data Path tab/);
   assert.doesNotMatch(repositoryMapDataSource, /data-reference-map/);
-
-  assert.match(opsPathsSource, /\.env\.production\.local/);
-  assert.match(opsPathsSource, /central-runtime/);
-  assert.doesNotMatch(opsPathsSource, /\.env\.local-experiment/);
-  assert.match(opsRuntimeSource, /KPI_RUNTIME_ENV: "production"/);
-  assert.match(opsRuntimeSource, /\? parsed : 3100/);
-  assert.match(opsRuntimeSource, /\? parsed : 5434/);
-  assert.doesNotMatch(opsRuntimeSource, /KPI_RUNTIME_ENV: "local-experiment"/);
-  assert.doesNotMatch(opsRuntimeSource, /\? parsed : 18080/);
-  assert.doesNotMatch(opsRuntimeSource, /\? parsed : 55432/);
-  assert.match(commandRegistrySource, /\.env\.production\.local/);
-  assert.doesNotMatch(commandRegistrySource, /\.env\.local-experiment/);
-
-  assert.match(indexHtml, /startupTile|startupActions|startupStatus/);
-  assert.match(appSource, /startupTaskRegistered|startup\.register|startup\.unregister/);
-  assert.match(appConfigSource, /startupLabel|startupSummary|startupRegister|startupUnregister/);
-  assert.match(opsPathsSource, /register-startup-task|unregister-startup-task/);
-  assert.match(opsRuntimeSource, /getStartupTaskRegistered|loginStartupTaskName/);
-  assert.match(commandRegistrySource, /startup\.register|startup\.unregister/);
 
   const consoleChildren =
     repositoryMapDataContext.window.KPI_REPOSITORY_MAP_STATIC_TREE.find(

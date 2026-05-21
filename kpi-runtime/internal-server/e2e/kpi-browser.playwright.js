@@ -139,6 +139,43 @@ async function expectIntegratedMeteringTitle(page, titlePattern) {
     .toMatch(titlePattern);
 }
 
+async function expectIntegratedMeteringSheetButton(page) {
+  await expect
+    .poll(async () => {
+      return await page.evaluate(() => {
+        const host = document.querySelector('[data-kpi-metering-root]');
+        const button = host?.shadowRoot?.getElementById('meterSheetOpenBtn');
+        return {
+          text: button?.textContent?.trim() || '',
+          hidden: button?.classList?.contains('is-hidden') ?? true,
+          disabled: Boolean(button?.disabled),
+        };
+      });
+    })
+    .toEqual({ text: '검침표', hidden: false, disabled: false });
+}
+
+async function clickIntegratedMeteringSheetButton(page) {
+  const clicked = await page.evaluate(() => {
+    const host = document.querySelector('[data-kpi-metering-root]');
+    const button = host?.shadowRoot?.getElementById('meterSheetOpenBtn');
+    if (!button || button.classList.contains('is-hidden') || button.disabled) return false;
+    button.click();
+    return true;
+  });
+  expect(clicked, 'embedded metering sheet button should be clickable').toBeTruthy();
+}
+
+function getCurrentMonthInputValue() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getShortMonthLabel(monthKey) {
+  const [year, month] = String(monthKey || '').split('-');
+  return `${String(year || '').slice(2)}.${month}`;
+}
+
 async function expectWorkHistoryShadowText(page, elementId, pattern) {
   await expect
     .poll(async () => {
@@ -287,110 +324,75 @@ test.describe('KPI browser smoke', () => {
       await clickSidebarButton(page, '데이터 관리');
       await clickSidebarButton(page, '유틸리티 기입');
       await expectIntegratedMeteringTitle(page, /월간 (전기 기입|가스 검침|폐수 기입|생산량 기입) 시트/);
+      await expect(page.locator('#content-container [data-kpi-metering-root]')).toBeVisible();
+      await expectIntegratedMeteringSheetButton(page);
+      await clickIntegratedMeteringSheetButton(page);
+      await expect(page.locator('#util-sheet-report-modal.is-open')).toBeVisible();
+      await expect(page.locator('[data-role="util-sheet-report-title"]')).toContainText('검침표');
+      await expect(page.locator('[data-role="util-sheet-modal-type-select"]')).toHaveCount(0);
+      await expect(page.locator('[data-extract-sheet-type="analysis"]')).toHaveCount(0);
+      await expect(page.locator('[data-role="util-sheet-monthly-extract-sheet-type"]')).toHaveCount(0);
+      await page.locator('[data-role="util-sheet-report-close"]').click();
+      await expect(page.locator('#util-sheet-report-modal.is-open')).toHaveCount(0);
+      await expect(page.locator('#content-container')).not.toContainText('가스비 검침표');
+      await expect(page.locator('#content-container')).not.toContainText('전력비 검침표');
+      await expect(page.locator('#content-container')).not.toContainText('폐수 검침표');
+      await expect(page.locator('#content-container')).not.toContainText('총괄 비율');
+      await expect(page.locator('#content-container')).not.toContainText('분석표');
 
-      await clickSidebarButton(page, '분석');
-      await expect(page.locator('#content-container')).toContainText('총괄 비율');
-      const totalRatioOpenButton = page.locator('[data-role="util-report-open-modal"]').first();
-      await expect(totalRatioOpenButton).toBeVisible();
-      await totalRatioOpenButton.click();
-      await expect(page.locator('#util-report-modal.is-open.is-overview-ratio')).toBeVisible();
-      await expect(
-        page.locator('[data-role="util-report-modal-total-donut"] .util-report-composition-donut svg').first()
-      ).toBeVisible();
-      await expect(
-        page.locator('[data-role="util-report-modal-selected-donut"] .util-report-composition-donut svg').first()
-      ).toBeVisible();
-      await expect(page.locator('[data-role="util-report-modal-chart-wrap"]')).toHaveCount(0);
-      await expect(page.locator('[data-role="util-report-modal-chart-type-toggle"]')).toHaveCount(0);
-      await expect(page.locator('[data-role="util-report-modal-chart-fullscreen-toggle"]')).toHaveCount(0);
-      await expect(page.locator('[data-role="util-report-modal-show-labels"]')).toHaveCount(0);
-      await expect(page.locator('[data-role="util-report-inline-body"]')).toBeVisible();
-      await page.locator('[data-role="util-report-modal-close"]').click();
-      await expect(page.locator('#util-report-modal.is-open')).toHaveCount(0);
-      const analysisToggleButton = page
-        .locator('#content-container button')
-        .filter({ hasText: /검침표|분석표/ })
-        .first();
-      await expect(analysisToggleButton).toBeVisible();
-      const analysisToggleLabel = String(await analysisToggleButton.textContent()).trim();
-      const toggledAnalysisLabel = analysisToggleLabel === '검침표' ? '분석표' : '검침표';
-      await expect(page.locator('#content-container')).toContainText(
-        analysisToggleLabel === '검침표' ? '가스비 검침표' : '가스비 분석표'
+      const currentMonthValue = getCurrentMonthInputValue();
+      await page.goto(
+        `/?experimentSmoke=${Date.now()}#kpi?view=category&section=experiment&category=0&popup=experiment`
       );
-      await analysisToggleButton.click();
+      await expect(page.locator('.experiment-unified-shell')).toBeVisible();
+      await expect(page.locator('[data-exp-period-start]')).toHaveValue('2024-01');
+      await expect(page.locator('[data-exp-period-end]')).toHaveValue(currentMonthValue);
+      await expect(page.locator('.experiment-selector-card.is-selected')).toHaveCount(0);
+      await expect(page.locator('[data-exp-chart-mount] .util-sheet-empty')).toContainText('카드 추가');
+      await page.locator('[data-exp-card-picker-toggle]').click();
+      await expect(page.locator('[data-exp-card-picker]')).toBeVisible();
+      await page.locator('[data-exp-card-toggle="production-total"]').click();
+      await expect(page.locator('[data-exp-card-picker]')).toBeHidden();
+      await expect(page.locator('.experiment-chart-mount [data-role="util-sheet-analysis-chart-card"]')).toBeVisible();
+      await expect(
+        page.locator('.experiment-chart-mount .util-analytics-chart-label').filter({ hasText: '24.01' })
+      ).toHaveCount(1);
       await expect(
         page
-          .locator('#content-container button')
-          .filter({ hasText: new RegExp(toggledAnalysisLabel) })
-          .first()
-      ).toBeVisible();
-      await expect(page.locator('#content-container')).toContainText(
-        toggledAnalysisLabel === '검침표' ? '가스비 검침표' : '가스비 분석표'
-      );
+          .locator('.experiment-chart-mount .util-analytics-chart-label')
+          .filter({ hasText: getShortMonthLabel(currentMonthValue) })
+      ).toHaveCount(1);
+      const valueLabels = page.locator('.experiment-chart-mount .util-analytics-chart-value');
+      await expect(valueLabels).toHaveCount(0);
+      await page.locator('.experiment-chart-mount [data-chart-label-toggle]').check();
+      await expect(valueLabels.first()).toBeVisible();
+      await page.locator('.experiment-chart-mount [data-chart-label-toggle]').uncheck();
+      await expect(valueLabels).toHaveCount(0);
+      await page
+        .locator(
+          '.experiment-chart-mount [data-role="util-sheet-analysis-series-label-toggle"][data-chart-key="production-total"]'
+        )
+        .check();
+      await expect(valueLabels.first()).toBeVisible();
+      await page
+        .locator(
+          '.experiment-chart-mount [data-role="util-sheet-analysis-series-type"][data-chart-key="production-total"][data-chart-type="none"]'
+        )
+        .click();
+      await expect(page.locator('.experiment-chart-mount .util-sheet-empty')).toContainText('표시할 그래프가 없습니다');
+      await page
+        .locator(
+          '.experiment-chart-mount [data-role="util-sheet-analysis-series-type"][data-chart-key="production-total"][data-chart-type="bar"]'
+        )
+        .click();
+      await expect(
+        page.locator('.experiment-chart-mount .util-analytics-chart-label').filter({ hasText: '24.01' })
+      ).toHaveCount(1);
+      await page.goto('/');
+      await expect(page.locator('#sidebar')).toBeVisible();
 
-      await clickSidebarButton(page, '조도 (Lux)');
+      await clickSidebarButton(page, '조도');
       await expect(page.locator('#content-container')).toContainText('조도 입력');
-
-      await clickSidebarButton(page, '법정 설비 관리');
-      await expect(page.locator('#content-container')).toContainText('법정 설비');
-      await expect(page.locator('#content-container')).toContainText('법정 설비 점검');
-      await expect(page.locator('.audit-legal-dashboard')).toBeVisible();
-      await expect(page.locator('.audit-legal-entry-form')).toBeVisible();
-      await expect(page.locator('#content-container')).toContainText('보일러 설비 추가');
-      await expect(page.locator('#content-container')).toContainText('정기검사');
-      await expect(page.locator('#content-container')).toContainText('사용검사');
-      await expect(page.locator('#content-container')).toContainText('선임');
-      await expect(page.locator('[data-audit-legal-open-category-inspection="boiler"]')).toBeVisible();
-      await expect(page.locator('[data-audit-legal-category="elevator"]')).toBeVisible();
-      await expect(page.locator('#content-container')).toContainText('승강기');
-      await expect(page.locator('[data-audit-legal-calendar-toggle]')).toHaveAttribute('aria-expanded', 'true');
-      await page.locator('[data-audit-legal-calendar-toggle]').click();
-      await expect(page.locator('[data-audit-legal-calendar-toggle]')).toHaveAttribute('aria-expanded', 'false');
-      await expect(page.locator('.audit-legal-calendar-month-watermark')).toHaveCount(0);
-      await page.locator('[data-audit-legal-calendar-toggle]').click();
-      await expect(page.locator('[data-audit-legal-calendar-toggle]')).toHaveAttribute('aria-expanded', 'true');
-      await expect(page.locator('[data-audit-legal-calendar-shift="-1"]')).toBeVisible();
-      await expect(page.locator('[data-audit-legal-calendar-shift="1"]')).toBeVisible();
-      await expect(page.locator('[data-audit-legal-calendar-year]')).toBeVisible();
-      await expect(page.locator('[data-audit-legal-calendar-month]')).toBeVisible();
-      await expect(page.locator('.audit-legal-calendar-month-watermark')).toBeVisible();
-      const legalCalendarMonth = page.locator('[data-audit-legal-calendar-month]');
-      const initialLegalCalendarMonth = await legalCalendarMonth.inputValue();
-      await page.locator('[data-audit-legal-calendar-shift="1"]').click();
-      await expect(legalCalendarMonth).not.toHaveValue(initialLegalCalendarMonth);
-      const legalOpenInspectionButtons = page.locator('[data-audit-legal-open-inspection]');
-      if ((await legalOpenInspectionButtons.count()) === 0) {
-        for (const itemType of ['fire', 'electric', 'environment', 'elevator', 'other']) {
-          await page.locator(`[data-audit-legal-category="${itemType}"]`).click();
-          if ((await legalOpenInspectionButtons.count()) > 0) break;
-        }
-      }
-      if ((await legalOpenInspectionButtons.count()) > 0) {
-        await expect(page.locator('#content-container')).toContainText('남은 관리 일정');
-        await expect(page.locator('#content-container')).toContainText('날짜 미등록');
-        await expect(page.locator('#content-container')).toContainText('선임일');
-        await expect(page.locator('#content-container')).toContainText('다음 교육일');
-        await expect(legalOpenInspectionButtons.first()).toBeVisible();
-        await legalOpenInspectionButtons.first().click();
-        const legalInspectionForm = page.locator('[data-audit-legal-inspection-form]').first();
-        await expect(legalInspectionForm.locator('[data-audit-legal-inspection-input="cycle"]')).toBeVisible();
-        await legalInspectionForm.locator('[data-audit-legal-inspection-input="lastDate"]').fill('2026-01-10');
-        await legalInspectionForm.locator('[data-audit-legal-inspection-input="cycle"]').selectOption('6개월');
-        await expect(legalInspectionForm.locator('[data-audit-legal-inspection-input="nextDate"]')).toHaveValue(
-          '2026-07-10'
-        );
-        await expect(page.locator('[data-audit-legal-delete-facility]').first()).toBeVisible();
-      } else {
-        await expect(page.locator('#content-container')).toContainText('등록된 설비가 없습니다');
-        await expect(page.locator('[data-audit-legal-form]')).toBeVisible();
-        await expect(page.locator('[data-audit-legal-input="facility"]')).toBeVisible();
-      }
-      await expect(page.locator('#content-container')).not.toContainText('중요 알림');
-      await expect(page.locator('#content-container')).not.toContainText('프리뷰');
-      await expect(page.locator('#content-container')).not.toContainText('법정 설비 목록');
-      await expect(page.locator('#content-container')).not.toContainText('문서 현황');
-      await expect(page.locator('.audit-legal-popup')).toHaveCount(0);
-      await expect(page.locator('.audit-legal-popup-launch')).toHaveCount(0);
 
       await clickSidebarButton(page, '유틸리티 기입');
       await expectIntegratedMeteringTitle(page, /월간 (전기 기입|가스 검침|폐수 기입|생산량 기입) 시트/);

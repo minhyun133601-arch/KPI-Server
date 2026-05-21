@@ -16,12 +16,12 @@
             tone: ''
         };
         const GLOBAL_RECENT_UPDATE_STORAGE_KEY = 'kpi:global-recent-update';
-        const DASHBOARD_SECTION_ORDER = ['work', 'audit', 'data', 'report', 'owner'];
+        const DASHBOARD_SECTION_ORDER = ['work', 'data', 'report', 'experiment', 'owner'];
         const DASHBOARD_SECTION_SOFT = Object.freeze({
             work: '#ecfdf5',
-            audit: '#fef2f2',
             data: '#f8fafc',
             report: '#eff6ff',
+            experiment: '#ecfeff',
             owner: '#f5f3ff'
         });
         const COMPANY_LOGO_SRC = '/shared-assets/logo.jpg';
@@ -31,9 +31,9 @@
         const SidebarTreeState = {
             expandedSections: {
                 work: true,
-                audit: false,
                 data: false,
                 report: false,
+                experiment: false,
                 owner: false
             }
         };
@@ -83,6 +83,11 @@
                     softAccent: DASHBOARD_SECTION_SOFT[id] || '#eff6ff'
                 };
             }).filter(Boolean);
+        }
+
+        function getDashboardNavigationSections(sections = null) {
+            const entries = Array.isArray(sections) ? sections : getDashboardSections();
+            return entries.filter(entry => entry?.section?.navigationHidden !== true);
         }
 
         function getDashboardSectionKey(value, sections = null) {

@@ -9,10 +9,6 @@
                 renderAuditLuxWorkspace(category, data);
                 return;
             }
-            if (isAuditLegalFacilityDataKey(dataKey)) {
-                renderAuditLegalFacilityPreview(category, data);
-                return;
-            }
             const filter = getAuditFilterState(dataKey);
             if (typeof syncAuditLuxCurrentQuarterState === 'function') {
                 syncAuditLuxCurrentQuarterState(dataKey);

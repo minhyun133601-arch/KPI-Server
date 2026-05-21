@@ -15,11 +15,10 @@ function Resolve-EnvFilePath {
   )
 
   if ($RequestedEnvFile) {
-    throw 'The -EnvFile override is no longer supported. Copy the portable env file to .env.local-experiment, .env.development.local, .env.production.local, or .env inside kpi-runtime/internal-server.'
+    throw 'The -EnvFile override is no longer supported. Copy the server env file to .env.production.local, .env.development.local, or .env inside kpi-runtime/internal-server.'
   }
 
   $candidatePaths = @(
-    (Join-Path $ServerDir '.env.local-experiment'),
     (Join-Path $ServerDir '.env.production.local'),
     (Join-Path $ServerDir '.env.development.local'),
     (Join-Path $ServerDir '.env')
@@ -31,7 +30,7 @@ function Resolve-EnvFilePath {
     }
   }
 
-  throw 'Env file was not found. Copy the portable env file to .env.local-experiment, .env.development.local, .env.production.local, or .env inside kpi-runtime/internal-server.'
+  throw 'Env file was not found. Copy the server env file to .env.production.local, .env.development.local, or .env inside kpi-runtime/internal-server.'
 }
 
 function Read-EnvMap {

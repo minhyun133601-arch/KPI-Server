@@ -98,7 +98,6 @@ function createWasteMeterModelContext() {
     ],
   };
   const monthlyRowCalls = [];
-  const chartCalls = [];
   const context = {
     console,
     Array,
@@ -112,7 +111,6 @@ function createWasteMeterModelContext() {
     Date,
     Intl,
     __monthlyRowCalls: monthlyRowCalls,
-    __chartCalls: chartCalls,
     buildUtilSheetMonthBounds() {
       return { from: '2025-05', to: '2026-05' };
     },
@@ -126,10 +124,6 @@ function createWasteMeterModelContext() {
     },
     formatUtilReportMonthLong(monthKey) {
       return `LONG:${String(monthKey || '')}`;
-    },
-    renderUtilIndependentBoundsMultiSeriesChart(seriesList, options) {
-      chartCalls.push({ seriesList, options });
-      return `<div data-chart-title="${options.chartTitle}">${seriesList.length}</div>`;
     },
     escapeUtilSheetHtml(value) {
       return String(value ?? '')
@@ -156,7 +150,6 @@ function createWasteMeterModelContext() {
     shiftUtilSheetMonthKey: context.shiftUtilSheetMonthKey,
     compareUtilSheetMonthKeys: context.compareUtilSheetMonthKeys,
     formatUtilReportMonthLong: context.formatUtilReportMonthLong,
-    renderUtilIndependentBoundsMultiSeriesChart: context.renderUtilIndependentBoundsMultiSeriesChart,
     escapeUtilSheetHtml: context.escapeUtilSheetHtml,
   });
   return context;
@@ -196,11 +189,6 @@ test('report sheet waste meter model aggregates bukjeong and yusan for the all s
   assert.equal(allSite.referenceRow.wasteUsage, 40);
   assert.equal(allSite.referenceRow.wasteCost, 400);
 
-  const currentYearSeries = allSite.chartSeries.find((series) => series.seriesKey === 'all-2026');
-  const previousYearSeries = allSite.chartSeries.find((series) => series.seriesKey === 'all-2025');
-  assert.equal(currentYearSeries.points.find((point) => point.monthKey === '2026-05').value, 25);
-  assert.equal(previousYearSeries.points.find((point) => point.monthKey === '2025-05').value, 20);
-
   const allHtml = modelRegistry.buildUtilWasteMeterSectionHtml(allModel, { controlsHtml: '<select></select>' });
   assert.ok(allHtml.includes(`${LABEL_TOTAL} ${LABEL_WASTE} \uAC80\uCE68\uD45C`));
   assert.ok(allHtml.includes(`${TEAM_BUKJEONG}\uACFC ${TEAM_YUSAN} \uAC12\uC744 \uD569\uC0B0`));
@@ -211,24 +199,11 @@ test('report sheet waste meter model aggregates bukjeong and yusan for the all s
   assert.ok(allHtml.includes(`100${LABEL_CUBIC_METER}`));
   assert.ok(allHtml.includes(`800${LABEL_WON}`));
   assert.match(allHtml, /class="is-delta-up"/);
-  assert.ok(
-    allHtml.indexOf('class="util-sheet-meter-table-card is-waste"') <
-      allHtml.indexOf('class="util-sheet-meter-table-card is-waste-chart"'),
-    'waste meter section must render the table before the chart'
-  );
+  assert.match(allHtml, /class="util-sheet-meter-table-card is-waste"/);
+  assert.doesNotMatch(allHtml, /class="util-sheet-meter-table-card is-waste-chart"/);
+  assert.doesNotMatch(allHtml, /\uD3D0\uC218 \uC6D0\uB2E8\uC704/);
   assert.doesNotMatch(allHtml, new RegExp(`${TEAM_BUKJEONG} ${LABEL_WASTE} \\uAC80\\uCE68\\uD45C`));
   assert.doesNotMatch(allHtml, new RegExp(`${TEAM_YUSAN} ${LABEL_WASTE} \\uAC80\\uCE68\\uD45C`));
-  assert.equal(context.__chartCalls.at(-1).options.chartTitle, `${LABEL_TOTAL} ${LABEL_WASTE} (${LABEL_CUBIC_METER}) / \uD1A4`);
-  assert.equal(context.__chartCalls.at(-1).options.mode, 'modal');
-  assert.equal(context.__chartCalls.at(-1).options.forceWidth, 1600);
-  assert.equal(context.__chartCalls.at(-1).options.height, 360);
-  assert.equal(context.__chartCalls.at(-1).options.showLabelToggle, true);
-  assert.equal(context.__chartCalls.at(-1).options.labelToggleRole, 'util-sheet-waste-meter-label-toggle');
-  assert.equal(context.__chartCalls.at(-1).options.labelToggleText, '\uB808\uC774\uBE14');
-  assert.equal(context.__chartCalls.at(-1).options.showLabels, false);
-
-  modelRegistry.buildUtilWasteMeterSectionHtml(allModel, { showLabels: true });
-  assert.equal(context.__chartCalls.at(-1).options.showLabels, true);
 
   const bukjeongModel = modelRegistry.buildUtilWasteMeterModel('2026-05', 'bukjeong', 'year');
   const bukjeongHtml = modelRegistry.buildUtilWasteMeterSectionHtml(bukjeongModel);
@@ -242,12 +217,7 @@ test('report sheet waste meter model aggregates bukjeong and yusan for the all s
   assert.equal(yusanModel.sites[0].key, 'yusan');
   assert.equal(yusanModel.sites[0].currentRow.production, 3000);
   assert.equal(yusanModel.sites[0].currentRow.wasteUsage, 90);
-  assert.equal(
-    yusanModel.sites[0].chartSeries
-      .find((series) => series.seriesKey === 'yusan-2026')
-      .points.find((point) => point.monthKey === '2026-05').value,
-    30
-  );
+  assert.equal(yusanModel.sites[0].chartSeries, undefined);
 
   const monthCompareModel = modelRegistry.buildUtilWasteMeterModel('2026-05', 'all', 'month');
   assert.equal(monthCompareModel.referenceMonthKey, '2026-04');
@@ -260,9 +230,9 @@ test('report sheet waste meter model aggregates bukjeong and yusan for the all s
 });
 
 test('kpi html loads updated waste sheet assets in report-sheet order', () => {
-  const wasteMeterIndex = kpiHtml.indexOf('runtime/util/report/sheet/waste/meter-model.js?v=009');
+  const wasteMeterIndex = kpiHtml.indexOf('runtime/util/report/sheet/waste/meter-model.js?v=010');
   const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=056');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=065');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=066');
   const wasteAnalysisIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/waste/model.js?v=008');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
 

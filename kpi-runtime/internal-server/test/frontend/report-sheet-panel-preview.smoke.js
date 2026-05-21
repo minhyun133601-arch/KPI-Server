@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -191,7 +191,7 @@ test('report sheet panel preview registry builds dataset result and renders mont
 test('kpi html loads report sheet panel preview after panel runtime and before windows', () => {
   const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=056');
   const panelPreviewIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/preview.js?v=055');
-  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=059');
+  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=060');
 
   assert.ok(panelRuntimeIndex >= 0, 'report sheet panel runtime loader is missing');
   assert.ok(panelPreviewIndex > panelRuntimeIndex, 'report sheet panel preview must load after panel runtime');

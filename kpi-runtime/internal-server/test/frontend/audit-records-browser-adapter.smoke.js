@@ -25,14 +25,6 @@ const auditOptionsSource = await fs.readFile(
   new URL(AUDIT_RECORDS_ROOT + '/KPI.audit.records.options.js', import.meta.url),
   'utf8'
 );
-const auditLegalAssetsSource = await fs.readFile(
-  new URL(AUDIT_RECORDS_ROOT + '/KPI.audit.records.legal.assets.js', import.meta.url),
-  'utf8'
-);
-const auditLegalFormSource = await fs.readFile(
-  new URL(AUDIT_RECORDS_ROOT + '/KPI.audit.records.legal.form.js', import.meta.url),
-  'utf8'
-);
 const kpiHtml = await fs.readFile(
   new URL('../../../../KPI.html', import.meta.url),
   'utf8'
@@ -62,9 +54,7 @@ test('audit records browser adapter wraps runtime config portal data fetch and p
           },
         },
       },
-      PortalData: {
-        audit_regulation: { entries: [{ id: 'legacy' }] },
-      },
+      PortalData: {},
       KpiRuntime: {
         canUseServerWrite: (writeEnabled) => writeEnabled === true,
       },
@@ -92,11 +82,6 @@ test('audit records browser adapter wraps runtime config portal data fetch and p
   assert.equal(adapter.getAuditRuntimeConfig().records.audit_lux.recordKey, 'audit_lux');
   assert.equal(adapter.getRuntime(), context.window.KpiRuntime);
   assert.equal(adapter.getDocument(), documentRef);
-  assert.deepEqual(
-    adapter.getPortalPayload('audit_legal_facility', { audit_legal_facility: 'audit_regulation' }),
-    { entries: [{ id: 'legacy' }] }
-  );
-
   const payload = { entries: [{ id: 'next' }] };
   const snapshot = adapter.writePortalPayload('audit_lux', payload);
   payload.entries[0].id = 'mutated';
@@ -108,10 +93,6 @@ test('audit records browser adapter wraps runtime config portal data fetch and p
   assert.equal(adapter.canUseServerWrite(true), true);
   assert.equal(adapter.canUseServerWrite(false), false);
   assert.equal(adapter.hasFetch(), true);
-  assert.equal(adapter.getLegalAssetsApi(), null);
-  const legalAssetsApi = adapter.ensureLegalAssetsApi();
-  legalAssetsApi.renderEntryAssetFields = () => '<input data-audit-legal-file="image">';
-  assert.equal(adapter.getLegalAssetsApi().renderEntryAssetFields(), '<input data-audit-legal-file="image">');
   assert.deepEqual(adapter.expose('AuditAdapterProbe', { ok: true }), { ok: true });
   assert.equal(context.window.AuditAdapterProbe.ok, true);
   assert.equal(context.AuditAdapterProbe.ok, true);
@@ -121,8 +102,8 @@ test('audit records browser adapter wraps runtime config portal data fetch and p
   const state = adapter.getRootState('__AuditAdapterProbeState', () => ({ value: 1 }));
   assert.deepEqual(state, { value: 1 });
   assert.equal(adapter.getRootState('__AuditAdapterProbeState').value, 1);
-  adapter.alert('audit legal warning');
-  assert.deepEqual(alerts, ['audit legal warning']);
+  adapter.alert('audit warning');
+  assert.deepEqual(alerts, ['audit warning']);
 
   const response = await adapter.fetch('/api/modules/portal_data/records/audit_lux', { method: 'PUT' });
   assert.equal(response.ok, true);
@@ -190,14 +171,10 @@ test('audit options reads fallback portal payload through the browser adapter', 
   assert.deepEqual([...context.getAuditLuxEntryTeams('audit_lux', 2026, 2)], ['2팀', '3팀']);
 });
 
-test('audit data evidence batch actions and legal entry files no longer touch browser globals directly', () => {
+test('audit data evidence and batch actions no longer touch browser globals directly', () => {
   assert.doesNotMatch(auditDataSource, /globalThis|window\./);
   assert.doesNotMatch(auditEvidenceSource, /globalThis|window\./);
   assert.doesNotMatch(auditBatchActionsSource, /globalThis|window\./);
   assert.doesNotMatch(auditOptionsSource, /globalThis|window\./);
-  assert.doesNotMatch(auditLegalAssetsSource, /globalThis|window\.|typeof fetch|(^|[^.])fetch\(/m);
-  assert.doesNotMatch(auditLegalFormSource, /globalThis|window\./);
   assert.match(auditOptionsSource, /getAuditOptionsData/);
-  assert.match(auditLegalAssetsSource, /ensureLegalAssetsApi/);
-  assert.match(auditLegalFormSource, /getAuditLegalAssetsApi/);
 });

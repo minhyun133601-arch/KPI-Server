@@ -11,8 +11,8 @@ const sectionSourcePaths = [
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.section.builders.js'),
   path.join(repoRoot, 'team-report', 'runtime', 'work', 'sections', 'KPI.sections.work.js'),
   path.join(repoRoot, 'data-entry', 'runtime', 'data', 'sections', 'KPI.sections.data.js'),
-  path.join(repoRoot, 'audit', 'runtime', 'audit', 'sections', 'KPI.sections.audit.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.report.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.experiment.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.owner.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.section.registry.js'),
 ];
@@ -58,32 +58,36 @@ test('section factory adapter registers dashboard sections without direct sectio
 
   assert.equal(typeof context.window.KpiSectionFactoryAdapter.registerFactory, 'function');
   assert.equal(typeof factories.work, 'function');
-  assert.equal(typeof factories.audit, 'function');
   assert.equal(typeof factories.data, 'function');
   assert.equal(typeof factories.report, 'function');
+  assert.equal(typeof factories.experiment, 'function');
   assert.equal(typeof factories.owner, 'function');
   assert.equal(typeof registry.registerSections, 'function');
 
   const appData = registry.registerSections({});
-  assert.deepEqual(Object.keys(appData), ['work', 'audit', 'data', 'report', 'owner']);
+  assert.deepEqual(Object.keys(appData), ['work', 'data', 'report', 'experiment', 'owner']);
   assert.equal(appData.work.name, '팀별내역서');
-  assert.equal(appData.audit.name, '오디트');
-  assert.equal(
-    JSON.stringify(appData.audit.categories.map((category) => category.dataKey)),
-    JSON.stringify(['audit_lux', 'audit_legal_facility'])
-  );
   assert.equal(appData.data.name, '데이터 관리');
+  assert.equal(appData.data.categories.length, 5);
   assert.equal(appData.data.categories[0].title, '유틸리티 기입');
   assert.equal(appData.data.categories[0].utilitySurface, 'entry');
   assert.equal(appData.data.categories[0].viewerMode, 'full-bleed');
   assert.match(appData.data.categories[0].content, /data-kpi-metering-root/);
-  assert.equal(appData.data.categories[1].title, '분석');
+  assert.equal(appData.data.categories[1].title, '총괄 비율');
   assert.equal(appData.data.categories[1].utilitySurface, 'analysis');
+  assert.equal(appData.data.categories[1].autoOpenUtilityReportModal, true);
+  assert.equal(appData.data.categories[1].viewerMode, 'full-bleed');
+  assert.equal(appData.data.categories[1].launchTarget, undefined);
+  assert.equal(appData.data.categories[1].launchRoute, undefined);
   assert.match(appData.data.categories[1].content, /data-role="util-report-panel"/);
-  assert.match(appData.data.categories[1].content, /<div class="util-report-title">총괄 비율<\/div>/);
   assert.match(appData.data.categories[1].content, /data-role="util-report-open-modal"/);
-  assert.doesNotMatch(appData.data.categories[1].content, /data-role="util-report-total-cost"/);
-  assert.doesNotMatch(appData.data.categories[1].content, /data-role="util-report-note"/);
+  assert.match(appData.data.categories[1].content, /총괄 비율/);
+  assert.match(appData.data.categories[1].content, /도넛/);
+  assert.doesNotMatch(JSON.stringify(appData.data.categories[1]), /kpi-experiment-analysis-graph/);
+  assert.equal(appData.data.categories[2].shortcutTarget.sectionId, 'work');
+  assert.equal(appData.data.categories[3].dataKey, 'data_equipment_history_card');
+  assert.equal(appData.data.categories[4].dataKey, 'audit_lux');
+  assert.equal(appData.data.categories[4].fileName, 'Central Server DB / Lux Data');
   assert.equal(appData.report.name, '보고서');
   assert.equal(appData.report.directLaunch, true);
   assert.equal(appData.report.hideNavigationChevron, true);
@@ -463,6 +467,27 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.doesNotMatch(appData.report.categories[0].content, /data-report-mode/);
   assert.doesNotMatch(appData.report.categories[0].content, /data-report-input/);
   assert.doesNotMatch(JSON.stringify(appData.data.categories), /data-role="util-sheet-monthly-report-panel"/);
+  assert.equal(appData.experiment.name, '그래프');
+  assert.notEqual(appData.experiment.navigationHidden, true);
+  assert.equal(appData.experiment.directLaunch, true);
+  assert.equal(appData.experiment.hideNavigationChevron, true);
+  assert.equal(appData.experiment.launchTarget, 'popup');
+  assert.equal(appData.experiment.launchWindowName, 'kpi-experiment-analysis-graph');
+  assert.equal(appData.experiment.launchFillScreen, true);
+  assert.equal(appData.experiment.launchPopupMode, 'experiment');
+  assert.equal(appData.experiment.launchRoute.view, 'category');
+  assert.equal(appData.experiment.launchRoute.sectionId, 'experiment');
+  assert.equal(appData.experiment.launchRoute.categoryIndex, 0);
+  assert.equal(Array.isArray(appData.experiment.categories), true);
+  assert.equal(appData.experiment.categories.length, 1);
+  assert.equal(appData.experiment.categories[0].title, '통합 그래프');
+  assert.equal(appData.experiment.categories[0].navHidden, true);
+  assert.equal(appData.experiment.categories[0].viewerMode, 'full-bleed');
+  assert.match(appData.experiment.categories[0].content, /experiment-unified-shell/);
+  assert.match(appData.experiment.categories[0].content, /data-exp-card-picker-toggle/);
+  assert.match(appData.experiment.categories[0].content, /data-exp-period-start/);
+  assert.match(appData.experiment.categories[0].content, /data-exp-period-end/);
+  assert.match(appData.experiment.categories[0].content, /KpiExperimentGraphPrototype/);
   assert.equal(appData.owner.ownerOnly, true);
 
   const nonAdapterSources = sectionSources
@@ -476,22 +501,22 @@ test('section factory adapter registers dashboard sections without direct sectio
 
 test('kpi html loads section factory adapter before all section factories', () => {
   const adapterIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.factory-adapter.js?v=1');
-  const buildersIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.builders.js?v=218');
+  const buildersIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.builders.js?v=220');
   const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=231');
-  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=7');
-  const auditIndex = kpiHtml.indexOf('audit/runtime/audit/sections/KPI.sections.audit.js?v=4');
+  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=12');
   const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=98');
+  const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=27');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
-  const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=4');
+  const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=5');
 
   assert.ok(adapterIndex >= 0, 'section factory adapter loader is missing');
   assert.ok(buildersIndex > adapterIndex, 'section builders must load after adapter');
   assert.ok(workIndex > buildersIndex, 'work section must load after builders');
   assert.ok(dataIndex > workIndex, 'data section must load after work section');
-  assert.ok(auditIndex > dataIndex, 'audit section must load after data section');
   assert.equal(kpiHtml.indexOf('utility/runtime/util/sections/KPI.sections.util.js'), -1, 'utility section loader must stay removed');
   assert.equal(kpiHtml.indexOf('KPI.sections.production-report.js'), -1, 'production report section loader must stay removed');
-  assert.ok(reportIndex > auditIndex, 'report section must load after audit section');
-  assert.ok(ownerIndex > reportIndex, 'owner section must load after report section');
+  assert.ok(reportIndex > dataIndex, 'report section must load after data section');
+  assert.ok(experimentIndex > reportIndex, 'experiment section must load after report section');
+  assert.ok(ownerIndex > experimentIndex, 'owner section must load after experiment section');
   assert.ok(registryIndex > ownerIndex, 'section registry must load after section factories');
 });

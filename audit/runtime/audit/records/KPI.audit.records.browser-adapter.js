@@ -106,19 +106,6 @@
         return typeof confirmFn === 'function' ? confirmFn.call(root, message) : true;
     }
 
-    function getLegalAssetsApi() {
-        return root.KpiAuditLegalAssets && typeof root.KpiAuditLegalAssets === 'object'
-            ? root.KpiAuditLegalAssets
-            : null;
-    }
-
-    function ensureLegalAssetsApi() {
-        if (!root.KpiAuditLegalAssets || typeof root.KpiAuditLegalAssets !== 'object') {
-            root.KpiAuditLegalAssets = {};
-        }
-        return root.KpiAuditLegalAssets;
-    }
-
     function resolveUrl(path) {
         const rawPath = String(path || '').trim();
         if (!rawPath) return '';
@@ -151,8 +138,6 @@
         hasFetch,
         alert: alertUser,
         confirm: confirmUser,
-        getLegalAssetsApi,
-        ensureLegalAssetsApi,
         resolveUrl,
         openWindow
     });

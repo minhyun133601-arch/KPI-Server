@@ -65,28 +65,6 @@ async function buildAuditRuntimeConfig(auth, permissionProbe) {
         readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.AUDIT_LUX, 'read'),
         writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.AUDIT_LUX, 'write'),
       },
-      audit_legal_facility: {
-        recordKey: 'audit_legal_facility',
-        permissionKey: PERMISSION_KEYS.AUDIT_LEGAL_FACILITY,
-        readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.AUDIT_LEGAL_FACILITY, 'read'),
-        writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.AUDIT_LEGAL_FACILITY, 'write'),
-      },
-      audit_regulation: {
-        recordKey: 'audit_regulation',
-        permissionKey: PERMISSION_KEYS.AUDIT_REGULATION,
-        readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.AUDIT_REGULATION, 'read'),
-        writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.AUDIT_REGULATION, 'write'),
-      },
-    },
-    assets: {
-      legalFacility: {
-        permissionKey: PERMISSION_KEYS.AUDIT_LEGAL_FACILITY,
-        readEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.AUDIT_LEGAL_FACILITY, 'read'),
-        writeEnabled: await permissionProbe(auth?.user, PERMISSION_KEYS.AUDIT_LEGAL_FACILITY, 'write'),
-        ownerDomain: 'audit.legal_facility',
-        imageFileCategory: 'photo',
-        attachmentFileCategory: 'attachment',
-      },
     },
   };
 }

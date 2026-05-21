@@ -11,16 +11,16 @@ test('equipment documents are stored below the equipment-name folder', () => {
     metadata: { equipmentName: 'Mixer A' },
   });
   const attachment = resolveDocumentStorage({
-    ownerDomain: 'audit.legal_facility',
-    ownerKey: 'legal-001',
+    ownerDomain: 'data.equipment_history',
+    ownerKey: 'EQ-002',
     fileCategory: 'attachment',
-    metadata: { facilityName: 'Boiler 1' },
+    metadata: { equipmentName: 'Boiler 1' },
   });
 
   assert.deepEqual(photo.storageFolder, ['equipment-assets', 'equipment-history', 'Mixer A', 'images']);
   assert.equal(photo.metadata.storageFolder, 'equipment-assets/equipment-history/Mixer A/images');
-  assert.deepEqual(attachment.storageFolder, ['equipment-assets', 'legal-facility', 'Boiler 1', 'attachments']);
-  assert.equal(attachment.metadata.storageFolder, 'equipment-assets/legal-facility/Boiler 1/attachments');
+  assert.deepEqual(attachment.storageFolder, ['equipment-assets', 'equipment-history', 'Boiler 1', 'attachments']);
+  assert.equal(attachment.metadata.storageFolder, 'equipment-assets/equipment-history/Boiler 1/attachments');
 });
 
 test('metering billing documents are stored below resource-specific folders', () => {

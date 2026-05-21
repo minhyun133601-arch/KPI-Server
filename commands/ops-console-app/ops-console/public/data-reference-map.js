@@ -34,7 +34,6 @@ const graphAxes = [
 
 const graphLayout = {
   'audit-lux': { x: 22, y: 25, axes: ['module', 'documents'] },
-  'audit-legal-facility': { x: 12, y: 54, axes: ['module', 'documents'] },
   'equipment-history': { x: 32, y: 75, axes: ['module', 'documents'] },
   'work-history': { x: 68, y: 75, axes: ['module', 'documents'] },
   'utility-metering': { x: 88, y: 54, axes: ['module', 'documents'] },

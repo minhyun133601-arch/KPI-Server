@@ -33,8 +33,8 @@
         "kpi-runtime/sections/KPI.section.builders.js",
         "team-report/runtime/work/sections/KPI.sections.work.js",
         "data-entry/runtime/data/sections/KPI.sections.data.js",
-        "audit/runtime/audit/sections/KPI.sections.audit.js",
         "kpi-runtime/sections/KPI.sections.report.js",
+        "kpi-runtime/sections/KPI.sections.experiment.js",
         "kpi-runtime/sections/KPI.sections.owner.js",
         "kpi-runtime/sections/KPI.section.registry.js"
       ]
@@ -123,7 +123,7 @@
     },
     {
       "key": "auditRecords",
-      "label": "Audit records runtime",
+      "label": "Lux data runtime",
       "scripts": [
         "audit/runtime/audit/records/KPI.audit.records.browser-adapter.js",
         "audit/runtime/audit/records/KPI.audit.records.data.js",
@@ -137,10 +137,6 @@
         "audit/runtime/audit/records/KPI.audit.records.lux-alerts.js",
         "audit/runtime/audit/records/KPI.audit.records.lux-fullscreen.js",
         "audit/runtime/audit/records/KPI.audit.records.lux-workspace.js",
-        "audit/runtime/audit/records/KPI.audit.records.legal.assets.js",
-        "audit/runtime/audit/records/KPI.audit.records.legal.model.js",
-        "audit/runtime/audit/records/KPI.audit.records.legal.form.js",
-        "audit/runtime/audit/records/KPI.audit.records.legal.js",
         "audit/runtime/audit/records/KPI.audit.records.batch-actions.js",
         "audit/runtime/audit/records/KPI.audit.records.standard-actions.js",
         "audit/runtime/audit/records/KPI.audit.records.util-format.js",

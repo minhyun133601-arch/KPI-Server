@@ -23,7 +23,7 @@ function createDemoDataContext() {
     String,
     Boolean,
     PortalData: {
-      audit_legal_facility: {
+      data_equipment_history_card: {
         existing: true,
       },
     },
@@ -44,17 +44,16 @@ test('demo data host routes PortalData defaults through the browser adapter', ()
   const context = createDemoDataContext();
 
   assert.equal(typeof context.KpiDemoDataBrowserAdapter.setPortalDataDefault, 'function');
-  assert.deepEqual(context.PortalData.audit_legal_facility, { existing: true });
-  assert.equal(context.PortalData.data_equipment_history_card.meta.moduleKey, 'data_equipment_history_card');
+  assert.deepEqual(context.PortalData.data_equipment_history_card, { existing: true });
   assert.equal(context.__KPI_DEMO_DATA__.enabled, true);
-  assert.deepEqual(Array.from(context.__KPI_DEMO_DATA__.scope), ['audit_legal_facility', 'data_equipment_history_card']);
+  assert.deepEqual(Array.from(context.__KPI_DEMO_DATA__.scope), ['data_equipment_history_card']);
   assert.doesNotMatch(demoDataSource, directGlobalPattern);
   assert.match(demoDataSource, /KpiDemoDataBrowserAdapter/);
 });
 
 test('kpi html loads demo data browser adapter before demo data', () => {
   const adapterIndex = kpiHtml.indexOf('kpi-runtime/demo/KPI.demo-data.browser-adapter.js?v=1');
-  const demoDataIndex = kpiHtml.indexOf('kpi-runtime/demo/KPI.demo-data.js?v=8');
+  const demoDataIndex = kpiHtml.indexOf('kpi-runtime/demo/KPI.demo-data.js?v=9');
 
   assert.ok(adapterIndex >= 0, 'demo data browser adapter loader is missing');
   assert.ok(demoDataIndex > adapterIndex, 'demo data must load after demo data browser adapter');

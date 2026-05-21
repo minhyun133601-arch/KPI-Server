@@ -506,7 +506,7 @@ test('report sheet analysis model registries build electric and gas analysis mod
 
 test('kpi html loads report sheet analysis model scripts before analysis render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=065');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=066');
   const rangeRatioIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/range-ratio.js?v=055');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=054');
   const electricModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/model.js?v=057');

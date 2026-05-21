@@ -157,18 +157,18 @@ const dataFlows = [
   {
     id: 'audit-lux',
     tone: 'cyan',
-    title: { ko: '오디트 조도', en: 'Audit Lux' },
+    title: { ko: '조도', en: 'Lux' },
     summary: {
-      ko: '조도 기준, 연도별 측정값, 근거 스캔본을 audit 화면에서 입력하고 서버 module record와 파일 저장소에 나눠 저장합니다.',
-      en: 'Lux standards, yearly measurements, and evidence scans are entered in the audit screen and split between module records and file storage.',
+      ko: '조도 기준, 연도별 측정값, 근거 스캔본을 데이터 관리 화면에서 입력하고 서버 module record와 파일 저장소에 나눠 저장합니다.',
+      en: 'Lux standards, yearly measurements, and evidence scans are entered in the data-management screen and split between module records and file storage.',
     },
     status: {
       ko: '기입 가능. 본문과 스캔본 모두 서버 저장 경로가 있습니다.',
       en: 'Writable. Both payload and evidence scans have server storage paths.',
     },
-    chain: ['Audit UI', 'KpiRuntime save provider', '/api/modules + /api/files/base64', 'PostgreSQL + KPI_STORAGE_ROOT/files'],
+    chain: ['Data management UI', 'KpiRuntime save provider', '/api/modules + /api/files/base64', 'PostgreSQL + KPI_STORAGE_ROOT/files'],
     ui: [
-      'audit/runtime/audit/sections/KPI.sections.audit.js',
+      'data-entry/runtime/data/sections/KPI.sections.data.js',
       'audit/runtime/audit/records/KPI.audit.records.render.js',
       'audit/runtime/audit/records/KPI.audit.records.lux-workspace.js',
     ],
@@ -199,50 +199,6 @@ const dataFlows = [
       'kpi-runtime/internal-server/src/routes/file-routes.js',
     ],
     tags: ['조도', 'lux', 'audit_lux', 'audit.lux', 'evidence', 'app_documents'],
-  },
-  {
-    id: 'audit-legal-facility',
-    tone: 'rose',
-    title: { ko: '법정 설비 관리', en: 'Legal Facility Management' },
-    summary: {
-      ko: '법정 설비 텍스트 정보는 audit_legal_facility 레코드에, 사진과 문서는 설비명 기반 폴더에 저장합니다.',
-      en: 'Legal-facility text data is stored in audit_legal_facility; photos and attachments are stored in facility-name folders.',
-    },
-    status: {
-      ko: '기입 가능. 설비명 기준 이미지/첨부 폴더 분리가 연결되어 있습니다.',
-      en: 'Writable. Image and attachment folders are split by facility name.',
-    },
-    chain: ['Legal facility UI', '/api/modules/portal_data/records/audit_legal_facility', '/api/files/base64', 'equipment-assets/legal-facility'],
-    ui: [
-      'audit/runtime/audit/records/KPI.audit.records.legal.js',
-      'audit/runtime/audit/records/KPI.audit.records.legal.assets.js',
-    ],
-    runtime: [
-      '/api/modules/portal_data/records/audit_legal_facility',
-      '/api/files/base64',
-    ],
-    storage: [
-      'app_module_records(module_key=portal_data, record_key=audit_legal_facility)',
-    ],
-    assets: [
-      'app_documents(ownerDomain=audit.legal_facility, fileCategory=photo|attachment)',
-      'KPI_STORAGE_ROOT/files/equipment-assets/legal-facility/<설비명>/images',
-      'KPI_STORAGE_ROOT/files/equipment-assets/legal-facility/<설비명>/attachments',
-    ],
-    permissions: ['audit.legal_facility'],
-    sharedGroups: ['portal-data', 'app-documents'],
-    imageRefs: [
-      'records[].imageDocumentId / imagePreviewUrl / imageDownloadUrl',
-      'records[].documentId / previewUrl / downloadUrl',
-      'app_documents.owner_domain=audit.legal_facility',
-      'KPI_STORAGE_ROOT/files/equipment-assets/legal-facility/<설비명>/images',
-    ],
-    source: [
-      'kpi-runtime/internal-server/src/lib/portal-data-registry.js',
-      'kpi-runtime/internal-server/src/lib/portal-bootstrap/runtime-config.js',
-      'kpi-runtime/internal-server/src/lib/document-storage.js',
-    ],
-    tags: ['법정 설비', 'legal facility', 'audit_legal_facility', 'audit.legal_facility', 'equipment-assets'],
   },
   {
     id: 'equipment-history',
@@ -487,10 +443,10 @@ const sharedStorageGroups = [
     tone: 'green',
     title: { ko: 'portal_data 공용 JSON 레코드', en: 'portal_data shared JSON records' },
     summary: {
-      ko: '오디트, 법정 설비, 설비 이력, 작업내역 본문이 같은 app_module_records 테이블을 공유합니다. record_key는 다르고 permission_key별로 읽기/쓰기가 갈립니다.',
-      en: 'Audit, legal facility, equipment history, and work-history payloads share the same app_module_records table. record_key differs, and read/write access is split by permission_key.',
+      ko: '조도, 설비 이력, 작업내역 본문이 같은 app_module_records 테이블을 공유합니다. record_key는 다르고 permission_key별로 읽기/쓰기가 갈립니다.',
+      en: 'Lux, equipment history, and work-history payloads share the same app_module_records table. record_key differs, and read/write access is split by permission_key.',
     },
-    flowIds: ['audit-lux', 'audit-legal-facility', 'equipment-history', 'work-history'],
+    flowIds: ['audit-lux', 'equipment-history', 'work-history'],
   },
   {
     id: 'app-documents',
@@ -500,7 +456,7 @@ const sharedStorageGroups = [
       ko: '이미지와 문서의 메타는 app_documents에 남고, 본문 JSON에는 documentId, previewUrl, downloadUrl 같은 참조만 저장됩니다.',
       en: 'Image and document metadata lives in app_documents; payload JSON keeps references such as documentId, previewUrl, and downloadUrl.',
     },
-    flowIds: ['audit-lux', 'audit-legal-facility', 'equipment-history', 'work-history', 'utility-metering'],
+    flowIds: ['audit-lux', 'equipment-history', 'work-history', 'utility-metering'],
   },
   {
     id: 'work-runtime',
@@ -549,14 +505,12 @@ const appModuleRecordGroups = [
     moduleKey: 'portal_data',
     tone: 'green',
     summary: {
-      ko: 'KPI 일반 입력 화면의 JSON 본문 저장 묶음입니다. 오디트, 법정 설비, 설비 이력, 작업내역 본문이 여기서 record_key별로 갈립니다.',
-      en: 'JSON payload bundle for general KPI input screens. Audit, legal facility, equipment history, and work-history payloads split by record_key here.',
+      ko: 'KPI 일반 입력 화면의 JSON 본문 저장 묶음입니다. 조도, 설비 이력, 작업내역 본문이 여기서 record_key별로 갈립니다.',
+      en: 'JSON payload bundle for general KPI input screens. Lux, equipment history, and work-history payloads split by record_key here.',
     },
     source: 'kpi-runtime/internal-server/src/lib/portal-data-registry.js',
     records: [
-      { recordKey: 'audit_lux', feature: { ko: '오디트 조도', en: 'Audit Lux' }, permissionKey: 'audit.lux' },
-      { recordKey: 'audit_regulation', feature: { ko: '오디트 법규/규정', en: 'Audit Regulation' }, permissionKey: 'audit.regulation' },
-      { recordKey: 'audit_legal_facility', feature: { ko: '법정 설비 관리', en: 'Legal Facility Management' }, permissionKey: 'audit.legal_facility' },
+      { recordKey: 'audit_lux', feature: { ko: '조도', en: 'Lux' }, permissionKey: 'audit.lux' },
       { recordKey: 'data_equipment_history_card', feature: { ko: '설비 이력 카드', en: 'Equipment History Cards' }, permissionKey: 'data.equipment_history' },
       { recordKey: 'work_history_records', feature: { ko: '작업내역 통합 기록', en: 'Work History Records' }, permissionKey: 'work.team_calendar' },
       { recordKey: 'work_monthly_plan', feature: { ko: '작업 월간 계획', en: 'Work Monthly Plan' }, permissionKey: 'work.plan.monthly' },

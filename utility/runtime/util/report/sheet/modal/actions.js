@@ -194,12 +194,6 @@
         rerenderAndSync(modal);
     }
 
-    function setUtilWasteMeterShowLabels(modal, showLabels = false) {
-        if (!modal) return;
-        UtilSheetMeterState.wasteShowLabels = showLabels === true;
-        rerenderAndSync(modal);
-    }
-
     function applyUtilElectricMeterViewSelection(modal, viewKey = 'meter') {
         if (!modal) return;
         const normalizedKey = typeof runtime.normalizeUtilElectricMeterViewKey === 'function'
@@ -415,7 +409,6 @@
         applyUtilGasAnalysisCategorySelection,
         applyUtilWasteAnalysisSiteSelection,
         applyUtilWasteMeterSiteSelection,
-        setUtilWasteMeterShowLabels,
         applyUtilElectricMeterViewSelection,
         setUtilGasAnalysisInlineTablePositionFromTrigger,
         setUtilGasAnalysisChartFullscreen,

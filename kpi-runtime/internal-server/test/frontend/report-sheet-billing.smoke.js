@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -108,7 +108,7 @@ test('report sheet billing registry resolves scoped gas billing descriptors from
 test('kpi html loads report sheet billing before sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
-  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=059');
+  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=060');
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(billingIndex >= 0, 'report sheet billing loader is missing');
   assert.ok(billingIndex > adapterIndex, 'report sheet billing must load after report runtime adapter');

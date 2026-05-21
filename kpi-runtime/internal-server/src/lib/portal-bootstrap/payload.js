@@ -101,10 +101,6 @@ export function buildPortalDataBootstrapPayload(records, workRuntimeRecords = []
     });
   }
 
-  if (portalData.audit_regulation && !portalData.audit_legal_facility) {
-    portalData.audit_legal_facility = portalData.audit_regulation;
-  }
-
   return {
     portalData,
     importedMeta,

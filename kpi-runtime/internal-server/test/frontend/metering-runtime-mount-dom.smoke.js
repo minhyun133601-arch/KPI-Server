@@ -239,6 +239,7 @@ function registerRequiredMountElements(registry, document) {
     '#teamTotalsGrid',
     '#teamBoards',
     '.panel-head-actions',
+    '#equipmentAddWrap',
     '#teamModeBtn',
     '#equipmentModeBtn',
     '.mode-switch',
@@ -256,6 +257,7 @@ function registerRequiredMountElements(registry, document) {
   });
 
   const panelHeadActions = registry.query('.panel-head-actions');
+  panelHeadActions.appendChild(registry.query('#equipmentAddWrap'));
   panelHeadActions.appendChild(registry.query('#teamModeBtn'));
   panelHeadActions.appendChild(registry.query('#equipmentModeBtn'));
 }
@@ -321,8 +323,14 @@ test('runtime mount dom resolves required elements and injects placeholder butto
 
   assert.equal(resolvedElements.appShell, registry.query('.app-shell'));
   assert.equal(resolvedElements.wasteResourceBtn?.id, 'wasteResourceBtn');
+  assert.equal(resolvedElements.meterSheetOpenBtn?.id, 'meterSheetOpenBtn');
   assert.equal(resolvedElements.saveEntryBtn?.id, 'saveEntryBtn');
   assert.equal(resolvedElements.teamSaveBtn?.id, 'teamSaveBtn');
+  const panelHeadActions = registry.query('.panel-head-actions');
+  assert.deepEqual(
+    panelHeadActions.children.map((child) => child.id),
+    ['equipmentAddWrap', 'meterSheetOpenBtn', 'saveEntryBtn', 'teamModeBtn', 'teamSaveBtn', 'equipmentModeBtn']
+  );
   assert.equal(registry.query('#productionPreviewResourceBtn'), null);
 
   context.toggleMountHostStateClass('is-quick-entry-active', false);

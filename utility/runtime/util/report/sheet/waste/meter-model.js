@@ -18,7 +18,6 @@
         compareUtilSheetMonthKeys: null,
         normalizeUtilSheetCompareKey: null,
         getUtilSheetCompareLabel: null,
-        renderUtilIndependentBoundsMultiSeriesChart: null,
         formatUtilReportMonthLong: null,
         formatUtilReportMonthShort: null
     };
@@ -264,8 +263,7 @@
             ...siteSpec,
             rows,
             currentRow: rowMap.get(activeMonthKey) || null,
-            referenceRow: rowMap.get(referenceMonthKey) || null,
-            chartSeries: buildYearSeries(rows, activeMonthKey, siteSpec)
+            referenceRow: rowMap.get(referenceMonthKey) || null
         };
     }
 
@@ -283,42 +281,6 @@
             return finite(row?.wasteCostDetails?.[metric.detailKey]);
         }
         return finite(row?.[metric.key]);
-    }
-
-    function calculateIntensity(row = {}) {
-        const usage = finite(row?.wasteUsage);
-        const production = finite(row?.production);
-        if (!Number.isFinite(usage) || !Number.isFinite(production) || production <= 0) return null;
-        return usage / (production / 1000);
-    }
-
-    function buildYearSeries(rows = [], activeMonthKey = '', siteSpec = {}) {
-        const activeMatch = /^(\d{4})-(\d{2})$/.exec(String(activeMonthKey || '').trim());
-        if (!activeMatch) return [];
-        const activeYear = Number(activeMatch[1]);
-        const previousYear = activeYear - 1;
-        const rowMap = new Map(rows.map(row => [String(row?.monthKey || '').trim(), row]));
-        const monthNumbers = Array.from({ length: 12 }, (_, index) => index + 1);
-        return [
-            { year: previousYear, label: `${String(previousYear).slice(2)}년`, color: '#2563eb' },
-            { year: activeYear, label: `${String(activeYear).slice(2)}년`, color: siteSpec.color || '#7c3aed' }
-        ].map(seriesMeta => ({
-            label: seriesMeta.label,
-            color: seriesMeta.color,
-            type: 'line',
-            lineWidth: 3,
-            decimals: 3,
-            seriesKey: `${siteSpec.key}-${seriesMeta.year}`,
-            points: monthNumbers.map(month => {
-                const monthKey = `${seriesMeta.year}-${String(month).padStart(2, '0')}`;
-                return {
-                    key: monthKey,
-                    monthKey,
-                    label: `${month}월`,
-                    value: calculateIntensity(rowMap.get(monthKey) || {})
-                };
-            })
-        }));
     }
 
     function buildUtilWasteMeterModel(selectedMonthKey = '', siteKey = 'all', compareKey = 'month') {
@@ -418,32 +380,7 @@
         `;
     }
 
-    function renderWasteChart(site = {}, options = {}) {
-        if (typeof runtime.renderUtilIndependentBoundsMultiSeriesChart !== 'function') {
-            return '<div class="util-sheet-empty">그래프 렌더러를 찾지 못했습니다.</div>';
-        }
-        return runtime.renderUtilIndependentBoundsMultiSeriesChart(site.chartSeries || [], {
-            mode: 'modal',
-            chartTitle: `${site.label} 폐수 (㎥) / 톤`,
-            periodLabel: '전년 동일 월 기준',
-            inlinePeriodLegend: true,
-            decimals: 3,
-            showLabelToggle: true,
-            labelToggleRole: 'util-sheet-waste-meter-label-toggle',
-            labelToggleText: '레이블',
-            showLabels: options.showLabels === true,
-            hideUnit: true,
-            topCenterTitle: `${site.label} 폐수 (㎥) / 톤`,
-            axisXLabel: '월',
-            showYearBands: false,
-            maxXAxisLabels: 12,
-            forceWidth: 1600,
-            scrollWithinCanvas: true,
-            height: 360
-        });
-    }
-
-    function buildUtilWasteMeterSiteHtml(site = {}, index = 0, options = {}) {
+    function buildUtilWasteMeterSiteHtml(site = {}) {
         const currentYear = String(site.monthKey || site.currentRow?.monthKey || '').slice(2, 4);
         const currentMonth = String(site.monthKey || site.currentRow?.monthKey || '').slice(5, 7);
         const referenceYear = String(site.referenceRow?.monthKey || '').slice(2, 4);
@@ -476,20 +413,6 @@
                                 ${buildWasteMeterRowsHtml(site)}
                             </tbody>
                         </table>
-                    </div>
-                </div>
-                <div class="util-sheet-meter-table-card is-waste-chart">
-                    <div class="util-sheet-meter-table-head">
-                        <div class="util-sheet-meter-table-title-wrap">
-                            <span class="util-sheet-meter-table-badge" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></span>
-                            <div>
-                                <div class="util-sheet-meter-table-title">${escapeHtml(site.label)} 폐수 원단위</div>
-                                <div class="util-sheet-meter-table-sub">방류량을 생산량 톤 기준으로 환산한 추이입니다.</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="util-report-chart-shell util-sheet-analysis-chart-frame theme-total" style="--util-chart-accent:${escapeHtml(site.color || '#7c3aed')};--util-chart-bar:${escapeHtml(site.color || '#7c3aed')};">
-                        ${renderWasteChart(site, options)}
                     </div>
                 </div>
             </article>
@@ -526,7 +449,7 @@
                     ${controlsHtml}
                 </div>
                 <div class="util-sheet-waste-meter-stack">
-                    ${(Array.isArray(model.sites) ? model.sites : []).map((site, index) => buildUtilWasteMeterSiteHtml({ ...site, monthKey: model.monthKey }, index, options)).join('')}
+                    ${(Array.isArray(model.sites) ? model.sites : []).map(site => buildUtilWasteMeterSiteHtml({ ...site, monthKey: model.monthKey })).join('')}
                 </div>
             </section>
         `;

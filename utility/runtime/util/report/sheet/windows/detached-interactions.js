@@ -20,7 +20,6 @@
         applyUtilGasMeterProductionSelection: null,
         applyUtilElectricMeterTeamSelection: null,
         applyUtilWasteMeterSiteSelection: null,
-        setUtilWasteMeterShowLabels: null,
         applyUtilElectricAnalysisTeamSelection: null,
         applyUtilGasAnalysisCategorySelection: null,
         applyUtilWasteAnalysisSiteSelection: null,
@@ -179,13 +178,6 @@
             if (wasteMeterSiteSelect) {
                 if (typeof runtime.applyUtilWasteMeterSiteSelection === 'function') {
                     runtime.applyUtilWasteMeterSiteSelection(modal, wasteMeterSiteSelect.value || 'all');
-                }
-                return;
-            }
-            const wasteMeterLabelToggle = event.target?.closest?.('[data-role="util-sheet-waste-meter-label-toggle"]');
-            if (wasteMeterLabelToggle) {
-                if (typeof runtime.setUtilWasteMeterShowLabels === 'function') {
-                    runtime.setUtilWasteMeterShowLabels(modal, wasteMeterLabelToggle.checked === true);
                 }
                 return;
             }

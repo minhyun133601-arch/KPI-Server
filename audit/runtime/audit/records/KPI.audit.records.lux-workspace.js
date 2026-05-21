@@ -378,7 +378,7 @@
                         <div class="audit-lux-window-header">
                             <div class="audit-lux-window-copy">
                                 <span class="audit-lux-window-kicker">조도 입력</span>
-                                <h2 class="audit-lux-window-title">${escapeHtml(category.title || '조도 (Lux)')}</h2>
+                                <h2 class="audit-lux-window-title">${escapeHtml(category.title || '조도')}</h2>
                                 <p class="audit-lux-window-desc">좌측 스캔본을 그대로 보면서 우측 양식에 연도별 조도값을 입력합니다. 기준 수정은 선택한 연도부터 이후 연도에 적용됩니다.</p>
                             </div>
                             <div class="audit-lux-window-actions">

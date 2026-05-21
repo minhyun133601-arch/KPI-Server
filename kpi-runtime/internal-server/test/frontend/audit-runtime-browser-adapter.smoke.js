@@ -75,40 +75,30 @@ function createAuditRuntimeContext() {
 
 test('audit runtime gets KpiRuntime through the browser adapter', async () => {
   const context = createAuditRuntimeContext();
-  const renderer = context.sectionRenderers.get('audit');
   const saveProviderFactory = context.saveProviders.get('audit-record-save');
 
-  assert.equal(typeof renderer, 'function');
+  assert.equal(context.sectionRenderers.size, 0);
   assert.equal(typeof saveProviderFactory, 'function');
 
-  const category = { dataKey: 'audit_lux', title: 'Audit Lux' };
-  renderer(category);
-  assert.equal(context.renderedCategory, category);
+  const category = { dataKey: 'audit_lux', title: '조도' };
 
-  const provider = saveProviderFactory({ sectionId: 'audit', category });
+  const provider = saveProviderFactory({ sectionId: 'data', category });
   assert.equal(provider.priority, 90);
   assert.equal(provider.canSave, true);
   assert.equal(await provider.perform(), true);
   assert.deepEqual(context.savedPayloads, [
     {
       dataKey: 'audit_lux',
-      data: { dataKey: 'audit_lux', title: 'Audit Lux', entries: [{ value: 0 }] },
+      data: { dataKey: 'audit_lux', title: '조도', entries: [{ value: 0 }] },
     },
   ]);
 });
 
-test('audit runtime preserves excluded and read-only save provider branches', () => {
+test('audit runtime ignores non-data and removed legal save branches', () => {
   const context = createAuditRuntimeContext();
   const saveProviderFactory = context.saveProviders.get('audit-record-save');
 
   assert.equal(saveProviderFactory({ sectionId: 'work', category: { dataKey: 'audit_lux' } }), null);
-  assert.equal(saveProviderFactory({ sectionId: 'audit', category: { dataKey: 'audit_legal_facility' } }), null);
-
-  const readOnlyProvider = saveProviderFactory({
-    sectionId: 'audit',
-    category: { dataKey: 'audit_readonly', title: 'Read Only' },
-  });
-  assert.equal(readOnlyProvider.canSave, false);
 });
 
 test('audit runtime loads after records browser adapter and does not touch browser globals directly', () => {

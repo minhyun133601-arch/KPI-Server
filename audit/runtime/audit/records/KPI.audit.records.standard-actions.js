@@ -10,7 +10,7 @@
                 <div class="border-b pb-4 mb-6">
                     <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
                         <span class="w-2 h-8 rounded-sm inline-block" style="background:${category.color || '#94a3b8'};"></span>
-                        ${escapeHtml(category.title || '오디트')}
+                        ${escapeHtml(category.title || '조도')}
                     </h2>
                     <p class="text-slate-500 mt-1 pl-4 text-sm">${escapeHtml(category.desc || '추후 추가예정')}</p>
                 </div>

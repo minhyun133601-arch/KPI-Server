@@ -9,9 +9,23 @@
         void browser?.initIntegratedMetering?.(container);
     }
 
-    function initializeUtilityAnalysisSurface({ container } = {}) {
-        initUtilReportPanel(container);
-        initUtilSheetReports(container);
+    function autoOpenUtilityReportModal({ container, category } = {}) {
+        if (category?.autoOpenUtilityReportModal !== true) return;
+
+        const openModalButton = container?.querySelector?.('[data-role="util-report-open-modal"]');
+        if (!openModalButton || openModalButton.dataset?.autoOpenHandled === 'true') return;
+        if (openModalButton.dataset) {
+            openModalButton.dataset.autoOpenHandled = 'true';
+        }
+        openModalButton.click?.();
+    }
+
+    function initializeUtilityAnalysisSurface(context = {}) {
+        const { container } = context;
+        if (typeof initUtilReportPanel === 'function') {
+            initUtilReportPanel(container);
+        }
+        autoOpenUtilityReportModal(context);
     }
 
     function getDataUtilitySurface(context = {}) {
@@ -27,9 +41,7 @@
         const surface = getDataUtilitySurface(context);
         if (surface === 'entry') {
             initializeUtilityEntrySurface(context);
-            return;
-        }
-        if (surface === 'analysis') {
+        } else if (surface === 'analysis') {
             initializeUtilityAnalysisSurface(context);
         }
     });

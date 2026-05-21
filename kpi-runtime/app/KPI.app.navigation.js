@@ -179,7 +179,7 @@
         function renderDashboardSideNav(sections = null, selectedEntry = null) {
             const sideNav = document.getElementById('dashboard-side-nav');
             if (!sideNav) return;
-            const entries = Array.isArray(sections) ? sections : getDashboardSections();
+            const entries = getDashboardNavigationSections(Array.isArray(sections) ? sections : getDashboardSections());
             const activeEntry = selectedEntry || getDashboardSelectedEntry(entries);
             const selectedSectionId = getNavigationSelectionSectionId();
             sideNav.innerHTML = entries.map(entry => {
@@ -231,7 +231,7 @@
             const subtabBar = document.getElementById('dashboard-subtabs');
             const panelContainer = document.getElementById('dashboard-home-panels');
             if (!sideNav || !stageTitle || !stageCount || !subtabBar || !panelContainer) return;
-            const sections = getDashboardSections();
+            const sections = getDashboardNavigationSections(getDashboardSections());
             const selectedEntry = getDashboardSelectedEntry(sections);
             const selectedCategories = getSectionNavigationCategories(selectedEntry?.section);
             renderDashboardSideNav(sections, selectedEntry);
@@ -351,7 +351,10 @@
 
         function syncAppPopupModeClass() {
             const popupMode = getAppPopupMode();
-            document.body?.classList?.toggle?.('is-report-popup', popupMode === 'report');
+            const isExperimentPopup = popupMode === 'experiment';
+            const isFullscreenPopup = popupMode === 'report' || isExperimentPopup;
+            document.body?.classList?.toggle?.('is-report-popup', isFullscreenPopup);
+            document.body?.classList?.toggle?.('is-experiment-popup', isExperimentPopup);
         }
 
         function buildAppHistoryUrl(route = null) {

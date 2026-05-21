@@ -51,7 +51,6 @@
         applyUtilGasAnalysisCategorySelection: null,
         applyUtilWasteAnalysisSiteSelection: null,
         applyUtilWasteMeterSiteSelection: null,
-        setUtilWasteMeterShowLabels: null,
         applyUtilElectricMeterViewSelection: null,
         setUtilGasAnalysisChartFullscreen: null,
         resolveUtilSheetAnalysisLabelToggleContext: null,
@@ -91,7 +90,7 @@
     };
 
     const MONTHLY_EXTRACT_DATASET_KEYS = Object.freeze(['gas', 'electric', 'waste']);
-    const MONTHLY_EXTRACT_SHEET_TYPES = Object.freeze(['meter', 'analysis']);
+    const MONTHLY_EXTRACT_SHEET_TYPES = Object.freeze(['meter']);
 
     function setRuntimeAdapters(adapters = {}) {
         Object.assign(runtime, adapters || {});
@@ -395,11 +394,7 @@
     function getWasteMeterExtractCss() {
         return `
             .util-sheet-meter-extract-body .util-sheet-waste-meter-card { grid-template-columns: minmax(0, 1fr); align-items: start; }
-            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste,
-            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste-chart { width: 100%; min-width: 0; }
-            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste-chart .util-report-chart-shell { width: 100%; max-width: 100%; min-height: 560px; overflow-x: auto !important; overflow-y: hidden !important; }
-            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste-chart .util-analytics-chart.is-modal { width: 100% !important; min-width: 100% !important; max-width: 100% !important; }
-            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste-chart .util-analytics-chart-canvas { width: 100% !important; max-width: 100% !important; min-width: 0 !important; overflow-x: auto !important; overflow-y: hidden !important; }
+            .util-sheet-meter-extract-body .util-sheet-meter-table-card.is-waste { width: 100%; min-width: 0; }
         `;
     }
 
@@ -3184,7 +3179,7 @@
 
     function openUtilSheetExtractOptions(modal) {
         if (!modal) return false;
-        const activeSheetType = normalizeSheetType(modal.dataset.sheetType);
+        const activeSheetType = 'meter';
         Array.from(modal.querySelectorAll?.('[data-role="util-sheet-extract-option"]') || []).forEach(checkbox => {
             checkbox.checked = normalizeSheetType(checkbox.dataset.extractSheetType) === activeSheetType;
         });
@@ -3707,12 +3702,6 @@
                     </div>
                     <div class="util-sheet-report-head-actions">
                         <div class="util-sheet-report-main-controls">
-                            <div class="util-sheet-toggle is-modal" data-role="util-sheet-modal-type-toggle">
-                                <button type="button" class="util-sheet-toggle-btn" data-role="util-sheet-modal-type-select" data-sheet-type="meter" aria-label="보고서 유형 전환">
-                                    <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
-                                    <span>검침표</span>
-                                </button>
-                            </div>
                             <div class="util-sheet-toggle is-modal" data-role="util-sheet-modal-dataset-toggle">
                                 <button type="button" class="util-sheet-toggle-btn" data-role="util-sheet-modal-select" data-dataset-key="gas" aria-label="보고서 항목 전환">
                                     <i class="fa-solid fa-fire-flame-curved" aria-hidden="true"></i>
@@ -3747,10 +3736,6 @@
                                         <label class="util-sheet-extract-option">
                                             <input type="checkbox" data-role="util-sheet-extract-option" data-extract-sheet-type="meter">
                                             <span>검침표</span>
-                                        </label>
-                                        <label class="util-sheet-extract-option">
-                                            <input type="checkbox" data-role="util-sheet-extract-option" data-extract-sheet-type="analysis">
-                                            <span>분석표</span>
                                         </label>
                                     </fieldset>
                                 </div>
@@ -3793,21 +3778,6 @@
                                                 <input type="checkbox" data-role="util-sheet-monthly-extract-dataset" data-extract-dataset-key="waste" checked>
                                                 <i class="fa-solid fa-water" aria-hidden="true"></i>
                                                 <span>폐수</span>
-                                            </label>
-                                        </div>
-                                    </fieldset>
-                                    <fieldset class="util-sheet-extract-options-group">
-                                        <legend>표 유형</legend>
-                                        <div class="util-sheet-monthly-dataset-actions is-sheet-type" role="group" aria-label="월간 실적 보고 표 유형">
-                                            <label class="util-sheet-extract-option util-sheet-monthly-dataset-btn">
-                                                <input type="checkbox" data-role="util-sheet-monthly-extract-sheet-type" data-extract-sheet-type="meter" checked>
-                                                <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
-                                                <span>검침표</span>
-                                            </label>
-                                            <label class="util-sheet-extract-option util-sheet-monthly-dataset-btn">
-                                                <input type="checkbox" data-role="util-sheet-monthly-extract-sheet-type" data-extract-sheet-type="analysis" checked>
-                                                <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
-                                                <span>분석표</span>
                                             </label>
                                         </div>
                                     </fieldset>
@@ -4061,11 +4031,6 @@
             if (ratioLabelToggle && typeof runtime.setUtilGasAnalysisRatioShowLabels === 'function') {
                 runtime.setUtilGasAnalysisRatioShowLabels(ratioLabelToggle.checked === true);
                 rerenderAndSync(modal);
-                return;
-            }
-            const wasteMeterLabelToggle = findClosest(target, '[data-role="util-sheet-waste-meter-label-toggle"]');
-            if (wasteMeterLabelToggle && typeof runtime.setUtilWasteMeterShowLabels === 'function') {
-                runtime.setUtilWasteMeterShowLabels(modal, wasteMeterLabelToggle.checked === true);
                 return;
             }
             const fuelInactiveToggle = findClosest(target, '[data-role="util-sheet-analysis-fuel-inactive"]');

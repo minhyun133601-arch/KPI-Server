@@ -43,6 +43,58 @@ function renderResourceUI() {
   }
 
   document.title = getResourceTitleText(resourceType);
+  syncMeterSheetOpenButton();
+}
+
+function getMeterSheetBrowserAdapter() {
+  return typeof KpiMeteringBrowserAdapter === "object" && KpiMeteringBrowserAdapter
+    ? KpiMeteringBrowserAdapter
+    : null;
+}
+
+function getCurrentMeterSheetDatasetKey() {
+  if (isGasResourceType()) {
+    return "gas";
+  }
+  if (isWasteResourceType()) {
+    return "waste";
+  }
+  if (isElectricResourceType()) {
+    return "electric";
+  }
+  return "";
+}
+
+function syncMeterSheetOpenButton() {
+  const button = elements.meterSheetOpenBtn;
+  if (!button) {
+    return;
+  }
+
+  const datasetKey = getCurrentMeterSheetDatasetKey();
+  const isAvailable = Boolean(datasetKey);
+  const titleText = isAvailable ? `${getResourceTitleText()} 검침표 열기` : "검침표";
+  button.textContent = "검침표";
+  button.title = titleText;
+  button.disabled = !isAvailable;
+  button.classList.toggle("is-hidden", !isAvailable);
+  button.setAttribute("aria-label", titleText);
+}
+
+function handleMeterSheetOpenClick() {
+  const datasetKey = getCurrentMeterSheetDatasetKey();
+  if (!datasetKey) {
+    return;
+  }
+
+  const adapter = getMeterSheetBrowserAdapter();
+  const openModal = adapter?.getGlobal?.("openUtilSheetReportModal");
+  if (typeof openModal !== "function") {
+    adapter?.alert?.("검침표를 열 수 없습니다. 새로고침 후 다시 시도해 주세요.");
+    return;
+  }
+
+  openModal("meter", datasetKey, normalizeMonthValue(state.currentMonth), "month");
 }
 
 async function applyResourceType(resourceType, options = {}) {

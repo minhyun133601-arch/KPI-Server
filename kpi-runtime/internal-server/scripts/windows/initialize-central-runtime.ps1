@@ -167,7 +167,7 @@ function Assert-LocalDatabaseHost {
 
   $normalized = $HostName.Trim().ToLowerInvariant()
   if ($normalized -notin @('127.0.0.1', 'localhost', '::1')) {
-    throw "initialize-central-runtime.ps1 expects KPI_DATABASE_URL to point at the local PostgreSQL runtime, not $HostName."
+    throw "initialize-central-runtime.ps1 expects KPI_DATABASE_URL to point at the central PostgreSQL runtime, not $HostName."
   }
 }
 
@@ -319,7 +319,7 @@ function Ensure-AppDatabaseProvisioned {
       Write-Warning 'KPI_POSTGRES_SUPERUSER_PASSWORD is missing; existing app database connection is valid, so role/database provisioning was skipped.'
       return
     } catch {
-      throw 'KPI_POSTGRES_SUPERUSER_PASSWORD is required to initialize a new or incomplete local PostgreSQL runtime.'
+      throw 'KPI_POSTGRES_SUPERUSER_PASSWORD is required to initialize a new or incomplete central PostgreSQL runtime.'
     }
   }
 
@@ -413,7 +413,7 @@ New-Item -ItemType Directory -Force -Path $varDir, $centralDir, $postgresDir, $p
 
 if (-not (Test-Path (Join-Path $postgresDataDir 'PG_VERSION'))) {
   if ([string]::IsNullOrWhiteSpace($postgresPassword)) {
-    throw 'KPI_POSTGRES_SUPERUSER_PASSWORD is required before creating the local PostgreSQL cluster.'
+    throw 'KPI_POSTGRES_SUPERUSER_PASSWORD is required before creating the central PostgreSQL cluster.'
   }
   Assert-NotPlaceholderSecret -Key 'KPI_POSTGRES_SUPERUSER_PASSWORD' -Value $postgresPassword
 

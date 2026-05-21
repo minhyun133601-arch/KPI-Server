@@ -197,7 +197,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=24');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=2');
   const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=38');
-  const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=4');
+  const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=5');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
   assert.ok(modelIndex >= 0, 'equipment-history model loader is missing');

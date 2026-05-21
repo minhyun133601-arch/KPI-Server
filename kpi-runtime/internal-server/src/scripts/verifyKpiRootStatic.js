@@ -1,4 +1,4 @@
-const baseUrl = process.env.KPI_BASE_URL || 'http://127.0.0.1:18080/';
+const baseUrl = process.env.KPI_BASE_URL || 'http://127.0.0.1:3100/';
 
 function resolveUrl(relativeOrAbsolute) {
   return new URL(relativeOrAbsolute, baseUrl).toString();

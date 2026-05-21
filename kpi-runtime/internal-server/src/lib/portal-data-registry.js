@@ -11,16 +11,6 @@ export const CURRENT_PORTAL_DATA_RECORDS = Object.freeze([
     sourceKey: 'audit_lux',
   },
   {
-    recordKey: 'audit_regulation',
-    permissionKey: PERMISSION_KEYS.AUDIT_REGULATION,
-    sourceKey: 'audit_regulation',
-  },
-  {
-    recordKey: 'audit_legal_facility',
-    permissionKey: PERMISSION_KEYS.AUDIT_LEGAL_FACILITY,
-    sourceKey: 'audit_legal_facility',
-  },
-  {
     recordKey: 'data_equipment_history_card',
     permissionKey: PERMISSION_KEYS.DATA_EQUIPMENT_HISTORY,
     sourceKey: 'data_equipment_history_card',

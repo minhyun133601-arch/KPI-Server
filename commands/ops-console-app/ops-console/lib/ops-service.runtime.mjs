@@ -472,14 +472,21 @@ async function waitForPostgresStopped(timeoutMs = 30000, pollMs = 1000) {
   throw new Error("postgres_stop_timeout");
 }
 
-async function processExistsWindows(pid) {
+async function isPostgresPostmasterProcessWindows(pid) {
   if (!Number.isInteger(pid) || pid <= 0) {
     return false;
   }
 
   try {
     const result = await runPowerShellCommand(
-      `$process = Get-Process -Id ${pid} -ErrorAction SilentlyContinue; if ($process) { 'true' } else { 'false' }`,
+      [
+        `$process = Get-CimInstance Win32_Process -Filter "ProcessId = ${pid}" -ErrorAction SilentlyContinue`,
+        `if (-not $process) { 'false'; exit 0 }`,
+        `$name = [string]$process.Name`,
+        `$commandLine = [string]$process.CommandLine`,
+        `$dataDir = ${JSON.stringify(postgresDataDir)}`,
+        `if ($name -ieq 'postgres.exe' -and $commandLine -like "*$dataDir*") { 'true' } else { 'false' }`,
+      ].join("; "),
       { timeoutMs: 10000 },
     );
     return result.stdout.trim().toLowerCase() === "true";
@@ -519,7 +526,7 @@ async function removeStalePostmasterPidIfSafe() {
   if (
     Number.isInteger(parsedPid) &&
     parsedPid > 0 &&
-    (await processExistsWindows(parsedPid))
+    (await isPostgresPostmasterProcessWindows(parsedPid))
   ) {
     throw new Error(`postmaster_pid_still_active_${parsedPid}`);
   }

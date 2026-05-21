@@ -27,7 +27,6 @@ function Get-EnvFilePaths {
   param([string]$ServerDir)
 
   $candidatePaths = @(
-    (Join-Path $ServerDir '.env.local-experiment'),
     (Join-Path $ServerDir '.env.production.local'),
     (Join-Path $ServerDir '.env.development.local'),
     (Join-Path $ServerDir '.env')
@@ -272,7 +271,7 @@ $readmeTemplate = @'
 
 Created: {0}
 
-Use this package when moving the home KPI-LOCAL working DB back to the office PC.
+Use this package when moving the prepared KPI server DB back to the office PC.
 
 Preview on the office PC from `kpi-runtime\internal-server`:
 
@@ -297,7 +296,7 @@ Preview also shows the home return package delta from that baseline, so you can 
 If you run the bundled script from an extracted package instead of the repo script, pass the office server directory explicitly:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\restore-office-return-package.ps1 -ServerDir "<office KPI-LOCAL>\kpi-runtime\internal-server" -PackagePath "<path to this zip>" -Force -ConfirmOfficeDbUnchanged
+powershell -ExecutionPolicy Bypass -File .\restore-office-return-package.ps1 -ServerDir "<office KPI-Server>\kpi-runtime\internal-server" -PackagePath "<path to this zip>" -Force -ConfirmOfficeDbUnchanged
 ```
 '@
 $readme = $readmeTemplate -f $manifest.createdAt

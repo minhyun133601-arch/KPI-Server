@@ -17,8 +17,8 @@ const shellManifestPath = path.join(appRoot, 'KPI.app.shell.css');
 
 const styleEntries = [
   {
-    href: `${runtimeDirName}/app/styles/shell/dashboard.css?v=057`,
-    manifestHref: './styles/shell/dashboard.css?v=057',
+    href: `${runtimeDirName}/app/styles/shell/dashboard.css?v=073`,
+    manifestHref: './styles/shell/dashboard.css?v=073',
     fileName: 'dashboard.css',
     relativeSegments: ['shell', 'dashboard.css'],
   },
@@ -41,8 +41,8 @@ const styleEntries = [
     relativeSegments: ['metering', 'metering.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/audit/audit.css?v=058`,
-    manifestHref: './styles/audit/audit.css?v=058',
+    href: `${runtimeDirName}/app/styles/audit/audit.css?v=059`,
+    manifestHref: './styles/audit/audit.css?v=059',
     fileName: 'audit.css',
     relativeSegments: ['audit', 'audit.css'],
   },

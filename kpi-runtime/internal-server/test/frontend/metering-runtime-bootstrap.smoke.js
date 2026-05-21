@@ -23,6 +23,7 @@ const ELEMENT_TARGET_KEYS = [
   'teamModeBtn',
   'saveEntryBtn',
   'teamSaveBtn',
+  'meterSheetOpenBtn',
   'calendarDisplayModeToggleBtn',
   'clearCardSelectionBtn',
   'yearPicker',
@@ -59,6 +60,7 @@ const ELEMENT_TARGET_KEYS = [
 ];
 
 const NOOP_HANDLER_NAMES = [
+  'handleMeterSheetOpenClick',
   'handleCalendarDisplayModeToggleClick',
   'handleClearCardSelectionClick',
   'handlePeriodChange',
@@ -344,6 +346,7 @@ test('runtime bootstrap bindEvents wires listeners once and registers cleanup ha
   assert.equal(context.state.eventsBound, true);
   assert.equal(elements.gasResourceBtn.getHandlers('click').length, 1);
   assert.equal(elements.equipmentModeBtn.getHandlers('click').length, 1);
+  assert.equal(elements.meterSheetOpenBtn.getHandlers('click').length, 1);
   assert.equal(elements.entryForm.getHandlers('submit').length, 1);
   assert.equal(elements.fieldsGrid.getHandlers('dragover').length, 1);
   assert.equal(elements.teamSettlementFields.getHandlers('input').length, 2);

@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('Default', 'LocalExperiment', 'Development', 'Production')]
+  [ValidateSet('Default', 'Development', 'Production')]
   [string]$Environment = 'Default',
   [string]$EnvFile,
   [int]$Port
@@ -25,10 +25,9 @@ function Resolve-EnvFilePath {
   }
 
   $preferred = switch ($Environment) {
-    'LocalExperiment' { Join-Path $ServerDir '.env.local-experiment' }
     'Development' { Join-Path $ServerDir '.env.development.local' }
     'Production' { Join-Path $ServerDir '.env.production.local' }
-    default { Join-Path $ServerDir '.env.local-experiment' }
+    default { Join-Path $ServerDir '.env.production.local' }
   }
 
   if (Test-Path $preferred) {
@@ -73,7 +72,7 @@ $resolvedPort = if ($PSBoundParameters.ContainsKey('Port') -and $Port -gt 0) {
 } else {
   $resolvedEnvFile = Resolve-EnvFilePath -ServerDir $serverDir -Environment $Environment -EnvFile $EnvFile
   $envPort = Read-PortFromEnvFile -FilePath $resolvedEnvFile
-  if ($envPort) { $envPort } else { 18080 }
+  if ($envPort) { $envPort } else { 3100 }
 }
 
 $listener = Get-NetTCPConnection -State Listen -LocalPort $resolvedPort -ErrorAction SilentlyContinue

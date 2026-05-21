@@ -407,7 +407,7 @@ export const serverSummaryTranslations = {
     "이미 서버 작업이 진행 중입니다.": "A server task is already running.",
     "KPI 서버 시작 요청을 보냈습니다.": "KPI server start was requested.",
     "KPI 서버와 로컬 PostgreSQL 종료 요청이 완료되었습니다.":
-      "KPI server and local PostgreSQL stop request completed.",
+      "KPI server and PostgreSQL stop request completed.",
     "KPI 서버와 PostgreSQL 종료 요청이 완료되었습니다.":
       "KPI server and PostgreSQL stop request completed.",
     "복구 재시작 요청을 보냈습니다.": "Recovery restart was requested.",

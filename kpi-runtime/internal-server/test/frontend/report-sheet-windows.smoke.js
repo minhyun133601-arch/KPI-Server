@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -111,8 +111,8 @@ test('report sheet windows registry builds detached/chart shells and closes deta
   assert.match(reportSheetWindowsSource, /nextScrollLeft >= maxScrollLeft - 24/);
   assert.match(reportSheetWindowsSource, /typeof requestAnimationFrame === 'function'/);
   assert.doesNotMatch(reportSheetWindowsSource, /input, select, textarea, button, label, a, summary, details, \[contenteditable\], \[data-role="util-chart-month-hit"\]/);
-  assert.match(reportSheetWindowDetachedInteractionsSource, /util-sheet-waste-meter-label-toggle/);
-  assert.match(reportSheetWindowsSource, /setUtilWasteMeterShowLabels/);
+  assert.doesNotMatch(reportSheetWindowDetachedInteractionsSource, /util-sheet-waste-meter-label-toggle/);
+  assert.doesNotMatch(reportSheetWindowsSource, /setUtilWasteMeterShowLabels/);
   assert.ok(context.KPIUtilReportSheetWindowDetachedInteractions);
   assert.ok(context.KPIUtilReportSheetWindowShells);
   const windows = context.KPIUtilReportSheetWindows;
@@ -150,10 +150,10 @@ test('report sheet windows registry builds detached/chart shells and closes deta
   assert.equal(context.__alerts.length, 1);
 });
 test('kpi html loads report sheet windows before sheet.js', () => {
-  const detachedInteractionIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows/detached-interactions.js?v=055');
+  const detachedInteractionIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows/detached-interactions.js?v=056');
   const shellIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows/shells.js?v=1');
-  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=059');
-  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=057');
+  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=060');
+  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=058');
   assert.ok(detachedInteractionIndex >= 0, 'report sheet detached interaction loader is missing');
   assert.ok(shellIndex > detachedInteractionIndex, 'report sheet window shells must load after detached interactions');
   assert.ok(windowsIndex >= 0, 'report sheet windows loader is missing');

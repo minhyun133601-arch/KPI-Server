@@ -1,5 +1,5 @@
         // ----------------------------------------------------------------
-        // [Audit Lux]
+        // [Lux Data]
         // ----------------------------------------------------------------
         const AuditState = { filters: {}, printCache: {}, entryForm: {}, standardForm: {}, standardsOpen: {}, evidenceOpen: {}, evidenceSelected: {}, evidenceApplied: {}, evidenceCache: {}, luxPreviewRotation: {} };
         const AUDIT_LUX_BASE_YEAR = 2023;
@@ -7,10 +7,6 @@
         const AUDIT_LUX_EVIDENCE_OWNER_DOMAIN = 'audit.lux.evidence';
         const AUDIT_LUX_EVIDENCE_STORAGE_FOLDER = ['Audit', '조도 스캔본'];
         const AuditServerWriteQueue = {};
-        const AUDIT_PORTAL_DATA_FALLBACK = Object.freeze({
-            audit_legal_facility: 'audit_regulation'
-        });
-
         function cloneAuditDataPayload(value) {
             return JSON.parse(JSON.stringify(value || {}));
         }
@@ -41,7 +37,7 @@
         }
 
         function getAuditPortalPayload(dataKey) {
-            return auditRecordsBrowser.getPortalPayload(dataKey, AUDIT_PORTAL_DATA_FALLBACK);
+            return auditRecordsBrowser.getPortalPayload(dataKey);
         }
 
         function syncAuditPortalDataCache(dataKey, data) {

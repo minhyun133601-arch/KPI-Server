@@ -14,9 +14,7 @@ export const PERMISSION_KEYS = Object.freeze({
   WORK_PERSON_LEE_HYOSEOK: 'work.person.lee_hyoseok',
   WORK_PERSON_KIM_MINHYUN: 'work.person.kim_minhyun',
   DATA_EQUIPMENT_HISTORY: 'data.equipment_history',
-  AUDIT_LUX: 'audit.lux',
-  AUDIT_REGULATION: 'audit.regulation',
-  AUDIT_LEGAL_FACILITY: 'audit.legal_facility'
+  AUDIT_LUX: 'audit.lux'
 });
 
 const WORK_PERMISSION_KEY_BY_DATA_KEY = Object.freeze({
@@ -31,9 +29,7 @@ const WORK_PERMISSION_KEY_BY_DATA_KEY = Object.freeze({
 });
 
 const AUDIT_PERMISSION_KEY_BY_DATA_KEY = Object.freeze({
-  audit_lux: PERMISSION_KEYS.AUDIT_LUX,
-  audit_legal_facility: PERMISSION_KEYS.AUDIT_LEGAL_FACILITY,
-  audit_regulation: PERMISSION_KEYS.AUDIT_REGULATION
+  audit_lux: PERMISSION_KEYS.AUDIT_LUX
 });
 
 export function getWorkPermissionKey(dataKey) {

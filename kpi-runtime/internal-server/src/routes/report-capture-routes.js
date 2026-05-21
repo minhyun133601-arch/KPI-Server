@@ -188,7 +188,7 @@ async function renderCaptureEntries({ pages, width, height, pageNumbers = [] }) 
         waitUntil: 'load',
         timeout: 30000
       });
-      await page.evaluate(() => globalThis.document?.fonts?.ready).catch(() => {});
+      await page.evaluate('document.fonts && document.fonts.ready').catch(() => {});
       const image = await page.locator('[data-report-capture-page]').screenshot({
         type: 'png',
         animations: 'disabled'

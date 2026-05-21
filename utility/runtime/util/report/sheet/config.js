@@ -73,8 +73,7 @@
     const UtilSheetMeterState = {
         gasProductionKey: 'combined',
         electricTeamKey: 'combined',
-        electricViewKey: 'meter',
-        wasteShowLabels: false
+        electricViewKey: 'meter'
     };
     const UtilSheetRuntimeState = {
         gasMeteringPromise: null,

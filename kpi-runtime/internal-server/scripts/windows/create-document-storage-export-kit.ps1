@@ -61,19 +61,19 @@ Missing documents: $missingCount
 Missing bytes: $missingBytes
 Document metadata count: $documentCount
 
-Run this on the office PC where the original KPI storage files exist.
+Run this on the server PC where the original KPI storage files exist.
 
 SourcePath can be the KPI storage files folder, the old KPI-Server root, or another folder that contains the original attachment files.
 The script first tries the source path metadata from the manifest, then storage-relative paths, then matching file names and sizes.
 
 Preview:
 ~~~powershell
-powershell -ExecutionPolicy Bypass -File .\package-document-storage.ps1 -SourcePath "<office KPI-LOCAL>\kpi-runtime\internal-server\var\local-experiment\storage\files" -ManifestPath .\document-storage-missing-manifest.json
+powershell -ExecutionPolicy Bypass -File .\package-document-storage.ps1 -SourcePath "<server KPI-Server>\kpi-runtime\internal-server\var\prod\files" -ManifestPath .\document-storage-missing-manifest.json
 ~~~
 
 Create package:
 ~~~powershell
-powershell -ExecutionPolicy Bypass -File .\package-document-storage.ps1 -SourcePath "<office KPI-LOCAL>\kpi-runtime\internal-server\var\local-experiment\storage\files" -ManifestPath .\document-storage-missing-manifest.json -Force -OutputPath .\document-storage-package.zip
+powershell -ExecutionPolicy Bypass -File .\package-document-storage.ps1 -SourcePath "<server KPI-Server>\kpi-runtime\internal-server\var\prod\files" -ManifestPath .\document-storage-missing-manifest.json -Force -OutputPath .\document-storage-package.zip
 ~~~
 
 Bring document-storage-package.zip back to the server PC. Restore it from the KPI-Server kpi-runtime\internal-server folder.

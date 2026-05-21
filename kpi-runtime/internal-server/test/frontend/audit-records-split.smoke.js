@@ -20,10 +20,6 @@ const splitFiles = [
   'KPI.audit.records.lux-alerts.js',
   'KPI.audit.records.lux-fullscreen.js',
   'KPI.audit.records.lux-workspace.js',
-  'KPI.audit.records.legal.assets.js',
-  'KPI.audit.records.legal.model.js',
-  'KPI.audit.records.legal.form.js',
-  'KPI.audit.records.legal.js',
   'KPI.audit.records.batch-actions.js',
   'KPI.audit.records.standard-actions.js',
   'KPI.audit.records.util-format.js',
@@ -56,15 +52,12 @@ test('audit record behavior was moved out of the former large files', async () =
   const dataSource = await readAuditFile('KPI.audit.records.data.js');
   const renderSource = await readAuditFile('KPI.audit.records.render.js');
   const luxWorkspaceSource = await readAuditFile('KPI.audit.records.lux-workspace.js');
-  const legalSource = await readAuditFile('KPI.audit.records.legal.js');
 
   assert.doesNotMatch(dataSource, /async function replaceAuditLuxEvidenceForYear/);
   assert.doesNotMatch(renderSource, /async function saveAuditLuxBatchEntries/);
   assert.doesNotMatch(luxWorkspaceSource, /function getAuditLuxWorkspaceAlertSummary/);
-  assert.doesNotMatch(legalSource, /function bindAuditLegalEntryEvents/);
 
   assert.match(await readAuditFile('KPI.audit.records.evidence.js'), /async function replaceAuditLuxEvidenceForYear/);
   assert.match(await readAuditFile('KPI.audit.records.batch-actions.js'), /async function saveAuditLuxBatchEntries/);
   assert.match(await readAuditFile('KPI.audit.records.lux-alerts.js'), /function getAuditLuxWorkspaceAlertSummary/);
-  assert.match(await readAuditFile('KPI.audit.records.legal.form.js'), /function bindAuditLegalEntryEvents/);
 });

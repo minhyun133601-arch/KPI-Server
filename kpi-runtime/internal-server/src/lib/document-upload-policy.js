@@ -3,7 +3,6 @@ import path from 'node:path';
 export const DOCUMENT_UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
 
 const DOCUMENT_POLICY_OWNER_DOMAINS = new Set([
-  'audit.legal_facility',
   'audit.lux.evidence',
   'data.equipment_history',
   'metering.billing_document',

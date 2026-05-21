@@ -47,14 +47,13 @@ test('report sheet config registers the shared registry and default state', () =
   assert.equal(config.UTIL_SHEET_CUTOFF, '');
   assert.doesNotMatch(reportSheetConfigSource, /UTIL_SHEET_CUTOFF\s*=\s*['"]2026-02['"]/);
   assert.equal(config.UtilSheetReportState.meter, 'gas');
-  assert.equal(config.UtilSheetMeterState.wasteShowLabels, false);
   assert.equal(config.UtilSheetAnalysisState.electric.teamKey, 'combined');
   assert.equal(config.UTIL_GAS_METER_FIELD_ORDER.length, 6);
   assert.equal(config.UTIL_ELECTRIC_BILLING_DOCUMENT_DIRECTORY, '\uC804\uAE30 \uCCAD\uAD6C\uC11C');
 });
 test('kpi html loads report sheet config before sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=058');
+  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=059');
   const optionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/options.js?v=053');
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(configIndex >= 0, 'report sheet config loader is missing');

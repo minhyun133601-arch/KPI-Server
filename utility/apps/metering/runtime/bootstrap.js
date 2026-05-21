@@ -73,6 +73,7 @@ function bindEvents() {
   elements.teamSaveBtn?.addEventListener("click", () => {
     void performManualSave({ trigger: "button" });
   });
+  elements.meterSheetOpenBtn?.addEventListener("click", handleMeterSheetOpenClick);
   elements.calendarDisplayModeToggleBtn?.addEventListener("click", handleCalendarDisplayModeToggleClick);
   elements.clearCardSelectionBtn?.addEventListener("click", handleClearCardSelectionClick);
   elements.yearPicker.addEventListener("change", handlePeriodChange);

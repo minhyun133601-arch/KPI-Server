@@ -68,6 +68,8 @@ function toPlainJson(value) {
 }
 
 function createResourceUiContext(options = {}) {
+  const sheetModalCalls = [];
+  const alertMessages = [];
   const calls = {
     clearEquipmentLocalAutosaveTimer: 0,
     closeBillingDocumentPreview: 0,
@@ -140,6 +142,7 @@ function createResourceUiContext(options = {}) {
     formMeta: createMockElement(),
     entryStatusWrap: createMockElement(),
     equipmentAddWrap: createMockElement(),
+    meterSheetOpenBtn: createMockElement(['is-hidden']),
     saveEntryBtn: createMockElement(),
     teamSaveBtn: createMockElement(['is-hidden']),
     quickEntryWrap: createMockElement(),
@@ -158,6 +161,18 @@ function createResourceUiContext(options = {}) {
     Date,
     document: {
       title: '',
+    },
+    KpiMeteringBrowserAdapter: {
+      getGlobal(name) {
+        return name === 'openUtilSheetReportModal'
+          ? (...args) => {
+              sheetModalCalls.push(args);
+            }
+          : undefined;
+      },
+      alert(message) {
+        alertMessages.push(message);
+      },
     },
     MODES: {
       EQUIPMENT: 'equipment',
@@ -203,6 +218,9 @@ function createResourceUiContext(options = {}) {
     },
     getUsageFactorLabel(resourceType = context.getCurrentResourceType()) {
       return `factor:${context.normalizeResourceType(resourceType)}`;
+    },
+    normalizeMonthValue(value) {
+      return String(value || '').trim();
     },
     getCurrentMode() {
       return context.state.store.mode === 'team' ? 'team' : 'equipment';
@@ -316,6 +334,8 @@ function createResourceUiContext(options = {}) {
       return `scope:${context.normalizeResourceType(resourceType)}`;
     },
     __calls: calls,
+    __sheetModalCalls: sheetModalCalls,
+    __alertMessages: alertMessages,
   };
 
   context.globalThis = context;
@@ -341,7 +361,35 @@ test('resource ui renders resource-specific button state and labels', () => {
   assert.equal(context.elements.equipmentItemFactorInput.placeholder, 'factor:gas');
   assert.equal(context.elements.gasResourceBtn.getAttribute('aria-pressed'), 'true');
   assert.equal(context.elements.electricResourceBtn.getAttribute('aria-pressed'), 'false');
+  assert.equal(context.elements.meterSheetOpenBtn.textContent, '검침표');
+  assert.equal(context.elements.meterSheetOpenBtn.classList.contains('is-hidden'), false);
+  assert.equal(context.elements.meterSheetOpenBtn.disabled, false);
   assert.equal(context.document.title, 'title:gas');
+});
+
+test('resource ui opens the current resource meter sheet from the small sheet button', () => {
+  const context = createResourceUiContext({
+    resourceType: 'waste',
+    mode: 'team',
+  });
+
+  context.renderResourceUI();
+  context.handleMeterSheetOpenClick();
+
+  assert.deepEqual(context.__sheetModalCalls, [['meter', 'waste', '2026-04', 'month']]);
+  assert.deepEqual(context.__alertMessages, []);
+});
+
+test('resource ui hides the meter sheet button for unsupported resources', () => {
+  const context = createResourceUiContext({
+    resourceType: 'production',
+    mode: 'equipment',
+  });
+
+  context.renderResourceUI();
+
+  assert.equal(context.elements.meterSheetOpenBtn.classList.contains('is-hidden'), true);
+  assert.equal(context.elements.meterSheetOpenBtn.disabled, true);
 });
 
 test('resource ui switches resource type and resets transient selection state', async () => {

@@ -99,8 +99,10 @@ function Remove-StalePostmasterPidFile {
   }
 
   if ($pidValue) {
-    $postmasterProcess = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
-    if ($postmasterProcess) {
+    $postmasterProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $pidValue" -ErrorAction SilentlyContinue
+    $processName = [string]$postmasterProcess.Name
+    $commandLine = [string]$postmasterProcess.CommandLine
+    if ($postmasterProcess -and $processName -ieq 'postgres.exe' -and $commandLine.Contains($postgresDataDir)) {
       throw "postmaster.pid points to active PID $pidValue. Recovery will not remove it automatically."
     }
   }
@@ -117,7 +119,7 @@ $loginUrl = "http://127.0.0.1:$serverPort/login"
 Write-Host 'Stopping KPI internal server if it is running...'
 & $stopServerScriptPath -Environment Production
 
-Write-Host 'Stopping local KPI PostgreSQL if it is running...'
+Write-Host 'Stopping central KPI PostgreSQL if it is running...'
 & $stopPostgresScriptPath
 
 Start-Sleep -Seconds 2

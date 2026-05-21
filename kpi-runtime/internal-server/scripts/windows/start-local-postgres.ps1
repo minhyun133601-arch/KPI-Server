@@ -6,9 +6,9 @@ $serverDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $postgresBinDir = 'C:\Program Files\PostgreSQL\17\bin'
 $pgCtlPath = Join-Path $postgresBinDir 'pg_ctl.exe'
 $pgIsReadyPath = Join-Path $postgresBinDir 'pg_isready.exe'
-$postgresDataDir = Join-Path $serverDir 'var\local-experiment\postgres\data'
-$postgresLogFile = Join-Path $serverDir 'var\local-experiment\postgres\logs\postgres.log'
-$postgresPort = 55432
+$postgresDataDir = Join-Path $serverDir 'var\central-runtime\postgres\data'
+$postgresLogFile = Join-Path $serverDir 'var\central-runtime\postgres\logs\postgres.log'
+$postgresPort = 5434
 
 function Test-PostgresReady {
   & $pgIsReadyPath -h 127.0.0.1 -p $postgresPort 2>$null | Out-Null
@@ -16,7 +16,7 @@ function Test-PostgresReady {
 }
 
 if (-not (Test-Path (Join-Path $postgresDataDir 'PG_VERSION'))) {
-  throw "Local KPI PostgreSQL cluster is not initialized under var\local-experiment\postgres\data."
+  throw "KPI PostgreSQL cluster is not initialized under var\central-runtime\postgres\data."
 }
 
 & $pgCtlPath -D $postgresDataDir status 2>$null | Out-Null

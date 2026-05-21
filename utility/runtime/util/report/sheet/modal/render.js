@@ -758,8 +758,7 @@
                     : sheetType === 'meter' && datasetKey === 'waste'
                         ? (typeof runtime.buildUtilWasteMeterSectionHtml === 'function'
                             ? runtime.buildUtilWasteMeterSectionHtml(wasteMeterModel, {
-                                controlsHtml: buildWasteMeterSiteSelectHtml(wasteMeterModel?.siteOption?.key || wasteMeterSiteKey),
-                                showLabels: UtilSheetMeterState.wasteShowLabels === true
+                                controlsHtml: buildWasteMeterSiteSelectHtml(wasteMeterModel?.siteOption?.key || wasteMeterSiteKey)
                             })
                             : '')
                     : ''}

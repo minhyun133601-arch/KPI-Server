@@ -285,8 +285,8 @@ Office attachment collection:
    SourcePath can also be the old KPI-Server root or another folder that contains the original attachment files.
 3. If the preview finds the files, create the package:
    powershell -ExecutionPolicy Bypass -File .\package-document-storage.ps1 -SourcePath "<office KPI storage files path>" -Force
-4. Bring the created document-storage-package-*.zip back to this home PC.
-5. Put it in this KPI-TRANSFER-KITS folder, then restore it from KPI-LOCAL\kpi-runtime\internal-server:
+4. Bring the created document-storage-package-*.zip back to this server PC.
+5. Put it in this KPI-TRANSFER-KITS folder, then restore it from KPI-Server\kpi-runtime\internal-server:
    npm run restore-package:document-storage -- -Force
 
    Or pass the path explicitly:
@@ -296,21 +296,21 @@ Office attachment collection:
 
 Office return after home work is done:
 
-1. On the home PC, create a fresh package right before leaving:
+1. On the server PC, create a fresh package right before leaving:
    npm run package:office-return
 2. Re-run this collector so the transfer folder has the newest zip:
    npm run prepare:transfer-kits
-3. On the office PC, preview the office return package from KPI-LOCAL\kpi-runtime\internal-server:
+3. On the office PC, preview the office return package from KPI-Server\kpi-runtime\internal-server:
    npm run restore-package:office-return -- -PackagePath "<office-return-package zip path>"
 4. If preview says the DB dump and storage zip are readable, hashes match, and database.baselineComparison.matches is true, review database.packageDeltaFromBaseline, then apply:
    npm run restore-package:office-return -- -PackagePath "<office-return-package zip path>" -Force -ConfirmOfficeDbUnchanged
 
 Important:
 
-- Do not apply office-return-package if someone changed the office DB while you were working at home.
+- Do not apply office-return-package if someone changed the office DB while the server package was being prepared.
 - If database.baselineComparison.matches is false, review the mismatched tables before deciding whether to use -AllowOfficeDbDrift.
 - The office return restore keeps existing office user password hashes for matching users, because the Excel export does not contain password hashes.
-- The current home PC is still missing 127 original attachment files until document-storage-package-*.zip is restored.
+- The current server PC is still missing original attachment files until document-storage-package-*.zip is restored.
 "@
 try {
   Set-TextFileWithRetry -Path $checklistPath -Value $checklist

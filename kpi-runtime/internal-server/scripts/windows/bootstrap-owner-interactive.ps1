@@ -6,8 +6,8 @@ $ErrorActionPreference = 'Stop'
 $OutputEncoding = [Console]::OutputEncoding
 
 $serverDir = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$envFilePath = Join-Path $serverDir '.env.local-experiment'
-$port = 18080
+$envFilePath = Join-Path $serverDir '.env.production.local'
+$port = 3100
 
 if (Test-Path $envFilePath) {
   foreach ($line in Get-Content -Path $envFilePath -Encoding utf8) {

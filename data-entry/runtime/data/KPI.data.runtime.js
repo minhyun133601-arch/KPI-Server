@@ -4,6 +4,7 @@
     if (!runtime) return;
 
     const EQUIPMENT_HISTORY_DATA_KEY = 'data_equipment_history_card';
+    const LUX_DATA_KEY = 'audit_lux';
 
     function getEquipmentHistoryData() {
         const payload = browser.getPortalPayload(EQUIPMENT_HISTORY_DATA_KEY);
@@ -34,6 +35,10 @@
                 api.render(category, context, getEquipmentHistoryData());
                 return;
             }
+        }
+        if (String(category?.dataKey || '').trim() === LUX_DATA_KEY && typeof renderAuditContent === 'function') {
+            renderAuditContent(category);
+            return;
         }
 
         const container = context.container || document.getElementById('content-container');
