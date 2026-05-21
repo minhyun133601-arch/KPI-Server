@@ -32,6 +32,17 @@
         return history.WORK_HISTORY_ATTACHMENT_EXTENSION_BY_MIME?.[normalizedMimeType] || '';
     }
 
+    function getWorkHistoryAttachmentMimeType(fileName, mimeType = '') {
+        const normalizedMimeType = String(mimeType || '').trim();
+        const normalizedLowerMimeType = normalizedMimeType.toLowerCase();
+        if (normalizedMimeType && normalizedLowerMimeType !== 'application/octet-stream') {
+            return normalizedMimeType;
+        }
+        const extension = getWorkHistoryAttachmentExtension(fileName, normalizedMimeType);
+        const fallbackMimeType = history.WORK_HISTORY_ATTACHMENT_RULES?.[extension]?.[0] || '';
+        return fallbackMimeType || normalizedMimeType || 'application/octet-stream';
+    }
+
     function validateWorkHistoryAttachment(file) {
         if (!(file instanceof File)) {
             return 'invalid_file';
@@ -143,7 +154,7 @@
                 throw new Error(errorKey);
             }
             const originalName = formatAttachmentFileName(context, slotMeta, file?.name, file?.type);
-            const mimeType = String(file?.type || '').trim() || 'application/octet-stream';
+            const mimeType = getWorkHistoryAttachmentMimeType(file?.name, file?.type);
             const base64Data = await readFileAsBase64(file);
             const response = await fetch(`${assetRuntime.apiBase.replace(/\/+$/, '')}/files/base64`, {
                 method: 'POST',
@@ -325,6 +336,7 @@
                         if (ext === '.xlsx') return [['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', ext]];
                         if (ext === '.ppt') return [['application/vnd.ms-powerpoint', ext]];
                         if (ext === '.pptx') return [['application/vnd.openxmlformats-officedocument.presentationml.presentation', ext]];
+                        if (ext === '.pptm') return [['application/vnd.ms-powerpoint.presentation.macroenabled.12', ext]];
                         if (ext === '.doc') return [['application/msword', ext]];
                         if (ext === '.docx') return [['application/vnd.openxmlformats-officedocument.wordprocessingml.document', ext]];
                         if (ext === '.hwp') return [['application/x-hwp', ext], ['application/haansofthwp', ext]];
@@ -334,6 +346,7 @@
             )
         ),
         getWorkHistoryAttachmentExtension,
+        getWorkHistoryAttachmentMimeType,
         validateWorkHistoryAttachment,
         formatAttachmentFileName,
         getRecordRuntimeConfig,

@@ -43,6 +43,7 @@
         '.xlsx': Object.freeze(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
         '.ppt': Object.freeze(['application/vnd.ms-powerpoint']),
         '.pptx': Object.freeze(['application/vnd.openxmlformats-officedocument.presentationml.presentation']),
+        '.pptm': Object.freeze(['application/vnd.ms-powerpoint.presentation.macroenabled.12']),
         '.doc': Object.freeze(['application/msword']),
         '.docx': Object.freeze(['application/vnd.openxmlformats-officedocument.wordprocessingml.document']),
         '.hwp': Object.freeze(['application/x-hwp', 'application/haansofthwp']),

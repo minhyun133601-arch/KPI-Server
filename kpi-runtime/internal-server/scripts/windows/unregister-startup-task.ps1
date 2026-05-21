@@ -15,6 +15,12 @@ $startupFilePath = Join-Path $startupDirectory $StartupFileName
 $legacyShortcutPath = Join-Path $startupDirectory $LegacyShortcutName
 $removedItems = @()
 
+$task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+if ($task) {
+  Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+  $removedItems += "Scheduled task: $TaskName"
+}
+
 if (Test-Path -LiteralPath $startupFilePath) {
   Remove-Item -LiteralPath $startupFilePath -Force
   $removedItems += $startupFilePath
@@ -26,9 +32,9 @@ if (Test-Path -LiteralPath $legacyShortcutPath) {
 }
 
 if (-not $removedItems.Count) {
-  Write-Host "Startup script was not found: $startupFilePath"
+  Write-Host "Startup autorun was not registered."
   exit 0
 }
 
-Write-Host "Removed startup entries:"
+Write-Host "Removed startup autorun entries:"
 $removedItems | ForEach-Object { Write-Host $_ }

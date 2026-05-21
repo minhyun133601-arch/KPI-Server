@@ -106,7 +106,7 @@ async function actionRegisterStartup() {
   );
   return {
     ok: true,
-    summary: "로그온 자동 실행 등록이 완료되었습니다.",
+    summary: "로그인 자동시작 등록이 완료되었습니다.",
     output: [result.stdout, result.stderr].filter(Boolean).join("\n"),
   };
 }
@@ -121,7 +121,7 @@ async function actionUnregisterStartup() {
   );
   return {
     ok: true,
-    summary: "로그온 자동 실행 해제가 완료되었습니다.",
+    summary: "로그인 자동시작 해제가 완료되었습니다.",
     output: [result.stdout, result.stderr].filter(Boolean).join("\n"),
   };
 }

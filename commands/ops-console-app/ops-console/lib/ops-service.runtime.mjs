@@ -19,6 +19,7 @@ import { commandRegistry } from "./command-registry.mjs";
 
 const execFileAsync = promisify(execFile);
 const scheduledStartTaskName = "KPI Internal Server Scheduled Start";
+const loginStartupTaskName = "KPI Internal Server Startup";
 const serverActionLogFile = path.join(appLogsDir, "server-actions.log");
 const postgresDataDir = resolveConfiguredPostgresDataDir();
 const postmasterPidPath = path.join(postgresDataDir, "postmaster.pid");
@@ -916,10 +917,29 @@ async function stopLocalPostgresCluster() {
 }
 
 async function getStartupTaskRegistered() {
-  return Boolean(
+  const fileRegistered = Boolean(
     (startupScriptFile && fs.existsSync(startupScriptFile)) ||
-    (legacyStartupShortcutFile && fs.existsSync(legacyStartupShortcutFile)),
+      (legacyStartupShortcutFile && fs.existsSync(legacyStartupShortcutFile)),
   );
+  const taskRegistered = await getScheduledTaskExists(loginStartupTaskName);
+  return taskRegistered || fileRegistered;
+}
+
+async function getScheduledTaskExists(taskName) {
+  const commandText = [
+    `$taskName = '${taskName.replaceAll("'", "''")}'`,
+    "$task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue",
+    "if ($task) { 'true' } else { 'false' }",
+  ].join("; ");
+
+  try {
+    const result = await runPowerShellCommand(commandText, {
+      timeoutMs: 15000,
+    });
+    return result.stdout.trim().toLowerCase() === "true";
+  } catch {
+    return false;
+  }
 }
 
 async function getScheduledStartState() {

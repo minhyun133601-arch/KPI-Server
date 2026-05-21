@@ -155,6 +155,22 @@ test('work history core split files expose normalized payload and storage hooks 
   assert.equal(typeof history.buildExportScript, 'function');
   assert.equal(typeof history.getRecordCategoryGroupLabel, 'function');
   assert.equal(typeof history.getRecordAttachment, 'function');
+  assert.ok(history.WORK_HISTORY_ATTACHMENT_ACCEPT.includes('.pptm'));
+  assert.equal(
+    history.getWorkHistoryAttachmentExtension(
+      'macro-report',
+      'application/vnd.ms-powerpoint.presentation.macroEnabled.12'
+    ),
+    '.pptm'
+  );
+  assert.equal(
+    history.getWorkHistoryAttachmentMimeType('macro-report.pptm', ''),
+    'application/vnd.ms-powerpoint.presentation.macroenabled.12'
+  );
+  assert.equal(
+    history.getWorkHistoryAttachmentMimeType('macro-report.pptm', 'application/octet-stream'),
+    'application/vnd.ms-powerpoint.presentation.macroenabled.12'
+  );
   assert.deepEqual([...history.ATTACHMENT_SLOT_KEYS], ['report', 'estimate', 'other']);
   assert.equal(
     history.normalizeAttachment({
@@ -202,10 +218,10 @@ test('work history core split files expose normalized payload and storage hooks 
 
 test('kpi html loads work history core split files before layout bootstrap', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=3');
+  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=4');
   const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=218');
   const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=4');
-  const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=2');
+  const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=4');
   const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=254');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');

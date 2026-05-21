@@ -140,9 +140,29 @@ test('document upload policy keeps managed attachment office and hwp types bound
   }));
   assert.doesNotThrow(() => validateDocumentUploadPolicy({
     ...baseInput,
+    originalName: 'macro-report.pptm',
+    mimeType: 'application/vnd.ms-powerpoint.presentation.macroEnabled.12',
+  }));
+  assert.doesNotThrow(() => validateDocumentUploadPolicy({
+    ...baseInput,
+    originalName: 'macro-report.pptm',
+    mimeType: 'application/octet-stream',
+  }));
+  assert.doesNotThrow(() => validateDocumentUploadPolicy({
+    ...baseInput,
+    originalName: 'macro-report.pptm',
+    mimeType: '',
+  }));
+  assert.doesNotThrow(() => validateDocumentUploadPolicy({
+    ...baseInput,
     originalName: 'report.hwp',
     mimeType: 'application/haansofthwp',
   }));
+  assertRejectsUpload({
+    ...baseInput,
+    originalName: 'macro-show.ppsm',
+    mimeType: 'application/vnd.ms-powerpoint.slideshow.macroEnabled.12',
+  }, 'unsupported_type');
   assertRejectsUpload({
     ...baseInput,
     originalName: 'report.txt',
@@ -171,6 +191,11 @@ test('document upload policy allows equipment history document images', () => {
     ...baseInput,
     originalName: 'tool.exe',
     mimeType: 'application/octet-stream',
+  }, 'unsupported_type');
+  assertRejectsUpload({
+    ...baseInput,
+    originalName: 'macro-manual.pptm',
+    mimeType: 'application/vnd.ms-powerpoint.presentation.macroEnabled.12',
   }, 'unsupported_type');
 });
 

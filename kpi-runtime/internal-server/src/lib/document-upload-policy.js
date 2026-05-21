@@ -50,6 +50,11 @@ const DOCUMENT_ATTACHMENT_ALLOWED_MIME_TYPES = new Set([
   'application/x-hwp+zip',
   'application/haansofthwpx'
 ]);
+const DOCUMENT_WORK_HISTORY_OWNER_DOMAINS = new Set([
+  'work.history',
+  'work.team_calendar'
+]);
+const DOCUMENT_WORK_HISTORY_MACRO_POWERPOINT_EXTENSION = '.pptm';
 
 function normalizeText(value) {
   return String(value || '').trim();
@@ -81,8 +86,17 @@ function isEquipmentHistoryUpload({ ownerDomain }) {
   return ownerDomain === 'data.equipment_history';
 }
 
+function isWorkHistoryUpload({ ownerDomain }) {
+  return DOCUMENT_WORK_HISTORY_OWNER_DOMAINS.has(ownerDomain);
+}
+
 function isPdfUploadType({ extension, mimeType }) {
   return extension === '.pdf' && mimeType === 'application/pdf';
+}
+
+function isWorkHistoryMacroPowerPointUpload({ ownerDomain, extension }) {
+  return isWorkHistoryUpload({ ownerDomain })
+    && extension === DOCUMENT_WORK_HISTORY_MACRO_POWERPOINT_EXTENSION;
 }
 
 function hasAllowedImageUploadType({ extension, mimeType }) {
@@ -108,7 +122,8 @@ function hasAllowedUploadType({ ownerDomain, fileCategory, extension, mimeType }
     return hasAllowedAttachmentUploadType({ extension, mimeType })
       || hasAllowedImageUploadType({ extension, mimeType });
   }
-  return hasAllowedAttachmentUploadType({ extension, mimeType });
+  return hasAllowedAttachmentUploadType({ extension, mimeType })
+    || isWorkHistoryMacroPowerPointUpload({ ownerDomain, extension, mimeType });
 }
 
 export function validateDocumentUploadPolicy({ ownerDomain, fileCategory, originalName, mimeType, base64Data }) {

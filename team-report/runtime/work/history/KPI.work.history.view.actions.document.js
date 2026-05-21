@@ -30,7 +30,7 @@
 
     function getAttachmentValidationMessage(errorKey) {
         if (errorKey === 'unsupported_type' || errorKey === 'attachment_pdf_only') {
-            return 'PDF, 엑셀, PPT, 워드, 한글 파일만 첨부할 수 있습니다.';
+            return 'PDF, 엑셀, PPT/PPTM, 워드, 한글 파일만 첨부할 수 있습니다.';
         }
         if (errorKey === 'file_too_large') {
             const maxMb = Math.max(1, Math.round((Number(WORK_HISTORY_ATTACHMENT_MAX_BYTES) || 0) / (1024 * 1024)));
@@ -141,7 +141,7 @@
                         <div class="attachment-slot-title">${history.escapeHtml(meta.label)}</div>
                         ${pickerButtonHtml}
                     </div>
-                    <div class="attachment-slot-hint">PDF, 엑셀, PPT, 워드, 한글 문서 중 1건</div>
+                    <div class="attachment-slot-hint">PDF, 엑셀, PPT/PPTM, 워드, 한글 문서 중 1건</div>
                     <div class="attachment-slot-body">${itemHtml}</div>
                 </div>
             `;

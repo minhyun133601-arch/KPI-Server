@@ -93,6 +93,13 @@ test('ops console omits repository map and data reference surfaces', async () =>
   assert.match(commandRegistrySource, /\.env\.production\.local/);
   assert.doesNotMatch(commandRegistrySource, /\.env\.local-experiment/);
 
+  assert.match(indexHtml, /startupTile|startupActions|startupStatus/);
+  assert.match(appSource, /startupTaskRegistered|startup\.register|startup\.unregister/);
+  assert.match(appConfigSource, /startupLabel|startupSummary|startupRegister|startupUnregister/);
+  assert.match(opsPathsSource, /register-startup-task|unregister-startup-task/);
+  assert.match(opsRuntimeSource, /getStartupTaskRegistered|loginStartupTaskName/);
+  assert.match(commandRegistrySource, /startup\.register|startup\.unregister/);
+
   const consoleChildren =
     repositoryMapDataContext.window.KPI_REPOSITORY_MAP_STATIC_TREE.find(
       (entry) => entry.path === 'commands/ops-console-app/'
