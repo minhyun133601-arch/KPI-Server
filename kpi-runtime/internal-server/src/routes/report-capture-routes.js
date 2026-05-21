@@ -127,6 +127,17 @@ function sanitizeZipFileName(value) {
   return fileName.toLowerCase().endsWith('.zip') ? fileName : `${fileName}.zip`;
 }
 
+function readCapturePageNumber(value, fallback) {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isInteger(parsed) || parsed < 1) return fallback;
+  return Math.min(9999, parsed);
+}
+
+function resolveCaptureEntryName(pageNumbers, index) {
+  const pageNumber = readCapturePageNumber(Array.isArray(pageNumbers) ? pageNumbers[index] : null, index + 1);
+  return `${pageNumber}.png`;
+}
+
 function buildCaptureDocument(pageHtml, width, height) {
   return `<!doctype html>
 <html lang="ko">
@@ -163,7 +174,7 @@ async function loadChromium() {
   return playwright.chromium;
 }
 
-async function renderCaptureEntries({ pages, width, height }) {
+async function renderCaptureEntries({ pages, width, height, pageNumbers = [] }) {
   const chromium = await loadChromium();
   const browser = await chromium.launch({ headless: true });
   const entries = [];
@@ -183,7 +194,7 @@ async function renderCaptureEntries({ pages, width, height }) {
         animations: 'disabled'
       });
       entries.push({
-        name: `${index + 1}.png`,
+        name: resolveCaptureEntryName(pageNumbers, index),
         data: image
       });
     }
@@ -246,11 +257,11 @@ export async function handleReportDeckCaptureZip(context) {
   const height = readCaptureEdge(body?.height, 1440);
   const fileName = sanitizeZipFileName(body?.fileName);
   if (String(body?.format || '').toLowerCase() === 'images') {
-    const entries = await renderCaptureEntries({ pages, width, height });
+    const entries = await renderCaptureEntries({ pages, width, height, pageNumbers: body?.pageNumbers });
     sendCaptureImages(res, fileName, entries);
     return;
   }
 
-  const zipBuffer = await renderCaptureZip({ pages, width, height });
+  const zipBuffer = await renderCaptureZip({ pages, width, height, pageNumbers: body?.pageNumbers });
   sendZip(res, fileName, zipBuffer);
 }

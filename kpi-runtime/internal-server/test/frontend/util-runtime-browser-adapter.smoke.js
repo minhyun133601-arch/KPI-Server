@@ -1138,7 +1138,14 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.match(adapterSource, /buildReportDeckCaptureZipEndpoint/);
   assert.match(adapterSource, /buildReportDeckCapturePageHtml/);
   assert.match(adapterSource, /format:\s*'zip'/);
+  assert.match(adapterSource, /pageNumbers/);
+  assert.match(adapterSource, /pageRange/);
+  assert.match(runtimeSource, /buildReportDeckExportTimeMinuteToken/);
+  assert.match(runtimeSource, /KPI-report-capture-\$\{buildReportDeckExportDateToken\(state, meta\)\}-\$\{buildReportDeckExportTimeMinuteToken\(\)\}\.zip/);
   assert.match(runtimeSource, /data-report-capture-zip/);
+  assert.match(runtimeSource, /data-report-capture-range-start/);
+  assert.match(runtimeSource, /data-report-capture-range-end/);
+  assert.match(runtimeSource, /data-report-capture-current-only/);
   assert.match(runtimeSource, /reportCaptureBusy/);
   assert.match(adapterSource, /report-print-slide-image/);
   assert.match(adapterSource, /image\/svg\+xml;charset=utf-8/);
@@ -2194,9 +2201,9 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
 test('util runtime browser adapter builds report memo candidates with direction markers', async () => {
   const { context } = createContext();
   const monthly = new Map([
-    ['2025-04', { productionByTeam: { '1팀 2파트': 1100, '2팀': 500, '3팀': 400 }, lng: 75, lpg: 40 }],
-    ['2026-03', { productionByTeam: { '1팀 2파트': 800, '2팀': 700, '3팀': 500 }, lng: 65, lpg: 60 }],
-    ['2026-04', { productionByTeam: { '1팀 2파트': 1000, '2팀': 900, '3팀': 600 }, lng: 70, lpg: 50 }],
+    ['2025-04', { productionByTeam: { '1팀 2파트': 1100, '2팀': 500, '3팀': 400 }, lng: 75, lngCost: 7500, lpg: 40, lpgCost: 4000 }],
+    ['2026-03', { productionByTeam: { '1팀 2파트': 800, '2팀': 700, '3팀': 500 }, lng: 65, lngCost: 6500, lpg: 60, lpgCost: 6000 }],
+    ['2026-04', { productionByTeam: { '1팀 2파트': 1000, '2팀': 900, '3팀': 600 }, lng: 70, lngCost: 7000, lpg: 50, lpgCost: 5000 }],
   ]);
   const readProduction = (monthKey, teamNames = []) => {
     const productionByTeam = monthly.get(monthKey)?.productionByTeam || {};
@@ -2255,6 +2262,15 @@ test('util runtime browser adapter builds report memo candidates with direction 
       if (teamNames.includes('1팀 2파트 (LNG)')) return monthly.get(monthKey)?.lng ?? NaN;
       return NaN;
     },
+    buildUtilGasAnalysisMetricMap(monthKeys) {
+      return new Map(monthKeys.map(monthKey => {
+        const row = monthly.get(monthKey) || {};
+        return [monthKey, {
+          lngCost: row.lngCost ?? null,
+          lpgCost: row.lpgCost ?? null,
+        }];
+      }));
+    },
   };
   context.KPIUtilReportSheetAnalysisElectricModel = {
     buildUtilElectricAnalysisScopedRows(bounds, option) {
@@ -2262,9 +2278,9 @@ test('util runtime browser adapter builds report memo candidates with direction 
       assert.equal(bounds.to, '2026-04');
       assert.equal(option.key, 'team_01_02');
       return [
-        { monthKey: '2025-04', electricUsage: 120 },
-        { monthKey: '2026-03', electricUsage: 90 },
-        { monthKey: '2026-04', electricUsage: 100 },
+        { monthKey: '2025-04', electricUsage: 120, electricCost: 12000 },
+        { monthKey: '2026-03', electricUsage: 90, electricCost: 9000 },
+        { monthKey: '2026-04', electricUsage: 100, electricCost: 10000 },
       ];
     },
     buildUtilElectricAnalysisLineRatioSeries(monthKeys, option) {
@@ -2302,10 +2318,13 @@ test('util runtime browser adapter builds report memo candidates with direction 
     'production',
     'yusan_production_share',
     'electric',
+    'electric_cost',
     'electric_unit',
     'lng',
+    'lng_cost',
     'lng_unit',
     'lpg',
+    'lpg_cost',
     'lpg_unit',
     'yield_rate',
     'operation_rate',
@@ -2339,6 +2358,15 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(electric.candidates[0].direction, 'mixed');
   assert.match(electric.candidates[0].text, /전력량 100kWh 전월대비 10kWh, 11\.1% ↑, 전년대비 20kWh, 16\.7% ↓/);
 
+  const electricCost = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'electric_cost',
+  });
+  assert.equal(electricCost.candidates[0].direction, 'mixed');
+  assert.equal(electricCost.candidates[0].segments[0].direction, 'up');
+  assert.equal(electricCost.candidates[0].segments[1].direction, 'down');
+  assert.match(electricCost.candidates[0].text, /전기 비용 10,000원 전월대비 1,000원, 11\.1% ↑, 전년대비 2,000원, 16\.7% ↓/);
+
   const electricUnit = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'electric_unit',
@@ -2353,12 +2381,30 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(lngUnit.candidates[0].direction, 'mixed');
   assert.match(lngUnit.candidates[0].text, /생산량 대비 LNG 0\.070m³\/kg 전월대비 0\.011m³\/kg, 13\.8% ↓, 전년대비 0\.002m³\/kg, 2\.7% ↑/);
 
+  const lngCost = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'lng_cost',
+  });
+  assert.equal(lngCost.candidates[0].direction, 'mixed');
+  assert.equal(lngCost.candidates[0].segments[0].direction, 'up');
+  assert.equal(lngCost.candidates[0].segments[1].direction, 'down');
+  assert.match(lngCost.candidates[0].text, /LNG 비용 7,000원 전월대비 500원, 7\.7% ↑, 전년대비 500원, 6\.7% ↓/);
+
   const lpg = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'lpg',
   });
   assert.equal(lpg.candidates[0].direction, 'mixed');
   assert.match(lpg.candidates[0].text, /LPG 사용량 50kg 전월대비 10kg, 16\.7% ↓, 전년대비 10kg, 25\.0% ↑/);
+
+  const lpgCost = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'lpg_cost',
+  });
+  assert.equal(lpgCost.candidates[0].direction, 'mixed');
+  assert.equal(lpgCost.candidates[0].segments[0].direction, 'down');
+  assert.equal(lpgCost.candidates[0].segments[1].direction, 'up');
+  assert.match(lpgCost.candidates[0].text, /LPG 비용 5,000원 전월대비 1,000원, 16\.7% ↓, 전년대비 1,000원, 25\.0% ↑/);
 
   const lpgUnit = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
@@ -2376,6 +2422,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
     'production',
     'yusan_production_share',
     'electric',
+    'electric_cost',
     'electric_unit',
     'yield_rate',
     'operation_rate',
@@ -2407,6 +2454,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
     'production',
     'yusan_production_share',
     'electric',
+    'electric_cost',
     'electric_unit',
     'yield_rate',
     'operation_rate',
@@ -2437,8 +2485,10 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(JSON.stringify(lineProduction.availableMetricKeys), JSON.stringify([
     'production',
     'electric',
+    'electric_cost',
     'electric_unit',
     'lng',
+    'lng_cost',
     'lng_unit',
     'yield_rate',
     'operation_rate',

@@ -510,10 +510,13 @@
         Object.freeze({ key: 'production', label: '생산량' }),
         Object.freeze({ key: 'yusan_production_share', label: '유산 생산량 비율' }),
         Object.freeze({ key: 'electric', label: '전력량' }),
+        Object.freeze({ key: 'electric_cost', label: '전기 비용' }),
         Object.freeze({ key: 'electric_unit', label: '생산량 대비 전력량' }),
         Object.freeze({ key: 'lng', label: 'LNG' }),
+        Object.freeze({ key: 'lng_cost', label: 'LNG 비용' }),
         Object.freeze({ key: 'lng_unit', label: '생산량 대비 LNG' }),
         Object.freeze({ key: 'lpg', label: 'LPG' }),
+        Object.freeze({ key: 'lpg_cost', label: 'LPG 비용' }),
         Object.freeze({ key: 'lpg_unit', label: '생산량 대비 LPG' }),
         Object.freeze({ key: 'yield_rate', label: '수율' }),
         Object.freeze({ key: 'operation_rate', label: '가동률' }),
@@ -570,10 +573,10 @@
         team_03: Object.freeze(['Bottle', '기타'])
     });
     const REPORT_DECK_MEMO_TEAM_METRIC_KEYS = Object.freeze({
-        team_01_01: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', 'lng', 'lng_unit', 'lpg', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
+        team_01_01: Object.freeze(['production', 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
     });
 
     function normalizeReportDeckDate(value) {
@@ -1760,6 +1763,131 @@
             button.disabled = Boolean(isBusy);
             button.setAttribute?.('aria-busy', isBusy ? 'true' : 'false');
         });
+    }
+
+    function getReportDeckCaptureControls(root) {
+        return {
+            start: root?.querySelector?.('[data-report-capture-range-start]') || null,
+            end: root?.querySelector?.('[data-report-capture-range-end]') || null,
+            currentOnly: root?.querySelector?.('[data-report-capture-current-only]') || null
+        };
+    }
+
+    function normalizeReportDeckCapturePage(value, fallback, total) {
+        const max = Math.max(1, Number.parseInt(String(total ?? '1'), 10) || 1);
+        const parsed = Number.parseInt(String(value ?? ''), 10);
+        const page = Number.isInteger(parsed) && parsed >= 1 ? parsed : fallback;
+        return Math.max(1, Math.min(max, Number.parseInt(String(page ?? '1'), 10) || 1));
+    }
+
+    function getReportDeckActiveCapturePage(root, total) {
+        const current = Number.parseInt(String(root?.dataset?.reportActiveSlide || '0'), 10) || 0;
+        return normalizeReportDeckCapturePage(current + 1, 1, total);
+    }
+
+    function setReportDeckCaptureRangeInputs(root, startPage, endPage, total) {
+        const controls = getReportDeckCaptureControls(root);
+        const start = normalizeReportDeckCapturePage(startPage, 1, total);
+        const end = normalizeReportDeckCapturePage(endPage, start, total);
+        const from = Math.min(start, end);
+        const to = Math.max(start, end);
+        if (controls.start) {
+            controls.start.min = '1';
+            controls.start.max = String(Math.max(1, total));
+            controls.start.value = String(from);
+        }
+        if (controls.end) {
+            controls.end.min = '1';
+            controls.end.max = String(Math.max(1, total));
+            controls.end.value = String(to);
+        }
+    }
+
+    function getReportDeckCapturePageTotal(root, state = {}) {
+        const slides = getReportDeckOutputSlides(root, state);
+        return Math.max(0, slides.length);
+    }
+
+    function syncReportDeckCaptureControls(root, state = {}, options = {}) {
+        const controls = getReportDeckCaptureControls(root);
+        if (!controls.start || !controls.end) return;
+        const total = getReportDeckCapturePageTotal(root, state);
+        const activeView = getReportDeckActiveView(root);
+        const contextKey = `${activeView}|${total}`;
+        const shouldReset = options.force === true
+            || !root.dataset.reportCaptureRangeContext
+            || root.dataset.reportCaptureRangeContext !== contextKey
+            || !String(controls.start.value || '').trim()
+            || !String(controls.end.value || '').trim();
+        root.dataset.reportCaptureRangeContext = contextKey;
+        root.dataset.reportCapturePageTotal = String(total);
+        controls.start.disabled = total <= 0 || controls.currentOnly?.checked === true;
+        controls.end.disabled = total <= 0 || controls.currentOnly?.checked === true;
+        if (total <= 0) {
+            setReportDeckCaptureRangeInputs(root, 1, 1, 1);
+            if (controls.currentOnly) controls.currentOnly.disabled = true;
+            return;
+        }
+        if (controls.currentOnly) controls.currentOnly.disabled = false;
+        if (controls.currentOnly?.checked === true) {
+            const currentPage = getReportDeckActiveCapturePage(root, total);
+            setReportDeckCaptureRangeInputs(root, currentPage, currentPage, total);
+            return;
+        }
+        if (shouldReset) {
+            setReportDeckCaptureRangeInputs(root, 1, total, total);
+            return;
+        }
+        const start = normalizeReportDeckCapturePage(controls.start.value, 1, total);
+        const end = normalizeReportDeckCapturePage(controls.end.value, total, total);
+        setReportDeckCaptureRangeInputs(root, start, end, total);
+    }
+
+    function handleReportDeckCaptureControlInput(root, state = {}, target, eventType = '') {
+        const controls = getReportDeckCaptureControls(root);
+        if (!controls.start || !controls.end) return false;
+        const isCurrentOnly = target === controls.currentOnly || target?.closest?.('[data-report-capture-current-only]') === controls.currentOnly;
+        const isRangeInput = target === controls.start || target === controls.end;
+        if (!isCurrentOnly && !isRangeInput) return false;
+        const total = Math.max(1, getReportDeckCapturePageTotal(root, state));
+        if (isCurrentOnly) {
+            if (controls.currentOnly?.checked === true) {
+                const currentPage = getReportDeckActiveCapturePage(root, total);
+                setReportDeckCaptureRangeInputs(root, currentPage, currentPage, total);
+            } else {
+                setReportDeckCaptureRangeInputs(root, 1, total, total);
+            }
+            syncReportDeckCaptureControls(root, state);
+            return true;
+        }
+        if (controls.currentOnly) controls.currentOnly.checked = false;
+        if (eventType === 'change') {
+            const start = normalizeReportDeckCapturePage(controls.start.value, 1, total);
+            const end = normalizeReportDeckCapturePage(controls.end.value, total, total);
+            setReportDeckCaptureRangeInputs(root, start, end, total);
+        } else {
+            controls.start.disabled = false;
+            controls.end.disabled = false;
+        }
+        return true;
+    }
+
+    function resolveReportDeckCaptureRange(root, state = {}) {
+        const total = getReportDeckCapturePageTotal(root, state);
+        if (total <= 0) return null;
+        const controls = getReportDeckCaptureControls(root);
+        if (controls.currentOnly?.checked === true) {
+            const currentPage = getReportDeckActiveCapturePage(root, total);
+            return { start: currentPage, end: currentPage, total, mode: 'current' };
+        }
+        const start = normalizeReportDeckCapturePage(controls.start?.value, 1, total);
+        const end = normalizeReportDeckCapturePage(controls.end?.value, total, total);
+        return {
+            start: Math.min(start, end),
+            end: Math.max(start, end),
+            total,
+            mode: 'range'
+        };
     }
 
     function syncReportDeckMonthSelect(root, meta = {}) {
@@ -4912,6 +5040,7 @@
         if (counter) {
             counter.textContent = `${nextIndex + 1} / ${slideCount}`;
         }
+        syncReportDeckCaptureControls(root, root.__reportDeckState || {});
     }
 
     function setReportDeckView(root, view, slideIndex = 0) {
@@ -4961,6 +5090,19 @@
             return hasReportDeckPlanPageContent(state, optionalPageKey, pageIndex);
         }
         return true;
+    }
+
+    function getReportDeckOutputCandidateSlides(root) {
+        const activeView = getReportDeckActiveView(root);
+        return activeView === REPORT_DECK_DEFAULT_VIEW
+            ? Array.from(root?.querySelectorAll?.('[data-report-slide-page]') || [])
+                .filter(slide => slide.hidden !== true && String(slide.dataset.reportSlidePage || '') !== '-1')
+            : getReportDeckVisibleSlides(root, activeView);
+    }
+
+    function getReportDeckOutputSlides(root, state = {}) {
+        return getReportDeckOutputCandidateSlides(root)
+            .filter(slide => shouldIncludeReportDeckSlideInOutput(slide, state));
     }
 
     function setReportDeckOutputPageNumbers(root, printSlides = []) {
@@ -5017,11 +5159,7 @@
         syncReportDeckPlanControls(root, state);
         syncReportDeckDynamicSlides(root);
         const activeView = getReportDeckActiveView(root);
-        const candidateSlides = activeView === REPORT_DECK_DEFAULT_VIEW
-            ? Array.from(root?.querySelectorAll?.('[data-report-slide-page]') || [])
-                .filter(slide => slide.hidden !== true && String(slide.dataset.reportSlidePage || '') !== '-1')
-            : getReportDeckVisibleSlides(root, activeView);
-        const printSlides = candidateSlides.filter(slide => shouldIncludeReportDeckSlideInOutput(slide, state));
+        const printSlides = getReportDeckOutputSlides(root, state);
         const printSlideSet = new Set(printSlides);
         const lastPrintSlide = printSlides[printSlides.length - 1] || null;
         root.dataset.reportPrintMode = 'true';
@@ -5046,6 +5184,7 @@
                 delete slide.dataset.reportPrintLast;
             }
         });
+        syncReportDeckCaptureControls(root, state);
         return printSlides.length;
     }
 
@@ -5082,8 +5221,14 @@
         return `공무환경팀 실적보고서 ${buildReportDeckExportDateToken(state, meta)}.html`;
     }
 
+    function buildReportDeckExportTimeMinuteToken(date = new Date()) {
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${hours}${minutes}`;
+    }
+
     function buildReportDeckCaptureZipFileName(state = {}, meta = {}) {
-        return `KPI-report-capture-${buildReportDeckExportDateToken(state, meta)}.zip`;
+        return `KPI-report-capture-${buildReportDeckExportDateToken(state, meta)}-${buildReportDeckExportTimeMinuteToken()}.zip`;
     }
 
     function getReportDeckCaptureProgressText(progress = {}) {
@@ -5132,16 +5277,23 @@
             setReportDeckStatus(root, 'error', '\uCEA1\uCC98\uD560 \uD398\uC774\uC9C0 \uC5C6\uC74C');
             return false;
         }
+        syncReportDeckCaptureControls(root, state);
+        const pageRange = resolveReportDeckCaptureRange(root, state);
+        if (!pageRange) {
+            setReportDeckStatus(root, 'error', '캡쳐 범위 확인 필요');
+            return false;
+        }
         setReportDeckCaptureBusy(root, true);
         setReportDeckStatus(root, 'saving', '\uCEA1\uCC98 \uC900\uBE44 \uC911');
         try {
             const result = await browser.exportReportDeckCaptureZip(root, {
                 filename: buildReportDeckCaptureZipFileName(state, meta),
+                pageRange,
                 onProgress: progress => {
                     setReportDeckStatus(root, 'saving', getReportDeckCaptureProgressText(progress));
                 }
             });
-            setReportDeckStatus(root, 'saved', `\uCEA1\uCC98 ZIP \uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC (${result?.imageCount || captureCount}\uC7A5)`);
+            setReportDeckStatus(root, 'saved', `\uCEA1\uCC98 ZIP \uB2E4\uC6B4\uB85C\uB4DC \uC644\uB8CC (${result?.imageCount || (pageRange.end - pageRange.start + 1)}\uC7A5)`);
             return true;
         } catch (error) {
             if (String(error?.name || '') === 'AbortError') {
@@ -5172,6 +5324,7 @@
         syncReportDeckMemoControls(root, state);
         syncReportDeckChartHighlightControls(root, state, meta);
         syncReportDeckChartHighlightPointStates(root, state, meta);
+        syncReportDeckCaptureControls(root, state);
         syncReportDeckJson(root, state, meta);
     }
 
@@ -5504,6 +5657,8 @@
             memoOverviewCache: new Map(),
             monthPlaceholder: '월 확인 중'
         };
+        root.__reportDeckState = state;
+        root.__reportDeckMeta = meta;
         syncReportDeckMonthSelect(root, meta);
         applyReportDeckState(root, state, meta);
         setReportDeckStatus(root, 'loading', '불러오는 중');
@@ -5894,6 +6049,9 @@
             const monthSelect = event.target?.closest?.('[data-report-month-select]');
             if (monthSelect) {
                 void selectReportDeckMonth(root, state, meta, monthSelect.value);
+                return;
+            }
+            if (handleReportDeckCaptureControlInput(root, state, event.target, event.type)) {
                 return;
             }
             const memoSelector = event.target?.closest?.('[data-report-memo-team], [data-report-memo-metric]');

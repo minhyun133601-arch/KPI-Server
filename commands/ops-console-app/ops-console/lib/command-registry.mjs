@@ -4,7 +4,7 @@ export const commandRegistry = [
     category: "server",
     title: "서버 열기",
     description:
-      "KPI 서버, PostgreSQL, .env.local-experiment 기준으로 올립니다.",
+      "KPI 서버, PostgreSQL, .env.production.local 기준으로 올립니다.",
     kind: "action",
   },
   {

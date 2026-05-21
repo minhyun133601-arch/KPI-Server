@@ -210,6 +210,10 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(appData.report.categories[0].content, /report-deck-save-message/);
   assert.match(appData.report.categories[0].content, /reportDeckCaptureSpin/);
   assert.match(appData.report.categories[0].content, /data-report-capture-zip/);
+  assert.match(appData.report.categories[0].content, /data-report-capture-controls/);
+  assert.match(appData.report.categories[0].content, /data-report-capture-range-start/);
+  assert.match(appData.report.categories[0].content, /data-report-capture-range-end/);
+  assert.match(appData.report.categories[0].content, /data-report-capture-current-only/);
   assert.doesNotMatch(appData.report.categories[0].content, /<button[^>]+data-report-undo-delete/);
   assert.doesNotMatch(appData.report.categories[0].content, /<button[^>]+data-report-print-pdf/);
   assert.match(appData.report.categories[0].content, /data-report-export-html/);

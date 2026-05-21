@@ -1911,7 +1911,7 @@ ${colgroup}
                 .report-deck-title { display: grid; gap: 2px; min-width: 0; }
                 .report-deck-title strong { font-size: 0.96rem; font-weight: 900; color: #0f172a; }
                 .report-deck-title span { font-size: 0.72rem; font-weight: 800; color: #64748b; }
-                .report-deck-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; }
+                .report-deck-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
                 .report-deck-save-message { min-height: 32px; display: inline-flex; align-items: center; color: #166534; font-size: 0.72rem; font-weight: 900; }
                 .report-deck-save-message:empty { display: none; }
                 .report-deck-save-message[data-state="loading"], .report-deck-save-message[data-state="saving"], .report-deck-save-message[data-state="dirty"] { color: #1d4ed8; }
@@ -1919,6 +1919,11 @@ ${colgroup}
                 .report-deck-month-field { min-height: 30px; display: inline-flex; align-items: center; gap: 6px; color: #334155; font-size: 0.72rem; font-weight: 900; }
                 .report-deck-month-field select { height: 30px; min-width: 112px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; color: #0f172a; padding: 0 24px 0 9px; font-size: 0.74rem; font-weight: 900; }
                 .report-deck-month-field select:disabled { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
+                .report-capture-controls { min-height: 30px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid #dbe4f3; border-radius: 6px; background: #f8fafc; color: #334155; padding: 2px 6px; font-size: 0.72rem; font-weight: 900; }
+                .report-capture-controls input[type="number"] { width: 48px; height: 24px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 0 4px; font-size: 0.72rem; font-weight: 900; text-align: center; }
+                .report-capture-controls input[type="number"]:disabled { background: #f1f5f9; color: #94a3b8; }
+                .report-capture-current-only { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; white-space: nowrap; }
+                .report-capture-current-only input { width: 14px; height: 14px; accent-color: #2563eb; }
                 @keyframes reportDeckCaptureSpin { to { transform: rotate(360deg); } }
                 .report-deck-action-button { position: relative; min-height: 30px; border: 1px solid #bfdbfe; border-radius: 6px; background: #eff6ff; color: #1d4ed8; padding: 0 11px; font-size: 0.74rem; font-weight: 900; cursor: pointer; }
                 .report-deck-action-button:disabled { border-color: #cbd5e1; background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
@@ -2484,6 +2489,16 @@ ${colgroup}
                         <button type="button" class="report-deck-action-button" data-report-memo-overview-toggle>특이사항</button>
                         <button type="button" class="report-deck-action-button" data-report-edit-toggle aria-pressed="false">수정</button>
                         <button type="button" class="report-deck-action-button" data-report-add-page="slide10">페이지 추가</button>
+                        <div class="report-capture-controls" data-report-capture-controls>
+                            <span>캡쳐 범위</span>
+                            <input type="number" min="1" step="1" value="1" data-report-capture-range-start aria-label="캡쳐 시작 페이지">
+                            <span>~</span>
+                            <input type="number" min="1" step="1" value="1" data-report-capture-range-end aria-label="캡쳐 끝 페이지">
+                            <label class="report-capture-current-only">
+                                <input type="checkbox" data-report-capture-current-only>
+                                <span>현재 페이지만</span>
+                            </label>
+                        </div>
                         <button type="button" class="report-deck-action-button" data-report-capture-zip>&#52897;&#52432;</button>
                         <button type="button" class="report-deck-action-button" data-report-export-html>HTML추출</button>
                         <button type="button" class="report-deck-action-button" data-report-fullscreen>전체화면</button>

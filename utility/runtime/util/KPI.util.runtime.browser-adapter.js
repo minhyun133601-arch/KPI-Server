@@ -18,10 +18,13 @@
         production: Object.freeze({ key: 'production', label: '생산량', unit: 'kg' }),
         yusan_production_share: Object.freeze({ key: 'yusan_production_share', label: '유산 생산량 비율', unit: '%p', deltaMode: 'percentagePoint' }),
         electric: Object.freeze({ key: 'electric', label: '전력량', unit: 'kWh' }),
+        electric_cost: Object.freeze({ key: 'electric_cost', label: '전기 비용', unit: '원', decimals: 0 }),
         electric_unit: Object.freeze({ key: 'electric_unit', label: '생산량 대비 전력량', unit: 'kWh/kg', decimals: 3 }),
         lng: Object.freeze({ key: 'lng', label: 'LNG 사용량', unit: 'm³' }),
+        lng_cost: Object.freeze({ key: 'lng_cost', label: 'LNG 비용', unit: '원', decimals: 0 }),
         lng_unit: Object.freeze({ key: 'lng_unit', label: '생산량 대비 LNG', unit: 'm³/kg', decimals: 3 }),
         lpg: Object.freeze({ key: 'lpg', label: 'LPG 사용량', unit: 'kg' }),
+        lpg_cost: Object.freeze({ key: 'lpg_cost', label: 'LPG 비용', unit: '원', decimals: 0 }),
         lpg_unit: Object.freeze({ key: 'lpg_unit', label: '생산량 대비 LPG', unit: 'kg/kg', decimals: 3 }),
         yield_rate: Object.freeze({ key: 'yield_rate', label: '수율', unit: '%p', deltaMode: 'percentagePoint' }),
         operation_rate: Object.freeze({ key: 'operation_rate', label: '가동률', unit: '%p', deltaMode: 'percentagePoint' }),
@@ -80,10 +83,10 @@
         team_03: Object.freeze(['Bottle', '기타'])
     });
     const REPORT_DECK_MEMO_TEAM_METRIC_KEYS = Object.freeze({
-        team_01_01: Object.freeze(['production', 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', 'lng', 'lng_unit', 'lpg', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_unit', 'lng', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
+        team_01_01: Object.freeze(['production', 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
+        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
     });
 
     function getRuntime() {
@@ -456,6 +459,30 @@
             .filter(slide => slide.hidden !== true && String(slide?.dataset?.reportSlidePage || '') !== '-1');
         const preparedSlides = slides.filter(slide => String(slide?.dataset?.reportPrintVisible || '') === 'true');
         return preparedSlides.length ? preparedSlides : slides;
+    }
+
+    function normalizeReportDeckCapturePageRange(value, total) {
+        const max = Math.max(1, Number.parseInt(String(total ?? '1'), 10) || 1);
+        const startRaw = Number.parseInt(String(value?.start ?? '1'), 10);
+        const endRaw = Number.parseInt(String(value?.end ?? max), 10);
+        const start = Math.max(1, Math.min(max, Number.isInteger(startRaw) ? startRaw : 1));
+        const end = Math.max(1, Math.min(max, Number.isInteger(endRaw) ? endRaw : max));
+        return {
+            start: Math.min(start, end),
+            end: Math.max(start, end)
+        };
+    }
+
+    function getReportDeckCaptureSelection(editorRoot, options = {}) {
+        const slides = getReportDeckPrintableSlides(editorRoot);
+        const range = normalizeReportDeckCapturePageRange(options.pageRange, slides.length);
+        return {
+            slides: slides.slice(range.start - 1, range.end),
+            pageNumbers: Array.from({ length: Math.max(0, range.end - range.start + 1) }, (_item, index) => range.start + index),
+            start: range.start,
+            end: range.end,
+            total: slides.length
+        };
     }
 
     function buildReportDeckPrintOnlyCss() {
@@ -1197,8 +1224,8 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
     }
 
     async function requestReportDeckCapture(editorRoot, options = {}) {
-        const slides = getReportDeckPrintableSlides(editorRoot);
-        if (!slides.length) {
+        const selection = getReportDeckCaptureSelection(editorRoot, options);
+        if (!selection.slides.length) {
             throw new Error('report_deck_capture_slides_unavailable');
         }
         if (typeof root.fetch !== 'function') {
@@ -1208,12 +1235,12 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         const format = String(options.format || 'zip').trim().toLowerCase() === 'images' ? 'images' : 'zip';
         const capture = getReportDeckCaptureViewport();
         const pages = [];
-        options.onProgress?.({ phase: 'prepare', current: 0, total: slides.length });
-        for (const [index, slide] of slides.entries()) {
+        options.onProgress?.({ phase: 'prepare', current: 0, total: selection.slides.length });
+        for (const [index, slide] of selection.slides.entries()) {
             pages.push(await buildReportDeckCapturePageHtml(editorRoot, slide, capture));
-            options.onProgress?.({ phase: 'prepare', current: index + 1, total: slides.length });
+            options.onProgress?.({ phase: 'prepare', current: index + 1, total: selection.slides.length });
         }
-        options.onProgress?.({ phase: 'render', current: 0, total: slides.length });
+        options.onProgress?.({ phase: 'render', current: 0, total: selection.slides.length });
         const response = await root.fetch(buildReportDeckCaptureZipEndpoint(), {
             method: 'POST',
             headers: {
@@ -1227,6 +1254,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 width: capture.width,
                 height: capture.height,
                 format,
+                pageNumbers: selection.pageNumbers,
                 pages
             })
         });
@@ -1241,6 +1269,8 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 ok: true,
                 fileName,
                 imageCount: pages.length,
+                pageStart: selection.start,
+                pageEnd: selection.end,
                 payload: await response.json()
             };
         }
@@ -1249,6 +1279,8 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
             ok: true,
             fileName,
             imageCount: pages.length,
+            pageStart: selection.start,
+            pageEnd: selection.end,
             blob: zipBlob
         };
     }
@@ -1288,6 +1320,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         const capture = await requestReportDeckCapture(editorRoot, {
             filename: fileName,
             format: 'zip',
+            pageRange: options.pageRange,
             onProgress: options.onProgress
         });
         downloadBlobFile(fileName, capture.blob);
@@ -1811,12 +1844,18 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
 
     function getReportDeckMemoGasUnitValue(monthKey, team, fuelKey, optionApi, gasApi, memoBuildCache = null, monthInfo = null) {
         const metricMap = getReportDeckMemoGasMetricMap(monthInfo, team, optionApi, gasApi, memoBuildCache);
-        const metric = metricMap instanceof Map ? metricMap.get(monthKey) || {} : {};
+        const metric = metricMap && typeof metricMap.get === 'function' ? metricMap.get(monthKey) || {} : {};
         const usageFromMap = fuelKey === 'lpg' ? metric?.lpgUsage : metric?.lngUsage;
         const usage = toFiniteNumber(usageFromMap) ?? getReportDeckMemoGasUsageValue(monthKey, team, fuelKey, optionApi, gasApi);
         const production = toFiniteNumber(metric?.ratioProduction?.[fuelKey] ?? metric?.production)
             ?? getReportDeckMemoProductionValue(monthKey, team, gasApi, memoBuildCache);
         return getReportDeckMemoRatioValue(usage, production);
+    }
+
+    function getReportDeckMemoGasCostValue(monthKey, team, fuelKey, optionApi, gasApi, memoBuildCache = null, monthInfo = null) {
+        const metricMap = getReportDeckMemoGasMetricMap(monthInfo, team, optionApi, gasApi, memoBuildCache);
+        const metric = metricMap && typeof metricMap.get === 'function' ? metricMap.get(monthKey) || {} : {};
+        return toFiniteNumber(fuelKey === 'lpg' ? metric?.lpgCost : metric?.lngCost);
     }
 
     function getReportDeckMemoElectricRows(monthInfo, team, optionApi, electricApi, memoBuildCache = null) {
@@ -1839,6 +1878,10 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
 
     function getReportDeckMemoElectricValue(rowMap, monthKey) {
         return toFiniteNumber(rowMap instanceof Map ? rowMap.get(monthKey)?.electricUsage : null);
+    }
+
+    function getReportDeckMemoElectricCostValue(rowMap, monthKey) {
+        return toFiniteNumber(rowMap instanceof Map ? rowMap.get(monthKey)?.electricCost : null);
     }
 
     function getReportDeckMemoElectricUnitValue(rowMap, monthKey, team, gasApi) {
@@ -2221,18 +2264,25 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 const stats = readReportDeckMemoProductionStats(monthKey, team, memoBuildCache);
                 return stats?.hasEntries === true && hasReportDeckMemoFiniteValue(value);
             };
-        } else if (metricKey === 'electric' || metricKey === 'electric_unit') {
+        } else if (metricKey === 'electric' || metricKey === 'electric_cost' || metricKey === 'electric_unit') {
             const rows = getReportDeckMemoElectricRows(activeMonthInfo, team, optionApi, electricApi, memoBuildCache);
             const rowMap = new Map((Array.isArray(rows) ? rows : [])
                 .map(row => [String(row?.monthKey || '').trim(), row])
                 .filter(([key]) => key));
-            readValue = metricKey === 'electric_unit'
-                ? monthKey => getReportDeckMemoElectricUnitValue(rowMap, monthKey, team, gasApi)
-                : monthKey => getReportDeckMemoElectricValue(rowMap, monthKey);
+            if (metricKey === 'electric_unit') {
+                readValue = monthKey => getReportDeckMemoElectricUnitValue(rowMap, monthKey, team, gasApi);
+            } else if (metricKey === 'electric_cost') {
+                readValue = monthKey => getReportDeckMemoElectricCostValue(rowMap, monthKey);
+            } else {
+                readValue = monthKey => getReportDeckMemoElectricValue(rowMap, monthKey);
+            }
             hasComparisonData = (monthKey, value) => hasReportDeckMemoElectricRowData(rowMap, monthKey)
                 && hasReportDeckMemoFiniteValue(value);
         } else if (metricKey === 'production') {
             readValue = monthKey => getReportDeckMemoProductionValue(monthKey, team, gasApi, memoBuildCache);
+        } else if (metricKey === 'lng_cost' || metricKey === 'lpg_cost') {
+            const fuelKey = metricKey === 'lpg_cost' ? 'lpg' : 'lng';
+            readValue = monthKey => getReportDeckMemoGasCostValue(monthKey, team, fuelKey, optionApi, gasApi, memoBuildCache, activeMonthInfo);
         } else if (metricKey === 'lng' || metricKey === 'lpg' || unitBaseMetricKey === 'lng' || unitBaseMetricKey === 'lpg') {
             const fuelKey = unitBaseMetricKey || metricKey;
             readValue = isReportDeckMemoUnitMetricKey(metricKey)
