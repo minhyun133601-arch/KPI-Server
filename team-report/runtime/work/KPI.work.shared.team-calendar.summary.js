@@ -131,16 +131,31 @@
             let utilizationCount = 0;
             let totalWorkTime = 0;
             let hasWorkTime = false;
+            let totalOverallWorkTime = 0;
+            let hasOverallWorkTime = false;
             let totalOperationTime = 0;
             let hasOperationTime = false;
+            let normalAmount = 0;
+            let reworkAmount = 0;
+            let totalStickEa = 0;
+            let hasStickEa = false;
             list.forEach(item => {
                 const amount = parseUtilAmount(item?.amount);
                 const moistureExcludedYield = parseUtilPercentAmount(item?.moistureExcludedYield);
                 const equipmentCapa = parseUtilAmount(item?.equipmentCapa);
                 const equipmentUtilization = parseUtilPercentAmount(item?.equipmentUtilization);
                 const workTime = parseUtilAmount(item?.workTime);
+                const overallWorkTime = parseUtilAmount(item?.totalWorkTime ?? item?.total_work_time ?? item?.totalLaborHours);
                 const operationTime = parseUtilAmount(item?.operationTime);
-                if (Number.isFinite(amount)) totalAmount += amount;
+                const stickEa = parseUtilAmount(item?.stickEa ?? item?.stickEA ?? item?.stick_ea);
+                if (Number.isFinite(amount)) {
+                    totalAmount += amount;
+                    if (String(item?.productionKind || '').trim().toLowerCase() === 'rework') {
+                        reworkAmount += amount;
+                    } else {
+                        normalAmount += amount;
+                    }
+                }
                 if (Number.isFinite(moistureExcludedYield)) {
                     yieldSum += moistureExcludedYield;
                     yieldCount += 1;
@@ -161,9 +176,17 @@
                     totalWorkTime += workTime;
                     hasWorkTime = true;
                 }
+                if (Number.isFinite(overallWorkTime)) {
+                    totalOverallWorkTime += overallWorkTime;
+                    hasOverallWorkTime = true;
+                }
                 if (Number.isFinite(operationTime)) {
                     totalOperationTime += operationTime;
                     hasOperationTime = true;
+                }
+                if (Number.isFinite(stickEa)) {
+                    totalStickEa += stickEa;
+                    hasStickEa = true;
                 }
             });
             let utilizationRate = null;
@@ -184,8 +207,12 @@
                 moistureExcludedYieldRate,
                 totalEquipmentCapa: hasEquipmentCapa ? totalEquipmentCapa : null,
                 utilizationRate,
+                normalAmount,
+                reworkAmount,
                 totalWorkTime: hasWorkTime ? totalWorkTime : null,
-                totalOperationTime: hasOperationTime ? totalOperationTime : null
+                totalOverallWorkTime: hasOverallWorkTime ? totalOverallWorkTime : null,
+                totalOperationTime: hasOperationTime ? totalOperationTime : null,
+                totalStickEa: hasStickEa ? totalStickEa : null
             };
         }
 
@@ -219,13 +246,56 @@
             return `가동시간 ${formatUtilNumber(numeric, 1)}시간`;
         }
 
+        function formatWorkTeamCalendarTotalWorkTimeLabel(value) {
+            const numeric = parseUtilAmount(value);
+            if (!Number.isFinite(numeric)) return '';
+            return `총조업 ${formatUtilNumber(numeric, 1)}시간`;
+        }
+
+        function formatWorkTeamCalendarWorkerCountLabel(value) {
+            const numeric = parseUtilAmount(value);
+            if (!Number.isFinite(numeric)) return '';
+            return `인원 ${formatUtilNumber(numeric, 1)}`;
+        }
+
+        function formatWorkTeamCalendarMaterialLabel(label, value) {
+            const numeric = parseUtilAmount(value);
+            if (!Number.isFinite(numeric)) return '';
+            return `${label} ${formatUtilNumber(numeric, 1)}`;
+        }
+
+        function formatWorkTeamCalendarEaLabel(value) {
+            const numeric = parseUtilAmount(value);
+            if (!Number.isFinite(numeric)) return '';
+            return `EA ${formatUtilNumber(numeric, 0)}`;
+        }
+
+        function formatWorkTeamCalendarEaProductivityLabel(value) {
+            const numeric = parseUtilAmount(value);
+            if (!Number.isFinite(numeric)) return '';
+            return `인당EA ${formatUtilNumber(numeric, 1)}`;
+        }
+
         function getWorkTeamCalendarProductionMetricLine(summary) {
             const yieldLabel = formatWorkTeamCalendarYieldLabel(summary?.moistureExcludedYieldRate) || '수율 -';
-            const capaLabel = formatWorkTeamCalendarCapaLabel(summary?.totalEquipmentCapa) || 'CAPA -';
             const utilizationLabel = formatWorkTeamCalendarUtilizationLabel(summary?.utilizationRate) || '가동률 -';
+            const normalLabel = `정상 ${formatUtilNumber(Number(summary?.normalAmount || 0), 0)}kg`;
+            const reworkAmount = Number(summary?.reworkAmount || 0);
+            const reworkLabel = reworkAmount > 0 ? `재가공품 ${formatUtilNumber(reworkAmount, 0)}kg` : '';
             const workTimeLabel = formatWorkTeamCalendarWorkTimeLabel(summary?.totalWorkTime) || '조업시간 -';
             const operationTimeLabel = formatWorkTeamCalendarOperationTimeLabel(summary?.totalOperationTime) || '가동시간 -';
-            return `${yieldLabel} · ${capaLabel} · ${utilizationLabel} · ${workTimeLabel} · ${operationTimeLabel}`;
+            const totalWorkTimeLabel = formatWorkTeamCalendarTotalWorkTimeLabel(summary?.totalOverallWorkTime);
+            const eaLabel = formatWorkTeamCalendarEaLabel(summary?.totalStickEa);
+            return [
+                normalLabel,
+                reworkLabel,
+                workTimeLabel,
+                operationTimeLabel,
+                totalWorkTimeLabel,
+                yieldLabel,
+                utilizationLabel,
+                eaLabel
+            ].filter(Boolean).join(' · ');
         }
 
         function getWorkTeamCalendarProductionCueLabel(summary) {

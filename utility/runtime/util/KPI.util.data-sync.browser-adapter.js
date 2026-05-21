@@ -129,10 +129,10 @@
             : null;
     }
 
-    function queueUtilProductionDailyServerWrite(payload) {
+    function queueUtilProductionDailyServerWrite(payload, options = {}) {
         const runtime = getUtilityServerRuntime();
         return typeof runtime?.queueUtilProductionDailyServerWrite === 'function'
-            ? runtime.queueUtilProductionDailyServerWrite(payload)
+            ? runtime.queueUtilProductionDailyServerWrite(payload, options)
             : false;
     }
 

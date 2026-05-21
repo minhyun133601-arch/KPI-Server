@@ -34,6 +34,8 @@ export async function handleUtilProductionDailyPut(context) {
   const saved = await saveUtilProductionDailyState({
     state: body.state ?? body.payload ?? {},
     updatedByUserId: auth?.user?.id || null,
+    deleteDedupeKeys: Array.isArray(body.deleteDedupeKeys) ? body.deleteDedupeKeys : [],
+    upsertDedupeKeys: Array.isArray(body.upsertDedupeKeys) ? body.upsertDedupeKeys : undefined,
   });
 
   sendJson(res, 200, {

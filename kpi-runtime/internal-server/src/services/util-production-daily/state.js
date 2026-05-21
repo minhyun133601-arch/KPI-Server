@@ -8,8 +8,6 @@ import {
   normalizeArchiveYears,
   normalizeDateKey,
   normalizeEntry,
-  normalizeNumber,
-  normalizeProductionKind,
   normalizeText,
   normalizeTimestamp,
 } from './normalizers.js';
@@ -84,11 +82,18 @@ function groupEntriesByTeam(entries) {
       lineName: entry.lineName,
       productCode: entry.productCode,
       productName: entry.productName,
+      regularWorkers: entry.regularWorkers,
+      contractWorkers: entry.contractWorkers,
       moistureExcludedYield: entry.moistureExcludedYield,
       workTime: entry.workTime,
       operationTime: entry.operationTime,
       equipmentCapa: entry.equipmentCapa,
       equipmentUtilization: entry.equipmentUtilization,
+      materialStandard: entry.materialStandard,
+      materialActual: entry.materialActual,
+      totalWorkTime: entry.totalWorkTime,
+      stickEa: entry.stickEa,
+      laborProductivityEa: entry.laborProductivityEa,
       team: teamName,
       sourceArchiveId: entry.sourceArchiveId,
       sourceFingerprint: entry.sourceFingerprint,
@@ -138,25 +143,39 @@ export function buildStateMeta(stateRow) {
 }
 
 export function buildStatePayload(stateRow, entryRows, archiveRows) {
-  const normalizedEntries = (Array.isArray(entryRows) ? entryRows : [])
-    .map((row) => ({
-      date: normalizeDateKey(row.production_date),
-      teamName: normalizeText(row.team_name),
-      productionKind: normalizeProductionKind(row.production_kind),
-      lineName: normalizeText(row.line_name),
-      productCode: normalizeText(row.product_code),
-      productName: normalizeText(row.product_name),
-      amount: normalizeNumber(row.amount),
-      moistureExcludedYield: normalizeNumber(row.moisture_excluded_yield),
-      workTime: normalizeNumber(row.work_time ?? row.input_time),
-      operationTime: normalizeNumber(row.operation_time),
-      equipmentCapa: normalizeNumber(row.equipment_capa),
-      equipmentUtilization: normalizeNumber(row.equipment_utilization),
-      sourceArchiveId: normalizeText(row.source_archive_id),
-      sourceFingerprint: normalizeText(row.source_fingerprint),
-      sourceFileName: normalizeText(row.source_file_name),
-    }))
-    .filter((entry) => entry.date && entry.teamName && Number.isFinite(entry.amount));
+  const normalizedEntryMap = new Map();
+  (Array.isArray(entryRows) ? entryRows : [])
+    .map((row) =>
+      normalizeEntry({
+        date: row.production_date,
+        teamName: row.team_name,
+        productionKind: row.production_kind,
+        lineName: row.line_name,
+        productCode: row.product_code,
+        productName: row.product_name,
+        amount: row.amount,
+        regularWorkers: row.regular_workers,
+        contractWorkers: row.contract_workers,
+        moistureExcludedYield: row.moisture_excluded_yield,
+        workTime: row.work_time ?? row.input_time,
+        operationTime: row.operation_time,
+        equipmentCapa: row.equipment_capa,
+        equipmentUtilization: row.equipment_utilization,
+        materialStandard: row.material_standard,
+        materialActual: row.material_actual,
+        totalWorkTime: row.total_work_time,
+        stickEa: row.stick_ea,
+        laborProductivityEa: row.labor_productivity_ea,
+        sourceArchiveId: row.source_archive_id,
+        sourceFingerprint: row.source_fingerprint,
+        sourceFileName: row.source_file_name,
+      })
+    )
+    .filter(Boolean)
+    .forEach((entry) => {
+      normalizedEntryMap.set(entry.dedupeKey, entry);
+    });
+  const normalizedEntries = [...normalizedEntryMap.values()];
 
   const normalizedArchives = (Array.isArray(archiveRows) ? archiveRows : [])
     .map((row) =>

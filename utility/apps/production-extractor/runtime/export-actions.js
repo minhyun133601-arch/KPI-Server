@@ -9,11 +9,18 @@
     for (const row of list) {
       const parsedDate = context.parseDateText(row?.date);
       const amount = context.parseProductionValue(row?.amount ?? row?.production ?? row?.value);
+      const regularWorkers = context.parseProductionValue(row?.regularWorkers ?? row?.regularWorkerCount ?? row?.regular_workers);
+      const contractWorkers = context.parseProductionValue(row?.contractWorkers ?? row?.contractWorkerCount ?? row?.contract_workers ?? row?.outsourcedWorkers);
       const moistureExcludedYield = context.parseProductionValue(row?.moistureExcludedYield ?? row?.moistureFreeYield ?? row?.yieldExcludingMoisture ?? row?.yieldRate);
       const workTime = context.parseProductionValue(row?.workTime ?? row?.inputTime ?? row?.feedTime ?? row?.loadingTime ?? row?.injectionTime);
       const operationTime = context.parseProductionValue(row?.operationTime ?? row?.operatingTime ?? row?.runtime ?? row?.runTime ?? row?.operationHours);
       const equipmentCapa = context.parseProductionValue(row?.equipmentCapa ?? row?.capa ?? row?.equipmentCapacity);
       const equipmentUtilization = context.parseProductionValue(row?.equipmentUtilization ?? row?.operationRate ?? row?.equipmentRate ?? row?.utilizationRate);
+      const materialStandard = context.parseProductionValue(row?.materialStandard ?? row?.material_standard ?? row?.rawMaterialStandard);
+      const materialActual = context.parseProductionValue(row?.materialActual ?? row?.material_actual ?? row?.rawMaterialActual);
+      const totalWorkTime = context.parseProductionValue(row?.totalWorkTime ?? row?.total_work_time ?? row?.totalLaborHours);
+      const stickEa = context.parseProductionValue(row?.stickEa ?? row?.stickEA ?? row?.stick_ea);
+      const laborProductivityEa = context.parseProductionValue(row?.laborProductivityEa ?? row?.laborProductivityEA ?? row?.labor_productivity_ea);
       const team = String(row?.team ?? "").trim();
       const lineName = String(row?.lineName ?? row?.line ?? "").trim();
       const productName = String(row?.productName ?? row?.product ?? row?.itemName ?? "").trim();
@@ -30,6 +37,13 @@
         operationTime === null ? "" : String(operationTime),
         equipmentCapa === null ? "" : String(equipmentCapa),
         equipmentUtilization === null ? "" : String(equipmentUtilization),
+        regularWorkers === null ? "" : String(regularWorkers),
+        contractWorkers === null ? "" : String(contractWorkers),
+        materialStandard === null ? "" : String(materialStandard),
+        materialActual === null ? "" : String(materialActual),
+        totalWorkTime === null ? "" : String(totalWorkTime),
+        stickEa === null ? "" : String(stickEa),
+        laborProductivityEa === null ? "" : String(laborProductivityEa),
       ].join("|");
       if (dedupe.has(key)) continue;
       dedupe.add(key);
@@ -39,11 +53,18 @@
         lineName,
         productName,
         amount,
+        regularWorkers,
+        contractWorkers,
         moistureExcludedYield,
         workTime,
         operationTime,
         equipmentCapa,
         equipmentUtilization,
+        materialStandard,
+        materialActual,
+        totalWorkTime,
+        stickEa,
+        laborProductivityEa,
       });
     }
 

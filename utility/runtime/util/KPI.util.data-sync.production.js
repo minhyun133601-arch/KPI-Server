@@ -84,10 +84,21 @@
             }
         }
 
-        async function writeUtilProductionDailyStateToServer(stateSnapshot) {
+        async function writeUtilProductionDailyStateToServer(stateSnapshot, options = {}) {
             if (!supportsUtilProductionServerPersistence()) return false;
             const config = getUtilProductionServerRuntimeConfig();
             const snapshot = cloneUtilProductionStateForServer(stateSnapshot);
+            const requestBody = {
+                permissionKey: config.permissionKey,
+                payload: snapshot,
+                state: snapshot
+            };
+            if (Array.isArray(options.deleteDedupeKeys)) {
+                requestBody.deleteDedupeKeys = options.deleteDedupeKeys.map(key => String(key || '').trim()).filter(Boolean);
+            }
+            if (Array.isArray(options.upsertDedupeKeys)) {
+                requestBody.upsertDedupeKeys = options.upsertDedupeKeys.map(key => String(key || '').trim()).filter(Boolean);
+            }
             const response = await utilDataSyncBrowser.fetchResource(buildUtilProductionServerRecordEndpoint(), {
                 method: 'PUT',
                 headers: {
@@ -95,11 +106,7 @@
                 },
                 cache: 'no-store',
                 credentials: 'same-origin',
-                body: JSON.stringify({
-                    permissionKey: config.permissionKey,
-                    payload: snapshot,
-                    state: snapshot
-                })
+                body: JSON.stringify(requestBody)
             });
 
             if (!response.ok) {
@@ -111,14 +118,21 @@
             return true;
         }
 
-        function queueUtilProductionDailyServerWrite(stateSnapshot) {
+        function queueUtilProductionDailyServerWrite(stateSnapshot, options = {}) {
             if (!supportsUtilProductionServerPersistence()) {
                 return Promise.resolve(false);
             }
 
             const snapshot = cloneUtilProductionStateForServer(stateSnapshot);
+            const writeOptions = {};
+            if (Array.isArray(options.deleteDedupeKeys)) {
+                writeOptions.deleteDedupeKeys = options.deleteDedupeKeys.map(key => String(key || '').trim()).filter(Boolean);
+            }
+            if (Array.isArray(options.upsertDedupeKeys)) {
+                writeOptions.upsertDedupeKeys = options.upsertDedupeKeys.map(key => String(key || '').trim()).filter(Boolean);
+            }
             utilProductionServerPersistenceState.writeChain = utilProductionServerPersistenceState.writeChain
-                .then(() => writeUtilProductionDailyStateToServer(snapshot))
+                .then(() => writeUtilProductionDailyStateToServer(snapshot, writeOptions))
                 .catch((error) => {
                     utilProductionServerPersistenceState.lastErrorMessage = '유틸 생산 일계 데이터를 중앙 서버에 저장하지 못했습니다.';
                     utilDataSyncBrowser?.setUtilityServerRuntimeLastError?.(utilProductionServerPersistenceState.lastErrorMessage);
@@ -408,11 +422,18 @@
                 productionKind: normalizeUtilProductionCloneKind(entry.productionKind ?? entry.production_kind ?? entry.kind),
                 productCode: String(entry.productCode ?? entry.itemCode ?? entry.product_code ?? entry.code ?? '').trim(),
                 productName: String(entry.productName ?? entry.itemName ?? entry.product ?? '').trim(),
+                regularWorkers: entry.regularWorkers ?? entry.regularWorkerCount ?? entry.regular_workers ?? null,
+                contractWorkers: entry.contractWorkers ?? entry.contractWorkerCount ?? entry.contract_workers ?? entry.outsourcedWorkers ?? null,
                 moistureExcludedYield: entry.moistureExcludedYield ?? entry.moistureFreeYield ?? entry.yieldExcludingMoisture ?? entry.yieldRate ?? null,
                 workTime: entry.workTime ?? entry.inputTime ?? entry.feedTime ?? entry.loadingTime ?? entry.injectionTime ?? null,
                 operationTime: entry.operationTime ?? entry.operatingTime ?? entry.runtime ?? entry.runTime ?? entry.operationHours ?? null,
                 equipmentCapa: entry.equipmentCapa ?? entry.capa ?? entry.equipmentCapacity ?? null,
                 equipmentUtilization: entry.equipmentUtilization ?? entry.operationRate ?? entry.equipmentRate ?? entry.utilizationRate ?? null,
+                materialStandard: entry.materialStandard ?? entry.material_standard ?? entry.rawMaterialStandard ?? null,
+                materialActual: entry.materialActual ?? entry.material_actual ?? entry.rawMaterialActual ?? null,
+                totalWorkTime: entry.totalWorkTime ?? entry.total_work_time ?? entry.totalLaborHours ?? null,
+                stickEa: entry.stickEa ?? entry.stickEA ?? entry.stick_ea ?? null,
+                laborProductivityEa: entry.laborProductivityEa ?? entry.laborProductivityEA ?? entry.labor_productivity_ea ?? null,
                 team,
                 sourceArchiveId: String(entry.sourceArchiveId || '').trim(),
                 sourceFingerprint: String(entry.sourceFingerprint || '').trim(),
@@ -736,6 +757,20 @@
         }
 
         const UTIL_PRODUCTION_UPLOAD_COLS = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const UTIL_PRODUCTION_UPLOAD_SUPPLEMENTAL_COLS = Object.freeze({
+            regularWorkers: 'G',
+            contractWorkers: 'H',
+            workTime: 'J',
+            operationTime: 'L',
+            moistureExcludedYield: 'N',
+            equipmentCapa: 'V',
+            equipmentUtilization: 'W',
+            materialStandard: 'X',
+            materialActual: 'Y',
+            totalWorkTime: 'AG',
+            stickEa: 'AH',
+            laborProductivityEa: 'AI'
+        });
         const UTIL_PRODUCTION_UPLOAD_HEADER_ROW = 3;
         const UTIL_PRODUCTION_UPLOAD_DATA_START_ROW = 4;
         const UTIL_PRODUCTION_UPLOAD_DATE_OFFSET_DAYS = 0;

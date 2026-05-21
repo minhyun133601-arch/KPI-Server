@@ -101,21 +101,11 @@ export function normalizeProductionKind(value) {
   return 'normal';
 }
 
-function canonicalizeMetric(value) {
-  const numericValue = normalizeNumber(value);
-  return Number.isFinite(numericValue) ? String(numericValue) : '';
-}
-
 export function buildEntryDedupeKey(entry) {
   const date = normalizeDateKey(entry?.date);
-  const amount = canonicalizeMetric(entry?.amount);
-  const moistureExcludedYield = canonicalizeMetric(entry?.moistureExcludedYield);
-  const workTime = canonicalizeMetric(entry?.workTime ?? entry?.inputTime);
-  const operationTime = canonicalizeMetric(entry?.operationTime);
-  const equipmentCapa = canonicalizeMetric(entry?.equipmentCapa);
-  const equipmentUtilization = canonicalizeMetric(entry?.equipmentUtilization);
-  const teamKey = normalizeTeamName(entry?.teamName).toLowerCase();
-  if (!date || amount === '' || !teamKey) {
+  const amount = normalizeNumber(entry?.amount ?? entry?.production ?? entry?.value);
+  const teamKey = normalizeTeamName(entry?.teamName ?? entry?.team).toLowerCase();
+  if (!date || !Number.isFinite(amount) || !teamKey) {
     return '';
   }
   return [
@@ -127,12 +117,6 @@ export function buildEntryDedupeKey(entry) {
     normalizeDedupeText(entry?.lineName),
     normalizeDedupeText(entry?.productCode),
     normalizeDedupeText(entry?.productName),
-    amount,
-    moistureExcludedYield,
-    workTime,
-    operationTime,
-    equipmentCapa,
-    equipmentUtilization,
   ].join('|');
 }
 
@@ -154,6 +138,10 @@ export function normalizeEntry(input, fallbackTeamName = '') {
     productCode: normalizeText(input?.productCode ?? input?.itemCode ?? input?.product_code ?? input?.code),
     productName: normalizeText(input?.productName ?? input?.itemName ?? input?.product),
     amount,
+    regularWorkers: normalizeNumber(input?.regularWorkers ?? input?.regularWorkerCount ?? input?.regular_workers),
+    contractWorkers: normalizeNumber(
+      input?.contractWorkers ?? input?.contractWorkerCount ?? input?.contract_workers ?? input?.outsourcedWorkers
+    ),
     moistureExcludedYield: normalizeNumber(
       input?.moistureExcludedYield ?? input?.moistureFreeYield ?? input?.yieldExcludingMoisture ?? input?.yieldRate
     ),
@@ -168,6 +156,13 @@ export function normalizeEntry(input, fallbackTeamName = '') {
     ),
     equipmentUtilization: normalizeNumber(
       input?.equipmentUtilization ?? input?.operationRate ?? input?.equipmentRate ?? input?.utilizationRate
+    ),
+    materialStandard: normalizeNumber(input?.materialStandard ?? input?.material_standard ?? input?.rawMaterialStandard),
+    materialActual: normalizeNumber(input?.materialActual ?? input?.material_actual ?? input?.rawMaterialActual),
+    totalWorkTime: normalizeNumber(input?.totalWorkTime ?? input?.total_work_time ?? input?.totalLaborHours),
+    stickEa: normalizeNumber(input?.stickEa ?? input?.stickEA ?? input?.stick_ea),
+    laborProductivityEa: normalizeNumber(
+      input?.laborProductivityEa ?? input?.laborProductivityEA ?? input?.labor_productivity_ea
     ),
     sourceArchiveId: normalizeText(input?.sourceArchiveId),
     sourceFingerprint: normalizeText(input?.sourceFingerprint ?? input?.fingerprint ?? input?.fileFingerprint),

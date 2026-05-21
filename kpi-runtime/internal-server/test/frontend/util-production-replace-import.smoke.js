@@ -32,6 +32,7 @@ function parseDateKey(value) {
 
 function createProductionImportContext() {
   let queuedWriteCount = 0;
+  let lastWriteOptions = null;
   const utilProductionState = {
     meta: {},
     periodDefault: { startDay: 1 },
@@ -125,8 +126,9 @@ function createProductionImportContext() {
       return value;
     },
     KpiUtilityServerRuntime: {
-      queueUtilProductionDailyServerWrite() {
+      queueUtilProductionDailyServerWrite(_payload, options = {}) {
         queuedWriteCount += 1;
+        lastWriteOptions = options;
         return true;
       },
       supportsUtilProductionServerPersistence() {
@@ -154,6 +156,7 @@ function createProductionImportContext() {
     { filename: 'KPI.util.production-import.js' }
   );
   context.__getQueuedWriteCount = () => queuedWriteCount;
+  context.__getLastWriteOptions = () => lastWriteOptions;
   return context;
 }
 
@@ -166,7 +169,7 @@ test('production import source routes browser globals through the data-sync adap
   assert.match(productionImportSource, /writePortalRecord\?\.\('util_production_daily'/);
 });
 
-test('production import merge keeps same-date team rows unless the full entry key matches', () => {
+test('production import merge overwrites duplicate rows from the same pasted table', () => {
   const context = createProductionImportContext();
   const targetTeam = '1? 1?뚰듃';
   const replacementTeam = context.UTIL_ELECTRIC_DATA[0].name || targetTeam;
@@ -204,6 +207,13 @@ test('production import merge keeps same-date team rows unless the full entry ke
       moistureExcludedYield: 98,
       workTime: 6,
       operationTime: 4.5,
+      regularWorkers: 2.5,
+      contractWorkers: 0.5,
+      materialStandard: 48,
+      materialActual: 50,
+      totalWorkTime: 8,
+      stickEa: 1200,
+      laborProductivityEa: 15.5,
     },
     {
       date: '2026-05-02',
@@ -223,7 +233,7 @@ test('production import merge keeps same-date team rows unless the full entry ke
 
   const teams = JSON.parse(JSON.stringify(context.__testExports.getTeams()));
 
-  assert.equal(result.addedCount, 4);
+  assert.equal(result.addedCount, 3);
   assert.equal(result.skippedCount, 0);
   assert.equal(result.patchedCount, 0);
   assert.equal(result.replacedCount, 0);
@@ -240,27 +250,39 @@ test('production import merge keeps same-date team rows unless the full entry ke
   assert.equal(teams[0].entries[1].sourceFileName, 'old-same-date.xlsx');
   assert.equal(serializedTeams.includes('old-same-date.xlsx'), true);
   assert.equal(serializedTeams.includes('old-same-team.xlsx'), true);
-  assert.equal(teams[1].entries.length, 4);
+  assert.equal(teams[1].entries.length, 3);
   assert.equal(teams[1].entries[0].amount, 111);
   assert.equal(teams[1].entries[0].sourceFileName, 'old-same-team.xlsx');
   assert.equal(teams[1].entries[1].amount, 50);
   assert.equal(teams[1].entries[1].lineName, 'MSD');
   assert.equal(teams[1].entries[1].productCode, 'P-A');
   assert.equal(teams[1].entries[1].sourceFileName, '');
-  assert.equal(teams[1].entries[2].amount, 50);
+  assert.equal(teams[1].entries[1].moistureExcludedYield, 98);
+  assert.equal(teams[1].entries[1].workTime, 6);
+  assert.equal(teams[1].entries[1].operationTime, 4.5);
+  assert.equal(teams[1].entries[1].regularWorkers, 2.5);
+  assert.equal(teams[1].entries[1].contractWorkers, 0.5);
+  assert.equal(teams[1].entries[1].materialStandard, 48);
+  assert.equal(teams[1].entries[1].materialActual, 50);
+  assert.equal(teams[1].entries[1].totalWorkTime, 8);
+  assert.equal(teams[1].entries[1].stickEa, 1200);
+  assert.equal(teams[1].entries[1].laborProductivityEa, 15.5);
+  assert.equal(teams[1].entries[2].amount, 70);
   assert.equal(teams[1].entries[2].lineName, 'MSD');
-  assert.equal(teams[1].entries[2].moistureExcludedYield, 98);
-  assert.equal(teams[1].entries[2].workTime, 6);
-  assert.equal(teams[1].entries[2].operationTime, 4.5);
-  assert.equal(teams[1].entries[3].amount, 70);
-  assert.equal(teams[1].entries[3].lineName, 'MSD');
   assert.equal(teams[2].entries.length, 1);
   assert.equal(teams[2].entries[0].amount, 60);
   assert.equal(context.__testExports.getArchives().length, 1);
   assert.equal(context.__getQueuedWriteCount(), 1);
+  const writeOptions = context.__getLastWriteOptions();
+  const writtenKeySet = new Set(writeOptions?.upsertDedupeKeys || []);
+  assert.deepEqual(JSON.parse(JSON.stringify(writeOptions?.deleteDedupeKeys || [])), []);
+  assert.equal(writtenKeySet.size, 3);
+  assert.equal(writtenKeySet.has(context.__testExports.buildUtilProductionDailyEntryKey(teams[1].entries[1])), true);
+  assert.equal(writtenKeySet.has(context.__testExports.buildUtilProductionDailyEntryKey(teams[1].entries[2])), true);
+  assert.equal(writtenKeySet.has(context.__testExports.buildUtilProductionDailyEntryKey(teams[2].entries[0])), true);
 });
 
-test('production import merge replaces only rows with identical production metrics', () => {
+test('production import merge replaces rows with the same row identity', () => {
   const context = createProductionImportContext();
   context.__testExports.getTeams().push({
     name: '2?',
@@ -312,12 +334,11 @@ test('production import merge replaces only rows with identical production metri
   ]);
 
   const team = context.__testExports.getTeams().find((item) => item.name === '2?');
-  assert.equal(result.addedCount, 1);
+  assert.equal(result.addedCount, 0);
   assert.equal(result.replacedCount, 1);
-  assert.equal(team.entries.length, 2);
-  assert.equal(team.entries[0].moistureExcludedYield, 98.5);
+  assert.equal(team.entries.length, 1);
+  assert.equal(team.entries[0].moistureExcludedYield, 98.6);
   assert.equal(team.entries[0].sourceFileName, '');
-  assert.equal(team.entries[1].moistureExcludedYield, 98.6);
 });
 
 test('production import merge treats different product codes as distinct daily rows', () => {
@@ -431,4 +452,6 @@ test('production import delete removes matching daily entries and queues a save'
   assert.equal(JSON.stringify(teams).includes('?쒗뭹A'), false);
   assert.equal(JSON.stringify(teams).includes('?쒗뭹B'), true);
   assert.equal(context.__getQueuedWriteCount(), 2);
+  assert.deepEqual(context.__getLastWriteOptions()?.deleteDedupeKeys, [targetKey]);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.__getLastWriteOptions()?.upsertDedupeKeys || [])), []);
 });

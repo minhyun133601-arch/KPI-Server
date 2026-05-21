@@ -103,11 +103,18 @@ test('production extractor export actions normalize stored bridge rows determini
         lineName: '2호기',
         productName: '시럽',
         amount: 5,
+        regularWorkers: null,
+        contractWorkers: null,
         moistureExcludedYield: null,
         workTime: null,
         operationTime: null,
         equipmentCapa: null,
         equipmentUtilization: null,
+        materialStandard: null,
+        materialActual: null,
+        totalWorkTime: null,
+        stickEa: null,
+        laborProductivityEa: null,
       },
       {
         date: '2026-04-10',
@@ -115,11 +122,18 @@ test('production extractor export actions normalize stored bridge rows determini
         lineName: '1호기',
         productName: '베이스',
         amount: 12,
+        regularWorkers: null,
+        contractWorkers: null,
         moistureExcludedYield: null,
         workTime: null,
         operationTime: null,
         equipmentCapa: null,
         equipmentUtilization: null,
+        materialStandard: null,
+        materialActual: null,
+        totalWorkTime: null,
+        stickEa: null,
+        laborProductivityEa: null,
       },
     ]
   );
@@ -143,21 +157,26 @@ test('production extractor export actions normalize stored bridge rows determini
     [
       { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '97%' },
       { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '98%' },
-      { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '98%', workTime: '6', operationTime: '4' },
-      { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '98%', workTime: '6.0', operationTime: 4 },
-      { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '98%', workTime: '6', operationTime: '5' },
+      { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '98%', workTime: '6', operationTime: '4', regularWorkers: '2.5', contractWorkers: '0.5', totalWorkTime: '8', stickEa: '1200', laborProductivityEa: '15' },
+      { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '98%', workTime: '6.0', operationTime: 4, regularWorkers: '2.5', contractWorkers: '0.5', totalWorkTime: '8.0', stickEa: 1200, laborProductivityEa: '15.0' },
+      { date: '2026-04-10', team: 'Team A', lineName: 'Line 1', productName: 'Product A', amount: 12, moistureExcludedYield: '98%', workTime: '6', operationTime: '5', regularWorkers: '2.5', contractWorkers: '0.5', totalWorkTime: '8', stickEa: '1200', laborProductivityEa: '15' },
     ]
   );
   assert.equal(withMetrics.length, 4);
   assert.equal(withMetrics[2].workTime, 6);
   assert.equal(withMetrics[2].operationTime, 4);
+  assert.equal(withMetrics[2].regularWorkers, 2.5);
+  assert.equal(withMetrics[2].contractWorkers, 0.5);
+  assert.equal(withMetrics[2].totalWorkTime, 8);
+  assert.equal(withMetrics[2].stickEa, 1200);
+  assert.equal(withMetrics[2].laborProductivityEa, 15);
 });
 
 test('production extractor html loads export actions before app and utility runtime has no embed bridge', () => {
-  const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=18');
+  const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=19');
   const viewModelIndex = productionExtractorHtml.indexOf('runtime/view-model.js?v=1');
   const renderIndex = productionExtractorHtml.indexOf('runtime/render.js?v=1');
-  const appIndex = productionExtractorHtml.indexOf('app.js?v=21');
+  const appIndex = productionExtractorHtml.indexOf('app.js?v=22');
 
   assert.ok(exportActionsIndex >= 0, 'split runtime loader is missing');
   assert.ok(viewModelIndex > exportActionsIndex, 'view model split must load after runtime/export-actions.js');

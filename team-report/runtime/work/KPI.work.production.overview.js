@@ -131,14 +131,31 @@
                                         const itemUtilizationLabel = formatWorkTeamCalendarUtilizationLabel(item?.equipmentUtilization);
                                         const itemWorkTimeLabel = formatWorkTeamCalendarWorkTimeLabel(item?.workTime);
                                         const itemOperationTimeLabel = formatWorkTeamCalendarOperationTimeLabel(item?.operationTime);
+                                        const itemTotalWorkTimeLabel = formatWorkTeamCalendarTotalWorkTimeLabel(item?.totalWorkTime);
+                                        const itemWorkerCountLabel = formatWorkTeamCalendarWorkerCountLabel(item?.workerCount);
+                                        const itemStickEaLabel = formatWorkTeamCalendarEaLabel(item?.stickEa);
+                                        const itemLaborProductivityEaLabel = formatWorkTeamCalendarEaProductivityLabel(item?.laborProductivityEa);
                                         const metricParts = [
                                             itemYieldLabel || '수율 -',
-                                            itemCapaLabel || 'CAPA -',
                                             itemUtilizationLabel || '가동률 -',
                                             itemWorkTimeLabel || '조업시간 -',
-                                            itemOperationTimeLabel || '가동시간 -'
+                                            itemOperationTimeLabel || '가동시간 -',
+                                            itemTotalWorkTimeLabel,
+                                            itemWorkerCountLabel,
+                                            itemStickEaLabel,
+                                            itemLaborProductivityEaLabel
                                         ];
-                                        const metricChipHtml = metricParts.map(label => `<span class="work-team-calendar-production-chip">${escapeHtml(label)}</span>`).join('');
+                                        const metricChipHtml = metricParts.filter(Boolean).map(label => `<span class="work-team-calendar-production-chip">${escapeHtml(label)}</span>`).join('');
+                                        const detailParts = [
+                                            Number.isFinite(parseUtilAmount(item?.regularWorkers)) ? `\uC815\uADDC ${formatUtilNumber(parseUtilAmount(item.regularWorkers), 1)}` : '',
+                                            Number.isFinite(parseUtilAmount(item?.contractWorkers)) ? `\uC6A9\uC5ED ${formatUtilNumber(parseUtilAmount(item.contractWorkers), 1)}` : '',
+                                            formatWorkTeamCalendarMaterialLabel('\uC6D0\uC7AC\uB8CC \uD45C\uC900', item?.materialStandard),
+                                            formatWorkTeamCalendarMaterialLabel('\uC6D0\uC7AC\uB8CC \uC2E4\uC801', item?.materialActual),
+                                            itemCapaLabel || ''
+                                        ].filter(Boolean);
+                                        const detailHtml = detailParts.length
+                                            ? `<details class="work-team-calendar-production-details"><summary>\uC0C1\uC138</summary><div class="work-team-calendar-production-detail-row">${detailParts.map(label => `<span>${escapeHtml(label)}</span>`).join('')}</div></details>`
+                                            : '';
                                         const amountLabel = Number.isFinite(Number(item.amount))
                                             ? `${formatUtilNumber(Number(item.amount), 0)} kg`
                                             : '-';
@@ -151,6 +168,7 @@
                                                     <div class="work-team-calendar-production-name">${escapeHtml(productName)}</div>
                                                     <div class="work-team-calendar-production-meta">${escapeHtml(lineMeta)}</div>
                                                     <div class="work-team-calendar-production-stat-row">${metricChipHtml}</div>
+                                                    ${detailHtml}
                                                 </div>
                                                 <div class="work-team-calendar-production-amount">${escapeHtml(amountLabel)}</div>
                                             </div>

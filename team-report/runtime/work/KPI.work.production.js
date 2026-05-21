@@ -130,11 +130,18 @@
                     productCode: row?.productCode ?? row?.values?.[productCodeIndex] ?? '',
                     productName: row?.values?.[productNameIndex] ?? '',
                     amount: row?.values?.[productionIndex] ?? '',
+                    regularWorkers: row?.regularWorkers ?? '',
+                    contractWorkers: row?.contractWorkers ?? '',
                     moistureExcludedYield: row?.moistureExcludedYield ?? '',
                     workTime: row?.workTime ?? row?.inputTime ?? '',
                     operationTime: row?.operationTime ?? '',
                     equipmentCapa: row?.equipmentCapa ?? '',
                     equipmentUtilization: row?.equipmentUtilization ?? '',
+                    materialStandard: row?.materialStandard ?? '',
+                    materialActual: row?.materialActual ?? '',
+                    totalWorkTime: row?.totalWorkTime ?? '',
+                    stickEa: row?.stickEa ?? '',
+                    laborProductivityEa: row?.laborProductivityEa ?? '',
                     sourceFileName: fileName,
                     sourceFingerprint: String(row?.sourceFingerprint || row?.fingerprint || row?.fileFingerprint || '')
                 };
@@ -292,9 +299,10 @@
             }
             const productionKind = normalizeWorkProductionKind(modal.dataset.productionKind);
             setWorkProductionPasteModalBusy(modal, true);
+            let shouldResetAfterSuccess = false;
             try {
                 const imported = await importWorkProductionPastedText(pastedText, { productionKind });
-                if (imported) closeWorkProductionPasteModal();
+                if (imported) shouldResetAfterSuccess = true;
                 return imported;
             } catch (error) {
                 alert(`생산량 붙여넣기 실패: ${error?.message || '알 수 없는 오류'}`);
@@ -302,6 +310,10 @@
             } finally {
                 if (document.getElementById(WORK_PRODUCTION_PASTE_MODAL_ID) === modal) {
                     setWorkProductionPasteModalBusy(modal, false);
+                    if (shouldResetAfterSuccess) {
+                        if (textarea) textarea.value = '';
+                        textarea?.focus?.();
+                    }
                 }
             }
         }
@@ -517,11 +529,20 @@
                     const dateKey = String(entry?.dateLabel || '').trim();
                     if (!dateKeySet.has(dateKey)) return;
                     const amount = parseUtilAmount(entry?.amount);
+                    const regularWorkers = parseUtilAmount(entry?.regularWorkers ?? entry?.regularWorkerCount ?? entry?.regular_workers);
+                    const contractWorkers = parseUtilAmount(entry?.contractWorkers ?? entry?.contractWorkerCount ?? entry?.contract_workers ?? entry?.outsourcedWorkers);
                     const moistureExcludedYield = parseUtilPercentAmount(entry?.moistureExcludedYield);
                     const workTime = parseUtilAmount(entry?.workTime);
                     const operationTime = parseUtilAmount(entry?.operationTime);
                     const equipmentCapa = parseUtilAmount(entry?.equipmentCapa);
                     const equipmentUtilization = parseUtilPercentAmount(entry?.equipmentUtilization);
+                    const materialStandard = parseUtilAmount(entry?.materialStandard ?? entry?.material_standard ?? entry?.rawMaterialStandard);
+                    const materialActual = parseUtilAmount(entry?.materialActual ?? entry?.material_actual ?? entry?.rawMaterialActual);
+                    const totalWorkTime = parseUtilAmount(entry?.totalWorkTime ?? entry?.total_work_time ?? entry?.totalLaborHours);
+                    const stickEa = parseUtilAmount(entry?.stickEa ?? entry?.stickEA ?? entry?.stick_ea);
+                    const laborProductivityEa = parseUtilAmount(entry?.laborProductivityEa ?? entry?.laborProductivityEA ?? entry?.labor_productivity_ea);
+                    const workerCount = (Number.isFinite(regularWorkers) ? regularWorkers : 0)
+                        + (Number.isFinite(contractWorkers) ? contractWorkers : 0);
                     const productionKind = normalizeWorkProductionKind(entry?.productionKind ?? entry?.production_kind ?? entry?.kind);
                     const dedupeKey = String(entry?.entryKey || '').trim() || [
                         dateKey,
@@ -530,7 +551,12 @@
                         productionKind,
                         String(entry?.productCode || entry?.itemCode || '').trim(),
                         String(entry?.productName || '').trim(),
-                        Number.isFinite(amount) ? amount : ''
+                        Number.isFinite(amount) ? amount : '',
+                        Number.isFinite(regularWorkers) ? regularWorkers : '',
+                        Number.isFinite(contractWorkers) ? contractWorkers : '',
+                        Number.isFinite(totalWorkTime) ? totalWorkTime : '',
+                        Number.isFinite(stickEa) ? stickEa : '',
+                        Number.isFinite(laborProductivityEa) ? laborProductivityEa : ''
                     ].join('::');
                     if (seen.has(dedupeKey)) return;
                     seen.add(dedupeKey);
@@ -542,11 +568,19 @@
                         productCode: String(entry?.productCode || entry?.itemCode || '').trim(),
                         productName: String(entry?.productName || '').trim(),
                         amount: Number.isFinite(amount) ? amount : null,
+                        regularWorkers: Number.isFinite(regularWorkers) ? regularWorkers : null,
+                        contractWorkers: Number.isFinite(contractWorkers) ? contractWorkers : null,
+                        workerCount: Number.isFinite(workerCount) && workerCount > 0 ? workerCount : null,
                         moistureExcludedYield: Number.isFinite(moistureExcludedYield) ? moistureExcludedYield : null,
                         workTime: Number.isFinite(workTime) ? workTime : null,
                         operationTime: Number.isFinite(operationTime) ? operationTime : null,
                         equipmentCapa: Number.isFinite(equipmentCapa) ? equipmentCapa : null,
                         equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null,
+                        materialStandard: Number.isFinite(materialStandard) ? materialStandard : null,
+                        materialActual: Number.isFinite(materialActual) ? materialActual : null,
+                        totalWorkTime: Number.isFinite(totalWorkTime) ? totalWorkTime : null,
+                        stickEa: Number.isFinite(stickEa) ? stickEa : null,
+                        laborProductivityEa: Number.isFinite(laborProductivityEa) ? laborProductivityEa : null,
                         entryKey: dedupeKey
                     });
                 });
@@ -596,14 +630,31 @@
                         const itemUtilizationLabel = formatWorkTeamCalendarUtilizationLabel(item?.equipmentUtilization);
                         const itemWorkTimeLabel = formatWorkTeamCalendarWorkTimeLabel(item?.workTime);
                         const itemOperationTimeLabel = formatWorkTeamCalendarOperationTimeLabel(item?.operationTime);
+                        const itemTotalWorkTimeLabel = formatWorkTeamCalendarTotalWorkTimeLabel(item?.totalWorkTime);
+                        const itemWorkerCountLabel = formatWorkTeamCalendarWorkerCountLabel(item?.workerCount);
+                        const itemStickEaLabel = formatWorkTeamCalendarEaLabel(item?.stickEa);
+                        const itemLaborProductivityEaLabel = formatWorkTeamCalendarEaProductivityLabel(item?.laborProductivityEa);
                         const metricParts = [
                             itemYieldLabel || '수율 -',
-                            itemCapaLabel || 'CAPA -',
                             itemUtilizationLabel || '가동률 -',
                             itemWorkTimeLabel || '조업시간 -',
-                            itemOperationTimeLabel || '가동시간 -'
+                            itemOperationTimeLabel || '가동시간 -',
+                            itemTotalWorkTimeLabel,
+                            itemWorkerCountLabel,
+                            itemStickEaLabel,
+                            itemLaborProductivityEaLabel
                         ];
-                        const metricChipHtml = metricParts.map(label => `<span class="work-team-calendar-production-chip">${escapeHtml(label)}</span>`).join('');
+                        const metricChipHtml = metricParts.filter(Boolean).map(label => `<span class="work-team-calendar-production-chip">${escapeHtml(label)}</span>`).join('');
+                        const detailParts = [
+                            Number.isFinite(parseUtilAmount(item?.regularWorkers)) ? `\uC815\uADDC ${formatUtilNumber(parseUtilAmount(item.regularWorkers), 1)}` : '',
+                            Number.isFinite(parseUtilAmount(item?.contractWorkers)) ? `\uC6A9\uC5ED ${formatUtilNumber(parseUtilAmount(item.contractWorkers), 1)}` : '',
+                            formatWorkTeamCalendarMaterialLabel('\uC6D0\uC7AC\uB8CC \uD45C\uC900', item?.materialStandard),
+                            formatWorkTeamCalendarMaterialLabel('\uC6D0\uC7AC\uB8CC \uC2E4\uC801', item?.materialActual),
+                            itemCapaLabel || ''
+                        ].filter(Boolean);
+                        const detailHtml = detailParts.length
+                            ? `<details class="work-team-calendar-production-details"><summary>\uC0C1\uC138</summary><div class="work-team-calendar-production-detail-row">${detailParts.map(label => `<span>${escapeHtml(label)}</span>`).join('')}</div></details>`
+                            : '';
                         const amountLabel = Number.isFinite(Number(item.amount))
                             ? `${formatUtilNumber(Number(item.amount), 0)} kg`
                             : '-';
@@ -619,6 +670,7 @@
                                         productCode ? `코드 ${productCode}` : ''
                                     ].filter(Boolean).join(' · '))}</div>
                                     <div class="work-team-calendar-production-stat-row">${metricChipHtml}</div>
+                                    ${detailHtml}
                                 </div>
                                 <div class="work-team-calendar-production-amount">${escapeHtml(amountLabel)}</div>
                             </div>
@@ -654,8 +706,12 @@
                     moistureExcludedYieldRate: Number.isFinite(parseUtilPercentAmount(group?.moistureExcludedYieldRate)) ? parseUtilPercentAmount(group?.moistureExcludedYieldRate) : null,
                     totalEquipmentCapa: Number.isFinite(parseUtilAmount(group?.totalEquipmentCapa)) ? parseUtilAmount(group?.totalEquipmentCapa) : null,
                     utilizationRate: Number.isFinite(parseUtilPercentAmount(group?.utilizationRate)) ? parseUtilPercentAmount(group?.utilizationRate) : null,
+                    normalAmount: Number.isFinite(parseUtilAmount(group?.normalAmount)) ? parseUtilAmount(group?.normalAmount) : 0,
+                    reworkAmount: Number.isFinite(parseUtilAmount(group?.reworkAmount)) ? parseUtilAmount(group?.reworkAmount) : 0,
                     totalWorkTime: Number.isFinite(parseUtilAmount(group?.totalWorkTime)) ? parseUtilAmount(group?.totalWorkTime) : null,
+                    totalOverallWorkTime: Number.isFinite(parseUtilAmount(group?.totalOverallWorkTime)) ? parseUtilAmount(group?.totalOverallWorkTime) : null,
                     totalOperationTime: Number.isFinite(parseUtilAmount(group?.totalOperationTime)) ? parseUtilAmount(group?.totalOperationTime) : null,
+                    totalStickEa: Number.isFinite(parseUtilAmount(group?.totalStickEa)) ? parseUtilAmount(group?.totalStickEa) : null,
                     isOffday: false
                 });
             });

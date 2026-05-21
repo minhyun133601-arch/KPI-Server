@@ -46,13 +46,20 @@ export async function loadUtilProductionDailyState() {
   return loadStructuredState();
 }
 
-export async function saveUtilProductionDailyState({ state, updatedByUserId }) {
+export async function saveUtilProductionDailyState({
+  state,
+  updatedByUserId,
+  deleteDedupeKeys = [],
+  upsertDedupeKeys,
+}) {
   const normalizedState = normalizeStateSnapshot(state);
   const result = await replaceUtilProductionDailyState({
     periodStartDay: normalizedState.periodStartDay,
     entries: normalizedState.entries,
     archives: normalizedState.archives,
     updatedByUserId,
+    deleteDedupeKeys,
+    upsertDedupeKeys,
   });
 
   if (updatedByUserId) {

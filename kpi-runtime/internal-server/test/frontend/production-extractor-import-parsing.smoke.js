@@ -225,6 +225,11 @@ test('production extractor import parsing prefers Excel display date over shifte
         N4: { v: 98, w: '98%' },
         V4: { v: 120 },
         W4: { v: 87, w: '87%' },
+        X4: { v: 12.1 },
+        Y4: { v: 12.4 },
+        AG4: { v: 25.75 },
+        AH4: { v: 1234 },
+        AI4: { v: 56.7 },
       },
     },
   };
@@ -285,13 +290,18 @@ test('production extractor import parsing prefers Excel display date over shifte
   assert.equal(parsed.rows[0].operationTime, 4.5);
   assert.equal(parsed.rows[0].equipmentCapa, 120);
   assert.equal(parsed.rows[0].equipmentUtilization, '87%');
+  assert.equal(parsed.rows[0].materialStandard, 12.1);
+  assert.equal(parsed.rows[0].materialActual, 12.4);
+  assert.equal(parsed.rows[0].totalWorkTime, 25.75);
+  assert.equal(parsed.rows[0].stickEa, 1234);
+  assert.equal(parsed.rows[0].laborProductivityEa, 56.7);
 });
 
 test('production extractor import parsing converts pasted Excel table text into import rows', () => {
   const context = createImportParsingContext();
   const api = context.KPIProductionExtractorImportParsing;
-  const header = ['date', 'team', 'line', 'code', 'product', 'amount', '', '', '', 'work', '', 'operation', '', 'yield', '', '', '', '', '', '', '', 'capa', 'rate'].join('\t');
-  const row = ['04/01', '1T', 'SD', 'CODE-A', 'Item', '12', '', '', '', '6', '', '4.5', '', '98%', '', '', '', '', '', '', '', '120', '87%'].join('\t');
+  const header = ['date', 'team', 'line', 'code', 'product', 'amount', 'regularWorkers', 'contractWorkers', '', 'work', '', 'operation', '', 'yield', '', '', '', '', '', '', '', 'capa', 'rate', 'materialStandard', 'materialActual', '', '', '', '', '', '', '', 'totalWorkTime', 'stickEa', 'laborProductivityEa'].join('\t');
+  const row = ['04/01', '1T', 'SD', 'CODE-A', 'Item', '12', '4.2', '0.8', '', '6', '', '4.5', '', '98%', '', '', '', '', '', '', '', '120', '87%', '12.1', '12.4', '', '', '', '', '', '', '', '25.75', '1234', '56.7'].join('\t');
   const parsed = api.parsePastedTableText(
     {
       TARGET_COLS: ['A', 'B', 'C', 'D', 'E', 'F'],
@@ -333,6 +343,13 @@ test('production extractor import parsing converts pasted Excel table text into 
   assert.equal(parsed.rows[0].operationTime, '4.5');
   assert.equal(parsed.rows[0].equipmentCapa, '120');
   assert.equal(parsed.rows[0].equipmentUtilization, '87%');
+  assert.equal(parsed.rows[0].regularWorkers, '4.2');
+  assert.equal(parsed.rows[0].contractWorkers, '0.8');
+  assert.equal(parsed.rows[0].materialStandard, '12.1');
+  assert.equal(parsed.rows[0].materialActual, '12.4');
+  assert.equal(parsed.rows[0].totalWorkTime, '25.75');
+  assert.equal(parsed.rows[0].stickEa, '1234');
+  assert.equal(parsed.rows[0].laborProductivityEa, '56.7');
   assert.equal(parsed.productionRangeLabel, '2026-04-01 ~ 2026-04-01');
 });
 
@@ -484,12 +501,163 @@ test('production extractor import parsing uses headers when pasted result column
   assert.deepEqual(parsed.rows[0].values, ['2026-04-01', '2팀', '로타리 1호기', '', '제품 A', '1000']);
 });
 
+test('production extractor import parsing rejects unsupported pasted table formats', () => {
+  const context = createImportParsingContext();
+  const api = context.KPIProductionExtractorImportParsing;
+
+  assert.throws(
+    () =>
+      api.parsePastedTableText(
+        {
+          TARGET_COLS: ['A', 'B', 'C', 'D', 'E', 'F'],
+          HEADER_ROW: 3,
+          DATA_START_ROW: 4,
+          TEAM_VALUE_INDEX: 1,
+          LINE_VALUE_INDEX: 2,
+          PRODUCT_CODE_VALUE_INDEX: 3,
+          PRODUCT_NAME_VALUE_INDEX: 4,
+          PRODUCTION_VALUE_INDEX: 5,
+          PRODUCTION_DATE_OFFSET_DAYS: 0,
+          REQUIRED_HEADER_RULES: {
+            A: [/date/],
+            B: [/team/],
+            C: [/line/],
+            D: [/code/],
+            E: [/product/],
+            F: [/amount/],
+          },
+          parseProductionValue(value) {
+            const parsedValue = Number(value);
+            return Number.isFinite(parsedValue) ? parsedValue : null;
+          },
+        },
+        ['wrong', '2026-04-01\tTeam\tLine\tProduct\t1000'].join('\n'),
+        {
+          fileName: 'unsupported',
+          sheetName: 'paste',
+        }
+      ),
+    /지원하지 않는 생산량 붙여넣기 양식/
+  );
+});
+
+test('production extractor import parsing accepts HC raw copied rows without a generated Excel file', () => {
+  const context = createImportParsingContext();
+  const api = context.KPIProductionExtractorImportParsing;
+  const makeRawRow = (overrides = {}) => {
+    const row = new Array(60).fill('');
+    Object.entries({
+      0: '1',
+      1: '2026-01/21',
+      2: '1팀(P1)-북정',
+      3: 'S/D 건조',
+      4: '6211078',
+      5: '(희창)커피크리머-S 20kg',
+      8: '10,000.0',
+      10: '3.6',
+      11: '0.0',
+      14: '5.00',
+      17: '5.0',
+      20: '90.4',
+      31: '10,800.0',
+      32: '92.6%',
+      34: '10,000.0',
+      35: '10,727.5',
+      53: '18.25',
+      57: '9999',
+      58: '500',
+      59: '27.4',
+      ...overrides,
+    }).forEach(([index, value]) => {
+      row[Number(index)] = value;
+    });
+    return row.join('\t');
+  };
+  const parsed = api.parsePastedTableText(
+    {
+      TARGET_COLS: ['A', 'B', 'C', 'D', 'E', 'F'],
+      HEADER_ROW: 3,
+      DATA_START_ROW: 4,
+      TEAM_VALUE_INDEX: 1,
+      LINE_VALUE_INDEX: 2,
+      PRODUCT_CODE_VALUE_INDEX: 3,
+      PRODUCT_NAME_VALUE_INDEX: 4,
+      PRODUCTION_VALUE_INDEX: 5,
+      PRODUCTION_DATE_OFFSET_DAYS: 0,
+      REQUIRED_HEADER_RULES: {
+        A: [/date/],
+        B: [/team/],
+        C: [/line/],
+        D: [/code/],
+        E: [/product/],
+        F: [/amount/],
+      },
+      parseProductionValue(value) {
+        const parsedValue = Number(String(value).replaceAll(',', '').replace('%', ''));
+        return Number.isFinite(parsedValue) ? parsedValue : null;
+      },
+    },
+    [
+      '종합 생산효율 기간 :2026-01/01 ~ 2026-03/20',
+      makeRawRow(),
+      makeRawRow({
+        0: '2',
+        1: '2026-01/22',
+        4: '6211245',
+        5: 'IN-CO SOPYO CREAMER (25kg-수출)',
+        8: '55,000.0',
+        10: '12.5',
+        14: '24.00',
+        17: '24.0',
+        20: '96.5',
+        31: '51,840.0',
+        32: '106.1%',
+        34: '55,000.0',
+        35: '55,230.0',
+        53: '300',
+        58: '0',
+        59: '0.0',
+      }),
+      makeRawRow({ 0: '127', 1: '', 5: '<b><p align="center">==합계</b></p>', 8: '1,785,815.0' }),
+    ].join('\n'),
+    {
+      fileName: 'HC raw paste',
+      sheetName: 'HC raw',
+    }
+  );
+
+  assert.equal(parsed.rows.length, 2);
+  assert.deepEqual(parsed.rows[0].values, [
+    '2026-01-21',
+    '1팀(P1)-북정',
+    'S/D 건조',
+    '6211078',
+    '(희창)커피크리머-S 20kg',
+    '10,000.0',
+  ]);
+  assert.equal(parsed.rows[0].regularWorkers, '3.6');
+  assert.equal(parsed.rows[0].contractWorkers, '0.0');
+  assert.equal(parsed.rows[0].workTime, '5.00');
+  assert.equal(parsed.rows[0].operationTime, '5.0');
+  assert.equal(parsed.rows[0].moistureExcludedYield, '90.4');
+  assert.equal(parsed.rows[0].equipmentCapa, '10,800.0');
+  assert.equal(parsed.rows[0].equipmentUtilization, '92.6%');
+  assert.equal(parsed.rows[0].materialStandard, '10,000.0');
+  assert.equal(parsed.rows[0].materialActual, '10,727.5');
+  assert.equal(parsed.rows[0].totalWorkTime, '18.25');
+  assert.equal(parsed.rows[0].stickEa, '500');
+  assert.equal(parsed.rows[0].laborProductivityEa, '27.4');
+  assert.equal(parsed.rows[0].periodKey, '2026-01');
+  assert.equal(parsed.rows[1].values[0], '2026-01-22');
+  assert.equal(parsed.productionRangeLabel, '2026-01-21 ~ 2026-01-22');
+});
+
 test('production extractor html loads import parsing before export actions and app', () => {
-  const importParsingIndex = productionExtractorHtml.indexOf('runtime/import-parsing.js?v=22');
-  const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=18');
+  const importParsingIndex = productionExtractorHtml.indexOf('runtime/import-parsing.js?v=24');
+  const exportActionsIndex = productionExtractorHtml.indexOf('runtime/export-actions.js?v=19');
   const viewModelIndex = productionExtractorHtml.indexOf('runtime/view-model.js?v=1');
   const renderIndex = productionExtractorHtml.indexOf('runtime/render.js?v=1');
-  const appIndex = productionExtractorHtml.indexOf('app.js?v=21');
+  const appIndex = productionExtractorHtml.indexOf('app.js?v=22');
 
   assert.ok(importParsingIndex >= 0, 'import parsing loader is missing');
   assert.ok(exportActionsIndex > importParsingIndex, 'export actions must load after import parsing');

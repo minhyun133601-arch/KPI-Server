@@ -193,6 +193,13 @@ function createContext() {
           operationTime: 7.25,
           equipmentCapa: 250,
           equipmentUtilization: 80,
+          regularWorkers: 2.5,
+          contractWorkers: 0.5,
+          materialStandard: 190,
+          materialActual: 200,
+          totalWorkTime: 9,
+          stickEa: 1200,
+          laborProductivityEa: 24,
         },
         {
           dateLabel: '2026-04-16',
@@ -206,6 +213,13 @@ function createContext() {
           operationTime: 5.5,
           equipmentCapa: 200,
           equipmentUtilization: 75,
+          regularWorkers: 1.5,
+          contractWorkers: 0,
+          materialStandard: 140,
+          materialActual: 150,
+          totalWorkTime: 6,
+          stickEa: 800,
+          laborProductivityEa: 20,
         },
       ],
     },
@@ -323,7 +337,15 @@ function createContext() {
     const totalAmount = list.reduce((sum, item) => sum + (parseNumericValue(item.amount) || 0), 0);
     const totalEquipmentCapa = list.reduce((sum, item) => sum + (parseNumericValue(item.equipmentCapa) || 0), 0);
     const totalWorkTime = list.reduce((sum, item) => sum + (parseNumericValue(item.workTime) || 0), 0);
+    const totalOverallWorkTime = list.reduce((sum, item) => sum + (parseNumericValue(item.totalWorkTime) || 0), 0);
     const totalOperationTime = list.reduce((sum, item) => sum + (parseNumericValue(item.operationTime) || 0), 0);
+    const normalAmount = list
+      .filter((item) => String(item.productionKind || '').toLowerCase() !== 'rework')
+      .reduce((sum, item) => sum + (parseNumericValue(item.amount) || 0), 0);
+    const reworkAmount = list
+      .filter((item) => String(item.productionKind || '').toLowerCase() === 'rework')
+      .reduce((sum, item) => sum + (parseNumericValue(item.amount) || 0), 0);
+    const totalStickEa = list.reduce((sum, item) => sum + (parseNumericValue(item.stickEa) || 0), 0);
     const moistureExcludedYieldRate = list.length
       ? list.reduce((sum, item) => sum + (parseNumericValue(item.moistureExcludedYield) || 0), 0) / list.length
       : null;
@@ -335,8 +357,12 @@ function createContext() {
       totalEquipmentCapa,
       moistureExcludedYieldRate,
       utilizationRate,
+      normalAmount,
+      reworkAmount,
       totalWorkTime,
+      totalOverallWorkTime,
       totalOperationTime,
+      totalStickEa,
     };
   });
   overrideBinding(context, 'getWorkTeamCalendarProductionMetricLine', (group) => {
@@ -355,6 +381,26 @@ function createContext() {
   );
   overrideBinding(context, 'formatWorkTeamCalendarWorkTimeLabel', (value) => `Work ${context.formatUtilNumber(value || 0, 1)}`);
   overrideBinding(context, 'formatWorkTeamCalendarOperationTimeLabel', (value) => `Run ${context.formatUtilNumber(value || 0, 1)}`);
+  overrideBinding(context, 'formatWorkTeamCalendarTotalWorkTimeLabel', (value) => {
+    const numeric = parseNumericValue(value);
+    return Number.isFinite(numeric) ? `Total ${context.formatUtilNumber(numeric, 1)}` : '';
+  });
+  overrideBinding(context, 'formatWorkTeamCalendarWorkerCountLabel', (value) => {
+    const numeric = parseNumericValue(value);
+    return Number.isFinite(numeric) ? `Workers ${context.formatUtilNumber(numeric, 1)}` : '';
+  });
+  overrideBinding(context, 'formatWorkTeamCalendarMaterialLabel', (label, value) => {
+    const numeric = parseNumericValue(value);
+    return Number.isFinite(numeric) ? `${label} ${context.formatUtilNumber(numeric, 1)}` : '';
+  });
+  overrideBinding(context, 'formatWorkTeamCalendarEaLabel', (value) => {
+    const numeric = parseNumericValue(value);
+    return Number.isFinite(numeric) ? `EA ${context.formatUtilNumber(numeric, 0)}` : '';
+  });
+  overrideBinding(context, 'formatWorkTeamCalendarEaProductivityLabel', (value) => {
+    const numeric = parseNumericValue(value);
+    return Number.isFinite(numeric) ? `EA/P ${context.formatUtilNumber(numeric, 1)}` : '';
+  });
   overrideBinding(context, 'escapeHtml', (value) => {
     return String(value || '')
       .replaceAll('&', '&amp;')
@@ -450,15 +496,27 @@ test('work production split files expose utility, history, and draft helpers tog
   assert.equal(summary.electric.usageText, '120 kWh');
   assert.equal(summary.production.totalAmountText, '350kg');
   assert.equal(productionGroups[0].items[0].productCode, 'A-001');
+  assert.equal(productionGroups[0].items[0].regularWorkers, 2.5);
+  assert.equal(productionGroups[0].items[0].contractWorkers, 0.5);
+  assert.equal(productionGroups[0].items[0].materialStandard, 190);
+  assert.equal(productionGroups[0].items[0].materialActual, 200);
+  assert.equal(productionGroups[0].items[0].totalWorkTime, 9);
+  assert.equal(productionGroups[0].items[0].stickEa, 1200);
+  assert.equal(productionGroups[0].items[0].laborProductivityEa, 24);
   assert.equal(productionGroups[1].items[0].productionKind, 'rework');
   assert.equal(productionGroups[0].totalWorkTime, 8.5);
   assert.equal(productionGroups[0].totalOperationTime, 7.25);
   assert.match(productionHtml, /Work 8\.5/);
   assert.match(productionHtml, /Run 7\.3/);
+  assert.match(productionHtml, /Total 9\.0/);
+  assert.match(productionHtml, /Workers 3\.0/);
+  assert.match(productionHtml, /EA 1,200/);
+  assert.match(productionHtml, /EA\/P 24\.0/);
   assert.match(productionHtml, /코드 A-001/);
   assert.match(productionHtml, /\uC7AC\uAC00\uACF5\uD488/);
   assert.match(overviewProductionHtml, /Work 8\.5/);
   assert.match(overviewProductionHtml, /Run 7\.3/);
+  assert.match(overviewProductionHtml, /Total 9\.0/);
   assert.match(summary.workEntryCountText, /^1건/);
   assert.equal(summary.workCostText, '10만원');
   assert.equal(historySummary.starCount, 1);
@@ -540,6 +598,13 @@ test('work production pasted entry keeps extractor parsing and merge payload sha
             operationTime: '23',
             equipmentCapa: '51000',
             equipmentUtilization: '95%',
+            regularWorkers: '7.5',
+            contractWorkers: '1.5',
+            materialStandard: '450',
+            materialActual: '456',
+            totalWorkTime: '25',
+            stickEa: '2400',
+            laborProductivityEa: '30',
             dateObj: new Date('2026-04-03T00:00:00Z'),
             teamKey: '2팀',
             lineKey: 'S/D',
@@ -594,6 +659,13 @@ test('work production pasted entry keeps extractor parsing and merge payload sha
       operationTime: '23',
       equipmentCapa: '51000',
       equipmentUtilization: '95%',
+      regularWorkers: '7.5',
+      contractWorkers: '1.5',
+      materialStandard: '450',
+      materialActual: '456',
+      totalWorkTime: '25',
+      stickEa: '2400',
+      laborProductivityEa: '30',
       sourceFileName: '정상 붙여넣기',
       sourceFingerprint: '',
     },
@@ -636,6 +708,48 @@ test('work production paste modal Ctrl+S submits the active modal', () => {
   assert.equal(submittedModal.id, 'active-paste-modal');
 });
 
+test('work production paste modal stays open and clears text after successful import', async () => {
+  const context = createContext();
+  const control = { disabled: false };
+  const textarea = {
+    value: 'clipboard payload',
+    disabled: false,
+    focused: false,
+    focus() {
+      this.focused = true;
+    },
+  };
+  const modal = {
+    dataset: { productionKind: 'normal' },
+    querySelector(selector) {
+      return selector === '[data-work-production-paste-text]' ? textarea : null;
+    },
+    querySelectorAll(selector) {
+      return selector === '[data-work-production-paste-control]' ? [control] : [];
+    },
+  };
+  let importedText = '';
+  let closed = false;
+
+  context.document.getElementById = (id) => (id === 'work-production-paste-modal' ? modal : null);
+  overrideBinding(context, 'importWorkProductionPastedText', async (text) => {
+    importedText = text;
+    return true;
+  });
+  overrideBinding(context, 'closeWorkProductionPasteModal', () => {
+    closed = true;
+    return true;
+  });
+
+  assert.equal(await context.submitWorkProductionPasteModal(modal), true);
+  assert.equal(importedText, 'clipboard payload');
+  assert.equal(textarea.value, '');
+  assert.equal(textarea.disabled, false);
+  assert.equal(control.disabled, false);
+  assert.equal(textarea.focused, true);
+  assert.equal(closed, false);
+});
+
 test('work production draft helpers update member and title state through the shared draft store', () => {
   const context = createContext();
 
@@ -675,10 +789,10 @@ test('work production draft uses the browser adapter for storage capabilities', 
 });
 
 test('kpi html loads work production split files before team calendar bootstrap', () => {
-  const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=246');
+  const baseIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=247');
   const adapterIndex = kpiHtml.indexOf('runtime/work/KPI.work.browser-adapter.js?v=1');
   const historyIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.history.js?v=4');
-  const overviewIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.overview.js?v=2');
+  const overviewIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.overview.js?v=3');
   const draftIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.draft.js?v=1');
   const teamCalendarIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.js?v=237');
   const equipmentSummaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.team-calendar.equipment-summary.js?v=1');

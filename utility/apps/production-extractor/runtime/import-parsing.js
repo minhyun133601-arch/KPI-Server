@@ -2,12 +2,42 @@
 
 (function attachProductionExtractorImportParsing(globalScope) {
   const SUPPLEMENTAL_DEDUPE_COLS = {
+    regularWorkers: "G",
+    contractWorkers: "H",
     moistureExcludedYield: "N",
     workTime: "J",
     operationTime: "L",
     equipmentCapa: "V",
     equipmentUtilization: "W",
+    materialStandard: "X",
+    materialActual: "Y",
+    totalWorkTime: "AG",
+    stickEa: "AH",
+    laborProductivityEa: "AI",
   };
+  const SUPPLEMENTAL_DEDUPE_KEYS = Object.freeze(Object.keys(SUPPLEMENTAL_DEDUPE_COLS));
+  const SUPPLEMENTAL_PERCENT_KEYS = new Set(["moistureExcludedYield", "equipmentUtilization"]);
+  const HC_RAW_PASTE_COLS = Object.freeze({
+    rowNumber: 0,
+    date: 1,
+    team: 2,
+    line: 3,
+    productCode: 4,
+    productName: 5,
+    amount: 8,
+    regularWorkers: 10,
+    contractWorkers: 11,
+    workTime: 14,
+    operationTime: 17,
+    moistureExcludedYield: 20,
+    equipmentCapa: 31,
+    equipmentUtilization: 32,
+    materialStandard: 34,
+    materialActual: 35,
+    totalWorkTime: 53,
+    stickEa: 58,
+    laborProductivityEa: 59,
+  });
 
   function normalizeHeader(text) {
     return String(text || "")
@@ -278,13 +308,13 @@
   function buildRowDedupKey(context, row) {
     const values = Array.isArray(row?.values) ? row.values : [];
     const baseKey = values.map((value, index) => canonicalizeValueForDedup(context, value, index));
-    baseKey.push(
-      canonicalizeSupplementalMetricForDedup(context, row?.moistureExcludedYield),
-      canonicalizeAmountMetricForDedup(context, row?.workTime),
-      canonicalizeAmountMetricForDedup(context, row?.operationTime),
-      canonicalizeSupplementalMetricForDedup(context, row?.equipmentCapa),
-      canonicalizeSupplementalMetricForDedup(context, row?.equipmentUtilization),
-    );
+    for (const key of SUPPLEMENTAL_DEDUPE_KEYS) {
+      baseKey.push(
+        SUPPLEMENTAL_PERCENT_KEYS.has(key)
+          ? canonicalizeSupplementalMetricForDedup(context, row?.[key])
+          : canonicalizeAmountMetricForDedup(context, row?.[key]),
+      );
+    }
     return baseKey.join("||");
   }
 
@@ -402,6 +432,23 @@
     return normalizeValue(row[index]);
   }
 
+  function isBlankSupplementalValue(value) {
+    return value === null || value === undefined || (typeof value === "string" && value.trim() === "");
+  }
+
+  function getSupplementalRowValue(sourceRow, columnMap, key) {
+    const mappedValue = getRowValueByIndex(sourceRow, columnMap?.[key]);
+    if (!isBlankSupplementalValue(mappedValue)) return mappedValue;
+    return getRowValueByColumn(sourceRow, SUPPLEMENTAL_DEDUPE_COLS[key]);
+  }
+
+  function readSupplementalExcelValues(context, worksheet, rowNumber) {
+    return SUPPLEMENTAL_DEDUPE_KEYS.reduce((acc, key) => {
+      acc[key] = getCellDisplayValue(context, worksheet, `${SUPPLEMENTAL_DEDUPE_COLS[key]}${rowNumber}`);
+      return acc;
+    }, {});
+  }
+
   function getTargetValuesFromPastedRow(context, row) {
     return context.TARGET_COLS.map((col) => getRowValueByColumn(row, col));
   }
@@ -416,6 +463,13 @@
   function getPastedHeaderKind(value) {
     const key = normalizePastedHeaderKey(value);
     if (!key) return "";
+    if (key.includes("\uC778\uC6D0\uC815\uADDC") || key === "regularworkers" || key === "regularworker" || key.includes("regularpersonnel")) return "regularWorkers";
+    if (key.includes("\uC778\uC6D0\uC6A9\uC5ED") || key === "contractworkers" || key === "outsourcedworkers" || key.includes("contractpersonnel")) return "contractWorkers";
+    if (key.includes("\uCD1D\uC870\uC5C5\uC2DC\uAC04") || key === "totalworktime" || key === "totallaborhours") return "totalWorkTime";
+    if (key.includes("\uC6D0\uC7AC\uB8CC") && key.includes("\uD45C\uC900")) return "materialStandard";
+    if (key.includes("\uC6D0\uC7AC\uB8CC") && key.includes("\uC2E4\uC801")) return "materialActual";
+    if (key.includes("\uC2A4\uD2F1\uC785\uC218\uB7C9") || key === "stickea" || key === "stickcount") return "stickEa";
+    if ((key.includes("\uC778\uB2F9\uC0DD\uC0B0\uC131") && key.includes("ea")) || key === "laborproductivityea") return "laborProductivityEa";
     if (key.includes("생산일자") || key === "date" || key.includes("productiondate")) return "date";
     if (key.includes("라인명") || key === "라인" || key === "line" || key.includes("linename")) return "line";
     if (key === "팀" || key.endsWith("팀") || key === "team") return "team";
@@ -465,6 +519,49 @@
       return values;
     }
     return getTargetValuesFromPastedRow(context, row);
+  }
+
+  function stripHtmlText(value) {
+    return String(value ?? "")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/gi, " ")
+      .trim();
+  }
+
+  function isPositiveIntegerText(value) {
+    return /^[1-9]\d*$/.test(String(value ?? "").trim());
+  }
+
+  function isHcRawPastedDataRow(context, row) {
+    if (!Array.isArray(row) || row.length <= HC_RAW_PASTE_COLS.laborProductivityEa) return false;
+    if (!isPositiveIntegerText(getRowValueByIndex(row, HC_RAW_PASTE_COLS.rowNumber))) return false;
+    if (!parsePastedDate(context, getRowValueByIndex(row, HC_RAW_PASTE_COLS.date), null)) return false;
+    const amount = getRowValueByIndex(row, HC_RAW_PASTE_COLS.amount);
+    const productName = stripHtmlText(getRowValueByIndex(row, HC_RAW_PASTE_COLS.productName));
+    if (!productName || productName.includes("==")) return false;
+    return !isBlankSupplementalValue(amount);
+  }
+
+  function getHcRawPastedCanonicalValues(context, row) {
+    const values = new Array(context.TARGET_COLS.length).fill("");
+    values[0] = getRowValueByIndex(row, HC_RAW_PASTE_COLS.date);
+    values[context.TEAM_VALUE_INDEX] = getRowValueByIndex(row, HC_RAW_PASTE_COLS.team);
+    values[context.LINE_VALUE_INDEX] = getRowValueByIndex(row, HC_RAW_PASTE_COLS.line);
+    if (Number.isInteger(context.PRODUCT_CODE_VALUE_INDEX)) {
+      values[context.PRODUCT_CODE_VALUE_INDEX] = getRowValueByIndex(row, HC_RAW_PASTE_COLS.productCode);
+    }
+    if (Number.isInteger(context.PRODUCT_NAME_VALUE_INDEX)) {
+      values[context.PRODUCT_NAME_VALUE_INDEX] = stripHtmlText(getRowValueByIndex(row, HC_RAW_PASTE_COLS.productName));
+    }
+    values[context.PRODUCTION_VALUE_INDEX] = getRowValueByIndex(row, HC_RAW_PASTE_COLS.amount);
+    return values;
+  }
+
+  function getHcRawPastedSupplementalValues(row) {
+    return SUPPLEMENTAL_DEDUPE_KEYS.reduce((acc, key) => {
+      acc[key] = getRowValueByIndex(row, HC_RAW_PASTE_COLS[key]);
+      return acc;
+    }, {});
   }
 
   function isTemplateHeaderRow(context, fileName, sheetName, row) {
@@ -536,6 +633,10 @@
 
     const headerRowIndex = findPastedHeaderRowIndex(context, fileName, sheetName, tableRows);
     const columnMap = headerRowIndex >= 0 ? buildPastedColumnMap(tableRows[headerRowIndex]) : null;
+    const hcRawPasteMode = headerRowIndex < 0 && tableRows.some((row) => isHcRawPastedDataRow(context, row));
+    if (headerRowIndex < 0 && !hcRawPasteMode) {
+      throw new Error("\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uC0DD\uC0B0\uB7C9 \uBD99\uC5EC\uB123\uAE30 \uC591\uC2DD\uC785\uB2C8\uB2E4. \uC9C0\uC815\uB41C \uC0DD\uC0B0\uB7C9 \uC591\uC2DD \uB610\uB294 HC \uC6D0\uBCF8 \uD45C\uB9CC \uBD99\uC5EC\uB123\uC5B4 \uC8FC\uC138\uC694.");
+    }
     const headerValues = headerRowIndex >= 0
       ? getPastedCanonicalValues(context, tableRows[headerRowIndex], columnMap)
       : context.TARGET_COLS.map((col) => `${col}열`);
@@ -551,7 +652,10 @@
 
     for (let rowIndex = dataStartIndex; rowIndex < tableRows.length; rowIndex += 1) {
       const sourceRow = tableRows[rowIndex];
-      const values = getPastedCanonicalValues(context, sourceRow, columnMap);
+      if (hcRawPasteMode && !isHcRawPastedDataRow(context, sourceRow)) continue;
+      const values = hcRawPasteMode
+        ? getHcRawPastedCanonicalValues(context, sourceRow)
+        : getPastedCanonicalValues(context, sourceRow, columnMap);
       if (!hasData(values)) continue;
       if (isTemplateHeaderRow(context, fileName, sheetName, sourceRow)) continue;
 
@@ -567,16 +671,12 @@
         ? normalizeValue(values[context.PRODUCT_CODE_VALUE_INDEX])
         : "";
 
-      const moistureExcludedYield = getRowValueByIndex(sourceRow, columnMap?.moistureExcludedYield)
-        || getRowValueByColumn(sourceRow, SUPPLEMENTAL_DEDUPE_COLS.moistureExcludedYield);
-      const workTime = getRowValueByIndex(sourceRow, columnMap?.workTime)
-        || getRowValueByColumn(sourceRow, SUPPLEMENTAL_DEDUPE_COLS.workTime);
-      const operationTime = getRowValueByIndex(sourceRow, columnMap?.operationTime)
-        || getRowValueByColumn(sourceRow, SUPPLEMENTAL_DEDUPE_COLS.operationTime);
-      const equipmentCapa = getRowValueByIndex(sourceRow, columnMap?.equipmentCapa)
-        || getRowValueByColumn(sourceRow, SUPPLEMENTAL_DEDUPE_COLS.equipmentCapa);
-      const equipmentUtilization = getRowValueByIndex(sourceRow, columnMap?.equipmentUtilization)
-        || getRowValueByColumn(sourceRow, SUPPLEMENTAL_DEDUPE_COLS.equipmentUtilization);
+      const supplementalValues = hcRawPasteMode
+        ? getHcRawPastedSupplementalValues(sourceRow)
+        : SUPPLEMENTAL_DEDUPE_KEYS.reduce((acc, key) => {
+          acc[key] = getSupplementalRowValue(sourceRow, columnMap, key);
+          return acc;
+        }, {});
 
       if (dateObj) {
         if (!minDate || dateObj < minDate) minDate = dateObj;
@@ -593,11 +693,7 @@
         rowNumber: rowIndex + 1,
         values,
         productCode,
-        moistureExcludedYield,
-        workTime,
-        operationTime,
-        equipmentCapa,
-        equipmentUtilization,
+        ...supplementalValues,
         dateObj,
         teamKey: values[context.TEAM_VALUE_INDEX],
         lineKey: values[context.LINE_VALUE_INDEX],
@@ -658,31 +754,7 @@
       for (let rowNumber = context.DATA_START_ROW; rowNumber <= lastRow; rowNumber += 1) {
         const values = context.TARGET_COLS.map((col) => getCellDisplayValue(context, worksheet, `${col}${rowNumber}`));
         if (!hasData(values)) continue;
-        const moistureExcludedYield = getCellDisplayValue(
-          context,
-          worksheet,
-          `${SUPPLEMENTAL_DEDUPE_COLS.moistureExcludedYield}${rowNumber}`,
-        );
-        const workTime = getCellDisplayValue(
-          context,
-          worksheet,
-          `${SUPPLEMENTAL_DEDUPE_COLS.workTime}${rowNumber}`,
-        );
-        const operationTime = getCellDisplayValue(
-          context,
-          worksheet,
-          `${SUPPLEMENTAL_DEDUPE_COLS.operationTime}${rowNumber}`,
-        );
-        const equipmentCapa = getCellDisplayValue(
-          context,
-          worksheet,
-          `${SUPPLEMENTAL_DEDUPE_COLS.equipmentCapa}${rowNumber}`,
-        );
-        const equipmentUtilization = getCellDisplayValue(
-          context,
-          worksheet,
-          `${SUPPLEMENTAL_DEDUPE_COLS.equipmentUtilization}${rowNumber}`,
-        );
+        const supplementalValues = readSupplementalExcelValues(context, worksheet, rowNumber);
 
         const dateCell = worksheet[`A${rowNumber}`];
         const parsedDate = parseDate(context, dateCell, values[0]);
@@ -712,11 +784,7 @@
           rowNumber,
           values,
           productCode,
-          moistureExcludedYield,
-          workTime,
-          operationTime,
-          equipmentCapa,
-          equipmentUtilization,
+          ...supplementalValues,
           dateObj,
           teamKey: values[context.TEAM_VALUE_INDEX],
           lineKey: values[context.LINE_VALUE_INDEX],

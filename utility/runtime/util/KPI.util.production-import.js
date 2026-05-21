@@ -71,14 +71,16 @@
             return 'normal';
         }
 
-        function canonicalizeUtilDedupeMetric(value) {
-            const parsed = parseUtilAmount(value);
-            return Number.isFinite(parsed) ? String(parsed) : '';
+        function getUtilProductionUploadSupplementalColumn(key, fallback) {
+            const columns = typeof UTIL_PRODUCTION_UPLOAD_SUPPLEMENTAL_COLS !== 'undefined'
+                ? UTIL_PRODUCTION_UPLOAD_SUPPLEMENTAL_COLS
+                : null;
+            return String(columns?.[key] || fallback || '').trim();
         }
 
-        function canonicalizeUtilDedupePercentMetric(value) {
-            const parsed = parseUtilPercentAmount(value);
-            return Number.isFinite(parsed) ? String(parsed) : '';
+        function getUtilProductionUploadSupplementalCell(worksheet, key, rowNumber, fallbackColumn) {
+            const column = getUtilProductionUploadSupplementalColumn(key, fallbackColumn);
+            return column ? getUtilExcelCellDisplayValue(worksheet, `${column}${rowNumber}`) : '';
         }
 
         function hasUtilUploadData(values) {
@@ -145,11 +147,18 @@
                     const lineValue = normalizeUtilUploadValue(values[2]);
                     const productCode = String(normalizeUtilUploadValue(values[3]) || '').trim();
                     const productValue = normalizeUtilUploadValue(values[4]);
-                    const moistureExcludedYield = parseUtilPercentAmount(getUtilExcelCellDisplayValue(worksheet, `N${rowNumber}`));
-                    const workTime = parseUtilAmount(getUtilExcelCellDisplayValue(worksheet, `J${rowNumber}`));
-                    const operationTime = parseUtilAmount(getUtilExcelCellDisplayValue(worksheet, `L${rowNumber}`));
-                    const equipmentCapa = parseUtilAmount(getUtilExcelCellDisplayValue(worksheet, `V${rowNumber}`));
-                    const equipmentUtilization = parseUtilPercentAmount(getUtilExcelCellDisplayValue(worksheet, `W${rowNumber}`));
+                    const regularWorkers = parseUtilAmount(getUtilProductionUploadSupplementalCell(worksheet, 'regularWorkers', rowNumber, 'G'));
+                    const contractWorkers = parseUtilAmount(getUtilProductionUploadSupplementalCell(worksheet, 'contractWorkers', rowNumber, 'H'));
+                    const moistureExcludedYield = parseUtilPercentAmount(getUtilProductionUploadSupplementalCell(worksheet, 'moistureExcludedYield', rowNumber, 'N'));
+                    const workTime = parseUtilAmount(getUtilProductionUploadSupplementalCell(worksheet, 'workTime', rowNumber, 'J'));
+                    const operationTime = parseUtilAmount(getUtilProductionUploadSupplementalCell(worksheet, 'operationTime', rowNumber, 'L'));
+                    const equipmentCapa = parseUtilAmount(getUtilProductionUploadSupplementalCell(worksheet, 'equipmentCapa', rowNumber, 'V'));
+                    const equipmentUtilization = parseUtilPercentAmount(getUtilProductionUploadSupplementalCell(worksheet, 'equipmentUtilization', rowNumber, 'W'));
+                    const materialStandard = parseUtilAmount(getUtilProductionUploadSupplementalCell(worksheet, 'materialStandard', rowNumber, 'X'));
+                    const materialActual = parseUtilAmount(getUtilProductionUploadSupplementalCell(worksheet, 'materialActual', rowNumber, 'Y'));
+                    const totalWorkTime = parseUtilAmount(getUtilProductionUploadSupplementalCell(worksheet, 'totalWorkTime', rowNumber, 'AG'));
+                    const stickEa = parseUtilAmount(getUtilProductionUploadSupplementalCell(worksheet, 'stickEa', rowNumber, 'AH'));
+                    const laborProductivityEa = parseUtilAmount(getUtilProductionUploadSupplementalCell(worksheet, 'laborProductivityEa', rowNumber, 'AI'));
                     const rawLineName = String(lineValue || '').trim();
                     const productName = String(productValue || '').trim();
                     const resolvedTeam = resolveUtilUploadTeamName(teamValue, fallbackTeamName, `${rawLineName} ${productName}`, rawLineName);
@@ -162,11 +171,18 @@
                         productCode,
                         productName,
                         amount: Number.isFinite(amount) ? amount : null,
+                        regularWorkers: Number.isFinite(regularWorkers) ? regularWorkers : null,
+                        contractWorkers: Number.isFinite(contractWorkers) ? contractWorkers : null,
                         moistureExcludedYield: Number.isFinite(moistureExcludedYield) ? moistureExcludedYield : null,
                         workTime: Number.isFinite(workTime) ? workTime : null,
                         operationTime: Number.isFinite(operationTime) ? operationTime : null,
                         equipmentCapa: Number.isFinite(equipmentCapa) ? equipmentCapa : null,
                         equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null,
+                        materialStandard: Number.isFinite(materialStandard) ? materialStandard : null,
+                        materialActual: Number.isFinite(materialActual) ? materialActual : null,
+                        totalWorkTime: Number.isFinite(totalWorkTime) ? totalWorkTime : null,
+                        stickEa: Number.isFinite(stickEa) ? stickEa : null,
+                        laborProductivityEa: Number.isFinite(laborProductivityEa) ? laborProductivityEa : null,
                         sourceFileName,
                         sourceFingerprint
                     });
@@ -381,11 +397,18 @@
                 (team.entries || []).forEach(entry => {
                     const parsed = parseUtilDateKey(entry?.date);
                     const amount = parseUtilAmount(entry?.amount ?? entry?.production ?? entry?.value);
+                    const regularWorkers = parseUtilAmount(entry?.regularWorkers ?? entry?.regularWorkerCount ?? entry?.regular_workers);
+                    const contractWorkers = parseUtilAmount(entry?.contractWorkers ?? entry?.contractWorkerCount ?? entry?.contract_workers ?? entry?.outsourcedWorkers);
                     const moistureExcludedYield = parseUtilPercentAmount(entry?.moistureExcludedYield ?? entry?.moistureFreeYield ?? entry?.yieldExcludingMoisture ?? entry?.yieldRate);
                     const workTime = parseUtilAmount(entry?.workTime ?? entry?.inputTime ?? entry?.feedTime ?? entry?.loadingTime ?? entry?.injectionTime);
                     const operationTime = parseUtilAmount(entry?.operationTime ?? entry?.operatingTime ?? entry?.runtime ?? entry?.runTime ?? entry?.operationHours);
                     const equipmentCapa = parseUtilAmount(entry?.equipmentCapa ?? entry?.capa ?? entry?.equipmentCapacity);
                     const equipmentUtilization = parseUtilPercentAmount(entry?.equipmentUtilization ?? entry?.operationRate ?? entry?.equipmentRate ?? entry?.utilizationRate);
+                    const materialStandard = parseUtilAmount(entry?.materialStandard ?? entry?.material_standard ?? entry?.rawMaterialStandard);
+                    const materialActual = parseUtilAmount(entry?.materialActual ?? entry?.material_actual ?? entry?.rawMaterialActual);
+                    const totalWorkTime = parseUtilAmount(entry?.totalWorkTime ?? entry?.total_work_time ?? entry?.totalLaborHours);
+                    const stickEa = parseUtilAmount(entry?.stickEa ?? entry?.stickEA ?? entry?.stick_ea);
+                    const laborProductivityEa = parseUtilAmount(entry?.laborProductivityEa ?? entry?.laborProductivityEA ?? entry?.labor_productivity_ea);
                     const hasMetricValue = Number.isFinite(amount);
                     if (!parsed || !hasMetricValue) return;
                     const lineName = String(entry?.lineName ?? entry?.line ?? entry?.lineNm ?? '').trim();
@@ -401,11 +424,18 @@
                         productCode,
                         productName,
                         amount,
+                        regularWorkers: Number.isFinite(regularWorkers) ? regularWorkers : null,
+                        contractWorkers: Number.isFinite(contractWorkers) ? contractWorkers : null,
                         moistureExcludedYield: Number.isFinite(moistureExcludedYield) ? moistureExcludedYield : null,
                         workTime: Number.isFinite(workTime) ? workTime : null,
                         operationTime: Number.isFinite(operationTime) ? operationTime : null,
                         equipmentCapa: Number.isFinite(equipmentCapa) ? equipmentCapa : null,
-                        equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null
+                        equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null,
+                        materialStandard: Number.isFinite(materialStandard) ? materialStandard : null,
+                        materialActual: Number.isFinite(materialActual) ? materialActual : null,
+                        totalWorkTime: Number.isFinite(totalWorkTime) ? totalWorkTime : null,
+                        stickEa: Number.isFinite(stickEa) ? stickEa : null,
+                        laborProductivityEa: Number.isFinite(laborProductivityEa) ? laborProductivityEa : null
                     });
                     if (!dedupeKey || dedupe.has(dedupeKey)) return;
                     dedupe.add(dedupeKey);
@@ -413,11 +443,18 @@
                         time: parsed.date.getTime(),
                         dateLabel: `${parsed.year}-${String(parsed.month).padStart(2, '0')}-${String(parsed.day).padStart(2, '0')}`,
                         amount: Number.isFinite(amount) ? amount : null,
+                        regularWorkers: Number.isFinite(regularWorkers) ? regularWorkers : null,
+                        contractWorkers: Number.isFinite(contractWorkers) ? contractWorkers : null,
                         moistureExcludedYield: Number.isFinite(moistureExcludedYield) ? moistureExcludedYield : null,
                         workTime: Number.isFinite(workTime) ? workTime : null,
                         operationTime: Number.isFinite(operationTime) ? operationTime : null,
                         equipmentCapa: Number.isFinite(equipmentCapa) ? equipmentCapa : null,
                         equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null,
+                        materialStandard: Number.isFinite(materialStandard) ? materialStandard : null,
+                        materialActual: Number.isFinite(materialActual) ? materialActual : null,
+                        totalWorkTime: Number.isFinite(totalWorkTime) ? totalWorkTime : null,
+                        stickEa: Number.isFinite(stickEa) ? stickEa : null,
+                        laborProductivityEa: Number.isFinite(laborProductivityEa) ? laborProductivityEa : null,
                         lineName,
                         productionKind,
                         productCode,
@@ -481,7 +518,7 @@
             selectedTeam: ''
         };
 
-        function persistUtilProductionDailyState() {
+        function persistUtilProductionDailyState(options = {}) {
             const serverRuntime = getUtilProductionImportServerRuntime();
             if (!serverRuntime || typeof serverRuntime.queueUtilProductionDailyServerWrite !== 'function') {
                 return false;
@@ -513,7 +550,14 @@
             UTIL_PRODUCTION_ARCHIVE_META.push(...normalizedArchives);
             UTIL_PRODUCTION_DAILY_STATE.archives = UTIL_PRODUCTION_ARCHIVE_META;
             utilProductionImportBrowser?.writePortalRecord?.('util_production_daily', UTIL_PRODUCTION_DAILY_STATE);
-            return utilProductionImportBrowser?.queueUtilProductionDailyServerWrite?.(UTIL_PRODUCTION_DAILY_STATE) || false;
+            const writeOptions = {};
+            if (Array.isArray(options.deleteDedupeKeys)) {
+                writeOptions.deleteDedupeKeys = options.deleteDedupeKeys;
+            }
+            if (Array.isArray(options.upsertDedupeKeys)) {
+                writeOptions.upsertDedupeKeys = options.upsertDedupeKeys;
+            }
+            return utilProductionImportBrowser?.queueUtilProductionDailyServerWrite?.(UTIL_PRODUCTION_DAILY_STATE, writeOptions) || false;
         }
 
         function refreshUtilProductionDailyIndex() {
@@ -566,15 +610,9 @@
 
         function buildUtilProductionDailyEntryKey(entry) {
             const parsedDate = parseUtilDateKey(entry?.date);
-            const amount = canonicalizeUtilDedupeMetric(entry?.amount ?? entry?.production ?? entry?.value);
-            const moistureExcludedYield = canonicalizeUtilDedupePercentMetric(entry?.moistureExcludedYield ?? entry?.moistureFreeYield ?? entry?.yieldExcludingMoisture ?? entry?.yieldRate);
-            const workTime = canonicalizeUtilDedupeMetric(entry?.workTime ?? entry?.inputTime ?? entry?.feedTime ?? entry?.loadingTime ?? entry?.injectionTime);
-            const operationTime = canonicalizeUtilDedupeMetric(entry?.operationTime ?? entry?.operatingTime ?? entry?.runtime ?? entry?.runTime ?? entry?.operationHours);
-            const equipmentCapa = canonicalizeUtilDedupeMetric(entry?.equipmentCapa ?? entry?.capa ?? entry?.equipmentCapacity);
-            const equipmentUtilization = canonicalizeUtilDedupePercentMetric(entry?.equipmentUtilization ?? entry?.operationRate ?? entry?.equipmentRate ?? entry?.utilizationRate);
+            const amount = parseUtilAmount(entry?.amount ?? entry?.production ?? entry?.value);
             const teamKey = normalizeUtilTeamName(entry?.team ?? entry?.teamName ?? '').toLowerCase();
-            const hasMetricValue = amount !== '';
-            if (!parsedDate || !hasMetricValue || !teamKey) return '';
+            if (!parsedDate || !Number.isFinite(amount) || !teamKey) return '';
             const lineName = normalizeUtilDedupeText(entry?.lineName ?? entry?.line ?? entry?.lineNm ?? '');
             const productionKind = normalizeUtilProductionKind(entry?.productionKind ?? entry?.production_kind ?? entry?.kind);
             const productCode = normalizeUtilDedupeText(entry?.productCode ?? entry?.itemCode ?? entry?.code ?? '');
@@ -585,13 +623,7 @@
                 teamKey,
                 lineName,
                 productCode,
-                productName,
-                amount,
-                moistureExcludedYield,
-                workTime,
-                operationTime,
-                equipmentCapa,
-                equipmentUtilization
+                productName
             ].join('|');
         }
 
@@ -602,18 +634,17 @@
             (UTIL_PRODUCTION_DAILY_DATA || []).forEach(teamRecord => {
                 const fallbackTeam = String(teamRecord?.name || '').trim();
                 (Array.isArray(teamRecord?.entries) ? teamRecord.entries : []).forEach(entry => {
-                    const entryKey = String(entry?.entryKey || '').trim() || buildUtilProductionDailyEntryKey({
+                    const entryWithTeam = {
                         ...entry,
                         team: entry?.team ?? entry?.teamName ?? fallbackTeam
-                    });
-                    if (entryKey && keySet.has(entryKey)) {
+                    };
+                    const storedEntryKey = String(entry?.entryKey || '').trim();
+                    const computedEntryKey = buildUtilProductionDailyEntryKey(entryWithTeam);
+                    if ((storedEntryKey && keySet.has(storedEntryKey)) || (computedEntryKey && keySet.has(computedEntryKey))) {
                         removedCount += 1;
                         return;
                     }
-                    nextEntries.push({
-                        ...entry,
-                        team: entry?.team ?? entry?.teamName ?? fallbackTeam
-                    });
+                    nextEntries.push(entryWithTeam);
                 });
             });
             if (removedCount <= 0) return 0;
@@ -624,7 +655,10 @@
                 targetTeam.entries.push(entry);
             });
             refreshUtilProductionDailyIndex();
-            Promise.resolve(persistUtilProductionDailyState())
+            Promise.resolve(persistUtilProductionDailyState({
+                deleteDedupeKeys: Array.from(keySet),
+                upsertDedupeKeys: []
+            }))
                 .then(() => refreshUtilProductionLinkedDatasets())
                 .catch(error => {
                     console.warn('util production delete save failed', error);
@@ -643,17 +677,28 @@
             let replacedCount = 0;
             const addedTeamSet = new Set();
             const pendingEntryMap = new Map();
+            const existingDedupeKeySet = new Set();
+            const countedAddedKeySet = new Set();
+            const countedReplacedKeySet = new Set();
+            const touchedDedupeKeySet = new Set();
             const incomingEntries = [];
 
             (rows || []).forEach(row => {
                 const rawDate = row?.date ?? row?.values?.[0] ?? '';
                 const parsedDate = parseUtilDateKey(rawDate);
                 const amount = parseUtilAmount(row?.amount ?? row?.production ?? row?.value ?? row?.values?.[5]);
+                const regularWorkers = parseUtilAmount(row?.regularWorkers ?? row?.regularWorkerCount ?? row?.regular_workers);
+                const contractWorkers = parseUtilAmount(row?.contractWorkers ?? row?.contractWorkerCount ?? row?.contract_workers ?? row?.outsourcedWorkers);
                 const moistureExcludedYield = parseUtilPercentAmount(row?.moistureExcludedYield ?? row?.moistureFreeYield ?? row?.yieldExcludingMoisture ?? row?.yieldRate);
                 const workTime = parseUtilAmount(row?.workTime ?? row?.inputTime ?? row?.feedTime ?? row?.loadingTime ?? row?.injectionTime);
                 const operationTime = parseUtilAmount(row?.operationTime ?? row?.operatingTime ?? row?.runtime ?? row?.runTime ?? row?.operationHours);
                 const equipmentCapa = parseUtilAmount(row?.equipmentCapa ?? row?.capa ?? row?.equipmentCapacity);
                 const equipmentUtilization = parseUtilPercentAmount(row?.equipmentUtilization ?? row?.operationRate ?? row?.equipmentRate ?? row?.utilizationRate);
+                const materialStandard = parseUtilAmount(row?.materialStandard ?? row?.material_standard ?? row?.rawMaterialStandard);
+                const materialActual = parseUtilAmount(row?.materialActual ?? row?.material_actual ?? row?.rawMaterialActual);
+                const totalWorkTime = parseUtilAmount(row?.totalWorkTime ?? row?.total_work_time ?? row?.totalLaborHours);
+                const stickEa = parseUtilAmount(row?.stickEa ?? row?.stickEA ?? row?.stick_ea);
+                const laborProductivityEa = parseUtilAmount(row?.laborProductivityEa ?? row?.laborProductivityEA ?? row?.labor_productivity_ea);
                 const rawLineName = String(row?.lineName ?? row?.line ?? row?.values?.[2] ?? '').trim();
                 const productCode = String(row?.productCode ?? row?.itemCode ?? row?.code ?? row?.values?.[3] ?? '').trim();
                 const productName = String(row?.productName ?? row?.product ?? row?.itemName ?? row?.values?.[4] ?? '').trim();
@@ -669,11 +714,18 @@
                 const entry = {
                     date: formatUtilDailyDateKey(parsedDate),
                     amount: Number.isFinite(amount) ? amount : null,
+                    regularWorkers: Number.isFinite(regularWorkers) ? regularWorkers : null,
+                    contractWorkers: Number.isFinite(contractWorkers) ? contractWorkers : null,
                     moistureExcludedYield: Number.isFinite(moistureExcludedYield) ? moistureExcludedYield : null,
                     workTime: Number.isFinite(workTime) ? workTime : null,
                     operationTime: Number.isFinite(operationTime) ? operationTime : null,
                     equipmentCapa: Number.isFinite(equipmentCapa) ? equipmentCapa : null,
                     equipmentUtilization: Number.isFinite(equipmentUtilization) ? equipmentUtilization : null,
+                    materialStandard: Number.isFinite(materialStandard) ? materialStandard : null,
+                    materialActual: Number.isFinite(materialActual) ? materialActual : null,
+                    totalWorkTime: Number.isFinite(totalWorkTime) ? totalWorkTime : null,
+                    stickEa: Number.isFinite(stickEa) ? stickEa : null,
+                    laborProductivityEa: Number.isFinite(laborProductivityEa) ? laborProductivityEa : null,
                     lineName,
                     productionKind,
                     productCode,
@@ -706,20 +758,28 @@
                         team: teamName
                     };
                     const dedupeKey = buildUtilProductionDailyEntryKey(normalizedEntry);
-                    if (!dedupeKey || pendingEntryMap.has(dedupeKey)) return;
+                    if (!dedupeKey) return;
+                    existingDedupeKeySet.add(dedupeKey);
                     pendingEntryMap.set(dedupeKey, normalizedEntry);
                 });
             });
 
             incomingEntries.forEach(({ entry, dedupeKey }) => {
-                if (pendingEntryMap.has(dedupeKey)) {
+                touchedDedupeKeySet.add(dedupeKey);
+                if (existingDedupeKeySet.has(dedupeKey)) {
                     pendingEntryMap.set(dedupeKey, entry);
-                    replacedCount += 1;
+                    if (!countedReplacedKeySet.has(dedupeKey)) {
+                        replacedCount += 1;
+                        countedReplacedKeySet.add(dedupeKey);
+                    }
                     return;
                 }
                 pendingEntryMap.set(dedupeKey, entry);
-                addedTeamSet.add(entry.team);
-                addedCount += 1;
+                if (!countedAddedKeySet.has(dedupeKey)) {
+                    addedTeamSet.add(entry.team);
+                    addedCount += 1;
+                    countedAddedKeySet.add(dedupeKey);
+                }
             });
             const nextEntries = Array.from(pendingEntryMap.values());
             let savePromise = Promise.resolve(true);
@@ -731,7 +791,9 @@
                     targetTeam.entries.push(entry);
                 });
                 refreshUtilProductionDailyIndex();
-                savePromise = Promise.resolve(persistUtilProductionDailyState());
+                savePromise = Promise.resolve(persistUtilProductionDailyState({
+                    upsertDedupeKeys: Array.from(touchedDedupeKeySet)
+                }));
                 savePromise = savePromise.then(() => refreshUtilProductionLinkedDatasets());
                 if (typeof refreshUtilProductionArchiveCountBadges === 'function') {
                     refreshUtilProductionArchiveCountBadges();

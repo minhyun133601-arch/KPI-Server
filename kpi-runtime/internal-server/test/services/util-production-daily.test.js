@@ -54,7 +54,7 @@ test('normalizeStateSnapshot clamps period and dedupes entries', () => {
   assert.equal(snapshot.archives[0].folderName, 'default');
 });
 
-test('normalizeStateSnapshot keeps same production rows when supplemental metrics differ', () => {
+test('normalizeStateSnapshot overwrites same production row when supplemental metrics differ', () => {
   const snapshot = normalizeStateSnapshot({
     teams: [
       {
@@ -114,7 +114,10 @@ test('normalizeStateSnapshot keeps same production rows when supplemental metric
     ],
   });
 
-  assert.equal(snapshot.entries.length, 5);
+  assert.equal(snapshot.entries.length, 1);
+  assert.equal(snapshot.entries[0].operationTime, 4.5);
+  assert.equal(snapshot.entries[0].workTime, null);
+  assert.equal(snapshot.entries[0].moistureExcludedYield, null);
 });
 
 test('buildStatePayload groups rows by team and derives archive summary', () => {
@@ -138,6 +141,13 @@ test('buildStatePayload groups rows by team and derives archive summary', () => 
         operation_time: '4.5',
         equipment_capa: '15',
         equipment_utilization: '66.7',
+        regular_workers: '2.5',
+        contract_workers: '0.5',
+        material_standard: '12.1',
+        material_actual: '12.4',
+        total_work_time: '8',
+        stick_ea: '1200',
+        labor_productivity_ea: '15.5',
         source_archive_id: 'archive-a',
         source_fingerprint: 'archive-a-fingerprint',
         source_file_name: 'daily-a.xlsx',
@@ -182,6 +192,13 @@ test('buildStatePayload groups rows by team and derives archive summary', () => 
   assert.equal(payload.teams[0].entries[0].productCode, 'P-A');
   assert.equal(payload.teams[0].entries[0].workTime, 6);
   assert.equal(payload.teams[0].entries[0].operationTime, 4.5);
+  assert.equal(payload.teams[0].entries[0].regularWorkers, 2.5);
+  assert.equal(payload.teams[0].entries[0].contractWorkers, 0.5);
+  assert.equal(payload.teams[0].entries[0].materialStandard, 12.1);
+  assert.equal(payload.teams[0].entries[0].materialActual, 12.4);
+  assert.equal(payload.teams[0].entries[0].totalWorkTime, 8);
+  assert.equal(payload.teams[0].entries[0].stickEa, 1200);
+  assert.equal(payload.teams[0].entries[0].laborProductivityEa, 15.5);
   assert.deepEqual(payload.teams.map((team) => team.name), ['A조', 'B조']);
   assert.equal(payload.archives.length, 1);
   assert.deepEqual(payload.archives[0].teams, ['A조', 'B조']);
@@ -223,7 +240,6 @@ test('buildStatePayload sorts grouped entries by date line product and amount', 
     payload.teams[0].entries.map((entry) => `${entry.date}/${entry.lineName}/${entry.productName}/${entry.productCode}/${entry.amount}`),
     [
       '2026-04-01/1호기/A/A/1',
-      '2026-04-01/1호기/A/A/2',
       '2026-04-01/1호기/A/B/2',
       '2026-04-01/1호기/C//2',
       '2026-04-01/2호기/B//2',

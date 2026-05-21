@@ -481,6 +481,10 @@
         .work-team-calendar-production-meta { font-size: 0.69rem; color: #64748b; }
         .work-team-calendar-production-stat-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
         .work-team-calendar-production-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 999px; border: 1px solid #dbeafe; background: #f8fbff; color: #1e40af; font-size: 0.66rem; font-weight: 900; white-space: nowrap; }
+        .work-team-calendar-production-details { margin-top: 2px; font-size: 0.66rem; color: #64748b; }
+        .work-team-calendar-production-details summary { width: fit-content; cursor: pointer; font-weight: 900; color: #475569; }
+        .work-team-calendar-production-detail-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 3px; }
+        .work-team-calendar-production-detail-row span { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 999px; background: #f8fafc; border: 1px solid #e2e8f0; }
         .work-team-calendar-production-amount { flex: 0 0 auto; font-size: 0.73rem; font-weight: 900; color: var(--team-accent, #2563eb); white-space: nowrap; }
         .work-team-calendar-production-empty { font-size: 0.74rem; color: #94a3b8; }
         .work-team-calendar-production-empty.is-offday { display: inline-flex; align-items: center; gap: 8px; padding: 12px 14px; border-radius: 14px; border: 1px dashed #fdba74; background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%); color: #c2410c; font-weight: 900; }
