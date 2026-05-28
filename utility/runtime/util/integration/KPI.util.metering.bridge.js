@@ -25,12 +25,6 @@
         return requestId === integratedMeteringState.requestId;
     }
 
-    function isIntegratedMeteringHostConnected(host) {
-        if (!host) return false;
-        if (typeof host.isConnected === 'boolean') return host.isConnected;
-        return document.contains(host);
-    }
-
     function resolveIntegratedMeteringAssetBaseUrl() {
         const currentScript = document.currentScript;
         if (currentScript && currentScript.src) {
@@ -218,19 +212,6 @@
         return true;
     }
 
-    function buildIntegratedMeteringMountOptions() {
-        return {
-            assetBaseUrl: getIntegratedMeteringAssetPath(''),
-            embeddedStylesUrl: getIntegratedMeteringAssetPath('embedded.css', { cacheBust: true }),
-            popupStylesUrl: getIntegratedMeteringAssetPath('styles.css', { cacheBust: true }),
-            templateHtml: getIntegratedMeteringTemplateHtml()
-        };
-    }
-
-    async function mountIntegratedMeteringApp(app, host) {
-        await app.mount(host, buildIntegratedMeteringMountOptions());
-    }
-
     async function applyIntegratedMeteringServerRuntime() {
         const config = getIntegratedMeteringServerRuntimeConfig();
         if (!config.enabled || !isIntegratedMeteringHttpContext()) {
@@ -367,46 +348,9 @@
         });
     }
 
-    async function initIntegratedMetering(container) {
-        const requestId = issueIntegratedMeteringRequestId();
-        return queueIntegratedMeteringOperation(async () => {
-            const host = container?.querySelector?.('[data-kpi-metering-root]');
-            if (!host || !isIntegratedMeteringHostConnected(host) || !isIntegratedMeteringRequestActive(requestId)) {
-                return false;
-            }
-
-            host.innerHTML = '<div class="work-metering-loading">검침 화면을 불러오는 중입니다.</div>';
-
-            try {
-                const app = await ensureIntegratedMeteringRuntime();
-                if (!isIntegratedMeteringRequestActive(requestId) || !isIntegratedMeteringHostConnected(host)) {
-                    return false;
-                }
-                await mountIntegratedMeteringApp(app, host);
-                if (!isIntegratedMeteringRequestActive(requestId) || !isIntegratedMeteringHostConnected(host)) {
-                    try {
-                        await unmountIntegratedMeteringApp(app, { clearHost: true });
-                    } catch (error) {
-                        console.error('Failed to rollback stale integrated metering mount.', error);
-                    }
-                    return false;
-                }
-                return true;
-            } catch (error) {
-                if (!isIntegratedMeteringRequestActive(requestId) || !isIntegratedMeteringHostConnected(host)) {
-                    return false;
-                }
-                console.error('Integrated metering runtime failed to initialize.', error);
-                host.innerHTML = '<div class="work-metering-error">검침 화면을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.</div>';
-                return false;
-            }
-        });
-    }
-
     setIntegratedMeteringGlobal('KpiMeteringBridge', Object.freeze({
         getIntegratedMeteringAssetPath,
         ensureIntegratedMeteringRuntime,
-        destroyIntegratedMeteringMount,
-        initIntegratedMetering
+        destroyIntegratedMeteringMount
     }));
 })();

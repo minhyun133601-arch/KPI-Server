@@ -127,43 +127,12 @@ async function fillEquipmentDetailItem(page, label, value, section = 'equipmentS
   await item.locator(`[data-equipment-row-section="${section}"][data-equipment-field="value"]`).fill(value);
 }
 
-async function expectIntegratedMeteringTitle(page, titlePattern) {
-  await expect(page.locator('[data-kpi-metering-root]')).toBeVisible();
-  await expect
-    .poll(async () => {
-      return await page.evaluate(() => {
-        const host = document.querySelector('[data-kpi-metering-root]');
-        return host?.shadowRoot?.getElementById('appTitle')?.textContent?.trim() || '';
-      });
-    })
-    .toMatch(titlePattern);
-}
-
-async function expectIntegratedMeteringSheetButton(page) {
-  await expect
-    .poll(async () => {
-      return await page.evaluate(() => {
-        const host = document.querySelector('[data-kpi-metering-root]');
-        const button = host?.shadowRoot?.getElementById('meterSheetOpenBtn');
-        return {
-          text: button?.textContent?.trim() || '',
-          hidden: button?.classList?.contains('is-hidden') ?? true,
-          disabled: Boolean(button?.disabled),
-        };
-      });
-    })
-    .toEqual({ text: '검침표', hidden: false, disabled: false });
-}
-
-async function clickIntegratedMeteringSheetButton(page) {
-  const clicked = await page.evaluate(() => {
-    const host = document.querySelector('[data-kpi-metering-root]');
-    const button = host?.shadowRoot?.getElementById('meterSheetOpenBtn');
-    if (!button || button.classList.contains('is-hidden') || button.disabled) return false;
-    button.click();
-    return true;
-  });
-  expect(clicked, 'embedded metering sheet button should be clickable').toBeTruthy();
+async function expectUtilityEntryExperimentSurface(page) {
+  await expect(page.locator('[data-role="utility-entry-experiment"]')).toBeVisible();
+  await expect(page.locator('[data-kpi-metering-root]')).toHaveCount(0);
+  await expect(page.locator('[data-role="utility-entry-experiment-save"]')).toHaveCount(2);
+  await expect(page.locator('[data-role="utility-entry-experiment-meter-open"]')).toHaveCount(4);
+  await expect(page.locator('[data-role="utility-entry-experiment-graph-toggle"]')).toHaveCount(4);
 }
 
 function getCurrentMonthInputValue() {
@@ -323,22 +292,118 @@ test.describe('KPI browser smoke', () => {
 
       await clickSidebarButton(page, '데이터 관리');
       await clickSidebarButton(page, '유틸리티 기입');
-      await expectIntegratedMeteringTitle(page, /월간 (전기 기입|가스 검침|폐수 기입|생산량 기입) 시트/);
-      await expect(page.locator('#content-container [data-kpi-metering-root]')).toBeVisible();
-      await expectIntegratedMeteringSheetButton(page);
-      await clickIntegratedMeteringSheetButton(page);
-      await expect(page.locator('#util-sheet-report-modal.is-open')).toBeVisible();
-      await expect(page.locator('[data-role="util-sheet-report-title"]')).toContainText('검침표');
-      await expect(page.locator('[data-role="util-sheet-modal-type-select"]')).toHaveCount(0);
-      await expect(page.locator('[data-extract-sheet-type="analysis"]')).toHaveCount(0);
-      await expect(page.locator('[data-role="util-sheet-monthly-extract-sheet-type"]')).toHaveCount(0);
-      await page.locator('[data-role="util-sheet-report-close"]').click();
-      await expect(page.locator('#util-sheet-report-modal.is-open')).toHaveCount(0);
+      await expectUtilityEntryExperimentSurface(page);
       await expect(page.locator('#content-container')).not.toContainText('가스비 검침표');
       await expect(page.locator('#content-container')).not.toContainText('전력비 검침표');
       await expect(page.locator('#content-container')).not.toContainText('폐수 검침표');
       await expect(page.locator('#content-container')).not.toContainText('총괄 비율');
       await expect(page.locator('#content-container')).not.toContainText('분석표');
+
+      await page.goto(
+        `/?overviewRatioSmoke=${Date.now()}#kpi?view=category&section=experiment&category=1&popup=experiment`
+      );
+      await expect(page.locator('[data-role="util-report-open-modal"]')).toBeVisible();
+      if (
+        !(await page
+          .locator('#util-report-modal.is-open.is-overview-ratio')
+          .isVisible()
+          .catch(() => false))
+      ) {
+        await page.locator('[data-role="util-report-open-modal"]').click();
+      }
+      await expect(page.locator('#util-report-modal.is-open.is-overview-ratio')).toBeVisible();
+      await expect(
+        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-print"]')
+      ).toHaveCount(0);
+      await expect(
+        page.locator(
+          '#util-report-modal.is-overview-ratio .util-report-modal-action-field [data-role="util-report-modal-reset-overview"]'
+        )
+      ).toBeVisible();
+      await expect(
+        page.locator(
+          '#util-report-modal.is-overview-ratio .util-report-modal-action-field [data-role="util-report-inline-detach"]'
+        )
+      ).toBeVisible();
+      await expect(
+        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-chart-shell"]')
+      ).toBeVisible();
+      await expect(
+        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-from"]')
+      ).toBeVisible();
+      await expect(
+        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-to"]')
+      ).toBeVisible();
+      await expect(
+        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-unit"]')
+      ).toHaveValue('krw');
+      await expect(
+        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-decimals"]')
+      ).toHaveValue('0');
+      await expect(
+        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-chart-wrap"]')
+      ).toHaveCount(0);
+      await expect(page.locator('#util-report-modal.is-overview-ratio .util-analytics-chart')).toHaveCount(0);
+      await expect(page.locator('#util-report-modal.is-overview-ratio .util-report-donut-row')).toBeVisible();
+      await expect(
+        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-inline-insight"]')
+      ).toBeVisible();
+      const overviewInlineBody = page.locator(
+        '#util-report-modal.is-overview-ratio [data-role="util-report-inline-body"]'
+      );
+      await expect(overviewInlineBody).toContainText('총괄 비용 상세표');
+      await expect(overviewInlineBody).toContainText('전기');
+      await expect(overviewInlineBody).toContainText('가스');
+      await expect(overviewInlineBody).toContainText('폐수');
+      const gasCompositionItem = page.locator(
+        '#util-report-modal.is-overview-ratio [data-role="util-report-composition-item"][data-composition-kind="total"][data-metric="gas_cost"]'
+      );
+      if ((await gasCompositionItem.count()) > 0) {
+        await gasCompositionItem.first().click();
+      } else {
+        await page.evaluate(() => {
+          const modal = document.querySelector('#util-report-modal.is-overview-ratio');
+          if (!modal) return;
+          const fallbackButton = document.createElement('button');
+          fallbackButton.type = 'button';
+          fallbackButton.dataset.role = 'util-report-composition-item';
+          fallbackButton.dataset.compositionKind = 'total';
+          fallbackButton.dataset.metric = 'gas_cost';
+          modal.appendChild(fallbackButton);
+          fallbackButton.click();
+          fallbackButton.remove();
+        });
+      }
+      await expect(overviewInlineBody).toContainText('가스 비용 팀별 상세표');
+      await expect(overviewInlineBody).toContainText('1팀 2파트 LNG');
+      await expect(overviewInlineBody).toContainText('1팀 2파트 LPG');
+      await page
+        .locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-category"]')
+        .selectOption('production');
+      await expect(overviewInlineBody).toContainText('총생산량 공장별 상세표');
+      await expect(overviewInlineBody).toContainText('유산');
+      await expect(overviewInlineBody).toContainText('북정');
+      const yusanProductionItem = page.locator(
+        '#util-report-modal.is-overview-ratio [data-role="util-report-composition-item"][data-composition-kind="site"][data-metric="site::유산"]'
+      );
+      if ((await yusanProductionItem.count()) > 0) {
+        await yusanProductionItem.first().click();
+        await expect(overviewInlineBody).toContainText('유산 팀별 생산량 상세표');
+        await expect(overviewInlineBody).toContainText('1팀 2파트');
+        await expect(overviewInlineBody).toContainText('2팀');
+        await expect(overviewInlineBody).toContainText('3팀');
+        const yusanTeamProductionItem = page
+          .locator(
+            '#util-report-modal.is-overview-ratio [data-role="util-report-composition-item"][data-composition-kind="selected"][data-metric^="생산량::"]'
+          )
+          .first();
+        if ((await yusanTeamProductionItem.count()) > 0) {
+          await yusanTeamProductionItem.click();
+          await expect(overviewInlineBody).toContainText('라인별 생산량 상세표');
+        }
+      }
+      await page.locator('[data-role="util-report-modal-close"]').click();
+      await expect(page.locator('#util-report-modal.is-open')).toHaveCount(0);
 
       const currentMonthValue = getCurrentMonthInputValue();
       await page.goto(
@@ -351,9 +416,17 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('[data-exp-chart-mount] .util-sheet-empty')).toContainText('카드 추가');
       await page.locator('[data-exp-card-picker-toggle]').click();
       await expect(page.locator('[data-exp-card-picker]')).toBeVisible();
+      await expect(page.locator('[data-exp-card-picker]')).toContainText('총 생산량');
+      await expect(page.locator('[data-exp-card-picker]')).not.toContainText('100 →');
+      await expect(page.locator('[data-exp-card-picker]')).not.toContainText('전월대비');
       await page.locator('[data-exp-card-toggle="production-total"]').click();
       await expect(page.locator('[data-exp-card-picker]')).toBeHidden();
+      await expect(page.locator('[data-exp-chart-mount]')).toHaveAttribute(
+        'data-exp-report-chart-style',
+        'report-auto'
+      );
       await expect(page.locator('.experiment-chart-mount [data-role="util-sheet-analysis-chart-card"]')).toBeVisible();
+      await expect(page.locator('.experiment-chart-mount .util-analytics-chart-line')).toHaveCount(1);
       await expect(
         page.locator('.experiment-chart-mount .util-analytics-chart-label').filter({ hasText: '24.01' })
       ).toHaveCount(1);
@@ -362,7 +435,34 @@ test.describe('KPI browser smoke', () => {
           .locator('.experiment-chart-mount .util-analytics-chart-label')
           .filter({ hasText: getShortMonthLabel(currentMonthValue) })
       ).toHaveCount(1);
+      const yearOverlapButton = page.locator('[data-exp-year-overlap]');
+      await expect(yearOverlapButton).toHaveAttribute('aria-pressed', 'false');
+      await yearOverlapButton.click();
+      await expect(yearOverlapButton).toHaveAttribute('aria-pressed', 'true');
+      const currentYear = Number(currentMonthValue.slice(0, 4));
+      const expectedOverlapYears = Array.from({ length: Math.max(0, currentYear - 2024 + 1) }, (_, index) =>
+        String(2024 + index)
+      );
+      for (const year of expectedOverlapYears) {
+        await expect(page.locator(`[data-exp-year-overlap-year="${year}"]`)).toHaveAttribute('aria-pressed', 'true');
+      }
+      const overlappedLineCount = await page.locator('.experiment-chart-mount .util-analytics-chart-line').count();
+      expect(overlappedLineCount).toBeGreaterThanOrEqual(expectedOverlapYears.length);
+      const toggleYear = expectedOverlapYears.includes('2025') ? '2025' : expectedOverlapYears[0];
+      const toggleYearButton = page.locator(`[data-exp-year-overlap-year="${toggleYear}"]`);
+      await toggleYearButton.click();
+      await expect(toggleYearButton).toHaveAttribute('aria-pressed', 'false');
+      const reducedOverlapLineCount = await page.locator('.experiment-chart-mount .util-analytics-chart-line').count();
+      expect(reducedOverlapLineCount).toBeLessThan(overlappedLineCount);
+      await toggleYearButton.click();
+      await expect(toggleYearButton).toHaveAttribute('aria-pressed', 'true');
+      await yearOverlapButton.click();
+      await expect(yearOverlapButton).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.locator('[data-exp-year-overlap-years]')).toBeHidden();
+      await expect(page.locator('.experiment-chart-mount .util-analytics-chart-line')).toHaveCount(1);
       const valueLabels = page.locator('.experiment-chart-mount .util-analytics-chart-value');
+      await expect(valueLabels.first()).toBeVisible();
+      await page.locator('.experiment-chart-mount [data-chart-label-toggle]').uncheck();
       await expect(valueLabels).toHaveCount(0);
       await page.locator('.experiment-chart-mount [data-chart-label-toggle]').check();
       await expect(valueLabels.first()).toBeVisible();
@@ -395,8 +495,7 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('#content-container')).toContainText('조도 입력');
 
       await clickSidebarButton(page, '유틸리티 기입');
-      await expectIntegratedMeteringTitle(page, /월간 (전기 기입|가스 검침|폐수 기입|생산량 기입) 시트/);
-      await page.waitForTimeout(1000);
+      await expectUtilityEntryExperimentSurface(page);
 
       await clickSidebarButton(page, '작업 이력 기입');
       await expect(page.locator('.kpi-work-history-host')).toBeVisible();

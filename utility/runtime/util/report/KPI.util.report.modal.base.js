@@ -23,11 +23,6 @@
                 : false;
         }
 
-        function printUtilReportModal() {
-            const adapter = getUtilReportModalRuntimeAdapter();
-            return typeof adapter?.print === 'function' && adapter.print();
-        }
-
         function requestUtilReportModalAnimationFrame(callback) {
             const adapter = getUtilReportModalRuntimeAdapter();
             return typeof adapter?.requestAnimationFrame === 'function'
@@ -64,9 +59,14 @@
 
             restoreEntries();
             const removableNodes = [];
+            const addRemovableNode = (node) => {
+                if (!node?.parentNode) return;
+                if (removableNodes.some(existing => existing === node || existing.contains?.(node))) return;
+                removableNodes.push(node);
+            };
             const chartWrap = modal.querySelector('[data-role="util-report-modal-chart-wrap"]');
-            if (chartWrap) removableNodes.push(chartWrap);
-            modal.querySelectorAll('[data-overview-ratio-remove="true"]').forEach(node => removableNodes.push(node));
+            addRemovableNode(chartWrap);
+            modal.querySelectorAll('[data-overview-ratio-remove="true"]').forEach(addRemovableNode);
             modal._utilReportOverviewRemovedNodes = removableNodes
                 .filter(node => node?.parentNode)
                 .map(node => ({
@@ -82,6 +82,7 @@
             bindUtilReportInlineInsightControls(modal);
             bindUtilReportModalBodyDrag(modal);
             bindUtilReportDonutRowDrag(modal);
+            bindUtilReportOverviewRatioWheel(modal);
             if (modal.dataset.bound === 'true') return;
             modal.dataset.bound = 'true';
 
@@ -127,11 +128,6 @@
                 const closeBtn = event.target.closest('[data-role="util-report-modal-close"]');
                 if (closeBtn) {
                     closeUtilReportModal();
-                    return;
-                }
-                const printBtn = event.target.closest('[data-role="util-report-modal-print"]');
-                if (printBtn) {
-                    printUtilReportModal();
                     return;
                 }
                 const builderOpenBtn = event.target.closest('[data-role="util-report-builder-open"]');
@@ -381,9 +377,6 @@
                                 <div class="util-report-modal-sub" data-role="util-report-modal-sub">기간: -</div>
                             </div>
                             <div class="util-report-modal-actions">
-                                <button type="button" class="util-report-modal-btn" data-role="util-report-modal-reset-overview" aria-label="전체 복귀" title="전체 복귀"><i class="fas fa-rotate-left" aria-hidden="true"></i></button>
-                                <button type="button" class="util-report-modal-btn" data-role="util-report-inline-detach">표 분리</button>
-                                <button type="button" class="util-report-modal-btn" data-role="util-report-modal-print">인쇄</button>
                                 <button type="button" class="util-report-modal-close" data-role="util-report-modal-close">닫기</button>
                             </div>
                         </div>
@@ -434,6 +427,13 @@
                                                 <option value="2">2</option>
                                                 <option value="3">3</option>
                                             </select>
+                                        </div>
+                                        <div class="util-report-modal-field util-report-modal-action-field">
+                                            <label>작업</label>
+                                            <div class="util-report-modal-filter-actions">
+                                                <button type="button" class="util-report-modal-btn" data-role="util-report-modal-reset-overview" aria-label="전체 복귀" title="전체 복귀"><i class="fas fa-rotate-left" aria-hidden="true"></i><span>복귀</span></button>
+                                                <button type="button" class="util-report-modal-btn" data-role="util-report-inline-detach">표 분리</button>
+                                            </div>
                                         </div>
                                         <div class="util-report-modal-field util-report-modal-field-check" data-overview-ratio-remove="true">
                                             <label>레이블</label>

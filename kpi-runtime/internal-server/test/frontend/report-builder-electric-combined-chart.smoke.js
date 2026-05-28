@@ -35,6 +35,12 @@ test('report builder electric combined chart renderer is split out of builder ch
   assert.doesNotMatch(builderChartsSource, /function\s+renderUtilReportBuilderElectricCombinedChart/);
 });
 
+test('independent bounds builder chart supports report-ordered labels for shared-axis overlays', () => {
+  assert.match(builderChartsSource, /axisGroupKey/);
+  assert.match(builderChartsSource, /sharedAxisBounds/);
+  assert.match(builderChartsSource, /reportValueOrderLabels === true \? buildValueOrderLineLabels/);
+});
+
 test('kpi html loads electric combined chart before remaining builder charts', () => {
   const combinedIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.builder.electric-combined-chart.js?v=339');
   const chartsIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.builder.charts.js?v=337');

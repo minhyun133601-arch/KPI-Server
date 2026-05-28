@@ -1,117 +1,13 @@
 import { sendJson } from '../lib/http.js';
+import { renderCapturePdfFromEntries } from '../lib/capture-pdf.js';
+import { buildZip } from '../lib/capture-zip.js';
 import { parseBody, requireAuth } from './route-context.js';
 
 const MAX_CAPTURE_PAGES = 40;
 const MIN_CAPTURE_EDGE = 320;
 const MAX_CAPTURE_EDGE = 4096;
 const MAX_CAPTURE_BODY_BYTES = 160 * 1024 * 1024;
-
-const zipCrcTable = (() => {
-  const table = new Uint32Array(256);
-  for (let index = 0; index < 256; index += 1) {
-    let value = index;
-    for (let bit = 0; bit < 8; bit += 1) {
-      value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
-    }
-    table[index] = value >>> 0;
-  }
-  return table;
-})();
-
-function crc32(buffer) {
-  let crc = 0xffffffff;
-  for (const byte of buffer) {
-    crc = zipCrcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-function dosDateParts(date = new Date()) {
-  const year = Math.max(1980, date.getFullYear());
-  return {
-    time: ((date.getHours() & 0x1f) << 11) | ((date.getMinutes() & 0x3f) << 5) | (Math.floor(date.getSeconds() / 2) & 0x1f),
-    date: (((year - 1980) & 0x7f) << 9) | (((date.getMonth() + 1) & 0x0f) << 5) | (date.getDate() & 0x1f)
-  };
-}
-
-function localHeader(record) {
-  const header = Buffer.alloc(30 + record.name.length);
-  header.writeUInt32LE(0x04034b50, 0);
-  header.writeUInt16LE(20, 4);
-  header.writeUInt16LE(0x0800, 6);
-  header.writeUInt16LE(0, 8);
-  header.writeUInt16LE(record.time, 10);
-  header.writeUInt16LE(record.date, 12);
-  header.writeUInt32LE(record.crc, 14);
-  header.writeUInt32LE(record.size, 18);
-  header.writeUInt32LE(record.size, 22);
-  header.writeUInt16LE(record.name.length, 26);
-  header.writeUInt16LE(0, 28);
-  record.name.copy(header, 30);
-  return header;
-}
-
-function centralHeader(record) {
-  const header = Buffer.alloc(46 + record.name.length);
-  header.writeUInt32LE(0x02014b50, 0);
-  header.writeUInt16LE(20, 4);
-  header.writeUInt16LE(20, 6);
-  header.writeUInt16LE(0x0800, 8);
-  header.writeUInt16LE(0, 10);
-  header.writeUInt16LE(record.time, 12);
-  header.writeUInt16LE(record.date, 14);
-  header.writeUInt32LE(record.crc, 16);
-  header.writeUInt32LE(record.size, 20);
-  header.writeUInt32LE(record.size, 24);
-  header.writeUInt16LE(record.name.length, 28);
-  header.writeUInt16LE(0, 30);
-  header.writeUInt16LE(0, 32);
-  header.writeUInt16LE(0, 34);
-  header.writeUInt16LE(0, 36);
-  header.writeUInt32LE(0, 38);
-  header.writeUInt32LE(record.offset, 42);
-  record.name.copy(header, 46);
-  return header;
-}
-
-function buildZip(entries) {
-  const parts = [];
-  const centralParts = [];
-  const records = [];
-  const dos = dosDateParts();
-  let offset = 0;
-
-  for (const entry of entries) {
-    const data = Buffer.isBuffer(entry.data) ? entry.data : Buffer.from(entry.data || []);
-    const record = {
-      name: Buffer.from(entry.name, 'utf8'),
-      size: data.length,
-      crc: crc32(data),
-      time: dos.time,
-      date: dos.date,
-      offset
-    };
-    const local = localHeader(record);
-    parts.push(local, data);
-    offset += local.length + data.length;
-    records.push(record);
-  }
-
-  let centralSize = 0;
-  for (const record of records) {
-    const central = centralHeader(record);
-    centralParts.push(central);
-    centralSize += central.length;
-  }
-
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(records.length, 8);
-  end.writeUInt16LE(records.length, 10);
-  end.writeUInt32LE(centralSize, 12);
-  end.writeUInt32LE(offset, 16);
-  return Buffer.concat([...parts, ...centralParts, end]);
-}
+const PDF_JPEG_QUALITY = 92;
 
 function readCaptureEdge(value, fallback) {
   const parsed = Number.parseInt(String(value ?? ''), 10);
@@ -119,12 +15,14 @@ function readCaptureEdge(value, fallback) {
   return Math.max(MIN_CAPTURE_EDGE, Math.min(MAX_CAPTURE_EDGE, parsed));
 }
 
-function sanitizeZipFileName(value) {
-  const normalized = String(value || 'report-capture.zip')
+function sanitizeCaptureFileName(value, fallback, extension) {
+  const safeFallback = String(fallback || `report-capture${extension}`).trim() || `report-capture${extension}`;
+  const safeExtension = String(extension || '').startsWith('.') ? String(extension || '') : `.${extension}`;
+  const normalized = String(value || safeFallback)
     .trim()
     .replace(/[\\/:*?"<>|\r\n]+/g, '_');
-  const fileName = normalized || 'report-capture.zip';
-  return fileName.toLowerCase().endsWith('.zip') ? fileName : `${fileName}.zip`;
+  const fileName = normalized || safeFallback;
+  return fileName.toLowerCase().endsWith(safeExtension.toLowerCase()) ? fileName : `${fileName}${safeExtension}`;
 }
 
 function readCapturePageNumber(value, fallback) {
@@ -133,9 +31,10 @@ function readCapturePageNumber(value, fallback) {
   return Math.min(9999, parsed);
 }
 
-function resolveCaptureEntryName(pageNumbers, index) {
+function resolveCaptureEntryName(pageNumbers, index, extension = '.png') {
   const pageNumber = readCapturePageNumber(Array.isArray(pageNumbers) ? pageNumbers[index] : null, index + 1);
-  return `${pageNumber}.png`;
+  const safeExtension = String(extension || '').startsWith('.') ? String(extension || '') : `.${extension}`;
+  return `${pageNumber}${safeExtension}`;
 }
 
 function buildCaptureDocument(pageHtml, width, height) {
@@ -174,43 +73,81 @@ async function loadChromium() {
   return playwright.chromium;
 }
 
-async function renderCaptureEntries({ pages, width, height, pageNumbers = [] }) {
-  const chromium = await loadChromium();
-  const browser = await chromium.launch({ headless: true });
+async function renderCaptureEntriesWithBrowser(browser, { pages, width, height, pageNumbers = [], imageType = 'png' }) {
   const entries = [];
+  const type = String(imageType || '').toLowerCase() === 'jpeg' ? 'jpeg' : 'png';
+  const extension = type === 'jpeg' ? '.jpg' : '.png';
+  const page = await browser.newPage({
+    viewport: { width, height },
+    deviceScaleFactor: 1
+  });
   try {
-    const page = await browser.newPage({
-      viewport: { width, height },
-      deviceScaleFactor: 1
-    });
     for (const [index, pageHtml] of pages.entries()) {
       await page.setContent(buildCaptureDocument(pageHtml, width, height), {
         waitUntil: 'load',
         timeout: 30000
       });
       await page.evaluate('document.fonts && document.fonts.ready').catch(() => {});
-      const image = await page.locator('[data-report-capture-page]').screenshot({
-        type: 'png',
+      const screenshotOptions = {
+        type,
         animations: 'disabled'
-      });
+      };
+      if (type === 'jpeg') {
+        screenshotOptions.quality = PDF_JPEG_QUALITY;
+      }
+      const image = await page.locator('[data-report-capture-page]').screenshot(screenshotOptions);
       entries.push({
-        name: resolveCaptureEntryName(pageNumbers, index),
+        name: resolveCaptureEntryName(pageNumbers, index, extension),
         data: image
       });
     }
   } finally {
-    await browser.close().catch(() => {});
+    await page.close().catch(() => {});
   }
   return entries;
+}
+
+async function renderCaptureEntries(options) {
+  const chromium = await loadChromium();
+  const browser = await chromium.launch({ headless: true });
+  try {
+    return await renderCaptureEntriesWithBrowser(browser, options);
+  } finally {
+    await browser.close().catch(() => {});
+  }
 }
 
 async function renderCaptureZip(options) {
   return buildZip(await renderCaptureEntries(options));
 }
 
+async function renderCapturePdf(options) {
+  const chromium = await loadChromium();
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const entries = await renderCaptureEntriesWithBrowser(browser, {
+      ...options,
+      imageType: 'jpeg'
+    });
+    return await renderCapturePdfFromEntries(browser, entries, options.width, options.height);
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
 function sendZip(res, fileName, buffer) {
   res.writeHead(200, {
     'Content-Type': 'application/zip',
+    'Content-Length': String(buffer.length),
+    'Content-Disposition': `attachment; filename="${fileName.replace(/"/g, '_')}"`,
+    'Cache-Control': 'no-store'
+  });
+  res.end(buffer);
+}
+
+function sendPdf(res, fileName, buffer) {
+  res.writeHead(200, {
+    'Content-Type': 'application/pdf',
     'Content-Length': String(buffer.length),
     'Content-Disposition': `attachment; filename="${fileName.replace(/"/g, '_')}"`,
     'Cache-Control': 'no-store'
@@ -255,10 +192,20 @@ export async function handleReportDeckCaptureZip(context) {
 
   const width = readCaptureEdge(body?.width, 2560);
   const height = readCaptureEdge(body?.height, 1440);
-  const fileName = sanitizeZipFileName(body?.fileName);
-  if (String(body?.format || '').toLowerCase() === 'images') {
+  const format = String(body?.format || '').toLowerCase();
+  const fileName = sanitizeCaptureFileName(
+    body?.fileName,
+    format === 'pdf' ? 'report-capture.pdf' : 'report-capture.zip',
+    format === 'pdf' ? '.pdf' : '.zip'
+  );
+  if (format === 'images') {
     const entries = await renderCaptureEntries({ pages, width, height, pageNumbers: body?.pageNumbers });
     sendCaptureImages(res, fileName, entries);
+    return;
+  }
+  if (format === 'pdf') {
+    const pdfBuffer = await renderCapturePdf({ pages, width, height, pageNumbers: body?.pageNumbers });
+    sendPdf(res, fileName, pdfBuffer);
     return;
   }
 

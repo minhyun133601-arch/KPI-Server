@@ -9,6 +9,7 @@
     const RATIO_BUILDER_CARD_KEY = 'ratio-builder';
     const RATIO_CARD_PREFIX = 'ratio:';
     const EXPERIMENT_SHELL_STATE = new WeakMap();
+    const YEAR_OVERLAP_COLORS = Object.freeze(['#1f4e79', '#c00000', '#70ad47', '#7030a0', '#ed7d31', '#4472c4']);
 
     const NORMALIZATION_UNITS = Object.freeze({
         production_kg: Object.freeze({ key: 'production_kg', label: 'kg', family: 'production', dimension: 'mass' }),
@@ -566,7 +567,9 @@
             decimalDigits: {},
             seriesLabels: {},
             ratioCards: [],
-            showLabels: false
+            showLabels: true,
+            yearOverlap: false,
+            yearOverlapYears: []
         };
     }
 
@@ -580,13 +583,15 @@
         if (!state.decimalDigits || typeof state.decimalDigits !== 'object') state.decimalDigits = {};
         if (!state.seriesLabels || typeof state.seriesLabels !== 'object') state.seriesLabels = {};
         if (!Array.isArray(state.ratioCards)) state.ratioCards = [];
-        if (typeof state.showLabels !== 'boolean') state.showLabels = false;
+        if (typeof state.showLabels !== 'boolean') state.showLabels = true;
+        if (typeof state.yearOverlap !== 'boolean') state.yearOverlap = false;
+        if (!Array.isArray(state.yearOverlapYears)) state.yearOverlapYears = [];
         return state;
     }
 
     function getCardDisplayMode(shell, card) {
         const state = getExperimentShellState(shell);
-        const mode = String(state.displayModes?.[card.key] || card.chartType || 'line').trim().toLowerCase();
+        const mode = String(state.displayModes?.[card.key] || '').trim().toLowerCase();
         if (mode === 'bar' || mode === 'none') return mode;
         return 'line';
     }
@@ -672,9 +677,77 @@
         return includeYear ? `${year.slice(2)}.${month}` : `${Number(month)}월`;
     }
 
+    function buildYearOverlapPlan(monthKeys = []) {
+        const years = [];
+        const months = [];
+        const seenYears = new Set();
+        const seenMonths = new Set();
+        monthKeys.forEach(monthKey => {
+            const normalized = normalizeMonthKey(monthKey);
+            const [year, month] = normalized.split('-');
+            if (!seenYears.has(year)) {
+                seenYears.add(year);
+                years.push(year);
+            }
+            if (!seenMonths.has(month)) {
+                seenMonths.add(month);
+                months.push(month);
+            }
+        });
+        const labelYear = years[0] || String(new Date().getFullYear());
+        return {
+            years,
+            months,
+            monthLabels: months.map(month => formatPointLabel(`${labelYear}-${month}`))
+        };
+    }
+
+    function normalizeOverlapYearList(years = []) {
+        const seenYears = new Set();
+        return (Array.isArray(years) ? years : [])
+            .map(year => String(year || '').trim())
+            .filter(year => /^\d{4}$/.test(year))
+            .filter(year => {
+                if (seenYears.has(year)) return false;
+                seenYears.add(year);
+                return true;
+            });
+    }
+
+    function getAvailableOverlapYears(shell) {
+        const startInput = shell?.querySelector?.('[data-exp-period-start]');
+        const endInput = shell?.querySelector?.('[data-exp-period-end]');
+        let startMonth = clampSelectableMonthKey(startInput?.value, DEFAULT_PERIOD_START);
+        let endMonth = clampSelectableMonthKey(endInput?.value, DEFAULT_PERIOD_END);
+        if (compareMonthKeys(startMonth, endMonth) > 0) {
+            [startMonth, endMonth] = [endMonth, startMonth];
+        }
+        return buildYearOverlapPlan(buildMonthKeys(startMonth, endMonth)).years;
+    }
+
+    function ensureYearOverlapSelection(shell, availableYears = getAvailableOverlapYears(shell)) {
+        const state = getExperimentShellState(shell);
+        const availableYearList = normalizeOverlapYearList(availableYears);
+        if (!availableYearList.length) {
+            state.yearOverlapYears = [];
+            return [];
+        }
+        const selectedYearSet = new Set(normalizeOverlapYearList(state.yearOverlapYears));
+        const selectedYears = availableYearList.filter(year => selectedYearSet.has(year));
+        state.yearOverlapYears = selectedYears.length ? selectedYears : availableYearList.slice();
+        return state.yearOverlapYears;
+    }
+
+    function resetYearOverlapSelection(shell, availableYears = getAvailableOverlapYears(shell)) {
+        const state = getExperimentShellState(shell);
+        state.yearOverlapYears = normalizeOverlapYearList(availableYears);
+        return state.yearOverlapYears;
+    }
+
     function getActivePeriod(shell) {
         const startInput = shell?.querySelector?.('[data-exp-period-start]');
         const endInput = shell?.querySelector?.('[data-exp-period-end]');
+        const state = getExperimentShellState(shell);
         let startMonth = clampSelectableMonthKey(startInput?.value, DEFAULT_PERIOD_START);
         let endMonth = clampSelectableMonthKey(endInput?.value, DEFAULT_PERIOD_END);
         if (compareMonthKeys(startMonth, endMonth) > 0) {
@@ -686,12 +759,25 @@
         if (startInput && startInput.value !== startMonth) startInput.value = startMonth;
         if (endInput && endInput.value !== endMonth) endInput.value = endMonth;
         const hasYearBoundary = startMonth.slice(0, 4) !== endMonth.slice(0, 4);
+        const overlapPlan = buildYearOverlapPlan(monthKeys);
+        const availableOverlapYears = normalizeOverlapYearList(overlapPlan.years);
+        const selectedOverlapYears = state.yearOverlap === true
+            ? ensureYearOverlapSelection(shell, availableOverlapYears)
+            : [];
+        const yearOverlap = state.yearOverlap === true && availableOverlapYears.length > 1 && selectedOverlapYears.length > 0;
         return {
             startMonth,
             endMonth,
             label: `${formatRangeMonth(startMonth)} - ${formatRangeMonth(endMonth)}`,
             monthKeys,
-            monthLabels: monthKeys.map(monthKey => formatPointLabel(monthKey, hasYearBoundary))
+            monthLabels: monthKeys.map(monthKey => formatPointLabel(monthKey, hasYearBoundary)),
+            yearOverlap,
+            overlapPlan: {
+                ...overlapPlan,
+                availableYears: availableOverlapYears,
+                selectedYears: selectedOverlapYears,
+                years: yearOverlap ? selectedOverlapYears : availableOverlapYears
+            }
         };
     }
 
@@ -773,7 +859,7 @@
             label: card.title,
             color: card.color,
             type: displayMode,
-            lineWidth: 3,
+            lineWidth: 3.2,
             lineDash: isDerivedRatioCard(card) ? '7 5' : '',
             seriesKey: card.key,
             decimals,
@@ -786,10 +872,53 @@
         };
     }
 
+    function buildYearOverlapSeries(card, period, shell) {
+        const plan = period?.overlapPlan || {};
+        const years = Array.isArray(plan.years) ? plan.years : [];
+        const months = Array.isArray(plan.months) ? plan.months : [];
+        if (!years.length || !months.length) return [buildCardSeries(card, period, shell)];
+        const monthLabels = Array.isArray(plan.monthLabels) && plan.monthLabels.length
+            ? plan.monthLabels
+            : months.map(month => formatPointLabel(`${years[0]}-${month}`));
+        const activeMonthKeys = new Set(Array.isArray(period?.monthKeys) ? period.monthKeys : []);
+        const colorYears = Array.isArray(plan.availableYears) && plan.availableYears.length ? plan.availableYears : years;
+        const displayMode = getCardDisplayMode(shell, card);
+        const decimals = getCardDecimalDigits(shell, card);
+        return years.map(year => ({
+            label: `${year} ${card.title}`,
+            color: YEAR_OVERLAP_COLORS[Math.max(0, colorYears.indexOf(year)) % YEAR_OVERLAP_COLORS.length] || card.color,
+            type: displayMode,
+            lineWidth: 3.2,
+            lineDash: isDerivedRatioCard(card) ? '7 5' : '',
+            seriesKey: card.key,
+            axisGroupKey: card.key,
+            decimals,
+            points: months.map((month, index) => {
+                const monthKey = `${year}-${month}`;
+                return {
+                    key: `${card.key}:${monthKey}`,
+                    monthKey,
+                    label: monthLabels[index] || formatPointLabel(monthKey),
+                    value: activeMonthKeys.has(monthKey) ? resolvePeriodValue(card, monthKey) : NaN
+                };
+            })
+        }));
+    }
+
+    function buildCardSeriesList(card, period, shell) {
+        return period?.yearOverlap === true
+            ? buildYearOverlapSeries(card, period, shell)
+            : [buildCardSeries(card, period, shell)];
+    }
+
     function buildAnalysisChartModel(selectedCards, period, shell) {
-        const allSeries = selectedCards.map(card => buildCardSeries(card, period, shell));
+        const summarySeries = selectedCards.map(card => buildCardSeries(card, {
+            ...period,
+            yearOverlap: false
+        }, shell));
+        const allSeries = selectedCards.flatMap(card => buildCardSeriesList(card, period, shell));
         const visibleSeries = allSeries.filter(item => item.type !== 'none');
-        const maxDecimals = allSeries.reduce((maxValue, item) => Math.max(maxValue, Number.isFinite(item.decimals) ? item.decimals : 1), 1);
+        const maxDecimals = [...allSeries, ...summarySeries].reduce((maxValue, item) => Math.max(maxValue, Number.isFinite(item.decimals) ? item.decimals : 1), 1);
         return {
             chart: {
                 key: EXPERIMENT_CHART_KEY,
@@ -800,7 +929,7 @@
                 decimals: maxDecimals,
                 series: visibleSeries,
                 chartDataList: visibleSeries.map(item => ({ seriesKey: item.seriesKey, points: item.points })),
-                controlItems: allSeries.map(item => ({
+                controlItems: summarySeries.map(item => ({
                     key: item.seriesKey,
                     title: item.label,
                     color: item.color,
@@ -808,13 +937,49 @@
                     displayMode: item.type,
                     points: item.points
                 })),
-                summaryItems: selectedCards.map((card, index) => buildSummaryItem(card, allSeries[index]))
+                summaryItems: selectedCards.map((card, index) => buildSummaryItem(card, summarySeries[index])),
+                reportValueOrderLabels: period?.yearOverlap === true
             },
             model: {
                 datasetKey: 'gas',
-                rangeLabel: `${period.label} · 시작월 100 환산`
+                rangeLabel: `${period.label}${period?.yearOverlap === true ? ' · 년도 겹치기' : ''} · 시작월 100 환산`
             }
         };
+    }
+
+    function syncYearOverlapControl(shell) {
+        const button = shell?.querySelector?.('[data-exp-year-overlap]');
+        if (!button) return;
+        const enabled = getExperimentShellState(shell).yearOverlap === true;
+        button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+        syncYearOverlapYearControls(shell);
+    }
+
+    function syncYearOverlapYearControls(shell) {
+        const host = shell?.querySelector?.('[data-exp-year-overlap-years]');
+        if (!host) return;
+        const availableYears = getAvailableOverlapYears(shell);
+        const state = getExperimentShellState(shell);
+        const canSelectYears = state.yearOverlap === true && availableYears.length > 1;
+        host.hidden = !canSelectYears;
+        if (!canSelectYears) {
+            host.innerHTML = '';
+            return;
+        }
+        const selectedYears = ensureYearOverlapSelection(shell, availableYears);
+        host.innerHTML = availableYears.map(year => {
+            const pressed = selectedYears.includes(year) ? 'true' : 'false';
+            return `
+                <button
+                    type="button"
+                    class="experiment-year-overlap-year"
+                    data-exp-year-overlap-year="${escapeHtml(year)}"
+                    aria-pressed="${pressed}"
+                    title="${escapeHtml(year)}"
+                    onclick="KpiExperimentGraphPrototype.toggleOverlapYear(this)"
+                >${escapeHtml(year.slice(2))}년</button>
+            `;
+        }).join('');
     }
 
     function updateSelectedState(shell, selectedCards = getSelectedCards(shell)) {
@@ -851,7 +1016,7 @@
             return;
         }
         select.innerHTML = selectedCards
-            .map(card => `<option value="${escapeHtml(card.key)}">${escapeHtml(card.title)}</option>`)
+            .map(card => `<option value="${escapeHtml(card.key)}">${escapeHtml(getCompactAnalysisCardTitle(card))}</option>`)
             .join('');
         select.value = selectedCards.some(card => card.key === previousValue)
             ? previousValue
@@ -934,6 +1099,7 @@
     function renderExactAnalysisChart(shell, retryCount = 0) {
         const mount = shell.querySelector('[data-exp-chart-mount]');
         if (!mount) return;
+        syncYearOverlapControl(shell);
         const selectedCards = getSelectedCards(shell);
         if (!selectedCards.length) {
             mount.innerHTML = buildExperimentEmptyState();
@@ -981,7 +1147,7 @@
     }
 
     function buildRatioOption(card, selectedKey = '') {
-        return `<option value="${escapeHtml(card.key)}"${card.key === selectedKey ? ' selected' : ''}>${escapeHtml(card.title)}</option>`;
+        return `<option value="${escapeHtml(card.key)}"${card.key === selectedKey ? ' selected' : ''}>${escapeHtml(getCompactAnalysisCardTitle(card))}</option>`;
     }
 
     function buildRatioDenominatorOptions(numeratorKey = '', selectedKey = '') {
@@ -995,9 +1161,6 @@
     function buildRatioBuilderCard(card) {
         const numeratorCount = getRatioNumeratorCards().length;
         const denominatorCount = getRatioDenominatorCards(getDefaultRatioNumeratorKey()).length;
-        const comboText = numeratorCount && denominatorCount
-            ? `${numeratorCount}개 분자 · ${denominatorCount}개 분모`
-            : '조합 가능한 지표 없음';
         const isDisabled = numeratorCount === 0 || denominatorCount === 0;
         return `
             <article
@@ -1014,9 +1177,6 @@
                     <span class="util-sheet-analysis-summary-icon" aria-hidden="true"><i class="fa-solid ${escapeHtml(card.icon)}"></i></span>
                     <span class="util-sheet-analysis-summary-label">${escapeHtml(card.title)}</span>
                 </div>
-                <div class="util-sheet-analysis-summary-value">${escapeHtml(card.valueText)}</div>
-                <div class="util-sheet-analysis-summary-meta">${escapeHtml(card.metaText)}</div>
-                <div class="util-sheet-analysis-summary-sub">${escapeHtml(comboText)}</div>
                 <button
                     type="button"
                     class="experiment-ratio-open-button"
@@ -1098,12 +1258,30 @@
         `;
     }
 
+    function getCompactAnalysisCardTitle(card) {
+        const key = String(card?.key || '').trim();
+        const title = String(card?.title || '').trim();
+        if (!title) return '';
+        if (key === 'electric-usage') return '전기';
+        if (key === 'electric-cost') return '전기 비용';
+        if (key.startsWith('electric-usage-')) return title.replace(/\s*사용량\s*$/u, '').replace(/\s*전기\s*$/u, ' 전기').trim();
+        if (key === 'lng-usage') return 'LNG 가스';
+        if (key === 'lng-usage-yusan') return '유산 LNG 가스';
+        if (key.startsWith('lng-usage-')) return title.replace(/\s*사용량\s*$/u, ' 가스').trim();
+        if (key.startsWith('lpg-usage-')) return title.replace(/\s*사용량\s*$/u, ' 가스').trim();
+        if (key === 'gas-cost') return '가스 비용';
+        if (key === 'waste-discharge') return '폐수';
+        if (key === 'waste-cost') return '폐수 비용';
+        return title;
+    }
+
     function buildSelectableAnalysisCard(card) {
         if (card.key === RATIO_BUILDER_CARD_KEY) {
             return buildRatioBuilderCard(card);
         }
         const isSelected = isCardInitiallySelected(card);
         const normalization = card.normalization || makeNormalization();
+        const compactTitle = getCompactAnalysisCardTitle(card);
         return `
             <article
                 class="util-sheet-analysis-summary-card experiment-selector-card${isSelected ? ' is-selected' : ''}"
@@ -1117,11 +1295,8 @@
             >
                 <div class="util-sheet-analysis-summary-head experiment-selector-card-head">
                     <span class="util-sheet-analysis-summary-icon" aria-hidden="true"><i class="fa-solid ${escapeHtml(card.icon)}"></i></span>
-                    <span class="util-sheet-analysis-summary-label">${escapeHtml(card.title)}</span>
+                    <span class="util-sheet-analysis-summary-label">${escapeHtml(compactTitle)}</span>
                 </div>
-                <div class="util-sheet-analysis-summary-value">${escapeHtml(card.valueText)}</div>
-                <div class="util-sheet-analysis-summary-meta">${escapeHtml(card.metaText)}</div>
-                <div class="util-sheet-analysis-summary-sub">${escapeHtml(card.subText)}</div>
                 ${buildAnalysisCardButton(card)}
             </article>
         `;
@@ -1199,10 +1374,21 @@
                                     >
                                 </label>
                             </div>
+                            <button
+                                type="button"
+                                class="experiment-year-overlap-button"
+                                data-exp-year-overlap
+                                aria-pressed="false"
+                                onclick="KpiExperimentGraphPrototype.toggleYearOverlap(this)"
+                            >
+                                <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+                                <span>년도 겹치기</span>
+                            </button>
+                            <div class="experiment-year-overlap-years" data-exp-year-overlap-years hidden></div>
                             <label class="experiment-remove-field">
                                 <span>선택 카드</span>
                                 <select class="experiment-remove-select" data-exp-selected-card-select onchange="KpiExperimentGraphPrototype.selectSelectedCard(this)">
-                                    ${initialSelected.map(card => `<option value="${escapeHtml(card.key)}">${escapeHtml(card.title)}</option>`).join('')}
+                                    ${initialSelected.map(card => `<option value="${escapeHtml(card.key)}">${escapeHtml(getCompactAnalysisCardTitle(card))}</option>`).join('')}
                                 </select>
                             </label>
                             <button
@@ -1256,13 +1442,55 @@
                             </div>
                         </div>
                         ${buildRatioDialog()}
-                        <div class="experiment-chart-mount" data-exp-chart-mount>
+                        <div class="experiment-chart-mount" data-exp-chart-mount data-exp-report-chart-style="report-auto">
                             ${buildExperimentEmptyState()}
                         </div>
                     </div>
                 </div>
             </section>
         `;
+    }
+
+    function buildExperimentOverviewRatioContent() {
+        const builder = root.KpiSectionFactoryAdapter?.getBuilder?.('buildUtilityOverviewRatioContent');
+        if (typeof builder === 'function') return builder();
+        return `
+            <div class="util-sheet-stack" data-role="util-overview-ratio-surface">
+                <div class="util-sheet-panel is-overview" data-role="util-report-panel">
+                    <div class="util-sheet-header">
+                        <div class="util-sheet-title-block">
+                            <div class="util-sheet-title-row">
+                                <span class="util-sheet-title-icon is-overview" aria-hidden="true"><i class="fa-solid fa-chart-pie"></i></span>
+                                <div class="util-report-title">총괄 비율</div>
+                            </div>
+                            <div class="util-report-desc">총괄 비율 원형 그래프와 월별 표를 확인합니다.</div>
+                        </div>
+                        <div class="util-sheet-actions">
+                            <button type="button" class="work-btn primary" data-role="util-report-open-modal" aria-label="총괄 비율 원형 그래프 열기">
+                                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                                <span>이동</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function buildExperimentCategoryLaunchMeta(categoryIndex = 0) {
+        return {
+            launchTarget: 'popup',
+            launchWindowName: 'kpi-experiment-analysis-graph',
+            launchFillScreen: true,
+            launchWindowWidth: 1920,
+            launchWindowHeight: 1080,
+            launchPopupMode: 'experiment',
+            launchRoute: {
+                view: 'category',
+                sectionId: 'experiment',
+                categoryIndex
+            }
+        };
     }
 
     function getRatioBuilderShell(element) {
@@ -1493,6 +1721,32 @@
             if (!shell) return;
             renderExactAnalysisChart(shell);
         },
+        toggleYearOverlap(trigger) {
+            const shell = trigger?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            const state = getExperimentShellState(shell);
+            state.yearOverlap = state.yearOverlap !== true;
+            if (state.yearOverlap === true) {
+                resetYearOverlapSelection(shell);
+            }
+            syncYearOverlapControl(shell);
+            renderExactAnalysisChart(shell);
+        },
+        toggleOverlapYear(trigger) {
+            const shell = trigger?.closest?.('.experiment-unified-shell');
+            const year = String(trigger?.dataset?.expYearOverlapYear || '').trim();
+            if (!shell || !/^\d{4}$/.test(year)) return;
+            const state = getExperimentShellState(shell);
+            if (state.yearOverlap !== true) return;
+            const availableYears = getAvailableOverlapYears(shell);
+            if (!availableYears.includes(year)) return;
+            const selectedYears = ensureYearOverlapSelection(shell, availableYears);
+            state.yearOverlapYears = selectedYears.includes(year)
+                ? (selectedYears.length > 1 ? selectedYears.filter(item => item !== year) : selectedYears)
+                : availableYears.filter(item => selectedYears.includes(item) || item === year);
+            syncYearOverlapControl(shell);
+            renderExactAnalysisChart(shell);
+        },
         selectSelectedCard(select) {
             const shell = select?.closest?.('.experiment-unified-shell');
             if (!shell) return;
@@ -1588,13 +1842,24 @@
             },
             categories: [
                 {
-                    title: '통합 그래프',
+                    title: '선/막대',
                     icon: 'fa-chart-line',
                     color: '#0891b2',
-                    desc: '필요한 지표 카드를 선택해 하나의 그래프로 비교하는 분석 화면',
-                    navHidden: true,
+                    desc: '필요한 지표 카드를 선택해 선 그래프와 막대 그래프로 비교합니다.',
                     viewerMode: 'full-bleed',
+                    ...buildExperimentCategoryLaunchMeta(0),
                     content: buildExperimentUnifiedAnalysisContent()
+                },
+                {
+                    title: '원형',
+                    icon: 'fa-chart-pie',
+                    color: '#0f766e',
+                    desc: '총괄 비율 원형 그래프와 상세표를 확인합니다.',
+                    viewerMode: 'full-bleed',
+                    utilitySurface: 'analysis',
+                    autoOpenUtilityReportModal: true,
+                    ...buildExperimentCategoryLaunchMeta(1),
+                    content: buildExperimentOverviewRatioContent()
                 }
             ]
         };

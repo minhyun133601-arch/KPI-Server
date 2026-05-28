@@ -90,6 +90,21 @@ test('shell css compatibility manifest imports split files', () => {
 test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['dashboard.css'], /#dashboard\s*\{/);
   assert.match(styleContents['dashboard.css'], /\.dashboard-version-badge\s*\{/);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-report-chart-shell \.util-analytics-chart\s*\{[^}]*border:\s*1\.4px solid #111827;[^}]*background:\s*#ffffff;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-analytics-chart-grid\s*\{\s*display:\s*none;\s*\}/);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-analytics-chart-value\s*\{[^}]*paint-order:\s*stroke;[^}]*stroke:\s*#ffffff;[^}]*stroke-width:\s*3px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-analytics-chart-canvas svg > rect\[opacity\]\s*\{[^}]*opacity:\s*1;[^}]*stroke:\s*#ffffff;[^}]*rx:\s*2px;[^}]*shape-rendering:\s*crispEdges;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-toolbar\s*\{[^}]*min-height:\s*40px;[^}]*border-bottom:\s*1px solid #dbe4f3;[^}]*box-shadow:\s*none;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-add-card-trigger\s*\{[^}]*min-height:\s*30px;[^}]*border:\s*1px solid #cbd5e1;[^}]*background:\s*#ffffff;[^}]*box-shadow:\s*none;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-period-input\s*\{[^}]*height:\s*30px;[^}]*border-radius:\s*6px;[^}]*font-size:\s*0\.74rem;[^}]*box-shadow:\s*none;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-year-overlap-button\s*\{[^}]*min-height:\s*30px;[^}]*border:\s*1px solid #cbd5e1;[^}]*background:\s*#ffffff;[^}]*box-shadow:\s*none;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-year-overlap-button\[aria-pressed="true"\]\s*\{[^}]*border-color:\s*#111827;[^}]*background:\s*#f1f5f9;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-year-overlap-years\s*\{[^}]*min-height:\s*30px;[^}]*display:\s*inline-flex;[^}]*gap:\s*4px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-year-overlap-year\[aria-pressed="true"\]\s*\{[^}]*border-color:\s*#111827;[^}]*background:\s*#f1f5f9;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-remove-select\s*\{[^}]*height:\s*30px;[^}]*border-radius:\s*6px;[^}]*font-size:\s*0\.74rem;[^}]*box-shadow:\s*none;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-card-palette\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);[^}]*gap:\s*6px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-selector-card\s*\{[^}]*min-height:\s*42px;[^}]*padding:\s*7px\s*76px\s*7px\s*10px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-card-action\s*\{[^}]*top:\s*50%;[^}]*right:\s*8px;[^}]*width:\s*58px;/s);
 
   assert.match(styleContents['shell-chrome.css'], /#viewer\s*\{/);
   assert.match(styleContents['shell-chrome.css'], /body\.is-report-popup\s+#dashboard/);
@@ -106,11 +121,22 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['metering.css'], /\.month-panel\s*\{/);
   assert.match(styleContents['metering.css'], /\.util-sheet-waste-meter-card\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
   assert.doesNotMatch(styleContents['metering.css'], /\.util-sheet-waste-meter-card\s*\{[^}]*minmax\(500px,/s);
-  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-chart-shell\s*\{[^}]*min-height:\s*0;[^}]*padding:\s*5px;/s);
-  assert.doesNotMatch(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-chart-host-wrap\s*\{\s*display:\s*none;/);
-  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-modal-group-display\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(58px,\s*80px\)\);/s);
-  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-donut-row\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s);
-  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-inline-insight\s*\{[^}]*min-height:\s*260px;/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-modal-card\s*\{[^}]*background:\s*#f3f6fb;[^}]*color:\s*#172033;/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-modal-body\s*\{[^}]*grid-template-rows:\s*auto\s*auto\s*auto;[^}]*overflow-y:\s*auto;/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-chart-shell\s*\{[^}]*min-height:\s*0;[^}]*padding:\s*5px;[^}]*grid-template-rows:\s*auto;[^}]*background:\s*#ffffff;/s);
+  assert.doesNotMatch(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-chart-shell\s*\{\s*display:\s*none;\s*\}/);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-chart-host-wrap\s*\{\s*display:\s*none;\s*\}/);
+  assert.match(styleContents['metering.css'], /\.util-report-modal-group-display\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(58px,\s*80px\)\)\s*minmax\(126px,\s*max-content\)\s*repeat\(3,\s*minmax\(58px,\s*80px\)\);/s);
+  assert.match(styleContents['metering.css'], /\.util-report-chart-inline-right\s+\.util-report-modal-group-display\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(56px,\s*76px\)\)\s*minmax\(126px,\s*max-content\)\s*repeat\(3,\s*minmax\(56px,\s*76px\)\);/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal-filter-actions\s*\{[^}]*display:\s*inline-flex;[^}]*gap:\s*4px;/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-modal-group-display\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(58px,\s*80px\)\)\s*minmax\(126px,\s*max-content\);/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-donut-row\s*\{[^}]*z-index:\s*1;[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[^}]*overflow:\s*hidden;/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-inline-insight\s*\{[^}]*z-index:\s*2;[^}]*min-height:\s*260px;/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-inline-insight-meta\s*\{\s*display:\s*none;\s*\}/);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-composition-shell\s*\{[^}]*border-color:\s*#cbd5e1;[^}]*background:\s*#ffffff;[^}]*overflow:\s*hidden;/s);
+  assert.match(styleContents['metering.css'], /\.util-report-composition-center\.is-ratio\s*\{[^}]*font-size:\s*1\.2rem;[^}]*font-weight:\s*900;/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-composition-center\.is-ratio\s*\{[^}]*fill:\s*#1d4ed8;/s);
+  assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-yoy-table\.is-overview-breakdown\s+th\s*\{[^}]*background:\s*#dbeafe;[^}]*color:\s*#111827;/s);
 
   assert.match(styleContents['audit.css'], /\.audit-panel\s*\{/);
   assert.match(styleContents['audit.css'], /\.print-sheet\s*\{/);

@@ -80,18 +80,37 @@
                 tightPadding: Number.isFinite(options.tightPadding) ? Number(options.tightPadding) : 0.16,
                 ...(options.seriesAxisOptions || {})
             };
+            const getAxisGroupKey = item => String(item?.axisGroupKey || '').trim();
+            const sharedAxisValues = new Map();
+            filteredSeries.forEach(item => {
+                const axisGroupKey = getAxisGroupKey(item);
+                if (!axisGroupKey) return;
+                const values = item.points
+                    .map(point => toUtilReportBuilderChartNumber(point?.value))
+                    .filter(value => Number.isFinite(value));
+                if (!values.length) return;
+                if (!sharedAxisValues.has(axisGroupKey)) sharedAxisValues.set(axisGroupKey, []);
+                sharedAxisValues.get(axisGroupKey).push(...values);
+            });
+            const sharedAxisBounds = new Map();
+            sharedAxisValues.forEach((values, axisGroupKey) => {
+                if (values.length) sharedAxisBounds.set(axisGroupKey, getUtilChartAxisBounds(values, defaultAxisOptions));
+            });
 
             const series = filteredSeries.map(item => {
                 const values = item.points
                     .map(point => toUtilReportBuilderChartNumber(point?.value))
                     .filter(value => Number.isFinite(value));
+                const axisGroupKey = getAxisGroupKey(item);
                 const axisOptions = {
                     ...defaultAxisOptions,
                     ...((axisOptionsBySeries[item.seriesKey] && typeof axisOptionsBySeries[item.seriesKey] === 'object')
                         ? axisOptionsBySeries[item.seriesKey]
                         : {})
                 };
-                const bounds = values.length ? getUtilChartAxisBounds(values, axisOptions) : { min: 0, max: 1 };
+                const bounds = axisGroupKey && sharedAxisBounds.has(axisGroupKey)
+                    ? sharedAxisBounds.get(axisGroupKey)
+                    : (values.length ? getUtilChartAxisBounds(values, axisOptions) : { min: 0, max: 1 });
                 const minVal = Number.isFinite(bounds?.min) ? Number(bounds.min) : 0;
                 const maxVal = Number.isFinite(bounds?.max) ? Number(bounds.max) : 1;
                 const valueRange = maxVal - minVal || 1;
@@ -230,17 +249,56 @@
                 }).join('');
             }).join('');
 
-            const lineLabels = lineSeries.map((item, seriesIndex) => {
+            const renderLineValueLabel = (item, point, pointIndex, value, labelY) => {
+                const x = mapX(pointIndex);
+                const monthAttr = buildUtilChartPointDataAttrs(point, point?.label || '', { seriesKey: item.seriesKey });
+                return `<text class="util-analytics-chart-value" x="${x}" y="${labelY}" text-anchor="middle" style="fill:${item.color}"${monthAttr}>${formatUtilNumber(value, item.decimals)}</text>`;
+            };
+            const buildValueOrderLineLabels = () => Array.from({ length: pointCount }).map((_, pointIndex) => {
+                const labels = lineSeries.map((item, seriesIndex) => {
+                    if (!shouldShowSeriesLabels(item)) return null;
+                    const point = item.points[pointIndex];
+                    const value = toUtilReportBuilderChartNumber(point?.value);
+                    if (!Number.isFinite(value)) return null;
+                    return {
+                        item,
+                        point,
+                        pointIndex,
+                        seriesIndex,
+                        value,
+                        y: item.mapY(value),
+                        valueKey: `${getAxisGroupKey(item) || item.seriesKey || item.key || ''}:${formatUtilNumber(value, item.decimals)}`
+                    };
+                }).filter(Boolean).sort((left, right) => left.y - right.y || right.value - left.value || left.seriesIndex - right.seriesIndex);
+                const groups = [];
+                labels.forEach(label => {
+                    const previousGroup = groups[groups.length - 1];
+                    if (previousGroup && previousGroup.valueKey === label.valueKey) {
+                        previousGroup.labels.push(label);
+                        return;
+                    }
+                    groups.push({ valueKey: label.valueKey, labels: [label] });
+                });
+                let previousY = null;
+                groups.forEach(group => {
+                    let labelY = group.labels.reduce((sum, label) => sum + label.y, 0) / group.labels.length - 10;
+                    if (previousY !== null && labelY < previousY + 14) labelY = previousY + 14;
+                    labelY = Math.max(pad.top + 12, Math.min(pad.top + plotH - 6, labelY));
+                    group.labels.forEach(label => { label.labelY = labelY; });
+                    previousY = labelY;
+                });
+                return labels.map(label => renderLineValueLabel(label.item, label.point, label.pointIndex, label.value, label.labelY)).join('');
+            }).join('');
+
+            const lineLabels = options.reportValueOrderLabels === true ? buildValueOrderLineLabels() : lineSeries.map((item, seriesIndex) => {
                 if (!shouldShowSeriesLabels(item)) return '';
                 return item.points.map((point, pointIndex) => {
                 const value = toUtilReportBuilderChartNumber(point?.value);
                 if (!Number.isFinite(value)) return '';
-                const x = mapX(pointIndex);
                 const y = item.mapY(value);
                 const offset = seriesIndex % 2 === 0 ? -10 : 16;
                 const labelY = Math.max(pad.top + 12, Math.min(pad.top + plotH - 6, y + offset));
-                const monthAttr = buildUtilChartPointDataAttrs(point, point?.label || '', { seriesKey: item.seriesKey });
-                return `<text class="util-analytics-chart-value" x="${x}" y="${labelY}" text-anchor="middle" style="fill:${item.color}"${monthAttr}>${formatUtilNumber(value, item.decimals)}</text>`;
+                return renderLineValueLabel(item, point, pointIndex, value, labelY);
                 }).join('');
             }).join('');
 

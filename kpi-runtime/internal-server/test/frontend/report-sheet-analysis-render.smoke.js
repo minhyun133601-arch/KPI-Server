@@ -41,7 +41,7 @@ function createAnalysisRenderContext() {
         .filter(([, enabled]) => enabled === true)
         .map(([key]) => key)
         .join(',');
-      return `<div class="multi-series-chart" data-series-count="${Array.isArray(series) ? series.length : 0}" data-mode="${String(options.mode || '')}" data-show-labels="${String(options.showLabels === true)}" data-series-label-keys="${seriesLabelKeys}" data-scroll="${String(options.scrollWithinCanvas === true)}">${String(options.chartTitle || '')}</div>`;
+      return `<div class="multi-series-chart" data-series-count="${Array.isArray(series) ? series.length : 0}" data-mode="${String(options.mode || '')}" data-show-labels="${String(options.showLabels === true)}" data-report-value-order="${String(options.reportValueOrderLabels === true)}" data-series-label-keys="${seriesLabelKeys}" data-scroll="${String(options.scrollWithinCanvas === true)}">${String(options.chartTitle || '')}</div>`;
     },
     renderUtilTrendChart(points, metricLabel, options = {}) {
       return `<div class="trend-chart" data-point-count="${Array.isArray(points) ? points.length : 0}" data-mode="${String(options.mode || '')}" data-scroll="${String(options.scrollWithinCanvas === true)}" data-metric="${String(metricLabel || '')}">${String(options.chartTitle || '')}</div>`;
@@ -139,6 +139,7 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
       icon: 'fa-fire',
       color: '#2563eb',
       decimals: 1,
+      reportValueOrderLabels: true,
       series: [{ points: [{ value: 10 }, { value: 12 }, { value: 14 }] }],
       chartDataList: [{ key: 'lng' }],
       controlItems: [{ key: 'combined' }]
@@ -299,6 +300,7 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
   assert.ok(fullscreenCardHtml.includes('multi-series-chart'));
   assert.ok(fullscreenCardHtml.includes('data-mode="modal"'));
   assert.ok(fullscreenCardHtml.includes('data-scroll="true"'));
+  assert.ok(fullscreenCardHtml.includes('data-report-value-order="true"'));
   assert.ok(!gasBodyHtml.includes('util-sheet-analysis-gas-category-select'));
   assert.ok(!gasBodyHtml.includes('util-sheet-analysis-from'));
   assert.ok(gasBodyHtml.includes('floating-table'));

@@ -150,6 +150,30 @@
             donutRow.addEventListener('dragstart', event => event.preventDefault());
         }
 
+        function bindUtilReportOverviewRatioWheel(modal) {
+            if (!modal || modal.dataset.overviewRatioWheelBound === 'true') return;
+            modal.dataset.overviewRatioWheelBound = 'true';
+
+            const isFormTarget = target => !!target?.closest?.('input, select, textarea, option, label');
+
+            modal.addEventListener('wheel', event => {
+                if (!modal.classList.contains('is-overview-ratio')) return;
+                if (event.ctrlKey) return;
+                if (isFormTarget(event.target)) return;
+                const deltaY = Number(event.deltaY) || 0;
+                const deltaX = Number(event.deltaX) || 0;
+                if (Math.abs(deltaY) < 1 || Math.abs(deltaX) > Math.abs(deltaY)) return;
+                const bodyEl = modal.querySelector('.util-report-modal-body');
+                if (!bodyEl || bodyEl.scrollHeight <= (bodyEl.clientHeight + 1)) return;
+                const maxTop = Math.max(0, bodyEl.scrollHeight - bodyEl.clientHeight);
+                const nextTop = Math.max(0, Math.min(maxTop, bodyEl.scrollTop + deltaY));
+                if (Math.abs(nextTop - bodyEl.scrollTop) < 1) return;
+                bodyEl.scrollTop = nextTop;
+                event.preventDefault();
+                event.stopPropagation();
+            }, { passive: false });
+        }
+
         function bindUtilReportBuilderVizViewportDrag(modal) {
             if (!modal || modal.dataset.viewportDragBound === 'true') return;
             const card = modal.querySelector('.util-report-builder-viz-card');

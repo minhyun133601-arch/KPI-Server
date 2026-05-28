@@ -86,9 +86,305 @@
             `;
         }
 
+        function isUtilReportOverviewRatioCostMode() {
+            const modal = document.getElementById('util-report-modal');
+            return !!modal?.classList?.contains('is-overview-ratio')
+                && getUtilReportCompositionCategory(UtilReportState.categoryKey) === 'cost';
+        }
+
+        function isUtilReportOverviewRatioProductionMode() {
+            const modal = document.getElementById('util-report-modal');
+            return !!modal?.classList?.contains('is-overview-ratio')
+                && getUtilReportCompositionCategory(UtilReportState.categoryKey) === 'production';
+        }
+
+        function buildUtilReportOverviewRatioCostColumns() {
+            const scope = normalizeUtilReportScope(UtilReportState.scopeKey);
+            if (scope === 'electric') {
+                return {
+                    title: '전기 비용 팀별 상세표',
+                    totalLabel: '전기 합계',
+                    columns: [
+                        { key: 'electric-team11', label: '1팀 1파트', value: row => sumUtilReportScopeTeamCostByMonth('electric', '1팀 1파트', row?.year, row?.month) },
+                        { key: 'electric-team12', label: '1팀 2파트', value: row => sumUtilReportScopeTeamCostByMonth('electric', '1팀 2파트', row?.year, row?.month) },
+                        { key: 'electric-team2', label: '2팀', value: row => sumUtilReportScopeTeamCostByMonth('electric', '2팀', row?.year, row?.month) },
+                        { key: 'electric-team3', label: '3팀', value: row => sumUtilReportScopeTeamCostByMonth('electric', '3팀', row?.year, row?.month) }
+                    ]
+                };
+            }
+            if (scope === 'gas') {
+                return {
+                    title: '가스 비용 팀별 상세표',
+                    totalLabel: '가스 합계',
+                    columns: [
+                        { key: 'gas-team11-lng', label: '1팀 1파트 LNG', value: row => sumUtilReportScopeTeamCostByMonth('gas', '1팀 1파트 LNG', row?.year, row?.month) },
+                        { key: 'gas-team12-lng', label: '1팀 2파트 LNG', value: row => sumUtilReportScopeTeamCostByMonth('gas', '1팀 2파트 LNG', row?.year, row?.month) },
+                        { key: 'gas-team12-lpg', label: '1팀 2파트 LPG', value: row => sumUtilReportScopeTeamCostByMonth('gas', '1팀 2파트 LPG', row?.year, row?.month) },
+                        { key: 'gas-team3-lng', label: '3팀 LNG', value: row => sumUtilReportScopeTeamCostByMonth('gas', '3팀 LNG', row?.year, row?.month) }
+                    ]
+                };
+            }
+            if (scope === 'waste') {
+                return {
+                    title: '폐수 비용 공장별 상세표',
+                    totalLabel: '폐수 합계',
+                    columns: [
+                        { key: 'waste-yusan', label: '유산', value: row => sumUtilReportScopeTeamCostByMonth('waste', '유산', row?.year, row?.month) },
+                        { key: 'waste-bukjeong', label: '북정', value: row => sumUtilReportScopeTeamCostByMonth('waste', '북정', row?.year, row?.month) }
+                    ]
+                };
+            }
+            return {
+                title: '총괄 비용 상세표',
+                totalLabel: '합계',
+                columns: [
+                    { key: 'electric_cost', label: '전기', value: row => Number(getUtilReportMetricValue(row, 'electric_cost')) },
+                    { key: 'gas_cost', label: '가스', value: row => Number(getUtilReportMetricValue(row, 'gas_cost')) },
+                    { key: 'waste_cost', label: '폐수', value: row => Number(getUtilReportMetricValue(row, 'waste_cost')) }
+                ]
+            };
+        }
+
+        function getUtilReportOverviewRatioProductionTeamLabel(teamName) {
+            return getUtilReportDisplayTeamLabel(teamName, {
+                categoryKey: 'production',
+                scopeKey: 'total'
+            }) || String(teamName || '').trim();
+        }
+
+        function buildUtilReportOverviewRatioProductionLineColumns(result, productionTeam) {
+            const columnsByKey = new Map();
+            const addColumn = item => {
+                const key = String(item?.key || '').trim();
+                if (!key || columnsByKey.has(key)) return;
+                const label = String(item?.lineName || item?.label || key).trim() || key;
+                columnsByKey.set(key, {
+                    key,
+                    label,
+                    value: row => {
+                        const detailMap = (row?.productionProductValues && typeof row.productionProductValues === 'object')
+                            ? row.productionProductValues
+                            : buildUtilReportProductionProductMonthlyValueMap(row?.year, row?.month, productionTeam);
+                        const value = Number(detailMap?.[key]);
+                        return Number.isFinite(value) ? value : null;
+                    }
+                });
+            };
+            const composition = buildUtilReportProductionProductCompositionData('', productionTeam);
+            (Array.isArray(composition?.items) ? composition.items : []).forEach(addColumn);
+            (Array.isArray(result?.rows) ? result.rows : []).forEach(row => {
+                const detailMap = row?.productionProductValues && typeof row.productionProductValues === 'object'
+                    ? row.productionProductValues
+                    : buildUtilReportProductionProductMonthlyValueMap(row?.year, row?.month, productionTeam);
+                Object.keys(detailMap || {}).forEach(key => {
+                    const parsed = parseUtilReportProductionProductCompositionMetric(key);
+                    addColumn({
+                        key,
+                        label: parsed.lineName || key,
+                        lineName: parsed.lineName || key
+                    });
+                });
+            });
+            return Array.from(columnsByKey.values());
+        }
+
+        function buildUtilReportOverviewRatioProductionColumns(result) {
+            const productionTeam = normalizeUtilReportProductionTeam(UtilReportState.productionTeam);
+            if (productionTeam === 'all') {
+                return {
+                    title: '총생산량 공장별 상세표',
+                    totalLabel: '총생산량',
+                    columns: [
+                        { key: 'production-yusan', label: '유산', value: row => sumUtilReportProductionBySourceTeams(row?.year, row?.month, resolveUtilReportProductionTeamsBySite('유산')) },
+                        { key: 'production-bukjeong', label: '북정', value: row => sumUtilReportProductionBySourceTeams(row?.year, row?.month, resolveUtilReportProductionTeamsBySite('북정')) }
+                    ]
+                };
+            }
+            if (productionTeam === '유산') {
+                const teams = resolveUtilReportProductionTeamsBySite('유산');
+                return {
+                    title: '유산 팀별 생산량 상세표',
+                    totalLabel: '유산 합계',
+                    columns: teams.map(teamName => ({
+                        key: `production-team-${teamName}`,
+                        label: getUtilReportOverviewRatioProductionTeamLabel(teamName),
+                        value: row => sumUtilReportProductionBySourceTeams(row?.year, row?.month, [teamName])
+                    }))
+                };
+            }
+            const teamLabel = getUtilReportOverviewRatioProductionTeamLabel(productionTeam);
+            return {
+                title: `${teamLabel} 라인별 생산량 상세표`,
+                totalLabel: `${teamLabel} 합계`,
+                columns: buildUtilReportOverviewRatioProductionLineColumns(result, productionTeam)
+            };
+        }
+
+        function renderUtilReportOverviewRatioCostBreakdownTable(result) {
+            if (!result || !Array.isArray(result.rows) || !result.rows.length) {
+                return '<div class="p-4 text-sm text-slate-300">표시할 비용 데이터가 없습니다.</div>';
+            }
+            const descriptor = buildUtilReportOverviewRatioCostColumns();
+            const columns = Array.isArray(descriptor.columns) ? descriptor.columns : [];
+            if (!columns.length) {
+                return '<div class="p-4 text-sm text-slate-300">표시할 비용 항목이 없습니다.</div>';
+            }
+            const decimals = UtilReportState.decimals;
+            const unitLabel = getUtilReportValueUnitLabelByType('cost', 'total_cost');
+            const valueFormatter = value => Number.isFinite(value)
+                ? formatUtilReportValueByType(value, 'cost', decimals, 'total_cost')
+                : '-';
+            const rows = result.rows
+                .map(row => ({
+                    row,
+                    monthKey: normalizeUtilReportMonthKey(row?.monthKey || toUtilMonthKey(row?.year, row?.month))
+                }))
+                .filter(item => item.monthKey)
+                .sort((a, b) => compareUtilReportMonthKeys(a.monthKey, b.monthKey));
+            const columnTotals = new Map(columns.map(column => [column.key, 0]));
+            let grandTotal = 0;
+            const bodyHtml = rows.map(item => {
+                let rowTotal = 0;
+                const cellsHtml = columns.map(column => {
+                    const rawValue = Number(column.value(item.row));
+                    const value = Number.isFinite(rawValue) ? rawValue : NaN;
+                    if (Number.isFinite(value)) {
+                        rowTotal += value;
+                        columnTotals.set(column.key, (Number(columnTotals.get(column.key)) || 0) + value);
+                    }
+                    return `<td class="is-primary"><span class="util-report-yoy-value">${valueFormatter(value)}</span></td>`;
+                }).join('');
+                grandTotal += rowTotal;
+                return `
+                    <tr data-month-token="${escapeHtml(formatUtilReportMonthOnly(item.monthKey))}" data-month-key="${escapeHtml(item.monthKey)}">
+                        <td><span class="util-report-yoy-row-label">${escapeHtml(formatUtilReportMonthLong(item.monthKey))}</span></td>
+                        ${cellsHtml}
+                        <td class="is-current"><span class="util-report-yoy-value">${valueFormatter(rowTotal)}</span></td>
+                    </tr>
+                `;
+            }).join('');
+            const headerHtml = columns
+                .map(column => `<th class="is-primary">${renderUtilReportTableHeadCell(column.label, '')}</th>`)
+                .join('');
+            const footerHtml = columns
+                .map(column => `<td class="is-primary"><span class="util-report-yoy-value">${valueFormatter(Number(columnTotals.get(column.key)))}</span></td>`)
+                .join('');
+            return `
+                <div class="util-report-overview-breakdown-block" data-role="util-report-overview-breakdown-table">
+                    <div class="util-report-yoy-launcher">
+                        <div>
+                            <div class="util-report-yoy-launcher-title">${escapeHtml(descriptor.title)}</div>
+                            <div class="util-report-yoy-launcher-sub">기간: ${escapeHtml(result.rangeLabel || '-')} / 단위: ${escapeHtml(unitLabel)}</div>
+                        </div>
+                    </div>
+                    <table class="util-report-yoy-table is-timeline is-structured is-overview-breakdown" data-role="util-report-modal-yoy-table">
+                        <thead>
+                            <tr>
+                                <th>${renderUtilReportTableHeadCell('연월', '월별 기준')}</th>
+                                ${headerHtml}
+                                <th class="is-current">${renderUtilReportTableHeadCell(descriptor.totalLabel, '')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>${bodyHtml}</tbody>
+                        <tfoot>
+                            <tr class="util-report-yoy-total">
+                                <td>${renderUtilReportTableSummaryLabel('합계', '전체 기간')}</td>
+                                ${footerHtml}
+                                <td class="is-current"><span class="util-report-yoy-value">${valueFormatter(grandTotal)}</span></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderUtilReportOverviewRatioProductionBreakdownTable(result) {
+            if (!result || !Array.isArray(result.rows) || !result.rows.length) {
+                return '<div class="p-4 text-sm text-slate-300">표시할 생산량 데이터가 없습니다.</div>';
+            }
+            const descriptor = buildUtilReportOverviewRatioProductionColumns(result);
+            const columns = Array.isArray(descriptor.columns) ? descriptor.columns : [];
+            if (!columns.length) {
+                return '<div class="p-4 text-sm text-slate-300">표시할 생산량 라인이 없습니다.</div>';
+            }
+            const decimals = UtilReportState.decimals;
+            const unitLabel = getUtilReportValueUnitLabelByType('production', 'production');
+            const valueFormatter = value => Number.isFinite(value)
+                ? formatUtilReportValueByType(value, 'production', decimals, 'production')
+                : '-';
+            const rows = result.rows
+                .map(row => ({
+                    row,
+                    monthKey: normalizeUtilReportMonthKey(row?.monthKey || toUtilMonthKey(row?.year, row?.month))
+                }))
+                .filter(item => item.monthKey)
+                .sort((a, b) => compareUtilReportMonthKeys(a.monthKey, b.monthKey));
+            const columnTotals = new Map(columns.map(column => [column.key, 0]));
+            let grandTotal = 0;
+            const bodyHtml = rows.map(item => {
+                let rowTotal = 0;
+                const cellsHtml = columns.map(column => {
+                    const rawValue = Number(column.value(item.row));
+                    const value = Number.isFinite(rawValue) ? rawValue : NaN;
+                    if (Number.isFinite(value)) {
+                        rowTotal += value;
+                        columnTotals.set(column.key, (Number(columnTotals.get(column.key)) || 0) + value);
+                    }
+                    return `<td class="is-primary"><span class="util-report-yoy-value">${valueFormatter(value)}</span></td>`;
+                }).join('');
+                grandTotal += rowTotal;
+                return `
+                    <tr data-month-token="${escapeHtml(formatUtilReportMonthOnly(item.monthKey))}" data-month-key="${escapeHtml(item.monthKey)}">
+                        <td><span class="util-report-yoy-row-label">${escapeHtml(formatUtilReportMonthLong(item.monthKey))}</span></td>
+                        ${cellsHtml}
+                        <td class="is-current"><span class="util-report-yoy-value">${valueFormatter(rowTotal)}</span></td>
+                    </tr>
+                `;
+            }).join('');
+            const headerHtml = columns
+                .map(column => `<th class="is-primary">${renderUtilReportTableHeadCell(column.label, '')}</th>`)
+                .join('');
+            const footerHtml = columns
+                .map(column => `<td class="is-primary"><span class="util-report-yoy-value">${valueFormatter(Number(columnTotals.get(column.key)))}</span></td>`)
+                .join('');
+            return `
+                <div class="util-report-overview-breakdown-block" data-role="util-report-overview-breakdown-table">
+                    <div class="util-report-yoy-launcher">
+                        <div>
+                            <div class="util-report-yoy-launcher-title">${escapeHtml(descriptor.title)}</div>
+                            <div class="util-report-yoy-launcher-sub">기간: ${escapeHtml(result.rangeLabel || '-')} / 단위: ${escapeHtml(unitLabel)}</div>
+                        </div>
+                    </div>
+                    <table class="util-report-yoy-table is-timeline is-structured is-overview-breakdown" data-role="util-report-modal-yoy-table">
+                        <thead>
+                            <tr>
+                                <th>${renderUtilReportTableHeadCell('연월', '월별 기준')}</th>
+                                ${headerHtml}
+                                <th class="is-current">${renderUtilReportTableHeadCell(descriptor.totalLabel, '')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>${bodyHtml}</tbody>
+                        <tfoot>
+                            <tr class="util-report-yoy-total">
+                                <td>${renderUtilReportTableSummaryLabel('합계', '전체 기간')}</td>
+                                ${footerHtml}
+                                <td class="is-current"><span class="util-report-yoy-value">${valueFormatter(grandTotal)}</span></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `;
+        }
+
         function renderUtilReportInlineDetailContent(result) {
             if (UtilReportDetachedTableState.detached) {
                 return renderUtilReportDetachedPlaceholder(result);
+            }
+            if (isUtilReportOverviewRatioCostMode()) {
+                return renderUtilReportOverviewRatioCostBreakdownTable(result);
+            }
+            if (isUtilReportOverviewRatioProductionMode()) {
+                return renderUtilReportOverviewRatioProductionBreakdownTable(result);
             }
             return `
                 <div class="util-report-inline-table-wrap">

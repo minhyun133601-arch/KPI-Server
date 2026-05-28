@@ -58,7 +58,6 @@ function loadManifestScripts() {
 function createContext(options = {}) {
   const {
     withWindow = true,
-    includeMeteringApp = true,
     includeMeteringBridge = true,
     meteringWriteEnabled = true,
     reportRuntimeConfig = {
@@ -71,16 +70,13 @@ function createContext(options = {}) {
       writeEnabled: true,
     },
     fetchImpl = null,
-    includeProductionPersist = false,
-    productionWriteEnabled = true,
   } = options;
   const registered = {
     initializers: new Map(),
     bootTasks: new Map(),
     saveProviders: new Map(),
     closers: new Map(),
-    meteringInitCount: 0,
-    manualSaveCalls: [],
+    utilityEntrySaveCalls: [],
     reportPanelContainers: [],
     sheetReportContainers: [],
     printCount: 0,
@@ -112,21 +108,13 @@ function createContext(options = {}) {
         return writeEnabled === true;
       },
     },
-    KpiMeteringBridge: includeMeteringBridge
-      ? {
-          initIntegratedMetering() {
-            registered.meteringInitCount += 1;
-          },
-        }
-      : null,
-    KpiMeteringApp: includeMeteringApp
-      ? {
-          manualSave(options) {
-            registered.manualSaveCalls.push(options);
-            return { ok: true, trigger: options?.trigger || '' };
-          },
-        }
-      : null,
+    KpiMeteringBridge: includeMeteringBridge ? {} : null,
+    KpiUtilityEntryExperiment: {
+      save(host, period) {
+        registered.utilityEntrySaveCalls.push({ host, period });
+        return { ok: true, period };
+      },
+    },
     renderUtilDualTabs() {},
     initUnifiedUtilAnalytics() {},
     initUtilAnalyticsRepeaters() {},
@@ -147,13 +135,6 @@ function createContext(options = {}) {
   };
   if (typeof fetchImpl === 'function') {
     context.fetch = fetchImpl;
-  }
-  if (includeProductionPersist) {
-    context.getUtilProductionServerRuntimeConfig = () => ({ writeEnabled: productionWriteEnabled });
-    context.persistUtilProductionDailyState = () => {
-      registered.productionPersistCount = (registered.productionPersistCount || 0) + 1;
-      return { ok: true, source: 'production' };
-    };
   }
   context.window = withWindow ? context : null;
   context['global' + 'This'] = context;
@@ -1109,9 +1090,11 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   const { context, registered } = createContext();
 
   assert.equal(typeof registered.initializers.get('data'), 'function');
+  assert.equal(typeof registered.initializers.get('experiment'), 'function');
   assert.equal(typeof registered.initializers.get('report'), 'function');
   assert.equal(typeof context.KpiUtilRuntimeBrowserAdapter.exportReportDeckSingleHtml, 'function');
   assert.equal(typeof context.KpiUtilRuntimeBrowserAdapter.exportReportDeckCaptureZip, 'function');
+  assert.equal(typeof context.KpiUtilRuntimeBrowserAdapter.exportReportDeckCapturePdf, 'function');
   assert.equal(typeof context.KpiUtilRuntimeBrowserAdapter.printReportDeckPdf, 'function');
   assert.match(adapterSource, /data-report-export-viewer/);
   assert.match(adapterSource, /data-report-export-capture-zip/);
@@ -1141,14 +1124,23 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.match(adapterSource, /buildReportDeckCaptureZipEndpoint/);
   assert.match(adapterSource, /buildReportDeckCapturePageHtml/);
   assert.match(adapterSource, /format:\s*'zip'/);
+  assert.match(adapterSource, /format:\s*'pdf'/);
   assert.match(adapterSource, /pageNumbers/);
   assert.match(adapterSource, /pageRange/);
+  assert.match(adapterSource, /const range = normalizeReportDeckCapturePageRange\(options\.pageRange, slides\.length\);/);
+  assert.match(adapterSource, /const captureZipDataUrl = String\(options\.captureZipDataUrl \|\| ''\)\.trim\(\);/);
+  assert.match(adapterSource, /const captureZipFileName = String\(options\.captureZipFileName \|\| options\.filename \|\| 'report-capture\.zip'\)\.replace/);
+  assert.match(adapterSource, /pageRange:\s*options\.pageRange/);
   assert.match(runtimeSource, /buildReportDeckExportTimeMinuteToken/);
   assert.match(runtimeSource, /KPI-report-capture-\$\{buildReportDeckExportDateToken\(state, meta\)\}-\$\{buildReportDeckExportTimeMinuteToken\(\)\}\.zip/);
   assert.match(runtimeSource, /data-report-capture-zip/);
+  assert.match(runtimeSource, /data-report-capture-pdf/);
   assert.match(runtimeSource, /data-report-capture-range-start/);
   assert.match(runtimeSource, /data-report-capture-range-end/);
   assert.match(runtimeSource, /data-report-capture-current-only/);
+  assert.match(runtimeSource, /includeCaptureFiles:\s*false/);
+  assert.match(runtimeSource, /pageRange,/);
+  assert.match(runtimeSource, /exportReportDeckCapturePdf/);
   assert.match(runtimeSource, /reportCaptureBusy/);
   assert.match(adapterSource, /report-print-slide-image/);
   assert.match(adapterSource, /image\/svg\+xml;charset=utf-8/);
@@ -1171,10 +1163,9 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   const dataUtilityContainer = {};
   registered.initializers.get('data')({
     sectionId: 'data',
-    category: { utilitySurface: 'entry', content: '' },
+    category: { utilitySurface: 'entry-experiment', content: '' },
     container: dataUtilityContainer,
   });
-  assert.equal(registered.meteringInitCount, 1);
   assert.equal(registered.reportPanelContainers.length, 0);
   assert.equal(registered.sheetReportContainers.length, 0);
 
@@ -1195,18 +1186,36 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
     category: { utilitySurface: 'analysis', autoOpenUtilityReportModal: true, content: '' },
     container: dataAnalysisContainer,
   });
-  assert.equal(registered.meteringInitCount, 1);
   assert.equal(registered.reportPanelContainers[0], dataAnalysisContainer);
   assert.equal(dataAnalysisModalOpenCount, 1);
   assert.equal(registered.sheetReportContainers.length, 0);
+
+  let experimentAnalysisModalOpenCount = 0;
+  const experimentAnalysisOpenButton = {
+    dataset: {},
+    click() {
+      experimentAnalysisModalOpenCount += 1;
+    },
+  };
+  const experimentAnalysisContainer = {
+    querySelector(selector) {
+      return selector === '[data-role="util-report-open-modal"]' ? experimentAnalysisOpenButton : null;
+    },
+  };
+  registered.initializers.get('experiment')({
+    sectionId: 'experiment',
+    category: { utilitySurface: 'analysis', autoOpenUtilityReportModal: true, content: '' },
+    container: experimentAnalysisContainer,
+  });
+  assert.equal(registered.reportPanelContainers[1], experimentAnalysisContainer);
+  assert.equal(experimentAnalysisModalOpenCount, 1);
 
   registered.initializers.get('data')({
     sectionId: 'data',
     category: { content: '' },
     container: {},
   });
-  assert.equal(registered.meteringInitCount, 1);
-  assert.equal(registered.reportPanelContainers.length, 1);
+  assert.equal(registered.reportPanelContainers.length, 2);
 
   const reportContainer = {};
   registered.initializers.get('report')({
@@ -1215,22 +1224,28 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   });
   assert.equal(registered.sheetReportContainers[0], reportContainer);
 
-  const providerFactory = registered.saveProviders.get('util-shared-save');
+  const utilityEntryHost = {
+    querySelector(selector) {
+      return selector === '#utility-entry-experiment-monthly:checked' ? null : null;
+    },
+  };
+  const providerFactory = registered.saveProviders.get('util-entry-experiment-save');
   const provider = providerFactory({
     sectionId: 'data',
-    category: { utilitySurface: 'entry' },
+    category: { utilitySurface: 'entry-experiment' },
     container: {
       querySelector(selector) {
-        return selector === '[data-kpi-metering-root]' ? { shadowRoot: {} } : null;
+        return selector === '[data-role="utility-entry-experiment"]' ? utilityEntryHost : null;
       },
     },
   });
 
   assert.equal(provider.canSave, true);
   assert.equal(provider.priority, 120);
-  assert.deepEqual(await provider.perform({ trigger: 'manual' }), { ok: true, trigger: 'manual' });
-  assert.equal(registered.manualSaveCalls.length, 1);
-  assert.equal(registered.manualSaveCalls[0]?.trigger, 'manual');
+  assert.deepEqual(await provider.perform({ trigger: 'manual' }), { ok: true, period: 'daily' });
+  assert.equal(registered.utilityEntrySaveCalls.length, 1);
+  assert.equal(registered.utilityEntrySaveCalls[0]?.host, utilityEntryHost);
+  assert.equal(registered.utilityEntrySaveCalls[0]?.period, 'daily');
 
   assert.equal(providerFactory({
     sectionId: 'data',
@@ -2609,10 +2624,14 @@ test('util runtime browser adapter builds report memo overview with current valu
     team_03: '3팀',
   };
   const monthly = new Map([
-    ['2025-04', { production: 1100, electric: 120 }],
-    ['2026-03', { production: 800, electric: 90 }],
-    ['2026-04', { production: 1000, electric: 100 }],
+    ['2025-04', { production: 1100, electric: 120, yusanProduction: 3000, yusanElectric: 300 }],
+    ['2026-03', { production: 800, electric: 90, yusanProduction: 2400, yusanElectric: 270 }],
+    ['2026-04', { production: 1000, electric: 100, yusanProduction: 2700, yusanElectric: 330 }],
   ]);
+  const isYusanTeamNames = teamNames => {
+    const names = new Set((Array.isArray(teamNames) ? teamNames : []).filter(Boolean));
+    return ['1팀 2파트', '2팀', '3팀'].every(teamName => names.has(teamName));
+  };
   context.KPIUtilReportSheetOptions = {
     getUtilGasAnalysisCategoryOption(value) {
       const label = teamLabels[value] || value;
@@ -2625,6 +2644,14 @@ test('util runtime browser adapter builds report memo overview with current valu
       };
     },
     getUtilElectricAnalysisTeamOption(value) {
+      if (value === 'yusan') {
+        return {
+          key: 'combined',
+          label: '합산',
+          reportTeamFilters: Object.values(teamLabels),
+          productionTeamNames: Object.values(teamLabels),
+        };
+      }
       const label = teamLabels[value] || value;
       return {
         key: value,
@@ -2635,21 +2662,36 @@ test('util runtime browser adapter builds report memo overview with current valu
     },
   };
   context.KPIUtilReportSheetGasScopedMetrics = {
-    getUtilGasAnalysisProductionValue(monthKey) {
-      return monthly.get(monthKey)?.production ?? NaN;
+    getUtilGasAnalysisProductionValue(monthKey, teamNames = []) {
+      return isYusanTeamNames(teamNames)
+        ? monthly.get(monthKey)?.yusanProduction ?? NaN
+        : monthly.get(monthKey)?.production ?? NaN;
     },
     getUtilGasAnalysisTeamUsageValue() {
       return NaN;
     },
   };
   context.KPIUtilReportSheetAnalysisElectricModel = {
-    buildUtilElectricAnalysisScopedRows(bounds) {
+    buildUtilElectricAnalysisScopedRows(bounds, option) {
       assert.equal(bounds.from, '2025-04');
       assert.equal(bounds.to, '2026-04');
+      const isYusan = option?.key === 'site_yusan';
       return [
-        { monthKey: '2025-04', electricUsage: monthly.get('2025-04').electric },
-        { monthKey: '2026-03', electricUsage: monthly.get('2026-03').electric },
-        { monthKey: '2026-04', electricUsage: monthly.get('2026-04').electric },
+        {
+          monthKey: '2025-04',
+          electricUsage: isYusan ? monthly.get('2025-04').yusanElectric : monthly.get('2025-04').electric,
+          production: isYusan ? monthly.get('2025-04').yusanProduction : monthly.get('2025-04').production,
+        },
+        {
+          monthKey: '2026-03',
+          electricUsage: isYusan ? monthly.get('2026-03').yusanElectric : monthly.get('2026-03').electric,
+          production: isYusan ? monthly.get('2026-03').yusanProduction : monthly.get('2026-03').production,
+        },
+        {
+          monthKey: '2026-04',
+          electricUsage: isYusan ? monthly.get('2026-04').yusanElectric : monthly.get('2026-04').electric,
+          production: isYusan ? monthly.get('2026-04').yusanProduction : monthly.get('2026-04').production,
+        },
       ];
     },
     buildUtilElectricAnalysisLineRatioSeries() {
@@ -2659,8 +2701,12 @@ test('util runtime browser adapter builds report memo overview with current valu
 
   const overview = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoOverview('2026-04');
   assert.equal(overview.ok, true);
+  assert.equal(overview.groups[0]?.key, 'site_yusan');
+  assert.equal(overview.groups[0]?.label, '유산');
   assert.ok(overview.groups.some(group => group.key === 'team_01_02'));
   const joined = overview.candidates.map(candidate => candidate.text).join('\n');
+  assert.match(joined, /유산 생산량 2,700kg 전월대비 300kg, 12\.5% ↑, 전년대비 300kg, 10\.0% ↓/);
+  assert.match(joined, /유산 전력량 330kWh 전월대비 60kWh, 22\.2% ↑, 전년대비 30kWh, 10\.0% ↑/);
   assert.match(joined, /1팀 2파트 생산량 1,000kg 전월대비 200kg, 25\.0% ↑, 전년대비 100kg, 9\.1% ↓/);
   assert.match(joined, /전력량 100kWh 전월대비 10kWh, 11\.1% ↑, 전년대비 20kWh, 16\.7% ↓/);
 });
@@ -5152,54 +5198,44 @@ test('util runtime browser adapter supports no-window and disabled-write branche
   assert.doesNotThrow(() => {
     registered.initializers.get('data')({
       sectionId: 'data',
-      category: { utilitySurface: 'entry', content: '' },
+      category: { utilitySurface: 'entry-experiment', content: '' },
       container: {},
     });
   });
 
-  const providerFactory = registered.saveProviders.get('util-shared-save');
+  const utilityEntryHost = {
+    querySelector() {
+      return null;
+    },
+  };
+  const providerFactory = registered.saveProviders.get('util-entry-experiment-save');
   const provider = providerFactory({
     sectionId: 'data',
-    category: { utilitySurface: 'entry' },
+    category: { utilitySurface: 'entry-experiment' },
     container: {
       querySelector(selector) {
-        return selector === '[data-kpi-metering-root]' ? { shadowRoot: {} } : null;
+        return selector === '[data-role="utility-entry-experiment"]' ? utilityEntryHost : null;
       },
     },
   });
 
   assert.equal(provider.canSave, false);
   assert.equal(await provider.perform({ trigger: 'manual' }), false);
-  assert.equal(registered.manualSaveCalls.length, 0);
+  assert.equal(registered.utilityEntrySaveCalls.length, 0);
 });
 
-test('util runtime save provider falls back to production persistence only when available', async () => {
-  const withFallback = createContext({
-    includeMeteringApp: false,
-    includeProductionPersist: true,
-  });
-  const providerFactory = withFallback.registered.saveProviders.get('util-shared-save');
+test('util runtime save provider only serves the utility entry experiment host', () => {
+  const { registered } = createContext();
+  const providerFactory = registered.saveProviders.get('util-entry-experiment-save');
 
-  const productionProvider = providerFactory({
+  assert.equal(providerFactory({
     sectionId: 'data',
     category: { utilitySurface: 'entry' },
-    container: {
-      querySelector(selector) {
-        return selector === '[data-kpi-metering-root]' ? { shadowRoot: {} } : null;
-      },
-    },
-  });
-
-  assert.equal(productionProvider.priority, 40);
-  assert.equal(productionProvider.canSave, true);
-  assert.deepEqual(await productionProvider.perform(), { ok: true, source: 'production' });
-  assert.equal(withFallback.registered.productionPersistCount, 1);
-
-  const withoutFallback = createContext({ includeMeteringApp: false });
-  const emptyProviderFactory = withoutFallback.registered.saveProviders.get('util-shared-save');
-  assert.equal(emptyProviderFactory({
+    container: {},
+  }), null);
+  assert.equal(providerFactory({
     sectionId: 'data',
-    category: { utilitySurface: 'entry' },
+    category: { utilitySurface: 'entry-experiment' },
     container: {},
   }), null);
 });

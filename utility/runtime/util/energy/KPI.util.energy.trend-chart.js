@@ -84,16 +84,22 @@
             const maxVal = bounds.max;
             const axisFontSize = Number.isFinite(options.axisFontSize) ? options.axisFontSize : (isModal ? 13 : 12);
             const yLabelOffset = Number.isFinite(options.yLabelOffset) ? options.yLabelOffset : 14;
-            const leftPad = getUtilChartLeftPad(minVal, maxVal, decimals, {
+            const leftPadDefault = getUtilChartLeftPad(minVal, maxVal, decimals, {
                 fallback: isModal ? 170 : 74,
                 minPad: isModal ? 190 : 78,
                 fontSize: axisFontSize,
                 anchorOffset: yLabelOffset,
                 extra: isModal ? 40 : 12
             });
-            const bottomPad = axisXLabel ? (isModal ? 126 : 68) : (isModal ? 84 : 52);
+            const leftPadOption = Number(options.leftPad);
+            const leftPad = Number.isFinite(leftPadOption) && leftPadOption >= 0 ? leftPadOption : leftPadDefault;
+            const bottomPadDefault = axisXLabel ? (isModal ? 126 : 68) : (isModal ? 84 : 52);
+            const bottomPadOption = Number(options.bottomPad);
+            const bottomPad = Number.isFinite(bottomPadOption) && bottomPadOption >= 0 ? bottomPadOption : bottomPadDefault;
+            const topPadOption = Number(options.topPad);
+            const topPad = Number.isFinite(topPadOption) && topPadOption >= 0 ? topPadOption : (isModal ? 30 : 30);
             const rightPad = Number.isFinite(options.rightPad) ? Number(options.rightPad) : (isModal ? 68 : 24);
-            const pad = { left: leftPad, right: rightPad, top: isModal ? 30 : 30, bottom: bottomPad };
+            const pad = { left: leftPad, right: rightPad, top: topPad, bottom: bottomPad };
             const plotW = width - pad.left - pad.right;
             const plotH = height - pad.top - pad.bottom;
             const valueRange = maxVal - minVal || 1;
@@ -130,14 +136,15 @@
             }
 
             const tickCount = Number.isFinite(options.tickCount) ? Math.max(2, Math.floor(options.tickCount)) : (isModal ? 3 : 4);
-            const gridLines = Array.from({ length: tickCount + 1 }).map((_, index) => {
+            const showGridLines = options.showGridLines !== false;
+            const gridLines = showGridLines ? Array.from({ length: tickCount + 1 }).map((_, index) => {
                 const value = maxVal - (valueRange * (index / tickCount));
                 const y = mapY(value);
                 return `
                     <line class="util-analytics-chart-grid" x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" />
                     <text class="util-analytics-chart-label" x="${pad.left - yLabelOffset}" y="${y + 4}" text-anchor="end">${formatUtilNumber(value, decimals)}</text>
                 `;
-            }).join('');
+            }).join('') : '';
 
             const yearGroups = [];
             let currentYear = null;
@@ -174,7 +181,7 @@
                     : `<line class="util-analytics-chart-year-sep" x1="${left}" y1="${pad.top}" x2="${left}" y2="${baseY}" />`;
                 return `${band}${sepLine}${yearLabel}`;
             }).join('') : '';
-            const focusMonthOverlay = !focusMonthKey
+            const focusMonthOverlay = !focusMonthKey || options.showFocusOverlay === false
                 ? ''
                 : (() => {
                     const targetIndex = points.findIndex(point => getUtilChartPointMonthKey(point, point.label) === focusMonthKey);
@@ -194,16 +201,25 @@
                 ? Math.max(2, Math.floor(options.maxXAxisLabels))
                 : (isModal ? 12 : 6);
             const labelEvery = Math.max(1, Math.ceil(points.length / maxXAxisLabels));
-            const xAxisLabelY = height - (isModal ? 48 : 20);
-            const axisTitleY = height - (isModal ? 22 : 8);
+            const xAxisLabelBottomOffset = Number.isFinite(Number(options.xAxisLabelBottomOffset))
+                ? Number(options.xAxisLabelBottomOffset)
+                : (isModal ? 48 : 20);
+            const axisTitleBottomOffset = Number.isFinite(Number(options.axisTitleBottomOffset))
+                ? Number(options.axisTitleBottomOffset)
+                : (isModal ? 22 : 8);
+            const xAxisLabelY = height - xAxisLabelBottomOffset;
+            const axisTitleY = height - axisTitleBottomOffset;
             const xLabels = points.map((point, index) => {
                 if (index !== 0 && index !== points.length - 1 && index % labelEvery !== 0) return '';
                 const xBase = mapX(index);
                 const isFirst = index === 0;
                 const isLast = index === points.length - 1;
-                const edgeOffset = isModal ? 10 : 6;
-                const x = isFirst ? (xBase + edgeOffset) : (isLast ? (xBase - edgeOffset) : xBase);
-                const anchor = isFirst ? 'start' : (isLast ? 'end' : 'middle');
+                const centerEdgeLabels = options.centerEdgeLabels === true;
+                const edgeOffset = Number.isFinite(Number(options.edgeLabelOffset))
+                    ? Number(options.edgeLabelOffset)
+                    : (isModal ? 10 : 6);
+                const x = centerEdgeLabels ? xBase : (isFirst ? (xBase + edgeOffset) : (isLast ? (xBase - edgeOffset) : xBase));
+                const anchor = centerEdgeLabels ? 'middle' : (isFirst ? 'start' : (isLast ? 'end' : 'middle'));
                 const monthAttr = buildUtilChartPointDataAttrs(point, point.label);
                 return `<text class="util-analytics-chart-label" x="${x}" y="${xAxisLabelY}" text-anchor="${anchor}"${monthAttr}>${escapeHtml(point.label)}</text>`;
             }).join('');
@@ -223,14 +239,24 @@
                 `;
             }).join('');
 
+            const valueLabelLaneOffsets = Array.isArray(options.valueLabelLaneOffsets) && options.valueLabelLaneOffsets.length
+                ? options.valueLabelLaneOffsets.map(Number).filter(Number.isFinite)
+                : [];
+            const valueLabelFontSize = Number.isFinite(Number(options.valueLabelFontSize))
+                ? Number(options.valueLabelFontSize)
+                : null;
             const valueLabels = showLabels ? points.map((point, index) => {
                 if (!Number.isFinite(point.value)) return '';
                 const x = mapX(index);
-                let y = mapY(point.value) - 10;
-                if (index % 2 === 1) y -= 12;
+                const laneOffset = valueLabelLaneOffsets.length
+                    ? valueLabelLaneOffsets[index % valueLabelLaneOffsets.length]
+                    : (index % 2 === 1 ? -22 : -10);
+                let y = mapY(point.value) + laneOffset;
                 if (y < pad.top + 10) y = pad.top + 12;
+                if (y > height - pad.bottom - 8) y = height - pad.bottom - 8;
                 const monthAttr = buildUtilChartPointDataAttrs(point, point.label);
-                return `<text class="util-analytics-chart-value" x="${x}" y="${y}" text-anchor="middle"${monthAttr}>${formatUtilNumber(point.value, decimals)}</text>`;
+                const styleAttr = valueLabelFontSize ? ` style="font-size:${valueLabelFontSize}px"` : '';
+                return `<text class="util-analytics-chart-value" x="${x}" y="${y}" text-anchor="middle"${monthAttr}${styleAttr}>${formatUtilNumber(point.value, decimals)}</text>`;
             }).join('') : '';
 
             const barRects = points.map((point, index) => {
@@ -263,6 +289,16 @@
                     if (rectWidth <= 0.5 || rectHeight <= 0.5) return '';
                     return `<rect x="${left}" y="${pad.top}" width="${rectWidth}" height="${rectHeight}" fill="rgba(0, 0, 0, 0.001)"${monthAttr}></rect>`;
                 }).join('');
+            const comparisonKeys = Array.isArray(options.comparisonKeys)
+                ? options.comparisonKeys.map(key => normalizeUtilReportMonthKey(key)).filter(Boolean)
+                : [];
+            const comparisonMarkers = comparisonKeys.map(key => {
+                const index = points.findIndex(point => getUtilChartPointMonthKey(point, point.label) === key);
+                if (index < 0 || !Number.isFinite(points[index]?.value)) return '';
+                const x = mapX(index);
+                const y = mapY(points[index].value);
+                return `<circle class="util-analytics-chart-comparison-marker" cx="${x}" cy="${y}" r="6" fill="none" stroke="var(--util-chart-arrow, #dc2626)" stroke-width="2"></circle>`;
+            }).join('');
             const axisTitleXBody = axisXIcon
                 ? `<tspan class="util-analytics-chart-axis-title-icon">${escapeHtml(axisXIcon)}</tspan><tspan dx="4">${escapeHtml(axisXLabel)}</tspan>`
                 : escapeHtml(axisXLabel);
@@ -317,6 +353,7 @@
                             ${areaPath ? `<path class="util-analytics-chart-area" d="${areaPath}" />` : ''}
                             ${options.chartType === 'bar' ? barRects : `<path class="util-analytics-chart-line" d="${linePath}" />`}
                             ${options.chartType === 'bar' ? '' : circles}
+                            ${comparisonMarkers}
                             ${valueLabels}
                             ${xLabels}
                             ${monthHitZones}

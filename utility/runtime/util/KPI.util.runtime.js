@@ -5,10 +5,6 @@
     const runtime = browser?.getRuntime?.();
     if (!runtime) return;
 
-    function initializeUtilityEntrySurface({ container } = {}) {
-        void browser?.initIntegratedMetering?.(container);
-    }
-
     function autoOpenUtilityReportModal({ container, category } = {}) {
         if (category?.autoOpenUtilityReportModal !== true) return;
 
@@ -28,20 +24,36 @@
         autoOpenUtilityReportModal(context);
     }
 
-    function getDataUtilitySurface(context = {}) {
-        if (context.sectionId !== 'data') return '';
+    function getUtilitySurface(context = {}) {
         return String(context.category?.utilitySurface || '').trim();
     }
 
-    function isUtilitySaveSurface(context = {}) {
-        return getDataUtilitySurface(context) === 'entry';
+    function getDataUtilitySurface(context = {}) {
+        if (context.sectionId !== 'data') return '';
+        return getUtilitySurface(context);
+    }
+
+    function isUtilityEntryExperimentSaveSurface(context = {}) {
+        return getDataUtilitySurface(context) === 'entry-experiment';
+    }
+
+    function getUtilityEntryExperimentHost(context = {}) {
+        return context.container?.querySelector?.('[data-role="utility-entry-experiment"]') || null;
+    }
+
+    function getUtilityEntryExperimentActivePeriod(host) {
+        return host?.querySelector?.('#utility-entry-experiment-monthly:checked') ? 'monthly' : 'daily';
     }
 
     runtime.registerSectionInitializer('data', (context = {}) => {
         const surface = getDataUtilitySurface(context);
-        if (surface === 'entry') {
-            initializeUtilityEntrySurface(context);
-        } else if (surface === 'analysis') {
+        if (surface === 'analysis') {
+            initializeUtilityAnalysisSurface(context);
+        }
+    });
+
+    runtime.registerSectionInitializer('experiment', (context = {}) => {
+        if (getUtilitySurface(context) === 'analysis') {
             initializeUtilityAnalysisSurface(context);
         }
     });
@@ -63,52 +75,28 @@
         bootUtilWasteMeteringSync();
     });
 
-    runtime.registerSaveProvider('util-shared-save', (context = {}) => {
-        if (!isUtilitySaveSurface(context)) return null;
+    runtime.registerSaveProvider('util-entry-experiment-save', (context = {}) => {
+        if (!isUtilityEntryExperimentSaveSurface(context)) return null;
 
-        const meteringHost = context.container?.querySelector?.('[data-kpi-metering-root]');
-        const meteringMounted = !!(meteringHost && meteringHost.shadowRoot);
-        if (meteringMounted && browser?.canManualSaveMetering?.() === true) {
-            const meteringRuntime = browser?.getMeteringRuntimeConfig?.();
-            const canWrite = runtime.canUseServerWrite(meteringRuntime?.writeEnabled === true);
-            return {
-                priority: 120,
-                canSave: canWrite,
-                buttonLabel: '저장',
-                historyLabel: '검침 저장',
-                title: '검침 데이터 저장',
-                statusText: canWrite
-                    ? '검침 데이터를 중앙 서버에 저장합니다.'
-                    : '서버 기록이 가능한 환경에서만 검침 데이터를 저장할 수 있습니다.',
-                perform: ({ trigger } = {}) => {
-                    if (!canWrite) return false;
-                    return browser?.performMeteringManualSave?.({ trigger });
-                }
-            };
-        }
+        const host = getUtilityEntryExperimentHost(context);
+        if (!host || typeof browser?.saveUtilityEntryExperiment !== 'function') return null;
 
-        if (typeof persistUtilProductionDailyState === 'function') {
-            const productionRuntime = typeof getUtilProductionServerRuntimeConfig === 'function'
-                ? getUtilProductionServerRuntimeConfig()
-                : null;
-            const canWrite = runtime.canUseServerWrite(productionRuntime?.writeEnabled === true);
-            return {
-                priority: 40,
-                canSave: canWrite,
-                buttonLabel: '저장',
-                historyLabel: '유틸리티 저장',
-                title: '유틸리티 상태 저장',
-                statusText: canWrite
-                    ? '현재 유틸리티 상태를 중앙 서버에 저장합니다.'
-                    : '서버 기록이 가능한 환경에서만 유틸리티 데이터를 저장할 수 있습니다.',
-                perform: () => {
-                    if (!canWrite) return false;
-                    return persistUtilProductionDailyState();
-                }
-            };
-        }
-
-        return null;
+        const utilityEntryRuntime = browser?.getUtilityEntryRuntimeConfig?.();
+        const canWrite = runtime.canUseServerWrite(utilityEntryRuntime?.writeEnabled === true);
+        return {
+            priority: 120,
+            canSave: canWrite,
+            buttonLabel: '저장',
+            historyLabel: '유틸리티 기입 저장',
+            title: '유틸리티 기입 데이터 저장',
+            statusText: canWrite
+                ? '현재 유틸리티 기입 데이터를 중앙 서버에 저장합니다.'
+                : '서버 기록이 가능한 환경에서만 유틸리티 기입 데이터를 저장할 수 있습니다.',
+            perform: () => {
+                if (!canWrite) return false;
+                return browser.saveUtilityEntryExperiment(host, getUtilityEntryExperimentActivePeriod(host));
+            }
+        };
     });
 
     [
@@ -1771,7 +1759,7 @@
         } else {
             delete root.dataset.reportCaptureBusy;
         }
-        Array.from(root.querySelectorAll?.('[data-report-capture-zip]') || []).forEach(button => {
+        Array.from(root.querySelectorAll?.('[data-report-capture-zip], [data-report-capture-pdf], [data-report-export-html]') || []).forEach(button => {
             button.disabled = Boolean(isBusy);
             button.setAttribute?.('aria-busy', isBusy ? 'true' : 'false');
         });
@@ -1806,11 +1794,15 @@
         if (controls.start) {
             controls.start.min = '1';
             controls.start.max = String(Math.max(1, total));
+            controls.start.inputMode = 'numeric';
+            controls.start.pattern = '[0-9]*';
             controls.start.value = String(from);
         }
         if (controls.end) {
             controls.end.min = '1';
             controls.end.max = String(Math.max(1, total));
+            controls.end.inputMode = 'numeric';
+            controls.end.pattern = '[0-9]*';
             controls.end.value = String(to);
         }
     }
@@ -1873,6 +1865,7 @@
             return true;
         }
         if (controls.currentOnly) controls.currentOnly.checked = false;
+        sanitizeReportDeckCaptureRangeInput(target);
         if (eventType === 'change') {
             const start = normalizeReportDeckCapturePage(controls.start.value, 1, total);
             const end = normalizeReportDeckCapturePage(controls.end.value, total, total);
@@ -1900,6 +1893,25 @@
             total,
             mode: 'range'
         };
+    }
+
+    function sanitizeReportDeckCaptureRangeInput(input) {
+        if (!input) return;
+        const digits = String(input.value || '').replace(/\D+/g, '');
+        if (String(input.value || '') !== digits) {
+            input.value = digits;
+        }
+    }
+
+    function handleReportDeckCaptureRangeKeydown(event) {
+        const target = event.target?.closest?.('[data-report-capture-range-start], [data-report-capture-range-end]');
+        if (!target) return false;
+        if (event.ctrlKey || event.metaKey || event.altKey) return false;
+        const allowedKeys = new Set(['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']);
+        if (allowedKeys.has(event.key)) return false;
+        if (/^\d$/.test(String(event.key || ''))) return false;
+        event.preventDefault();
+        return true;
     }
 
     function syncReportDeckMonthSelect(root, meta = {}) {
@@ -5243,6 +5255,10 @@
         return `KPI-report-capture-${buildReportDeckExportDateToken(state, meta)}-${buildReportDeckExportTimeMinuteToken()}.zip`;
     }
 
+    function buildReportDeckCapturePdfFileName(state = {}, meta = {}) {
+        return `KPI-report-capture-${buildReportDeckExportDateToken(state, meta)}-${buildReportDeckExportTimeMinuteToken()}.pdf`;
+    }
+
     function getReportDeckCaptureProgressText(progress = {}) {
         const current = Math.max(0, Number.parseInt(String(progress.current ?? '0'), 10) || 0);
         const total = Math.max(0, Number.parseInt(String(progress.total ?? '0'), 10) || 0);
@@ -5257,22 +5273,40 @@
             setReportDeckStatus(root, 'error', 'HTML 추출 불가');
             return false;
         }
+        if (root?.dataset?.reportCaptureBusy === 'true') {
+            return false;
+        }
         setReportDeckStatus(root, 'saving', 'HTML 추출 중');
         try {
-            prepareReportDeckPdfPrint(root, state);
+            const exportCount = prepareReportDeckPdfPrint(root, state);
+            if (exportCount <= 0) {
+                setReportDeckStatus(root, 'error', 'HTML 추출할 페이지 없음');
+                return false;
+            }
+            syncReportDeckCaptureControls(root, state);
+            const pageRange = resolveReportDeckCaptureRange(root, state);
+            if (!pageRange) {
+                setReportDeckStatus(root, 'error', 'HTML 범위 확인 필요');
+                return false;
+            }
+            setReportDeckCaptureBusy(root, true);
             await browser.exportReportDeckSingleHtml(root, {
                 filename: buildReportDeckExportFileName(state, meta),
                 title: '공무환경팀 실적보고서',
+                includeCaptureFiles: false,
+                pageRange,
                 onCaptureProgress: progress => {
                     setReportDeckStatus(root, 'saving', `HTML 추출용 ${getReportDeckCaptureProgressText(progress)}`);
                 }
             });
-            setReportDeckStatus(root, 'saved', 'HTML 추출 완료');
+            setReportDeckStatus(root, 'saved', `HTML 추출 완료 (${pageRange.end - pageRange.start + 1}p)`);
             return true;
         } catch (error) {
             void error;
             setReportDeckStatus(root, 'error', 'HTML 추출 실패');
             return false;
+        } finally {
+            setReportDeckCaptureBusy(root, false);
         }
     }
 
@@ -5322,6 +5356,59 @@
                         : status
                             ? `\uCEA1\uCC98 ZIP \uC2E4\uD328: HTTP ${status}`
                             : '\uCEA1\uCC98 ZIP \uC2E4\uD328';
+            setReportDeckStatus(root, 'error', message);
+            return false;
+        } finally {
+            setReportDeckCaptureBusy(root, false);
+        }
+    }
+
+    async function captureReportDeckPdf(root, state, meta) {
+        if (typeof browser?.exportReportDeckCapturePdf !== 'function') {
+            setReportDeckStatus(root, 'error', 'PDF 변환 불가');
+            return false;
+        }
+        if (root?.dataset?.reportCaptureBusy === 'true') {
+            return false;
+        }
+        const captureCount = prepareReportDeckPdfPrint(root, state);
+        if (captureCount <= 0) {
+            setReportDeckStatus(root, 'error', 'PDF로 만들 페이지 없음');
+            return false;
+        }
+        syncReportDeckCaptureControls(root, state);
+        const pageRange = resolveReportDeckCaptureRange(root, state);
+        if (!pageRange) {
+            setReportDeckStatus(root, 'error', 'PDF 범위 확인 필요');
+            return false;
+        }
+        setReportDeckCaptureBusy(root, true);
+        setReportDeckStatus(root, 'saving', 'PDF 변환 준비 중');
+        try {
+            const result = await browser.exportReportDeckCapturePdf(root, {
+                filename: buildReportDeckCapturePdfFileName(state, meta),
+                pageRange,
+                onProgress: progress => {
+                    setReportDeckStatus(root, 'saving', `PDF 변환용 ${getReportDeckCaptureProgressText(progress)}`);
+                }
+            });
+            setReportDeckStatus(root, 'saved', `PDF 다운로드 완료 (${result?.imageCount || (pageRange.end - pageRange.start + 1)}p)`);
+            return true;
+        } catch (error) {
+            if (String(error?.name || '') === 'AbortError') {
+                setReportDeckStatus(root, 'idle', 'PDF 변환 취소');
+                return false;
+            }
+            const status = Number(error?.status) || 0;
+            const message = status === 401
+                ? 'PDF 변환 실패: 다시 로그인 필요'
+                : status === 404
+                    ? 'PDF 변환 실패: 서버 재시작 필요'
+                    : status === 413
+                        ? 'PDF 변환 실패: 보고서 이미지 용량 큼'
+                        : status
+                            ? `PDF 변환 실패: HTTP ${status}`
+                            : 'PDF 변환 실패';
             setReportDeckStatus(root, 'error', message);
             return false;
         } finally {
@@ -6024,6 +6111,13 @@
                 return;
             }
 
+            const pdfButton = event.target?.closest?.('[data-report-capture-pdf]');
+            if (pdfButton) {
+                event.preventDefault();
+                void captureReportDeckPdf(root, state, meta);
+                return;
+            }
+
             const captureButton = event.target?.closest?.('[data-report-capture-zip]');
             if (captureButton) {
                 event.preventDefault();
@@ -6148,6 +6242,7 @@
             markReportDeckDirty(root, state, meta);
         }
 
+        root.addEventListener?.('keydown', handleReportDeckCaptureRangeKeydown);
         root.addEventListener?.('input', handleReportDeckInput);
         root.addEventListener?.('change', handleReportDeckInput);
         root.addEventListener?.('paste', event => {

@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
 const sectionSourcePaths = [
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.section.factory-adapter.js'),
-  path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.section.builders.js'),
   path.join(repoRoot, 'team-report', 'runtime', 'work', 'sections', 'KPI.sections.work.js'),
   path.join(repoRoot, 'data-entry', 'runtime', 'data', 'sections', 'KPI.sections.data.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.report.js'),
@@ -63,31 +62,34 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.equal(typeof factories.experiment, 'function');
   assert.equal(typeof factories.owner, 'function');
   assert.equal(typeof registry.registerSections, 'function');
+  assert.equal(typeof context.window.KpiSectionFactoryAdapter.getBuilder('buildUtilityOverviewRatioContent'), 'function');
+  assert.equal(typeof context.window.KpiUtilityEntryExperiment?.normalizeNumberText, 'function');
+  assert.equal(typeof context.window.KpiUtilityEntryExperiment?.getMonthlyMeterLinkStates, 'function');
+  assert.equal(typeof context.window.KpiUtilityEntryExperiment?.save, 'function');
 
   const appData = registry.registerSections({});
   assert.deepEqual(Object.keys(appData), ['work', 'data', 'report', 'experiment', 'owner']);
   assert.equal(appData.work.name, '팀별내역서');
   assert.equal(appData.data.name, '데이터 관리');
-  assert.equal(appData.data.categories.length, 5);
-  assert.equal(appData.data.categories[0].title, '유틸리티 기입');
-  assert.equal(appData.data.categories[0].utilitySurface, 'entry');
-  assert.equal(appData.data.categories[0].viewerMode, 'full-bleed');
-  assert.match(appData.data.categories[0].content, /data-kpi-metering-root/);
-  assert.equal(appData.data.categories[1].title, '총괄 비율');
-  assert.equal(appData.data.categories[1].utilitySurface, 'analysis');
-  assert.equal(appData.data.categories[1].autoOpenUtilityReportModal, true);
-  assert.equal(appData.data.categories[1].viewerMode, 'full-bleed');
-  assert.equal(appData.data.categories[1].launchTarget, undefined);
-  assert.equal(appData.data.categories[1].launchRoute, undefined);
-  assert.match(appData.data.categories[1].content, /data-role="util-report-panel"/);
-  assert.match(appData.data.categories[1].content, /data-role="util-report-open-modal"/);
-  assert.match(appData.data.categories[1].content, /총괄 비율/);
-  assert.match(appData.data.categories[1].content, /도넛/);
-  assert.doesNotMatch(JSON.stringify(appData.data.categories[1]), /kpi-experiment-analysis-graph/);
-  assert.equal(appData.data.categories[2].shortcutTarget.sectionId, 'work');
-  assert.equal(appData.data.categories[3].dataKey, 'data_equipment_history_card');
-  assert.equal(appData.data.categories[4].dataKey, 'audit_lux');
-  assert.equal(appData.data.categories[4].fileName, 'Central Server DB / Lux Data');
+  assert.equal(appData.data.categories.length, 4);
+  const utilityEntryCategory = appData.data.categories[0];
+  assert.equal(utilityEntryCategory.title, '유틸리티 기입');
+  assert.equal(utilityEntryCategory.utilitySurface, 'entry-experiment');
+  assert.equal(utilityEntryCategory.viewerMode, 'full-bleed');
+  assert.match(utilityEntryCategory.content, /data-role="utility-entry-experiment"/);
+  assert.match(utilityEntryCategory.content, /data-role="utility-entry-experiment-meter-open"/);
+  assert.equal((utilityEntryCategory.content.match(/data-role="utility-entry-experiment-graph-toggle"/g) || []).length, 4);
+  assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-graph="electric_yusan"/);
+  assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-graph="gas_yusan"/);
+  assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-graph="electric_bukjeong"/);
+  assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-graph="gas_bukjeong"/);
+  assert.match(utilityEntryCategory.content, /data-role="utility-entry-experiment-billing-attach"/);
+  assert.doesNotMatch(utilityEntryCategory.content, /data-kpi-metering-root/);
+  assert.doesNotMatch(JSON.stringify(appData.data.categories), /총괄 비율/);
+  assert.equal(appData.data.categories[1].shortcutTarget.sectionId, 'work');
+  assert.equal(appData.data.categories[2].dataKey, 'data_equipment_history_card');
+  assert.equal(appData.data.categories[3].dataKey, 'audit_lux');
+  assert.equal(appData.data.categories[3].fileName, 'Central Server DB / Lux Data');
   assert.equal(appData.report.name, '보고서');
   assert.equal(appData.report.directLaunch, true);
   assert.equal(appData.report.hideNavigationChevron, true);
@@ -214,10 +216,16 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(appData.report.categories[0].content, /report-deck-save-message/);
   assert.match(appData.report.categories[0].content, /reportDeckCaptureSpin/);
   assert.match(appData.report.categories[0].content, /data-report-capture-zip/);
+  assert.match(appData.report.categories[0].content, /data-report-capture-pdf>PDF<\/button>/);
   assert.match(appData.report.categories[0].content, /data-report-capture-controls/);
   assert.match(appData.report.categories[0].content, /data-report-capture-range-start/);
   assert.match(appData.report.categories[0].content, /data-report-capture-range-end/);
   assert.match(appData.report.categories[0].content, /data-report-capture-current-only/);
+  assert.match(appData.report.categories[0].content, />범위<\/span>/);
+  assert.match(appData.report.categories[0].content, /data-report-export-html>HTML<\/button>/);
+  assert.match(appData.report.categories[0].content, /data-report-capture-zip[\s\S]*data-report-capture-pdf>PDF<\/button>[\s\S]*data-report-export-html>HTML<\/button>/);
+  assert.match(appData.report.categories[0].content, /\.report-deck-editor:not\(\[data-report-edit-mode="editing"\]\) \[data-report-capture-controls\],\s*\.report-deck-editor:not\(\[data-report-edit-mode="editing"\]\) \[data-report-capture-zip\],\s*\.report-deck-editor:not\(\[data-report-edit-mode="editing"\]\) \[data-report-capture-pdf\],\s*\.report-deck-editor:not\(\[data-report-edit-mode="editing"\]\) \[data-report-export-html\] \{ display: none; \}/);
+  assert.doesNotMatch(appData.report.categories[0].content, />캡쳐 범위<\/span>/);
   assert.doesNotMatch(appData.report.categories[0].content, /<button[^>]+data-report-undo-delete/);
   assert.doesNotMatch(appData.report.categories[0].content, /<button[^>]+data-report-print-pdf/);
   assert.match(appData.report.categories[0].content, /data-report-export-html/);
@@ -479,15 +487,42 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.equal(appData.experiment.launchRoute.sectionId, 'experiment');
   assert.equal(appData.experiment.launchRoute.categoryIndex, 0);
   assert.equal(Array.isArray(appData.experiment.categories), true);
-  assert.equal(appData.experiment.categories.length, 1);
-  assert.equal(appData.experiment.categories[0].title, '통합 그래프');
-  assert.equal(appData.experiment.categories[0].navHidden, true);
+  assert.equal(appData.experiment.categories.length, 2);
+  assert.equal(appData.experiment.categories[0].title, '선/막대');
+  assert.notEqual(appData.experiment.categories[0].navHidden, true);
   assert.equal(appData.experiment.categories[0].viewerMode, 'full-bleed');
+  assert.equal(appData.experiment.categories[0].launchTarget, 'popup');
+  assert.equal(appData.experiment.categories[0].launchRoute.categoryIndex, 0);
   assert.match(appData.experiment.categories[0].content, /experiment-unified-shell/);
   assert.match(appData.experiment.categories[0].content, /data-exp-card-picker-toggle/);
   assert.match(appData.experiment.categories[0].content, /data-exp-period-start/);
   assert.match(appData.experiment.categories[0].content, /data-exp-period-end/);
+  assert.match(appData.experiment.categories[0].content, /data-exp-year-overlap/);
+  assert.match(appData.experiment.categories[0].content, /data-exp-year-overlap-years/);
   assert.match(appData.experiment.categories[0].content, /KpiExperimentGraphPrototype/);
+  assert.match(appData.experiment.categories[0].content, /data-exp-report-chart-style="report-auto"/);
+  assert.equal(appData.experiment.categories[1].title, '원형');
+  assert.equal(appData.experiment.categories[1].viewerMode, 'full-bleed');
+  assert.equal(appData.experiment.categories[1].utilitySurface, 'analysis');
+  assert.equal(appData.experiment.categories[1].autoOpenUtilityReportModal, true);
+  assert.equal(appData.experiment.categories[1].launchTarget, 'popup');
+  assert.equal(appData.experiment.categories[1].launchRoute.categoryIndex, 1);
+  assert.match(appData.experiment.categories[1].content, /data-role="util-report-panel"/);
+  assert.match(appData.experiment.categories[1].content, /data-role="util-report-open-modal"/);
+  assert.match(appData.experiment.categories[1].content, /총괄 비율/);
+  const experimentSource = sectionSources.find(({ filename }) => filename === 'KPI.sections.experiment.js')?.source || '';
+  assert.match(experimentSource, /showLabels:\s*true/);
+  assert.match(experimentSource, /yearOverlap:\s*false/);
+  assert.match(experimentSource, /yearOverlapYears:\s*\[\]/);
+  assert.match(experimentSource, /buildYearOverlapSeries/);
+  assert.match(experimentSource, /function\s+syncYearOverlapYearControls/);
+  assert.match(experimentSource, /toggleOverlapYear\(trigger\)/);
+  assert.match(experimentSource, /reportValueOrderLabels:\s*period\?\.yearOverlap === true/);
+  assert.match(experimentSource, /const mode = String\(state\.displayModes\?\.\[card\.key\] \|\| ''\)/);
+  assert.match(experimentSource, /lineWidth:\s*3\.2/);
+  assert.match(experimentSource, /function\s+getCompactAnalysisCardTitle/);
+  assert.match(experimentSource, /getCompactAnalysisCardTitle\(card\)/);
+  assert.doesNotMatch(experimentSource, /<div class="util-sheet-analysis-summary-value">\$\{escapeHtml\(card\.valueText\)\}<\/div>/);
   assert.equal(appData.owner.ownerOnly, true);
 
   const nonAdapterSources = sectionSources
@@ -501,18 +536,19 @@ test('section factory adapter registers dashboard sections without direct sectio
 
 test('kpi html loads section factory adapter before all section factories', () => {
   const adapterIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.factory-adapter.js?v=1');
-  const buildersIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.builders.js?v=220');
   const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=231');
-  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=12');
+  const graphTemplateIndex = kpiHtml.indexOf('data-entry/runtime/data/utility-graph-template/app.js?v=41');
+  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=94');
   const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=98');
   const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=27');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
   const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=5');
 
   assert.ok(adapterIndex >= 0, 'section factory adapter loader is missing');
-  assert.ok(buildersIndex > adapterIndex, 'section builders must load after adapter');
-  assert.ok(workIndex > buildersIndex, 'work section must load after builders');
-  assert.ok(dataIndex > workIndex, 'data section must load after work section');
+  assert.equal(kpiHtml.indexOf('kpi-runtime/sections/KPI.section.builders.js'), -1, 'legacy utility section builders must stay removed');
+  assert.ok(workIndex > adapterIndex, 'work section must load after adapter');
+  assert.ok(graphTemplateIndex > workIndex, 'utility graph template must load after work section');
+  assert.ok(dataIndex > graphTemplateIndex, 'data section must load after graph template');
   assert.equal(kpiHtml.indexOf('utility/runtime/util/sections/KPI.sections.util.js'), -1, 'utility section loader must stay removed');
   assert.equal(kpiHtml.indexOf('KPI.sections.production-report.js'), -1, 'production report section loader must stay removed');
   assert.ok(reportIndex > dataIndex, 'report section must load after data section');

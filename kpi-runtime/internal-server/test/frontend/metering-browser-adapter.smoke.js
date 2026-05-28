@@ -190,7 +190,6 @@ test('integrated metering bridge routes runtime store and app access through the
   const loadedScripts = [];
   const mountCalls = [];
   const unmountCalls = [];
-  const host = { isConnected: true, innerHTML: '' };
   const context = {
     console,
     Promise,
@@ -336,20 +335,14 @@ test('integrated metering bridge routes runtime store and app access through the
   assert.equal(context.window.__PRESET_GAS_ENTRIES__.gas.value, 3);
   assert.match(context.window.__KPI_METERING_TEMPLATE__, /app-shell/);
 
-  const mounted = await bridge.initIntegratedMetering({
-    querySelector: () => host,
-  });
-  assert.equal(mounted, true);
-  assert.equal(mountCalls[0].target, host);
-  assert.match(mountCalls[0].options.assetBaseUrl, /\/apps\/metering\/$/);
-  assert.match(mountCalls[0].options.templateHtml, /app-shell/);
+  assert.equal(bridge.initIntegratedMetering, undefined);
+  assert.equal(mountCalls.length, 0);
 
   assert.equal(await bridge.destroyIntegratedMeteringMount(), true);
   assert.equal(unmountCalls.at(-1).clearHost, true);
   assert.ok(adapterCalls.some(([method, name]) => method === 'getGlobal' && name === '__KPI_SERVER_RUNTIME_CONFIG__'));
   assert.ok(adapterCalls.some(([method, name]) => method === 'setGlobal' && name === '__LOCAL_APP_STORE__'));
   assert.ok(adapterCalls.some(([method, name]) => method === 'getGlobal' && name === 'KpiMeteringApp'));
-  assert.ok(adapterCalls.some(([method, name]) => method === 'getGlobal' && name === '__KPI_METERING_TEMPLATE__'));
   assert.ok(adapterCalls.some(([method, url]) => method === 'fetch' && url === '/api/shared-store'));
   assert.doesNotMatch(bridgeSource, directBrowserGlobalPattern);
   assert.match(bridgeSource, /setIntegratedMeteringGlobal\('KpiMeteringBridge'/);

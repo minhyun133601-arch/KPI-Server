@@ -9,9 +9,8 @@
             UtilReportState.wasteTeam = 'all';
             UtilReportState.productionTeam = 'all';
             UtilReportState.wasteCostModeKey = 'total';
-            UtilReportState.unitKey = typeof normalizeUtilReportCostUnitKey === 'function'
-                ? normalizeUtilReportCostUnitKey(UtilReportState.unitKey || 'krw')
-                : (UtilReportState.unitKey || 'krw');
+            UtilReportState.unitKey = 'krw';
+            UtilReportState.decimals = 0;
             UtilReportState.chartFullscreen = false;
             UtilReportState.detailMetricOverrideKey = '';
             UtilReportState.totalCompositionView = 'scope';

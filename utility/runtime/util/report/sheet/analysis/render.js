@@ -174,6 +174,7 @@
                     topCenterTitle: chart.title,
                     axisXLabel: '월',
                     showYearBands: false,
+                    reportValueOrderLabels: chart.reportValueOrderLabels === true,
                     maxXAxisLabels: 12,
                     forceWidth: Math.max(860, (chart.series[0]?.points?.length || 0) * 62 + 260),
                     scrollWithinCanvas: true,
@@ -260,6 +261,7 @@
                     topCenterTitle: chart.title,
                     axisXLabel: '월',
                     showYearBands: false,
+                    reportValueOrderLabels: chart.reportValueOrderLabels === true,
                     maxXAxisLabels: isFullscreenChart ? Math.max(2, pointCount) : 12,
                     forceWidth: isFullscreenChart
                         ? Math.max(1260, pointCount * 88 + 340)
@@ -356,6 +358,7 @@
                 topCenterTitle: chart.title,
                 axisXLabel: '월',
                 showYearBands: false,
+                reportValueOrderLabels: chart.reportValueOrderLabels === true,
                 maxXAxisLabels: isFullscreenChart ? Math.max(2, pointCount) : Math.min(12, Math.max(2, pointCount)),
                 forceWidth: isFullscreenChart
                     ? Math.max(1260, pointCount * 88 + 340)

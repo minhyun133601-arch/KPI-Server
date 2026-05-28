@@ -1928,9 +1928,15 @@ ${colgroup}
                 .report-deck-action-button { position: relative; min-height: 30px; border: 1px solid #bfdbfe; border-radius: 6px; background: #eff6ff; color: #1d4ed8; padding: 0 11px; font-size: 0.74rem; font-weight: 900; cursor: pointer; }
                 .report-deck-action-button:disabled { border-color: #cbd5e1; background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
                 .report-deck-action-button.is-active { border-color: #2563eb; background: #2563eb; color: #ffffff; }
+                .report-deck-editor:not([data-report-edit-mode="editing"]) [data-report-capture-controls],
+                .report-deck-editor:not([data-report-edit-mode="editing"]) [data-report-capture-zip],
+                .report-deck-editor:not([data-report-edit-mode="editing"]) [data-report-capture-pdf],
+                .report-deck-editor:not([data-report-edit-mode="editing"]) [data-report-export-html] { display: none; }
                 .report-deck-editor[data-report-capture-busy="true"] [data-report-capture-zip],
+                .report-deck-editor[data-report-capture-busy="true"] [data-report-capture-pdf],
                 .report-deck-editor[data-report-capture-busy="true"] [data-report-export-capture-zip] { padding-left: 30px; cursor: wait; opacity: 0.82; }
                 .report-deck-editor[data-report-capture-busy="true"] [data-report-capture-zip]::before,
+                .report-deck-editor[data-report-capture-busy="true"] [data-report-capture-pdf]::before,
                 .report-deck-editor[data-report-capture-busy="true"] [data-report-export-capture-zip]::before { content: ""; position: absolute; left: 10px; top: 50%; width: 12px; height: 12px; margin-top: -6px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 999px; animation: reportDeckCaptureSpin 0.75s linear infinite; }
                 .report-deck-editor[data-report-capture-busy="true"] .report-deck-stage { cursor: progress; }
                 .report-deck-workspace { min-height: 0; display: grid; grid-template-columns: 154px minmax(0, 1fr); gap: 0; align-items: stretch; }
@@ -2490,17 +2496,18 @@ ${colgroup}
                         <button type="button" class="report-deck-action-button" data-report-edit-toggle aria-pressed="false">수정</button>
                         <button type="button" class="report-deck-action-button" data-report-add-page="slide10">페이지 추가</button>
                         <div class="report-capture-controls" data-report-capture-controls>
-                            <span>캡쳐 범위</span>
-                            <input type="number" min="1" step="1" value="1" data-report-capture-range-start aria-label="캡쳐 시작 페이지">
+                            <span>범위</span>
+                            <input type="number" min="1" step="1" inputmode="numeric" pattern="[0-9]*" value="1" data-report-capture-range-start aria-label="시작 페이지">
                             <span>~</span>
-                            <input type="number" min="1" step="1" value="1" data-report-capture-range-end aria-label="캡쳐 끝 페이지">
+                            <input type="number" min="1" step="1" inputmode="numeric" pattern="[0-9]*" value="1" data-report-capture-range-end aria-label="끝 페이지">
                             <label class="report-capture-current-only">
                                 <input type="checkbox" data-report-capture-current-only>
                                 <span>현재 페이지만</span>
                             </label>
                         </div>
                         <button type="button" class="report-deck-action-button" data-report-capture-zip>&#52897;&#52432;</button>
-                        <button type="button" class="report-deck-action-button" data-report-export-html>HTML추출</button>
+                        <button type="button" class="report-deck-action-button" data-report-capture-pdf>PDF</button>
+                        <button type="button" class="report-deck-action-button" data-report-export-html>HTML</button>
                         <button type="button" class="report-deck-action-button" data-report-fullscreen>전체화면</button>
                     </div>
                 </div>

@@ -39,6 +39,7 @@ test('report table interactions are split out of table rendering runtime', () =>
   });
 
   assert.equal(typeof context.bindUtilReportModalBodyDrag, 'function');
+  assert.equal(typeof context.bindUtilReportOverviewRatioWheel, 'function');
   assert.equal(typeof context.focusUtilReportDetailRowByMonth, 'function');
   assert.doesNotMatch(tablesSource, /function\s+focusUtilReportDetailRowByMonth/);
   assert.doesNotMatch(tableInteractionsSource, /function\s+bindUtilReportChartDragScroll/);

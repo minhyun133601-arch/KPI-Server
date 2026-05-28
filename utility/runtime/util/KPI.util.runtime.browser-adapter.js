@@ -46,6 +46,20 @@
     const REPORT_DECK_MEMO_LINE_METRIC_PREFIX = 'production_line::';
     const REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY = 'yusan_production_share';
     const REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_TEAM_KEYS = Object.freeze(['team_01_02', 'team_02', 'team_03']);
+    const REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP = Object.freeze({ key: 'site_yusan', label: '유산' });
+    const REPORT_DECK_MEMO_YUSAN_GAS_CATEGORY_KEY = 'yusan';
+    const REPORT_DECK_MEMO_YUSAN_OVERVIEW_METRIC_KEYS = Object.freeze([
+        'production',
+        'electric',
+        'electric_cost',
+        'electric_unit',
+        'lng',
+        'lng_cost',
+        'lng_unit',
+        'lpg',
+        'lpg_cost',
+        'lpg_unit'
+    ]);
     const REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS = Object.freeze([
         'yield_rate',
         'operation_rate',
@@ -93,16 +107,12 @@
         return root.KpiRuntime || null;
     }
 
-    function initIntegratedMetering(container) {
-        return root.KpiMeteringBridge?.initIntegratedMetering?.(container);
-    }
-
-    function canManualSaveMetering() {
-        return typeof root.KpiMeteringApp?.manualSave === 'function';
-    }
-
-    function getMeteringRuntimeConfig() {
+    function getUtilityEntryRuntimeConfig() {
         return root.__KPI_SERVER_RUNTIME_CONFIG__?.metering || null;
+    }
+
+    function saveUtilityEntryExperiment(host, period) {
+        return root.KpiUtilityEntryExperiment?.save?.(host, period);
     }
 
     function normalizeApiBase(value) {
@@ -375,33 +385,27 @@
         applyReportDeckPreparedOutputState(slide, sourceSlide, editorRoot);
     }
 
-    function buildReportDeckExportNav(doc, editorRoot, slides = []) {
+    function buildReportDeckExportNav(doc, slides = []) {
         const nav = doc.createElement('div');
         nav.className = 'report-slide-nav';
-        const sourceButtons = Array.from(editorRoot?.querySelectorAll?.('[data-report-slide-target]') || []);
         slides.forEach((slide, index) => {
-            const sourceButton = sourceButtons.find(button => (
-                String(button?.dataset?.reportSlideTarget || '') === String(index)
-            ));
-            const button = sourceButton?.cloneNode?.(true) || doc.createElement('button');
+            const button = doc.createElement('button');
             button.type = 'button';
             button.dataset.reportSlideTarget = String(index);
             button.classList?.toggle?.('is-active', index === 0);
             button.setAttribute?.('aria-current', index === 0 ? 'page' : 'false');
-            if (!sourceButton) {
-                const number = doc.createElement('span');
-                number.textContent = String(index + 1).padStart(2, '0');
-                const label = doc.createElement('strong');
-                label.textContent = slide?.querySelector?.('[data-report-field$="Title"]')?.textContent || `${index + 1}`;
-                button.appendChild(number);
-                button.appendChild(label);
-            }
+            const number = doc.createElement('span');
+            number.textContent = String(index + 1).padStart(2, '0');
+            const label = doc.createElement('strong');
+            label.textContent = String(slide?.dataset?.reportSlideLabel || slide?.querySelector?.('[data-report-field$="Title"]')?.textContent || `${index + 1}`).trim();
+            button.appendChild(number);
+            button.appendChild(label);
             nav.appendChild(button);
         });
         return nav;
     }
 
-    function buildReportDeckExportViewer(doc, editorRoot, slides = []) {
+    function buildReportDeckExportViewer(doc, editorRoot, slides = [], options = {}) {
         const deck = doc.createElement('main');
         deck.className = 'report-deck-editor report-export-viewer';
         deck.dataset.reportExportViewer = 'true';
@@ -420,7 +424,7 @@
             </div>
             <div class="report-deck-actions">
                 <span class="report-deck-save-message" data-report-export-status aria-live="polite"></span>
-                <button type="button" class="report-deck-action-button" data-report-export-capture-zip>캡쳐</button>
+                ${options.includeCaptureButton === false ? '' : '<button type="button" class="report-deck-action-button" data-report-export-capture-zip>캡쳐</button>'}
                 <button type="button" class="report-deck-action-button" data-report-export-fullscreen>전체화면</button>
             </div>
         `;
@@ -434,7 +438,7 @@
         const sidebarTitle = doc.createElement('strong');
         sidebarTitle.textContent = '목차';
         sidebar.appendChild(sidebarTitle);
-        sidebar.appendChild(buildReportDeckExportNav(doc, editorRoot, slides));
+        sidebar.appendChild(buildReportDeckExportNav(doc, slides));
 
         const stage = doc.createElement('section');
         stage.className = 'report-deck-stage';
@@ -514,6 +518,7 @@
             .report-print-viewer [data-report-memo-overview-toggle],
             .report-print-viewer [data-report-print-pdf],
             .report-print-viewer [data-report-capture-zip],
+            .report-print-viewer [data-report-capture-pdf],
             .report-print-viewer [data-report-export-html],
             .report-print-viewer .report-memo-overview-dialog { display: none !important; }
             .report-print-viewer img:not([src]),
@@ -571,7 +576,7 @@
             html, body { margin: 0 !important; padding: 0 !important; width: ${capture.width}px !important; height: ${capture.height}px !important; overflow: hidden !important; background: #111827 !important; }
             .report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; left: 0 !important; top: 0 !important; width: ${slideWidth}px !important; height: ${slideHeight}px !important; max-width: none !important; min-width: 0 !important; min-height: 0 !important; aspect-ratio: 16 / 9 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; transform: none !important; overflow: hidden !important; background: #ffffff !important; }
             .report-slide.is-active { display: block !important; }
-            .report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-capture-zip], [data-report-export-html] { display: none !important; }
+            .report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-capture-zip], [data-report-capture-pdf], [data-report-export-html] { display: none !important; }
             [data-report-field] { outline: 0 !important; }
         `;
     }
@@ -678,8 +683,6 @@
         const snapshots = await buildReportDeckPrintSnapshots(editorRoot, slides);
         const deck = buildReportDeckPrintViewer(doc, snapshots);
         const baseHref = String(doc.baseURI || root.location?.href || globalScope?.location?.href || '').trim();
-        const captureZipDataUrl = String(options.captureZipDataUrl || '').trim();
-        const captureZipFileName = String(options.captureZipFileName || options.filename || 'report-capture.zip').replace(/\.html?$/i, '.zip');
         return `<!doctype html>
 <html lang="ko">
 <head>
@@ -975,7 +978,7 @@ ${getNodeOuterHtml(deck)}
         'html, body { margin: 0 !important; padding: 0 !important; width: ' + captureWidth + 'px !important; height: ' + captureHeight + 'px !important; overflow: hidden !important; background: #ffffff !important; }',
         '.report-slide { display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; left: 0 !important; top: 0 !important; width: ' + captureWidth + 'px !important; height: ' + captureHeight + 'px !important; max-width: none !important; min-width: 0 !important; min-height: 0 !important; aspect-ratio: auto !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; transform: none !important; overflow: hidden !important; background: #ffffff !important; }',
         '.report-slide.is-active { display: block !important; }',
-        '.report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-capture-zip], [data-report-export-html] { display: none !important; }',
+        '.report-plan-image-choice, .report-plan-count-control, .report-safety-add-control, .report-slide-date-input, .report-chart-highlight-controls, .report-chart-highlight-toggle, .report-chart-highlight-reset, .report-memo-overview-dialog, [data-report-plan-image-input], [data-report-plan-image-upload], [data-report-plan-image-paste], [data-report-plan-image-clear], [data-report-export-print], [data-report-export-fullscreen], [data-report-fullscreen], [data-report-edit-toggle], [data-report-memo-overview-toggle], [data-report-print-pdf], [data-report-capture-zip], [data-report-capture-pdf], [data-report-export-html] { display: none !important; }',
         '[data-report-field] { outline: 0 !important; }'
     ].join('\\n');
     const buildCaptureHost = slide => {
@@ -1173,7 +1176,16 @@ ${getNodeOuterHtml(deck)}
         if (!slides.length) {
             throw new Error('report_deck_export_slides_unavailable');
         }
-        const deck = buildReportDeckExportViewer(doc, editorRoot, slides);
+        const range = normalizeReportDeckCapturePageRange(options.pageRange, slides.length);
+        slides = slides.slice(range.start - 1, range.end);
+        if (!slides.length) {
+            throw new Error('report_deck_export_slides_unavailable');
+        }
+        const captureZipDataUrl = String(options.captureZipDataUrl || '').trim();
+        const captureZipFileName = String(options.captureZipFileName || options.filename || 'report-capture.zip').replace(/\.html?$/i, '.zip');
+        const deck = buildReportDeckExportViewer(doc, editorRoot, slides, {
+            includeCaptureButton: Boolean(captureZipDataUrl)
+        });
         await inlineReportDeckExportImages(deck);
         const title = String(options.title || '공무환경팀 실적보고서').trim() || '공무환경팀 실적보고서';
         return `<!doctype html>
@@ -1232,7 +1244,8 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
             throw new Error('report_deck_capture_fetch_unavailable');
         }
         const fileName = String(options.filename || 'report-capture.zip').trim() || 'report-capture.zip';
-        const format = String(options.format || 'zip').trim().toLowerCase() === 'images' ? 'images' : 'zip';
+        const rawFormat = String(options.format || 'zip').trim().toLowerCase();
+        const format = rawFormat === 'images' || rawFormat === 'pdf' ? rawFormat : 'zip';
         const capture = getReportDeckCaptureViewport();
         const pages = [];
         options.onProgress?.({ phase: 'prepare', current: 0, total: selection.slides.length });
@@ -1244,7 +1257,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         const response = await root.fetch(buildReportDeckCaptureZipEndpoint(), {
             method: 'POST',
             headers: {
-                Accept: format === 'images' ? 'application/json' : 'application/zip, application/json',
+                Accept: format === 'images' ? 'application/json' : (format === 'pdf' ? 'application/pdf, application/json' : 'application/zip, application/json'),
                 'Content-Type': 'application/json'
             },
             cache: 'no-store',
@@ -1274,14 +1287,14 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 payload: await response.json()
             };
         }
-        const zipBlob = await response.blob();
+        const resultBlob = await response.blob();
         return {
             ok: true,
             fileName,
             imageCount: pages.length,
             pageStart: selection.start,
             pageEnd: selection.end,
-            blob: zipBlob
+            blob: resultBlob
         };
     }
 
@@ -1295,6 +1308,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 const capture = await requestReportDeckCapture(editorRoot, {
                     filename: captureZipFileName,
                     format: 'zip',
+                    pageRange: options.pageRange,
                     onProgress: options.onCaptureProgress
                 });
                 captureImageCount = capture.imageCount;
@@ -1330,6 +1344,24 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
             imageCount: capture.imageCount,
             bytes: Number(capture.blob?.size) || 0,
             destination: 'zip'
+        };
+    }
+
+    async function exportReportDeckCapturePdf(editorRoot, options = {}) {
+        const fileName = String(options.filename || 'report-capture.pdf').trim() || 'report-capture.pdf';
+        const capture = await requestReportDeckCapture(editorRoot, {
+            filename: fileName,
+            format: 'pdf',
+            pageRange: options.pageRange,
+            onProgress: options.onProgress
+        });
+        downloadBlobFile(fileName, capture.blob);
+        return {
+            ok: true,
+            fileName,
+            imageCount: capture.imageCount,
+            bytes: Number(capture.blob?.size) || 0,
+            destination: 'pdf'
         };
     }
 
@@ -1550,6 +1582,11 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
     function getReportDeckMemoTeam(key = '') {
         const normalizedKey = normalizeReportDeckMemoTeamKey(key);
         return REPORT_DECK_MEMO_TEAMS.find(team => team.key === normalizedKey) || REPORT_DECK_MEMO_TEAMS[0];
+    }
+
+    function getReportDeckMemoYusanProductionTeamNames() {
+        return REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_TEAM_KEYS
+            .map(key => getReportDeckMemoTeam(key).label);
     }
 
     function buildReportDeckMemoLineMetricKey(lineName = '') {
@@ -1802,12 +1839,122 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         const teamKey = normalizeReportDeckMemoTeamKey(team?.key);
         if (!REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_TEAM_KEYS.includes(teamKey)) return null;
         const teamProduction = getReportDeckMemoProductionValue(monthKey, team, gasApi, memoBuildCache);
-        const yusanTeamNames = REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_TEAM_KEYS
-            .map(key => getReportDeckMemoTeam(key).label);
+        const yusanTeamNames = getReportDeckMemoYusanProductionTeamNames();
         const yusanProduction = getReportDeckMemoProductionValueForTeamNames(monthKey, yusanTeamNames, gasApi, memoBuildCache);
         return teamProduction !== null && yusanProduction !== null && yusanProduction > 0
             ? (teamProduction / yusanProduction) * 100
             : null;
+    }
+
+    function getReportDeckMemoYusanElectricOption(optionApi) {
+        const configured = optionApi?.getUtilElectricAnalysisTeamOption?.(REPORT_DECK_MEMO_YUSAN_GAS_CATEGORY_KEY) || null;
+        if (
+            configured
+            && (configured.key === REPORT_DECK_MEMO_YUSAN_GAS_CATEGORY_KEY
+                || configured.key === REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key)
+        ) {
+            return configured;
+        }
+        const teamNames = getReportDeckMemoYusanProductionTeamNames();
+        return {
+            key: REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key,
+            label: REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.label,
+            reportTeamFilters: teamNames,
+            productionTeamNames: teamNames
+        };
+    }
+
+    function getReportDeckMemoYusanElectricRows(monthInfo, optionApi, electricApi, memoBuildCache = null) {
+        if (!monthInfo || typeof electricApi?.buildUtilElectricAnalysisScopedRows !== 'function') return [];
+        const option = getReportDeckMemoYusanElectricOption(optionApi);
+        const from = toReportDeckMonthKey(monthInfo.year - 1, monthInfo.month);
+        const cacheKey = `${option.key || REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key}|${from}|${monthInfo.key}`;
+        return readReportDeckMemoBuildCache(
+            memoBuildCache,
+            'electricRows',
+            cacheKey,
+            () => electricApi.buildUtilElectricAnalysisScopedRows({ from, to: monthInfo.key }, option) || []
+        );
+    }
+
+    function getReportDeckMemoYusanGasOption(optionApi) {
+        const configured = optionApi?.getUtilGasAnalysisCategoryOption?.(REPORT_DECK_MEMO_YUSAN_GAS_CATEGORY_KEY) || null;
+        if (configured?.key === REPORT_DECK_MEMO_YUSAN_GAS_CATEGORY_KEY) return configured;
+        const yusanTeams = REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_TEAM_KEYS.map(getReportDeckMemoTeam);
+        const lngTeams = Array.from(new Set(yusanTeams
+            .flatMap(team => getReportDeckMemoGasTeamNames(team, 'lng', optionApi))
+            .filter(Boolean)));
+        const lpgTeams = Array.from(new Set(yusanTeams
+            .flatMap(team => getReportDeckMemoGasTeamNames(team, 'lpg', optionApi))
+            .filter(Boolean)));
+        const productionTeamNames = getReportDeckMemoYusanProductionTeamNames();
+        const lpgProductionTeamNames = lpgTeams.length ? [getReportDeckMemoTeam('team_01_02').label] : [];
+        return {
+            key: REPORT_DECK_MEMO_YUSAN_GAS_CATEGORY_KEY,
+            label: REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.label,
+            usageTeams: {
+                lng: lngTeams,
+                lpg: lpgTeams
+            },
+            productionTeamNames,
+            ratioProductionTeamNames: {
+                lng: productionTeamNames,
+                lpg: lpgProductionTeamNames
+            },
+            meterScopeKey: 'combined',
+            includeBukjeongLngCost: false,
+            includeYusanLngCost: true,
+            showLpgCard: lpgTeams.length > 0
+        };
+    }
+
+    function getReportDeckMemoYusanGasMetricMap(monthInfo, optionApi, gasApi, memoBuildCache = null) {
+        if (!monthInfo || typeof gasApi?.buildUtilGasAnalysisMetricMap !== 'function') return null;
+        const option = getReportDeckMemoYusanGasOption(optionApi);
+        const monthKeys = [
+            toReportDeckMonthKey(monthInfo.year - 1, monthInfo.month),
+            getReportDeckRelativeMonthKey(monthInfo, -1),
+            monthInfo.key
+        ];
+        const cacheKey = `${REPORT_DECK_MEMO_YUSAN_GAS_CATEGORY_KEY}|${monthKeys.join(',')}`;
+        return readReportDeckMemoBuildCache(
+            memoBuildCache,
+            'gasMetricMaps',
+            cacheKey,
+            () => gasApi.buildUtilGasAnalysisMetricMap(monthKeys, option) || null
+        );
+    }
+
+    function getReportDeckMemoYusanGasUsageValue(metricMap, monthKey, fuelKey, optionApi, gasApi) {
+        const metric = metricMap && typeof metricMap.get === 'function' ? metricMap.get(monthKey) || {} : {};
+        const usage = toFiniteNumber(fuelKey === 'lpg' ? metric?.lpgUsage : metric?.lngUsage);
+        if (usage !== null) return usage;
+        const option = getReportDeckMemoYusanGasOption(optionApi);
+        const teamNames = Array.isArray(option?.usageTeams?.[fuelKey])
+            ? option.usageTeams[fuelKey].filter(Boolean)
+            : [];
+        if (!teamNames.length || typeof gasApi?.getUtilGasAnalysisTeamUsageValue !== 'function') return null;
+        return toFiniteNumber(gasApi.getUtilGasAnalysisTeamUsageValue(monthKey, teamNames));
+    }
+
+    function getReportDeckMemoYusanGasUnitValue(metricMap, monthKey, fuelKey, optionApi, gasApi, memoBuildCache = null) {
+        const metric = metricMap && typeof metricMap.get === 'function' ? metricMap.get(monthKey) || {} : {};
+        const usage = getReportDeckMemoYusanGasUsageValue(metricMap, monthKey, fuelKey, optionApi, gasApi);
+        const option = getReportDeckMemoYusanGasOption(optionApi);
+        const ratioProductionTeamNames = Array.isArray(option?.ratioProductionTeamNames?.[fuelKey])
+            ? option.ratioProductionTeamNames[fuelKey].filter(Boolean)
+            : [];
+        const fallbackProductionTeamNames = fuelKey === 'lpg' && ratioProductionTeamNames.length
+            ? ratioProductionTeamNames
+            : getReportDeckMemoYusanProductionTeamNames();
+        const production = toFiniteNumber(metric?.ratioProduction?.[fuelKey] ?? metric?.production)
+            ?? getReportDeckMemoProductionValueForTeamNames(monthKey, fallbackProductionTeamNames, gasApi, memoBuildCache);
+        return getReportDeckMemoRatioValue(usage, production);
+    }
+
+    function getReportDeckMemoYusanGasCostValue(metricMap, monthKey, fuelKey) {
+        const metric = metricMap && typeof metricMap.get === 'function' ? metricMap.get(monthKey) || {} : {};
+        return toFiniteNumber(fuelKey === 'lpg' ? metric?.lpgCost : metric?.lngCost);
     }
 
     function getReportDeckMemoGasUsageValue(monthKey, team, metricKey, optionApi, gasApi) {
@@ -2335,6 +2482,99 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         };
     }
 
+    function buildReportDeckMemoYusanOverviewCandidate(activeMonthInfo, metricKey, optionApi, gasApi, electricApi, memoBuildCache = null) {
+        if (!activeMonthInfo) return null;
+        const metric = getReportDeckMemoMetric('team_01_02', metricKey);
+        const previousMonthKey = getReportDeckRelativeMonthKey(activeMonthInfo, -1);
+        const previousYearKey = toReportDeckMonthKey(activeMonthInfo.year - 1, activeMonthInfo.month);
+        const currentMonthKey = activeMonthInfo.key;
+        const unitBaseMetricKey = getReportDeckMemoUnitBaseMetricKey(metricKey);
+        let readValue = () => null;
+        let hasComparisonData = (_monthKey, value) => hasReportDeckMemoFiniteValue(value);
+
+        if (metricKey === 'production') {
+            const teamNames = getReportDeckMemoYusanProductionTeamNames();
+            readValue = monthKey => getReportDeckMemoProductionValueForTeamNames(monthKey, teamNames, gasApi, memoBuildCache);
+        } else if (metricKey === 'electric' || metricKey === 'electric_cost' || metricKey === 'electric_unit') {
+            const rows = getReportDeckMemoYusanElectricRows(activeMonthInfo, optionApi, electricApi, memoBuildCache);
+            const rowMap = new Map((Array.isArray(rows) ? rows : [])
+                .map(row => [String(row?.monthKey || '').trim(), row])
+                .filter(([key]) => key));
+            if (metricKey === 'electric_unit') {
+                const teamNames = getReportDeckMemoYusanProductionTeamNames();
+                readValue = monthKey => {
+                    const usage = getReportDeckMemoElectricValue(rowMap, monthKey);
+                    const rowProduction = readReportDeckElectricRow(rowMap, monthKey, 'production');
+                    const production = rowProduction !== null
+                        ? rowProduction
+                        : getReportDeckMemoProductionValueForTeamNames(monthKey, teamNames, gasApi, memoBuildCache);
+                    return getReportDeckMemoRatioValue(usage, production);
+                };
+            } else if (metricKey === 'electric_cost') {
+                readValue = monthKey => getReportDeckMemoElectricCostValue(rowMap, monthKey);
+            } else {
+                readValue = monthKey => getReportDeckMemoElectricValue(rowMap, monthKey);
+            }
+            hasComparisonData = (monthKey, value) => hasReportDeckMemoElectricRowData(rowMap, monthKey)
+                && hasReportDeckMemoFiniteValue(value);
+        } else if (metricKey === 'lng_cost' || metricKey === 'lpg_cost') {
+            const fuelKey = metricKey === 'lpg_cost' ? 'lpg' : 'lng';
+            const metricMap = getReportDeckMemoYusanGasMetricMap(activeMonthInfo, optionApi, gasApi, memoBuildCache);
+            readValue = monthKey => getReportDeckMemoYusanGasCostValue(metricMap, monthKey, fuelKey);
+        } else if (metricKey === 'lng' || metricKey === 'lpg' || unitBaseMetricKey === 'lng' || unitBaseMetricKey === 'lpg') {
+            const fuelKey = unitBaseMetricKey || metricKey;
+            const metricMap = getReportDeckMemoYusanGasMetricMap(activeMonthInfo, optionApi, gasApi, memoBuildCache);
+            readValue = isReportDeckMemoUnitMetricKey(metricKey)
+                ? monthKey => getReportDeckMemoYusanGasUnitValue(metricMap, monthKey, fuelKey, optionApi, gasApi, memoBuildCache)
+                : monthKey => getReportDeckMemoYusanGasUsageValue(metricMap, monthKey, fuelKey, optionApi, gasApi);
+        } else {
+            return null;
+        }
+
+        const currentValue = readValue(currentMonthKey);
+        const hasCurrentData = hasComparisonData(currentMonthKey, currentValue);
+        const comparisonSegments = hasCurrentData ? [
+            buildReportDeckMemoComparisonSegmentForMonth(metric, '전월대비', previousMonthKey, readValue, hasComparisonData, currentValue),
+            buildReportDeckMemoComparisonSegmentForMonth(metric, '전년대비', previousYearKey, readValue, hasComparisonData, currentValue)
+        ].filter(Boolean) : [];
+        return buildReportDeckMemoCandidate(REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP, metric, comparisonSegments);
+    }
+
+    function collectReportDeckMemoYusanOverviewGroup(activeMonthInfo, options = {}, seen = new Set()) {
+        const optionApi = root.KPIUtilReportSheetOptions || null;
+        const gasApi = root.KPIUtilReportSheetGasScopedMetrics || null;
+        const electricApi = root.KPIUtilReportSheetAnalysisElectricModel || null;
+        const candidates = [];
+        for (const metricKey of REPORT_DECK_MEMO_YUSAN_OVERVIEW_METRIC_KEYS) {
+            const candidate = buildReportDeckMemoYusanOverviewCandidate(
+                activeMonthInfo,
+                metricKey,
+                optionApi,
+                gasApi,
+                electricApi,
+                options.memoBuildCache || null
+            );
+            const text = String(candidate?.text || '').trim();
+            const dedupeKey = `${REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key}:${metricKey}:${text}`;
+            if (!text || seen.has(dedupeKey)) continue;
+            seen.add(dedupeKey);
+            const metric = getReportDeckMemoMetric('team_01_02', metricKey);
+            candidates.push(cloneReportDeckMemoOverviewCandidate(candidate, {
+                groupKey: REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key,
+                groupLabel: REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.label,
+                teamKey: REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key,
+                teamLabel: REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.label,
+                metricKey,
+                metricLabel: metric.label
+            }));
+        }
+        return {
+            key: REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key,
+            label: REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.label,
+            candidates
+        };
+    }
+
     async function collectReportDeckMemoOverviewGroup(monthKey = '', group = {}, metricKeys = [], options = {}, seen = new Set()) {
         const candidates = [];
         for (const metricKey of Array.from(new Set((Array.isArray(metricKeys) ? metricKeys : []).filter(Boolean)))) {
@@ -2383,6 +2623,12 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         const seen = new Set();
         const groups = [];
         const memoBuildCache = {};
+        const yusanGroup = collectReportDeckMemoYusanOverviewGroup(
+            activeMonthInfo,
+            { memoBuildCache },
+            seen
+        );
+        if (yusanGroup.candidates.length) groups.push(yusanGroup);
         for (const team of REPORT_DECK_MEMO_TEAMS) {
             const group = await collectReportDeckMemoOverviewGroup(
                 activeMonthInfo.key,
@@ -3478,10 +3724,6 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         };
     }
 
-    function performMeteringManualSave(options) {
-        return root.KpiMeteringApp?.manualSave?.(options);
-    }
-
     async function fetchReportDeckCover(options = {}) {
         if (typeof root.fetch !== 'function') {
             throw new Error('report_deck_fetch_unavailable');
@@ -3606,9 +3848,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
 
     root.KpiUtilRuntimeBrowserAdapter = Object.freeze({
         getRuntime,
-        initIntegratedMetering,
-        canManualSaveMetering,
-        getMeteringRuntimeConfig,
+        getUtilityEntryRuntimeConfig,
         getReportRuntimeConfig,
         fetchMeteringSharedStore,
         fetchReportDeckCover,
@@ -3617,6 +3857,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         uploadReportDeckImageDataUrl,
         exportReportDeckSingleHtml,
         exportReportDeckCaptureZip,
+        exportReportDeckCapturePdf,
         printReportDeckPdf,
         buildReportDeckUtilityAnalysis,
         buildReportDeckBukjeongAnalysis,
@@ -3626,7 +3867,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         buildReportDeckMemoCandidates,
         buildReportDeckMemoOverview,
         buildReportDeckWasteAnalysis,
-        performMeteringManualSave
+        saveUtilityEntryExperiment
     });
 
     if (globalScope && globalScope !== root) {

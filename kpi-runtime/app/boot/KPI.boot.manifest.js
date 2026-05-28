@@ -30,8 +30,8 @@
       "label": "Dashboard section registry",
       "scripts": [
         "kpi-runtime/sections/KPI.section.factory-adapter.js",
-        "kpi-runtime/sections/KPI.section.builders.js",
         "team-report/runtime/work/sections/KPI.sections.work.js",
+        "data-entry/runtime/data/utility-graph-template/app.js",
         "data-entry/runtime/data/sections/KPI.sections.data.js",
         "kpi-runtime/sections/KPI.sections.report.js",
         "kpi-runtime/sections/KPI.sections.experiment.js",

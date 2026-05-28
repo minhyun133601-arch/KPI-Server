@@ -21,6 +21,14 @@ const modalBaseSource = await fs.readFile(
   new URL(REPORT_ROOT + '/KPI.util.report.modal.base.js', import.meta.url),
   'utf8'
 );
+const detachedSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.detached.js', import.meta.url),
+  'utf8'
+);
+const runnerSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.runner.js', import.meta.url),
+  'utf8'
+);
 const panelSource = await fs.readFile(
   new URL(REPORT_ROOT + '/KPI.util.report.panel.js', import.meta.url),
   'utf8'
@@ -101,6 +109,8 @@ test('report panel modal button still works without legacy utility action menu c
       detailMetricOverrideKey: 'gas_cost',
       totalCompositionView: 'site',
       costTotalSelectedCompositionView: 'process',
+      unitKey: 'million',
+      decimals: 1,
     },
     ensureUtilReportStateRange() {},
     normalizeUtilReportScope(value) {
@@ -163,13 +173,38 @@ test('report panel modal button still works without legacy utility action menu c
   assert.equal(context.UtilReportState.electricTeam, 'all');
   assert.equal(context.UtilReportState.gasTeam, 'all');
   assert.equal(context.UtilReportState.wasteTeam, 'all');
+  assert.equal(context.UtilReportState.unitKey, 'krw');
+  assert.equal(context.UtilReportState.decimals, 0);
   assert.equal(context.UtilReportState.builderCustomMode, false);
   assert.equal(context.UtilReportState.chartFullscreen, false);
   assert.equal(context.UtilReportState.detailMetricOverrideKey, '');
   assert.equal(context.UtilReportState.totalCompositionView, 'scope');
   assert.equal(context.UtilReportState.costTotalSelectedCompositionView, 'total');
   assert.match(panelSource, /typeof closeUtilActionMenus === 'function'/);
+  assert.match(panelSource, /UtilReportState\.unitKey\s*=\s*'krw';/);
+  assert.match(panelSource, /UtilReportState\.decimals\s*=\s*0;/);
   assert.match(panelSource, /openUtilReportModal\(result,\s*\{\s*layout:\s*'overview-ratio'\s*\}\)/);
   assert.match(modalRenderSource, /isOverviewRatioMode[\s\S]*renderUtilReportModalChartSection/);
   assert.match(modalBaseSource, /function\s+setUtilReportModalLayoutMode/);
+  assert.match(modalBaseSource, /bindUtilReportOverviewRatioWheel\(modal\);/);
+  assert.doesNotMatch(modalBaseSource, /<button[^>]+data-role="util-report-modal-print"/);
+  assert.match(modalBaseSource, /util-report-modal-action-field[\s\S]*data-role="util-report-modal-reset-overview"[\s\S]*data-role="util-report-inline-detach"/);
+  assert.doesNotMatch(modalBaseSource, /addRemovableNode\(chartShell\)/);
+  assert.match(modalBaseSource, /const chartWrap = modal\.querySelector\('\[data-role="util-report-modal-chart-wrap"\]'\);/);
+  assert.match(modalBaseSource, /addRemovableNode\(chartWrap\);/);
+  assert.match(modalBaseSource, /modal\.querySelectorAll\('\[data-overview-ratio-remove="true"\]'\)\.forEach\(addRemovableNode\);/);
+  assert.match(detachedSource, /function\s+renderUtilReportOverviewRatioCostBreakdownTable/);
+  assert.match(detachedSource, /renderUtilReportTableHeadCell\(column\.label,\s*''\)/);
+  assert.match(detachedSource, /renderUtilReportTableHeadCell\(descriptor\.totalLabel,\s*''\)/);
+  assert.match(detachedSource, /sumUtilReportScopeTeamCostByMonth\('electric',\s*'1팀 1파트'/);
+  assert.match(detachedSource, /sumUtilReportScopeTeamCostByMonth\('gas',\s*'1팀 1파트 LNG'/);
+  assert.match(detachedSource, /sumUtilReportScopeTeamCostByMonth\('gas',\s*'1팀 2파트 LNG'/);
+  assert.match(detachedSource, /sumUtilReportScopeTeamCostByMonth\('gas',\s*'1팀 2파트 LPG'/);
+  assert.match(detachedSource, /sumUtilReportScopeTeamCostByMonth\('waste',\s*'유산'/);
+  assert.match(detachedSource, /function\s+renderUtilReportOverviewRatioProductionBreakdownTable/);
+  assert.match(detachedSource, /function\s+buildUtilReportOverviewRatioProductionColumns/);
+  assert.match(detachedSource, /resolveUtilReportProductionTeamsBySite\('유산'\)/);
+  assert.match(detachedSource, /buildUtilReportProductionProductCompositionData\('',\s*productionTeam\)/);
+  assert.match(detachedSource, /buildUtilReportProductionProductMonthlyValueMap\(row\?\.year,\s*row\?\.month,\s*productionTeam\)/);
+  assert.match(runnerSource, /class="util-report-composition-center is-ratio">100%/);
 });

@@ -556,8 +556,6 @@
             const focusItem = focusItemKey
                 ? (focusPool.find(item => String(item?.key || '') === focusItemKey) || null)
                 : null;
-            const centerTitleText = focusItem ? String(focusItem.label || centerLabel) : centerLabel;
-            const centerValue = focusItem ? (Number(focusItem.value) || 0) : total;
             const segmentItems = items.filter(item => item?.excludeFromDonut !== true);
 
             if (!total || !segmentItems.length) {
@@ -567,6 +565,23 @@
                 `;
             }
 
+            const fullRatioItem = segmentItems.find(item => ratioTotal > 0 && (Number(item?.value) || 0) / ratioTotal >= 0.9995);
+            const centerTitleText = fullRatioItem
+                ? String(fullRatioItem.label || centerLabel)
+                : (focusItem ? String(focusItem.label || centerLabel) : centerLabel);
+            const centerValue = fullRatioItem
+                ? (Number(fullRatioItem.value) || 0)
+                : (focusItem ? (Number(focusItem.value) || 0) : total);
+            const centerHtml = fullRatioItem
+                ? `
+                            <text x="${center}" y="${center - 22}" text-anchor="middle" class="util-report-composition-center is-label">${escapeHtml(centerTitleText)}</text>
+                            <text x="${center}" y="${center + 3}" text-anchor="middle" class="util-report-composition-center is-ratio">100%</text>
+                            <text x="${center}" y="${center + 25}" text-anchor="middle" class="util-report-composition-center is-sub">${formatUtilReportValueByType(centerValue, valueType, decimals)} ${unitLabel}</text>
+                `
+                : `
+                            <text x="${center}" y="${center - 4}" text-anchor="middle" class="util-report-composition-center">${escapeHtml(centerTitleText)}</text>
+                            <text x="${center}" y="${center + 16}" text-anchor="middle" class="util-report-composition-center">${formatUtilReportValueByType(centerValue, valueType, decimals)} ${unitLabel}</text>
+                `;
             const hasActiveSegment = !!activeMetric && segmentItems.some(item => String(item?.key || '') === activeMetric);
             const hasHighlightSegments = !hasActiveSegment
                 && highlightMetricSet.size > 0
@@ -623,16 +638,16 @@
             const topHtml = showOpen
                 ? `<div class="util-report-composition-top"><div class="util-report-composition-title">${escapeHtml(title)}</div><button type="button" class="util-report-composition-open" data-role="util-report-composition-open">팝업 열기</button></div>`
                 : `<div class="util-report-composition-title">${escapeHtml(title)}</div>`;
+            const fullRatioClass = fullRatioItem ? 'is-full-ratio' : '';
 
             return `
                 ${topHtml}
                 <div class="util-report-composition-wrap ${largeClass}">
-                    <div class="util-report-composition-donut ${showOpen ? 'is-clickable' : ''}" ${showOpen ? 'data-role="util-report-composition-open" role="button" tabindex="0" aria-label="구성비 팝업 열기"' : ''}>
+                    <div class="util-report-composition-donut ${showOpen ? 'is-clickable' : ''} ${fullRatioClass}" ${showOpen ? 'data-role="util-report-composition-open" role="button" tabindex="0" aria-label="구성비 팝업 열기"' : ''}>
                         <svg viewBox="0 0 ${size} ${size}" role="img" aria-label="구성비 원형 그래프">
                             <circle cx="${center}" cy="${center}" r="${radius}" fill="none" stroke="#1e293b" stroke-width="${strokeWidth}"></circle>
                             ${segments}
-                            <text x="${center}" y="${center - 4}" text-anchor="middle" class="util-report-composition-center">${escapeHtml(centerTitleText)}</text>
-                            <text x="${center}" y="${center + 16}" text-anchor="middle" class="util-report-composition-center">${formatUtilReportValueByType(centerValue, valueType, decimals)} ${unitLabel}</text>
+                            ${centerHtml}
                         </svg>
                         ${centerControlHtml}
                     </div>

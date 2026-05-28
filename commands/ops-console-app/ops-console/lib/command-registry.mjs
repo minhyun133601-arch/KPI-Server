@@ -20,7 +20,7 @@ export const commandRegistry = [
     category: "server",
     title: "복구 재시작",
     description:
-      "서버 실행 흔적을 정리한 뒤 stale postmaster.pid를 안전 조건에서만 정리하고 다시 올립니다.",
+      "서버 실행 흔적을 정리하고 stale postmaster.pid를 안전 조건에서만 정리한 뒤 다시 엽니다.",
     kind: "action",
     confirmMessage: "현재 KPI 서버를 복구 재시작합니다.",
   },
@@ -43,7 +43,7 @@ export const commandRegistry = [
     key: "account.bootstrapOwner",
     category: "account",
     title: "오너 생성",
-    description: "최초 owner 계정을 로컬에서 직접 생성합니다.",
+    description: "최초 owner 계정을 로컬 DB에 직접 생성합니다.",
     kind: "form",
     fields: [
       {

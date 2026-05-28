@@ -19,6 +19,7 @@ import {
   stopLocalPostgresCluster,
   writeJsonFile,
 } from "./ops-service.runtime.mjs";
+
 async function actionServerStart() {
   await resolveStalePendingServerActionIfNeeded();
   const launched = launchTrackedServerAction(
@@ -106,7 +107,7 @@ async function actionRegisterStartup() {
   );
   return {
     ok: true,
-    summary: "로그인 자동시작 등록이 완료되었습니다.",
+    summary: "로그인 자동실행 등록이 완료되었습니다.",
     output: [result.stdout, result.stderr].filter(Boolean).join("\n"),
   };
 }
@@ -121,7 +122,7 @@ async function actionUnregisterStartup() {
   );
   return {
     ok: true,
-    summary: "로그인 자동시작 해제가 완료되었습니다.",
+    summary: "로그인 자동실행 해제가 완료되었습니다.",
     output: [result.stdout, result.stderr].filter(Boolean).join("\n"),
   };
 }
@@ -139,7 +140,7 @@ async function actionBootstrapOwner(payload) {
   }
   return {
     ok: true,
-    summary: "오너 계정 생성이 완료되었습니다.",
+    summary: "오너 생성이 완료되었습니다.",
     output: result.stdout,
     data: parsed,
   };
@@ -330,4 +331,5 @@ async function runAction(actionKey, payload = {}) {
 
   return handler(payload);
 }
+
 export { runAction };
