@@ -131,8 +131,8 @@ async function expectUtilityEntryExperimentSurface(page) {
   await expect(page.locator('[data-role="utility-entry-experiment"]')).toBeVisible();
   await expect(page.locator('[data-kpi-metering-root]')).toHaveCount(0);
   await expect(page.locator('[data-role="utility-entry-experiment-save"]')).toHaveCount(2);
-  await expect(page.locator('[data-role="utility-entry-experiment-meter-open"]')).toHaveCount(4);
-  await expect(page.locator('[data-role="utility-entry-experiment-graph-toggle"]')).toHaveCount(4);
+  await expect(page.locator('[data-role="utility-entry-experiment-meter-open"]')).toHaveCount(5);
+  await expect(page.locator('[data-role="utility-entry-experiment-graph-toggle"]')).toHaveCount(2);
 }
 
 function getCurrentMonthInputValue() {

@@ -77,6 +77,22 @@
             ])
         }),
         Object.freeze({
+            key: 'gas_yusan_lng',
+            datasetKey: 'gas',
+            label: '가스 LNG',
+            requirements: Object.freeze([
+                Object.freeze({ resourceType: 'gas', scopeKey: 'yusan_lng', label: '유산 가스 LNG' })
+            ])
+        }),
+        Object.freeze({
+            key: 'gas_bukjeong_lng',
+            datasetKey: 'gas',
+            label: '가스 LNG',
+            requirements: Object.freeze([
+                Object.freeze({ resourceType: 'gas', scopeKey: 'gas_bukjeong', label: '북정 가스 LNG' })
+            ])
+        }),
+        Object.freeze({
             key: 'waste_yusan',
             datasetKey: 'waste',
             label: '폐수 검침',
@@ -178,6 +194,8 @@
     const UTILITY_ENTRY_EXPERIMENT_GAS_CORRECTION_SOURCE_IDS = Object.freeze(['gas_field_03', 'gas_field_04', 'gas_field_06']);
     const UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_WIDTH = 1100;
     const UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_HEIGHT = 768;
+    const UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_STYLE_HREF = 'data-entry/runtime/data/utility-graph-template/styles.css?v=28';
+    let utilityEntryExperimentGraphCaptureStylePromise = null;
     const UTILITY_ENTRY_EXPERIMENT_GAS_FIELD_IDS = Object.freeze([
         'gas_field_01',
         'gas_field_02',
@@ -367,6 +385,7 @@
             ['공급가액', 'power_charge'],
             ['세액', 'vat'],
             ['단가', 'unit_price'],
+            ['Nm3 단가', 'unit_price_m3'],
             ['총액', 'billing_amount']
         ]),
         waste: Object.freeze([
@@ -2322,6 +2341,10 @@
             <div class="utility-entry-experiment-graph-modal-card" role="dialog" aria-modal="true" aria-label="정산 그래프">
                 <header class="utility-entry-experiment-graph-modal-head">
                     <strong data-role="utility-entry-experiment-graph-title">정산 그래프</strong>
+                    <button type="button" class="utility-entry-experiment-graph-modal-pdf" data-role="utility-entry-experiment-graph-capture-pdf" aria-label="PDF 인쇄" title="PDF 인쇄">
+                        <i class="fa-solid fa-file-pdf" data-role="utility-entry-experiment-graph-capture-pdf-icon" aria-hidden="true"></i>
+                        <span data-role="utility-entry-experiment-graph-capture-pdf-label">PDF 인쇄</span>
+                    </button>
                     <button type="button" class="utility-entry-experiment-graph-modal-fullscreen" data-role="utility-entry-experiment-graph-fullscreen" aria-label="전체화면" title="전체화면">
                         <i class="fa-solid fa-expand" data-role="utility-entry-experiment-graph-fullscreen-icon" aria-hidden="true"></i>
                         <span data-role="utility-entry-experiment-graph-fullscreen-label">전체화면</span>
@@ -2338,6 +2361,12 @@
             </div>
         `;
         modal.addEventListener('click', event => {
+            const pdfButton = event.target?.closest?.('[data-role="utility-entry-experiment-graph-capture-pdf"]');
+            if (pdfButton) {
+                event.preventDefault();
+                void captureUtilityEntryExperimentGraphPdf(modal);
+                return;
+            }
             const fullscreenButton = event.target?.closest?.('[data-role="utility-entry-experiment-graph-fullscreen"]');
             if (fullscreenButton) {
                 event.preventDefault();
@@ -2537,6 +2566,234 @@
         doc?.addEventListener?.('webkitfullscreenchange', handleFullscreenChange);
     }
 
+    function getUtilityEntryExperimentGraphCaptureTarget(modal = null) {
+        return modal?.querySelector?.('[data-role="utility-graph-template-root"], .utility-graph-template') || null;
+    }
+
+    function getUtilityEntryExperimentGraphCaptureSize(target) {
+        const rect = typeof target?.getBoundingClientRect === 'function'
+            ? target.getBoundingClientRect()
+            : null;
+        const width = Math.max(
+            UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_WIDTH,
+            Math.ceil(Number(target?.scrollWidth || target?.offsetWidth || rect?.width || 0))
+        );
+        const height = Math.max(
+            UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_HEIGHT,
+            Math.ceil(Number(target?.scrollHeight || target?.offsetHeight || rect?.height || 0))
+        );
+        return {
+            width: Math.min(4096, Math.max(320, width)),
+            height: Math.min(4096, Math.max(320, height))
+        };
+    }
+
+    function collectUtilityEntryExperimentGraphStylesheetText() {
+        const sheets = Array.from(utilityEntryExperimentRoot?.document?.styleSheets || []);
+        return sheets
+            .filter(sheet => String(sheet?.href || '').includes('utility-graph-template/styles.css'))
+            .map(sheet => {
+                try {
+                    return Array.from(sheet.cssRules || [])
+                        .map(rule => String(rule.cssText || ''))
+                        .join('\n');
+                } catch (error) {
+                    void error;
+                    return '';
+                }
+            })
+            .filter(Boolean)
+            .join('\n');
+    }
+
+    async function loadUtilityEntryExperimentGraphCaptureStyleText() {
+        const styleText = collectUtilityEntryExperimentGraphStylesheetText();
+        if (String(styleText || '').trim()) return styleText;
+        if (typeof utilityEntryExperimentRoot?.fetch !== 'function') return '';
+        if (!utilityEntryExperimentGraphCaptureStylePromise) {
+            const URLCtor = utilityEntryExperimentRoot?.URL;
+            const href = typeof URLCtor === 'function'
+                ? new URLCtor(UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_STYLE_HREF, utilityEntryExperimentRoot.document?.baseURI || utilityEntryExperimentRoot.location?.href || '').toString()
+                : UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_STYLE_HREF;
+            utilityEntryExperimentGraphCaptureStylePromise = utilityEntryExperimentRoot.fetch(href, {
+                cache: 'no-store',
+                credentials: 'same-origin'
+            })
+                .then(response => (response.ok ? response.text() : ''))
+                .catch(() => '');
+        }
+        return utilityEntryExperimentGraphCaptureStylePromise;
+    }
+
+    function cleanUtilityEntryExperimentGraphCaptureClone(target, size) {
+        const clone = target?.cloneNode?.(true);
+        if (!clone) return null;
+        clone.querySelectorAll?.([
+            '[data-role="utility-graph-memo-dialog"]',
+            '[data-role="utility-graph-memo-overview-dialog"]',
+            '[data-role="utility-graph-memo-add"]',
+            '[data-role="utility-graph-memo-delete-line"]',
+            '[data-role="utility-graph-memo-dialog-delete-line"]',
+            '.report-auto-memo-add',
+            '.report-auto-memo-delete'
+        ].join(', '))?.forEach(element => element.remove());
+        clone.querySelectorAll?.('[contenteditable]')?.forEach(element => {
+            element.removeAttribute('contenteditable');
+            element.removeAttribute('spellcheck');
+        });
+        clone.style.width = `${size.width}px`;
+        clone.style.minHeight = `${Math.max(UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_HEIGHT, size.height)}px`;
+        clone.style.height = 'auto';
+        clone.style.margin = '0';
+        clone.style.transform = 'none';
+        clone.style.transformOrigin = 'top left';
+        return clone;
+    }
+
+    async function buildUtilityEntryExperimentGraphCapturePageHtml(target, size) {
+        const clone = cleanUtilityEntryExperimentGraphCaptureClone(target, size);
+        if (!clone) throw new Error('utility_entry_graph_capture_target_unavailable');
+        const styleText = await loadUtilityEntryExperimentGraphCaptureStyleText();
+        return `<style>
+${styleText}
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: ${size.width}px !important;
+  min-height: ${size.height}px !important;
+  background: #ffffff !important;
+  overflow: hidden !important;
+}
+.utility-entry-experiment-graph-capture-page {
+  width: ${size.width}px !important;
+  min-height: ${size.height}px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+}
+.utility-entry-experiment-graph-capture-page .utility-graph-template {
+  width: ${size.width}px !important;
+  min-height: ${Math.max(UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_HEIGHT, size.height)}px !important;
+  height: auto !important;
+  margin: 0 !important;
+  transform: none !important;
+  transform-origin: top left !important;
+  box-shadow: none !important;
+}
+.utility-entry-experiment-graph-capture-page .report-auto-memo-add,
+.utility-entry-experiment-graph-capture-page .report-auto-memo-delete,
+.utility-entry-experiment-graph-capture-page [data-role="utility-graph-memo-dialog"],
+.utility-entry-experiment-graph-capture-page [data-role="utility-graph-memo-overview-dialog"] {
+  display: none !important;
+}
+</style><div class="utility-entry-experiment-graph-capture-page">${clone.outerHTML}</div>`;
+    }
+
+    function buildUtilityEntryExperimentGraphCaptureEndpoint() {
+        const runtimeConfig = utilityEntryExperimentRoot?.__KPI_SERVER_RUNTIME_CONFIG__ || {};
+        const apiBase = String(runtimeConfig.apiBase || '/api').trim() || '/api';
+        return `${apiBase.replace(/\/+$/, '')}/report-deck/capture-zip`;
+    }
+
+    function normalizeUtilityEntryExperimentGraphPdfFileName(value, fallback = 'utility-graph.pdf') {
+        const normalized = String(value || fallback)
+            .trim()
+            .replace(/[\\/:*?"<>|\r\n]+/g, '_')
+            .replace(/\s+/g, '_')
+            .replace(/_+/g, '_');
+        const fileName = normalized || fallback;
+        return fileName.toLowerCase().endsWith('.pdf') ? fileName : `${fileName}.pdf`;
+    }
+
+    function buildUtilityEntryExperimentGraphPdfFileName(modal = null) {
+        const data = modal?._utilityEntryExperimentGraphData || {};
+        const title = String(data?.title || modal?.querySelector?.('[data-role="utility-entry-experiment-graph-title"]')?.textContent || '정산 그래프').trim();
+        const monthKey = String(data?.memo?.monthKey || '').trim();
+        return normalizeUtilityEntryExperimentGraphPdfFileName([monthKey, title].filter(Boolean).join(' '), 'utility-graph.pdf');
+    }
+
+    function downloadUtilityEntryExperimentGraphCaptureBlob(fileName, blob) {
+        const doc = utilityEntryExperimentRoot?.document || null;
+        const URLApi = utilityEntryExperimentRoot?.URL;
+        if (!doc || typeof doc.createElement !== 'function' || typeof URLApi?.createObjectURL !== 'function') {
+            throw new Error('utility_entry_graph_capture_download_unavailable');
+        }
+        const objectUrl = URLApi.createObjectURL(blob);
+        const link = doc.createElement('a');
+        link.href = objectUrl;
+        link.download = fileName;
+        link.style.display = 'none';
+        doc.body?.appendChild?.(link);
+        link.click?.();
+        link.remove?.();
+        utilityEntryExperimentRoot?.setTimeout?.(() => {
+            URLApi.revokeObjectURL?.(objectUrl);
+        }, 0);
+    }
+
+    function setUtilityEntryExperimentGraphPdfBusy(modal = null, busy = false) {
+        const button = modal?.querySelector?.('[data-role="utility-entry-experiment-graph-capture-pdf"]');
+        const icon = modal?.querySelector?.('[data-role="utility-entry-experiment-graph-capture-pdf-icon"]');
+        const labelNode = modal?.querySelector?.('[data-role="utility-entry-experiment-graph-capture-pdf-label"]');
+        const label = busy ? 'PDF 변환 중' : 'PDF 인쇄';
+        if (modal) modal.dataset.utilityEntryExperimentGraphPdfBusy = busy ? 'true' : 'false';
+        if (button) {
+            button.disabled = busy;
+            button.setAttribute('aria-label', label);
+            button.setAttribute('title', label);
+        }
+        if (icon) icon.className = `fa-solid ${busy ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`;
+        if (labelNode) labelNode.textContent = label;
+    }
+
+    async function captureUtilityEntryExperimentGraphPdf(modal = null) {
+        const targetModal = modal || utilityEntryExperimentRoot?.document?.getElementById?.('utility-entry-experiment-graph-modal');
+        if (!targetModal || targetModal.dataset.utilityEntryExperimentGraphPdfBusy === 'true') return false;
+        const target = getUtilityEntryExperimentGraphCaptureTarget(targetModal);
+        if (!target) {
+            utilityEntryExperimentRoot?.alert?.('PDF로 변환할 그래프가 없습니다.');
+            return false;
+        }
+        setUtilityEntryExperimentGraphPdfBusy(targetModal, true);
+        try {
+            await utilityEntryExperimentRoot?.document?.fonts?.ready?.catch?.(() => {});
+            const size = getUtilityEntryExperimentGraphCaptureSize(target);
+            const fileName = buildUtilityEntryExperimentGraphPdfFileName(targetModal);
+            const pageHtml = await buildUtilityEntryExperimentGraphCapturePageHtml(target, size);
+            const response = await utilityEntryExperimentRoot.fetch(buildUtilityEntryExperimentGraphCaptureEndpoint(), {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/pdf, application/json',
+                    'Content-Type': 'application/json'
+                },
+                cache: 'no-store',
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    fileName,
+                    width: size.width,
+                    height: size.height,
+                    format: 'pdf',
+                    pageNumbers: [1],
+                    pages: [pageHtml]
+                })
+            });
+            if (!response.ok) {
+                const error = new Error(`utility_entry_graph_capture_failed:${response.status}`);
+                error.detail = await response.text().catch(() => '');
+                throw error;
+            }
+            downloadUtilityEntryExperimentGraphCaptureBlob(fileName, await response.blob());
+            return true;
+        } catch (error) {
+            void error;
+            utilityEntryExperimentRoot?.alert?.('그래프 PDF 변환에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+            return false;
+        } finally {
+            setUtilityEntryExperimentGraphPdfBusy(targetModal, false);
+        }
+    }
+
     function openUtilityEntryExperimentGraphModal(data) {
         const renderer = utilityEntryExperimentRoot?.KpiUtilityGraphTemplate;
         if (!renderer || typeof renderer.render !== 'function') {
@@ -2551,6 +2808,7 @@
 
         if (title) title.textContent = data?.title || '정산 그래프';
         renderer.render(body, data || {});
+        modal._utilityEntryExperimentGraphData = data || {};
         modal.classList.add('is-open');
         modal.setAttribute('aria-hidden', 'false');
         bindUtilityEntryExperimentGraphModalResize();
@@ -2964,9 +3222,11 @@
         return calculateUtilityEntryExperimentElectricTotalPowerUsage(records.electric, monthValue);
     }
 
-    function calculateUtilityEntryExperimentUnitPrice(sourceValue, usageBase) {
+    function calculateUtilityEntryExperimentUnitPrice(sourceValue, usageBase, fractionDigits = 2) {
         if (!Number.isFinite(sourceValue) || !Number.isFinite(usageBase) || usageBase <= 0) return null;
-        return roundUtilityEntryExperimentNumber(sourceValue / usageBase);
+        return fractionDigits === 0
+            ? roundUtilityEntryExperimentWholeNumber(sourceValue / usageBase)
+            : roundUtilityEntryExperimentNumber(sourceValue / usageBase, fractionDigits);
     }
 
     function resolveUtilityEntryExperimentSettlementFields(records, dataset, monthValue, scopeKey) {
@@ -2997,8 +3257,14 @@
                 ? UTILITY_ENTRY_EXPERIMENT_GAS_LPG_BILLING_COMPONENTS
                 : UTILITY_ENTRY_EXPERIMENT_GAS_BILLING_COMPONENTS;
             const billingAmount = calculateUtilityEntryExperimentSignedTotal(fields, components);
-            const unitPrice = calculateUtilityEntryExperimentUnitPrice(parseUtilityEntryExperimentNumber(fields.power_charge), usageBase);
+            const powerCharge = parseUtilityEntryExperimentNumber(fields.power_charge);
+            const unitPrice = calculateUtilityEntryExperimentUnitPrice(powerCharge, usageBase, 0);
             if (Number.isFinite(unitPrice)) fields.unit_price = unitPrice;
+            if (scopeKey === 'yusan_lpg') {
+                const rawLpgUsage = buildUtilityEntryExperimentGasMonthUsage(records.gas, monthValue).rawUsages.gas_field_02;
+                const m3UnitPrice = calculateUtilityEntryExperimentUnitPrice(powerCharge, rawLpgUsage, 1);
+                if (Number.isFinite(m3UnitPrice)) fields.unit_price_m3 = m3UnitPrice;
+            }
             if (Number.isFinite(billingAmount)) fields.billing_amount = roundUtilityEntryExperimentWholeNumber(billingAmount);
             return fields;
         }
@@ -4619,6 +4885,7 @@
         if (label === '가스 사용량') return 'm³';
         if (label === '방류량' || label === '폐수 방류량') return 'm³';
         if (label === 'LPG / LNG환산') return '';
+        if (label === 'Nm3 단가') return '원/M3';
         if (label === '단가') {
             if (inputLabelPrefix.includes('전기')) return '원/kWh';
             if (inputLabelPrefix.includes('폐수')) return '원/m³';
@@ -4667,6 +4934,9 @@
             if (inputLabelPrefix.includes('LPG')) return '공급가액 / 사용량.';
             if (inputLabelPrefix.includes('LNG')) return '사용료 / 사용량.';
             if (inputLabelPrefix.includes('폐수')) return '총비용 / 방류량.';
+        }
+        if (label === 'Nm3 단가' && inputLabelPrefix.includes('LPG')) {
+            return '공급가액 / LPG 원검침 사용량.';
         }
         return '';
     }
@@ -4927,6 +5197,28 @@
         `;
     }
 
+    function buildUtilityEntryExperimentSettlementTitle(title, options = {}) {
+        const meterLinkKey = String(options.titleMeterLinkKey || '').trim();
+        const linkConfig = meterLinkKey ? getUtilityEntryExperimentMonthlyMeterLinkConfig(meterLinkKey) : null;
+        if (!linkConfig) return `<h3>${escapeUtilityEntryExperimentHtml(title)}</h3>`;
+
+        const pendingLabel = `${title} 정산 상태 확인 중`;
+        return `
+                    <button
+                        type="button"
+                        class="utility-entry-experiment-settlement-title-button utility-entry-experiment-meter-key is-disabled"
+                        data-role="utility-entry-experiment-meter-open"
+                        data-utility-entry-experiment-meter="${escapeUtilityEntryExperimentHtml(linkConfig.datasetKey)}"
+                        data-utility-entry-experiment-meter-link="${escapeUtilityEntryExperimentHtml(linkConfig.key)}"
+                        data-utility-entry-experiment-meter-ready="false"
+                        title="${escapeUtilityEntryExperimentHtml(pendingLabel)}"
+                        aria-label="${escapeUtilityEntryExperimentHtml(pendingLabel)}"
+                        aria-disabled="true"
+                        disabled
+                    >${escapeUtilityEntryExperimentHtml(title)}</button>
+        `;
+    }
+
     function buildUtilityEntryExperimentSettlementCard(title, rows, options = {}) {
         const emphasisRows = new Set(options.emphasisRows || []);
         const totalRows = new Set(options.totalRows || []);
@@ -4942,6 +5234,9 @@
             showAttachmentKey: options.showAttachmentKey,
             attachmentLabel: options.attachmentLabel
         });
+        const titleHtml = buildUtilityEntryExperimentSettlementTitle(title, {
+            titleMeterLinkKey: options.titleMeterLinkKey
+        });
         const monthlyMeterLinkHtml = buildUtilityEntryExperimentMonthlyMeterButton(options.monthlyMeterLinkKey || '');
         const graphToggleHtml = buildUtilityEntryExperimentGraphToggle({
             graphKey: options.graphToggleKey,
@@ -4953,7 +5248,7 @@
         return `
             <section class="utility-entry-experiment-settlement">
                 <div class="utility-entry-experiment-settlement-heading">
-                    <h3>${escapeUtilityEntryExperimentHtml(title)}</h3>
+                    ${titleHtml}
                     ${attachmentKeyHtml}
                     ${monthlyMeterLinkHtml}
                     ${graphToggleHtml}
@@ -5109,12 +5404,12 @@
         ];
         const gasLngRows = ['사용료', '교체비', '부가세', '가산세', '원절삭', '단가', '청구금액'];
         const gasLngRowsWithUsage = ['사용량', ...gasLngRows];
-        const gasLpgRows = ['사용량', '공급가액', '세액', '단가', '총액'];
+        const gasLpgRows = ['사용량', '공급가액', '세액', '단가', 'Nm3 단가', '총액'];
         const yusanElectricRows = ['전력 총량', ...electricRows];
         const bukjeongElectricRows = ['전력 총량', ...electricRows];
         const yusanElectricCalculatedRows = ['전력 총량', '전기요금계', '단가', '청구금액', '총액', '총비용'];
         const yusanGasLngCalculatedRows = ['사용량', '단가', '청구금액', '총액', '총비용'];
-        const yusanGasLpgCalculatedRows = ['사용량', '단가', '총액'];
+        const yusanGasLpgCalculatedRows = ['사용량', '단가', 'Nm3 단가', '총액'];
         const wasteRows = ['방류량', '용수비', '폐수 분담금', '폐수오니 처리비용', '혼합수지 처리비용', '인건비', '단가', '총비용'];
 
         return `
@@ -5146,9 +5441,7 @@
                             scopeKey: 'yusan_lng',
                             showAttachmentKey: true,
                             attachmentLabel: '유산 가스 LNG 청구서 첨부',
-                            monthlyMeterLinkKey: 'gas_yusan',
-                            graphToggleKey: 'gas_yusan',
-                            graphToggleLabel: '그래프',
+                            titleMeterLinkKey: 'gas_yusan_lng',
                             fieldRows: UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.gasLng,
                             calculatedRows: yusanGasLngCalculatedRows,
                             totalRows: ['청구금액']
@@ -5208,8 +5501,7 @@
                             scopeKey: 'gas_bukjeong',
                             showAttachmentKey: true,
                             attachmentLabel: '북정 가스 LNG 청구서 첨부',
-                            graphToggleKey: 'gas_bukjeong',
-                            graphToggleLabel: '그래프',
+                            titleMeterLinkKey: 'gas_bukjeong_lng',
                             fieldRows: UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.gasLng,
                             directMonthlyFirstRow: { resourceType: 'gas', teamKey: 'team_01_01' },
                             totalRows: ['청구금액']

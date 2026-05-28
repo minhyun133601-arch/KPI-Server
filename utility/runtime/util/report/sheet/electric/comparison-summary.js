@@ -37,7 +37,6 @@
         normalizeUtilSheetCompareKey: null,
         shiftUtilSheetMonthKey: null,
         buildUtilElectricMeterViewToggleHtml: null,
-        resolveUtilSheetBillingDocumentDescriptor: null,
         escapeUtilSheetHtml: null,
         formatUtilReportMonthLong: null,
         formatUtilSheetCost: null,
@@ -108,12 +107,6 @@
         return typeof runtime.buildUtilElectricMeterViewToggleHtml === 'function'
             ? runtime.buildUtilElectricMeterViewToggleHtml(viewKey)
             : '';
-    }
-
-    function resolveBillingDocumentDescriptor(datasetKey = '', monthKey = '', scopeKey = '') {
-        return typeof runtime.resolveUtilSheetBillingDocumentDescriptor === 'function'
-            ? runtime.resolveUtilSheetBillingDocumentDescriptor(datasetKey, monthKey, scopeKey)
-            : null;
     }
 
     function escapeHtml(value) {
@@ -597,14 +590,6 @@
         const detailColumns = Array.isArray(summaryModel.detailValues)
             ? summaryModel.detailValues.map(item => ({ label: item.label, caption: '', value: item.value }))
             : [];
-        const billingDescriptor = resolveBillingDocumentDescriptor(
-            'electric',
-            summaryModel.monthKey || '',
-            'yusan'
-        );
-        const billingButtonTitle = billingDescriptor
-            ? `${summaryModel.monthLabel || ''} 유산 청구서 보기`
-            : `${summaryModel.monthLabel || ''} 유산 청구서가 없습니다.`;
         const detailTableHtml = detailColumns.length
             ? buildUtilElectricSummaryTableHtml(detailColumns, [
                 {
@@ -619,23 +604,7 @@
             ], {
                 title: '청구 요약',
                 subText: '유산 전기 청구 입력값을 그대로 정리했습니다.',
-                note: '전기요금계와 청구금액은 입력값이 없을 경우 청구 항목으로 다시 계산합니다.',
-                actionsHtml: `
-                    <button
-                        type="button"
-                        class="util-sheet-gas-summary-doc-btn"
-                        data-role="util-sheet-billing-preview-toggle"
-                        data-billing-dataset-key="electric"
-                        data-month-key="${escapeHtml(summaryModel.monthKey || '')}"
-                        data-billing-scope-key="yusan"
-                        title="${escapeHtml(billingButtonTitle)}"
-                        aria-label="${escapeHtml(billingButtonTitle)}"
-                        ${billingDescriptor ? '' : 'disabled'}
-                    >
-                        <i class="fa-solid fa-file-invoice" aria-hidden="true"></i>
-                        <span>청구서</span>
-                    </button>
-                `
+                note: '전기요금계와 청구금액은 입력값이 없을 경우 청구 항목으로 다시 계산합니다.'
             })
             : '';
         return `

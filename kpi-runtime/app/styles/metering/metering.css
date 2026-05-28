@@ -326,9 +326,17 @@
         .util-sheet-panel[data-dataset-key="waste"] .util-sheet-kicker { color: #0f766e; }
         .util-sheet-actions { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
         .util-sheet-month-field { display: inline-flex; align-items: center; min-width: 108px; }
+        .util-sheet-month-field.is-modal { gap: 0; border: 1px solid #dbeafe; border-radius: 8px; background: #ffffff; overflow: hidden; box-shadow: inset 0 1px 0 rgba(255,255,255,0.72); }
         .util-sheet-month-label { font-size: 0.64rem; font-weight: 800; color: #64748b; }
         .util-sheet-month-select { min-height: 32px; border: 1px solid #dbeafe; border-radius: 8px; background: #ffffff; color: #0f172a; padding: 0 10px; font-size: 0.74rem; font-weight: 800; box-shadow: inset 0 1px 0 rgba(255,255,255,0.72); }
+        .util-sheet-month-field.is-modal .util-sheet-month-select { min-width: 112px; border: 0; border-radius: 0; box-shadow: none; }
         .util-sheet-month-select:disabled { color: #94a3b8; background: #f8fafc; }
+        .util-sheet-month-step-btn { width: 30px; min-width: 30px; min-height: 32px; border: 0; background: #f8fafc; color: #1d4ed8; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.72rem; }
+        .util-sheet-month-step-btn:hover:not(:disabled) { background: #eff6ff; color: #1e40af; }
+        .util-sheet-month-step-btn:disabled,
+        .util-sheet-month-step-btn.is-disabled { color: #94a3b8; cursor: default; background: #f8fafc; }
+        .util-sheet-month-step-btn + .util-sheet-month-select,
+        .util-sheet-month-select + .util-sheet-month-step-btn { border-left: 1px solid #dbeafe; }
         .util-sheet-toggle { display: inline-flex; align-items: center; }
         .util-sheet-toggle-btn { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 32px; padding: 0 12px; border: 1px solid #dbeafe; border-radius: 8px; background: #ffffff; color: #0f172a; font-size: 0.74rem; font-weight: 800; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,0.72); }
         .util-sheet-toggle-btn[data-sheet-type="meter"] { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
@@ -402,6 +410,10 @@
         .util-sheet-report-window-actions .util-sheet-report-icon-btn span { display: none; }
         .util-sheet-report-icon-btn.is-close { width: 34px; min-width: 34px; justify-content: center; padding: 0; border-color: #fecaca; color: #b91c1c; }
         .util-sheet-report-icon-btn.is-close:hover { border-color: #f87171; background: #fff1f2; }
+        .util-sheet-gas-view-toggle { min-height: 32px; padding: 0 10px; }
+        .util-sheet-gas-view-toggle[hidden] { display: none !important; }
+        .util-sheet-gas-view-toggle.is-meter { border-color: #86efac; background: #f0fdf4; color: #166534; }
+        .util-sheet-gas-view-toggle.is-meter:hover { border-color: #16a34a; background: #dcfce7; color: #14532d; }
         .util-sheet-extract-options-backdrop { position: absolute; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(15, 23, 42, 0.42); }
         .util-sheet-extract-options-card { width: min(420px, calc(100vw - 36px)); border: 1px solid #dbe4f3; border-radius: 8px; background: #ffffff; box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28); overflow: hidden; }
         .util-sheet-extract-options-card.is-monthly { width: min(520px, calc(100vw - 36px)); }
@@ -576,9 +588,6 @@
         .util-sheet-disclosure-table-stack > .util-sheet-table-wrap + .util-sheet-table-wrap thead { display: none; }
         .util-sheet-gas-summary { display: grid; gap: 0.8rem; }
         .util-sheet-gas-summary-shell { display: grid; gap: 0.8rem; padding: 0.9rem; border-radius: 8px; border: 1px solid #e2e8f0; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08); }
-        .util-sheet-gas-summary-shell-head { display: grid; gap: 0.28rem; }
-        .util-sheet-gas-summary-shell-title { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.94rem; font-weight: 900; color: #0f172a; }
-        .util-sheet-gas-summary-shell-sub { font-size: 0.74rem; font-weight: 700; color: #64748b; line-height: 1.45; }
         .util-sheet-gas-summary-group { display: grid; gap: 0.65rem; padding: 0.8rem; border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff; }
         .util-sheet-gas-summary-group.is-lpg { border-color: #fde68a; background: linear-gradient(180deg, #fffdf5 0%, #ffffff 100%); }
         .util-sheet-gas-summary-group.is-lng { border-color: #fed7aa; background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%); }
@@ -596,9 +605,52 @@
         .util-sheet-gas-summary-total-label { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; font-weight: 900; }
         .util-sheet-gas-summary-total-value { font-size: 1rem; font-weight: 900; }
         .util-sheet-gas-summary-actions { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
-        .util-sheet-gas-summary-doc-btn { min-height: 30px; border: 1px solid #fed7aa; border-radius: 8px; background: rgba(255, 255, 255, 0.94); color: #c2410c; padding: 0 10px; display: inline-flex; align-items: center; gap: 0.38rem; font-size: 0.71rem; font-weight: 800; cursor: pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,0.72); }
-        .util-sheet-gas-summary-doc-btn:hover { border-color: #fb923c; background: #fff7ed; }
-        .util-sheet-gas-summary-doc-btn:disabled { opacity: 0.46; cursor: default; border-color: #cbd5e1; background: #f8fafc; color: #94a3b8; box-shadow: none; }
+        .util-sheet-gas-summary-table-wrap,
+        .util-sheet-gas-production-usage-table-wrap { border: 1px solid #e2e8f0; border-radius: 8px; overflow-x: auto; background: #ffffff; }
+        .util-sheet-gas-summary-table,
+        .util-sheet-gas-production-usage-table { width: 100%; min-width: 420px; border-collapse: collapse; table-layout: fixed; font-size: 0.72rem; }
+        .util-sheet-gas-summary-table th,
+        .util-sheet-gas-summary-table td,
+        .util-sheet-gas-production-usage-table th,
+        .util-sheet-gas-production-usage-table td { border-bottom: 1px solid #e2e8f0; padding: 0.48rem 0.55rem; vertical-align: middle; }
+        .util-sheet-gas-summary-table tr:last-child th,
+        .util-sheet-gas-summary-table tr:last-child td,
+        .util-sheet-gas-production-usage-table tr:last-child th,
+        .util-sheet-gas-production-usage-table tr:last-child td { border-bottom: 0; }
+        .util-sheet-gas-summary-table thead th,
+        .util-sheet-gas-production-usage-table thead th { background: #f8fafc; color: #475569; font-size: 0.68rem; font-weight: 900; text-align: center; white-space: nowrap; }
+        .util-sheet-gas-summary-table tbody th { width: 42%; background: #ffffff; text-align: left; color: #0f172a; }
+        .util-sheet-gas-summary-table td.is-amount { width: 28%; text-align: right; color: #0f172a; font-size: 0.78rem; font-weight: 900; white-space: nowrap; }
+        .util-sheet-gas-summary-table td.is-note { width: 30%; color: #64748b; font-size: 0.67rem; font-weight: 800; line-height: 1.35; text-align: left; }
+        .util-sheet-gas-summary-table td.is-empty { color: transparent; }
+        .util-sheet-gas-summary-grand-block { display: grid; gap: 0.75rem; }
+        .util-sheet-gas-summary-grand-table { width: 100%; border-collapse: collapse; table-layout: fixed; border-radius: 8px; overflow: hidden; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff; }
+        .util-sheet-gas-summary-grand-table th,
+        .util-sheet-gas-summary-grand-table td { padding: 0.8rem 0.9rem; vertical-align: middle; }
+        .util-sheet-gas-summary-grand-table th { text-align: left; }
+        .util-sheet-gas-summary-grand-table td { text-align: right; font-size: 1rem; font-weight: 900; white-space: nowrap; }
+        .util-sheet-gas-production-usage { display: grid; gap: 0.4rem; }
+        .util-sheet-gas-production-usage-table col.is-kind { width: 35%; }
+        .util-sheet-gas-production-usage-table col.is-team12,
+        .util-sheet-gas-production-usage-table col.is-team3 { width: 32.5%; }
+        .util-sheet-gas-production-usage-table tbody th { background: #ffffff; color: #0f172a; font-weight: 900; text-align: left; }
+        .util-sheet-gas-production-usage-table td { color: #0f172a; font-size: 0.8rem; font-weight: 900; text-align: right; white-space: nowrap; }
+        .util-sheet-gas-production-usage-table tr.is-production th,
+        .util-sheet-gas-production-usage-table tr.is-production td { background: #f0fdf4; }
+        .util-sheet-gas-production-usage-table tr.is-lpg th,
+        .util-sheet-gas-production-usage-table tr.is-lpg td { background: #fff7ed; }
+        .util-sheet-gas-production-usage-table tr.is-lng th,
+        .util-sheet-gas-production-usage-table tr.is-lng td { background: #eff6ff; }
+        .util-sheet-gas-production-usage-table td.is-team12 { color: #166534; }
+        .util-sheet-gas-production-usage-table td.is-team3 { color: #1d4ed8; }
+        .util-sheet-gas-production-usage-table td.is-empty { color: #94a3b8; text-align: center; }
+        .util-sheet-gas-production-team { display: inline-flex; align-items: center; justify-content: center; gap: 0.34rem; min-width: 0; }
+        .util-sheet-gas-production-team-mark { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 22px; border-radius: 7px; background: #ffffff; color: #0f172a; font-size: 0.66rem; font-weight: 900; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.12); }
+        .util-sheet-gas-production-team.is-team12 .util-sheet-gas-production-team-mark { color: #166534; box-shadow: inset 0 0 0 1px rgba(22, 101, 52, 0.2); }
+        .util-sheet-gas-production-team.is-team3 .util-sheet-gas-production-team-mark { color: #1d4ed8; box-shadow: inset 0 0 0 1px rgba(29, 78, 216, 0.2); }
+        .util-sheet-gas-production-row-label { display: inline-flex; align-items: center; gap: 0.42rem; }
+        .util-sheet-gas-layout.is-print-meter-only { grid-template-columns: minmax(0, 1fr); }
+        .util-sheet-gas-layout.is-print-meter-only .util-sheet-gas-summary { display: none; }
         .util-sheet-gas-guidance { display: grid; gap: 0.8rem; margin-top: 0; padding: 1rem 1.05rem; border-radius: 8px; border: 1px solid #bfdbfe; background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%); box-shadow: 0 12px 28px rgba(37, 99, 235, 0.08); }
         .util-sheet-gas-guidance-head { display: flex; align-items: flex-start; gap: 0.75rem; }
         .util-sheet-gas-guidance-icon { width: 36px; height: 36px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #1d4ed8; flex: none; }

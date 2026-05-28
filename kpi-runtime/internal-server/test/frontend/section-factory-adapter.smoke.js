@@ -68,7 +68,8 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.equal(typeof context.window.KpiUtilityEntryExperiment?.save, 'function');
 
   const appData = registry.registerSections({});
-  assert.deepEqual(Object.keys(appData), ['work', 'data', 'report', 'experiment', 'owner']);
+  assert.deepEqual(Object.keys(appData), ['work', 'data', 'report', 'experiment']);
+  assert.equal(appData.owner, undefined);
   assert.equal(appData.work.name, '팀별내역서');
   assert.equal(appData.data.name, '데이터 관리');
   assert.equal(appData.data.categories.length, 4);
@@ -78,11 +79,23 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.equal(utilityEntryCategory.viewerMode, 'full-bleed');
   assert.match(utilityEntryCategory.content, /data-role="utility-entry-experiment"/);
   assert.match(utilityEntryCategory.content, /data-role="utility-entry-experiment-meter-open"/);
-  assert.equal((utilityEntryCategory.content.match(/data-role="utility-entry-experiment-graph-toggle"/g) || []).length, 4);
+  assert.equal((utilityEntryCategory.content.match(/data-role="utility-entry-experiment-meter-open"/g) || []).length, 5);
+  assert.equal((utilityEntryCategory.content.match(/data-role="utility-entry-experiment-graph-toggle"/g) || []).length, 2);
+  assert.match(utilityEntryCategory.content, /utility-entry-experiment-settlement-title-button[\s\S]*data-utility-entry-experiment-meter-link="gas_yusan_lng"/);
+  assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-meter-link="gas_yusan_lng"/);
+  assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-meter-link="gas_bukjeong_lng"/);
+  assert.match(utilityEntryCategory.content, /aria-label="유산 LPG Nm3 단가"[\s\S]*data-utility-entry-experiment-field-key="unit_price_m3"/);
+  assert.match(utilityEntryCategory.content, /aria-label="유산 LPG Nm3 단가"[\s\S]*원\/M3/);
+  const dataSectionSource = sectionSources.find(({ filename }) => filename === 'KPI.sections.data.js')?.source || '';
+  assert.match(dataSectionSource, /calculateUtilityEntryExperimentUnitPrice\(powerCharge,\s*usageBase,\s*0\)/);
+  assert.match(dataSectionSource, /calculateUtilityEntryExperimentUnitPrice\(powerCharge,\s*rawLpgUsage,\s*1\)/);
+  assert.match(dataSectionSource, /data-role="utility-entry-experiment-graph-capture-pdf"/);
+  assert.match(dataSectionSource, /report-deck\/capture-zip/);
+  assert.match(dataSectionSource, /format:\s*'pdf'/);
   assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-graph="electric_yusan"/);
-  assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-graph="gas_yusan"/);
   assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-graph="electric_bukjeong"/);
-  assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-graph="gas_bukjeong"/);
+  assert.doesNotMatch(utilityEntryCategory.content, /data-utility-entry-experiment-graph="gas_yusan"/);
+  assert.doesNotMatch(utilityEntryCategory.content, /data-utility-entry-experiment-graph="gas_bukjeong"/);
   assert.match(utilityEntryCategory.content, /data-role="utility-entry-experiment-billing-attach"/);
   assert.doesNotMatch(utilityEntryCategory.content, /data-kpi-metering-root/);
   assert.doesNotMatch(JSON.stringify(appData.data.categories), /총괄 비율/);
@@ -477,23 +490,19 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.doesNotMatch(JSON.stringify(appData.data.categories), /data-role="util-sheet-monthly-report-panel"/);
   assert.equal(appData.experiment.name, '그래프');
   assert.notEqual(appData.experiment.navigationHidden, true);
-  assert.equal(appData.experiment.directLaunch, true);
-  assert.equal(appData.experiment.hideNavigationChevron, true);
-  assert.equal(appData.experiment.launchTarget, 'popup');
-  assert.equal(appData.experiment.launchWindowName, 'kpi-experiment-analysis-graph');
-  assert.equal(appData.experiment.launchFillScreen, true);
-  assert.equal(appData.experiment.launchPopupMode, 'experiment');
-  assert.equal(appData.experiment.launchRoute.view, 'category');
-  assert.equal(appData.experiment.launchRoute.sectionId, 'experiment');
-  assert.equal(appData.experiment.launchRoute.categoryIndex, 0);
+  assert.notEqual(appData.experiment.directLaunch, true);
+  assert.notEqual(appData.experiment.hideNavigationChevron, true);
+  assert.equal(appData.experiment.launchTarget, undefined);
+  assert.equal(appData.experiment.launchRoute, undefined);
   assert.equal(Array.isArray(appData.experiment.categories), true);
   assert.equal(appData.experiment.categories.length, 2);
   assert.equal(appData.experiment.categories[0].title, '선/막대');
   assert.notEqual(appData.experiment.categories[0].navHidden, true);
   assert.equal(appData.experiment.categories[0].viewerMode, 'full-bleed');
-  assert.equal(appData.experiment.categories[0].launchTarget, 'popup');
-  assert.equal(appData.experiment.categories[0].launchRoute.categoryIndex, 0);
+  assert.equal(appData.experiment.categories[0].launchTarget, undefined);
+  assert.equal(appData.experiment.categories[0].launchRoute, undefined);
   assert.match(appData.experiment.categories[0].content, /experiment-unified-shell/);
+  assert.match(appData.experiment.categories[0].content, /data-exp-fullscreen-toggle/);
   assert.match(appData.experiment.categories[0].content, /data-exp-card-picker-toggle/);
   assert.match(appData.experiment.categories[0].content, /data-exp-period-start/);
   assert.match(appData.experiment.categories[0].content, /data-exp-period-end/);
@@ -505,8 +514,10 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.equal(appData.experiment.categories[1].viewerMode, 'full-bleed');
   assert.equal(appData.experiment.categories[1].utilitySurface, 'analysis');
   assert.equal(appData.experiment.categories[1].autoOpenUtilityReportModal, true);
-  assert.equal(appData.experiment.categories[1].launchTarget, 'popup');
-  assert.equal(appData.experiment.categories[1].launchRoute.categoryIndex, 1);
+  assert.equal(appData.experiment.categories[1].launchTarget, undefined);
+  assert.equal(appData.experiment.categories[1].launchRoute, undefined);
+  assert.match(appData.experiment.categories[1].content, /data-exp-overview-ratio-shell/);
+  assert.match(appData.experiment.categories[1].content, /data-exp-fullscreen-toggle/);
   assert.match(appData.experiment.categories[1].content, /data-role="util-report-panel"/);
   assert.match(appData.experiment.categories[1].content, /data-role="util-report-open-modal"/);
   assert.match(appData.experiment.categories[1].content, /총괄 비율/);
@@ -517,14 +528,14 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(experimentSource, /buildYearOverlapSeries/);
   assert.match(experimentSource, /function\s+syncYearOverlapYearControls/);
   assert.match(experimentSource, /toggleOverlapYear\(trigger\)/);
+  assert.match(experimentSource, /function\s+toggleExperimentFullscreen/);
+  assert.doesNotMatch(experimentSource, /launchTarget:\s*'popup'/);
   assert.match(experimentSource, /reportValueOrderLabels:\s*period\?\.yearOverlap === true/);
   assert.match(experimentSource, /const mode = String\(state\.displayModes\?\.\[card\.key\] \|\| ''\)/);
   assert.match(experimentSource, /lineWidth:\s*3\.2/);
   assert.match(experimentSource, /function\s+getCompactAnalysisCardTitle/);
   assert.match(experimentSource, /getCompactAnalysisCardTitle\(card\)/);
   assert.doesNotMatch(experimentSource, /<div class="util-sheet-analysis-summary-value">\$\{escapeHtml\(card\.valueText\)\}<\/div>/);
-  assert.equal(appData.owner.ownerOnly, true);
-
   const nonAdapterSources = sectionSources
     .filter(({ filename }) => filename !== 'KPI.section.factory-adapter.js')
     .map(({ source }) => source)
@@ -538,9 +549,9 @@ test('kpi html loads section factory adapter before all section factories', () =
   const adapterIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.factory-adapter.js?v=1');
   const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=231');
   const graphTemplateIndex = kpiHtml.indexOf('data-entry/runtime/data/utility-graph-template/app.js?v=41');
-  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=94');
+  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=97');
   const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=98');
-  const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=27');
+  const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=29');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
   const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=5');
 

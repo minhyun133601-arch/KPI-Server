@@ -48,13 +48,13 @@
         meter: {
             key: 'meter',
             title: '검침표',
-            description: '가스비 검침표와 전력비 검침표를 한 화면에서 전환합니다.',
+            description: '선택한 유틸리티 검침값과 사용량, 금액을 확인합니다.',
             buttonLabel: '이동'
         },
         analysis: {
             key: 'analysis',
             title: '분석표',
-            description: '가스비 분석표와 전력비 분석표를 한 화면에서 전환합니다.',
+            description: '선택한 유틸리티 사용량, 금액, 생산량 추이를 확인합니다.',
             buttonLabel: '이동'
         }
     };

@@ -17,8 +17,8 @@ const shellManifestPath = path.join(appRoot, 'KPI.app.shell.css');
 
 const styleEntries = [
   {
-    href: `${runtimeDirName}/app/styles/shell/dashboard.css?v=073`,
-    manifestHref: './styles/shell/dashboard.css?v=073',
+    href: `${runtimeDirName}/app/styles/shell/dashboard.css?v=074`,
+    manifestHref: './styles/shell/dashboard.css?v=074',
     fileName: 'dashboard.css',
     relativeSegments: ['shell', 'dashboard.css'],
   },
@@ -35,8 +35,8 @@ const styleEntries = [
     relativeSegments: ['work', 'work.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/metering/metering.css?v=074`,
-    manifestHref: './styles/metering/metering.css?v=074',
+    href: `${runtimeDirName}/app/styles/metering/metering.css?v=079`,
+    manifestHref: './styles/metering/metering.css?v=079',
     fileName: 'metering.css',
     relativeSegments: ['metering', 'metering.css'],
   },
@@ -97,6 +97,9 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['dashboard.css'], /\.experiment-chart-toolbar\s*\{[^}]*min-height:\s*40px;[^}]*border-bottom:\s*1px solid #dbe4f3;[^}]*box-shadow:\s*none;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-add-card-trigger\s*\{[^}]*min-height:\s*30px;[^}]*border:\s*1px solid #cbd5e1;[^}]*background:\s*#ffffff;[^}]*box-shadow:\s*none;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-period-input\s*\{[^}]*height:\s*30px;[^}]*border-radius:\s*6px;[^}]*font-size:\s*0\.74rem;[^}]*box-shadow:\s*none;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-fullscreen-button\s*\{[^}]*min-height:\s*30px;[^}]*border:\s*1px solid #cbd5e1;[^}]*white-space:\s*nowrap;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-overview-ratio-shell\s*\{[^}]*min-height:\s*calc\(100vh - 40px\);[^}]*background:\s*#f3f6fb;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-unified-shell\.is-experiment-browser-fullscreen,[\s\S]*\.experiment-overview-ratio-shell:fullscreen\s*\{[^}]*height:\s*100dvh;[^}]*overflow:\s*auto;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-year-overlap-button\s*\{[^}]*min-height:\s*30px;[^}]*border:\s*1px solid #cbd5e1;[^}]*background:\s*#ffffff;[^}]*box-shadow:\s*none;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-year-overlap-button\[aria-pressed="true"\]\s*\{[^}]*border-color:\s*#111827;[^}]*background:\s*#f1f5f9;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-year-overlap-years\s*\{[^}]*min-height:\s*30px;[^}]*display:\s*inline-flex;[^}]*gap:\s*4px;/s);

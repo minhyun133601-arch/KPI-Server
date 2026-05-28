@@ -33,10 +33,8 @@
         normalizeUtilSheetType,
         resolveUtilSheetReportDatasetKey,
         normalizeUtilSheetCompareKey,
-        pruneUtilSheetDatasetToggles,
         syncUtilSheetPanelChrome,
-        syncUtilSheetTypeButtons,
-        syncUtilSheetDatasetButtons
+        syncUtilSheetTypeButtons
     } = utilReportSheetPanelRuntime;
 
     const runtime = {
@@ -261,10 +259,8 @@
         panel.dataset.datasetKey = datasetKey;
         panel.dataset.compareKey = compareKey;
         UtilSheetReportState[sheetType] = datasetKey;
-        pruneUtilSheetDatasetToggles(panel);
         syncUtilSheetPanelChrome(panel, sheetType, datasetKey);
         syncUtilSheetTypeButtons(panel, '[data-role="util-sheet-type-select"]', sheetType);
-        syncUtilSheetDatasetButtons(panel, '[data-role="util-sheet-select"]', datasetKey, sheetType);
 
         if (monthSelect) {
             const monthOptions = Array.isArray(datasetResult.monthOptions) ? datasetResult.monthOptions : [];

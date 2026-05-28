@@ -179,12 +179,6 @@ test('report sheet electric comparison summary registry builds electric billing 
     buildUtilElectricMeterViewToggleHtml(viewKey) {
       return `<div data-view-toggle="${String(viewKey || '')}"></div>`;
     },
-    resolveUtilSheetBillingDocumentDescriptor(datasetKey, monthKey, scopeKey) {
-      if (datasetKey === 'electric' && monthKey === '2026-03' && scopeKey === 'yusan') {
-        return { relativePath: 'electric/2026-03-yusan.pdf' };
-      }
-      return null;
-    },
     escapeUtilSheetHtml(value) {
       return String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -299,8 +293,9 @@ test('report sheet electric comparison summary registry builds electric billing 
   assert.match(html, /util-sheet-meter-table-electric/);
   assert.match(html, /util-sheet-disclosure/);
   assert.match(html, /data-view-toggle=\"meter\"/);
-  assert.match(html, /data-billing-dataset-key=\"electric\"/);
-  assert.match(html, /data-billing-scope-key=\"yusan\"/);
+  assert.doesNotMatch(html, /data-role=\"util-sheet-billing-preview-toggle\"/);
+  assert.doesNotMatch(html, /data-billing-dataset-key=\"electric\"/);
+  assert.doesNotMatch(html, /util-sheet-gas-summary-doc-btn/);
 
   const allocationSummary = registry.buildUtilElectricAllocationSummaryModel(model, {
     option: { key: 'combined', label: '\uD569\uC0B0' },
@@ -346,9 +341,9 @@ test('kpi html loads electric runtime sync between electric table render and ele
   const electricTableRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/table-render.js?v=053');
   const electricRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/runtime-sync.js?v=053');
   const electricMeterModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/meter-model.js?v=053');
-  const electricComparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=053');
-  const gasComparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/comparison-summary.js?v=053');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=063');
+  const electricComparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=054');
+  const gasComparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/comparison-summary.js?v=056');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=065');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(billingIndex >= 0, 'report sheet billing loader is missing');

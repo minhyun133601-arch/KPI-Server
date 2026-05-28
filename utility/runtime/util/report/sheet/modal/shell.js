@@ -31,14 +31,12 @@
     } = utilReportSheetOptions;
 
     const runtime = {
-        pruneUtilSheetDatasetToggles: null,
         closeUtilSheetReportModal: null,
         renderUtilSheetReportModal: null,
         syncUtilSheetDetachedReportWindow: null,
         syncUtilSheetReportWindowState: null,
         toggleUtilSheetReportExpanded: null,
         getUtilSheetAlternateType: null,
-        getUtilSheetAlternateDatasetKey: null,
         resolveUtilSheetReportDatasetKey: null,
         normalizeUtilSheetCompareKey: null,
         normalizeUtilSheetType: null,
@@ -111,6 +109,37 @@
         }
     }
 
+    function applyModalMonthSelection(modal, monthKey = '') {
+        if (!modal) return false;
+        const sheetType = normalizeSheetType(modal.dataset.sheetType);
+        const datasetKey = resolveDatasetKey(
+            sheetType,
+            modal.dataset.datasetKey || UtilSheetReportState[sheetType] || 'gas'
+        );
+        const normalizedMonthKey = String(monthKey || '').trim();
+        modal.dataset.monthKey = normalizedMonthKey;
+        UtilSheetReportMonthState[sheetType] = normalizedMonthKey;
+        if (modal.dataset.monthlyReportMode === 'true') {
+            const selectedDatasetKeys = getMonthlyExtractSelectedDatasetKeysFromState(modal);
+            const range = normalizeMonthlyExtractRange(
+                buildMonthlyExtractMonthOptions(selectedDatasetKeys.length ? selectedDatasetKeys : MONTHLY_EXTRACT_DATASET_KEYS),
+                modal.dataset.monthlyExtractFrom,
+                normalizedMonthKey
+            );
+            modal.dataset.monthlyExtractDatasetKey = datasetKey;
+            modal.dataset.monthlyExtractFrom = range.from;
+            modal.dataset.monthlyExtractTo = range.to;
+            setMonthlyExtractReviewedDatasetKeys(modal, [datasetKey]);
+        }
+        if (sheetType === 'analysis' && isCustomAnalysisDataset(datasetKey) && typeof runtime.setUtilSheetAnalysisToMonth === 'function') {
+            runtime.setUtilSheetAnalysisToMonth(datasetKey, normalizedMonthKey);
+        }
+        rerenderAndSync(modal);
+        syncMonthlyExtractDatasetControls(modal);
+        syncPanelSelection(sheetType, datasetKey);
+        return true;
+    }
+
     function normalizeCompareKey(compareKey = 'month') {
         if (typeof runtime.normalizeUtilSheetCompareKey === 'function') {
             return runtime.normalizeUtilSheetCompareKey(compareKey);
@@ -170,16 +199,6 @@
             return runtime.getUtilSheetAlternateType(sheetType);
         }
         return normalizeSheetType(sheetType) === 'analysis' ? 'meter' : 'analysis';
-    }
-
-    function getAlternateDatasetKey(datasetKey = '', sheetType = 'meter') {
-        if (typeof runtime.getUtilSheetAlternateDatasetKey === 'function') {
-            return runtime.getUtilSheetAlternateDatasetKey(datasetKey, sheetType);
-        }
-        const normalizedKey = resolveDatasetKey(sheetType, datasetKey);
-        if (normalizedKey === 'gas') return 'electric';
-        if (normalizedKey === 'electric') return 'waste';
-        return 'gas';
     }
 
     function isCustomAnalysisDataset(datasetKey = '') {
@@ -601,6 +620,17 @@
         return runtime.buildUtilElectricMeterComparisonSectionHtml(model, teamDatasetResult, viewKey);
     }
 
+    function isGasMeterSheet(sheetType = 'meter', datasetKey = 'gas') {
+        const normalizedSheetType = normalizeSheetType(sheetType);
+        return normalizedSheetType === 'meter' && resolveDatasetKey(normalizedSheetType, datasetKey) === 'gas';
+    }
+
+    function isGasMeterModal(modal) {
+        const sheetType = normalizeSheetType(modal?.dataset?.sheetType || 'meter');
+        const datasetKey = modal?.dataset?.datasetKey || UtilSheetReportState[sheetType] || 'gas';
+        return isGasMeterSheet(sheetType, datasetKey);
+    }
+
     function hasElectricMeteringStoreReady() {
         return typeof runtime.hasUtilElectricMeteringStore === 'function'
             ? Boolean(runtime.hasUtilElectricMeteringStore())
@@ -652,6 +682,15 @@
             normalizedSheetType === 'meter' ? '.util-sheet-meter-summary-toolbar' : ''
         ].filter(Boolean).join(', ');
         Array.from(clone?.querySelectorAll?.(removableSelectors) || []).forEach(node => node?.remove?.());
+        if (options?.gasMeterPrintOnly && isGasMeterSheet(normalizedSheetType, datasetKey)) {
+            const gasPrintOnlySelectors = [
+                '.util-sheet-section-head',
+                '[data-role="util-sheet-billing-preview-toggle"]'
+            ].join(', ');
+            Array.from(clone?.querySelectorAll?.(gasPrintOnlySelectors) || []).forEach(node => node?.remove?.());
+            const gasLayout = clone.querySelector?.('.util-sheet-gas-layout') || null;
+            gasLayout?.classList?.add?.('is-print-meter-only');
+        }
         Array.from(clone?.querySelectorAll?.('[id]') || []).forEach(node => node?.removeAttribute?.('id'));
         return String(clone?.outerHTML || '');
     }
@@ -1035,6 +1074,27 @@
         popupDoc.write(html);
         popupDoc.close();
         popup?.focus?.();
+        return true;
+    }
+
+    function openPrintableExtractHtml(html) {
+        const popup = runtimeAdapter.openWindow('', '_blank', 'width=1280,height=900');
+        const popupDoc = popup?.document;
+        if (!popupDoc || typeof popupDoc.open !== 'function' || typeof popupDoc.write !== 'function' || typeof popupDoc.close !== 'function') {
+            return false;
+        }
+        popupDoc.open();
+        popupDoc.write(html);
+        popupDoc.close();
+        popup?.focus?.();
+        const printPopup = () => {
+            if (typeof popup?.print === 'function') {
+                popup.print();
+            }
+        };
+        if (runtimeAdapter.setTimeout(printPopup, 250) === null) {
+            printPopup();
+        }
         return true;
     }
 
@@ -2809,21 +2869,6 @@
         if (runButton) {
             runButton.textContent = selectedKeys.length === MONTHLY_EXTRACT_DATASET_KEYS.length ? '통합 추출' : '선택 추출';
         }
-        const reviewControls = modal.querySelector?.('[data-role="util-sheet-monthly-review-controls"]') || null;
-        if (reviewControls) {
-            const isMonthlyMode = modal.dataset.monthlyReportMode === 'true';
-            reviewControls.hidden = !isMonthlyMode;
-            reviewControls.toggleAttribute?.('hidden', !isMonthlyMode);
-            Array.from(reviewControls.querySelectorAll?.('[data-role="util-sheet-monthly-review-dataset"]') || []).forEach(button => {
-                const datasetKey = normalizeMonthlyExtractDatasetKey(button.dataset.extractDatasetKey || button.dataset.datasetKey);
-                const isActive = datasetKey === activeDatasetKey;
-                button.classList?.toggle?.('is-active', isActive);
-                button.classList?.toggle?.('is-selected', selectedKeys.includes(datasetKey));
-                button.classList?.toggle?.('is-reviewed', reviewedKeys.includes(datasetKey));
-                button.setAttribute?.('aria-pressed', isActive ? 'true' : 'false');
-                button.dataset.reviewed = reviewedKeys.includes(datasetKey) ? 'true' : 'false';
-            });
-        }
         return activeDatasetKey;
     }
 
@@ -2893,10 +2938,302 @@
         return { datasetKey: activeDatasetKey, range };
     }
 
-    function buildMeterExtractDocumentHtml(modal, reportCardHtml = '') {
+    function getGasMeterPrintExtractCss() {
+        return `
+                    @page { size: A4 landscape; margin: 5mm; }
+                    body.is-gas-meter-print { background: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .util-sheet-meter-extract-page.is-gas-meter-print {
+                        width: 287mm;
+                        min-height: 0 !important;
+                        box-sizing: border-box;
+                        margin: 0 auto;
+                        padding: 0;
+                        overflow: visible !important;
+                        background: #ffffff !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-extract-head,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-report-head,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-section-head,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-report-main-controls,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-report-window-actions,
+                    .util-sheet-meter-extract-page.is-gas-meter-print [data-role="util-sheet-billing-preview-toggle"] {
+                        display: none !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-extract-body,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-report-card,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-report-body,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-section {
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        height: auto !important;
+                        min-height: 0 !important;
+                        max-height: none !important;
+                        box-sizing: border-box;
+                        overflow: visible !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-report-card,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-section {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        border: 0 !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                        background: #ffffff !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-report-body {
+                        display: grid !important;
+                        gap: 2.4mm !important;
+                        padding: 0 !important;
+                        background: #ffffff !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-layout {
+                        display: grid !important;
+                        grid-template-columns: minmax(0, 1fr) 82mm !important;
+                        gap: 3mm !important;
+                        align-items: start !important;
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        overflow: visible !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table-stack {
+                        display: grid !important;
+                        gap: 2.4mm !important;
+                        min-width: 0 !important;
+                        overflow: visible !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table-card {
+                        display: grid !important;
+                        gap: 1.4mm !important;
+                        padding: 2mm !important;
+                        border: 1px solid #dbeafe !important;
+                        border-radius: 3mm !important;
+                        background: #ffffff !important;
+                        box-shadow: none !important;
+                        overflow: visible !important;
+                        break-inside: avoid;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table-card.is-current {
+                        border-color: #fdba74 !important;
+                        background: #fffaf5 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table-head {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: space-between !important;
+                        gap: 1.4mm !important;
+                        min-height: 0 !important;
+                        padding: 0 !important;
+                        border-bottom: 0 !important;
+                        background: transparent !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table-title {
+                        font-size: 8pt !important;
+                        line-height: 1.12 !important;
+                        font-weight: 900 !important;
+                        color: #0f172a !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table-sub {
+                        margin-top: 0.3mm !important;
+                        font-size: 5.6pt !important;
+                        line-height: 1.1 !important;
+                        font-weight: 700 !important;
+                        color: #64748b !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-table-wrap {
+                        max-height: none !important;
+                        overflow: visible !important;
+                        border: 1px solid #e2e8f0 !important;
+                        border-radius: 2mm !important;
+                        background: #ffffff !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-table {
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        table-layout: fixed !important;
+                        border-collapse: collapse !important;
+                        font-size: 6.1pt !important;
+                        line-height: 1.08 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-table th,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-table td {
+                        padding: 0.9mm 1.2mm !important;
+                        border: 0 !important;
+                        border-bottom: 1px solid #e2e8f0 !important;
+                        color: #334155 !important;
+                        font-size: 6.1pt !important;
+                        line-height: 1.08 !important;
+                        vertical-align: middle !important;
+                        white-space: nowrap !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-table th {
+                        background: #f8fafc !important;
+                        color: #475569 !important;
+                        font-weight: 900 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table th:first-child,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table td:first-child {
+                        width: 25% !important;
+                        text-align: left !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table td:not(:first-child),
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table th:not(:first-child) {
+                        text-align: right !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-table td.is-accent {
+                        color: #0f172a !important;
+                        font-weight: 900 !important;
+                        background: rgba(251, 191, 36, 0.12) !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-name {
+                        display: flex !important;
+                        align-items: center !important;
+                        gap: 1mm !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-label {
+                        font-size: 6.1pt !important;
+                        line-height: 1.08 !important;
+                        font-weight: 900 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-caption,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-cell-meta {
+                        font-size: 5pt !important;
+                        line-height: 1.05 !important;
+                        color: #64748b !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary {
+                        display: grid !important;
+                        gap: 1.8mm !important;
+                        min-width: 0 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-shell {
+                        display: grid !important;
+                        gap: 1.8mm !important;
+                        padding: 2mm !important;
+                        border-radius: 3mm !important;
+                        border: 1px solid #e2e8f0 !important;
+                        background: #ffffff !important;
+                        box-shadow: none !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-group {
+                        display: grid !important;
+                        gap: 1.2mm !important;
+                        padding: 1.6mm !important;
+                        border-radius: 2mm !important;
+                        border: 1px solid #e2e8f0 !important;
+                        background: #ffffff !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-group.is-lpg { background: #fff7ed !important; }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-group.is-lng { background: #eff6ff !important; }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-head {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: space-between !important;
+                        gap: 1mm !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-title {
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        gap: 1mm !important;
+                        font-size: 6.4pt !important;
+                        line-height: 1.12 !important;
+                        font-weight: 900 !important;
+                        color: #0f172a !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-actions,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-doc-btn {
+                        display: none !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-table-wrap,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-usage-table-wrap {
+                        overflow: visible !important;
+                        border-radius: 2mm !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-table,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-usage-table {
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        table-layout: fixed !important;
+                        border-collapse: collapse !important;
+                        font-size: 5.4pt !important;
+                        line-height: 1.08 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-table th,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-table td,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-usage-table th,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-usage-table td {
+                        padding: 0.75mm 0.9mm !important;
+                        border-color: #dbe4f3 !important;
+                        font-size: 5.4pt !important;
+                        line-height: 1.08 !important;
+                        vertical-align: middle !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-grand-block {
+                        display: grid !important;
+                        gap: 1.4mm !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-grand-table th,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-grand-table td {
+                        padding: 1mm 1.2mm !important;
+                        font-size: 6pt !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-usage {
+                        display: grid !important;
+                        gap: 0 !important;
+                        border-radius: 2mm !important;
+                        border: 1px solid #cbd5e1 !important;
+                        background: #ffffff !important;
+                        overflow: visible !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-team {
+                        display: inline-flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        gap: 0.8mm !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-team-mark {
+                        min-width: 5.5mm !important;
+                        height: 4.8mm !important;
+                        border-radius: 999px !important;
+                        font-size: 5.2pt !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-guidance {
+                        display: grid !important;
+                        gap: 1mm !important;
+                        padding: 2mm !important;
+                        border-radius: 2mm !important;
+                        box-shadow: none !important;
+                        break-inside: avoid;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-guidance-title { font-size: 6.2pt !important; }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-guidance-sub,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-guidance-line {
+                        font-size: 4.8pt !important;
+                        line-height: 1.1 !important;
+                    }
+                    @media print {
+                        html,
+                        body.is-gas-meter-print {
+                            width: auto !important;
+                            height: auto !important;
+                            min-height: 0 !important;
+                            overflow: visible !important;
+                        }
+                        .util-sheet-meter-extract-page.is-gas-meter-print {
+                            width: 100% !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+                    }
+        `;
+    }
+
+    function buildMeterExtractDocumentHtml(modal, reportCardHtml = '', options = {}) {
         const title = getTextContent(modal, '[data-role="util-sheet-report-title"]', '검침표');
         const datasetKey = resolveDatasetKey('meter', modal?.dataset?.datasetKey || UtilSheetReportState.meter || 'gas');
         const datasetLabel = getExtractDatasetLabel(datasetKey);
+        const isGasMeterPrint = options?.gasMeterPrintOnly === true && datasetKey === 'gas';
+        const bodyClass = isGasMeterPrint ? ' class="is-gas-meter-print"' : '';
+        const pageClass = isGasMeterPrint ? ' is-gas-meter-print' : '';
         const templateHtml = '';
         return `
             <!doctype html>
@@ -2924,17 +3261,30 @@
                     .util-sheet-meter-extract-body .util-sheet-meter-table-card { box-shadow: none; }
                     .util-sheet-meter-extract-body .util-sheet-report-window-actions:empty { display: none; }
                     .util-sheet-meter-extract-body [data-role="util-sheet-billing-preview-toggle"] { display: none !important; }
+                    .util-sheet-meter-extract-page.is-gas-meter-print { min-height: 0; padding: 0; }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-extract-head,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-report-head,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-blank-template-section { display: none !important; }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-extract-body .util-sheet-report-card { width: 100%; max-width: none; border: 0; border-radius: 0; margin: 0; }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-report-body { padding: 0; }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-layout { grid-template-columns: minmax(0, 1fr) !important; }
                     ${getWasteMeterExtractCss()}
                     ${getReportTemplateExtractCss()}
                     ${getExtractIconFallbackCss()}
                     @media print {
+                        @page { size: A4 portrait; margin: 8mm; }
+                        body.is-gas-meter-print { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                         .util-sheet-meter-extract-page { padding: 0; }
                         .util-sheet-meter-extract-head { break-after: avoid; }
+                        .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-report-card { width: 100% !important; }
+                        .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-table-wrap { overflow: visible !important; }
                     }
+                    ${isGasMeterPrint ? getGasMeterPrintExtractCss() : ''}
                 </style>
             </head>
-            <body>
-                <main class="util-sheet-meter-extract-page">
+            <body${bodyClass}>
+                <main class="util-sheet-meter-extract-page${pageClass}">
                     <header class="util-sheet-meter-extract-head">
                         <div class="util-sheet-meter-extract-kicker">${escapeHtml(datasetLabel)} METER EXTRACT</div>
                         <div class="util-sheet-meter-extract-title">${escapeHtml(title)}</div>
@@ -3204,23 +3554,26 @@
         return true;
     }
 
-    function buildExtractDocumentForSheetType(modal, sheetType, datasetKey, monthKey, compareKey) {
+    function buildExtractDocumentForSheetType(modal, sheetType, datasetKey, monthKey, compareKey, options = {}) {
         const normalizedSheetType = normalizeSheetType(sheetType);
+        const normalizedDatasetKey = resolveDatasetKey(normalizedSheetType, datasetKey);
+        const gasMeterPrintOnly = options?.gasMeterPrintOnly === true && isGasMeterSheet(normalizedSheetType, normalizedDatasetKey);
         const previousSheetType = normalizeSheetType(modal?.dataset?.sheetType);
-        const rendered = renderModalForExtract(modal, normalizedSheetType, datasetKey, monthKey, compareKey);
+        const rendered = renderModalForExtract(modal, normalizedSheetType, normalizedDatasetKey, monthKey, compareKey);
         if (!rendered && previousSheetType !== normalizedSheetType) return null;
         const extractPayload = normalizedSheetType === 'analysis'
-            ? buildAnalysisExtractPayload(modal, datasetKey)
+            ? buildAnalysisExtractPayload(modal, normalizedDatasetKey)
             : null;
         const meterBodyHtmlOverride = normalizedSheetType === 'meter'
-            ? buildMeterExtractBodyHtmlOverride(modal, normalizedSheetType, datasetKey, monthKey, compareKey)
+            ? buildMeterExtractBodyHtmlOverride(modal, normalizedSheetType, normalizedDatasetKey, monthKey, compareKey)
             : '';
         const reportCardHtml = buildVisibleReportCardHtml(modal, normalizedSheetType, {
-            headerControlsHtml: buildAnalysisExtractHeaderControlsHtml(datasetKey, extractPayload?.model, compareKey),
+            headerControlsHtml: buildAnalysisExtractHeaderControlsHtml(normalizedDatasetKey, extractPayload?.model, compareKey),
             bodyHtmlOverride: normalizedSheetType === 'analysis'
-                ? buildAnalysisExtractBodyHtmlOverride(datasetKey, extractPayload?.model)
+                ? buildAnalysisExtractBodyHtmlOverride(normalizedDatasetKey, extractPayload?.model)
                 : meterBodyHtmlOverride,
-            bodyHtmlOverrideMode: normalizedSheetType === 'analysis' ? 'analysis' : 'electric-meter'
+            bodyHtmlOverrideMode: normalizedSheetType === 'analysis' ? 'analysis' : 'electric-meter',
+            gasMeterPrintOnly
         });
         if (!reportCardHtml) return null;
         return normalizedSheetType === 'analysis'
@@ -3230,7 +3583,7 @@
             }
             : {
                 fileName: buildExtractFileName(modal),
-                html: buildMeterExtractDocumentHtml(modal, reportCardHtml)
+                html: buildMeterExtractDocumentHtml(modal, reportCardHtml, { gasMeterPrintOnly })
             };
     }
 
@@ -3630,6 +3983,38 @@
         return success;
     }
 
+    function runUtilSheetGasMeterPrint(modal) {
+        if (!modal) return false;
+        const snapshot = snapshotModalExtractState(modal);
+        const monthKey = getCurrentExtractMonthKey(modal);
+        const compareKey = normalizeCompareKey(snapshot.dataset?.compareKey || UtilSheetCompareState.meter || 'month');
+        let success = false;
+
+        try {
+            const documentResult = buildExtractDocumentForSheetType(
+                modal,
+                'meter',
+                'gas',
+                monthKey,
+                compareKey,
+                { gasMeterPrintOnly: true }
+            );
+            if (!documentResult?.html) {
+                runtimeAdapter.alert('가스 검침표 인쇄 화면을 만들 수 없습니다.');
+                return false;
+            }
+            success = openPrintableExtractHtml(documentResult.html);
+            if (!success) {
+                runtimeAdapter.alert('가스 검침표 인쇄 창을 열 수 없습니다. 브라우저 팝업 차단 설정을 확인해 주세요.');
+            }
+            return success;
+        } finally {
+            restoreModalExtractState(modal, snapshot);
+            closeUtilSheetExtractOptions(modal);
+            setMonthlyExtractOptionsVisible(modal, false);
+        }
+    }
+
     function runUtilSheetReportExtract(modal, selectedSheetTypes = null, options = {}) {
         if (!modal) return false;
         const sheetTypes = Array.isArray(selectedSheetTypes) && selectedSheetTypes.length
@@ -3702,24 +4087,23 @@
                     </div>
                     <div class="util-sheet-report-head-actions">
                         <div class="util-sheet-report-main-controls">
-                            <div class="util-sheet-toggle is-modal" data-role="util-sheet-modal-dataset-toggle">
-                                <button type="button" class="util-sheet-toggle-btn" data-role="util-sheet-modal-select" data-dataset-key="gas" aria-label="보고서 항목 전환">
-                                    <i class="fa-solid fa-fire-flame-curved" aria-hidden="true"></i>
-                                    <span>가스비</span>
-                                </button>
-                            </div>
                             <div class="util-sheet-month-field is-modal">
+                                <button type="button" class="util-sheet-month-step-btn" data-role="util-sheet-modal-month-step" data-direction="prev" aria-label="이전 월" title="이전 월">
+                                    <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+                                </button>
                                 <select class="util-sheet-month-select" data-role="util-sheet-modal-month" aria-label="보고서 기준월"></select>
+                                <button type="button" class="util-sheet-month-step-btn" data-role="util-sheet-modal-month-step" data-direction="next" aria-label="다음 월" title="다음 월">
+                                    <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+                                </button>
                             </div>
                             <div class="util-sheet-segment" data-role="util-sheet-modal-compare-toggle">
                                 <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-modal-compare-select" data-compare-key="month" aria-pressed="true">전월대비</button>
                                 <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-modal-compare-select" data-compare-key="year" aria-pressed="false">전년대비</button>
                             </div>
-                            <div class="util-sheet-segment is-dataset is-monthly-review" data-role="util-sheet-monthly-review-controls" aria-label="월간 실적 보고 확인 항목" hidden>
-                                <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-monthly-review-dataset" data-dataset-key="gas" data-extract-dataset-key="gas" aria-pressed="true">가스</button>
-                                <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-monthly-review-dataset" data-dataset-key="electric" data-extract-dataset-key="electric" aria-pressed="false">전기</button>
-                                <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-monthly-review-dataset" data-dataset-key="waste" data-extract-dataset-key="waste" aria-pressed="false">폐수</button>
-                            </div>
+                            <button type="button" class="util-sheet-report-icon-btn util-sheet-gas-view-toggle" data-role="util-sheet-modal-type-select" data-util-sheet-gas-view-toggle hidden aria-label="가스 그래프 보기" title="가스 그래프 보기">
+                                <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
+                                <span>그래프</span>
+                            </button>
                         </div>
                         <button type="button" class="work-btn" data-role="util-sheet-report-print" aria-label="추출" title="추출">추출</button>
                         <div class="util-sheet-extract-options" data-role="util-sheet-extract-options" role="dialog" aria-modal="true" aria-label="추출 선택" hidden>
@@ -3803,10 +4187,6 @@
             </div>
         `;
 
-        if (typeof runtime.pruneUtilSheetDatasetToggles === 'function') {
-            runtime.pruneUtilSheetDatasetToggles(modal);
-        }
-
         modal.addEventListener('click', event => {
             const target = event?.target || null;
             if (target === modal || findClosest(target, '[data-role="util-sheet-report-close"]')) {
@@ -3821,6 +4201,10 @@
                 return;
             }
             if (findClosest(target, '[data-role="util-sheet-report-print"]')) {
+                if (isGasMeterModal(modal) && modal.dataset.monthlyReportMode !== 'true') {
+                    runUtilSheetGasMeterPrint(modal);
+                    return;
+                }
                 if (!openMonthlyExtractOptionsFromModal(modal)) {
                     openUtilSheetExtractOptions(modal);
                 }
@@ -3838,26 +4222,6 @@
                 closeUtilSheetMonthlyExtractOptions(modal);
                 return;
             }
-            const monthlyReviewButton = findClosest(target, '[data-role="util-sheet-monthly-review-dataset"]');
-            if (monthlyReviewButton) {
-                const { monthOptions, range } = populateMonthlyExtractOptions(modal);
-                applyMonthlyExtractPreview(modal, monthlyReviewButton.dataset.extractDatasetKey || monthlyReviewButton.dataset.datasetKey, {
-                    monthOptions,
-                    from: range.from,
-                    to: range.to
-                });
-                return;
-            }
-            const monthlyDatasetPreview = findClosest(target, '[data-role="util-sheet-monthly-extract-dataset-preview"]');
-            if (monthlyDatasetPreview) {
-                const { monthOptions, range } = populateMonthlyExtractOptions(modal);
-                applyMonthlyExtractPreview(modal, monthlyDatasetPreview.dataset.extractDatasetKey, {
-                    monthOptions,
-                    from: range.from,
-                    to: range.to
-                });
-                return;
-            }
             if (findClosest(target, '[data-role="util-sheet-monthly-extract-run"]')) {
                 runUtilSheetMonthlyReportExtract(modal);
                 return;
@@ -3866,6 +4230,24 @@
                 if (typeof runtime.toggleUtilSheetReportExpanded === 'function') {
                     runtime.toggleUtilSheetReportExpanded(modal);
                 }
+                return;
+            }
+            const monthStepButton = findClosest(target, '[data-role="util-sheet-modal-month-step"]');
+            if (monthStepButton) {
+                const monthSelect = modal.querySelector?.('[data-role="util-sheet-modal-month"]') || null;
+                if (!monthSelect || monthSelect.disabled) return;
+                const values = Array.from(monthSelect.options || [])
+                    .map(option => String(option?.value || '').trim())
+                    .filter(Boolean);
+                const currentValue = String(monthSelect.value || modal.dataset.monthKey || '').trim();
+                const currentIndex = values.indexOf(currentValue);
+                const direction = String(monthStepButton.dataset.direction || '').trim() === 'next' ? 1 : -1;
+                const nextIndex = currentIndex >= 0
+                    ? currentIndex + direction
+                    : (direction > 0 ? 0 : values.length - 1);
+                if (nextIndex < 0 || nextIndex >= values.length) return;
+                monthSelect.value = values[nextIndex];
+                applyModalMonthSelection(modal, values[nextIndex]);
                 return;
             }
             const typeButton = findClosest(target, '[data-role="util-sheet-modal-type-select"]');
@@ -3935,20 +4317,6 @@
                     chartTypeButton.dataset.chartType || 'bar'
                 );
                 rerenderAndSync(modal);
-                return;
-            }
-            const datasetButton = findClosest(target, '[data-role="util-sheet-modal-select"]');
-            if (datasetButton) {
-                const sheetType = normalizeSheetType(modal.dataset.sheetType);
-                const nextDatasetKey = getAlternateDatasetKey(modal.dataset.datasetKey, sheetType);
-                modal.dataset.datasetKey = nextDatasetKey;
-                UtilSheetReportState[sheetType] = nextDatasetKey;
-                if (modal.dataset.monthlyReportMode === 'true') {
-                    modal.dataset.monthlyExtractDatasetKey = nextDatasetKey;
-                    markMonthlyExtractDatasetReviewed(modal, nextDatasetKey);
-                }
-                rerenderAndSync(modal);
-                syncPanelSelection(sheetType, nextDatasetKey);
                 return;
             }
             const compareButton = findClosest(target, '[data-role="util-sheet-modal-compare-select"]');
@@ -4123,32 +4491,7 @@
             }
             const monthSelect = findClosest(target, '[data-role="util-sheet-modal-month"]');
             if (!monthSelect) return;
-            const sheetType = normalizeSheetType(modal.dataset.sheetType);
-            const datasetKey = resolveDatasetKey(
-                sheetType,
-                modal.dataset.datasetKey || UtilSheetReportState[sheetType] || 'gas'
-            );
-            const monthKey = String(monthSelect.value || '').trim();
-            modal.dataset.monthKey = monthKey;
-            UtilSheetReportMonthState[sheetType] = monthKey;
-            if (modal.dataset.monthlyReportMode === 'true') {
-                const selectedDatasetKeys = getMonthlyExtractSelectedDatasetKeysFromState(modal);
-                const range = normalizeMonthlyExtractRange(
-                    buildMonthlyExtractMonthOptions(selectedDatasetKeys.length ? selectedDatasetKeys : MONTHLY_EXTRACT_DATASET_KEYS),
-                    modal.dataset.monthlyExtractFrom,
-                    monthKey
-                );
-                modal.dataset.monthlyExtractDatasetKey = datasetKey;
-                modal.dataset.monthlyExtractFrom = range.from;
-                modal.dataset.monthlyExtractTo = range.to;
-                setMonthlyExtractReviewedDatasetKeys(modal, [datasetKey]);
-            }
-            if (sheetType === 'analysis' && isCustomAnalysisDataset(datasetKey) && typeof runtime.setUtilSheetAnalysisToMonth === 'function') {
-                runtime.setUtilSheetAnalysisToMonth(datasetKey, monthKey);
-            }
-            rerenderAndSync(modal);
-            syncMonthlyExtractDatasetControls(modal);
-            syncPanelSelection(sheetType, datasetKey);
+            applyModalMonthSelection(modal, monthSelect.value || '');
         });
 
         if (typeof runtime.syncUtilSheetReportWindowState === 'function') {

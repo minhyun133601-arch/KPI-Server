@@ -162,6 +162,9 @@
         getUtilGasProductionMetric,
         buildUtilGasAnalysisMetricMap
     } = utilReportSheetGasScopedMetrics;
+    utilReportSheetGasComparisonSummary.setRuntimeAdapters({
+        getUtilGasProductionMetric
+    });
     const utilReportSheetGasRuntimeSync = requireApi('KPIUtilReportSheetGasRuntimeSync', 'KPI.util.report.sheet.js');
     utilReportSheetGasRuntimeSync.setRuntimeAdapters({
         syncUtilGasDataFromMetering
@@ -272,11 +275,8 @@
         buildUtilSheetDetachedCompareToggleHtml,
         syncUtilSheetCompareButtons,
         resolveUtilSheetReportDatasetKey,
-        getUtilSheetAlternateDatasetKey,
-        pruneUtilSheetDatasetToggles,
         getUtilSheetPresentation,
         syncUtilSheetTypeButtons,
-        syncUtilSheetDatasetButtons,
         syncUtilSheetPanelChrome,
         syncUtilSheetPanelSelection,
         relocateUtilGasGuidanceNote,
@@ -642,10 +642,8 @@
         normalizeUtilWasteAnalysisSiteKey,
         normalizeUtilElectricMeterViewKey,
         buildUtilSheetDatasetResult,
-        pruneUtilSheetDatasetToggles,
         isUtilSheetCustomAnalysisDataset,
         syncUtilSheetTypeButtons,
-        syncUtilSheetDatasetButtons,
         syncUtilSheetCompareButtons,
         escapeUtilSheetHtml,
         syncUtilSheetAnalysisChartPopup: (...args) => utilReportSheetWindows.syncUtilSheetAnalysisChartPopup(...args),
@@ -746,14 +744,12 @@
         closeUtilActionMenus: typeof closeUtilActionMenus === 'function' ? closeUtilActionMenus : null
     });
     utilReportSheetModalShell.setRuntimeAdapters({
-        pruneUtilSheetDatasetToggles,
         closeUtilSheetReportModal,
         renderUtilSheetReportModal,
         syncUtilSheetDetachedReportWindow: (...args) => utilReportSheetWindows.syncUtilSheetDetachedReportWindow(...args),
         syncUtilSheetReportWindowState: (...args) => utilReportSheetWindows.syncUtilSheetReportWindowState(...args),
         toggleUtilSheetReportExpanded,
         getUtilSheetAlternateType,
-        getUtilSheetAlternateDatasetKey,
         resolveUtilSheetReportDatasetKey,
         normalizeUtilSheetCompareKey,
         normalizeUtilSheetType,

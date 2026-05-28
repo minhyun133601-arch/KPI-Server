@@ -101,24 +101,6 @@
             : (allowedDatasetKeys[0] || 'gas');
     }
 
-    function getUtilSheetAlternateDatasetKey(datasetKey, sheetType = 'meter') {
-        const allowedDatasetKeys = getUtilSheetAllowedDatasetKeys(sheetType);
-        const resolvedDatasetKey = resolveUtilSheetReportDatasetKey(sheetType, datasetKey);
-        if (allowedDatasetKeys.length < 2) return resolvedDatasetKey;
-        const currentIndex = allowedDatasetKeys.indexOf(resolvedDatasetKey);
-        const nextIndex = currentIndex >= 0
-            ? (currentIndex + 1) % allowedDatasetKeys.length
-            : 0;
-        return allowedDatasetKeys[nextIndex] || allowedDatasetKeys[0] || 'gas';
-    }
-
-    function pruneUtilSheetDatasetToggles(root) {
-        if (!root) return;
-        root.querySelectorAll('[data-role="util-sheet-dataset-toggle"], [data-role="util-sheet-modal-dataset-toggle"]').forEach(node => {
-            node.remove();
-        });
-    }
-
     function getUtilSheetPresentation(sheetType, datasetKey = 'gas') {
         const normalizedSheetType = normalizeUtilSheetType(sheetType);
         const normalizedDatasetKey = normalizeUtilSheetDatasetKey(datasetKey);
@@ -163,37 +145,6 @@
             button.innerHTML = `
                 <i class="fa-solid ${iconClass}" aria-hidden="true"></i>
                 <span>${escapeHtml(currentSpec.title || '')}</span>
-            `;
-        });
-    }
-
-    function syncUtilSheetDatasetButtons(root, selector, datasetKey, sheetType = 'meter') {
-        if (!root) return;
-        const normalizedSheetType = normalizeUtilSheetType(sheetType);
-        const allowedDatasetKeys = getUtilSheetAllowedDatasetKeys(normalizedSheetType);
-        const normalizedDatasetKey = resolveUtilSheetReportDatasetKey(normalizedSheetType, datasetKey);
-        const nextDatasetKey = getUtilSheetAlternateDatasetKey(normalizedDatasetKey, normalizedSheetType);
-        const currentSpec = UTIL_SHEET_DATASET_SPECS[normalizedDatasetKey] || UTIL_SHEET_DATASET_SPECS.gas || {};
-        const nextSpec = UTIL_SHEET_DATASET_SPECS[nextDatasetKey] || UTIL_SHEET_DATASET_SPECS.gas || {};
-        const iconClass = normalizedDatasetKey === 'electric'
-            ? 'fa-bolt'
-            : (normalizedDatasetKey === 'waste' ? 'fa-water' : 'fa-fire-flame-curved');
-        const showToggle = allowedDatasetKeys.length > 1;
-
-        root.querySelectorAll(selector).forEach(button => {
-            const toggleWrap = button.closest('[data-role="util-sheet-dataset-toggle"], [data-role="util-sheet-modal-dataset-toggle"]');
-            if (toggleWrap) toggleWrap.hidden = !showToggle;
-            button.hidden = !showToggle;
-            button.disabled = !showToggle;
-            button.tabIndex = showToggle ? 0 : -1;
-            if (!showToggle) return;
-
-            button.dataset.datasetKey = normalizedDatasetKey;
-            button.setAttribute('aria-label', `${currentSpec.label || ''} 선택 중. 클릭하면 ${nextSpec.label || ''}로 전환`);
-            button.setAttribute('title', `${nextSpec.label || ''}로 전환`);
-            button.innerHTML = `
-                <i class="fa-solid ${iconClass}" aria-hidden="true"></i>
-                <span>${escapeHtml(currentSpec.label || '')}</span>
             `;
         });
     }
@@ -289,7 +240,6 @@
             panel.dataset.datasetKey = defaultDatasetKey;
             panel.dataset.monthKey = String(panel.dataset.monthKey || UtilSheetReportMonthState[sheetType] || '').trim();
             panel.dataset.compareKey = normalizeUtilSheetCompareKey(panel.dataset.compareKey || UtilSheetCompareState[sheetType] || 'month');
-            pruneUtilSheetDatasetToggles(panel);
 
             panel.querySelectorAll('[data-role="util-sheet-type-select"]').forEach(button => {
                 if (button.dataset.bound === 'true') return;
@@ -305,20 +255,6 @@
                     panel.dataset.datasetKey = resolveUtilSheetReportDatasetKey(nextSheetType, currentDatasetKey);
                     panel.dataset.monthKey = String(UtilSheetReportMonthState[nextSheetType] || panel.dataset.monthKey || '').trim();
                     panel.dataset.compareKey = normalizeUtilSheetCompareKey(UtilSheetCompareState[nextSheetType] || panel.dataset.compareKey || 'month');
-                    if (typeof runtime.renderUtilSheetPanel === 'function') {
-                        runtime.renderUtilSheetPanel(panel);
-                    }
-                });
-            });
-
-            panel.querySelectorAll('[data-role="util-sheet-select"]').forEach(button => {
-                if (button.dataset.bound === 'true') return;
-                button.dataset.bound = 'true';
-                button.addEventListener('click', () => {
-                    const activeSheetType = normalizeUtilSheetType(panel.dataset.sheetType);
-                    const datasetKey = getUtilSheetAlternateDatasetKey(panel.dataset.datasetKey, activeSheetType);
-                    panel.dataset.datasetKey = datasetKey;
-                    UtilSheetReportState[activeSheetType] = datasetKey;
                     if (typeof runtime.renderUtilSheetPanel === 'function') {
                         runtime.renderUtilSheetPanel(panel);
                     }
@@ -370,11 +306,8 @@
         normalizeUtilSheetDatasetKey,
         getUtilSheetAllowedDatasetKeys,
         resolveUtilSheetReportDatasetKey,
-        getUtilSheetAlternateDatasetKey,
-        pruneUtilSheetDatasetToggles,
         getUtilSheetPresentation,
         syncUtilSheetTypeButtons,
-        syncUtilSheetDatasetButtons,
         syncUtilSheetPanelChromeLegacy,
         syncUtilSheetPanelChrome,
         syncUtilSheetPanelSelection,

@@ -71,8 +71,9 @@ test('report sheet panel runtime registry normalizes compare and dataset helpers
   assert.equal(registry.normalizeUtilSheetType('meter'), 'meter');
   assert.equal(registry.resolveUtilSheetReportDatasetKey('meter', 'electric'), 'electric');
   assert.equal(registry.resolveUtilSheetReportDatasetKey('analysis', 'x'), 'gas');
-  assert.equal(registry.getUtilSheetAlternateDatasetKey('gas', 'meter'), 'electric');
   assert.equal(typeof registry.getUtilSheetCompareLabel('month'), 'string');
+  assert.doesNotMatch(reportSheetPanelRuntimeSource, /getUtilSheetAlternateDatasetKey|syncUtilSheetDatasetButtons/);
+  assert.doesNotMatch(reportSheetPanelRuntimeSource, /data-role="util-sheet-select"|data-role="util-sheet-dataset-toggle"/);
 
   const compareToggleHtml = registry.buildUtilSheetDetachedCompareToggleHtml('year');
   assert.ok(compareToggleHtml.includes('util-sheet-report-detached-compare-select'));
@@ -102,10 +103,7 @@ test('report sheet panel runtime initializes panels through the report adapter d
       compareKey: 'year',
     },
     querySelectorAll(selector) {
-      if (
-        selector === '[data-role="util-sheet-type-select"]' ||
-        selector === '[data-role="util-sheet-select"]'
-      ) {
+      if (selector === '[data-role="util-sheet-type-select"]') {
         return [];
       }
       return [];
@@ -150,10 +148,10 @@ test('report sheet panel runtime initializes panels through the report adapter d
 
 test('kpi html loads report sheet panel runtime before panel preview and windows', () => {
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
-  const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=056');
-  const panelPreviewIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/preview.js?v=055');
+  const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=057');
+  const panelPreviewIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/preview.js?v=056');
   const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=060');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=063');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=065');
 
   assert.ok(billingIndex >= 0, 'report sheet billing loader is missing');
   assert.ok(panelRuntimeIndex > billingIndex, 'report sheet panel runtime must load after billing');

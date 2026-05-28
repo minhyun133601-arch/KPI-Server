@@ -1329,6 +1329,7 @@
                     <h1 class="experiment-unified-title">
                         <strong class="experiment-toolbar-title">지표 통합 그래프</strong>
                     </h1>
+                    ${buildExperimentFullscreenButtonHtml()}
                 </header>
                 <div class="experiment-card-composer">
                     <div class="experiment-chart-area">
@@ -1451,10 +1452,39 @@
         `;
     }
 
+    function buildExperimentFullscreenButtonHtml() {
+        return `
+            <button
+                type="button"
+                class="experiment-fullscreen-button"
+                data-exp-fullscreen-toggle
+                aria-label="전체화면"
+                aria-pressed="false"
+                title="전체화면"
+                onclick="KpiExperimentGraphPrototype.toggleFullscreen(this)"
+            >
+                <i class="fa-solid fa-expand" data-exp-fullscreen-icon aria-hidden="true"></i>
+                <span data-exp-fullscreen-label>전체화면</span>
+            </button>
+        `;
+    }
+
+    function decorateExperimentOverviewRatioContent(content) {
+        const source = String(content || '');
+        const contentWithFullscreen = source.includes('data-exp-fullscreen-toggle')
+            ? source
+            : source.replace('<div class="util-sheet-actions">', `<div class="util-sheet-actions">${buildExperimentFullscreenButtonHtml()}`);
+        return `
+            <section class="experiment-overview-ratio-shell" data-exp-overview-ratio-shell aria-label="총괄 비율 원형 그래프">
+                ${contentWithFullscreen}
+            </section>
+        `;
+    }
+
     function buildExperimentOverviewRatioContent() {
         const builder = root.KpiSectionFactoryAdapter?.getBuilder?.('buildUtilityOverviewRatioContent');
-        if (typeof builder === 'function') return builder();
-        return `
+        if (typeof builder === 'function') return decorateExperimentOverviewRatioContent(builder());
+        return decorateExperimentOverviewRatioContent(`
             <div class="util-sheet-stack" data-role="util-overview-ratio-surface">
                 <div class="util-sheet-panel is-overview" data-role="util-report-panel">
                     <div class="util-sheet-header">
@@ -1474,23 +1504,101 @@
                     </div>
                 </div>
             </div>
-        `;
+        `);
     }
 
-    function buildExperimentCategoryLaunchMeta(categoryIndex = 0) {
-        return {
-            launchTarget: 'popup',
-            launchWindowName: 'kpi-experiment-analysis-graph',
-            launchFillScreen: true,
-            launchWindowWidth: 1920,
-            launchWindowHeight: 1080,
-            launchPopupMode: 'experiment',
-            launchRoute: {
-                view: 'category',
-                sectionId: 'experiment',
-                categoryIndex
+    function getExperimentFullscreenTarget(element) {
+        return element?.closest?.('.experiment-unified-shell, [data-exp-overview-ratio-shell]')
+            || root.document?.getElementById?.('content-container')
+            || null;
+    }
+
+    function getExperimentFullscreenElement() {
+        const documentRef = root.document;
+        return documentRef?.fullscreenElement
+            || documentRef?.webkitFullscreenElement
+            || documentRef?.msFullscreenElement
+            || null;
+    }
+
+    function requestExperimentFullscreen(target) {
+        if (!target) return null;
+        if (typeof target.requestFullscreen === 'function') return target.requestFullscreen();
+        if (typeof target.webkitRequestFullscreen === 'function') return target.webkitRequestFullscreen();
+        if (typeof target.msRequestFullscreen === 'function') return target.msRequestFullscreen();
+        return null;
+    }
+
+    function exitExperimentFullscreen() {
+        const documentRef = root.document;
+        if (typeof documentRef?.exitFullscreen === 'function') return documentRef.exitFullscreen();
+        if (typeof documentRef?.webkitExitFullscreen === 'function') return documentRef.webkitExitFullscreen();
+        if (typeof documentRef?.msExitFullscreen === 'function') return documentRef.msExitFullscreen();
+        return null;
+    }
+
+    function syncExperimentFullscreenControls(target, active) {
+        if (!target?.querySelectorAll) return;
+        target.querySelectorAll('[data-exp-fullscreen-toggle]').forEach(button => {
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+            button.setAttribute('title', active ? '전체화면 해제' : '전체화면');
+            button.setAttribute('aria-label', active ? '전체화면 해제' : '전체화면');
+            const icon = button.querySelector('[data-exp-fullscreen-icon]');
+            if (icon?.classList) {
+                icon.classList.toggle('fa-expand', !active);
+                icon.classList.toggle('fa-compress', active);
             }
-        };
+            const label = button.querySelector('[data-exp-fullscreen-label]');
+            if (label) label.textContent = active ? '나가기' : '전체화면';
+        });
+    }
+
+    function syncExperimentFullscreenState() {
+        const documentRef = root.document;
+        if (!documentRef?.querySelectorAll) return;
+        const fullscreenElement = getExperimentFullscreenElement();
+        documentRef.querySelectorAll('.experiment-unified-shell, [data-exp-overview-ratio-shell]').forEach(target => {
+            const active = fullscreenElement === target || target.dataset?.expFullscreenFallback === 'true';
+            if (!active && target.dataset) delete target.dataset.expFullscreenFallback;
+            target.classList.toggle('is-experiment-browser-fullscreen', active);
+            syncExperimentFullscreenControls(target, active);
+        });
+    }
+
+    function toggleExperimentFullscreen(trigger) {
+        const target = getExperimentFullscreenTarget(trigger);
+        if (!target) return;
+        const fullscreenElement = getExperimentFullscreenElement();
+        const isActive = fullscreenElement === target || target.dataset?.expFullscreenFallback === 'true';
+        if (isActive) {
+            const exitResult = fullscreenElement === target ? exitExperimentFullscreen() : null;
+            if (exitResult && typeof exitResult.then === 'function') {
+                exitResult.finally(syncExperimentFullscreenState);
+            } else {
+                if (target.dataset) delete target.dataset.expFullscreenFallback;
+                target.classList.remove('is-experiment-browser-fullscreen');
+                syncExperimentFullscreenState();
+            }
+            return;
+        }
+        const requestResult = requestExperimentFullscreen(target);
+        if (requestResult && typeof requestResult.then === 'function') {
+            requestResult
+                .then(() => {
+                    if (target.dataset) delete target.dataset.expFullscreenFallback;
+                    target.classList.add('is-experiment-browser-fullscreen');
+                    syncExperimentFullscreenState();
+                })
+                .catch(() => {
+                    if (target.dataset) target.dataset.expFullscreenFallback = 'true';
+                    target.classList.add('is-experiment-browser-fullscreen');
+                    syncExperimentFullscreenState();
+                });
+            return;
+        }
+        if (target.dataset) target.dataset.expFullscreenFallback = 'true';
+        target.classList.add('is-experiment-browser-fullscreen');
+        syncExperimentFullscreenState();
     }
 
     function getRatioBuilderShell(element) {
@@ -1677,7 +1785,19 @@
         observer.observe(documentRef.body, { childList: true, subtree: true });
     }
 
+    function bindExperimentFullscreenListener() {
+        const documentRef = root.document;
+        if (!documentRef?.addEventListener || root.__kpiExperimentFullscreenListenerBound === true) return;
+        root.__kpiExperimentFullscreenListenerBound = true;
+        documentRef.addEventListener('fullscreenchange', syncExperimentFullscreenState);
+        documentRef.addEventListener('webkitfullscreenchange', syncExperimentFullscreenState);
+        documentRef.addEventListener('MSFullscreenChange', syncExperimentFullscreenState);
+    }
+
     root.KpiExperimentGraphPrototype = Object.freeze({
+        toggleFullscreen(trigger) {
+            toggleExperimentFullscreen(trigger);
+        },
         togglePicker(trigger) {
             const shell = trigger?.closest?.('.experiment-unified-shell');
             const picker = shell?.querySelector?.('[data-exp-card-picker]');
@@ -1827,19 +1947,6 @@
             icon: 'fa-flask-vial',
             color: 'cyan',
             accent: '#0891b2',
-            directLaunch: true,
-            hideNavigationChevron: true,
-            launchTarget: 'popup',
-            launchWindowName: 'kpi-experiment-analysis-graph',
-            launchFillScreen: true,
-            launchWindowWidth: 1920,
-            launchWindowHeight: 1080,
-            launchPopupMode: 'experiment',
-            launchRoute: {
-                view: 'category',
-                sectionId: 'experiment',
-                categoryIndex: 0
-            },
             categories: [
                 {
                     title: '선/막대',
@@ -1847,7 +1954,6 @@
                     color: '#0891b2',
                     desc: '필요한 지표 카드를 선택해 선 그래프와 막대 그래프로 비교합니다.',
                     viewerMode: 'full-bleed',
-                    ...buildExperimentCategoryLaunchMeta(0),
                     content: buildExperimentUnifiedAnalysisContent()
                 },
                 {
@@ -1858,10 +1964,11 @@
                     viewerMode: 'full-bleed',
                     utilitySurface: 'analysis',
                     autoOpenUtilityReportModal: true,
-                    ...buildExperimentCategoryLaunchMeta(1),
                     content: buildExperimentOverviewRatioContent()
                 }
             ]
         };
     });
+
+    bindExperimentFullscreenListener();
 })();

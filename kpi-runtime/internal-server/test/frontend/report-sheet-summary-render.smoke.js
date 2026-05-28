@@ -494,7 +494,7 @@ test('kpi html loads report sheet summary render between analysis render and she
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
   const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=064');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=063');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=065');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(analysisRenderIndex >= 0, 'report sheet analysis render loader is missing');

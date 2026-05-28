@@ -337,11 +337,6 @@
             monthlyOptions.hidden = true;
             monthlyOptions.toggleAttribute?.('hidden', true);
         }
-        const monthlyReviewControls = modal.querySelector?.('[data-role="util-sheet-monthly-review-controls"]') || null;
-        if (monthlyReviewControls) {
-            monthlyReviewControls.hidden = true;
-            monthlyReviewControls.toggleAttribute?.('hidden', true);
-        }
         if (
             normalizedSheetType === 'analysis'
             && typeof runtime.isUtilSheetCustomAnalysisDataset === 'function'

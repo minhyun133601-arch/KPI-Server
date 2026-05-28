@@ -16,13 +16,12 @@
             tone: ''
         };
         const GLOBAL_RECENT_UPDATE_STORAGE_KEY = 'kpi:global-recent-update';
-        const DASHBOARD_SECTION_ORDER = ['work', 'data', 'report', 'experiment', 'owner'];
+        const DASHBOARD_SECTION_ORDER = ['work', 'data', 'report', 'experiment'];
         const DASHBOARD_SECTION_SOFT = Object.freeze({
             work: '#ecfdf5',
             data: '#f8fafc',
             report: '#eff6ff',
-            experiment: '#ecfeff',
-            owner: '#f5f3ff'
+            experiment: '#ecfeff'
         });
         const COMPANY_LOGO_SRC = '/shared-assets/logo.jpg';
         const DashboardHomeState = {
@@ -33,8 +32,7 @@
                 work: true,
                 data: false,
                 report: false,
-                experiment: false,
-                owner: false
+                experiment: false
             }
         };
         const ViewerLayoutState = {

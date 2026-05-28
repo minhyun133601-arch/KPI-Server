@@ -37,10 +37,8 @@
         normalizeUtilWasteAnalysisSiteKey: null,
         normalizeUtilElectricMeterViewKey: null,
         buildUtilSheetDatasetResult: null,
-        pruneUtilSheetDatasetToggles: null,
         isUtilSheetCustomAnalysisDataset: null,
         syncUtilSheetTypeButtons: null,
-        syncUtilSheetDatasetButtons: null,
         syncUtilSheetCompareButtons: null,
         escapeUtilSheetHtml: null,
         syncUtilSheetAnalysisChartPopup: null,
@@ -293,15 +291,22 @@
         }
     }
 
-    function syncSheetExtractButton(modal, sheetType = 'meter') {
+    function syncSheetExtractButton(modal, sheetType = 'meter', datasetKey = 'gas') {
         const extractButton = modal?.querySelector?.('[data-role="util-sheet-report-print"]');
         if (!extractButton) return;
         const canExtract = sheetType === 'meter' || sheetType === 'analysis';
+        const isGasMeter = sheetType === 'meter' && resolveDatasetKey(sheetType, datasetKey) === 'gas';
+        const label = isGasMeter
+            ? 'PDF 인쇄'
+            : (sheetType === 'analysis' ? '분석표 추출' : '검침표 추출');
+        const accessibleLabel = isGasMeter
+            ? '가스 검침표 PDF 인쇄'
+            : label;
         extractButton.hidden = !canExtract;
         extractButton.disabled = !canExtract;
-        extractButton.textContent = '추출';
-        extractButton.setAttribute?.('aria-label', sheetType === 'analysis' ? '분석표 추출' : '검침표 추출');
-        extractButton.setAttribute?.('title', sheetType === 'analysis' ? '분석표 추출' : '검침표 추출');
+        extractButton.textContent = label;
+        extractButton.setAttribute?.('aria-label', accessibleLabel);
+        extractButton.setAttribute?.('title', accessibleLabel);
     }
 
     function buildMonthOptionHtml(monthOptions = [], selectedValue = '') {
@@ -311,6 +316,46 @@
         return (Array.isArray(monthOptions) ? monthOptions : []).map(item => `
             <option value="${escapeHtml(item?.value || '')}"${String(item?.value || '') === String(selectedValue || '') ? ' selected' : ''}>${escapeHtml(item?.label || item?.value || '')}</option>
         `).join('');
+    }
+
+    function syncModalMonthStepButtons(modal, monthOptions = [], activeMonthKey = '') {
+        const buttons = Array.from(modal?.querySelectorAll?.('[data-role="util-sheet-modal-month-step"]') || []);
+        if (!buttons.length) return;
+        const values = (Array.isArray(monthOptions) ? monthOptions : [])
+            .map(item => String(item?.value || '').trim())
+            .filter(Boolean);
+        const activeIndex = values.indexOf(String(activeMonthKey || '').trim());
+        buttons.forEach(button => {
+            const direction = String(button?.dataset?.direction || '').trim() === 'next' ? 'next' : 'prev';
+            const disabled = !values.length
+                || activeIndex < 0
+                || (direction === 'prev' ? activeIndex <= 0 : activeIndex >= values.length - 1);
+            button.disabled = disabled;
+            button.classList?.toggle?.('is-disabled', disabled);
+            button.setAttribute?.('aria-disabled', disabled ? 'true' : 'false');
+        });
+    }
+
+    function syncGasModalViewToggle(modal, sheetType = 'meter', datasetKey = 'gas') {
+        const button = modal?.querySelector?.('[data-util-sheet-gas-view-toggle]') || null;
+        if (!button) return;
+        const isGas = resolveDatasetKey(sheetType, datasetKey) === 'gas';
+        button.hidden = !isGas;
+        button.toggleAttribute?.('hidden', !isGas);
+        if (!isGas) return;
+
+        const isAnalysis = normalizeSheetType(sheetType) === 'analysis';
+        const label = isAnalysis ? '검침표' : '그래프';
+        const title = isAnalysis ? '가스 검침표 보기' : '가스 그래프 보기';
+        const iconClass = isAnalysis ? 'fa-file-lines' : 'fa-chart-column';
+        button.classList?.toggle?.('is-analysis', isAnalysis);
+        button.classList?.toggle?.('is-meter', !isAnalysis);
+        button.setAttribute?.('aria-label', title);
+        button.setAttribute?.('title', title);
+        button.innerHTML = `
+            <i class="fa-solid ${iconClass}" aria-hidden="true"></i>
+            <span>${escapeHtml(label)}</span>
+        `;
     }
 
     function buildAnalysisScopeSelectHtml(datasetKey = 'gas', analysisModel = {}) {
@@ -470,12 +515,8 @@
             UtilSheetAnalysisState.waste.siteKey = wasteAnalysisSiteKey;
         }
         UtilSheetMeterState.electricViewKey = electricMeterViewKey;
-        syncSheetExtractButton(modal, sheetType);
+        syncSheetExtractButton(modal, sheetType, datasetKey);
         setAnalysisHeaderControls(modal, null, datasetKey);
-
-        if (typeof runtime.pruneUtilSheetDatasetToggles === 'function') {
-            runtime.pruneUtilSheetDatasetToggles(modal);
-        }
 
         const isCustomAnalysisView = sheetType === 'analysis' && isCustomAnalysisDataset(datasetKey);
         if (!isCustomAnalysisView) {
@@ -491,28 +532,31 @@
         if (typeof runtime.syncUtilSheetTypeButtons === 'function') {
             runtime.syncUtilSheetTypeButtons(modal, '[data-role="util-sheet-modal-type-select"]', sheetType);
         }
-        if (typeof runtime.syncUtilSheetDatasetButtons === 'function') {
-            runtime.syncUtilSheetDatasetButtons(modal, '[data-role="util-sheet-modal-select"]', datasetKey, sheetType);
-        }
+        syncGasModalViewToggle(modal, sheetType, datasetKey);
         if (typeof runtime.syncUtilSheetCompareButtons === 'function') {
             runtime.syncUtilSheetCompareButtons(modal, '[data-role="util-sheet-modal-compare-select"]', compareKey);
         }
 
+        let monthOptions = [];
+        let activeMonthKey = '';
         if (monthSelect) {
-            const monthOptions = Array.isArray(datasetResult.monthOptions) ? datasetResult.monthOptions : [];
+            monthOptions = Array.isArray(datasetResult.monthOptions) ? datasetResult.monthOptions : [];
             monthSelect.innerHTML = monthOptions.map(item => `
                 <option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>
             `).join('');
             monthSelect.disabled = !monthOptions.length;
-            if (datasetResult.activeMonthKey && monthOptions.some(item => item.value === datasetResult.activeMonthKey)) {
-                monthSelect.value = datasetResult.activeMonthKey;
-                modal.dataset.monthKey = datasetResult.activeMonthKey;
-                UtilSheetReportMonthState[sheetType] = datasetResult.activeMonthKey;
+            activeMonthKey = String(datasetResult.activeMonthKey || '').trim();
+            if (activeMonthKey && monthOptions.some(item => String(item.value || '') === activeMonthKey)) {
+                monthSelect.value = activeMonthKey;
+                modal.dataset.monthKey = activeMonthKey;
+                UtilSheetReportMonthState[sheetType] = activeMonthKey;
             } else {
+                activeMonthKey = '';
                 modal.dataset.monthKey = '';
                 UtilSheetReportMonthState[sheetType] = '';
             }
         }
+        syncModalMonthStepButtons(modal, monthOptions, activeMonthKey);
 
         if (kickerEl) kickerEl.textContent = presentation.kicker;
         if (titleEl) titleEl.textContent = presentation.title;
@@ -712,12 +756,10 @@
         const electricTeamDatasetResult = sheetType === 'meter' && datasetKey === 'electric' && electricRuntimeReady && typeof runtime.buildUtilElectricMeterTeamDatasetResult === 'function'
             ? runtime.buildUtilElectricMeterTeamDatasetResult(datasetResult.activeMonthKey || selectedMonthKey, electricMeterTeamKey)
             : null;
-        const gasMeterSummaryItems = sheetType === 'meter' && datasetKey === 'gas' && typeof runtime.buildUtilGasMeterSummaryItems === 'function'
-            ? runtime.buildUtilGasMeterSummaryItems(datasetResult, compareKey, gasMeterComparisonModel, gasMeterProductionKey)
-            : [];
         const electricMeterSummaryItems = sheetType === 'meter' && datasetKey === 'electric' && electricRuntimeReady && typeof runtime.buildUtilElectricMeterSummaryItems === 'function'
             ? runtime.buildUtilElectricMeterSummaryItems(datasetResult, compareKey, electricTeamDatasetResult)
             : [];
+        const isGasMeterSheet = sheetType === 'meter' && datasetKey === 'gas';
         if (subEl) subEl.textContent = `기준 ${datasetResult.latestMonthLabel} / ${compareMeta.label}`;
 
         if (gasMeterComparisonModel?.loading && typeof runtime.ensureUtilGasMeteringStore === 'function') {
@@ -733,13 +775,12 @@
         }
 
         setReportBodyHtml(bodyEl, `
+            ${isGasMeterSheet ? '' : `
             <section class="util-sheet-section is-hero">
                 <div class="util-sheet-badge-row">
                     ${typeof runtime.buildUtilSheetBadgesHtml === 'function' ? runtime.buildUtilSheetBadgesHtml(sheetType, datasetResult, compareKey) : ''}
                 </div>
-                ${sheetType === 'meter' && datasetKey === 'gas' && gasMeterSummaryItems.length
-                    ? (typeof runtime.buildUtilGasMeterSummaryBlockHtml === 'function' ? runtime.buildUtilGasMeterSummaryBlockHtml(gasMeterSummaryItems, gasMeterProductionKey) : '')
-                    : sheetType === 'meter' && datasetKey === 'electric' && electricMeterSummaryItems.length
+                ${sheetType === 'meter' && datasetKey === 'electric' && electricMeterSummaryItems.length
                         ? (typeof runtime.buildUtilElectricMeterSummaryBlockHtml === 'function' ? runtime.buildUtilElectricMeterSummaryBlockHtml(electricMeterSummaryItems, electricMeterTeamKey) : '')
                         : `
                             <div class="util-sheet-stat-grid">
@@ -749,7 +790,8 @@
                             </div>
                         `}
             </section>
-            ${sheetType === 'meter' && datasetKey === 'gas'
+            `}
+            ${isGasMeterSheet
                 ? (typeof runtime.buildUtilGasMeterComparisonSectionHtml === 'function' ? runtime.buildUtilGasMeterComparisonSectionHtml(gasMeterComparisonModel) : '')
                 : sheetType === 'meter' && datasetKey === 'electric'
                     ? (typeof runtime.buildUtilElectricMeterComparisonSectionHtml === 'function'

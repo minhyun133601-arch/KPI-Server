@@ -13,6 +13,10 @@ const comparisonSummarySource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/gas/comparison-summary.js', import.meta.url),
   'utf8'
 );
+const reportSheetHostSource = await fs.readFile(
+  new URL(REPORT_ROOT + '/KPI.util.report.sheet.js', import.meta.url),
+  'utf8'
+);
 const kpiHtml = await fs.readFile(
   new URL('../../../../KPI.html', import.meta.url),
   'utf8'
@@ -111,11 +115,12 @@ test('report sheet gas comparison summary registry builds billing summary and co
         billing_amount: '34500'
       };
     },
-    resolveUtilGasBillingDocumentDescriptor(monthKey, scopeKey) {
-      if (monthKey === '2026-02' && scopeKey === 'yusan_lng') {
-        return { relativePath: 'gas/2026-02-lng.pdf' };
-      }
-      return null;
+    getUtilGasProductionMetric(monthKey, teamNames) {
+      if (monthKey !== '2026-02') return NaN;
+      const names = Array.isArray(teamNames) ? teamNames : [];
+      if (names.includes('1팀 2파트')) return 961668;
+      if (names.includes('3팀')) return 284684;
+      return NaN;
     }
   });
 
@@ -154,18 +159,34 @@ test('report sheet gas comparison summary registry builds billing summary and co
   });
 
   assert.match(html, /util-sheet-gas-summary/);
+  assert.doesNotMatch(html, /util-sheet-gas-summary-shell-head/);
+  assert.doesNotMatch(html, /정산 요약/);
+  assert.match(html, /util-sheet-gas-summary-table/);
+  assert.match(html, /util-sheet-gas-summary-grand-table/);
+  assert.match(html, /util-sheet-gas-production-usage/);
+  assert.match(html, /util-sheet-gas-production-usage-table/);
   assert.match(html, /util-sheet-meter-table-card/);
-  assert.match(html, /data-billing-dataset-key=\"gas\"/);
-  assert.match(html, /data-billing-scope-key=\"yusan_lng\"/);
+  assert.doesNotMatch(html, /data-role=\"util-sheet-billing-preview-toggle\"/);
+  assert.doesNotMatch(html, /data-billing-dataset-key=\"gas\"/);
+  assert.doesNotMatch(html, /util-sheet-gas-summary-doc-btn/);
+  assert.match(html, />1P</);
+  assert.match(html, />3A</);
+  assert.match(html, />961,668</);
+  assert.match(html, />284,684</);
+  assert.match(html, />67</);
+  assert.match(html, />35</);
+  assert.match(html, />25</);
+  assert.doesNotMatch(html, /util-sheet-gas-summary-list/);
+  assert.match(reportSheetHostSource, /utilReportSheetGasComparisonSummary\.setRuntimeAdapters\(\{\s*getUtilGasProductionMetric\s*\}\);/);
 });
 
 test('kpi html loads gas comparison summary before gas scoped metrics and before sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
-  const comparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/comparison-summary.js?v=053');
+  const comparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/comparison-summary.js?v=056');
   const scopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=056');
-  const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=056');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=063');
+  const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=057');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=065');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(billingIndex >= 0, 'report sheet billing loader is missing');

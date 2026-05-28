@@ -30,7 +30,7 @@
         formatUtilReportMonthLong: null,
         parseUtilGasMeterNumber: null,
         getUtilGasBillingScopeFields: null,
-        resolveUtilGasBillingDocumentDescriptor: null
+        getUtilGasProductionMetric: null
     };
 
     function setRuntimeAdapters(adapters = {}) {
@@ -79,13 +79,6 @@
             return runtime.getUtilGasBillingScopeFields(monthKey, scopeKey) || {};
         }
         return {};
-    }
-
-    function resolveGasBillingDocumentDescriptor(monthKey = '', scopeKey = '') {
-        if (typeof runtime.resolveUtilGasBillingDocumentDescriptor === 'function') {
-            return runtime.resolveUtilGasBillingDocumentDescriptor(monthKey, scopeKey) || null;
-        }
-        return null;
     }
 
     function getUtilGasMeterColumn(table, fieldId) {
@@ -319,71 +312,137 @@
         return Number.isFinite(value) ? utilSheetNumberFormatter.format(Math.round(value)) : '-';
     }
 
-    function buildUtilGasBillingSummaryHtml(summary) {
+    function getGasProductionMetric(monthKey = '', teamNames = []) {
+        if (typeof runtime.getUtilGasProductionMetric !== 'function') return NaN;
+        const value = runtime.getUtilGasProductionMetric(monthKey, teamNames);
+        if (value === null || value === undefined || value === '') return NaN;
+        return Number(value);
+    }
+
+    function getGasCorrectedUsageSum(table, fieldIds = []) {
+        const columns = Array.isArray(table?.columns) ? table.columns : [];
+        const normalizedFieldIds = Array.isArray(fieldIds) ? fieldIds : [];
+        const values = columns
+            .filter(column => normalizedFieldIds.includes(column?.id))
+            .map(column => Number(column?.correctedUsage))
+            .filter(Number.isFinite);
+        if (!values.length) return NaN;
+        return values.reduce((sum, value) => sum + value, 0);
+    }
+
+    function buildUtilGasProductionUsagePanelHtml(model) {
+        const selectedTable = model?.selectedTable || {};
+        const monthKey = String(selectedTable?.monthKey || '').trim();
+        const productionTeam12 = getGasProductionMetric(monthKey, ['1팀 2파트']);
+        const productionTeam3 = getGasProductionMetric(monthKey, ['3팀']);
+        const usageTeam12Lpg = getGasCorrectedUsageSum(selectedTable, ['gas_field_02']);
+        const usageTeam12Lng = getGasCorrectedUsageSum(selectedTable, ['gas_field_03', 'gas_field_04']);
+        const usageTeam3Lng = getGasCorrectedUsageSum(selectedTable, ['gas_field_06']);
+
+        return `
+            <section class="util-sheet-gas-production-usage" aria-label="생산량 및 실사용량">
+                <div class="util-sheet-gas-production-usage-table-wrap">
+                    <table class="util-sheet-gas-production-usage-table">
+                        <colgroup>
+                            <col class="is-kind">
+                            <col class="is-team12">
+                            <col class="is-team3">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>구분</th>
+                                <th>
+                                    <span class="util-sheet-gas-production-team is-team12">
+                                        <span class="util-sheet-gas-production-team-mark">1P</span>
+                                        <span>1팀2파트</span>
+                                    </span>
+                                </th>
+                                <th>
+                                    <span class="util-sheet-gas-production-team is-team3">
+                                        <span class="util-sheet-gas-production-team-mark">3A</span>
+                                        <span>생산3팀 액상</span>
+                                    </span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="is-production">
+                                <th scope="row"><span class="util-sheet-gas-production-row-label"><i class="fa-solid fa-industry" aria-hidden="true"></i><span>생산량</span></span></th>
+                                <td class="is-team12" aria-label="1팀2파트 생산량">${escapeHtml(formatUtilGasMeterCellValue(productionTeam12))}</td>
+                                <td class="is-team3" aria-label="생산3팀 액상 생산량">${escapeHtml(formatUtilGasMeterCellValue(productionTeam3))}</td>
+                            </tr>
+                            <tr class="is-lpg">
+                                <th scope="row"><span class="util-sheet-gas-production-row-label"><i class="fa-solid fa-fire" aria-hidden="true"></i><span>LPG 사용량</span></span></th>
+                                <td class="is-team12" aria-label="1팀2파트 LPG 사용량">${escapeHtml(formatUtilGasMeterCellValue(usageTeam12Lpg))}</td>
+                                <td class="is-empty" aria-label="해당 없음">-</td>
+                            </tr>
+                            <tr class="is-lng">
+                                <th scope="row"><span class="util-sheet-gas-production-row-label"><i class="fa-solid fa-gas-pump" aria-hidden="true"></i><span>LNG 사용량</span></span></th>
+                                <td class="is-team12" aria-label="1팀2파트 LNG 사용량">${escapeHtml(formatUtilGasMeterCellValue(usageTeam12Lng))}</td>
+                                <td class="is-team3" aria-label="생산3팀 액상 LNG 사용량">${escapeHtml(formatUtilGasMeterCellValue(usageTeam3Lng))}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        `;
+    }
+
+    function buildUtilGasBillingSummaryHtml(summary, model = null) {
         const groups = buildUtilGasSummaryRows(summary);
-        const monthLabel = formatMonthLong(summary?.monthKey || '');
         return `
             <aside class="util-sheet-gas-summary">
                 <div class="util-sheet-gas-summary-shell">
-                    <div class="util-sheet-gas-summary-shell-head">
-                        <div class="util-sheet-gas-summary-shell-title">
-                            <i class="fa-solid fa-file-invoice-dollar" aria-hidden="true"></i>
-                            <span>${escapeHtml(monthLabel)} 정산 요약</span>
-                        </div>
-                        <div class="util-sheet-gas-summary-shell-sub">유틸리티 기입 정산값으로 가스비와 설비 배분을 함께 봅니다.</div>
-                    </div>
                     ${groups.map(group => `
                         <section class="util-sheet-gas-summary-group ${escapeHtml(group.accentClass)}">
-                            ${(() => {
-                                const billingDescriptor = resolveGasBillingDocumentDescriptor(summary?.monthKey || '', group.scopeKey || '');
-                                const buttonTitle = billingDescriptor
-                                    ? `${group.title} 청구서 보기`
-                                    : `${group.title} 청구서가 없습니다.`;
-                                return `
                             <div class="util-sheet-gas-summary-head">
                                 <div class="util-sheet-gas-summary-title">
                                     <span class="util-sheet-gas-summary-icon"><i class="fa-solid ${escapeHtml(group.icon)}" aria-hidden="true"></i></span>
                                     <span>${escapeHtml(group.title)} 정산</span>
                                 </div>
-                                <div class="util-sheet-gas-summary-actions">
-                                    <button
-                                        type="button"
-                                        class="util-sheet-gas-summary-doc-btn"
-                                        data-role="util-sheet-billing-preview-toggle"
-                                        data-billing-dataset-key="gas"
-                                        data-month-key="${escapeHtml(summary?.monthKey || '')}"
-                                        data-billing-scope-key="${escapeHtml(group.scopeKey || '')}"
-                                        title="${escapeHtml(buttonTitle)}"
-                                        aria-label="${escapeHtml(buttonTitle)}"
-                                        ${billingDescriptor ? '' : 'disabled'}
-                                    >
-                                        <i class="fa-solid fa-file-invoice" aria-hidden="true"></i>
-                                        <span>청구서</span>
-                                    </button>
-                                </div>
                             </div>
-                                `;
-                            })()}
-                            <div class="util-sheet-gas-summary-list">
+                            <div class="util-sheet-gas-summary-table-wrap">
+                                <table class="util-sheet-gas-summary-table">
+                                    <thead>
+                                        <tr>
+                                            <th>항목</th>
+                                            <th>금액</th>
+                                            <th>비고</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                                 ${group.rows.map(row => `
-                                    <article class="util-sheet-gas-summary-row">
-                                        <div class="util-sheet-gas-summary-row-main">
-                                            <span class="util-sheet-gas-summary-row-icon"><i class="fa-solid ${escapeHtml(row.icon)}" aria-hidden="true"></i></span>
-                                            <span class="util-sheet-gas-summary-row-label">${escapeHtml(row.label)}</span>
-                                        </div>
-                                        <div class="util-sheet-gas-summary-row-value">${escapeHtml(row.value)}</div>
-                                        ${row.meta ? `<div class="util-sheet-gas-summary-row-meta">${escapeHtml(row.meta)}</div>` : ''}
-                                    </article>
+                                        <tr class="${row.meta ? 'has-meta' : ''}">
+                                            <th scope="row">
+                                                <span class="util-sheet-gas-summary-row-label">
+                                                    <span class="util-sheet-gas-summary-row-icon"><i class="fa-solid ${escapeHtml(row.icon)}" aria-hidden="true"></i></span>
+                                                    <span>${escapeHtml(row.label)}</span>
+                                                </span>
+                                            </th>
+                                            <td class="is-amount">${escapeHtml(row.value)}</td>
+                                            <td class="is-note${row.meta ? '' : ' is-empty'}" ${row.meta ? '' : 'aria-hidden="true"'}>${row.meta ? escapeHtml(row.meta) : ''}</td>
+                                        </tr>
                                 `).join('')}
+                                    </tbody>
+                                </table>
                             </div>
                         </section>
                     `).join('')}
-                    <div class="util-sheet-gas-summary-total">
-                        <div class="util-sheet-gas-summary-total-label">
-                            <i class="fa-solid fa-won-sign" aria-hidden="true"></i>
-                            <span>총합계</span>
-                        </div>
-                        <div class="util-sheet-gas-summary-total-value">${escapeHtml(formatCost(summary?.grandTotal))}</div>
+                    <div class="util-sheet-gas-summary-grand-block">
+                        <table class="util-sheet-gas-summary-grand-table">
+                            <tbody>
+                                <tr>
+                                    <th>
+                                        <span class="util-sheet-gas-summary-total-label">
+                                            <i class="fa-solid fa-won-sign" aria-hidden="true"></i>
+                                            <span>총합계</span>
+                                        </span>
+                                    </th>
+                                    <td>${escapeHtml(formatCost(summary?.grandTotal))}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        ${model ? buildUtilGasProductionUsagePanelHtml(model) : ''}
                     </div>
                 </div>
             </aside>
@@ -459,18 +518,12 @@
 
         return `
             <section class="util-sheet-section">
-                <div class="util-sheet-section-head">
-                    <div>
-                        <div class="util-sheet-section-title">가스 검침표</div>
-                        <div class="util-sheet-section-sub">선택월 검침표 두 장과 해당 월 정산 항목을 한 화면에서 함께 봅니다. 검침값은 선택월 시작과 익월 시작 기준입니다.</div>
-                    </div>
-                </div>
                 <div class="util-sheet-gas-layout">
                     <div class="util-sheet-meter-table-stack">
                         ${buildUtilGasMeterTableHtml(model.referenceTable, `${referenceLabel} 검침표`, 'is-reference')}
                         ${buildUtilGasMeterTableHtml(model.selectedTable, `${selectedLabel} 검침표`, 'is-current')}
                     </div>
-                    ${buildUtilGasBillingSummaryHtml(model.billingSummary)}
+                    ${buildUtilGasBillingSummaryHtml(model.billingSummary, model)}
                 </div>
                 ${buildUtilGasCorrectionNoteHtml(model.billingSummary)}
             </section>
