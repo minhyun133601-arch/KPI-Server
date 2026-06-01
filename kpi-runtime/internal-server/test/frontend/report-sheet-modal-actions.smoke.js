@@ -172,8 +172,8 @@ test('report sheet modal actions registry updates compare and fullscreen state t
 
   modalActions.applyUtilSheetCompareSelection(modal, 'year');
   assert.equal(modal.dataset.compareKey, 'year');
-  assert.equal(config.UtilSheetCompareState.analysis, 'year');
-  assert.deepEqual(panelSyncArgs, { sheetType: 'analysis', datasetKey: 'gas' });
+  assert.equal(config.UtilSheetCompareState.meter, 'year');
+  assert.deepEqual(panelSyncArgs, { sheetType: 'meter', datasetKey: 'gas' });
 
   modalActions.applyUtilWasteMeterSiteSelection(modal, 'bukjeong');
   assert.equal(modal.dataset.wasteMeterSiteKey, 'bukjeong');
@@ -226,8 +226,8 @@ test('report sheet modal actions registry updates compare and fullscreen state t
 
 test('kpi html loads report sheet modal actions before sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=059');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=103');
+  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=060');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=106');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(modalActionsIndex >= 0, 'report sheet modal actions loader is missing');

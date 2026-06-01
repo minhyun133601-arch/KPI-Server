@@ -146,6 +146,43 @@ function getQuickEntryPopupSearchQuery() {
   return normalizeText(getQuickEntryPopupSearchInput()?.value).toLowerCase();
 }
 
+function normalizeQuickEntryPopupSearchText(value) {
+  const text = normalizeText(value).toLowerCase();
+  return typeof text.normalize === "function" ? text.normalize("NFKC") : text;
+}
+
+function compactQuickEntryPopupSearchText(value) {
+  return normalizeQuickEntryPopupSearchText(value).replace(/[\s\-_#/()·.,:;[\]{}]+/g, "");
+}
+
+function getQuickEntryPopupSearchTokens(searchQuery) {
+  return normalizeQuickEntryPopupSearchText(searchQuery)
+    .split(/[\s\-_#/()·.,:;[\]{}]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+}
+
+function getQuickEntryPopupSearchResourceFilter(searchQuery) {
+  const compactQuery = compactQuickEntryPopupSearchText(searchQuery);
+  const wantsGas =
+    compactQuery.includes("gas") ||
+    compactQuery.includes("lng") ||
+    compactQuery.includes("lpg") ||
+    compactQuery.includes("가스");
+  const wantsElectric =
+    compactQuery.includes("electric") ||
+    compactQuery.includes("kwh") ||
+    compactQuery.includes("전기");
+
+  if (wantsGas && !wantsElectric) {
+    return RESOURCE_TYPES.GAS;
+  }
+  if (wantsElectric && !wantsGas) {
+    return RESOURCE_TYPES.ELECTRIC;
+  }
+  return "";
+}
+
 function getQuickEntryPopupResourceLabel(resourceType) {
   return isGasResourceType(resourceType) ? "가스" : "전기";
 }
@@ -155,13 +192,49 @@ function getQuickEntryPopupResourceClassName(resourceType) {
 }
 
 function matchesQuickEntryPopupSearch(resourceType, item, searchQuery) {
-  if (!searchQuery) {
-    return true;
+  return getQuickEntryPopupSearchScore(resourceType, item, searchQuery) > 0;
+}
+
+function getQuickEntryPopupSearchScore(resourceType, item, searchQuery) {
+  if (!searchQuery) return 1;
+
+  const resourceFilter = getQuickEntryPopupSearchResourceFilter(searchQuery);
+  const normalizedResourceType = normalizeResourceType(resourceType);
+  if (resourceFilter && normalizedResourceType !== normalizeResourceType(resourceFilter)) {
+    return 0;
   }
 
-  const label = getEquipmentDisplayLabel(item).toLowerCase();
-  const resourceLabel = getQuickEntryPopupResourceLabel(resourceType).toLowerCase();
-  return label.includes(searchQuery) || `${resourceLabel} ${label}`.includes(searchQuery);
+  const normalizedQuery = normalizeQuickEntryPopupSearchText(searchQuery);
+  const label = normalizeQuickEntryPopupSearchText(getEquipmentDisplayLabel(item));
+  const resourceLabel = normalizeQuickEntryPopupSearchText(getQuickEntryPopupResourceLabel(resourceType));
+  const directCandidates = [label, `${resourceLabel} ${label}`];
+  if (directCandidates.some((candidate) => candidate.includes(normalizedQuery))) {
+    return 100 + label.length;
+  }
+
+  const compactQuery = compactQuickEntryPopupSearchText(searchQuery);
+  const compactLabel = compactQuickEntryPopupSearchText(label);
+  const compactResourceLabel = compactQuickEntryPopupSearchText(`${resourceLabel} ${label}`);
+  const compactCandidates = [compactLabel, compactResourceLabel].filter(Boolean);
+  if (
+    compactQuery.length >= 2 &&
+    compactCandidates.some(
+      (candidate) => candidate.includes(compactQuery) || compactQuery.includes(candidate)
+    )
+  ) {
+    return 80 + compactLabel.length;
+  }
+
+  const tokens = getQuickEntryPopupSearchTokens(searchQuery);
+  if (!tokens.length) return 0;
+
+  const matchedTokenCount = tokens.filter((token) =>
+    compactCandidates.some((candidate) => candidate.includes(compactQuickEntryPopupSearchText(token)))
+  ).length;
+  if (!matchedTokenCount) return 0;
+  if (tokens.length > 1 && matchedTokenCount < 2) return 0;
+
+  return Math.round((matchedTokenCount / tokens.length) * 50) + matchedTokenCount * 5;
 }
 
 function createQuickEntryPopupRow(resourceType, item) {
@@ -230,9 +303,15 @@ function renderQuickEntryPopupBody() {
 
   getQuickEntryPopupResourceTypes().forEach((resourceType) => {
     const visibleItems = getQuickEntryPopupVisibleItems(resourceType, state.selectedDate);
-    const matchedItems = visibleItems.filter((item) =>
-      matchesQuickEntryPopupSearch(resourceType, item, searchQuery)
-    );
+    const matchedItems = visibleItems
+      .map((item, index) => ({
+        item,
+        index,
+        score: getQuickEntryPopupSearchScore(resourceType, item, searchQuery),
+      }))
+      .filter((entry) => entry.score > 0)
+      .sort((left, right) => right.score - left.score || left.index - right.index)
+      .map((entry) => entry.item);
 
     if (!matchedItems.length) {
       return;
@@ -444,15 +523,16 @@ function handleQuickEntryPopupFieldKeydown(event) {
   }
 
   event.preventDefault();
+  const resourceType = normalizeResourceType(input.dataset.resourceType);
   const popupInputs = [
     ...getQuickEntryPopupBody().querySelectorAll("input[data-quick-entry-popup-field]"),
-  ];
+  ].filter((candidate) => normalizeResourceType(candidate.dataset.resourceType) === resourceType);
   const currentIndex = popupInputs.findIndex((candidate) => candidate === input);
   if (currentIndex < 0) {
     return;
   }
 
-  const nextInput = popupInputs[currentIndex + 1];
+  const nextInput = popupInputs[event.shiftKey ? currentIndex - 1 : currentIndex + 1];
   if (!nextInput) {
     input.blur();
     return;

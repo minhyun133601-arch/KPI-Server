@@ -48,11 +48,13 @@
     }
 
     function normalizeUtilSheetType(sheetType) {
-        return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+        void sheetType;
+        return 'meter';
     }
 
     function getUtilSheetAlternateType(sheetType) {
-        return normalizeUtilSheetType(sheetType) === 'analysis' ? 'meter' : 'analysis';
+        void sheetType;
+        return 'meter';
     }
 
     function getUtilSheetCompareLabel(compareKey) {
@@ -133,10 +135,9 @@
     function syncUtilSheetTypeButtons(root, selector, sheetType) {
         if (!root) return;
         const normalizedSheetType = normalizeUtilSheetType(sheetType);
-        const nextSheetType = getUtilSheetAlternateType(normalizedSheetType);
         const currentSpec = UTIL_SHEET_TYPE_SPECS[normalizedSheetType] || UTIL_SHEET_TYPE_SPECS.meter || {};
-        const nextSpec = UTIL_SHEET_TYPE_SPECS[nextSheetType] || UTIL_SHEET_TYPE_SPECS.meter || {};
-        const iconClass = normalizedSheetType === 'analysis' ? 'fa-chart-column' : 'fa-file-lines';
+        const nextSpec = currentSpec;
+        const iconClass = 'fa-file-lines';
 
         root.querySelectorAll(selector).forEach(button => {
             button.dataset.sheetType = normalizedSheetType;
@@ -159,7 +160,7 @@
         const iconClass = normalizedSheetType === 'analysis' ? 'fa-chart-column' : 'fa-file-lines';
 
         panel.classList.toggle('is-meter', normalizedSheetType === 'meter');
-        panel.classList.toggle('is-analysis', normalizedSheetType === 'analysis');
+        panel.classList.toggle('is-analysis', false);
         if (titleEl) titleEl.textContent = sheetSpec.title || '';
         if (descEl) {
             descEl.textContent = `${sheetSpec.description || ''} 이동 및 모달 안에서 검침표·분석표·가스·전기를 바로 바꿀 수 있습니다.`;
@@ -179,7 +180,7 @@
         const iconEl = panel.querySelector('[data-role="util-sheet-panel-icon"]');
 
         panel.classList.toggle('is-meter', normalizedSheetType === 'meter');
-        panel.classList.toggle('is-analysis', normalizedSheetType === 'analysis');
+        panel.classList.toggle('is-analysis', false);
         if (titleEl) titleEl.textContent = presentation.title;
         if (descEl) descEl.textContent = presentation.description;
         if (iconEl) {
@@ -245,16 +246,10 @@
                 if (button.dataset.bound === 'true') return;
                 button.dataset.bound = 'true';
                 button.addEventListener('click', () => {
-                    const currentSheetType = normalizeUtilSheetType(panel.dataset.sheetType);
-                    const currentDatasetKey = resolveUtilSheetReportDatasetKey(
-                        currentSheetType,
-                        panel.dataset.datasetKey || UtilSheetReportState[currentSheetType] || 'gas'
-                    );
-                    const nextSheetType = getUtilSheetAlternateType(currentSheetType);
-                    panel.dataset.sheetType = nextSheetType;
-                    panel.dataset.datasetKey = resolveUtilSheetReportDatasetKey(nextSheetType, currentDatasetKey);
-                    panel.dataset.monthKey = String(UtilSheetReportMonthState[nextSheetType] || panel.dataset.monthKey || '').trim();
-                    panel.dataset.compareKey = normalizeUtilSheetCompareKey(UtilSheetCompareState[nextSheetType] || panel.dataset.compareKey || 'month');
+                    panel.dataset.sheetType = 'meter';
+                    panel.dataset.datasetKey = resolveUtilSheetReportDatasetKey('meter', panel.dataset.datasetKey || UtilSheetReportState.meter || 'gas');
+                    panel.dataset.monthKey = String(UtilSheetReportMonthState.meter || panel.dataset.monthKey || '').trim();
+                    panel.dataset.compareKey = normalizeUtilSheetCompareKey(UtilSheetCompareState.meter || panel.dataset.compareKey || 'month');
                     if (typeof runtime.renderUtilSheetPanel === 'function') {
                         runtime.renderUtilSheetPanel(panel);
                     }

@@ -189,7 +189,7 @@ test('report sheet panel preview registry builds dataset result and renders mont
 });
 
 test('kpi html loads report sheet panel preview after panel runtime and before windows', () => {
-  const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=057');
+  const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=058');
   const panelPreviewIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/preview.js?v=056');
   const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=060');
 

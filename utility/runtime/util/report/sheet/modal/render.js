@@ -96,10 +96,8 @@
     }
 
     function normalizeSheetType(sheetType = 'meter') {
-        if (typeof runtime.normalizeUtilSheetType === 'function') {
-            return runtime.normalizeUtilSheetType(sheetType);
-        }
-        return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+        void sheetType;
+        return 'meter';
     }
 
     function resolveDatasetKey(sheetType, datasetKey = '') {
@@ -294,7 +292,7 @@
     function syncSheetExtractButton(modal, sheetType = 'meter', datasetKey = 'gas') {
         const extractButton = modal?.querySelector?.('[data-role="util-sheet-report-print"]');
         if (!extractButton) return;
-        const canExtract = sheetType === 'meter' || sheetType === 'analysis';
+        const canExtract = sheetType === 'meter';
         const isGasMeter = sheetType === 'meter' && resolveDatasetKey(sheetType, datasetKey) === 'gas';
         const label = isGasMeter
             ? 'PDF 인쇄'
@@ -339,14 +337,16 @@
     function syncGasModalViewToggle(modal, sheetType = 'meter', datasetKey = 'gas') {
         const button = modal?.querySelector?.('[data-util-sheet-gas-view-toggle]') || null;
         if (!button) return;
-        const isGas = resolveDatasetKey(sheetType, datasetKey) === 'gas';
-        button.hidden = !isGas;
-        button.toggleAttribute?.('hidden', !isGas);
-        if (!isGas) return;
+        const normalizedDatasetKey = resolveDatasetKey(sheetType, datasetKey);
+        const isSupported = ['electric', 'gas'].includes(normalizedDatasetKey);
+        button.hidden = !isSupported;
+        button.toggleAttribute?.('hidden', !isSupported);
+        if (!isSupported) return;
 
-        const isAnalysis = normalizeSheetType(sheetType) === 'analysis';
+        const isAnalysis = false;
+        const datasetLabel = normalizedDatasetKey === 'electric' ? '전기' : '가스';
         const label = isAnalysis ? '검침표' : '그래프';
-        const title = isAnalysis ? '가스 검침표 보기' : '가스 그래프 보기';
+        const title = isAnalysis ? `${datasetLabel} 검침표 보기` : `${datasetLabel} 그래프 보기`;
         const iconClass = isAnalysis ? 'fa-file-lines' : 'fa-chart-column';
         button.classList?.toggle?.('is-analysis', isAnalysis);
         button.classList?.toggle?.('is-meter', !isAnalysis);

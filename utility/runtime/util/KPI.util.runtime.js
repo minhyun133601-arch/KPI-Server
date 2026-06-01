@@ -5,25 +5,6 @@
     const runtime = browser?.getRuntime?.();
     if (!runtime) return;
 
-    function autoOpenUtilityReportModal({ container, category } = {}) {
-        if (category?.autoOpenUtilityReportModal !== true) return;
-
-        const openModalButton = container?.querySelector?.('[data-role="util-report-open-modal"]');
-        if (!openModalButton || openModalButton.dataset?.autoOpenHandled === 'true') return;
-        if (openModalButton.dataset) {
-            openModalButton.dataset.autoOpenHandled = 'true';
-        }
-        openModalButton.click?.();
-    }
-
-    function initializeUtilityAnalysisSurface(context = {}) {
-        const { container } = context;
-        if (typeof initUtilReportPanel === 'function') {
-            initUtilReportPanel(container);
-        }
-        autoOpenUtilityReportModal(context);
-    }
-
     function getUtilitySurface(context = {}) {
         return String(context.category?.utilitySurface || '').trim();
     }
@@ -47,15 +28,11 @@
 
     runtime.registerSectionInitializer('data', (context = {}) => {
         const surface = getDataUtilitySurface(context);
-        if (surface === 'analysis') {
-            initializeUtilityAnalysisSurface(context);
-        }
+        void surface;
     });
 
     runtime.registerSectionInitializer('experiment', (context = {}) => {
-        if (getUtilitySurface(context) === 'analysis') {
-            initializeUtilityAnalysisSurface(context);
-        }
+        void context;
     });
 
     runtime.registerSectionInitializer('report', ({ container }) => {

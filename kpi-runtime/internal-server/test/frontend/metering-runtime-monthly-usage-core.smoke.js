@@ -18,25 +18,35 @@ function getMapValue(map, key) {
   return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : null;
 }
 
-function createMonthlyUsageCoreContext() {
+function createMonthlyUsageCoreContext(options = {}) {
   let gasMode = false;
 
   const equipmentDailyUsageMap = {
     'total_a|2026-04-01': 12,
     'total_b|2026-04-01': 8,
     'equip_a|2026-04-01': 5,
+    'total_a|2026-04-02': 3,
+    'total_b|2026-04-02': 2,
+    'equip_a|2026-04-02': 9,
   };
   const equipmentCalendarDailyUsageMap = {
     'total_a|2026-04-01': 15,
     'total_b|2026-04-01': 10,
     'equip_a|2026-04-01': 2,
+    'total_a|2026-04-02': 4,
+    'total_b|2026-04-02': 2,
+    'equip_a|2026-04-02': 10,
   };
   const equipmentMonthlyUsageMap = {
     total_a: 70,
     total_b: 30,
     equip_a: 30,
     equip_b: 20,
+    ...(options.equipmentMonthlyUsageMap || {}),
   };
+  const totalPowerMonthlyUsage = Number.isFinite(options.totalPowerMonthlyUsage)
+    ? options.totalPowerMonthlyUsage
+    : 100;
 
   const context = {
     console,
@@ -108,7 +118,7 @@ function createMonthlyUsageCoreContext() {
       return ['equip_a'];
     },
     calculateTotalPowerMonthlyUsage() {
-      return 100;
+      return totalPowerMonthlyUsage;
     },
     getResolvedEntryDayStatus(entry) {
       return entry?.dayStatus || '';
@@ -216,4 +226,15 @@ test('runtime monthly usage core aggregates equipment and other-usage values', (
   assert.equal(context.calculateOtherDailyUsage('2026-04-01'), null);
   assert.equal(context.calculateOtherCalendarDailyUsage('2026-04-01'), null);
   assert.equal(context.calculateOtherMonthlyUsage(), null);
+});
+
+test('runtime monthly usage core clamps negative other-usage values to zero', () => {
+  const context = createMonthlyUsageCoreContext({
+    equipmentMonthlyUsageMap: { equip_a: 130 },
+    totalPowerMonthlyUsage: 100,
+  });
+
+  assert.equal(context.calculateOtherMonthlyUsage(), 0);
+  assert.equal(context.calculateOtherDailyUsage('2026-04-02'), 0);
+  assert.equal(context.calculateOtherCalendarDailyUsage('2026-04-02'), 0);
 });

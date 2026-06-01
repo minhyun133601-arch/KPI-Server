@@ -143,6 +143,10 @@ function calculateEquipmentGroupMonthlyUsage(equipmentIds) {
   return values.reduce((sum, value) => sum + value, 0);
 }
 
+function normalizeOtherUsageValue(value) {
+  return Number.isFinite(value) ? Math.max(0, value) : null;
+}
+
 function calculateOtherDailyUsage(dateString) {
   if (isGasResourceType()) {
     return null;
@@ -157,7 +161,7 @@ function calculateOtherDailyUsage(dateString) {
   }
 
   const equipmentUsage = calculateEquipmentGroupDailyUsage(getEquipmentSummaryIds(), dateString);
-  return totalPowerUsage - (equipmentUsage ?? 0);
+  return normalizeOtherUsageValue(totalPowerUsage - (equipmentUsage ?? 0));
 }
 
 function calculateOtherCalendarDailyUsage(dateString) {
@@ -177,7 +181,7 @@ function calculateOtherCalendarDailyUsage(dateString) {
     getEquipmentSummaryIds(),
     dateString
   );
-  return totalPowerUsage - (equipmentUsage ?? 0);
+  return normalizeOtherUsageValue(totalPowerUsage - (equipmentUsage ?? 0));
 }
 
 function calculateOtherMonthlyUsage() {
@@ -188,7 +192,7 @@ function calculateOtherMonthlyUsage() {
   const totalPowerUsage = calculateTotalPowerMonthlyUsage();
   if (totalPowerUsage !== null) {
     const equipmentUsage = calculateEquipmentGroupMonthlyUsage(getEquipmentSummaryIds());
-    return totalPowerUsage - (equipmentUsage ?? 0);
+    return normalizeOtherUsageValue(totalPowerUsage - (equipmentUsage ?? 0));
   }
 
   return calculateMonthlyUsageFromDailyResolver((dateString) =>

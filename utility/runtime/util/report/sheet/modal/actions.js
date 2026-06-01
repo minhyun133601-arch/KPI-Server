@@ -64,10 +64,8 @@
     }
 
     function normalizeSheetType(sheetType = 'meter') {
-        if (typeof runtime.normalizeUtilSheetType === 'function') {
-            return runtime.normalizeUtilSheetType(sheetType);
-        }
-        return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+        void sheetType;
+        return 'meter';
     }
 
     function resolveDatasetKey(sheetType, datasetKey) {

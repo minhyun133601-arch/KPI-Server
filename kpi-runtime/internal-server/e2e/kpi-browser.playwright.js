@@ -131,8 +131,13 @@ async function expectUtilityEntryExperimentSurface(page) {
   await expect(page.locator('[data-role="utility-entry-experiment"]')).toBeVisible();
   await expect(page.locator('[data-kpi-metering-root]')).toHaveCount(0);
   await expect(page.locator('[data-role="utility-entry-experiment-save"]')).toHaveCount(2);
-  await expect(page.locator('[data-role="utility-entry-experiment-meter-open"]')).toHaveCount(5);
-  await expect(page.locator('[data-role="utility-entry-experiment-graph-toggle"]')).toHaveCount(2);
+  await expect(page.locator('.utility-entry-experiment-rule-card')).toHaveCount(2);
+  await expect(page.locator('.utility-entry-experiment-rule-card').first()).toBeVisible();
+  await expect(page.locator('[data-role="utility-entry-experiment-meter-open"]')).toHaveCount(6);
+  await expect(
+    page.locator('.utility-entry-experiment-settlement-title-button[data-role="utility-entry-experiment-meter-open"]')
+  ).toHaveCount(6);
+  await expect(page.locator('[data-role="utility-entry-experiment-graph-toggle"]')).toHaveCount(0);
 }
 
 function getCurrentMonthInputValue() {
@@ -302,108 +307,111 @@ test.describe('KPI browser smoke', () => {
       await page.goto(
         `/?overviewRatioSmoke=${Date.now()}#kpi?view=category&section=experiment&category=1&popup=experiment`
       );
-      await expect(page.locator('[data-role="util-report-open-modal"]')).toBeVisible();
-      if (
-        !(await page
-          .locator('#util-report-modal.is-open.is-overview-ratio')
-          .isVisible()
-          .catch(() => false))
-      ) {
-        await page.locator('[data-role="util-report-open-modal"]').click();
-      }
-      await expect(page.locator('#util-report-modal.is-open.is-overview-ratio')).toBeVisible();
-      await expect(
-        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-print"]')
-      ).toHaveCount(0);
-      await expect(
-        page.locator(
-          '#util-report-modal.is-overview-ratio .util-report-modal-action-field [data-role="util-report-modal-reset-overview"]'
-        )
-      ).toBeVisible();
-      await expect(
-        page.locator(
-          '#util-report-modal.is-overview-ratio .util-report-modal-action-field [data-role="util-report-inline-detach"]'
-        )
-      ).toBeVisible();
-      await expect(
-        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-chart-shell"]')
-      ).toBeVisible();
-      await expect(
-        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-from"]')
-      ).toBeVisible();
-      await expect(
-        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-to"]')
-      ).toBeVisible();
-      await expect(
-        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-unit"]')
-      ).toHaveValue('krw');
-      await expect(
-        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-decimals"]')
-      ).toHaveValue('0');
-      await expect(
-        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-chart-wrap"]')
-      ).toHaveCount(0);
-      await expect(page.locator('#util-report-modal.is-overview-ratio .util-analytics-chart')).toHaveCount(0);
-      await expect(page.locator('#util-report-modal.is-overview-ratio .util-report-donut-row')).toBeVisible();
-      await expect(
-        page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-inline-insight"]')
-      ).toBeVisible();
-      const overviewInlineBody = page.locator(
-        '#util-report-modal.is-overview-ratio [data-role="util-report-inline-body"]'
-      );
-      await expect(overviewInlineBody).toContainText('총괄 비용 상세표');
-      await expect(overviewInlineBody).toContainText('전기');
-      await expect(overviewInlineBody).toContainText('가스');
-      await expect(overviewInlineBody).toContainText('폐수');
-      const gasCompositionItem = page.locator(
-        '#util-report-modal.is-overview-ratio [data-role="util-report-composition-item"][data-composition-kind="total"][data-metric="gas_cost"]'
-      );
-      if ((await gasCompositionItem.count()) > 0) {
-        await gasCompositionItem.first().click();
-      } else {
-        await page.evaluate(() => {
-          const modal = document.querySelector('#util-report-modal.is-overview-ratio');
-          if (!modal) return;
-          const fallbackButton = document.createElement('button');
-          fallbackButton.type = 'button';
-          fallbackButton.dataset.role = 'util-report-composition-item';
-          fallbackButton.dataset.compositionKind = 'total';
-          fallbackButton.dataset.metric = 'gas_cost';
-          modal.appendChild(fallbackButton);
-          fallbackButton.click();
-          fallbackButton.remove();
-        });
-      }
-      await expect(overviewInlineBody).toContainText('가스 비용 팀별 상세표');
-      await expect(overviewInlineBody).toContainText('1팀 2파트 LNG');
-      await expect(overviewInlineBody).toContainText('1팀 2파트 LPG');
-      await page
-        .locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-category"]')
-        .selectOption('production');
-      await expect(overviewInlineBody).toContainText('총생산량 공장별 상세표');
-      await expect(overviewInlineBody).toContainText('유산');
-      await expect(overviewInlineBody).toContainText('북정');
-      const yusanProductionItem = page.locator(
-        '#util-report-modal.is-overview-ratio [data-role="util-report-composition-item"][data-composition-kind="site"][data-metric="site::유산"]'
-      );
-      if ((await yusanProductionItem.count()) > 0) {
-        await yusanProductionItem.first().click();
-        await expect(overviewInlineBody).toContainText('유산 팀별 생산량 상세표');
-        await expect(overviewInlineBody).toContainText('1팀 2파트');
-        await expect(overviewInlineBody).toContainText('2팀');
-        await expect(overviewInlineBody).toContainText('3팀');
-        const yusanTeamProductionItem = page
-          .locator(
-            '#util-report-modal.is-overview-ratio [data-role="util-report-composition-item"][data-composition-kind="selected"][data-metric^="생산량::"]'
-          )
-          .first();
-        if ((await yusanTeamProductionItem.count()) > 0) {
-          await yusanTeamProductionItem.click();
-          await expect(overviewInlineBody).toContainText('라인별 생산량 상세표');
+      const overviewOpenButton = page.locator('[data-role="util-report-open-modal"]');
+      await expect(overviewOpenButton).toHaveCount(0);
+      if ((await overviewOpenButton.count()) > 0) {
+        if (
+          !(await page
+            .locator('#util-report-modal.is-open.is-overview-ratio')
+            .isVisible()
+            .catch(() => false))
+        ) {
+          await overviewOpenButton.click();
         }
+        await expect(page.locator('#util-report-modal.is-open.is-overview-ratio')).toBeVisible();
+        await expect(
+          page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-print"]')
+        ).toHaveCount(0);
+        await expect(
+          page.locator(
+            '#util-report-modal.is-overview-ratio .util-report-modal-action-field [data-role="util-report-modal-reset-overview"]'
+          )
+        ).toBeVisible();
+        await expect(
+          page.locator(
+            '#util-report-modal.is-overview-ratio .util-report-modal-action-field [data-role="util-report-inline-detach"]'
+          )
+        ).toBeVisible();
+        await expect(
+          page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-chart-shell"]')
+        ).toBeVisible();
+        await expect(
+          page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-from"]')
+        ).toBeVisible();
+        await expect(
+          page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-to"]')
+        ).toBeVisible();
+        await expect(
+          page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-unit"]')
+        ).toHaveValue('krw');
+        await expect(
+          page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-decimals"]')
+        ).toHaveValue('0');
+        await expect(
+          page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-chart-wrap"]')
+        ).toHaveCount(0);
+        await expect(page.locator('#util-report-modal.is-overview-ratio .util-analytics-chart')).toHaveCount(0);
+        await expect(page.locator('#util-report-modal.is-overview-ratio .util-report-donut-row')).toBeVisible();
+        await expect(
+          page.locator('#util-report-modal.is-overview-ratio [data-role="util-report-inline-insight"]')
+        ).toBeVisible();
+        const overviewInlineBody = page.locator(
+          '#util-report-modal.is-overview-ratio [data-role="util-report-inline-body"]'
+        );
+        await expect(overviewInlineBody).toContainText('총괄 비용 상세표');
+        await expect(overviewInlineBody).toContainText('전기');
+        await expect(overviewInlineBody).toContainText('가스');
+        await expect(overviewInlineBody).toContainText('폐수');
+        const gasCompositionItem = page.locator(
+          '#util-report-modal.is-overview-ratio [data-role="util-report-composition-item"][data-composition-kind="total"][data-metric="gas_cost"]'
+        );
+        if ((await gasCompositionItem.count()) > 0) {
+          await gasCompositionItem.first().click();
+        } else {
+          await page.evaluate(() => {
+            const modal = document.querySelector('#util-report-modal.is-overview-ratio');
+            if (!modal) return;
+            const fallbackButton = document.createElement('button');
+            fallbackButton.type = 'button';
+            fallbackButton.dataset.role = 'util-report-composition-item';
+            fallbackButton.dataset.compositionKind = 'total';
+            fallbackButton.dataset.metric = 'gas_cost';
+            modal.appendChild(fallbackButton);
+            fallbackButton.click();
+            fallbackButton.remove();
+          });
+        }
+        await expect(overviewInlineBody).toContainText('가스 비용 팀별 상세표');
+        await expect(overviewInlineBody).toContainText('1팀 2파트 LNG');
+        await expect(overviewInlineBody).toContainText('1팀 2파트 LPG');
+        await page
+          .locator('#util-report-modal.is-overview-ratio [data-role="util-report-modal-category"]')
+          .selectOption('production');
+        await expect(overviewInlineBody).toContainText('총생산량 공장별 상세표');
+        await expect(overviewInlineBody).toContainText('유산');
+        await expect(overviewInlineBody).toContainText('북정');
+        const yusanProductionItem = page.locator(
+          '#util-report-modal.is-overview-ratio [data-role="util-report-composition-item"][data-composition-kind="site"][data-metric="site::유산"]'
+        );
+        if ((await yusanProductionItem.count()) > 0) {
+          await yusanProductionItem.first().click();
+          await expect(overviewInlineBody).toContainText('유산 팀별 생산량 상세표');
+          await expect(overviewInlineBody).toContainText('1팀 2파트');
+          await expect(overviewInlineBody).toContainText('2팀');
+          await expect(overviewInlineBody).toContainText('3팀');
+          const yusanTeamProductionItem = page
+            .locator(
+              '#util-report-modal.is-overview-ratio [data-role="util-report-composition-item"][data-composition-kind="selected"][data-metric^="생산량::"]'
+            )
+            .first();
+          if ((await yusanTeamProductionItem.count()) > 0) {
+            await yusanTeamProductionItem.click();
+            await expect(overviewInlineBody).toContainText('라인별 생산량 상세표');
+          }
+        }
+        await page.locator('[data-role="util-report-modal-close"]').click();
+        await expect(page.locator('#util-report-modal.is-open')).toHaveCount(0);
       }
-      await page.locator('[data-role="util-report-modal-close"]').click();
-      await expect(page.locator('#util-report-modal.is-open')).toHaveCount(0);
 
       const currentMonthValue = getCurrentMonthInputValue();
       await page.goto(

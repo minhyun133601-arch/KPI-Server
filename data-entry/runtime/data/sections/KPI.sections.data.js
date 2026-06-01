@@ -68,6 +68,14 @@
             ])
         }),
         Object.freeze({
+            key: 'electric_bukjeong',
+            datasetKey: 'electric',
+            label: '전기 검침',
+            requirements: Object.freeze([
+                Object.freeze({ resourceType: 'electric', scopeKey: 'bukjeong', label: '북정 전기' })
+            ])
+        }),
+        Object.freeze({
             key: 'gas_yusan',
             datasetKey: 'gas',
             label: '가스 검침',
@@ -113,6 +121,13 @@
         electric: 'electric_yusan',
         gas: 'gas_yusan',
         waste: 'waste_yusan'
+    });
+    const UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_GRAPH_KEYS = Object.freeze({
+        electric_yusan: 'electric_yusan',
+        electric_bukjeong: 'electric_bukjeong',
+        gas_yusan: 'gas_yusan',
+        gas_yusan_lng: 'gas_yusan',
+        gas_bukjeong_lng: 'gas_bukjeong'
     });
     const UTILITY_ENTRY_EXPERIMENT_GRAPH_DEFINITIONS = Object.freeze({
         electric_yusan: Object.freeze({
@@ -355,6 +370,13 @@
         UTILITY_ENTRY_EXPERIMENT_LIQUID_COMPRESSOR_ID,
         UTILITY_ENTRY_EXPERIMENT_COMPRESSOR_FIELD_ID
     ]);
+    const UTILITY_ENTRY_EXPERIMENT_CORRECTION_EDIT_FIELD_IDS = Object.freeze([
+        UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID,
+        'field_10',
+        'field_11',
+        UTILITY_ENTRY_EXPERIMENT_LIQUID_COMPRESSOR_ID,
+        UTILITY_ENTRY_EXPERIMENT_COMPRESSOR_FIELD_ID
+    ]);
     const UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS = Object.freeze({
         electric: Object.freeze([
             ['기본요금', 'base_charge'],
@@ -409,7 +431,9 @@
     }
 
     function parseUtilityEntryExperimentNumber(value) {
-        const numericValue = Number(String(value ?? '').replace(/,/g, '').trim());
+        const normalizedText = String(value ?? '').replace(/,/g, '').trim();
+        if (!normalizedText) return null;
+        const numericValue = Number(normalizedText);
         return Number.isFinite(numericValue) ? numericValue : null;
     }
 
@@ -451,14 +475,52 @@
         return true;
     }
 
+    function getUtilityEntryExperimentDailyRowInputsByFieldId(host, resourceType, fieldId) {
+        const scope = getUtilityEntryExperimentInputScope(host, { resourceType });
+        const row = Array.from(scope.querySelectorAll('[data-utility-entry-experiment-row-field-id]'))
+            .find(candidate => String(candidate.dataset?.utilityEntryExperimentRowFieldId || '') === String(fieldId || ''));
+        return Array.from(row?.querySelectorAll?.('.utility-entry-experiment-input') || []);
+    }
+
+    function setUtilityEntryExperimentDailyRowInputText(host, resourceType, fieldId, inputIndex, text = '') {
+        const input = getUtilityEntryExperimentDailyRowInputsByFieldId(host, resourceType, fieldId)[inputIndex] || null;
+        if (!input) return false;
+        input.value = String(text ?? '');
+        input.dataset.normalizedValue = '';
+        input.dataset.valueSource = 'display-text';
+        return true;
+    }
+
+    function setUtilityEntryExperimentDailyRowInputValue(host, resourceType, fieldId, inputIndex, value) {
+        const input = getUtilityEntryExperimentDailyRowInputsByFieldId(host, resourceType, fieldId)[inputIndex] || null;
+        if (!input) return false;
+
+        const numericValue = typeof value === 'number' ? value : parseUtilityEntryExperimentNumber(value);
+        if (!Number.isFinite(numericValue)) {
+            input.value = '';
+            input.dataset.normalizedValue = '';
+            delete input.dataset.valueSource;
+            return false;
+        }
+
+        input.value = formatUtilityEntryExperimentNumberText(String(value));
+        input.dataset.valueSource = 'actual-2024';
+        updateUtilityEntryExperimentNormalizedValue(input);
+        return true;
+    }
+
     function markUtilityEntryExperimentUnsaved(host) {
         if (!host) return;
+        if (host.dataset) {
+            host.dataset.utilityEntryExperimentSaveStatus = 'unsaved';
+        }
         const stateNodes = Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save-state"]') || []);
         stateNodes.forEach(stateNode => {
             stateNode.classList.remove('is-saved');
             stateNode.classList.add('is-unsaved');
             stateNode.textContent = '저장 필요';
         });
+        syncUtilityEntryExperimentDailyValidation(host);
     }
 
     function setUtilityEntryExperimentSaveStatus(host, status = 'idle', message = '') {
@@ -474,6 +536,8 @@
         stateNodes.forEach(stateNode => {
             stateNode.classList.toggle('is-saved', status === 'saved');
             stateNode.classList.toggle('is-unsaved', status !== 'saved');
+            stateNode.classList.toggle('is-error', status === 'error');
+            stateNode.classList.toggle('is-missing', false);
             stateNode.textContent = message || (status === 'saved'
                 ? '저장됨'
                 : status === 'saving'
@@ -579,6 +643,15 @@
         return adjustmentStartDate && dateString >= adjustmentStartDate ? rawValue + adjustmentValue : rawValue;
     }
 
+    function getUtilityEntryExperimentResolvedStickReadingValue(currentValue, previousValue) {
+        if (!Number.isFinite(currentValue) || !Number.isFinite(previousValue)) return currentValue;
+        let resolvedValue = currentValue;
+        while (resolvedValue < previousValue) {
+            resolvedValue += UTILITY_ENTRY_EXPERIMENT_STICK_READING_WRAP_BASE;
+        }
+        return resolvedValue;
+    }
+
     function getUtilityEntryExperimentReadingTimeline(dataset, equipmentId) {
         if (!dataset || !equipmentId) return { orderedDates: [], detailsByDate: new Map() };
 
@@ -607,7 +680,7 @@
 
             let value = getUtilityEntryExperimentAdjustedReading(dataset, equipmentId, dateString);
             if (equipmentId === UTILITY_ENTRY_EXPERIMENT_STICK_FIELD_ID && Number.isFinite(previousResolvedValue)) {
-                while (value < previousResolvedValue) value += UTILITY_ENTRY_EXPERIMENT_STICK_READING_WRAP_BASE;
+                value = getUtilityEntryExperimentResolvedStickReadingValue(value, previousResolvedValue);
             }
 
             orderedDates.push(dateString);
@@ -739,31 +812,159 @@
         return Array.from({ length: daysInMonth }, (_, index) => `${monthValue}-${String(index + 1).padStart(2, '0')}`);
     }
 
-    function getUtilityEntryExperimentConfiguredTotalPowerIds(dataset) {
-        const assignments = dataset?.teamAssignments || {};
-        const explicit = Array.isArray(assignments.power_total)
-            ? assignments.power_total
-            : Array.isArray(assignments.power_active)
-                ? assignments.power_active
-                : null;
-        if (explicit?.length) return explicit;
-        return [...UTILITY_ENTRY_EXPERIMENT_ACTIVE_POWER_IDS];
-    }
-
     function getUtilityEntryExperimentEquipmentSummaryIds(dataset) {
         return (dataset?.equipmentItems || [])
             .map(item => item.id)
             .filter(id => id && !UTILITY_ENTRY_EXPERIMENT_ELECTRIC_SUMMARY_EXCLUDED_IDS.has(id));
     }
 
-    function calculateUtilityEntryExperimentOtherReading(dataset, dateString) {
-        const totalPowerReading = getUtilityEntryExperimentTotalPowerReading(dataset, dateString);
-        if (!Number.isFinite(totalPowerReading)) return null;
+    function getUtilityEntryExperimentTotalPowerReadingDates(dataset) {
+        return Object.keys(dataset?.equipmentEntries || {})
+            .filter(dateString => Number.isFinite(getUtilityEntryExperimentTotalPowerReading(dataset, dateString)))
+            .sort();
+    }
 
-        const equipmentReading = sumUtilityEntryExperimentValues(getUtilityEntryExperimentEquipmentSummaryIds(dataset).map(id =>
-            getUtilityEntryExperimentReadingOnDate(dataset, id, dateString)
-        )) || 0;
-        return totalPowerReading - equipmentReading;
+    function getUtilityEntryExperimentTotalPowerRecentUsageWindow(dataset, dateString) {
+        const endReading = getUtilityEntryExperimentTotalPowerReading(dataset, dateString);
+        if (!Number.isFinite(endReading)) return null;
+
+        const startDate = getUtilityEntryExperimentTotalPowerReadingDates(dataset)
+            .filter(candidate => candidate < dateString)
+            .pop() || '';
+        if (!startDate) return null;
+
+        const startReading = getUtilityEntryExperimentTotalPowerReading(dataset, startDate);
+        if (!Number.isFinite(startReading)) return null;
+        return { startDate, endDate: dateString, startReading, endReading };
+    }
+
+    function getUtilityEntryExperimentTotalPowerDistributedUsageWindow(dataset, dateString) {
+        const readingDates = getUtilityEntryExperimentTotalPowerReadingDates(dataset);
+        if (readingDates.length < 2) return null;
+
+        let startIndex = -1;
+        for (let index = 0; index < readingDates.length; index += 1) {
+            if (readingDates[index] <= dateString) {
+                startIndex = index;
+                continue;
+            }
+            break;
+        }
+        if (startIndex < 0 || startIndex >= readingDates.length - 1) return null;
+
+        const startDate = readingDates[startIndex];
+        const endDate = readingDates[startIndex + 1];
+        const distributedDates = getUtilityEntryExperimentDistributedDates(startDate, endDate);
+        if (!distributedDates.includes(dateString)) return null;
+
+        const startReading = getUtilityEntryExperimentTotalPowerReading(dataset, startDate);
+        const endReading = getUtilityEntryExperimentTotalPowerReading(dataset, endDate);
+        if (!Number.isFinite(startReading) || !Number.isFinite(endReading)) return null;
+        return { startDate, endDate, startReading, endReading, distributedDates };
+    }
+
+    function getUtilityEntryExperimentFirstTotalPowerReadingInMonth(dataset, monthValue) {
+        const normalizedMonth = String(monthValue || '').trim();
+        if (!/^\d{4}-\d{2}$/.test(normalizedMonth)) return null;
+        const dateString = getUtilityEntryExperimentTotalPowerReadingDates(dataset)
+            .find(candidate => candidate.startsWith(`${normalizedMonth}-`));
+        if (!dateString) return null;
+        const value = getUtilityEntryExperimentTotalPowerReading(dataset, dateString);
+        return Number.isFinite(value) ? { dateString, value } : null;
+    }
+
+    function calculateUtilityEntryExperimentEquipmentAlignedUsageBetweenDates(
+        dataset,
+        equipmentId,
+        startDate,
+        endDate,
+        resourceType,
+        options = {}
+    ) {
+        if (equipmentId === UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID && resourceType !== 'gas') return null;
+
+        if (equipmentId === UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_ID && resourceType !== 'gas') {
+            const monthValue = getUtilityEntryExperimentSharedCompressorRuleMonthValue(
+                String(endDate || '').slice(0, 7),
+                endDate,
+                options
+            );
+            return sumUtilityEntryExperimentStrictValues(getUtilityEntryExperimentSharedCompressorSourceIds(monthValue).map(id =>
+                calculateUtilityEntryExperimentEquipmentAlignedUsageBetweenDates(
+                    dataset,
+                    id,
+                    startDate,
+                    endDate,
+                    resourceType,
+                    options
+                )
+            ));
+        }
+
+        if (isUtilityEntryExperimentSharedCompressorAllocationId(equipmentId) && resourceType !== 'gas') {
+            if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) return null;
+            const sharedUsage = calculateUtilityEntryExperimentEquipmentAlignedUsageBetweenDates(
+                dataset,
+                UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_ID,
+                startDate,
+                endDate,
+                resourceType,
+                options
+            );
+            const ratio = UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_ALLOCATION_RATIOS[equipmentId];
+            return Number.isFinite(sharedUsage) && Number.isFinite(ratio) ? sharedUsage * ratio : null;
+        }
+
+        return calculateUtilityEntryExperimentEquipmentUsageBetweenReadings(
+            dataset,
+            equipmentId,
+            startDate,
+            endDate,
+            resourceType
+        );
+    }
+
+    function calculateUtilityEntryExperimentOtherUsageForWindow(
+        dataset,
+        usageWindow,
+        resourceType,
+        options = {}
+    ) {
+        if (resourceType === 'gas' || !usageWindow) return null;
+        const { startDate, endDate, startReading, endReading } = usageWindow;
+        if (!startDate || !endDate || !Number.isFinite(startReading) || !Number.isFinite(endReading)) return null;
+
+        const dayDivisor = usageWindow.distributedDates?.length || 1;
+        const totalPowerUsage = ((endReading - startReading) * UTILITY_ENTRY_EXPERIMENT_TOTAL_POWER_FACTOR) / dayDivisor;
+        if (!Number.isFinite(totalPowerUsage)) return null;
+
+        const monthValue = getUtilityEntryExperimentSharedCompressorRuleMonthValue(
+            String(endDate || '').slice(0, 7),
+            endDate,
+            options
+        );
+        const equipmentUsages = getUtilityEntryExperimentEquipmentSummaryIds(dataset).map(id =>
+            calculateUtilityEntryExperimentEquipmentSummaryUsage(
+                dataset,
+                id,
+                (sourceDataset, sourceId) => {
+                    const usage = calculateUtilityEntryExperimentEquipmentAlignedUsageBetweenDates(
+                        sourceDataset,
+                        sourceId,
+                        startDate,
+                        endDate,
+                        resourceType,
+                        options
+                    );
+                    return Number.isFinite(usage) ? usage / dayDivisor : null;
+                },
+                monthValue,
+                options
+            )
+        );
+        const equipmentUsage = sumUtilityEntryExperimentStrictValues(equipmentUsages);
+        if (!Number.isFinite(equipmentUsage)) return null;
+        return Math.max(0, totalPowerUsage - equipmentUsage);
     }
 
     function getUtilityEntryExperimentReactivePowerReading(values = {}) {
@@ -802,27 +1003,12 @@
 
     function calculateUtilityEntryExperimentEquipmentDailyUsage(dataset, equipmentId, dateString, resourceType, options = {}) {
         if (equipmentId === UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID && resourceType !== 'gas') {
-            const monthValue = String(dateString || '').slice(0, 7);
-            const totalPowerUsage = sumUtilityEntryExperimentValues(getUtilityEntryExperimentConfiguredTotalPowerIds(dataset).map(id =>
-                calculateUtilityEntryExperimentEquipmentDailyUsage(dataset, id, dateString, resourceType, options)
-            ));
-            if (!Number.isFinite(totalPowerUsage)) return null;
-            const equipmentUsage = sumUtilityEntryExperimentValues(getUtilityEntryExperimentEquipmentSummaryIds(dataset).map(id =>
-                calculateUtilityEntryExperimentEquipmentSummaryUsage(
-                    dataset,
-                    id,
-                    (sourceDataset, sourceId) => calculateUtilityEntryExperimentEquipmentDailyUsage(
-                        sourceDataset,
-                        sourceId,
-                        dateString,
-                        resourceType,
-                        options
-                    ),
-                    monthValue,
-                    options
-                )
-            )) || 0;
-            return totalPowerUsage - equipmentUsage;
+            return calculateUtilityEntryExperimentOtherUsageForWindow(
+                dataset,
+                getUtilityEntryExperimentTotalPowerDistributedUsageWindow(dataset, dateString),
+                resourceType,
+                options
+            );
         }
 
         if (equipmentId === UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_ID && resourceType !== 'gas') {
@@ -846,7 +1032,7 @@
         }
 
         if (isUtilityEntryExperimentSharedCompressorAllocationId(equipmentId) && resourceType !== 'gas') {
-            if (options.beforeCorrection) return null;
+            if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) return null;
             const monthValue = String(dateString || '').slice(0, 7);
             return calculateUtilityEntryExperimentSharedCompressorAllocationUsage(
                 dataset,
@@ -883,27 +1069,12 @@
 
     function calculateUtilityEntryExperimentEquipmentPeriodUsage(dataset, equipmentId, dateString, resourceType, options = {}) {
         if (equipmentId === UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID && resourceType !== 'gas') {
-            const monthValue = String(dateString || '').slice(0, 7);
-            const totalPowerUsage = sumUtilityEntryExperimentValues(getUtilityEntryExperimentConfiguredTotalPowerIds(dataset).map(id =>
-                calculateUtilityEntryExperimentEquipmentPeriodUsage(dataset, id, dateString, resourceType, options)
-            ));
-            if (!Number.isFinite(totalPowerUsage)) return null;
-            const equipmentUsage = sumUtilityEntryExperimentValues(getUtilityEntryExperimentEquipmentSummaryIds(dataset).map(id =>
-                calculateUtilityEntryExperimentEquipmentSummaryUsage(
-                    dataset,
-                    id,
-                    (sourceDataset, sourceId) => calculateUtilityEntryExperimentEquipmentPeriodUsage(
-                        sourceDataset,
-                        sourceId,
-                        dateString,
-                        resourceType,
-                        options
-                    ),
-                    monthValue,
-                    options
-                )
-            )) || 0;
-            return totalPowerUsage - equipmentUsage;
+            return calculateUtilityEntryExperimentOtherUsageForWindow(
+                dataset,
+                getUtilityEntryExperimentTotalPowerRecentUsageWindow(dataset, dateString),
+                resourceType,
+                options
+            );
         }
 
         if (equipmentId === UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_ID && resourceType !== 'gas') {
@@ -927,7 +1098,7 @@
         }
 
         if (isUtilityEntryExperimentSharedCompressorAllocationId(equipmentId) && resourceType !== 'gas') {
-            if (options.beforeCorrection) return null;
+            if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) return null;
             const monthValue = String(dateString || '').slice(0, 7);
             return calculateUtilityEntryExperimentSharedCompressorAllocationUsage(
                 dataset,
@@ -990,24 +1161,22 @@
 
     function calculateUtilityEntryExperimentEquipmentMonthlyUsage(dataset, equipmentId, monthValue, resourceType, options = {}) {
         if (equipmentId === UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID && resourceType !== 'gas') {
-            const totalPowerUsage = calculateUtilityEntryExperimentElectricTotalPowerUsage(dataset, monthValue);
-            if (Number.isFinite(totalPowerUsage)) {
-                const equipmentUsage = sumUtilityEntryExperimentValues(getUtilityEntryExperimentEquipmentSummaryIds(dataset).map(id =>
-                    calculateUtilityEntryExperimentEquipmentSummaryUsage(
-                        dataset,
-                        id,
-                        (sourceDataset, sourceId) => calculateUtilityEntryExperimentEquipmentMonthlyUsage(
-                            sourceDataset,
-                            sourceId,
-                            monthValue,
-                            resourceType,
-                            options
-                        ),
-                        monthValue,
-                        options
-                    )
-                )) || 0;
-                return totalPowerUsage - equipmentUsage;
+            const startMonth = String(monthValue || '').trim();
+            const endMonth = shiftUtilityEntryExperimentMonthValue(startMonth, 1);
+            const startReading = getUtilityEntryExperimentTotalPowerReading(dataset, `${startMonth}-01`);
+            const endReading = getUtilityEntryExperimentTotalPowerReading(dataset, `${endMonth}-01`);
+            if (Number.isFinite(startReading) && Number.isFinite(endReading)) {
+                return calculateUtilityEntryExperimentOtherUsageForWindow(
+                    dataset,
+                    {
+                        startDate: `${startMonth}-01`,
+                        endDate: `${endMonth}-01`,
+                        startReading,
+                        endReading
+                    },
+                    resourceType,
+                    options
+                );
             }
             const dailyValues = getUtilityEntryExperimentMonthDateStrings(monthValue)
                 .map(dateString => calculateUtilityEntryExperimentEquipmentDailyUsage(dataset, equipmentId, dateString, resourceType, options));
@@ -1034,7 +1203,7 @@
         }
 
         if (isUtilityEntryExperimentSharedCompressorAllocationId(equipmentId) && resourceType !== 'gas') {
-            if (options.beforeCorrection) return null;
+            if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) return null;
             return calculateUtilityEntryExperimentSharedCompressorAllocationUsage(
                 dataset,
                 (sourceDataset, sourceId) => calculateUtilityEntryExperimentEquipmentMonthlyUsage(
@@ -1080,34 +1249,33 @@
         if (!/^\d{4}-\d{2}$/.test(monthValue)) return null;
 
         if (equipmentId === UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID && resourceType !== 'gas') {
-            const usageMonthValue = getUtilityEntryExperimentDailyMonthUsageMonthValue(
-                dataset,
-                UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID,
-                dateString,
-                resourceType,
-                options
-            );
-            const totalPowerUsage = sumUtilityEntryExperimentValues(getUtilityEntryExperimentConfiguredTotalPowerIds(dataset).map(id =>
-                calculateUtilityEntryExperimentEquipmentDailyMonthUsage(dataset, id, dateString, resourceType, options)
-            ));
-            if (!Number.isFinite(totalPowerUsage)) return null;
-
-            const equipmentUsage = sumUtilityEntryExperimentValues(getUtilityEntryExperimentEquipmentSummaryIds(dataset).map(id =>
-                calculateUtilityEntryExperimentEquipmentSummaryUsage(
+            const monthStartReading = getUtilityEntryExperimentFirstTotalPowerReadingInMonth(dataset, monthValue);
+            if (!monthStartReading) return null;
+            if (dateString === monthStartReading.dateString) {
+                return calculateUtilityEntryExperimentEquipmentMonthlyUsage(
                     dataset,
-                    id,
-                    (sourceDataset, sourceId) => calculateUtilityEntryExperimentEquipmentDailyMonthUsage(
-                        sourceDataset,
-                        sourceId,
-                        dateString,
-                        resourceType,
-                        options
-                    ),
-                    usageMonthValue,
+                    equipmentId,
+                    shiftUtilityEntryExperimentMonthValue(monthValue, -1),
+                    resourceType,
                     options
-                )
-            )) || 0;
-            return totalPowerUsage - equipmentUsage;
+                );
+            }
+            if (dateString > monthStartReading.dateString) {
+                const endReading = getUtilityEntryExperimentTotalPowerReading(dataset, dateString);
+                if (!Number.isFinite(endReading)) return null;
+                return calculateUtilityEntryExperimentOtherUsageForWindow(
+                    dataset,
+                    {
+                        startDate: monthStartReading.dateString,
+                        endDate: dateString,
+                        startReading: monthStartReading.value,
+                        endReading
+                    },
+                    resourceType,
+                    options
+                );
+            }
+            return null;
         }
 
         if (equipmentId === UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_ID && resourceType !== 'gas') {
@@ -1139,7 +1307,7 @@
         }
 
         if (isUtilityEntryExperimentSharedCompressorAllocationId(equipmentId) && resourceType !== 'gas') {
-            if (options.beforeCorrection) return null;
+            if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) return null;
             const usageMonthValue = getUtilityEntryExperimentDailyMonthUsageMonthValue(
                 dataset,
                 UTILITY_ENTRY_EXPERIMENT_COMPRESSOR_FIELD_ID,
@@ -1202,6 +1370,35 @@
         return numericValues.length ? numericValues.reduce((sum, value) => sum + value, 0) : null;
     }
 
+    function sumUtilityEntryExperimentStrictValues(values) {
+        return values.length && values.every(value => Number.isFinite(value))
+            ? values.reduce((sum, value) => sum + value, 0)
+            : null;
+    }
+
+    function getUtilityEntryExperimentRawReadingValue(values = {}, equipmentId = '') {
+        return parseUtilityEntryExperimentNumber(values?.[equipmentId]);
+    }
+
+    function getUtilityEntryExperimentActualDisplayReading(dataset, equipmentId, dateString, values, resourceType) {
+        if (equipmentId === UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID && resourceType !== 'gas') {
+            return null;
+        }
+        return getUtilityEntryExperimentRawReadingValue(values, equipmentId);
+    }
+
+    function sumUtilityEntryExperimentDisplayReadings(dataset, equipmentIds, dateString, values, resourceType) {
+        return sumUtilityEntryExperimentValues(equipmentIds.map(id =>
+            getUtilityEntryExperimentActualDisplayReading(dataset, id, dateString, values, resourceType)
+        ));
+    }
+
+    function areUtilityEntryExperimentDisplayReadingsReady(dataset, equipmentIds, dateString, values, resourceType) {
+        return equipmentIds.every(id => Number.isFinite(
+            getUtilityEntryExperimentActualDisplayReading(dataset, id, dateString, values, resourceType)
+        ));
+    }
+
     function shouldApplyUtilityEntryExperimentLiquidTeamCorrection(monthValue) {
         return UTILITY_ENTRY_EXPERIMENT_LIQUID_TEAM_CORRECTION_SOURCE_IDS.length > 0
             && /^\d{4}-\d{2}$/.test(String(monthValue || '').trim())
@@ -1229,20 +1426,68 @@
     function getUtilityEntryExperimentSharedCompressorAllocationReadyIds(monthValue = '') {
         return [
             UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID,
-            UTILITY_ENTRY_EXPERIMENT_LIQUID2_FIELD_ID,
             ...getUtilityEntryExperimentSharedCompressorSourceIds(monthValue)
         ];
+    }
+
+    function isUtilityEntryExperimentCorrectionSourceInputFieldId(equipmentId, monthValue = '') {
+        if (!shouldApplyUtilityEntryExperimentSharedCompressor(monthValue)) return false;
+        return getUtilityEntryExperimentSharedCompressorAllocationReadyIds(monthValue).includes(equipmentId);
+    }
+
+    function getUtilityEntryExperimentCorrectionRequiredFieldIds(monthValue = '') {
+        if (!shouldApplyUtilityEntryExperimentSharedCompressor(monthValue)) return [];
+        return getUtilityEntryExperimentSharedCompressorAllocationReadyIds(monthValue);
+    }
+
+    function getUtilityEntryExperimentCorrectionReadinessFromValues(values = {}, monthValue = '') {
+        const requiredIds = getUtilityEntryExperimentCorrectionRequiredFieldIds(monthValue);
+        const missingIds = requiredIds.filter(id => !hasUtilityEntryExperimentFilledValue(values?.[id]));
+        return {
+            ready: requiredIds.length === 0 || missingIds.length === 0,
+            requiredIds,
+            missingIds,
+            missingLabels: missingIds.map(id => getUtilityEntryExperimentCompletionFieldLabel('electric', id))
+        };
+    }
+
+    function getUtilityEntryExperimentCorrectionReadinessFromInputs(host, monthValue = '') {
+        const requiredIds = getUtilityEntryExperimentCorrectionRequiredFieldIds(monthValue);
+        if (!requiredIds.length) {
+            return {
+                ready: true,
+                requiredIds,
+                missingIds: [],
+                missingLabels: []
+            };
+        }
+
+        const dailyView = host?.querySelector?.('.utility-entry-experiment-view.is-daily') || host;
+        const requiredSet = new Set(requiredIds);
+        const valuesById = new Map();
+        Array.from(dailyView?.querySelectorAll?.(
+            '.utility-entry-experiment-input[data-utility-entry-experiment-save-kind="daily-current"]'
+        ) || []).forEach(input => {
+            const resourceType = input.dataset?.utilityEntryExperimentResourceType || 'electric';
+            if (normalizeUtilityEntryExperimentResourceType(resourceType) !== 'electric') return;
+
+            const fieldId = resolveUtilityEntryExperimentDailyInputFieldId(input, resourceType);
+            if (!requiredSet.has(fieldId) || valuesById.has(fieldId)) return;
+            valuesById.set(fieldId, normalizeUtilityEntryExperimentNumberText(input.value));
+        });
+
+        const missingIds = requiredIds.filter(id => !hasUtilityEntryExperimentFilledValue(valuesById.get(id)));
+        return {
+            ready: missingIds.length === 0,
+            requiredIds,
+            missingIds,
+            missingLabels: missingIds.map(id => getUtilityEntryExperimentCompletionFieldLabel('electric', id))
+        };
     }
 
     function getUtilityEntryExperimentDailyMonthUsageMonthValue(dataset, equipmentId, dateString, resourceType, options = {}) {
         const monthValue = String(dateString || '').slice(0, 7);
         if (!/^\d{4}-\d{2}$/.test(monthValue)) return '';
-        if (
-            options.forceCurrentMonthBoundary === true &&
-            isUtilityEntryExperimentLiquidCompressorStartDate(dateString)
-        ) {
-            return monthValue;
-        }
 
         const monthStartReading = getUtilityEntryExperimentFirstReadingInMonth(dataset, equipmentId, monthValue);
         if (monthStartReading && dateString === monthStartReading.dateString) {
@@ -1272,12 +1517,41 @@
     }
 
     function adjustUtilityEntryExperimentLiquidUsage(dataset, equipmentId, usage, resolveUsage, monthValue, options = {}) {
-        if (options.beforeCorrection) return usage;
+        if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) return usage;
         if (equipmentId !== UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID || !Number.isFinite(usage)) return usage;
 
         const correction = calculateUtilityEntryExperimentLiquidTeamCorrectionUsage(dataset, resolveUsage, monthValue);
         if (!correction.ready || !Number.isFinite(correction.total)) return usage;
         return usage - correction.total;
+    }
+
+    function calculateUtilityEntryExperimentLiquidTeamCorrectionReading(dataset, dateString, values, resourceType, monthValue) {
+        if (!shouldApplyUtilityEntryExperimentLiquidTeamCorrection(monthValue)) {
+            return { ready: true, total: 0 };
+        }
+
+        const sourceIds = UTILITY_ENTRY_EXPERIMENT_LIQUID_TEAM_CORRECTION_SOURCE_IDS;
+        const total = sumUtilityEntryExperimentDisplayReadings(dataset, sourceIds, dateString, values, resourceType);
+        return {
+            ready: sourceIds.length > 0 &&
+                areUtilityEntryExperimentDisplayReadingsReady(dataset, sourceIds, dateString, values, resourceType),
+            total
+        };
+    }
+
+    function adjustUtilityEntryExperimentLiquidReading(dataset, equipmentId, reading, dateString, values, resourceType, monthValue, options = {}) {
+        if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) return reading;
+        if (equipmentId !== UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID || !Number.isFinite(reading)) return reading;
+
+        const correction = calculateUtilityEntryExperimentLiquidTeamCorrectionReading(
+            dataset,
+            dateString,
+            values,
+            resourceType,
+            monthValue
+        );
+        if (!correction.ready || !Number.isFinite(correction.total)) return reading;
+        return reading - correction.total;
     }
 
     function calculateUtilityEntryExperimentEquipmentSummaryUsage(dataset, equipmentId, resolveUsage, monthValue, options = {}) {
@@ -1291,8 +1565,12 @@
         );
     }
 
+    function calculateUtilityEntryExperimentDailyRowUsage(dataset, equipmentId, resolveUsage, monthValue, options = {}) {
+        return calculateUtilityEntryExperimentEquipmentSummaryUsage(dataset, equipmentId, resolveUsage, monthValue, options);
+    }
+
     function calculateUtilityEntryExperimentLiquidTeamGroupUsage(dataset, resolveUsage, monthValue, options = {}) {
-        if (options.beforeCorrection) return null;
+        if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) return null;
         if (!shouldApplyUtilityEntryExperimentLiquidTeamCorrection(monthValue)) return null;
 
         const liquidUsage = calculateUtilityEntryExperimentEquipmentSummaryUsage(
@@ -1304,10 +1582,124 @@
         );
         if (!Number.isFinite(liquidUsage)) return null;
 
-        return sumUtilityEntryExperimentValues([
+        return sumUtilityEntryExperimentStrictValues([
             liquidUsage,
             resolveUsage(dataset, UTILITY_ENTRY_EXPERIMENT_LIQUID2_FIELD_ID)
         ]);
+    }
+
+    function calculateUtilityEntryExperimentEquipmentSummaryReading(
+        dataset,
+        equipmentId,
+        dateString,
+        values,
+        resourceType,
+        monthValue,
+        options = {}
+    ) {
+        if (
+            resourceType === 'electric' &&
+            isUtilityEntryExperimentBeforeCorrectionOptions(options) &&
+            (
+                equipmentId === UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_ID ||
+                isUtilityEntryExperimentSharedCompressorAllocationId(equipmentId)
+            )
+        ) {
+            return getUtilityEntryExperimentRawReadingValue(values, equipmentId);
+        }
+
+        if (resourceType === 'electric' && equipmentId === UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_ID) {
+            return calculateUtilityEntryExperimentSharedCompressorAggregateReading(
+                dataset,
+                dateString,
+                values,
+                resourceType,
+                monthValue
+            );
+        }
+
+        if (resourceType === 'electric' && isUtilityEntryExperimentSharedCompressorAllocationId(equipmentId)) {
+            if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) return null;
+            return calculateUtilityEntryExperimentSharedCompressorAllocationReading(
+                dataset,
+                dateString,
+                values,
+                resourceType,
+                monthValue,
+                equipmentId
+            );
+        }
+
+        return adjustUtilityEntryExperimentLiquidReading(
+            dataset,
+            equipmentId,
+            getUtilityEntryExperimentActualDisplayReading(dataset, equipmentId, dateString, values, resourceType),
+            dateString,
+            values,
+            resourceType,
+            monthValue,
+            options
+        );
+    }
+
+    function calculateUtilityEntryExperimentDailyRowReading(
+        dataset,
+        equipmentId,
+        dateString,
+        values,
+        resourceType,
+        monthValue,
+        options = {}
+    ) {
+        return calculateUtilityEntryExperimentEquipmentSummaryReading(
+            dataset,
+            equipmentId,
+            dateString,
+            values,
+            resourceType,
+            monthValue,
+            options
+        );
+    }
+
+    function getUtilityEntryExperimentEquipmentSummaryReadingDisplayValue(equipmentId, value, options = {}) {
+        if (
+            !isUtilityEntryExperimentBeforeCorrectionOptions(options) &&
+            isUtilityEntryExperimentSharedCompressorAllocationId(equipmentId)
+        ) {
+            return roundUtilityEntryExperimentNumber(value, 2);
+        }
+        return value;
+    }
+
+    function calculateUtilityEntryExperimentLiquidTeamGroupReading(
+        dataset,
+        dateString,
+        values,
+        resourceType,
+        monthValue,
+        options = {}
+    ) {
+        if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) return null;
+        if (!shouldApplyUtilityEntryExperimentLiquidTeamCorrection(monthValue)) return null;
+
+        const liquidReading = calculateUtilityEntryExperimentEquipmentSummaryReading(
+            dataset,
+            UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID,
+            dateString,
+            values,
+            resourceType,
+            monthValue,
+            options
+        );
+        const liquid2Reading = getUtilityEntryExperimentActualDisplayReading(
+            dataset,
+            UTILITY_ENTRY_EXPERIMENT_LIQUID2_FIELD_ID,
+            dateString,
+            values,
+            resourceType
+        );
+        return sumUtilityEntryExperimentStrictValues([liquidReading, liquid2Reading]);
     }
 
     function getUtilityEntryExperimentSharedCompressorRuleMonthValue(monthValue, dateString = '', options = {}) {
@@ -1318,12 +1710,6 @@
             options.useSettlementBoundaryMonth === true
         ) {
             return normalizedMonthValue;
-        }
-        if (
-            isUtilityEntryExperimentLiquidCompressorStartDate(normalizedDateString) &&
-            options.forceCurrentMonthBoundary === true
-        ) {
-            return normalizedDateString.slice(0, 7);
         }
         if (
             /^\d{4}-\d{2}-\d{2}$/.test(normalizedDateString) &&
@@ -1371,10 +1757,29 @@
         );
     }
 
+    function isUtilityEntryExperimentLiquidTeamGroup(groupLabel, equipmentIds = []) {
+        return groupLabel === '3팀' ||
+            (
+                Array.isArray(equipmentIds) &&
+                equipmentIds.includes(UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID) &&
+                equipmentIds.includes(UTILITY_ENTRY_EXPERIMENT_LIQUID2_FIELD_ID)
+            );
+    }
+
     function areUtilityEntryExperimentSharedCompressorAllocationSourcesReady(dataset, resolveUsage, isSourceReady, monthValue = '') {
         return getUtilityEntryExperimentSharedCompressorAllocationReadyIds(monthValue).every(id =>
             Number.isFinite(resolveUsage(dataset, id)) &&
             (typeof isSourceReady !== 'function' || isSourceReady(dataset, id))
+        );
+    }
+
+    function areUtilityEntryExperimentSharedCompressorAllocationReadingsReady(dataset, values, dateString, resourceType, monthValue = '') {
+        return areUtilityEntryExperimentDisplayReadingsReady(
+            dataset,
+            getUtilityEntryExperimentSharedCompressorAllocationReadyIds(monthValue),
+            dateString,
+            values,
+            resourceType
         );
     }
 
@@ -1399,6 +1804,29 @@
         return sharedUsage.ready && Number.isFinite(sharedUsage.total) ? sharedUsage.total : null;
     }
 
+    function calculateUtilityEntryExperimentSharedCompressorReading(dataset, dateString, values, resourceType, monthValue = '') {
+        const sourceIds = getUtilityEntryExperimentSharedCompressorSourceIds(monthValue);
+        const total = sumUtilityEntryExperimentDisplayReadings(dataset, sourceIds, dateString, values, resourceType);
+        return {
+            ready: sourceIds.length > 0 &&
+                areUtilityEntryExperimentDisplayReadingsReady(dataset, sourceIds, dateString, values, resourceType),
+            total
+        };
+    }
+
+    function calculateUtilityEntryExperimentSharedCompressorAggregateReading(dataset, dateString, values, resourceType, monthValue = '') {
+        if (!shouldApplyUtilityEntryExperimentSharedCompressor(monthValue)) return null;
+
+        const sharedReading = calculateUtilityEntryExperimentSharedCompressorReading(
+            dataset,
+            dateString,
+            values,
+            resourceType,
+            monthValue
+        );
+        return sharedReading.ready && Number.isFinite(sharedReading.total) ? sharedReading.total : null;
+    }
+
     function calculateUtilityEntryExperimentSharedCompressorAllocationUsage(
         dataset,
         resolveUsage,
@@ -1420,6 +1848,115 @@
         return Number.isFinite(sharedUsage) && Number.isFinite(ratio) ? sharedUsage * ratio : null;
     }
 
+    function calculateUtilityEntryExperimentSharedCompressorAllocationReading(
+        dataset,
+        dateString,
+        values,
+        resourceType,
+        monthValue,
+        equipmentId
+    ) {
+        if (!areUtilityEntryExperimentSharedCompressorAllocationReadingsReady(dataset, values, dateString, resourceType, monthValue)) {
+            return null;
+        }
+
+        const sharedReading = calculateUtilityEntryExperimentSharedCompressorAggregateReading(
+            dataset,
+            dateString,
+            values,
+            resourceType,
+            monthValue
+        );
+        const ratio = UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_ALLOCATION_RATIOS[equipmentId];
+        return Number.isFinite(sharedReading) && Number.isFinite(ratio) ? sharedReading * ratio : null;
+    }
+
+    function calculateUtilityEntryExperimentElectricGroupSharedReading(
+        dataset,
+        monthValue,
+        groupLabel,
+        equipmentIds,
+        dateString,
+        values,
+        resourceType,
+        options = {}
+    ) {
+        if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) {
+            return sumUtilityEntryExperimentDisplayReadings(dataset, equipmentIds, dateString, values, resourceType);
+        }
+
+        const allocationReady = areUtilityEntryExperimentSharedCompressorAllocationReadingsReady(
+            dataset,
+            values,
+            dateString,
+            resourceType,
+            monthValue
+        );
+
+        if (isUtilityEntryExperimentLiquidTeamGroup(groupLabel, equipmentIds) && allocationReady) {
+            const liquidTeamReading = calculateUtilityEntryExperimentLiquidTeamGroupReading(
+                dataset,
+                dateString,
+                values,
+                resourceType,
+                monthValue,
+                options
+            );
+            return Number.isFinite(liquidTeamReading) ? liquidTeamReading : null;
+        }
+
+        if (groupLabel === '컴프레셔') {
+            if (!shouldApplyUtilityEntryExperimentSharedCompressor(monthValue)) {
+                return sumUtilityEntryExperimentDisplayReadings(dataset, equipmentIds, dateString, values, resourceType);
+            }
+
+            const sharedReading = calculateUtilityEntryExperimentSharedCompressorReading(
+                dataset,
+                dateString,
+                values,
+                resourceType,
+                monthValue
+            );
+            return sharedReading.ready && Number.isFinite(sharedReading.total) ? sharedReading.total : null;
+        }
+
+        const baseIds = equipmentIds.filter(id =>
+            !isUtilityEntryExperimentSharedCompressorSourceId(id, monthValue) &&
+            !isUtilityEntryExperimentSharedCompressorAllocationId(id)
+        );
+        if (!shouldApplyUtilityEntryExperimentSharedCompressor(monthValue)) {
+            return sumUtilityEntryExperimentDisplayReadings(dataset, equipmentIds, dateString, values, resourceType);
+        }
+        if (!allocationReady) {
+            return sumUtilityEntryExperimentDisplayReadings(dataset, equipmentIds, dateString, values, resourceType);
+        }
+
+        const baseReading = sumUtilityEntryExperimentDisplayReadings(dataset, baseIds, dateString, values, resourceType);
+        const sharedReading = calculateUtilityEntryExperimentSharedCompressorReading(
+            dataset,
+            dateString,
+            values,
+            resourceType,
+            monthValue
+        );
+        const components = [];
+        if (Number.isFinite(baseReading)) components.push(baseReading);
+
+        if (sharedReading.ready) {
+            const ratio = UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_RATIOS[groupLabel];
+            if (Number.isFinite(ratio) && Number.isFinite(sharedReading.total)) {
+                components.push(sharedReading.total * ratio);
+            }
+        } else if (
+            groupLabel === UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_FALLBACK_GROUP &&
+            Number.isFinite(sharedReading.total)
+        ) {
+            components.push(sharedReading.total);
+        }
+
+        return sumUtilityEntryExperimentValues(components);
+    }
+
     function calculateUtilityEntryExperimentElectricGroupSharedUsage(
         dataset,
         monthValue,
@@ -1429,7 +1966,7 @@
         isSourceReady,
         options = {}
     ) {
-        if (options.beforeCorrection) {
+        if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) {
             return sumUtilityEntryExperimentValues(equipmentIds.map(id => resolveUsage(dataset, id)));
         }
 
@@ -1440,9 +1977,9 @@
             monthValue
         );
 
-        if (groupLabel === '3팀' && allocationReady) {
+        if (isUtilityEntryExperimentLiquidTeamGroup(groupLabel, equipmentIds) && allocationReady) {
             const liquidTeamUsage = calculateUtilityEntryExperimentLiquidTeamGroupUsage(dataset, resolveUsage, monthValue, options);
-            if (Number.isFinite(liquidTeamUsage)) return liquidTeamUsage;
+            return Number.isFinite(liquidTeamUsage) ? liquidTeamUsage : null;
         }
 
         if (groupLabel === '컴프레셔') {
@@ -1527,6 +2064,12 @@
         const requiredIds = getUtilityEntryExperimentCompletionRequiredIds(dataset, resourceType, dateString);
         const filledIds = requiredIds.filter(equipmentId => hasUtilityEntryExperimentFilledValue(values[equipmentId]));
         const missingIds = requiredIds.filter(equipmentId => !hasUtilityEntryExperimentFilledValue(values[equipmentId]));
+        const validationIssues = getUtilityEntryExperimentResourceDailyEntryValidationIssues(
+            dataset,
+            resourceType,
+            dateString,
+            requiredIds
+        );
         const state = filledIds.length === 0
             ? 'missing'
             : filledIds.length === requiredIds.length
@@ -1541,8 +2084,45 @@
             requiredCount: requiredIds.length,
             filledIds,
             missingIds,
-            missingLabels: missingIds.map(equipmentId => getUtilityEntryExperimentCompletionFieldLabel(resourceType, equipmentId))
+            missingLabels: missingIds.map(equipmentId => getUtilityEntryExperimentCompletionFieldLabel(resourceType, equipmentId)),
+            validationIssues,
+            errorCount: validationIssues.length
         };
+    }
+
+    function getUtilityEntryExperimentResourceDailyEntryValidationIssues(dataset, resourceType, dateString, fieldIds = null) {
+        const currentValues = getUtilityEntryExperimentEntryValues(dataset, dateString);
+        const previousDate = getUtilityEntryExperimentPreviousEntryDate(dataset, dateString);
+        if (!previousDate) return [];
+
+        const previousValues = getUtilityEntryExperimentEntryValues(dataset, previousDate);
+        const targetIds = Array.isArray(fieldIds)
+            ? fieldIds
+            : getUtilityEntryExperimentCompletionRequiredIds(dataset, resourceType, dateString);
+
+        return targetIds
+            .map(equipmentId => {
+                const currentText = normalizeUtilityEntryExperimentNumberText(currentValues[equipmentId]);
+                const previousText = normalizeUtilityEntryExperimentNumberText(previousValues[equipmentId]);
+                if (!currentText || !previousText) return null;
+
+                const currentValue = parseUtilityEntryExperimentNumber(currentText);
+                const previousValue = parseUtilityEntryExperimentNumber(previousText);
+                const resolvedCurrentValue = equipmentId === UTILITY_ENTRY_EXPERIMENT_STICK_FIELD_ID
+                    ? getUtilityEntryExperimentResolvedStickReadingValue(currentValue, previousValue)
+                    : currentValue;
+                if (!Number.isFinite(resolvedCurrentValue) || !Number.isFinite(previousValue) || resolvedCurrentValue >= previousValue) {
+                    return null;
+                }
+
+                return {
+                    equipmentId,
+                    label: getUtilityEntryExperimentCompletionFieldLabel(resourceType, equipmentId),
+                    previousValue,
+                    currentValue
+                };
+            })
+            .filter(Boolean);
     }
 
     function formatUtilityEntryExperimentResourceStatusLabel(status) {
@@ -1568,12 +2148,16 @@
         const visibleStatuses = state === 'partial'
             ? requiredStatuses
             : activeStatuses;
+        const validationIssues = resourceStatuses.flatMap(status => status.validationIssues || []);
 
         return {
             dateString,
             state,
             resources: visibleStatuses.map(formatUtilityEntryExperimentResourceStatusLabel),
-            resourceStatuses: visibleStatuses
+            resourceStatuses: visibleStatuses,
+            validationIssues,
+            errorCount: validationIssues.length,
+            hasErrors: validationIssues.length > 0
         };
     }
 
@@ -1838,6 +2422,7 @@
             const isDone = dateInfo.state === 'done';
             const isPartial = dateInfo.state === 'partial';
             const isSelected = dateString === normalizedSelectedDate;
+            const hasErrors = dateInfo.hasErrors === true || Number(dateInfo.errorCount || 0) > 0;
             if (isDone) {
                 doneCount += 1;
             } else if (isPartial) {
@@ -1849,13 +2434,14 @@
             const titleText = isDone || isPartial
                 ? `${dateString} ${dateInfo.resources.join(' / ')}`
                 : `${dateString} 미기입`;
+            const errorTitleText = hasErrors ? `${titleText} / 오류 ${Number(dateInfo.errorCount || 1)}건` : titleText;
             cells.push(`
                 <button
                     type="button"
-                    class="utility-entry-experiment-completed-day ${stateClass}${isSelected ? ' is-selected' : ''}"
+                    class="utility-entry-experiment-completed-day ${stateClass}${hasErrors ? ' has-error' : ''}${isSelected ? ' is-selected' : ''}"
                     data-utility-entry-experiment-date="${escapeUtilityEntryExperimentHtml(dateString)}"
                     aria-pressed="${isSelected ? 'true' : 'false'}"
-                    title="${escapeUtilityEntryExperimentHtml(titleText)}"
+                    title="${escapeUtilityEntryExperimentHtml(errorTitleText)}"
                 >
                     <span>${escapeUtilityEntryExperimentHtml(String(day))}</span>
                 </button>
@@ -1898,33 +2484,272 @@
 
     function getUtilityEntryExperimentCorrectionModeOptions(dateString = '') {
         if (!isUtilityEntryExperimentBeforeCorrectionAvailable(dateString)) return ['corrected'];
-        if (isUtilityEntryExperimentLiquidCompressorStartDate(dateString)) {
-            return ['before', 'corrected', 'corrected2'];
-        }
         return ['before', 'corrected'];
     }
 
-    function getUtilityEntryExperimentCorrectionMode(host, dateString = '') {
-        const modeOptions = getUtilityEntryExperimentCorrectionModeOptions(dateString);
-        const mode = String(host?.dataset?.utilityEntryExperimentCorrectionMode || 'corrected').trim();
-        return modeOptions.includes(mode) ? mode : 'corrected';
+    function isUtilityEntryExperimentCorrectedCorrectionMode(mode = '') {
+        return mode === 'corrected';
     }
 
-    function getUtilityEntryExperimentCorrectionOptions(host, resourceType, dateString = '') {
+    function getUtilityEntryExperimentCorrectionMode(host, dateString = '', readiness = null) {
+        const modeOptions = getUtilityEntryExperimentCorrectionModeOptions(dateString);
+        const mode = String(host?.dataset?.utilityEntryExperimentCorrectionMode || 'corrected').trim();
+        const normalizedMode = modeOptions.includes(mode) ? mode : 'corrected';
+        if (
+            readiness?.ready === false &&
+            isUtilityEntryExperimentCorrectedCorrectionMode(normalizedMode) &&
+            modeOptions.includes('before')
+        ) {
+            return 'before';
+        }
+        return normalizedMode;
+    }
+
+    function isUtilityEntryExperimentCorrectionEditUnlocked(host, dateString = '') {
+        if (host?.dataset?.utilityEntryExperimentCorrectionEditUnlocked !== 'true') return false;
+        const normalizedDateString = String(dateString || '').trim();
+        const editDateString = String(host?.dataset?.utilityEntryExperimentCorrectionEditDate || '').trim();
+        return !normalizedDateString || !editDateString || editDateString === normalizedDateString;
+    }
+
+    function setUtilityEntryExperimentCorrectionEditUnlocked(host, unlocked = false, dateString = '') {
+        if (!host?.dataset) return;
+        if (!unlocked) {
+            delete host.dataset.utilityEntryExperimentCorrectionEditUnlocked;
+            delete host.dataset.utilityEntryExperimentCorrectionEditDate;
+            return;
+        }
+        host.dataset.utilityEntryExperimentCorrectionEditUnlocked = 'true';
+        const normalizedDateString = String(dateString || '').trim();
+        if (normalizedDateString) {
+            host.dataset.utilityEntryExperimentCorrectionEditDate = normalizedDateString;
+        }
+    }
+
+    function getUtilityEntryExperimentCorrectionOptions(host, resourceType, dateString = '', options = {}) {
+        const correctionReadiness = resourceType === 'electric'
+            ? options.correctionReadiness || getUtilityEntryExperimentCorrectionReadinessFromValues(
+                options.values || {},
+                options.monthValue || String(dateString || '').slice(0, 7)
+            )
+            : {
+                ready: true,
+                requiredIds: [],
+                missingIds: [],
+                missingLabels: []
+            };
         const correctionMode = resourceType === 'electric'
-            ? getUtilityEntryExperimentCorrectionMode(host, dateString)
+            ? getUtilityEntryExperimentCorrectionMode(host, dateString, correctionReadiness)
             : 'corrected';
         const isTransitionDate = isUtilityEntryExperimentLiquidCompressorStartDate(dateString);
+        if (resourceType === 'electric' && host?.dataset && host.dataset.utilityEntryExperimentCorrectionMode !== correctionMode) {
+            host.dataset.utilityEntryExperimentCorrectionMode = correctionMode;
+        }
         return {
             correctionMode,
             beforeCorrection: resourceType === 'electric' && correctionMode === 'before',
+            editUnlocked: resourceType === 'electric' &&
+                correctionMode === 'before' &&
+                isUtilityEntryExperimentCorrectionEditUnlocked(host, dateString),
             useSettlementBoundaryMonth: resourceType === 'electric' &&
                 correctionMode === 'corrected' &&
                 isTransitionDate,
-            forceCurrentMonthBoundary: resourceType === 'electric' &&
-                correctionMode === 'corrected2' &&
-                isTransitionDate
+            correctionReadiness
         };
+    }
+
+    function isUtilityEntryExperimentBeforeCorrectionOptions(options = {}) {
+        return options?.beforeCorrection === true || String(options?.correctionMode || '').trim() === 'before';
+    }
+
+    function getUtilityEntryExperimentCorrectionManagedFieldIds(monthValue = '') {
+        const fieldIds = new Set();
+        if (!shouldApplyUtilityEntryExperimentSharedCompressor(monthValue)) {
+            return fieldIds;
+        }
+        fieldIds.add(UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_ID);
+        fieldIds.add(UTILITY_ENTRY_EXPERIMENT_TEAM1_SHARED_COMPRESSOR_ID);
+        fieldIds.add(UTILITY_ENTRY_EXPERIMENT_TEAM2_SHARED_COMPRESSOR_ID);
+        getUtilityEntryExperimentSharedCompressorAllocationReadyIds(monthValue)
+            .forEach(fieldId => fieldIds.add(fieldId));
+        return fieldIds;
+    }
+
+    function getUtilityEntryExperimentCorrectionCalculatedFieldIds(monthValue = '') {
+        const fieldIds = new Set();
+        if (!shouldApplyUtilityEntryExperimentSharedCompressor(monthValue)) {
+            return fieldIds;
+        }
+        fieldIds.add(UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_ID);
+        fieldIds.add(UTILITY_ENTRY_EXPERIMENT_TEAM1_SHARED_COMPRESSOR_ID);
+        fieldIds.add(UTILITY_ENTRY_EXPERIMENT_TEAM2_SHARED_COMPRESSOR_ID);
+        return fieldIds;
+    }
+
+    function getUtilityEntryExperimentCorrectionLockedFieldIds(monthValue = '', options = {}) {
+        if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) {
+            return getUtilityEntryExperimentCorrectionCalculatedFieldIds(monthValue);
+        }
+        return getUtilityEntryExperimentCorrectionManagedFieldIds(monthValue);
+    }
+
+    function isUtilityEntryExperimentCorrectionLockedDailyField(resourceType, fieldId, monthValue, options = {}) {
+        if (normalizeUtilityEntryExperimentResourceType(resourceType) !== 'electric') return false;
+        const normalizedFieldId = String(fieldId || '').trim();
+        return Boolean(normalizedFieldId) &&
+            getUtilityEntryExperimentCorrectionLockedFieldIds(monthValue, options).has(normalizedFieldId);
+    }
+
+    function getUtilityEntryExperimentDailyCurrentLabel(input) {
+        const label = String(input?.getAttribute?.('aria-label') || '').trim();
+        const suffix = ' 현재값';
+        return label.endsWith(suffix) ? label.slice(0, -suffix.length).trim() : '';
+    }
+
+    function resolveUtilityEntryExperimentDailyInputFieldId(input, resourceType = '') {
+        const fieldId = String(input?.dataset?.utilityEntryExperimentFieldId || '').trim();
+        if (fieldId) return fieldId;
+
+        const currentLabel = getUtilityEntryExperimentDailyCurrentLabel(input);
+        if (currentLabel) return getUtilityEntryExperimentDailyFieldId(resourceType, currentLabel);
+
+        if (input?.dataset?.utilityEntryExperimentSaveKind !== 'daily-current') return '';
+        const rowLabel = input
+            ?.closest?.('tr')
+            ?.querySelector?.('.is-item-cell')
+            ?.textContent
+            ?.trim?.();
+        return rowLabel ? getUtilityEntryExperimentDailyFieldId(resourceType, rowLabel) : '';
+    }
+
+    function setUtilityEntryExperimentDailyInputFieldMetadata(input, resourceType = '', fieldId = '') {
+        if (!input) return;
+        const normalizedResourceType = normalizeUtilityEntryExperimentResourceType(resourceType);
+        const normalizedFieldId = String(fieldId || '').trim();
+        if (normalizedResourceType) {
+            input.dataset.utilityEntryExperimentResourceType = normalizedResourceType;
+            input.setAttribute?.('data-utility-entry-experiment-resource-type', normalizedResourceType);
+        }
+        if (normalizedFieldId) {
+            input.dataset.utilityEntryExperimentFieldId = normalizedFieldId;
+            input.setAttribute?.('data-utility-entry-experiment-field-id', normalizedFieldId);
+        }
+    }
+
+    function setUtilityEntryExperimentCorrectionLockedInput(input, locked, options = {}) {
+        if (!input) return;
+        setUtilityEntryExperimentDailyInputFieldMetadata(input, options.resourceType, options.fieldId);
+        input.classList?.toggle?.('is-correction-locked', locked);
+        input.classList?.toggle?.('is-correction-editable', !locked && options.forceEditable === true);
+        if (locked) {
+            input.readOnly = true;
+            input.dataset.utilityEntryExperimentCorrectionManaged = 'true';
+            input.dataset.utilityEntryExperimentCorrectionLocked = 'true';
+            input.setAttribute?.('readonly', '');
+            input.setAttribute?.('aria-readonly', 'true');
+            input.setAttribute?.('title', '보정후 값은 보정전에서만 수정할 수 있습니다.');
+            return;
+        }
+
+        const shouldForceEditable = options.forceEditable === true;
+        if (
+            input.dataset.utilityEntryExperimentCorrectionLocked !== 'true' &&
+            input.dataset.utilityEntryExperimentCorrectionManaged !== 'true' &&
+            !shouldForceEditable
+        ) {
+            return;
+        }
+        input.readOnly = false;
+        input.disabled = false;
+        delete input.dataset.utilityEntryExperimentCorrectionLocked;
+        if (shouldForceEditable) {
+            input.dataset.utilityEntryExperimentCorrectionManaged = 'true';
+            input.dataset.entryMode = 'manual';
+            input.dataset.utilityEntryExperimentSaveKind = 'daily-current';
+            input.setAttribute?.('data-entry-mode', 'manual');
+            input.setAttribute?.('data-utility-entry-experiment-save-kind', 'daily-current');
+        } else {
+            delete input.dataset.utilityEntryExperimentCorrectionManaged;
+        }
+        input.removeAttribute?.('readonly');
+        input.removeAttribute?.('aria-readonly');
+        input.removeAttribute?.('disabled');
+        input.removeAttribute?.('title');
+    }
+
+    function unlockUtilityEntryExperimentCorrectionEditInputs(host, resourceType, monthValue = '') {
+        if (normalizeUtilityEntryExperimentResourceType(resourceType) !== 'electric') return;
+        if (!shouldApplyUtilityEntryExperimentSharedCompressor(monthValue)) return;
+        const dailyView = host?.querySelector?.('.utility-entry-experiment-view.is-daily') || host;
+        const editFieldIds = new Set(UTILITY_ENTRY_EXPERIMENT_CORRECTION_EDIT_FIELD_IDS);
+        Array.from(dailyView?.querySelectorAll?.('.utility-entry-experiment-input') || [])
+            .forEach(input => {
+                const inputResourceType = input.dataset.utilityEntryExperimentResourceType || resourceType;
+                if (normalizeUtilityEntryExperimentResourceType(inputResourceType) !== 'electric') return;
+
+                const fieldId = resolveUtilityEntryExperimentDailyInputFieldId(input, inputResourceType);
+                if (!editFieldIds.has(fieldId)) return;
+
+                setUtilityEntryExperimentCorrectionLockedInput(input, false, {
+                    resourceType: inputResourceType,
+                    fieldId,
+                    forceEditable: true
+                });
+            });
+    }
+
+    function unlockUtilityEntryExperimentBeforeCorrectionDailyCurrentInputs(host, resourceType, monthValue = '') {
+        if (normalizeUtilityEntryExperimentResourceType(resourceType) !== 'electric') return;
+        if (!shouldApplyUtilityEntryExperimentSharedCompressor(monthValue)) return;
+        const dailyView = host?.querySelector?.('.utility-entry-experiment-view.is-daily') || host;
+        Array.from(dailyView?.querySelectorAll?.(
+            '.utility-entry-experiment-input[data-utility-entry-experiment-save-kind="daily-current"]'
+        ) || []).forEach(input => {
+            if (input.dataset?.utilityEntryExperimentSaveKind !== 'daily-current') return;
+            if (!isUtilityEntryExperimentInputVisible(input)) return;
+
+            const inputResourceType = input.dataset.utilityEntryExperimentResourceType || resourceType;
+            if (normalizeUtilityEntryExperimentResourceType(inputResourceType) !== 'electric') return;
+
+            const fieldId = resolveUtilityEntryExperimentDailyInputFieldId(input, inputResourceType);
+            if (!fieldId) return;
+
+            setUtilityEntryExperimentCorrectionLockedInput(input, false, {
+                resourceType: inputResourceType,
+                fieldId,
+                forceEditable: true
+            });
+        });
+    }
+
+    function syncUtilityEntryExperimentCorrectionLockedDailyInputs(host, resourceType, monthValue, options = {}) {
+        if (normalizeUtilityEntryExperimentResourceType(resourceType) !== 'electric') return;
+
+        const dailyView = getUtilityEntryExperimentInputScope(host, { resourceType: 'electric' });
+        const managedFieldIds = getUtilityEntryExperimentCorrectionManagedFieldIds(monthValue);
+        const lockedFieldIds = getUtilityEntryExperimentCorrectionLockedFieldIds(monthValue, options);
+        Array.from(dailyView?.querySelectorAll?.('.utility-entry-experiment-input') || [])
+            .forEach(input => {
+                const inputResourceType = input.dataset.utilityEntryExperimentResourceType || resourceType;
+                const fieldId = resolveUtilityEntryExperimentDailyInputFieldId(input, inputResourceType);
+                const isManaged = normalizeUtilityEntryExperimentResourceType(inputResourceType) === 'electric' &&
+                    managedFieldIds.has(fieldId);
+                if (!isManaged && input.dataset.utilityEntryExperimentCorrectionManaged !== 'true') return;
+
+                const locked = normalizeUtilityEntryExperimentResourceType(inputResourceType) === 'electric' &&
+                    lockedFieldIds.has(fieldId);
+                setUtilityEntryExperimentCorrectionLockedInput(input, locked, {
+                    resourceType: inputResourceType,
+                    fieldId,
+                    forceEditable: isManaged && isUtilityEntryExperimentBeforeCorrectionOptions(options)
+                });
+            });
+        if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) {
+            unlockUtilityEntryExperimentBeforeCorrectionDailyCurrentInputs(host, resourceType, monthValue);
+        }
+        if (isUtilityEntryExperimentBeforeCorrectionOptions(options) && options.editUnlocked === true) {
+            unlockUtilityEntryExperimentCorrectionEditInputs(host, resourceType, monthValue);
+        }
     }
 
     function isUtilityEntryExperimentConditionalRowVisible(row, monthValue = '') {
@@ -1938,13 +2763,90 @@
         return true;
     }
 
-    function updateUtilityEntryExperimentConditionalRows(host, resourceType, monthValue = '') {
+    function isUtilityEntryExperimentCorrectionHiddenDailyRowField(fieldId = '', monthValue = '', options = {}) {
+        const normalizedFieldId = String(fieldId || '').trim();
+        if (!normalizedFieldId || !shouldApplyUtilityEntryExperimentSharedCompressor(monthValue)) return false;
+        if (isUtilityEntryExperimentBeforeCorrectionOptions(options)) {
+            return isUtilityEntryExperimentSharedCompressorAllocationId(normalizedFieldId);
+        }
+        return isUtilityEntryExperimentSharedCompressorSourceId(normalizedFieldId, monthValue);
+    }
+
+    function isUtilityEntryExperimentCorrectionHiddenDailyRow(row, resourceType, monthValue = '', options = {}) {
+        if (normalizeUtilityEntryExperimentResourceType(resourceType) !== 'electric') return false;
+        if (
+            String(row?.dataset?.utilityEntryExperimentCorrectionSourceRow || '') === 'true' &&
+            shouldApplyUtilityEntryExperimentSharedCompressor(monthValue)
+        ) {
+            return !isUtilityEntryExperimentBeforeCorrectionOptions(options);
+        }
+        if (
+            String(row?.dataset?.utilityEntryExperimentCorrectionCorrectedRow || '') === 'true' &&
+            shouldApplyUtilityEntryExperimentSharedCompressor(monthValue) &&
+            isUtilityEntryExperimentBeforeCorrectionOptions(options)
+        ) {
+            return true;
+        }
+        const fieldId = String(row?.dataset?.utilityEntryExperimentRowFieldId || '').trim();
+        if (fieldId) {
+            return isUtilityEntryExperimentCorrectionHiddenDailyRowField(fieldId, monthValue, options);
+        }
+
+        const groupFieldIds = String(row?.dataset?.utilityEntryExperimentGroupFieldIds || '')
+            .split(',')
+            .map(item => item.trim())
+            .filter(Boolean);
+        return groupFieldIds.length > 0 &&
+            groupFieldIds.every(id => isUtilityEntryExperimentCorrectionHiddenDailyRowField(id, monthValue, options));
+    }
+
+    function updateUtilityEntryExperimentConditionalRows(host, resourceType, monthValue = '', options = {}) {
         const scope = getUtilityEntryExperimentInputScope(host, { resourceType });
         const rows = Array.from(scope.querySelectorAll(
-            '[data-utility-entry-experiment-visible-from-month], [data-utility-entry-experiment-visible-before-month]'
+            [
+                '[data-utility-entry-experiment-visible-from-month]',
+                '[data-utility-entry-experiment-visible-before-month]',
+                '[data-utility-entry-experiment-row-field-id]',
+                '[data-utility-entry-experiment-group-field-ids]'
+            ].join(', ')
         ));
         rows.forEach(row => {
-            row.hidden = !isUtilityEntryExperimentConditionalRowVisible(row, monthValue);
+            row.hidden = !isUtilityEntryExperimentConditionalRowVisible(row, monthValue) ||
+                isUtilityEntryExperimentCorrectionHiddenDailyRow(row, resourceType, monthValue, options);
+        });
+        syncUtilityEntryExperimentDailyGroupRowspans(scope);
+    }
+
+    function syncUtilityEntryExperimentDailyGroupRowspans(scope) {
+        const groupedRows = new Map();
+        Array.from(scope?.querySelectorAll?.('[data-utility-entry-experiment-row-group-key]') || [])
+            .forEach(row => {
+                const groupKey = String(row?.dataset?.utilityEntryExperimentRowGroupKey || '').trim();
+                if (!groupKey) return;
+                if (!groupedRows.has(groupKey)) groupedRows.set(groupKey, []);
+                groupedRows.get(groupKey).push(row);
+            });
+
+        groupedRows.forEach(rows => {
+            const groupCell = rows
+                .map(row => row.querySelector?.('[data-utility-entry-experiment-group-label-cell]'))
+                .find(Boolean);
+            if (!groupCell) return;
+
+            const visibleRows = rows.filter(row => row.hidden !== true);
+            if (visibleRows.length) {
+                const firstVisibleRow = visibleRows[0];
+                if (typeof firstVisibleRow.contains === 'function' && !firstVisibleRow.contains(groupCell)) {
+                    firstVisibleRow.insertBefore?.(groupCell, firstVisibleRow.firstChild || null);
+                }
+                groupCell.hidden = false;
+            } else {
+                groupCell.hidden = true;
+            }
+
+            const nextRowspan = Math.max(visibleRows.length, 1);
+            groupCell.rowSpan = nextRowspan;
+            groupCell.setAttribute?.('rowspan', String(nextRowspan));
         });
     }
 
@@ -1953,12 +2855,17 @@
             && isUtilityEntryExperimentBeforeCorrectionAvailable(dateString);
     }
 
-    function updateUtilityEntryExperimentBeforeCorrectionToggle(host, dateString = '') {
+    function updateUtilityEntryExperimentBeforeCorrectionToggle(host, dateString = '', correctionReadiness = null) {
         const groups = Array.from(host?.querySelectorAll?.('[data-role="utility-entry-experiment-correction-modes"]') || []);
         const modeOptions = getUtilityEntryExperimentCorrectionModeOptions(dateString);
-        const activeMode = getUtilityEntryExperimentCorrectionMode(host, dateString);
+        const monthValue = String(dateString || '').slice(0, 7);
+        const readiness = correctionReadiness || getUtilityEntryExperimentCorrectionReadinessFromInputs(host, monthValue);
+        const activeMode = getUtilityEntryExperimentCorrectionMode(host, dateString, readiness);
         if (host && host.dataset.utilityEntryExperimentCorrectionMode !== activeMode) {
             host.dataset.utilityEntryExperimentCorrectionMode = activeMode;
+        }
+        if (activeMode !== 'before' || !isUtilityEntryExperimentBeforeCorrectionAvailable(dateString)) {
+            setUtilityEntryExperimentCorrectionEditUnlocked(host, false);
         }
         groups.forEach(group => {
             const available = modeOptions.length > 1;
@@ -1966,13 +2873,239 @@
             group.querySelectorAll('[data-role="utility-entry-experiment-correction-mode"]').forEach(button => {
                 const mode = button.dataset.utilityEntryExperimentCorrectionMode || '';
                 const isAvailable = modeOptions.includes(mode);
+                const isReadyBlocked = readiness?.ready === false && isUtilityEntryExperimentCorrectedCorrectionMode(mode);
+                const disabled = !isAvailable || isReadyBlocked;
                 const active = mode === activeMode;
                 button.hidden = !isAvailable;
-                button.disabled = !isAvailable;
+                button.disabled = disabled;
                 button.classList.toggle('is-active', active);
+                button.classList.toggle('is-disabled', disabled);
                 button.setAttribute('aria-pressed', active ? 'true' : 'false');
+                button.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+                if (isReadyBlocked) {
+                    const missingLabels = (readiness.missingLabels || []).filter(Boolean).join(', ');
+                    button.setAttribute(
+                        'title',
+                        missingLabels
+                            ? `보정 소스 입력 후 사용 가능: ${missingLabels}`
+                            : '보정 소스 입력 후 사용 가능'
+                    );
+                } else {
+                    const label = String(button.textContent || '').trim() || '보정';
+                    button.setAttribute('title', `${label} 보기`);
+                }
+            });
+            group.querySelectorAll('[data-role="utility-entry-experiment-correction-edit"]').forEach(button => {
+                button.hidden = true;
+                button.disabled = true;
+                button.classList.remove('is-active');
+                button.setAttribute('aria-pressed', 'false');
             });
         });
+    }
+
+    function getUtilityEntryExperimentDailyValidationInputs(host) {
+        const dailyView = host?.querySelector?.('.utility-entry-experiment-view.is-daily') || host;
+        return Array.from(dailyView?.querySelectorAll?.(
+            '.utility-entry-experiment-input[data-utility-entry-experiment-save-kind="daily-current"]'
+        ) || []).filter(input => isUtilityEntryExperimentInputVisible(input));
+    }
+
+    function getUtilityEntryExperimentDailyValidationIssue(input) {
+        if (!input || input.dataset?.utilityEntryExperimentSaveKind !== 'daily-current') return null;
+
+        const currentText = normalizeUtilityEntryExperimentNumberText(input.value);
+        if (!currentText) return null;
+        const currentValue = parseUtilityEntryExperimentNumber(currentText);
+        if (!Number.isFinite(currentValue)) return null;
+
+        const row = input.closest?.('tr') || null;
+        const rowInputs = Array.from(row?.querySelectorAll?.('.utility-entry-experiment-input') || []);
+        const previousInput = rowInputs[0] || null;
+        const previousText = normalizeUtilityEntryExperimentNumberText(previousInput?.value);
+        if (!previousText) return null;
+        const previousValue = parseUtilityEntryExperimentNumber(previousText);
+        const fieldId = resolveUtilityEntryExperimentDailyInputFieldId(
+            input,
+            input.dataset?.utilityEntryExperimentResourceType
+        );
+        const resolvedCurrentValue = fieldId === UTILITY_ENTRY_EXPERIMENT_STICK_FIELD_ID
+            ? getUtilityEntryExperimentResolvedStickReadingValue(currentValue, previousValue)
+            : currentValue;
+        if (!Number.isFinite(previousValue) || resolvedCurrentValue >= previousValue) return null;
+
+        const itemLabel = row?.querySelector?.('.is-item-cell')?.textContent?.trim()
+            || input.getAttribute?.('aria-label')
+            || '';
+        const message = `이전값보다 낮음 (${formatUtilityEntryExperimentNumberText(previousText)} > ${formatUtilityEntryExperimentNumberText(currentText)})`;
+        return {
+            input,
+            previousInput,
+            row,
+            itemLabel,
+            previousValue,
+            currentValue,
+            message
+        };
+    }
+
+    function setUtilityEntryExperimentDailyValidationInputState(input, issue = null) {
+        if (!input) return;
+        const hasIssue = Boolean(issue);
+        const row = input.closest?.('tr') || null;
+        input.classList?.toggle?.('is-validation-error', hasIssue);
+        row?.classList?.toggle?.('has-validation-error', hasIssue);
+        if (hasIssue) {
+            input.setAttribute?.('aria-invalid', 'true');
+        } else {
+            input.setAttribute?.('aria-invalid', 'false');
+        }
+        if (hasIssue) {
+            input.dataset.utilityEntryExperimentValidationError = 'true';
+            input.setAttribute?.('title', issue.message || '입력 오류');
+            return;
+        }
+
+        if (input.dataset.utilityEntryExperimentValidationError === 'true') {
+            delete input.dataset.utilityEntryExperimentValidationError;
+            input.removeAttribute?.('title');
+            if (input.dataset.utilityEntryExperimentCorrectionLocked === 'true') {
+                input.setAttribute?.('title', '보정후 값은 보정전에서만 수정할 수 있습니다.');
+            }
+        }
+    }
+
+    function getUtilityEntryExperimentDailyMissingInputs(host) {
+        return getUtilityEntryExperimentDailyValidationInputs(host)
+            .filter(input => !normalizeUtilityEntryExperimentNumberText(input.value));
+    }
+
+    function setUtilityEntryExperimentDailyMissingInputState(input, isMissing = false) {
+        if (!input) return;
+        const row = input.closest?.('tr') || null;
+        input.classList?.toggle?.('is-missing-entry', isMissing);
+        row?.classList?.toggle?.('has-missing-entry', isMissing);
+        if (isMissing) {
+            input.dataset.utilityEntryExperimentMissingEntry = 'true';
+            if (input.dataset.utilityEntryExperimentValidationError !== 'true') {
+                input.setAttribute?.('title', '미기입');
+            }
+            return;
+        }
+
+        if (input.dataset.utilityEntryExperimentMissingEntry === 'true') {
+            delete input.dataset.utilityEntryExperimentMissingEntry;
+            if (input.dataset.utilityEntryExperimentValidationError !== 'true') {
+                input.removeAttribute?.('title');
+                if (input.dataset.utilityEntryExperimentCorrectionLocked === 'true') {
+                    input.setAttribute?.('title', '보정후 값은 보정전에서만 수정할 수 있습니다.');
+                }
+            }
+        }
+    }
+
+    function setUtilityEntryExperimentDailyValidationSummary(host, issues = [], missingInputs = []) {
+        const errorCount = Array.isArray(issues) ? issues.length : 0;
+        const missingCount = Array.isArray(missingInputs) ? missingInputs.length : 0;
+        const hasErrors = errorCount > 0;
+        const hasMissing = missingCount > 0;
+        const summaryParts = [];
+        if (hasErrors) summaryParts.push(`오류 ${errorCount}건`);
+        if (hasMissing) summaryParts.push(`미기입 ${missingCount}건`);
+        const summaryText = summaryParts.join(' · ');
+        host.dataset.utilityEntryExperimentDailyErrorCount = String(errorCount);
+        host.dataset.utilityEntryExperimentDailyMissingCount = String(missingCount);
+        const stateNodes = Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save-state"]') || []);
+        const statusNodes = Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save-status"]') || []);
+        const detailText = issues
+            .map(issue => `${issue.itemLabel || '입력값'}: ${issue.message}`)
+            .join('\n');
+        const missingDetailText = missingInputs
+            .map(input => {
+                const row = input.closest?.('tr') || null;
+                return row?.querySelector?.('.is-item-cell')?.textContent?.trim()
+                    || input.getAttribute?.('aria-label')
+                    || '입력값';
+            })
+            .map(label => `${label}: 미기입`)
+            .join('\n');
+        const summaryDetailText = [detailText, missingDetailText].filter(Boolean).join('\n');
+
+        stateNodes.forEach(stateNode => {
+            stateNode.classList.toggle('is-error', hasErrors);
+            stateNode.classList.toggle('is-missing', !hasErrors && hasMissing);
+            if (summaryText) {
+                stateNode.classList.remove('is-saved');
+                stateNode.classList.add('is-unsaved');
+                stateNode.textContent = summaryText;
+            }
+        });
+        statusNodes.forEach(statusNode => {
+            if (summaryDetailText) {
+                statusNode.title = summaryDetailText;
+                if (statusNode.dataset) {
+                    statusNode.dataset.utilityEntryExperimentDailyValidationTitle = 'true';
+                }
+            } else if (statusNode.dataset?.utilityEntryExperimentDailyValidationTitle === 'true') {
+                statusNode.title = '';
+                delete statusNode.dataset.utilityEntryExperimentDailyValidationTitle;
+            } else if (String(statusNode.title || '').includes('이전값보다 낮음')) {
+                statusNode.title = '';
+            }
+        });
+    }
+
+    function getUtilityEntryExperimentDailyValidationIssues(host) {
+        return getUtilityEntryExperimentDailyValidationInputs(host)
+            .map(getUtilityEntryExperimentDailyValidationIssue)
+            .filter(Boolean);
+    }
+
+    function syncUtilityEntryExperimentDailyValidation(host) {
+        if (!host) return [];
+        const inputs = getUtilityEntryExperimentDailyValidationInputs(host);
+        const issues = getUtilityEntryExperimentDailyValidationIssues(host);
+        const missingInputs = getUtilityEntryExperimentDailyMissingInputs(host);
+        const issueMap = new Map(issues.map(issue => [issue.input, issue]));
+        const missingInputSet = new Set(missingInputs);
+        inputs.forEach(input => {
+            const issue = issueMap.get(input) || null;
+            setUtilityEntryExperimentDailyValidationInputState(input, issue);
+            setUtilityEntryExperimentDailyMissingInputState(input, !issue && missingInputSet.has(input));
+        });
+        setUtilityEntryExperimentDailyValidationSummary(host, issues, missingInputs);
+        return issues;
+    }
+
+    function blockUtilityEntryExperimentDailySaveForValidation(host) {
+        const issues = syncUtilityEntryExperimentDailyValidation(host);
+        if (!issues.length) return false;
+
+        host.dataset.utilityEntryExperimentSaveError = 'daily_current_lower_than_previous';
+        setUtilityEntryExperimentSaveStatus(host, 'error', '이전값보다 낮은 값은 저장할 수 없습니다');
+        const firstInput = issues[0]?.input;
+        firstInput?.focus?.();
+        firstInput?.select?.();
+        return true;
+    }
+
+    function rejectUtilityEntryExperimentLowerDailyInput(host, input, options = {}) {
+        if (!host || !input || input.dataset?.utilityEntryExperimentSaveKind !== 'daily-current') return false;
+        const issue = getUtilityEntryExperimentDailyValidationIssue(input);
+        if (!issue) return false;
+
+        input.value = '';
+        delete input.dataset.normalizedValue;
+        updateUtilityEntryExperimentNormalizedValue(input);
+        host.dataset.utilityEntryExperimentSaveError = 'daily_current_lower_than_previous';
+        host.dataset.utilityEntryExperimentRejectedInput = issue.message || '이전값보다 낮음';
+        syncUtilityEntryExperimentDailyValidation(host);
+        setUtilityEntryExperimentSaveStatus(host, 'error', '이전값보다 낮은 값은 입력할 수 없습니다');
+        if (options.focus !== false) {
+            input.focus?.();
+            input.select?.();
+        }
+        return true;
     }
 
     function populateUtilityEntryExperimentDailyResource(host, dataset, resourceType, dateString, displayDateString = dateString) {
@@ -1982,7 +3115,10 @@
         const showMonthlyUsage = shouldDisplayUtilityEntryExperimentMonthlyUsage(displayDateString);
         const monthlyUsageDateString = showMonthlyUsage ? displayDateString : dateString;
         const periodUsageMonthValue = String(dateString || '').slice(0, 7);
-        const correctionOptions = getUtilityEntryExperimentCorrectionOptions(host, resourceType, monthlyUsageDateString);
+        const correctionOptions = getUtilityEntryExperimentCorrectionOptions(host, resourceType, monthlyUsageDateString, {
+            values: currentValues,
+            monthValue: String(monthlyUsageDateString || '').slice(0, 7)
+        });
         const monthlyUsageMonthValue = getUtilityEntryExperimentDailyMonthUsageMonthValue(
             dataset,
             UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID,
@@ -2002,9 +3138,13 @@
         );
         const usageMonthValue = showMonthlyUsage ? monthlyRuleMonthValue : periodRuleMonthValue;
         if (resourceType === 'electric') {
-            updateUtilityEntryExperimentBeforeCorrectionToggle(host, monthlyUsageDateString);
+            updateUtilityEntryExperimentBeforeCorrectionToggle(
+                host,
+                monthlyUsageDateString,
+                correctionOptions.correctionReadiness
+            );
         }
-        updateUtilityEntryExperimentConditionalRows(host, resourceType, usageMonthValue);
+        updateUtilityEntryExperimentConditionalRows(host, resourceType, usageMonthValue, correctionOptions);
         updateUtilityEntryExperimentPeriodUsageLabels(
             host,
             resourceType,
@@ -2012,14 +3152,78 @@
         );
 
         (UTILITY_ENTRY_EXPERIMENT_DAILY_FIELDS[resourceType] || []).forEach(([label, equipmentId]) => {
-            const isOtherElectric = resourceType === 'electric' && equipmentId === UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID;
-            const previousValue = isOtherElectric
-                ? roundUtilityEntryExperimentNumber(calculateUtilityEntryExperimentOtherReading(dataset, previousDate))
-                : previousValues[equipmentId];
-            const currentValue = isOtherElectric
-                ? roundUtilityEntryExperimentNumber(calculateUtilityEntryExperimentOtherReading(dataset, dateString))
-                : currentValues[equipmentId];
-            const periodUsageValue = calculateUtilityEntryExperimentEquipmentSummaryUsage(
+            if (resourceType === 'electric' && equipmentId === UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID) {
+                const periodUsageValue = calculateUtilityEntryExperimentDailyRowUsage(
+                    dataset,
+                    equipmentId,
+                    (sourceDataset, sourceId) => calculateUtilityEntryExperimentEquipmentPeriodUsage(
+                        sourceDataset,
+                        sourceId,
+                        dateString,
+                        resourceType,
+                        correctionOptions
+                    ),
+                    periodUsageMonthValue,
+                    correctionOptions
+                );
+                const monthlyUsageValue = calculateUtilityEntryExperimentDailyRowUsage(
+                    dataset,
+                    equipmentId,
+                    (sourceDataset, sourceId) => calculateUtilityEntryExperimentEquipmentDailyMonthUsage(
+                        sourceDataset,
+                        sourceId,
+                        monthlyUsageDateString,
+                        resourceType,
+                        correctionOptions
+                    ),
+                    monthlyUsageMonthValue,
+                    correctionOptions
+                );
+                const displayUsageValue = showMonthlyUsage ? monthlyUsageValue : periodUsageValue;
+                setUtilityEntryExperimentDailyRowInputText(
+                    host,
+                    resourceType,
+                    UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID,
+                    0,
+                    '-'
+                );
+                setUtilityEntryExperimentDailyRowInputText(
+                    host,
+                    resourceType,
+                    UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID,
+                    1,
+                    '-'
+                );
+                setUtilityEntryExperimentDailyRowInputValue(
+                    host,
+                    resourceType,
+                    UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID,
+                    2,
+                    roundUtilityEntryExperimentNumber(displayUsageValue)
+                );
+
+                return;
+            }
+
+            const previousValue = calculateUtilityEntryExperimentDailyRowReading(
+                dataset,
+                equipmentId,
+                previousDate,
+                previousValues,
+                resourceType,
+                usageMonthValue,
+                correctionOptions
+            );
+            const currentValue = calculateUtilityEntryExperimentDailyRowReading(
+                dataset,
+                equipmentId,
+                dateString,
+                currentValues,
+                resourceType,
+                usageMonthValue,
+                correctionOptions
+            );
+            const periodUsageValue = calculateUtilityEntryExperimentDailyRowUsage(
                 dataset,
                 equipmentId,
                 (sourceDataset, sourceId) => calculateUtilityEntryExperimentEquipmentPeriodUsage(
@@ -2032,7 +3236,7 @@
                 periodUsageMonthValue,
                 correctionOptions
             );
-            const monthlyUsageValue = calculateUtilityEntryExperimentEquipmentSummaryUsage(
+            const monthlyUsageValue = calculateUtilityEntryExperimentDailyRowUsage(
                 dataset,
                 equipmentId,
                 (sourceDataset, sourceId) => calculateUtilityEntryExperimentEquipmentDailyMonthUsage(
@@ -2047,14 +3251,54 @@
             );
             const displayUsageValue = showMonthlyUsage ? monthlyUsageValue : periodUsageValue;
 
-            setUtilityEntryExperimentInputValue(host, `${label} 이전값`, previousValue, { resourceType });
-            setUtilityEntryExperimentInputValue(host, `${label} 현재값`, currentValue, { resourceType });
+            setUtilityEntryExperimentInputValue(
+                host,
+                `${label} 이전값`,
+                getUtilityEntryExperimentEquipmentSummaryReadingDisplayValue(equipmentId, previousValue, correctionOptions),
+                { resourceType }
+            );
+            setUtilityEntryExperimentInputValue(
+                host,
+                `${label} 현재값`,
+                getUtilityEntryExperimentEquipmentSummaryReadingDisplayValue(equipmentId, currentValue, correctionOptions),
+                { resourceType }
+            );
             setUtilityEntryExperimentInputValue(host, `${label} 사용량`, roundUtilityEntryExperimentNumber(displayUsageValue), { resourceType });
         });
+        syncUtilityEntryExperimentCorrectionLockedDailyInputs(host, resourceType, usageMonthValue, correctionOptions);
+        if (resourceType === 'electric') {
+            updateUtilityEntryExperimentBeforeCorrectionToggle(
+                host,
+                monthlyUsageDateString,
+                getUtilityEntryExperimentCorrectionReadinessFromInputs(host, String(monthlyUsageDateString || '').slice(0, 7))
+            );
+        }
 
         getUtilityEntryExperimentTotalGroups(resourceType, usageMonthValue, monthlyUsageDateString, correctionOptions).forEach(([groupLabel, equipmentIds]) => {
-            const previousTotal = sumUtilityEntryExperimentValues(equipmentIds.map(id => parseUtilityEntryExperimentNumber(previousValues[id])));
-            const currentTotal = sumUtilityEntryExperimentValues(equipmentIds.map(id => parseUtilityEntryExperimentNumber(currentValues[id])));
+            const previousTotal = resourceType === 'electric'
+                ? calculateUtilityEntryExperimentElectricGroupSharedReading(
+                    dataset,
+                    usageMonthValue,
+                    groupLabel,
+                    equipmentIds,
+                    previousDate,
+                    previousValues,
+                    resourceType,
+                    correctionOptions
+                )
+                : sumUtilityEntryExperimentDisplayReadings(dataset, equipmentIds, previousDate, previousValues, resourceType);
+            const currentTotal = resourceType === 'electric'
+                ? calculateUtilityEntryExperimentElectricGroupSharedReading(
+                    dataset,
+                    usageMonthValue,
+                    groupLabel,
+                    equipmentIds,
+                    dateString,
+                    currentValues,
+                    resourceType,
+                    correctionOptions
+                )
+                : sumUtilityEntryExperimentDisplayReadings(dataset, equipmentIds, dateString, currentValues, resourceType);
             const periodUsageTotal = resourceType === 'electric'
                 ? calculateUtilityEntryExperimentElectricGroupSharedUsage(
                     dataset,
@@ -2162,6 +3406,11 @@
         return UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_LINKS.find(item => item.datasetKey === normalizedDatasetKey) || null;
     }
 
+    function getUtilityEntryExperimentMonthlyMeterGraphKey(linkKey = '') {
+        const normalizedKey = String(linkKey || '').trim();
+        return UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_GRAPH_KEYS[normalizedKey] || '';
+    }
+
     function normalizeUtilityEntryExperimentMeterLinkKey(linkKey = '', datasetKey = '') {
         const normalizedKey = String(linkKey || '').trim();
         if (getUtilityEntryExperimentMonthlyMeterLinkConfig(normalizedKey)) return normalizedKey;
@@ -2175,10 +3424,16 @@
         return 'electric_yusan';
     }
 
-    function openUtilityEntryExperimentMonthlyMeterSheet(host, datasetKey = '') {
+    function openUtilityEntryExperimentMonthlyMeterSheet(host, datasetKey = '', linkKey = '') {
         const normalizedDatasetKey = normalizeUtilityEntryExperimentMeterDatasetKey(datasetKey);
+        const normalizedLinkKey = normalizeUtilityEntryExperimentMeterLinkKey(linkKey || datasetKey, normalizedDatasetKey);
         const linkButtons = Array.from(host?.querySelectorAll?.(`[data-role="utility-entry-experiment-meter-open"][data-utility-entry-experiment-meter="${normalizedDatasetKey}"]`) || []);
-        const linkButton = linkButtons.find(button => !button.disabled && button.dataset.utilityEntryExperimentMeterReady !== 'false')
+        const linkButton = linkButtons.find(button => (
+            normalizeUtilityEntryExperimentMeterLinkKey(button.dataset.utilityEntryExperimentMeterLink || '', normalizedDatasetKey) === normalizedLinkKey
+            && !button.disabled
+            && button.dataset.utilityEntryExperimentMeterReady !== 'false'
+        ))
+            || linkButtons.find(button => !button.disabled && button.dataset.utilityEntryExperimentMeterReady !== 'false')
             || linkButtons[0]
             || null;
         if (linkButton?.disabled || linkButton?.dataset?.utilityEntryExperimentMeterReady === 'false') {
@@ -2191,12 +3446,18 @@
             return null;
         }
 
-        return openModal(
+        const modal = openModal(
             'meter',
             normalizedDatasetKey,
             getUtilityEntryExperimentSelectedMonth(host),
             'month'
         );
+        if (modal?.dataset) {
+            const activeLinkKey = normalizeUtilityEntryExperimentMeterLinkKey(linkButton?.dataset?.utilityEntryExperimentMeterLink || normalizedLinkKey, normalizedDatasetKey);
+            modal.dataset.utilityEntryExperimentMeterLinkKey = activeLinkKey;
+            modal.dataset.utilityEntryExperimentGraphKey = getUtilityEntryExperimentMonthlyMeterGraphKey(activeLinkKey);
+        }
+        return modal;
     }
 
     function getUtilityEntryExperimentSettlementScope(dataset, monthValue, scopeKey) {
@@ -2570,7 +3831,13 @@
         return modal?.querySelector?.('[data-role="utility-graph-template-root"], .utility-graph-template') || null;
     }
 
-    function getUtilityEntryExperimentGraphCaptureSize(target) {
+    function normalizeUtilityEntryExperimentGraphCaptureEdge(value, fallback) {
+        const parsed = Number.parseInt(String(value ?? ''), 10);
+        const resolved = Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+        return Math.min(4096, Math.max(320, resolved));
+    }
+
+    function getUtilityEntryExperimentGraphTemplateCaptureSize(target) {
         const rect = typeof target?.getBoundingClientRect === 'function'
             ? target.getBoundingClientRect()
             : null;
@@ -2586,6 +3853,64 @@
             width: Math.min(4096, Math.max(320, width)),
             height: Math.min(4096, Math.max(320, height))
         };
+    }
+
+    function getUtilityEntryExperimentGraphCaptureSize(modal = null) {
+        const body = modal?.querySelector?.('[data-role="utility-entry-experiment-graph-template"]') || null;
+        const bodyRect = typeof body?.getBoundingClientRect === 'function'
+            ? body.getBoundingClientRect()
+            : null;
+        const screenWidth = Number.parseInt(String(utilityEntryExperimentRoot?.screen?.width ?? ''), 10) || 0;
+        const screenHeight = Number.parseInt(String(utilityEntryExperimentRoot?.screen?.height ?? ''), 10) || 0;
+        const innerWidth = Number.parseInt(String(utilityEntryExperimentRoot?.innerWidth ?? ''), 10) || 0;
+        const innerHeight = Number.parseInt(String(utilityEntryExperimentRoot?.innerHeight ?? ''), 10) || 0;
+        const bodyWidth = Math.ceil(Number(body?.clientWidth || bodyRect?.width || 0));
+        const bodyHeight = Math.ceil(Number(body?.clientHeight || bodyRect?.height || 0));
+        return {
+            width: normalizeUtilityEntryExperimentGraphCaptureEdge(screenWidth || bodyWidth || innerWidth, 1920),
+            height: normalizeUtilityEntryExperimentGraphCaptureEdge(screenHeight || bodyHeight || innerHeight, 1080)
+        };
+    }
+
+    function waitUtilityEntryExperimentGraphCaptureFrame() {
+        return new Promise(resolve => {
+            if (typeof utilityEntryExperimentRoot?.requestAnimationFrame === 'function') {
+                utilityEntryExperimentRoot.requestAnimationFrame(() => {
+                    utilityEntryExperimentRoot.requestAnimationFrame(resolve);
+                });
+                return;
+            }
+            if (typeof utilityEntryExperimentRoot?.setTimeout === 'function') {
+                utilityEntryExperimentRoot.setTimeout(resolve, 50);
+                return;
+            }
+            resolve();
+        });
+    }
+
+    async function ensureUtilityEntryExperimentGraphFullscreenForCapture(modal = null) {
+        const target = modal || utilityEntryExperimentRoot?.document?.getElementById?.('utility-entry-experiment-graph-modal');
+        const doc = utilityEntryExperimentRoot?.document || null;
+        if (!target || !doc) return false;
+
+        if (!isUtilityEntryExperimentGraphFullscreen(target)) {
+            try {
+                const fullscreenElement = getUtilityEntryExperimentGraphFullscreenElement();
+                if (fullscreenElement && fullscreenElement !== target) {
+                    const exitFullscreen = doc.exitFullscreen || doc.webkitExitFullscreen;
+                    if (typeof exitFullscreen === 'function') await exitFullscreen.call(doc);
+                }
+                const requestFullscreen = target.requestFullscreen || target.webkitRequestFullscreen;
+                if (typeof requestFullscreen === 'function') await requestFullscreen.call(target);
+            } catch (error) {
+                void error;
+            }
+        }
+
+        syncUtilityEntryExperimentGraphFullscreenState(target);
+        scheduleUtilityEntryExperimentGraphModalResize(target);
+        await waitUtilityEntryExperimentGraphCaptureFrame();
+        return isUtilityEntryExperimentGraphFullscreen(target);
     }
 
     function collectUtilityEntryExperimentGraphStylesheetText() {
@@ -2625,9 +3950,14 @@
         return utilityEntryExperimentGraphCaptureStylePromise;
     }
 
-    function cleanUtilityEntryExperimentGraphCaptureClone(target, size) {
+    function cleanUtilityEntryExperimentGraphCaptureClone(target, templateSize) {
         const clone = target?.cloneNode?.(true);
         if (!clone) return null;
+        const width = Math.max(320, Math.min(4096, Number(templateSize?.width) || UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_WIDTH));
+        const height = Math.max(
+            UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_HEIGHT,
+            Math.min(4096, Number(templateSize?.height) || UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_HEIGHT)
+        );
         clone.querySelectorAll?.([
             '[data-role="utility-graph-memo-dialog"]',
             '[data-role="utility-graph-memo-overview-dialog"]',
@@ -2641,17 +3971,30 @@
             element.removeAttribute('contenteditable');
             element.removeAttribute('spellcheck');
         });
-        clone.style.width = `${size.width}px`;
-        clone.style.minHeight = `${Math.max(UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_HEIGHT, size.height)}px`;
-        clone.style.height = 'auto';
+        clone.style.setProperty('--utility-graph-page-w', `${width}px`);
+        clone.style.width = `${width}px`;
+        clone.style.minHeight = `${height}px`;
+        clone.style.height = `${height}px`;
         clone.style.margin = '0';
         clone.style.transform = 'none';
         clone.style.transformOrigin = 'top left';
         return clone;
     }
 
-    async function buildUtilityEntryExperimentGraphCapturePageHtml(target, size) {
-        const clone = cleanUtilityEntryExperimentGraphCaptureClone(target, size);
+    async function buildUtilityEntryExperimentGraphCapturePageHtml(target, captureSize, templateSize = null) {
+        const sourceSize = templateSize || getUtilityEntryExperimentGraphTemplateCaptureSize(target);
+        const templateWidth = Math.max(320, Math.min(4096, Number(sourceSize?.width) || UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_WIDTH));
+        const templateHeight = Math.max(
+            UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_HEIGHT,
+            Math.min(4096, Number(sourceSize?.height) || UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_HEIGHT)
+        );
+        const size = {
+            width: normalizeUtilityEntryExperimentGraphCaptureEdge(captureSize?.width, 1920),
+            height: normalizeUtilityEntryExperimentGraphCaptureEdge(captureSize?.height, 1080)
+        };
+        const scaleX = size.width / templateWidth;
+        const scaleY = size.height / templateHeight;
+        const clone = cleanUtilityEntryExperimentGraphCaptureClone(target, { width: templateWidth, height: templateHeight });
         if (!clone) throw new Error('utility_entry_graph_capture_target_unavailable');
         const styleText = await loadUtilityEntryExperimentGraphCaptureStyleText();
         return `<style>
@@ -2660,24 +4003,25 @@ html, body {
   margin: 0 !important;
   padding: 0 !important;
   width: ${size.width}px !important;
-  min-height: ${size.height}px !important;
+  height: ${size.height}px !important;
   background: #ffffff !important;
   overflow: hidden !important;
 }
 .utility-entry-experiment-graph-capture-page {
   width: ${size.width}px !important;
-  min-height: ${size.height}px !important;
+  height: ${size.height}px !important;
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden !important;
   background: #ffffff !important;
 }
 .utility-entry-experiment-graph-capture-page .utility-graph-template {
-  width: ${size.width}px !important;
-  min-height: ${Math.max(UTILITY_ENTRY_EXPERIMENT_GRAPH_TEMPLATE_HEIGHT, size.height)}px !important;
-  height: auto !important;
+  --utility-graph-page-w: ${templateWidth}px !important;
+  width: ${templateWidth}px !important;
+  min-height: ${templateHeight}px !important;
+  height: ${templateHeight}px !important;
   margin: 0 !important;
-  transform: none !important;
+  transform: scale(${scaleX}, ${scaleY}) !important;
   transform-origin: top left !important;
   box-shadow: none !important;
 }
@@ -2757,10 +4101,12 @@ html, body {
         }
         setUtilityEntryExperimentGraphPdfBusy(targetModal, true);
         try {
+            await ensureUtilityEntryExperimentGraphFullscreenForCapture(targetModal);
             await utilityEntryExperimentRoot?.document?.fonts?.ready?.catch?.(() => {});
-            const size = getUtilityEntryExperimentGraphCaptureSize(target);
+            const size = getUtilityEntryExperimentGraphCaptureSize(targetModal);
+            const templateSize = getUtilityEntryExperimentGraphTemplateCaptureSize(target);
             const fileName = buildUtilityEntryExperimentGraphPdfFileName(targetModal);
-            const pageHtml = await buildUtilityEntryExperimentGraphCapturePageHtml(target, size);
+            const pageHtml = await buildUtilityEntryExperimentGraphCapturePageHtml(target, size, templateSize);
             const response = await utilityEntryExperimentRoot.fetch(buildUtilityEntryExperimentGraphCaptureEndpoint(), {
                 method: 'POST',
                 headers: {
@@ -3105,34 +4451,46 @@ html, body {
         };
     }
 
-    async function openUtilityEntryExperimentGraphTemplate(host, button) {
-        const graphKey = String(button?.dataset?.utilityEntryExperimentGraph || '').trim();
-        const monthValue = getUtilityEntryExperimentSelectedMonth(host);
-        if (!graphKey) return false;
+    function attachUtilityEntryExperimentGraphMemoSave(data, monthValue = '') {
+        if (!data?.memo?.key) return data;
+        let memoSaveQueue = Promise.resolve();
+        data.memo.onChange = text => {
+            memoSaveQueue = memoSaveQueue
+                .catch(() => {})
+                .then(() => saveUtilityEntryExperimentGraphReportMemo(monthValue, data.memo.key, text));
+            return memoSaveQueue;
+        };
+        return data;
+    }
+
+    async function openUtilityEntryExperimentGraphTemplateByKey(graphKey = '', monthValue = '') {
+        const normalizedGraphKey = String(graphKey || '').trim();
+        const normalizedMonth = /^\d{4}-\d{2}$/.test(String(monthValue || '')) ? String(monthValue) : '';
+        if (!normalizedGraphKey) return false;
 
         let records = null;
         try {
             records = await loadUtilityEntryExperimentActualRecords();
         } catch (error) {
+            void error;
             utilityEntryExperimentRoot?.alert?.('그래프 데이터를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.');
             return false;
         }
 
-        const data = buildUtilityEntryExperimentGraphTemplateData(records, graphKey, monthValue);
+        const data = buildUtilityEntryExperimentGraphTemplateData(records, normalizedGraphKey, normalizedMonth);
         if (!data) {
             utilityEntryExperimentRoot?.alert?.('그래프 양식을 만들 수 없습니다.');
             return false;
         }
-        if (data.memo?.key) {
-            let memoSaveQueue = Promise.resolve();
-            data.memo.onChange = text => {
-                memoSaveQueue = memoSaveQueue
-                    .catch(() => {})
-                    .then(() => saveUtilityEntryExperimentGraphReportMemo(monthValue, data.memo.key, text));
-                return memoSaveQueue;
-            };
-        }
-        const opened = openUtilityEntryExperimentGraphModal(data);
+        attachUtilityEntryExperimentGraphMemoSave(data, normalizedMonth);
+        return openUtilityEntryExperimentGraphModal(data);
+    }
+
+    async function openUtilityEntryExperimentGraphTemplate(host, button) {
+        const graphKey = String(button?.dataset?.utilityEntryExperimentGraph || '').trim();
+        const monthValue = getUtilityEntryExperimentSelectedMonth(host);
+        if (!graphKey) return false;
+        const opened = await openUtilityEntryExperimentGraphTemplateByKey(graphKey, monthValue);
         if (opened) setUtilityEntryExperimentGraphTogglePressed(host, button);
         return opened;
     }
@@ -3379,29 +4737,45 @@ html, body {
         populateUtilityEntryExperimentSettlementFields(host, records, records.waste, monthValue, 'waste_bukjeong', '북정 폐수', UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.waste);
     }
 
+    function getUtilityEntryExperimentCorrectionRuleRows(records = {}, monthValue = '') {
+        const rows = [];
+        rows.push([
+            '전기',
+            '공유 컴프 배분',
+            `${UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_START_MONTH}~2026-03`,
+            '공유 컴프 = 컴프(220v) + 컴프(380v) + 컴프 2',
+            '1팀 2파트 컴프레셔 = 공유 컴프 x 72%, 2팀 컴프레셔 = 공유 컴프 x 28%'
+        ]);
+        rows.push([
+            '전기',
+            '공유 컴프 배분',
+            `${UTILITY_ENTRY_EXPERIMENT_LIQUID_COMPRESSOR_START_MONTH}부터`,
+            '공유 컴프 = 컴프(220v) + 컴프(380v) + 컴프 1 + 컴프 2',
+            '보정후 화면에서는 원본 컴프 행을 숨기고 배분 행만 표시'
+        ]);
+        rows.push([
+            '전기',
+            '액상 1 보정',
+            `${UTILITY_ENTRY_EXPERIMENT_LIQUID_COMPRESSOR_START_MONTH}부터`,
+            '액상 1 표시값 = 액상 1 원본 - 컴프 1 - 컴프 2',
+            '보정후 화면에서 액상 1 행에 반영'
+        ]);
+        rows.push([
+            '전기',
+            '보정후 활성 조건',
+            `${UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_START_MONTH}부터`,
+            '필수 입력: 액상 1, 컴프(220v), 컴프(380v), 컴프 2. 2026-04부터 컴프 1 추가',
+            '필수 입력이 비면 보정후 토글 비활성'
+        ]);
+
+        return rows;
+    }
+
     function renderUtilityEntryExperimentCorrectionSummary(host, records, monthValue) {
         const bodies = Array.from(host.querySelectorAll('[data-role="utility-entry-experiment-correction-summary"] tbody'));
         if (!bodies.length) return;
 
-        const rows = [];
-        const gasAdjustmentItems = (records.gas?.equipmentItems || [])
-            .filter(item => parseUtilityEntryExperimentNumber(item.readingAdjustmentValue));
-        gasAdjustmentItems.forEach(item => {
-            rows.push(['가스', '검침 보정', `${item.label} ${formatUtilityEntryExperimentNumberText(item.readingAdjustmentValue)}`, `${item.readingAdjustmentStartDate || '-'}부터`]);
-        });
-
-        rows.push(['가스', 'LNG 배분계수', 'LNG합계 / (3톤 + DSI + 액상)', '유산 LNG 사용량']);
-
-        rows.push(['가스', 'LPG 표시 보정', `건조기(LPG) x ${UTILITY_ENTRY_EXPERIMENT_GAS_LPG_FACTOR}`, '표시 전용']);
-
-        rows.push(['전기', '전력총량 환산', `중부하 + 최대부하 + 경부하, 월간 x ${UTILITY_ENTRY_EXPERIMENT_TOTAL_POWER_FACTOR}`, monthValue]);
-
-        const electricYusanFields = getUtilityEntryExperimentSettlementScope(records.electric, monthValue, 'yusan').fields || {};
-        const electricBukjeongFields = getUtilityEntryExperimentSettlementScope(records.electric, monthValue, 'bukjeong').fields || {};
-        rows.push(['전기', '역률료 표시', `유산 ${formatUtilityEntryExperimentNumberText(electricYusanFields.lagging_power_factor_charge || '') || '-'} / 북정 ${formatUtilityEntryExperimentNumberText(electricBukjeongFields.lagging_power_factor_charge || '') || '-'}`, monthValue]);
-
-        const wasteMonth = records.waste?.teamMonthlyEntries?.[monthValue] || {};
-        rows.push(['폐수', '사용량 직접입력', `유산 ${formatUtilityEntryExperimentNumberText(wasteMonth.waste_yusan || '')} / 북정 ${formatUtilityEntryExperimentNumberText(wasteMonth.waste_bukjeong || '')}`, monthValue]);
+        const rows = getUtilityEntryExperimentCorrectionRuleRows(records, monthValue);
 
         const bodyHtml = rows.map(row => `
             <tr>
@@ -4175,6 +5549,9 @@ html, body {
     async function saveUtilityEntryExperiment(host, period = 'daily') {
         if (!host) return false;
         const savePeriod = period === 'monthly' ? 'monthly' : 'daily';
+        if (savePeriod === 'daily' && blockUtilityEntryExperimentDailySaveForValidation(host)) {
+            return false;
+        }
         setUtilityEntryExperimentSaveStatus(host, 'saving', '저장 중');
 
         try {
@@ -4187,6 +5564,7 @@ html, body {
 
             if (!result.touchedCount) {
                 setUtilityEntryExperimentSaveStatus(host, 'saved', '저장할 입력값 없음');
+                syncUtilityEntryExperimentDailyValidation(host);
                 return true;
             }
 
@@ -4194,6 +5572,7 @@ html, body {
             utilityEntryExperimentActualRecordPromise = null;
             await populateUtilityEntryExperimentActualValues(host);
             setUtilityEntryExperimentSaveStatus(host, 'saved', '저장됨');
+            syncUtilityEntryExperimentDailyValidation(host);
             return true;
         } catch (error) {
             const message = error?.message === 'version_conflict'
@@ -4205,6 +5584,51 @@ html, body {
         }
     }
 
+    function applyUtilityEntryExperimentUnsavedDailyInputDrafts(records, host, dateString = '') {
+        if (!records || !host || host.dataset?.utilityEntryExperimentSaveStatus !== 'unsaved' || !dateString) {
+            return 0;
+        }
+
+        const view = getUtilityEntryExperimentSaveView(host, 'daily');
+        let touchedCount = 0;
+        Array.from(view?.querySelectorAll?.('[data-utility-entry-experiment-save-kind="daily-current"]') || [])
+            .filter(input => isUtilityEntryExperimentInputVisible(input) && !input.readOnly)
+            .forEach(input => {
+                const resourceType = normalizeUtilityEntryExperimentResourceType(input.dataset.utilityEntryExperimentResourceType);
+                const fieldId = String(input.dataset.utilityEntryExperimentFieldId || '').trim();
+                const dataset = records?.[resourceType];
+                if (!dataset || !fieldId) return;
+                if (!isUtilityEntryExperimentPlainObject(dataset.equipmentEntries)) {
+                    dataset.equipmentEntries = {};
+                }
+
+                const currentEntry = isUtilityEntryExperimentPlainObject(dataset.equipmentEntries[dateString])
+                    ? cloneUtilityEntryExperimentJson(dataset.equipmentEntries[dateString])
+                    : {};
+                const entry = {
+                    ...currentEntry,
+                    values: isUtilityEntryExperimentPlainObject(currentEntry.values)
+                        ? currentEntry.values
+                        : {}
+                };
+                const normalizedValue = getUtilityEntryExperimentInputNormalizedValue(input);
+                if (normalizedValue) {
+                    entry.values[fieldId] = normalizedValue;
+                } else {
+                    delete entry.values[fieldId];
+                }
+
+                if (hasUtilityEntryExperimentEntryData(entry)) {
+                    dataset.equipmentEntries[dateString] = entry;
+                } else {
+                    delete dataset.equipmentEntries[dateString];
+                }
+                touchedCount += 1;
+            });
+
+        return touchedCount;
+    }
+
     async function populateUtilityEntryExperimentActualValues(host) {
         if (!host) return;
         host.dataset.actualValuesReady = 'loading';
@@ -4214,6 +5638,7 @@ html, body {
         try {
             const records = await loadUtilityEntryExperimentActualRecords();
             const dailyDate = getUtilityEntryExperimentSelectedDailyDate(host);
+            const unsavedDailyDraftCount = applyUtilityEntryExperimentUnsavedDailyInputDrafts(records, host, dailyDate);
             const monthValue = getUtilityEntryExperimentSelectedMonth(host);
             const electricDailyDate = resolveUtilityEntryExperimentResourceDailyDate(records.electric, dailyDate);
             const gasDailyDate = resolveUtilityEntryExperimentResourceDailyDate(records.gas, dailyDate);
@@ -4227,6 +5652,10 @@ html, body {
             renderUtilityEntryExperimentCorrectionSummary(host, records, monthValue);
             host.dataset.actualValuesReady = 'true';
             setUtilityEntryExperimentSaveStatus(host, 'saved', '저장됨');
+            if (unsavedDailyDraftCount > 0) {
+                markUtilityEntryExperimentUnsaved(host);
+            }
+            syncUtilityEntryExperimentDailyValidation(host);
         } catch (error) {
             host.dataset.actualValuesReady = 'error';
             host.dataset.actualValuesError = error?.message || 'unknown_error';
@@ -4266,25 +5695,81 @@ html, body {
             .filter(input => input.dataset.entryMode === 'manual' && !input.readOnly && !input.closest('[hidden]'));
     }
 
+    function getUtilityEntryExperimentDailyCurrentInputs(host) {
+        const dailyView = host?.querySelector?.('.utility-entry-experiment-view.is-daily');
+        if (!dailyView) return [];
+        return Array.from(dailyView.querySelectorAll(
+            '.utility-entry-experiment-input[data-entry-mode="manual"][data-utility-entry-experiment-save-kind="daily-current"]'
+        ))
+            .filter(input =>
+                input.dataset.entryMode === 'manual' &&
+                input.dataset.utilityEntryExperimentSaveKind === 'daily-current' &&
+                !input.readOnly &&
+                isUtilityEntryExperimentInputVisible(input)
+            );
+    }
+
+    function focusNextUtilityEntryExperimentDailyCurrentInput(host, input) {
+        const currentInputs = getUtilityEntryExperimentDailyCurrentInputs(host);
+        const currentIndex = currentInputs.indexOf(input);
+        if (currentIndex < 0) return false;
+
+        const nextInput = currentInputs[currentIndex + 1] || null;
+        if (!nextInput) return false;
+
+        nextInput.focus?.();
+        nextInput.select?.();
+        return true;
+    }
+
     function getUtilityEntryExperimentInputByLabel(host, label = '') {
         const inputs = Array.from(host?.querySelectorAll?.('.utility-entry-experiment-input') || [])
             .filter(input => input.getAttribute('aria-label') === label);
         return inputs.find(input => !input.closest('[hidden]')) || inputs[0] || null;
     }
 
-    function getUtilityEntryExperimentQuickCandidateRows(host, rawValue = '') {
-        const inputValue = parseUtilityEntryExperimentNumber(normalizeUtilityEntryExperimentNumberText(rawValue));
-        if (!Number.isFinite(inputValue)) return [];
+    function getUtilityEntryExperimentInputByQuickTarget(host, target = {}) {
+        const resourceType = normalizeUtilityEntryExperimentResourceType(target.resourceType);
+        const fieldId = String(target.fieldId || '').trim();
+        const label = String(target.label || '').trim();
+        const inputs = Array.from(host?.querySelectorAll?.('.utility-entry-experiment-input') || [])
+            .filter(input => isUtilityEntryExperimentInputVisible(input));
 
+        if (resourceType && fieldId) {
+            const exactInput = inputs.find(input => (
+                input.dataset?.utilityEntryExperimentSaveKind === 'daily-current' &&
+                normalizeUtilityEntryExperimentResourceType(input.dataset?.utilityEntryExperimentResourceType) === resourceType &&
+                resolveUtilityEntryExperimentDailyInputFieldId(input, resourceType) === fieldId
+            ));
+            if (exactInput) return exactInput;
+        }
+
+        if (resourceType && label) {
+            const scopedInput = inputs.find(input => (
+                input.getAttribute('aria-label') === label &&
+                normalizeUtilityEntryExperimentResourceType(input.dataset?.utilityEntryExperimentResourceType) === resourceType
+            ));
+            if (scopedInput) return scopedInput;
+        }
+
+        return label ? getUtilityEntryExperimentInputByLabel(host, label) : null;
+    }
+
+    function collectUtilityEntryExperimentQuickCandidateRows(host, inputValue, options = {}) {
+        const includeFilled = options.includeFilled === true;
         return getUtilityEntryExperimentQuickTargetInputs(host)
             .map(input => {
                 const targetLabel = input.getAttribute('aria-label') || '';
+                const targetResourceType = normalizeUtilityEntryExperimentResourceType(
+                    input.dataset?.utilityEntryExperimentResourceType
+                );
+                const targetFieldId = resolveUtilityEntryExperimentDailyInputFieldId(input, targetResourceType);
                 const row = input.closest('tr');
                 const itemLabel = row?.querySelector?.('.is-item-cell')?.textContent?.trim() || targetLabel;
                 const rowInputs = Array.from(row?.querySelectorAll?.('.utility-entry-experiment-input') || []);
                 const previousInput = rowInputs[0] || null;
                 const currentText = normalizeUtilityEntryExperimentNumberText(input.value);
-                if (currentText) return null;
+                if (currentText && !includeFilled) return null;
 
                 const previousText = normalizeUtilityEntryExperimentNumberText(previousInput?.value);
                 if (!previousText) return null;
@@ -4292,20 +5777,36 @@ html, body {
                 const previousValue = parseUtilityEntryExperimentNumber(previousText);
                 const referenceValue = previousValue;
                 if (!Number.isFinite(referenceValue)) return null;
+                const difference = inputValue - referenceValue;
+                if (difference < 0) return null;
 
                 const section = input.closest('.utility-entry-experiment-subsection');
                 const resourceLabel = section?.classList?.contains('is-gas') ? '가스' : '전기';
                 return {
                     targetLabel,
+                    targetResourceType,
+                    targetFieldId,
                     itemLabel,
                     resourceLabel,
                     referenceValue,
-                    difference: inputValue - referenceValue
+                    currentText,
+                    isFilled: Boolean(currentText),
+                    difference
                 };
             })
             .filter(Boolean)
-            .sort((left, right) => Math.abs(left.difference) - Math.abs(right.difference))
+            .sort((left, right) => left.difference - right.difference)
             .slice(0, 3);
+    }
+
+    function getUtilityEntryExperimentQuickCandidateRows(host, rawValue = '') {
+        const inputValue = parseUtilityEntryExperimentNumber(normalizeUtilityEntryExperimentNumberText(rawValue));
+        if (!Number.isFinite(inputValue)) return [];
+
+        const emptyRows = collectUtilityEntryExperimentQuickCandidateRows(host, inputValue);
+        return emptyRows.length
+            ? emptyRows
+            : collectUtilityEntryExperimentQuickCandidateRows(host, inputValue, { includeFilled: true });
     }
 
     function renderUtilityEntryExperimentQuickCandidates(host) {
@@ -4329,9 +5830,11 @@ html, body {
                 class="utility-entry-experiment-quick-candidate${index === 0 ? ' is-active' : ''}"
                 data-role="utility-entry-experiment-quick-candidate"
                 data-target-label="${escapeUtilityEntryExperimentHtml(row.targetLabel)}"
+                data-target-resource-type="${escapeUtilityEntryExperimentHtml(row.targetResourceType)}"
+                data-target-field-id="${escapeUtilityEntryExperimentHtml(row.targetFieldId)}"
             >
                 <strong>${escapeUtilityEntryExperimentHtml(`${row.resourceLabel} · ${row.itemLabel}`)}</strong>
-                <span>기준 ${escapeUtilityEntryExperimentHtml(formatUtilityEntryExperimentNumberText(row.referenceValue))} · 차이 ${escapeUtilityEntryExperimentHtml(formatUtilityEntryExperimentNumberText(row.difference.toFixed(2)))}</span>
+                <span>기준 ${escapeUtilityEntryExperimentHtml(formatUtilityEntryExperimentNumberText(row.referenceValue))} · 차이 ${escapeUtilityEntryExperimentHtml(formatUtilityEntryExperimentNumberText(row.difference.toFixed(2)))}${row.isFilled ? ` · 현재 ${escapeUtilityEntryExperimentHtml(formatUtilityEntryExperimentNumberText(row.currentText))}` : ''}</span>
             </button>
         `).join('');
     }
@@ -4349,7 +5852,16 @@ html, body {
         });
     }
 
-    function applyUtilityEntryExperimentQuickInput(host, targetLabel = '') {
+    function getUtilityEntryExperimentQuickTargetFromCandidate(candidate) {
+        if (!candidate) return {};
+        return {
+            label: candidate.dataset?.targetLabel || '',
+            resourceType: candidate.dataset?.targetResourceType || '',
+            fieldId: candidate.dataset?.targetFieldId || ''
+        };
+    }
+
+    function applyUtilityEntryExperimentQuickInput(host, target = null) {
         const input = getUtilityEntryExperimentQuickInput(host);
         if (!input) return false;
 
@@ -4357,11 +5869,21 @@ html, body {
         const numericValue = parseUtilityEntryExperimentNumber(normalizedValue);
         if (!Number.isFinite(numericValue)) return false;
 
-        const activeCandidate = targetLabel
+        const explicitTarget = typeof target === 'string'
+            ? { label: target }
+            : (target && typeof target === 'object' ? target : {});
+        const hasExplicitTarget = Boolean(
+            explicitTarget.label ||
+            explicitTarget.resourceType ||
+            explicitTarget.fieldId
+        );
+        const activeCandidate = hasExplicitTarget
             ? null
             : host.querySelector('[data-role="utility-entry-experiment-quick-candidate"].is-active');
-        const resolvedTargetLabel = targetLabel || activeCandidate?.dataset?.targetLabel || '';
-        const targetInput = getUtilityEntryExperimentInputByLabel(host, resolvedTargetLabel);
+        const resolvedTarget = hasExplicitTarget
+            ? explicitTarget
+            : getUtilityEntryExperimentQuickTargetFromCandidate(activeCandidate);
+        const targetInput = getUtilityEntryExperimentInputByQuickTarget(host, resolvedTarget);
         if (!targetInput || targetInput.readOnly) return false;
 
         targetInput.value = formatUtilityEntryExperimentNumberText(normalizedValue);
@@ -4390,6 +5912,15 @@ html, body {
             if (input.value !== nextValue) input.value = nextValue;
             updateUtilityEntryExperimentNormalizedValue(input);
             markUtilityEntryExperimentUnsaved(host);
+            if (input.dataset?.utilityEntryExperimentSaveKind === 'daily-current') {
+                syncUtilityEntryExperimentDailyValidation(host);
+                const selectedDate = getUtilityEntryExperimentSelectedDailyDate(host);
+                updateUtilityEntryExperimentBeforeCorrectionToggle(
+                    host,
+                    selectedDate,
+                    getUtilityEntryExperimentCorrectionReadinessFromInputs(host, selectedDate.slice(0, 7))
+                );
+            }
         });
 
         host.addEventListener('input', event => {
@@ -4417,12 +5948,23 @@ html, body {
             }
         });
 
+        host.addEventListener('keydown', event => {
+            const input = event.target?.closest?.('.utility-entry-experiment-input[data-utility-entry-experiment-save-kind="daily-current"]');
+            if (!input || input.readOnly || !host.contains(input)) return;
+            if (event.key !== 'Enter' || event.isComposing) return;
+
+            event.preventDefault();
+            if (rejectUtilityEntryExperimentLowerDailyInput(host, input)) return;
+            focusNextUtilityEntryExperimentDailyCurrentInput(host, input);
+        });
+
         host.addEventListener('focusout', event => {
             const input = event.target?.closest?.('.utility-entry-experiment-input[data-entry-mode="manual"]');
             if (!input || input.readOnly) return;
 
             input.value = formatUtilityEntryExperimentNumberText(input.value);
             updateUtilityEntryExperimentNormalizedValue(input);
+            if (rejectUtilityEntryExperimentLowerDailyInput(host, input, { focus: false })) return;
         });
 
         host.addEventListener('change', event => {
@@ -4460,7 +6002,7 @@ html, body {
 
             const quickCandidate = event.target?.closest?.('[data-role="utility-entry-experiment-quick-candidate"]');
             if (quickCandidate && host.contains(quickCandidate)) {
-                applyUtilityEntryExperimentQuickInput(host, quickCandidate.dataset.targetLabel || '');
+                applyUtilityEntryExperimentQuickInput(host, getUtilityEntryExperimentQuickTargetFromCandidate(quickCandidate));
                 return;
             }
 
@@ -4484,7 +6026,8 @@ html, body {
                 }
                 openUtilityEntryExperimentMonthlyMeterSheet(
                     host,
-                    monthlyMeterButton.dataset.utilityEntryExperimentMeter || ''
+                    monthlyMeterButton.dataset.utilityEntryExperimentMeter || '',
+                    monthlyMeterButton.dataset.utilityEntryExperimentMeterLink || ''
                 );
                 return;
             }
@@ -4521,14 +6064,34 @@ html, body {
                 return;
             }
 
+            const correctionEditButton = event.target?.closest?.('[data-role="utility-entry-experiment-correction-edit"]');
+            if (correctionEditButton && host.contains(correctionEditButton)) {
+                const selectedDate = getUtilityEntryExperimentSelectedDailyDate(host);
+                if (!isUtilityEntryExperimentBeforeCorrectionAvailable(selectedDate)) return;
+
+                host.dataset.utilityEntryExperimentCorrectionMode = 'before';
+                setUtilityEntryExperimentCorrectionEditUnlocked(host, true, selectedDate);
+                updateUtilityEntryExperimentBeforeCorrectionToggle(host, selectedDate);
+                unlockUtilityEntryExperimentCorrectionEditInputs(host, 'electric', selectedDate.slice(0, 7));
+                populateUtilityEntryExperimentActualValues(host);
+                return;
+            }
+
             const correctionModeButton = event.target?.closest?.('[data-role="utility-entry-experiment-correction-mode"]');
             if (correctionModeButton && host.contains(correctionModeButton)) {
                 const selectedDate = getUtilityEntryExperimentSelectedDailyDate(host);
                 if (!isUtilityEntryExperimentBeforeCorrectionAvailable(selectedDate)) return;
+                if (correctionModeButton.disabled || correctionModeButton.getAttribute('aria-disabled') === 'true') return;
 
                 const mode = correctionModeButton.dataset.utilityEntryExperimentCorrectionMode || 'corrected';
                 if (!getUtilityEntryExperimentCorrectionModeOptions(selectedDate).includes(mode)) return;
                 host.dataset.utilityEntryExperimentCorrectionMode = mode;
+                setUtilityEntryExperimentCorrectionEditUnlocked(host, false);
+                updateUtilityEntryExperimentBeforeCorrectionToggle(
+                    host,
+                    selectedDate,
+                    getUtilityEntryExperimentCorrectionReadinessFromInputs(host, selectedDate.slice(0, 7))
+                );
                 populateUtilityEntryExperimentActualValues(host);
                 return;
             }
@@ -4596,6 +6159,19 @@ html, body {
                     <i class="fa-solid fa-calculator" aria-hidden="true"></i>
                 </label>
             </div>
+        `;
+    }
+
+    function buildUtilityEntryExperimentRuleSummaryControl(rulesId) {
+        return `
+            <label
+                class="utility-entry-experiment-rule-card"
+                for="${escapeUtilityEntryExperimentHtml(rulesId)}"
+                aria-label="보정기준 보기"
+                title="보정기준 보기"
+            >
+                <i class="fa-solid fa-file-lines" aria-hidden="true"></i>
+            </label>
         `;
     }
 
@@ -4679,6 +6255,7 @@ html, body {
     function buildUtilityEntryExperimentToolbar(period = 'daily', options = {}) {
         const date = clampUtilityEntryExperimentDateToToday(options.date || UTILITY_ENTRY_EXPERIMENT_DEFAULT_DAILY_DATE);
         const saved = options.saved !== false;
+        const rulesId = String(options.rulesId || '').trim();
         const dateParts = getUtilityEntryExperimentMonthParts(date);
         const selectedYear = String(period === 'daily' ? dateParts.year : (options.year || '2024'));
         const defaultMonthLabel = `${Number(UTILITY_ENTRY_EXPERIMENT_DEFAULT_MONTH.slice(5, 7)) || 1}월`;
@@ -4717,6 +6294,7 @@ html, body {
                         ${buildUtilityEntryExperimentMonthShiftButton('monthly', 1)}
                     </div>
                 ` : ''}
+                ${period === 'monthly' ? buildUtilityEntryExperimentRuleSummaryControl(rulesId) : ''}
                 ${period === 'daily' ? `
                     <div class="utility-entry-experiment-month-picker" role="group" aria-label="연도/월">
                         <span class="utility-entry-experiment-month-picker-label">연도/월</span>
@@ -4755,6 +6333,7 @@ html, body {
                         <input type="checkbox" data-role="utility-entry-experiment-complete" />
                         <span>완료</span>
                     </label>
+                    ${buildUtilityEntryExperimentRuleSummaryControl(rulesId)}
                     <div class="utility-entry-experiment-quick-entry" data-role="utility-entry-experiment-quick-entry">
                         <button
                             type="button"
@@ -4784,12 +6363,7 @@ html, body {
     }
 
     function buildUtilityEntryExperimentCorrectionDialog(rulesId) {
-        const defaultRows = [
-            ['전기', '전력총량 환산', `중부하 + 최대부하 + 경부하, 월간 x ${UTILITY_ENTRY_EXPERIMENT_TOTAL_POWER_FACTOR}`, '유산 전기 전력 총량'],
-            ['가스', 'LNG 배분계수', 'LNG합계 / (3톤 + DSI + 액상)', '유산 LNG 사용량'],
-            ['가스', 'LPG 표시 보정', `건조기(LPG) x ${UTILITY_ENTRY_EXPERIMENT_GAS_LPG_FACTOR}`, '일간/월간 표시'],
-            ['폐수', '사용량 분리', '유산 / 북정 직접 사용량', '월간 정산']
-        ];
+        const defaultRows = getUtilityEntryExperimentCorrectionRuleRows({}, '');
 
         return `
             <section class="utility-entry-experiment-rule-dialog" role="dialog" aria-modal="true" aria-label="보정/승률 적용 기준">
@@ -4797,23 +6371,24 @@ html, body {
                 <div class="utility-entry-experiment-rule-sheet">
                     <header>
                         <div>
-                            <strong>보정/승률 적용 기준</strong>
-                            <span>읽기 전용 · 사용자 입력 없음 · 코드 변경으로만 반영</span>
+                            <strong>보정기준 문서</strong>
+                            <span>읽기 전용 · 입력값을 바꾸지 않고 표시/합계 계산에만 적용</span>
                         </div>
                         <label class="utility-entry-experiment-rule-close" for="${escapeUtilityEntryExperimentHtml(rulesId)}" aria-label="닫기">
                             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                         </label>
                     </header>
                     <div class="utility-entry-experiment-rule-note">
-                        입력 화면의 값은 아래 기준을 적용해 표시합니다. 설비 추가, 보정값 변경, 환산율 변경은 이 화면에서 수정하지 않습니다.
+                        원본 검침은 그대로 두고, 보정후 화면에서 숨김/배분/차감/합계 표시만 아래 기준으로 계산합니다.
                     </div>
                     <table data-role="utility-entry-experiment-correction-summary">
                         <thead>
                             <tr>
                                 <th>구분</th>
-                                <th>보정/승률</th>
-                                <th>기준</th>
-                                <th>적용</th>
+                                <th>항목</th>
+                                <th>적용기간</th>
+                                <th>계산/입력 기준</th>
+                                <th>화면 반영</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -4839,12 +6414,12 @@ html, body {
                         <strong>유틸리티 입력 시스템</strong>
                         ${buildUtilityEntryExperimentPeriodTabs(period, 'is-head-period')}
                     </div>
-                    ${buildUtilityEntryExperimentTopIcons(rulesId)}
                 </header>
                 ${buildUtilityEntryExperimentToolbar(period, {
             year,
             month,
             date,
+            rulesId,
             monthOptions: UTILITY_ENTRY_EXPERIMENT_MONTH_OPTIONS
         })}
                 ${buildUtilityEntryExperimentCorrectionDialog(rulesId)}
@@ -5003,14 +6578,16 @@ html, body {
     }
 
     function buildUtilityEntryExperimentDailyRows(groups, unitLabel = '', initialMonthValue = '', resourceType = '') {
-        return groups.map(group => {
+        return groups.map((group, groupIndex) => {
             const items = Array.isArray(group.items)
                 ? group.items.map(normalizeUtilityEntryExperimentDailyItem)
                 : [];
+            const groupKey = `${resourceType || 'resource'}-${groupIndex}`;
+            const rowGroupAttribute = ` data-utility-entry-experiment-row-group-key="${escapeUtilityEntryExperimentHtml(groupKey)}"`;
             if (!items.length) {
                 return `
-                    <tr${buildUtilityEntryExperimentConditionalAttributes(group, initialMonthValue)}>
-                        <th class="utility-entry-experiment-group">› ${escapeUtilityEntryExperimentHtml(group.label)} (0)</th>
+                    <tr${buildUtilityEntryExperimentConditionalAttributes(group, initialMonthValue)}${rowGroupAttribute}>
+                        <th class="utility-entry-experiment-group" data-utility-entry-experiment-group-label-cell="${escapeUtilityEntryExperimentHtml(groupKey)}">› ${escapeUtilityEntryExperimentHtml(group.label)} (0)</th>
                         <td colspan="4"></td>
                     </tr>
                 `;
@@ -5018,17 +6595,34 @@ html, body {
             const includeTotal = group.includeTotal !== false;
             const groupRowspan = items.length + (includeTotal ? 1 : 0);
             const groupAttributes = buildUtilityEntryExperimentConditionalAttributes(group, initialMonthValue);
+            const groupFieldIds = items
+                .filter(item => item.includeInGroupTotal !== false)
+                .map(item => getUtilityEntryExperimentDailyFieldId(resourceType, item.inputLabel || item.label))
+                .filter(Boolean);
+            const groupFieldIdsAttributes = groupFieldIds.length
+                ? ` data-utility-entry-experiment-group-field-ids="${escapeUtilityEntryExperimentHtml(groupFieldIds.join(','))}"`
+                : '';
             const itemRows = items.map((item, index) => {
                 const inputLabel = item.inputLabel || item.label;
                 const displayLabel = item.displayLabel || inputLabel;
-                const rowAttributes = `${groupAttributes}${buildUtilityEntryExperimentConditionalAttributes(item, initialMonthValue)}`;
+                const rowFieldId = getUtilityEntryExperimentDailyFieldId(resourceType, inputLabel);
+                const rowFieldIdAttribute = rowFieldId
+                    ? ` data-utility-entry-experiment-row-field-id="${escapeUtilityEntryExperimentHtml(rowFieldId)}"`
+                    : '';
+                const correctionSourceRowAttribute = item.correctionSourceRow === true
+                    ? ' data-utility-entry-experiment-correction-source-row="true"'
+                    : '';
+                const correctionCorrectedRowAttribute = item.correctionCorrectedRow === true
+                    ? ' data-utility-entry-experiment-correction-corrected-row="true"'
+                    : '';
+                const rowAttributes = `${groupAttributes}${buildUtilityEntryExperimentConditionalAttributes(item, initialMonthValue)}${rowFieldIdAttribute}${correctionSourceRowAttribute}${correctionCorrectedRowAttribute}`;
                 const currentMode = getUtilityEntryExperimentDailyCurrentMode(inputLabel);
                 const fieldId = currentMode === 'manual'
-                    ? getUtilityEntryExperimentDailyFieldId(resourceType, inputLabel)
+                    ? rowFieldId
                     : '';
                 return `
-                <tr${rowAttributes}>
-                    ${index === 0 ? `<th class="utility-entry-experiment-group" rowspan="${groupRowspan}">⌄ ${escapeUtilityEntryExperimentHtml(group.label)} (${items.length})</th>` : ''}
+                <tr${rowAttributes}${rowGroupAttribute}>
+                    ${index === 0 ? `<th class="utility-entry-experiment-group" rowspan="${groupRowspan}" data-utility-entry-experiment-group-label-cell="${escapeUtilityEntryExperimentHtml(groupKey)}">⌄ ${escapeUtilityEntryExperimentHtml(group.label)} (${items.length})</th>` : ''}
                     <td class="is-item-cell">${escapeUtilityEntryExperimentHtml(displayLabel)}</td>
                     <td class="is-number-cell">${buildUtilityEntryExperimentInput(`${inputLabel} 이전값`, { mode: 'calculated' })}</td>
                     <td class="is-number-cell">${buildUtilityEntryExperimentInput(`${inputLabel} 현재값`, {
@@ -5043,7 +6637,7 @@ html, body {
             }).join('');
 
             const totalRow = includeTotal ? `
-                <tr class="utility-entry-experiment-team-total-row"${groupAttributes}>
+                <tr class="utility-entry-experiment-team-total-row"${groupAttributes}${groupFieldIdsAttributes}${rowGroupAttribute}>
                     <td class="is-item-cell">합계</td>
                     <td class="is-number-cell">${buildUtilityEntryExperimentInput(`${group.label} 합계 이전값`, { mode: 'calculated' })}</td>
                     <td class="is-number-cell">${buildUtilityEntryExperimentInput(`${group.label} 합계 현재값`, { mode: 'calculated' })}</td>
@@ -5067,8 +6661,7 @@ html, body {
                 >
                     ${[
                         ['before', '보정전'],
-                        ['corrected', '보정후'],
-                        ['corrected2', '보정후2']
+                        ['corrected', '보정후']
                     ].map(([mode, label]) => `
                         <button
                             type="button"
@@ -5156,18 +6749,29 @@ html, body {
                     visibleFromMonth: UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_START_MONTH,
                     items: ['소포장', '스틱', '2팀 컴프레셔']
                 },
-                { label: '3팀', items: ['액상 1', '액상 2'] },
+                { label: '3팀', items: [{ label: '액상 1', correctionCorrectedRow: true }, '액상 2'] },
                 { label: '관리동', items: ['관리동', '관리동 냉난방', '카페', '기타'] },
                 {
                     label: '컴프레셔',
                     visibleFromMonth: UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_START_MONTH,
                     visibleBeforeMonth: UTILITY_ENTRY_EXPERIMENT_LIQUID_COMPRESSOR_START_MONTH,
-                    items: ['컴프(220v)', '컴프(380v)', '컴프 2']
+                    items: [
+                        { label: '액상 1', correctionSourceRow: true, includeInGroupTotal: false },
+                        '컴프(220v)',
+                        '컴프(380v)',
+                        '컴프 2'
+                    ]
                 },
                 {
                     label: '컴프레셔',
                     visibleFromMonth: UTILITY_ENTRY_EXPERIMENT_LIQUID_COMPRESSOR_START_MONTH,
-                    items: ['컴프(220v)', '컴프(380v)', '컴프 1', '컴프 2']
+                    items: [
+                        { label: '액상 1', correctionSourceRow: true, includeInGroupTotal: false },
+                        '컴프(220v)',
+                        '컴프(380v)',
+                        '컴프 1',
+                        '컴프 2'
+                    ]
                 },
                 { label: '전력총량', items: ['중부하(4)', '최대부하(5)', '경부하(6)'], includeTotal: false },
                 { label: '무효전력', items: ['중간무효전력(7)', '최대무효전력(8)'], includeTotal: false }
@@ -5234,10 +6838,11 @@ html, body {
             showAttachmentKey: options.showAttachmentKey,
             attachmentLabel: options.attachmentLabel
         });
+        const titleMeterLinkKey = String(options.titleMeterLinkKey || options.monthlyMeterLinkKey || '').trim();
         const titleHtml = buildUtilityEntryExperimentSettlementTitle(title, {
-            titleMeterLinkKey: options.titleMeterLinkKey
+            titleMeterLinkKey
         });
-        const monthlyMeterLinkHtml = buildUtilityEntryExperimentMonthlyMeterButton(options.monthlyMeterLinkKey || '');
+        const monthlyMeterLinkHtml = titleMeterLinkKey ? '' : buildUtilityEntryExperimentMonthlyMeterButton(options.monthlyMeterLinkKey || '');
         const graphToggleHtml = buildUtilityEntryExperimentGraphToggle({
             graphKey: options.graphToggleKey,
             graphLabel: options.graphToggleLabel,
@@ -5425,9 +7030,7 @@ html, body {
                             scopeKey: 'yusan',
                             showAttachmentKey: true,
                             attachmentLabel: '유산 전기 청구서 첨부',
-                            monthlyMeterLinkKey: 'electric_yusan',
-                            graphToggleKey: 'electric_yusan',
-                            graphToggleLabel: '그래프',
+                            titleMeterLinkKey: 'electric_yusan',
                             fieldRows: UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.electric,
                             calculatedRows: yusanElectricCalculatedRows,
                             emphasisRows: ['전기요금계'],
@@ -5468,7 +7071,7 @@ html, body {
                             inputLabelPrefix: '유산 폐수',
                             resourceType: 'waste',
                             scopeKey: 'waste_yusan',
-                            monthlyMeterLinkKey: 'waste_yusan',
+                            titleMeterLinkKey: 'waste_yusan',
                             fieldRows: UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.waste,
                             directMonthlyFirstRow: { resourceType: 'waste', teamKey: 'waste_yusan' },
                             totalRows: ['총비용']
@@ -5486,8 +7089,7 @@ html, body {
                             scopeKey: 'bukjeong',
                             showAttachmentKey: true,
                             attachmentLabel: '북정 전기 청구서 첨부',
-                            graphToggleKey: 'electric_bukjeong',
-                            graphToggleLabel: '그래프',
+                            titleMeterLinkKey: 'electric_bukjeong',
                             fieldRows: UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.electric,
                             directMonthlyFirstRow: { resourceType: 'electric', teamKey: 'team_01_01' },
                             emphasisRows: ['전기요금계'],
@@ -5512,7 +7114,7 @@ html, body {
                             inputLabelPrefix: '북정 폐수',
                             resourceType: 'waste',
                             scopeKey: 'waste_bukjeong',
-                            monthlyMeterLinkKey: 'waste_bukjeong',
+                            titleMeterLinkKey: 'waste_bukjeong',
                             fieldRows: UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.waste,
                             directMonthlyFirstRow: { resourceType: 'waste', teamKey: 'waste_bukjeong' },
                             totalRows: ['총비용']
@@ -5618,32 +7220,6 @@ html, body {
         `;
     }
 
-    function buildUtilityOverviewRatioContent() {
-        return `
-            <div class="util-sheet-stack" data-role="util-overview-ratio-surface">
-                <div class="util-sheet-panel is-overview" data-role="util-report-panel">
-                    <div class="util-sheet-header">
-                        <div class="util-sheet-title-block">
-                            <div class="util-sheet-title-row">
-                                <span class="util-sheet-title-icon is-overview" aria-hidden="true"><i class="fa-solid fa-chart-pie"></i></span>
-                                <div class="util-report-title">총괄 비율</div>
-                            </div>
-                            <div class="util-report-desc">총괄 비율 도넛과 월별 표를 확인합니다.</div>
-                        </div>
-                        <div class="util-sheet-actions">
-                            <button type="button" class="work-btn primary" data-role="util-report-open-modal" aria-label="총괄 비율 도넛 열기">
-                                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-                                <span>이동</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    KpiSectionFactoryAdapter.registerBuilder('buildUtilityOverviewRatioContent', buildUtilityOverviewRatioContent);
-
     KpiSectionFactoryAdapter.registerFactory('data', function buildDataSection() {
         const AppData = {};
         AppData.data = {
@@ -5716,11 +7292,18 @@ html, body {
             getDailyEntryStatus: getUtilityEntryExperimentDailyEntryStatus,
             getDailyEntryStatuses: getUtilityEntryExperimentDailyEntryStatuses,
             getMonthlyMeterLinkStates: getUtilityEntryExperimentMonthlyMeterLinkStates,
-            openMonthlyMeterSheet(datasetKey = '') {
+            openMonthlyMeterSheet(datasetKey = '', linkKey = '') {
                 const host = typeof document !== 'undefined'
                     ? document.querySelector('[data-role="utility-entry-experiment"]')
                     : null;
-                return openUtilityEntryExperimentMonthlyMeterSheet(host, datasetKey);
+                return openUtilityEntryExperimentMonthlyMeterSheet(host, datasetKey, linkKey);
+            },
+            openGraphTemplate(graphKey = '', monthValue = '') {
+                const host = typeof document !== 'undefined'
+                    ? document.querySelector('[data-role="utility-entry-experiment"]')
+                    : null;
+                const selectedMonth = monthValue || getUtilityEntryExperimentSelectedMonth(host);
+                return openUtilityEntryExperimentGraphTemplateByKey(graphKey, selectedMonth);
             },
             initialize: initializeUtilityEntryExperiment,
             initializeAll: initializeUtilityEntryExperimentShells,

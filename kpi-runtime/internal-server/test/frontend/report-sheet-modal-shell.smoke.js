@@ -338,11 +338,31 @@ test('report sheet modal shell registry creates the shared modal and routes type
     '[data-role="util-sheet-modal-type-select"]': true,
   });
   modal.listeners.click({ target: typeButton });
-  assert.equal(modal.dataset.sheetType, 'analysis');
+  assert.equal(modal.dataset.sheetType, 'meter');
   assert.equal(modal.dataset.datasetKey, 'gas');
-  assert.equal(modal.dataset.monthKey, '2026-05');
-  assert.equal(modal.dataset.compareKey, 'year');
-  assert.deepEqual(panelSyncArgs, { sheetType: 'analysis', datasetKey: 'gas' });
+  assert.equal(modal.dataset.monthKey, '2026-04');
+  assert.equal(modal.dataset.compareKey, 'month');
+  assert.match(harness.alertMessages.at(-1), /새 가스 그래프 연결 정보가 없습니다/);
+  assert.equal(panelSyncArgs, null);
+
+  let graphOpenArgs = null;
+  context.KpiUtilityEntryExperiment = {
+    openGraphTemplate(graphKey, monthKey) {
+      graphOpenArgs = { graphKey, monthKey };
+      return Promise.resolve(true);
+    },
+  };
+  modal.dataset.utilityEntryExperimentGraphKey = 'gas_yusan';
+  modal.listeners.click({ target: typeButton });
+  assert.deepEqual(graphOpenArgs, { graphKey: 'gas_yusan', monthKey: '2026-04' });
+  assert.equal(modal.dataset.sheetType, 'meter');
+
+  graphOpenArgs = null;
+  modal.dataset.datasetKey = 'electric';
+  modal.dataset.utilityEntryExperimentGraphKey = 'electric_bukjeong';
+  modal.listeners.click({ target: typeButton });
+  assert.deepEqual(graphOpenArgs, { graphKey: 'electric_bukjeong', monthKey: '2026-04' });
+  assert.equal(modal.dataset.sheetType, 'meter');
 
   modal.dataset.datasetKey = 'electric';
   modal.dataset.sheetType = 'analysis';
@@ -350,9 +370,9 @@ test('report sheet modal shell registry creates the shared modal and routes type
     '[data-role="util-sheet-modal-month"]': true,
   }, {}, '2026-06');
   modal.listeners.change({ target: monthSelect });
-  assert.equal(config.UtilSheetReportMonthState.analysis, '2026-06');
-  assert.deepEqual(panelSyncArgs, { sheetType: 'analysis', datasetKey: 'electric' });
-  assert.deepEqual(analysisMonthCalls.at(-1), { datasetKey: 'electric', monthKey: '2026-06' });
+  assert.equal(config.UtilSheetReportMonthState.meter, '2026-06');
+  assert.deepEqual(panelSyncArgs, { sheetType: 'meter', datasetKey: 'electric' });
+  assert.equal(analysisMonthCalls.length, 0);
 
   const stepMonthSelect = {
     disabled: false,
@@ -371,9 +391,9 @@ test('report sheet modal shell registry creates the shared modal and routes type
   }, { direction: 'prev' });
   modal.listeners.click({ target: previousMonthButton });
   assert.equal(stepMonthSelect.value, '2026-05');
-  assert.equal(config.UtilSheetReportMonthState.analysis, '2026-05');
-  assert.deepEqual(analysisMonthCalls.at(-1), { datasetKey: 'electric', monthKey: '2026-05' });
-  assert.deepEqual(panelSyncArgs, { sheetType: 'analysis', datasetKey: 'electric' });
+  assert.equal(config.UtilSheetReportMonthState.meter, '2026-05');
+  assert.equal(analysisMonthCalls.length, 0);
+  assert.deepEqual(panelSyncArgs, { sheetType: 'meter', datasetKey: 'electric' });
 
 
   const closeButton = createTarget({
@@ -1253,7 +1273,7 @@ test('report sheet modal shell extraction renders electric meter output statical
   assert.deepEqual(harness.alertMessages, []);
 });
 
-test('report sheet modal shell print exposes meter extraction even from stale analysis state', () => {
+test('report sheet modal shell print exposes meter extraction for stale analysis state', () => {
   const { context, harness } = createModalShellContext();
   const modalShell = context.KPIUtilReportSheetModalShell;
 
@@ -1265,7 +1285,7 @@ test('report sheet modal shell print exposes meter extraction even from stale an
 
   const modal = modalShell.ensureUtilSheetReportModal();
   modal.dataset.sheetType = 'analysis';
-  modal.dataset.datasetKey = 'gas';
+  modal.dataset.datasetKey = 'electric';
   modal.dataset.monthKey = '2026-05';
 
   const panel = {
@@ -1300,6 +1320,12 @@ test('report sheet modal shell print exposes meter extraction even from stale an
   assert.deepEqual(harness.alertMessages, []);
 });
 test('kpi html loads report sheet modal shell before modal render and sheet.js', () => {
+  assert.match(reportSheetModalShellSource, /function openUtilityEntryGraphTemplateFromMeterModal/);
+  assert.match(reportSheetModalShellSource, /getUtilityEntryGraphDatasetLabel/);
+  assert.match(reportSheetModalShellSource, /runtimeAdapter\.getRootValue\('KpiUtilityEntryExperiment'\)/);
+  assert.match(reportSheetModalShellSource, /api\.openGraphTemplate\(graphKey,\s*modal\?\.dataset\?\.monthKey/);
+  assert.match(reportSheetModalShellSource, /새 \$\{datasetLabel\} 그래프 연결 정보가 없습니다/);
+
   assert.match(
     kpiUtilReportSheetSource,
     /utilReportSheetModalShell\.setRuntimeAdapters\(\{[\s\S]*buildUtilGasAnalysisModel,[\s\S]*buildUtilElectricAnalysisModel,[\s\S]*buildUtilGasAnalysisBodyHtmlV2,[\s\S]*buildUtilElectricAnalysisBodyHtmlV2,/,
@@ -1307,9 +1333,9 @@ test('kpi html loads report sheet modal shell before modal render and sheet.js',
   );
 
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=059');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=103');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=071');
+  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=060');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=106');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=073');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=065');
 

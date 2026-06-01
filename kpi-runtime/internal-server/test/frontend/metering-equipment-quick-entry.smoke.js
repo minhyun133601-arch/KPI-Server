@@ -170,6 +170,7 @@ function createElementStub(tagName = 'div') {
     style: {},
     focusCalls: 0,
     selectCalls: 0,
+    blurCalls: 0,
     classList: createClassList(),
     append(...childNodes) {
       childNodes.forEach((childNode) => this.appendChild(childNode));
@@ -220,6 +221,9 @@ function createElementStub(tagName = 'div') {
     },
     focus() {
       this.focusCalls += 1;
+    },
+    blur() {
+      this.blurCalls += 1;
     },
     select() {
       this.selectCalls += 1;
@@ -322,7 +326,7 @@ function buildLegacyQuickEntryMenu() {
   };
 }
 
-function createQuickEntryContext() {
+function createQuickEntryContext(options = {}) {
   const documentStub = {
     createElement(tagName) {
       return createElementStub(tagName);
@@ -345,7 +349,7 @@ function createQuickEntryContext() {
   activeFieldInputs['field-a'].value = '';
   activeFieldInputs['field-b'].value = '44';
 
-  const resourceDatasets = {
+  const resourceDatasets = options.resourceDatasets || {
     electric: {
       equipmentItems: [
         { id: 'field-a', label: '전기 A', decimalDigits: 1 },
@@ -364,6 +368,9 @@ function createQuickEntryContext() {
       },
     },
   };
+  const activeResourceType = String(options.activeResourceType || 'electric').trim() === 'gas'
+    ? 'gas'
+    : 'electric';
 
   let hostStateActive = false;
   let dirtyStateCalls = 0;
@@ -411,10 +418,10 @@ function createQuickEntryContext() {
       openEquipmentOrderMenu: true,
       quickEntryResults: [],
       store: {
-        resourceType: 'electric',
+        resourceType: activeResourceType,
         mode: 'equipment',
-        equipmentItems: resourceDatasets.electric.equipmentItems,
-        equipmentEntries: resourceDatasets.electric.equipmentEntries,
+        equipmentItems: resourceDatasets[activeResourceType].equipmentItems,
+        equipmentEntries: resourceDatasets[activeResourceType].equipmentEntries,
         resourceDatasets,
       },
     },
@@ -715,6 +722,168 @@ test('quick-entry popup renders electric and gas equipment rows together', () =>
     popupRows[0].children[0].children[1].textContent.includes('소수점'),
     true
   );
+});
+
+test('quick-entry popup prioritizes the active resource when duplicate equipment names match', () => {
+  const { context } = createQuickEntryContext({
+    activeResourceType: 'gas',
+    resourceDatasets: {
+      electric: {
+        equipmentItems: [
+          { id: 'electric-boiler', label: 'shared boiler', decimalDigits: 0 },
+          { id: 'electric-admin', label: 'shared admin', decimalDigits: 0 },
+        ],
+        equipmentEntries: {},
+      },
+      gas: {
+        equipmentItems: [
+          { id: 'gas-boiler', label: 'shared boiler', decimalDigits: 0 },
+          { id: 'gas-admin', label: 'shared admin', decimalDigits: 0 },
+        ],
+        equipmentEntries: {},
+      },
+    },
+  });
+
+  context.toggleQuickEntryMenu();
+  const searchInput = context.getQuickEntryPopupSearchInput();
+  searchInput.value = 'shared boiler';
+  searchInput.dispatch('input');
+
+  const popupRows = context
+    .getQuickEntryPopupBody()
+    .querySelectorAll('[data-quick-entry-popup-row]');
+  assert.equal(popupRows.length, 2);
+  assert.equal(popupRows[0].dataset.resourceType, 'gas');
+  assert.equal(popupRows[0].dataset.fieldKey, 'gas-boiler');
+
+  let prevented = false;
+  searchInput.dispatch('keydown', {
+    key: 'Enter',
+    preventDefault() {
+      prevented = true;
+    },
+  });
+
+  const gasInput = findPopupFieldInput(context, 'gas', 'gas-boiler');
+  const electricInput = findPopupFieldInput(context, 'electric', 'electric-boiler');
+  assert.equal(prevented, true);
+  assert.equal(gasInput.focusCalls, 1);
+  assert.equal(gasInput.selectCalls, 1);
+  assert.equal(electricInput.focusCalls, 0);
+});
+
+test('quick-entry popup keeps nearest search matches when the query has extra equipment words', () => {
+  const { context } = createQuickEntryContext({
+    activeResourceType: 'gas',
+    resourceDatasets: {
+      electric: {
+        equipmentItems: [
+          { id: 'electric-boiler', label: '3톤 보일러', decimalDigits: 0 },
+          { id: 'electric-admin', label: '관리동', decimalDigits: 0 },
+        ],
+        equipmentEntries: {},
+      },
+      gas: {
+        equipmentItems: [
+          { id: 'gas-boiler', label: '3톤 보일러', decimalDigits: 0 },
+          { id: 'gas-admin', label: '관리동', decimalDigits: 0 },
+        ],
+        equipmentEntries: {},
+      },
+    },
+  });
+
+  context.toggleQuickEntryMenu();
+  const searchInput = context.getQuickEntryPopupSearchInput();
+  searchInput.value = '3톤 보일러 관리동';
+  searchInput.dispatch('input');
+
+  const popupRows = context
+    .getQuickEntryPopupBody()
+    .querySelectorAll('[data-quick-entry-popup-row]');
+  assert.equal(popupRows.length, 4);
+  assert.equal(popupRows[0].dataset.resourceType, 'gas');
+  assert.equal(popupRows[0].dataset.fieldKey, 'gas-boiler');
+  assert.equal(popupRows[1].dataset.resourceType, 'gas');
+  assert.equal(popupRows[1].dataset.fieldKey, 'gas-admin');
+  assert.equal(context.getQuickEntryPopupEmptyState().classList.contains('is-hidden'), true);
+});
+
+test('quick-entry popup resource keywords keep nearest matches in that resource', () => {
+  const { context } = createQuickEntryContext({
+    activeResourceType: 'electric',
+    resourceDatasets: {
+      electric: {
+        equipmentItems: [
+          { id: 'electric-boiler', label: '3톤 보일러', decimalDigits: 0 },
+          { id: 'electric-admin', label: '관리동', decimalDigits: 0 },
+        ],
+        equipmentEntries: {},
+      },
+      gas: {
+        equipmentItems: [
+          { id: 'gas-boiler', label: '3톤 보일러', decimalDigits: 0 },
+          { id: 'gas-admin', label: '관리동', decimalDigits: 0 },
+        ],
+        equipmentEntries: {},
+      },
+    },
+  });
+
+  context.toggleQuickEntryMenu();
+  const searchInput = context.getQuickEntryPopupSearchInput();
+  searchInput.value = '가스 3톤보일러 관리동';
+  searchInput.dispatch('input');
+
+  const popupRows = context
+    .getQuickEntryPopupBody()
+    .querySelectorAll('[data-quick-entry-popup-row]');
+  assert.equal(popupRows.length, 2);
+  assert.equal(
+    popupRows.every((row) => row.dataset.resourceType === 'gas'),
+    true
+  );
+  assert.equal(popupRows[0].dataset.fieldKey, 'gas-boiler');
+  assert.equal(popupRows[1].dataset.fieldKey, 'gas-admin');
+});
+
+test('quick-entry popup Enter navigation stays inside the current resource section', () => {
+  const { context } = createQuickEntryContext({
+    activeResourceType: 'gas',
+    resourceDatasets: {
+      electric: {
+        equipmentItems: [{ id: 'electric-boiler', label: 'shared boiler', decimalDigits: 0 }],
+        equipmentEntries: {},
+      },
+      gas: {
+        equipmentItems: [
+          { id: 'gas-boiler', label: 'shared boiler', decimalDigits: 0 },
+          { id: 'gas-admin', label: 'shared admin', decimalDigits: 0 },
+        ],
+        equipmentEntries: {},
+      },
+    },
+  });
+
+  context.toggleQuickEntryMenu();
+  const gasBoilerInput = findPopupFieldInput(context, 'gas', 'gas-boiler');
+  const gasAdminInput = findPopupFieldInput(context, 'gas', 'gas-admin');
+  const electricInput = findPopupFieldInput(context, 'electric', 'electric-boiler');
+
+  let prevented = false;
+  context.handleQuickEntryPopupFieldKeydown({
+    target: gasBoilerInput,
+    key: 'Enter',
+    preventDefault() {
+      prevented = true;
+    },
+  });
+
+  assert.equal(prevented, true);
+  assert.equal(gasAdminInput.focusCalls, 1);
+  assert.equal(gasAdminInput.selectCalls, 1);
+  assert.equal(electricInput.focusCalls, 0);
 });
 
 test('quick-entry popup CSS uses a dense fullscreen grid instead of large row cards', () => {

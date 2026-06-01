@@ -1469,46 +1469,8 @@
         `;
     }
 
-    function decorateExperimentOverviewRatioContent(content) {
-        const source = String(content || '');
-        const contentWithFullscreen = source.includes('data-exp-fullscreen-toggle')
-            ? source
-            : source.replace('<div class="util-sheet-actions">', `<div class="util-sheet-actions">${buildExperimentFullscreenButtonHtml()}`);
-        return `
-            <section class="experiment-overview-ratio-shell" data-exp-overview-ratio-shell aria-label="총괄 비율 원형 그래프">
-                ${contentWithFullscreen}
-            </section>
-        `;
-    }
-
-    function buildExperimentOverviewRatioContent() {
-        const builder = root.KpiSectionFactoryAdapter?.getBuilder?.('buildUtilityOverviewRatioContent');
-        if (typeof builder === 'function') return decorateExperimentOverviewRatioContent(builder());
-        return decorateExperimentOverviewRatioContent(`
-            <div class="util-sheet-stack" data-role="util-overview-ratio-surface">
-                <div class="util-sheet-panel is-overview" data-role="util-report-panel">
-                    <div class="util-sheet-header">
-                        <div class="util-sheet-title-block">
-                            <div class="util-sheet-title-row">
-                                <span class="util-sheet-title-icon is-overview" aria-hidden="true"><i class="fa-solid fa-chart-pie"></i></span>
-                                <div class="util-report-title">총괄 비율</div>
-                            </div>
-                            <div class="util-report-desc">총괄 비율 원형 그래프와 월별 표를 확인합니다.</div>
-                        </div>
-                        <div class="util-sheet-actions">
-                            <button type="button" class="work-btn primary" data-role="util-report-open-modal" aria-label="총괄 비율 원형 그래프 열기">
-                                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-                                <span>이동</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `);
-    }
-
     function getExperimentFullscreenTarget(element) {
-        return element?.closest?.('.experiment-unified-shell, [data-exp-overview-ratio-shell]')
+        return element?.closest?.('.experiment-unified-shell')
             || root.document?.getElementById?.('content-container')
             || null;
     }
@@ -1557,7 +1519,7 @@
         const documentRef = root.document;
         if (!documentRef?.querySelectorAll) return;
         const fullscreenElement = getExperimentFullscreenElement();
-        documentRef.querySelectorAll('.experiment-unified-shell, [data-exp-overview-ratio-shell]').forEach(target => {
+        documentRef.querySelectorAll('.experiment-unified-shell').forEach(target => {
             const active = fullscreenElement === target || target.dataset?.expFullscreenFallback === 'true';
             if (!active && target.dataset) delete target.dataset.expFullscreenFallback;
             target.classList.toggle('is-experiment-browser-fullscreen', active);
@@ -1955,16 +1917,6 @@
                     desc: '필요한 지표 카드를 선택해 선 그래프와 막대 그래프로 비교합니다.',
                     viewerMode: 'full-bleed',
                     content: buildExperimentUnifiedAnalysisContent()
-                },
-                {
-                    title: '원형',
-                    icon: 'fa-chart-pie',
-                    color: '#0f766e',
-                    desc: '총괄 비율 원형 그래프와 상세표를 확인합니다.',
-                    viewerMode: 'full-bleed',
-                    utilitySurface: 'analysis',
-                    autoOpenUtilityReportModal: true,
-                    content: buildExperimentOverviewRatioContent()
                 }
             ]
         };

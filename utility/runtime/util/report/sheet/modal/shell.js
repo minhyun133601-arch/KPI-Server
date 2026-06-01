@@ -148,10 +148,8 @@
     }
 
     function normalizeSheetType(sheetType = 'meter') {
-        if (typeof runtime.normalizeUtilSheetType === 'function') {
-            return runtime.normalizeUtilSheetType(sheetType);
-        }
-        return String(sheetType || '').trim() === 'analysis' ? 'analysis' : 'meter';
+        void sheetType;
+        return 'meter';
     }
 
     function resolveDatasetKey(sheetType, datasetKey) {
@@ -195,10 +193,8 @@
     }
 
     function getAlternateSheetType(sheetType = 'meter') {
-        if (typeof runtime.getUtilSheetAlternateType === 'function') {
-            return runtime.getUtilSheetAlternateType(sheetType);
-        }
-        return normalizeSheetType(sheetType) === 'analysis' ? 'meter' : 'analysis';
+        void sheetType;
+        return 'meter';
     }
 
     function isCustomAnalysisDataset(datasetKey = '') {
@@ -218,6 +214,33 @@
     function findClosest(target, selector) {
         if (!target || typeof target.closest !== 'function') return null;
         return target.closest(selector);
+    }
+
+    function getUtilityEntryGraphDatasetLabel(datasetKey = '') {
+        return resolveDatasetKey('meter', datasetKey) === 'electric' ? '전기' : '가스';
+    }
+
+    function openUtilityEntryGraphTemplateFromMeterModal(modal) {
+        const sheetType = normalizeSheetType(modal?.dataset?.sheetType || 'meter');
+        const datasetKey = resolveDatasetKey(sheetType, modal?.dataset?.datasetKey || UtilSheetReportState[sheetType] || 'gas');
+        const graphKey = String(modal?.dataset?.utilityEntryExperimentGraphKey || '').trim();
+        if (sheetType !== 'meter' || !['electric', 'gas'].includes(datasetKey)) return false;
+        const datasetLabel = getUtilityEntryGraphDatasetLabel(datasetKey);
+        if (!graphKey) {
+            runtimeAdapter.alert(`새 ${datasetLabel} 그래프 연결 정보가 없습니다. 유틸리티 기입의 ${datasetLabel} 제목에서 다시 열어 주세요.`);
+            return true;
+        }
+
+        const api = runtimeAdapter.getRootValue('KpiUtilityEntryExperiment');
+        if (typeof api?.openGraphTemplate !== 'function') {
+            runtimeAdapter.alert(`새 ${datasetLabel} 그래프를 열 수 없습니다. 새로고침 후 다시 시도해 주세요.`);
+            return true;
+        }
+        const result = api.openGraphTemplate(graphKey, modal?.dataset?.monthKey || '');
+        result?.catch?.(() => {
+            runtimeAdapter.alert(`${datasetLabel} 그래프를 열지 못했습니다. 잠시 후 다시 시도해 주세요.`);
+        });
+        return true;
     }
 
     function syncPanelSelection(sheetType, datasetKey) {
@@ -655,17 +678,14 @@
 
     function buildVisibleReportCardHtml(modal, sheetType = 'meter', options = {}) {
         const normalizedSheetType = normalizeSheetType(sheetType || modal?.dataset?.sheetType);
-        if (normalizedSheetType !== 'meter' && normalizedSheetType !== 'analysis') return '';
+        if (normalizedSheetType !== 'meter') return '';
         const card = modal?.querySelector?.('.util-sheet-report-card') || modal;
         if (!card || typeof card.cloneNode !== 'function') return '';
         const clone = card.cloneNode(true);
         syncFormControlState(card, clone);
         const datasetKey = resolveDatasetKey(normalizedSheetType, modal?.dataset?.datasetKey || UtilSheetReportState[normalizedSheetType] || 'gas');
-        if (normalizedSheetType === 'analysis') {
-            applyAnalysisHeaderControlsOverride(clone, options?.headerControlsHtml);
-        }
         applyReportBodyHtmlOverride(clone, options?.bodyHtmlOverride, {
-            mode: options?.bodyHtmlOverrideMode || (normalizedSheetType === 'analysis' ? 'analysis' : 'replace')
+            mode: options?.bodyHtmlOverrideMode || 'replace'
         });
         ensureReportTemplateAtBodyEnd(clone, normalizedSheetType, datasetKey);
         const removableSelectors = [
@@ -3524,7 +3544,7 @@
         return Array.from(new Set(checkboxes
             .filter(checkbox => checkbox?.checked === true)
             .map(checkbox => normalizeSheetType(checkbox?.dataset?.extractSheetType))
-            .filter(sheetType => sheetType === 'meter' || sheetType === 'analysis')));
+            .filter(sheetType => sheetType === 'meter')));
     }
 
     function openUtilSheetExtractOptions(modal) {
@@ -4020,7 +4040,7 @@
         const sheetTypes = Array.isArray(selectedSheetTypes) && selectedSheetTypes.length
             ? selectedSheetTypes.map(normalizeSheetType)
             : getSelectedExtractSheetTypes(modal);
-        const uniqueSheetTypes = Array.from(new Set(sheetTypes)).filter(sheetType => sheetType === 'meter' || sheetType === 'analysis');
+        const uniqueSheetTypes = Array.from(new Set(sheetTypes)).filter(sheetType => sheetType === 'meter');
         if (!uniqueSheetTypes.length) {
             runtimeAdapter.alert('추출할 항목을 선택해 주세요.');
             return false;
@@ -4041,9 +4061,7 @@
         let success = true;
 
         try {
-            const documentResults = uniqueSheetTypes.includes('meter') && uniqueSheetTypes.includes('analysis')
-                ? [buildCombinedExtractDocument(modal, datasetKey, monthKey, compareKey)]
-                : uniqueSheetTypes.map(sheetType => buildExtractDocumentForSheetType(modal, sheetType, datasetKey, monthKey, compareKey));
+            const documentResults = uniqueSheetTypes.map(sheetType => buildExtractDocumentForSheetType(modal, sheetType, datasetKey, monthKey, compareKey));
 
             documentResults.forEach(documentResult => {
                 if (!documentResult?.html || !documentResult?.fileName) {
@@ -4252,38 +4270,9 @@
             }
             const typeButton = findClosest(target, '[data-role="util-sheet-modal-type-select"]');
             if (typeButton) {
-                const currentSheetType = normalizeSheetType(modal.dataset.sheetType);
-                const currentDatasetKey = resolveDatasetKey(
-                    currentSheetType,
-                    modal.dataset.datasetKey || UtilSheetReportState[currentSheetType] || 'gas'
-                );
-                const nextSheetType = getAlternateSheetType(currentSheetType);
-                const nextDatasetKey = resolveDatasetKey(nextSheetType, currentDatasetKey);
-                modal.dataset.sheetType = nextSheetType;
-                modal.dataset.datasetKey = nextDatasetKey;
-                if (nextDatasetKey === 'waste') {
-                    const wasteMeterSiteKey = String(
-                        modal.dataset.wasteMeterSiteKey
-                        || modal.dataset.wasteAnalysisSiteKey
-                        || UtilSheetAnalysisState.waste?.siteKey
-                        || 'all'
-                    ).trim() || 'all';
-                    const wasteAnalysisSiteKey = String(
-                        modal.dataset.wasteAnalysisSiteKey
-                        || modal.dataset.wasteMeterSiteKey
-                        || UtilSheetAnalysisState.waste?.siteKey
-                        || 'all'
-                    ).trim() || 'all';
-                    modal.dataset.wasteMeterSiteKey = wasteMeterSiteKey;
-                    modal.dataset.wasteAnalysisSiteKey = wasteAnalysisSiteKey;
-                    if (UtilSheetAnalysisState.waste) {
-                        UtilSheetAnalysisState.waste.siteKey = wasteAnalysisSiteKey;
-                    }
+                if (openUtilityEntryGraphTemplateFromMeterModal(modal)) {
+                    return;
                 }
-                modal.dataset.monthKey = String(UtilSheetReportMonthState[nextSheetType] || modal.dataset.monthKey || '').trim();
-                modal.dataset.compareKey = normalizeCompareKey(UtilSheetCompareState[nextSheetType] || modal.dataset.compareKey || 'month');
-                rerenderAndSync(modal);
-                syncPanelSelection(nextSheetType, modal.dataset.datasetKey);
                 return;
             }
             const chartButton = findClosest(target, '[data-role="util-sheet-analysis-open-chart"]');

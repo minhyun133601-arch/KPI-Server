@@ -1186,8 +1186,8 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
     category: { utilitySurface: 'analysis', autoOpenUtilityReportModal: true, content: '' },
     container: dataAnalysisContainer,
   });
-  assert.equal(registered.reportPanelContainers[0], dataAnalysisContainer);
-  assert.equal(dataAnalysisModalOpenCount, 1);
+  assert.equal(registered.reportPanelContainers.length, 0);
+  assert.equal(dataAnalysisModalOpenCount, 0);
   assert.equal(registered.sheetReportContainers.length, 0);
 
   let experimentAnalysisModalOpenCount = 0;
@@ -1207,15 +1207,15 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
     category: { utilitySurface: 'analysis', autoOpenUtilityReportModal: true, content: '' },
     container: experimentAnalysisContainer,
   });
-  assert.equal(registered.reportPanelContainers[1], experimentAnalysisContainer);
-  assert.equal(experimentAnalysisModalOpenCount, 1);
+  assert.equal(registered.reportPanelContainers.length, 0);
+  assert.equal(experimentAnalysisModalOpenCount, 0);
 
   registered.initializers.get('data')({
     sectionId: 'data',
     category: { content: '' },
     container: {},
   });
-  assert.equal(registered.reportPanelContainers.length, 2);
+  assert.equal(registered.reportPanelContainers.length, 0);
 
   const reportContainer = {};
   registered.initializers.get('report')({

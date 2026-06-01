@@ -380,6 +380,7 @@ test('report sheet modal render registry normalizes meter modal state and rerend
   assert.equal(gasViewToggle.attrs.title, '가스 그래프 보기');
   assert.match(gasViewToggle.innerHTML, /그래프/);
   assert.equal(gasViewToggle.classList.contains('is-meter'), true);
+  assert.match(reportSheetModalRenderSource, /\['electric', 'gas'\]\.includes\(normalizedDatasetKey\)/);
   assert.equal(extractButton.hidden, false);
   assert.equal(extractButton.disabled, false);
   assert.equal(extractButton.textContent, 'PDF 인쇄');
@@ -587,9 +588,9 @@ test('report sheet modal render omits blank template from every utility sheet bo
     ['meter', 'gas', 'GAS_METER_DETAIL'],
     ['meter', 'electric', 'ELECTRIC_METER_DETAIL'],
     ['meter', 'waste', 'WASTE_METER_MAIN'],
-    ['analysis', 'gas', 'GAS_ANALYSIS_MAIN'],
-    ['analysis', 'electric', 'ELECTRIC_ANALYSIS_MAIN'],
-    ['analysis', 'waste', 'WASTE_ANALYSIS_MAIN'],
+    ['analysis', 'gas', 'GAS_METER_DETAIL'],
+    ['analysis', 'electric', 'ELECTRIC_METER_DETAIL'],
+    ['analysis', 'waste', 'WASTE_METER_MAIN'],
   ].forEach(([sheetType, datasetKey, marker]) => {
     const { modal, body } = createModalHarness();
     modal.dataset.sheetType = sheetType;
@@ -597,6 +598,7 @@ test('report sheet modal render omits blank template from every utility sheet bo
     modal.dataset.monthKey = '2026-04';
     modalRender.renderUtilSheetReportModal(modal);
 
+    assert.equal(modal.dataset.sheetType, 'meter');
     assert.ok(body.innerHTML.includes(marker), `${sheetType}:${datasetKey} must render its report body`);
     assert.doesNotMatch(body.innerHTML, /data-role="util-sheet-report-template-section"/);
     assert.doesNotMatch(body.innerHTML, /util-sheet-blank-template-table/);
@@ -774,7 +776,7 @@ test('report sheet modal render syncs gas data before showing no-data fallback',
   assert.equal(windowStateSyncCount, 1);
 });
 
-test('report sheet modal render enables extraction for analysis sheets', () => {
+test('report sheet modal render normalizes stale analysis sheets back to meter extraction', () => {
   const context = createModalRenderContext();
   const modalRender = context.KPIUtilReportSheetModalRender;
   const config = context.KPIUtilReportSheetConfig;
@@ -815,6 +817,7 @@ test('report sheet modal render enables extraction for analysis sheets', () => {
 
   modalRender.renderUtilSheetReportModal(modal);
 
+  assert.equal(modal.dataset.sheetType, 'meter');
   assert.equal(extractButton.hidden, false);
   assert.equal(extractButton.disabled, false);
   assert.ok(extractButton.textContent.length > 0);
@@ -855,8 +858,8 @@ test('kpi html loads report sheet modal render between modal shell and sheet.js'
   const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=060');
   const gasScopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=056');
   const gasRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/runtime-sync.js?v=054');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=103');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=071');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=106');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=073');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=065');
 

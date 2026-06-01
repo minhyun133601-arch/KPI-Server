@@ -27,7 +27,14 @@ function isQuickEntryPopupSupportedResource(resourceType = getCurrentResourceTyp
 }
 
 function getQuickEntryPopupResourceTypes() {
-  return QUICK_ENTRY_POPUP_RESOURCE_TYPES.filter((resourceType) =>
+  const currentResourceType = normalizeResourceType(getCurrentResourceType());
+  const orderedResourceTypes = [
+    currentResourceType,
+    ...QUICK_ENTRY_POPUP_RESOURCE_TYPES.filter((resourceType) => resourceType !== currentResourceType),
+  ];
+  return orderedResourceTypes.filter((resourceType, index, source) =>
+    source.indexOf(resourceType) === index &&
+    QUICK_ENTRY_POPUP_RESOURCE_TYPES.includes(resourceType) &&
     isPlainObject(getActiveResourceDataset(state.store, resourceType))
   );
 }
@@ -380,7 +387,10 @@ function toggleQuickEntryMenu() {
 }
 
 function handleQuickEntryPopupSearchKeydown(event) {
-  if (event.key !== "ArrowDown") {
+  const wantsFirstField =
+    event.key === "ArrowDown" ||
+    (event.key === "Enter" && !event.altKey && !event.ctrlKey && !event.metaKey);
+  if (!wantsFirstField) {
     return;
   }
 

@@ -67,8 +67,9 @@ test('report sheet panel runtime registry normalizes compare and dataset helpers
 
   assert.equal(registry.normalizeUtilSheetCompareKey('year'), 'year');
   assert.equal(registry.normalizeUtilSheetCompareKey('anything'), 'month');
-  assert.equal(registry.normalizeUtilSheetType('analysis'), 'analysis');
+  assert.equal(registry.normalizeUtilSheetType('analysis'), 'meter');
   assert.equal(registry.normalizeUtilSheetType('meter'), 'meter');
+  assert.equal(registry.getUtilSheetAlternateType('meter'), 'meter');
   assert.equal(registry.resolveUtilSheetReportDatasetKey('meter', 'electric'), 'electric');
   assert.equal(registry.resolveUtilSheetReportDatasetKey('analysis', 'x'), 'gas');
   assert.equal(typeof registry.getUtilSheetCompareLabel('month'), 'string');
@@ -148,7 +149,7 @@ test('report sheet panel runtime initializes panels through the report adapter d
 
 test('kpi html loads report sheet panel runtime before panel preview and windows', () => {
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
-  const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=057');
+  const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=058');
   const panelPreviewIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/preview.js?v=056');
   const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=060');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=065');
