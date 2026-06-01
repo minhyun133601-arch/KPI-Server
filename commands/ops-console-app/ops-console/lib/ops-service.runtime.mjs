@@ -4,7 +4,7 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import {
   appLogsDir,
-  centralRuntimePostgresDataDir,
+  localExperimentPostgresDataDir,
   commandsRoot,
   envFilePath,
   internalServerDir,
@@ -61,7 +61,7 @@ function getChildProcessEnv() {
   return {
     ...process.env,
     ...getRuntimeEnv(),
-    KPI_RUNTIME_ENV: "production",
+    KPI_RUNTIME_ENV: "local-experiment",
   };
 }
 
@@ -87,7 +87,7 @@ function getDatabaseConnection() {
   if (!databaseUrl) {
     return {
       host: "127.0.0.1",
-      port: 5434,
+      port: 55432,
       database: "",
       user: "",
       password: "",
@@ -99,12 +99,12 @@ function getDatabaseConnection() {
 function getServerPort() {
   const env = getRuntimeEnv();
   const parsed = Number.parseInt(String(env.KPI_SERVER_PORT || ""), 10);
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 3100;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 18080;
 }
 
 function getPostgresPort() {
   const parsed = getDatabaseConnection().port;
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : 5434;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : 55432;
 }
 
 function resolveInternalServerPath(rawPath) {
@@ -121,8 +121,87 @@ function resolveConfiguredPostgresDataDir() {
   const env = getRuntimeEnv();
   return (
     resolveInternalServerPath(env.KPI_POSTGRES_DATA_DIR) ||
-    centralRuntimePostgresDataDir
+    localExperimentPostgresDataDir
   );
+}
+
+function getPostgresClusterVersionFile() {
+  return path.join(postgresDataDir, "PG_VERSION");
+}
+
+function assertPostgresDataDirReadyForInit() {
+  if (!fs.existsSync(postgresDataDir)) {
+    return;
+  }
+
+  const entries = fs.readdirSync(postgresDataDir).filter((entry) => {
+    return entry !== "." && entry !== "..";
+  });
+  if (entries.length > 0 && !fs.existsSync(getPostgresClusterVersionFile())) {
+    throw new Error("postgres_data_dir_not_empty");
+  }
+}
+
+async function initializeLocalPostgresClusterIfMissing() {
+  if (fs.existsSync(getPostgresClusterVersionFile())) {
+    return false;
+  }
+
+  assertPostgresDataDirReadyForInit();
+  const initdbPath = resolvePostgresBinary("initdb.exe");
+  if (!initdbPath) {
+    throw new Error("initdb_not_found");
+  }
+
+  const env = getRuntimeEnv();
+  const postgresUser = String(
+    env.KPI_POSTGRES_SUPERUSER_USERNAME || "postgres",
+  ).trim();
+  const postgresPassword = String(
+    env.KPI_POSTGRES_SUPERUSER_PASSWORD || "postgres",
+  );
+  if (!postgresUser) {
+    throw new Error("postgres_superuser_missing");
+  }
+  if (!postgresPassword) {
+    throw new Error("postgres_superuser_password_missing");
+  }
+
+  fs.mkdirSync(path.dirname(postgresDataDir), { recursive: true });
+  const passwordFile = path.join(
+    path.dirname(postgresDataDir),
+    "postgres-init.password.tmp",
+  );
+  fs.writeFileSync(passwordFile, postgresPassword, "ascii");
+  try {
+    appendServerActionLog(
+      `[postgres] initializing local-experiment cluster at ${postgresDataDir}`,
+    );
+    await execFileAsync(
+      initdbPath,
+      [
+        "-D",
+        postgresDataDir,
+        "-U",
+        postgresUser,
+        `--pwfile=${passwordFile}`,
+        "--auth-local=scram-sha-256",
+        "--auth-host=scram-sha-256",
+        "--encoding=UTF8",
+      ],
+      {
+        cwd: internalServerDir,
+        windowsHide: true,
+        encoding: "utf8",
+        maxBuffer: 4 * 1024 * 1024,
+        timeout: 60000,
+      },
+    );
+    appendServerActionLog("[postgres] local-experiment cluster initialized");
+    return true;
+  } finally {
+    removeFileIfExists(passwordFile);
+  }
 }
 
 function getServerUrls() {
@@ -533,7 +612,7 @@ async function removeStalePostmasterPidIfSafe() {
 
   fs.unlinkSync(postmasterPidPath);
   appendServerActionLog(
-    "[postgres] removed stale central-runtime postmaster.pid",
+    "[postgres] removed stale local-experiment postmaster.pid",
   );
   return true;
 }
@@ -569,14 +648,14 @@ async function runStartLifecycleJob(actionKey, actionId) {
   appendServerActionLog(`[${actionKey}] ensuring old listener is cleared`);
   const stopResult = await runPowerShellScript(
     internalServerScripts.stopServer,
-    ["-EnvFile", envFilePath],
+    ["-Environment", "LocalExperiment"],
     {
       timeoutMs: 60000,
     },
   );
   appendScriptResultToServerActionLog(actionKey, stopResult);
 
-  appendServerActionLog(`[${actionKey}] starting central-runtime postgres`);
+  appendServerActionLog(`[${actionKey}] starting local-experiment postgres`);
   const startPostgresResult = await startLocalPostgresCluster();
   appendScriptResultToServerActionLog(actionKey, startPostgresResult);
   await waitForPostgresReady(30000);
@@ -592,14 +671,14 @@ async function runRecoverLifecycleJob(actionKey, actionId) {
   appendServerActionLog(`[${actionKey}] stopping current node server`);
   const stopServerResult = await runPowerShellScript(
     internalServerScripts.stopServer,
-    ["-EnvFile", envFilePath],
+    ["-Environment", "LocalExperiment"],
     {
       timeoutMs: 60000,
     },
   );
   appendScriptResultToServerActionLog(actionKey, stopServerResult);
 
-  appendServerActionLog(`[${actionKey}] stopping central-runtime postgres`);
+  appendServerActionLog(`[${actionKey}] stopping local-experiment postgres`);
   const stopPostgresResult = await stopLocalPostgresCluster();
   appendScriptResultToServerActionLog(actionKey, stopPostgresResult);
 
@@ -607,11 +686,10 @@ async function runRecoverLifecycleJob(actionKey, actionId) {
   await waitForPostgresStopped(30000);
   await removeStalePostmasterPidIfSafe();
 
-  const clusterVersionFile = path.join(postgresDataDir, "PG_VERSION");
-  if (!fs.existsSync(clusterVersionFile) || !fs.existsSync(envFilePath)) {
-    throw new Error("central_runtime_missing");
+  if (!fs.existsSync(envFilePath)) {
+    throw new Error("local_experiment_runtime_missing");
   }
-  appendServerActionLog(`[${actionKey}] starting central-runtime postgres`);
+  appendServerActionLog(`[${actionKey}] starting local-experiment postgres`);
   const startPostgresResult = await startLocalPostgresCluster();
   appendScriptResultToServerActionLog(actionKey, startPostgresResult);
   await waitForPostgresReady(30000);
@@ -789,7 +867,7 @@ function resolvePostgresBinary(fileName) {
   const portableBinDir = path.join(
     internalServerDir,
     "var",
-    "central-runtime",
+    "local-experiment",
     "tools",
     "postgresql-17.9-3",
     "pgsql",
@@ -798,7 +876,7 @@ function resolvePostgresBinary(fileName) {
   const currentPortableBinDir = path.join(
     internalServerDir,
     "var",
-    "central-runtime",
+    "local-experiment",
     "tools",
     "postgresql-17.10-1",
     "pgsql",
@@ -845,6 +923,7 @@ async function startLocalPostgresCluster() {
     };
   }
 
+  await initializeLocalPostgresClusterIfMissing();
   await removeStalePostmasterPidIfSafe();
   fs.mkdirSync(path.dirname(postgresLogFile), { recursive: true });
 
@@ -1013,11 +1092,6 @@ async function getComputerScheduleState() {
 async function ensureRuntimeReady() {
   if (!fs.existsSync(envFilePath)) {
     throw new Error("kpi_env_file_missing");
-  }
-
-  const clusterVersionFile = path.join(postgresDataDir, "PG_VERSION");
-  if (!fs.existsSync(clusterVersionFile)) {
-    throw new Error("kpi_postgres_cluster_missing");
   }
 
   return startLocalPostgresCluster();

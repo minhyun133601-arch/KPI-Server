@@ -47,28 +47,28 @@ test('ops console omits repository map and data reference surfaces', async () =>
   assert.doesNotMatch(appConfigSource, /previewSummary/);
   assert.doesNotMatch(appConfigSource, /dataReferenceTitle/);
   assert.doesNotMatch(appConfigSource, /dataReferenceSummary/);
-  assert.match(appConfigSource, /KPI server 3100/);
-  assert.match(appConfigSource, /DB 5434/);
-  assert.match(appConfigSource, /PostgreSQL 5434/);
-  assert.doesNotMatch(appConfigSource, /KPI server 18080/);
-  assert.doesNotMatch(appConfigSource, /PostgreSQL 55432/);
+  assert.match(appConfigSource, /KPI server 18080/);
+  assert.match(appConfigSource, /DB 55432/);
+  assert.match(appConfigSource, /PostgreSQL 55432/);
+  assert.doesNotMatch(appConfigSource, /KPI server 3100/);
+  assert.doesNotMatch(appConfigSource, /PostgreSQL 5434/);
 
   const [opsPathsSource, opsRuntimeSource, commandRegistrySource] = await Promise.all([
     readRepoFile('commands', 'ops-console-app', 'ops-console', 'lib', 'paths.mjs'),
     readRepoFile('commands', 'ops-console-app', 'ops-console', 'lib', 'ops-service.runtime.mjs'),
     readRepoFile('commands', 'ops-console-app', 'ops-console', 'lib', 'command-registry.mjs'),
   ]);
-  assert.match(opsPathsSource, /\.env\.production\.local/);
-  assert.match(opsPathsSource, /central-runtime/);
-  assert.doesNotMatch(opsPathsSource, /\.env\.local-experiment/);
-  assert.match(opsRuntimeSource, /KPI_RUNTIME_ENV: "production"/);
-  assert.match(opsRuntimeSource, /\? parsed : 3100/);
-  assert.match(opsRuntimeSource, /\? parsed : 5434/);
-  assert.doesNotMatch(opsRuntimeSource, /KPI_RUNTIME_ENV: "local-experiment"/);
-  assert.doesNotMatch(opsRuntimeSource, /\? parsed : 18080/);
-  assert.doesNotMatch(opsRuntimeSource, /\? parsed : 55432/);
-  assert.match(commandRegistrySource, /\.env\.production\.local/);
-  assert.doesNotMatch(commandRegistrySource, /\.env\.local-experiment/);
+  assert.match(opsPathsSource, /\.env\.local-experiment/);
+  assert.match(opsPathsSource, /local-experiment/);
+  assert.doesNotMatch(opsPathsSource, /\.env\.production\.local/);
+  assert.match(opsRuntimeSource, /KPI_RUNTIME_ENV: "local-experiment"/);
+  assert.match(opsRuntimeSource, /\? parsed : 18080/);
+  assert.match(opsRuntimeSource, /\? parsed : 55432/);
+  assert.doesNotMatch(opsRuntimeSource, /KPI_RUNTIME_ENV: "production"/);
+  assert.doesNotMatch(opsRuntimeSource, /\? parsed : 3100/);
+  assert.doesNotMatch(opsRuntimeSource, /\? parsed : 5434/);
+  assert.match(commandRegistrySource, /\.env\.local-experiment/);
+  assert.doesNotMatch(commandRegistrySource, /\.env\.production\.local/);
   assert.match(indexHtml, /startupTile|startupActions|startupStatus/);
   assert.match(appSource, /startupTaskRegistered|startup\.register|startup\.unregister/);
   assert.match(appConfigSource, /startupLabel|startupSummary|startupRegister|startupUnregister/);

@@ -515,7 +515,7 @@ test.describe('KPI browser smoke', () => {
       );
       await page.waitForTimeout(1000);
 
-      await clickSidebarButton(page, '설비 이력 카드');
+      await clickSidebarButton(page, '설비 양식');
       await expect(page.locator('#content-container')).toContainText('설비 현황');
       await expect(page.locator('.data-equipment-page')).toBeVisible();
       const existingEquipmentCards = page.locator('.data-equipment-board-card');

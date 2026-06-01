@@ -300,6 +300,8 @@
             owner: api.normalizeText(source.owner) || getDetailInfoValue(rawDetailRows, ['\uB2F4\uB2F9 \uC5C5\uCCB4', '\uB2F4\uB2F9', '\uCC45\uC784\uC790', ownerLabel]),
             note: api.normalizeText(source.note),
             photoDataUrl: api.normalizeText(source.photoDataUrl),
+            photoThumbDataUrl: api.normalizeText(source.photoThumbDataUrl),
+            photoCrop: normalizePhotoCrop(source.photoCrop),
             photoDocumentId: api.normalizeText(source.photoDocumentId || source.photoFileId),
             photoPreviewUrl: api.normalizeText(source.photoPreviewUrl || source.photoViewUrl),
             photoDownloadUrl: api.normalizeText(source.photoDownloadUrl),
@@ -348,6 +350,22 @@
         const value = api.normalizeText(status);
         if (['정비중', '점검중', '점검예정'].includes(value)) return '정비중';
         return ['비가동중', '비가동', '정지'].includes(value) ? '비가동중' : '가동중';
+    }
+
+    function normalizePhotoCrop(value) {
+        if (!value || typeof value !== 'object') return null;
+        const x = Number(value.x);
+        const y = Number(value.y);
+        const width = Number(value.width);
+        const height = Number(value.height);
+        if (![x, y, width, height].every(Number.isFinite)) return null;
+        if (width <= 0 || height <= 0) return null;
+        return {
+            x: Math.max(0, Math.min(x, 1)),
+            y: Math.max(0, Math.min(y, 1)),
+            width: Math.max(0.02, Math.min(width, 1)),
+            height: Math.max(0.02, Math.min(height, 1)),
+        };
     }
 
     function getEquipmentHistoryDraftValidationErrors(draft) {
@@ -430,6 +448,8 @@
             owner: normalized.owner,
             note: normalized.note,
             photoDataUrl: normalized.photoDocumentId ? '' : normalized.photoDataUrl,
+            photoThumbDataUrl: normalized.photoThumbDataUrl,
+            photoCrop: normalizePhotoCrop(normalized.photoCrop),
             photoDocumentId: normalized.photoDocumentId,
             photoPreviewUrl: normalized.photoPreviewUrl,
             photoDownloadUrl: normalized.photoDownloadUrl,

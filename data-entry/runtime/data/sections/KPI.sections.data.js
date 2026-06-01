@@ -7250,21 +7250,6 @@ html, body {
                     }
                 },
                 {
-                    title: '설비 이력 카드',
-                    icon: 'fa-screwdriver-wrench',
-                    color: '#475569',
-                    viewerMode: 'full-bleed',
-                    desc: '설비 현황 보드와 이력 카드 작성 화면에서 설비 정보, 정비 이력, 첨부 문서를 함께 관리합니다.',
-                    dataKey: 'data_equipment_history_card',
-                    fileName: 'Central Server DB / Equipment History Card',
-                    readOnly: false,
-                    content: `
-                        <div class="rounded-lg border border-slate-200 bg-slate-50 px-5 py-5 text-sm text-slate-600">
-                            설비 현황 보드와 설비 이력 카드 작성 화면을 불러오는 중입니다.
-                        </div>
-                    `
-                },
-                {
                     title: '조도',
                     icon: 'fa-sun',
                     color: '#f59e0b',
@@ -7276,6 +7261,21 @@ html, body {
                     content: `
                         <div class="rounded-lg border border-amber-200 bg-amber-50 px-5 py-5 text-sm text-amber-900">
                             조도 화면을 불러오는 중입니다.
+                        </div>
+                    `
+                },
+                {
+                    title: '설비 양식',
+                    icon: 'fa-screwdriver-wrench',
+                    color: '#475569',
+                    viewerMode: 'full-bleed',
+                    desc: '설비 이력카드 목차에서 팀별 설비 현황, 상태, 상세 이력 카드를 함께 관리합니다.',
+                    dataKey: 'data_equipment_history_card',
+                    fileName: 'Central Server DB / Equipment History Card',
+                    readOnly: false,
+                    content: `
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 px-5 py-5 text-sm text-slate-600">
+                            설비 이력카드 목차 화면을 불러오는 중입니다.
                         </div>
                     `
                 }

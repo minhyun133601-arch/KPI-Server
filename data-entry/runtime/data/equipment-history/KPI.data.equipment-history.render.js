@@ -5,6 +5,12 @@
     const START_ROOM_DATALIST_ID = 'data-equipment-room-options-start';
     const CARD_ROOM_DATALIST_ID = 'data-equipment-room-options-card';
     const EQUIPMENT_PRINT_POPUP_FEATURES = 'width=900,height=1200';
+    const EQUIPMENT_PHOTO_TARGET_WIDTH = 1600;
+    const EQUIPMENT_PHOTO_TARGET_HEIGHT = 800;
+    const EQUIPMENT_PHOTO_TARGET_ASPECT = EQUIPMENT_PHOTO_TARGET_WIDTH / EQUIPMENT_PHOTO_TARGET_HEIGHT;
+    const EQUIPMENT_MAIN_THUMB_WIDTH = 640;
+    const EQUIPMENT_MAIN_THUMB_HEIGHT = 320;
+    const EQUIPMENT_MAIN_THUMB_ASPECT = EQUIPMENT_MAIN_THUMB_WIDTH / EQUIPMENT_MAIN_THUMB_HEIGHT;
     let activeSaveController = null;
 
     function getEquipmentTeamDataKey(value) {
@@ -73,6 +79,78 @@
         `;
     }
 
+    function getBoardStatusSummary(items) {
+        const summary = {
+            total: items.length,
+            running: 0,
+            stopped: 0,
+            check: 0,
+        };
+        items.forEach((item) => {
+            const tone = item.statusMeta?.tone || api.getEquipmentStatus(item.status).tone;
+            if (tone === 'check') summary.check += 1;
+            else if (tone === 'stop') summary.stopped += 1;
+            else summary.running += 1;
+        });
+        return summary;
+    }
+
+    function formatBoardPercent(count, total) {
+        if (!total) return '0%';
+        const value = (count / total) * 100;
+        return `${Number.isInteger(value) ? value : value.toFixed(1)}%`;
+    }
+
+    function getBoardPhotoSrc(item) {
+        return item.photoThumbDataUrl
+            || api.getEquipmentPhotoPreviewUrl?.(item)
+            || item.photoPreviewUrl
+            || item.photoDownloadUrl
+            || item.photoDataUrl
+            || '';
+    }
+
+    function getBoardEquipmentModel(item) {
+        return api.normalizeText(item.modelName || item.equipmentCode || item.group || item.process) || '-';
+    }
+
+    function getBoardEquipmentManufacturer(item) {
+        return api.normalizeText(item.manufacturer || item.owner) || '-';
+    }
+
+    function getBoardEquipmentSearchText(item) {
+        return [
+            item.name,
+            item.team,
+            item.room,
+            item.process,
+            item.group,
+            item.manufacturer,
+            item.owner,
+            item.modelName,
+            item.equipmentCode,
+        ].map((value) => api.normalizeText(value).toLowerCase()).filter(Boolean).join(' ');
+    }
+
+    function getBoardFilters(state) {
+        if (!state.filters) state.filters = { team: '', status: '', search: '' };
+        return state.filters;
+    }
+
+    function getFilteredBoardItems(items, state) {
+        const filters = getBoardFilters(state);
+        const teamFilter = api.normalizeText(filters.team);
+        const statusFilter = api.normalizeText(filters.status);
+        const searchFilter = api.normalizeText(filters.search).toLowerCase();
+        return items.filter((item) => {
+            const teamKey = item.teamDataKey || getEquipmentTeamDataKey(item.team);
+            if (teamFilter && teamKey !== teamFilter) return false;
+            if (statusFilter && item.statusMeta?.label !== statusFilter) return false;
+            if (searchFilter && !getBoardEquipmentSearchText(item).includes(searchFilter)) return false;
+            return true;
+        });
+    }
+
     function getSafeBoardTeamColor(value, fallback) {
         const raw = api.normalizeText(value);
         return /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback;
@@ -91,6 +169,14 @@
         return EQUIPMENT_BOARD_STATUS_CYCLE[(currentIndex + 1) % EQUIPMENT_BOARD_STATUS_CYCLE.length];
     }
 
+    function renderBoardCardMedia(item) {
+        const photoSrc = getBoardPhotoSrc(item);
+        if (photoSrc) {
+            return `<img src="${api.escapeHtml(photoSrc)}" alt="${api.escapeHtml(`${item.name} 설비 사진`)}" loading="lazy">`;
+        }
+        return `<span><i class="fas fa-industry" aria-hidden="true"></i></span>`;
+    }
+
     function renderBoardCard(item, orderMeta = {}) {
         const statusMeta = item.statusMeta || api.getEquipmentStatus(item.status);
         const statusTone = ['running', 'stop', 'check'].includes(statusMeta.tone) ? statusMeta.tone : 'running';
@@ -100,14 +186,13 @@
         const processLabel = api.normalizeText(item.process || item.group);
         return `
             <article class="data-equipment-board-card ${toneClassName}" data-equipment-board-card="${api.escapeHtml(item.id)}">
-                <div class="data-equipment-board-card-head">
-                    <strong>
-                        <span class="data-equipment-live-dot ${statusMeta.dotClassName}"></span>
-                        ${api.escapeHtml(item.name)}
-                    </strong>
-                    <div class="data-equipment-board-state">
-                        <button type="button" class="data-equipment-board-chip data-equipment-board-status-button is-${statusMeta.tone}" data-equipment-cycle-status-card="${api.escapeHtml(item.id)}" aria-label="${api.escapeHtml('\uAC00\uB3D9 \uC0C1\uD0DC \uBCC0\uACBD')}" title="${api.escapeHtml('\uD074\uB9AD\uD558\uBA74 \uAC00\uB3D9\uC911, \uBE44\uAC00\uB3D9\uC911, \uC815\uBE44\uC911\uC73C\uB85C \uBC14\uB014\uB2C8\uB2E4.')}">${api.escapeHtml(statusMeta.label)}</button>
-                    </div>
+                <div class="data-equipment-board-card-media">
+                    ${renderBoardCardMedia(item)}
+                </div>
+                <div class="data-equipment-board-card-main">
+                    <strong>${api.escapeHtml(item.name)}</strong>
+                    <span>${api.escapeHtml(`${item.manufacturerLabel || '제조사'}: ${getBoardEquipmentManufacturer(item)}`)}</span>
+                    <span>${api.escapeHtml(`기종: ${getBoardEquipmentModel(item)}`)}</span>
                 </div>
                 <p>${api.escapeHtml(processLabel)}</p>
                 ${renderBoardMetric('다음 점검', item.nextCheck || '-')}
@@ -119,7 +204,10 @@
                         <i class="fas fa-arrow-down"></i>
                     </button>
                 </div>
-                <button type="button" class="data-equipment-board-open-button" data-equipment-open-card="${api.escapeHtml(item.id)}">기록 작성</button>
+                <div class="data-equipment-board-card-actions">
+                    <button type="button" class="data-equipment-board-chip data-equipment-board-status-button is-${statusMeta.tone}" data-equipment-cycle-status-card="${api.escapeHtml(item.id)}" aria-label="${api.escapeHtml('가동 상태 변경')}" title="${api.escapeHtml('클릭하면 가동중, 비가동중, 정비중으로 바뀝니다.')}">${api.escapeHtml(statusMeta.label)}</button>
+                    <button type="button" class="data-equipment-board-open-button" data-equipment-open-card="${api.escapeHtml(item.id)}">카드 열기</button>
+                </div>
             </article>
         `;
     }
@@ -146,28 +234,128 @@
         `;
     }
 
-    function renderBoard(groups, items) {
-        const activeCount = items.filter((item) => item.statusMeta?.isRunning).length;
-        const pausedCount = items.length - activeCount;
-        const boardBody = groups.length
+    function renderBoardSummary(summary) {
+        return `
+            <div class="data-equipment-index-summary" aria-label="설비 상태 요약">
+                <article>
+                    <span class="data-equipment-index-summary-icon is-total"><i class="fas fa-grip" aria-hidden="true"></i></span>
+                    <div>
+                        <span>전체 설비</span>
+                        <strong>${api.escapeHtml(summary.total)}<small>대</small></strong>
+                    </div>
+                </article>
+                <article>
+                    <span class="data-equipment-index-summary-icon is-running"><i class="fas fa-play" aria-hidden="true"></i></span>
+                    <div>
+                        <span>가동중</span>
+                        <strong>${api.escapeHtml(summary.running)}<small>대</small></strong>
+                    </div>
+                </article>
+                <article>
+                    <span class="data-equipment-index-summary-icon is-stop"><i class="fas fa-square" aria-hidden="true"></i></span>
+                    <div>
+                        <span>비가동중</span>
+                        <strong>${api.escapeHtml(summary.stopped)}<small>대</small></strong>
+                    </div>
+                </article>
+            </div>
+        `;
+    }
+
+    function renderBoardStatusOverview(summary) {
+        const runningAngle = summary.total ? (summary.running / summary.total) * 360 : 0;
+        const stoppedAngle = summary.total ? (summary.stopped / summary.total) * 360 : 0;
+        const checkAngle = summary.total ? (summary.check / summary.total) * 360 : 0;
+        const ringStyle = [
+            `--equipment-running-angle:${runningAngle.toFixed(2)}deg`,
+            `--equipment-stopped-angle:${stoppedAngle.toFixed(2)}deg`,
+            `--equipment-check-angle:${checkAngle.toFixed(2)}deg`,
+        ].join(';');
+        return `
+            <aside class="data-equipment-index-status" aria-label="상태 요약">
+                <strong>상태 요약</strong>
+                <div class="data-equipment-index-status-ring" style="${api.escapeHtml(ringStyle)}" aria-hidden="true"></div>
+                <div class="data-equipment-index-status-list">
+                    <span><i class="is-running"></i><em>가동중</em><b>${api.escapeHtml(summary.running)} (${api.escapeHtml(formatBoardPercent(summary.running, summary.total))})</b></span>
+                    <span><i class="is-stop"></i><em>비가동중</em><b>${api.escapeHtml(summary.stopped)} (${api.escapeHtml(formatBoardPercent(summary.stopped, summary.total))})</b></span>
+                    <span><i class="is-check"></i><em>점검중</em><b>${api.escapeHtml(summary.check)} (${api.escapeHtml(formatBoardPercent(summary.check, summary.total))})</b></span>
+                </div>
+            </aside>
+        `;
+    }
+
+    function renderBoardControls(groups, state) {
+        const filters = getBoardFilters(state);
+        return `
+            <div class="data-equipment-index-controls">
+                <select data-equipment-filter-team aria-label="팀 필터">
+                    <option value="">전체 팀</option>
+                    ${groups.map((group) => {
+                        const teamKey = group.teamDataKey || getEquipmentTeamDataKey(group.team);
+                        return `<option value="${api.escapeHtml(teamKey)}"${filters.team === teamKey ? ' selected' : ''}>${api.escapeHtml(group.team)}</option>`;
+                    }).join('')}
+                </select>
+                <select data-equipment-filter-status aria-label="상태 필터">
+                    ${['', '가동중', '비가동중', '정비중'].map((status) => `
+                        <option value="${api.escapeHtml(status)}"${filters.status === status ? ' selected' : ''}>${api.escapeHtml(status || '전체 상태')}</option>
+                    `).join('')}
+                </select>
+                <label class="data-equipment-index-search">
+                    <input type="search" value="${api.escapeHtml(filters.search)}" placeholder="설비명 또는 제조사 검색" data-equipment-filter-search aria-label="설비명 또는 제조사 검색">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                </label>
+                <button type="button" class="data-equipment-filter-reset" data-equipment-filter-reset>필터 초기화</button>
+            </div>
+        `;
+    }
+
+    function renderBoardAddCard(team = '') {
+        return `
+            <button type="button" class="data-equipment-board-add-card" data-equipment-view-action="card" data-equipment-add-team="${api.escapeHtml(team)}">
+                <i class="fas fa-plus" aria-hidden="true"></i>
+                <span>설비 추가</span>
+            </button>
+        `;
+    }
+
+    function renderBoard(groups, items, state) {
+        const filters = getBoardFilters(state);
+        const filteredItems = getFilteredBoardItems(items, state);
+        const filteredGroups = api.groupEquipmentItems(filteredItems);
+        const fullSummary = getBoardStatusSummary(items);
+        const filteredSummary = getBoardStatusSummary(filteredItems);
+        const hasActiveFilter = Boolean(filters.team || filters.status || filters.search);
+        const activeSummary = hasActiveFilter ? filteredSummary : fullSummary;
+        const boardBody = filteredGroups.length
             ? groups.map((group) => {
+                const filteredGroup = filteredGroups.find((candidate) => (candidate.teamDataKey || candidate.team) === (group.teamDataKey || group.team));
+                if (!filteredGroup) return '';
                 const teamMeta = group.teamMeta || api.getEquipmentHistoryTeamMeta?.(group.teamDataKey || group.team) || {};
                 const teamKey = group.teamDataKey || group.team;
                 const orderToggleLabel = `${group.team} \uC21C\uC11C \uC774\uB3D9`;
+                const sectionEquipment = filteredGroup.sections.flatMap((section) => section.equipment);
                 return `
                 <section class="data-equipment-board-column" data-equipment-board-team="${api.escapeHtml(teamKey)}" style="${getBoardTeamStyle(teamMeta)}">
                     <header>
                         <div class="data-equipment-board-team-title">
+                            <span class="data-equipment-board-team-icon"><i class="fas fa-users" aria-hidden="true"></i></span>
                             <strong>${api.escapeHtml(group.team)}</strong>
+                            <span>${api.escapeHtml(sectionEquipment.length)}대</span>
                         </div>
-                        <button type="button" class="data-equipment-board-team-order-toggle" data-equipment-order-toggle-team="${api.escapeHtml(teamKey)}" aria-label="${api.escapeHtml(orderToggleLabel)}" title="${api.escapeHtml(orderToggleLabel)}" aria-expanded="false">
-                            <i class="fas fa-arrows-up-down" aria-hidden="true"></i>
-                        </button>
+                        <div class="data-equipment-board-team-actions">
+                            <button type="button" class="data-equipment-board-team-focus" data-equipment-focus-team="${api.escapeHtml(teamKey)}">모두 보기 <i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+                            <button type="button" class="data-equipment-board-team-order-toggle" data-equipment-order-toggle-team="${api.escapeHtml(teamKey)}" aria-label="${api.escapeHtml(orderToggleLabel)}" title="${api.escapeHtml(orderToggleLabel)}" aria-expanded="false">
+                                <i class="fas fa-arrows-up-down" aria-hidden="true"></i>
+                            </button>
+                        </div>
                     </header>
-                    ${group.sections.map((section) => `
+                    ${filteredGroup.sections.map((section) => `
                         <div class="data-equipment-board-section">
                             ${renderBoardSectionTitle(section.title)}
-                            ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex))).join('')}
+                            <div class="data-equipment-board-card-row">
+                                ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex))).join('')}
+                                ${renderBoardAddCard(teamKey)}
+                            </div>
                         </div>
                     `).join('')}
                 </section>
@@ -175,19 +363,19 @@
             }).join('')
             : `
                 <article class="data-equipment-board-empty">
-                    <strong>등록된 설비가 없습니다.</strong>
-                    <p>상단의 기록 작성 버튼을 누른 뒤 팀과 설비명을 먼저 입력하면 작성란이 열립니다.</p>
+                    <strong>${api.escapeHtml(hasActiveFilter && items.length ? '조건에 맞는 설비가 없습니다.' : '등록된 설비가 없습니다.')}</strong>
+                    <p>${api.escapeHtml(hasActiveFilter && items.length ? '필터를 조정하거나 초기화하면 전체 설비 목차를 다시 볼 수 있습니다.' : '설비 추가를 누른 뒤 팀과 설비명을 입력하면 이 목차에 카드가 추가됩니다.')}</p>
+                    ${renderBoardAddCard('')}
                 </article>
             `;
 
         return `
             <section class="data-equipment-dashboard" data-equipment-view="board">
-                <div class="data-equipment-dashboard-summary">
-                    <span>전체 설비 <strong>${items.length}</strong></span>
-                    <span>가동중 <strong>${activeCount}</strong></span>
-                    <span>비가동중 <strong>${pausedCount}</strong></span>
+                <div class="data-equipment-index-overview">
+                    ${renderBoardSummary(activeSummary)}
+                    ${renderBoardStatusOverview(activeSummary)}
                 </div>
-                <div class="data-equipment-board ${groups.length ? '' : 'is-empty'}">
+                <div class="data-equipment-board ${filteredGroups.length ? '' : 'is-empty'}">
                     ${boardBody}
                 </div>
             </section>
@@ -208,14 +396,60 @@
         }).join('');
     }
 
+    function normalizePhotoCropValue(value) {
+        if (!value || typeof value !== 'object') return null;
+        const x = Number(value.x);
+        const y = Number(value.y);
+        const width = Number(value.width);
+        const height = Number(value.height);
+        if (![x, y, width, height].every(Number.isFinite)) return null;
+        if (width <= 0 || height <= 0) return null;
+        const normalized = {
+            x: Math.max(0, Math.min(x, 1)),
+            y: Math.max(0, Math.min(y, 1)),
+            width: Math.max(0.02, Math.min(width, 1)),
+            height: Math.max(0.02, Math.min(height, 1)),
+        };
+        if (normalized.x + normalized.width > 1) normalized.x = Math.max(0, 1 - normalized.width);
+        if (normalized.y + normalized.height > 1) normalized.y = Math.max(0, 1 - normalized.height);
+        return normalized;
+    }
+
+    function getDefaultMainPhotoCrop() {
+        const width = 0.72;
+        const height = Math.min(0.72, width / EQUIPMENT_MAIN_THUMB_ASPECT);
+        return {
+            x: (1 - width) / 2,
+            y: (1 - height) / 2,
+            width,
+            height,
+        };
+    }
+
+    function getDraftPhotoCrop(draft) {
+        return normalizePhotoCropValue(draft?.photoCrop) || getDefaultMainPhotoCrop();
+    }
+
+    function getPhotoCropStyle(draft) {
+        const crop = getDraftPhotoCrop(draft);
+        return [
+            `left:${(crop.x * 100).toFixed(3)}%`,
+            `top:${(crop.y * 100).toFixed(3)}%`,
+            `width:${(crop.width * 100).toFixed(3)}%`,
+            `height:${(crop.height * 100).toFixed(3)}%`,
+        ].join(';');
+    }
+
     function renderPhotoCard(draft) {
         const photoSrc = api.getEquipmentPhotoPreviewUrl?.(draft) || draft.photoDataUrl;
         const hasPhoto = Boolean(photoSrc);
-        const caption = draft.photoName ? `현재 첨부: ${draft.photoName}` : '선택한 이미지는 이 카드에 미리보기로 저장됩니다.';
+        const caption = draft.photoName
+            ? `현재 첨부: ${draft.photoName}`
+            : 'FRONT / LEFT / RIGHT / REAR 4분할 이미지를 한 장으로 첨부해 주세요. 권장 크기 1600 x 800';
         if (hasPhoto) {
             return `
                 <div class="data-equipment-photo-card is-locked" data-equipment-history-photo-card>
-                    <img class="data-equipment-photo-preview" alt="설비 사진 미리보기" src="${api.escapeHtml(photoSrc)}" data-equipment-history-photo-preview>
+                    <img class="data-equipment-photo-preview" alt="설비 4방향 통합 사진 미리보기" src="${api.escapeHtml(photoSrc)}" data-equipment-history-photo-preview>
                     <button type="button" class="data-equipment-photo-revert" data-equipment-photo-revert>
                         <i class="fas fa-undo"></i><span>사진 되돌리기</span>
                     </button>
@@ -225,10 +459,10 @@
         return `
             <label class="data-equipment-photo-card" data-equipment-history-photo-card>
                 <input type="file" accept="image/*" hidden data-equipment-history-photo-input>
-                <img class="data-equipment-photo-preview" alt="설비 사진 미리보기" hidden data-equipment-history-photo-preview>
+                <img class="data-equipment-photo-preview" alt="설비 4방향 통합 사진 미리보기" hidden data-equipment-history-photo-preview>
                 <span class="data-equipment-photo-placeholder" data-equipment-history-photo-placeholder>
                     <i class="fas fa-camera"></i>
-                    <strong>설비 사진 첨부</strong>
+                    <strong>4방향 사진 한 장 첨부</strong>
                     <small>${api.escapeHtml(caption)}</small>
                 </span>
             </label>
@@ -293,6 +527,57 @@
         `;
     }
 
+    function getDraftSpecRows(draft) {
+        const rows = api.asList(draft?.detailGroups?.equipmentSpecs);
+        return rows.length ? rows : [api.createBlankDetailRow?.() || { label: '', value: '' }];
+    }
+
+    function renderSimpleSpecEditor(draft) {
+        const rows = getDraftSpecRows(draft);
+        return `
+            <div class="data-equipment-simple-spec" data-equipment-simple-spec>
+                ${rows.map((row, rowIndex) => `
+                    <div class="data-equipment-simple-spec-row" data-equipment-row-index="${rowIndex}">
+                        ${api.renderInput(api.DETAIL_ITEM_FIELDS[0], row?.label || '', `data-equipment-row-section="equipmentSpecs" data-equipment-row-index="${rowIndex}" aria-label="스펙 항목"`)}
+                        ${api.renderInput(api.DETAIL_ITEM_FIELDS[1], row?.value || '', `data-equipment-row-section="equipmentSpecs" data-equipment-row-index="${rowIndex}" aria-label="스펙 내용"`)}
+                        <button type="button" class="data-equipment-row-remove data-equipment-detail-remove" data-equipment-remove-row="equipmentSpecs" data-equipment-row-index="${rowIndex}" aria-label="스펙 삭제">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function renderCompactDocumentEditor(rows) {
+        const list = api.asList(rows);
+        return `
+            <div class="data-equipment-doc-list" data-equipment-doc-list>
+                ${list.map((row, rowIndex) => {
+                    const label = row?.pendingFile?.name || row?.fileName || row?.originalName || '선택한 파일 없음';
+                    return `
+                        <div class="data-equipment-doc-list-item" data-equipment-row-index="${rowIndex}">
+                            <i class="fas fa-file-pdf" aria-hidden="true"></i>
+                            <div>
+                                ${api.renderInput(api.DOCUMENT_FIELDS[0], row?.title || '', `data-equipment-row-section="documents" data-equipment-row-index="${rowIndex}" aria-label="문서명"`)}
+                                <div class="data-equipment-document-picker">
+                                    <input type="file" hidden accept="${api.escapeHtml(api.DOCUMENT_ATTACHMENT_ACCEPT || '')}" data-equipment-document-file-input data-equipment-row-index="${rowIndex}">
+                                    <button type="button" class="data-equipment-document-pick" data-equipment-document-pick="${rowIndex}" aria-label="문서 파일 첨부" title="파일 첨부">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <span>${api.escapeHtml(label)}</span>
+                                </div>
+                            </div>
+                            <button type="button" class="data-equipment-row-remove" data-equipment-remove-row="documents" data-equipment-row-index="${rowIndex}" aria-label="문서 삭제">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    }
+
     function renderHistoryCard(category, data, state) {
         const header = data.header || {};
         const draft = state.draft || api.createDraft();
@@ -309,18 +594,21 @@
                             ${renderRoomDatalist(CARD_ROOM_DATALIST_ID, roomOptions)}
                         </article>
                     </div>
-                    <article class="data-equipment-card data-equipment-detail-card">
-                        <h3 class="data-equipment-section-title">
-                            ${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}
-                        </h3>
-                        ${api.renderDetailGroups(draft.detailGroups, { openBlocks: state.openEquipmentSpecBlocks || {} })}
-                    </article>
-                    <div class="data-equipment-bottom-grid">
+                    <div class="data-equipment-card-grid">
+                        <article class="data-equipment-card data-equipment-detail-card">
+                            <h3 class="data-equipment-section-title">
+                                ${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}
+                                <button type="button" class="data-equipment-add-row" data-equipment-add-row="equipmentSpecs">
+                                    <i class="fas fa-plus"></i><span>추가</span>
+                                </button>
+                            </h3>
+                            ${renderSimpleSpecEditor(draft)}
+                        </article>
                         <article class="data-equipment-card data-equipment-history-card">
                             <h3 class="data-equipment-section-title">
                                 정비 이력
                                 <button type="button" class="data-equipment-add-row" data-equipment-add-row="maintenanceHistory">
-                                    <i class="fas fa-plus"></i><span>행 추가</span>
+                                    <i class="fas fa-plus"></i><span>추가</span>
                                 </button>
                             </h3>
                             <div class="data-equipment-table-scroll">
@@ -331,12 +619,10 @@
                             <h3 class="data-equipment-section-title">
                                 관련 문서
                                 <button type="button" class="data-equipment-add-row" data-equipment-add-row="documents">
-                                    <i class="fas fa-plus"></i><span>행 추가</span>
+                                    <i class="fas fa-plus"></i><span>추가</span>
                                 </button>
                             </h3>
-                            <div class="data-equipment-table-scroll">
-                                ${api.renderDocumentEditableTable(draft.documents)}
-                            </div>
+                            ${renderCompactDocumentEditor(draft.documents)}
                         </article>
                     </div>
                     <label class="data-equipment-note-field">
@@ -387,7 +673,7 @@
         `;
     }
 
-    function renderTopbarTitle(category, selected, state) {
+    function renderTopbarTitle(category, selected, state, data) {
         const isCard = state.view === 'card';
         const isCardStart = state.view === 'card-start';
         if (isCard) {
@@ -412,35 +698,34 @@
             `;
         }
         return `
-            <h2>${api.escapeHtml(category.title || '설비 현황')}</h2>
-            <p>${api.escapeHtml('팀별 설비 기록')}</p>
+            <h2>${api.escapeHtml(data?.header?.title || '설비 이력 카드')}</h2>
+            <p>${api.escapeHtml('팀별 설비 현황과 상태를 한눈에 확인하고, 상세 이력 카드를 열람합니다.')}</p>
         `;
     }
 
-    function renderTopbar(category, items, selected, state, groups) {
+    function renderTopbar(category, data, items, selected, state, groups) {
         const isCard = state.view === 'card';
         const isCardStart = state.view === 'card-start';
         const isAuthoring = isCard || isCardStart;
         return `
-            <header class="data-equipment-topbar data-equipment-topbar-dashboard">
+            <header class="data-equipment-topbar data-equipment-topbar-dashboard ${isCard ? 'is-card-mode' : ''}">
                 <div class="data-equipment-brand data-equipment-brand-icon-only" aria-hidden="true">
                     <span class="data-equipment-brand-mark"><i class="fas fa-cube"></i></span>
                 </div>
                 <div class="data-equipment-title-block">
-                    ${renderTopbarTitle(category, selected, state)}
+                    ${renderTopbarTitle(category, selected, state, data)}
                 </div>
                 <div class="data-equipment-actions data-equipment-view-actions">
-                    <button type="button" class="${isAuthoring ? '' : 'active'}" data-equipment-view-action="board">설비 현황</button>
-                    <button type="button" class="${isAuthoring ? 'active' : ''}" data-equipment-view-action="card">기록 작성</button>
-                    <button type="button" class="data-equipment-save-action" data-equipment-save-current>
-                        <i class="fas fa-save"></i><span>${api.escapeHtml('\uC800\uC7A5')}</span>
-                    </button>
-                    ${isCard ? `<button type="button" class="data-equipment-print-btn" data-equipment-history-print><i class="fas fa-print"></i><span>${api.escapeHtml('\uC124\uBE44\uC774\uB825\uCE74\uB4DC A4 \uCD9C\uB825')}</span></button>` : ''}
-                    ${items.length ? `
-                        <select data-equipment-select aria-label="설비 선택">
-                            ${renderEquipmentSelectOptions(groups, selected)}
-                        </select>
-                    ` : ''}
+                    ${isAuthoring ? `
+                        <button type="button" class="${isAuthoring ? '' : 'active'}" data-equipment-view-action="board">설비 현황</button>
+                        <button type="button" class="${isAuthoring ? 'active' : ''}" data-equipment-view-action="card">기록 작성</button>
+                        ${isCard ? `<button type="button" class="data-equipment-print-btn" data-equipment-history-print><i class="fas fa-print"></i><span>${api.escapeHtml('A4 \uCD9C\uB825')}</span></button>` : ''}
+                        ${items.length ? `
+                            <select data-equipment-select aria-label="설비 선택">
+                                ${renderEquipmentSelectOptions(groups, selected)}
+                            </select>
+                        ` : ''}
+                    ` : renderBoardControls(groups, state)}
                 </div>
             </header>
         `;
@@ -454,8 +739,8 @@
         const isCardStart = state.view === 'card-start';
         return `
             <section class="data-equipment-page">
-                ${renderTopbar(category, items, selected, state, groups)}
-                ${isCard ? renderHistoryCard(category, data, state) : isCardStart ? renderCardStarter(state, data) : renderBoard(groups, items)}
+                ${renderTopbar(category, data, items, selected, state, groups)}
+                ${isCard ? renderHistoryCard(category, data, state) : isCardStart ? renderCardStarter(state, data) : renderBoard(groups, items, state)}
             </section>
         `;
     }
@@ -471,6 +756,10 @@
         state.selectedId = '';
         state.draft = null;
         state.starter = api.createEquipmentHistoryStartDraft?.() || { team: '', room: '', name: '' };
+        if (state.pendingAddTeam) {
+            state.starter.team = api.normalizeEquipmentHistoryTeamName?.(state.pendingAddTeam) || state.pendingAddTeam;
+            state.pendingAddTeam = '';
+        }
         state.view = 'card-start';
         state.message = '';
         state.openEquipmentSpecBlocks = {};
@@ -1117,6 +1406,8 @@
         const title = normalizePrintText(draft.name) || '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC';
         const metaLabel = [draft.team, draft.room, draft.process, statusLabel].map(normalizePrintText).filter(Boolean).join(' / ');
         const printedAt = new Date().toLocaleString('ko-KR');
+        const teamLabel = normalizePrintText(draft.team) || '-';
+        const roomLabel = normalizePrintText(draft.room) || '-';
         return `
 <!DOCTYPE html>
 <html lang="ko">
@@ -1129,19 +1420,27 @@
         figure { margin: 0; }
         html, body { margin: 0; background: #ffffff; color: #111827; font-family: 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .equipment-print-page { min-height: 285mm; display: grid; grid-template-rows: auto 1fr; gap: 3mm; }
-        .equipment-print-form-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6mm; align-items: end; border-bottom: 1px solid #d6e3f1; padding-bottom: 2.2mm; }
-        .equipment-print-title-block { min-width: 0; display: grid; gap: 1mm; }
-        .equipment-print-title-block span { color: #1268d8; font-size: 9px; font-weight: 900; line-height: 1.2; }
-        .equipment-print-title-block strong { color: #14233b; font-size: 20px; font-weight: 900; line-height: 1.12; word-break: break-word; }
-        .equipment-print-title-block small { color: #52657f; font-size: 9px; font-weight: 800; line-height: 1.25; }
-        .equipment-print-stamp { color: #647795; font-size: 8px; font-weight: 800; text-align: right; white-space: nowrap; }
+        .equipment-print-page { width: 198mm; height: 285mm; max-height: 285mm; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 3mm; }
+        .data-equipment-topbar { display: grid; grid-template-columns: 11mm minmax(0, 1fr) auto; gap: 4mm; align-items: center; }
+        .data-equipment-topbar-dashboard.is-card-mode { min-height: 17mm; padding: 3.4mm 4mm; border: 1px solid #132844; border-radius: 8px; background: linear-gradient(135deg, #071a31 0%, #102b4b 100%); color: #ffffff; }
+        .data-equipment-brand { display: inline-flex; align-items: center; justify-content: center; min-width: 0; }
+        .data-equipment-brand-mark { width: 8.8mm; height: 8.8mm; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid rgba(34, 197, 94, 0.28); background: rgba(34, 197, 94, 0.16); color: #35d47e; font-size: 8px; font-weight: 900; }
+        .data-equipment-title-block { min-width: 0; }
+        .data-equipment-title-pair { margin: 0; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 2mm 4mm; line-height: 1.1; }
+        .data-equipment-title-team,
+        .data-equipment-title-room,
+        .data-equipment-title-name { color: #ffffff; font-size: 16px; font-weight: 900; word-break: keep-all; }
+        .data-equipment-title-room { min-width: 22mm; padding: 2.1mm 3.2mm; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 7px; background: rgba(255, 255, 255, 0.1); text-align: center; }
+        .data-equipment-title-name { min-width: 44mm; }
+        .equipment-print-status-toggle { display: inline-flex; align-items: center; gap: 1mm; border: 1px solid rgba(255, 255, 255, 0.36); border-radius: 999px; background: rgba(255, 255, 255, 0.12); padding: 0.8mm; }
+        .equipment-print-status-toggle span { display: inline-flex; align-items: center; min-height: 7mm; border-radius: 999px; background: #ffffff; color: #174c33; padding: 0 3mm; font-size: 9px; font-weight: 900; }
+        .equipment-print-date { color: rgba(226, 238, 255, 0.8); font-size: 8px; font-weight: 800; text-align: right; white-space: nowrap; }
         .data-equipment-card-view { min-height: 0; display: grid; }
         .data-equipment-layout,
-        .data-equipment-edit-form { min-height: 0; display: grid; grid-template-rows: 54mm minmax(0, 1fr) minmax(68mm, auto) minmax(23mm, auto); gap: 3mm; }
+        .data-equipment-edit-form { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) minmax(23mm, auto); gap: 3mm; }
         .equipment-print-form { height: 100%; }
-        .data-equipment-top-grid { min-height: 0; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(60mm, 0.85fr); gap: 3mm; }
-        .data-equipment-bottom-grid { min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3mm; align-items: stretch; }
+        .data-equipment-top-grid { min-height: 0; display: grid; grid-template-columns: minmax(0, 1.48fr) minmax(58mm, 0.78fr); gap: 3mm; align-items: stretch; }
+        .data-equipment-card-grid { min-height: 0; display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) minmax(0, 0.9fr); gap: 3mm; align-items: stretch; }
         .data-equipment-card,
         .data-equipment-photo-card { overflow: hidden; background: #ffffff; border: 1px solid #dbe7f5; border-radius: 8px; box-shadow: none; }
         .data-equipment-card-pad,
@@ -1150,8 +1449,8 @@
         .data-equipment-doc-card { min-width: 0; padding: 3mm; }
         .data-equipment-history-card,
         .data-equipment-doc-card { display: grid; grid-template-rows: auto minmax(0, 1fr); align-content: start; }
-        .data-equipment-photo-card { min-height: 0; height: 54mm; display: grid; place-items: center; background: #f8fbff; }
-        .data-equipment-photo-preview { width: 100%; height: 100%; min-height: 0; object-fit: contain; display: block; background: #f8fbff; }
+        .data-equipment-photo-card { min-height: 0; aspect-ratio: 2 / 1; display: grid; place-items: center; background: #f8fbff; }
+        .data-equipment-photo-preview { width: 100%; height: 100%; min-height: 0; object-fit: cover; display: block; background: #f8fbff; }
         .data-equipment-photo-placeholder,
         .equipment-print-photo-empty { width: 100%; height: 100%; display: grid; place-items: center; color: #63748e; font-size: 10px; font-weight: 800; text-align: center; }
         .data-equipment-section-title { display: flex; align-items: center; gap: 2mm; margin: 0 0 2mm; color: #1268d8; font-size: 11px; font-weight: 900; line-height: 1.25; }
@@ -1205,13 +1504,19 @@
 </head>
 <body>
     <main class="equipment-print-page">
-        <header class="equipment-print-form-header">
-            <div class="equipment-print-title-block">
-                <span>${api.escapeHtml('\uC124\uBE44 \uC774\uB825\uCE74\uB4DC')}</span>
-                <strong>${renderPrintText(title, '\uC124\uBE44 \uC774\uB825\uCE74\uB4DC')}</strong>
-                <small>${renderPrintText(metaLabel, '-')}</small>
+        <header class="data-equipment-topbar data-equipment-topbar-dashboard is-card-mode equipment-print-card-topbar">
+            <div class="data-equipment-brand data-equipment-brand-icon-only" aria-hidden="true">
+                <span class="data-equipment-brand-mark">EQ</span>
             </div>
-            <div class="equipment-print-stamp">${api.escapeHtml('\uCD9C\uB825')} ${renderPrintText(printedAt, '-')}</div>
+            <div class="data-equipment-title-block">
+                <h2 class="data-equipment-title-pair">
+                    <span class="data-equipment-title-team">${renderPrintText(teamLabel, '-')}</span>
+                    <span class="data-equipment-title-room">${renderPrintText(roomLabel, '-')}</span>
+                    <span class="data-equipment-title-name">${renderPrintText(title, '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC')}</span>
+                    <span class="equipment-print-status-toggle" aria-label="${api.escapeHtml('\uC124\uBE44 \uAC00\uB3D9 \uC0C1\uD0DC')}"><span>${renderPrintText(statusLabel, '-')}</span></span>
+                </h2>
+            </div>
+            <div class="equipment-print-date">${renderPrintText(metaLabel, '-')}<br>${api.escapeHtml('\uCD9C\uB825')} ${renderPrintText(printedAt, '-')}</div>
         </header>
         <section class="data-equipment-card-view" data-equipment-view="card-print">
             <form class="data-equipment-layout data-equipment-edit-form equipment-print-form" aria-label="${api.escapeHtml('\uC124\uBE44 \uAE30\uB85D \uCD9C\uB825')}">
@@ -1221,14 +1526,14 @@
                         ${renderEquipmentPrintInfoGrid(draft)}
                     </article>
                 </div>
-                <article class="data-equipment-card data-equipment-detail-card">
-                    <h3 class="data-equipment-section-title">
-                        ${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}
-                        <span class="equipment-print-status-pill">${renderPrintText(statusLabel, '-')}</span>
-                    </h3>
-                    ${renderEquipmentPrintSpecRows(draft)}
-                </article>
-                <div class="data-equipment-bottom-grid">
+                <div class="data-equipment-card-grid">
+                    <article class="data-equipment-card data-equipment-detail-card">
+                        <h3 class="data-equipment-section-title">
+                            ${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}
+                            <span class="equipment-print-status-pill">${renderPrintText(statusLabel, '-')}</span>
+                        </h3>
+                        ${renderEquipmentPrintSpecRows(draft)}
+                    </article>
                     <article class="data-equipment-card data-equipment-history-card equipment-print-maintenance">
                         <h3 class="data-equipment-section-title">${api.escapeHtml('\uC815\uBE44 \uC774\uB825')}</h3>
                         <div class="data-equipment-table-scroll">
@@ -1309,6 +1614,8 @@
     function getDraftPhotoSnapshot(draft) {
         return {
             photoDataUrl: draft.photoDataUrl || '',
+            photoThumbDataUrl: draft.photoThumbDataUrl || '',
+            photoCrop: normalizePhotoCropValue(draft.photoCrop),
             photoDocumentId: draft.photoDocumentId || '',
             photoPreviewUrl: draft.photoPreviewUrl || '',
             photoDownloadUrl: draft.photoDownloadUrl || '',
@@ -1320,6 +1627,8 @@
 
     function applyDraftPhotoSnapshot(draft, snapshot) {
         draft.photoDataUrl = snapshot.photoDataUrl || '';
+        draft.photoThumbDataUrl = snapshot.photoThumbDataUrl || '';
+        draft.photoCrop = normalizePhotoCropValue(snapshot.photoCrop);
         draft.photoDocumentId = snapshot.photoDocumentId || '';
         draft.photoPreviewUrl = snapshot.photoPreviewUrl || '';
         draft.photoDownloadUrl = snapshot.photoDownloadUrl || '';
@@ -1331,6 +1640,8 @@
 
     function clearDraftPhoto(draft) {
         draft.photoDataUrl = '';
+        draft.photoThumbDataUrl = '';
+        draft.photoCrop = null;
         draft.photoDocumentId = '';
         draft.photoPreviewUrl = '';
         draft.photoDownloadUrl = '';
@@ -1343,7 +1654,7 @@
         const draft = state.draft || null;
         if (!draft) return false;
         const previousPhoto = getDraftPhotoSnapshot(draft);
-        if (!previousPhoto.photoDataUrl && !previousPhoto.photoDocumentId && !previousPhoto.photoFile) return false;
+        if (!previousPhoto.photoDataUrl && !previousPhoto.photoDocumentId && !previousPhoto.photoFile && !previousPhoto.photoThumbDataUrl) return false;
 
         clearDraftPhoto(draft);
         try {
@@ -1422,6 +1733,311 @@
         return true;
     }
 
+    function getContainedImageRect(img) {
+        const rect = img.getBoundingClientRect();
+        const naturalWidth = Number(img.naturalWidth) || rect.width || 1;
+        const naturalHeight = Number(img.naturalHeight) || rect.height || 1;
+        const imageAspect = naturalWidth / naturalHeight;
+        const rectAspect = rect.width / Math.max(rect.height, 1);
+        let width = rect.width;
+        let height = rect.height;
+        let left = rect.left;
+        let top = rect.top;
+        if (rectAspect > imageAspect) {
+            width = rect.height * imageAspect;
+            left += (rect.width - width) / 2;
+        } else {
+            height = rect.width / imageAspect;
+            top += (rect.height - height) / 2;
+        }
+        return { left, top, width, height };
+    }
+
+    function updatePhotoCropBox(frame, img, box, draft) {
+        if (!frame || !img || !box) return;
+        const frameRect = frame.getBoundingClientRect();
+        const contentRect = getContainedImageRect(img);
+        const crop = getDraftPhotoCrop(draft);
+        box.style.left = `${contentRect.left - frameRect.left + (contentRect.width * crop.x)}px`;
+        box.style.top = `${contentRect.top - frameRect.top + (contentRect.height * crop.y)}px`;
+        box.style.width = `${contentRect.width * crop.width}px`;
+        box.style.height = `${contentRect.height * crop.height}px`;
+    }
+
+    function renderPhotoThumbStatus(status, draft) {
+        const thumbSrc = api.normalizeText(draft?.photoThumbDataUrl);
+        status.innerHTML = thumbSrc
+            ? `<span>${api.escapeHtml('\uBAA9\uCC28 \uBBF8\uB9AC\uBCF4\uAE30')}</span><img src="${api.escapeHtml(thumbSrc)}" alt="${api.escapeHtml('\uBAA9\uCC28 \uC378\uB124\uC77C')}">`
+            : `<span>${api.escapeHtml('\uBAA9\uCC28 \uBBF8\uB9AC\uBCF4\uAE30')}</span><em>${api.escapeHtml('\uC601\uC5ED\uC744 \uB4DC\uB798\uADF8\uD55C \uB4A4 \uBA54\uC778 \uC601\uC5ED \uCEA1\uCCD0\uB97C \uB204\uB974\uC138\uC694.')}</em>`;
+    }
+
+    function setPhotoCropEditorMode(editor, state, isEditing) {
+        if (!editor || !state) return;
+        state.photoCropEditing = Boolean(isEditing);
+        const active = Boolean(state.photoCropEditing);
+        editor.card.classList.toggle('is-photo-editing', active);
+        editor.frame.classList.toggle('is-editing', active);
+        editor.box.hidden = !active;
+        editor.tools.hidden = !active;
+        editor.status.hidden = !active;
+        editor.editButton.setAttribute('aria-pressed', active ? 'true' : 'false');
+        editor.editButton.setAttribute('aria-label', active ? '\uC0AC\uC9C4 \uC218\uC815 \uB05D\uB0B4\uAE30' : '\uC0AC\uC9C4 \uC218\uC815');
+        editor.editButton.setAttribute('title', active ? '\uC0AC\uC9C4 \uC218\uC815 \uB05D\uB0B4\uAE30' : '\uC0AC\uC9C4 \uC218\uC815');
+        if (editor.editLabel) editor.editLabel.textContent = active ? '\uC644\uB8CC' : '\uC0AC\uC9C4 \uC218\uC815';
+    }
+
+    function ensurePhotoCropEditor(root, state) {
+        const card = root.querySelector('[data-equipment-history-photo-card].is-locked');
+        const img = root.querySelector('[data-equipment-history-photo-preview]');
+        if (!card || !img || !state.draft) return null;
+        const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
+        if (!doc) return null;
+        let frame = card.querySelector('[data-equipment-photo-crop-frame]');
+        if (!frame) {
+            frame = doc.createElement('div');
+            frame.className = 'data-equipment-photo-frame';
+            frame.dataset.equipmentPhotoCropFrame = '';
+            img.parentNode?.insertBefore(frame, img);
+            frame.appendChild(img);
+        }
+        let box = frame.querySelector('[data-equipment-photo-crop-box]');
+        if (!box) {
+            box = doc.createElement('span');
+            box.className = 'data-equipment-photo-crop-box';
+            box.dataset.equipmentPhotoCropBox = '';
+            box.setAttribute('aria-hidden', 'true');
+            box.setAttribute('style', getPhotoCropStyle(state.draft));
+            frame.appendChild(box);
+        }
+        let editButton = frame.querySelector('[data-equipment-photo-edit-toggle]');
+        if (!editButton) {
+            editButton = doc.createElement('button');
+            editButton.type = 'button';
+            editButton.className = 'data-equipment-photo-edit-toggle';
+            editButton.dataset.equipmentPhotoEditToggle = '';
+            editButton.innerHTML = `<i class="fas fa-pen" aria-hidden="true"></i><span>${api.escapeHtml('\uC0AC\uC9C4 \uC218\uC815')}</span>`;
+            frame.appendChild(editButton);
+        }
+        let tools = card.querySelector('.data-equipment-photo-tools');
+        if (!tools) {
+            tools = doc.createElement('div');
+            tools.className = 'data-equipment-photo-tools';
+            tools.innerHTML = `
+                <button type="button" class="data-equipment-photo-capture" data-equipment-photo-thumb-capture>
+                    <i class="fas fa-crop-simple"></i><span>${api.escapeHtml('\uBA54\uC778 \uC601\uC5ED \uCEA1\uCCD0')}</span>
+                </button>
+                <button type="button" class="data-equipment-photo-reset" data-equipment-photo-crop-reset>
+                    <i class="fas fa-crosshairs"></i><span>${api.escapeHtml('\uC911\uC559 \uB9DE\uCDA4')}</span>
+                </button>
+            `;
+            card.appendChild(tools);
+        }
+        const revertButton = card.querySelector('[data-equipment-photo-revert]');
+        if (revertButton && revertButton.parentElement !== tools) {
+            tools.appendChild(revertButton);
+        }
+        let status = card.querySelector('.data-equipment-photo-thumb-status');
+        if (!status) {
+            status = doc.createElement('div');
+            status.className = 'data-equipment-photo-thumb-status';
+            card.appendChild(status);
+        }
+        renderPhotoThumbStatus(status, state.draft);
+        updatePhotoCropBox(frame, img, box, state.draft);
+        const editor = { card, frame, img, box, editButton, editLabel: editButton.querySelector('span'), tools, status };
+        setPhotoCropEditorMode(editor, state, state.photoCropEditing === true);
+        img.addEventListener('load', () => updatePhotoCropBox(frame, img, box, state.draft), { once: true });
+        return editor;
+    }
+
+    function getPhotoCropFromDrag(start, end, img) {
+        const contentRect = getContainedImageRect(img);
+        const minSize = Math.min(contentRect.width, contentRect.height) * 0.06;
+        const left = Math.max(contentRect.left, Math.min(start.x, end.x));
+        const top = Math.max(contentRect.top, Math.min(start.y, end.y));
+        const right = Math.min(contentRect.left + contentRect.width, Math.max(start.x, end.x));
+        const bottom = Math.min(contentRect.top + contentRect.height, Math.max(start.y, end.y));
+        const width = Math.max(minSize, right - left);
+        const height = Math.max(minSize, bottom - top);
+        return normalizePhotoCropValue({
+            x: (left - contentRect.left) / contentRect.width,
+            y: (top - contentRect.top) / contentRect.height,
+            width: width / contentRect.width,
+            height: height / contentRect.height,
+        }) || getDefaultMainPhotoCrop();
+    }
+
+    function waitForImageReady(img) {
+        if (img?.complete && img.naturalWidth && img.naturalHeight) return Promise.resolve();
+        if (typeof img?.decode === 'function') {
+            return img.decode().catch(() => {});
+        }
+        return new Promise((resolve, reject) => {
+            img.addEventListener('load', resolve, { once: true });
+            img.addEventListener('error', reject, { once: true });
+        });
+    }
+
+    function loadEquipmentPhotoImage(dataUrl, doc) {
+        return new Promise((resolve, reject) => {
+            const ImageCtor = doc?.defaultView?.Image || (typeof Image !== 'undefined' ? Image : null);
+            if (!ImageCtor) {
+                reject(new Error('image_constructor_unavailable'));
+                return;
+            }
+            const image = new ImageCtor();
+            image.onload = () => resolve(image);
+            image.onerror = () => reject(new Error('image_load_failed'));
+            image.src = dataUrl;
+        });
+    }
+
+    function getNormalizedEquipmentPhotoFileName(file) {
+        const rawName = api.normalizeText(file?.name) || 'equipment-photo';
+        const baseName = rawName.replace(/\.[^.]+$/, '') || 'equipment-photo';
+        return `${baseName}-1600x800.jpg`;
+    }
+
+    function canvasToJpegBlob(canvas) {
+        if (typeof canvas.toBlob !== 'function') return Promise.resolve(null);
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.88);
+        });
+    }
+
+    async function normalizeEquipmentPhotoAttachment(file, rawDataUrl, doc) {
+        try {
+            const image = await loadEquipmentPhotoImage(rawDataUrl, doc);
+            const canvas = doc.createElement('canvas');
+            canvas.width = EQUIPMENT_PHOTO_TARGET_WIDTH;
+            canvas.height = EQUIPMENT_PHOTO_TARGET_HEIGHT;
+            const context = canvas.getContext('2d');
+            if (!context || !image.naturalWidth || !image.naturalHeight) throw new Error('canvas_context_unavailable');
+
+            const sourceAspect = image.naturalWidth / image.naturalHeight;
+            let sourceWidth = image.naturalWidth;
+            let sourceHeight = image.naturalHeight;
+            let sourceX = 0;
+            let sourceY = 0;
+            if (sourceAspect > EQUIPMENT_PHOTO_TARGET_ASPECT) {
+                sourceWidth = image.naturalHeight * EQUIPMENT_PHOTO_TARGET_ASPECT;
+                sourceX = (image.naturalWidth - sourceWidth) / 2;
+            } else if (sourceAspect < EQUIPMENT_PHOTO_TARGET_ASPECT) {
+                sourceHeight = image.naturalWidth / EQUIPMENT_PHOTO_TARGET_ASPECT;
+                sourceY = (image.naturalHeight - sourceHeight) / 2;
+            }
+
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(
+                image,
+                sourceX,
+                sourceY,
+                sourceWidth,
+                sourceHeight,
+                0,
+                0,
+                EQUIPMENT_PHOTO_TARGET_WIDTH,
+                EQUIPMENT_PHOTO_TARGET_HEIGHT,
+            );
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+            const blob = await canvasToJpegBlob(canvas);
+            if (!blob) return { dataUrl, file, name: getNormalizedEquipmentPhotoFileName(file) };
+            const name = getNormalizedEquipmentPhotoFileName(file);
+            const FileCtor = doc?.defaultView?.File || (typeof File !== 'undefined' ? File : null);
+            const normalizedFile = FileCtor
+                ? new FileCtor([blob], name, { type: 'image/jpeg', lastModified: Date.now() })
+                : blob;
+            if (!normalizedFile.name) {
+                try {
+                    Object.defineProperty(normalizedFile, 'name', { value: name });
+                } catch (error) {
+                    normalizedFile.name = name;
+                }
+            }
+            return { dataUrl, file: normalizedFile, name };
+        } catch (error) {
+            console.warn('[kpi] equipment history photo normalization failed', error);
+            return { dataUrl: rawDataUrl, file, name: file?.name || '' };
+        }
+    }
+
+    async function captureMainPhotoThumb(root, state, data, redraw) {
+        const editor = ensurePhotoCropEditor(root, state);
+        if (!editor || !state.draft) return;
+        syncDraftFromForm(root, state);
+        try {
+            await waitForImageReady(editor.img);
+            const crop = getDraftPhotoCrop(state.draft);
+            const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
+            if (!doc) throw new Error('document_unavailable');
+            const canvas = doc.createElement('canvas');
+            canvas.width = EQUIPMENT_MAIN_THUMB_WIDTH;
+            canvas.height = EQUIPMENT_MAIN_THUMB_HEIGHT;
+            const context = canvas.getContext('2d');
+            if (!context) throw new Error('canvas_context_unavailable');
+            context.drawImage(
+                editor.img,
+                crop.x * editor.img.naturalWidth,
+                crop.y * editor.img.naturalHeight,
+                crop.width * editor.img.naturalWidth,
+                crop.height * editor.img.naturalHeight,
+                0,
+                0,
+                EQUIPMENT_MAIN_THUMB_WIDTH,
+                EQUIPMENT_MAIN_THUMB_HEIGHT,
+            );
+            state.draft.photoThumbDataUrl = canvas.toDataURL('image/jpeg', 0.86);
+            state.photoCropEditing = false;
+            await autoSaveDraft(data, state, redraw, '\uBA54\uC778 \uC0AC\uC9C4 \uC601\uC5ED\uC744 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.');
+        } catch (error) {
+            console.warn('[kpi] equipment history photo thumbnail capture failed', error);
+            browser.alert('\uBA54\uC778 \uC0AC\uC9C4 \uC601\uC5ED \uCEA1\uCCD0\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.');
+        }
+    }
+
+    function bindPhotoCropEditor(root, state, data, redraw) {
+        const editor = ensurePhotoCropEditor(root, state);
+        if (!editor || !state.draft) return;
+        let dragStart = null;
+        editor.editButton.addEventListener('click', () => {
+            setPhotoCropEditorMode(editor, state, state.photoCropEditing !== true);
+            updatePhotoCropBox(editor.frame, editor.img, editor.box, state.draft);
+        });
+        editor.frame.addEventListener('pointerdown', (event) => {
+            if (state.photoCropEditing !== true) return;
+            if (event.target?.closest?.('button')) return;
+            event.preventDefault?.();
+            dragStart = { x: event.clientX, y: event.clientY };
+            editor.frame.setPointerCapture?.(event.pointerId);
+        });
+        editor.frame.addEventListener('pointermove', (event) => {
+            if (state.photoCropEditing !== true) return;
+            if (!dragStart || !state.draft) return;
+            state.draft.photoCrop = getPhotoCropFromDrag(dragStart, { x: event.clientX, y: event.clientY }, editor.img);
+            updatePhotoCropBox(editor.frame, editor.img, editor.box, state.draft);
+        });
+        const finishDrag = (event) => {
+            if (state.photoCropEditing !== true) return;
+            if (!dragStart || !state.draft) return;
+            state.draft.photoCrop = getPhotoCropFromDrag(dragStart, { x: event.clientX, y: event.clientY }, editor.img);
+            dragStart = null;
+            updatePhotoCropBox(editor.frame, editor.img, editor.box, state.draft);
+        };
+        editor.frame.addEventListener('pointerup', finishDrag);
+        editor.frame.addEventListener('pointercancel', () => {
+            dragStart = null;
+        });
+        root.querySelector('[data-equipment-photo-crop-reset]')?.addEventListener('click', () => {
+            if (!state.draft) return;
+            state.draft.photoCrop = getDefaultMainPhotoCrop();
+            updatePhotoCropBox(editor.frame, editor.img, editor.box, state.draft);
+        });
+        root.querySelector('[data-equipment-photo-thumb-capture]')?.addEventListener('click', () => {
+            captureMainPhotoThumb(root, state, data, redraw);
+        });
+    }
+
     function bindPhotoPreview(root, state, data, redraw) {
         const input = root.querySelector('[data-equipment-history-photo-input]');
         const preview = root.querySelector('[data-equipment-history-photo-preview]');
@@ -1433,9 +2049,16 @@
             if (!file || !state.draft) return;
             const reader = new FileReader();
             reader.onload = async () => {
-                state.draft.photoDataUrl = String(reader.result || '');
-                state.draft.photoFile = file;
-                state.draft.photoName = file.name || '';
+                const rawDataUrl = String(reader.result || '');
+                const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
+                const normalized = doc
+                    ? await normalizeEquipmentPhotoAttachment(file, rawDataUrl, doc)
+                    : { dataUrl: rawDataUrl, file, name: file.name || '' };
+                state.draft.photoDataUrl = normalized.dataUrl;
+                state.draft.photoThumbDataUrl = '';
+                state.draft.photoCrop = null;
+                state.draft.photoFile = normalized.file || file;
+                state.draft.photoName = normalized.name || file.name || '';
                 preview.src = state.draft.photoDataUrl;
                 preview.hidden = false;
                 placeholder.hidden = true;
@@ -1453,6 +2076,7 @@
         root.querySelectorAll('[data-equipment-view-action]').forEach((button) => {
             button.addEventListener('click', () => {
                 if (button.dataset.equipmentViewAction === 'card') {
+                    state.pendingAddTeam = button.dataset.equipmentAddTeam || '';
                     startNewCard(state);
                 } else {
                     state.view = 'board';
@@ -1461,8 +2085,43 @@
             });
         });
 
-        root.querySelector('[data-equipment-save-current]')?.addEventListener('click', async () => {
-            await saveCurrentEquipmentHistoryView(root, data, state, redraw);
+        root.querySelector('[data-equipment-filter-team]')?.addEventListener('change', (event) => {
+            const filters = getBoardFilters(state);
+            filters.team = event.target.value || '';
+            redraw();
+        });
+
+        root.querySelector('[data-equipment-filter-status]')?.addEventListener('change', (event) => {
+            const filters = getBoardFilters(state);
+            filters.status = event.target.value || '';
+            redraw();
+        });
+
+        root.querySelector('[data-equipment-filter-search]')?.addEventListener('change', (event) => {
+            const filters = getBoardFilters(state);
+            filters.search = event.target.value || '';
+            redraw();
+        });
+
+        root.querySelector('[data-equipment-filter-search]')?.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            const filters = getBoardFilters(state);
+            filters.search = event.target.value || '';
+            redraw();
+        });
+
+        root.querySelector('[data-equipment-filter-reset]')?.addEventListener('click', () => {
+            state.filters = { team: '', status: '', search: '' };
+            redraw();
+        });
+
+        root.querySelectorAll('[data-equipment-focus-team]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const filters = getBoardFilters(state);
+                filters.team = button.dataset.equipmentFocusTeam || '';
+                redraw();
+            });
         });
 
         root.querySelectorAll('[data-equipment-open-card]').forEach((button) => {
@@ -1681,6 +2340,7 @@
         });
 
         bindPhotoPreview(root, state, data, redraw);
+        bindPhotoCropEditor(root, state, data, redraw);
         bindSaveShortcut(root, state, data, redraw);
     }
 

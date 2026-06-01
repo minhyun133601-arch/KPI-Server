@@ -240,6 +240,8 @@
             owner: normalizeText(item?.owner || getInfoValue(detailInfo, ['담당 업체', '담당', '책임자', ownerLabel])),
             note: normalizeText(item?.note),
             photoDataUrl: normalizeText(item?.photoDataUrl),
+            photoThumbDataUrl: normalizeText(item?.photoThumbDataUrl),
+            photoCrop: item?.photoCrop && typeof item.photoCrop === 'object' ? { ...item.photoCrop } : null,
             photoDocumentId: normalizeText(item?.photoDocumentId || item?.photoFileId),
             photoPreviewUrl: normalizeText(item?.photoPreviewUrl || item?.photoViewUrl),
             photoDownloadUrl: normalizeText(item?.photoDownloadUrl),

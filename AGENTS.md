@@ -1,15 +1,15 @@
 # AGENTS.md
 
 Created: `2026-04-03`
-Revised: `2026-05-21` - central server runtime contract restored
+Revised: `2026-06-01` - local experiment runtime contract restored
 
-This file is the repository-level execution contract for AI agents working in this desktop `KPI-Server` command workspace. It stays short, direct, and English-only so agent behavior is consistent. User-facing explanations should normally be Korean unless the user asks for another language.
+This file is the repository-level execution contract for AI agents working in this desktop `kpi-local` command workspace. It stays short, direct, and English-only so agent behavior is consistent. User-facing explanations should normally be Korean unless the user asks for another language.
 
 ## 1. Purpose
 
-`KPI-Server` is the central server command workspace for the KPI runtime.
+`kpi-local` is the local command and experiment workspace for the KPI runtime.
 
-Agents must treat this repository as the active server worktree. Implement the current user request with the smallest coherent change, verify the affected path, and avoid long-running status-document churn.
+Agents must treat this repository as the active local experiment worktree. Implement the current user request with the smallest coherent change, verify the affected path, and avoid long-running status-document churn.
 
 ## 2. Authority
 
@@ -22,21 +22,21 @@ Agents must treat this repository as the active server worktree. Implement the c
 - `commands/ops-console-app/ops-console/public/data-reference-map.html` owns current data-flow and storage explanation only. Do not turn it into a patch log.
 - `server-apply-handoff/` and worklog-style handoff documents are not standing public documentation in this repo unless the user explicitly asks for them.
 
-## 3. Server Runtime Boundary
+## 3. Local Runtime Boundary
 
-Default server command ports and names:
+Default local command ports and names:
 
-- KPI server runtime: `3100`
+- KPI local runtime: `18080`
 - Ops console: `3215-3218`
 - Verification runtime: `3192`
-- PostgreSQL: `5434`
-- Server env file: `kpi-runtime/internal-server/.env.production.local`
+- PostgreSQL: `55432`
+- Local experiment env file: `kpi-runtime/internal-server/.env.local-experiment`
 - Development env file: `kpi-runtime/internal-server/.env.development.local`
 - Runtime state root: `kpi-runtime/internal-server/var`
 
-For this command workspace, the server port follows the central runtime environment. When using `.env.production.local`, bind the KPI server on `0.0.0.0:3100` so other approved devices can reach it, while PostgreSQL stays on `127.0.0.1:5434`; do not temporarily switch the server to experiment ports for checks. Run root smoke checks locally with `KPI_BASE_URL=http://127.0.0.1:3100/`.
+For this command workspace, the local server port follows the local experiment environment, not the central/company default. When using `.env.local-experiment`, keep the KPI server on `127.0.0.1:18080` and PostgreSQL on `127.0.0.1:55432`; do not temporarily switch the server to `3100` for checks. Run root smoke checks with `KPI_BASE_URL=http://127.0.0.1:18080/`.
 
-Use server command start/stop commands by default:
+Use local command start/stop commands by default:
 
 - `commands/open-ops-console.cmd`
 - `commands/close-ops-console.cmd`
@@ -49,7 +49,7 @@ Desktop `kpi-local/KPI-local-main` is a read-only reference unless the user expl
 
 - Do not modify its files, Git state, runtime data, or secrets.
 - Do not copy `.git`, `node_modules`, `var`, `.env*`, logs, dumps, uploads, screenshots, OAuth cache, PATs, private notes, or production-derived originals.
-- When absorbing files, keep server command workspace ports, env names, storage roots, and scripts aligned with this repository's central server contract.
+- When absorbing files, keep local command workspace ports, env names, storage roots, and scripts aligned with this repository's local experiment contract.
 - Keep reference clone folders out of this repo's tracked parent Git state.
 
 ## 5. Agent Working Contract

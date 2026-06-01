@@ -4,7 +4,7 @@ export const commandRegistry = [
     category: "server",
     title: "서버 열기",
     description:
-      "KPI 서버, PostgreSQL, .env.production.local 기준으로 올립니다.",
+      "KPI 서버와 PostgreSQL을 .env.local-experiment 기준으로 엽니다.",
     kind: "action",
   },
   {
@@ -27,16 +27,16 @@ export const commandRegistry = [
   {
     key: "startup.register",
     category: "startup",
-    title: "로그인 자동시작 등록",
+    title: "부팅 자동실행 등록",
     description:
-      "현재 Windows 사용자 로그인 시 KPI 서버를 자동으로 올리는 예약 작업을 등록합니다.",
+      "현재 사용자 로그인 때 KPI 서버를 자동으로 여는 시작프로그램을 등록합니다.",
     kind: "action",
   },
   {
     key: "startup.unregister",
     category: "startup",
-    title: "로그인 자동시작 해제",
-    description: "현재 Windows 사용자 로그인 자동시작 예약 작업을 제거합니다.",
+    title: "부팅 자동실행 해제",
+    description: "현재 사용자 시작프로그램 자동실행을 제거합니다.",
     kind: "action",
   },
   {

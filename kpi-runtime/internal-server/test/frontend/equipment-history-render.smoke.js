@@ -196,7 +196,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=15');
   const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=24');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=2');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=38');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=43');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=5');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -206,7 +206,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(storageIndex > formIndex, 'equipment-history storage loader must load after the form');
   assert.ok(renderIndex > storageIndex, 'equipment-history render loader must load after storage');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
-  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=085') >= 0, 'data css cache version is stale');
+  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=090') >= 0, 'data css cache version is stale');
   assert.ok(bootManifestSource.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js') >= 0);
 });
 
@@ -241,16 +241,21 @@ test('equipment-history print document preserves the A4 card form through mainte
   assert.equal(typeof api.buildEquipmentHistoryPrintDocument, 'function');
   assert.match(html, /@page \{ size: A4 portrait; margin: 6mm; \}/);
   assert.match(html, /class="equipment-print-page"/);
+  assert.match(html, /class="data-equipment-topbar data-equipment-topbar-dashboard is-card-mode equipment-print-card-topbar"/);
   assert.match(html, /class="data-equipment-layout data-equipment-edit-form equipment-print-form"/);
   assert.match(html, /class="data-equipment-top-grid"/);
   assert.match(html, /class="data-equipment-card data-equipment-detail-card"/);
-  assert.match(html, /class="data-equipment-bottom-grid"/);
+  assert.match(html, /class="data-equipment-card-grid"/);
   assert.match(html, /class="data-equipment-card data-equipment-history-card equipment-print-maintenance"/);
   assert.match(html, /class="data-equipment-card data-equipment-doc-card equipment-print-documents"/);
   assert.match(html, /class="data-equipment-note-field equipment-print-note"/);
   assert.match(html, /\uAD00\uB828 \uBB38\uC11C/);
   assert.match(html, /\uC815\uBE44 \uC774\uB825/);
   assert.match(html, /\uBE44\uACE0/);
+  assert.ok(
+    html.indexOf('class="data-equipment-card data-equipment-detail-card"')
+      < html.indexOf('class="data-equipment-card data-equipment-history-card equipment-print-maintenance"')
+  );
   assert.ok(
     html.indexOf('class="data-equipment-card data-equipment-history-card equipment-print-maintenance"')
       < html.indexOf('class="data-equipment-card data-equipment-doc-card equipment-print-documents"')
@@ -262,6 +267,7 @@ test('equipment-history print document preserves the A4 card form through mainte
   assert.match(html, /mixer-a-report\.pdf/);
   assert.match(html, /100 kg/);
   assert.match(html, /\uBE44\uACE0 \uB0B4\uC6A9/);
+  assert.doesNotMatch(html, /data-equipment-save-current|data-equipment-save-action/);
   assert.match(renderSource, /printHtmlDocument/);
   assert.doesNotMatch(renderSource, /noopener,noreferrer/);
   assert.doesNotMatch(html, /data-equipment-field|data-equipment-add-row|data-equipment-form-actions|data-equipment-spec-block-toggle/);
@@ -302,7 +308,7 @@ test('equipment-history renderer shows the empty board state and supports author
 
   assert.match(container.innerHTML, /설비 현황/);
   assert.match(container.innerHTML, /설비 이력 카드/);
-  assert.match(container.innerHTML, /기록 작성/);
+  assert.match(container.innerHTML, /설비 추가/);
   assert.match(container.innerHTML, /등록된 설비가 없습니다/);
   assert.doesNotMatch(container.innerHTML, /숨김|KPI|설비 이력 관리 기록/);
 
@@ -366,13 +372,14 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-c"[^>]*data-equipment-move-direction="-1"/);
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-c"[^>]*data-equipment-move-direction="1"[^>]*disabled/);
   assert.match(container.innerHTML, /data-equipment-board-open-button/);
-  assert.match(container.innerHTML, /<optgroup label="1팀 1파트 \(4\)">/);
-  assert.match(container.innerHTML, /<optgroup label="2팀 \(1\)">/);
-  assert.match(container.innerHTML, /<optgroup label="공무환경팀 \(1\)">/);
+  assert.match(container.innerHTML, /data-equipment-filter-team/);
+  assert.match(container.innerHTML, /<option value="work_team_calendar_team1_part1">1팀 1파트<\/option>/);
+  assert.match(container.innerHTML, /<option value="work_team_calendar_team2">2팀<\/option>/);
+  assert.match(container.innerHTML, /<option value="work_team_calendar_team4">공무환경팀<\/option>/);
   assert.doesNotMatch(container.innerHTML, /B실 \/ 혼합/);
   assert.match(container.innerHTML, /<p>혼합<\/p>/);
-  assert.ok(container.innerHTML.indexOf('B실 / 1팀 B 혼합기') < container.innerHTML.indexOf('A실 / 1팀 A 혼합기'));
-  assert.ok(container.innerHTML.indexOf('A실 / 1팀 A 혼합기') < container.innerHTML.indexOf('C실 / 1팀 C 혼합기'));
+  assert.ok(container.innerHTML.indexOf('1팀 B 혼합기') < container.innerHTML.indexOf('1팀 A 혼합기'));
+  assert.ok(container.innerHTML.indexOf('1팀 A 혼합기') < container.innerHTML.indexOf('1팀 C 혼합기'));
   assert.equal(api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card)[1].sourceIndex, 1);
 
   const documentTableHtml = api.renderDocumentEditableTable([api.createBlankDocumentRow()]);
@@ -513,7 +520,9 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /event\.target\.dataset\.equipmentStartField === 'team'[\s\S]+redraw\(\)/);
   assert.doesNotMatch(renderSource, /<button type="submit" class="data-equipment-primary-action">[\s\S]*?<i class="fas fa-save"/);
   assert.doesNotMatch(renderSource, /작성 후 저장을 누르면 설비 현황 보드에 즉시 반영됩니다/);
-  assert.match(renderSource, /data-equipment-save-current/);
+  assert.doesNotMatch(renderSource, /data-equipment-save-current/);
+  assert.match(renderSource, /data-equipment-history-print/);
+  assert.match(renderSource, /A4 \\uCD9C\\uB825/);
   assert.match(renderSource, /saveCurrentEquipmentHistoryView\(root, data, state, redraw/);
   assert.match(renderSource, /function bindSaveShortcut/);
   assert.match(renderSource, /root\?\.querySelector\?\.\('\.data-equipment-page'\)/);
@@ -523,24 +532,23 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.doesNotMatch(renderSource, /관리 구분 미지정/);
   assert.match(renderSource, /data-equipment-title-input/);
   assert.match(dataCssSource, /data-equipment-title-input/);
-  assert.match(dataCssSource, /data-equipment-save-action/);
-  assert.match(dataCssSource, /data-equipment-bottom-grid[\s\S]+grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-save-action/);
+  assert.match(dataCssSource, /data-equipment-card-grid[\s\S]+grid-template-columns:\s*minmax\(250px,\s*0\.88fr\)\s*minmax\(380px,\s*1\.18fr\)\s*minmax\(270px,\s*1fr\)/);
   assert.match(dataCssSource, /data-equipment-table-scroll[\s\S]+border:\s*1px solid #d8e5f2/);
   assert.match(dataCssSource, /data-equipment-table-scroll[\s\S]+background:\s*#f8fbff/);
   assert.match(dataCssSource, /data-equipment-edit-table[\s\S]+border-collapse:\s*separate/);
   assert.match(dataCssSource, /data-equipment-edit-table[\s\S]+border-spacing:\s*0 7px/);
   assert.match(dataCssSource, /data-equipment-document-picker[\s\S]+min-height:\s*34px/);
-  assert.match(dataCssSource, /grid-template-columns:\s*minmax\(0,\s*3fr\)\s*minmax\(260px,\s*1fr\)/);
+  assert.match(dataCssSource, /data-equipment-index-overview[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(310px,\s*420px\)/);
   assert.match(dataCssSource, /data-equipment-board-team-title/);
   assert.match(dataCssSource, /data-equipment-board-section[\s\S]+display:\s*grid/);
-  assert.match(dataCssSource, /data-equipment-board-section[\s\S]+gap:\s*20px/);
-  assert.match(dataCssSource, /data-equipment-board-section[\s\S]+margin-top:\s*24px/);
-  assert.match(dataCssSource, /data-equipment-board-section[\s\S]+padding:\s*16px/);
-  assert.match(dataCssSource, /data-equipment-board-section h3[\s\S]+border-bottom:\s*1px solid/);
+  assert.match(dataCssSource, /data-equipment-board-section[\s\S]+gap:\s*10px/);
+  assert.match(dataCssSource, /data-equipment-board-section[\s\S]+padding:\s*0/);
+  assert.match(dataCssSource, /data-equipment-board-card-row[\s\S]+grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(174px,\s*1fr\)\)/);
   assert.match(dataCssSource, /data-equipment-board-room-icon[\s\S]+width:\s*26px/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-room-badge/);
   assert.match(dataCssSource, /data-equipment-board-card[\s\S]+margin-top:\s*0/);
-  assert.match(dataCssSource, /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(260px,\s*1fr\)\)/);
+  assert.match(dataCssSource, /data-equipment-index-overview[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(310px,\s*420px\)/);
   assert.match(dataCssSource, /data-equipment-detail-groups[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(dataCssSource, /data-equipment-detail-items-grid[\s\S]+grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(dataCssSource, /data-equipment-detail-items-grid\.is-categorized[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
@@ -559,20 +567,21 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /@media \(max-width:\s*780px\)[\s\S]+data-equipment-spec-block-row[\s\S]+grid-template-columns:\s*1fr/);
   assert.doesNotMatch(dataCssSource, /data-equipment-bottom-grid,\s*[\r\n\s]*\.data-equipment-detail-groups/);
   assert.doesNotMatch(dataCssSource, /data-equipment-detail-table th:first-child/);
-  assert.match(dataCssSource, /object-fit:\s*contain/);
+  assert.match(dataCssSource, /data-equipment-top-grid\s+\.data-equipment-photo-card[\s\S]+aspect-ratio:\s*2 \/ 1/);
+  assert.match(dataCssSource, /data-equipment-photo-preview[\s\S]+object-fit:\s*cover/);
   assert.match(dataCssSource, /data-equipment-photo-revert/);
   assert.match(dataCssSource, /data-equipment-photo-card:hover\s+\.data-equipment-photo-revert/);
   assert.match(dataCssSource, /opacity:\s*0/);
   assert.match(dataCssSource, /--equipment-team-color/);
-  assert.doesNotMatch(dataCssSource, /data-equipment-board-team-icon/);
-  assert.doesNotMatch(renderSource, /data-equipment-board-team-icon/);
-  assert.match(dataCssSource, /data-equipment-board-card[\s\S]+background:\s*linear-gradient\(180deg,\s*#203145,\s*#192839\)/);
-  assert.match(dataCssSource, /data-equipment-board-card\.is-running[\s\S]+--equipment-card-status-color:\s*#2fe27c/);
-  assert.match(dataCssSource, /data-equipment-board-card\.is-stop[\s\S]+--equipment-card-status-color:\s*#d95151/);
-  assert.match(dataCssSource, /data-equipment-board-card\.is-check[\s\S]+--equipment-card-status-color:\s*#f6c445/);
+  assert.match(dataCssSource, /data-equipment-board-team-icon/);
+  assert.match(renderSource, /data-equipment-board-team-icon/);
+  assert.match(dataCssSource, /data-equipment-board-card[\s\S]+background:\s*#ffffff/);
+  assert.match(dataCssSource, /data-equipment-board-card\.is-running[\s\S]+--equipment-card-status-color:\s*#16a34a/);
+  assert.match(dataCssSource, /data-equipment-board-card\.is-stop[\s\S]+--equipment-card-status-color:\s*#dc2626/);
+  assert.match(dataCssSource, /data-equipment-board-card\.is-check[\s\S]+--equipment-card-status-color:\s*#64748b/);
   assert.match(dataCssSource, /data-equipment-board-status-button/);
   assert.match(dataCssSource, /data-equipment-board-team-order-toggle/);
-  assert.match(dataCssSource, /data-equipment-board-team-order-toggle[\s\S]+#ffe28a/);
+  assert.match(dataCssSource, /data-equipment-board-team-order-toggle[\s\S]+#eff6ff/);
   assert.match(dataCssSource, /data-equipment-board-card-tools/);
   assert.match(dataCssSource, /data-equipment-board-card-tools[\s\S]+display:\s*none/);
   assert.match(dataCssSource, /data-equipment-board-column\.is-ordering\s+\.data-equipment-board-card-tools[\s\S]+display:\s*grid/);
@@ -596,7 +605,8 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-title-name/);
   assert.match(renderSource, /function renderStatusToggle/);
   assert.match(renderSource, /\\uC124\\uBE44 \\uC2A4\\uD399/);
-  assert.match(renderSource, /api\.renderDetailGroups\(draft\.detailGroups, \{ openBlocks: state\.openEquipmentSpecBlocks \|\| \{\} \}\)/);
+  assert.match(renderSource, /renderSimpleSpecEditor\(draft\)/);
+  assert.match(renderSource, /renderCompactDocumentEditor\(draft\.documents\)/);
   assert.match(formSource, /data-equipment-add-block="\$\{api\.escapeHtml\(groupKey\)\}"/);
   assert.match(formSource, /data-equipment-add-row-to-block/);
   assert.match(renderSource, /data-equipment-spec-block-toggle/);
@@ -616,6 +626,23 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-card-start-submit/);
   assert.match(renderSource, /if \(hasPhoto\) \{[\s\S]+data-equipment-photo-card is-locked/);
   assert.match(renderSource, /data-equipment-photo-revert/);
+  assert.match(renderSource, /data-equipment-photo-edit-toggle/);
+  assert.match(renderSource, /setPhotoCropEditorMode/);
+  assert.match(renderSource, /state\.photoCropEditing !== true/);
+  assert.match(renderSource, /data-equipment-photo-thumb-capture/);
+  assert.match(renderSource, /EQUIPMENT_PHOTO_TARGET_WIDTH\s*=\s*1600/);
+  assert.match(renderSource, /EQUIPMENT_PHOTO_TARGET_HEIGHT\s*=\s*800/);
+  assert.match(renderSource, /async function normalizeEquipmentPhotoAttachment/);
+  assert.match(renderSource, /getNormalizedEquipmentPhotoFileName/);
+  assert.match(renderSource, /function captureMainPhotoThumb/);
+  assert.match(renderSource, /photoThumbDataUrl/);
+  assert.match(renderSource, /getBoardPhotoSrc\(item\) \{[\s\S]+item\.photoThumbDataUrl/);
+  assert.match(dataCssSource, /data-equipment-photo-frame:hover\s+\.data-equipment-photo-edit-toggle/);
+  assert.match(dataCssSource, /data-equipment-photo-crop-box\[hidden\]/);
+  assert.match(dataCssSource, /data-equipment-photo-crop-box/);
+  assert.match(dataCssSource, /data-equipment-photo-thumb-status/);
+  assert.match(formSource, /photoThumbDataUrl:\s*api\.normalizeText\(source\.photoThumbDataUrl\)/);
+  assert.match(modelSource, /photoThumbDataUrl:\s*normalizeText\(item\?\.photoThumbDataUrl\)/);
   assert.match(renderSource, /async function autoSaveDraft/);
   assert.match(renderSource, /async function revertPhoto/);
   assert.match(renderSource, /detailRows\.length <= 1/);
@@ -641,6 +668,8 @@ test('equipment-history renderer shows the empty board state and supports author
     note: '설비 기록 작성 테스트',
     photoDocumentId: 'doc-photo-1',
     photoPreviewUrl: '/api/files/doc-photo-1/view',
+    photoThumbDataUrl: 'data:image/jpeg;base64,VEhVTUI=',
+    photoCrop: { x: 0.1, y: 0.2, width: 0.5, height: 0.4 },
     detailInfo: [{ label: '제조사', value: '샘플 제조사' }],
     maintenanceHistory: [{ date: '2026.04.29', type: '정기점검', content: '구동부 점검', worker: '홍길동', note: '정상' }],
     documents: [{ title: '점검 보고서', attachmentKey: 'legacy-key', documentId: 'doc-attachment-1', fileName: 'eq-mix-001-report.pdf', downloadUrl: '/api/files/doc-attachment-1/download' }],
@@ -803,6 +832,8 @@ test('equipment-history renderer shows the empty board state and supports author
     { team: '공무환경팀', teamDataKey: 'work_team_calendar_team4' }
   );
   assert.equal(record.photoDataUrl, '');
+  assert.equal(record.photoThumbDataUrl, 'data:image/jpeg;base64,VEhVTUI=');
+  assert.equal(JSON.stringify(record.photoCrop), JSON.stringify({ x: 0.1, y: 0.2, width: 0.5, height: 0.4 }));
   assert.equal(record.photoDocumentId, 'doc-photo-1');
   assert.equal(record.modelName, 'MX-1');
   assert.equal(record.manufacturer, '샘플 제조사');
