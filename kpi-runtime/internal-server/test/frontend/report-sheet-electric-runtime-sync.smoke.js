@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -84,6 +84,30 @@ test('report sheet electric runtime sync registry exposes store, snapshot, and s
           }
         }
       };
+    },
+    getElectricMonthlyTeamSnapshot(monthValue) {
+      return {
+        monthValue,
+        teams: {
+          combined: {
+            usage: 120,
+            cost: 1200
+          }
+        }
+      };
+    },
+    getElectricUtilityDatasetSnapshotForMonths(monthValues) {
+      return {
+        months: monthValues,
+        teams: {
+          combined: {
+            '2026-03': {
+              usage: 120,
+              cost: 1200
+            }
+          }
+        }
+      };
     }
   };
 
@@ -100,6 +124,26 @@ test('report sheet electric runtime sync registry exposes store, snapshot, and s
       }
     }
   });
+  assert.deepEqual(registry.getUtilElectricMonthlyTeamSnapshot('2026-03'), {
+    monthValue: '2026-03',
+    teams: {
+      combined: {
+        usage: 120,
+        cost: 1200
+      }
+    }
+  });
+  assert.deepEqual(registry.getUtilElectricUtilitySnapshotForMonths(['2026-03']), {
+    months: ['2026-03'],
+    teams: {
+      combined: {
+        '2026-03': {
+          usage: 120,
+          cost: 1200
+        }
+      }
+    }
+  });
 
   const firstSync = await registry.ensureUtilElectricReportDataSync();
   const secondSync = await registry.ensureUtilElectricReportDataSync();
@@ -110,11 +154,11 @@ test('report sheet electric runtime sync registry exposes store, snapshot, and s
 });
 
 test('kpi html loads electric runtime sync between electric table render and electric meter model', () => {
-  const tableRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/table-render.js?v=053');
+  const tableRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/table-render.js?v=057');
   const runtimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/runtime-sync.js?v=053');
-  const meterModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/meter-model.js?v=053');
-  const comparisonSummaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=054');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=065');
+  const meterModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/meter-model.js?v=055');
+  const comparisonSummaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=072');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=067');
 
   assert.ok(tableRenderIndex >= 0, 'report sheet electric table render loader is missing');
   assert.ok(runtimeSyncIndex > tableRenderIndex, 'report sheet electric runtime sync must load after electric table render');

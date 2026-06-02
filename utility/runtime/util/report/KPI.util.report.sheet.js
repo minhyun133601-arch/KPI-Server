@@ -197,6 +197,8 @@
         hasUtilElectricMeteringStore,
         ensureUtilElectricMeteringStore,
         getUtilElectricUtilitySnapshot,
+        getUtilElectricMonthlyTeamSnapshot,
+        getUtilElectricUtilitySnapshotForMonths,
         ensureUtilElectricReportDataSync
     } = utilReportSheetElectricRuntimeSync;
     const utilReportSheetElectricMeterModel = requireApi('KPIUtilReportSheetElectricMeterModel', 'KPI.util.report.sheet.js');
@@ -204,6 +206,8 @@
         getUtilElectricMeteringStore: () => getUtilElectricMeteringStore(),
         hasUtilElectricMeteringStore: () => hasUtilElectricMeteringStore(),
         getUtilElectricUtilitySnapshot,
+        getUtilElectricMonthlyTeamSnapshot,
+        getUtilElectricUtilitySnapshotForMonths,
         parseUtilGasMeterNumber: (...args) => parseUtilGasMeterNumber(...args),
         normalizeUtilGasMeterDate: (...args) => normalizeUtilGasMeterDate(...args),
         isUtilSheetPlainObject,
@@ -288,6 +292,12 @@
         buildUtilSheetMonthBounds,
         buildUtilReportMonthlyRows,
         isUtilSheetSettledRow,
+        getUtilSheetMeteringStore(datasetKey) {
+            const normalizedDatasetKey = String(datasetKey || '').trim();
+            if (normalizedDatasetKey === 'gas') return getUtilGasMeteringStore();
+            if (normalizedDatasetKey === 'electric') return getUtilElectricMeteringStore();
+            return null;
+        },
         summarizeUtilSheetRows,
         formatUtilReportMonthLong,
         parseUtilMonthValue
@@ -715,6 +725,7 @@
         syncUtilSheetPanelSelection,
         ensureUtilSheetReportModal: (...args) => utilReportSheetModalShell.ensureUtilSheetReportModal(...args),
         ensureUtilGasMeteringStore,
+        ensureUtilElectricMeteringStore,
         getUtilSheetDetachedReportWindow: (...args) => utilReportSheetWindows.getUtilSheetDetachedReportWindow(...args),
         closeUtilSheetDetachedReportWindow: (...args) => utilReportSheetWindows.closeUtilSheetDetachedReportWindow(...args),
         closeUtilSheetAnalysisChartPopupWindow: (...args) => utilReportSheetWindows.closeUtilSheetAnalysisChartPopupWindow(...args),

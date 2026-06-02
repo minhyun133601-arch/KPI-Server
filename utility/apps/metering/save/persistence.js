@@ -308,17 +308,25 @@ function saveCurrentEquipmentEntry(options = {}) {
 }
 
 
-function restoreEquipmentFormData(formData, dayStatus) {
+function restoreEquipmentFormData(formData, dayStatus, options = {}) {
+  const { deferDynamicSync = false } = options;
+
   loadEquipmentEntry({
     values: formData.values,
   });
   setCurrentEntryDayStatus(dayStatus);
+
+  if (deferDynamicSync) {
+    syncEquipmentUsageLabels();
+    syncEquipmentRestIndicators();
+    syncEquipmentReadingValidationStates();
+  }
 }
 
 
-function readEquipmentFormData() {
+function readEquipmentFormData(equipmentInputs = getEquipmentInputs()) {
   const currentEntry = getCurrentEntry();
-  return getEquipmentInputs().reduce(
+  return equipmentInputs.reduce(
     (accumulator, input) => {
       const fieldKey = input.dataset.fieldKey;
       const equipment = getEquipmentItem(fieldKey);
@@ -341,7 +349,7 @@ function readEquipmentFormData() {
   );
 }
 
-function resolveEquipmentValidationIssues() {
+function resolveEquipmentValidationIssues(readingValidationIssues = null) {
   if (
     isQuickEntryPopupEnabledForCurrentResource() &&
     typeof getQuickEntryPopupValidationIssues === "function"
@@ -352,7 +360,9 @@ function resolveEquipmentValidationIssues() {
     }
   }
 
-  return getCurrentEquipmentReadingValidationIssues();
+  return Array.isArray(readingValidationIssues)
+    ? readingValidationIssues
+    : getCurrentEquipmentReadingValidationIssues();
 }
 
 function isQuickEntryPopupEnabledForCurrentResource() {
@@ -370,8 +380,10 @@ function isQuickEntryPopupEnabledForCurrentResource() {
 }
 
 
-function updateDirtyState() {
-  const validationIssues = resolveEquipmentValidationIssues();
+function updateDirtyState(validationIssuesOverride = null) {
+  const validationIssues = Array.isArray(validationIssuesOverride)
+    ? validationIssuesOverride
+    : resolveEquipmentValidationIssues();
   if (validationIssues.length) {
     const firstIssue = validationIssues[0];
     elements.saveStatus.textContent =
@@ -390,9 +402,18 @@ function updateDirtyState() {
   syncSelectedDateHeaderStatus(validationIssues);
 }
 
-function updateActionState() {
+function updateActionState(validationIssues = null, options = {}) {
+  const {
+    equipmentInputs = null,
+    skipEquipmentItemCountRender = false,
+    skipEquipmentPlaceholderSync = false,
+  } = options || {};
   const canEditEquipmentEntry = getCurrentMode() === MODES.EQUIPMENT && Boolean(state.selectedDate);
-  const hasValidationIssues = Boolean(resolveEquipmentValidationIssues().length);
+  const hasValidationIssues = Boolean(
+    Array.isArray(validationIssues)
+      ? validationIssues.length
+      : resolveEquipmentValidationIssues().length
+  );
   const canUseQuickEntryPopup = canEditEquipmentEntry && isQuickEntryPopupEnabledForCurrentResource();
   if (elements.saveEntryBtn) {
     elements.saveEntryBtn.disabled = hasValidationIssues || !isDirty();
@@ -418,8 +439,13 @@ function updateActionState() {
     resetQuickEntryDraft();
   }
 
-  applyEquipmentEntryLockState();
-  renderEquipmentItemCount();
+  applyEquipmentEntryLockState({
+    equipmentInputs,
+    skipPlaceholderSync: skipEquipmentPlaceholderSync,
+  });
+  if (!skipEquipmentItemCountRender) {
+    renderEquipmentItemCount(equipmentInputs);
+  }
   syncQuickEntryMenu({ skipStateRefresh: true });
 
   if (getCurrentMode() !== MODES.EQUIPMENT) {
@@ -427,7 +453,9 @@ function updateActionState() {
   }
 }
 
-function applyEquipmentEntryLockState() {
+function applyEquipmentEntryLockState(options = {}) {
+  const { equipmentInputs = null, skipPlaceholderSync = false } = options || {};
+  const resolvedEquipmentInputs = equipmentInputs || getEquipmentInputs();
   const locked = false;
 
   elements.fieldsGrid.classList.remove("is-locked");
@@ -440,22 +468,28 @@ function applyEquipmentEntryLockState() {
       button.disabled = locked;
     });
 
-  getEquipmentInputs().forEach((input) => {
+  resolvedEquipmentInputs.forEach((input) => {
     const equipment = getEquipmentItem(input.dataset.fieldKey);
     if (isAutoCalculatedEquipment(equipment)) {
       input.disabled = false;
       input.readOnly = true;
+      if (skipPlaceholderSync) {
+        return;
+      }
       input.placeholder = "자동 계산";
       return;
     }
 
     input.disabled = locked;
     input.readOnly = false;
+    if (skipPlaceholderSync) {
+      return;
+    }
     input.placeholder = getEquipmentInputPlaceholder(input.dataset.fieldKey);
   });
 
   syncEquipmentFieldDayStatusIndicators();
-  syncEquipmentRestIndicators();
+  syncEquipmentRestIndicators(resolvedEquipmentInputs);
 }
 
 function isCurrentEquipmentEntryLocked() {

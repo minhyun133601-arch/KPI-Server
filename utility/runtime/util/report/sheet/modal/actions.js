@@ -48,7 +48,8 @@
         closeUtilSheetDetachedReportWindow: null,
         closeUtilSheetAnalysisChartPopupWindow: null,
         openUtilSheetAnalysisChartPopup: null,
-        closeUtilSheetBillingPreview: null
+        closeUtilSheetBillingPreview: null,
+        ensureUtilElectricMeteringStore: null
     };
 
     function setRuntimeAdapters(adapters = {}) {
@@ -353,6 +354,16 @@
         requestFrame(() => modal.focus({ preventScroll: true }));
         if (normalizedSheetType === 'meter' && normalizedDatasetKey === 'gas' && typeof runtime.ensureUtilGasMeteringStore === 'function') {
             Promise.resolve(runtime.ensureUtilGasMeteringStore()).then(() => {
+                const activeModal = getReportModal();
+                if (!activeModal) return;
+                if (!activeModal.classList.contains('is-open') && !getDetachedWindow()) return;
+                if (String(activeModal.dataset.sheetType || '') !== normalizedSheetType) return;
+                if (String(activeModal.dataset.datasetKey || '') !== normalizedDatasetKey) return;
+                rerenderAndSync(activeModal);
+            });
+        }
+        if (normalizedSheetType === 'meter' && normalizedDatasetKey === 'electric' && typeof runtime.ensureUtilElectricMeteringStore === 'function') {
+            Promise.resolve(runtime.ensureUtilElectricMeteringStore()).then(() => {
                 const activeModal = getReportModal();
                 if (!activeModal) return;
                 if (!activeModal.classList.contains('is-open') && !getDetachedWindow()) return;

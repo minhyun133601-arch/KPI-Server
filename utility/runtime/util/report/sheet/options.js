@@ -197,12 +197,14 @@
         'field_27'
     ]);
     const UTIL_ELECTRIC_METER_FIELD_LABEL_OVERRIDES = Object.freeze({
-        field_14: '2팀 컴프레셔',
+        field_14: '컴프 2',
+        field_custom_1777335768709_08f3az: '컴프 1',
         field_15: '액상#1',
         field_16: '액상#2',
         field_24: '전력총량'
     });
     const UTIL_ELECTRIC_METER_TEAM_FALLBACK_FIELD_IDS = Object.freeze({
+        team_03: Object.freeze(['field_custom_1777335768709_08f3az']),
         team_04: Object.freeze(['field_17', 'field_18', 'field_19', 'field_28'])
     });
     const UTIL_ELECTRIC_ALLOCATION_GROUPS = Object.freeze([
@@ -210,12 +212,12 @@
         Object.freeze({ key: 'mixing', label: '조제', caption: '', sourceIds: Object.freeze(['field_04']) }),
         Object.freeze({ key: 'loading', label: '자동적재', caption: '', sourceIds: Object.freeze(['field_05']) }),
         Object.freeze({ key: 'clean', label: '청정', caption: '220v + 380v', sourceIds: Object.freeze(['field_08', 'field_09']) }),
-        Object.freeze({ key: 'compressor', label: '컴프레셔', caption: '220v + 380v', sourceIds: Object.freeze(['field_10', 'field_11']) }),
+        Object.freeze({ key: 'compressor', label: '1팀 컴프', caption: '220v + 380v', sourceIds: Object.freeze(['field_10', 'field_11']) }),
         Object.freeze({ key: 'boiler3t', label: '3톤 보일러', caption: '', sourceIds: Object.freeze(['field_06']) }),
         Object.freeze({ key: 'dsi', label: 'DSI 보일러', caption: '', sourceIds: Object.freeze(['field_07']) }),
         Object.freeze({ key: 'smallpack', label: '소포장', caption: '', sourceIds: Object.freeze(['field_12']) }),
         Object.freeze({ key: 'stick', label: '스틱', caption: '', sourceIds: Object.freeze(['field_13']) }),
-        Object.freeze({ key: 'team2Compressor', label: '2팀 컴프레셔', caption: '', sourceIds: Object.freeze(['field_14']) }),
+        Object.freeze({ key: 'team2Compressor', label: '2팀 컴프', caption: '컴프 2', sourceIds: Object.freeze(['field_14']) }),
         Object.freeze({ key: 'liquid', label: '액상', caption: '액상#1 + 액상#2', sourceIds: Object.freeze(['field_15', 'field_16']) }),
         Object.freeze({ key: 'office', label: '관리동', caption: '', sourceIds: Object.freeze(['field_17']) }),
         Object.freeze({ key: 'hvac', label: '관리동 냉난방', caption: '', sourceIds: Object.freeze(['field_18']) }),

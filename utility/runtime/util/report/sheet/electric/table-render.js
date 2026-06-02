@@ -94,8 +94,21 @@
         return ` data-team-key="${escapeHtml(normalizedTeamKey)}"${boundaryAttrs.join('')} style="--util-team-color:${colorMeta.color}; --util-team-soft:${colorMeta.soft};"`;
     }
 
+    function buildUtilElectricColumnAttributeString(column = {}, index = -1, columns = []) {
+        const attrs = [
+            buildUtilElectricTeamCellAttributeString(
+                column?.teamKey,
+                buildUtilElectricTeamColumnFlags(columns, index)
+            )
+        ];
+        if (column?.isCorrectionSource) {
+            attrs.push(' data-correction-source="true"');
+        }
+        return attrs.join('');
+    }
+
     function buildUtilElectricTableHeaderCellHtml(column = {}, index = -1, columns = []) {
-        const attrs = buildUtilElectricTeamCellAttributeString(column?.teamKey, buildUtilElectricTeamColumnFlags(columns, index));
+        const attrs = buildUtilElectricColumnAttributeString(column, index, columns);
         return `
             <th${attrs}>
                 <div class="util-head-cell">
@@ -110,13 +123,27 @@
     }
 
     function buildUtilElectricTableValueCellHtml(column = {}, renderedValue = '', index = -1, columns = []) {
-        const attrs = buildUtilElectricTeamCellAttributeString(column?.teamKey, buildUtilElectricTeamColumnFlags(columns, index));
+        const attrs = buildUtilElectricColumnAttributeString(column, index, columns);
         return `<td${attrs}>${escapeHtml(renderedValue)}</td>`;
+    }
+
+    function buildUtilElectricRowLabelHtml(label = '') {
+        const normalizedLabel = String(label || '').trim();
+        const unitMatch = /^(사용량|총 사용량|비중)\(([^()]+)\)$/u.exec(normalizedLabel);
+        if (!unitMatch) return escapeHtml(normalizedLabel);
+        return `
+            <span class="util-sheet-meter-row-label">
+                <span class="util-sheet-meter-row-label-main">${escapeHtml(unitMatch[1])}</span>
+                <span class="util-sheet-meter-row-label-unit">(${escapeHtml(unitMatch[2])})</span>
+            </span>
+        `;
     }
 
     function buildUtilElectricMeterTableHtml(table, title, options = {}) {
         const columns = Array.isArray(table?.columns) ? table.columns : [];
         const headerCells = columns.map((column, index) => buildUtilElectricTableHeaderCellHtml(column, index, columns)).join('');
+        const cardClass = String(options.cardClass || 'is-current').trim();
+        const subText = String(options.subText || '').trim();
         const rows = [
             {
                 label: '승률',
@@ -141,14 +168,20 @@
         ];
         const rowHtml = rows.map(row => `
             <tr>
-                <th>${escapeHtml(row.label)}</th>
+                <th>${buildUtilElectricRowLabelHtml(row.label)}</th>
                 ${columns.map((column, index) => buildUtilElectricTableValueCellHtml(column, row.formatter(column?.[row.key]), index, columns)).join('')}
             </tr>
         `).join('');
         return `
-            <article class="util-sheet-meter-table-card is-current">
+            <article class="util-sheet-meter-table-card${cardClass ? ` ${escapeHtml(cardClass)}` : ''}">
                 <div class="util-sheet-meter-table-head">
-                    <div class="util-sheet-meter-table-title">${escapeHtml(title)}</div>
+                    <div class="util-sheet-meter-table-title-wrap">
+                        <span class="util-sheet-meter-table-badge"><i class="fa-solid fa-table-cells-large" aria-hidden="true"></i></span>
+                        <div>
+                            <div class="util-sheet-meter-table-title">${escapeHtml(title)}</div>
+                            ${subText ? `<div class="util-sheet-meter-table-sub">${escapeHtml(subText)}</div>` : ''}
+                        </div>
+                    </div>
                 </div>
                 <div class="util-sheet-table-wrap">
                     <table class="util-sheet-table util-sheet-meter-table util-sheet-meter-table-electric">
@@ -176,7 +209,7 @@
             }).join('');
             return `
                 <tr>
-                    <th>${escapeHtml(row.label || '')}</th>
+                    <th>${buildUtilElectricRowLabelHtml(row.label || '')}</th>
                     ${valueCells}
                 </tr>
             `;
@@ -212,10 +245,24 @@
         const headerCells = columns.map((column, index) => buildUtilElectricTableHeaderCellHtml(column, index, columns)).join('');
         const bodyRows = rows.map(row => `
             <tr>
-                <th>${escapeHtml(row.label)}</th>
+                <th>${buildUtilElectricRowLabelHtml(row.label)}</th>
                 ${columns.map((column, index) => buildUtilElectricTableValueCellHtml(column, row.formatter(column?.[row.key], column), index, columns)).join('')}
             </tr>
         `).join('');
+        const tableHtml = `
+            <div class="util-sheet-table-wrap">
+                <table class="util-sheet-table util-sheet-meter-table util-sheet-meter-table-electric">
+                    <thead>
+                        <tr>
+                            <th>구분</th>
+                            ${headerCells}
+                        </tr>
+                    </thead>
+                    <tbody>${bodyRows}</tbody>
+                </table>
+            </div>
+        `;
+        if (options.bareTable === true) return tableHtml;
         return `
             <article class="util-sheet-meter-table-card">
                 <div class="util-sheet-meter-table-head">
@@ -225,17 +272,7 @@
                     </div>
                     ${options.actionsHtml ? `<div class="util-sheet-gas-summary-actions">${options.actionsHtml}</div>` : ''}
                 </div>
-                <div class="util-sheet-table-wrap">
-                    <table class="util-sheet-table util-sheet-meter-table util-sheet-meter-table-electric">
-                        <thead>
-                            <tr>
-                                <th>구분</th>
-                                ${headerCells}
-                            </tr>
-                        </thead>
-                        <tbody>${bodyRows}</tbody>
-                    </table>
-                </div>
+                ${tableHtml}
                 ${options.note ? `<div class="util-sheet-electric-summary-note">${escapeHtml(options.note)}</div>` : ''}
             </article>
         `;

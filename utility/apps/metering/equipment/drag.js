@@ -155,8 +155,8 @@ function reorderEquipmentItems(draggedFieldKey, targetFieldKey, placement) {
   state.openEquipmentManageKey = "";
 
   persistStore({ skipLocalFileWrite: true });
-  renderEquipmentFieldInputs();
-  restoreEquipmentFormData(currentFormData, currentEntryDayStatus);
+  renderEquipmentFieldInputs({ deferDynamicSync: true });
+  restoreEquipmentFormData(currentFormData, currentEntryDayStatus, { deferDynamicSync: true });
   renderTeamMode();
 
   if (!wasDirty) {

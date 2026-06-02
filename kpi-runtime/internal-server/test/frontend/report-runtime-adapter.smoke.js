@@ -50,6 +50,14 @@ test('utility report runtime adapter wraps global access for report sheet hosts'
     },
     KpiMeteringApp: {
       getElectricUtilityDatasetSnapshot: () => ({ teams: { team1: { value: 1 } } }),
+      getElectricMonthlyTeamSnapshot: (monthValue) => ({
+        monthValue,
+        teams: { team1: { usage: 2, cost: 20 } },
+      }),
+      getElectricUtilityDatasetSnapshotForMonths: (monthValues) => ({
+        months: monthValues,
+        teams: { team1: { '2026-05': { usage: 2, cost: 20 } } },
+      }),
     },
     innerWidth: 1440,
     requestAnimationFrame(callback) {
@@ -112,6 +120,16 @@ test('utility report runtime adapter wraps global access for report sheet hosts'
     adapter.getElectricUtilityDatasetSnapshot((value) => Boolean(value && typeof value === 'object')),
     { teams: { team1: { value: 1 } } }
   );
+  assert.deepEqual(
+    adapter.getElectricMonthlyTeamSnapshot('2026-05', (value) => Boolean(value && typeof value === 'object')),
+    { monthValue: '2026-05', teams: { team1: { usage: 2, cost: 20 } } }
+  );
+  assert.deepEqual(
+    adapter.getElectricUtilityDatasetSnapshotForMonths(['2026-05'], (value) =>
+      Boolean(value && typeof value === 'object')
+    ),
+    { months: ['2026-05'], teams: { team1: { '2026-05': { usage: 2, cost: 20 } } } }
+  );
   const viewportSize = adapter.getViewportSize(context.document);
   assert.equal(viewportSize.width, 1440);
   assert.equal(viewportSize.height, 720);
@@ -149,7 +167,7 @@ test('utility report adapter loads before report runtime and sheet modules', () 
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const reportStateIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.state.options.js?v=340');
   const sheetConfigIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=060');
-  const sheetHostIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=065');
+  const sheetHostIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'utility report runtime adapter loader is missing');
   assert.ok(reportStateIndex > adapterIndex, 'report state modules must load after the runtime adapter');

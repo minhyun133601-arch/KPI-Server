@@ -40,6 +40,7 @@ function createFullscreenPopupContext(options = {}) {
     syncEquipmentOrderMenu: 0,
     syncEquipmentFullscreenUI: 0,
     renderEquipmentFieldInputs: 0,
+    renderEquipmentFieldInputOptions: [],
     renderCalendar: 0,
     renderTeamMode: 0,
     renderSummary: 0,
@@ -155,8 +156,9 @@ function createFullscreenPopupContext(options = {}) {
   setBinding(context, 'syncEquipmentFullscreenUI', () => {
     calls.syncEquipmentFullscreenUI += 1;
   });
-  setBinding(context, 'renderEquipmentFieldInputs', () => {
+  setBinding(context, 'renderEquipmentFieldInputs', (renderOptions = {}) => {
     calls.renderEquipmentFieldInputs += 1;
+    calls.renderEquipmentFieldInputOptions.push(JSON.parse(JSON.stringify(renderOptions)));
   });
   setBinding(context, 'renderCalendar', () => {
     calls.renderCalendar += 1;
@@ -172,10 +174,11 @@ function createFullscreenPopupContext(options = {}) {
       calls.closeCalendarPopupWindow += 1;
     });
   }
-  setBinding(context, 'restoreEquipmentFormData', (formData, dayStatus) => {
+  setBinding(context, 'restoreEquipmentFormData', (formData, dayStatus, restoreOptions = {}) => {
     calls.restoreEquipmentFormData.push({
       formData: JSON.parse(JSON.stringify(formData)),
       dayStatus,
+      restoreOptions: JSON.parse(JSON.stringify(restoreOptions)),
     });
   });
   setBinding(context, 'syncEquipmentRestIndicators', () => {
@@ -214,10 +217,12 @@ test('fullscreen popup syncs current drafts before entering fullscreen', async (
   assert.equal(calls.requestFullscreen, 1);
   assert.equal(documentStub.fullscreenElement, panelForm);
   assert.equal(calls.renderEquipmentFieldInputs, 1);
+  assert.deepEqual(calls.renderEquipmentFieldInputOptions, [{ deferDynamicSync: true }]);
   assert.deepEqual(calls.restoreEquipmentFormData, [
     {
       formData: { values: { field_01: '123' } },
       dayStatus: 'completed',
+      restoreOptions: { deferDynamicSync: true },
     },
   ]);
   assert.equal(calls.renderCalendar, 1);
@@ -254,10 +259,12 @@ test('fullscreen popup syncs current drafts before exiting fullscreen', async ()
   assert.equal(context.state.isEquipmentFullscreen, false);
   assert.equal(calls.exitFullscreen, 1);
   assert.equal(calls.renderEquipmentFieldInputs, 1);
+  assert.deepEqual(calls.renderEquipmentFieldInputOptions, [{ deferDynamicSync: true }]);
   assert.deepEqual(calls.restoreEquipmentFormData, [
     {
       formData: { values: { field_01: '123' } },
       dayStatus: 'completed',
+      restoreOptions: { deferDynamicSync: true },
     },
   ]);
   assert.equal(calls.renderCalendar, 1);

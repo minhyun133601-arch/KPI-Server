@@ -97,7 +97,7 @@ test('report sheet controls registry builds select, toggle, and month option htm
 });
 
 test('kpi html loads report sheet controls after options and before billing', () => {
-  const optionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/options.js?v=053');
+  const optionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/options.js?v=056');
   const controlsIndex = kpiHtml.indexOf('runtime/util/report/sheet/controls.js?v=054');
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
 

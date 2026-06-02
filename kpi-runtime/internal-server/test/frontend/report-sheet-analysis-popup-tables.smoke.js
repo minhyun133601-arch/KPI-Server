@@ -202,7 +202,7 @@ test('kpi html loads report sheet analysis popup tables after analysis render an
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
   const popupTablesIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/popup-tables.js?v=054');
   const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=064');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=065');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(analysisRenderIndex >= 0, 'report sheet analysis render loader is missing');

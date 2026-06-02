@@ -30,11 +30,25 @@
         UTIL_ELECTRIC_TEAM_FILTER_TO_SNAPSHOT_KEY,
         getUtilElectricMeterTeamOption
     } = utilReportSheetOptions;
+    const UTIL_ELECTRIC_LIQUID_COMPRESSOR_FIELD_ID = 'field_custom_1777335768709_08f3az';
+    const UTIL_ELECTRIC_LIQUID_COMPRESSOR_START_MONTH = '2026-04';
+    const UTIL_ELECTRIC_METER_SYNTHETIC_FIELD_DEFINITIONS = Object.freeze([
+        Object.freeze({
+            id: UTIL_ELECTRIC_LIQUID_COMPRESSOR_FIELD_ID,
+            label: '컴프 1',
+            factor: 1,
+            readingAdjustmentValue: 0,
+            readingAdjustmentStartDate: '',
+            visibleFromMonth: UTIL_ELECTRIC_LIQUID_COMPRESSOR_START_MONTH
+        })
+    ]);
 
     const runtime = {
         getUtilElectricMeteringStore: null,
         hasUtilElectricMeteringStore: null,
         getUtilElectricUtilitySnapshot: null,
+        getUtilElectricMonthlyTeamSnapshot: null,
+        getUtilElectricUtilitySnapshotForMonths: null,
         parseUtilGasMeterNumber: null,
         normalizeUtilGasMeterDate: null,
         isUtilSheetPlainObject: null,
@@ -68,6 +82,46 @@
         return typeof runtime.getUtilElectricUtilitySnapshot === 'function'
             ? runtime.getUtilElectricUtilitySnapshot()
             : null;
+    }
+
+    function getElectricMonthlyTeamSnapshot(monthKey = '') {
+        return typeof runtime.getUtilElectricMonthlyTeamSnapshot === 'function'
+            ? runtime.getUtilElectricMonthlyTeamSnapshot(monthKey)
+            : null;
+    }
+
+    function getElectricUtilitySnapshotForMonths(monthKeys = []) {
+        return typeof runtime.getUtilElectricUtilitySnapshotForMonths === 'function'
+            ? runtime.getUtilElectricUtilitySnapshotForMonths(monthKeys)
+            : null;
+    }
+
+    function getCachedElectricUtilitySnapshotForMonths(monthKeys = []) {
+        const normalizedMonthKeys = Array.from(new Set(
+            (Array.isArray(monthKeys) ? monthKeys : [])
+                .map(monthKey => String(monthKey || '').trim())
+                .filter(Boolean)
+        )).sort(compareMonthKeys);
+        if (!normalizedMonthKeys.length) return null;
+        const store = getElectricMeteringStore();
+        let cache = UtilSheetRuntimeState.electricTargetedSnapshotCache;
+        if (!cache || cache.store !== store) {
+            cache = {
+                store,
+                snapshotsByKey: new Map()
+            };
+            UtilSheetRuntimeState.electricTargetedSnapshotCache = cache;
+        }
+        const cacheKey = normalizedMonthKeys.join('|');
+        if (cache.snapshotsByKey.has(cacheKey)) {
+            return cache.snapshotsByKey.get(cacheKey);
+        }
+        const snapshot = getElectricUtilitySnapshotForMonths(normalizedMonthKeys);
+        if (isPlainObject(snapshot?.teams)) {
+            cache.snapshotsByKey.set(cacheKey, snapshot);
+            return snapshot;
+        }
+        return null;
     }
 
     function parseGasMeterNumber(value) {
@@ -131,10 +185,28 @@
             : NaN;
     }
 
+    function getUtilElectricMeterEquipmentEntries() {
+        const store = getElectricMeteringStore();
+        const presetElectricEntries = runtimeAdapter.getRootValue('__PRESET_ELECTRIC_ENTRIES__');
+        return isPlainObject(store?.equipmentEntries)
+            ? store.equipmentEntries
+            : (isPlainObject(presetElectricEntries) ? presetElectricEntries : {});
+    }
+
+    function hasUtilElectricMeterEntryValue(entries = {}, fieldId = '') {
+        const normalizedFieldId = String(fieldId || '').trim();
+        if (!normalizedFieldId || !isPlainObject(entries)) return false;
+        return Object.values(entries).some(entry => {
+            const values = isPlainObject(entry?.values) ? entry.values : null;
+            return Number.isFinite(parseGasMeterNumber(values?.[normalizedFieldId]));
+        });
+    }
+
     function buildUtilElectricMeterFieldDefinitions() {
         const store = getElectricMeteringStore();
         const equipmentItems = Array.isArray(store?.equipmentItems) ? store.equipmentItems : [];
-        return equipmentItems
+        const entries = getUtilElectricMeterEquipmentEntries();
+        const fieldDefs = equipmentItems
             .filter(item => item && typeof item === 'object')
             .map(item => ({
                 id: String(item.id || '').trim(),
@@ -148,9 +220,21 @@
                     : 1,
                 readingAdjustmentValue: parseGasMeterNumber(item.readingAdjustmentValue) || 0,
                 readingAdjustmentStartDate: normalizeGasMeterDate(item.readingAdjustmentStartDate),
-                visibleFromMonth: String(item.visibleFromMonth || '').trim()
+                visibleFromMonth: String(
+                    item.visibleFromMonth ||
+                    (item.id === UTIL_ELECTRIC_LIQUID_COMPRESSOR_FIELD_ID
+                        ? UTIL_ELECTRIC_LIQUID_COMPRESSOR_START_MONTH
+                        : '')
+                ).trim()
             }))
             .filter(item => item.id);
+        const existingFieldIds = new Set(fieldDefs.map(field => field.id));
+        UTIL_ELECTRIC_METER_SYNTHETIC_FIELD_DEFINITIONS.forEach(field => {
+            if (existingFieldIds.has(field.id) || !hasUtilElectricMeterEntryValue(entries, field.id)) return;
+            fieldDefs.push({ ...field });
+            existingFieldIds.add(field.id);
+        });
+        return fieldDefs;
     }
 
     function getUtilElectricMeterStructure() {
@@ -159,7 +243,8 @@
             return {
                 fieldDefs: [],
                 fieldMap: new Map(),
-                timelineMap: new Map()
+                timelineMap: new Map(),
+                monthDetailMap: new Map()
             };
         }
         const cache = UtilSheetRuntimeState.electricMeterStructureCache;
@@ -169,11 +254,13 @@
         const fieldDefs = buildUtilElectricMeterFieldDefinitions();
         const fieldMap = new Map(fieldDefs.map(field => [field.id, field]));
         const timelineMap = buildUtilElectricMeterTimelineMap(fieldDefs);
+        const monthDetailMap = buildUtilElectricMeterMonthDetailMap(timelineMap);
         const nextCache = {
             store,
             fieldDefs,
             fieldMap,
-            timelineMap
+            timelineMap,
+            monthDetailMap
         };
         UtilSheetRuntimeState.electricMeterStructureCache = nextCache;
         return nextCache;
@@ -220,11 +307,7 @@
     }
 
     function buildUtilElectricMeterTimelineMap(fieldDefs) {
-        const store = getElectricMeteringStore();
-        const presetElectricEntries = runtimeAdapter.getRootValue('__PRESET_ELECTRIC_ENTRIES__');
-        const entries = isPlainObject(store?.equipmentEntries)
-            ? store.equipmentEntries
-            : (isPlainObject(presetElectricEntries) ? presetElectricEntries : {});
+        const entries = getUtilElectricMeterEquipmentEntries();
         const sortedDates = Object.keys(entries).sort();
         const timelineMap = new Map(fieldDefs.map(field => [field.id, []]));
         const previousValueMap = new Map();
@@ -256,10 +339,32 @@
         return timelineMap;
     }
 
+    function buildUtilElectricMeterMonthDetailMap(timelineMap) {
+        const monthDetailMap = new Map();
+        timelineMap.forEach((timeline, fieldId) => {
+            const fieldMonthMap = new Map();
+            (Array.isArray(timeline) ? timeline : []).forEach(detail => {
+                const monthKey = String(detail?.dateString || '').slice(0, 7);
+                if (!/^\d{4}-\d{2}$/.test(monthKey) || fieldMonthMap.has(monthKey)) return;
+                fieldMonthMap.set(monthKey, detail);
+            });
+            monthDetailMap.set(fieldId, fieldMonthMap);
+        });
+        return monthDetailMap;
+    }
+
     function getUtilElectricMeterFirstDetailInMonth(timeline, monthKey) {
         if (!Array.isArray(timeline)) return null;
         const prefix = `${monthKey}-`;
         return timeline.find(item => String(item?.dateString || '').startsWith(prefix)) || null;
+    }
+
+    function getUtilElectricMeterFirstDetail(fieldId, monthKey, timelineMap, monthDetailMap = null) {
+        const normalizedFieldId = String(fieldId || '').trim();
+        const normalizedMonthKey = String(monthKey || '').trim();
+        const indexedDetail = monthDetailMap?.get?.(normalizedFieldId)?.get?.(normalizedMonthKey) || null;
+        if (indexedDetail) return indexedDetail;
+        return getUtilElectricMeterFirstDetailInMonth(timelineMap.get(normalizedFieldId) || [], normalizedMonthKey);
     }
 
     function shouldIncludeUtilElectricMeterField(field, monthKey) {
@@ -270,6 +375,17 @@
             return true;
         }
         return compareMonthKeys(monthKey, field.visibleFromMonth) >= 0;
+    }
+
+    function placeUtilElectricLiquidCompressorAfterTeam2Compressor(fieldIds = []) {
+        const orderedIds = Array.isArray(fieldIds) ? fieldIds.slice() : [];
+        const liquidCompressorIndex = orderedIds.indexOf(UTIL_ELECTRIC_LIQUID_COMPRESSOR_FIELD_ID);
+        const team2CompressorIndex = orderedIds.indexOf('field_14');
+        if (liquidCompressorIndex < 0 || team2CompressorIndex < 0) return orderedIds;
+        const [liquidCompressorId] = orderedIds.splice(liquidCompressorIndex, 1);
+        const nextTeam2CompressorIndex = orderedIds.indexOf('field_14');
+        orderedIds.splice(nextTeam2CompressorIndex, 0, liquidCompressorId);
+        return orderedIds;
     }
 
     function resolveUtilElectricMeterDetailFieldIds(option, monthKey, fieldMap) {
@@ -305,28 +421,28 @@
             });
         });
 
-        return orderedIds;
+        return placeUtilElectricLiquidCompressorAfterTeam2Compressor(orderedIds);
     }
 
-    function getUtilElectricMeterPowerReading(fieldMap, timelineMap, monthKey) {
+    function getUtilElectricMeterPowerReading(fieldMap, timelineMap, monthKey, monthDetailMap = null) {
         const totalField = fieldMap.get(UTIL_ELECTRIC_METER_TOTAL_POWER_FIELD_ID) || null;
         const directValue = totalField
-            ? getUtilElectricMeterFirstDetailInMonth(timelineMap.get(totalField.id) || [], monthKey)?.value
+            ? getUtilElectricMeterFirstDetail(totalField.id, monthKey, timelineMap, monthDetailMap)?.value
             : null;
         if (Number.isFinite(directValue)) {
             return directValue;
         }
         const fallbackValues = UTIL_ELECTRIC_METER_ACTIVE_POWER_FIELD_IDS
-            .map(fieldId => getUtilElectricMeterFirstDetailInMonth(timelineMap.get(fieldId) || [], monthKey)?.value);
+            .map(fieldId => getUtilElectricMeterFirstDetail(fieldId, monthKey, timelineMap, monthDetailMap)?.value);
         if (fallbackValues.some(value => !Number.isFinite(value))) {
             return null;
         }
         return fallbackValues.reduce((sum, value) => sum + value, 0);
     }
 
-    function buildUtilElectricMeterPowerColumn(startMonthKey, endMonthKey, fieldMap, timelineMap) {
-        const startReading = getUtilElectricMeterPowerReading(fieldMap, timelineMap, startMonthKey);
-        const endReading = getUtilElectricMeterPowerReading(fieldMap, timelineMap, endMonthKey);
+    function buildUtilElectricMeterPowerColumn(startMonthKey, endMonthKey, fieldMap, timelineMap, monthDetailMap = null) {
+        const startReading = getUtilElectricMeterPowerReading(fieldMap, timelineMap, startMonthKey, monthDetailMap);
+        const endReading = getUtilElectricMeterPowerReading(fieldMap, timelineMap, endMonthKey, monthDetailMap);
         const safeStartReading = Number.isFinite(startReading) ? startReading : null;
         const safeEndReading = Number.isFinite(endReading) ? endReading : null;
         const rawDifference = Number.isFinite(safeStartReading) && Number.isFinite(safeEndReading)
@@ -343,10 +459,9 @@
         };
     }
 
-    function buildUtilElectricMeterFieldColumn(field, startMonthKey, endMonthKey, timelineMap, teamKey = '') {
-        const timeline = timelineMap.get(field.id) || [];
-        const startDetail = getUtilElectricMeterFirstDetailInMonth(timeline, startMonthKey);
-        const endDetail = getUtilElectricMeterFirstDetailInMonth(timeline, endMonthKey);
+    function buildUtilElectricMeterFieldColumn(field, startMonthKey, endMonthKey, timelineMap, teamKey = '', monthDetailMap = null) {
+        const startDetail = getUtilElectricMeterFirstDetail(field.id, startMonthKey, timelineMap, monthDetailMap);
+        const endDetail = getUtilElectricMeterFirstDetail(field.id, endMonthKey, timelineMap, monthDetailMap);
         const startReading = Number.isFinite(startDetail?.value) ? startDetail.value : null;
         const endReading = Number.isFinite(endDetail?.value) ? endDetail.value : null;
         const rawDifference = Number.isFinite(startReading) && Number.isFinite(endReading)
@@ -406,14 +521,20 @@
         const structure = getUtilElectricMeterStructure();
         const fieldMap = structure.fieldMap;
         const timelineMap = structure.timelineMap;
+        const monthDetailMap = structure.monthDetailMap;
         const resolvedFieldIds = Array.isArray(detailFieldIds) && detailFieldIds.length
             ? detailFieldIds.slice()
             : resolveUtilElectricMeterDetailFieldIds(option, monthKey, fieldMap);
+        const visibleFieldIds = resolvedFieldIds.filter(fieldId => {
+            const field = fieldMap.get(String(fieldId || '').trim());
+            return shouldIncludeUtilElectricMeterField(field, startMonthKey);
+        });
+        const orderedVisibleFieldIds = placeUtilElectricLiquidCompressorAfterTeam2Compressor(visibleFieldIds);
         const displayFieldIds = (String(option?.key || '').trim() || 'combined') === 'combined'
-            ? resolvedFieldIds.filter(fieldId => String(fieldId || '').trim() !== 'field_28')
-            : resolvedFieldIds;
+            ? orderedVisibleFieldIds.filter(fieldId => String(fieldId || '').trim() !== 'field_28')
+            : orderedVisibleFieldIds;
         const detailFieldTeamKeyMap = buildUtilElectricMeterFieldTeamKeyMap(option);
-        const powerColumn = buildUtilElectricMeterPowerColumn(startMonthKey, endMonthKey, fieldMap, timelineMap);
+        const powerColumn = buildUtilElectricMeterPowerColumn(startMonthKey, endMonthKey, fieldMap, timelineMap, monthDetailMap);
         const detailColumns = displayFieldIds
             .map(fieldId => fieldMap.get(fieldId))
             .filter(Boolean)
@@ -422,25 +543,22 @@
                 startMonthKey,
                 endMonthKey,
                 timelineMap,
-                detailFieldTeamKeyMap.get(field.id) || (option?.key !== 'combined' ? option?.key : 'combined')
+                detailFieldTeamKeyMap.get(field.id) || (option?.key !== 'combined' ? option?.key : 'combined'),
+                monthDetailMap
             ));
         const totalColumn = buildUtilElectricMeterTotalColumn(
             detailColumns,
             option?.key !== 'combined' ? option?.key : 'combined'
         );
-        const otherColumn = (String(option?.key || '').trim() || 'combined') === 'combined'
-            ? buildUtilElectricMeterOtherColumn(powerColumn, totalColumn)
-            : null;
         return {
             monthKey,
             startMonthKey,
             endMonthKey,
             optionKey: String(option?.key || '').trim() || 'combined',
-            detailFieldIds: resolvedFieldIds,
+            detailFieldIds: orderedVisibleFieldIds,
             detailColumns,
             columns: [powerColumn]
                 .concat(detailColumns)
-                .concat(otherColumn ? [otherColumn] : [])
                 .concat([totalColumn])
         };
     }
@@ -494,10 +612,15 @@
     }
 
     function buildUtilElectricRowsFromSnapshot(snapshotTeamKeys = [], targetMonthKey = '') {
-        const snapshot = getElectricUtilitySnapshot();
-        if (!snapshot) return [];
         const teamKeys = Array.isArray(snapshotTeamKeys) ? snapshotTeamKeys.filter(Boolean) : [];
         if (!teamKeys.length) return [];
+        const targetedRows = buildUtilElectricRowsFromTargetedSnapshot(teamKeys, targetMonthKey);
+        if (Array.isArray(targetedRows) && targetedRows.length) return targetedRows;
+        const monthlyRows = buildUtilElectricRowsFromMonthlySnapshots(teamKeys, targetMonthKey);
+        if (Array.isArray(monthlyRows) && monthlyRows.length) return monthlyRows;
+
+        const snapshot = getElectricUtilitySnapshot();
+        if (!snapshot) return [];
         const hasAllRequestedTeams = teamKeys.every(teamKey => {
             const teamSnapshot = snapshot?.teams?.[teamKey];
             return isPlainObject(teamSnapshot) && Object.keys(teamSnapshot).length > 0;
@@ -560,11 +683,135 @@
         return rows;
     }
 
+    function getUtilElectricRequiredSnapshotMonthKeys(targetMonthKey = '') {
+        const normalizedTargetMonthKey = String(targetMonthKey || '').trim();
+        if (!normalizedTargetMonthKey) return [];
+        return Array.from(new Set([
+            normalizedTargetMonthKey,
+            shiftMonthKey(normalizedTargetMonthKey, -1),
+            shiftMonthKey(normalizedTargetMonthKey, -12)
+        ].filter(Boolean))).sort(compareMonthKeys);
+    }
+
+    function buildUtilElectricRowsFromTargetedSnapshot(teamKeys = [], targetMonthKey = '') {
+        const monthKeys = getUtilElectricRequiredSnapshotMonthKeys(targetMonthKey);
+        if (!monthKeys.length) return null;
+        const snapshot = getCachedElectricUtilitySnapshotForMonths(monthKeys);
+        if (!isPlainObject(snapshot?.teams)) return null;
+        return buildUtilElectricRowsFromSnapshotTeams(snapshot.teams, teamKeys, monthKeys, true);
+    }
+
+    function buildUtilElectricRowsFromSnapshotTeams(snapshotTeams = {}, teamKeys = [], monthKeys = [], requireComplete = false) {
+        if (!isPlainObject(snapshotTeams) || !Array.isArray(teamKeys) || !teamKeys.length || !Array.isArray(monthKeys)) {
+            return null;
+        }
+        const hasAllRequestedTeams = teamKeys.every(teamKey => isPlainObject(snapshotTeams?.[teamKey]));
+        if (!hasAllRequestedTeams) return null;
+        const rows = [];
+        for (const monthKey of monthKeys) {
+            const bucket = teamKeys.reduce((acc, teamKey) => {
+                const entry = snapshotTeams?.[teamKey]?.[monthKey] || null;
+                if (Number.isFinite(entry?.usage)) {
+                    acc.electricUsage += entry.usage;
+                    acc.hasUsage = true;
+                }
+                if (Number.isFinite(entry?.cost)) {
+                    acc.electricCost += entry.cost;
+                    acc.hasCost = true;
+                }
+                return acc;
+            }, {
+                monthKey,
+                year: Number.parseInt(String(monthKey).slice(0, 4), 10),
+                month: Number.parseInt(String(monthKey).slice(5, 7), 10),
+                electricUsage: 0,
+                electricCost: 0,
+                hasUsage: false,
+                hasCost: false
+            });
+            if (requireComplete && (!bucket.hasUsage || !bucket.hasCost)) return null;
+            rows.push({
+                monthKey: bucket.monthKey,
+                year: bucket.year,
+                month: bucket.month,
+                electricUsage: bucket.hasUsage ? bucket.electricUsage : null,
+                electricCost: bucket.hasCost ? bucket.electricCost : null
+            });
+        }
+        return rows;
+    }
+
+    function buildUtilElectricRowsFromMonthlySnapshots(teamKeys = [], targetMonthKey = '') {
+        const monthKeys = getUtilElectricRequiredSnapshotMonthKeys(targetMonthKey);
+        if (!monthKeys.length || !Array.isArray(teamKeys) || !teamKeys.length) return null;
+        if (!monthKeys.length) return null;
+
+        const rows = [];
+        for (const monthKey of monthKeys) {
+            const snapshot = getElectricMonthlyTeamSnapshot(monthKey);
+            if (!isPlainObject(snapshot?.teams)) return null;
+            const hasAllRequestedTeams = teamKeys.every(teamKey => isPlainObject(snapshot.teams?.[teamKey]));
+            if (!hasAllRequestedTeams) return null;
+            const bucket = teamKeys.reduce((acc, teamKey) => {
+                const entry = snapshot.teams?.[teamKey] || null;
+                if (Number.isFinite(entry?.usage)) {
+                    acc.electricUsage += entry.usage;
+                    acc.hasUsage = true;
+                }
+                if (Number.isFinite(entry?.cost)) {
+                    acc.electricCost += entry.cost;
+                    acc.hasCost = true;
+                }
+                return acc;
+            }, {
+                monthKey,
+                year: Number.parseInt(String(monthKey).slice(0, 4), 10),
+                month: Number.parseInt(String(monthKey).slice(5, 7), 10),
+                electricUsage: 0,
+                electricCost: 0,
+                hasUsage: false,
+                hasCost: false
+            });
+            if (!bucket.hasUsage || !bucket.hasCost) return null;
+            rows.push({
+                monthKey: bucket.monthKey,
+                year: bucket.year,
+                month: bucket.month,
+                electricUsage: bucket.electricUsage,
+                electricCost: bucket.electricCost
+            });
+        }
+        return rows;
+    }
+
     function resolveUtilElectricMetricValue(primaryValue, fallbackValue) {
         const hasPrimary = Number.isFinite(primaryValue);
         const hasFallback = Number.isFinite(fallbackValue);
         if (hasPrimary) return primaryValue;
         return hasFallback ? fallbackValue : null;
+    }
+
+    function hasUtilElectricCompleteMetricRow(row = null) {
+        return Number.isFinite(row?.electricUsage) && Number.isFinite(row?.electricCost);
+    }
+
+    function canUseUtilElectricSnapshotRowsOnly(sourceRows = [], targetMonthKey = '') {
+        if (!Array.isArray(sourceRows) || !sourceRows.length) return false;
+        const normalizedTargetMonthKey = String(targetMonthKey || '').trim();
+        if (!normalizedTargetMonthKey) return false;
+
+        const rowMap = new Map(
+            sourceRows
+                .map(row => [String(row?.monthKey || '').trim(), row])
+                .filter(([monthKey]) => monthKey)
+        );
+        const requiredMonthKeys = [
+            normalizedTargetMonthKey,
+            shiftMonthKey(normalizedTargetMonthKey, -1),
+            shiftMonthKey(normalizedTargetMonthKey, -12)
+        ].filter(Boolean);
+
+        return requiredMonthKeys.every(monthKey => hasUtilElectricCompleteMetricRow(rowMap.get(monthKey)));
     }
 
     function buildUtilElectricScopedDatasetResult(activeMonthKey = '', reportTeamFilters = [], productionTeamNames = []) {
@@ -604,12 +851,14 @@
         ).trim();
         const targetMonthKey = fallbackTargetMonthKey
             || requestedMonthKey;
-        const fallbackRows = buildUtilElectricMeterRows(normalizedReportTeamFilters, targetMonthKey);
         const hasUsableSourceRows = sourceRows.some(row => (
             Number.isFinite(row?.electricUsage) || Number.isFinite(row?.electricCost)
         ));
-        const baseRows = hasUsableSourceRows
+        const baseRows = hasUsableSourceRows && canUseUtilElectricSnapshotRowsOnly(sourceRows, targetMonthKey)
+            ? sourceRows
+            : hasUsableSourceRows
             ? (() => {
+                const fallbackRows = buildUtilElectricMeterRows(normalizedReportTeamFilters, targetMonthKey);
                 const fallbackRowMap = new Map(
                     fallbackRows.map(row => [String(row?.monthKey || '').trim(), row])
                 );
@@ -631,7 +880,7 @@
                 });
                 return mergedRows.sort((left, right) => compareMonthKeys(left?.monthKey, right?.monthKey));
             })()
-            : fallbackRows;
+            : buildUtilElectricMeterRows(normalizedReportTeamFilters, targetMonthKey);
         if (!baseRows.length) {
             return emptyResult;
         }

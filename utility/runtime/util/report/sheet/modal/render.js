@@ -293,13 +293,12 @@
         const extractButton = modal?.querySelector?.('[data-role="util-sheet-report-print"]');
         if (!extractButton) return;
         const canExtract = sheetType === 'meter';
-        const isGasMeter = sheetType === 'meter' && resolveDatasetKey(sheetType, datasetKey) === 'gas';
-        const label = isGasMeter
-            ? 'PDF 인쇄'
+        const normalizedDatasetKey = resolveDatasetKey(sheetType, datasetKey);
+        const isPdfMeter = sheetType === 'meter' && (normalizedDatasetKey === 'electric' || normalizedDatasetKey === 'gas');
+        const label = isPdfMeter
+            ? 'PDF'
             : (sheetType === 'analysis' ? '분석표 추출' : '검침표 추출');
-        const accessibleLabel = isGasMeter
-            ? '가스 검침표 PDF 인쇄'
-            : label;
+        const accessibleLabel = label;
         extractButton.hidden = !canExtract;
         extractButton.disabled = !canExtract;
         extractButton.textContent = label;
@@ -487,7 +486,7 @@
         );
         const electricMeterViewKey = normalizeElectricMeterViewKey(modal.dataset.electricMeterViewKey || UtilSheetMeterState.electricViewKey);
         const datasetResult = typeof runtime.buildUtilSheetDatasetResult === 'function'
-            ? runtime.buildUtilSheetDatasetResult(datasetKey, selectedMonthKey)
+            ? runtime.buildUtilSheetDatasetResult(datasetKey, selectedMonthKey, sheetType)
             : { hasData: false, monthOptions: [], activeMonthKey: '', latestMonthLabel: '' };
         const spec = UTIL_SHEET_DATASET_SPECS[datasetKey] || UTIL_SHEET_DATASET_SPECS.gas || { label: '' };
         const kickerEl = modal.querySelector?.('[data-role="util-sheet-report-kicker"]') || null;
@@ -565,7 +564,11 @@
             return;
         }
 
-        if (datasetKey === 'electric' && !UtilSheetRuntimeState.electricDataSyncedOnce) {
+        if (
+            datasetKey === 'electric'
+            && sheetType !== 'meter'
+            && !UtilSheetRuntimeState.electricDataSyncedOnce
+        ) {
             if (subEl) subEl.textContent = '기준: 전기 기입 데이터를 동기화하는 중';
             setReportBodyHtml(bodyEl, '<div class="util-sheet-empty">전기 검침표 데이터를 정리하는 중입니다.</div>', sheetType, datasetKey);
             if (typeof runtime.ensureUtilElectricReportDataSync === 'function') {
@@ -583,6 +586,7 @@
         }
 
         modal._utilSheetAnalysisModel = null;
+        const electricRuntimeReady = hasElectricRuntimeReady();
         if (
             datasetKey === 'gas'
             && !datasetResult.hasData
@@ -592,6 +596,28 @@
             if (subEl) subEl.textContent = '기준: 가스 검침 데이터를 불러오는 중';
             setReportBodyHtml(bodyEl, '<div class="util-sheet-empty">가스 검침표 데이터를 정리하는 중입니다.</div>', sheetType, datasetKey);
             runtime.ensureUtilGasReportDataSync().then(() => {
+                rerenderUtilSheetReportModalIfActive(sheetType, datasetKey);
+            });
+            syncSupplementaryWindows(modal);
+            return;
+        }
+        if (
+            sheetType === 'meter'
+            && datasetKey === 'electric'
+            && !datasetResult.hasData
+            && !electricRuntimeReady
+            && modal.dataset.electricMeteringLoadAttempted !== 'true'
+            && typeof runtime.ensureUtilElectricMeteringStore === 'function'
+        ) {
+            modal.dataset.electricMeteringLoadAttempted = 'true';
+            if (subEl) subEl.textContent = '기준: 전기 검침 데이터를 불러오는 중';
+            setReportBodyHtml(
+                bodyEl,
+                '<div class="util-sheet-empty">전기 검침표 데이터를 불러오는 중입니다.</div>',
+                sheetType,
+                datasetKey
+            );
+            runtime.ensureUtilElectricMeteringStore().then(() => {
                 rerenderUtilSheetReportModalIfActive(sheetType, datasetKey);
             });
             syncSupplementaryWindows(modal);
@@ -743,7 +769,6 @@
         const compareMeta = typeof runtime.buildUtilSheetCompareMeta === 'function'
             ? runtime.buildUtilSheetCompareMeta(datasetResult, compareKey)
             : { label: '' };
-        const electricRuntimeReady = hasElectricRuntimeReady();
         const gasMeterComparisonModel = sheetType === 'meter' && datasetKey === 'gas' && typeof runtime.buildUtilGasMeterComparisonModel === 'function'
             ? runtime.buildUtilGasMeterComparisonModel(datasetResult.activeMonthKey || selectedMonthKey, compareKey)
             : null;
@@ -756,10 +781,7 @@
         const electricTeamDatasetResult = sheetType === 'meter' && datasetKey === 'electric' && electricRuntimeReady && typeof runtime.buildUtilElectricMeterTeamDatasetResult === 'function'
             ? runtime.buildUtilElectricMeterTeamDatasetResult(datasetResult.activeMonthKey || selectedMonthKey, electricMeterTeamKey)
             : null;
-        const electricMeterSummaryItems = sheetType === 'meter' && datasetKey === 'electric' && electricRuntimeReady && typeof runtime.buildUtilElectricMeterSummaryItems === 'function'
-            ? runtime.buildUtilElectricMeterSummaryItems(datasetResult, compareKey, electricTeamDatasetResult)
-            : [];
-        const isGasMeterSheet = sheetType === 'meter' && datasetKey === 'gas';
+        const isMeterReportOnlySheet = sheetType === 'meter' && (datasetKey === 'gas' || datasetKey === 'electric');
         if (subEl) subEl.textContent = `기준 ${datasetResult.latestMonthLabel} / ${compareMeta.label}`;
 
         if (gasMeterComparisonModel?.loading && typeof runtime.ensureUtilGasMeteringStore === 'function') {
@@ -775,23 +797,19 @@
         }
 
         setReportBodyHtml(bodyEl, `
-            ${isGasMeterSheet ? '' : `
+            ${isMeterReportOnlySheet ? '' : `
             <section class="util-sheet-section is-hero">
                 <div class="util-sheet-badge-row">
                     ${typeof runtime.buildUtilSheetBadgesHtml === 'function' ? runtime.buildUtilSheetBadgesHtml(sheetType, datasetResult, compareKey) : ''}
                 </div>
-                ${sheetType === 'meter' && datasetKey === 'electric' && electricMeterSummaryItems.length
-                        ? (typeof runtime.buildUtilElectricMeterSummaryBlockHtml === 'function' ? runtime.buildUtilElectricMeterSummaryBlockHtml(electricMeterSummaryItems, electricMeterTeamKey) : '')
-                        : `
-                            <div class="util-sheet-stat-grid">
-                                ${typeof runtime.buildUtilSheetStatsHtml === 'function'
-                                    ? runtime.buildUtilSheetStatsHtml(sheetType, datasetResult, compareKey, gasMeterComparisonModel)
-                                    : ''}
-                            </div>
-                        `}
+                <div class="util-sheet-stat-grid">
+                    ${typeof runtime.buildUtilSheetStatsHtml === 'function'
+                        ? runtime.buildUtilSheetStatsHtml(sheetType, datasetResult, compareKey, gasMeterComparisonModel)
+                        : ''}
+                </div>
             </section>
             `}
-            ${isGasMeterSheet
+            ${sheetType === 'meter' && datasetKey === 'gas'
                 ? (typeof runtime.buildUtilGasMeterComparisonSectionHtml === 'function' ? runtime.buildUtilGasMeterComparisonSectionHtml(gasMeterComparisonModel) : '')
                 : sheetType === 'meter' && datasetKey === 'electric'
                     ? (typeof runtime.buildUtilElectricMeterComparisonSectionHtml === 'function'

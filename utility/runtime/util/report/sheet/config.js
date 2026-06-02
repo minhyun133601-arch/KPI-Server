@@ -83,7 +83,8 @@
         electricDataSyncPromise: null,
         electricDataSyncedOnce: false,
         electricMeterStructureCache: null,
-        electricSnapshotRowsCache: null
+        electricSnapshotRowsCache: null,
+        electricTargetedSnapshotCache: null
     };
     const UtilSheetAnalysisState = {
         gas: {
@@ -325,6 +326,19 @@
         gas_field_06: 'fa-oil-can'
     });
 
+    function invalidateUtilElectricReportRuntimeCaches() {
+        UtilSheetRuntimeState.electricMeterStructureCache = null;
+        UtilSheetRuntimeState.electricSnapshotRowsCache = null;
+        UtilSheetRuntimeState.electricTargetedSnapshotCache = null;
+        return true;
+    }
+
+    function handleUtilSheetMeteringStoreUpdated(event = {}) {
+        const resourceType = String(event?.detail?.resourceType || '').trim().toLowerCase();
+        if (resourceType && resourceType !== 'electric') return false;
+        return invalidateUtilElectricReportRuntimeCaches();
+    }
+
     const api = {
         UTIL_SHEET_CUTOFF,
         utilSheetNumberFormatter,
@@ -338,6 +352,7 @@
         UtilSheetAnalysisState,
         UtilSheetDetachedReportState,
         UtilSheetAnalysisChartPopupState,
+        invalidateUtilElectricReportRuntimeCaches,
         UTIL_GAS_ANALYSIS_UNIT_OPTIONS,
         UTIL_GAS_ANALYSIS_DEFAULT_UNITS,
         UTIL_GAS_ANALYSIS_DEFAULT_DISPLAY_MODES,
@@ -364,5 +379,6 @@
         UTIL_GAS_RATIO_CHART_COLORS,
         UTIL_GAS_METER_FIELD_ICONS
     };
+    runtimeAdapter.addEventListener('kpi:metering-store-updated', handleUtilSheetMeteringStoreUpdated);
     runtimeAdapter.exportApi('KPIUtilReportSheetConfig', api);
 })();

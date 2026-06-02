@@ -296,7 +296,7 @@ test.describe('KPI browser smoke', () => {
       await expect(page.getByRole('button', { name: /유틸리티 팝업 닫기/ })).toHaveCount(0);
 
       await clickSidebarButton(page, '데이터 관리');
-      await clickSidebarButton(page, '유틸리티 기입');
+      await clickSidebarButton(page, '유틸리티');
       await expectUtilityEntryExperimentSurface(page);
       await expect(page.locator('#content-container')).not.toContainText('가스비 검침표');
       await expect(page.locator('#content-container')).not.toContainText('전력비 검침표');
@@ -502,7 +502,7 @@ test.describe('KPI browser smoke', () => {
       await clickSidebarButton(page, '조도');
       await expect(page.locator('#content-container')).toContainText('조도 입력');
 
-      await clickSidebarButton(page, '유틸리티 기입');
+      await clickSidebarButton(page, '유틸리티');
       await expectUtilityEntryExperimentSurface(page);
 
       await clickSidebarButton(page, '작업 이력 기입');

@@ -416,7 +416,7 @@ test('resource ui switches resource type and resets transient selection state', 
   assert.deepEqual(context.__calls.attachResourceDatasetToStore, ['gas']);
   assert.deepEqual(context.__calls.setCurrentMode, ['equipment']);
   assert.deepEqual(context.__calls.persistStore, [{ skipLocalFileWrite: true }]);
-  assert.equal(context.__calls.renderEquipmentFieldInputs, 1);
+  assert.equal(context.__calls.renderEquipmentFieldInputs, 0);
   assert.equal(context.__calls.renderCalendar, 1);
   assert.equal(context.__calls.renderSummary, 1);
   assert.deepEqual(toPlainJson(context.__calls.loadEntryToForm[0]), { values: { gas_meter: '22' } });

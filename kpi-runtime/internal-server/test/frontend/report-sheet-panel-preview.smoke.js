@@ -188,9 +188,81 @@ test('report sheet panel preview registry builds dataset result and renders mont
   assert.equal(noteEl.hidden, true);
 });
 
+test('report sheet meter dataset result opens from raw gas and electric readings before settlement', () => {
+  const context = createPanelPreviewContext();
+  const panelPreview = context.KPIUtilReportSheetPanelPreview;
+
+  panelPreview.setRuntimeAdapters({
+    buildUtilSheetMonthBounds() {
+      return null;
+    },
+    buildUtilReportMonthlyRows(state) {
+      return {
+        rows: [],
+        rangeLabel: `${state?.from || ''}~${state?.to || ''}`,
+      };
+    },
+    isUtilSheetSettledRow() {
+      return false;
+    },
+    getUtilSheetMeteringStore(datasetKey) {
+      if (datasetKey === 'gas') {
+        return {
+          equipmentEntries: {
+            '2026-05-01': { values: { gas_yusan: '100' } },
+            '2026-06-01': { values: { gas_yusan: '145' } },
+          },
+        };
+      }
+      if (datasetKey === 'electric') {
+        return {
+          equipmentEntries: {
+            '2026-06-01': { values: { field_16: '2,453.06' } },
+          },
+        };
+      }
+      return null;
+    },
+    summarizeUtilSheetRows() {
+      return {
+        usage: 0,
+        cost: 0,
+        production: 0,
+        unit: null,
+      };
+    },
+    formatUtilReportMonthLong(monthKey) {
+      return `LONG:${monthKey}`;
+    },
+    parseUtilMonthValue(monthKey) {
+      const [year, month] = String(monthKey || '').split('-').map(Number);
+      return Number.isFinite(year) && Number.isFinite(month) && month >= 1 && month <= 12
+        ? { year, month, value: monthKey }
+        : null;
+    },
+  });
+
+  const gasMeterResult = panelPreview.buildUtilSheetDatasetResult('gas', '2026-05', 'meter');
+  const gasCurrentBoundaryResult = panelPreview.buildUtilSheetDatasetResult('gas', '2026-06', 'meter');
+  const electricMeterResult = panelPreview.buildUtilSheetDatasetResult('electric', '', 'meter');
+  const gasSettledResult = panelPreview.buildUtilSheetDatasetResult('gas', '2026-05');
+
+  assert.equal(gasMeterResult.hasData, true);
+  assert.equal(gasMeterResult.activeMonthKey, '2026-05');
+  assert.ok(gasMeterResult.monthOptions.some(option => option.value === '2026-05'));
+  assert.equal(gasMeterResult.monthOptions.some(option => option.value === '2026-06'), false);
+  assert.equal(gasMeterResult.latestMonthLabel, 'LONG:2026-05');
+  assert.equal(gasCurrentBoundaryResult.activeMonthKey, '2026-05');
+  assert.equal(electricMeterResult.hasData, true);
+  assert.equal(electricMeterResult.activeMonthKey, '2026-05');
+  assert.ok(electricMeterResult.monthOptions.some(option => option.value === '2026-05'));
+  assert.equal(electricMeterResult.monthOptions.some(option => option.value === '2026-06'), false);
+  assert.equal(gasSettledResult.hasData, false);
+});
+
 test('kpi html loads report sheet panel preview after panel runtime and before windows', () => {
   const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=058');
-  const panelPreviewIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/preview.js?v=056');
+  const panelPreviewIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/preview.js?v=058');
   const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=060');
 
   assert.ok(panelRuntimeIndex >= 0, 'report sheet panel runtime loader is missing');

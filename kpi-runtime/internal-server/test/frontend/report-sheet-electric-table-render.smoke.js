@@ -86,7 +86,7 @@ test('report sheet electric table render registry builds meter and summary table
     ],
     [
       {
-        label: '\uC0AC\uC6A9\uB7C9',
+        label: '\uC0AC\uC6A9\uB7C9(kWh)',
         key: 'usage',
         formatter(value) {
           return `${value}kWh`;
@@ -101,6 +101,8 @@ test('report sheet electric table render registry builds meter and summary table
   assert.match(summaryHtml, /util-sheet-meter-table-electric/);
   assert.match(summaryHtml, /data-team-key=\"team_01\"/);
   assert.match(summaryHtml, /\uC804\uAE30 \uC694\uC57D/u);
+  assert.match(summaryHtml, /util-sheet-meter-row-label-main">\uC0AC\uC6A9\uB7C9/u);
+  assert.match(summaryHtml, /util-sheet-meter-row-label-unit">\(kWh\)/u);
 
   const meterHtml = registry.buildUtilElectricMeterTableHtml(
     {
@@ -111,16 +113,17 @@ test('report sheet electric table render registry builds meter and summary table
           teamKey: 'combined',
           factor: 1,
           startReading: 1000,
-          endReading: 1100,
+          endReading: 1100.5,
           usage: 100
         },
         {
           id: 'team_01',
           label: '1\uD300',
           teamKey: 'team_01',
+          isCorrectionSource: true,
           factor: 1,
           startReading: 600,
-          endReading: 680,
+          endReading: 680.5,
           usage: 80
         }
       ]
@@ -135,13 +138,19 @@ test('report sheet electric table render registry builds meter and summary table
   assert.match(meterHtml, /util-sheet-meter-table-electric/);
   assert.match(meterHtml, /\uC120\uD0DD \uC6D4 \uAC80\uCE68\uD45C/u);
   assert.match(meterHtml, /data-team-key=\"team_01\"/);
+  assert.match(meterHtml, /data-correction-source=\"true\"/);
+  assert.match(meterHtml, />1\.00<\/td>/u);
+  assert.match(meterHtml, />1,000\.00<\/td>/u);
+  assert.match(meterHtml, />1,100\.50<\/td>/u);
+  assert.match(meterHtml, />600\.00<\/td>/u);
+  assert.match(meterHtml, />680\.50<\/td>/u);
 });
 
 test('kpi html loads electric table render before electric meter model and electric comparison summary', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const tableRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/table-render.js?v=053');
-  const meterModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/meter-model.js?v=053');
-  const comparisonSummaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=054');
+  const tableRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/table-render.js?v=057');
+  const meterModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/meter-model.js?v=055');
+  const comparisonSummaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=072');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(tableRenderIndex >= 0, 'report sheet electric table render loader is missing');

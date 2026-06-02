@@ -1296,14 +1296,14 @@
             border-color: #2563eb;
         }
         .utility-entry-experiment-input.is-missing-entry {
-            border-color: #d97706;
-            background: #fffbeb;
-            color: #92400e;
-            box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.26);
+            border-color: #d9dee7;
+            background: #ffffff;
+            color: #111827;
+            box-shadow: none;
         }
         .utility-entry-experiment-input.is-missing-entry:focus {
-            outline-color: rgba(217, 119, 6, 0.2);
-            border-color: #d97706;
+            outline-color: rgba(37, 99, 235, 0.22);
+            border-color: #2563eb;
         }
         .utility-entry-experiment-input.is-validation-error {
             border-color: #dc2626;
@@ -1316,8 +1316,8 @@
             border-color: #dc2626;
         }
         .utility-entry-experiment-input.is-correction-editable:not(.is-validation-error):not(.is-missing-entry) {
-            border-color: #d97706;
-            background: #fffbeb;
+            border-color: #d9dee7;
+            background: #ffffff;
             color: #111827;
         }
         .utility-entry-experiment-input[readonly] {

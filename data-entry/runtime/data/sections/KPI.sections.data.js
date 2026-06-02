@@ -367,7 +367,6 @@
     const UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_START_DATE = `${UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_START_MONTH}-01`;
     const UTILITY_ENTRY_EXPERIMENT_LIQUID_TEAM_CORRECTION_START_MONTH = UTILITY_ENTRY_EXPERIMENT_LIQUID_COMPRESSOR_START_MONTH;
     const UTILITY_ENTRY_EXPERIMENT_LIQUID_TEAM_CORRECTION_SOURCE_IDS = Object.freeze([
-        UTILITY_ENTRY_EXPERIMENT_LIQUID_COMPRESSOR_ID,
         UTILITY_ENTRY_EXPERIMENT_COMPRESSOR_FIELD_ID
     ]);
     const UTILITY_ENTRY_EXPERIMENT_CORRECTION_EDIT_FIELD_IDS = Object.freeze([
@@ -1134,13 +1133,10 @@
     }
 
     function getUtilityEntryExperimentPeriodUsageLabel(dataset, resourceType, dateString) {
-        const equipmentIds = (UTILITY_ENTRY_EXPERIMENT_DAILY_FIELDS[resourceType] || [])
-            .map(([, equipmentId]) => equipmentId);
-        for (const equipmentId of equipmentIds) {
-            const dayCount = getUtilityEntryExperimentEquipmentPeriodUsageDays(dataset, equipmentId, dateString);
-            if (Number.isFinite(dayCount)) return `${dayCount}일 사용량`;
-        }
-        return '검침 사용량';
+        void dataset;
+        void resourceType;
+        void dateString;
+        return '사용량';
     }
 
     function updateUtilityEntryExperimentPeriodUsageLabels(host, resourceType, label) {
@@ -1155,8 +1151,10 @@
     }
 
     function getUtilityEntryExperimentDisplayUsageLabel(dataset, resourceType, dateString) {
-        if (shouldDisplayUtilityEntryExperimentMonthlyUsage(dateString)) return '월간 사용량';
-        return getUtilityEntryExperimentPeriodUsageLabel(dataset, resourceType, dateString);
+        void dataset;
+        void resourceType;
+        void dateString;
+        return '사용량';
     }
 
     function calculateUtilityEntryExperimentEquipmentMonthlyUsage(dataset, equipmentId, monthValue, resourceType, options = {}) {
@@ -1393,6 +1391,70 @@
         ));
     }
 
+    function getUtilityEntryExperimentDisplayUsageEquivalentReading(
+        dataset,
+        targetEquipmentId,
+        sourceEquipmentId,
+        dateString,
+        values,
+        resourceType
+    ) {
+        const sourceReading = getUtilityEntryExperimentActualDisplayReading(
+            dataset,
+            sourceEquipmentId,
+            dateString,
+            values,
+            resourceType
+        );
+        if (!Number.isFinite(sourceReading)) return null;
+        if (resourceType === 'gas') return sourceReading;
+
+        const targetFactor = getUtilityEntryExperimentEquipmentFactor(dataset, targetEquipmentId);
+        const sourceFactor = getUtilityEntryExperimentEquipmentFactor(dataset, sourceEquipmentId);
+        const divisor = Number.isFinite(targetFactor) && targetFactor !== 0 ? targetFactor : 1;
+        return (sourceReading * sourceFactor) / divisor;
+    }
+
+    function sumUtilityEntryExperimentDisplayUsageEquivalentReadings(
+        dataset,
+        targetEquipmentId,
+        sourceEquipmentIds,
+        dateString,
+        values,
+        resourceType
+    ) {
+        return sumUtilityEntryExperimentValues(sourceEquipmentIds.map(id =>
+            getUtilityEntryExperimentDisplayUsageEquivalentReading(
+                dataset,
+                targetEquipmentId,
+                id,
+                dateString,
+                values,
+                resourceType
+            )
+        ));
+    }
+
+    function areUtilityEntryExperimentDisplayUsageEquivalentReadingsReady(
+        dataset,
+        targetEquipmentId,
+        sourceEquipmentIds,
+        dateString,
+        values,
+        resourceType
+    ) {
+        return sourceEquipmentIds.every(id => Number.isFinite(
+            getUtilityEntryExperimentDisplayUsageEquivalentReading(
+                dataset,
+                targetEquipmentId,
+                id,
+                dateString,
+                values,
+                resourceType
+            )
+        ));
+    }
+
     function areUtilityEntryExperimentDisplayReadingsReady(dataset, equipmentIds, dateString, values, resourceType) {
         return equipmentIds.every(id => Number.isFinite(
             getUtilityEntryExperimentActualDisplayReading(dataset, id, dateString, values, resourceType)
@@ -1531,10 +1593,24 @@
         }
 
         const sourceIds = UTILITY_ENTRY_EXPERIMENT_LIQUID_TEAM_CORRECTION_SOURCE_IDS;
-        const total = sumUtilityEntryExperimentDisplayReadings(dataset, sourceIds, dateString, values, resourceType);
+        const total = sumUtilityEntryExperimentDisplayUsageEquivalentReadings(
+            dataset,
+            UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID,
+            sourceIds,
+            dateString,
+            values,
+            resourceType
+        );
         return {
             ready: sourceIds.length > 0 &&
-                areUtilityEntryExperimentDisplayReadingsReady(dataset, sourceIds, dateString, values, resourceType),
+                areUtilityEntryExperimentDisplayUsageEquivalentReadingsReady(
+                    dataset,
+                    UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID,
+                    sourceIds,
+                    dateString,
+                    values,
+                    resourceType
+                ),
             total
         };
     }
@@ -2464,7 +2540,7 @@
             container.innerHTML = `
                 <div class="utility-entry-experiment-completed-head">
                     <span>일간 기입 상태</span>
-                    <strong>${escapeUtilityEntryExperimentHtml(monthLabel)} · 완료 ${doneCount} / 부분 ${partialCount} / 미기입 ${missingCount}</strong>
+                    <strong>${escapeUtilityEntryExperimentHtml(monthLabel)} · 저장 ${doneCount} / 부분 ${partialCount} / 미기입 ${missingCount}</strong>
                 </div>
                 ${bodyHtml}
             `;
@@ -2483,8 +2559,8 @@
     }
 
     function getUtilityEntryExperimentCorrectionModeOptions(dateString = '') {
-        if (!isUtilityEntryExperimentBeforeCorrectionAvailable(dateString)) return ['corrected'];
-        return ['before', 'corrected'];
+        void dateString;
+        return ['before'];
     }
 
     function isUtilityEntryExperimentCorrectedCorrectionMode(mode = '') {
@@ -2493,8 +2569,8 @@
 
     function getUtilityEntryExperimentCorrectionMode(host, dateString = '', readiness = null) {
         const modeOptions = getUtilityEntryExperimentCorrectionModeOptions(dateString);
-        const mode = String(host?.dataset?.utilityEntryExperimentCorrectionMode || 'corrected').trim();
-        const normalizedMode = modeOptions.includes(mode) ? mode : 'corrected';
+        const mode = String(host?.dataset?.utilityEntryExperimentCorrectionMode || 'before').trim();
+        const normalizedMode = modeOptions.includes(mode) ? mode : 'before';
         if (
             readiness?.ready === false &&
             isUtilityEntryExperimentCorrectedCorrectionMode(normalizedMode) &&
@@ -2647,7 +2723,7 @@
             input.dataset.utilityEntryExperimentCorrectionLocked = 'true';
             input.setAttribute?.('readonly', '');
             input.setAttribute?.('aria-readonly', 'true');
-            input.setAttribute?.('title', '보정후 값은 보정전에서만 수정할 수 있습니다.');
+            input.setAttribute?.('title', '자동 계산값은 직접 수정할 수 없습니다.');
             return;
         }
 
@@ -2970,7 +3046,7 @@
             delete input.dataset.utilityEntryExperimentValidationError;
             input.removeAttribute?.('title');
             if (input.dataset.utilityEntryExperimentCorrectionLocked === 'true') {
-                input.setAttribute?.('title', '보정후 값은 보정전에서만 수정할 수 있습니다.');
+                input.setAttribute?.('title', '자동 계산값은 직접 수정할 수 없습니다.');
             }
         }
     }
@@ -2998,7 +3074,7 @@
             if (input.dataset.utilityEntryExperimentValidationError !== 'true') {
                 input.removeAttribute?.('title');
                 if (input.dataset.utilityEntryExperimentCorrectionLocked === 'true') {
-                    input.setAttribute?.('title', '보정후 값은 보정전에서만 수정할 수 있습니다.');
+                    input.setAttribute?.('title', '자동 계산값은 직접 수정할 수 없습니다.');
                 }
             }
         }
@@ -3148,7 +3224,7 @@
         updateUtilityEntryExperimentPeriodUsageLabels(
             host,
             resourceType,
-            showMonthlyUsage ? '월간 사용량' : getUtilityEntryExperimentPeriodUsageLabel(dataset, resourceType, dateString)
+            '사용량'
         );
 
         (UTILITY_ENTRY_EXPERIMENT_DAILY_FIELDS[resourceType] || []).forEach(([label, equipmentId]) => {
@@ -3477,12 +3553,44 @@
         return entry?.completed === true && hasUtilityEntryExperimentSettlementStoredValues(entry);
     }
 
+    function hasUtilityEntryExperimentMeterReadingEntryValue(entry) {
+        const values = isUtilityEntryExperimentPlainObject(entry?.values) ? entry.values : entry;
+        return Object.values(values || {}).some(value => Number.isFinite(parseUtilityEntryExperimentNumber(value)));
+    }
+
+    function hasUtilityEntryExperimentMonthlyMeterReading(records, datasetKey = '', monthValue = '', cache = null) {
+        const normalizedDatasetKey = normalizeUtilityEntryExperimentMeterDatasetKey(datasetKey);
+        const normalizedMonth = String(monthValue || '').trim();
+        if (!/^\d{4}-\d{2}$/.test(normalizedMonth)) return false;
+        const cacheKey = `${normalizedDatasetKey}|${normalizedMonth}`;
+        if (cache instanceof Map && cache.has(cacheKey)) {
+            return cache.get(cacheKey);
+        }
+        const dataset = records?.[normalizedDatasetKey] || null;
+        const entries = isUtilityEntryExperimentPlainObject(dataset?.equipmentEntries) ? dataset.equipmentEntries : {};
+        const nextMonthValue = shiftUtilityEntryExperimentMonthValue(normalizedMonth, 1);
+        const currentMonthPrefix = `${normalizedMonth}-`;
+        const nextMonthStartDate = nextMonthValue ? `${nextMonthValue}-01` : '';
+        const ready = Object.entries(entries).some(([dateString, entry]) => {
+            const normalizedDate = String(dateString || '').trim();
+            if (!normalizedDate.startsWith(currentMonthPrefix) && normalizedDate !== nextMonthStartDate) return false;
+            return hasUtilityEntryExperimentMeterReadingEntryValue(entry);
+        });
+        if (cache instanceof Map) {
+            cache.set(cacheKey, ready);
+        }
+        return ready;
+    }
+
     function getUtilityEntryExperimentMonthlyMeterLabel(linkKey = '', datasetKey = '') {
         const normalizedLinkKey = normalizeUtilityEntryExperimentMeterLinkKey(linkKey, datasetKey);
         return getUtilityEntryExperimentMonthlyMeterLinkConfig(normalizedLinkKey)?.label || '검침';
     }
 
-    function getUtilityEntryExperimentMonthlyMeterLinkState(records, linkKey = '', monthValue = '', datasetKey = '') {
+    function getUtilityEntryExperimentMonthlyMeterLinkState(records, linkKey = '', monthValue = '', datasetKey = '', options = {}) {
+        const monthlyMeterReadingCache = options?.monthlyMeterReadingCache instanceof Map
+            ? options.monthlyMeterReadingCache
+            : null;
         const normalizedLinkKey = normalizeUtilityEntryExperimentMeterLinkKey(linkKey, datasetKey);
         const linkConfig = getUtilityEntryExperimentMonthlyMeterLinkConfig(normalizedLinkKey)
             || getUtilityEntryExperimentMonthlyMeterLinkConfigForDataset(datasetKey)
@@ -3505,6 +3613,28 @@
             };
         }
 
+        const normalizedDatasetKey = linkConfig?.datasetKey || normalizeUtilityEntryExperimentMeterDatasetKey(datasetKey || linkKey);
+        if (normalizedDatasetKey === 'electric' || normalizedDatasetKey === 'gas') {
+            const ready = hasUtilityEntryExperimentMonthlyMeterReading(
+                records,
+                normalizedDatasetKey,
+                monthValue,
+                monthlyMeterReadingCache
+            );
+            const meterValueLabel = normalizedDatasetKey === 'gas' ? '가스 검침값' : '전기 검침값';
+            return {
+                key: linkConfig?.key || normalizedLinkKey,
+                datasetKey: normalizedDatasetKey,
+                label,
+                ready,
+                statusLabel: ready ? '검침값 입력' : '검침값 없음',
+                missingLabels: ready ? [] : [meterValueLabel],
+                title: ready
+                    ? `${monthLabel} ${label}표 열기`
+                    : `${monthLabel} ${label}표는 검침값 입력 후 열 수 있습니다`
+            };
+        }
+
         const missingLabels = requirements
             .filter(requirement => !isUtilityEntryExperimentSettlementScopeReady(records, requirement, monthValue))
             .map(requirement => requirement.label);
@@ -3523,10 +3653,15 @@
         };
     }
 
-    function getUtilityEntryExperimentMonthlyMeterLinkStates(records, monthValue = '') {
+    function getUtilityEntryExperimentMonthlyMeterLinkStates(records, monthValue = '', options = {}) {
+        const monthlyMeterReadingCache = options?.monthlyMeterReadingCache instanceof Map
+            ? options.monthlyMeterReadingCache
+            : new Map();
         const states = Object.fromEntries(UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_LINKS.map(item => [
             item.key,
-            getUtilityEntryExperimentMonthlyMeterLinkState(records, item.key, monthValue, item.datasetKey)
+            getUtilityEntryExperimentMonthlyMeterLinkState(records, item.key, monthValue, item.datasetKey, {
+                monthlyMeterReadingCache
+            })
         ]));
         Object.entries(UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_LINK_ALIASES).forEach(([aliasKey, linkKey]) => {
             states[aliasKey] = states[linkKey];
@@ -3537,11 +3672,16 @@
     function renderUtilityEntryExperimentMonthlyMeterLinks(host, records, monthValue = '') {
         const buttons = Array.from(host?.querySelectorAll?.('[data-role="utility-entry-experiment-meter-open"]') || []);
         if (!buttons.length) return;
-        const states = getUtilityEntryExperimentMonthlyMeterLinkStates(records, monthValue);
+        const monthlyMeterReadingCache = new Map();
+        const states = getUtilityEntryExperimentMonthlyMeterLinkStates(records, monthValue, {
+            monthlyMeterReadingCache
+        });
         buttons.forEach(button => {
             const datasetKey = normalizeUtilityEntryExperimentMeterDatasetKey(button.dataset.utilityEntryExperimentMeter || '');
             const linkKey = normalizeUtilityEntryExperimentMeterLinkKey(button.dataset.utilityEntryExperimentMeterLink || '', datasetKey);
-            const state = states[linkKey] || getUtilityEntryExperimentMonthlyMeterLinkState(records, linkKey, monthValue, datasetKey);
+            const state = states[linkKey] || getUtilityEntryExperimentMonthlyMeterLinkState(records, linkKey, monthValue, datasetKey, {
+                monthlyMeterReadingCache
+            });
             button.disabled = !state.ready;
             button.classList.toggle('is-disabled', !state.ready);
             button.dataset.utilityEntryExperimentMeter = state.datasetKey;
@@ -4751,21 +4891,21 @@ html, body {
             '공유 컴프 배분',
             `${UTILITY_ENTRY_EXPERIMENT_LIQUID_COMPRESSOR_START_MONTH}부터`,
             '공유 컴프 = 컴프(220v) + 컴프(380v) + 컴프 1 + 컴프 2',
-            '보정후 화면에서는 원본 컴프 행을 숨기고 배분 행만 표시'
+            '보고서 배분에서는 원본 컴프 행을 숨기고 배분 행만 표시'
         ]);
         rows.push([
             '전기',
             '액상 1 보정',
             `${UTILITY_ENTRY_EXPERIMENT_LIQUID_COMPRESSOR_START_MONTH}부터`,
-            '액상 1 표시값 = 액상 1 원본 - 컴프 1 - 컴프 2',
-            '보정후 화면에서 액상 1 행에 반영'
+            '액상 1 보정 사용량 = 액상 1 전력사용량 - 컴프 2 전력사용량',
+            '보고서 배분의 액상 1 행에 반영'
         ]);
         rows.push([
             '전기',
-            '보정후 활성 조건',
+            '컴프 배분 조건',
             `${UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_START_MONTH}부터`,
             '필수 입력: 액상 1, 컴프(220v), 컴프(380v), 컴프 2. 2026-04부터 컴프 1 추가',
-            '필수 입력이 비면 보정후 토글 비활성'
+            '필수 입력이 비면 배분 계산 제외'
         ]);
 
         return rows;
@@ -5334,7 +5474,7 @@ html, body {
     function applyUtilityEntryExperimentDailyInputsToStore(host, store, options = {}) {
         const view = getUtilityEntryExperimentSaveView(host, 'daily');
         const dateString = getUtilityEntryExperimentSelectedDailyDate(host);
-        const completed = view?.querySelector?.('[data-role="utility-entry-experiment-complete"]')?.checked === true;
+        const completed = true;
         const updatedAt = options.updatedAt || new Date().toISOString();
         const touchedResourceTypes = new Set();
         let touchedCount = 0;
@@ -5364,11 +5504,6 @@ html, body {
                     completed: completed || currentEntry.completed === true,
                     updatedAt
                 };
-                if (!completed && entry.dayStatus === 'completed') {
-                    entry.dayStatus = '';
-                    entry.completed = false;
-                }
-
                 const normalizedValue = getUtilityEntryExperimentInputNormalizedValue(input);
                 if (normalizedValue) {
                     entry.values[fieldId] = normalizedValue;
@@ -5968,12 +6103,6 @@ html, body {
         });
 
         host.addEventListener('change', event => {
-            const completeCheckbox = event.target?.closest?.('[data-role="utility-entry-experiment-complete"]');
-            if (completeCheckbox && host.contains(completeCheckbox)) {
-                markUtilityEntryExperimentUnsaved(host);
-                return;
-            }
-
             if (!event.target?.matches?.('.utility-entry-experiment-toolbar select')) return;
             if (event.target.matches('.utility-entry-experiment-view.is-daily select')) {
                 syncUtilityEntryExperimentDailyMonthToDate(host);
@@ -6314,8 +6443,8 @@ html, body {
                         ${buildUtilityEntryExperimentMonthShiftButton('daily', 1)}
                         <input type="hidden" data-role="utility-entry-experiment-daily-date" value="${escapeUtilityEntryExperimentHtml(date)}" aria-label="날짜" />
                     </div>
-                    <div class="utility-entry-experiment-completed-calendar" data-role="utility-entry-experiment-completed-calendar" aria-label="기입 완료 날짜">
-                        <div class="utility-entry-experiment-completed-empty">완료 날짜 불러오는 중</div>
+                    <div class="utility-entry-experiment-completed-calendar" data-role="utility-entry-experiment-completed-calendar" aria-label="기입 날짜">
+                        <div class="utility-entry-experiment-completed-empty">기입 날짜 불러오는 중</div>
                     </div>
                 ` : ''}
                 <div class="utility-entry-experiment-save" data-role="utility-entry-experiment-save-status">
@@ -6329,10 +6458,6 @@ html, body {
                     >저장</button>
                 </div>
                 ${period === 'daily' ? `
-                    <label class="utility-entry-experiment-check">
-                        <input type="checkbox" data-role="utility-entry-experiment-complete" />
-                        <span>완료</span>
-                    </label>
                     ${buildUtilityEntryExperimentRuleSummaryControl(rulesId)}
                     <div class="utility-entry-experiment-quick-entry" data-role="utility-entry-experiment-quick-entry">
                         <button
@@ -6379,7 +6504,7 @@ html, body {
                         </label>
                     </header>
                     <div class="utility-entry-experiment-rule-note">
-                        원본 검침은 그대로 두고, 보정후 화면에서 숨김/배분/차감/합계 표시만 아래 기준으로 계산합니다.
+                        입력 검침은 그대로 두고, 보고서 배분에서 숨김/배분/차감/합계 표시만 아래 기준으로 계산합니다.
                     </div>
                     <table data-role="utility-entry-experiment-correction-summary">
                         <thead>
@@ -6651,37 +6776,12 @@ html, body {
 
     function buildUtilityEntryExperimentDailyTable({ title, resourceType = '', unitLabel, groups, summaryRows = [] }) {
         const unitLabels = (Array.isArray(unitLabel) ? unitLabel : [unitLabel]).filter(Boolean);
-        const beforeCorrectionToggle = resourceType === 'electric'
-            ? `
-                <div
-                    class="utility-entry-experiment-correction-modes"
-                    data-role="utility-entry-experiment-correction-modes"
-                    aria-label="전기 보정 보기"
-                    hidden
-                >
-                    ${[
-                        ['before', '보정전'],
-                        ['corrected', '보정후']
-                    ].map(([mode, label]) => `
-                        <button
-                            type="button"
-                            class="utility-entry-experiment-table-toggle"
-                            data-role="utility-entry-experiment-correction-mode"
-                            data-utility-entry-experiment-correction-mode="${escapeUtilityEntryExperimentHtml(mode)}"
-                            aria-pressed="false"
-                            title="${escapeUtilityEntryExperimentHtml(`${label} 보기`)}"
-                        >${escapeUtilityEntryExperimentHtml(label)}</button>
-                    `).join('')}
-                </div>
-            `
-            : '';
         return `
             <div class="utility-entry-experiment-table-title">
                 <span>${escapeUtilityEntryExperimentHtml(title)}</span>
                 ${unitLabels.map(label => `
                     <span class="utility-entry-experiment-unit">단위: ${escapeUtilityEntryExperimentHtml(label)}</span>
                 `).join('')}
-                ${beforeCorrectionToggle}
             </div>
             <div class="utility-entry-experiment-table-wrap">
                 <table class="utility-entry-experiment-table">
@@ -7230,7 +7330,7 @@ html, body {
             accent: '#64748b',
             categories: [
                 {
-                    title: '유틸리티 기입',
+                    title: '유틸리티',
                     icon: 'fa-table-cells-large',
                     color: '#2563eb',
                     desc: '전기, 가스, 폐수 검침 데이터와 비용을 기입합니다.',

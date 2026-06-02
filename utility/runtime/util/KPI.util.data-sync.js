@@ -65,6 +65,9 @@
                 return acc;
             }, {})
         );
+        const UTIL_ELECTRIC_METERING_OPTIONAL_TEAM_NAME_BY_KEY = Object.freeze({
+            team_04: '관리동'
+        });
         const UTIL_ELECTRIC_METERING_TEAM_NAMES = Object.freeze(Object.keys(UTIL_ELECTRIC_METERING_TEAM_MAP));
         const UTIL_GAS_METERING_TEAM_NAMES = Object.freeze([
             '1팀 1파트 (LNG)',
@@ -315,7 +318,12 @@
 
         function applyUtilElectricMeteringSnapshot(snapshot) {
             const nextDataset = buildUtilDatasetFromSnapshot(snapshot, UTIL_ELECTRIC_METERING_TEAM_NAMES, {
-                resolveTeamName: (teamKey) => UTIL_ELECTRIC_METERING_TEAM_NAME_BY_KEY[String(teamKey || '').trim()] || teamKey
+                resolveTeamName: (teamKey) => {
+                    const normalizedTeamKey = String(teamKey || '').trim();
+                    return UTIL_ELECTRIC_METERING_TEAM_NAME_BY_KEY[normalizedTeamKey]
+                        || UTIL_ELECTRIC_METERING_OPTIONAL_TEAM_NAME_BY_KEY[normalizedTeamKey]
+                        || normalizedTeamKey;
+                }
             });
             return replaceUtilDataset(UTIL_ELECTRIC_DATA, nextDataset);
         }

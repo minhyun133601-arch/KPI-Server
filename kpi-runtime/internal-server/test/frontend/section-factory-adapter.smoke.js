@@ -75,7 +75,7 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.equal(appData.data.name, '데이터 관리');
   assert.equal(appData.data.categories.length, 4);
   const utilityEntryCategory = appData.data.categories[0];
-  assert.equal(utilityEntryCategory.title, '유틸리티 기입');
+  assert.equal(utilityEntryCategory.title, '유틸리티');
   assert.equal(utilityEntryCategory.utilitySurface, 'entry-experiment');
   assert.equal(utilityEntryCategory.viewerMode, 'full-bleed');
   assert.match(utilityEntryCategory.content, /data-role="utility-entry-experiment"/);
@@ -108,6 +108,29 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(dataSectionSource, /ensureUtilityEntryExperimentGraphFullscreenForCapture\(targetModal\)/);
   assert.match(dataSectionSource, /requestFullscreen\.call\(target\)/);
   assert.match(dataSectionSource, /transform:\s*scale\(\$\{scaleX\},\s*\$\{scaleY\}\)/);
+
+  const meterLinkStates = context.window.KpiUtilityEntryExperiment.getMonthlyMeterLinkStates(
+    {
+      electric: {
+        equipmentEntries: {
+          '2026-06-01': {
+            values: {
+              field_01: '123'
+            }
+          }
+        }
+      },
+      gas: {},
+      waste: {}
+    },
+    '2026-05'
+  );
+  assert.equal(meterLinkStates.electric_yusan.ready, true);
+  assert.equal(meterLinkStates.electric_bukjeong.ready, true);
+  assert.equal(meterLinkStates.electric_yusan.statusLabel, '검침값 입력');
+  assert.equal(meterLinkStates.gas_yusan_lng.ready, false);
+  assert.match(meterLinkStates.gas_yusan_lng.title, /검침값 입력 후/u);
+
   assert.doesNotMatch(utilityEntryCategory.content, /data-utility-entry-experiment-graph="electric_yusan"/);
   assert.doesNotMatch(utilityEntryCategory.content, /data-utility-entry-experiment-graph="electric_bukjeong"/);
   assert.doesNotMatch(utilityEntryCategory.content, /data-utility-entry-experiment-graph="gas_yusan"/);
@@ -557,7 +580,7 @@ test('kpi html loads section factory adapter before all section factories', () =
   const adapterIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.factory-adapter.js?v=1');
   const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=231');
   const graphTemplateIndex = kpiHtml.indexOf('data-entry/runtime/data/utility-graph-template/app.js?v=41');
-  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=129');
+  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=133');
   const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=98');
   const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=30');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');

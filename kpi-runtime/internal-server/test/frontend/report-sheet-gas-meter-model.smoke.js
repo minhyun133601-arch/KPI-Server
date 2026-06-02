@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -146,11 +146,11 @@ test('report sheet gas meter model registry builds month tables and usage map', 
 
 test('kpi html loads gas meter model before gas summary modules and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const electricComparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=054');
+  const electricComparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=072');
   const gasMeterModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/meter-model.js?v=053');
   const gasComparisonIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/comparison-summary.js?v=056');
   const scopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=056');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=065');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(electricComparisonIndex >= 0, 'electric comparison summary loader is missing');

@@ -345,7 +345,9 @@ function createEquipmentInputStateContext() {
     formatNumber(value) {
       return String(value);
     },
-    readEquipmentFormData() {
+    __readEquipmentFormDataInputLengths: [],
+    readEquipmentFormData(equipmentInputsArg) {
+      context.__readEquipmentFormDataInputLengths.push(equipmentInputsArg?.length ?? null);
       return {
         values: {
           field_01: '12',
@@ -438,6 +440,7 @@ test('equipment input state builds validation issues and syncs invalid field UI'
   );
 
   harness.context.syncEquipmentReadingValidationStates();
+  assert.deepEqual(harness.context.__readEquipmentFormDataInputLengths, [3]);
   assert.equal(harness.inputs.get('field_01').getAttribute('aria-invalid'), 'true');
   assert.equal(harness.cards.get('field_01').classList.contains('is-invalid'), true);
   assert.equal(harness.inputs.get('field_03').title.includes('클 수 없습니다'), true);

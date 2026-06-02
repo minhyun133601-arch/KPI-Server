@@ -19,9 +19,35 @@
         UTIL_ELECTRIC_ALLOCATION_GROUPS,
         UTIL_ELECTRIC_TEAM_SUMMARY_OPTIONS,
         UTIL_ELECTRIC_BILLING_SUMMARY_FIELDS,
-        normalizeUtilElectricMeterViewKey,
         getUtilElectricMeterTeamOption
     } = utilReportSheetOptions;
+    const UTIL_ELECTRIC_SHARED_COMPRESSOR_START_MONTH = '2026-02';
+    const UTIL_ELECTRIC_LIQUID_COMPRESSOR_START_MONTH = '2026-04';
+    const UTIL_ELECTRIC_LIQUID_FIELD_ID = 'field_15';
+    const UTIL_ELECTRIC_LIQUID2_FIELD_ID = 'field_16';
+    const UTIL_ELECTRIC_TEAM2_COMPRESSOR_FIELD_ID = 'field_14';
+    const UTIL_ELECTRIC_LIQUID_COMPRESSOR_FIELD_ID = 'field_custom_1777335768709_08f3az';
+    const UTIL_ELECTRIC_SHARED_COMPRESSOR_BASE_SOURCE_IDS = Object.freeze([
+        'field_10',
+        'field_11',
+        UTIL_ELECTRIC_TEAM2_COMPRESSOR_FIELD_ID
+    ]);
+    const UTIL_ELECTRIC_SHARED_COMPRESSOR_ALLOCATION_GROUPS = Object.freeze([
+        Object.freeze({
+            key: 'team12Compressor',
+            label: '1팀 컴프',
+            caption: '0.72',
+            teamKey: 'team_01_02',
+            ratio: 0.72
+        }),
+        Object.freeze({
+            key: 'team2Compressor',
+            label: '2팀 컴프',
+            caption: '0.28',
+            teamKey: 'team_02',
+            ratio: 0.28
+        })
+    ]);
     const utilReportSheetElectricTableRender = runtimeAdapter.requireApi(
         'KPIUtilReportSheetElectricTableRender',
         'KPI.util.report.sheet.electric.comparison-summary.js'
@@ -103,9 +129,14 @@
             : String(monthKey || '').trim();
     }
 
+    function normalizeElectricMeterViewKey(viewKey = 'meter') {
+        const normalizedKey = String(viewKey || '').trim();
+        return normalizedKey === 'allocation' || normalizedKey === 'team' ? normalizedKey : 'meter';
+    }
+
     function buildViewToggleHtml(viewKey = 'meter') {
         return typeof runtime.buildUtilElectricMeterViewToggleHtml === 'function'
-            ? runtime.buildUtilElectricMeterViewToggleHtml(viewKey)
+            ? runtime.buildUtilElectricMeterViewToggleHtml(normalizeElectricMeterViewKey(viewKey))
             : '';
     }
 
@@ -123,6 +154,13 @@
         return String(monthKey || '');
     }
 
+    function formatMonthShort(monthKey = '') {
+        const normalizedMonthKey = String(monthKey || '').trim();
+        const match = /^(\d{4})-(\d{1,2})/.exec(normalizedMonthKey);
+        if (!match) return formatMonthLong(normalizedMonthKey);
+        return `${Number(match[2])}월`;
+    }
+
     function formatCost(value, fallback = '-') {
         if (typeof runtime.formatUtilSheetCost === 'function') {
             return runtime.formatUtilSheetCost(value, fallback);
@@ -135,6 +173,20 @@
             return runtime.formatUtilSheetDecimal(value, digits, fallback);
         }
         return Number.isFinite(value) ? Number(value).toFixed(digits) : fallback;
+    }
+
+    function trimTrailingDecimalZeros(valueText = '') {
+        const text = String(valueText ?? '').trim();
+        if (!text || !text.includes('.')) return text;
+        return text
+            .replace(/(\.\d*?[1-9])0+\b/g, '$1')
+            .replace(/\.0+\b/g, '');
+    }
+
+    function formatCompactDecimal(value, digits = 0, fallback = '-') {
+        return Number.isFinite(value)
+            ? trimTrailingDecimalZeros(formatDecimal(value, digits, fallback))
+            : fallback;
     }
 
     function formatInteger(value, fallback = '-') {
@@ -280,6 +332,53 @@
         return Number.isFinite(column?.[key]) ? column[key] : null;
     }
 
+    function shouldApplyUtilElectricSharedCompressor(monthKey = '') {
+        const normalizedMonthKey = String(monthKey || '').trim();
+        return /^\d{4}-\d{2}$/.test(normalizedMonthKey) &&
+            normalizedMonthKey >= UTIL_ELECTRIC_SHARED_COMPRESSOR_START_MONTH;
+    }
+
+    function shouldApplyUtilElectricLiquidCompressor(monthKey = '') {
+        const normalizedMonthKey = String(monthKey || '').trim();
+        return /^\d{4}-\d{2}$/.test(normalizedMonthKey) &&
+            normalizedMonthKey >= UTIL_ELECTRIC_LIQUID_COMPRESSOR_START_MONTH;
+    }
+
+    function getUtilElectricSharedCompressorSourceIds(monthKey = '') {
+        const sourceIds = [...UTIL_ELECTRIC_SHARED_COMPRESSOR_BASE_SOURCE_IDS];
+        if (shouldApplyUtilElectricLiquidCompressor(monthKey)) {
+            sourceIds.splice(2, 0, UTIL_ELECTRIC_LIQUID_COMPRESSOR_FIELD_ID);
+        }
+        return sourceIds;
+    }
+
+    function sumUtilElectricDetailColumnUsage(detailColumnMap, sourceIds = []) {
+        const usageValues = sourceIds
+            .map(sourceId => detailColumnMap.get(sourceId)?.usage)
+            .filter(Number.isFinite);
+        return usageValues.length ? usageValues.reduce((sum, value) => sum + value, 0) : null;
+    }
+
+    function buildUtilElectricReportMeterTable(table) {
+        if (!shouldApplyUtilElectricSharedCompressor(table?.monthKey)) return table;
+        const highlightFieldIdSet = new Set(
+            shouldApplyUtilElectricLiquidCompressor(table.monthKey)
+                ? [UTIL_ELECTRIC_LIQUID_COMPRESSOR_FIELD_ID]
+                : []
+        );
+        const decorateColumn = column => {
+            const columnId = String(column?.id || '');
+            return highlightFieldIdSet.has(columnId)
+                ? { ...column, isCorrectionSource: true }
+                : column;
+        };
+        return {
+            ...table,
+            detailColumns: Array.isArray(table?.detailColumns) ? table.detailColumns.map(decorateColumn) : [],
+            columns: Array.isArray(table?.columns) ? table.columns.map(decorateColumn) : []
+        };
+    }
+
     function resolveUtilElectricBillingUnitPriceValue(monthKey = '', selectedTable = null, scopeKey = 'yusan') {
         const directValue = getUtilElectricBillingNumericField(monthKey, 'unit_price', scopeKey);
         if (Number.isFinite(directValue)) return directValue;
@@ -297,7 +396,59 @@
         const detailColumnMap = new Map(detailColumns.map(column => [String(column?.id || '').trim(), column]));
         const totalUsage = getUtilElectricTableColumnValue(table, 'power_total', 'usage');
         let groupedUsageSum = 0;
+        const monthKey = String(table?.monthKey || '').trim();
+        const sharedCompressorSourceIds = getUtilElectricSharedCompressorSourceIds(monthKey);
+        const shouldApplySharedCompressorAllocation = shouldApplyUtilElectricSharedCompressor(monthKey);
+        const availableSharedCompressorSourceIds = sharedCompressorSourceIds.filter(sourceId => (
+            Number.isFinite(detailColumnMap.get(sourceId)?.usage)
+        ));
+        const shouldUseSharedCompressorAllocation = shouldApplySharedCompressorAllocation &&
+            availableSharedCompressorSourceIds.length > 0;
+        const insertedSharedCompressorGroupKeys = new Set();
+        const buildSharedCompressorGroup = groupKey => {
+            if (!shouldUseSharedCompressorAllocation || insertedSharedCompressorGroupKeys.has(groupKey)) return null;
+            const sharedUsage = sumUtilElectricDetailColumnUsage(detailColumnMap, availableSharedCompressorSourceIds);
+            if (!Number.isFinite(sharedUsage)) return null;
+            const group = UTIL_ELECTRIC_SHARED_COMPRESSOR_ALLOCATION_GROUPS.find(item => item.key === groupKey);
+            if (!group) return null;
+            insertedSharedCompressorGroupKeys.add(groupKey);
+            return {
+                key: group.key,
+                label: group.label,
+                caption: group.caption,
+                usage: sharedUsage * group.ratio,
+                teamKey: group.teamKey
+            };
+        };
+        const isSharedCompressorRawGroup = rawSourceIds => (
+            rawSourceIds.includes('field_10') ||
+            rawSourceIds.includes('field_11') ||
+            rawSourceIds.includes(UTIL_ELECTRIC_LIQUID_COMPRESSOR_FIELD_ID) ||
+            rawSourceIds.includes(UTIL_ELECTRIC_TEAM2_COMPRESSOR_FIELD_ID)
+        );
+        const buildSharedCompressorGroupsForSourceIds = rawSourceIds => {
+            if (!shouldUseSharedCompressorAllocation) return null;
+            if (
+                rawSourceIds.includes('field_10') ||
+                rawSourceIds.includes('field_11') ||
+                rawSourceIds.includes(UTIL_ELECTRIC_LIQUID_COMPRESSOR_FIELD_ID)
+            ) {
+                return buildSharedCompressorGroup('team12Compressor');
+            }
+            if (rawSourceIds.includes(UTIL_ELECTRIC_TEAM2_COMPRESSOR_FIELD_ID)) {
+                return buildSharedCompressorGroup('team2Compressor');
+            }
+            return null;
+        };
         const groups = UTIL_ELECTRIC_ALLOCATION_GROUPS.map(group => {
+            const rawSourceIds = Array.isArray(group.sourceIds) ? group.sourceIds : [];
+            const sharedCompressorGroup = buildSharedCompressorGroupsForSourceIds(rawSourceIds);
+            if (sharedCompressorGroup) {
+                return sharedCompressorGroup;
+            }
+            if (shouldApplySharedCompressorAllocation && isSharedCompressorRawGroup(rawSourceIds)) {
+                return null;
+            }
             const sourceColumns = group.sourceIds
                 .map(sourceId => detailColumnMap.get(sourceId))
                 .filter(Boolean);
@@ -305,14 +456,20 @@
                 .map(column => Number.isFinite(column?.usage) ? column.usage : null)
                 .filter(Number.isFinite);
             if (!usageValues.length) return null;
-            const usage = usageValues.reduce((sum, value) => sum + value, 0);
+            const usage = shouldApplyUtilElectricLiquidCompressor(monthKey) &&
+                rawSourceIds.includes(UTIL_ELECTRIC_LIQUID_FIELD_ID) &&
+                rawSourceIds.includes(UTIL_ELECTRIC_LIQUID2_FIELD_ID)
+                ? usageValues.reduce((sum, value) => sum + value, 0) -
+                    (sumUtilElectricDetailColumnUsage(detailColumnMap, [
+                        UTIL_ELECTRIC_LIQUID_COMPRESSOR_FIELD_ID
+                    ]) || 0)
+                : usageValues.reduce((sum, value) => sum + value, 0);
             const groupTeamKeys = Array.from(new Set(
                 sourceColumns
                     .map(column => String(column?.teamKey || '').trim())
                     .filter(Boolean)
                     .filter(teamKey => teamKey !== 'combined')
             ));
-            groupedUsageSum += usage;
             return {
                 key: group.key,
                 label: group.label,
@@ -322,7 +479,17 @@
                     ? groupTeamKeys[0]
                     : (String(table?.optionKey || '').trim() || 'combined')
             };
-        }).filter(Boolean);
+        }).flat().filter(Boolean);
+        if (shouldUseSharedCompressorAllocation) {
+            UTIL_ELECTRIC_SHARED_COMPRESSOR_ALLOCATION_GROUPS.forEach(group => {
+                const sharedCompressorGroup = buildSharedCompressorGroup(group.key);
+                if (sharedCompressorGroup) groups.push(sharedCompressorGroup);
+            });
+        }
+        groups.forEach(group => {
+            const usage = Number(group?.usage);
+            if (Number.isFinite(usage)) groupedUsageSum += usage;
+        });
         const otherUsage = Number.isFinite(totalUsage) ? Math.max(totalUsage - groupedUsageSum, 0) : null;
         if (Number.isFinite(otherUsage) && otherUsage > 0) {
             groups.push({
@@ -382,7 +549,7 @@
         const columns = (Array.isArray(selectedGroups?.groups) ? selectedGroups.groups : []).map(group => {
             const referenceGroup = referenceGroupMap.get(group.key) || null;
             const currentUsage = Number(group?.usage);
-            const referenceUsage = Number(referenceGroup?.usage);
+            const referenceUsage = referenceGroup ? Number(referenceGroup?.usage) : 0;
             const currentCost = calculateUtilElectricDistributedCost(currentUsage, selectedGroups.totalUsage, selectedTotalCost);
             const referenceCost = calculateUtilElectricDistributedCost(referenceUsage, referenceGroups.totalUsage, referenceTotalCost);
             return {
@@ -449,9 +616,7 @@
                     option.reportTeamFilters,
                     option.productionTeamNames
                 );
-                const overrides = option.key === 'team_04'
-                    ? getUtilElectricAllocationTeamAggregate(allocationSummaryModel, 'team_04')
-                    : null;
+                const overrides = getUtilElectricAllocationTeamAggregate(allocationSummaryModel, option.key);
                 return buildUtilElectricTeamSummaryColumn(
                     option,
                     datasetResult,
@@ -563,24 +728,26 @@
             { key: 'cost', label: '사용요금(원)', formatter: formatCost },
             { key: 'compareCost', label: model.compareKey === 'year' ? '전년동월대비(원)' : '전월대비(원)', formatter: formatSignedCost }
         ], {
-            title: '설비 배부 요약',
-            subText: '합산 기준으로 설비별 사용량, 비중, 배부 금액을 정리했습니다.',
-            note: '전력총량 기준으로 비율을 계산했고, 사용요금은 기본요금이 포함된 전기요금계를 기준으로 배부했습니다.'
+            title: '설비별 분배'
         });
     }
 
     function buildUtilElectricTeamSummaryHtml(model, teamDatasetResult = null) {
-        const summaryModel = buildUtilElectricTeamSummaryModel(teamDatasetResult, model?.compareKey, model);
+        const selectedTeamDatasetResult = teamDatasetResult?.option
+            ? teamDatasetResult
+            : buildTeamDatasetResult(model?.selectedTable?.monthKey, model?.option?.key || 'combined');
+        const summaryModel = buildUtilElectricTeamSummaryModel(selectedTeamDatasetResult, model?.compareKey, model);
         if (!summaryModel || !Array.isArray(summaryModel.columns) || !summaryModel.columns.length) return '';
+        const unitPriceText = formatUtilElectricBillingUnitPrice(
+            resolveUtilElectricBillingUnitPriceValue(model?.selectedTable?.monthKey, model?.selectedTable, 'yusan')
+        );
         return buildUtilElectricSummaryTableHtml(summaryModel.columns, [
             { key: 'usage', label: '총 사용량(kWh)', formatter: formatUtilElectricMeterUsageValue },
             { key: 'cost', label: '금액 합계(원)', formatter: formatCost },
             { key: 'production', label: '생산량(kg)', formatter: value => formatQuantity(value, 'kg') },
             { key: 'compareCost', label: summaryModel.compareKey === 'year' ? '전년 동월대비' : '전월대비', formatter: formatSignedCost }
         ], {
-            title: '팀 요약',
-            subText: '1팀 1파트를 제외한 전기 사용량, 금액, 생산량 기준입니다.',
-            note: '생산량은 1팀 2파트, 2팀, 3팀만 집계하고 관리동(기타 포함)은 생산량에서 제외합니다.'
+            title: `팀별 분배 · 단가 ${unitPriceText}`
         });
     }
 
@@ -602,48 +769,13 @@
                     )
                 }
             ], {
-                title: '청구 요약',
-                subText: '유산 전기 청구 입력값을 그대로 정리했습니다.',
-                note: '전기요금계와 청구금액은 입력값이 없을 경우 청구 항목으로 다시 계산합니다.'
+                bareTable: true
             })
             : '';
-        return `
-            ${detailTableHtml}
-            <article class="util-sheet-meter-table-card is-current">
-                <div class="util-sheet-meter-table-head">
-                    <div>
-                        <div class="util-sheet-meter-table-title">정산 기준</div>
-                        <div class="util-sheet-meter-table-sub">${escapeHtml(summaryModel.scopeLabel || '')}</div>
-                    </div>
-                    <div class="util-sheet-meter-table-sub">${escapeHtml(summaryModel.monthLabel || '')}</div>
-                </div>
-                <div class="util-sheet-analysis-summary-grid">
-                    ${summaryModel.items.map(item => `
-                        <article class="util-sheet-analysis-summary-card" data-tone="${escapeHtml(item.tone || 'neutral')}">
-                            <div class="util-sheet-analysis-summary-head util-sheet-analysis-summary-head-with-help">
-                                <span class="util-sheet-analysis-summary-head-main">
-                                    <span class="util-sheet-analysis-summary-icon" aria-hidden="true"><i class="fa-solid ${escapeHtml(item.icon || 'fa-circle')}"></i></span>
-                                    <span class="util-sheet-analysis-summary-label">${escapeHtml(item.title || '')}</span>
-                                </span>
-                                ${item.helpText ? `
-                                    <details class="util-sheet-inline-help">
-                                        <summary aria-label="${escapeHtml(`${item.title || ''} 기준`)}">?</summary>
-                                        <div class="util-sheet-inline-help-body">${escapeHtml(item.helpText)}</div>
-                                    </details>
-                                ` : ''}
-                            </div>
-                            <div class="util-sheet-analysis-summary-value">${escapeHtml(item.valueText || '-')}</div>
-                            ${item.metaText ? `<div class="util-sheet-analysis-summary-meta">${escapeHtml(item.metaText)}</div>` : ''}
-                            ${item.subText ? `<div class="util-sheet-analysis-summary-sub">${escapeHtml(item.subText)}</div>` : ''}
-                        </article>
-                    `).join('')}
-                </div>
-                <div class="util-sheet-electric-summary-note">데이터 관리 &gt; 유틸리티 기입 &gt; 전기 정산항목 값을 그대로 사용합니다.</div>
-            </article>
-        `;
+        return detailTableHtml;
     }
 
-    function buildUtilElectricMeterComparisonSectionHtml(model, teamDatasetResult = null, viewKey = 'meter') {
+    function buildUtilElectricMeterComparisonSectionHtml(model, teamDatasetResult = null) {
         if (!model?.ready) {
             return `
                 <section class="util-sheet-section">
@@ -652,73 +784,24 @@
             `;
         }
 
-        const normalizedViewKey = normalizeUtilElectricMeterViewKey(viewKey);
         const selectedMonthLabel = formatMonthLong(model.selectedTable.monthKey);
-        const referenceMonthLabel = formatMonthLong(model.referenceTable.monthKey);
-        const isYearCompare = model.compareKey === 'year';
-        const baseColumns = Array.isArray(model.selectedTable?.columns) ? model.selectedTable.columns : [];
-        const referenceColumnMap = new Map(
-            (Array.isArray(model.referenceTable?.columns) ? model.referenceTable.columns : []).map(column => [column.id, column])
-        );
-        const comparisonColumns = baseColumns.map(column => {
-            const referenceColumn = referenceColumnMap.get(column.id);
-            const currentUsage = Number(column?.usage);
-            const referenceUsage = Number(referenceColumn?.usage);
-            return {
-                label: column.label,
-                teamKey: column.teamKey,
-                value: Number.isFinite(currentUsage) && Number.isFinite(referenceUsage)
-                    ? currentUsage - referenceUsage
-                    : null
-            };
+        const selectedReportTable = buildUtilElectricReportMeterTable(model.selectedTable);
+        const meterSectionHtml = buildUtilElectricMeterTableHtml(selectedReportTable, `${selectedMonthLabel} 검침표`, {
+            cardClass: 'is-current',
+            startReadingLabel: `${formatMonthShort(selectedReportTable?.startMonthKey || model.selectedTable.monthKey)} \uAC80\uCE68`,
+            endReadingLabel: `${formatMonthShort(selectedReportTable?.endMonthKey || shiftMonthKey(model.selectedTable.monthKey, 1))} \uAC80\uCE68`
         });
-        const referenceUsageColumns = baseColumns.map(column => ({
-            label: column.label,
-            teamKey: column.teamKey,
-            value: referenceColumnMap.get(column.id)?.usage ?? null
-        }));
-        const detailSectionHtml = `
-            ${buildUtilElectricMeterDetailDisclosureHtml(
-                '비교결과',
-                `${selectedMonthLabel} 사용량과 ${referenceMonthLabel} 전력량을 함께 비교합니다.`,
-                buildUtilElectricMeterDetailRowsTableHtml(baseColumns, [
-                    {
-                        label: isYearCompare ? '전년 동월 전력량' : '전월 전력량',
-                        formatter: formatUtilElectricMeterUsageValue,
-                        columns: referenceUsageColumns
-                    },
-                    {
-                        label: '비교 결과',
-                        formatter: formatSignedInteger,
-                        columns: comparisonColumns
-                    }
-                ])
-            )}
-            ${buildUtilElectricBillingSummaryHtml(model)}
-        `;
-        const mergedMeterSectionHtml = `
-            ${buildUtilElectricMeterTableHtml(model.selectedTable, `${selectedMonthLabel} 검침표`, {
-                startReadingLabel: '선택월 지침',
-                endReadingLabel: '익월 지침'
-            })}
-            ${detailSectionHtml}
-        `;
+        const allocationSectionHtml = buildUtilElectricAllocationSummaryHtml(model, teamDatasetResult);
+        const teamSectionHtml = buildUtilElectricTeamSummaryHtml(model, teamDatasetResult);
+        const billingSectionHtml = buildUtilElectricBillingSummaryHtml(model);
 
         return `
             <section class="util-sheet-section">
-                <div class="util-sheet-section-head">
-                    <div>
-                        <div class="util-sheet-section-title">전기 검침표</div>
-                        <div class="util-sheet-section-sub">전기 검침표, 설비 배부 요약, 팀 요약을 전환해서 볼 수 있습니다.</div>
-                    </div>
-                    ${buildViewToggleHtml(normalizedViewKey)}
-                </div>
                 <div class="util-sheet-meter-table-stack">
-                    ${normalizedViewKey === 'allocation'
-                        ? `${buildUtilElectricAllocationSummaryHtml(model, teamDatasetResult)}${detailSectionHtml}`
-                        : normalizedViewKey === 'team'
-                            ? `${buildUtilElectricTeamSummaryHtml(model, teamDatasetResult)}${detailSectionHtml}`
-                            : mergedMeterSectionHtml}
+                    ${meterSectionHtml}
+                    ${allocationSectionHtml}
+                    ${teamSectionHtml}
+                    ${billingSectionHtml}
                 </div>
             </section>
         `;

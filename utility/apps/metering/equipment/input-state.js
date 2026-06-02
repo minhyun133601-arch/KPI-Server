@@ -265,15 +265,22 @@ function getEquipmentReadingValidationSummaryText(validationIssues) {
     : `오류 ${firstLabel}`;
 }
 
-function syncEquipmentReadingValidationStates() {
+function syncEquipmentReadingValidationStates(validationIssues = null, equipmentInputs = null) {
+  const resolvedEquipmentInputs = equipmentInputs || getEquipmentInputs();
+  const resolvedValidationIssues = Array.isArray(validationIssues)
+    ? validationIssues
+    : getCurrentEquipmentReadingValidationIssues(readEquipmentFormData(resolvedEquipmentInputs));
   const errorMap = new Map(
-    getCurrentEquipmentReadingValidationIssues().map((issue) => [issue.fieldKey, issue.message])
+    resolvedValidationIssues.map((issue) => [
+      issue.fieldKey,
+      issue.message,
+    ])
   );
 
-  getEquipmentInputs().forEach((input) => {
+  resolvedEquipmentInputs.forEach((input) => {
     const fieldKey = input.dataset.fieldKey;
     const message = errorMap.get(fieldKey) || "";
-    const card = getEquipmentFieldCard(fieldKey);
+    const card = input.closest?.(".field-card") || getEquipmentFieldCard(fieldKey);
     const isInvalid = Boolean(message);
 
     input.classList.toggle("is-invalid", isInvalid);

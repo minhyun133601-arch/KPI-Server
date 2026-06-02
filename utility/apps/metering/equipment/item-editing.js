@@ -28,8 +28,8 @@ function closeEquipmentManageMenu() {
 
 function rerenderEquipmentAfterItemEditing(currentFormData, currentEntryDayStatus) {
   persistStore();
-  renderEquipmentFieldInputs();
-  restoreEquipmentFormData(currentFormData, currentEntryDayStatus);
+  renderEquipmentFieldInputs({ deferDynamicSync: true });
+  restoreEquipmentFormData(currentFormData, currentEntryDayStatus, { deferDynamicSync: true });
   renderCalendar();
   renderSummary();
   renderTeamMode();

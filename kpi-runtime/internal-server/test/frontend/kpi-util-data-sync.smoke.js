@@ -199,7 +199,10 @@ test('util data sync fills electric gas and waste production from daily producti
       ],
     },
     electricSnapshot: {
-      teams: { TeamA: { '2026-04': { usage: 10, cost: 100 } } },
+      teams: {
+        TeamA: { '2026-04': { usage: 10, cost: 100 } },
+        team_04: { '2026-04': { usage: 15, cost: 150 } },
+      },
     },
     gasSnapshot: {
       teams: { GasTeam: { '2026-04': { usage: 20, cost: 200 } } },
@@ -214,6 +217,7 @@ test('util data sync fills electric gas and waste production from daily producti
   assert.equal(await context.__testExports.syncUtilWasteDataFromMetering({ force: true }), true);
 
   assert.equal(findDatasetMonthRow(context.__testExports.getElectricData(), 'TeamA', 2026, 4)?.production, 123);
+  assert.equal(findDatasetMonthRow(context.__testExports.getElectricData(), '관리동', 2026, 4)?.usage, 15);
   assert.equal(findDatasetMonthRow(context.__testExports.getGasData(), 'GasTeam', 2026, 4)?.production, 234);
   assert.equal(findDatasetMonthRow(context.__testExports.getWasteData(), 'WasteTeam', 2026, 4)?.production, 345);
 });
@@ -241,7 +245,7 @@ test('util data sync production keeps shared month helpers after utility tab rem
 
 test('util data sync browser adapter loads before data sync runtime', () => {
   const adapterIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.data-sync.browser-adapter.js?v=2');
-  const dataSyncIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.data-sync.js?v=206');
+  const dataSyncIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.data-sync.js?v=207');
   const productionIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.data-sync.production.js?v=7');
   const productionImportIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.production-import.js?v=10');
 

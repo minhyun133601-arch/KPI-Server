@@ -327,9 +327,9 @@ function restoreEquipmentEntryAfterFullscreenRender() {
   }
 
   const currentEntry = getCurrentEntry();
-  restoreEquipmentFormData(currentEntry || { values: {} }, getEntryDayStatus(currentEntry));
-  syncEquipmentRestIndicators();
-  syncEquipmentReadingValidationStates();
+  restoreEquipmentFormData(currentEntry || { values: {} }, getEntryDayStatus(currentEntry), {
+    deferDynamicSync: true,
+  });
   updateDirtyState();
   updateActionState();
 }
@@ -361,7 +361,7 @@ async function enterFormFullscreenMode() {
   syncEquipmentManageMenus();
   syncEquipmentOrderMenu();
   syncEquipmentFullscreenUI();
-  renderEquipmentFieldInputs();
+  renderEquipmentFieldInputs({ deferDynamicSync: true });
   restoreEquipmentEntryAfterFullscreenRender();
   renderCalendar();
   renderTeamMode();
@@ -417,7 +417,7 @@ async function exitFormFullscreenMode(options = {}) {
     }
   }
 
-  renderEquipmentFieldInputs();
+  renderEquipmentFieldInputs({ deferDynamicSync: true });
   restoreEquipmentEntryAfterFullscreenRender();
   renderCalendar();
   renderTeamMode();

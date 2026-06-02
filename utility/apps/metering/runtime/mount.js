@@ -223,6 +223,8 @@ setMeteringRuntimeMountGlobal("KpiMeteringApp", {
   unmount: (options) => unmountIntegratedMetering(options),
   manualSave: (options) => performManualSave(options),
   getElectricMonthlyTeamSnapshot: (monthValue) => buildElectricMonthlyTeamSnapshot(monthValue),
+  getElectricUtilityDatasetSnapshotForMonths: (monthValues) =>
+    buildElectricUtilityDatasetSnapshotForMonths(monthValues),
   getElectricUtilityDatasetSnapshot: () => buildElectricUtilityDatasetSnapshot(),
   getGasUtilityDatasetSnapshot: () => buildGasUtilityDatasetSnapshot(),
   getWasteUtilityDatasetSnapshot: () => buildWasteUtilityDatasetSnapshot(),

@@ -35,8 +35,8 @@ const styleEntries = [
     relativeSegments: ['work', 'work.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/metering/metering.css?v=079`,
-    manifestHref: './styles/metering/metering.css?v=079',
+    href: `${runtimeDirName}/app/styles/metering/metering.css?v=083`,
+    manifestHref: './styles/metering/metering.css?v=083',
     fileName: 'metering.css',
     relativeSegments: ['metering', 'metering.css'],
   },
@@ -122,6 +122,10 @@ test('split shell css keeps key selectors in the expected files', () => {
 
   assert.match(styleContents['metering.css'], /\.util-tabs-wrap\s*\{/);
   assert.match(styleContents['metering.css'], /\.month-panel\s*\{/);
+  assert.match(styleContents['metering.css'], /\.util-sheet-meter-table-electric\s+th\[data-correction-source="true"\]/);
+  assert.match(styleContents['metering.css'], /\.util-sheet-meter-table-electric\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*table-layout:\s*fixed;/s);
+  assert.match(styleContents['metering.css'], /\.util-sheet-meter-table-electric\s+th,\s*\.util-sheet-meter-table-electric\s+td\s*\{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;/s);
+  assert.match(styleContents['metering.css'], /\.util-sheet-meter-table-electric\s+th:first-child,\s*\.util-sheet-meter-table-electric\s+td:first-child\s*\{[^}]*position:\s*static;[^}]*min-width:\s*0;/s);
   assert.match(styleContents['metering.css'], /\.util-sheet-waste-meter-card\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);/s);
   assert.doesNotMatch(styleContents['metering.css'], /\.util-sheet-waste-meter-card\s*\{[^}]*minmax\(500px,/s);
   assert.match(styleContents['metering.css'], /\.util-report-modal\.is-overview-ratio\s+\.util-report-modal-card\s*\{[^}]*background:\s*#f3f6fb;[^}]*color:\s*#172033;/s);

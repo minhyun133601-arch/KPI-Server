@@ -16,6 +16,7 @@ const kpiHtml = await fs.readFile(
   'utf8'
 );
 function createReportSheetConfigContext() {
+  const listeners = [];
   const context = {
     console,
     Intl,
@@ -26,9 +27,13 @@ function createReportSheetConfigContext() {
     Boolean,
     Set,
     Map,
+    addEventListener(type, listener, options) {
+      listeners.push({ type, listener, options });
+    },
   };
   context.window = context;
   context.globalThis = context;
+  context.__listeners = listeners;
   vm.createContext(context);
   vm.runInContext(adapterSource, context, {
     filename: 'KPI.util.report.runtime-adapter.js',
@@ -53,10 +58,51 @@ test('report sheet config registers the shared registry and default state', () =
   assert.equal(config.UTIL_GAS_METER_FIELD_ORDER.length, 6);
   assert.equal(config.UTIL_ELECTRIC_BILLING_DOCUMENT_DIRECTORY, '\uC804\uAE30 \uCCAD\uAD6C\uC11C');
 });
+
+test('report sheet config invalidates electric report caches on electric metering store updates', () => {
+  const context = createReportSheetConfigContext();
+  const config = context.KPIUtilReportSheetConfig;
+  const updateListener = context.__listeners.find(
+    (entry) => entry.type === 'kpi:metering-store-updated'
+  );
+
+  assert.ok(updateListener, 'metering store update listener is missing');
+
+  config.UtilSheetRuntimeState.electricMeterStructureCache = { ready: true };
+  config.UtilSheetRuntimeState.electricSnapshotRowsCache = { ready: true };
+  config.UtilSheetRuntimeState.electricTargetedSnapshotCache = { ready: true };
+
+  updateListener.listener({ detail: { resourceType: 'gas' } });
+
+  assert.deepEqual(config.UtilSheetRuntimeState.electricMeterStructureCache, { ready: true });
+  assert.deepEqual(config.UtilSheetRuntimeState.electricSnapshotRowsCache, { ready: true });
+  assert.deepEqual(config.UtilSheetRuntimeState.electricTargetedSnapshotCache, { ready: true });
+
+  updateListener.listener({ detail: { resourceType: 'electric' } });
+
+  assert.equal(config.UtilSheetRuntimeState.electricMeterStructureCache, null);
+  assert.equal(config.UtilSheetRuntimeState.electricSnapshotRowsCache, null);
+  assert.equal(config.UtilSheetRuntimeState.electricTargetedSnapshotCache, null);
+});
+
+test('report sheet config exposes manual electric cache invalidation for direct callers', () => {
+  const context = createReportSheetConfigContext();
+  const config = context.KPIUtilReportSheetConfig;
+
+  config.UtilSheetRuntimeState.electricMeterStructureCache = { ready: true };
+  config.UtilSheetRuntimeState.electricSnapshotRowsCache = { ready: true };
+  config.UtilSheetRuntimeState.electricTargetedSnapshotCache = { ready: true };
+
+  assert.equal(config.invalidateUtilElectricReportRuntimeCaches(), true);
+  assert.equal(config.UtilSheetRuntimeState.electricMeterStructureCache, null);
+  assert.equal(config.UtilSheetRuntimeState.electricSnapshotRowsCache, null);
+  assert.equal(config.UtilSheetRuntimeState.electricTargetedSnapshotCache, null);
+});
+
 test('kpi html loads report sheet config before sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=060');
-  const optionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/options.js?v=053');
+  const optionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/options.js?v=056');
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(configIndex >= 0, 'report sheet config loader is missing');
   assert.ok(configIndex > adapterIndex, 'report sheet config must load after report runtime adapter');

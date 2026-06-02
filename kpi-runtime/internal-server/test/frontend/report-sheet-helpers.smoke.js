@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import test from 'node:test';
 import vm from 'node:vm';
@@ -84,7 +84,7 @@ test('report sheet helper functions are split out of sheet runtime', () => {
 test('kpi html loads report sheet helpers before sheet runtime', () => {
   const summaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=064');
   const helpersIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.helpers.js?v=341');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=065');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=067');
 
   assert.ok(summaryIndex >= 0, 'report sheet summary loader is missing');
   assert.ok(helpersIndex > summaryIndex, 'report sheet helpers must load after summary render helpers');

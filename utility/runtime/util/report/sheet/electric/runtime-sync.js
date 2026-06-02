@@ -61,6 +61,42 @@
         }
     }
 
+    function getUtilElectricMonthlyTeamSnapshot(monthValue = '') {
+        if (typeof runtimeAdapter?.getElectricMonthlyTeamSnapshot === 'function') {
+            return runtimeAdapter.getElectricMonthlyTeamSnapshot(monthValue, runtime.isUtilSheetPlainObject);
+        }
+        const getter = globalScope.KpiMeteringApp?.getElectricMonthlyTeamSnapshot;
+        if (typeof getter !== 'function') return null;
+        try {
+            const snapshot = getter(monthValue);
+            return typeof runtime.isUtilSheetPlainObject === 'function'
+                && runtime.isUtilSheetPlainObject(snapshot)
+                && runtime.isUtilSheetPlainObject(snapshot?.teams)
+                ? snapshot
+                : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function getUtilElectricUtilitySnapshotForMonths(monthValues = []) {
+        if (typeof runtimeAdapter?.getElectricUtilityDatasetSnapshotForMonths === 'function') {
+            return runtimeAdapter.getElectricUtilityDatasetSnapshotForMonths(monthValues, runtime.isUtilSheetPlainObject);
+        }
+        const getter = globalScope.KpiMeteringApp?.getElectricUtilityDatasetSnapshotForMonths;
+        if (typeof getter !== 'function') return null;
+        try {
+            const snapshot = getter(monthValues);
+            return typeof runtime.isUtilSheetPlainObject === 'function'
+                && runtime.isUtilSheetPlainObject(snapshot)
+                && runtime.isUtilSheetPlainObject(snapshot?.teams)
+                ? snapshot
+                : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
     function ensureUtilElectricReportDataSync() {
         if (UtilSheetRuntimeState.electricDataSyncedOnce) {
             return Promise.resolve({ changed: false });
@@ -95,6 +131,8 @@
         hasUtilElectricMeteringStore,
         ensureUtilElectricMeteringStore,
         getUtilElectricUtilitySnapshot,
+        getUtilElectricMonthlyTeamSnapshot,
+        getUtilElectricUtilitySnapshotForMonths,
         ensureUtilElectricReportDataSync
     });
 })(this);

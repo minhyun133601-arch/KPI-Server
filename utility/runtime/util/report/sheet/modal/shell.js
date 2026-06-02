@@ -65,7 +65,6 @@
         hasUtilElectricMeteringStore: null,
         ensureUtilElectricMeteringStore: null,
         ensureUtilElectricReportDataSync: null,
-        normalizeUtilElectricMeterViewKey: null,
         buildUtilElectricMeterComparisonModel: null,
         buildUtilElectricMeterTeamDatasetResult: null,
         buildUtilElectricMeterComparisonSectionHtml: null,
@@ -594,7 +593,6 @@
         if (!bodyEl) return false;
         const mode = String(options?.mode || 'analysis').trim();
         if (mode === 'analysis' && bodyEl.querySelector?.('[data-role="util-sheet-analysis-section"]')) return false;
-        if (mode === 'electric-meter' && bodyEl.querySelector?.('.util-sheet-meter-table-stack')) return false;
         bodyEl.innerHTML = overrideHtml;
         return true;
     }
@@ -614,14 +612,6 @@
         return true;
     }
 
-    function normalizeElectricMeterViewKey(viewKey = 'meter') {
-        if (typeof runtime.normalizeUtilElectricMeterViewKey === 'function') {
-            return runtime.normalizeUtilElectricMeterViewKey(viewKey);
-        }
-        const normalized = String(viewKey || '').trim();
-        return normalized === 'allocation' || normalized === 'team' ? normalized : 'meter';
-    }
-
     function buildMeterExtractBodyHtmlOverride(modal, sheetType = 'meter', datasetKey = 'gas', monthKey = '', compareKey = 'month') {
         const normalizedSheetType = normalizeSheetType(sheetType);
         const normalizedDatasetKey = resolveDatasetKey(normalizedSheetType, datasetKey);
@@ -634,7 +624,7 @@
         }
         const selectedMonthKey = String(monthKey || modal?.dataset?.monthKey || UtilSheetReportMonthState.meter || '').trim();
         const teamKey = String(modal?.dataset?.electricMeterTeamKey || UtilSheetMeterState?.electricTeamKey || 'combined').trim() || 'combined';
-        const viewKey = normalizeElectricMeterViewKey(modal?.dataset?.electricMeterViewKey || UtilSheetMeterState?.electricViewKey || 'meter');
+        const viewKey = 'meter';
         const model = runtime.buildUtilElectricMeterComparisonModel(selectedMonthKey, compareKey, teamKey);
         if (!model?.ready || model?.loading) return '';
         const teamDatasetResult = typeof runtime.buildUtilElectricMeterTeamDatasetResult === 'function'
@@ -648,10 +638,27 @@
         return normalizedSheetType === 'meter' && resolveDatasetKey(normalizedSheetType, datasetKey) === 'gas';
     }
 
+    function isElectricMeterSheet(sheetType = 'meter', datasetKey = 'electric') {
+        const normalizedSheetType = normalizeSheetType(sheetType);
+        return normalizedSheetType === 'meter' && resolveDatasetKey(normalizedSheetType, datasetKey) === 'electric';
+    }
+
+    function isMeterPdfPrintSheet(sheetType = 'meter', datasetKey = 'gas') {
+        return isGasMeterSheet(sheetType, datasetKey) || isElectricMeterSheet(sheetType, datasetKey);
+    }
+
     function isGasMeterModal(modal) {
         const sheetType = normalizeSheetType(modal?.dataset?.sheetType || 'meter');
         const datasetKey = modal?.dataset?.datasetKey || UtilSheetReportState[sheetType] || 'gas';
         return isGasMeterSheet(sheetType, datasetKey);
+    }
+
+    function isMeterPdfPrintModal(modal) {
+        const rawSheetType = String(modal?.dataset?.sheetType || 'meter').trim() || 'meter';
+        if (rawSheetType !== 'meter') return false;
+        const sheetType = normalizeSheetType(modal?.dataset?.sheetType || 'meter');
+        const datasetKey = modal?.dataset?.datasetKey || UtilSheetReportState[sheetType] || 'gas';
+        return isMeterPdfPrintSheet(sheetType, datasetKey);
     }
 
     function hasElectricMeteringStoreReady() {
@@ -702,14 +709,17 @@
             normalizedSheetType === 'meter' ? '.util-sheet-meter-summary-toolbar' : ''
         ].filter(Boolean).join(', ');
         Array.from(clone?.querySelectorAll?.(removableSelectors) || []).forEach(node => node?.remove?.());
-        if (options?.gasMeterPrintOnly && isGasMeterSheet(normalizedSheetType, datasetKey)) {
-            const gasPrintOnlySelectors = [
+        if (options?.meterPdfPrintOnly && isMeterPdfPrintSheet(normalizedSheetType, datasetKey)) {
+            const printOnlySelectors = [
+                isElectricMeterSheet(normalizedSheetType, datasetKey) ? '.util-sheet-report-head' : '',
                 '.util-sheet-section-head',
                 '[data-role="util-sheet-billing-preview-toggle"]'
-            ].join(', ');
-            Array.from(clone?.querySelectorAll?.(gasPrintOnlySelectors) || []).forEach(node => node?.remove?.());
-            const gasLayout = clone.querySelector?.('.util-sheet-gas-layout') || null;
-            gasLayout?.classList?.add?.('is-print-meter-only');
+            ].filter(Boolean).join(', ');
+            Array.from(clone?.querySelectorAll?.(printOnlySelectors) || []).forEach(node => node?.remove?.());
+            if (isGasMeterSheet(normalizedSheetType, datasetKey)) {
+                const gasLayout = clone.querySelector?.('.util-sheet-gas-layout') || null;
+                gasLayout?.classList?.add?.('is-print-meter-only');
+            }
         }
         Array.from(clone?.querySelectorAll?.('[id]') || []).forEach(node => node?.removeAttribute?.('id'));
         return String(clone?.outerHTML || '');
@@ -1097,8 +1107,7 @@
         return true;
     }
 
-    function openPrintableExtractHtml(html) {
-        const popup = runtimeAdapter.openWindow('', '_blank', 'width=1280,height=900');
+    function writePopupDocumentHtml(popup, html) {
         const popupDoc = popup?.document;
         if (!popupDoc || typeof popupDoc.open !== 'function' || typeof popupDoc.write !== 'function' || typeof popupDoc.close !== 'function') {
             return false;
@@ -1107,14 +1116,75 @@
         popupDoc.write(html);
         popupDoc.close();
         popup?.focus?.();
+        return true;
+    }
+
+    function buildPrintableExtractStatusHtml(datasetLabel = 'PDF') {
+        return `
+            <!doctype html>
+            <html lang="ko">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>${escapeHtml(datasetLabel)} PDF 준비 중</title>
+                <style>
+                    html, body { height: 100%; margin: 0; }
+                    body { display: grid; place-items: center; background: #ffffff; color: #0f172a; font-family: "Noto Sans KR", system-ui, sans-serif; }
+                    .status { display: grid; gap: 8px; text-align: center; font-weight: 900; }
+                    .status small { color: #64748b; font-weight: 800; }
+                </style>
+            </head>
+            <body>
+                <div class="status">
+                    <div>${escapeHtml(datasetLabel)} PDF 준비 중입니다.</div>
+                    <small>잠시 후 인쇄 창이 열립니다.</small>
+                </div>
+            </body>
+            </html>
+        `;
+    }
+
+    function openPrintableExtractPopup(datasetLabel = 'PDF') {
+        const popup = runtimeAdapter.openWindow('', '_blank', 'width=1280,height=900');
+        if (!popup) return null;
+        writePopupDocumentHtml(popup, buildPrintableExtractStatusHtml(datasetLabel));
+        return popup;
+    }
+
+    function openPrintableExtractHtml(html, options = {}) {
+        const popup = options?.popup || runtimeAdapter.openWindow('', '_blank', 'width=1280,height=900');
+        const popupDoc = popup?.document;
+        if (!popupDoc || typeof popupDoc.open !== 'function' || typeof popupDoc.write !== 'function' || typeof popupDoc.close !== 'function') {
+            return false;
+        }
+        const printDelayMs = Number.isFinite(Number(options?.printDelayMs))
+            ? Math.max(0, Number(options.printDelayMs))
+            : 250;
+        const fallbackPrintDelayMs = Number.isFinite(Number(options?.fallbackPrintDelayMs))
+            ? Math.max(printDelayMs, Number(options.fallbackPrintDelayMs))
+            : printDelayMs;
+        let printed = false;
         const printPopup = () => {
+            if (printed) return;
+            printed = true;
             if (typeof popup?.print === 'function') {
                 popup.print();
             }
         };
-        if (runtimeAdapter.setTimeout(printPopup, 250) === null) {
-            printPopup();
+        const schedulePrint = delay => {
+            if (printed) return;
+            if (runtimeAdapter.setTimeout(printPopup, delay) === null) {
+                printPopup();
+            }
+        };
+        const canWaitForLoad = typeof popup?.addEventListener === 'function';
+        if (canWaitForLoad) {
+            popup.addEventListener('load', () => {
+                schedulePrint(printDelayMs);
+            }, { once: true });
         }
+        writePopupDocumentHtml(popup, html);
+        schedulePrint(canWaitForLoad ? fallbackPrintDelayMs : printDelayMs);
         return true;
     }
 
@@ -2774,7 +2844,7 @@
         if (typeof runtime.buildUtilSheetDatasetResult !== 'function') return [];
         const normalizedDatasetKeys = normalizeMonthlyExtractDatasetKeyList(datasetKeys, MONTHLY_EXTRACT_DATASET_KEYS);
         const optionMaps = normalizedDatasetKeys.map(datasetKey => {
-            const result = runtime.buildUtilSheetDatasetResult(datasetKey, '');
+            const result = runtime.buildUtilSheetDatasetResult(datasetKey, '', 'meter');
             const options = Array.isArray(result?.monthOptions) ? result.monthOptions : [];
             return new Map(options
                 .map(option => [String(option?.value || '').trim(), String(option?.label || option?.value || '').trim()])
@@ -3033,8 +3103,8 @@
                         break-inside: avoid;
                     }
                     .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table-card.is-current {
-                        border-color: #fdba74 !important;
-                        background: #fffaf5 !important;
+                        border-color: #dbeafe !important;
+                        background: #ffffff !important;
                     }
                     .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-meter-table-head {
                         display: flex !important;
@@ -3159,6 +3229,13 @@
                         font-weight: 900 !important;
                         color: #0f172a !important;
                     }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-icon {
+                        width: 4.2mm !important;
+                        height: 4.2mm !important;
+                        border-radius: 1.2mm !important;
+                        font-size: 4.8pt !important;
+                        box-shadow: none !important;
+                    }
                     .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-actions,
                     .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-doc-btn {
                         display: none !important;
@@ -3187,6 +3264,38 @@
                         line-height: 1.08 !important;
                         vertical-align: middle !important;
                     }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-row-label,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-total-label,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-row-label,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-team {
+                        gap: 0.55mm !important;
+                        font-size: 5.1pt !important;
+                        line-height: 1.05 !important;
+                        font-weight: 900 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-row-label span,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-total-label span,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-row-label span,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-team span {
+                        font-size: inherit !important;
+                        line-height: inherit !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-row-icon {
+                        width: 3.6mm !important;
+                        height: 3.6mm !important;
+                        border-radius: 1mm !important;
+                        font-size: 4.4pt !important;
+                        box-shadow: none !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-table td.is-amount,
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-usage-table td {
+                        font-size: 5.2pt !important;
+                        line-height: 1.06 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-table td.is-note {
+                        font-size: 4.7pt !important;
+                        line-height: 1.08 !important;
+                    }
                     .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-grand-block {
                         display: grid !important;
                         gap: 1.4mm !important;
@@ -3195,6 +3304,7 @@
                     .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-summary-grand-table td {
                         padding: 1mm 1.2mm !important;
                         font-size: 6pt !important;
+                        line-height: 1.06 !important;
                     }
                     .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-production-usage {
                         display: grid !important;
@@ -3224,6 +3334,20 @@
                         box-shadow: none !important;
                         break-inside: avoid;
                     }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-guidance-head {
+                        gap: 1mm !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-guidance-icon {
+                        width: 4.4mm !important;
+                        height: 4.4mm !important;
+                        border-radius: 1mm !important;
+                        font-size: 4.8pt !important;
+                        flex: 0 0 4.4mm !important;
+                    }
+                    .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-guidance-copy {
+                        gap: 0.65mm !important;
+                        padding-left: 0 !important;
+                    }
                     .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-guidance-title { font-size: 6.2pt !important; }
                     .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-guidance-sub,
                     .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-gas-guidance-line {
@@ -3247,13 +3371,539 @@
         `;
     }
 
+    function getElectricMeterPrintExtractCss() {
+        return `
+                    @page { size: A4; margin: 0; }
+                    body.is-electric-meter-print { background: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .util-sheet-meter-extract-page.is-electric-meter-print {
+                        --util-electric-print-row-pad-y: 0.58mm;
+                        --util-electric-print-card-gap: 2mm;
+                        --util-electric-print-card-pad: 1.6mm;
+                        --util-electric-print-table-card-gap: 1mm;
+                        --util-electric-print-number-font-size: 4.35pt;
+                        --util-electric-print-number-pad-x: 0.34mm;
+                        width: 100vw;
+                        max-width: none;
+                        min-height: 0 !important;
+                        box-sizing: border-box;
+                        margin: 0 auto;
+                        padding: 0;
+                        overflow: visible !important;
+                        background: #ffffff !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-extract-head,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-report-head,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-section-head,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-report-main-controls,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-report-window-actions,
+                    .util-sheet-meter-extract-page.is-electric-meter-print [data-role="util-sheet-report-print"],
+                    .util-sheet-meter-extract-page.is-electric-meter-print [data-role="util-sheet-billing-preview-toggle"],
+                    .util-sheet-meter-extract-page.is-electric-meter-print [data-role="util-sheet-meter-electric-view-toggle"] {
+                        display: none !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-extract-body,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-report-card,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-report-body,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-section {
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        height: auto !important;
+                        min-height: 0 !important;
+                        max-height: none !important;
+                        box-sizing: border-box;
+                        overflow: visible !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-report-card,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-section {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        border: 0 !important;
+                        border-radius: 0 !important;
+                        box-shadow: none !important;
+                        background: #ffffff !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-report-body {
+                        display: block !important;
+                        padding: 0 !important;
+                        background: #ffffff !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-stack {
+                        display: grid !important;
+                        gap: var(--util-electric-print-card-gap, 2mm) !important;
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        overflow: visible !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-card {
+                        display: grid !important;
+                        gap: var(--util-electric-print-table-card-gap, 1mm) !important;
+                        padding: var(--util-electric-print-card-pad, 1.6mm) !important;
+                        border: 1px solid #dbeafe !important;
+                        border-radius: 2mm !important;
+                        background: #ffffff !important;
+                        box-shadow: none !important;
+                        overflow: visible !important;
+                        break-inside: avoid;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-card.is-current {
+                        border-color: #dbeafe !important;
+                        background: #ffffff !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-head {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: space-between !important;
+                        gap: 1mm !important;
+                        min-height: 0 !important;
+                        padding: 0 !important;
+                        border-bottom: 0 !important;
+                        background: transparent !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-title-wrap {
+                        display: flex !important;
+                        align-items: center !important;
+                        gap: 1mm !important;
+                        min-width: 0 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-badge {
+                        display: none !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-title {
+                        font-size: 8pt !important;
+                        line-height: 1.08 !important;
+                        font-weight: 900 !important;
+                        color: #0f172a !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-sub {
+                        margin-top: 0.2mm !important;
+                        font-size: 5.4pt !important;
+                        line-height: 1.05 !important;
+                        font-weight: 700 !important;
+                        color: #64748b !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-table-wrap,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-disclosure-table-stack {
+                        width: 100% !important;
+                        max-height: none !important;
+                        overflow: visible !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-table-wrap {
+                        border: 1px solid #e2e8f0 !important;
+                        border-radius: 1.5mm !important;
+                        background: #ffffff !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-table,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric {
+                        width: 100% !important;
+                        min-width: 0 !important;
+                        table-layout: fixed !important;
+                        border-collapse: collapse !important;
+                        font-size: 5.2pt !important;
+                        line-height: 1.05 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric th,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric td {
+                        position: static !important;
+                        min-width: 0 !important;
+                        padding: var(--util-electric-print-row-pad-y, 0.58mm) 0.7mm !important;
+                        border: 0 !important;
+                        border-right: 1px solid #e2e8f0 !important;
+                        border-bottom: 1px solid #e2e8f0 !important;
+                        box-shadow: none !important;
+                        color: #334155 !important;
+                        font-size: 5.2pt !important;
+                        line-height: 1.05 !important;
+                        vertical-align: middle !important;
+                        white-space: normal !important;
+                        overflow-wrap: anywhere !important;
+                        word-break: keep-all !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric th {
+                        background: #f8fafc !important;
+                        color: #475569 !important;
+                        font-weight: 900 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric th:first-child,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric td:first-child {
+                        width: 9% !important;
+                        text-align: left !important;
+                        color: #0f172a !important;
+                        background: #ffffff !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric thead th:first-child {
+                        background: #f8fafc !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric td:not(:first-child),
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric th:not(:first-child) {
+                        text-align: center !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric td:not(:first-child) {
+                        white-space: nowrap !important;
+                        overflow-wrap: normal !important;
+                        word-break: normal !important;
+                        padding-left: var(--util-electric-print-number-pad-x, 0.34mm) !important;
+                        padding-right: var(--util-electric-print-number-pad-x, 0.34mm) !important;
+                        font-size: var(--util-electric-print-number-font-size, 4.35pt) !important;
+                        line-height: 1 !important;
+                        font-variant-numeric: tabular-nums !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-row-label {
+                        display: inline-grid !important;
+                        gap: 0.14mm !important;
+                        align-items: center !important;
+                        line-height: 1 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-row-label-main,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-row-label-unit {
+                        display: block !important;
+                        white-space: nowrap !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-row-label-unit {
+                        color: #64748b !important;
+                        font-size: 0.84em !important;
+                        font-weight: 800 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric .util-head-cell {
+                        display: grid !important;
+                        gap: 0.2mm !important;
+                        min-width: 0 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric .util-head-label-wrap {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        gap: 0.35mm !important;
+                        min-width: 0 !important;
+                        flex-wrap: wrap !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric .util-head-label,
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric .util-head-sub {
+                        min-width: 0 !important;
+                        color: inherit !important;
+                        white-space: normal !important;
+                        overflow-wrap: anywhere !important;
+                        word-break: keep-all !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric .util-head-label {
+                        font-size: 4.8pt !important;
+                        line-height: 1 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric .util-head-sub {
+                        font-size: 4.3pt !important;
+                        line-height: 1 !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-team-chip {
+                        width: 1.8mm !important;
+                        height: 1.8mm !important;
+                        box-shadow: none !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric td[data-team-key] {
+                        background: color-mix(in srgb, var(--util-team-soft, #f8fafc) 62%, #ffffff) !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric th[data-team-group-start],
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric td[data-team-group-start] {
+                        border-left: 1.5px solid var(--util-team-color, #cbd5e1) !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric th[data-team-group-end],
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric td[data-team-group-end] {
+                        border-right: 1.5px solid var(--util-team-color, #cbd5e1) !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric td.is-accent {
+                        color: #0f172a !important;
+                        font-weight: 900 !important;
+                        background: #f8fafc !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric th[data-correction-source="true"],
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-meter-table-electric td[data-correction-source="true"] {
+                        color: #0f766e !important;
+                        background: #f0fdfa !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-disclosure {
+                        border: 0 !important;
+                        background: #ffffff !important;
+                        box-shadow: none !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-disclosure summary {
+                        display: none !important;
+                    }
+                    .util-sheet-meter-extract-page.is-electric-meter-print .util-sheet-disclosure-body {
+                        padding: 0 !important;
+                    }
+                    @media print {
+                        html,
+                        body.is-electric-meter-print {
+                            width: auto !important;
+                            height: auto !important;
+                            min-height: 0 !important;
+                            overflow: visible !important;
+                        }
+                        .util-sheet-meter-extract-page.is-electric-meter-print {
+                            width: 100% !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+                    }
+        `;
+    }
+
+    function buildElectricMeterPrintFitScript() {
+        const runtimeSource = function utilSheetElectricMeterPrintFit() {
+            const root = document.querySelector('[data-electric-print-fit-root="true"]');
+            if (!root) return;
+            const view = document.defaultView || null;
+
+            const BASE = {
+                rowPad: 0.58,
+                cardGap: 2,
+                cardPad: 1.6,
+                tableCardGap: 1,
+                numberFont: 4.35
+            };
+            const LIMITS = {
+                rowPadMin: 0.34,
+                rowPadMax: 3.1,
+                cardGapMin: 1,
+                cardGapMax: 8,
+                cardPadMin: 0.8,
+                cardPadMax: 3.6,
+                tableCardGapMin: 0.6,
+                tableCardGapMax: 2.4,
+                numberFontMin: 3.2,
+                numberFontMax: 4.35
+            };
+            const A4 = {
+                landscapeWidth: 297,
+                landscapeHeight: 210,
+                portraitWidth: 210,
+                portraitHeight: 297
+            };
+
+            function clamp(value, min, max) {
+                return Math.min(max, Math.max(min, value));
+            }
+
+            function toMm(value) {
+                return `${Number(value || 0).toFixed(2)}mm`;
+            }
+
+            function toPt(value) {
+                return `${Number(value || 0).toFixed(2)}pt`;
+            }
+
+            function getMmPx() {
+                const ruler = document.createElement('div');
+                ruler.style.cssText = 'position:absolute;left:-10000px;top:-10000px;width:100mm;height:1mm;visibility:hidden;pointer-events:none;';
+                document.body.appendChild(ruler);
+                const width = ruler.getBoundingClientRect().width;
+                ruler.remove();
+                return width > 0 ? width / 100 : 3.7795275591;
+            }
+
+            function setRootVars(vars) {
+                root.style.setProperty('--util-electric-print-row-pad-y', toMm(vars.rowPad));
+                root.style.setProperty('--util-electric-print-card-gap', toMm(vars.cardGap));
+                root.style.setProperty('--util-electric-print-card-pad', toMm(vars.cardPad));
+                root.style.setProperty('--util-electric-print-table-card-gap', toMm(vars.tableCardGap));
+                root.style.setProperty('--util-electric-print-number-font-size', toPt(vars.numberFont || BASE.numberFont));
+            }
+
+            function serializeVars(vars) {
+                return [
+                    `--util-electric-print-row-pad-y: ${toMm(vars.rowPad)} !important;`,
+                    `--util-electric-print-card-gap: ${toMm(vars.cardGap)} !important;`,
+                    `--util-electric-print-card-pad: ${toMm(vars.cardPad)} !important;`,
+                    `--util-electric-print-table-card-gap: ${toMm(vars.tableCardGap)} !important;`,
+                    `--util-electric-print-number-font-size: ${toPt(vars.numberFont || BASE.numberFont)} !important;`
+                ].join('');
+            }
+
+            function getContentMetrics(mmPx, pageWidthMm) {
+                const measureWidth = Number(pageWidthMm) || 0;
+                const previousWidth = root.style.width;
+                const previousMaxWidth = root.style.maxWidth;
+                if (measureWidth > 0) {
+                    root.style.width = toMm(measureWidth);
+                    root.style.maxWidth = 'none';
+                }
+                setRootVars(BASE);
+                root.dataset.electricPrintFit = 'measuring';
+                try {
+                    const body = root.querySelector('[data-electric-print-fit-body="true"]')
+                        || root.querySelector('.util-sheet-meter-extract-body')
+                        || root;
+                    const stack = root.querySelector('.util-sheet-meter-table-stack') || body;
+                    const bodyRect = body.getBoundingClientRect();
+                    const stackRect = stack.getBoundingClientRect();
+                    const contentHeightPx = Math.max(
+                        bodyRect.height || 0,
+                        stackRect.height || 0,
+                        body.scrollHeight || 0,
+                        stack.scrollHeight || 0
+                    );
+                    return {
+                        contentHeightMm: contentHeightPx > 0 ? contentHeightPx / mmPx : 0,
+                        rowCount: Math.max(1, root.querySelectorAll('.util-sheet-meter-table-electric tr').length),
+                        cardCount: Math.max(1, root.querySelectorAll('.util-sheet-meter-table-card').length)
+                    };
+                } finally {
+                    if (measureWidth > 0) {
+                        root.style.width = previousWidth;
+                        root.style.maxWidth = previousMaxWidth;
+                    }
+                }
+            }
+
+            function buildFitVars(pageHeightMm, metrics) {
+                const vars = { ...BASE };
+                const contentHeightMm = Number(metrics.contentHeightMm) || 0;
+                const remaining = pageHeightMm - contentHeightMm;
+                const rowCount = Math.max(1, Number(metrics.rowCount) || 1);
+                const cardCount = Math.max(1, Number(metrics.cardCount) || 1);
+
+                if (remaining < -1) {
+                    const overRatio = clamp(Math.abs(remaining) / Math.max(1, pageHeightMm), 0, 1);
+                    vars.rowPad = clamp(BASE.rowPad - (overRatio * 0.22), LIMITS.rowPadMin, BASE.rowPad);
+                    vars.cardGap = clamp(BASE.cardGap - (overRatio * 1.1), LIMITS.cardGapMin, BASE.cardGap);
+                    vars.cardPad = clamp(BASE.cardPad - (overRatio * 0.9), LIMITS.cardPadMin, BASE.cardPad);
+                    vars.tableCardGap = clamp(BASE.tableCardGap - (overRatio * 0.4), LIMITS.tableCardGapMin, BASE.tableCardGap);
+                    return vars;
+                }
+
+                if (remaining <= 0) return vars;
+
+                const rowSlots = Math.max(1, rowCount * 2);
+                const cardSlots = Math.max(1, cardCount * 2);
+                const gapSlots = Math.max(1, cardCount - 1);
+                const rowExtra = clamp((remaining * 0.78) / rowSlots, 0, LIMITS.rowPadMax - BASE.rowPad);
+                vars.rowPad = BASE.rowPad + rowExtra;
+
+                let unused = Math.max(0, remaining - (rowExtra * rowSlots));
+                const cardExtra = clamp((unused * 0.48) / cardSlots, 0, LIMITS.cardPadMax - BASE.cardPad);
+                vars.cardPad = BASE.cardPad + cardExtra;
+
+                unused = Math.max(0, unused - (cardExtra * cardSlots));
+                const tableGapExtra = clamp((unused * 0.2) / cardCount, 0, LIMITS.tableCardGapMax - BASE.tableCardGap);
+                vars.tableCardGap = BASE.tableCardGap + tableGapExtra;
+
+                unused = Math.max(0, unused - (tableGapExtra * cardCount));
+                const cardGapExtra = clamp(unused / gapSlots, 0, LIMITS.cardGapMax - BASE.cardGap);
+                vars.cardGap = BASE.cardGap + cardGapExtra;
+                return vars;
+            }
+
+            function hasNumberOverflow() {
+                return Array.from(root.querySelectorAll('.util-sheet-meter-table-electric td:not(:first-child)')).some(cell => {
+                    const width = cell.clientWidth || cell.getBoundingClientRect?.().width || 0;
+                    if (!width) return false;
+                    return (cell.scrollWidth || 0) > width + 0.5;
+                });
+            }
+
+            function fitNumberFont(vars, pageWidthMm) {
+                const next = { ...vars };
+                const measureWidth = Number(pageWidthMm) || 0;
+                const previousWidth = root.style.width;
+                const previousMaxWidth = root.style.maxWidth;
+                if (measureWidth > 0) {
+                    root.style.width = toMm(measureWidth);
+                    root.style.maxWidth = 'none';
+                }
+                try {
+                    for (let font = LIMITS.numberFontMax; font >= LIMITS.numberFontMin; font -= 0.15) {
+                        next.numberFont = font;
+                        setRootVars(next);
+                        if (!hasNumberOverflow()) return next;
+                    }
+                    next.numberFont = LIMITS.numberFontMin;
+                    setRootVars(next);
+                    return next;
+                } finally {
+                    if (measureWidth > 0) {
+                        root.style.width = previousWidth;
+                        root.style.maxWidth = previousMaxWidth;
+                    }
+                }
+            }
+
+            function upsertPrintStyle(landscapeVars, portraitVars) {
+                let style = document.getElementById('util-sheet-electric-print-fit-style');
+                if (!style) {
+                    style = document.createElement('style');
+                    style.id = 'util-sheet-electric-print-fit-style';
+                    document.head.appendChild(style);
+                }
+                style.textContent = `
+                    @media print and (orientation: landscape) {
+                        .util-sheet-meter-extract-page.is-electric-meter-print { ${serializeVars(landscapeVars)} }
+                    }
+                    @media print and (orientation: portrait) {
+                        .util-sheet-meter-extract-page.is-electric-meter-print { ${serializeVars(portraitVars)} }
+                    }
+                `;
+            }
+
+            const mmPx = getMmPx();
+            function fit() {
+                const landscapeMetrics = getContentMetrics(mmPx, A4.landscapeWidth);
+                const portraitMetrics = getContentMetrics(mmPx, A4.portraitWidth);
+                const landscapeVars = fitNumberFont(buildFitVars(A4.landscapeHeight, landscapeMetrics), A4.landscapeWidth);
+                const portraitVars = fitNumberFont(buildFitVars(A4.portraitHeight, portraitMetrics), A4.portraitWidth);
+                const screenVars = ((view && view.innerWidth) || 0) >= ((view && view.innerHeight) || 0)
+                    ? landscapeVars
+                    : portraitVars;
+                upsertPrintStyle(landscapeVars, portraitVars);
+                setRootVars(screenVars);
+                root.dataset.electricPrintFit = 'ready';
+            }
+
+            let fitTimer = 0;
+            function scheduleFit() {
+                if (fitTimer && view && typeof view.clearTimeout === 'function') {
+                    view.clearTimeout(fitTimer);
+                }
+                const setTimer = view && typeof view.setTimeout === 'function'
+                    ? view.setTimeout.bind(view)
+                    : setTimeout;
+                fitTimer = setTimer(() => {
+                    fitTimer = 0;
+                    if (view && typeof view.requestAnimationFrame === 'function') {
+                        view.requestAnimationFrame(fit);
+                    } else {
+                        fit();
+                    }
+                }, 60);
+            }
+
+            if (view && typeof view.addEventListener === 'function') {
+                view.addEventListener('load', scheduleFit, { once: true });
+                view.addEventListener('beforeprint', fit);
+                view.addEventListener('resize', scheduleFit);
+            }
+            scheduleFit();
+        };
+        return `<script>(${runtimeSource})();</script>`;
+    }
+
     function buildMeterExtractDocumentHtml(modal, reportCardHtml = '', options = {}) {
         const title = getTextContent(modal, '[data-role="util-sheet-report-title"]', '검침표');
         const datasetKey = resolveDatasetKey('meter', modal?.dataset?.datasetKey || UtilSheetReportState.meter || 'gas');
         const datasetLabel = getExtractDatasetLabel(datasetKey);
-        const isGasMeterPrint = options?.gasMeterPrintOnly === true && datasetKey === 'gas';
-        const bodyClass = isGasMeterPrint ? ' class="is-gas-meter-print"' : '';
-        const pageClass = isGasMeterPrint ? ' is-gas-meter-print' : '';
+        const isGasMeterPrint = options?.meterPdfPrintOnly === true && datasetKey === 'gas';
+        const isElectricMeterPrint = options?.meterPdfPrintOnly === true && datasetKey === 'electric';
+        const bodyClass = isGasMeterPrint
+            ? ' class="is-gas-meter-print"'
+            : (isElectricMeterPrint ? ' class="is-electric-meter-print"' : '');
+        const pageClass = isGasMeterPrint
+            ? ' is-gas-meter-print'
+            : (isElectricMeterPrint ? ' is-electric-meter-print' : '');
+        const extractHeadHtml = isElectricMeterPrint
+            ? ''
+            : `
+                    <header class="util-sheet-meter-extract-head">
+                        <div class="util-sheet-meter-extract-kicker">${escapeHtml(datasetLabel)} METER EXTRACT</div>
+                        <div class="util-sheet-meter-extract-title">${escapeHtml(title)}</div>
+                    </header>
+            `;
         const templateHtml = '';
         return `
             <!doctype html>
@@ -3261,7 +3911,7 @@
             <head>
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>${escapeHtml(datasetLabel)} 검침표 추출</title>
+                <title>${escapeHtml(datasetLabel)} ${isElectricMeterPrint ? '검침표 PDF 변환' : '검침표 추출'}</title>
                 ${getHeadAssetsHtml()}
                 <style>
                     html, body { min-height: 100%; height: auto !important; overflow-x: auto !important; overflow-y: auto !important; }
@@ -3301,19 +3951,18 @@
                         .util-sheet-meter-extract-page.is-gas-meter-print .util-sheet-table-wrap { overflow: visible !important; }
                     }
                     ${isGasMeterPrint ? getGasMeterPrintExtractCss() : ''}
+                    ${isElectricMeterPrint ? getElectricMeterPrintExtractCss() : ''}
                 </style>
             </head>
             <body${bodyClass}>
-                <main class="util-sheet-meter-extract-page${pageClass}">
-                    <header class="util-sheet-meter-extract-head">
-                        <div class="util-sheet-meter-extract-kicker">${escapeHtml(datasetLabel)} METER EXTRACT</div>
-                        <div class="util-sheet-meter-extract-title">${escapeHtml(title)}</div>
-                    </header>
-                    <section class="util-sheet-meter-extract-body">
+                <main class="util-sheet-meter-extract-page${pageClass}"${isElectricMeterPrint ? ' data-electric-print-fit-root="true"' : ''}>
+                    ${extractHeadHtml}
+                    <section class="util-sheet-meter-extract-body"${isElectricMeterPrint ? ' data-electric-print-fit-body="true"' : ''}>
                         ${reportCardHtml}
                         ${templateHtml}
                     </section>
                 </main>
+                ${isElectricMeterPrint ? buildElectricMeterPrintFitScript() : ''}
             </body>
             </html>
         `;
@@ -3577,7 +4226,8 @@
     function buildExtractDocumentForSheetType(modal, sheetType, datasetKey, monthKey, compareKey, options = {}) {
         const normalizedSheetType = normalizeSheetType(sheetType);
         const normalizedDatasetKey = resolveDatasetKey(normalizedSheetType, datasetKey);
-        const gasMeterPrintOnly = options?.gasMeterPrintOnly === true && isGasMeterSheet(normalizedSheetType, normalizedDatasetKey);
+        const meterPdfPrintOnly = (options?.meterPdfPrintOnly === true || options?.gasMeterPrintOnly === true) &&
+            isMeterPdfPrintSheet(normalizedSheetType, normalizedDatasetKey);
         const previousSheetType = normalizeSheetType(modal?.dataset?.sheetType);
         const rendered = renderModalForExtract(modal, normalizedSheetType, normalizedDatasetKey, monthKey, compareKey);
         if (!rendered && previousSheetType !== normalizedSheetType) return null;
@@ -3593,7 +4243,7 @@
                 ? buildAnalysisExtractBodyHtmlOverride(normalizedDatasetKey, extractPayload?.model)
                 : meterBodyHtmlOverride,
             bodyHtmlOverrideMode: normalizedSheetType === 'analysis' ? 'analysis' : 'electric-meter',
-            gasMeterPrintOnly
+            meterPdfPrintOnly
         });
         if (!reportCardHtml) return null;
         return normalizedSheetType === 'analysis'
@@ -3603,7 +4253,7 @@
             }
             : {
                 fileName: buildExtractFileName(modal),
-                html: buildMeterExtractDocumentHtml(modal, reportCardHtml, { gasMeterPrintOnly })
+                html: buildMeterExtractDocumentHtml(modal, reportCardHtml, { meterPdfPrintOnly })
             };
     }
 
@@ -4003,8 +4653,30 @@
         return success;
     }
 
-    function runUtilSheetGasMeterPrint(modal) {
+    function runUtilSheetMeterPdfPrint(modal, datasetKey = '', options = {}) {
         if (!modal) return false;
+        const normalizedDatasetKey = resolveDatasetKey(
+            'meter',
+            datasetKey || modal.dataset?.datasetKey || UtilSheetReportState.meter || 'gas'
+        );
+        if (!isMeterPdfPrintSheet('meter', normalizedDatasetKey)) return false;
+        const datasetLabel = getExtractDatasetLabel(normalizedDatasetKey);
+        const electricPopup = normalizedDatasetKey === 'electric' && !options?.popup
+            ? openPrintableExtractPopup(datasetLabel)
+            : options?.popup;
+        if (normalizedDatasetKey === 'electric' && !electricPopup) {
+            runtimeAdapter.alert(`${datasetLabel} 검침표 PDF 창을 열 수 없습니다. 브라우저 팝업 차단 설정을 확인해 주세요.`);
+            return false;
+        }
+        if (normalizedDatasetKey === 'electric' && !options?.skipElectricPrepare) {
+            const preparation = prepareElectricExtractDataIfNeeded(['electric']);
+            if (preparation) {
+                return preparation.then(() => runUtilSheetMeterPdfPrint(modal, normalizedDatasetKey, {
+                    skipElectricPrepare: true,
+                    popup: electricPopup
+                }));
+            }
+        }
         const snapshot = snapshotModalExtractState(modal);
         const monthKey = getCurrentExtractMonthKey(modal);
         const compareKey = normalizeCompareKey(snapshot.dataset?.compareKey || UtilSheetCompareState.meter || 'month');
@@ -4014,18 +4686,23 @@
             const documentResult = buildExtractDocumentForSheetType(
                 modal,
                 'meter',
-                'gas',
+                normalizedDatasetKey,
                 monthKey,
                 compareKey,
-                { gasMeterPrintOnly: true }
+                { meterPdfPrintOnly: true }
             );
             if (!documentResult?.html) {
-                runtimeAdapter.alert('가스 검침표 인쇄 화면을 만들 수 없습니다.');
+                runtimeAdapter.alert(`${datasetLabel} 검침표 PDF 변환 화면을 만들 수 없습니다.`);
                 return false;
             }
-            success = openPrintableExtractHtml(documentResult.html);
+            success = openPrintableExtractHtml(
+                documentResult.html,
+                normalizedDatasetKey === 'electric'
+                    ? { printDelayMs: 900, fallbackPrintDelayMs: 2200, popup: electricPopup }
+                    : undefined
+            );
             if (!success) {
-                runtimeAdapter.alert('가스 검침표 인쇄 창을 열 수 없습니다. 브라우저 팝업 차단 설정을 확인해 주세요.');
+                runtimeAdapter.alert(`${datasetLabel} 검침표 PDF 변환 창을 열 수 없습니다. 브라우저 팝업 차단 설정을 확인해 주세요.`);
             }
             return success;
         } finally {
@@ -4033,6 +4710,10 @@
             closeUtilSheetExtractOptions(modal);
             setMonthlyExtractOptionsVisible(modal, false);
         }
+    }
+
+    function runUtilSheetGasMeterPrint(modal) {
+        return runUtilSheetMeterPdfPrint(modal, 'gas');
     }
 
     function runUtilSheetReportExtract(modal, selectedSheetTypes = null, options = {}) {
@@ -4219,8 +4900,8 @@
                 return;
             }
             if (findClosest(target, '[data-role="util-sheet-report-print"]')) {
-                if (isGasMeterModal(modal) && modal.dataset.monthlyReportMode !== 'true') {
-                    runUtilSheetGasMeterPrint(modal);
+                if (isMeterPdfPrintModal(modal) && modal.dataset.monthlyReportMode !== 'true') {
+                    runUtilSheetMeterPdfPrint(modal);
                     return;
                 }
                 if (!openMonthlyExtractOptionsFromModal(modal)) {

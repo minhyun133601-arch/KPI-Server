@@ -23,7 +23,6 @@ function init() {
   assertMountReady();
   state.store = loadStore();
   setCurrentMode(resolveInitialMode());
-  renderEquipmentFieldInputs();
   setupPeriodControls();
   bindEvents();
   void restorePersistedBillingDocumentDirectoryHandle();
@@ -31,7 +30,7 @@ function init() {
   syncQuickEntryMenu();
   renderModeUI();
   applyMonth(getMonthValue(today()));
-  persistStore({ skipLocalFileWrite: true });
+  persistStore({ skipLocalFileWrite: true, skipSharedServerWrite: true });
 }
 
 function bindEvents() {

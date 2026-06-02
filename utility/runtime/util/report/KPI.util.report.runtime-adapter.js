@@ -48,6 +48,36 @@
         }
     }
 
+    function getElectricMonthlyTeamSnapshot(monthValue = '', isPlainObject) {
+        const getter = globalScope.KpiMeteringApp?.getElectricMonthlyTeamSnapshot;
+        if (typeof getter !== 'function') return null;
+        try {
+            const snapshot = getter(monthValue);
+            return typeof isPlainObject === 'function'
+                && isPlainObject(snapshot)
+                && isPlainObject(snapshot?.teams)
+                ? snapshot
+                : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function getElectricUtilityDatasetSnapshotForMonths(monthValues = [], isPlainObject) {
+        const getter = globalScope.KpiMeteringApp?.getElectricUtilityDatasetSnapshotForMonths;
+        if (typeof getter !== 'function') return null;
+        try {
+            const snapshot = getter(monthValues);
+            return typeof isPlainObject === 'function'
+                && isPlainObject(snapshot)
+                && isPlainObject(snapshot?.teams)
+                ? snapshot
+                : null;
+        } catch (error) {
+            return null;
+        }
+    }
+
     function getViewportSize(documentRef = null) {
         const documentElement = documentRef?.documentElement || globalScope.document?.documentElement || null;
         return {
@@ -141,6 +171,8 @@
         getDocument,
         ensureIntegratedMeteringRuntime,
         getElectricUtilityDatasetSnapshot,
+        getElectricMonthlyTeamSnapshot,
+        getElectricUtilityDatasetSnapshotForMonths,
         getViewportSize,
         getScreenSize,
         getComputedStyle,

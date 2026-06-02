@@ -327,7 +327,7 @@ test('runtime bootstrap init orchestrates store load and initial month apply', (
   assert.equal(calls.assertMountReady, 1);
   assert.equal(context.state.store.resourceType, 'electric');
   assert.deepEqual(calls.setCurrentMode, ['team']);
-  assert.equal(calls.renderEquipmentFieldInputs, 1);
+  assert.equal(calls.renderEquipmentFieldInputs, 0);
   assert.equal(calls.setupPeriodControls, 1);
   assert.equal(bindEventsStubCalls.length, 1);
   assert.equal(calls.restorePersistedBillingDocumentDirectoryHandle, 1);
@@ -335,7 +335,9 @@ test('runtime bootstrap init orchestrates store load and initial month apply', (
   assert.equal(calls.syncQuickEntryMenu, 1);
   assert.equal(calls.renderModeUI, 1);
   assert.deepEqual(calls.applyMonth, ['2026-04']);
-  assert.deepEqual(toPlainJson(calls.persistStore), [{ skipLocalFileWrite: true }]);
+  assert.deepEqual(toPlainJson(calls.persistStore), [
+    { skipLocalFileWrite: true, skipSharedServerWrite: true },
+  ]);
 });
 
 test('runtime bootstrap bindEvents wires listeners once and registers cleanup handlers', () => {

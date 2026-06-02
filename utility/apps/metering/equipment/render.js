@@ -16,10 +16,80 @@ function getEquipmentReadingAdjustmentButtonText(equipment) {
   return `보정 ${signedValue} · ${formatEquipmentReadingAdjustmentDateLabel(adjustment.startDate)}`;
 }
 
-function renderEquipmentFieldInputs() {
-  elements.fieldsGrid.innerHTML = "";
+function getVisibleEquipmentFieldItemsForRender() {
+  return state.store.equipmentItems.filter((field) => !isHiddenEquipmentFieldCard(field));
+}
+
+function getEquipmentFieldRenderSignature(visibleEquipmentItems, options = {}) {
+  const { canEditEquipment = false, canDirectReorder = false } = options;
+  return JSON.stringify({
+    resourceType: typeof getCurrentResourceType === "function" ? getCurrentResourceType() : "",
+    mode: getCurrentMode(),
+    canEditEquipment: Boolean(canEditEquipment),
+    canDirectReorder: Boolean(canDirectReorder),
+    items: visibleEquipmentItems.map((field) => [
+      field.id,
+      getEquipmentDisplayLabel(field),
+      getEquipmentIconKey(field),
+      getResourceDuplicateBadgeIconKeyForEquipment(field),
+      isAutoCalculatedEquipment(field),
+      isTotalPowerSummaryEquipment(field),
+      isReactiveSummaryEquipment(field),
+      isEquipmentUsageShareTarget(field),
+      isUsageCalculationExcludedEquipment(field),
+      canManageEquipmentDecimalDigits(field),
+    ]),
+  });
+}
+
+function getRenderedEquipmentFieldSignature() {
+  return elements.fieldsGrid.dataset?.equipmentRenderSignature || "";
+}
+
+function setRenderedEquipmentFieldSignature(signature) {
+  if (elements.fieldsGrid.dataset) {
+    elements.fieldsGrid.dataset.equipmentRenderSignature = signature;
+  }
+}
+
+function canReuseRenderedEquipmentFieldInputs(visibleEquipmentItems, renderSignature) {
+  if (!visibleEquipmentItems.length || elements.fieldsGrid.classList.contains("is-empty")) {
+    return false;
+  }
+
+  if (!renderSignature || getRenderedEquipmentFieldSignature() !== renderSignature) {
+    return false;
+  }
+
+  const cards = [...elements.fieldsGrid.querySelectorAll(".field-card[data-field-key]")];
+  return (
+    cards.length === visibleEquipmentItems.length &&
+    visibleEquipmentItems.every((field, index) => cards[index]?.dataset.fieldKey === field.id)
+  );
+}
+
+function syncEquipmentFieldRenderState(options = {}) {
+  const { deferDynamicSync = false } = options;
+
+  if (deferDynamicSync) {
+    syncSelectedEquipmentCardState();
+    renderEquipmentItemCount();
+    return;
+  }
+
+  syncEquipmentUsageLabels();
+  syncEquipmentRestIndicators();
+  syncAutoCalculatedEquipmentInputs();
+  syncEquipmentReadingValidationStates();
+  syncSelectedEquipmentCardState();
+  renderEquipmentItemCount();
+}
+
+function renderEquipmentFieldInputs(options = {}) {
+  const { reuseExisting = false, deferDynamicSync = false } = options;
   clearEquipmentFieldCardDropState();
   const canEditEquipment = supportsEquipmentEditingForCurrentResource();
+  const canDirectReorder = canEditEquipment && canDirectReorderEquipmentFields();
 
   if (
     state.openEquipmentManageKey &&
@@ -36,11 +106,15 @@ function renderEquipmentFieldInputs() {
     }
   }
 
-  const visibleEquipmentItems = state.store.equipmentItems.filter(
-    (field) => !isHiddenEquipmentFieldCard(field)
-  );
+  const visibleEquipmentItems = getVisibleEquipmentFieldItemsForRender();
+  const renderSignature = getEquipmentFieldRenderSignature(visibleEquipmentItems, {
+    canEditEquipment,
+    canDirectReorder,
+  });
 
   if (!visibleEquipmentItems.length) {
+    setRenderedEquipmentFieldSignature("");
+    elements.fieldsGrid.innerHTML = "";
     state.openEquipmentOrderMenu = false;
     clearEquipmentFieldCardDragState();
     elements.fieldsGrid.classList.add("is-empty");
@@ -55,17 +129,25 @@ function renderEquipmentFieldInputs() {
     `;
     elements.fieldsGrid.appendChild(emptyState);
     renderEquipmentItemCount();
-    return;
+    return { reused: false, empty: true };
   }
 
   elements.fieldsGrid.classList.remove("is-empty");
+
+  if (reuseExisting && canReuseRenderedEquipmentFieldInputs(visibleEquipmentItems, renderSignature)) {
+    renderEquipmentOrderHead();
+    renderEquipmentOrderList();
+    syncEquipmentOrderMenu();
+    syncEquipmentFieldRenderState({ deferDynamicSync });
+    return { reused: true, empty: false };
+  }
+
+  elements.fieldsGrid.innerHTML = "";
   const fragment = document.createDocumentFragment();
-  const overallUsage = getCurrentOverallMonthlyUsage();
-  const canDirectReorder = canEditEquipment && canDirectReorderEquipmentFields();
 
   visibleEquipmentItems.forEach((field) => {
     const isAutoCalculated = isAutoCalculatedEquipment(field);
-    const usageShareText = getEquipmentUsageShareText(field.id, overallUsage);
+    const displayLabel = getEquipmentDisplayLabel(field);
     const wrapper = document.createElement("div");
     wrapper.className = "field-card";
     wrapper.dataset.fieldKey = field.id;
@@ -90,7 +172,7 @@ function renderEquipmentFieldInputs() {
     title.className = "field-title";
     title.htmlFor = `${field.id}_input`;
     title.appendChild(
-      createIconLabel(getEquipmentDisplayLabel(field), getEquipmentIconKey(field), {
+      createIconLabel(displayLabel, getEquipmentIconKey(field), {
         containerClass: "field-title-content",
         textClass: "field-title-copy",
         iconClass: "category-icon field-category-icon",
@@ -128,8 +210,8 @@ function renderEquipmentFieldInputs() {
       manageButton.className = "field-manage-toggle";
       manageButton.dataset.manageToggleKey = field.id;
       manageButton.setAttribute("aria-expanded", String(state.openEquipmentManageKey === field.id));
-      manageButton.setAttribute("aria-label", `${getEquipmentDisplayLabel(field)} 관리`);
-      manageButton.title = `${getEquipmentDisplayLabel(field)} 관리`;
+      manageButton.setAttribute("aria-label", `${displayLabel} 관리`);
+      manageButton.title = `${displayLabel} 관리`;
       manageButton.appendChild(createCategoryIcon("manage", "field-manage-icon"));
 
       const manageMenu = document.createElement("div");
@@ -178,15 +260,13 @@ function renderEquipmentFieldInputs() {
       const share = document.createElement("span");
       share.className = "field-card-share";
       share.dataset.fieldShareKey = field.id;
-      share.textContent = usageShareText;
-      share.classList.toggle("is-hidden", !usageShareText);
+      share.classList.add("is-hidden");
       meta.appendChild(share);
     }
     const charge = document.createElement("span");
     charge.className = "field-card-share";
     charge.dataset.fieldChargeKey = field.id;
-    charge.textContent = getEquipmentUsageChargeText(field.id);
-    charge.classList.toggle("is-hidden", !charge.textContent);
+    charge.classList.add("is-hidden");
     meta.appendChild(charge);
     if (!isAutoCalculated) {
       const restChip = document.createElement("span");
@@ -207,16 +287,13 @@ function renderEquipmentFieldInputs() {
   });
 
   elements.fieldsGrid.appendChild(fragment);
+  setRenderedEquipmentFieldSignature(renderSignature);
   applyEquipmentEntryLockState();
   renderEquipmentOrderHead();
   renderEquipmentOrderList();
   syncEquipmentOrderMenu();
-  syncEquipmentUsageLabels();
-  syncEquipmentRestIndicators();
-  syncAutoCalculatedEquipmentInputs();
-  syncEquipmentReadingValidationStates();
-  syncSelectedEquipmentCardState();
-  renderEquipmentItemCount();
+  syncEquipmentFieldRenderState({ deferDynamicSync });
+  return { reused: false, empty: false };
 }
 
 function renderEquipmentOrderHead() {
@@ -293,7 +370,19 @@ function syncSelectedEquipmentCardState() {
 }
 
 function syncEquipmentUsageLabels() {
-  const overallUsage = getCurrentOverallMonthlyUsage();
+  const isGasResource = isGasResourceType();
+  const canShowUsageCharges =
+    !isGasResource && isBillingSettlementCompleted(state.currentMonth);
+  let overallUsage = null;
+  let didResolveOverallUsage = false;
+  const resolveOverallUsage = () => {
+    if (!didResolveOverallUsage) {
+      overallUsage = getCurrentOverallMonthlyUsage();
+      didResolveOverallUsage = true;
+    }
+
+    return overallUsage;
+  };
 
   elements.fieldsGrid.querySelectorAll(".field-card").forEach((card) => {
     const fieldKey = card.dataset.fieldKey || "";
@@ -319,7 +408,7 @@ function syncEquipmentUsageLabels() {
         meta.appendChild(share);
       }
 
-      const usageShareText = getEquipmentUsageShareText(fieldKey, overallUsage);
+      const usageShareText = getEquipmentUsageShareText(fieldKey, resolveOverallUsage());
       share.textContent = usageShareText;
       share.classList.toggle("is-hidden", !usageShareText);
     }
@@ -332,15 +421,17 @@ function syncEquipmentUsageLabels() {
       meta.appendChild(charge);
     }
 
-    const usageChargeText = getEquipmentUsageChargeText(fieldKey);
+    const usageChargeText = canShowUsageCharges ? getEquipmentUsageChargeText(fieldKey) : "";
     charge.textContent = usageChargeText;
     charge.classList.toggle("is-hidden", !usageChargeText);
 
     meta.querySelector(`[data-field-previous-key="${fieldKey}"]`)?.remove();
 
     let correction = meta.querySelector(`[data-field-correction-key="${fieldKey}"]`);
-    const correctionText = getGasMonthlyBoundaryOverrideBadgeText(fieldKey);
-    const correctionDetailText = getGasMonthlyBoundaryOverrideDetailText(fieldKey);
+    const correctionText = isGasResource ? getGasMonthlyBoundaryOverrideBadgeText(fieldKey) : "";
+    const correctionDetailText = correctionText
+      ? getGasMonthlyBoundaryOverrideDetailText(fieldKey)
+      : "";
     if (!correctionText) {
       correction?.remove();
     } else {

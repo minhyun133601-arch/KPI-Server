@@ -35,6 +35,7 @@ function createCorrectionContext() {
         getDailyMissingInputs: getUtilityEntryExperimentDailyMissingInputs,
         syncDailyValidation: syncUtilityEntryExperimentDailyValidation,
         blockDailySaveForValidation: blockUtilityEntryExperimentDailySaveForValidation,
+        applyDailyInputsToStore: applyUtilityEntryExperimentDailyInputsToStore,
         rejectLowerDailyInput: rejectUtilityEntryExperimentLowerDailyInput,
         getDailyCurrentInputs: getUtilityEntryExperimentDailyCurrentInputs,
         focusNextDailyCurrentInput: focusNextUtilityEntryExperimentDailyCurrentInput,
@@ -44,6 +45,8 @@ function createCorrectionContext() {
         renderCompletedDateCalendar: renderUtilityEntryExperimentCompletedDateCalendar,
         renderCorrectionSummary: renderUtilityEntryExperimentCorrectionSummary,
         buildToolbar: buildUtilityEntryExperimentToolbar,
+        getMonthlyMeterLinkState: getUtilityEntryExperimentMonthlyMeterLinkState,
+        getMonthlyMeterLinkStates: getUtilityEntryExperimentMonthlyMeterLinkStates,
         updateConditionalRows: updateUtilityEntryExperimentConditionalRows,
         constants: {
             liquidFieldId: UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID,
@@ -323,15 +326,31 @@ function createDailyGroupRow(options = {}) {
 function createDailyCurrentHost(inputs, options = {}) {
   const stateNodes = options.stateNodes || [];
   const statusNodes = options.statusNodes || [];
+  const dailyDateInput = {
+    value: options.dailyDate || '2026-05-29',
+    max: '',
+  };
   return {
     dataset: {},
     querySelector(selector) {
+      if (selector === '.utility-entry-experiment-view.is-daily input[data-role="utility-entry-experiment-daily-date"]') {
+        return dailyDateInput;
+      }
       if (selector === '.utility-entry-experiment-view.is-daily') {
         return {
+          querySelector(innerSelector) {
+            if (innerSelector === '[data-role="utility-entry-experiment-daily-date"]') {
+              return dailyDateInput;
+            }
+            return null;
+          },
           querySelectorAll() {
             return inputs;
           },
         };
+      }
+      if (selector === '[data-role="utility-entry-experiment-daily-date"]') {
+        return dailyDateInput;
       }
       return null;
     },
@@ -409,7 +428,7 @@ test('utility entry corrected readings include shared compressor allocation and 
       monthValue,
       options
     ),
-    150
+    185
   );
   assert.equal(
     api.calculateElectricGroupSharedReading(
@@ -435,7 +454,7 @@ test('utility entry corrected readings include shared compressor allocation and 
       'electric',
       options
     ),
-    205
+    240
   );
   assert.equal(
     api.calculateElectricGroupSharedReading(
@@ -449,6 +468,37 @@ test('utility entry corrected readings include shared compressor allocation and 
       options
     ),
     null
+  );
+});
+
+test('utility entry liquid correction reading uses electric usage factors', () => {
+  const api = createCorrectionContext();
+  const ids = api.constants;
+  const dataset = {
+    equipmentItems: [
+      { id: ids.liquidFieldId, factor: '2' },
+      { id: ids.liquidCompressorId, factor: '3' },
+      { id: ids.compressorFieldId, factor: '4' },
+    ],
+    equipmentEntries: {},
+  };
+  const values = {
+    [ids.liquidFieldId]: '230',
+    [ids.liquidCompressorId]: '10',
+    [ids.compressorFieldId]: '5',
+  };
+
+  assert.equal(
+    api.calculateEquipmentSummaryReading(
+      dataset,
+      ids.liquidFieldId,
+      '2026-04-03',
+      values,
+      'electric',
+      '2026-04',
+      { beforeCorrection: false }
+    ),
+    220
   );
 });
 
@@ -484,7 +534,7 @@ test('utility entry corrected view applies liquid correction to visible source r
       '2026-04',
       options
     ),
-    150
+    185
   );
   assert.equal(
     api.calculateEquipmentSummaryReading(
@@ -496,11 +546,11 @@ test('utility entry corrected view applies liquid correction to visible source r
       '2026-04',
       options
     ),
-    150
+    185
   );
   assert.equal(
     api.calculateDailyRowUsage(dataset, ids.liquidFieldId, resolveUsage, '2026-04', options),
-    16
+    27
   );
 });
 
@@ -549,7 +599,7 @@ test('utility entry other usage uses the total-power window and waits for missin
     api.calculateEquipmentPeriodUsage(dataset, ids.otherFieldId, '2026-05-29', 'electric', {
       beforeCorrection: false,
     }),
-    5384
+    5380
   );
 
   const missingCompressorDataset = {
@@ -940,7 +990,7 @@ test('utility entry before-correction view realigns group labels after hiding al
   assert.equal(groupCell.attrs.get('rowspan'), '2');
 });
 
-test('utility entry correction view stays before-correction until source readings are filled', () => {
+test('utility entry correction view stays on raw daily readings after source readings are filled', () => {
   const api = createCorrectionContext();
   const ids = api.constants;
   const host = { dataset: { utilityEntryExperimentCorrectionMode: 'corrected' } };
@@ -972,8 +1022,8 @@ test('utility entry correction view stays before-correction until source reading
     monthValue: '2026-04',
   });
 
-  assert.equal(readyOptions.correctionMode, 'corrected');
-  assert.equal(readyOptions.beforeCorrection, false);
+  assert.equal(readyOptions.correctionMode, 'before');
+  assert.equal(readyOptions.beforeCorrection, true);
   assert.equal(readyOptions.correctionReadiness.ready, true);
   assert.equal(readyOptions.correctionReadiness.requiredIds.includes(ids.liquid2FieldId), false);
 
@@ -987,12 +1037,12 @@ test('utility entry correction view stays before-correction until source reading
     monthValue: '2026-04',
   });
 
-  assert.equal(missingLiquid2Options.correctionMode, 'corrected');
-  assert.equal(missingLiquid2Options.beforeCorrection, false);
+  assert.equal(missingLiquid2Options.correctionMode, 'before');
+  assert.equal(missingLiquid2Options.beforeCorrection, true);
   assert.equal(missingLiquid2Options.correctionReadiness.ready, true);
 });
 
-test('utility entry correction before February source set does not require liquid compressor', () => {
+test('utility entry correction before February source set keeps raw daily readings', () => {
   const api = createCorrectionContext();
   const ids = api.constants;
   const host = { dataset: { utilityEntryExperimentCorrectionMode: 'corrected' } };
@@ -1008,13 +1058,14 @@ test('utility entry correction before February source set does not require liqui
     monthValue: '2026-03',
   });
 
-  assert.equal(options.correctionMode, 'corrected');
+  assert.equal(options.correctionMode, 'before');
+  assert.equal(options.beforeCorrection, true);
   assert.equal(options.correctionReadiness.ready, true);
   assert.equal(options.correctionReadiness.requiredIds.includes(ids.liquidCompressorId), false);
   assert.equal(options.correctionReadiness.requiredIds.includes(ids.liquid2FieldId), false);
 });
 
-test('utility entry correction toggles disable corrected mode until sources are ready', () => {
+test('utility entry correction mode stays on raw daily readings without a corrected toggle', () => {
   const api = createCorrectionContext();
   const beforeButton = createCorrectionModeButton('before', '보정전');
   const correctedButton = createCorrectionModeButton('corrected', '보정후');
@@ -1031,14 +1082,16 @@ test('utility entry correction toggles disable corrected mode until sources are 
   });
 
   assert.equal(host.dataset.utilityEntryExperimentCorrectionMode, 'before');
+  assert.equal(host.hidden, undefined);
+  assert.equal(host.querySelectorAll('[data-role="utility-entry-experiment-correction-modes"]')[0]?.hidden, true);
   assert.equal(beforeButton.disabled, false);
   assert.equal(beforeButton.classList.contains('is-active'), true);
   assert.equal(correctedButton.disabled, true);
+  assert.equal(correctedButton.hidden, true);
   assert.equal(correctedButton.getAttribute('aria-disabled'), 'true');
   assert.equal(corrected2Button.hidden, true);
   assert.equal(corrected2Button.disabled, true);
   assert.equal(corrected2Button.getAttribute('aria-disabled'), 'true');
-  assert.match(correctedButton.getAttribute('title'), /액상 1/);
 
   host.dataset.utilityEntryExperimentCorrectionMode = 'corrected2';
   api.updateBeforeCorrectionToggle(host, '2026-04-01', {
@@ -1048,10 +1101,11 @@ test('utility entry correction toggles disable corrected mode until sources are 
     missingLabels: [],
   });
 
-  assert.equal(host.dataset.utilityEntryExperimentCorrectionMode, 'corrected');
-  assert.equal(correctedButton.disabled, false);
-  assert.equal(correctedButton.getAttribute('aria-disabled'), 'false');
-  assert.equal(correctedButton.classList.contains('is-active'), true);
+  assert.equal(host.dataset.utilityEntryExperimentCorrectionMode, 'before');
+  assert.equal(correctedButton.hidden, true);
+  assert.equal(correctedButton.disabled, true);
+  assert.equal(correctedButton.getAttribute('aria-disabled'), 'true');
+  assert.equal(correctedButton.classList.contains('is-active'), false);
   assert.equal(corrected2Button.hidden, true);
   assert.equal(corrected2Button.disabled, true);
   assert.equal(corrected2Button.classList.contains('is-active'), false);
@@ -1065,12 +1119,11 @@ test('utility entry toolbar shows document-style correction criteria control nea
     rulesId: 'utility-rules-daily',
     monthOptions,
   });
-  const completeIndex = dailyHtml.indexOf('data-role="utility-entry-experiment-complete"');
   const ruleIndex = dailyHtml.indexOf('utility-entry-experiment-rule-card');
   const quickIndex = dailyHtml.indexOf('data-role="utility-entry-experiment-quick-entry"');
 
-  assert.ok(completeIndex >= 0, 'daily toolbar should include the completion checkbox');
-  assert.ok(ruleIndex > completeIndex, 'correction criteria should be placed after completion');
+  assert.doesNotMatch(dailyHtml, /data-role="utility-entry-experiment-complete"/);
+  assert.doesNotMatch(dailyHtml, /utility-entry-experiment-check/);
   assert.ok(quickIndex > ruleIndex, 'quick input should remain after the correction criteria control');
   assert.match(dailyHtml, /보정기준/);
   assert.match(dailyHtml, /fa-file-lines/);
@@ -1088,6 +1141,101 @@ test('utility entry toolbar shows document-style correction criteria control nea
   assert.match(monthlyHtml, /utility-entry-experiment-rule-card/);
   assert.match(monthlyHtml, /fa-file-lines/);
   assert.doesNotMatch(monthlyHtml, /원본 - 컴프 1 - 컴프 2/);
+});
+
+test('utility entry gas monthly meter link opens from raw meter readings before settlement', () => {
+  const api = createCorrectionContext();
+  const emptyState = api.getMonthlyMeterLinkState(
+    {
+      gas: {
+        equipmentEntries: {},
+        billingSettlementEntries: {},
+      },
+    },
+    'gas_yusan',
+    '2026-05',
+    'gas'
+  );
+
+  assert.equal(emptyState.ready, false);
+  assert.deepEqual(Array.from(emptyState.missingLabels), ['가스 검침값']);
+
+  const readyState = api.getMonthlyMeterLinkState(
+    {
+      gas: {
+        equipmentEntries: {
+          '2026-06-01': {
+            values: {
+              gas_field_01: '2453.06',
+            },
+          },
+        },
+        billingSettlementEntries: {},
+      },
+    },
+    'gas_yusan',
+    '2026-05',
+    'gas'
+  );
+
+  assert.equal(readyState.ready, true);
+  assert.equal(readyState.datasetKey, 'gas');
+  assert.equal(readyState.statusLabel, '검침값 입력');
+  assert.deepEqual(Array.from(readyState.missingLabels), []);
+});
+
+test('utility entry monthly meter link states reuse meter-reading scans per dataset and month', () => {
+  const api = createCorrectionContext();
+  const scanCounts = {
+    electric: 0,
+    gas: 0,
+  };
+  const createTrackedEntries = (datasetKey, entries) =>
+    new Proxy(entries, {
+      ownKeys(target) {
+        scanCounts[datasetKey] += 1;
+        return Reflect.ownKeys(target);
+      },
+      getOwnPropertyDescriptor(target, property) {
+        return Object.getOwnPropertyDescriptor(target, property);
+      },
+      get(target, property, receiver) {
+        return Reflect.get(target, property, receiver);
+      },
+    });
+  const states = api.getMonthlyMeterLinkStates(
+    {
+      electric: {
+        equipmentEntries: createTrackedEntries('electric', {
+          '2026-06-01': {
+            values: {
+              field_01: '123',
+            },
+          },
+        }),
+      },
+      gas: {
+        equipmentEntries: createTrackedEntries('gas', {
+          '2026-06-01': {
+            values: {
+              gas_field_01: '2453.06',
+            },
+          },
+        }),
+      },
+      waste: {
+        billingSettlementEntries: {},
+      },
+    },
+    '2026-05'
+  );
+
+  assert.equal(states.electric_yusan.ready, true);
+  assert.equal(states.electric_bukjeong.ready, true);
+  assert.equal(states.gas_yusan.ready, true);
+  assert.equal(states.gas_yusan_lng.ready, true);
+  assert.equal(scanCounts.electric, 1);
+  assert.equal(scanCounts.gas, 1);
 });
 
 test('utility entry correction summary includes current compressor correction rules', () => {
@@ -1116,8 +1264,9 @@ test('utility entry correction summary includes current compressor correction ru
   assert.match(body.innerHTML, /공유 컴프 = 컴프\(220v\) \+ 컴프\(380v\) \+ 컴프 1 \+ 컴프 2/);
   assert.match(body.innerHTML, /1팀 2파트 컴프레셔 = 공유 컴프 x 72%/);
   assert.match(body.innerHTML, /액상 1 보정/);
-  assert.match(body.innerHTML, /액상 1 표시값 = 액상 1 원본 - 컴프 1 - 컴프 2/);
-  assert.match(body.innerHTML, /보정후 활성 조건/);
+  assert.match(body.innerHTML, /액상 1 보정 사용량 = 액상 1 전력사용량 - 컴프 2 전력사용량/);
+  assert.match(body.innerHTML, /컴프 배분 조건/);
+  assert.doesNotMatch(body.innerHTML, /보정후/);
   assert.doesNotMatch(body.innerHTML, /액상 2/);
   assert.doesNotMatch(body.innerHTML, /액상2/);
   assert.doesNotMatch(body.innerHTML, /보정 제외/);
@@ -1438,6 +1587,37 @@ test('utility entry daily save blocks current values lower than previous reading
   assert.equal(stateNode.textContent, '이전값보다 낮은 값은 저장할 수 없습니다');
   assert.equal(validationRow.currentInput.focusCount, 1);
   assert.equal(validationRow.currentInput.selectCount, 1);
+});
+
+test('utility entry daily save marks the day complete without a completion checkbox', () => {
+  const api = createCorrectionContext();
+  const input = createDailyCurrentInput({
+    value: '123',
+    fieldId: 'field_01',
+    resourceType: 'electric',
+  });
+  const host = createDailyCurrentHost([input], {
+    dailyDate: '2026-05-29',
+  });
+  const store = {
+    resourceDatasets: {
+      electric: {
+        equipmentEntries: {},
+        teamMonthlyEntries: {},
+        billingSettlementEntries: {},
+      },
+    },
+  };
+
+  const result = api.applyDailyInputsToStore(host, store, {
+    updatedAt: '2026-06-01T00:00:00.000Z',
+  });
+  const entry = store.resourceDatasets.electric.equipmentEntries['2026-05-29'];
+
+  assert.equal(result.touchedCount, 1);
+  assert.equal(entry.values.field_01, '123');
+  assert.equal(entry.dayStatus, 'completed');
+  assert.equal(entry.completed, true);
 });
 
 test('utility entry rejects lower current input on entry completion', () => {

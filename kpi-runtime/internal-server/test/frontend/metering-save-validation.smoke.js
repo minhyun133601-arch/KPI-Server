@@ -380,6 +380,45 @@ test('updateActionState syncs the quick-entry menu without recursive state refre
   assert.deepEqual(syncCalls, [{ skipStateRefresh: true }]);
 });
 
+test('updateActionState reuses provided equipment inputs for lock and count sync', () => {
+  const context = createSaveValidationContext();
+  const input = {
+    dataset: {
+      fieldKey: 'field_1',
+    },
+    disabled: true,
+    readOnly: true,
+    placeholder: 'kept',
+  };
+  const restInputLengths = [];
+  const countInputLengths = [];
+
+  setBinding(context, 'isDirty', () => true);
+  setBinding(context, 'getEquipmentInputs', () => {
+    throw new Error('equipment inputs should be provided by the caller');
+  });
+  setBinding(context, 'renderEquipmentItemCount', (equipmentInputs = null) => {
+    countInputLengths.push(equipmentInputs?.length ?? null);
+  });
+  setBinding(context, 'syncEquipmentRestIndicators', (equipmentInputs = null) => {
+    restInputLengths.push(equipmentInputs?.length ?? null);
+  });
+  setBinding(context, 'getEquipmentInputPlaceholder', () => {
+    throw new Error('placeholder sync should be skipped');
+  });
+
+  context.updateActionState([], {
+    equipmentInputs: [input],
+    skipEquipmentPlaceholderSync: true,
+  });
+
+  assert.equal(input.disabled, false);
+  assert.equal(input.readOnly, false);
+  assert.equal(input.placeholder, 'kept');
+  assert.deepEqual(countInputLengths, [1]);
+  assert.deepEqual(restInputLengths, [1]);
+});
+
 test('saveCurrentEquipmentEntry persists entry, snapshot, and update event', () => {
   const context = createSaveValidationContext();
   let syncCalls = 0;

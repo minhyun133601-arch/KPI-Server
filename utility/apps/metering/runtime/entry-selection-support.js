@@ -148,12 +148,12 @@ function getSelectedDateDescription(mode) {
   return `선택 설비 ${selectedEquipmentIds.length}개 합산 기준입니다.`;
 }
 
-function getSelectedDateEnteredEquipmentCount() {
+function getSelectedDateEnteredEquipmentCount(equipmentInputs = getEquipmentInputs()) {
   if (getCurrentMode() !== MODES.EQUIPMENT || !state.selectedDate) {
     return 0;
   }
 
-  return getEquipmentInputs().filter((input) => {
+  return equipmentInputs.filter((input) => {
     const equipment = getEquipmentItem(input.dataset.fieldKey);
     if (!equipment || isHiddenEquipmentFieldCard(equipment)) {
       return false;
@@ -181,7 +181,7 @@ function syncSelectedDateHeaderStatus(validationIssues = getCurrentEquipmentRead
   elements.selectedDateError.classList.toggle("is-hidden", !errorText);
 }
 
-function renderEquipmentItemCount() {
+function renderEquipmentItemCount(equipmentInputs = null) {
   const count = state.store.equipmentItems.filter((item) => !isHiddenEquipmentFieldCard(item)).length;
   elements.equipmentItemCount.textContent = formatEquipmentItemCountText(count);
 
@@ -191,7 +191,9 @@ function renderEquipmentItemCount() {
 
   const showSelectedDateCount =
     getCurrentMode() === MODES.EQUIPMENT && Boolean(state.selectedDate) && count > 0;
-  const selectedDateCount = showSelectedDateCount ? getSelectedDateEnteredEquipmentCount() : 0;
+  const selectedDateCount = showSelectedDateCount
+    ? getSelectedDateEnteredEquipmentCount(equipmentInputs || getEquipmentInputs())
+    : 0;
   elements.selectedDateEquipmentCount.textContent = `입력 ${selectedDateCount}개`;
   elements.selectedDateEquipmentCount.classList.toggle("is-hidden", !showSelectedDateCount);
 }

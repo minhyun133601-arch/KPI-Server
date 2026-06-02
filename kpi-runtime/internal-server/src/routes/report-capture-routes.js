@@ -25,6 +25,30 @@ function sanitizeCaptureFileName(value, fallback, extension) {
   return fileName.toLowerCase().endsWith(safeExtension.toLowerCase()) ? fileName : `${fileName}${safeExtension}`;
 }
 
+function encodeContentDispositionFileName(value) {
+  return encodeURIComponent(String(value || '')).replace(/['()*]/g, (character) =>
+    `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+  );
+}
+
+function buildContentDispositionFallback(value) {
+  const fallback = String(value || 'report-capture')
+    .replace(/[\x00-\x1F\x7F]+/g, '_')
+    .replace(/[^\x20-\x7E]+/g, '_')
+    .replace(/[\\/"<>|:;?*]+/g, '_')
+    .replace(/\s+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return fallback || 'report-capture';
+}
+
+export function buildCaptureAttachmentContentDisposition(fileName) {
+  const safeFileName = String(fileName || 'report-capture').trim() || 'report-capture';
+  const fallback = buildContentDispositionFallback(safeFileName);
+  const encodedFileName = encodeContentDispositionFileName(safeFileName);
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodedFileName}`;
+}
+
 function readCapturePageNumber(value, fallback) {
   const parsed = Number.parseInt(String(value ?? ''), 10);
   if (!Number.isInteger(parsed) || parsed < 1) return fallback;
@@ -139,7 +163,7 @@ function sendZip(res, fileName, buffer) {
   res.writeHead(200, {
     'Content-Type': 'application/zip',
     'Content-Length': String(buffer.length),
-    'Content-Disposition': `attachment; filename="${fileName.replace(/"/g, '_')}"`,
+    'Content-Disposition': buildCaptureAttachmentContentDisposition(fileName),
     'Cache-Control': 'no-store'
   });
   res.end(buffer);
@@ -149,7 +173,7 @@ function sendPdf(res, fileName, buffer) {
   res.writeHead(200, {
     'Content-Type': 'application/pdf',
     'Content-Length': String(buffer.length),
-    'Content-Disposition': `attachment; filename="${fileName.replace(/"/g, '_')}"`,
+    'Content-Disposition': buildCaptureAttachmentContentDisposition(fileName),
     'Cache-Control': 'no-store'
   });
   res.end(buffer);

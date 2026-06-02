@@ -274,9 +274,10 @@ test('report sheet modal render registry normalizes meter modal state and rerend
     normalizeUtilElectricMeterViewKey(value) {
       return String(value || 'meter').trim() || 'meter';
     },
-    buildUtilSheetDatasetResult(datasetKey, monthKey) {
+    buildUtilSheetDatasetResult(datasetKey, monthKey, sheetType) {
       assert.equal(datasetKey, 'gas');
       assert.ok(monthKey === '2026-03' || monthKey === '2026-04');
+      assert.equal(sheetType, 'meter');
       return {
         hasData: true,
         monthOptions: [
@@ -383,9 +384,9 @@ test('report sheet modal render registry normalizes meter modal state and rerend
   assert.match(reportSheetModalRenderSource, /\['electric', 'gas'\]\.includes\(normalizedDatasetKey\)/);
   assert.equal(extractButton.hidden, false);
   assert.equal(extractButton.disabled, false);
-  assert.equal(extractButton.textContent, 'PDF 인쇄');
-  assert.equal(extractButton.attrs['aria-label'], '가스 검침표 PDF 인쇄');
-  assert.equal(extractButton.attrs.title, '가스 검침표 PDF 인쇄');
+  assert.equal(extractButton.textContent, 'PDF');
+  assert.equal(extractButton.attrs['aria-label'], 'PDF');
+  assert.equal(extractButton.attrs.title, 'PDF');
   assert.ok(!body.innerHTML.includes('summary-1'));
   assert.ok(body.innerHTML.includes('compare-block'));
   assert.ok(!body.innerHTML.includes('memo-1'));
@@ -424,6 +425,7 @@ test('report sheet modal render omits blank template from every utility sheet bo
   config.UtilSheetRuntimeState.electricDataSyncedOnce = true;
 
   const wasteMeterOptions = [];
+  const electricSummaryCalls = [];
 
   modalRender.setRuntimeAdapters({
     normalizeUtilSheetType(sheetType) {
@@ -512,9 +514,11 @@ test('report sheet modal render omits blank template from every utility sheet bo
       return { teamKey: 'combined' };
     },
     buildUtilElectricMeterSummaryItems() {
+      electricSummaryCalls.push('items');
       return [{ label: 'electric', value: '1' }];
     },
     buildUtilElectricMeterSummaryBlockHtml() {
+      electricSummaryCalls.push('block');
       return '<section data-testid="meter-main-electric">ELECTRIC_METER_MAIN</section>';
     },
     buildUtilElectricMeterComparisonSectionHtml() {
@@ -600,10 +604,15 @@ test('report sheet modal render omits blank template from every utility sheet bo
 
     assert.equal(modal.dataset.sheetType, 'meter');
     assert.ok(body.innerHTML.includes(marker), `${sheetType}:${datasetKey} must render its report body`);
+    if (datasetKey === 'gas' || datasetKey === 'electric') {
+      assert.doesNotMatch(body.innerHTML, /util-sheet-section is-hero/);
+      assert.doesNotMatch(body.innerHTML, /GAS_METER_MAIN|ELECTRIC_METER_MAIN/);
+    }
     assert.doesNotMatch(body.innerHTML, /data-role="util-sheet-report-template-section"/);
     assert.doesNotMatch(body.innerHTML, /util-sheet-blank-template-table/);
   });
 
+  assert.deepEqual(electricSummaryCalls, []);
   assert.equal('showLabels' in wasteMeterOptions[0], false);
 
   const { modal, body } = createModalHarness();
@@ -692,6 +701,82 @@ test('report sheet modal render omits blank template from no-data pre-extraction
     assert.doesNotMatch(body.innerHTML, /data-role="util-sheet-report-template-section"/);
     assert.doesNotMatch(body.innerHTML, /util-sheet-blank-template-table/);
   });
+});
+
+test('report sheet modal render loads electric metering store before no-data fallback', () => {
+  const context = createModalRenderContext();
+  const modalRender = context.KPIUtilReportSheetModalRender;
+  const config = context.KPIUtilReportSheetConfig;
+  const { modal, sub, body } = createModalHarness();
+
+  config.UtilSheetRuntimeState.electricDataSyncedOnce = true;
+  config.UtilSheetRuntimeState.electricDataSyncPromise = null;
+  modal.dataset.sheetType = 'meter';
+  modal.dataset.datasetKey = 'electric';
+  modal.dataset.monthKey = '2026-06';
+
+  let electricLoadCount = 0;
+  modalRender.setRuntimeAdapters({
+    normalizeUtilSheetType() {
+      return 'meter';
+    },
+    resolveUtilSheetReportDatasetKey(_sheetType, datasetKey) {
+      return String(datasetKey || '').trim() === 'electric' ? 'electric' : 'gas';
+    },
+    getUtilSheetPresentation() {
+      return {
+        kicker: 'METER:ELECTRIC',
+        title: 'ELECTRIC REPORT',
+      };
+    },
+    normalizeUtilSheetCompareKey() {
+      return 'month';
+    },
+    normalizeUtilGasMeterProductionKey() {
+      return 'combined';
+    },
+    normalizeUtilGasAnalysisCategoryKey() {
+      return 'yusan';
+    },
+    normalizeUtilElectricMeterTeamKey() {
+      return 'combined';
+    },
+    normalizeUtilElectricAnalysisTeamKey() {
+      return 'combined';
+    },
+    normalizeUtilWasteAnalysisSiteKey() {
+      return 'all';
+    },
+    normalizeUtilElectricMeterViewKey() {
+      return 'meter';
+    },
+    buildUtilSheetDatasetResult() {
+      return {
+        hasData: false,
+        monthOptions: [],
+        activeMonthKey: '',
+        latestMonthLabel: '',
+      };
+    },
+    hasUtilElectricMeteringStore() {
+      return false;
+    },
+    ensureUtilElectricMeteringStore() {
+      electricLoadCount += 1;
+      return Promise.resolve(false);
+    },
+    syncUtilSheetTypeButtons() {},
+    syncUtilSheetCompareButtons() {},
+    syncUtilSheetDetachedReportWindow() {},
+    syncUtilSheetReportWindowState() {},
+  });
+
+  modalRender.renderUtilSheetReportModal(modal);
+
+  assert.equal(electricLoadCount, 1);
+  assert.equal(modal.dataset.electricMeteringLoadAttempted, 'true');
+  assert.match(sub.textContent, /전기 검침 데이터를 불러오는 중/);
+  assert.match(body.innerHTML, /전기 검침표 데이터를 불러오는 중입니다/);
 });
 
 test('report sheet modal render syncs gas data before showing no-data fallback', () => {
@@ -858,10 +943,10 @@ test('kpi html loads report sheet modal render between modal shell and sheet.js'
   const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=060');
   const gasScopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=056');
   const gasRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/runtime-sync.js?v=054');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=106');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=073');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=122');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
-  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=065');
+  const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');
   assert.ok(configIndex >= 0, 'report sheet config loader is missing');

@@ -97,11 +97,20 @@ function createRuntimeEntryUiContext(options = {}) {
     setCurrentEntryDayStatus: [],
     updateDirtyState: 0,
     updateActionState: 0,
+    updateActionStateArgs: [],
     renderEquipmentFieldInputs: 0,
+    renderEquipmentFieldInputOptions: [],
+    renderEquipmentItemCount: 0,
+    renderEquipmentItemCountInputLengths: [],
     loadEquipmentEntry: [],
+    readEquipmentFormData: [],
+    calculateOtherCalendarDailyUsage: 0,
     syncEquipmentUsageLabels: 0,
     syncAutoCalculatedEquipmentInputs: 0,
+    getCurrentEquipmentReadingValidationIssues: 0,
+    resolveEquipmentValidationIssues: [],
     syncEquipmentReadingValidationStates: 0,
+    syncEquipmentReadingValidationStateIssues: [],
     syncEquipmentCardMetaVisibility: [],
   };
   const state = {
@@ -187,11 +196,21 @@ function createRuntimeEntryUiContext(options = {}) {
     updateDirtyState() {
       calls.updateDirtyState += 1;
     },
-    updateActionState() {
+    updateActionState(validationIssues = null, options = {}) {
       calls.updateActionState += 1;
+      calls.updateActionStateArgs.push({
+        validationIssues,
+        inputLength: options?.equipmentInputs?.length ?? null,
+        skipEquipmentPlaceholderSync: options?.skipEquipmentPlaceholderSync === true,
+      });
     },
-    renderEquipmentFieldInputs() {
+    renderEquipmentFieldInputs(options = {}) {
       calls.renderEquipmentFieldInputs += 1;
+      calls.renderEquipmentFieldInputOptions.push(options);
+    },
+    renderEquipmentItemCount(equipmentInputsArg = null) {
+      calls.renderEquipmentItemCount += 1;
+      calls.renderEquipmentItemCountInputLengths.push(equipmentInputsArg?.length ?? null);
     },
     getEntryDayStatus(entry) {
       return entry?.dayStatus || '';
@@ -202,8 +221,25 @@ function createRuntimeEntryUiContext(options = {}) {
     syncEquipmentUsageLabels() {
       calls.syncEquipmentUsageLabels += 1;
     },
-    syncEquipmentReadingValidationStates() {
+    readEquipmentFormData(equipmentInputsArg = null) {
+      calls.readEquipmentFormData.push(equipmentInputsArg);
+      return options.formData || { values: {} };
+    },
+    getCurrentEquipmentReadingValidationIssues(formData = null) {
+      calls.getCurrentEquipmentReadingValidationIssues += 1;
+      calls.lastReadingValidationFormData = formData;
+      return options.readingValidationIssues || [];
+    },
+    resolveEquipmentValidationIssues(readingValidationIssues = null) {
+      calls.resolveEquipmentValidationIssues.push(readingValidationIssues);
+      return options.validationIssues || readingValidationIssues || [];
+    },
+    syncEquipmentReadingValidationStates(validationIssues = null, equipmentInputsArg = null) {
       calls.syncEquipmentReadingValidationStates += 1;
+      calls.syncEquipmentReadingValidationStateIssues.push({
+        validationIssues,
+        inputLength: equipmentInputsArg?.length ?? null,
+      });
     },
     getEquipmentInputs() {
       return equipmentInputs;
@@ -215,6 +251,7 @@ function createRuntimeEntryUiContext(options = {}) {
       return Boolean(equipment?.autoCalculated);
     },
     calculateOtherCalendarDailyUsage(dateString) {
+      calls.calculateOtherCalendarDailyUsage += 1;
       return options.derivedUsageByDate?.[dateString] ?? null;
     },
     formatEquipmentInputDisplay(value) {
@@ -365,6 +402,9 @@ test('runtime entry ui loads team and equipment entries into the form state', ()
   };
   equipmentContext.context.loadEntryToForm(equipmentEntry);
   assert.equal(equipmentContext.calls.renderEquipmentFieldInputs, 1);
+  assert.deepEqual(toPlainJson(equipmentContext.calls.renderEquipmentFieldInputOptions), [
+    { reuseExisting: true, deferDynamicSync: true },
+  ]);
   assert.deepEqual(equipmentContext.calls.loadEquipmentEntry, [equipmentEntry]);
   assert.deepEqual(equipmentContext.calls.setCurrentEntryDayStatus, ['complete']);
   assert.equal(
@@ -373,28 +413,87 @@ test('runtime entry ui loads team and equipment entries into the form state', ()
   );
   assert.equal(equipmentContext.state.loadedSnapshot, 'snapshot:equipment');
   assert.equal(equipmentContext.calls.syncEquipmentUsageLabels, 1);
-  assert.equal(equipmentContext.calls.syncAutoCalculatedEquipmentInputs, 1);
+  assert.equal(equipmentContext.calls.syncAutoCalculatedEquipmentInputs, 0);
   assert.equal(equipmentContext.calls.syncEquipmentReadingValidationStates, 1);
   assert.equal(equipmentContext.calls.updateDirtyState, 1);
   assert.equal(equipmentContext.calls.updateActionState, 1);
+  assert.deepEqual(equipmentContext.calls.updateActionStateArgs, [
+    {
+      validationIssues: [],
+      inputLength: null,
+      skipEquipmentPlaceholderSync: true,
+    },
+  ]);
+});
+
+test('runtime entry ui skips monthly usage labels when field cards are reused', () => {
+  const equipmentEntry = {
+    values: { eq_01: '5' },
+    dayStatus: 'complete',
+  };
+  const equipmentContext = createRuntimeEntryUiContext({
+    currentMode: 'equipment',
+    formSnapshot: 'snapshot:equipment',
+  });
+  equipmentContext.context.syncSelectedDatePresentation = () => {};
+  equipmentContext.context.renderEquipmentFieldInputs = (options = {}) => {
+    equipmentContext.calls.renderEquipmentFieldInputs += 1;
+    equipmentContext.calls.renderEquipmentFieldInputOptions.push(options);
+    return { reused: true, empty: false };
+  };
+  const reusedInputs = [{ dataset: { fieldKey: 'eq_01' } }];
+  equipmentContext.context.loadEquipmentEntry = (entry) => {
+    equipmentContext.calls.loadEquipmentEntry.push(entry);
+    return reusedInputs;
+  };
+
+  equipmentContext.context.loadEntryToForm(equipmentEntry);
+
+  assert.equal(equipmentContext.calls.renderEquipmentFieldInputs, 1);
+  assert.deepEqual(toPlainJson(equipmentContext.calls.renderEquipmentFieldInputOptions), [
+    { reuseExisting: true, deferDynamicSync: true },
+  ]);
+  assert.deepEqual(equipmentContext.calls.loadEquipmentEntry, [equipmentEntry]);
+  assert.equal(equipmentContext.calls.syncEquipmentUsageLabels, 0);
+  assert.deepEqual(equipmentContext.calls.renderEquipmentItemCountInputLengths, []);
+  assert.deepEqual(equipmentContext.calls.readEquipmentFormData, [reusedInputs]);
+  assert.equal(equipmentContext.calls.syncEquipmentReadingValidationStates, 1);
+  assert.deepEqual(equipmentContext.calls.syncEquipmentReadingValidationStateIssues, [
+    {
+      validationIssues: [],
+      inputLength: 1,
+    },
+  ]);
+  assert.equal(equipmentContext.calls.updateDirtyState, 1);
+  assert.equal(equipmentContext.calls.updateActionState, 1);
+  assert.deepEqual(equipmentContext.calls.updateActionStateArgs, [
+    {
+      validationIssues: [],
+      inputLength: 1,
+      skipEquipmentPlaceholderSync: true,
+    },
+  ]);
 });
 
 test('runtime entry ui syncs equipment placeholders, auto-calculated values, and rest indicators', () => {
   const manualInput = createMockInput('eq_manual');
   const autoInput = createMockInput('eq_auto');
+  const secondAutoInput = createMockInput('eq_auto_second');
   const inactiveInput = createMockInput('eq_inactive');
   const manualCard = createMockCard('eq_manual');
   const autoCard = createMockCard('eq_auto');
+  const secondAutoCard = createMockCard('eq_auto_second');
   const inactiveCard = createMockCard('eq_inactive');
   const { context, calls } = createRuntimeEntryUiContext({
     selectedDate: '2026-04-19',
     equipmentItems: [
       { id: 'eq_manual', autoCalculated: false },
       { id: 'eq_auto', autoCalculated: true },
+      { id: 'eq_auto_second', autoCalculated: true },
       { id: 'eq_inactive', autoCalculated: false },
     ],
-    equipmentInputs: [manualInput, autoInput, inactiveInput],
-    equipmentCards: [manualCard, autoCard, inactiveCard],
+    equipmentInputs: [manualInput, autoInput, secondAutoInput, inactiveInput],
+    equipmentCards: [manualCard, autoCard, secondAutoCard, inactiveCard],
     derivedUsageByDate: {
       '2026-04-19': 7.5,
     },
@@ -414,6 +513,7 @@ test('runtime entry ui syncs equipment placeholders, auto-calculated values, and
     values: {
       eq_manual: '41',
       eq_auto: '99',
+      eq_auto_second: '101',
       eq_inactive: '',
     },
   });
@@ -424,14 +524,24 @@ test('runtime entry ui syncs equipment placeholders, auto-calculated values, and
   assert.equal(autoInput.value, 'fmt:7.5');
   assert.equal(autoInput.dataset.lastValue, '');
   assert.equal(autoInput.readOnly, true);
+  assert.equal(calls.calculateOtherCalendarDailyUsage, 1);
+  assert.equal(secondAutoInput.value, 'fmt:7.5');
+  assert.equal(secondAutoInput.dataset.lastValue, '');
+  assert.equal(secondAutoInput.readOnly, true);
   assert.equal(autoInput.placeholder, '자동 계산');
 
   context.syncEquipmentRestIndicators();
 
   assert.equal(manualCard.__restChip.classList.contains('is-hidden'), false);
   assert.equal(autoCard.__restChip.classList.contains('is-hidden'), true);
+  assert.equal(secondAutoCard.__restChip.classList.contains('is-hidden'), true);
   assert.equal(inactiveCard.__restChip.classList.contains('is-hidden'), false);
-  assert.deepEqual(calls.syncEquipmentCardMetaVisibility, ['eq_manual', 'eq_auto', 'eq_inactive']);
+  assert.deepEqual(calls.syncEquipmentCardMetaVisibility, [
+    'eq_manual',
+    'eq_auto',
+    'eq_auto_second',
+    'eq_inactive',
+  ]);
 });
 
 test('runtime entry ui exposes previous reading meta while keeping placeholders compact', () => {

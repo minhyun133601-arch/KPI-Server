@@ -42,6 +42,7 @@
         buildUtilSheetMonthBounds: null,
         buildUtilReportMonthlyRows: null,
         isUtilSheetSettledRow: null,
+        getUtilSheetMeteringStore: null,
         summarizeUtilSheetRows: null,
         formatUtilReportMonthLong: null,
         parseUtilMonthValue: null
@@ -80,6 +81,13 @@
         return Boolean(row && spec);
     }
 
+    function getMeteringStore(datasetKey) {
+        if (typeof runtime.getUtilSheetMeteringStore === 'function') {
+            return runtime.getUtilSheetMeteringStore(datasetKey);
+        }
+        return null;
+    }
+
     function summarizeRows(rows, spec) {
         if (typeof runtime.summarizeUtilSheetRows === 'function') {
             return runtime.summarizeUtilSheetRows(rows, spec);
@@ -111,12 +119,128 @@
         return { year, month, value: `${match[1]}-${match[2]}` };
     }
 
-    function buildUtilSheetDatasetResult(datasetKey, selectedMonthKey = '') {
+    function isPlainObject(value) {
+        return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+    }
+
+    function parseMeterReadingNumber(value) {
+        if (value === null || value === undefined || value === '') return null;
+        const parsed = Number.parseFloat(String(value).replace(/,/g, '').trim());
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function hasMeterReadingValues(entry) {
+        const values = isPlainObject(entry?.values) ? entry.values : null;
+        if (!values) return false;
+        return Object.values(values).some(value => Number.isFinite(parseMeterReadingNumber(value)));
+    }
+
+    function shiftMonthKey(monthKey = '', offset = 0) {
+        const parsed = parseMonthValue(monthKey);
+        if (!parsed || !Number.isFinite(offset)) return '';
+        const zeroBasedMonth = (parsed.year * 12) + (parsed.month - 1) + offset;
+        const year = Math.floor(zeroBasedMonth / 12);
+        const month = (zeroBasedMonth % 12) + 1;
+        if (!Number.isFinite(year) || !Number.isFinite(month)) return '';
+        return `${year}-${String(month).padStart(2, '0')}`;
+    }
+
+    function compareMonthOptionValues(left, right) {
+        const parsedLeft = parseMonthValue(left?.value || left);
+        const parsedRight = parseMonthValue(right?.value || right);
+        if (!parsedLeft && !parsedRight) return 0;
+        if (!parsedLeft) return -1;
+        if (!parsedRight) return 1;
+        if (parsedLeft.year !== parsedRight.year) return parsedLeft.year - parsedRight.year;
+        return parsedLeft.month - parsedRight.month;
+    }
+
+    function mergeUtilSheetMonthOptions(options = []) {
+        const optionMap = new Map();
+        (Array.isArray(options) ? options : []).forEach(option => {
+            const value = String(option?.value || '').trim();
+            if (!value || !parseMonthValue(value)) return;
+            const existing = optionMap.get(value) || {};
+            optionMap.set(value, {
+                value,
+                label: String(existing.label || option?.label || formatMonthLong(value)),
+                isSettledMonth: Boolean(existing.isSettledMonth || option?.isSettledMonth),
+                isMeterReadingMonth: Boolean(existing.isMeterReadingMonth || option?.isMeterReadingMonth),
+                hasMeterPeriodEnd: Boolean(existing.hasMeterPeriodEnd || option?.hasMeterPeriodEnd)
+            });
+        });
+        return Array.from(optionMap.values()).sort(compareMonthOptionValues);
+    }
+
+    function buildUtilSheetMeterMonthOptions(datasetKey = '') {
+        const normalizedDatasetKey = String(datasetKey || '').trim();
+        if (normalizedDatasetKey !== 'gas' && normalizedDatasetKey !== 'electric') return [];
+        const store = getMeteringStore(normalizedDatasetKey);
+        const entries = isPlainObject(store?.equipmentEntries) ? store.equipmentEntries : {};
+        const optionMap = new Map();
+        const markMonth = (monthKey, hasMeterPeriodEnd = false) => {
+            const value = String(monthKey || '').trim();
+            if (!value || !parseMonthValue(value)) return;
+            const existing = optionMap.get(value) || {};
+            optionMap.set(value, {
+                value,
+                label: existing.label || formatMonthLong(value),
+                isMeterReadingMonth: true,
+                hasMeterPeriodEnd: Boolean(existing.hasMeterPeriodEnd || hasMeterPeriodEnd)
+            });
+        };
+
+        Object.entries(entries).forEach(([dateString, entry]) => {
+            const normalizedDate = String(dateString || '').trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate) || !hasMeterReadingValues(entry)) return;
+            const monthKey = normalizedDate.slice(0, 7);
+            if (normalizedDate.endsWith('-01')) {
+                markMonth(shiftMonthKey(monthKey, -1), true);
+                return;
+            }
+            markMonth(monthKey, false);
+        });
+
+        return mergeUtilSheetMonthOptions(Array.from(optionMap.values()));
+    }
+
+    function resolveMeterDatasetActiveMonthKey(monthOptions = [], selectedMonthKey = '') {
+        const selected = String(selectedMonthKey || '').trim();
+        const allowedMonthSet = new Set(monthOptions.map(item => item.value));
+        const periodEndOptions = monthOptions.filter(item => item.hasMeterPeriodEnd);
+        const selectedOption = monthOptions.find(item => item.value === selected) || null;
+        if (
+            selectedOption &&
+            allowedMonthSet.has(selected) &&
+            (
+                selectedOption.hasMeterPeriodEnd ||
+                selectedOption.isSettledMonth ||
+                !periodEndOptions.length
+            )
+        ) {
+            return selected;
+        }
+        const candidates = periodEndOptions.length ? periodEndOptions : monthOptions;
+        return candidates.length ? candidates[candidates.length - 1].value : '';
+    }
+
+    function buildMeterFallbackBounds(monthOptions = []) {
+        if (!monthOptions.length) return null;
+        return {
+            from: monthOptions[0].value,
+            to: monthOptions[monthOptions.length - 1].value
+        };
+    }
+
+    function buildUtilSheetDatasetResult(datasetKey, selectedMonthKey = '', sheetType = '') {
         const spec = UTIL_SHEET_DATASET_SPECS[datasetKey];
         if (!spec) {
             return { hasData: false, monthOptions: [], activeMonthKey: '' };
         }
-        const bounds = buildMonthBounds(datasetKey);
+        const isMeterSheet = String(sheetType || '').trim() === 'meter'
+            && (datasetKey === 'gas' || datasetKey === 'electric');
+        const meterMonthOptions = isMeterSheet ? buildUtilSheetMeterMonthOptions(datasetKey) : [];
+        const bounds = buildMonthBounds(datasetKey) || buildMeterFallbackBounds(meterMonthOptions);
         if (!bounds) return { hasData: false, monthOptions: [], activeMonthKey: '' };
 
         const baseState = {
@@ -131,26 +255,32 @@
         };
         const fullResult = buildMonthlyRows(baseState);
         const fullRows = Array.isArray(fullResult?.rows) ? fullResult.rows : [];
-        const monthOptions = fullRows
+        const settledMonthOptions = fullRows
             .filter(row => isSettledRow(row, spec))
             .map(row => ({
                 value: row.monthKey,
-                label: formatMonthLong(row.monthKey)
+                label: formatMonthLong(row.monthKey),
+                isSettledMonth: true
             }));
+        const monthOptions = mergeUtilSheetMonthOptions(isMeterSheet
+            ? settledMonthOptions.concat(meterMonthOptions)
+            : settledMonthOptions);
         if (!monthOptions.length) {
             return { hasData: false, bounds, monthOptions: [], activeMonthKey: '' };
         }
 
         const allowedMonthSet = new Set(monthOptions.map(item => item.value));
-        const activeMonthKey = allowedMonthSet.has(selectedMonthKey)
-            ? selectedMonthKey
-            : monthOptions[monthOptions.length - 1].value;
+        const activeMonthKey = isMeterSheet
+            ? resolveMeterDatasetActiveMonthKey(monthOptions, selectedMonthKey)
+            : (allowedMonthSet.has(selectedMonthKey)
+                ? selectedMonthKey
+                : monthOptions[monthOptions.length - 1].value);
         const result = buildMonthlyRows({
             ...baseState,
             to: activeMonthKey
         });
         const rows = Array.isArray(result?.rows) ? result.rows : [];
-        if (!rows.length) return { hasData: false, bounds, monthOptions, activeMonthKey };
+        if (!rows.length && !isMeterSheet) return { hasData: false, bounds, monthOptions, activeMonthKey };
 
         const latestRow = rows.find(row => row.monthKey === activeMonthKey) || rows[rows.length - 1] || null;
         const latestIndex = latestRow ? rows.findIndex(row => row.monthKey === latestRow.monthKey) : -1;
@@ -196,7 +326,7 @@
             hasData: true,
             spec,
             bounds,
-            rangeLabel: result?.rangeLabel || '-',
+            rangeLabel: result?.rangeLabel || `${bounds.from || ''}~${activeMonthKey || bounds.to || ''}`,
             monthOptions,
             activeMonthKey,
             rows,
@@ -212,7 +342,7 @@
             latestCost,
             latestUnit,
             latestProduction,
-            latestMonthLabel: latestRow ? formatMonthLong(latestRow.monthKey) : '-',
+            latestMonthLabel: latestRow ? formatMonthLong(latestRow.monthKey) : formatMonthLong(activeMonthKey),
             deltaUsageVsPrevMonth: Number.isFinite(latestUsage) && Number.isFinite(prevMonthUsage) ? latestUsage - prevMonthUsage : null,
             deltaCostVsPrevMonth: Number.isFinite(latestCost) && Number.isFinite(prevMonthCost) ? latestCost - prevMonthCost : null,
             deltaProductionVsPrevMonth: Number.isFinite(latestProduction) && Number.isFinite(prevMonthProduction) ? latestProduction - prevMonthProduction : null,
@@ -225,8 +355,7 @@
     }
 
     function buildUtilSheetPreviewModel(sheetType, datasetKey, selectedMonthKey = '') {
-        const result = buildUtilSheetDatasetResult(datasetKey, selectedMonthKey);
-        void sheetType;
+        const result = buildUtilSheetDatasetResult(datasetKey, selectedMonthKey, sheetType);
         if (!result.hasData) {
             return {
                 hasData: false,

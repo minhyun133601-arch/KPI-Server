@@ -102,7 +102,6 @@ async function applyResourceType(resourceType, options = {}) {
   const { skipDirtyCheck = false } = options;
 
   if (nextResourceType === getCurrentResourceType()) {
-    renderResourceUI();
     renderModeUI();
     renderSummary();
     return;
@@ -112,7 +111,6 @@ async function applyResourceType(resourceType, options = {}) {
     !skipDirtyCheck &&
     !confirmSafeMove("검침 구분을 바꾸면 저장하지 않은 변경이 사라집니다. 계속할까요?")
   ) {
-    renderResourceUI();
     renderModeUI();
     return;
   }
@@ -145,10 +143,8 @@ async function applyResourceType(resourceType, options = {}) {
   state.activeTeamSettlementScope = getDefaultBillingSettlementScopeKey(nextResourceType);
 
   persistStore({ skipLocalFileWrite: true });
-  renderResourceUI();
   renderModeUI();
   updateCalendarHint();
-  renderEquipmentFieldInputs();
   renderCalendar();
   renderSummary();
   loadEntryToForm(getCurrentEntry());

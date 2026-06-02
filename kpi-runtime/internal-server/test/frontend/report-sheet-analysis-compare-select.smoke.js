@@ -144,7 +144,7 @@ test('kpi html loads report sheet analysis compare/select between analysis state
   const analysisStateIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/state.js?v=057');
   const compareSelectIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/compare-select.js?v=053');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=054');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=065');
+  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=067');
 
   assert.ok(analysisStateIndex >= 0, 'report sheet analysis state loader is missing');
   assert.ok(compareSelectIndex > analysisStateIndex, 'report sheet analysis compare/select must load after analysis state');

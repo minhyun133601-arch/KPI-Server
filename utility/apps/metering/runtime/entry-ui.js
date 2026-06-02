@@ -81,8 +81,11 @@ function loadEntryToForm(entry) {
   }
 
   syncSelectedDatePresentation();
-  renderEquipmentFieldInputs();
-  loadEquipmentEntry(entry);
+  const renderResult = renderEquipmentFieldInputs({
+    reuseExisting: true,
+    deferDynamicSync: true,
+  });
+  const equipmentInputs = loadEquipmentEntry(entry);
   setCurrentEntryDayStatus(getEntryDayStatus(entry));
 
   state.cleanStatusText = entry?.updatedAt
@@ -90,43 +93,81 @@ function loadEntryToForm(entry) {
     : "저장된 기록이 없습니다.";
   state.loadedSnapshot = createFormSnapshot();
 
-  syncEquipmentUsageLabels();
-  syncAutoCalculatedEquipmentInputs();
-  syncEquipmentReadingValidationStates();
-  updateDirtyState();
-  updateActionState();
+  if (!renderResult?.reused) {
+    syncEquipmentUsageLabels();
+  }
+  const formData = readEquipmentFormData(equipmentInputs);
+  const readingValidationIssues = getCurrentEquipmentReadingValidationIssues(formData);
+  const validationIssues = resolveEquipmentValidationIssues(readingValidationIssues);
+  syncEquipmentReadingValidationStates(readingValidationIssues, equipmentInputs);
+  updateDirtyState(validationIssues);
+  updateActionState(validationIssues, {
+    equipmentInputs,
+    skipEquipmentPlaceholderSync: true,
+  });
+}
+
+function getAutoCalculatedEquipmentDisplayValue(dateString = state.selectedDate) {
+  const derivedValue = dateString ? calculateOtherCalendarDailyUsage(dateString) : null;
+  return derivedValue === null ? "" : formatEquipmentInputDisplay(derivedValue);
 }
 
 function loadEquipmentEntry(entry) {
   const values = entry?.values || {};
+  let autoCalculatedDisplayValue = "";
+  let didResolveAutoCalculatedDisplayValue = false;
+  const resolveAutoCalculatedDisplayValue = () => {
+    if (!didResolveAutoCalculatedDisplayValue) {
+      autoCalculatedDisplayValue = getAutoCalculatedEquipmentDisplayValue();
+      didResolveAutoCalculatedDisplayValue = true;
+    }
 
-  getEquipmentInputs().forEach((input) => {
+    return autoCalculatedDisplayValue;
+  };
+
+  const equipmentInputs = getEquipmentInputs();
+
+  equipmentInputs.forEach((input) => {
     const fieldKey = input.dataset.fieldKey;
-    const inputValue = values[fieldKey] || "";
+    const equipment = getEquipmentItem(fieldKey);
+    if (isAutoCalculatedEquipment(equipment)) {
+      input.value = resolveAutoCalculatedDisplayValue();
+      input.dataset.lastValue = "";
+      input.readOnly = true;
+      input.placeholder = "자동 계산";
+      return;
+    }
 
-    input.value = formatEquipmentInputDisplay(inputValue);
-    input.dataset.lastValue = formatEquipmentInputDisplay(inputValue);
+    const inputValue = values[fieldKey] || "";
+    const formattedValue = formatEquipmentInputDisplay(inputValue);
+
+    input.value = formattedValue;
+    input.dataset.lastValue = formattedValue;
     input.placeholder = getEquipmentInputPlaceholder(fieldKey);
   });
 
-  syncAutoCalculatedEquipmentInputs();
+  return equipmentInputs;
 }
 
 function syncAutoCalculatedEquipmentInputs() {
+  let autoCalculatedDisplayValue = "";
+  let didResolveAutoCalculatedDisplayValue = false;
+  const resolveAutoCalculatedDisplayValue = () => {
+    if (!didResolveAutoCalculatedDisplayValue) {
+      autoCalculatedDisplayValue = getAutoCalculatedEquipmentDisplayValue();
+      didResolveAutoCalculatedDisplayValue = true;
+    }
+
+    return autoCalculatedDisplayValue;
+  };
+
   getEquipmentInputs().forEach((input) => {
     const equipment = getEquipmentItem(input.dataset.fieldKey);
     if (!isAutoCalculatedEquipment(equipment)) {
       return;
     }
 
-    const derivedValue = state.selectedDate
-      ? calculateOtherCalendarDailyUsage(state.selectedDate)
-      : null;
-
-    input.value =
-      derivedValue === null
-        ? ""
-        : formatEquipmentInputDisplay(derivedValue);
+    input.value = resolveAutoCalculatedDisplayValue();
     input.dataset.lastValue = "";
     input.readOnly = true;
     input.placeholder = "자동 계산";
@@ -202,17 +243,23 @@ function hasRecordedEquipmentValue(rawValue) {
   return normalizeEntryValue(rawValue) !== "";
 }
 
-function syncEquipmentRestIndicators() {
-  getEquipmentInputs().forEach((input) => {
+function syncEquipmentRestIndicators(equipmentInputs = getEquipmentInputs()) {
+  equipmentInputs.forEach((input) => {
     const fieldKey = input.dataset.fieldKey;
-    const card = getEquipmentFieldCard(fieldKey);
+    const card = input.closest?.(".field-card") || getEquipmentFieldCard(fieldKey);
     const restChip = card?.querySelector(`[data-field-rest-key="${fieldKey}"]`);
+
+    card?.classList.remove("is-inactive", "is-rest-equal");
+    if (!restChip) {
+      syncEquipmentCardMetaVisibility(card);
+      return;
+    }
+
     const hasRecordedValue = hasRecordedEquipmentValue(input.value);
     const inheritedInactive = getEffectiveEquipmentFieldInactive(fieldKey);
     const shouldMarkRest =
       hasSameReadingAsPrevious(fieldKey, input.value) || (!hasRecordedValue && inheritedInactive);
 
-    card?.classList.remove("is-inactive", "is-rest-equal");
     restChip?.classList.toggle("is-hidden", !shouldMarkRest);
     syncEquipmentCardMetaVisibility(card);
   });

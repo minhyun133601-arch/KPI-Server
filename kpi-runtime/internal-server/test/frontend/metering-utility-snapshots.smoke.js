@@ -92,7 +92,24 @@ function createUtilitySnapshotsContext() {
     '2026-02:team_03': 808.2,
   };
 
+  const electricEquipmentUsageByKey = {
+    '2026-04:field_01': 40,
+    '2026-04:field_10': 10,
+    '2026-04:field_11': 10,
+    '2026-04:field_12': 8,
+    '2026-04:field_13': 12,
+    '2026-04:field_14': 15,
+    '2026-04:field_custom_1777335768709_08f3az': 5,
+    '2026-04:field_15': 50,
+    '2026-04:field_16': 20,
+  };
+
+  const electricTotalUsageByMonth = {
+    '2026-04': 180,
+  };
+
   const billingNumericFields = {
+    'billing_amount:2026-04:undefined': 18000,
     'power_charge:2026-03:gas_scope_bukjeong': 550.4,
     'power_charge:2026-03:gas_scope_lpg': 330.7,
     'billing_amount:2026-03:waste_scope_buk': 700,
@@ -301,6 +318,16 @@ function createUtilitySnapshotsContext() {
         null
       );
     },
+    calculateEquipmentMonthlyUsage(equipmentId, options = {}) {
+      return {
+        value: electricEquipmentUsageByKey[`${options.monthValue}:${equipmentId}`] ?? null,
+      };
+    },
+    calculateTotalPowerMonthlyUsageWindow(monthValue) {
+      return {
+        value: electricTotalUsageByMonth[monthValue] ?? null,
+      };
+    },
     getGasOtherCostDescriptors() {
       return [];
     },
@@ -436,6 +463,45 @@ test('utility snapshots build electric monthly and dataset snapshots from detach
   assert.deepEqual(cloneJson(datasetSnapshot.teams.team_02['2026-02']), {
     usage: 70,
     cost: 707,
+  });
+});
+
+test('utility snapshots use final electric team allocation from 2026-04', () => {
+  const context = createUtilitySnapshotsContext();
+  const store = {
+    resourceType: 'electric',
+    resourceDatasets: {
+      electric: {
+        equipmentEntries: {
+          '2026-04-01': { values: { field_01: '1' } },
+        },
+        billingSettlementEntries: {
+          '2026-04': { fields: { billing_amount: 18000 } },
+        },
+        teamMonthlyEntries: {},
+        teamMonthlyAmountEntries: {},
+      },
+    },
+  };
+
+  const monthSnapshot = context.buildElectricMonthlyTeamSnapshot('2026-04', store);
+  assert.equal(monthSnapshot.teams.team_01_02.usage, 68.8);
+  assert.equal(monthSnapshot.teams.team_01_02.cost, 6880);
+  assert.equal(monthSnapshot.teams.team_02.usage, 31.2);
+  assert.equal(monthSnapshot.teams.team_02.cost, 3120);
+  assert.equal(monthSnapshot.teams.team_03.usage, 65);
+  assert.equal(monthSnapshot.teams.team_03.cost, 6500);
+  assert.equal(monthSnapshot.teams.team_04.usage, 15);
+  assert.equal(monthSnapshot.teams.team_04.cost, 1500);
+
+  const datasetSnapshot = context.buildElectricUtilityDatasetSnapshot(store);
+  assert.deepEqual(cloneJson(datasetSnapshot.teams.team_01_02['2026-04']), {
+    usage: 68.8,
+    cost: 6880,
+  });
+  assert.deepEqual(cloneJson(datasetSnapshot.teams.team_04['2026-04']), {
+    usage: 15,
+    cost: 1500,
   });
 });
 

@@ -266,8 +266,8 @@ function handleAddEquipmentItem() {
   resetEquipmentAddDraft();
   state.openEquipmentManageKey = "";
   persistStore();
-  renderEquipmentFieldInputs();
-  restoreEquipmentFormData(currentFormData, currentEntryDayStatus);
+  renderEquipmentFieldInputs({ deferDynamicSync: true });
+  restoreEquipmentFormData(currentFormData, currentEntryDayStatus, { deferDynamicSync: true });
   renderTeamMode();
   syncEquipmentAddMenu();
 
