@@ -30,6 +30,7 @@ function createCorrectionContext() {
         isCorrectionLockedDailyField: isUtilityEntryExperimentCorrectionLockedDailyField,
         syncCorrectionLockedDailyInputs: syncUtilityEntryExperimentCorrectionLockedDailyInputs,
         getQuickCandidateRows: getUtilityEntryExperimentQuickCandidateRows,
+        renderQuickCandidates: renderUtilityEntryExperimentQuickCandidates,
         applyQuickInput: applyUtilityEntryExperimentQuickInput,
         getDailyValidationIssues: getUtilityEntryExperimentDailyValidationIssues,
         getDailyMissingInputs: getUtilityEntryExperimentDailyMissingInputs,
@@ -256,6 +257,9 @@ function createDailyValidationRow(options = {}) {
   });
   const classTokens = new Set();
   const row = {
+    dataset: {
+      utilityEntryExperimentRowFieldId: options.fieldId || 'field_01',
+    },
     classList: {
       toggle(name, force) {
         if (force) {
@@ -326,6 +330,9 @@ function createDailyGroupRow(options = {}) {
 function createDailyCurrentHost(inputs, options = {}) {
   const stateNodes = options.stateNodes || [];
   const statusNodes = options.statusNodes || [];
+  const rows = options.rows || [
+    ...new Set(inputs.map(input => input.__row).filter(Boolean)),
+  ];
   const dailyDateInput = {
     value: options.dailyDate || '2026-05-29',
     max: '',
@@ -360,6 +367,9 @@ function createDailyCurrentHost(inputs, options = {}) {
       }
       if (selector === '[data-role="utility-entry-experiment-save-status"]') {
         return statusNodes;
+      }
+      if (selector.includes('[data-utility-entry-experiment-row-field-id]')) {
+        return rows;
       }
       if (selector.includes('utility-entry-experiment-input')) {
         return inputs;
@@ -1234,6 +1244,7 @@ test('utility entry monthly meter link states reuse meter-reading scans per data
   assert.equal(states.electric_bukjeong.ready, true);
   assert.equal(states.gas_yusan.ready, true);
   assert.equal(states.gas_yusan_lng.ready, true);
+  assert.equal(states.gas_yusan_lpg.ready, true);
   assert.equal(scanCounts.electric, 1);
   assert.equal(scanCounts.gas, 1);
 });
@@ -1417,7 +1428,7 @@ test('utility entry completed calendar marks done dates that have validation err
   assert.match(container.innerHTML, /오류 1건/);
 });
 
-test('utility entry quick candidates hide rows that would be lower than previous reading', () => {
+test('utility entry quick candidates still show closest rows below previous reading', () => {
   const api = createCorrectionContext();
   const firstRow = createDailyValidationRow({
     label: '보일러',
@@ -1433,10 +1444,110 @@ test('utility entry quick candidates hide rows that would be lower than previous
 
   const rows = api.getQuickCandidateRows(host, '95');
 
-  assert.equal(rows.length, 0);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].itemLabel, '보일러');
+  assert.equal(rows[0].difference, 5);
+  assert.equal(rows[0].isBelowReference, true);
 });
 
-test('utility entry quick candidates sort only previous-or-equal rows by positive difference', () => {
+test('utility entry quick candidate panel renders the nearest lower value', () => {
+  const api = createCorrectionContext();
+  const firstRow = createDailyValidationRow({
+    label: '보일러',
+    previousValue: '100',
+    fieldId: 'field_01',
+  });
+  const secondRow = createDailyValidationRow({
+    label: '관리동',
+    previousValue: '130',
+    fieldId: 'field_17',
+  });
+  const host = createDailyCurrentHost([firstRow.currentInput, secondRow.currentInput]);
+  const baseQuerySelector = host.querySelector.bind(host);
+  const baseQuerySelectorAll = host.querySelectorAll.bind(host);
+  const quickInput = { value: '95' };
+  const quickCandidateContainer = { innerHTML: '' };
+  const rows = [firstRow.row, secondRow.row];
+
+  host.querySelector = (selector) => {
+    if (selector === '[data-role="utility-entry-experiment-quick-input"]') return quickInput;
+    if (selector === '[data-role="utility-entry-experiment-quick-candidates"]') {
+      return quickCandidateContainer;
+    }
+    return baseQuerySelector(selector);
+  };
+  host.querySelectorAll = (selector) => {
+    if (selector === '.utility-entry-experiment-quick-target-row') {
+      return rows.filter(row => row.classList.contains('utility-entry-experiment-quick-target-row'));
+    }
+    return baseQuerySelectorAll(selector);
+  };
+
+  api.renderQuickCandidates(host);
+
+  assert.match(quickCandidateContainer.innerHTML, /보일러/);
+  assert.match(quickCandidateContainer.innerHTML, /이전값보다 낮음/);
+  assert.equal(firstRow.row.classList.contains('utility-entry-experiment-quick-target-row'), true);
+});
+
+test('utility entry quick candidates use each field last written value across skipped days', () => {
+  const api = createCorrectionContext();
+  const firstRow = createDailyValidationRow({
+    label: '보일러',
+    previousValue: '',
+    fieldId: 'field_01',
+  });
+  const secondRow = createDailyValidationRow({
+    label: '관리동',
+    previousValue: '',
+    fieldId: 'field_17',
+  });
+  firstRow.currentInput.dataset.utilityEntryExperimentReferenceValue = '100';
+  firstRow.currentInput.dataset.utilityEntryExperimentReferenceDate = '2026-05-29';
+  secondRow.currentInput.dataset.utilityEntryExperimentReferenceValue = '130';
+  secondRow.currentInput.dataset.utilityEntryExperimentReferenceDate = '2026-05-30';
+  const host = createDailyCurrentHost([firstRow.currentInput, secondRow.currentInput]);
+
+  const rows = api.getQuickCandidateRows(host, '132');
+
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].itemLabel, '관리동');
+  assert.equal(rows[0].referenceValue, 130);
+  assert.equal(rows[0].difference, 2);
+  assert.equal(rows[1].itemLabel, '보일러');
+  assert.equal(rows[1].referenceValue, 100);
+});
+
+test('utility entry daily populate stores per-field last written value across skipped days', () => {
+  const api = createCorrectionContext();
+  const boilerRow = createDailyValidationRow({
+    label: '보일러',
+    fieldId: 'field_01',
+  });
+  const host = createDailyCurrentHost([boilerRow.previousInput, boilerRow.currentInput], {
+    dailyDate: '2026-06-01',
+  });
+  const dataset = {
+    equipmentItems: [{ id: 'field_01', factor: '1' }],
+    equipmentEntries: {
+      '2026-05-29': {
+        values: { field_01: '100' },
+        dayStatus: 'completed',
+      },
+      '2026-05-30': {
+        values: { field_17: '130' },
+        dayStatus: 'completed',
+      },
+    },
+  };
+
+  api.populateDailyResource(host, dataset, 'electric', '2026-06-01');
+
+  assert.equal(boilerRow.currentInput.dataset.utilityEntryExperimentReferenceValue, '100');
+  assert.equal(boilerRow.currentInput.dataset.utilityEntryExperimentReferenceDate, '2026-05-29');
+});
+
+test('utility entry quick candidates sort closest previous readings first', () => {
   const api = createCorrectionContext();
   const firstRow = createDailyValidationRow({
     label: '보일러',
@@ -1461,11 +1572,39 @@ test('utility entry quick candidates sort only previous-or-equal rows by positiv
 
   const rows = api.getQuickCandidateRows(host, '132');
 
-  assert.equal(rows.length, 2);
+  assert.equal(rows.length, 3);
   assert.equal(rows[0].itemLabel, '관리동');
   assert.equal(rows[0].difference, 2);
-  assert.equal(rows[1].itemLabel, '보일러');
-  assert.equal(rows[1].difference, 32);
+  assert.equal(rows[1].itemLabel, '컴프');
+  assert.equal(rows[1].difference, 19);
+  assert.equal(rows[1].isBelowReference, true);
+  assert.equal(rows[2].itemLabel, '보일러');
+  assert.equal(rows[2].difference, 32);
+});
+
+test('utility entry daily validation uses the last written field value across skipped days', () => {
+  const api = createCorrectionContext();
+  const stateNode = createSaveNode('저장됨');
+  const statusNode = createSaveNode();
+  const validationRow = createDailyValidationRow({
+    label: '보일러',
+    previousValue: '',
+    currentValue: '95',
+    fieldId: 'field_01',
+  });
+  validationRow.currentInput.dataset.utilityEntryExperimentReferenceValue = '100';
+  validationRow.currentInput.dataset.utilityEntryExperimentReferenceDate = '2026-05-29';
+  const host = createDailyCurrentHost([validationRow.currentInput], {
+    stateNodes: [stateNode],
+    statusNodes: [statusNode],
+  });
+
+  const issues = api.syncDailyValidation(host);
+
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].previousValue, 100);
+  assert.equal(validationRow.currentInput.classList.contains('is-validation-error'), true);
+  assert.match(statusNode.title, /이전값보다 낮음/);
 });
 
 test('utility entry quick candidates fall back to filled rows when no empty rows remain', () => {
@@ -1490,6 +1629,57 @@ test('utility entry quick candidates fall back to filled rows when no empty rows
   assert.equal(rows[0].itemLabel, '관리동');
   assert.equal(rows[0].isFilled, true);
   assert.equal(rows[0].currentText, '131');
+});
+
+test('utility entry quick input keeps the applied target row visible', () => {
+  const api = createCorrectionContext();
+  const firstRow = createDailyValidationRow({
+    label: '보일러',
+    previousValue: '100',
+    fieldId: 'field_01',
+  });
+  const secondRow = createDailyValidationRow({
+    label: '관리동',
+    previousValue: '130',
+    fieldId: 'field_17',
+  });
+  const host = createDailyCurrentHost([firstRow.currentInput, secondRow.currentInput]);
+  const baseQuerySelector = host.querySelector.bind(host);
+  const baseQuerySelectorAll = host.querySelectorAll.bind(host);
+  const quickInput = {
+    value: '132',
+    focusCount: 0,
+    focus() {
+      this.focusCount += 1;
+    },
+  };
+  const quickCandidateContainer = { innerHTML: '' };
+  const rows = [firstRow.row, secondRow.row];
+
+  host.querySelector = (selector) => {
+    if (selector === '[data-role="utility-entry-experiment-quick-input"]') return quickInput;
+    if (selector === '[data-role="utility-entry-experiment-quick-candidates"]') {
+      return quickCandidateContainer;
+    }
+    return baseQuerySelector(selector);
+  };
+  host.querySelectorAll = (selector) => {
+    if (selector === '.utility-entry-experiment-quick-target-row') {
+      return rows.filter(row => row.classList.contains('utility-entry-experiment-quick-target-row'));
+    }
+    return baseQuerySelectorAll(selector);
+  };
+
+  const applied = api.applyQuickInput(host, {
+    label: '관리동 현재값',
+    resourceType: 'electric',
+    fieldId: 'field_17',
+  });
+
+  assert.equal(applied, true);
+  assert.equal(secondRow.currentInput.value, '132');
+  assert.equal(firstRow.row.classList.contains('utility-entry-experiment-quick-target-row'), false);
+  assert.equal(secondRow.row.classList.contains('utility-entry-experiment-quick-target-row'), true);
 });
 
 test('utility entry lower current values stay entered and show an error count with red field state', () => {

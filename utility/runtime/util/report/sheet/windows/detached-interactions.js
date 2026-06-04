@@ -210,6 +210,20 @@
                 rerenderAndSync(modal);
                 return;
             }
+            const unitSelect = event.target?.closest?.('[data-role="util-sheet-analysis-unit"]');
+            if (unitSelect) {
+                if (typeof runtime.setUtilSheetAnalysisUnitKey === 'function') {
+                    runtime.setUtilSheetAnalysisUnitKey(
+                        typeof runtime.getUtilSheetActiveAnalysisDatasetKey === 'function'
+                            ? runtime.getUtilSheetActiveAnalysisDatasetKey(modal)
+                            : '',
+                        unitSelect.dataset.chartKey || '',
+                        unitSelect.value || ''
+                    );
+                }
+                rerenderAndSync(modal);
+                return;
+            }
             const decimalsSelect = event.target?.closest?.('[data-role="util-sheet-analysis-decimals"]');
             if (decimalsSelect) {
                 if (typeof runtime.setUtilSheetAnalysisDecimals === 'function') {

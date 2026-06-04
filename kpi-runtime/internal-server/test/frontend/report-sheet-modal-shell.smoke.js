@@ -249,6 +249,7 @@ test('report sheet modal shell registry creates the shared modal and routes type
   assert.match(reportSheetModalShellSource, /data-role="util-sheet-modal-month-step"/);
   assert.match(reportSheetModalShellSource, /applyModalMonthSelection/);
   assert.match(reportSheetModalShellSource, /data-util-sheet-gas-view-toggle/);
+  assert.match(reportSheetModalShellSource, /data-util-sheet-gas-view-toggle-secondary/);
   assert.match(reportSheetModalShellSource, /is-monthly-choice-only/);
   assert.match(reportSheetModalShellSource, /data-role="util-sheet-monthly-extract-dataset"/);
   assert.match(reportSheetModalShellSource, /applyMonthlyExtractPreview/);
@@ -342,7 +343,7 @@ test('report sheet modal shell registry creates the shared modal and routes type
   assert.equal(modal.dataset.datasetKey, 'gas');
   assert.equal(modal.dataset.monthKey, '2026-04');
   assert.equal(modal.dataset.compareKey, 'month');
-  assert.match(harness.alertMessages.at(-1), /새 가스 그래프 연결 정보가 없습니다/);
+  assert.match(harness.alertMessages.at(-1), /\uC0C8 \uAC00\uC2A4 \uADF8\uB798\uD504 \uC5F0\uACB0 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4/);
   assert.equal(panelSyncArgs, null);
 
   let graphOpenArgs = null;
@@ -356,6 +357,19 @@ test('report sheet modal shell registry creates the shared modal and routes type
   modal.listeners.click({ target: typeButton });
   assert.deepEqual(graphOpenArgs, { graphKey: 'gas_yusan', monthKey: '2026-04' });
   assert.equal(modal.dataset.sheetType, 'meter');
+
+  graphOpenArgs = null;
+  const lpgGraphButton = createTarget(
+    {
+      '[data-role="util-sheet-modal-type-select"]': true,
+    },
+    {
+      utilityEntryExperimentGraphKey: 'gas_yusan_lpg',
+      utilityEntryExperimentGraphLabel: 'LPG \uADF8\uB798\uD504',
+    }
+  );
+  modal.listeners.click({ target: lpgGraphButton });
+  assert.deepEqual(graphOpenArgs, { graphKey: 'gas_yusan_lpg', monthKey: '2026-04' });
 
   graphOpenArgs = null;
   modal.dataset.datasetKey = 'electric';
@@ -1095,7 +1109,7 @@ test('report sheet modal shell monthly report opens first and extracts selected 
     }),
   });
   assert.deepEqual(harness.clickedDownloads.map(item => item.download), [
-    '유틸리티 분석-2026-04-2026-05.html',
+    '\uC720\uD2F8\uB9AC\uD2F0 \uBD84\uC11D-2026-04-2026-05.html',
   ]);
   assert.deepEqual(harness.alertMessages, []);
   harness.clickedDownloads = [];
@@ -1143,14 +1157,14 @@ test('report sheet modal shell monthly report opens first and extracts selected 
   });
 
   assert.deepEqual(harness.clickedDownloads.map(item => item.download), [
-    '유틸리티 분석-2026-03-2026-05.html',
+    '\uC720\uD2F8\uB9AC\uD2F0 \uBD84\uC11D-2026-03-2026-05.html',
   ]);
   assert.equal(panel.hidden, false);
   assert.equal(modal.dataset.monthlyExtractOptionsOpen, 'true');
   assert.equal(modal.dataset.monthlyExtractStandalone, 'false');
   const html = String(harness.blobParts[0] || '');
-  assert.match(html, /<title>유틸리티 분석<\/title>/);
-  assert.match(html, /<div class="util-sheet-monthly-title">유틸리티 분석<\/div>/);
+  assert.match(html, /<title>\uC720\uD2F8\uB9AC\uD2F0 \uBD84\uC11D<\/title>/);
+  assert.match(html, /<div class="util-sheet-monthly-title">\uC720\uD2F8\uB9AC\uD2F0 \uBD84\uC11D<\/div>/);
   assert.match(html, /util-sheet-monthly-dataset-tab/);
   assert.match(html, /METER_CARD_electric_2026-05/);
   assert.doesNotMatch(html, /ANALYSIS_CARD_electric_2026-03_2026-05/);
@@ -1493,7 +1507,7 @@ test('kpi html loads report sheet modal shell before modal render and sheet.js',
   assert.match(reportSheetModalShellSource, /getUtilityEntryGraphDatasetLabel/);
   assert.match(reportSheetModalShellSource, /runtimeAdapter\.getRootValue\('KpiUtilityEntryExperiment'\)/);
   assert.match(reportSheetModalShellSource, /api\.openGraphTemplate\(graphKey,\s*modal\?\.dataset\?\.monthKey/);
-  assert.match(reportSheetModalShellSource, /`새 \$\{datasetLabel\} 그래프 연결 정보가 없습니다/);
+  assert.match(reportSheetModalShellSource, /`\uC0C8 \${datasetLabel} \uADF8\uB798\uD504 \uC5F0\uACB0 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4/);
 
   assert.match(
     kpiUtilReportSheetSource,
@@ -1503,9 +1517,9 @@ test('kpi html loads report sheet modal shell before modal render and sheet.js',
 
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=061');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=122');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=123');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=062');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');

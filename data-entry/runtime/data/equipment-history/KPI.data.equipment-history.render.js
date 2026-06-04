@@ -11,6 +11,7 @@
     const EQUIPMENT_MAIN_THUMB_WIDTH = 640;
     const EQUIPMENT_MAIN_THUMB_HEIGHT = 320;
     const EQUIPMENT_MAIN_THUMB_ASPECT = EQUIPMENT_MAIN_THUMB_WIDTH / EQUIPMENT_MAIN_THUMB_HEIGHT;
+    const EQUIPMENT_PHOTO_ATTACHMENT_KEY = api.EQUIPMENT_PHOTO_ATTACHMENT_KEY || 'equipment-photo-main';
     let activeSaveController = null;
 
     function getEquipmentTeamDataKey(value) {
@@ -443,12 +444,14 @@
     function renderPhotoCard(draft) {
         const photoSrc = api.getEquipmentPhotoPreviewUrl?.(draft) || draft.photoDataUrl;
         const hasPhoto = Boolean(photoSrc);
+        const attachmentKey = api.escapeHtml(draft.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY);
         const caption = draft.photoName
             ? `현재 첨부: ${draft.photoName}`
-            : 'FRONT / LEFT / RIGHT / REAR 4분할 이미지를 한 장으로 첨부해 주세요. 권장 크기 1600 x 800';
+            : '\uC0AC\uC9C4 \uD30C\uC77C\uC744 \uC120\uD0DD\uD558\uAC70\uB098 \uD074\uB9BD\uBCF4\uB4DC \uC774\uBBF8\uC9C0\uB97C Ctrl+V\uB85C \uBD99\uC5EC\uB123\uC73C\uC138\uC694. \uAD8C\uC7A5 \uD06C\uAE30 1600 x 800';
         if (hasPhoto) {
             return `
-                <div class="data-equipment-photo-card is-locked" data-equipment-history-photo-card>
+                <div class="data-equipment-photo-card is-locked" tabindex="0" data-equipment-history-photo-card data-equipment-history-photo-attachment-key="${attachmentKey}">
+                    <input type="file" accept="image/*" hidden data-equipment-history-photo-input data-equipment-history-photo-attachment-key="${attachmentKey}">
                     <img class="data-equipment-photo-preview" alt="설비 4방향 통합 사진 미리보기" src="${api.escapeHtml(photoSrc)}" data-equipment-history-photo-preview>
                     <button type="button" class="data-equipment-photo-revert" data-equipment-photo-revert>
                         <i class="fas fa-undo"></i><span>사진 되돌리기</span>
@@ -457,15 +460,23 @@
             `;
         }
         return `
-            <label class="data-equipment-photo-card" data-equipment-history-photo-card>
-                <input type="file" accept="image/*" hidden data-equipment-history-photo-input>
+            <div class="data-equipment-photo-card" tabindex="0" data-equipment-history-photo-card data-equipment-history-photo-attachment-key="${attachmentKey}">
+                <input type="file" accept="image/*" hidden data-equipment-history-photo-input data-equipment-history-photo-attachment-key="${attachmentKey}">
                 <img class="data-equipment-photo-preview" alt="설비 4방향 통합 사진 미리보기" hidden data-equipment-history-photo-preview>
                 <span class="data-equipment-photo-placeholder" data-equipment-history-photo-placeholder>
                     <i class="fas fa-camera"></i>
-                    <strong>4방향 사진 한 장 첨부</strong>
+                    <strong>${api.escapeHtml('\uC0AC\uC9C4 \uCCA8\uBD80 / \uBD99\uC5EC\uB123\uAE30')}</strong>
                     <small>${api.escapeHtml(caption)}</small>
+                    <span class="data-equipment-photo-placeholder-actions">
+                        <button type="button" class="data-equipment-photo-select" data-equipment-history-photo-select data-equipment-history-photo-attachment-key="${attachmentKey}">
+                            <i class="fas fa-paperclip"></i><span>${api.escapeHtml('\uC0AC\uC9C4 \uCCA8\uBD80')}</span>
+                        </button>
+                        <button type="button" class="data-equipment-photo-paste" data-equipment-history-photo-paste data-equipment-history-photo-attachment-key="${attachmentKey}">
+                            <i class="fas fa-paste"></i><span>${api.escapeHtml('\uBD99\uC5EC\uB123\uAE30')}</span>
+                        </button>
+                    </span>
                 </span>
-            </label>
+            </div>
         `;
     }
 
@@ -1159,10 +1170,13 @@
 
     async function autoSaveDraft(data, state, redraw, message) {
         try {
-            if (await saveDraft(data, state, { message })) redraw();
+            const saved = await saveDraft(data, state, { message });
+            if (saved) redraw();
+            return saved;
         } catch (error) {
             console.warn('[kpi] equipment history auto save failed', error);
             browser.alert(getEquipmentHistorySaveFailureMessage(error));
+            return false;
         }
     }
 
@@ -1823,6 +1837,12 @@
             tools = doc.createElement('div');
             tools.className = 'data-equipment-photo-tools';
             tools.innerHTML = `
+                <button type="button" class="data-equipment-photo-select" data-equipment-history-photo-select data-equipment-history-photo-attachment-key="${api.escapeHtml(state.draft.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY)}">
+                    <i class="fas fa-paperclip"></i><span>${api.escapeHtml('\uC0AC\uC9C4 \uCCA8\uBD80')}</span>
+                </button>
+                <button type="button" class="data-equipment-photo-paste" data-equipment-history-photo-paste data-equipment-history-photo-attachment-key="${api.escapeHtml(state.draft.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY)}">
+                    <i class="fas fa-paste"></i><span>${api.escapeHtml('\uBD99\uC5EC\uB123\uAE30')}</span>
+                </button>
                 <button type="button" class="data-equipment-photo-capture" data-equipment-photo-thumb-capture>
                     <i class="fas fa-crop-simple"></i><span>${api.escapeHtml('\uBA54\uC778 \uC601\uC5ED \uCEA1\uCCD0')}</span>
                 </button>
@@ -2038,33 +2058,229 @@
         });
     }
 
-    function bindPhotoPreview(root, state, data, redraw) {
-        const input = root.querySelector('[data-equipment-history-photo-input]');
+    function getClipboardImageExtension(type) {
+        const normalized = api.normalizeText(type).toLowerCase();
+        if (normalized === 'image/jpeg' || normalized === 'image/jpg') return 'jpg';
+        if (normalized === 'image/png') return 'png';
+        if (normalized === 'image/webp') return 'webp';
+        if (normalized === 'image/gif') return 'gif';
+        if (normalized === 'image/bmp') return 'bmp';
+        const match = normalized.match(/^image\/([a-z0-9.+-]+)$/);
+        return match ? match[1].replace(/[^a-z0-9]+/g, '-') || 'png' : 'png';
+    }
+
+    function isClipboardImageType(type) {
+        return /^image\//i.test(api.normalizeText(type));
+    }
+
+    function createNamedClipboardImageFile(blob, type, doc) {
+        if (!blob) return null;
+        const mimeType = api.normalizeText(blob.type || type) || 'image/png';
+        const name = `clipboard-photo-${Date.now()}.${getClipboardImageExtension(mimeType)}`;
+        const FileCtor = doc?.defaultView?.File || (typeof File !== 'undefined' ? File : null);
+        if (FileCtor) {
+            try {
+                return new FileCtor([blob], name, { type: mimeType, lastModified: Date.now() });
+            } catch {}
+        }
+        try {
+            Object.defineProperty(blob, 'name', { value: name });
+        } catch (error) {
+            blob.name = name;
+        }
+        if (!blob.type) {
+            try {
+                Object.defineProperty(blob, 'type', { value: mimeType });
+            } catch {}
+        }
+        return blob;
+    }
+
+    function ensureClipboardImageFileName(file, type, doc) {
+        if (!file) return null;
+        if (api.normalizeText(file.name)) return file;
+        return createNamedClipboardImageFile(file, type || file.type, doc);
+    }
+
+    function getPhotoFileFromClipboardData(clipboardData, doc) {
+        const items = Array.from(clipboardData?.items || []);
+        for (const item of items) {
+            const type = api.normalizeText(item?.type);
+            if (!isClipboardImageType(type) || typeof item?.getAsFile !== 'function') continue;
+            const file = item.getAsFile();
+            if (file) return ensureClipboardImageFileName(file, type, doc);
+        }
+
+        const files = Array.from(clipboardData?.files || []);
+        for (const file of files) {
+            if (isClipboardImageType(file?.type) || /\.(?:png|jpe?g|webp|gif|bmp)$/i.test(api.normalizeText(file?.name))) {
+                return ensureClipboardImageFileName(file, file?.type, doc);
+            }
+        }
+        return null;
+    }
+
+    async function readPhotoFileFromNavigatorClipboard(root) {
+        const doc = root?.ownerDocument || (typeof document !== 'undefined' ? document : null);
+        const clipboard = doc?.defaultView?.navigator?.clipboard;
+        if (!clipboard || typeof clipboard.read !== 'function') return null;
+        const items = await clipboard.read();
+        for (const item of Array.from(items || [])) {
+            const type = Array.from(item?.types || []).find(isClipboardImageType);
+            if (!type || typeof item?.getType !== 'function') continue;
+            const blob = await item.getType(type);
+            return createNamedClipboardImageFile(blob, type, doc);
+        }
+        return null;
+    }
+
+    function readEquipmentPhotoFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ''));
+            reader.onerror = () => reject(reader.error || new Error('equipment_history_photo_read_failed'));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function cleanupPreviousEquipmentPhotoDocument(documentId) {
+        const previousDocumentId = api.normalizeText(documentId);
+        if (!previousDocumentId || api.canSaveEquipmentHistoryToServer?.() !== true) return;
+        try {
+            await api.deleteEquipmentHistoryDraftAssets?.({ photoDocumentId: previousDocumentId, documents: [] });
+        } catch (cleanupError) {
+            console.warn('[kpi] equipment history replaced photo cleanup failed', cleanupError);
+            browser.alert('\uC0C8 \uC0AC\uC9C4\uC740 \uC800\uC7A5\uD588\uC9C0\uB9CC \uAE30\uC874 \uCCA8\uBD80 \uC0AC\uC9C4 \uD30C\uC77C \uC815\uB9AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.');
+        }
+    }
+
+    async function applyEquipmentHistoryPhotoFile(root, state, data, redraw, file, message) {
         const preview = root.querySelector('[data-equipment-history-photo-preview]');
         const placeholder = root.querySelector('[data-equipment-history-photo-placeholder]');
-        if (!input || !preview || !placeholder) return;
-
-        input.addEventListener('change', (event) => {
-            const [file] = event.target.files || [];
-            if (!file || !state.draft) return;
-            const reader = new FileReader();
-            reader.onload = async () => {
-                const rawDataUrl = String(reader.result || '');
-                const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
-                const normalized = doc
-                    ? await normalizeEquipmentPhotoAttachment(file, rawDataUrl, doc)
-                    : { dataUrl: rawDataUrl, file, name: file.name || '' };
-                state.draft.photoDataUrl = normalized.dataUrl;
-                state.draft.photoThumbDataUrl = '';
-                state.draft.photoCrop = null;
-                state.draft.photoFile = normalized.file || file;
-                state.draft.photoName = normalized.name || file.name || '';
+        if (!file || !state.draft) return false;
+        try {
+            const previousDocumentId = state.draft.photoDocumentId || '';
+            const rawDataUrl = await readEquipmentPhotoFileAsDataUrl(file);
+            const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
+            const normalized = doc
+                ? await normalizeEquipmentPhotoAttachment(file, rawDataUrl, doc)
+                : { dataUrl: rawDataUrl, file, name: file.name || '' };
+            state.draft.photoDataUrl = normalized.dataUrl;
+            state.draft.photoThumbDataUrl = '';
+            state.draft.photoCrop = null;
+            state.draft.photoDocumentId = '';
+            state.draft.photoPreviewUrl = '';
+            state.draft.photoDownloadUrl = '';
+            state.draft.photoStorageRelPath = '';
+            state.draft.photoFile = normalized.file || file;
+            state.draft.photoName = normalized.name || file.name || '';
+            state.draft.photoAttachmentKey = state.draft.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY;
+            if (preview) {
                 preview.src = state.draft.photoDataUrl;
                 preview.hidden = false;
-                placeholder.hidden = true;
-                await autoSaveDraft(data, state, redraw, '사진을 저장했습니다.');
-            };
-            reader.readAsDataURL(file);
+            }
+            if (placeholder) placeholder.hidden = true;
+            const saved = await autoSaveDraft(data, state, redraw, message || '\uC0AC\uC9C4\uC744 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.');
+            if (saved) await cleanupPreviousEquipmentPhotoDocument(previousDocumentId);
+            return saved;
+        } catch (error) {
+            console.warn('[kpi] equipment history photo attachment failed', error);
+            browser.alert('\uC0AC\uC9C4 \uCCA8\uBD80\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uC774\uBBF8\uC9C0 \uD30C\uC77C\uC774\uB098 \uD074\uB9BD\uBCF4\uB4DC\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694.');
+            return false;
+        }
+    }
+
+    function isEventTargetInsideRoot(root, target) {
+        const doc = root?.ownerDocument || null;
+        if (!target || target === root || target === doc || target === doc?.body) return true;
+        if (typeof root?.contains !== 'function') return true;
+        return root.contains(target);
+    }
+
+    function bindPhotoSelectControls(root) {
+        const input = root.querySelector('[data-equipment-history-photo-input]');
+        if (!input) return;
+        root.querySelectorAll('[data-equipment-history-photo-select]').forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.preventDefault?.();
+                input.click?.();
+            });
+        });
+
+        const card = root.querySelector('[data-equipment-history-photo-card]:not(.is-locked)');
+        if (!card) return;
+        card.addEventListener('click', (event) => {
+            if (event.target?.closest?.('button, input, a')) return;
+            input.click?.();
+        });
+        card.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault?.();
+            input.click?.();
+        });
+    }
+
+    function bindPhotoClipboardPaste(root, state, data, redraw) {
+        if (typeof state.disposePhotoPaste === 'function') {
+            state.disposePhotoPaste();
+            state.disposePhotoPaste = null;
+        }
+
+        const pasteRoot = root?.ownerDocument || root;
+        if (!pasteRoot || typeof pasteRoot.addEventListener !== 'function') return;
+
+        const handlePaste = async (event) => {
+            if (root?.isConnected === false || !root?.querySelector?.('[data-equipment-history-photo-card]')) {
+                state.disposePhotoPaste?.();
+                return;
+            }
+            if (state.view !== 'card' || !state.draft) return;
+            if (!isEventTargetInsideRoot(root, event.target)) return;
+
+            const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
+            const file = getPhotoFileFromClipboardData(event.clipboardData, doc);
+            if (!file) return;
+
+            event.preventDefault?.();
+            await applyEquipmentHistoryPhotoFile(root, state, data, redraw, file, '\uD074\uB9BD\uBCF4\uB4DC \uC0AC\uC9C4\uC744 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.');
+        };
+
+        pasteRoot.addEventListener('paste', handlePaste);
+        state.disposePhotoPaste = () => pasteRoot.removeEventListener?.('paste', handlePaste);
+    }
+
+    function bindPhotoPreview(root, state, data, redraw) {
+        const input = root.querySelector('[data-equipment-history-photo-input]');
+        if (!input) {
+            state.disposePhotoPaste?.();
+            state.disposePhotoPaste = null;
+            return;
+        }
+
+        bindPhotoSelectControls(root);
+        root.querySelectorAll('[data-equipment-history-photo-paste]').forEach((button) => {
+            button.addEventListener('click', async (event) => {
+                event.preventDefault?.();
+                try {
+                    const file = await readPhotoFileFromNavigatorClipboard(root);
+                    if (!file) {
+                        browser.alert('\uC0AC\uC9C4\uC744 \uBCF5\uC0AC\uD55C \uB4A4 \uC124\uBE44 \uC0AC\uC9C4 \uCE74\uB4DC\uC5D0\uC11C Ctrl+V\uB85C \uBD99\uC5EC\uB123\uC5B4 \uC8FC\uC138\uC694.');
+                        return;
+                    }
+                    await applyEquipmentHistoryPhotoFile(root, state, data, redraw, file, '\uD074\uB9BD\uBCF4\uB4DC \uC0AC\uC9C4\uC744 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.');
+                } catch (error) {
+                    console.warn('[kpi] equipment history clipboard photo read failed', error);
+                    browser.alert('\uD074\uB9BD\uBCF4\uB4DC\uC5D0\uC11C \uC0AC\uC9C4\uC744 \uC77D\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC0AC\uC9C4\uC744 \uBCF5\uC0AC\uD55C \uB4A4 Ctrl+V\uB85C \uBD99\uC5EC\uB123\uC5B4 \uC8FC\uC138\uC694.');
+                }
+            });
+        });
+        bindPhotoClipboardPaste(root, state, data, redraw);
+
+        input.addEventListener('change', async (event) => {
+            const [file] = event.target.files || [];
+            if (!file || !state.draft) return;
+            await applyEquipmentHistoryPhotoFile(root, state, data, redraw, file, '\uC0AC\uC9C4\uC744 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.');
+            event.target.value = '';
         });
     }
 
@@ -2339,8 +2555,8 @@
             });
         });
 
-        bindPhotoPreview(root, state, data, redraw);
         bindPhotoCropEditor(root, state, data, redraw);
+        bindPhotoPreview(root, state, data, redraw);
         bindSaveShortcut(root, state, data, redraw);
     }
 

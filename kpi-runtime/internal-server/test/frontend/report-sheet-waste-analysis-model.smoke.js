@@ -328,11 +328,11 @@ test('report sheet waste analysis model keeps waste charts compact for the all s
   const laborSeries = breakdownChart.chartDataList.find((item) => item.seriesKey === 'wasteCost.labor');
   const laborPoint = laborSeries.points.find((point) => point.monthKey === '2026-03');
 
-  assert.equal(waterControl.unitKey, 'million');
+  assert.equal(waterControl.unitKey, 'krw');
   assert.equal(waterControl.displayMode, 'bar');
-  assert.equal(waterPoint.value, 40);
-  assert.equal(laborPoint.value, 120);
-  assert.equal(analysisState.getUtilWasteAnalysisUnitKey('wasteCost.water'), 'million');
+  assert.equal(waterPoint.value, 40000000);
+  assert.equal(laborPoint.value, 120000000);
+  assert.equal(analysisState.getUtilWasteAnalysisUnitKey('wasteCost.water'), 'krw');
   assert.equal(analysisState.getUtilWasteAnalysisDisplayMode('wasteCost.water'), 'bar');
 
   const memoItems = summaryRender.resolveUtilSheetMemoItems('analysis', 'waste', model.datasetResult, 'month', null, {

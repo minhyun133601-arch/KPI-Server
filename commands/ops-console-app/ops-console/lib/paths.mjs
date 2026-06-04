@@ -33,7 +33,7 @@ export const startupProgramsDir = process.env.APPDATA
       "Startup",
     )
   : "";
-export const startupScriptName = "KPI-Local-Autostart.vbs";
+export const startupScriptName = "KPI-Central-Autostart.vbs";
 export const legacyStartupShortcutName = "KPI Internal Server Startup.lnk";
 export const startupScriptFile = startupProgramsDir
   ? path.join(startupProgramsDir, startupScriptName)
@@ -43,26 +43,26 @@ export const legacyStartupShortcutFile = startupProgramsDir
   : "";
 export const internalServerVarDir = path.join(internalServerDir, "var");
 export const internalServerLogsDir = path.join(internalServerVarDir, "logs");
-export const localExperimentDir = path.join(
+export const centralRuntimeDir = path.join(
   internalServerVarDir,
-  "local-experiment",
+  "central-runtime",
 );
-export const localExperimentPostgresDir = path.join(
-  localExperimentDir,
+export const centralRuntimePostgresDir = path.join(
+  centralRuntimeDir,
   "postgres",
 );
-export const localExperimentPostgresDataDir = path.join(
-  localExperimentPostgresDir,
+export const centralRuntimePostgresDataDir = path.join(
+  centralRuntimePostgresDir,
   "data",
 );
 export const postgresLogFile = path.join(
-  localExperimentPostgresDir,
+  centralRuntimePostgresDir,
   "logs",
   "postgres.log",
 );
 export const envFilePath = path.join(
   internalServerDir,
-  ".env.local-experiment",
+  ".env.production.local",
 );
 
 export const internalServerScripts = {

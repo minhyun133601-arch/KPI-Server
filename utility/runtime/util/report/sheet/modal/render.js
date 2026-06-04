@@ -333,28 +333,78 @@
         });
     }
 
-    function syncGasModalViewToggle(modal, sheetType = 'meter', datasetKey = 'gas') {
-        const button = modal?.querySelector?.('[data-util-sheet-gas-view-toggle]') || null;
-        if (!button) return;
-        const normalizedDatasetKey = resolveDatasetKey(sheetType, datasetKey);
-        const isSupported = ['electric', 'gas'].includes(normalizedDatasetKey);
-        button.hidden = !isSupported;
-        button.toggleAttribute?.('hidden', !isSupported);
-        if (!isSupported) return;
+    function parseUtilityEntryGraphOptions(modal) {
+        const raw = String(modal?.dataset?.utilityEntryExperimentGraphOptions || '').trim();
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return [];
+            return parsed
+                .map(option => ({
+                    key: String(option?.key || '').trim(),
+                    label: String(option?.label || '').trim()
+                }))
+                .filter(option => option.key);
+        } catch (error) {
+            void error;
+            return [];
+        }
+    }
 
-        const isAnalysis = false;
-        const datasetLabel = normalizedDatasetKey === 'electric' ? '전기' : '가스';
-        const label = isAnalysis ? '검침표' : '그래프';
-        const title = isAnalysis ? `${datasetLabel} 검침표 보기` : `${datasetLabel} 그래프 보기`;
-        const iconClass = isAnalysis ? 'fa-file-lines' : 'fa-chart-column';
-        button.classList?.toggle?.('is-analysis', isAnalysis);
-        button.classList?.toggle?.('is-meter', !isAnalysis);
+    function syncGraphOptionButton(button, option, options = {}) {
+        if (!button) return;
+        const hidden = options.hidden === true;
+        button.hidden = hidden;
+        button.toggleAttribute?.('hidden', hidden);
+        if (hidden) {
+            delete button.dataset.utilityEntryExperimentGraphKey;
+            delete button.dataset.utilityEntryExperimentGraphLabel;
+            return;
+        }
+
+        const label = String(option?.label || options.fallbackLabel || '그래프').trim() || '그래프';
+        const title = String(options.title || '').trim() || `${label} 보기`;
+        button.dataset.utilityEntryExperimentGraphKey = String(option?.key || '').trim();
+        button.dataset.utilityEntryExperimentGraphLabel = label;
+        button.classList?.toggle?.('is-analysis', false);
+        button.classList?.toggle?.('is-meter', true);
         button.setAttribute?.('aria-label', title);
         button.setAttribute?.('title', title);
         button.innerHTML = `
-            <i class="fa-solid ${iconClass}" aria-hidden="true"></i>
+            <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
             <span>${escapeHtml(label)}</span>
         `;
+    }
+
+    function syncGasModalViewToggle(modal, sheetType = 'meter', datasetKey = 'gas') {
+        const primaryButton = modal?.querySelector?.('[data-util-sheet-gas-view-toggle]') || null;
+        const secondaryButton = modal?.querySelector?.('[data-util-sheet-gas-view-toggle-secondary]') || null;
+        if (!primaryButton && !secondaryButton) return;
+        const normalizedDatasetKey = resolveDatasetKey(sheetType, datasetKey);
+        const isSupported = ['electric', 'gas'].includes(normalizedDatasetKey);
+        const buttons = [primaryButton, secondaryButton].filter(Boolean);
+        buttons.forEach(button => {
+            button.hidden = !isSupported;
+            button.toggleAttribute?.('hidden', !isSupported);
+        });
+        if (!isSupported) return;
+
+        const datasetLabel = normalizedDatasetKey === 'electric' ? '전기' : '가스';
+        const graphOptions = parseUtilityEntryGraphOptions(modal);
+        const fallbackGraphKey = String(modal?.dataset?.utilityEntryExperimentGraphKey || '').trim();
+        const fallbackOptions = graphOptions.length
+            ? graphOptions
+            : (fallbackGraphKey ? [{ key: fallbackGraphKey, label: '그래프' }] : [{ key: '', label: '그래프' }]);
+
+        syncGraphOptionButton(primaryButton, fallbackOptions[0], {
+            fallbackLabel: `${datasetLabel} 그래프`,
+            title: graphOptions.length ? '' : `${datasetLabel} 그래프 보기`,
+            hidden: false
+        });
+        syncGraphOptionButton(secondaryButton, fallbackOptions[1], {
+            fallbackLabel: '그래프',
+            hidden: !fallbackOptions[1]
+        });
     }
 
     function buildAnalysisScopeSelectHtml(datasetKey = 'gas', analysisModel = {}) {

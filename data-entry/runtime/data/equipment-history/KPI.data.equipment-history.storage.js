@@ -5,6 +5,7 @@
     const OWNER_DOMAIN = 'data.equipment_history';
     const PHOTO_CATEGORY = 'photo';
     const ATTACHMENT_CATEGORY = 'attachment';
+    const EQUIPMENT_PHOTO_ATTACHMENT_KEY = api.EQUIPMENT_PHOTO_ATTACHMENT_KEY || 'equipment-photo-main';
 
     function cloneJson(value) {
         return JSON.parse(JSON.stringify(value || {}));
@@ -71,6 +72,10 @@
         return `${equipmentName} ${label}${ext}`.trim();
     }
 
+    function getPhotoAttachmentKey(draft) {
+        return api.normalizeText(draft?.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY) || EQUIPMENT_PHOTO_ATTACHMENT_KEY;
+    }
+
     async function uploadEquipmentHistoryFile(file, draft, options = {}) {
         const runtime = getRuntimeConfig();
         if (!runtime || !canSaveEquipmentHistoryToServer()) {
@@ -83,6 +88,8 @@
         const mimeType = String(file.type || 'application/octet-stream').trim() || 'application/octet-stream';
         const base64Data = await readFileAsBase64(file);
         const equipmentName = getEquipmentName(draft);
+        const rowId = api.normalizeText(options.rowId);
+        const attachmentKey = api.normalizeText(options.attachmentKey || rowId);
         const response = await browser.fetch(`${runtime.apiBase.replace(/\/+$/, '')}/files/base64`, {
             method: 'POST',
             credentials: 'same-origin',
@@ -90,7 +97,7 @@
             body: JSON.stringify({
                 permissionKey: runtime.assetPermissionKey || runtime.permissionKey,
                 ownerDomain: runtime.ownerDomain,
-                ownerKey: buildOwnerKey(draft, options.rowId),
+                ownerKey: buildOwnerKey(draft, rowId),
                 fileCategory,
                 originalName,
                 mimeType,
@@ -101,7 +108,8 @@
                     equipmentName,
                     sourceFileName: String(file.name || originalName).trim(),
                     originalName,
-                    rowId: api.normalizeText(options.rowId),
+                    rowId,
+                    attachmentKey,
                 },
             }),
         });
@@ -129,7 +137,10 @@
     async function uploadEquipmentHistoryDraftAssets(draft) {
         if (!draft) return draft;
         if (draft.photoFile) {
+            const photoAttachmentKey = getPhotoAttachmentKey(draft);
             const document = await uploadEquipmentHistoryFile(draft.photoFile, draft, {
+                rowId: photoAttachmentKey,
+                attachmentKey: photoAttachmentKey,
                 fileCategory: PHOTO_CATEGORY,
                 originalName: buildUploadName(draft.photoFile, draft, 'photo'),
             });

@@ -689,6 +689,10 @@
         .util-sheet-analysis-summary-card[data-tone="cost"] .util-sheet-analysis-summary-icon { background: linear-gradient(180deg, #fef2f2 0%, #fee2e2 100%); color: #dc2626; border-color: #fca5a5; }
         .util-sheet-analysis-summary-card[data-tone="production"] .util-sheet-analysis-summary-icon { background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%); color: #15803d; border-color: #86efac; }
         .util-sheet-analysis-summary-card[data-tone="waste"] .util-sheet-analysis-summary-icon { background: linear-gradient(180deg, #f5f3ff 0%, #ede9fe 100%); color: #6d28d9; border-color: #c4b5fd; }
+        .util-sheet-analysis-graph-block { display: grid; gap: 0.9rem; min-width: 0; }
+        .util-sheet-analysis-graph-subsection { display: grid; gap: 0.62rem; min-width: 0; }
+        .util-sheet-analysis-graph-subsection-title { display: inline-flex; align-items: center; gap: 0.42rem; width: max-content; max-width: 100%; padding: 0.28rem 0.58rem; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; color: #0f172a; font-size: 0.78rem; font-weight: 900; line-height: 1.15; box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06); }
+        .util-sheet-analysis-graph-subsection-title i { color: #2563eb; font-size: 0.78rem; }
         .util-sheet-analysis-chart-card { border: 1px solid #dbeafe; border-radius: 8px; background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); padding: 0.8rem; display: grid; gap: 0.7rem; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08); }
         .util-sheet-analysis-chart-card.is-combined { grid-column: 1 / -1; }
         .util-sheet-analysis-chart-card[data-tone="electric"] { border-color: #e2e8f0; background: #ffffff; }

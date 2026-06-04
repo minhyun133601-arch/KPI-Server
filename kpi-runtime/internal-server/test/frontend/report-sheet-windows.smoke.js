@@ -150,9 +150,9 @@ test('report sheet windows registry builds detached/chart shells and closes deta
   assert.equal(context.__alerts.length, 1);
 });
 test('kpi html loads report sheet windows before sheet.js', () => {
-  const detachedInteractionIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows/detached-interactions.js?v=056');
+  const detachedInteractionIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows/detached-interactions.js?v=057');
   const shellIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows/shells.js?v=1');
-  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=060');
+  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=061');
   const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=061');
   assert.ok(detachedInteractionIndex >= 0, 'report sheet detached interaction loader is missing');
   assert.ok(shellIndex > detachedInteractionIndex, 'report sheet window shells must load after detached interactions');

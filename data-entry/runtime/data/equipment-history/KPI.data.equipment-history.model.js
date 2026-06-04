@@ -1,5 +1,6 @@
 (function () {
     const api = KpiDataEquipmentHistoryBrowserAdapter.getApi();
+    const EQUIPMENT_PHOTO_ATTACHMENT_KEY = 'equipment-photo-main';
 
     function escapeHtml(value) {
         return String(value ?? '')
@@ -247,6 +248,7 @@
             photoDownloadUrl: normalizeText(item?.photoDownloadUrl),
             photoStorageRelPath: normalizeText(item?.photoStorageRelPath),
             photoName: normalizeText(item?.photoName),
+            photoAttachmentKey: normalizeText(item?.photoAttachmentKey || item?.photoAttachmentId) || EQUIPMENT_PHOTO_ATTACHMENT_KEY,
             operationInfo,
             detailInfo,
             detailGroups,
@@ -335,6 +337,7 @@
         normalizeEquipmentItems,
         groupEquipmentItems,
         getSelectedEquipment,
+        EQUIPMENT_PHOTO_ATTACHMENT_KEY,
         buildOperationInfo,
         buildDetailInfo,
     });

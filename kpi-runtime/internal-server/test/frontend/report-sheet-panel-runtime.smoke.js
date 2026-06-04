@@ -151,7 +151,7 @@ test('kpi html loads report sheet panel runtime before panel preview and windows
   const billingIndex = kpiHtml.indexOf('runtime/util/report/sheet/billing.js?v=053');
   const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=058');
   const panelPreviewIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/preview.js?v=058');
-  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=060');
+  const windowsIndex = kpiHtml.indexOf('runtime/util/report/sheet/windows.js?v=061');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=067');
 
   assert.ok(billingIndex >= 0, 'report sheet billing loader is missing');

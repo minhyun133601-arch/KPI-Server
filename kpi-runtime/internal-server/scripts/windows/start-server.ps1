@@ -1,6 +1,6 @@
 param(
   [switch]$ForceRestart,
-  [ValidateSet('Default', 'LocalExperiment', 'Development', 'Production')]
+  [ValidateSet('Default', 'Development', 'Production')]
   [string]$Environment = 'Default',
   [string]$EnvFile
 )
@@ -65,16 +65,14 @@ function Resolve-EnvFilePath {
   )
 
   if ($EnvFile) {
-    throw 'The -EnvFile override is no longer supported. Copy the portable env file to .env.local-experiment, .env.development.local, .env.production.local, or .env inside kpi-runtime/internal-server.'
+    throw 'The -EnvFile override is no longer supported. Copy the server env file to .env.production.local, .env.development.local, or .env inside kpi-runtime/internal-server.'
   }
 
   $candidatePaths = switch ($Environment) {
-    'LocalExperiment' { @((Join-Path $ServerDir '.env.local-experiment'), (Join-Path $ServerDir '.env')) }
     'Development' { @((Join-Path $ServerDir '.env.development.local'), (Join-Path $ServerDir '.env')) }
     'Production' { @((Join-Path $ServerDir '.env.production.local'), (Join-Path $ServerDir '.env')) }
     default {
       @(
-        (Join-Path $ServerDir '.env.local-experiment'),
         (Join-Path $ServerDir '.env.production.local'),
         (Join-Path $ServerDir '.env.development.local'),
         (Join-Path $ServerDir '.env')
@@ -88,7 +86,7 @@ function Resolve-EnvFilePath {
     }
   }
 
-  throw 'No env file was found. Copy the portable env file to .env.local-experiment, .env.development.local, .env.production.local, or .env inside kpi-runtime/internal-server.'
+  throw 'No env file was found. Copy the server env file to .env.production.local, .env.development.local, or .env inside kpi-runtime/internal-server.'
 }
 
 function Read-EnvMap {
@@ -133,7 +131,7 @@ if ($envMap.ContainsKey('KPI_SERVER_HOST')) {
     $serverHost = $configuredHost
   }
 }
-$port = 18080
+$port = 3100
 if ($envMap.ContainsKey('KPI_SERVER_PORT')) {
   $parsedPort = 0
   if ([int]::TryParse($envMap['KPI_SERVER_PORT'], [ref]$parsedPort) -and $parsedPort -gt 0) {
@@ -159,8 +157,6 @@ try {
     $env:KPI_RUNTIME_ENV = 'production'
   } elseif ($Environment -eq 'Development' -or $resolvedEnvFileName -eq '.env.development.local') {
     $env:KPI_RUNTIME_ENV = 'development'
-  } elseif ($Environment -eq 'LocalExperiment' -or $resolvedEnvFileName -eq '.env.local-experiment') {
-    $env:KPI_RUNTIME_ENV = 'local-experiment'
   } else {
     Remove-Item Env:KPI_RUNTIME_ENV -ErrorAction SilentlyContinue
   }

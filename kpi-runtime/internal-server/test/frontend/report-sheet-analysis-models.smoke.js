@@ -453,18 +453,10 @@ test('report sheet analysis model registries build electric and gas analysis mod
   assert.ok(Array.isArray(electricModel.charts));
   assert.ok(Array.isArray(electricModel.charts[0]?.summaryItems));
   assert.ok(electricModel.charts[0].summaryItems.some((item) => item.key === 'electricIntensity'));
-  const electricLineControlItems = (electricModel.charts[0].summaryControlItems || [])
-    .filter((item) => String(item?.key || '').startsWith(lineRatioPrefix));
-  assert.equal(
-    electricLineControlItems.map((item) => String(item.title)).join(','),
-    'line1,line2',
-    'team-specific electric analysis must expose production line summary controls'
-  );
-  assert.equal(electricLineControlItems[0].points.find((point) => point.monthKey === '2026-03').amountValue, 80);
-  assert.equal(electricLineControlItems[1].points.find((point) => point.monthKey === '2026-03').amountValue, 40);
+  assert.equal(Array.isArray(electricModel.circleCharts), false);
   assert.ok(
-    electricModel.charts[0].series.some((series) => series.seriesKey === `${lineRatioPrefix}A::line1`),
-    'team-specific electric intensity chart must include production line series'
+    !electricModel.charts[0].series.some((series) => series.seriesKey === `${lineRatioPrefix}A::line1`),
+    'team-specific electric line/bar chart must not include production line ratio series'
   );
   assert.equal(config.UtilSheetAnalysisState.electric.teamKey, 'team-a');
   assert.equal(config.UtilSheetAnalysisState.electric.from, '2026-01');
@@ -474,7 +466,8 @@ test('report sheet analysis model registries build electric and gas analysis mod
   assert.equal(electricSummaryByKey.get('electricCost')?.valueText, '1,452 KRW');
   assert.equal(electricSummaryByKey.get('production')?.valueText, '120.0 kg');
   assert.match(electricSummaryByKey.get('electricCost')?.metaText || '', /LONG:2026-03/);
-  assert.doesNotMatch(electricSummaryByKey.get('electricCost')?.metaText || '', /踰붿쐞 ?꾩쟻/);
+  const electricCostMetaText = electricSummaryByKey.get('electricCost')?.metaText || '';
+  assert.equal(electricCostMetaText.includes('\uBC94\uC704') && electricCostMetaText.includes('\uB204\uC801'), false);
 
   assert.equal(electricModel.reportMemo.datasetKey, 'electric');
   assert.equal(electricModel.reportMemo.prevMonthKey, '2026-02');
@@ -493,7 +486,8 @@ test('report sheet analysis model registries build electric and gas analysis mod
   assert.equal(gasSummaryByKey.get('production')?.valueText, '221.0 kg');
   assert.deepEqual(gasModel.monthOptions.map((item) => item.value), ['2026-01', '2026-02', '2026-03']);
   assert.match(gasSummaryByKey.get('gasCost')?.metaText || '', /LONG:2026-03/);
-  assert.doesNotMatch(gasSummaryByKey.get('gasCost')?.metaText || '', /踰붿쐞 ?⑷퀎|踰붿쐞 ?꾩쟻/);
+  const gasCostMetaText = gasSummaryByKey.get('gasCost')?.metaText || '';
+  assert.equal(gasCostMetaText.includes('\uBC94\uC704') && gasCostMetaText.includes('\uB204\uC801'), false);
   assert.equal(gasModel.reportMemo.datasetKey, 'gas');
   assert.equal(gasModel.reportMemo.prevMonthKey, '2026-02');
   assert.equal(gasModel.reportMemo.teams.map((team) => team.key).join(','), 'team_01_02,team_03');
@@ -509,9 +503,9 @@ test('kpi html loads report sheet analysis model scripts before analysis render 
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
   const rangeRatioIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/range-ratio.js?v=055');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=054');
-  const electricModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/model.js?v=057');
+  const electricModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/model.js?v=058');
   const gasModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/gas/model.js?v=057');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=062');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');

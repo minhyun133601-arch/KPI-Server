@@ -1468,7 +1468,13 @@ body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; margi
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-title { color: #020617; font-size: 15px; font-weight: 900; letter-spacing: 0; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-sub { color: #475569; font-size: 11px; font-weight: 900; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-icon { display: none; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; margin-left: auto; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-btn { border-radius: 5px; border-color: #111827; background: #ffffff; color: #111827; box-shadow: none; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-view-toggle { display: inline-flex; align-items: center; gap: 0; border: 1px solid #111827; background: #ffffff; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-view-btn { min-height: 30px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 0; border-right: 1px solid #111827; background: #ffffff; color: #111827; padding: 0 10px; font-size: 12px; font-weight: 900; letter-spacing: 0; cursor: pointer; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-view-btn:last-child { border-right: 0; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-view-btn.is-active { background: #111827; color: #ffffff; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-view-btn:hover:not(.is-active) { background: #f3f4f6; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-grid { gap: 6px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-card { border: 1px solid #111827; border-radius: 0; background: #ffffff; box-shadow: none; padding: 8px 9px; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-icon { display: none; }
@@ -1476,11 +1482,38 @@ body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; margi
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-value { color: #020617; font-weight: 900; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-surface { min-height: 0; overflow-x: auto; padding-bottom: 0; cursor: default; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-frame { min-height: 0; height: auto; overflow: visible; border-radius: 0; background: #ffffff; padding: 0; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-card { border: 1.4px solid #111827; border-radius: 0; background: #ffffff; box-shadow: none; padding: 8px; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-card .util-sheet-analysis-table-head { min-height: 30px; align-content: center; border-bottom: 1px solid #d1d5db; padding: 0 0 7px; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-card .util-sheet-analysis-table-title { color: #020617; font-size: 15px; font-weight: 900; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-card .util-sheet-analysis-table-sub { color: #475569; font-size: 11px; font-weight: 900; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table { min-width: 980px; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table th,
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table td { border-color: #d1d5db; color: #020617; font-size: 12px; font-weight: 850; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table thead th { background: #f3f4f6; color: #111827; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row th { box-shadow: inset 5px 0 var(--exp-series-color, #64748b); }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row.is-series-start th,
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row.is-series-start td { border-top: 2px solid #111827; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="0"] th,
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="0"] td { background: #f8fafc; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="1"] th,
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="1"] td { background: #fff7ed; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="2"] th,
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="2"] td { background: #f0fdf4; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="3"] th,
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="3"] td { background: #eff6ff; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="4"] th,
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="4"] td { background: #faf5ff; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="5"] th,
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row[data-exp-series-index="5"] td { background: #fefce8; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-row-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-swatch { flex: 0 0 auto; width: 12px; height: 12px; border: 1px solid #111827; background: var(--exp-series-color, #64748b); }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table td.is-strong { color: #020617; font-weight: 900; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table td.is-empty { color: transparent; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-report-chart-shell .util-analytics-chart { min-height: min(816px, calc(100vh - 480px)) !important; height: auto !important; border: 1.4px solid #111827; border-radius: 0; background: #ffffff; box-shadow: none; padding: 8px 10px 10px; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-analytics-chart-head { min-height: 24px; justify-content: flex-end; border: 0; padding: 0; background: #ffffff; color: #020617; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-analytics-chart-head-left { width: 100%; justify-content: flex-end; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-analytics-chart-title { display: none; }
-.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-analytics-chart-controls { margin-left: auto; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-analytics-chart-controls { display: none; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-analytics-chart-checkbox { color: #020617; font-size: 12px; font-weight: 900; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-analytics-chart-top-title { color: #020617; font-size: 18px; font-weight: 900; line-height: 1.1; letter-spacing: 0; padding: 0 0 4px; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-analytics-chart-meta-row { justify-content: center; gap: 8px; margin: 0 0 2px; }

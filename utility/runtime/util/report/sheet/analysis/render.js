@@ -155,6 +155,34 @@
         return '<div class="util-sheet-empty">그래프 렌더러를 찾지 못했습니다.</div>';
     }
 
+    function buildUtilSheetAnalysisGraphSubsectionHtml(key = '', title = '', icon = 'fa-chart-column', contentHtml = '') {
+        const content = String(contentHtml || '').trim();
+        if (!content) return '';
+        return `
+            <section class="util-sheet-analysis-graph-subsection" data-role="util-sheet-analysis-graph-subsection" data-chart-subsection="${escapeHtml(key)}">
+                <div class="util-sheet-analysis-graph-subsection-title">
+                    <i class="fa-solid ${escapeHtml(icon || 'fa-chart-column')}" aria-hidden="true"></i>
+                    <span>${escapeHtml(title)}</span>
+                </div>
+                ${content}
+            </section>
+        `;
+    }
+
+    function buildUtilSheetAnalysisGraphBlockHtml(lineBarHtml = '') {
+        const lineBarSectionHtml = buildUtilSheetAnalysisGraphSubsectionHtml(
+            'bar-line',
+            '선/막대',
+            'fa-chart-column',
+            lineBarHtml
+        );
+        return `
+            <div class="util-sheet-analysis-graph-block" data-role="util-sheet-analysis-graph-block">
+                ${lineBarSectionHtml}
+            </div>
+        `;
+    }
+
     function buildUtilGasAnalysisChartCardHtml(chart, model) {
         const isCombinedChart = chart?.key === 'combined' || Array.isArray(chart?.controlItems);
         const hasVisibleSeries = isCombinedChart
@@ -230,6 +258,7 @@
         const isFullscreenChart = viewState?.fullscreenChart === true
             && String(viewState?.chartKey || '').trim() === chartKey;
         const showChartLabels = getAnalysisShowLabels(datasetKey, chartKey, isFullscreenChart);
+        const showChartLabelToggle = chart?.suppressChartLabelToggle === true ? false : true;
         const seriesLabelModes = buildAnalysisSeriesLabelModes(datasetKey, chart);
         const hasVisibleSeries = isCombinedChart
             ? (Array.isArray(chart?.chartDataList) && chart.chartDataList.length > 0)
@@ -251,7 +280,7 @@
                     periodLabel: model.rangeLabel,
                     inlinePeriodLegend: true,
                     decimals: chart.decimals,
-                    showLabelToggle: true,
+                    showLabelToggle: showChartLabelToggle,
                     labelToggleRole: labelToggleRole || undefined,
                     showLabels: showChartLabels,
                     seriesLabelModes,
@@ -276,7 +305,7 @@
                 decimals: chart.decimals,
                 chartType: chart.chartType || 'line',
                 showTypeSelect: false,
-                showLabelToggle: true,
+                showLabelToggle: showChartLabelToggle,
                 showLabels: showChartLabels || getAnalysisSeriesShowLabels(datasetKey, chartKey),
                 tightRange: true,
                 tightPadding: 0.14,
@@ -289,6 +318,25 @@
                 scrollWithinCanvas: true,
                 height: isFullscreenChart ? 520 : 292
             });
+        const tableHtml = String(chart?.tableHtml || '').trim();
+        const activeViewMode = String(chart?.viewMode || '').trim().toLowerCase() === 'table' && tableHtml
+            ? 'table'
+            : 'chart';
+        const viewToggleHtml = chart?.showViewToggle === true && tableHtml
+            ? `
+                <div class="util-sheet-analysis-chart-view-toggle" role="group" aria-label="보기 전환">
+                    <button type="button" class="util-sheet-analysis-chart-view-btn${activeViewMode === 'chart' ? ' is-active' : ''}" data-exp-chart-view="chart" aria-pressed="${activeViewMode === 'chart' ? 'true' : 'false'}">
+                        <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
+                        <span>그래프</span>
+                    </button>
+                    <button type="button" class="util-sheet-analysis-chart-view-btn${activeViewMode === 'table' ? ' is-active' : ''}" data-exp-chart-view="table" aria-pressed="${activeViewMode === 'table' ? 'true' : 'false'}">
+                        <i class="fa-solid fa-table" aria-hidden="true"></i>
+                        <span>표</span>
+                    </button>
+                </div>
+            `
+            : '';
+        const surfaceHtml = activeViewMode === 'table' ? tableHtml : chartHtml;
         const buttonTitle = hasVisibleSeries
             ? (isFullscreenChart ? `${chart.title} 전체화면 종료` : `${chart.title} 전체화면`)
             : '표시할 시리즈가 없습니다.';
@@ -316,14 +364,17 @@
                             <div class="util-sheet-analysis-chart-sub">${escapeHtml(model.rangeLabel)}</div>
                         </div>
                     </div>
-                    <button type="button" class="util-sheet-analysis-chart-btn${isFullscreenChart ? ' is-active' : ''}" data-role="util-sheet-analysis-open-chart" data-chart-key="${escapeHtml(chartKey)}" aria-label="${escapeHtml(buttonTitle)}" title="${escapeHtml(buttonTitle)}" ${hasVisibleSeries ? '' : 'disabled'}>
-                        <i class="fa-solid ${isFullscreenChart ? 'fa-compress' : 'fa-expand'}" aria-hidden="true"></i>
-                    </button>
+                    <div class="util-sheet-analysis-chart-actions">
+                        ${viewToggleHtml}
+                        <button type="button" class="util-sheet-analysis-chart-btn${isFullscreenChart ? ' is-active' : ''}" data-role="util-sheet-analysis-open-chart" data-chart-key="${escapeHtml(chartKey)}" aria-label="${escapeHtml(buttonTitle)}" title="${escapeHtml(buttonTitle)}" ${hasVisibleSeries ? '' : 'disabled'}>
+                            <i class="fa-solid ${isFullscreenChart ? 'fa-compress' : 'fa-expand'}" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </div>
                 ${summaryBlockHtml}
                 <div class="util-sheet-analysis-chart-surface">
                     <div class="util-report-chart-shell util-sheet-analysis-chart-frame theme-total" style="--util-chart-accent:${escapeHtml(chart.color || '#1d4ed8')};--util-chart-bar:${escapeHtml(chart.color || '#60a5fa')};">
-                        ${chartHtml}
+                        ${surfaceHtml}
                     </div>
                 </div>
             </article>
@@ -425,6 +476,7 @@
             <div class="util-sheet-analysis-summary-grid">
                 ${items.map(item => {
                     const itemKey = String(item?.key || '').trim();
+                    const valueText = String(item?.valueText ?? '').trim();
                     const controlItem = controlMap.get(itemKey) || normalizedControlMap.get(itemKey.toLowerCase()) || null;
                     const controlHtml = controlItem
                         ? buildGasAnalysisSeriesControlHtml({ ...controlItem, datasetKey })
@@ -435,7 +487,7 @@
                             <span class="util-sheet-analysis-summary-icon" aria-hidden="true"><i class="fa-solid ${escapeHtml(item.icon || 'fa-circle')}"></i></span>
                             <span class="util-sheet-analysis-summary-label">${escapeHtml(item.title)}</span>
                         </div>
-                        <div class="util-sheet-analysis-summary-value">${escapeHtml(item.valueText)}</div>
+                        ${valueText ? `<div class="util-sheet-analysis-summary-value">${escapeHtml(valueText)}</div>` : ''}
                         ${item.secondaryValueText ? `<div class="util-sheet-analysis-summary-meta">${escapeHtml(item.secondaryLabelText || '금액')}</div>` : ''}
                         ${item.secondaryValueText ? `<div class="util-sheet-analysis-summary-value">${escapeHtml(item.secondaryValueText)}</div>` : ''}
                         ${item.metaText ? `<div class="util-sheet-analysis-summary-meta">${escapeHtml(item.metaText)}</div>` : ''}
@@ -454,14 +506,20 @@
             'util-sheet-analysis-section',
             viewState?.fullscreenChart === true ? 'is-chart-fullscreen' : ''
         ].filter(Boolean).join(' ');
-        const isRatioFullscreen = viewState?.fullscreenChart === true
-            && String(viewState?.chartKey || '').trim() === 'ratio-combined';
         const inlineTableKey = viewState?.fullscreenChart === true
             ? ''
             : getInlineRatioTableKey(modal, viewState?.inlineTableKey || '');
         const floatingTableHtml = inlineTableKey
             ? buildGasAnalysisFloatingTablePanelHtml(modal, model, inlineTableKey)
             : '';
+        const chartGridHtml = `
+            <div class="util-sheet-analysis-grid" data-role="util-sheet-analysis-grid">
+                ${model.combinedChart
+                    ? buildUtilGasAnalysisChartCardHtmlV2(model.combinedChart, model, viewState)
+                    : (Array.isArray(model.charts) ? model.charts.map(chart => buildUtilGasAnalysisChartCardHtmlV2(chart, model, viewState)).join('') : '')}
+            </div>
+        `;
+        const graphBlockHtml = buildUtilSheetAnalysisGraphBlockHtml(chartGridHtml);
         return `
             <section class="${escapeHtml(sectionClassName)}" data-role="util-sheet-analysis-section">
                 <div class="util-sheet-section-head util-sheet-analysis-section-head">
@@ -474,16 +532,7 @@
                 <div data-role="util-sheet-analysis-summary-grid">
                     ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, model.combinedChart?.controlItems, { datasetKey: 'gas' })}
                 </div>
-                <div class="util-sheet-analysis-grid" data-role="util-sheet-analysis-grid">
-                    ${model.combinedChart
-                        ? buildUtilGasAnalysisChartCardHtmlV2(model.combinedChart, model, viewState)
-                        : model.charts.map(chart => buildUtilGasAnalysisChartCardHtmlV2(chart, model, viewState)).join('')}
-                </div>
-                ${model.ratioCombinedChart ? `
-                    <div class="util-sheet-analysis-table-stack${isRatioFullscreen ? ' is-ratio-chart-fullscreen' : ''}" data-role="util-sheet-analysis-table-stack">
-                        ${model.ratioCombinedChart ? buildUtilGasAnalysisRatioCombinedChartCardHtmlV2(model.ratioCombinedChart, model, viewState) : ''}
-                    </div>
-                ` : ''}
+                ${graphBlockHtml}
             </section>
         `;
     }
@@ -506,6 +555,13 @@
                 ? model.charts.flatMap(chart => Array.isArray(chart?.controlItems) ? chart.controlItems : [])
                 : [])
         ];
+        const chartGridHtml = `
+            <div class="util-sheet-analysis-grid" data-role="util-sheet-analysis-grid">
+                ${model.combinedChart ? buildUtilGasAnalysisChartCardHtmlV2(model.combinedChart, model, viewState) : ''}
+                ${Array.isArray(model.charts) ? model.charts.map(chart => buildUtilGasAnalysisChartCardHtmlV2(chart, model, viewState)).join('') : ''}
+            </div>
+        `;
+        const graphBlockHtml = buildUtilSheetAnalysisGraphBlockHtml(chartGridHtml);
         return `
             <section class="${escapeHtml(sectionClassName)}" data-role="util-sheet-analysis-section">
                 <div class="util-sheet-section-head util-sheet-analysis-section-head">
@@ -518,10 +574,7 @@
                 <div data-role="util-sheet-analysis-summary-grid">
                     ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, controlItems, { datasetKey: 'electric' })}
                 </div>
-                <div class="util-sheet-analysis-grid" data-role="util-sheet-analysis-grid">
-                    ${model.combinedChart ? buildUtilGasAnalysisChartCardHtmlV2(model.combinedChart, model, viewState) : ''}
-                    ${Array.isArray(model.charts) ? model.charts.map(chart => buildUtilGasAnalysisChartCardHtmlV2(chart, model, viewState)).join('') : ''}
-                </div>
+                ${graphBlockHtml}
             </section>
         `;
     }
@@ -545,6 +598,13 @@
                 ? model.charts.flatMap(chart => Array.isArray(chart?.controlItems) ? chart.controlItems : [])
                 : [])
         ];
+        const chartGridHtml = `
+            <div class="util-sheet-analysis-grid" data-role="util-sheet-analysis-grid">
+                ${model.combinedChart ? buildUtilGasAnalysisChartCardHtmlV2(model.combinedChart, model, viewState) : ''}
+                ${Array.isArray(model.charts) ? model.charts.map(chart => buildUtilGasAnalysisChartCardHtmlV2(chart, model, viewState)).join('') : ''}
+            </div>
+        `;
+        const graphBlockHtml = buildUtilSheetAnalysisGraphBlockHtml(chartGridHtml);
         return `
             <section class="${escapeHtml(sectionClassName)}" data-role="util-sheet-analysis-section">
                 <div class="util-sheet-section-head util-sheet-analysis-section-head">
@@ -558,10 +618,7 @@
                 <div data-role="util-sheet-analysis-summary-grid">
                     ${buildUtilSheetAnalysisSummaryGridHtml(model.summaryItems, controlItems, { datasetKey: 'waste' })}
                 </div>
-                <div class="util-sheet-analysis-grid" data-role="util-sheet-analysis-grid">
-                    ${model.combinedChart ? buildUtilGasAnalysisChartCardHtmlV2(model.combinedChart, model, viewState) : ''}
-                    ${Array.isArray(model.charts) ? model.charts.map(chart => buildUtilGasAnalysisChartCardHtmlV2(chart, model, viewState)).join('') : ''}
-                </div>
+                ${graphBlockHtml}
             </section>
         `;
     }

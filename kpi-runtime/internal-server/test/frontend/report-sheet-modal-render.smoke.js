@@ -75,6 +75,20 @@ function createModalHarness() {
   const gasViewToggle = {
     attrs: {},
     classList: createClassList(),
+    dataset: {},
+    hidden: true,
+    innerHTML: '',
+    setAttribute(name, value) {
+      this.attrs[name] = value;
+    },
+    toggleAttribute(name, force) {
+      if (name === 'hidden') this.hidden = force === true;
+    },
+  };
+  const gasViewToggleSecondary = {
+    attrs: {},
+    classList: createClassList(),
+    dataset: {},
     hidden: true,
     innerHTML: '',
     setAttribute(name, value) {
@@ -125,6 +139,8 @@ function createModalHarness() {
           return monthSelect;
         case '[data-util-sheet-gas-view-toggle]':
           return gasViewToggle;
+        case '[data-util-sheet-gas-view-toggle-secondary]':
+          return gasViewToggleSecondary;
         case '[data-role="util-sheet-report-print"]':
           return extractButton;
         default:
@@ -149,6 +165,7 @@ function createModalHarness() {
     monthPrevButton,
     monthNextButton,
     gasViewToggle,
+    gasViewToggleSecondary,
     extractButton,
   };
 }
@@ -226,6 +243,7 @@ test('report sheet modal render registry normalizes meter modal state and rerend
     monthPrevButton,
     monthNextButton,
     gasViewToggle,
+    gasViewToggleSecondary,
     extractButton,
   } = createModalHarness();
 
@@ -378,9 +396,10 @@ test('report sheet modal render registry normalizes meter modal state and rerend
   assert.equal(monthNextButton.disabled, true);
   assert.equal(monthNextButton.attrs['aria-disabled'], 'true');
   assert.equal(gasViewToggle.hidden, false);
-  assert.equal(gasViewToggle.attrs.title, '가스 그래프 보기');
-  assert.match(gasViewToggle.innerHTML, /그래프/);
+  assert.equal(gasViewToggle.attrs.title, '\uAC00\uC2A4 \uADF8\uB798\uD504 \uBCF4\uAE30');
+  assert.match(gasViewToggle.innerHTML, /\uADF8\uB798\uD504/);
   assert.equal(gasViewToggle.classList.contains('is-meter'), true);
+  assert.equal(gasViewToggleSecondary.hidden, true);
   assert.match(reportSheetModalRenderSource, /\['electric', 'gas'\]\.includes\(normalizedDatasetKey\)/);
   assert.equal(extractButton.hidden, false);
   assert.equal(extractButton.disabled, false);
@@ -414,6 +433,63 @@ test('report sheet modal render registry normalizes meter modal state and rerend
   assert.equal(detachedSyncCount, 3);
   assert.equal(windowStateSyncCount, 3);
   assert.equal(relocateCount, 2);
+});
+
+test('report sheet modal render shows LNG and LPG graph buttons for Yusan gas meter sheets', () => {
+  const context = createModalRenderContext();
+  const modalRender = context.KPIUtilReportSheetModalRender;
+  const { modal, gasViewToggle, gasViewToggleSecondary } = createModalHarness();
+
+  modal.dataset.sheetType = 'meter';
+  modal.dataset.datasetKey = 'gas';
+  modal.dataset.monthKey = '2026-04';
+  modal.dataset.utilityEntryExperimentGraphKey = 'gas_yusan';
+  modal.dataset.utilityEntryExperimentGraphOptions = JSON.stringify([
+    { key: 'gas_yusan', label: 'LNG \uADF8\uB798\uD504' },
+    { key: 'gas_yusan_lpg', label: 'LPG \uADF8\uB798\uD504' },
+  ]);
+
+  modalRender.setRuntimeAdapters({
+    getUtilSheetDataset() {
+      return {
+        hasData: true,
+        latestMonthKey: '2026-04',
+        latestMonthLabel: '2026.04',
+        activeMonthKey: '2026-04',
+        monthOptions: [{ value: '2026-04', label: '2026.04' }],
+      };
+    },
+    buildUtilSheetPresentation() {
+      return { kicker: 'METER:GAS', title: 'UTILITY SHEET REPORT' };
+    },
+    buildUtilSheetMonthOptionHtml() {
+      return '<option value="2026-04">2026.04</option>';
+    },
+    buildUtilSheetCompareMeta() {
+      return { label: 'MONTH OVER MONTH' };
+    },
+    buildUtilGasMeterComparisonModel() {
+      return { loading: false };
+    },
+    buildUtilGasMeterComparisonSectionHtml() {
+      return '<section class="compare-block">compare</section>';
+    },
+  });
+
+  modalRender.renderUtilSheetReportModal(modal);
+
+  assert.equal(gasViewToggle.hidden, false);
+  assert.equal(gasViewToggle.dataset.utilityEntryExperimentGraphKey, 'gas_yusan');
+  assert.equal(gasViewToggle.dataset.utilityEntryExperimentGraphLabel, 'LNG \uADF8\uB798\uD504');
+  assert.equal(gasViewToggle.attrs.title, 'LNG \uADF8\uB798\uD504 \uBCF4\uAE30');
+  assert.match(gasViewToggle.innerHTML, /LNG \uADF8\uB798\uD504/);
+  assert.equal(gasViewToggleSecondary.hidden, false);
+  assert.equal(gasViewToggleSecondary.dataset.utilityEntryExperimentGraphKey, 'gas_yusan_lpg');
+  assert.equal(gasViewToggleSecondary.dataset.utilityEntryExperimentGraphLabel, 'LPG \uADF8\uB798\uD504');
+  assert.equal(gasViewToggleSecondary.attrs.title, 'LPG \uADF8\uB798\uD504 \uBCF4\uAE30');
+  assert.match(gasViewToggleSecondary.innerHTML, /LPG \uADF8\uB798\uD504/);
+  assert.match(reportSheetModalRenderSource, /parseUtilityEntryGraphOptions/);
+  assert.match(reportSheetModalRenderSource, /data-util-sheet-gas-view-toggle-secondary/);
 });
 
 test('report sheet modal render omits blank template from every utility sheet body', () => {
@@ -775,8 +851,8 @@ test('report sheet modal render loads electric metering store before no-data fal
 
   assert.equal(electricLoadCount, 1);
   assert.equal(modal.dataset.electricMeteringLoadAttempted, 'true');
-  assert.match(sub.textContent, /전기 검침 데이터를 불러오는 중/);
-  assert.match(body.innerHTML, /전기 검침표 데이터를 불러오는 중입니다/);
+  assert.match(sub.textContent, /\uC804\uAE30 \uAC80\uCE68 \uB370\uC774\uD130\uB97C \uBD88\uB7EC\uC624\uB294 \uC911/);
+  assert.match(body.innerHTML, /\uC804\uAE30 \uAC80\uCE68\uD45C \uB370\uC774\uD130\uB97C \uBD88\uB7EC\uC624\uB294 \uC911\uC785\uB2C8\uB2E4/);
 });
 
 test('report sheet modal render syncs gas data before showing no-data fallback', () => {
@@ -940,12 +1016,12 @@ test('report sheet gas runtime sync forces one metering sync per report session'
 
 test('kpi html loads report sheet modal render between modal shell and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=060');
+  const configIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=061');
   const gasScopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=056');
   const gasRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/runtime-sync.js?v=054');
-  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=122');
+  const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=123');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=062');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');

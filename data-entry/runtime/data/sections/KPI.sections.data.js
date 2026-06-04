@@ -93,6 +93,14 @@
             ])
         }),
         Object.freeze({
+            key: 'gas_yusan_lpg',
+            datasetKey: 'gas',
+            label: '가스 LPG',
+            requirements: Object.freeze([
+                Object.freeze({ resourceType: 'gas', scopeKey: 'yusan_lpg', label: '유산 가스 LPG' })
+            ])
+        }),
+        Object.freeze({
             key: 'gas_bukjeong_lng',
             datasetKey: 'gas',
             label: '가스 LNG',
@@ -127,7 +135,22 @@
         electric_bukjeong: 'electric_bukjeong',
         gas_yusan: 'gas_yusan',
         gas_yusan_lng: 'gas_yusan',
+        gas_yusan_lpg: 'gas_yusan_lpg',
         gas_bukjeong_lng: 'gas_bukjeong'
+    });
+    const UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_GRAPH_OPTIONS = Object.freeze({
+        gas_yusan: Object.freeze([
+            Object.freeze({ key: 'gas_yusan', label: 'LNG 그래프' }),
+            Object.freeze({ key: 'gas_yusan_lpg', label: 'LPG 그래프' })
+        ]),
+        gas_yusan_lng: Object.freeze([
+            Object.freeze({ key: 'gas_yusan', label: 'LNG 그래프' }),
+            Object.freeze({ key: 'gas_yusan_lpg', label: 'LPG 그래프' })
+        ]),
+        gas_yusan_lpg: Object.freeze([
+            Object.freeze({ key: 'gas_yusan', label: 'LNG 그래프' }),
+            Object.freeze({ key: 'gas_yusan_lpg', label: 'LPG 그래프' })
+        ])
     });
     const UTILITY_ENTRY_EXPERIMENT_GRAPH_DEFINITIONS = Object.freeze({
         electric_yusan: Object.freeze({
@@ -182,6 +205,24 @@
                 ratioUnit: 'Nm3/Kg',
                 tableRow: '생산량 대비 가스사용량<br>(Nm3/Kg)',
                 bottomCaption: '생산량 대비 가스사용량(Nm3/Kg)'
+            })
+        }),
+        gas_yusan_lpg: Object.freeze({
+            resourceType: 'gas',
+            scopeKey: 'yusan_lpg',
+            productionTeamNames: Object.freeze(['1팀 2파트']),
+            memoKey: 'utilityGraphGasYusanLpgMemo',
+            memoDefaultTeam: 'team_01_02',
+            memoDefaultMetric: 'lpg_unit',
+            title: '유산 LPG 원가 Data',
+            labels: Object.freeze({
+                site: '유산',
+                usage: 'LPG 사용량',
+                usageUnit: 'Nm3',
+                ratio: '생산량 대비 LPG사용량',
+                ratioUnit: 'Nm3/Kg',
+                tableRow: '생산량 대비 LPG사용량<br>(Nm3/Kg)',
+                bottomCaption: '생산량 대비 LPG사용량(Nm3/Kg)'
             })
         }),
         gas_bukjeong: Object.freeze({
@@ -2168,10 +2209,6 @@
 
     function getUtilityEntryExperimentResourceDailyEntryValidationIssues(dataset, resourceType, dateString, fieldIds = null) {
         const currentValues = getUtilityEntryExperimentEntryValues(dataset, dateString);
-        const previousDate = getUtilityEntryExperimentPreviousEntryDate(dataset, dateString);
-        if (!previousDate) return [];
-
-        const previousValues = getUtilityEntryExperimentEntryValues(dataset, previousDate);
         const targetIds = Array.isArray(fieldIds)
             ? fieldIds
             : getUtilityEntryExperimentCompletionRequiredIds(dataset, resourceType, dateString);
@@ -2179,6 +2216,10 @@
         return targetIds
             .map(equipmentId => {
                 const currentText = normalizeUtilityEntryExperimentNumberText(currentValues[equipmentId]);
+                const previousDate = getUtilityEntryExperimentPreviousEquipmentEntryDate(dataset, equipmentId, dateString);
+                if (!previousDate) return null;
+
+                const previousValues = getUtilityEntryExperimentEntryValues(dataset, previousDate);
                 const previousText = normalizeUtilityEntryExperimentNumberText(previousValues[equipmentId]);
                 if (!currentText || !previousText) return null;
 
@@ -2712,6 +2753,38 @@
         }
     }
 
+    function setUtilityEntryExperimentDailyInputReferenceMetadata(input, reference = {}) {
+        if (!input?.dataset) return;
+        const referenceText = normalizeUtilityEntryExperimentNumberText(reference.value ?? reference.text);
+        const referenceDate = String(reference.dateString || '').trim();
+
+        if (referenceText) {
+            input.dataset.utilityEntryExperimentReferenceValue = referenceText;
+            input.setAttribute?.('data-utility-entry-experiment-reference-value', referenceText);
+        } else {
+            delete input.dataset.utilityEntryExperimentReferenceValue;
+            input.removeAttribute?.('data-utility-entry-experiment-reference-value');
+        }
+
+        if (referenceDate) {
+            input.dataset.utilityEntryExperimentReferenceDate = referenceDate;
+            input.setAttribute?.('data-utility-entry-experiment-reference-date', referenceDate);
+        } else {
+            delete input.dataset.utilityEntryExperimentReferenceDate;
+            input.removeAttribute?.('data-utility-entry-experiment-reference-date');
+        }
+    }
+
+    function getUtilityEntryExperimentInputReferenceText(input, rowInputs = []) {
+        const directReference = normalizeUtilityEntryExperimentNumberText(
+            input?.dataset?.utilityEntryExperimentReferenceValue
+        );
+        if (directReference) return directReference;
+
+        const previousInput = rowInputs[0] || null;
+        return normalizeUtilityEntryExperimentNumberText(previousInput?.value);
+    }
+
     function setUtilityEntryExperimentCorrectionLockedInput(input, locked, options = {}) {
         if (!input) return;
         setUtilityEntryExperimentDailyInputFieldMetadata(input, options.resourceType, options.fieldId);
@@ -2998,7 +3071,7 @@
         const row = input.closest?.('tr') || null;
         const rowInputs = Array.from(row?.querySelectorAll?.('.utility-entry-experiment-input') || []);
         const previousInput = rowInputs[0] || null;
-        const previousText = normalizeUtilityEntryExperimentNumberText(previousInput?.value);
+        const previousText = getUtilityEntryExperimentInputReferenceText(input, rowInputs);
         if (!previousText) return null;
         const previousValue = parseUtilityEntryExperimentNumber(previousText);
         const fieldId = resolveUtilityEntryExperimentDailyInputFieldId(
@@ -3281,11 +3354,15 @@
                 return;
             }
 
+            const previousEquipmentDate =
+                getUtilityEntryExperimentPreviousEquipmentEntryDate(dataset, equipmentId, dateString) ||
+                previousDate;
+            const previousEquipmentValues = getUtilityEntryExperimentEntryValues(dataset, previousEquipmentDate);
             const previousValue = calculateUtilityEntryExperimentDailyRowReading(
                 dataset,
                 equipmentId,
-                previousDate,
-                previousValues,
+                previousEquipmentDate,
+                previousEquipmentValues,
                 resourceType,
                 usageMonthValue,
                 correctionOptions
@@ -3340,6 +3417,12 @@
                 { resourceType }
             );
             setUtilityEntryExperimentInputValue(host, `${label} 사용량`, roundUtilityEntryExperimentNumber(displayUsageValue), { resourceType });
+
+            const rowInputs = getUtilityEntryExperimentDailyRowInputsByFieldId(host, resourceType, equipmentId);
+            setUtilityEntryExperimentDailyInputReferenceMetadata(rowInputs[1], {
+                value: getUtilityEntryExperimentEquipmentSummaryReadingDisplayValue(equipmentId, previousValue, correctionOptions),
+                dateString: previousEquipmentDate
+            });
         });
         syncUtilityEntryExperimentCorrectionLockedDailyInputs(host, resourceType, usageMonthValue, correctionOptions);
         if (resourceType === 'electric') {
@@ -3487,6 +3570,21 @@
         return UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_GRAPH_KEYS[normalizedKey] || '';
     }
 
+    function getUtilityEntryExperimentMonthlyMeterGraphOptions(linkKey = '') {
+        const normalizedKey = String(linkKey || '').trim();
+        const optionList = UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_GRAPH_OPTIONS[normalizedKey];
+        if (Array.isArray(optionList) && optionList.length) {
+            return optionList
+                .map(option => ({
+                    key: String(option?.key || '').trim(),
+                    label: String(option?.label || '').trim()
+                }))
+                .filter(option => option.key);
+        }
+        const graphKey = getUtilityEntryExperimentMonthlyMeterGraphKey(normalizedKey);
+        return graphKey ? [{ key: graphKey, label: '그래프' }] : [];
+    }
+
     function normalizeUtilityEntryExperimentMeterLinkKey(linkKey = '', datasetKey = '') {
         const normalizedKey = String(linkKey || '').trim();
         if (getUtilityEntryExperimentMonthlyMeterLinkConfig(normalizedKey)) return normalizedKey;
@@ -3530,8 +3628,18 @@
         );
         if (modal?.dataset) {
             const activeLinkKey = normalizeUtilityEntryExperimentMeterLinkKey(linkButton?.dataset?.utilityEntryExperimentMeterLink || normalizedLinkKey, normalizedDatasetKey);
+            const graphOptions = getUtilityEntryExperimentMonthlyMeterGraphOptions(activeLinkKey);
             modal.dataset.utilityEntryExperimentMeterLinkKey = activeLinkKey;
-            modal.dataset.utilityEntryExperimentGraphKey = getUtilityEntryExperimentMonthlyMeterGraphKey(activeLinkKey);
+            modal.dataset.utilityEntryExperimentGraphKey = graphOptions[0]?.key || '';
+            if (graphOptions.length) {
+                modal.dataset.utilityEntryExperimentGraphOptions = JSON.stringify(graphOptions);
+            } else {
+                delete modal.dataset.utilityEntryExperimentGraphOptions;
+            }
+            const modalRender = utilityEntryExperimentRoot?.KPIUtilReportSheetModalRender;
+            if (typeof modalRender?.renderUtilSheetReportModal === 'function') {
+                modalRender.renderUtilSheetReportModal(modal);
+            }
         }
         return modal;
     }
@@ -3673,24 +3781,36 @@
         const buttons = Array.from(host?.querySelectorAll?.('[data-role="utility-entry-experiment-meter-open"]') || []);
         if (!buttons.length) return;
         const monthlyMeterReadingCache = new Map();
+        const monthLabel = /^\d{4}-\d{2}$/.test(String(monthValue || ''))
+            ? String(monthValue).replace('-', '.')
+            : '선택월';
         const states = getUtilityEntryExperimentMonthlyMeterLinkStates(records, monthValue, {
             monthlyMeterReadingCache
         });
         buttons.forEach(button => {
             const datasetKey = normalizeUtilityEntryExperimentMeterDatasetKey(button.dataset.utilityEntryExperimentMeter || '');
             const linkKey = normalizeUtilityEntryExperimentMeterLinkKey(button.dataset.utilityEntryExperimentMeterLink || '', datasetKey);
+            const titleGraphKey = String(button.dataset.utilityEntryExperimentTitleGraph || '').trim();
             const state = states[linkKey] || getUtilityEntryExperimentMonthlyMeterLinkState(records, linkKey, monthValue, datasetKey, {
                 monthlyMeterReadingCache
             });
+            const buttonLabel = String(button.textContent || state.label || '').trim() || state.label;
+            const title = titleGraphKey
+                ? (
+                    state.ready
+                        ? `${monthLabel} ${buttonLabel} 그래프 열기`
+                        : `${monthLabel} ${buttonLabel} 그래프는 검침값 입력 후 열 수 있습니다`
+                )
+                : state.title;
             button.disabled = !state.ready;
             button.classList.toggle('is-disabled', !state.ready);
             button.dataset.utilityEntryExperimentMeter = state.datasetKey;
             button.dataset.utilityEntryExperimentMeterLink = state.key;
             button.dataset.utilityEntryExperimentMeterReady = state.ready ? 'true' : 'false';
             button.dataset.utilityEntryExperimentMeterStatus = state.statusLabel;
-            button.title = state.title;
+            button.title = title;
             button.setAttribute('aria-disabled', state.ready ? 'false' : 'true');
-            button.setAttribute('aria-label', state.title);
+            button.setAttribute('aria-label', title);
         });
     }
 
@@ -5809,6 +5929,57 @@ html, body {
         return host?.querySelector?.('[data-role="utility-entry-experiment-quick-candidates"]') || null;
     }
 
+    const UTILITY_ENTRY_EXPERIMENT_QUICK_TARGET_ROW_CLASS = 'utility-entry-experiment-quick-target-row';
+
+    function setUtilityEntryExperimentQuickTargetRowState(row, enabled = false) {
+        if (!row?.classList) return;
+        if (typeof row.classList.toggle === 'function') {
+            row.classList.toggle(UTILITY_ENTRY_EXPERIMENT_QUICK_TARGET_ROW_CLASS, enabled);
+            return;
+        }
+        if (enabled) {
+            row.classList.add?.(UTILITY_ENTRY_EXPERIMENT_QUICK_TARGET_ROW_CLASS);
+        } else {
+            row.classList.remove?.(UTILITY_ENTRY_EXPERIMENT_QUICK_TARGET_ROW_CLASS);
+        }
+    }
+
+    function clearUtilityEntryExperimentQuickTargetRows(host, keepRow = null) {
+        Array.from(host?.querySelectorAll?.(`.${UTILITY_ENTRY_EXPERIMENT_QUICK_TARGET_ROW_CLASS}`) || [])
+            .forEach(row => {
+                if (row !== keepRow) setUtilityEntryExperimentQuickTargetRowState(row, false);
+            });
+    }
+
+    function showUtilityEntryExperimentQuickTargetRow(host, target = {}, options = {}) {
+        const normalizedTarget = target && typeof target === 'object'
+            ? {
+                label: target.label || target.targetLabel || '',
+                resourceType: target.resourceType || target.targetResourceType || '',
+                fieldId: target.fieldId || target.targetFieldId || ''
+            }
+            : target;
+        const targetInput = typeof target?.closest === 'function'
+            ? target
+            : getUtilityEntryExperimentInputByQuickTarget(host, normalizedTarget);
+        const row = targetInput?.closest?.('tr') || null;
+        clearUtilityEntryExperimentQuickTargetRows(host, row);
+        if (!row) return null;
+
+        setUtilityEntryExperimentQuickTargetRowState(row, true);
+        if (options.scroll === true) {
+            row.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+        }
+        return row;
+    }
+
+    function activateUtilityEntryExperimentQuickCandidate(host, candidate) {
+        if (!candidate) return;
+        Array.from(host?.querySelectorAll?.('[data-role="utility-entry-experiment-quick-candidate"]') || [])
+            .forEach(item => item.classList?.toggle?.('is-active', item === candidate));
+        showUtilityEntryExperimentQuickTargetRow(host, getUtilityEntryExperimentQuickTargetFromCandidate(candidate));
+    }
+
     function setUtilityEntryExperimentQuickOpen(host, isOpen = true) {
         const panel = getUtilityEntryExperimentQuickPanel(host);
         const toggle = host?.querySelector?.('[data-role="utility-entry-experiment-quick-toggle"]');
@@ -5902,18 +6073,17 @@ html, body {
                 const row = input.closest('tr');
                 const itemLabel = row?.querySelector?.('.is-item-cell')?.textContent?.trim() || targetLabel;
                 const rowInputs = Array.from(row?.querySelectorAll?.('.utility-entry-experiment-input') || []);
-                const previousInput = rowInputs[0] || null;
                 const currentText = normalizeUtilityEntryExperimentNumberText(input.value);
                 if (currentText && !includeFilled) return null;
 
-                const previousText = normalizeUtilityEntryExperimentNumberText(previousInput?.value);
+                const previousText = getUtilityEntryExperimentInputReferenceText(input, rowInputs);
                 if (!previousText) return null;
 
                 const previousValue = parseUtilityEntryExperimentNumber(previousText);
                 const referenceValue = previousValue;
                 if (!Number.isFinite(referenceValue)) return null;
-                const difference = inputValue - referenceValue;
-                if (difference < 0) return null;
+                const signedDifference = inputValue - referenceValue;
+                const difference = Math.abs(signedDifference);
 
                 const section = input.closest('.utility-entry-experiment-subsection');
                 const resourceLabel = section?.classList?.contains('is-gas') ? '가스' : '전기';
@@ -5926,6 +6096,7 @@ html, body {
                     referenceValue,
                     currentText,
                     isFilled: Boolean(currentText),
+                    isBelowReference: signedDifference < 0,
                     difference
                 };
             })
@@ -5951,10 +6122,12 @@ html, body {
 
         const rows = getUtilityEntryExperimentQuickCandidateRows(host, input.value);
         if (!normalizeUtilityEntryExperimentNumberText(input.value)) {
+            clearUtilityEntryExperimentQuickTargetRows(host);
             container.innerHTML = '<div class="utility-entry-experiment-quick-empty">값을 입력하면 가까운 항목 3개가 표시됩니다.</div>';
             return;
         }
         if (!rows.length) {
+            clearUtilityEntryExperimentQuickTargetRows(host);
             container.innerHTML = '<div class="utility-entry-experiment-quick-empty">가까운 항목 없음</div>';
             return;
         }
@@ -5969,9 +6142,10 @@ html, body {
                 data-target-field-id="${escapeUtilityEntryExperimentHtml(row.targetFieldId)}"
             >
                 <strong>${escapeUtilityEntryExperimentHtml(`${row.resourceLabel} · ${row.itemLabel}`)}</strong>
-                <span>기준 ${escapeUtilityEntryExperimentHtml(formatUtilityEntryExperimentNumberText(row.referenceValue))} · 차이 ${escapeUtilityEntryExperimentHtml(formatUtilityEntryExperimentNumberText(row.difference.toFixed(2)))}${row.isFilled ? ` · 현재 ${escapeUtilityEntryExperimentHtml(formatUtilityEntryExperimentNumberText(row.currentText))}` : ''}</span>
+                <span>기준 ${escapeUtilityEntryExperimentHtml(formatUtilityEntryExperimentNumberText(row.referenceValue))} · 차이 ${escapeUtilityEntryExperimentHtml(formatUtilityEntryExperimentNumberText(row.difference.toFixed(2)))}${row.isBelowReference ? ' · 이전값보다 낮음' : ''}${row.isFilled ? ` · 현재 ${escapeUtilityEntryExperimentHtml(formatUtilityEntryExperimentNumberText(row.currentText))}` : ''}</span>
             </button>
         `).join('');
+        showUtilityEntryExperimentQuickTargetRow(host, rows[0]);
     }
 
     function selectUtilityEntryExperimentQuickCandidate(host, direction = 1) {
@@ -5982,9 +6156,7 @@ html, body {
         const nextIndex = currentIndex < 0
             ? 0
             : (currentIndex + direction + candidates.length) % candidates.length;
-        candidates.forEach((candidate, index) => {
-            candidate.classList.toggle('is-active', index === nextIndex);
-        });
+        activateUtilityEntryExperimentQuickCandidate(host, candidates[nextIndex]);
     }
 
     function getUtilityEntryExperimentQuickTargetFromCandidate(candidate) {
@@ -6028,6 +6200,7 @@ html, body {
 
         input.value = '';
         renderUtilityEntryExperimentQuickCandidates(host);
+        showUtilityEntryExperimentQuickTargetRow(host, targetInput, { scroll: true });
         input.focus?.();
         return true;
     }
@@ -6081,6 +6254,18 @@ html, body {
                 event.preventDefault();
                 selectUtilityEntryExperimentQuickCandidate(host, -1);
             }
+        });
+
+        host.addEventListener('mouseover', event => {
+            const quickCandidate = event.target?.closest?.('[data-role="utility-entry-experiment-quick-candidate"]');
+            if (!quickCandidate || !host.contains(quickCandidate)) return;
+            activateUtilityEntryExperimentQuickCandidate(host, quickCandidate);
+        });
+
+        host.addEventListener('focusin', event => {
+            const quickCandidate = event.target?.closest?.('[data-role="utility-entry-experiment-quick-candidate"]');
+            if (!quickCandidate || !host.contains(quickCandidate)) return;
+            activateUtilityEntryExperimentQuickCandidate(host, quickCandidate);
         });
 
         host.addEventListener('keydown', event => {
@@ -6148,9 +6333,17 @@ html, body {
 
             const monthlyMeterButton = event.target?.closest?.('[data-role="utility-entry-experiment-meter-open"]');
             if (monthlyMeterButton && host.contains(monthlyMeterButton)) {
+                event.preventDefault();
                 if (monthlyMeterButton.disabled || monthlyMeterButton.dataset.utilityEntryExperimentMeterReady === 'false') {
-                    event.preventDefault();
                     utilityEntryExperimentRoot?.alert?.(monthlyMeterButton.title || '정산 완료 후 검침표를 열 수 있습니다.');
+                    return;
+                }
+                const titleGraphKey = String(monthlyMeterButton.dataset.utilityEntryExperimentTitleGraph || '').trim();
+                if (titleGraphKey) {
+                    openUtilityEntryExperimentGraphTemplateByKey(
+                        titleGraphKey,
+                        getUtilityEntryExperimentSelectedMonth(host)
+                    );
                     return;
                 }
                 openUtilityEntryExperimentMonthlyMeterSheet(
@@ -6903,10 +7096,13 @@ html, body {
 
     function buildUtilityEntryExperimentSettlementTitle(title, options = {}) {
         const meterLinkKey = String(options.titleMeterLinkKey || '').trim();
+        const titleGraphKey = String(options.titleGraphKey || '').trim();
         const linkConfig = meterLinkKey ? getUtilityEntryExperimentMonthlyMeterLinkConfig(meterLinkKey) : null;
         if (!linkConfig) return `<h3>${escapeUtilityEntryExperimentHtml(title)}</h3>`;
 
-        const pendingLabel = `${title} 정산 상태 확인 중`;
+        const pendingLabel = titleGraphKey
+            ? `${title} 그래프 상태 확인 중`
+            : `${title} 정산 상태 확인 중`;
         return `
                     <button
                         type="button"
@@ -6914,6 +7110,7 @@ html, body {
                         data-role="utility-entry-experiment-meter-open"
                         data-utility-entry-experiment-meter="${escapeUtilityEntryExperimentHtml(linkConfig.datasetKey)}"
                         data-utility-entry-experiment-meter-link="${escapeUtilityEntryExperimentHtml(linkConfig.key)}"
+                        data-utility-entry-experiment-title-graph="${escapeUtilityEntryExperimentHtml(titleGraphKey)}"
                         data-utility-entry-experiment-meter-ready="false"
                         title="${escapeUtilityEntryExperimentHtml(pendingLabel)}"
                         aria-label="${escapeUtilityEntryExperimentHtml(pendingLabel)}"
@@ -6940,7 +7137,8 @@ html, body {
         });
         const titleMeterLinkKey = String(options.titleMeterLinkKey || options.monthlyMeterLinkKey || '').trim();
         const titleHtml = buildUtilityEntryExperimentSettlementTitle(title, {
-            titleMeterLinkKey
+            titleMeterLinkKey,
+            titleGraphKey: options.titleGraphKey
         });
         const monthlyMeterLinkHtml = titleMeterLinkKey ? '' : buildUtilityEntryExperimentMonthlyMeterButton(options.monthlyMeterLinkKey || '');
         const graphToggleHtml = buildUtilityEntryExperimentGraphToggle({
@@ -7155,6 +7353,7 @@ html, body {
                             scopeKey: 'yusan_lpg',
                             showAttachmentKey: true,
                             attachmentLabel: '유산 가스 LPG 청구서 첨부',
+                            titleMeterLinkKey: 'gas_yusan_lpg',
                             fieldRows: UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.gasLpg,
                             calculatedRows: yusanGasLpgCalculatedRows,
                             totalRows: ['총액']
@@ -7190,6 +7389,7 @@ html, body {
                             showAttachmentKey: true,
                             attachmentLabel: '북정 전기 청구서 첨부',
                             titleMeterLinkKey: 'electric_bukjeong',
+                            titleGraphKey: 'electric_bukjeong',
                             fieldRows: UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.electric,
                             directMonthlyFirstRow: { resourceType: 'electric', teamKey: 'team_01_01' },
                             emphasisRows: ['전기요금계'],
@@ -7204,6 +7404,7 @@ html, body {
                             showAttachmentKey: true,
                             attachmentLabel: '북정 가스 LNG 청구서 첨부',
                             titleMeterLinkKey: 'gas_bukjeong_lng',
+                            titleGraphKey: 'gas_bukjeong',
                             fieldRows: UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.gasLng,
                             directMonthlyFirstRow: { resourceType: 'gas', teamKey: 'team_01_01' },
                             totalRows: ['청구금액']
@@ -7350,6 +7551,21 @@ html, body {
                     }
                 },
                 {
+                    title: '설비 이력 카드',
+                    icon: 'fa-screwdriver-wrench',
+                    color: '#475569',
+                    viewerMode: 'full-bleed',
+                    desc: '설비 이력카드 목차에서 팀별 설비 현황, 상태, 상세 이력 카드를 함께 관리합니다.',
+                    dataKey: 'data_equipment_history_card',
+                    fileName: 'Central Server DB / Equipment History Card',
+                    readOnly: false,
+                    content: `
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 px-5 py-5 text-sm text-slate-600">
+                            설비 이력카드 목차 화면을 불러오는 중입니다.
+                        </div>
+                    `
+                },
+                {
                     title: '조도',
                     icon: 'fa-sun',
                     color: '#f59e0b',
@@ -7361,21 +7577,6 @@ html, body {
                     content: `
                         <div class="rounded-lg border border-amber-200 bg-amber-50 px-5 py-5 text-sm text-amber-900">
                             조도 화면을 불러오는 중입니다.
-                        </div>
-                    `
-                },
-                {
-                    title: '설비 양식',
-                    icon: 'fa-screwdriver-wrench',
-                    color: '#475569',
-                    viewerMode: 'full-bleed',
-                    desc: '설비 이력카드 목차에서 팀별 설비 현황, 상태, 상세 이력 카드를 함께 관리합니다.',
-                    dataKey: 'data_equipment_history_card',
-                    fileName: 'Central Server DB / Equipment History Card',
-                    readOnly: false,
-                    content: `
-                        <div class="rounded-lg border border-slate-200 bg-slate-50 px-5 py-5 text-sm text-slate-600">
-                            설비 이력카드 목차 화면을 불러오는 중입니다.
                         </div>
                     `
                 }

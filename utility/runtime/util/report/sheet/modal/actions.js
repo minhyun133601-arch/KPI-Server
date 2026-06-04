@@ -329,6 +329,9 @@
         modal.dataset.datasetKey = normalizedDatasetKey;
         modal.dataset.monthKey = String(monthKey || UtilSheetReportMonthState[normalizedSheetType] || '').trim();
         modal.dataset.compareKey = normalizeCompareKey(compareKey || UtilSheetCompareState[normalizedSheetType] || 'month');
+        delete modal.dataset.utilityEntryExperimentMeterLinkKey;
+        delete modal.dataset.utilityEntryExperimentGraphKey;
+        delete modal.dataset.utilityEntryExperimentGraphOptions;
         modal.dataset.monthlyReportMode = 'false';
         modal.dataset.monthlyExtractOptionsOpen = 'false';
         const monthlyOptions = modal.querySelector?.('[data-role="util-sheet-monthly-extract-options"]') || null;

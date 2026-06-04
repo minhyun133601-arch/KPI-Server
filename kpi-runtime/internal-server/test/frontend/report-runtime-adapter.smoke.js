@@ -166,7 +166,7 @@ test('utility report runtime adapter wraps global access for report sheet hosts'
 test('utility report adapter loads before report runtime and sheet modules', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const reportStateIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.state.options.js?v=340');
-  const sheetConfigIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=060');
+  const sheetConfigIndex = kpiHtml.indexOf('runtime/util/report/sheet/config.js?v=061');
   const sheetHostIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'utility report runtime adapter loader is missing');

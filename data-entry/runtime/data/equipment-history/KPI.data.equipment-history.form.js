@@ -89,6 +89,7 @@
     ];
 
     const DOCUMENT_ATTACHMENT_ACCEPT = '.pdf,.xls,.xlsx,.ppt,.pptx,.doc,.docx,.hwp,.hwpx,.jpg,.jpeg,.png,.webp,.gif,.bmp';
+    const EQUIPMENT_PHOTO_ATTACHMENT_KEY = 'equipment-photo-main';
 
     const DOCUMENT_SAVE_FIELDS = [
         ...DOCUMENT_FIELDS,
@@ -307,6 +308,7 @@
             photoDownloadUrl: api.normalizeText(source.photoDownloadUrl),
             photoStorageRelPath: api.normalizeText(source.photoStorageRelPath),
             photoName: api.normalizeText(source.photoName),
+            photoAttachmentKey: api.normalizeText(source.photoAttachmentKey || source.photoAttachmentId) || EQUIPMENT_PHOTO_ATTACHMENT_KEY,
             detailInfo: editableDetailInfo,
             detailGroups,
             maintenanceHistory: normalizeRows(source.maintenanceHistory, createBlankMaintenanceRow),
@@ -455,6 +457,7 @@
             photoDownloadUrl: normalized.photoDownloadUrl,
             photoStorageRelPath: normalized.photoStorageRelPath,
             photoName: normalized.photoName,
+            photoAttachmentKey: normalized.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY,
             operationInfo: buildInfo(OPERATION_FIELDS.map((field) => ({ label: field.label, value: normalized[field.key] }))),
             detailInfo,
             detailGroups,
@@ -788,6 +791,7 @@
         MAINTENANCE_FIELDS,
         DOCUMENT_FIELDS,
         DOCUMENT_ATTACHMENT_ACCEPT,
+        EQUIPMENT_PHOTO_ATTACHMENT_KEY,
         DOCUMENT_SAVE_FIELDS,
         EQUIPMENT_HISTORY_TEAM_OPTIONS,
         EQUIPMENT_HISTORY_TEAM_DATA_KEY_MAP,

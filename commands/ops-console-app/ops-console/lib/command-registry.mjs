@@ -4,7 +4,7 @@ export const commandRegistry = [
     category: "server",
     title: "서버 열기",
     description:
-      "KPI 서버와 PostgreSQL을 .env.local-experiment 기준으로 엽니다.",
+      "KPI 서버, PostgreSQL, .env.production.local 기준으로 올립니다.",
     kind: "action",
   },
   {
@@ -20,30 +20,30 @@ export const commandRegistry = [
     category: "server",
     title: "복구 재시작",
     description:
-      "서버 실행 흔적을 정리하고 stale postmaster.pid를 안전 조건에서만 정리한 뒤 다시 엽니다.",
+      "서버 실행 흔적을 정리한 뒤 stale postmaster.pid를 안전 조건에서만 정리하고 다시 올립니다.",
     kind: "action",
     confirmMessage: "현재 KPI 서버를 복구 재시작합니다.",
   },
   {
     key: "startup.register",
     category: "startup",
-    title: "부팅 자동실행 등록",
+    title: "로그인 자동시작 등록",
     description:
-      "현재 사용자 로그인 때 KPI 서버를 자동으로 여는 시작프로그램을 등록합니다.",
+      "현재 Windows 사용자 로그인 시 KPI 서버를 자동으로 올리는 예약 작업을 등록합니다.",
     kind: "action",
   },
   {
     key: "startup.unregister",
     category: "startup",
-    title: "부팅 자동실행 해제",
-    description: "현재 사용자 시작프로그램 자동실행을 제거합니다.",
+    title: "로그인 자동시작 해제",
+    description: "현재 Windows 사용자 로그인 자동시작 예약 작업을 제거합니다.",
     kind: "action",
   },
   {
     key: "account.bootstrapOwner",
     category: "account",
     title: "오너 생성",
-    description: "최초 owner 계정을 로컬 DB에 직접 생성합니다.",
+    description: "최초 owner 계정을 로컬에서 직접 생성합니다.",
     kind: "form",
     fields: [
       {

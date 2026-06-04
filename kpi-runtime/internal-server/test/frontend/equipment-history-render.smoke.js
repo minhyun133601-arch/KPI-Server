@@ -193,10 +193,10 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
 
 test('kpi html loads equipment-history modules before the data runtime bridge', () => {
   const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=5');
-  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=15');
-  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=24');
-  const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=2');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=43');
+  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=16');
+  const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=25');
+  const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=3');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=44');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=5');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -206,7 +206,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(storageIndex > formIndex, 'equipment-history storage loader must load after the form');
   assert.ok(renderIndex > storageIndex, 'equipment-history render loader must load after storage');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
-  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=091') >= 0, 'data css cache version is stale');
+  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=092') >= 0, 'data css cache version is stale');
   assert.ok(bootManifestSource.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js') >= 0);
 });
 
@@ -626,6 +626,13 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-card-start-submit/);
   assert.match(renderSource, /if \(hasPhoto\) \{[\s\S]+data-equipment-photo-card is-locked/);
   assert.match(renderSource, /data-equipment-photo-revert/);
+  assert.match(renderSource, /data-equipment-history-photo-select/);
+  assert.match(renderSource, /data-equipment-history-photo-paste/);
+  assert.match(renderSource, /data-equipment-history-photo-attachment-key/);
+  assert.match(renderSource, /getPhotoFileFromClipboardData/);
+  assert.match(renderSource, /clipboardData/);
+  assert.match(renderSource, /navigator\?\.clipboard/);
+  assert.match(renderSource, /applyEquipmentHistoryPhotoFile/);
   assert.match(renderSource, /data-equipment-photo-edit-toggle/);
   assert.match(renderSource, /setPhotoCropEditorMode/);
   assert.match(renderSource, /state\.photoCropEditing !== true/);
@@ -641,8 +648,15 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /data-equipment-photo-crop-box\[hidden\]/);
   assert.match(dataCssSource, /data-equipment-photo-crop-box/);
   assert.match(dataCssSource, /data-equipment-photo-thumb-status/);
+  assert.match(dataCssSource, /data-equipment-photo-placeholder-actions/);
+  assert.match(dataCssSource, /data-equipment-photo-paste/);
   assert.match(formSource, /photoThumbDataUrl:\s*api\.normalizeText\(source\.photoThumbDataUrl\)/);
+  assert.match(formSource, /EQUIPMENT_PHOTO_ATTACHMENT_KEY/);
+  assert.match(formSource, /photoAttachmentKey:\s*api\.normalizeText\(source\.photoAttachmentKey \|\| source\.photoAttachmentId\)/);
   assert.match(modelSource, /photoThumbDataUrl:\s*normalizeText\(item\?\.photoThumbDataUrl\)/);
+  assert.match(modelSource, /photoAttachmentKey:\s*normalizeText\(item\?\.photoAttachmentKey \|\| item\?\.photoAttachmentId\)/);
+  assert.match(storageSource, /rowId:\s*photoAttachmentKey/);
+  assert.match(storageSource, /attachmentKey:\s*photoAttachmentKey/);
   assert.match(renderSource, /async function autoSaveDraft/);
   assert.match(renderSource, /async function revertPhoto/);
   assert.match(renderSource, /detailRows\.length <= 1/);
@@ -835,6 +849,12 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.equal(record.photoThumbDataUrl, 'data:image/jpeg;base64,VEhVTUI=');
   assert.equal(JSON.stringify(record.photoCrop), JSON.stringify({ x: 0.1, y: 0.2, width: 0.5, height: 0.4 }));
   assert.equal(record.photoDocumentId, 'doc-photo-1');
+  assert.equal(record.photoAttachmentKey, api.EQUIPMENT_PHOTO_ATTACHMENT_KEY);
+  assert.equal(api.createDraft().photoAttachmentKey, api.EQUIPMENT_PHOTO_ATTACHMENT_KEY);
+  assert.equal(
+    api.normalizeEquipmentItems({ equipmentList: [{ id: 'photo-key', name: 'Mixer', photoAttachmentKey: 'custom-photo-key' }] })[0].photoAttachmentKey,
+    'custom-photo-key'
+  );
   assert.equal(record.modelName, 'MX-1');
   assert.equal(record.manufacturer, '샘플 제조사');
   assert.equal(record.manufacturedAt, '2020-03');

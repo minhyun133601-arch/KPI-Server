@@ -99,10 +99,10 @@
                 lpg: false
             },
             unitKeys: {
-                lpgUsage: 'ton',
-                lngUsage: 'km3',
-                gasCost: 'million',
-                production: 'ton'
+                lpgUsage: 'kg',
+                lngUsage: 'm3',
+                gasCost: 'krw',
+                production: 'kg'
             },
             decimalDigits: {},
             displayModes: {
@@ -124,9 +124,9 @@
             seriesLabelModes: {},
             intensityShowLabels: null,
             unitKeys: {
-                electricUsage: 'mwh',
-                electricCost: 'million',
-                production: 'ton',
+                electricUsage: 'kwh',
+                electricCost: 'krw',
+                production: 'kg',
                 electricIntensity: 'kwhkg'
             },
             decimalDigits: {},
@@ -145,8 +145,8 @@
             seriesLabelModes: {},
             unitKeys: {
                 wasteUsage: 'm3',
-                wasteCost: 'million',
-                production: 'ton',
+                wasteCost: 'krw',
+                production: 'kg',
                 wasteIntensity: 'm3ton'
             },
             decimalDigits: {},
@@ -186,10 +186,10 @@
         ])
     });
     const UTIL_GAS_ANALYSIS_DEFAULT_UNITS = Object.freeze({
-        lpgUsage: 'ton',
-        lngUsage: 'km3',
-        gasCost: 'million',
-        production: 'ton'
+        lpgUsage: 'kg',
+        lngUsage: 'm3',
+        gasCost: 'krw',
+        production: 'kg'
     });
     const UTIL_GAS_ANALYSIS_DEFAULT_DISPLAY_MODES = Object.freeze({
         lpgUsage: 'bar',
@@ -221,9 +221,9 @@
         ])
     });
     const UTIL_ELECTRIC_ANALYSIS_DEFAULT_UNITS = Object.freeze({
-        electricUsage: 'mwh',
-        electricCost: 'million',
-        production: 'ton',
+        electricUsage: 'kwh',
+        electricCost: 'krw',
+        production: 'kg',
         electricIntensity: 'kwhkg'
     });
     const UTIL_ELECTRIC_ANALYSIS_LINE_RATIO_UNIT_OPTIONS = Object.freeze([
@@ -258,8 +258,8 @@
     });
     const UTIL_WASTE_ANALYSIS_DEFAULT_UNITS = Object.freeze({
         wasteUsage: 'm3',
-        wasteCost: 'million',
-        production: 'ton',
+        wasteCost: 'krw',
+        production: 'kg',
         wasteIntensity: 'm3ton'
     });
     const UTIL_WASTE_ANALYSIS_DEFAULT_DISPLAY_MODES = Object.freeze({

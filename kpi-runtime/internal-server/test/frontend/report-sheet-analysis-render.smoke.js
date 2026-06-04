@@ -185,42 +185,6 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
         decimals: 2,
         metricLabel: 'kWh/kg',
         points: [{ value: 1.2 }, { value: 1.3 }, { value: 1.1 }]
-      },
-      {
-        key: 'electricIntensity-lines',
-        title: 'Electric Intensity Lines',
-        tone: 'electric',
-        icon: 'fa-chart-line',
-        decimals: 1,
-        color: '#0891b2',
-        series: [{ seriesKey: productionLineKey, points: [{ value: 64.6 }, { value: 66.7 }, { value: 66.7 }] }],
-        chartDataList: [{ key: productionLineKey }],
-        controlItems: [{
-          key: productionLineKey,
-          title: 'Line 1',
-          unitOptions: [{ key: 'percent', label: '%' }],
-          unitKey: 'percent',
-          displayMode: 'line',
-          popupTableKey: productionLineKey
-        }],
-        summaryItems: [{
-          key: productionLineKey,
-          title: 'Line 1',
-          valueText: '64.6%',
-          secondaryLabelText: 'kg',
-          secondaryValueText: '212kg',
-          tone: 'production',
-          icon: 'fa-chart-pie',
-          popupTableKey: productionLineKey
-        }],
-        summaryControlItems: [{
-          key: productionLineKey,
-          title: 'Line 1',
-          unitOptions: [{ key: 'percent', label: '%' }],
-          unitKey: 'percent',
-          displayMode: 'line',
-          popupTableKey: productionLineKey
-        }]
       }
     ]
   };
@@ -308,25 +272,44 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
   assert.ok(gasBodyHtml.includes('series-control'));
   assert.ok(gasBodyHtml.includes('data-role="util-sheet-analysis-series-label-toggle"'));
   assert.ok(gasBodyHtml.includes('data-series-label-keys="combined"'));
-  assert.ok(gasBodyHtml.includes('util-sheet-analysis-table-stack'));
+  assert.ok(gasBodyHtml.includes('data-role="util-sheet-analysis-graph-block"'));
+  assert.ok(gasBodyHtml.includes('data-chart-subsection="bar-line"'));
+  assert.ok(!gasBodyHtml.includes('data-chart-subsection="circle"'));
+  assert.ok(!gasBodyHtml.includes('data-role="util-sheet-analysis-ratio-pie"'));
+  assert.ok(!gasBodyHtml.includes('data-role="util-sheet-analysis-ratio-table"'));
+  assert.ok(!gasBodyHtml.includes('util-sheet-analysis-table-stack'));
   assert.ok(!electricBodyHtml.includes('util-sheet-analysis-electric-team-select'));
   assert.ok(!electricBodyHtml.includes('util-sheet-analysis-to'));
   assert.ok(electricBodyHtml.includes('trend-chart'));
   assert.ok(electricBodyHtml.includes('multi-series-chart'));
   assert.ok(electricBodyHtml.includes('data-scroll="true"'));
-  assert.ok(electricBodyHtml.includes(productionLineKey));
-  assert.ok(electricBodyHtml.includes('Line 1'));
+  assert.ok(!electricBodyHtml.includes('Line 1'));
+  assert.ok(!electricBodyHtml.includes('Line 2'));
   assert.equal((wasteBodyHtml.match(/util-sheet-analysis-summary-card/g) || []).length, 8);
   assert.ok(wasteBodyHtml.indexOf('Waste Usage') < wasteBodyHtml.indexOf('Main Waste Chart'));
   assert.ok(wasteBodyHtml.indexOf('Waste Breakdown Chart') < wasteBodyHtml.indexOf('Water Cost'));
-  assert.ok(wasteBodyHtml.indexOf('Water Cost') < wasteBodyHtml.indexOf('<div class="util-sheet-analysis-chart-surface"', wasteBodyHtml.indexOf('Waste Breakdown Chart')));
+  assert.ok(!electricBodyHtml.includes('util-sheet-analysis-chart-subsection'));
+  const electricGraphIndex = electricBodyHtml.indexOf('data-role="util-sheet-analysis-graph-block"');
+  const electricBarLineIndex = electricBodyHtml.indexOf('data-chart-subsection="bar-line"', electricGraphIndex);
+  const electricBarLineHtml = electricBodyHtml.slice(electricBarLineIndex);
+  assert.ok(electricBarLineIndex > electricGraphIndex);
+  assert.ok(!electricBodyHtml.includes('data-chart-subsection="circle"'));
+  assert.ok(!electricBodyHtml.includes('data-role="util-sheet-analysis-ratio-pie"'));
+  assert.ok(!electricBodyHtml.includes('data-role="util-sheet-analysis-ratio-table"'));
+  assert.ok(!electricBarLineHtml.includes(productionLineKey));
+  assert.ok(!electricBarLineHtml.includes('64.6%'));
+  const wasteBreakdownChartIndex = wasteBodyHtml.indexOf('Waste Breakdown Chart');
+  assert.ok(wasteBreakdownChartIndex > 0);
+  assert.ok(!wasteBodyHtml.includes('data-chart-subsection="circle"'));
+  assert.ok(!wasteBodyHtml.includes('data-role="util-sheet-analysis-ratio-pie"'));
+  assert.ok(!wasteBodyHtml.includes('data-role="util-sheet-analysis-ratio-table"'));
   assert.ok(wasteBodyHtml.includes('data-key="wasteCost.water"'));
 });
 
 test('kpi html loads report sheet analysis render between modal render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=059');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=062');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');

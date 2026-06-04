@@ -80,16 +80,20 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.equal(utilityEntryCategory.viewerMode, 'full-bleed');
   assert.match(utilityEntryCategory.content, /data-role="utility-entry-experiment"/);
   assert.match(utilityEntryCategory.content, /data-role="utility-entry-experiment-meter-open"/);
-  assert.equal((utilityEntryCategory.content.match(/data-role="utility-entry-experiment-meter-open"/g) || []).length, 6);
-  assert.equal((utilityEntryCategory.content.match(/utility-entry-experiment-settlement-title-button utility-entry-experiment-meter-key/g) || []).length, 6);
+  assert.equal((utilityEntryCategory.content.match(/data-role="utility-entry-experiment-meter-open"/g) || []).length, 7);
+  assert.equal((utilityEntryCategory.content.match(/utility-entry-experiment-settlement-title-button utility-entry-experiment-meter-key/g) || []).length, 7);
   assert.equal((utilityEntryCategory.content.match(/data-role="utility-entry-experiment-graph-toggle"/g) || []).length, 0);
   assert.match(utilityEntryCategory.content, /utility-entry-experiment-settlement-title-button[\s\S]*data-utility-entry-experiment-meter-link="electric_yusan"/);
   assert.match(utilityEntryCategory.content, /utility-entry-experiment-settlement-title-button[\s\S]*data-utility-entry-experiment-meter-link="electric_bukjeong"/);
   assert.match(utilityEntryCategory.content, /utility-entry-experiment-settlement-title-button[\s\S]*data-utility-entry-experiment-meter-link="gas_yusan_lng"/);
+  assert.match(utilityEntryCategory.content, /utility-entry-experiment-settlement-title-button[\s\S]*data-utility-entry-experiment-meter-link="gas_yusan_lpg"/);
   assert.match(utilityEntryCategory.content, /utility-entry-experiment-settlement-title-button[\s\S]*data-utility-entry-experiment-meter-link="gas_bukjeong_lng"/);
   assert.match(utilityEntryCategory.content, /utility-entry-experiment-settlement-title-button[\s\S]*data-utility-entry-experiment-meter-link="waste_yusan"/);
   assert.match(utilityEntryCategory.content, /utility-entry-experiment-settlement-title-button[\s\S]*data-utility-entry-experiment-meter-link="waste_bukjeong"/);
+  assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-meter-link="electric_bukjeong"[\s\S]*data-utility-entry-experiment-title-graph="electric_bukjeong"/);
+  assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-meter-link="gas_bukjeong_lng"[\s\S]*data-utility-entry-experiment-title-graph="gas_bukjeong"/);
   assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-meter-link="gas_yusan_lng"/);
+  assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-meter-link="gas_yusan_lpg"/);
   assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-meter-link="gas_bukjeong_lng"/);
   assert.match(utilityEntryCategory.content, /aria-label="유산 LPG Nm3 단가"[\s\S]*data-utility-entry-experiment-field-key="unit_price_m3"/);
   assert.match(utilityEntryCategory.content, /aria-label="유산 LPG Nm3 단가"[\s\S]*원\/M3/);
@@ -100,7 +104,17 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(dataSectionSource, /electric_yusan:\s*'electric_yusan'/);
   assert.match(dataSectionSource, /electric_bukjeong:\s*'electric_bukjeong'/);
   assert.match(dataSectionSource, /gas_yusan_lng:\s*'gas_yusan'/);
+  assert.match(dataSectionSource, /gas_yusan_lpg:\s*'gas_yusan_lpg'/);
   assert.match(dataSectionSource, /gas_bukjeong_lng:\s*'gas_bukjeong'/);
+  assert.match(dataSectionSource, /gas_yusan_lpg:\s*Object\.freeze\(\{/);
+  assert.match(dataSectionSource, /scopeKey:\s*'yusan_lpg'/);
+  assert.match(dataSectionSource, /productionTeamNames:\s*Object\.freeze\(\['1팀 2파트'\]\)/);
+  assert.match(dataSectionSource, /memoKey:\s*'utilityGraphGasYusanLpgMemo'/);
+  assert.match(dataSectionSource, /memoDefaultMetric:\s*'lpg_unit'/);
+  assert.match(dataSectionSource, /Object\.freeze\(\{\s*key:\s*'gas_yusan_lpg',\s*label:\s*'LPG 그래프'\s*\}\)/);
+  assert.match(dataSectionSource, /utilityEntryExperimentTitleGraph/);
+  assert.match(dataSectionSource, /openUtilityEntryExperimentGraphTemplateByKey\(\s*titleGraphKey/);
+  assert.match(dataSectionSource, /modal\.dataset\.utilityEntryExperimentGraphOptions\s*=\s*JSON\.stringify\(graphOptions\)/);
   assert.match(dataSectionSource, /modal\.dataset\.utilityEntryExperimentGraphKey/);
   assert.match(dataSectionSource, /data-role="utility-entry-experiment-graph-capture-pdf"/);
   assert.match(dataSectionSource, /report-deck\/capture-zip/);
@@ -130,6 +144,8 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.equal(meterLinkStates.electric_yusan.statusLabel, '검침값 입력');
   assert.equal(meterLinkStates.gas_yusan_lng.ready, false);
   assert.match(meterLinkStates.gas_yusan_lng.title, /검침값 입력 후/u);
+  assert.equal(meterLinkStates.gas_yusan_lpg.ready, false);
+  assert.match(meterLinkStates.gas_yusan_lpg.title, /검침값 입력 후/u);
 
   assert.doesNotMatch(utilityEntryCategory.content, /data-utility-entry-experiment-graph="electric_yusan"/);
   assert.doesNotMatch(utilityEntryCategory.content, /data-utility-entry-experiment-graph="electric_bukjeong"/);
@@ -139,10 +155,10 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.doesNotMatch(utilityEntryCategory.content, /data-kpi-metering-root/);
   assert.doesNotMatch(JSON.stringify(appData.data.categories), /총괄 비율/);
   assert.equal(appData.data.categories[1].shortcutTarget.sectionId, 'work');
-  assert.equal(appData.data.categories[2].dataKey, 'audit_lux');
-  assert.equal(appData.data.categories[2].fileName, 'Central Server DB / Lux Data');
-  assert.equal(appData.data.categories[3].title, '설비 양식');
-  assert.equal(appData.data.categories[3].dataKey, 'data_equipment_history_card');
+  assert.equal(appData.data.categories[2].title, '설비 이력 카드');
+  assert.equal(appData.data.categories[2].dataKey, 'data_equipment_history_card');
+  assert.equal(appData.data.categories[3].dataKey, 'audit_lux');
+  assert.equal(appData.data.categories[3].fileName, 'Central Server DB / Lux Data');
   assert.equal(appData.report.name, '보고서');
   assert.equal(appData.report.directLaunch, true);
   assert.equal(appData.report.hideNavigationChevron, true);
@@ -582,7 +598,7 @@ test('kpi html loads section factory adapter before all section factories', () =
   const graphTemplateIndex = kpiHtml.indexOf('data-entry/runtime/data/utility-graph-template/app.js?v=41');
   const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=133');
   const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=98');
-  const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=30');
+  const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=39');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
   const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=5');
 

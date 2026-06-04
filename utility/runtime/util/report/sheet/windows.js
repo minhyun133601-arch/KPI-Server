@@ -619,6 +619,20 @@
                 }
                 return;
             }
+            const unitSelect = event.target.closest('[data-role="util-sheet-analysis-unit"]');
+            if (unitSelect && typeof runtime.setUtilSheetAnalysisUnitKey === 'function') {
+                runtime.setUtilSheetAnalysisUnitKey(
+                    typeof runtime.getUtilSheetActiveAnalysisDatasetKey === 'function'
+                        ? runtime.getUtilSheetActiveAnalysisDatasetKey(modal)
+                        : '',
+                    unitSelect.dataset.chartKey || '',
+                    unitSelect.value || ''
+                );
+                if (typeof runtime.renderUtilSheetReportModal === 'function') {
+                    runtime.renderUtilSheetReportModal(modal);
+                }
+                return;
+            }
             const decimalsSelect = event.target.closest('[data-role="util-sheet-analysis-decimals"]');
             if (decimalsSelect && typeof runtime.setUtilSheetAnalysisDecimals === 'function') {
                 runtime.setUtilSheetAnalysisDecimals(

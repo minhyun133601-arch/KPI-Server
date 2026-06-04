@@ -738,10 +738,7 @@
             tone: 'electric',
             controlItems: []
         });
-        const lineRatioSeries = teamOption?.key === 'combined'
-            ? []
-            : buildUtilElectricAnalysisLineRatioSeries(rangeKeys, teamOption, activeMonthKey, referenceMonthKey);
-        const intensityChart = buildUtilElectricAnalysisCombinedChart([intensityBaseChart].concat(lineRatioSeries), rangeLabel, {
+        const intensityChart = buildUtilElectricAnalysisCombinedChart([intensityBaseChart], rangeLabel, {
             key: 'electricIntensity',
             title: '생산량 대비 전기 사용량',
             icon: 'fa-gauge-high',
@@ -752,46 +749,6 @@
             const intensityControlItems = Array.isArray(intensityChart.controlItems)
                 ? intensityChart.controlItems
                 : [];
-            const lineRatioSummaryItems = lineRatioSeries.map(series => ({
-                key: series.key,
-                title: series.title,
-                valueText: formatPercent(series.activeRatio),
-                secondaryLabelText: '생산량',
-                secondaryValueText: formatQuantity(series.activeAmount, 'kg'),
-                subText: buildCompareSub(
-                    compareLabel,
-                    activeMonthKey,
-                    formatSignedPercentPoint(series.deltaRatio)
-                ),
-                icon: 'fa-chart-pie',
-                tone: 'production',
-                metaText: selectedMonthMetaText
-            }));
-            const resolvedLineRatioSummaryItems = lineRatioSummaryItems.map((item, index) => {
-                const series = lineRatioSeries[index] || null;
-                const unitKey = getElectricUnitKey(series?.key);
-                const isAmountMode = unitKey === 'kg' || unitKey === 'ton';
-                return {
-                    ...item,
-                    popupTableKey: series?.key || item?.popupTableKey || '',
-                    valueText: formatUtilElectricAnalysisLineMetricValue(
-                        isAmountMode ? series?.activeAmount : series?.activeRatio,
-                        unitKey
-                    ),
-                    secondaryLabelText: isAmountMode ? '%' : 'kg',
-                    secondaryValueText: isAmountMode
-                        ? formatPercent(series?.activeRatio)
-                        : formatUtilElectricAnalysisLineMetricValue(series?.activeAmount, 'kg'),
-                    subText: buildCompareSub(
-                        compareLabel,
-                        activeMonthKey,
-                        formatUtilElectricAnalysisSignedLineMetric(
-                            isAmountMode ? series?.deltaAmount : series?.deltaRatio,
-                            unitKey
-                        )
-                    )
-                };
-            });
             intensityChart.summaryItems = [
                 {
                     key: 'electricIntensity',
@@ -806,7 +763,7 @@
                     tone: 'electric',
                     metaText: selectedMonthMetaText
                 }
-            ].concat(resolvedLineRatioSummaryItems);
+            ];
             intensityChart.summaryControlItems = intensityControlItems;
         }
         const summaryItems = [

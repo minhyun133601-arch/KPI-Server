@@ -219,10 +219,14 @@
         return resolveDatasetKey('meter', datasetKey) === 'electric' ? '전기' : '가스';
     }
 
-    function openUtilityEntryGraphTemplateFromMeterModal(modal) {
+    function openUtilityEntryGraphTemplateFromMeterModal(modal, trigger = null) {
         const sheetType = normalizeSheetType(modal?.dataset?.sheetType || 'meter');
         const datasetKey = resolveDatasetKey(sheetType, modal?.dataset?.datasetKey || UtilSheetReportState[sheetType] || 'gas');
-        const graphKey = String(modal?.dataset?.utilityEntryExperimentGraphKey || '').trim();
+        const graphKey = String(
+            trigger?.dataset?.utilityEntryExperimentGraphKey
+            || modal?.dataset?.utilityEntryExperimentGraphKey
+            || ''
+        ).trim();
         if (sheetType !== 'meter' || !['electric', 'gas'].includes(datasetKey)) return false;
         const datasetLabel = getUtilityEntryGraphDatasetLabel(datasetKey);
         if (!graphKey) {
@@ -2725,6 +2729,17 @@
                     renderAnalysisBodyForScope(scopeSelect.value || '');
                     return;
                 }
+                const unitSelect = target?.closest?.('[data-role="util-sheet-analysis-unit"]');
+                if (unitSelect) {
+                    const seriesKey = String(unitSelect.dataset.chartKey || '').trim();
+                    if (!seriesKey) return;
+                    state.unitKeys[seriesKey] = String(unitSelect.value || '').trim();
+                    setDecimalSelectState(seriesKey);
+                    renderAffectedCharts(seriesKey);
+                    updateSummaryCards();
+                    refreshInlineDataTables();
+                    return;
+                }
                 const decimalsSelect = target?.closest?.('[data-role="util-sheet-analysis-decimals"]');
                 if (decimalsSelect) {
                     const seriesKey = String(decimalsSelect.dataset.chartKey || '').trim();
@@ -4803,6 +4818,10 @@
                                 <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
                                 <span>그래프</span>
                             </button>
+                            <button type="button" class="util-sheet-report-icon-btn util-sheet-gas-view-toggle" data-role="util-sheet-modal-type-select" data-util-sheet-gas-view-toggle-secondary hidden aria-label="가스 LPG 그래프 보기" title="가스 LPG 그래프 보기">
+                                <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
+                                <span>LPG 그래프</span>
+                            </button>
                         </div>
                         <button type="button" class="work-btn" data-role="util-sheet-report-print" aria-label="추출" title="추출">추출</button>
                         <div class="util-sheet-extract-options" data-role="util-sheet-extract-options" role="dialog" aria-modal="true" aria-label="추출 선택" hidden>
@@ -4951,7 +4970,7 @@
             }
             const typeButton = findClosest(target, '[data-role="util-sheet-modal-type-select"]');
             if (typeButton) {
-                if (openUtilityEntryGraphTemplateFromMeterModal(modal)) {
+                if (openUtilityEntryGraphTemplateFromMeterModal(modal, typeButton)) {
                     return;
                 }
                 return;
@@ -5083,6 +5102,16 @@
             const rangeField = findClosest(target, '[data-role="util-sheet-analysis-from"], [data-role="util-sheet-analysis-to"]');
             if (rangeField && typeof runtime.applyUtilGasAnalysisRangeSelection === 'function') {
                 runtime.applyUtilGasAnalysisRangeSelection(modal, modal);
+                return;
+            }
+            const unitSelect = findClosest(target, '[data-role="util-sheet-analysis-unit"]');
+            if (unitSelect && typeof runtime.setUtilSheetAnalysisUnitKey === 'function') {
+                runtime.setUtilSheetAnalysisUnitKey(
+                    getActiveAnalysisDatasetKey(modal),
+                    unitSelect.dataset.chartKey || '',
+                    unitSelect.value || ''
+                );
+                rerenderAndSync(modal);
                 return;
             }
             const decimalsSelect = findClosest(target, '[data-role="util-sheet-analysis-decimals"]');

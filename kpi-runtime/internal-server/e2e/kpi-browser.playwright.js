@@ -515,7 +515,7 @@ test.describe('KPI browser smoke', () => {
       );
       await page.waitForTimeout(1000);
 
-      await clickSidebarButton(page, '설비 양식');
+      await clickSidebarButton(page, '설비 이력 카드');
       await expect(page.locator('#content-container')).toContainText('설비 현황');
       await expect(page.locator('.data-equipment-page')).toBeVisible();
       const existingEquipmentCards = page.locator('.data-equipment-board-card');
@@ -525,7 +525,7 @@ test.describe('KPI browser smoke', () => {
         await expect(page.locator('#content-container')).toContainText('등록된 설비가 없습니다.');
       }
       const sampleEquipmentName = `샘플 혼합기 ${Date.now()}`;
-      await page.locator('[data-equipment-view-action="card"]').click();
+      await page.locator('[data-equipment-view-action="card"]').first().click();
       await expect(page.locator('[data-equipment-card-start-form]')).toBeVisible();
       await page.locator('[data-equipment-start-field="team"]').selectOption('1팀 1파트');
       await expect(page.locator('[data-equipment-start-field="room"]')).toHaveAttribute(

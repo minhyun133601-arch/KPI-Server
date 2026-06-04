@@ -86,7 +86,17 @@
                 fractionRole: 'both'
             });
         }
-        if (key === 'electric-cost' || key === 'gas-cost' || key === 'waste-cost' || /^waste-.+-cost$/.test(key)) {
+        if (
+            key === 'electric-cost'
+            || key.startsWith('electric-cost-')
+            || key === 'gas-cost'
+            || key.startsWith('gas-cost-')
+            || key === 'lng-cost'
+            || key.startsWith('lng-cost-')
+            || key.startsWith('lpg-cost-')
+            || key === 'waste-cost'
+            || /^waste-.+-cost$/.test(key)
+        ) {
             return makeNormalization({
                 metricKind: 'cost',
                 unitKey: 'money_krw',
@@ -206,10 +216,26 @@
         ));
     }
 
+    function getMetricDefinitionValues(definitions = [], key = '') {
+        const definition = definitions.find(item => item.key === key);
+        return Array.isArray(definition?.values) ? definition.values : [];
+    }
+
     const ELECTRIC_USAGE_YUSAN_VALUES = Object.freeze(sumMetricDefinitionValues(ELECTRIC_USAGE_TEAM_DEFINITIONS, YUSAN_PRODUCTION_TEAM_KEYS));
     const ELECTRIC_USAGE_TOTAL_VALUES = Object.freeze(sumMetricDefinitionValues(ELECTRIC_USAGE_TEAM_DEFINITIONS));
     const LNG_USAGE_YUSAN_VALUES = Object.freeze(sumMetricDefinitionValues(LNG_USAGE_TEAM_DEFINITIONS, ['team-01-02', 'team-03']));
     const LNG_USAGE_TOTAL_VALUES = Object.freeze(sumMetricDefinitionValues(LNG_USAGE_TEAM_DEFINITIONS));
+    const LPG_USAGE_TEAM_01_02_VALUES = Object.freeze(sumMetricDefinitionValues(LPG_USAGE_TEAM_DEFINITIONS, ['team-01-02']));
+    const GAS_COST_TEAM_01_02_DISPLAY_VALUES = Object.freeze(sumMetricDefinitionValues(
+        [...LNG_USAGE_TEAM_DEFINITIONS, ...LPG_USAGE_TEAM_DEFINITIONS],
+        ['team-01-02']
+    ));
+    const GAS_COST_YUSAN_DISPLAY_VALUES = Object.freeze(LNG_USAGE_YUSAN_VALUES.map((value, index) => (
+        value + Number(LPG_USAGE_TEAM_01_02_VALUES[index] || 0)
+    )));
+    const GAS_COST_TOTAL_DISPLAY_VALUES = Object.freeze(GAS_COST_YUSAN_DISPLAY_VALUES.map((value, index) => (
+        value + Number(getMetricDefinitionValues(LNG_USAGE_TEAM_DEFINITIONS, 'team-01-01')[index] || 0)
+    )));
 
     const PRODUCTION_CARDS = Object.freeze([
         createCard({
@@ -298,7 +324,19 @@
             color: team.color,
             values: team.values
         })),
-        createCard({ key: 'electric-cost', title: '전기 금액', valueText: '100 → 121', metaText: '전기 · 금액 · 원', subText: '전월대비 +9.8%', icon: 'fa-coins', tone: 'cost', color: '#dc2626', values: [100, 104, 109, 113, 118, 121] })
+        createCard({ key: 'electric-cost', title: '전기 비용', valueText: '100 → 121', metaText: '전기 · 전체 · 원', subText: '전월대비 +9.8%', icon: 'fa-coins', tone: 'cost', color: '#dc2626', values: [100, 104, 109, 113, 118, 121] }),
+        createCard({ key: 'electric-cost-yusan', title: '유산 전기 비용', valueText: '100 → 119', metaText: '전기 · 유산 합계 · 원', subText: '전월대비 +8.7%', icon: 'fa-coins', tone: 'cost', color: '#b91c1c', values: [100, 103, 107, 111, 115, 119] }),
+        ...ELECTRIC_USAGE_TEAM_DEFINITIONS.map(team => createCard({
+            key: `electric-cost-${team.key}`,
+            title: `${team.label} 전기 비용`,
+            valueText: `${team.values[0]} → ${lastValue(team.values)}`,
+            metaText: `전기 · ${team.label} · 원`,
+            subText: `전월대비 ${formatSignedDelta(team.values)}`,
+            icon: 'fa-coins',
+            tone: 'cost',
+            color: team.color,
+            values: team.values
+        }))
     ]);
 
     const GAS_CARDS = Object.freeze([
@@ -346,12 +384,67 @@
             color: team.color,
             values: team.values
         })),
-        createCard({ key: 'gas-cost', title: '가스 금액', valueText: '100 → 119', metaText: '가스 · 금액 · 원', subText: '전월대비 +6.6%', icon: 'fa-coins', tone: 'cost', color: '#b91c1c', values: [100, 104, 107, 111, 116, 119] })
+        createCard({
+            key: 'gas-cost',
+            title: '가스 비용',
+            valueText: `${GAS_COST_TOTAL_DISPLAY_VALUES[0]} → ${lastValue(GAS_COST_TOTAL_DISPLAY_VALUES)}`,
+            metaText: '가스 · 유산 가스+1팀 1파트 LNG · 원',
+            subText: `전월대비 ${formatSignedDelta(GAS_COST_TOTAL_DISPLAY_VALUES)}`,
+            icon: 'fa-coins',
+            tone: 'cost',
+            color: '#b91c1c',
+            values: GAS_COST_TOTAL_DISPLAY_VALUES
+        }),
+        createCard({
+            key: 'gas-cost-yusan',
+            title: '유산 가스 비용',
+            valueText: `${GAS_COST_YUSAN_DISPLAY_VALUES[0]} → ${lastValue(GAS_COST_YUSAN_DISPLAY_VALUES)}`,
+            metaText: '가스 · 유산 LNG+1팀 2파트 LPG · 원',
+            subText: `전월대비 ${formatSignedDelta(GAS_COST_YUSAN_DISPLAY_VALUES)}`,
+            icon: 'fa-coins',
+            tone: 'cost',
+            color: '#991b1b',
+            values: GAS_COST_YUSAN_DISPLAY_VALUES
+        }),
+        createCard({
+            key: 'gas-cost-team-01-02',
+            title: '1팀 2파트 가스 비용',
+            valueText: `${GAS_COST_TEAM_01_02_DISPLAY_VALUES[0]} → ${lastValue(GAS_COST_TEAM_01_02_DISPLAY_VALUES)}`,
+            metaText: '가스 · 1팀 2파트 LNG+LPG · 원',
+            subText: `전월대비 ${formatSignedDelta(GAS_COST_TEAM_01_02_DISPLAY_VALUES)}`,
+            icon: 'fa-coins',
+            tone: 'cost',
+            color: '#1d4ed8',
+            values: GAS_COST_TEAM_01_02_DISPLAY_VALUES
+        }),
+        createCard({ key: 'lng-cost-yusan', title: '유산 LNG 비용', valueText: '100 → 117', metaText: '가스 · 유산 LNG 합계 · 원', subText: '전월대비 +5.4%', icon: 'fa-coins', tone: 'cost', color: '#0f766e', values: [100, 102, 105, 109, 113, 117] }),
+        ...LNG_USAGE_TEAM_DEFINITIONS.map(team => createCard({
+            key: `lng-cost-${team.key}`,
+            title: `${team.label} LNG 비용`,
+            valueText: `${team.values[0]} → ${lastValue(team.values)}`,
+            metaText: `가스 · ${team.label} LNG · 원`,
+            subText: `전월대비 ${formatSignedDelta(team.values)}`,
+            icon: 'fa-coins',
+            tone: 'cost',
+            color: team.color,
+            values: team.values
+        })),
+        ...LPG_USAGE_TEAM_DEFINITIONS.map(team => createCard({
+            key: `lpg-cost-${team.key}`,
+            title: `${team.label} LPG 비용`,
+            valueText: `${team.values[0]} → ${lastValue(team.values)}`,
+            metaText: `가스 · ${team.label} LPG · 원`,
+            subText: `전월대비 ${formatSignedDelta(team.values)}`,
+            icon: 'fa-coins',
+            tone: 'cost',
+            color: team.color,
+            values: team.values
+        }))
     ]);
 
     const WASTE_COST_DETAIL_DEFINITIONS = Object.freeze([
         { key: 'waste-water-cost', title: '상수', valueText: '100 → 108', metaText: '처리비용 세부 · 원', subText: '전월대비 +3.5%', icon: 'fa-droplet', tone: 'waste', color: '#0891b2', values: [100, 102, 101, 105, 107, 108] },
-        { key: 'waste-share-cost', title: '폐수', valueText: '100 → 120', metaText: '처리비용 세부 · 원', subText: '전월대비 +8.4%', icon: 'fa-water', tone: 'waste', color: '#7c3aed', values: [100, 106, 108, 112, 117, 120] },
+        { key: 'waste-share-cost', title: '폐수 처리비', valueText: '100 → 120', metaText: '처리비용 세부 · 원', subText: '전월대비 +8.4%', icon: 'fa-water', tone: 'waste', color: '#7c3aed', values: [100, 106, 108, 112, 117, 120] },
         { key: 'waste-sludge-cost', title: '폐수오니', valueText: '100 → 127', metaText: '처리비용 세부 · 원', subText: '전월대비 +10.2%', icon: 'fa-layer-group', tone: 'cost', color: '#854d0e', values: [100, 109, 112, 116, 121, 127] },
         { key: 'waste-resin-cost', title: '폐합성수지', valueText: '100 → 118', metaText: '처리비용 세부 · 원', subText: '전월대비 +6.7%', icon: 'fa-recycle', tone: 'waste', color: '#15803d', values: [100, 103, 105, 111, 115, 118] },
         { key: 'waste-labor-cost', title: '인건비', valueText: '100 → 106', metaText: '처리비용 세부 · 원', subText: '전월대비 +2.0%', icon: 'fa-user-gear', tone: 'cost', color: '#be185d', values: [100, 101, 102, 104, 105, 106] }
@@ -405,6 +498,56 @@
     ]);
 
     const ALL_ANALYSIS_CARDS = Object.freeze(ANALYSIS_CARD_GROUPS.flatMap(group => group.cards));
+    const EXPERIMENT_TEAM_DATA_KEYS = Object.freeze({
+        'team-01-01': 'work_team_calendar_team1_part1',
+        'team-01-02': 'work_team_calendar_team1_part2',
+        'team-02': 'work_team_calendar_team2',
+        'team-03': 'work_team_calendar_team3'
+    });
+    const EXPERIMENT_TEAM_LABELS = Object.freeze({
+        'team-01-01': '1팀 1파트',
+        'team-01-02': '1팀 2파트',
+        'team-02': '2팀',
+        'team-03': '3팀'
+    });
+    const EXPERIMENT_YUSAN_TEAM_KEYS = Object.freeze(['team-01-02', 'team-02', 'team-03']);
+    const EXPERIMENT_UNIT_OPTIONS = Object.freeze({
+        production: Object.freeze([
+            Object.freeze({ key: 'kg', label: 'kg', scale: 1, decimals: 0 }),
+            Object.freeze({ key: 'ton', label: 'ton', scale: 1000, decimals: 1 })
+        ]),
+        electric: Object.freeze([
+            Object.freeze({ key: 'kwh', label: 'kWh', scale: 1, decimals: 0 }),
+            Object.freeze({ key: 'mwh', label: 'MWh', scale: 1000, decimals: 1 })
+        ]),
+        lng: Object.freeze([
+            Object.freeze({ key: 'nm3', label: 'Nm3', scale: 1, decimals: 0 }),
+            Object.freeze({ key: 'knm3', label: '천 Nm3', scale: 1000, decimals: 1 })
+        ]),
+        lpg: Object.freeze([
+            Object.freeze({ key: 'kg', label: 'kg', scale: 1, decimals: 0 }),
+            Object.freeze({ key: 'ton', label: 'ton', scale: 1000, decimals: 1 })
+        ]),
+        waste: Object.freeze([
+            Object.freeze({ key: 'm3', label: '㎥', scale: 1, decimals: 0 }),
+            Object.freeze({ key: 'km3', label: '천 ㎥', scale: 1000, decimals: 1 })
+        ]),
+        money: Object.freeze([
+            Object.freeze({ key: 'krw', label: '원', scale: 1, decimals: 0 }),
+            Object.freeze({ key: 'thousand-krw', label: '천원', scale: 1000, decimals: 0 }),
+            Object.freeze({ key: 'million-krw', label: '백만원', scale: 1000000, decimals: 1 })
+        ]),
+        ratio: Object.freeze([
+            Object.freeze({ key: 'ratio', label: 'ratio', scale: 1, decimals: 3 })
+        ])
+    });
+    const WASTE_COST_DETAIL_KEYS = Object.freeze({
+        'waste-water-cost': 'water',
+        'waste-share-cost': 'share',
+        'waste-sludge-cost': 'sludge',
+        'waste-resin-cost': 'resin',
+        'waste-labor-cost': 'labor'
+    });
 
     function getCardKey(cardOrKey) {
         return String(cardOrKey?.key || cardOrKey || '').trim();
@@ -565,9 +708,11 @@
         return {
             displayModes: {},
             decimalDigits: {},
+            unitKeys: {},
             seriesLabels: {},
             ratioCards: [],
             showLabels: true,
+            chartViewMode: 'chart',
             yearOverlap: false,
             yearOverlapYears: []
         };
@@ -581,12 +726,20 @@
         const state = EXPERIMENT_SHELL_STATE.get(shell);
         if (!state.displayModes || typeof state.displayModes !== 'object') state.displayModes = {};
         if (!state.decimalDigits || typeof state.decimalDigits !== 'object') state.decimalDigits = {};
+        if (!state.unitKeys || typeof state.unitKeys !== 'object') state.unitKeys = {};
         if (!state.seriesLabels || typeof state.seriesLabels !== 'object') state.seriesLabels = {};
         if (!Array.isArray(state.ratioCards)) state.ratioCards = [];
         if (typeof state.showLabels !== 'boolean') state.showLabels = true;
+        if (String(state.chartViewMode || '').trim().toLowerCase() !== 'table') state.chartViewMode = 'chart';
         if (typeof state.yearOverlap !== 'boolean') state.yearOverlap = false;
         if (!Array.isArray(state.yearOverlapYears)) state.yearOverlapYears = [];
         return state;
+    }
+
+    function getExperimentChartViewMode(shell) {
+        return String(getExperimentShellState(shell).chartViewMode || '').trim().toLowerCase() === 'table'
+            ? 'table'
+            : 'chart';
     }
 
     function getCardDisplayMode(shell, card) {
@@ -596,10 +749,42 @@
         return 'line';
     }
 
+    function getCardUnitFamily(card) {
+        const family = String(card?.normalization?.unitFamily || '').trim().toLowerCase();
+        if (EXPERIMENT_UNIT_OPTIONS[family]) return family;
+        return isDerivedRatioCard(card) ? 'ratio' : 'ratio';
+    }
+
+    function getCardUnitOptions(card) {
+        return EXPERIMENT_UNIT_OPTIONS[getCardUnitFamily(card)] || EXPERIMENT_UNIT_OPTIONS.ratio;
+    }
+
+    function getCardUnitKey(shell, card) {
+        const options = getCardUnitOptions(card);
+        const state = getExperimentShellState(shell);
+        const rawKey = String(state.unitKeys?.[card?.key] || '').trim().toLowerCase();
+        if (options.some(option => option.key === rawKey)) return rawKey;
+        return options[0]?.key || '';
+    }
+
+    function getCardUnitOption(shell, card) {
+        const options = getCardUnitOptions(card);
+        const unitKey = getCardUnitKey(shell, card);
+        return options.find(option => option.key === unitKey) || options[0] || { key: '', label: '', scale: 1, decimals: 0 };
+    }
+
+    function getCardUnitLabel(shell, card) {
+        return String(getCardUnitOption(shell, card)?.label || '');
+    }
+
     function getCardDecimalDigits(shell, card) {
         const value = getExperimentShellState(shell).decimalDigits?.[card.key];
         const number = Number(value);
-        if (!Number.isFinite(number)) return Number.isFinite(Number(card?.decimals)) ? Number(card.decimals) : 1;
+        if (!Number.isFinite(number)) {
+            const unitDigits = Number(getCardUnitOption(shell, card)?.decimals);
+            if (Number.isFinite(unitDigits)) return Math.max(0, Math.min(4, Math.trunc(unitDigits)));
+            return Number.isFinite(Number(card?.decimals)) ? Number(card.decimals) : (isDerivedRatioCard(card) ? 3 : 0);
+        }
         return Math.max(0, Math.min(4, Math.trunc(number)));
     }
 
@@ -781,17 +966,274 @@
         };
     }
 
+    function parseExperimentNumberText(value) {
+        const text = String(value ?? '').replace(/,/g, '').trim();
+        if (!text || text === '-') return NaN;
+        const match = text.match(/-?\d+(?:\.\d+)?/);
+        return match ? Number(match[0]) : NaN;
+    }
+
+    function parseExperimentMonthParts(monthKey = '') {
+        const normalized = normalizeMonthKey(monthKey, '');
+        const match = normalized.match(/^(\d{4})-(\d{2})$/);
+        if (!match) return null;
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        return Number.isFinite(year) && Number.isFinite(month) ? { year, month } : null;
+    }
+
+    function sumFiniteValues(values = []) {
+        let total = 0;
+        let hasValue = false;
+        (Array.isArray(values) ? values : []).forEach(value => {
+            const number = Number(value);
+            if (!Number.isFinite(number)) return;
+            total += number;
+            hasValue = true;
+        });
+        return hasValue ? total : NaN;
+    }
+
+    function getProductionValueByDataKey(dataKey = '', monthKey = '') {
+        if (typeof root.buildWorkTeamCalendarProductionMonthSummary !== 'function') return NaN;
+        const summary = root.buildWorkTeamCalendarProductionMonthSummary(dataKey, monthKey);
+        return parseExperimentNumberText(summary?.totalAmountText);
+    }
+
+    function getProductionValueByTeamKey(teamKey = '', monthKey = '') {
+        const dataKey = EXPERIMENT_TEAM_DATA_KEYS[teamKey];
+        return dataKey ? getProductionValueByDataKey(dataKey, monthKey) : NaN;
+    }
+
+    function sumProductionValueByTeamKeys(teamKeys = [], monthKey = '') {
+        return sumFiniteValues(teamKeys.map(teamKey => getProductionValueByTeamKey(teamKey, monthKey)));
+    }
+
+    function normalizeExperimentLineText(value) {
+        return String(value ?? '').trim().toLowerCase().replace(/\s+/g, '');
+    }
+
+    function isProductionLineMatch(lineKey = '', entry = {}) {
+        const lineText = normalizeExperimentLineText(entry?.lineName);
+        if (!lineText) return false;
+        if (lineKey === 'sd') return lineText.includes('s/d') || (lineText.includes('sd') && !lineText.includes('msd'));
+        if (lineKey === 'msd') return lineText.includes('msd');
+        if (lineKey === 'jidae') return lineText.includes('지대');
+        if (lineKey === 'ica') return lineText.includes('ica');
+        if (lineKey === 'rotary-vertical') {
+            return lineText.includes('로타리')
+                || lineText.includes('로터리')
+                || lineText.includes('버티컬')
+                || lineText.includes('rotary')
+                || lineText.includes('vertical');
+        }
+        if (lineKey === 'stick') return lineText.includes('스틱') || lineText.includes('stick');
+        if (lineKey === 'bottle') return lineText.includes('bottle');
+        if (lineKey === 'etc') return !lineText.includes('bottle');
+        return false;
+    }
+
+    function getProductionLineValue(lineKey = '', teamKey = '', monthKey = '') {
+        const parts = parseExperimentMonthParts(monthKey);
+        const teamName = EXPERIMENT_TEAM_LABELS[teamKey];
+        if (!parts || !teamName || typeof root.getUtilDailyProductionValue !== 'function') return NaN;
+        const daily = root.getUtilDailyProductionValue(teamName, parts.year, parts.month);
+        const entries = Array.isArray(daily?.details) ? daily.details : [];
+        const seen = new Set();
+        let total = 0;
+        let hasValue = false;
+        entries.forEach(entry => {
+            if (!isProductionLineMatch(lineKey, entry)) return;
+            const dedupeKey = String(entry?.entryKey || '').trim() || [
+                String(entry?.dateLabel || '').trim(),
+                String(entry?.teamName || teamName || '').trim(),
+                String(entry?.lineName || '').trim(),
+                String(entry?.productionKind || entry?.production_kind || entry?.kind || '').trim(),
+                String(entry?.productCode || entry?.itemCode || entry?.code || '').trim(),
+                String(entry?.productName || '').trim()
+            ].join('::');
+            if (dedupeKey && seen.has(dedupeKey)) return;
+            if (dedupeKey) seen.add(dedupeKey);
+            const amount = Number(entry?.amount);
+            if (!Number.isFinite(amount)) return;
+            total += amount;
+            hasValue = true;
+        });
+        return hasValue ? Math.round(total) : NaN;
+    }
+
+    function getUtilitySummary(dataKey = '', monthKey = '') {
+        if (typeof root.getWorkTeamCalendarUtilitySummary !== 'function') return null;
+        return root.getWorkTeamCalendarUtilitySummary(dataKey, monthKey) || null;
+    }
+
+    function getUtilityDetailValue(summary, detailLabel = '') {
+        const normalizedLabel = String(detailLabel || '').trim().toLowerCase();
+        const row = (Array.isArray(summary?.detailRows) ? summary.detailRows : [])
+            .find(item => String(item?.label || '').trim().toLowerCase() === normalizedLabel);
+        return parseExperimentNumberText(row?.valueText);
+    }
+
+    function getUtilityDetailCostValue(summary, detailLabel = '') {
+        const normalizedLabel = String(detailLabel || '').trim().toLowerCase();
+        const row = (Array.isArray(summary?.detailRows) ? summary.detailRows : [])
+            .find(item => String(item?.label || '').trim().toLowerCase() === normalizedLabel);
+        return parseExperimentNumberText(row?.metaText);
+    }
+
+    function getUtilityValueByDataKey(dataKey = '', monthKey = '', metricKey = '') {
+        const summary = getUtilitySummary(dataKey, monthKey);
+        if (!summary) return NaN;
+        if (metricKey === 'electricUsage') return parseExperimentNumberText(summary.electric?.usageText);
+        if (metricKey === 'electricCost') return parseExperimentNumberText(summary.electric?.costText);
+        if (metricKey === 'lngUsage') return getUtilityDetailValue(summary.gas, 'LNG');
+        if (metricKey === 'lpgUsage') return getUtilityDetailValue(summary.gas, 'LPG');
+        if (metricKey === 'gasCost') return parseExperimentNumberText(summary.gas?.costText);
+        if (metricKey === 'lngCost') return getUtilityDetailCostValue(summary.gas, 'LNG');
+        if (metricKey === 'lpgCost') return getUtilityDetailCostValue(summary.gas, 'LPG');
+        if (metricKey === 'wasteUsage') return parseExperimentNumberText(summary.waste?.usageText);
+        if (metricKey === 'wasteCost') return parseExperimentNumberText(summary.waste?.costText);
+        return NaN;
+    }
+
+    function getUtilityValueByTeamKey(teamKey = '', monthKey = '', metricKey = '') {
+        const dataKey = EXPERIMENT_TEAM_DATA_KEYS[teamKey];
+        return dataKey ? getUtilityValueByDataKey(dataKey, monthKey, metricKey) : NaN;
+    }
+
+    function sumUtilityValueByTeamKeys(teamKeys = [], monthKey = '', metricKey = '') {
+        return sumFiniteValues(teamKeys.map(teamKey => getUtilityValueByTeamKey(teamKey, monthKey, metricKey)));
+    }
+
+    function getTeamLngCostValue(teamKey = '', monthKey = '') {
+        return getUtilityValueByTeamKey(teamKey, monthKey, 'lngCost');
+    }
+
+    function getTeamLpgCostValue(teamKey = '', monthKey = '') {
+        return getUtilityValueByTeamKey(teamKey, monthKey, 'lpgCost');
+    }
+
+    function getTeam12GasCostValue(monthKey = '') {
+        return sumFiniteValues([
+            getTeamLngCostValue('team-01-02', monthKey),
+            getTeamLpgCostValue('team-01-02', monthKey)
+        ]);
+    }
+
+    function getYusanGasCostValue(monthKey = '') {
+        return sumFiniteValues([
+            sumUtilityValueByTeamKeys(['team-01-02', 'team-03'], monthKey, 'lngCost'),
+            getTeamLpgCostValue('team-01-02', monthKey)
+        ]);
+    }
+
+    function getTotalGasCostValue(monthKey = '') {
+        return sumFiniteValues([
+            getYusanGasCostValue(monthKey),
+            getTeamLngCostValue('team-01-01', monthKey)
+        ]);
+    }
+
+    function getReportMonthlyRow(monthKey = '') {
+        if (typeof root.buildUtilReportMonthlyRows !== 'function') return null;
+        const result = root.buildUtilReportMonthlyRows({
+            from: monthKey,
+            to: monthKey,
+            selectedScopeKeys: [],
+            categoryKey: 'production',
+            productionTeam: 'all'
+        });
+        return Array.isArray(result?.rows) ? result.rows[0] || null : null;
+    }
+
+    function getWasteCostDetailValue(cardKey = '', monthKey = '') {
+        const detailKey = WASTE_COST_DETAIL_KEYS[cardKey];
+        if (!detailKey) return NaN;
+        const row = getReportMonthlyRow(monthKey);
+        const value = Number(row?.wasteCostDetails?.[detailKey]);
+        return Number.isFinite(value) ? value : NaN;
+    }
+
+    function parseTeamKeyFromCardKey(cardKey = '', prefix = '') {
+        const raw = String(cardKey || '').trim();
+        if (!raw.startsWith(prefix)) return '';
+        return raw.slice(prefix.length);
+    }
+
+    function resolveAuthorityRawValue(card, monthKey) {
+        const cardKey = String(card?.key || '').trim();
+        if (!cardKey) return NaN;
+        if (cardKey === 'production-total') return getProductionValueByDataKey('work_team_calendar_overview', monthKey);
+        if (cardKey === 'production-yusan') return sumProductionValueByTeamKeys(EXPERIMENT_YUSAN_TEAM_KEYS, monthKey);
+        if (cardKey.startsWith('production-team-')) {
+            return getProductionValueByTeamKey(parseTeamKeyFromCardKey(cardKey, 'production-'), monthKey);
+        }
+        const productionLineMatch = /^line-(.+)-production$/.exec(cardKey);
+        if (productionLineMatch) {
+            const line = PRODUCTION_LINES.find(item => item.key === productionLineMatch[1]);
+            return line ? getProductionLineValue(line.key, line.teamKey, monthKey) : NaN;
+        }
+        if (cardKey === 'electric-usage') return getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'electricUsage');
+        if (cardKey === 'electric-usage-yusan') return sumUtilityValueByTeamKeys(EXPERIMENT_YUSAN_TEAM_KEYS, monthKey, 'electricUsage');
+        if (cardKey.startsWith('electric-usage-')) {
+            return getUtilityValueByTeamKey(parseTeamKeyFromCardKey(cardKey, 'electric-usage-'), monthKey, 'electricUsage');
+        }
+        if (cardKey === 'electric-cost') return getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'electricCost');
+        if (cardKey === 'electric-cost-yusan') return sumUtilityValueByTeamKeys(EXPERIMENT_YUSAN_TEAM_KEYS, monthKey, 'electricCost');
+        if (cardKey.startsWith('electric-cost-')) {
+            return getUtilityValueByTeamKey(parseTeamKeyFromCardKey(cardKey, 'electric-cost-'), monthKey, 'electricCost');
+        }
+        if (cardKey === 'lng-usage') return getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'lngUsage');
+        if (cardKey === 'lng-usage-yusan') return sumUtilityValueByTeamKeys(['team-01-02', 'team-03'], monthKey, 'lngUsage');
+        if (cardKey.startsWith('lng-usage-')) {
+            return getUtilityValueByTeamKey(parseTeamKeyFromCardKey(cardKey, 'lng-usage-'), monthKey, 'lngUsage');
+        }
+        if (cardKey.startsWith('lpg-usage-')) {
+            return getUtilityValueByTeamKey(parseTeamKeyFromCardKey(cardKey, 'lpg-usage-'), monthKey, 'lpgUsage');
+        }
+        if (cardKey === 'gas-cost') return getTotalGasCostValue(monthKey);
+        if (cardKey === 'gas-cost-yusan') return getYusanGasCostValue(monthKey);
+        if (cardKey === 'gas-cost-team-01-02') return getTeam12GasCostValue(monthKey);
+        if (cardKey === 'lng-cost') return getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'lngCost');
+        if (cardKey === 'lng-cost-yusan') return sumUtilityValueByTeamKeys(['team-01-02', 'team-03'], monthKey, 'lngCost');
+        if (cardKey.startsWith('lng-cost-')) {
+            return getUtilityValueByTeamKey(parseTeamKeyFromCardKey(cardKey, 'lng-cost-'), monthKey, 'lngCost');
+        }
+        if (cardKey.startsWith('lpg-cost-')) {
+            return getUtilityValueByTeamKey(parseTeamKeyFromCardKey(cardKey, 'lpg-cost-'), monthKey, 'lpgCost');
+        }
+        if (cardKey === 'waste-discharge') return getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'wasteUsage');
+        if (cardKey === 'waste-cost') return getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'wasteCost');
+        if (Object.prototype.hasOwnProperty.call(WASTE_COST_DETAIL_KEYS, cardKey)) {
+            return getWasteCostDetailValue(cardKey, monthKey);
+        }
+        return NaN;
+    }
+
     function roundMetricValue(value, decimals = 1) {
         const digits = Math.max(0, Math.min(4, Math.trunc(Number(decimals) || 0)));
         const scale = 10 ** digits;
-        return Math.round(Number(value || 0) * scale) / scale;
+        const number = Number(value);
+        if (!Number.isFinite(number)) return NaN;
+        return Math.round(number * scale) / scale;
     }
 
     function formatMetricValue(value, decimals = 1, forceDecimals = false) {
+        if (!Number.isFinite(Number(value))) return '-';
         const digits = Math.max(0, Math.min(4, Math.trunc(Number(decimals) || 0)));
         const rounded = roundMetricValue(value, digits);
         if (!forceDecimals && Number.isInteger(rounded)) return String(rounded);
         return rounded.toFixed(digits);
+    }
+
+    function formatMetricTableValue(value, decimals = 1, forceDecimals = false) {
+        const valueText = formatMetricValue(value, decimals, forceDecimals);
+        return valueText.replace(/^-?\d+/, match => Number(match).toLocaleString('ko-KR'));
+    }
+
+    function getSafeChartColor(value = '') {
+        const color = String(value || '').trim();
+        return /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(color) ? color : '#64748b';
     }
 
     function resolveSeriesValue(values = [], monthKey, decimals = 1) {
@@ -806,17 +1248,25 @@
         return Math.max(0, roundMetricValue(firstValue + (Number(values[sourceIndex] || 0) - firstValue) + cycleIndex * cycleTrend, decimals));
     }
 
-    function resolvePeriodValue(card, monthKey) {
+    function resolveRawPeriodValue(card, monthKey) {
         if (card?.numeratorKey && card?.denominatorKey) {
             const numerator = findAnalysisCard(card.numeratorKey);
             const denominator = findAnalysisCard(card.denominatorKey);
-            const numeratorValue = resolvePeriodValue(numerator, monthKey);
-            const denominatorValue = resolvePeriodValue(denominator, monthKey);
+            const numeratorValue = resolveRawPeriodValue(numerator, monthKey);
+            const denominatorValue = resolveRawPeriodValue(denominator, monthKey);
             if (!Number.isFinite(numeratorValue) || !Number.isFinite(denominatorValue) || denominatorValue === 0) return 0;
             const ratioValue = numeratorValue / denominatorValue;
             return roundMetricValue(ratioValue, card?.decimals);
         }
-        return resolveSeriesValue(card?.values || [], monthKey);
+        return resolveAuthorityRawValue(card, monthKey);
+    }
+
+    function resolvePeriodValue(card, monthKey, shell = null) {
+        const rawValue = resolveRawPeriodValue(card, monthKey);
+        if (!Number.isFinite(rawValue)) return NaN;
+        const unitOption = getCardUnitOption(shell, card);
+        const scale = Number(unitOption?.scale) || 1;
+        return roundMetricValue(rawValue / scale, getCardDecimalDigits(shell, card));
     }
 
     function isDerivedRatioCard(card) {
@@ -824,26 +1274,97 @@
     }
 
     function getPointValues(points = []) {
-        return points.map(point => Number(point.value || 0));
+        return points
+            .map(point => Number(point?.value))
+            .filter(value => Number.isFinite(value));
     }
 
     function buildSummaryItem(card, series) {
-        const pointValues = getPointValues(series?.points || []);
-        const firstValue = pointValues[0] || 0;
-        const lastPointValue = pointValues[pointValues.length - 1] || firstValue;
-        const isRatio = isDerivedRatioCard(card);
-        const ratioDecimalValue = Number(series?.decimals ?? card?.decimals);
-        const displayDecimals = isRatio
-            ? Math.max(0, Math.min(4, Math.trunc(Number.isFinite(ratioDecimalValue) ? ratioDecimalValue : 3)))
-            : 1;
         return {
             key: card.key,
             title: card.title,
-            valueText: `${formatMetricValue(firstValue, displayDecimals, isRatio)} → ${formatMetricValue(lastPointValue, displayDecimals, isRatio)}`,
+            valueText: '',
             icon: card.icon,
             tone: card.tone,
-            metaText: card.metaText
+            metaText: series?.unitLabel || card.metaText
         };
+    }
+
+    function getExperimentTablePointValue(point, card, monthKey, shell) {
+        const directValue = Number(point?.value);
+        if (Number.isFinite(directValue)) return directValue;
+        const parsedValue = parseExperimentNumberText(point?.valueText ?? point?.formattedValue ?? point?.displayValue ?? point?.rawValue);
+        if (Number.isFinite(parsedValue)) return parsedValue;
+        return resolvePeriodValue(card, monthKey, shell);
+    }
+
+    function buildExperimentChartTableHtml(seriesList = [], cards = [], shell = null) {
+        const rows = [];
+        const cardMap = new Map((Array.isArray(cards) ? cards : []).map(card => [String(card?.key || ''), card]));
+        const monthHeaders = Array.from({ length: 12 }, (_, index) => `<th>${index + 1}월</th>`).join('');
+        (Array.isArray(seriesList) ? seriesList : []).forEach((series, seriesIndex) => {
+            const seriesKey = String(series?.seriesKey || '').trim();
+            const card = cardMap.get(seriesKey) || null;
+            const accentColor = getSafeChartColor(series?.color || card?.color);
+            const pointMap = new Map();
+            (Array.isArray(series?.points) ? series.points : []).forEach(point => {
+                const monthKey = String(point?.monthKey || point?.key || '').trim();
+                if (/^\d{4}-\d{2}$/.test(monthKey)) pointMap.set(monthKey, point);
+            });
+            const years = Array.from(new Set(Array.from(pointMap.keys()).map(monthKey => monthKey.slice(0, 4)))).sort();
+            years.forEach((year, yearIndex) => {
+                const cells = Array.from({ length: 12 }, (_, index) => {
+                    const monthKey = `${year}-${String(index + 1).padStart(2, '0')}`;
+                    const point = pointMap.get(monthKey);
+                    const value = getExperimentTablePointValue(point, card, monthKey, shell);
+                    const isValue = Number.isFinite(value);
+                    const valueText = isValue
+                        ? formatMetricTableValue(value, Number.isFinite(series?.decimals) ? series.decimals : 0, isDerivedRatioCard(card))
+                        : '';
+                    return `<td class="${isValue ? 'is-strong' : 'is-empty'}">${escapeHtml(valueText)}</td>`;
+                }).join('');
+                rows.push(`
+                    <tr class="experiment-chart-table-row${yearIndex === 0 ? ' is-series-start' : ''}" data-exp-series-index="${seriesIndex % 6}" style="--exp-series-color:${escapeHtml(accentColor)};">
+                        <th>
+                            <div class="util-sheet-analysis-table-row-title experiment-chart-table-row-title">
+                                <span class="experiment-chart-table-swatch" aria-hidden="true"></span>
+                                <span>${escapeHtml(String(year).slice(-2))}년 ${escapeHtml(series?.rawLabel || series?.label || '')}</span>
+                            </div>
+                            <div class="util-sheet-analysis-table-row-unit">(${escapeHtml(series?.unitLabel || '')})</div>
+                        </th>
+                        ${cells}
+                    </tr>
+                `);
+            });
+        });
+        if (!rows.length) {
+            return '<div class="util-sheet-empty experiment-chart-table-empty">표시할 표 데이터가 없습니다.</div>';
+        }
+        return `
+            <article class="util-sheet-analysis-table-card experiment-chart-table-card" data-tone="combined">
+                <div class="util-sheet-analysis-table-head">
+                    <div class="util-sheet-analysis-table-title">선택 지표 월별 표</div>
+                    <div class="util-sheet-analysis-table-sub">선택 기간 월별 실제값</div>
+                </div>
+                <div class="util-sheet-table-wrap">
+                    <table class="util-sheet-table util-sheet-analysis-table experiment-chart-table">
+                        <thead>
+                            <tr>
+                                <th>구분</th>
+                                ${monthHeaders}
+                            </tr>
+                        </thead>
+                        <tbody>${rows.join('')}</tbody>
+                    </table>
+                </div>
+            </article>
+        `;
+    }
+
+    function formatSeriesLabelWithUnit(title = '', unitLabel = '') {
+        const safeTitle = String(title || '').trim();
+        const safeUnit = String(unitLabel || '').trim();
+        return safeUnit ? `${safeTitle} (${safeUnit})` : safeTitle;
     }
 
     function buildCardSeries(card, period, shell) {
@@ -855,19 +1376,26 @@
             : monthKeys.map(monthKey => formatPointLabel(monthKey));
         const displayMode = getCardDisplayMode(shell, card);
         const decimals = getCardDecimalDigits(shell, card);
+        const unitKey = getCardUnitKey(shell, card);
+        const unitLabel = getCardUnitLabel(shell, card);
+        const unitOptions = getCardUnitOptions(card);
         return {
-            label: card.title,
+            label: formatSeriesLabelWithUnit(card.title, unitLabel),
+            rawLabel: card.title,
             color: card.color,
             type: displayMode,
             lineWidth: 3.2,
             lineDash: isDerivedRatioCard(card) ? '7 5' : '',
             seriesKey: card.key,
             decimals,
+            unitKey,
+            unitLabel,
+            unitOptions,
             points: monthKeys.map((monthKey, index) => ({
                 key: monthKey,
                 monthKey,
                 label: monthLabels[index] || monthKey,
-                value: resolvePeriodValue(card, monthKey)
+                value: resolvePeriodValue(card, monthKey, shell)
             }))
         };
     }
@@ -884,8 +1412,12 @@
         const colorYears = Array.isArray(plan.availableYears) && plan.availableYears.length ? plan.availableYears : years;
         const displayMode = getCardDisplayMode(shell, card);
         const decimals = getCardDecimalDigits(shell, card);
+        const unitKey = getCardUnitKey(shell, card);
+        const unitLabel = getCardUnitLabel(shell, card);
+        const unitOptions = getCardUnitOptions(card);
         return years.map(year => ({
-            label: `${year} ${card.title}`,
+            label: formatSeriesLabelWithUnit(`${year} ${card.title}`, unitLabel),
+            rawLabel: `${year} ${card.title}`,
             color: YEAR_OVERLAP_COLORS[Math.max(0, colorYears.indexOf(year)) % YEAR_OVERLAP_COLORS.length] || card.color,
             type: displayMode,
             lineWidth: 3.2,
@@ -893,13 +1425,16 @@
             seriesKey: card.key,
             axisGroupKey: card.key,
             decimals,
+            unitKey,
+            unitLabel,
+            unitOptions,
             points: months.map((month, index) => {
                 const monthKey = `${year}-${month}`;
                 return {
                     key: `${card.key}:${monthKey}`,
                     monthKey,
                     label: monthLabels[index] || formatPointLabel(monthKey),
-                    value: activeMonthKeys.has(monthKey) ? resolvePeriodValue(card, monthKey) : NaN
+                    value: activeMonthKeys.has(monthKey) ? resolvePeriodValue(card, monthKey, shell) : NaN
                 };
             })
         }));
@@ -919,6 +1454,7 @@
         const allSeries = selectedCards.flatMap(card => buildCardSeriesList(card, period, shell));
         const visibleSeries = allSeries.filter(item => item.type !== 'none');
         const maxDecimals = [...allSeries, ...summarySeries].reduce((maxValue, item) => Math.max(maxValue, Number.isFinite(item.decimals) ? item.decimals : 1), 1);
+        const selectedCardMap = new Map(selectedCards.map(card => [String(card?.key || ''), card]));
         return {
             chart: {
                 key: EXPERIMENT_CHART_KEY,
@@ -929,12 +1465,22 @@
                 decimals: maxDecimals,
                 series: visibleSeries,
                 chartDataList: visibleSeries.map(item => ({ seriesKey: item.seriesKey, points: item.points })),
+                showViewToggle: true,
+                viewMode: getExperimentChartViewMode(shell),
+                tableHtml: buildExperimentChartTableHtml(summarySeries, selectedCards, shell),
+                suppressChartLabelToggle: true,
                 controlItems: summarySeries.map(item => ({
                     key: item.seriesKey,
-                    title: item.label,
+                    title: item.rawLabel || item.label,
+                    metricLabel: item.unitLabel,
                     color: item.color,
                     decimals: item.decimals,
+                    unitKey: item.unitKey,
+                    unitLabel: item.unitLabel,
+                    unitOptions: item.unitOptions,
                     displayMode: item.type,
+                    hideLabelToggle: true,
+                    isDerivedRatio: isDerivedRatioCard(selectedCardMap.get(item.seriesKey)),
                     points: item.points
                 })),
                 summaryItems: selectedCards.map((card, index) => buildSummaryItem(card, summarySeries[index])),
@@ -942,7 +1488,7 @@
             },
             model: {
                 datasetKey: 'gas',
-                rangeLabel: `${period.label}${period?.yearOverlap === true ? ' · 년도 겹치기' : ''} · 시작월 100 환산`
+                rangeLabel: `${period.label}${period?.yearOverlap === true ? ' · 년도 겹치기' : ''} · 월별 실제값`
             }
         };
     }
@@ -1033,6 +1579,15 @@
         const mount = shell?.querySelector?.('[data-exp-chart-mount]');
         if (!shell || !mount) return;
         const stateApi = getAnalysisStateApi();
+        mount.querySelectorAll('[data-exp-chart-view]').forEach(button => {
+            button.onclick = () => {
+                const viewMode = String(button.dataset.expChartView || '').trim().toLowerCase() === 'table'
+                    ? 'table'
+                    : 'chart';
+                getExperimentShellState(shell).chartViewMode = viewMode;
+                renderExactAnalysisChart(shell);
+            };
+        });
         mount.querySelectorAll('[data-chart-label-toggle]').forEach(toggle => {
             toggle.onchange = () => {
                 const state = getExperimentShellState(shell);
@@ -1048,6 +1603,15 @@
                 if (!seriesKey) return;
                 getExperimentShellState(shell).seriesLabels[seriesKey] = toggle.checked === true;
                 stateApi?.setUtilSheetAnalysisSeriesShowLabels?.('gas', seriesKey, toggle.checked === true);
+                renderExactAnalysisChart(shell);
+            };
+        });
+        mount.querySelectorAll('[data-role="util-sheet-analysis-unit"]').forEach(select => {
+            select.onchange = () => {
+                const seriesKey = String(select.dataset.chartKey || '').trim();
+                const unitKey = String(select.value || '').trim().toLowerCase();
+                if (!seriesKey || !unitKey) return;
+                getExperimentShellState(shell).unitKeys[seriesKey] = unitKey;
                 renderExactAnalysisChart(shell);
             };
         });
@@ -1264,14 +1828,22 @@
         if (!title) return '';
         if (key === 'electric-usage') return '전기';
         if (key === 'electric-cost') return '전기 비용';
+        if (key === 'electric-cost-yusan') return '유산 전기 비용';
         if (key.startsWith('electric-usage-')) return title.replace(/\s*사용량\s*$/u, '').replace(/\s*전기\s*$/u, ' 전기').trim();
+        if (key.startsWith('electric-cost-')) return title.replace(/\s*비용\s*$/u, ' 비용').trim();
         if (key === 'lng-usage') return 'LNG 가스';
         if (key === 'lng-usage-yusan') return '유산 LNG 가스';
         if (key.startsWith('lng-usage-')) return title.replace(/\s*사용량\s*$/u, ' 가스').trim();
         if (key.startsWith('lpg-usage-')) return title.replace(/\s*사용량\s*$/u, ' 가스').trim();
         if (key === 'gas-cost') return '가스 비용';
-        if (key === 'waste-discharge') return '폐수';
-        if (key === 'waste-cost') return '폐수 비용';
+        if (key === 'gas-cost-yusan') return '유산 가스 비용';
+        if (key.startsWith('gas-cost-')) return title.replace(/\s*비용\s*$/u, ' 비용').trim();
+        if (key === 'lng-cost') return 'LNG 비용';
+        if (key === 'lng-cost-yusan') return '유산 LNG 비용';
+        if (key.startsWith('lng-cost-')) return title.replace(/\s*비용\s*$/u, ' 비용').trim();
+        if (key.startsWith('lpg-cost-')) return title.replace(/\s*비용\s*$/u, ' 비용').trim();
+        if (key === 'waste-discharge') return '폐수 방류량';
+        if (key === 'waste-cost') return '폐수 비용 합계';
         return title;
     }
 
@@ -1637,11 +2209,15 @@
         if (Object.prototype.hasOwnProperty.call(state.decimalDigits, previousKey)) {
             state.decimalDigits[nextKey] = state.decimalDigits[previousKey];
         }
+        if (Object.prototype.hasOwnProperty.call(state.unitKeys, previousKey)) {
+            state.unitKeys[nextKey] = state.unitKeys[previousKey];
+        }
         if (Object.prototype.hasOwnProperty.call(state.seriesLabels, previousKey)) {
             state.seriesLabels[nextKey] = state.seriesLabels[previousKey];
         }
         delete state.displayModes[previousKey];
         delete state.decimalDigits[previousKey];
+        delete state.unitKeys[previousKey];
         delete state.seriesLabels[previousKey];
     }
 
@@ -1664,6 +2240,7 @@
         state.ratioCards = state.ratioCards.filter(card => card.key !== cardKey);
         delete state.displayModes[cardKey];
         delete state.decimalDigits[cardKey];
+        delete state.unitKeys[cardKey];
         delete state.seriesLabels[cardKey];
         return state.ratioCards.length !== previousLength;
     }

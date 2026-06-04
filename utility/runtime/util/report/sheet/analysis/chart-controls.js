@@ -132,6 +132,25 @@
         `;
     }
 
+    function buildUtilSheetAnalysisUnitSelectHtml(item = {}) {
+        if (!item?.key) return '';
+        const options = (Array.isArray(item?.unitOptions) ? item.unitOptions : [])
+            .filter(option => option && option.key);
+        if (options.length < 2) return '';
+        const selectedKey = String(item.unitKey || options[0]?.key || '').trim();
+        const optionsHtml = options
+            .map(option => {
+                const optionKey = String(option.key || '').trim();
+                return `<option value="${escapeHtml(optionKey)}" ${optionKey === selectedKey ? 'selected' : ''}>${escapeHtml(option.label || optionKey)}</option>`;
+            })
+            .join('');
+        return `
+            <select class="util-sheet-analysis-series-select util-sheet-analysis-unit-select" data-role="util-sheet-analysis-unit" data-chart-key="${escapeHtml(item.key)}" aria-label="${escapeHtml(item.title || item.label || item.key)} unit">
+                ${optionsHtml}
+            </select>
+        `;
+    }
+
     function buildUtilGasAnalysisSeriesLabel(chart = {}) {
         const title = String(chart?.title || '').trim();
         const unitLabel = String(chart?.metricLabel || '').trim();
@@ -222,8 +241,9 @@
                             <span>${escapeHtml(item.title)}</span>
                         </div>
                         <div class="util-sheet-analysis-series-actions">
+                            ${buildUtilSheetAnalysisUnitSelectHtml(item)}
                             ${buildUtilSheetAnalysisDecimalsSelectHtml(item)}
-                            <label class="util-sheet-analysis-summary-control-label">
+                            ${item.hideLabelToggle === true ? '' : `<label class="util-sheet-analysis-summary-control-label">
                                 <input
                                     type="checkbox"
                                     data-role="util-sheet-analysis-series-label-toggle"
@@ -231,7 +251,7 @@
                                     ${getSeriesShowLabels(item.datasetKey || 'gas', item.key) ? 'checked' : ''}
                                 >
                                 <span>레이블</span>
-                            </label>
+                            </label>`}
                             <div class="util-sheet-analysis-series-mode">
                                 ${UTIL_GAS_ANALYSIS_DISPLAY_OPTIONS.map(option => `
                                     <button
@@ -254,7 +274,7 @@
     function buildUtilGasAnalysisSeriesControlHtml(item) {
         if (!item || !item.key) return '';
         const datasetKey = String(item.datasetKey || 'gas').trim() || 'gas';
-        const labelToggleHtml = `
+        const labelToggleHtml = item.hideLabelToggle === true ? '' : `
             <label class="util-sheet-analysis-summary-control-label">
                 <input
                     type="checkbox"
@@ -280,6 +300,7 @@
                 ` : ''}
                 <div class="util-sheet-analysis-summary-control-actions">
                     ${labelToggleHtml}
+                    ${buildUtilSheetAnalysisUnitSelectHtml(item)}
                     ${buildUtilSheetAnalysisDecimalsSelectHtml(item)}
                     <div class="util-sheet-analysis-series-mode">
                         ${UTIL_GAS_ANALYSIS_DISPLAY_OPTIONS.map(option => `
