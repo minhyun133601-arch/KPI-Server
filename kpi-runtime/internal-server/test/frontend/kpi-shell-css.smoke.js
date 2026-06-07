@@ -17,8 +17,8 @@ const shellManifestPath = path.join(appRoot, 'KPI.app.shell.css');
 
 const styleEntries = [
   {
-    href: `${runtimeDirName}/app/styles/shell/dashboard.css?v=076`,
-    manifestHref: './styles/shell/dashboard.css?v=076',
+    href: `${runtimeDirName}/app/styles/shell/dashboard.css?v=077`,
+    manifestHref: './styles/shell/dashboard.css?v=077',
     fileName: 'dashboard.css',
     relativeSegments: ['shell', 'dashboard.css'],
   },
@@ -41,8 +41,8 @@ const styleEntries = [
     relativeSegments: ['metering', 'metering.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/audit/audit.css?v=059`,
-    manifestHref: './styles/audit/audit.css?v=059',
+    href: `${runtimeDirName}/app/styles/audit/audit.css?v=062`,
+    manifestHref: './styles/audit/audit.css?v=062',
     fileName: 'audit.css',
     relativeSegments: ['audit', 'audit.css'],
   },
@@ -94,6 +94,12 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-analytics-chart-grid\s*\{\s*display:\s*none;\s*\}/);
   assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-analytics-chart-value\s*\{[^}]*paint-order:\s*stroke;[^}]*stroke:\s*#ffffff;[^}]*stroke-width:\s*3px;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-analytics-chart-canvas svg > rect\[opacity\]\s*\{[^}]*opacity:\s*1;[^}]*stroke:\s*#ffffff;[^}]*rx:\s*2px;[^}]*shape-rendering:\s*crispEdges;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-grid\s*\{[^}]*grid-template-columns:\s*1fr;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-card\s*\{[^}]*grid-template-columns:\s*minmax\(280px,\s*1fr\) auto;[^}]*align-items:\s*center;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-controls\s*\{[^}]*grid-column:\s*2;[^}]*border-top:\s*0;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-control-actions\s*\{[^}]*display:\s*inline-flex;[^}]*flex-wrap:\s*nowrap;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-stat\.is-max\s*\{[^}]*background:\s*#fef2f2;[^}]*color:\s*#b91c1c;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-stat\.is-min\s*\{[^}]*background:\s*#eff6ff;[^}]*color:\s*#1d4ed8;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-chart-toolbar\s*\{[^}]*min-height:\s*40px;[^}]*border-bottom:\s*1px solid #dbe4f3;[^}]*box-shadow:\s*none;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-add-card-trigger\s*\{[^}]*min-height:\s*30px;[^}]*border:\s*1px solid #cbd5e1;[^}]*background:\s*#ffffff;[^}]*box-shadow:\s*none;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-period-input\s*\{[^}]*height:\s*30px;[^}]*border-radius:\s*6px;[^}]*font-size:\s*0\.74rem;[^}]*box-shadow:\s*none;/s);

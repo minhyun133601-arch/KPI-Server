@@ -260,6 +260,8 @@
         const showChartLabels = getAnalysisShowLabels(datasetKey, chartKey, isFullscreenChart);
         const showChartLabelToggle = chart?.suppressChartLabelToggle === true ? false : true;
         const seriesLabelModes = buildAnalysisSeriesLabelModes(datasetKey, chart);
+        const hideChartFullscreenButton = viewState?.hideChartFullscreenButton === true;
+        const hideHeadingText = chart?.hideHeadingText === true;
         const hasVisibleSeries = isCombinedChart
             ? (Array.isArray(chart?.chartDataList) && chart.chartDataList.length > 0)
             : !!(Array.isArray(chart?.points) && chart.points.length);
@@ -287,10 +289,15 @@
                     tightRange: true,
                     tightPadding: 0.14,
                     hideUnit: true,
-                    topCenterTitle: chart.title,
+                    topCenterTitle: chart.hideTopCenterTitle === true ? '' : chart.title,
                     axisXLabel: '월',
                     showYearBands: false,
                     reportValueOrderLabels: chart.reportValueOrderLabels === true,
+                    hideLegend: chart.hideLegend === true,
+                    dedupeLegend: chart.dedupeLegend === true,
+                    hideRangeMeta: chart.hideRangeMeta === true,
+                    hidePeriodLabel: chart.hidePeriodLabel === true,
+                    rangeMetaMode: chart.rangeMetaMode,
                     maxXAxisLabels: isFullscreenChart ? Math.max(2, pointCount) : 12,
                     forceWidth: isFullscreenChart
                         ? Math.max(1260, pointCount * 88 + 340)
@@ -311,6 +318,7 @@
                 tightPadding: 0.14,
                 axisXLabel: '월',
                 axisYLabel: chart.metricLabel,
+                hideLegend: chart.hideLegend === true,
                 maxXAxisLabels: isFullscreenChart ? Math.max(2, pointCount) : 12,
                 forceWidth: isFullscreenChart
                     ? Math.max(980, pointCount * 82 + 260)
@@ -337,9 +345,16 @@
             `
             : '';
         const surfaceHtml = activeViewMode === 'table' ? tableHtml : chartHtml;
-        const buttonTitle = hasVisibleSeries
+        const buttonTitle = !hideChartFullscreenButton && hasVisibleSeries
             ? (isFullscreenChart ? `${chart.title} 전체화면 종료` : `${chart.title} 전체화면`)
             : '표시할 시리즈가 없습니다.';
+        const fullscreenButtonHtml = hideChartFullscreenButton
+            ? ''
+            : `
+                        <button type="button" class="util-sheet-analysis-chart-btn${isFullscreenChart ? ' is-active' : ''}" data-role="util-sheet-analysis-open-chart" data-chart-key="${escapeHtml(chartKey)}" aria-label="${escapeHtml(buttonTitle)}" title="${escapeHtml(buttonTitle)}" ${hasVisibleSeries ? '' : 'disabled'}>
+                            <i class="fa-solid ${isFullscreenChart ? 'fa-compress' : 'fa-expand'}" aria-hidden="true"></i>
+                        </button>
+                    `;
         const summaryBlockHtml = Array.isArray(chart?.summaryItems) && chart.summaryItems.length
             ? buildUtilSheetAnalysisSummaryGridHtml(
                 chart.summaryItems,
@@ -357,18 +372,16 @@
         return `
             <article class="${escapeHtml(cardClassName)}" data-role="util-sheet-analysis-chart-card" data-analysis-chart-key="${escapeHtml(chartKey)}" data-tone="${escapeHtml(chart.tone || 'neutral')}">
                 <div class="util-sheet-analysis-chart-head">
-                    <div class="util-sheet-analysis-chart-title-wrap">
+                    ${hideHeadingText ? '' : `<div class="util-sheet-analysis-chart-title-wrap">
                         <span class="util-sheet-analysis-chart-icon" aria-hidden="true"><i class="fa-solid ${escapeHtml(chart.icon || 'fa-chart-line')}"></i></span>
                         <div>
                             <div class="util-sheet-analysis-chart-title">${escapeHtml(chart.title)}</div>
                             <div class="util-sheet-analysis-chart-sub">${escapeHtml(model.rangeLabel)}</div>
                         </div>
-                    </div>
+                    </div>`}
                     <div class="util-sheet-analysis-chart-actions">
                         ${viewToggleHtml}
-                        <button type="button" class="util-sheet-analysis-chart-btn${isFullscreenChart ? ' is-active' : ''}" data-role="util-sheet-analysis-open-chart" data-chart-key="${escapeHtml(chartKey)}" aria-label="${escapeHtml(buttonTitle)}" title="${escapeHtml(buttonTitle)}" ${hasVisibleSeries ? '' : 'disabled'}>
-                            <i class="fa-solid ${isFullscreenChart ? 'fa-compress' : 'fa-expand'}" aria-hidden="true"></i>
-                        </button>
+                        ${fullscreenButtonHtml}
                     </div>
                 </div>
                 ${summaryBlockHtml}
@@ -477,6 +490,25 @@
                 ${items.map(item => {
                     const itemKey = String(item?.key || '').trim();
                     const valueText = String(item?.valueText ?? '').trim();
+                    const statItems = Array.isArray(item?.statItems)
+                        ? item.statItems.filter(stat => stat && (stat.label || stat.valueText))
+                        : [];
+                    const statsHtml = statItems.length
+                        ? `
+                            <span class="util-sheet-analysis-summary-stats">
+                                ${statItems.map(stat => {
+                                    const statTone = String(stat?.tone || stat?.key || '').trim();
+                                    const statToneClass = ['max', 'min', 'average'].includes(statTone) ? ` is-${statTone}` : '';
+                                    return `
+                                    <span class="util-sheet-analysis-summary-stat${statToneClass}">
+                                        <span class="util-sheet-analysis-summary-stat-label">${escapeHtml(stat.label || '')}</span>
+                                        <span class="util-sheet-analysis-summary-stat-value">${escapeHtml(stat.valueText || '-')}</span>
+                                    </span>
+                                `;
+                                }).join('')}
+                            </span>
+                        `
+                        : '';
                     const controlItem = controlMap.get(itemKey) || normalizedControlMap.get(itemKey.toLowerCase()) || null;
                     const controlHtml = controlItem
                         ? buildGasAnalysisSeriesControlHtml({ ...controlItem, datasetKey })
@@ -486,6 +518,7 @@
                         <div class="util-sheet-analysis-summary-head">
                             <span class="util-sheet-analysis-summary-icon" aria-hidden="true"><i class="fa-solid ${escapeHtml(item.icon || 'fa-circle')}"></i></span>
                             <span class="util-sheet-analysis-summary-label">${escapeHtml(item.title)}</span>
+                            ${statsHtml}
                         </div>
                         ${valueText ? `<div class="util-sheet-analysis-summary-value">${escapeHtml(valueText)}</div>` : ''}
                         ${item.secondaryValueText ? `<div class="util-sheet-analysis-summary-meta">${escapeHtml(item.secondaryLabelText || '금액')}</div>` : ''}

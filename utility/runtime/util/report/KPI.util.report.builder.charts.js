@@ -15,7 +15,7 @@
             const topCenterTitle = options.topCenterTitle
                 ? `<div class="util-analytics-chart-top-title">${escapeHtml(options.topCenterTitle)}</div>`
                 : '';
-            const periodLabel = String(options.periodLabel || '').trim();
+            const periodLabel = options.hidePeriodLabel === true ? '' : String(options.periodLabel || '').trim();
             const inlinePeriodLegend = options.inlinePeriodLegend === true;
             const filteredSeries = (Array.isArray(seriesList) ? seriesList : [])
                 .filter(item => item && Array.isArray(item.points) && item.points.length)
@@ -334,7 +334,14 @@
                 return `<rect x="${left}" y="${pad.top}" width="${rectWidth}" height="${plotH}" fill="rgba(0, 0, 0, 0.001)"${monthAttr}></rect>`;
             }).join('');
 
-            const legend = filteredSeries.map(item => (
+            const legendSeries = options.dedupeLegend === true
+                ? filteredSeries.filter((item, index, series) => {
+                    const legendKey = `${String(item.label || '').trim()}|${String(item.color || '').trim()}`;
+                    if (!legendKey.trim()) return true;
+                    return series.findIndex(candidate => `${String(candidate.label || '').trim()}|${String(candidate.color || '').trim()}` === legendKey) === index;
+                })
+                : filteredSeries;
+            const legend = legendSeries.map(item => (
                 `<span><i style="background:${item.color}"></i>${escapeHtml(item.label)}</span>`
             )).join('');
             const legendClassName = `util-analytics-chart-legend${inlinePeriodLegend ? ' util-analytics-chart-legend-inline' : ''}`;
@@ -347,9 +354,20 @@
                     ? `<div class="util-analytics-chart-meta-row">${periodBadge}${hasLegend ? `<div class="${legendClassName}">${legend}</div>` : ''}</div>`
                     : '')
                 : `${periodBadge ? `<div class="util-analytics-chart-meta-row">${periodBadge}</div>` : ''}${hasLegend ? `<div class="${legendClassName}">${legend}</div>` : ''}`;
-            const rangeMeta = `
+            const rangeMetaMode = String(options.rangeMetaMode || '').trim().toLowerCase();
+            const buildRangeMetaText = item => {
+                const minText = formatUtilNumber(item.minVal, item.decimals);
+                const maxText = formatUtilNumber(item.maxVal, item.decimals);
+                if (rangeMetaMode === 'labeled-min-max') {
+                    return `${item.label} 최소 ${minText} ~ 최대 ${maxText}`;
+                }
+                return `${item.label} ${minText} ~ ${maxText}`;
+            };
+            const rangeMeta = options.hideRangeMeta === true
+                ? ''
+                : `
                 <div class="util-analytics-chart-meta-row">
-                    ${series.map(item => `<span class="util-analytics-chart-period">${escapeHtml(`${item.label} ${formatUtilNumber(item.minVal, item.decimals)} ~ ${formatUtilNumber(item.maxVal, item.decimals)}`)}</span>`).join('')}
+                    ${series.map(item => `<span class="util-analytics-chart-period">${escapeHtml(buildRangeMetaText(item))}</span>`).join('')}
                 </div>
             `;
             const axisTitleXPos = Math.max(10, pad.left - 120);

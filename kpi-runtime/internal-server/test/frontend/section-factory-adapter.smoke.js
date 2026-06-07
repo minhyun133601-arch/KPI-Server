@@ -97,6 +97,11 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(utilityEntryCategory.content, /data-utility-entry-experiment-meter-link="gas_bukjeong_lng"/);
   assert.match(utilityEntryCategory.content, /aria-label="유산 LPG Nm3 단가"[\s\S]*data-utility-entry-experiment-field-key="unit_price_m3"/);
   assert.match(utilityEntryCategory.content, /aria-label="유산 LPG Nm3 단가"[\s\S]*원\/M3/);
+  assert.match(utilityEntryCategory.content, /type="number"[\s\S]*step="any"[\s\S]*aria-label="기타 월간 평균온도"[\s\S]*data-utility-entry-experiment-save-kind="other-monthly-field"[\s\S]*data-utility-entry-experiment-field-key="average_temperature"[\s\S]*data-utility-entry-experiment-number-kind="float"[\s\S]*℃/);
+  assert.match(utilityEntryCategory.content, /aria-label="유산 CIP 횟수 1팀 2파트"[\s\S]*data-utility-entry-experiment-save-kind="other-team-monthly-field"[\s\S]*data-utility-entry-experiment-field-key="cip_count"[\s\S]*data-utility-entry-experiment-team-key="team_01_02"[\s\S]*회/);
+  assert.match(utilityEntryCategory.content, /aria-label="유산 CIP 횟수 2팀"[\s\S]*data-utility-entry-experiment-save-kind="other-team-monthly-field"[\s\S]*data-utility-entry-experiment-field-key="cip_count"[\s\S]*data-utility-entry-experiment-team-key="team_02"[\s\S]*회/);
+  assert.match(utilityEntryCategory.content, /aria-label="유산 CIP 횟수 3팀"[\s\S]*data-utility-entry-experiment-save-kind="other-team-monthly-field"[\s\S]*data-utility-entry-experiment-field-key="cip_count"[\s\S]*data-utility-entry-experiment-team-key="team_03"[\s\S]*회/);
+  assert.match(utilityEntryCategory.content, /aria-label="북정 CIP 횟수 1팀 1파트"[\s\S]*data-utility-entry-experiment-save-kind="other-team-monthly-field"[\s\S]*data-utility-entry-experiment-field-key="cip_count"[\s\S]*data-utility-entry-experiment-team-key="team_01_01"[\s\S]*회/);
   const dataSectionSource = sectionSources.find(({ filename }) => filename === 'KPI.sections.data.js')?.source || '';
   assert.match(dataSectionSource, /key:\s*'electric_bukjeong'/);
   assert.match(dataSectionSource, /calculateUtilityEntryExperimentUnitPrice\(powerCharge,\s*usageBase,\s*0\)/);
@@ -547,13 +552,14 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.equal(appData.experiment.name, '그래프');
   assert.notEqual(appData.experiment.navigationHidden, true);
   assert.notEqual(appData.experiment.directLaunch, true);
-  assert.notEqual(appData.experiment.hideNavigationChevron, true);
+  assert.equal(appData.experiment.openDefaultCategoryOnMain, true);
+  assert.equal(appData.experiment.hideNavigationChevron, true);
   assert.equal(appData.experiment.launchTarget, undefined);
   assert.equal(appData.experiment.launchRoute, undefined);
   assert.equal(Array.isArray(appData.experiment.categories), true);
   assert.equal(appData.experiment.categories.length, 1);
   assert.equal(appData.experiment.categories[0].title, '선/막대');
-  assert.notEqual(appData.experiment.categories[0].navHidden, true);
+  assert.equal(appData.experiment.categories[0].navHidden, true);
   assert.equal(appData.experiment.categories[0].viewerMode, 'full-bleed');
   assert.equal(appData.experiment.categories[0].launchTarget, undefined);
   assert.equal(appData.experiment.categories[0].launchRoute, undefined);
@@ -566,6 +572,18 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(appData.experiment.categories[0].content, /data-exp-year-overlap-years/);
   assert.match(appData.experiment.categories[0].content, /KpiExperimentGraphPrototype/);
   assert.match(appData.experiment.categories[0].content, /data-exp-report-chart-style="report-auto"/);
+  assert.match(appData.experiment.categories[0].content, /<option value="cost">비용<\/option>/);
+  [
+    'cost-team-01-01',
+    'cost-team-01-02',
+    'cost-team-02',
+    'cost-team-03',
+    'cost-bukjeong',
+    'cost-yusan',
+    'cost-total'
+  ].forEach((cardKey) => {
+    assert.match(appData.experiment.categories[0].content, new RegExp(`data-exp-card="${cardKey}"`));
+  });
   assert.equal(appData.experiment.categories.some((category) => category.utilitySurface === 'analysis'), false);
   assert.equal(appData.experiment.categories.some((category) => category.autoOpenUtilityReportModal === true), false);
   const experimentSource = sectionSources.find(({ filename }) => filename === 'KPI.sections.experiment.js')?.source || '';
@@ -573,11 +591,26 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(experimentSource, /yearOverlap:\s*false/);
   assert.match(experimentSource, /yearOverlapYears:\s*\[\]/);
   assert.match(experimentSource, /buildYearOverlapSeries/);
+  assert.match(experimentSource, /if\s*\(\s*points\.length < 2\s*\)\s*return \[\];/);
   assert.match(experimentSource, /function\s+syncYearOverlapYearControls/);
   assert.match(experimentSource, /toggleOverlapYear\(trigger\)/);
   assert.match(experimentSource, /function\s+toggleExperimentFullscreen/);
   assert.doesNotMatch(experimentSource, /launchTarget:\s*'popup'/);
   assert.match(experimentSource, /reportValueOrderLabels:\s*period\?\.yearOverlap === true/);
+  assert.match(experimentSource, /if \(period\?\.yearOverlap === true\) \{\s*return '';\s*\}/);
+  assert.match(experimentSource, /label:\s*String\(year\)/);
+  assert.match(experimentSource, /dedupeLegend:\s*period\?\.yearOverlap === true/);
+  assert.match(experimentSource, /hideHeadingText:\s*true/);
+  assert.match(experimentSource, /hideTopCenterTitle:\s*true/);
+  assert.match(experimentSource, /hidePeriodLabel:\s*true/);
+  assert.match(experimentSource, /rangeMetaMode:\s*'labeled-min-max'/);
+  assert.match(experimentSource, /hideLegend:\s*period\?\.yearOverlap !== true/);
+  assert.doesNotMatch(experimentSource, /선택 지표 통합 그래프/);
+  assert.doesNotMatch(experimentSource, /월별 실제값/);
+  assert.match(experimentSource, /const\s+COST_CARDS\s*=\s*Object\.freeze\(\[/);
+  assert.match(experimentSource, /function\s+getCostYusanValue\(monthKey = ''\)/);
+  assert.match(experimentSource, /if \(cardKey === 'cost-total'\) return getCostTotalValue\(monthKey\);/);
+  assert.doesNotMatch(experimentSource, /label:\s*formatSeriesLabelWithUnit\(`\$\{year\} \$\{card\.title\}`/);
   assert.match(experimentSource, /const mode = String\(state\.displayModes\?\.\[card\.key\] \|\| ''\)/);
   assert.match(experimentSource, /lineWidth:\s*3\.2/);
   assert.match(experimentSource, /function\s+getCompactAnalysisCardTitle/);
@@ -596,9 +629,9 @@ test('kpi html loads section factory adapter before all section factories', () =
   const adapterIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.factory-adapter.js?v=1');
   const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=231');
   const graphTemplateIndex = kpiHtml.indexOf('data-entry/runtime/data/utility-graph-template/app.js?v=41');
-  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=133');
+  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=135');
   const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=98');
-  const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=39');
+  const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=42');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
   const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=5');
 

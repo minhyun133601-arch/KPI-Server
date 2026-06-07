@@ -10,6 +10,7 @@ export const METERING_AUTHORITY_RECORD_KEYS = Object.freeze([
   'gas_v1',
   'waste_v1',
   'production_v1',
+  'other_v1',
 ]);
 
 function normalizeText(value) {

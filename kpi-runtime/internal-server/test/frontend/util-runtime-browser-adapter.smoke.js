@@ -1247,6 +1247,74 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.equal(registered.utilityEntrySaveCalls[0]?.host, utilityEntryHost);
   assert.equal(registered.utilityEntrySaveCalls[0]?.period, 'daily');
 
+  const utilityEntryMonthlyHost = {
+    querySelector(selector) {
+      return selector === '#utility-entry-experiment-monthly:checked' ? {} : null;
+    },
+  };
+  const monthlyProvider = providerFactory({
+    sectionId: 'data',
+    category: { utilitySurface: 'entry-experiment' },
+    container: {
+      querySelector(selector) {
+        return selector === '[data-role="utility-entry-experiment"]' ? utilityEntryMonthlyHost : null;
+      },
+    },
+  });
+  assert.deepEqual(await monthlyProvider.perform({ trigger: 'shortcut' }), { ok: true, period: 'monthly' });
+  assert.equal(registered.utilityEntrySaveCalls.length, 2);
+  assert.equal(registered.utilityEntrySaveCalls[1]?.host, utilityEntryMonthlyHost);
+  assert.equal(registered.utilityEntrySaveCalls[1]?.period, 'monthly');
+
+  const activeMonthlyInput = {
+    closest(selector) {
+      return selector === '.utility-entry-experiment-view.is-monthly' ? {} : null;
+    },
+  };
+  context.document = { activeElement: activeMonthlyInput };
+  const focusedMonthlyHost = {
+    contains(element) {
+      return element === activeMonthlyInput;
+    },
+    querySelector() {
+      return null;
+    },
+  };
+  const focusedMonthlyProvider = providerFactory({
+    sectionId: 'data',
+    category: { utilitySurface: 'entry-experiment' },
+    container: {
+      querySelector(selector) {
+        return selector === '[data-role="utility-entry-experiment"]' ? focusedMonthlyHost : null;
+      },
+    },
+  });
+  assert.deepEqual(await focusedMonthlyProvider.perform({ trigger: 'shortcut' }), { ok: true, period: 'monthly' });
+  assert.equal(registered.utilityEntrySaveCalls.length, 3);
+  assert.equal(registered.utilityEntrySaveCalls[2]?.host, focusedMonthlyHost);
+  assert.equal(registered.utilityEntrySaveCalls[2]?.period, 'monthly');
+
+  context.document = { activeElement: null };
+  const rememberedMonthlyHost = {
+    dataset: { utilityEntryExperimentActivePeriod: 'monthly' },
+    querySelector() {
+      return null;
+    },
+  };
+  const rememberedMonthlyProvider = providerFactory({
+    sectionId: 'data',
+    category: { utilitySurface: 'entry-experiment' },
+    container: {
+      querySelector(selector) {
+        return selector === '[data-role="utility-entry-experiment"]' ? rememberedMonthlyHost : null;
+      },
+    },
+  });
+  assert.deepEqual(await rememberedMonthlyProvider.perform({ trigger: 'shortcut' }), { ok: true, period: 'monthly' });
+  assert.equal(registered.utilityEntrySaveCalls.length, 4);
+  assert.equal(registered.utilityEntrySaveCalls[3]?.host, rememberedMonthlyHost);
+  assert.equal(registered.utilityEntrySaveCalls[3]?.period, 'monthly');
+
   assert.equal(providerFactory({
     sectionId: 'data',
     category: { utilitySurface: 'analysis' },
@@ -2358,6 +2426,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
     'lng_unit',
     'lpg',
     'lpg_cost',
+    'gas_cost',
     'lpg_unit',
     'yield_rate',
     'operation_rate',
@@ -2368,83 +2437,114 @@ test('util runtime browser adapter builds report memo candidates with direction 
     'production_days',
     'off_days',
     'product_count',
+    'cip_count',
     'production_line::지대',
     'production_line::ICA',
   ]));
   assert.equal(production.candidates.length, 1);
   assert.equal(production.candidates[0].direction, 'mixed');
-  assert.match(production.candidates[0].text, /1팀 2파트 생산량 1,000kg 전월대비 200kg, 25\.0% ↑, 전년대비 100kg, 9\.1% ↓/);
-  assert.equal(production.candidates[0].segments[0].direction, 'up');
-  assert.equal(production.candidates[0].segments[1].direction, 'down');
+  assert.match(production.candidates[0].text, /1팀 2파트 생산량 1,000kg 전년대비 100kg, 9\.1% ↓, 전월대비 200kg, 25\.0% ↑/);
+  assert.equal(production.candidates[0].segments[0].direction, 'down');
+  assert.equal(production.candidates[0].segments[1].direction, 'up');
 
   const yusanShare = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'yusan_production_share',
   });
   assert.equal(yusanShare.candidates[0].direction, 'down');
-  assert.match(yusanShare.candidates[0].text, /1팀 2파트 유산 생산량 비율 40% 전월대비 동일, 전년대비 15%p ↓/);
+  assert.match(yusanShare.candidates[0].text, /1팀 2파트 유산 생산량 비율 40% 전년대비 15%p ↓, 전월대비 동일/);
 
   const electric = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'electric',
   });
   assert.equal(electric.candidates[0].direction, 'mixed');
-  assert.match(electric.candidates[0].text, /전력량 100kWh 전월대비 10kWh, 11\.1% ↑, 전년대비 20kWh, 16\.7% ↓/);
+  assert.match(electric.candidates[0].text, /전력량 100kWh 전년대비 20kWh, 16\.7% ↓, 전월대비 10kWh, 11\.1% ↑/);
 
   const electricCost = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'electric_cost',
   });
   assert.equal(electricCost.candidates[0].direction, 'mixed');
-  assert.equal(electricCost.candidates[0].segments[0].direction, 'up');
-  assert.equal(electricCost.candidates[0].segments[1].direction, 'down');
-  assert.match(electricCost.candidates[0].text, /전기 비용 10,000원 전월대비 1,000원, 11\.1% ↑, 전년대비 2,000원, 16\.7% ↓/);
+  assert.equal(electricCost.candidates[0].segments[0].direction, 'down');
+  assert.equal(electricCost.candidates[0].segments[1].direction, 'up');
+  assert.match(electricCost.candidates[0].text, /전기 비용 10,000원 전년대비 2,000원, 16\.7% ↓, 전월대비 1,000원, 11\.1% ↑/);
 
   const electricUnit = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'electric_unit',
   });
   assert.equal(electricUnit.candidates[0].direction, 'down');
-  assert.match(electricUnit.candidates[0].text, /생산량 대비 전력량 0\.100kWh\/kg 전월대비 0\.013kWh\/kg, 11\.1% ↓, 전년대비 0\.009kWh\/kg, 8\.3% ↓/);
+  assert.match(electricUnit.candidates[0].text, /생산량 대비 전력량 0\.100kWh\/kg 전년대비 0\.009kWh\/kg, 8\.3% ↓, 전월대비 0\.013kWh\/kg, 11\.1% ↓/);
 
   const lngUnit = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'lng_unit',
   });
   assert.equal(lngUnit.candidates[0].direction, 'mixed');
-  assert.match(lngUnit.candidates[0].text, /생산량 대비 LNG 0\.070m³\/kg 전월대비 0\.011m³\/kg, 13\.8% ↓, 전년대비 0\.002m³\/kg, 2\.7% ↑/);
+  assert.match(lngUnit.candidates[0].text, /생산량 대비 LNG 0\.070m³\/kg 전년대비 0\.002m³\/kg, 2\.7% ↑, 전월대비 0\.011m³\/kg, 13\.8% ↓/);
 
   const lngCost = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'lng_cost',
   });
   assert.equal(lngCost.candidates[0].direction, 'mixed');
-  assert.equal(lngCost.candidates[0].segments[0].direction, 'up');
-  assert.equal(lngCost.candidates[0].segments[1].direction, 'down');
-  assert.match(lngCost.candidates[0].text, /LNG 비용 7,000원 전월대비 500원, 7\.7% ↑, 전년대비 500원, 6\.7% ↓/);
+  assert.equal(lngCost.candidates[0].segments[0].direction, 'down');
+  assert.equal(lngCost.candidates[0].segments[1].direction, 'up');
+  assert.match(lngCost.candidates[0].text, /LNG 비용 7,000원 전년대비 500원, 6\.7% ↓, 전월대비 500원, 7\.7% ↑/);
 
   const lpg = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'lpg',
   });
   assert.equal(lpg.candidates[0].direction, 'mixed');
-  assert.match(lpg.candidates[0].text, /LPG 사용량 50kg 전월대비 10kg, 16\.7% ↓, 전년대비 10kg, 25\.0% ↑/);
+  assert.match(lpg.candidates[0].text, /LPG 사용량 50kg 전년대비 10kg, 25\.0% ↑, 전월대비 10kg, 16\.7% ↓/);
 
   const lpgCost = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'lpg_cost',
   });
   assert.equal(lpgCost.candidates[0].direction, 'mixed');
-  assert.equal(lpgCost.candidates[0].segments[0].direction, 'down');
-  assert.equal(lpgCost.candidates[0].segments[1].direction, 'up');
-  assert.match(lpgCost.candidates[0].text, /LPG 비용 5,000원 전월대비 1,000원, 16\.7% ↓, 전년대비 1,000원, 25\.0% ↑/);
+  assert.equal(lpgCost.candidates[0].segments[0].direction, 'up');
+  assert.equal(lpgCost.candidates[0].segments[1].direction, 'down');
+  assert.match(lpgCost.candidates[0].text, /LPG 비용 5,000원 전년대비 1,000원, 25\.0% ↑, 전월대비 1,000원, 16\.7% ↓/);
+
+  const gasCost = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'gas_cost',
+  });
+  assert.equal(gasCost.candidates[0].direction, 'mixed');
+  assert.equal(gasCost.candidates[0].segments[0].direction, 'up');
+  assert.equal(gasCost.candidates[0].segments[1].direction, 'down');
+  assert.match(gasCost.candidates[0].text, /가스 비용 12,000원 전년대비 500원, 4\.3% ↑, 전월대비 500원, 4\.0% ↓/);
 
   const lpgUnit = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'lpg_unit',
   });
   assert.equal(lpgUnit.candidates[0].direction, 'mixed');
-  assert.match(lpgUnit.candidates[0].text, /생산량 대비 LPG 0\.050kg\/kg 전월대비 0\.025kg\/kg, 33\.3% ↓, 전년대비 0\.014kg\/kg, 37\.5% ↑/);
+  assert.match(lpgUnit.candidates[0].text, /생산량 대비 LPG 0\.050kg\/kg 전년대비 0\.014kg\/kg, 37\.5% ↑, 전월대비 0\.025kg\/kg, 33\.3% ↓/);
+
+  const cipCount = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'cip_count',
+    store: {
+      resourceDatasets: {
+        other: {
+          teamMonthlyEntries: {
+            '2025-04': { team_01_02: { cip_count: 2 } },
+            '2026-03': { team_01_02: { cip_count: 5 } },
+            '2026-04': { team_01_02: { cip_count: 4 } },
+          },
+        },
+      },
+    },
+  });
+  assert.equal(cipCount.candidates[0].direction, 'mixed');
+  assert.equal(cipCount.candidates[0].segments[0].direction, 'up');
+  assert.equal(cipCount.candidates[0].segments[1].direction, 'down');
+  assert.match(cipCount.candidates[0].text, /1팀 2파트 CIP 횟수 4회 전년대비 2회 ↑, 전월대비 1회 ↓/);
+  assert.doesNotMatch(cipCount.candidates[0].text, /%/);
 
   const otherTeamLpg = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_02',
@@ -2466,6 +2566,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
     'production_days',
     'off_days',
     'product_count',
+    'cip_count',
     'production_line::로터리·버티컬',
     'production_line::스틱',
   ]));
@@ -2476,7 +2577,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
     teamKey: 'team_02',
     metricKey: 'yusan_production_share',
   });
-  assert.match(team2YusanShare.candidates[0].text, /2팀 유산 생산량 비율 36% 전월대비 1%p ↑, 전년대비 11%p ↑/);
+  assert.match(team2YusanShare.candidates[0].text, /2팀 유산 생산량 비율 36% 전년대비 11%p ↑, 전월대비 1%p ↑/);
 
   const otherTeamLng = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_02',
@@ -2498,6 +2599,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
     'production_days',
     'off_days',
     'product_count',
+    'cip_count',
     'production_line::로터리·버티컬',
     'production_line::스틱',
   ]));
@@ -2508,7 +2610,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
     teamKey: 'team_03',
     metricKey: 'yusan_production_share',
   });
-  assert.match(team3YusanShare.candidates[0].text, /3팀 유산 생산량 비율 24% 전월대비 1%p ↓, 전년대비 4%p ↑/);
+  assert.match(team3YusanShare.candidates[0].text, /3팀 유산 생산량 비율 24% 전년대비 4%p ↑, 전월대비 1%p ↓/);
 
   const lineProduction = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_01',
@@ -2532,12 +2634,55 @@ test('util runtime browser adapter builds report memo candidates with direction 
     'production_days',
     'off_days',
     'product_count',
+    'cip_count',
     'production_line::SD',
     'production_line::MSD',
   ]));
   assert.equal(lineProduction.candidates.length, 1);
   assert.equal(lineProduction.candidates[0].direction, 'mixed');
-  assert.match(lineProduction.candidates[0].text, /1팀 1파트 SD 생산량 700kg 전월대비 200kg, 40\.0% ↑, 전년대비 100kg, 12\.5% ↓/);
+  assert.match(lineProduction.candidates[0].text, /1팀 1파트 SD 생산량 700kg 전년대비 100kg, 12\.5% ↓, 전월대비 200kg, 40\.0% ↑/);
+
+  const temperature = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'other',
+    metricKey: 'monthly_average_temperature',
+    store: {
+      resourceDatasets: {
+        other: {
+          monthlyEntries: {
+            '2025-04': { average_temperature: 21.2 },
+            '2026-03': { average_temperature: 24.1 },
+            '2026-04': { average_temperature: 23.4 },
+          },
+          teamMonthlyEntries: {
+            '2025-04': {
+              team_01_01: { cip_count: 1 },
+              team_01_02: { cip_count: 2 },
+              team_02: { cip_count: 3 },
+              team_03: { cip_count: 4 },
+            },
+            '2026-03': {
+              team_01_01: { cip_count: 2 },
+              team_01_02: { cip_count: 5 },
+              team_02: { cip_count: 3 },
+              team_03: { cip_count: 6 },
+            },
+            '2026-04': {
+              team_01_01: { cip_count: 3 },
+              team_01_02: { cip_count: 4 },
+              team_02: { cip_count: 4 },
+              team_03: { cip_count: 5 },
+            },
+          },
+        },
+      },
+    },
+  });
+  assert.equal(temperature.ok, true);
+  assert.equal(JSON.stringify(temperature.availableMetricKeys), JSON.stringify(['monthly_average_temperature']));
+  assert.equal(temperature.candidates.length, 1);
+  assert.equal(temperature.candidates[0].direction, 'mixed');
+  assert.match(temperature.candidates[0].text, /기타 월간 평균온도 23\.4℃ 전년대비 2\.2℃ ↑, 전월대비 0\.7℃ ↓/);
+  assert.doesNotMatch(temperature.candidates[0].text, /%/);
 });
 
 test('util runtime browser adapter omits prior-year memo comparison when the prior year has no data', async () => {
@@ -2624,9 +2769,9 @@ test('util runtime browser adapter builds report memo overview with current valu
     team_03: '3팀',
   };
   const monthly = new Map([
-    ['2025-04', { production: 1100, electric: 120, yusanProduction: 3000, yusanElectric: 300 }],
-    ['2026-03', { production: 800, electric: 90, yusanProduction: 2400, yusanElectric: 270 }],
-    ['2026-04', { production: 1000, electric: 100, yusanProduction: 2700, yusanElectric: 330 }],
+    ['2025-04', { production: 1100, electric: 120, yusanProduction: 3000, yusanElectric: 300, yusanLngCost: 7500, yusanLpgCost: 4000 }],
+    ['2026-03', { production: 800, electric: 90, yusanProduction: 2400, yusanElectric: 270, yusanLngCost: 6500, yusanLpgCost: 6000 }],
+    ['2026-04', { production: 1000, electric: 100, yusanProduction: 2700, yusanElectric: 330, yusanLngCost: 7000, yusanLpgCost: 5000 }],
   ]);
   const isYusanTeamNames = teamNames => {
     const names = new Set((Array.isArray(teamNames) ? teamNames : []).filter(Boolean));
@@ -2634,6 +2779,18 @@ test('util runtime browser adapter builds report memo overview with current valu
   };
   context.KPIUtilReportSheetOptions = {
     getUtilGasAnalysisCategoryOption(value) {
+      if (value === 'yusan') {
+        return {
+          key: 'yusan',
+          label: '유산',
+          usageTeams: {
+            lng: ['1팀 2파트 (LNG)', '2팀 (LNG)', '3팀 (LNG)'],
+            lpg: ['1팀 2파트 (LPG)'],
+          },
+          showLpgCard: true,
+          includeYusanLngCost: true,
+        };
+      }
       const label = teamLabels[value] || value;
       return {
         key: value,
@@ -2670,6 +2827,15 @@ test('util runtime browser adapter builds report memo overview with current valu
     getUtilGasAnalysisTeamUsageValue() {
       return NaN;
     },
+    buildUtilGasAnalysisMetricMap(monthKeys) {
+      return new Map(monthKeys.map(monthKey => {
+        const row = monthly.get(monthKey) || {};
+        return [monthKey, {
+          lngCost: row.yusanLngCost ?? null,
+          lpgCost: row.yusanLpgCost ?? null,
+        }];
+      }));
+    },
   };
   context.KPIUtilReportSheetAnalysisElectricModel = {
     buildUtilElectricAnalysisScopedRows(bounds, option) {
@@ -2699,16 +2865,56 @@ test('util runtime browser adapter builds report memo overview with current valu
     },
   };
 
-  const overview = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoOverview('2026-04');
+  const overview = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoOverview('2026-04', {
+    store: {
+      resourceDatasets: {
+        other: {
+          monthlyEntries: {
+            '2025-04': { average_temperature: 21.2 },
+            '2026-03': { average_temperature: 24.1 },
+            '2026-04': { average_temperature: 23.4 },
+          },
+          teamMonthlyEntries: {
+            '2025-04': {
+              team_01_01: { cip_count: 1 },
+              team_01_02: { cip_count: 2 },
+              team_02: { cip_count: 3 },
+              team_03: { cip_count: 4 },
+            },
+            '2026-03': {
+              team_01_01: { cip_count: 2 },
+              team_01_02: { cip_count: 5 },
+              team_02: { cip_count: 3 },
+              team_03: { cip_count: 6 },
+            },
+            '2026-04': {
+              team_01_01: { cip_count: 3 },
+              team_01_02: { cip_count: 4 },
+              team_02: { cip_count: 4 },
+              team_03: { cip_count: 5 },
+            },
+          },
+        },
+      },
+    },
+  });
   assert.equal(overview.ok, true);
   assert.equal(overview.groups[0]?.key, 'site_yusan');
   assert.equal(overview.groups[0]?.label, '유산');
   assert.ok(overview.groups.some(group => group.key === 'team_01_02'));
+  assert.ok(overview.groups.some(group => group.key === 'other' && group.label === '기타'));
   const joined = overview.candidates.map(candidate => candidate.text).join('\n');
-  assert.match(joined, /유산 생산량 2,700kg 전월대비 300kg, 12\.5% ↑, 전년대비 300kg, 10\.0% ↓/);
-  assert.match(joined, /유산 전력량 330kWh 전월대비 60kWh, 22\.2% ↑, 전년대비 30kWh, 10\.0% ↑/);
-  assert.match(joined, /1팀 2파트 생산량 1,000kg 전월대비 200kg, 25\.0% ↑, 전년대비 100kg, 9\.1% ↓/);
-  assert.match(joined, /전력량 100kWh 전월대비 10kWh, 11\.1% ↑, 전년대비 20kWh, 16\.7% ↓/);
+  assert.match(joined, /유산 생산량 2,700kg 전년대비 300kg, 10\.0% ↓, 전월대비 300kg, 12\.5% ↑/);
+  assert.match(joined, /유산 전력량 330kWh 전년대비 30kWh, 10\.0% ↑, 전월대비 60kWh, 22\.2% ↑/);
+  assert.match(joined, /유산 가스 비용 12,000원 전년대비 500원, 4\.3% ↑, 전월대비 500원, 4\.0% ↓/);
+  assert.match(joined, /1팀 2파트 생산량 1,000kg 전년대비 100kg, 9\.1% ↓, 전월대비 200kg, 25\.0% ↑/);
+  assert.match(joined, /전력량 100kWh 전년대비 20kWh, 16\.7% ↓, 전월대비 10kWh, 11\.1% ↑/);
+  assert.match(joined, /1팀 2파트 가스 비용 12,000원 전년대비 500원, 4\.3% ↑, 전월대비 500원, 4\.0% ↓/);
+  assert.match(joined, /1팀 1파트 CIP 횟수 3회 전년대비 2회 ↑, 전월대비 1회 ↑/);
+  assert.match(joined, /1팀 2파트 CIP 횟수 4회 전년대비 2회 ↑, 전월대비 1회 ↓/);
+  assert.match(joined, /2팀 CIP 횟수 4회 전년대비 1회 ↑, 전월대비 1회 ↑/);
+  assert.match(joined, /3팀 CIP 횟수 5회 전년대비 1회 ↑, 전월대비 1회 ↓/);
+  assert.match(joined, /기타 월간 평균온도 23\.4℃ 전년대비 2\.2℃ ↑, 전월대비 0\.7℃ ↓/);
 });
 
 test('util runtime browser adapter sums normal and rework detail rows for report production stats', async () => {
@@ -2828,12 +3034,12 @@ test('util runtime browser adapter builds rework production memo candidates', as
   assert.equal(shareResult.ok, true);
   assert.ok(shareResult.availableMetricKeys.includes('rework_production_share'));
   assert.equal(shareResult.candidates.length, 1);
-  assert.equal(shareResult.candidates[0].segments[0].reference, 12.5);
+  assert.equal(shareResult.candidates[0].segments[0].reference, 10);
   assert.equal(shareResult.candidates[0].segments[0].current, 20);
-  assert.equal(shareResult.candidates[0].segments[0].delta, 7.5);
-  assert.equal(shareResult.candidates[0].segments[1].reference, 10);
+  assert.equal(shareResult.candidates[0].segments[0].delta, 10);
+  assert.equal(shareResult.candidates[0].segments[1].reference, 12.5);
   assert.equal(shareResult.candidates[0].segments[1].current, 20);
-  assert.equal(shareResult.candidates[0].segments[1].delta, 10);
+  assert.equal(shareResult.candidates[0].segments[1].delta, 7.5);
 });
 
 test('util runtime browser adapter builds report memo candidates for production stats', async () => {
@@ -2887,44 +3093,44 @@ test('util runtime browser adapter builds report memo candidates for production 
   assert.equal(yieldResult.ok, true);
   assert.ok(yieldResult.availableMetricKeys.includes('yield_rate'));
   assert.equal(yieldResult.candidates.length, 1);
-  assert.match(yieldResult.candidates[0].text, /1팀 2파트 수율 83\.3% 전월대비 13\.3%p ↑, 전년대비 1\.7%p ↓/);
+  assert.match(yieldResult.candidates[0].text, /1팀 2파트 수율 83\.3% 전년대비 1\.7%p ↓, 전월대비 13\.3%p ↑/);
 
   const utilizationResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'operation_rate',
   });
-  assert.match(utilizationResult.candidates[0].text, /1팀 2파트 가동률 60% 전월대비 10%p ↑, 전년대비 10%p ↑/);
+  assert.match(utilizationResult.candidates[0].text, /1팀 2파트 가동률 60% 전년대비 10%p ↑, 전월대비 10%p ↑/);
 
   const workTimeResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'work_time',
   });
-  assert.match(workTimeResult.candidates[0].text, /1팀 2파트 조업시간 20\.0시간 전월대비 8\.0시간, 66\.7% ↑, 전년대비 2\.0시간, 11\.1% ↑/);
+  assert.match(workTimeResult.candidates[0].text, /1팀 2파트 조업시간 20\.0시간 전년대비 2\.0시간, 11\.1% ↑, 전월대비 8\.0시간, 66\.7% ↑/);
 
   const operationTimeResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'operation_time',
   });
-  assert.match(operationTimeResult.candidates[0].text, /1팀 2파트 가동시간 16\.0시간 전월대비 6\.0시간, 60\.0% ↑, 전년대비 2\.0시간, 14\.3% ↑/);
+  assert.match(operationTimeResult.candidates[0].text, /1팀 2파트 가동시간 16\.0시간 전년대비 2\.0시간, 14\.3% ↑, 전월대비 6\.0시간, 60\.0% ↑/);
 
   const productCountResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'product_count',
   });
-  assert.match(productCountResult.candidates[0].text, /1팀 2파트 고유 품목수 2개 전월대비 1개, 100\.0% ↑, 전년대비 동일/);
+  assert.match(productCountResult.candidates[0].text, /1팀 2파트 고유 품목수 2개 전년대비 동일, 전월대비 1개, 100\.0% ↑/);
 
   const productionDaysResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'production_days',
   });
-  assert.equal(productionDaysResult.candidates[0].segments[1].direction, 'flat');
-  assert.match(productionDaysResult.candidates[0].text, /1팀 2파트 생산일수 2일 전월대비 1일, 100\.0% ↑, 전년대비 동일/);
+  assert.equal(productionDaysResult.candidates[0].segments[0].direction, 'flat');
+  assert.match(productionDaysResult.candidates[0].text, /1팀 2파트 생산일수 2일 전년대비 동일, 전월대비 1일, 100\.0% ↑/);
 
   const offDaysResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'off_days',
   });
-  assert.match(offDaysResult.candidates[0].text, /1팀 2파트 휴무일수 1일 전월대비 1일, 50\.0% ↓, 전년대비 동일/);
+  assert.match(offDaysResult.candidates[0].text, /1팀 2파트 휴무일수 1일 전년대비 동일, 전월대비 1일, 50\.0% ↓/);
 });
 
 test('util runtime browser adapter limits waste memo candidates to waste slides', async () => {
@@ -2973,14 +3179,14 @@ test('util runtime browser adapter limits waste memo candidates to waste slides'
   });
   assert.equal(wasteUsage.ok, true);
   assert.ok(wasteUsage.availableMetricKeys.includes('waste_cost_total'));
-  assert.match(wasteUsage.candidates[0].text, /북정 폐수량 20m³ 전월대비 5m³, 33\.3% ↑, 전년대비 4m³, 25\.0% ↑/);
+  assert.match(wasteUsage.candidates[0].text, /북정 폐수량 20m³ 전년대비 4m³, 25\.0% ↑, 전월대비 5m³, 33\.3% ↑/);
 
   const wasteCost = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_01',
     metricKey: 'waste_cost_total',
     memoKey: 'slide6WasteMemo',
   });
-  assert.match(wasteCost.candidates[0].text, /북정 폐수 비용 총계 1,300원 전월대비 500원, 62\.5% ↑, 전년대비 300원, 30\.0% ↑/);
+  assert.match(wasteCost.candidates[0].text, /북정 폐수 비용 총계 1,300원 전년대비 300원, 30\.0% ↑, 전월대비 500원, 62\.5% ↑/);
 });
 
 test('util runtime browser adapter builds waste report analysis model from sheet APIs', async () => {

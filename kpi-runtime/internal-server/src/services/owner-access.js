@@ -37,7 +37,8 @@ const MODULE_RECORD_LABELS = Object.freeze({
   'util_metering:electric_v1': '\uAC80\uCE68 \uC804\uAE30 \uAD8C\uC704\uBCF8',
   'util_metering:gas_v1': '\uAC80\uCE68 \uAC00\uC2A4 \uAD8C\uC704\uBCF8',
   'util_metering:waste_v1': '\uAC80\uCE68 \uD3D0\uC218 \uAD8C\uC704\uBCF8',
-  'util_metering:production_v1': '\uAC80\uCE68 \uC0DD\uC0B0\uB7C9 \uAD8C\uC704\uBCF8'
+  'util_metering:production_v1': '\uAC80\uCE68 \uC0DD\uC0B0\uB7C9 \uAD8C\uC704\uBCF8',
+  'util_metering:other_v1': '\uAC80\uCE68 \uAE30\uD0C0 \uAD8C\uC704\uBCF8'
 });
 
 function normalizeLimit(limit) {

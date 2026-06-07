@@ -39,11 +39,15 @@ test('independent bounds builder chart supports report-ordered labels for shared
   assert.match(builderChartsSource, /axisGroupKey/);
   assert.match(builderChartsSource, /sharedAxisBounds/);
   assert.match(builderChartsSource, /reportValueOrderLabels === true \? buildValueOrderLineLabels/);
+  assert.match(builderChartsSource, /dedupeLegend === true/);
+  assert.match(builderChartsSource, /hidePeriodLabel === true/);
+  assert.match(builderChartsSource, /rangeMetaMode === 'labeled-min-max'/);
+  assert.match(builderChartsSource, /최소 \$\{minText\} ~ 최대 \$\{maxText\}/);
 });
 
 test('kpi html loads electric combined chart before remaining builder charts', () => {
   const combinedIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.builder.electric-combined-chart.js?v=339');
-  const chartsIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.builder.charts.js?v=337');
+  const chartsIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.builder.charts.js?v=338');
 
   assert.ok(combinedIndex >= 0, 'electric combined chart loader is missing');
   assert.ok(chartsIndex > combinedIndex, 'electric combined chart must load before remaining builder charts');

@@ -9,14 +9,16 @@ export const METERING_AUTHORITY_RECORD_KEYS = Object.freeze([
   'gas_v1',
   'waste_v1',
   'production_v1',
+  'other_v1',
 ]);
 export const METERING_PERMISSION_KEY = PERMISSION_KEYS.UTIL_METERING_APP;
-export const RESOURCE_TYPES = Object.freeze(['electric', 'gas', 'waste', 'production']);
+export const RESOURCE_TYPES = Object.freeze(['electric', 'gas', 'waste', 'production', 'other']);
 export const RESOURCE_RECORD_KEY_BY_TYPE = Object.freeze({
   electric: 'electric_v1',
   gas: 'gas_v1',
   waste: 'waste_v1',
   production: 'production_v1',
+  other: 'other_v1',
 });
 export const ELECTRIC_DATASET_META_KEYS = Object.freeze([
   'presetImportVersion',

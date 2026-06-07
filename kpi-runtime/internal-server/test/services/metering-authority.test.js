@@ -40,6 +40,10 @@ test('createMeteringAuthorityState merges split records and legacy fallbacks', (
         mode: 'legacy-electric',
         resourceDatasets: {
           production: { mode: 'legacy-production' },
+          other: {
+            monthlyEntries: { '2026-04': { average_temperature: 23.4 } },
+            teamMonthlyEntries: { '2026-04': { team_01_02: { cip_count: 4 } } },
+          },
         },
       },
     },
@@ -70,6 +74,8 @@ test('createMeteringAuthorityState merges split records and legacy fallbacks', (
   assert.equal(state.store.resourceType, 'waste');
   assert.equal(state.store.resourceDatasets.electric.mode, 'split-electric');
   assert.equal(state.store.resourceDatasets.production.mode, 'legacy-production');
+  assert.equal(state.store.resourceDatasets.other.monthlyEntries['2026-04'].average_temperature, 23.4);
+  assert.equal(state.store.resourceDatasets.other.teamMonthlyEntries['2026-04'].team_01_02.cip_count, 4);
   assert.equal(state.meta.recordVersions.electric_v1, 4);
 });
 
@@ -79,6 +85,10 @@ test('metering helpers normalize payload and expected versions', () => {
     manualSaveHistory: ['entry'],
     resourceDatasets: {
       gas: { mode: 'gas-mode' },
+      other: {
+        monthlyEntries: { '2026-04': { average_temperature: 23.4 } },
+        teamMonthlyEntries: { '2026-04': { team_01_02: { cip_count: 4 } } },
+      },
     },
     mode: 'electric-mode',
   });
@@ -96,6 +106,8 @@ test('metering helpers normalize payload and expected versions', () => {
   assert.equal(payloadByRecordKey.ui_state_v1.resourceType, 'gas');
   assert.equal(payloadByRecordKey.electric_v1.mode, 'electric-mode');
   assert.equal(payloadByRecordKey.gas_v1.mode, 'gas-mode');
+  assert.equal(payloadByRecordKey.other_v1.monthlyEntries['2026-04'].average_temperature, 23.4);
+  assert.equal(payloadByRecordKey.other_v1.teamMonthlyEntries['2026-04'].team_01_02.cip_count, 4);
   assert.equal(meta.version, 4);
   assert.deepEqual(resolveExpectedRecordVersions(null, 7), { shared_store_v1: 7 });
 });

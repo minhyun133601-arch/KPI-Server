@@ -12,7 +12,8 @@
         Object.freeze({ key: 'team_01_01', label: '1팀 1파트' }),
         Object.freeze({ key: 'team_01_02', label: '1팀 2파트' }),
         Object.freeze({ key: 'team_02', label: '2팀' }),
-        Object.freeze({ key: 'team_03', label: '3팀' })
+        Object.freeze({ key: 'team_03', label: '3팀' }),
+        Object.freeze({ key: 'other', label: '기타' })
     ]);
     const REPORT_DECK_MEMO_METRICS = Object.freeze({
         production: Object.freeze({ key: 'production', label: '생산량', unit: 'kg' }),
@@ -25,6 +26,7 @@
         lng_unit: Object.freeze({ key: 'lng_unit', label: '생산량 대비 LNG', unit: 'm³/kg', decimals: 3 }),
         lpg: Object.freeze({ key: 'lpg', label: 'LPG 사용량', unit: 'kg' }),
         lpg_cost: Object.freeze({ key: 'lpg_cost', label: 'LPG 비용', unit: '원', decimals: 0 }),
+        gas_cost: Object.freeze({ key: 'gas_cost', label: '가스 비용', unit: '원', decimals: 0 }),
         lpg_unit: Object.freeze({ key: 'lpg_unit', label: '생산량 대비 LPG', unit: 'kg/kg', decimals: 3 }),
         yield_rate: Object.freeze({ key: 'yield_rate', label: '수율', unit: '%p', deltaMode: 'percentagePoint' }),
         operation_rate: Object.freeze({ key: 'operation_rate', label: '가동률', unit: '%p', deltaMode: 'percentagePoint' }),
@@ -35,13 +37,15 @@
         production_days: Object.freeze({ key: 'production_days', label: '생산일수', unit: '일' }),
         off_days: Object.freeze({ key: 'off_days', label: '휴무일수', unit: '일' }),
         product_count: Object.freeze({ key: 'product_count', label: '고유 품목수', unit: '개' }),
+        cip_count: Object.freeze({ key: 'cip_count', label: 'CIP 횟수', unit: '회', decimals: 0, omitRate: true, otherTeamMonthlyFieldKey: 'cip_count' }),
         waste_usage: Object.freeze({ key: 'waste_usage', label: '폐수량', unit: 'm³', wasteValueKey: 'wasteUsage' }),
         waste_cost_total: Object.freeze({ key: 'waste_cost_total', label: '폐수 비용 총계', unit: '원', wasteDetailKey: '' }),
         waste_cost_water: Object.freeze({ key: 'waste_cost_water', label: '상수 비용', unit: '원', wasteDetailKey: 'water' }),
         waste_cost_share: Object.freeze({ key: 'waste_cost_share', label: '폐수 비용', unit: '원', wasteDetailKey: 'share' }),
         waste_cost_sludge: Object.freeze({ key: 'waste_cost_sludge', label: '폐수오니 비용', unit: '원', wasteDetailKey: 'sludge' }),
         waste_cost_resin: Object.freeze({ key: 'waste_cost_resin', label: '폐합성수지 비용', unit: '원', wasteDetailKey: 'resin' }),
-        waste_cost_labor: Object.freeze({ key: 'waste_cost_labor', label: '인건비', unit: '원', wasteDetailKey: 'labor' })
+        waste_cost_labor: Object.freeze({ key: 'waste_cost_labor', label: '인건비', unit: '원', wasteDetailKey: 'labor' }),
+        monthly_average_temperature: Object.freeze({ key: 'monthly_average_temperature', label: '월간 평균온도', unit: '℃', decimals: 1, omitRate: true, otherMonthlyFieldKey: 'average_temperature' })
     });
     const REPORT_DECK_MEMO_LINE_METRIC_PREFIX = 'production_line::';
     const REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY = 'yusan_production_share';
@@ -58,6 +62,7 @@
         'lng_unit',
         'lpg',
         'lpg_cost',
+        'gas_cost',
         'lpg_unit'
     ]);
     const REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS = Object.freeze([
@@ -80,6 +85,9 @@
         'waste_cost_resin',
         'waste_cost_labor'
     ]);
+    const REPORT_DECK_MEMO_OTHER_METRIC_KEYS = Object.freeze([
+        'monthly_average_temperature'
+    ]);
     const REPORT_DECK_MEMO_WASTE_MEMO_KEYS = Object.freeze(['slide6WasteMemo', 'slide7WasteMemo']);
     const REPORT_DECK_MEMO_UNIT_METRIC_BASE = Object.freeze({
         electric_unit: 'electric',
@@ -97,10 +105,11 @@
         team_03: Object.freeze(['Bottle', '기타'])
     });
     const REPORT_DECK_MEMO_TEAM_METRIC_KEYS = Object.freeze({
-        team_01_01: Object.freeze(['production', 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
+        team_01_01: Object.freeze(['production', 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
+        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'gas_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
+        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
+        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
+        other: Object.freeze(REPORT_DECK_MEMO_OTHER_METRIC_KEYS)
     });
 
     function getRuntime() {
@@ -1442,9 +1451,14 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
     function collectReportDeckSettlementMonthsFromStore(store) {
         if (!isPlainObject(store?.resourceDatasets)) return [];
         return normalizeReportDeckMonthKeyList(Object.values(store.resourceDatasets).flatMap(dataset => (
-            isPlainObject(dataset?.billingSettlementEntries)
-                ? Object.keys(dataset.billingSettlementEntries)
-                : []
+            [
+                ...(isPlainObject(dataset?.billingSettlementEntries)
+                    ? Object.keys(dataset.billingSettlementEntries)
+                    : []),
+                ...(isPlainObject(dataset?.monthlyEntries)
+                    ? Object.keys(dataset.monthlyEntries)
+                    : [])
+            ]
         )));
     }
 
@@ -1497,6 +1511,15 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         if (value === null || value === undefined || value === '') return null;
         const number = Number(value);
         return Number.isFinite(number) ? number : null;
+    }
+
+    function sumReportDeckMemoFiniteValues(values = []) {
+        const numbers = (Array.isArray(values) ? values : [])
+            .map(toFiniteNumber)
+            .filter(value => value !== null);
+        return numbers.length
+            ? numbers.reduce((sum, value) => sum + value, 0)
+            : null;
     }
 
     function parseReportDeckCostNumber(value) {
@@ -1761,6 +1784,17 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 rate: pair.rate
             };
         }
+        if (metric.omitRate === true) {
+            return {
+                basis: basisLabel,
+                direction,
+                text: `${basisLabel} ${deltaText} ${arrow}`,
+                reference: pair.reference,
+                current: pair.current,
+                delta: pair.delta,
+                rate: pair.rate
+            };
+        }
         const rateText = formatReportDeckMemoRate(pair.rate) || '-';
         return {
             basis: basisLabel,
@@ -1954,6 +1988,12 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
 
     function getReportDeckMemoYusanGasCostValue(metricMap, monthKey, fuelKey) {
         const metric = metricMap && typeof metricMap.get === 'function' ? metricMap.get(monthKey) || {} : {};
+        if (fuelKey === 'gas') {
+            const gasCost = toFiniteNumber(metric?.gasCost);
+            return gasCost !== null
+                ? gasCost
+                : sumReportDeckMemoFiniteValues([metric?.lngCost, metric?.lpgCost]);
+        }
         return toFiniteNumber(fuelKey === 'lpg' ? metric?.lpgCost : metric?.lngCost);
     }
 
@@ -2002,6 +2042,12 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
     function getReportDeckMemoGasCostValue(monthKey, team, fuelKey, optionApi, gasApi, memoBuildCache = null, monthInfo = null) {
         const metricMap = getReportDeckMemoGasMetricMap(monthInfo, team, optionApi, gasApi, memoBuildCache);
         const metric = metricMap && typeof metricMap.get === 'function' ? metricMap.get(monthKey) || {} : {};
+        if (fuelKey === 'gas') {
+            const gasCost = toFiniteNumber(metric?.gasCost);
+            return gasCost !== null
+                ? gasCost
+                : sumReportDeckMemoFiniteValues([metric?.lngCost, metric?.lpgCost]);
+        }
         return toFiniteNumber(fuelKey === 'lpg' ? metric?.lpgCost : metric?.lngCost);
     }
 
@@ -2352,6 +2398,33 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         return readReportDeckWasteRow(rowMap, monthKey, metric.wasteValueKey);
     }
 
+    function readReportDeckMemoOtherMonthlyValue(store, monthKey = '', fieldKey = '') {
+        const normalizedMonthKey = normalizeReportDeckMonthKey(monthKey);
+        const normalizedFieldKey = String(fieldKey || '').trim();
+        const sourceStore = isPlainObject(store) ? store : root.__LOCAL_APP_STORE__;
+        const dataset = isPlainObject(sourceStore?.resourceDatasets?.other)
+            ? sourceStore.resourceDatasets.other
+            : {};
+        const monthRecord = isPlainObject(dataset?.monthlyEntries?.[normalizedMonthKey])
+            ? dataset.monthlyEntries[normalizedMonthKey]
+            : {};
+        return toFiniteNumber(monthRecord[normalizedFieldKey]);
+    }
+
+    function readReportDeckMemoOtherTeamMonthlyValue(store, monthKey = '', teamKey = '', fieldKey = '') {
+        const normalizedMonthKey = normalizeReportDeckMonthKey(monthKey);
+        const normalizedTeamKey = normalizeReportDeckMemoTeamKey(teamKey);
+        const normalizedFieldKey = String(fieldKey || '').trim();
+        const sourceStore = isPlainObject(store) ? store : root.__LOCAL_APP_STORE__;
+        const dataset = isPlainObject(sourceStore?.resourceDatasets?.other)
+            ? sourceStore.resourceDatasets.other
+            : {};
+        const teamRecord = isPlainObject(dataset?.teamMonthlyEntries?.[normalizedMonthKey]?.[normalizedTeamKey])
+            ? dataset.teamMonthlyEntries[normalizedMonthKey][normalizedTeamKey]
+            : {};
+        return toFiniteNumber(teamRecord[normalizedFieldKey]);
+    }
+
     async function buildReportDeckMemoCandidates(monthValue, options = {}) {
         const activeMonthInfo = parseReportDeckMonthKey(monthValue);
         if (!activeMonthInfo) {
@@ -2427,8 +2500,10 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 && hasReportDeckMemoFiniteValue(value);
         } else if (metricKey === 'production') {
             readValue = monthKey => getReportDeckMemoProductionValue(monthKey, team, gasApi, memoBuildCache);
-        } else if (metricKey === 'lng_cost' || metricKey === 'lpg_cost') {
-            const fuelKey = metricKey === 'lpg_cost' ? 'lpg' : 'lng';
+        } else if (metricKey === 'lng_cost' || metricKey === 'lpg_cost' || metricKey === 'gas_cost') {
+            const fuelKey = metricKey === 'gas_cost'
+                ? 'gas'
+                : (metricKey === 'lpg_cost' ? 'lpg' : 'lng');
             readValue = monthKey => getReportDeckMemoGasCostValue(monthKey, team, fuelKey, optionApi, gasApi, memoBuildCache, activeMonthInfo);
         } else if (metricKey === 'lng' || metricKey === 'lpg' || unitBaseMetricKey === 'lng' || unitBaseMetricKey === 'lpg') {
             const fuelKey = unitBaseMetricKey || metricKey;
@@ -2451,13 +2526,27 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
             readValue = monthKey => readReportDeckMemoWasteValue(wasteRowMap, monthKey, metric);
             hasComparisonData = (monthKey, value) => hasReportDeckMemoWasteRowData(wasteRowMap, monthKey)
                 && hasReportDeckMemoFiniteValue(value);
+        } else if (metric.otherTeamMonthlyFieldKey) {
+            readValue = monthKey => readReportDeckMemoOtherTeamMonthlyValue(
+                options.store || root.__LOCAL_APP_STORE__,
+                monthKey,
+                team.key,
+                metric.otherTeamMonthlyFieldKey
+            );
+        } else if (REPORT_DECK_MEMO_OTHER_METRIC_KEYS.includes(metricKey)) {
+            readValue = monthKey => readReportDeckMemoOtherMonthlyValue(
+                options.store || root.__LOCAL_APP_STORE__,
+                monthKey,
+                metric.otherMonthlyFieldKey
+            );
+            candidateSubject = getReportDeckMemoTeam('other');
         }
 
         const currentValue = readValue(currentMonthKey);
         const hasCurrentData = hasComparisonData(currentMonthKey, currentValue);
         const comparisonSegments = hasCurrentData ? [
-            buildReportDeckMemoComparisonSegmentForMonth(metric, '전월대비', previousMonthKey, readValue, hasComparisonData, currentValue),
-            buildReportDeckMemoComparisonSegmentForMonth(metric, '전년대비', previousYearKey, readValue, hasComparisonData, currentValue)
+            buildReportDeckMemoComparisonSegmentForMonth(metric, '전년대비', previousYearKey, readValue, hasComparisonData, currentValue),
+            buildReportDeckMemoComparisonSegmentForMonth(metric, '전월대비', previousMonthKey, readValue, hasComparisonData, currentValue)
         ].filter(Boolean) : [];
         const candidate = buildReportDeckMemoCandidate(candidateSubject, metric, comparisonSegments);
         const candidates = candidate ? [candidate] : [];
@@ -2517,8 +2606,10 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
             }
             hasComparisonData = (monthKey, value) => hasReportDeckMemoElectricRowData(rowMap, monthKey)
                 && hasReportDeckMemoFiniteValue(value);
-        } else if (metricKey === 'lng_cost' || metricKey === 'lpg_cost') {
-            const fuelKey = metricKey === 'lpg_cost' ? 'lpg' : 'lng';
+        } else if (metricKey === 'lng_cost' || metricKey === 'lpg_cost' || metricKey === 'gas_cost') {
+            const fuelKey = metricKey === 'gas_cost'
+                ? 'gas'
+                : (metricKey === 'lpg_cost' ? 'lpg' : 'lng');
             const metricMap = getReportDeckMemoYusanGasMetricMap(activeMonthInfo, optionApi, gasApi, memoBuildCache);
             readValue = monthKey => getReportDeckMemoYusanGasCostValue(metricMap, monthKey, fuelKey);
         } else if (metricKey === 'lng' || metricKey === 'lpg' || unitBaseMetricKey === 'lng' || unitBaseMetricKey === 'lpg') {
@@ -2534,8 +2625,8 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         const currentValue = readValue(currentMonthKey);
         const hasCurrentData = hasComparisonData(currentMonthKey, currentValue);
         const comparisonSegments = hasCurrentData ? [
-            buildReportDeckMemoComparisonSegmentForMonth(metric, '전월대비', previousMonthKey, readValue, hasComparisonData, currentValue),
-            buildReportDeckMemoComparisonSegmentForMonth(metric, '전년대비', previousYearKey, readValue, hasComparisonData, currentValue)
+            buildReportDeckMemoComparisonSegmentForMonth(metric, '전년대비', previousYearKey, readValue, hasComparisonData, currentValue),
+            buildReportDeckMemoComparisonSegmentForMonth(metric, '전월대비', previousMonthKey, readValue, hasComparisonData, currentValue)
         ].filter(Boolean) : [];
         return buildReportDeckMemoCandidate(REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP, metric, comparisonSegments);
     }
@@ -2634,7 +2725,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 activeMonthInfo.key,
                 { key: team.key, label: team.label, teamKey: team.key },
                 getReportDeckMemoMetricKeysForTeam(team.key),
-                { store: null, memoBuildCache, skipUtilityReady: true },
+                { store: options.store || root.__LOCAL_APP_STORE__, memoBuildCache, skipUtilityReady: true },
                 seen
             );
             if (group.candidates.length) groups.push(group);
@@ -2644,7 +2735,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 activeMonthInfo.key,
                 scope,
                 REPORT_DECK_MEMO_WASTE_METRIC_KEYS,
-                { store: null, memoBuildCache, skipUtilityReady: true },
+                { store: options.store || root.__LOCAL_APP_STORE__, memoBuildCache, skipUtilityReady: true },
                 seen
             );
             if (group.candidates.length) groups.push(group);

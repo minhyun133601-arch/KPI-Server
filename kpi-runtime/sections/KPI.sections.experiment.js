@@ -96,6 +96,8 @@
             || key.startsWith('lpg-cost-')
             || key === 'waste-cost'
             || /^waste-.+-cost$/.test(key)
+            || key === 'cost-total'
+            || key.startsWith('cost-')
         ) {
             return makeNormalization({
                 metricKind: 'cost',
@@ -457,7 +459,62 @@
         ));
     }
 
+    function sumValueArrays(valueArrays = []) {
+        const valueCount = valueArrays.reduce((maxValue, values) => Math.max(maxValue, Array.isArray(values) ? values.length : 0), 0);
+        return Array.from({ length: valueCount }, (_, index) => (
+            valueArrays.reduce((total, values) => total + Number((Array.isArray(values) ? values[index] : 0) || 0), 0)
+        ));
+    }
+
+    function createCostSummaryCard({ key, title, metaText, color, values }) {
+        return createCard({
+            key,
+            title,
+            valueText: `${values[0] || 0} → ${lastValue(values)}`,
+            metaText,
+            subText: `전월대비 ${formatSignedDelta(values)}`,
+            icon: 'fa-coins',
+            tone: 'cost',
+            color,
+            values
+        });
+    }
+
     const WASTE_COST_TOTAL_VALUES = Object.freeze(sumDefinitionValues(WASTE_COST_DETAIL_DEFINITIONS));
+
+    const COST_TEAM_01_01_VALUES = Object.freeze(sumValueArrays([
+        getMetricDefinitionValues(ELECTRIC_USAGE_TEAM_DEFINITIONS, 'team-01-01'),
+        getMetricDefinitionValues(LNG_USAGE_TEAM_DEFINITIONS, 'team-01-01')
+    ]));
+    const COST_TEAM_01_02_VALUES = Object.freeze(sumValueArrays([
+        getMetricDefinitionValues(ELECTRIC_USAGE_TEAM_DEFINITIONS, 'team-01-02'),
+        getMetricDefinitionValues(LNG_USAGE_TEAM_DEFINITIONS, 'team-01-02'),
+        getMetricDefinitionValues(LPG_USAGE_TEAM_DEFINITIONS, 'team-01-02')
+    ]));
+    const COST_TEAM_02_VALUES = Object.freeze(sumValueArrays([
+        getMetricDefinitionValues(ELECTRIC_USAGE_TEAM_DEFINITIONS, 'team-02')
+    ]));
+    const COST_TEAM_03_VALUES = Object.freeze(sumValueArrays([
+        getMetricDefinitionValues(ELECTRIC_USAGE_TEAM_DEFINITIONS, 'team-03'),
+        getMetricDefinitionValues(LNG_USAGE_TEAM_DEFINITIONS, 'team-03')
+    ]));
+    const COST_BUKJEONG_VALUES = Object.freeze(sumValueArrays([
+        COST_TEAM_01_01_VALUES,
+        WASTE_COST_TOTAL_VALUES
+    ]));
+    const COST_YUSAN_VALUES = Object.freeze(sumValueArrays([
+        COST_TEAM_01_02_VALUES,
+        COST_TEAM_02_VALUES,
+        COST_TEAM_03_VALUES,
+        WASTE_COST_TOTAL_VALUES
+    ]));
+    const COST_TOTAL_VALUES = Object.freeze(sumValueArrays([
+        COST_TEAM_01_01_VALUES,
+        COST_TEAM_01_02_VALUES,
+        COST_TEAM_02_VALUES,
+        COST_TEAM_03_VALUES,
+        WASTE_COST_TOTAL_VALUES
+    ]));
 
     const WASTE_CARDS = Object.freeze([
         createCard({ key: 'waste-discharge', title: '폐수 방류량', valueText: '100 → 116', metaText: '폐수 · 방류량 · ㎥', subText: '전월대비 +7.0%', icon: 'fa-water', tone: 'waste', color: '#7c3aed', values: [100, 99, 104, 108, 112, 116] }),
@@ -473,6 +530,58 @@
             values: WASTE_COST_TOTAL_VALUES
         }),
         ...WASTE_COST_DETAIL_DEFINITIONS.map(createCard)
+    ]);
+
+    const COST_CARDS = Object.freeze([
+        createCostSummaryCard({
+            key: 'cost-team-01-01',
+            title: '1팀 1파트 비용',
+            metaText: '비용 · 1팀 1파트 · 가스+전기 · 원',
+            color: '#2563eb',
+            values: COST_TEAM_01_01_VALUES
+        }),
+        createCostSummaryCard({
+            key: 'cost-team-01-02',
+            title: '1팀 2파트 비용',
+            metaText: '비용 · 1팀 2파트 · LPG+LNG+전기 · 원',
+            color: '#f59e0b',
+            values: COST_TEAM_01_02_VALUES
+        }),
+        createCostSummaryCard({
+            key: 'cost-team-02',
+            title: '2팀 비용',
+            metaText: '비용 · 2팀 · 전기 · 원',
+            color: '#059669',
+            values: COST_TEAM_02_VALUES
+        }),
+        createCostSummaryCard({
+            key: 'cost-team-03',
+            title: '3팀 비용',
+            metaText: '비용 · 3팀 · 전기+가스 · 원',
+            color: '#7c3aed',
+            values: COST_TEAM_03_VALUES
+        }),
+        createCostSummaryCard({
+            key: 'cost-bukjeong',
+            title: '북정 비용',
+            metaText: '비용 · 북정 · 가스+전기+폐수 · 원',
+            color: '#334155',
+            values: COST_BUKJEONG_VALUES
+        }),
+        createCostSummaryCard({
+            key: 'cost-yusan',
+            title: '유산 비용',
+            metaText: '비용 · 유산 · 가스+전기+폐수 · 원',
+            color: '#0f766e',
+            values: COST_YUSAN_VALUES
+        }),
+        createCostSummaryCard({
+            key: 'cost-total',
+            title: '비용',
+            metaText: '비용 · 전체 · 전기+가스+폐수 모든 비용 총 합 · 원',
+            color: '#dc2626',
+            values: COST_TOTAL_VALUES
+        })
     ]);
 
     const RATIO_CARDS = Object.freeze([
@@ -494,6 +603,7 @@
         Object.freeze({ key: 'electric', title: '전기', desc: '전기 사용량과 금액', cards: ELECTRIC_CARDS }),
         Object.freeze({ key: 'gas', title: '가스', desc: 'LNG/LPG 사용량과 금액', cards: GAS_CARDS }),
         Object.freeze({ key: 'waste', title: '폐수', desc: '방류량과 처리비용', cards: WASTE_CARDS }),
+        Object.freeze({ key: 'cost', title: '비용', desc: '팀/사업장별 전기+가스+폐수 비용 합계', cards: COST_CARDS }),
         Object.freeze({ key: 'ratio', title: '비율', desc: '정규화된 지표 조합으로 비율을 만듭니다.', cards: RATIO_CARDS })
     ]);
 
@@ -1134,6 +1244,55 @@
         ]);
     }
 
+    function getCostTeam11Value(monthKey = '') {
+        return sumFiniteValues([
+            getUtilityValueByTeamKey('team-01-01', monthKey, 'electricCost'),
+            getTeamLngCostValue('team-01-01', monthKey)
+        ]);
+    }
+
+    function getCostTeam12Value(monthKey = '') {
+        return sumFiniteValues([
+            getUtilityValueByTeamKey('team-01-02', monthKey, 'electricCost'),
+            getTeamLngCostValue('team-01-02', monthKey),
+            getTeamLpgCostValue('team-01-02', monthKey)
+        ]);
+    }
+
+    function getCostTeam2Value(monthKey = '') {
+        return getUtilityValueByTeamKey('team-02', monthKey, 'electricCost');
+    }
+
+    function getCostTeam3Value(monthKey = '') {
+        return sumFiniteValues([
+            getUtilityValueByTeamKey('team-03', monthKey, 'electricCost'),
+            getTeamLngCostValue('team-03', monthKey)
+        ]);
+    }
+
+    function getCostBukjeongValue(monthKey = '') {
+        return sumFiniteValues([
+            getCostTeam11Value(monthKey),
+            getUtilityValueByDataKey('work_team_calendar_group_bukjeong', monthKey, 'wasteCost')
+        ]);
+    }
+
+    function getCostYusanValue(monthKey = '') {
+        return sumFiniteValues([
+            sumUtilityValueByTeamKeys(EXPERIMENT_YUSAN_TEAM_KEYS, monthKey, 'electricCost'),
+            getYusanGasCostValue(monthKey),
+            getUtilityValueByDataKey('work_team_calendar_group_yusan', monthKey, 'wasteCost')
+        ]);
+    }
+
+    function getCostTotalValue(monthKey = '') {
+        return sumFiniteValues([
+            getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'electricCost'),
+            getTotalGasCostValue(monthKey),
+            getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'wasteCost')
+        ]);
+    }
+
     function getReportMonthlyRow(monthKey = '') {
         if (typeof root.buildUtilReportMonthlyRows !== 'function') return null;
         const result = root.buildUtilReportMonthlyRows({
@@ -1207,6 +1366,13 @@
         if (Object.prototype.hasOwnProperty.call(WASTE_COST_DETAIL_KEYS, cardKey)) {
             return getWasteCostDetailValue(cardKey, monthKey);
         }
+        if (cardKey === 'cost-team-01-01') return getCostTeam11Value(monthKey);
+        if (cardKey === 'cost-team-01-02') return getCostTeam12Value(monthKey);
+        if (cardKey === 'cost-team-02') return getCostTeam2Value(monthKey);
+        if (cardKey === 'cost-team-03') return getCostTeam3Value(monthKey);
+        if (cardKey === 'cost-bukjeong') return getCostBukjeongValue(monthKey);
+        if (cardKey === 'cost-yusan') return getCostYusanValue(monthKey);
+        if (cardKey === 'cost-total') return getCostTotalValue(monthKey);
         return NaN;
     }
 
@@ -1279,6 +1445,33 @@
             .filter(value => Number.isFinite(value));
     }
 
+    function formatExperimentStatsMonthLabel(point) {
+        const monthKey = String(point?.monthKey || point?.key || '').trim();
+        const match = /^(\d{4})-(\d{2})$/.exec(monthKey);
+        if (!match) return '-';
+        return `${match[1].slice(-2)}.${match[2]}`;
+    }
+
+    function buildExperimentSummaryStatItems(card, series) {
+        const points = (Array.isArray(series?.points) ? series.points : [])
+            .map(point => ({ point, value: Number(point?.value) }))
+            .filter(entry => Number.isFinite(entry.value));
+        if (points.length < 2) return [];
+        const decimals = Number.isFinite(series?.decimals) ? series.decimals : 0;
+        const forceDecimals = isDerivedRatioCard(card);
+        const minEntry = points.reduce((current, entry) => entry.value < current.value ? entry : current, points[0]);
+        const maxEntry = points.reduce((current, entry) => entry.value > current.value ? entry : current, points[0]);
+        const average = points.reduce((sum, entry) => sum + entry.value, 0) / points.length;
+        return [
+            { label: '최대 :', valueText: formatExperimentStatsMonthLabel(maxEntry.point) },
+            { label: '최소 :', valueText: formatExperimentStatsMonthLabel(minEntry.point) },
+            { label: '평균 :', valueText: formatMetricTableValue(average, decimals, forceDecimals) }
+        ].map((item, index) => ({
+            ...item,
+            tone: index === 0 ? 'max' : index === 1 ? 'min' : 'average'
+        }));
+    }
+
     function buildSummaryItem(card, series) {
         return {
             key: card.key,
@@ -1286,7 +1479,7 @@
             valueText: '',
             icon: card.icon,
             tone: card.tone,
-            metaText: series?.unitLabel || card.metaText
+            statItems: buildExperimentSummaryStatItems(card, series)
         };
     }
 
@@ -1344,7 +1537,7 @@
             <article class="util-sheet-analysis-table-card experiment-chart-table-card" data-tone="combined">
                 <div class="util-sheet-analysis-table-head">
                     <div class="util-sheet-analysis-table-title">선택 지표 월별 표</div>
-                    <div class="util-sheet-analysis-table-sub">선택 기간 월별 실제값</div>
+                    <div class="util-sheet-analysis-table-sub"></div>
                 </div>
                 <div class="util-sheet-table-wrap">
                     <table class="util-sheet-table util-sheet-analysis-table experiment-chart-table">
@@ -1365,6 +1558,13 @@
         const safeTitle = String(title || '').trim();
         const safeUnit = String(unitLabel || '').trim();
         return safeUnit ? `${safeTitle} (${safeUnit})` : safeTitle;
+    }
+
+    function buildExperimentChartRangeLabel(period) {
+        if (period?.yearOverlap === true) {
+            return '';
+        }
+        return '';
     }
 
     function buildCardSeries(card, period, shell) {
@@ -1416,8 +1616,8 @@
         const unitLabel = getCardUnitLabel(shell, card);
         const unitOptions = getCardUnitOptions(card);
         return years.map(year => ({
-            label: formatSeriesLabelWithUnit(`${year} ${card.title}`, unitLabel),
-            rawLabel: `${year} ${card.title}`,
+            label: String(year),
+            rawLabel: String(year),
             color: YEAR_OVERLAP_COLORS[Math.max(0, colorYears.indexOf(year)) % YEAR_OVERLAP_COLORS.length] || card.color,
             type: displayMode,
             lineWidth: 3.2,
@@ -1458,7 +1658,7 @@
         return {
             chart: {
                 key: EXPERIMENT_CHART_KEY,
-                title: '선택 지표 통합 그래프',
+                title: '그래프',
                 icon: 'fa-chart-line',
                 tone: 'combined',
                 color: '#1d4ed8',
@@ -1484,11 +1684,18 @@
                     points: item.points
                 })),
                 summaryItems: selectedCards.map((card, index) => buildSummaryItem(card, summarySeries[index])),
-                reportValueOrderLabels: period?.yearOverlap === true
+                reportValueOrderLabels: period?.yearOverlap === true,
+                hideRangeMeta: period?.yearOverlap === true,
+                hideHeadingText: true,
+                hideTopCenterTitle: true,
+                hidePeriodLabel: true,
+                rangeMetaMode: 'labeled-min-max',
+                hideLegend: period?.yearOverlap !== true,
+                dedupeLegend: period?.yearOverlap === true
             },
             model: {
                 datasetKey: 'gas',
-                rangeLabel: `${period.label}${period?.yearOverlap === true ? ' · 년도 겹치기' : ''} · 월별 실제값`
+                rangeLabel: buildExperimentChartRangeLabel(period)
             }
         };
     }
@@ -1683,7 +1890,8 @@
         syncExperimentAnalysisState(shell, selectedCards);
         mount.innerHTML = api.buildUtilGasAnalysisChartCardHtmlV2(chart, model, {
             fullscreenChart: true,
-            chartKey: EXPERIMENT_CHART_KEY
+            chartKey: EXPERIMENT_CHART_KEY,
+            hideChartFullscreenButton: true
         });
         bindRenderedChartControls(shell);
         updateSelectedState(shell, selectedCards);
@@ -1844,6 +2052,8 @@
         if (key.startsWith('lpg-cost-')) return title.replace(/\s*비용\s*$/u, ' 비용').trim();
         if (key === 'waste-discharge') return '폐수 방류량';
         if (key === 'waste-cost') return '폐수 비용 합계';
+        if (key === 'cost-total') return '비용';
+        if (key.startsWith('cost-')) return title.replace(/\s*비용\s*$/u, ' 비용').trim();
         return title;
     }
 
@@ -2486,12 +2696,15 @@
             icon: 'fa-flask-vial',
             color: 'cyan',
             accent: '#0891b2',
+            openDefaultCategoryOnMain: true,
+            hideNavigationChevron: true,
             categories: [
                 {
                     title: '선/막대',
                     icon: 'fa-chart-line',
                     color: '#0891b2',
                     desc: '필요한 지표 카드를 선택해 선 그래프와 막대 그래프로 비교합니다.',
+                    navHidden: true,
                     viewerMode: 'full-bleed',
                     content: buildExperimentUnifiedAnalysisContent()
                 }

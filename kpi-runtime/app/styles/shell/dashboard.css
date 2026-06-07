@@ -1475,11 +1475,31 @@ body { font-family: 'Noto Sans KR', sans-serif; background-color: #f8fafc; margi
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-view-btn:last-child { border-right: 0; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-view-btn.is-active { background: #111827; color: #ffffff; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-view-btn:hover:not(.is-active) { background: #f3f4f6; }
-.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-grid { gap: 6px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-card { border: 1px solid #111827; border-radius: 0; background: #ffffff; box-shadow: none; padding: 8px 9px; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-grid { gap: 4px; grid-template-columns: 1fr; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-card { min-height: 32px; display: grid; grid-template-columns: minmax(280px, 1fr) auto; align-items: center; column-gap: 8px; border: 1px solid #111827; border-radius: 0; background: #ffffff; box-shadow: none; padding: 3px 6px; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-icon { display: none; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-label,
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-value { color: #020617; font-weight: 900; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-head { min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-label { flex: 0 1 auto; min-width: 0; max-width: 280px; font-size: 13px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-stats { margin-left: 0; display: inline-flex; align-items: center; justify-content: flex-start; gap: 4px; flex: 1 1 auto; flex-wrap: nowrap; min-width: 0; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-stat { min-height: 22px; display: inline-flex; align-items: center; gap: 3px; flex: 0 0 auto; border: 1px solid #d1d5db; background: #f9fafb; color: #111827; padding: 0 6px; font-size: 11px; font-weight: 900; line-height: 1; white-space: nowrap; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-stat.is-max { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-stat.is-min { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-stat-label { color: #475569; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-stat-value { color: #020617; font-variant-numeric: tabular-nums; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-stat.is-max .util-sheet-analysis-summary-stat-label,
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-stat.is-max .util-sheet-analysis-summary-stat-value { color: #b91c1c; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-stat.is-min .util-sheet-analysis-summary-stat-label,
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-stat.is-min .util-sheet-analysis-summary-stat-value { color: #1d4ed8; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-controls { grid-column: 2; margin: 0; padding: 0; border-top: 0; justify-self: end; align-self: center; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-controls:empty { display: none; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-control-actions { display: inline-flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-series-select { height: 22px; min-height: 22px; border-radius: 3px; padding: 0 18px 0 6px; font-size: 11px; font-weight: 900; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-unit-select { min-width: 62px; max-width: 92px; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-decimals-select { min-width: 42px; width: 42px; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-series-mode { display: inline-flex; align-items: center; gap: 2px; flex-wrap: nowrap; }
+.experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-series-mode-btn { min-height: 22px; border-radius: 3px; padding: 0 5px; font-size: 11px; font-weight: 900; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-surface { min-height: 0; overflow-x: auto; padding-bottom: 0; cursor: default; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-frame { min-height: 0; height: auto; overflow: visible; border-radius: 0; background: #ffffff; padding: 0; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .experiment-chart-table-card { border: 1.4px solid #111827; border-radius: 0; background: #ffffff; box-shadow: none; padding: 8px; }
@@ -1593,6 +1613,11 @@ body.is-experiment-popup .experiment-unified-shell { min-height: 100vh; border: 
     .experiment-unified-head { min-height: 40px; padding: 4px 8px; }
     .experiment-toolbar-title { font-size: 18px; white-space: normal; }
     .experiment-card-palette { grid-template-columns: 1fr; }
+    .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-card { grid-template-columns: 1fr; row-gap: 5px; }
+    .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-head { flex-wrap: wrap; gap: 5px; }
+    .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-stats { flex-wrap: wrap; flex-basis: 100%; }
+    .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-controls { grid-column: 1; justify-self: start; }
+    .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-summary-control-actions { flex-wrap: wrap; }
     .experiment-chart-toolbar { min-height: 0; gap: 6px; padding: 4px 8px; }
     .experiment-toolbar-actions { display: inline-flex; gap: 6px; }
     .experiment-period-range { gap: 6px; }

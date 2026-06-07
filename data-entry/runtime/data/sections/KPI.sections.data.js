@@ -46,6 +46,20 @@
         input.dataset.normalizedValue = normalizeUtilityEntryExperimentNumberText(input.value);
     }
 
+    function markUtilityEntryExperimentDirtyInput(input) {
+        if (!input?.dataset) return;
+        input.dataset.utilityEntryExperimentDirty = 'true';
+    }
+
+    function clearUtilityEntryExperimentDirtyInput(input) {
+        if (!input?.dataset) return;
+        delete input.dataset.utilityEntryExperimentDirty;
+    }
+
+    function isUtilityEntryExperimentDirtyInput(input) {
+        return input?.dataset?.utilityEntryExperimentDirty === 'true';
+    }
+
     const UTILITY_ENTRY_EXPERIMENT_DEFAULT_DAILY_DATE = getUtilityEntryExperimentTodayDateString();
     const UTILITY_ENTRY_EXPERIMENT_DEFAULT_MONTH = '2024-01';
     const UTILITY_ENTRY_EXPERIMENT_MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => {
@@ -55,7 +69,8 @@
     const UTILITY_ENTRY_EXPERIMENT_RECORD_KEYS = Object.freeze({
         electric: 'electric_v1',
         gas: 'gas_v1',
-        waste: 'waste_v1'
+        waste: 'waste_v1',
+        other: 'other_v1'
     });
     const UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_DATASET_KEYS = Object.freeze(['electric', 'gas', 'waste']);
     const UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_LINKS = Object.freeze([
@@ -461,6 +476,7 @@
         ])
     });
     let utilityEntryExperimentActualRecordPromise = null;
+    let utilityEntryExperimentPopulateSequence = 0;
 
     function isUtilityEntryExperimentPlainObject(value) {
         return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -503,6 +519,7 @@
                 input.value = '';
                 input.dataset.normalizedValue = '';
                 delete input.dataset.valueSource;
+                clearUtilityEntryExperimentDirtyInput(input);
             });
             return false;
         }
@@ -511,6 +528,7 @@
             input.value = formatUtilityEntryExperimentNumberText(String(value));
             input.dataset.valueSource = options.source || 'actual-2024';
             updateUtilityEntryExperimentNormalizedValue(input);
+            clearUtilityEntryExperimentDirtyInput(input);
         });
         return true;
     }
@@ -589,6 +607,19 @@
         statusNodes.forEach(statusNode => {
             statusNode.title = message || '';
         });
+    }
+
+    function getUtilityEntryExperimentPeriodFromElement(element) {
+        if (!element || typeof element.closest !== 'function') return '';
+        if (element.closest('.utility-entry-experiment-view.is-monthly')) return 'monthly';
+        if (element.closest('.utility-entry-experiment-view.is-daily')) return 'daily';
+        return '';
+    }
+
+    function setUtilityEntryExperimentActivePeriod(host, period = '') {
+        const normalizedPeriod = period === 'monthly' ? 'monthly' : (period === 'daily' ? 'daily' : '');
+        if (!host?.dataset || !normalizedPeriod) return;
+        host.dataset.utilityEntryExperimentActivePeriod = normalizedPeriod;
     }
 
     function getUtilityEntryExperimentEntryValues(dataset, dateString) {
@@ -4582,7 +4613,8 @@ html, body {
                 resourceDatasets: {
                     electric: records?.electric || {},
                     gas: records?.gas || {},
-                    waste: records?.waste || {}
+                    waste: records?.waste || {},
+                    other: records?.other || {}
                 }
             }
         };
@@ -4621,7 +4653,8 @@ html, body {
         const normalizedRecords = {
             electric: records?.electric || {},
             gas: records?.gas || {},
-            waste: records?.waste || {}
+            waste: records?.waste || {},
+            other: records?.other || {}
         };
         const topMonths = buildUtilityEntryExperimentGraphMonthList(monthValue, 13);
         const tableMonths = buildUtilityEntryExperimentGraphMonthList(monthValue, 25);
@@ -4901,6 +4934,20 @@ html, body {
         });
     }
 
+    function getUtilityEntryExperimentOtherMonthlyField(dataset, monthValue = '', fieldKey = '') {
+        const monthRecord = isUtilityEntryExperimentPlainObject(dataset?.monthlyEntries?.[monthValue])
+            ? dataset.monthlyEntries[monthValue]
+            : {};
+        return monthRecord[String(fieldKey || '').trim()];
+    }
+
+    function getUtilityEntryExperimentOtherTeamMonthlyField(dataset, monthValue = '', teamKey = '', fieldKey = '') {
+        const teamRecord = isUtilityEntryExperimentPlainObject(dataset?.teamMonthlyEntries?.[monthValue]?.[teamKey])
+            ? dataset.teamMonthlyEntries[monthValue][teamKey]
+            : {};
+        return teamRecord[String(fieldKey || '').trim()];
+    }
+
     function shiftUtilityEntryExperimentMonthValue(monthValue, delta = 1) {
         const match = String(monthValue || '').trim().match(/^(\d{4})-(\d{2})$/);
         if (!match) return '';
@@ -4995,6 +5042,23 @@ html, body {
         populateUtilityEntryExperimentSettlementFields(host, records, records.gas, monthValue, 'gas_bukjeong', '북정 LNG', UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.gasLng);
         populateUtilityEntryExperimentSettlementFields(host, records, records.waste, monthValue, 'waste_yusan', '유산 폐수', UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.waste);
         populateUtilityEntryExperimentSettlementFields(host, records, records.waste, monthValue, 'waste_bukjeong', '북정 폐수', UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS.waste);
+        setUtilityEntryExperimentInputValue(
+            host,
+            '기타 월간 평균온도',
+            getUtilityEntryExperimentOtherMonthlyField(records.other, monthValue, 'average_temperature')
+        );
+        [
+            ['유산 CIP 횟수 1팀 2파트', 'team_01_02'],
+            ['유산 CIP 횟수 2팀', 'team_02'],
+            ['유산 CIP 횟수 3팀', 'team_03'],
+            ['북정 CIP 횟수 1팀 1파트', 'team_01_01']
+        ].forEach(([label, teamKey]) => {
+            setUtilityEntryExperimentInputValue(
+                host,
+                label,
+                getUtilityEntryExperimentOtherTeamMonthlyField(records.other, monthValue, teamKey, 'cip_count')
+            );
+        });
     }
 
     function getUtilityEntryExperimentCorrectionRuleRows(records = {}, monthValue = '') {
@@ -5055,6 +5119,9 @@ html, body {
                 cache: 'no-store',
                 credentials: 'same-origin'
             });
+            if (resourceType === 'other' && response.status === 404) {
+                return [resourceType, {}];
+            }
             if (!response.ok) throw new Error(`record_read_failed:${recordKey}:${response.status}`);
             const payload = await response.json();
             return [resourceType, payload?.record?.payload || {}];
@@ -5562,6 +5629,9 @@ html, body {
                 dataset[key] = {};
             }
         });
+        if (normalizedType === 'other' && !isUtilityEntryExperimentPlainObject(dataset.monthlyEntries)) {
+            dataset.monthlyEntries = {};
+        }
         return dataset;
     }
 
@@ -5578,6 +5648,20 @@ html, body {
         if (!input) return '';
         updateUtilityEntryExperimentNormalizedValue(input);
         return normalizeUtilityEntryExperimentNumberText(input.dataset.normalizedValue || input.value);
+    }
+
+    function getUtilityEntryExperimentValidatedNumberInputValue(input) {
+        if (!input) return { ok: true, normalizedValue: '', numericValue: null };
+        const rawValue = String(input.value ?? '').trim();
+        if (input.dataset?.utilityEntryExperimentNumberKind === 'float' && rawValue) {
+            const normalizedRawValue = rawValue.replace(/,/g, '');
+            if (!/^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalizedRawValue)) {
+                return { ok: false, reason: 'invalid_float' };
+            }
+        }
+        const normalizedValue = getUtilityEntryExperimentInputNormalizedValue(input);
+        const numericValue = parseUtilityEntryExperimentNumber(normalizedValue);
+        return { ok: true, normalizedValue, numericValue };
     }
 
     function hasUtilityEntryExperimentEntryData(entry) {
@@ -5699,7 +5783,8 @@ html, body {
         return {
             electric: getUtilityEntryExperimentStoreDataset(store, 'electric') || {},
             gas: getUtilityEntryExperimentStoreDataset(store, 'gas') || {},
-            waste: getUtilityEntryExperimentStoreDataset(store, 'waste') || {}
+            waste: getUtilityEntryExperimentStoreDataset(store, 'waste') || {},
+            other: getUtilityEntryExperimentStoreDataset(store, 'other') || {}
         };
     }
 
@@ -5767,6 +5852,74 @@ html, body {
                 touchedCount += 1;
             });
 
+        Array.from(view?.querySelectorAll?.('[data-utility-entry-experiment-save-kind="other-monthly-field"]') || [])
+            .filter(input => isUtilityEntryExperimentInputVisible(input) && !input.readOnly)
+            .forEach(input => {
+                const fieldKey = String(input.dataset.utilityEntryExperimentFieldKey || '').trim();
+                const dataset = getUtilityEntryExperimentStoreDataset(store, 'other');
+                if (!dataset || !fieldKey || !monthValue) return;
+                if (!isUtilityEntryExperimentDirtyInput(input)) return;
+
+                if (!isUtilityEntryExperimentPlainObject(dataset.monthlyEntries)) {
+                    dataset.monthlyEntries = {};
+                }
+                if (!isUtilityEntryExperimentPlainObject(dataset.monthlyEntries[monthValue])) {
+                    dataset.monthlyEntries[monthValue] = {};
+                }
+
+                const validation = getUtilityEntryExperimentValidatedNumberInputValue(input);
+                if (!validation.ok) {
+                    const error = new Error('invalid_monthly_number');
+                    error.fieldKey = fieldKey;
+                    throw error;
+                }
+                const numericValue = validation.numericValue;
+                if (Number.isFinite(numericValue)) {
+                    dataset.monthlyEntries[monthValue][fieldKey] = roundUtilityEntryExperimentNumber(numericValue, 3);
+                } else {
+                    delete dataset.monthlyEntries[monthValue][fieldKey];
+                }
+                if (!Object.keys(dataset.monthlyEntries[monthValue]).length) {
+                    delete dataset.monthlyEntries[monthValue];
+                }
+                touchedCount += 1;
+            });
+
+        Array.from(view?.querySelectorAll?.('[data-utility-entry-experiment-save-kind="other-team-monthly-field"]') || [])
+            .filter(input => isUtilityEntryExperimentInputVisible(input) && !input.readOnly)
+            .forEach(input => {
+                const teamKey = String(input.dataset.utilityEntryExperimentTeamKey || '').trim();
+                const fieldKey = String(input.dataset.utilityEntryExperimentFieldKey || '').trim();
+                const dataset = getUtilityEntryExperimentStoreDataset(store, 'other');
+                if (!dataset || !teamKey || !fieldKey || !monthValue) return;
+                if (!isUtilityEntryExperimentDirtyInput(input)) return;
+
+                if (!isUtilityEntryExperimentPlainObject(dataset.teamMonthlyEntries)) {
+                    dataset.teamMonthlyEntries = {};
+                }
+                if (!isUtilityEntryExperimentPlainObject(dataset.teamMonthlyEntries[monthValue])) {
+                    dataset.teamMonthlyEntries[monthValue] = {};
+                }
+                if (!isUtilityEntryExperimentPlainObject(dataset.teamMonthlyEntries[monthValue][teamKey])) {
+                    dataset.teamMonthlyEntries[monthValue][teamKey] = {};
+                }
+
+                const normalizedValue = getUtilityEntryExperimentInputNormalizedValue(input);
+                const numericValue = parseUtilityEntryExperimentNumber(normalizedValue);
+                if (Number.isFinite(numericValue)) {
+                    dataset.teamMonthlyEntries[monthValue][teamKey][fieldKey] = roundUtilityEntryExperimentWholeNumber(numericValue);
+                } else {
+                    delete dataset.teamMonthlyEntries[monthValue][teamKey][fieldKey];
+                }
+                if (!Object.keys(dataset.teamMonthlyEntries[monthValue][teamKey]).length) {
+                    delete dataset.teamMonthlyEntries[monthValue][teamKey];
+                }
+                if (!Object.keys(dataset.teamMonthlyEntries[monthValue]).length) {
+                    delete dataset.teamMonthlyEntries[monthValue];
+                }
+                touchedCount += 1;
+            });
+
         const records = getUtilityEntryExperimentStoreRecords(store);
         scopedDrafts.forEach(draft => {
             const dataset = records[draft.resourceType];
@@ -5824,7 +5977,7 @@ html, body {
             }
 
             await putUtilityEntryExperimentSharedStore(store, meta);
-            utilityEntryExperimentActualRecordPromise = null;
+            utilityEntryExperimentActualRecordPromise = Promise.resolve(getUtilityEntryExperimentStoreRecords(store));
             await populateUtilityEntryExperimentActualValues(host);
             setUtilityEntryExperimentSaveStatus(host, 'saved', '저장됨');
             syncUtilityEntryExperimentDailyValidation(host);
@@ -5832,6 +5985,8 @@ html, body {
         } catch (error) {
             const message = error?.message === 'version_conflict'
                 ? '다른 저장 내용이 먼저 반영되었습니다. 새로고침 후 다시 저장해 주세요.'
+                : error?.message === 'invalid_monthly_number'
+                    ? '월간 평균온도는 숫자만 입력해 주세요.'
                 : '저장 실패';
             host.dataset.utilityEntryExperimentSaveError = error?.message || 'unknown_error';
             setUtilityEntryExperimentSaveStatus(host, 'error', message);
@@ -5886,12 +6041,14 @@ html, body {
 
     async function populateUtilityEntryExperimentActualValues(host) {
         if (!host) return;
+        const populateSequence = ++utilityEntryExperimentPopulateSequence;
         host.dataset.actualValuesReady = 'loading';
         const loadingMonthValue = getUtilityEntryExperimentSelectedMonth(host);
         renderUtilityEntryExperimentMonthlyMeterLinks(host, null, loadingMonthValue);
         renderUtilityEntryExperimentSettlementReadiness(host, null, loadingMonthValue);
         try {
             const records = await loadUtilityEntryExperimentActualRecords();
+            if (populateSequence !== utilityEntryExperimentPopulateSequence) return;
             const dailyDate = getUtilityEntryExperimentSelectedDailyDate(host);
             const unsavedDailyDraftCount = applyUtilityEntryExperimentUnsavedDailyInputDrafts(records, host, dailyDate);
             const monthValue = getUtilityEntryExperimentSelectedMonth(host);
@@ -6216,6 +6373,8 @@ html, body {
             const input = event.target?.closest?.('.utility-entry-experiment-input[data-entry-mode="manual"]');
             if (!input || input.readOnly) return;
 
+            markUtilityEntryExperimentDirtyInput(input);
+            setUtilityEntryExperimentActivePeriod(host, getUtilityEntryExperimentPeriodFromElement(input));
             const nextValue = sanitizeUtilityEntryExperimentNumberText(input.value);
             if (input.value !== nextValue) input.value = nextValue;
             updateUtilityEntryExperimentNormalizedValue(input);
@@ -6263,6 +6422,8 @@ html, body {
         });
 
         host.addEventListener('focusin', event => {
+            setUtilityEntryExperimentActivePeriod(host, getUtilityEntryExperimentPeriodFromElement(event.target));
+
             const quickCandidate = event.target?.closest?.('[data-role="utility-entry-experiment-quick-candidate"]');
             if (!quickCandidate || !host.contains(quickCandidate)) return;
             activateUtilityEntryExperimentQuickCandidate(host, quickCandidate);
@@ -6288,10 +6449,20 @@ html, body {
         });
 
         host.addEventListener('change', event => {
+            const periodRadio = event.target?.closest?.('.utility-entry-experiment-radio');
+            if (periodRadio && host.contains(periodRadio) && periodRadio.checked) {
+                setUtilityEntryExperimentActivePeriod(
+                    host,
+                    String(periodRadio.id || '').endsWith('-monthly') ? 'monthly' : 'daily'
+                );
+                return;
+            }
             if (!event.target?.matches?.('.utility-entry-experiment-toolbar select')) return;
             if (event.target.matches('.utility-entry-experiment-view.is-daily select')) {
+                setUtilityEntryExperimentActivePeriod(host, 'daily');
                 syncUtilityEntryExperimentDailyMonthToDate(host);
             } else if (event.target.matches('.utility-entry-experiment-view.is-monthly select')) {
+                setUtilityEntryExperimentActivePeriod(host, 'monthly');
                 syncUtilityEntryExperimentDailyToMonthly(host);
             }
             populateUtilityEntryExperimentActualValues(host);
@@ -6664,7 +6835,7 @@ html, body {
                                 class="utility-entry-experiment-quick-input"
                                 type="text"
                                 inputmode="decimal"
-                                pattern="[0-9,.-]*"
+                                pattern="[0-9,.\\-]*"
                                 autocomplete="off"
                                 data-role="utility-entry-experiment-quick-input"
                                 aria-label="일간 빠른 입력값"
@@ -6755,7 +6926,8 @@ html, body {
             ['data-utility-entry-experiment-field-id', options.fieldId],
             ['data-utility-entry-experiment-scope-key', options.scopeKey],
             ['data-utility-entry-experiment-field-key', options.fieldKey],
-            ['data-utility-entry-experiment-team-key', options.teamKey]
+            ['data-utility-entry-experiment-team-key', options.teamKey],
+            ['data-utility-entry-experiment-number-kind', options.numberKind]
         ].filter(([, value]) => String(value || '').trim());
         return entries.map(([name, value]) => (
             `${name}="${escapeUtilityEntryExperimentHtml(String(value || '').trim())}"`
@@ -6766,10 +6938,12 @@ html, body {
         const mode = options.mode === 'calculated' ? 'calculated' : 'manual';
         const readonlyAttr = mode === 'calculated' ? ' readonly aria-readonly="true"' : '';
         const titleAttr = mode === 'calculated' ? ' title="자동 계산값"' : '';
+        const inputType = options.numberKind === 'float' ? 'number' : 'text';
+        const stepAttr = options.numberKind === 'float' ? ' step="any"' : '';
         const dataAttributes = buildUtilityEntryExperimentInputDataAttributes(options);
         const dataAttr = dataAttributes ? ` ${dataAttributes}` : '';
 
-        return `<input class="utility-entry-experiment-input" type="text" value="" inputmode="decimal" pattern="[0-9,.-]*" autocomplete="off" data-entry-mode="${mode}" aria-label="${escapeUtilityEntryExperimentHtml(label)}"${dataAttr}${readonlyAttr}${titleAttr} />`;
+        return `<input class="utility-entry-experiment-input" type="${inputType}" value="" inputmode="decimal" pattern="[0-9,.\\-]*"${stepAttr} autocomplete="off" data-entry-mode="${mode}" aria-label="${escapeUtilityEntryExperimentHtml(label)}"${dataAttr}${readonlyAttr}${titleAttr} />`;
     }
 
     function getUtilityEntryExperimentSettlementUnit(label = '', inputLabelPrefix = '') {
@@ -7204,6 +7378,62 @@ html, body {
         `;
     }
 
+    function buildUtilityEntryExperimentOtherMonthlyCard() {
+        return `
+            <section class="utility-entry-experiment-settlement is-other">
+                <div class="utility-entry-experiment-settlement-heading">
+                    <h3>기타</h3>
+                </div>
+                <table class="utility-entry-experiment-form-table">
+                    <tbody>
+                        <tr>
+                            <th>월간 평균온도</th>
+                            <td>${buildUtilityEntryExperimentInputWithUnit('기타 월간 평균온도', '℃', {
+                                saveKind: 'other-monthly-field',
+                                resourceType: 'other',
+                                fieldKey: 'average_temperature',
+                                numberKind: 'float'
+                            })}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        `;
+    }
+
+    function buildUtilityEntryExperimentCipCountCard(siteLabel, teams = []) {
+        const normalizedSiteLabel = String(siteLabel || '').trim();
+        const normalizedTeams = (Array.isArray(teams) ? teams : [])
+            .map(team => ({
+                key: String(team?.key || '').trim(),
+                label: String(team?.label || '').trim()
+            }))
+            .filter(team => team.key && team.label);
+
+        return `
+            <section class="utility-entry-experiment-settlement is-cip">
+                <div class="utility-entry-experiment-settlement-heading">
+                    <h3>CIP 횟수</h3>
+                </div>
+                <table class="utility-entry-experiment-form-table">
+                    <tbody>
+                        ${normalizedTeams.map(team => `
+                        <tr>
+                            <th>${escapeUtilityEntryExperimentHtml(team.label)}</th>
+                            <td>${buildUtilityEntryExperimentInputWithUnit(`${normalizedSiteLabel} CIP 횟수 ${team.label}`, '회', {
+                                saveKind: 'other-team-monthly-field',
+                                resourceType: 'other',
+                                teamKey: team.key,
+                                fieldKey: 'cip_count'
+                            })}</td>
+                        </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </section>
+        `;
+    }
+
     function buildUtilityEntryExperimentGraphToggle(options = {}) {
         const graphKey = String(options.graphKey || '').trim();
         if (!graphKey) return '';
@@ -7375,6 +7605,12 @@ html, body {
                             directMonthlyFirstRow: { resourceType: 'waste', teamKey: 'waste_yusan' },
                             totalRows: ['총비용']
                         })}
+                        ${buildUtilityEntryExperimentCipCountCard('유산', [
+                            { key: 'team_01_02', label: '1팀 2파트' },
+                            { key: 'team_02', label: '2팀' },
+                            { key: 'team_03', label: '3팀' }
+                        ])}
+                        ${buildUtilityEntryExperimentOtherMonthlyCard()}
                             </div>
                         </div>
                     </section>
@@ -7420,6 +7656,9 @@ html, body {
                             directMonthlyFirstRow: { resourceType: 'waste', teamKey: 'waste_bukjeong' },
                             totalRows: ['총비용']
                         })}
+                        ${buildUtilityEntryExperimentCipCountCard('북정', [
+                            { key: 'team_01_01', label: '1팀 1파트' }
+                        ])}
                             </div>
                         </div>
                     </section>
@@ -7512,10 +7751,6 @@ html, body {
         const views = buildUtilityEntryExperimentViews();
         return `
             <div class="utility-entry-experiment" data-role="utility-entry-experiment">
-                <div class="utility-entry-experiment-note">
-                    <strong>실험용 입력 화면</strong>
-                    <span>전기, 가스, 폐수와 일간, 월간을 한 입력면 안에서 전환하며 화면 밀도만 먼저 검증합니다.</span>
-                </div>
                 ${buildUtilityEntryExperimentSwitch(views)}
             </div>
         `;

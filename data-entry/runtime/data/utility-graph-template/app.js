@@ -4,7 +4,8 @@
     { key: 'team_01_01', label: '1팀 1파트' },
     { key: 'team_01_02', label: '1팀 2파트' },
     { key: 'team_02', label: '2팀' },
-    { key: 'team_03', label: '3팀' }
+    { key: 'team_03', label: '3팀' },
+    { key: 'other', label: '기타' }
   ];
   const memoMetricOptions = [
     { key: 'production', label: '생산량' },
@@ -14,9 +15,12 @@
     { key: 'lng', label: 'LNG' },
     { key: 'lng_unit', label: '생산량 대비 LNG' },
     { key: 'lpg', label: 'LPG' },
+    { key: 'gas_cost', label: '가스 비용' },
     { key: 'lpg_unit', label: '생산량 대비 LPG' },
     { key: 'waste_usage', label: '폐수 방류량' },
-    { key: 'waste_cost_total', label: '폐수 처리비용' }
+    { key: 'waste_cost_total', label: '폐수 처리비용' },
+    { key: 'cip_count', label: 'CIP 횟수' },
+    { key: 'monthly_average_temperature', label: '월간 평균온도' }
   ];
 
   const defaultTopMonths = buildMonths('2025-04', '2026-04');

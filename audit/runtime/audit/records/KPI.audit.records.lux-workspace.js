@@ -1,8 +1,7 @@
         function getAuditLuxWorkspaceTeams(dataKey) {
-            const preferredTeams = ['2팀', '3팀'];
+            const preferredTeams = ['1팀 1파트', '1팀 2파트', '2팀', '3팀'];
             const availableTeams = getAuditFilterTeams(dataKey);
-            const filtered = preferredTeams.filter(team => availableTeams.includes(team));
-            return filtered.length ? filtered : availableTeams;
+            return Array.from(new Set(preferredTeams.concat(availableTeams)));
         }
 
         function getAuditLuxWorkspaceState(dataKey) {
@@ -24,6 +23,23 @@
             return { entryForm, now, teams, yearStart };
         }
 
+        function getAuditLuxWorkspaceCategory(dataKey) {
+            const normalizedDataKey = String(dataKey || '').trim();
+            if (!normalizedDataKey || typeof AppData === 'undefined' || !AppData) return null;
+            return Object.values(AppData)
+                .flatMap(section => Array.isArray(section?.categories) ? section.categories : [])
+                .find(category => String(category?.dataKey || '').trim() === normalizedDataKey)
+                || null;
+        }
+
+        function renderAuditLuxWorkspaceCategory(dataKey) {
+            const category = getAuditLuxWorkspaceCategory(dataKey);
+            if (category && typeof renderAuditContent === 'function') {
+                renderAuditContent(category);
+            }
+            return category;
+        }
+
         function cycleAuditLuxWorkspaceTeam(dataKey) {
             if (!isAuditLuxDataKey(dataKey)) return;
             const { entryForm, teams } = getAuditLuxWorkspaceState(dataKey);
@@ -33,8 +49,7 @@
                 ? (currentIndex + 1) % teams.length
                 : 0;
             entryForm.team = teams[nextIndex];
-            const category = AppData?.audit?.categories?.find(cat => cat.dataKey === dataKey);
-            if (category) renderAuditContent(category);
+            renderAuditLuxWorkspaceCategory(dataKey);
         }
 
         function setAuditLuxWorkspaceYear(dataKey, value) {
@@ -43,8 +58,7 @@
             const nextYear = Number.parseInt(value, 10);
             if (!Number.isFinite(nextYear)) return;
             entryForm.year = Math.min(Math.max(nextYear, yearStart), now.year);
-            const category = AppData?.audit?.categories?.find(cat => cat.dataKey === dataKey);
-            if (category) renderAuditContent(category);
+            renderAuditLuxWorkspaceCategory(dataKey);
         }
 
         function normalizeAuditLuxNumericValue(value) {
@@ -249,23 +263,22 @@
             return groups;
         }
 
-        function renderAuditLuxWorkspacePreview(dataKey, year, team) {
-            const attachmentItem = typeof getAuditLuxYearEvidenceItem === 'function'
-                ? getAuditLuxYearEvidenceItem(dataKey, year, team)
-                : null;
-            if (!attachmentItem) {
-                return `
-                    <div class="audit-lux-preview-card">
-                        <div class="audit-lux-preview-head">
-                            <div class="audit-lux-preview-copy">
-                                <div class="audit-lux-preview-title">스캔본 원본</div>
-                                <div class="audit-lux-preview-meta">${escapeHtml(team || '')} ${escapeHtml(String(year || ''))}년</div>
-                            </div>
-                        </div>
-                        <div class="audit-lux-preview-empty">선택한 년도에 등록된 조도 스캔본이 없습니다.</div>
-                    </div>
-                `;
-            }
+        function getAuditLuxYearRange(yearStart, endYear) {
+            const start = Number(yearStart);
+            const end = Number(endYear);
+            if (!Number.isFinite(start) || !Number.isFinite(end)) return [];
+            const years = [];
+            for (let year = end; year >= start; year -= 1) years.push(year);
+            return years;
+        }
+
+        function getAuditLuxAttachmentInputId(dataKey, year, team) {
+            const safeKey = String(dataKey || '').trim().replace(/[^A-Za-z0-9_-]+/g, '-');
+            const safeTeam = encodeURIComponent(String(team || '').trim()).replace(/%/g, '-');
+            return `audit-lux-attachment-input-${safeKey}-${Number(year)}-${safeTeam}`;
+        }
+
+        function getAuditLuxEvidenceMeta(attachmentItem) {
             const viewUrl = typeof getAuditEvidenceViewUrl === 'function'
                 ? getAuditEvidenceViewUrl(attachmentItem)
                 : '';
@@ -281,16 +294,185 @@
             const rotation = Number.isFinite(parseFloat(attachmentItem?.rotate))
                 ? parseFloat(attachmentItem.rotate)
                 : 0;
+            return { viewUrl, downloadUrl, fileLabel, isPdf, rotation };
+        }
+
+        function renderAuditLuxAttachmentThumb(dataKey, year, team, attachmentItem) {
+            if (!attachmentItem) {
+                return `
+                    <div class="audit-lux-index-empty-thumb">
+                        <i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i>
+                    </div>
+                `;
+            }
+            const { viewUrl, fileLabel, isPdf, rotation } = getAuditLuxEvidenceMeta(attachmentItem);
+            if (viewUrl && !isPdf) {
+                return `<img class="audit-lux-index-thumb-image" src="${escapeHtml(viewUrl)}" alt="${escapeHtml(`${team} ${year}년 조도본`)}" loading="lazy" decoding="async" style="transform: rotate(${rotation}deg);" />`;
+            }
+            return `
+                <div class="audit-lux-index-file-thumb ${isPdf ? 'is-pdf' : ''}">
+                    <i class="fa-solid ${isPdf ? 'fa-file-pdf' : 'fa-file-lines'}" aria-hidden="true"></i>
+                    <span>${escapeHtml(isPdf ? 'PDF' : (fileLabel || 'FILE'))}</span>
+                </div>
+            `;
+        }
+
+        function getAuditLuxTeamClass(team) {
+            const label = String(team || '').trim();
+            if (label.includes('1팀') && label.includes('1파트')) return 'is-team-1-part-1';
+            if (label.includes('1팀') && label.includes('2파트')) return 'is-team-1-part-2';
+            if (label.startsWith('2팀')) return 'is-team-2';
+            if (label.startsWith('3팀')) return 'is-team-3';
+            return 'is-team-default';
+        }
+
+        function renderAuditLuxAttachmentCard(dataKey, year, team) {
+            const attachmentItem = typeof getAuditLuxYearEvidenceItem === 'function'
+                ? getAuditLuxYearEvidenceItem(dataKey, year, team)
+                : null;
+            const hasAttachment = Boolean(attachmentItem);
+            const { viewUrl, downloadUrl, fileLabel } = hasAttachment ? getAuditLuxEvidenceMeta(attachmentItem) : {};
+            const inputId = getAuditLuxAttachmentInputId(dataKey, year, team);
+            const teamClass = getAuditLuxTeamClass(team);
+            const openUrl = viewUrl || downloadUrl || '#';
+            const downloadHref = downloadUrl || viewUrl || '#';
+            return `
+                <article class="audit-lux-index-card ${teamClass} ${hasAttachment ? 'is-attached' : 'is-empty'}" data-audit-lux-card="${escapeHtml(dataKey)}" data-year="${escapeHtml(year)}" data-team="${escapeHtml(team)}">
+                    <div class="audit-lux-index-card-media">
+                        ${renderAuditLuxAttachmentThumb(dataKey, year, team, attachmentItem)}
+                    </div>
+                    <div class="audit-lux-index-card-main">
+                        <div class="audit-lux-index-card-head">
+                            <span class="audit-lux-index-team">${escapeHtml(team || '팀 없음')}</span>
+                            <span class="audit-lux-index-state ${hasAttachment ? 'is-attached' : 'is-empty'}">${hasAttachment ? '첨부됨' : '미첨부'}</span>
+                        </div>
+                        <strong>${escapeHtml(team || '팀 없음')} ${escapeHtml(year)}년 조도본</strong>
+                        <span class="audit-lux-index-file">${escapeHtml(fileLabel || '등록된 파일 없음')}</span>
+                    </div>
+                    <div class="audit-lux-index-card-actions">
+                        <button type="button" class="work-btn primary audit-lux-index-replace" onclick="openAuditLuxAttachmentPickerForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}')"><i class="fa-solid fa-arrow-rotate-right" aria-hidden="true"></i><span>교체</span></button>
+                        ${hasAttachment
+                            ? `<a class="work-btn audit-ref-open" href="${escapeHtml(openUrl)}" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i><span>원본 열기</span></a>`
+                            : '<button type="button" class="work-btn" disabled><i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i><span>원본 열기</span></button>'}
+                        ${hasAttachment
+                            ? `<a class="work-btn audit-ref-download" href="${escapeHtml(downloadHref)}" download="${escapeHtml(fileLabel || `${year}-${team}-lux`)}"><i class="fa-solid fa-download" aria-hidden="true"></i><span>원본 다운</span></a>`
+                            : '<button type="button" class="work-btn" disabled><i class="fa-solid fa-download" aria-hidden="true"></i><span>원본 다운</span></button>'}
+                        <input
+                            type="file"
+                            id="${escapeHtml(inputId)}"
+                            class="audit-hidden-input"
+                            data-audit-lux-attachment-input="${escapeHtml(dataKey)}"
+                            accept="image/*,application/pdf"
+                            onchange="handleAuditLuxAttachmentChangeForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', this)"
+                        />
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderAuditLuxYearSection(dataKey, year, teams) {
+            const safeTeams = Array.isArray(teams) ? teams : [];
+            const attachedCount = safeTeams.filter((team) => (
+                typeof getAuditLuxYearEvidenceItem === 'function'
+                && getAuditLuxYearEvidenceItem(dataKey, year, team)
+            )).length;
+            return `
+                <section class="audit-lux-index-year" data-audit-lux-year="${escapeHtml(year)}">
+                    <div class="audit-lux-index-year-head">
+                        <div>
+                            <h3>${escapeHtml(year)}년</h3>
+                            <span>${escapeHtml(attachedCount)} / ${escapeHtml(safeTeams.length)}팀 첨부</span>
+                        </div>
+                        <span class="audit-lux-index-year-badge">${attachedCount === safeTeams.length && safeTeams.length ? '완료' : '대기'}</span>
+                    </div>
+                    <div class="audit-lux-index-grid">
+                        ${safeTeams.length
+                            ? safeTeams.map((team) => renderAuditLuxAttachmentCard(dataKey, year, team)).join('')
+                            : '<div class="audit-lux-index-empty">등록된 팀이 없습니다.</div>'}
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderAuditLuxIndexSummary(dataKey, years, teams) {
+            const totalSlots = years.length * teams.length;
+            let attachedCount = 0;
+            teams.forEach((team) => {
+                years.forEach((year) => {
+                    if (typeof getAuditLuxYearEvidenceItem === 'function' && getAuditLuxYearEvidenceItem(dataKey, year, team)) {
+                        attachedCount += 1;
+                    }
+                });
+            });
+            return `
+                <div class="audit-lux-index-summary" aria-label="조도 첨부 요약">
+                    <article>
+                        <span class="audit-lux-index-summary-icon is-total"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+                        <div>
+                            <span>관리 슬롯</span>
+                            <strong>${escapeHtml(totalSlots)}<small>건</small></strong>
+                        </div>
+                    </article>
+                    <article>
+                        <span class="audit-lux-index-summary-icon is-attached"><i class="fa-solid fa-file-circle-check" aria-hidden="true"></i></span>
+                        <div>
+                            <span>첨부 완료</span>
+                            <strong>${escapeHtml(attachedCount)}<small>건</small></strong>
+                        </div>
+                    </article>
+                    <article>
+                        <span class="audit-lux-index-summary-icon is-waiting"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i></span>
+                        <div>
+                            <span>미첨부</span>
+                            <strong>${escapeHtml(Math.max(0, totalSlots - attachedCount))}<small>건</small></strong>
+                        </div>
+                    </article>
+                </div>
+            `;
+        }
+
+        function setAuditLuxWorkspaceTarget(dataKey, year, team, options = {}) {
+            if (!isAuditLuxDataKey(dataKey)) return false;
+            const { entryForm, yearStart, now, teams } = getAuditLuxWorkspaceState(dataKey);
+            const targetYear = Number(year);
+            const targetTeam = String(team || '').trim();
+            if (!Number.isFinite(targetYear) || !targetTeam) return false;
+            entryForm.year = Math.min(Math.max(targetYear, yearStart), now.year);
+            entryForm.team = teams.includes(targetTeam) ? targetTeam : (teams[0] || targetTeam);
+            if (options.render === true) {
+                renderAuditLuxWorkspaceCategory(dataKey);
+            }
+            return true;
+        }
+
+        function renderAuditLuxWorkspacePreview(dataKey, year, team) {
+            const attachmentItem = typeof getAuditLuxYearEvidenceItem === 'function'
+                ? getAuditLuxYearEvidenceItem(dataKey, year, team)
+                : null;
+            if (!attachmentItem) {
+                return `
+                    <div class="audit-lux-preview-card">
+                        <div class="audit-lux-preview-head">
+                            <div class="audit-lux-preview-copy">
+                                <div class="audit-lux-preview-title">조도본 원본</div>
+                                <div class="audit-lux-preview-meta">${escapeHtml(team || '')} ${escapeHtml(String(year || ''))}년</div>
+                            </div>
+                        </div>
+                        <div class="audit-lux-preview-empty">선택한 년도에 등록된 조도본이 없습니다.</div>
+                    </div>
+                `;
+            }
+            const { viewUrl, downloadUrl, fileLabel, isPdf, rotation } = getAuditLuxEvidenceMeta(attachmentItem);
             const previewStage = viewUrl
                 ? (isPdf
-                    ? `<iframe class="audit-lux-preview-frame" src="${escapeHtml(viewUrl)}" title="조도 스캔본 미리보기"></iframe>`
-                    : `<img class="audit-lux-preview-image" src="${escapeHtml(viewUrl)}" alt="${escapeHtml(`${team} ${year}년 조도 스캔본`)}" loading="lazy" decoding="async" style="transform: rotate(${rotation}deg);" />`)
+                    ? `<iframe class="audit-lux-preview-frame" src="${escapeHtml(viewUrl)}" title="조도본 미리보기"></iframe>`
+                    : `<img class="audit-lux-preview-image" src="${escapeHtml(viewUrl)}" alt="${escapeHtml(`${team} ${year}년 조도본`)}" loading="lazy" decoding="async" style="transform: rotate(${rotation}deg);" />`)
                 : '<div class="audit-lux-preview-empty">첨부 미리보기를 불러올 수 없습니다.</div>';
             return `
                 <div class="audit-lux-preview-card">
                     <div class="audit-lux-preview-head">
                         <div class="audit-lux-preview-copy">
-                            <div class="audit-lux-preview-title">스캔본 원본</div>
+                            <div class="audit-lux-preview-title">조도본 원본</div>
                             <div class="audit-lux-preview-meta">${escapeHtml(team || '')} ${escapeHtml(String(year || ''))}년</div>
                         </div>
                         <div class="audit-filter-actions">
@@ -313,192 +495,28 @@
             const { entryForm, now, teams, yearStart } = getAuditLuxWorkspaceState(dataKey);
             const selectedYear = Number(entryForm.year);
             const selectedTeam = String(entryForm.team || '').trim();
-            const yearOptions = getYearOptionsDesc(yearStart, now.year, selectedYear, '년도');
-            const rows = typeof getAuditLuxWorkspaceRows === 'function'
-                ? getAuditLuxWorkspaceRows(dataKey, selectedYear, selectedTeam)
-                : [];
-            const alertSummary = getAuditLuxWorkspaceAlertSummary(dataKey, { useLiveRows: false });
-            const alertGuide = getAuditLuxWorkspaceAlertGuide(alertSummary);
-            const alertTitle = getAuditLuxWorkspaceAlertTitle(alertSummary);
-            const noteValue = typeof getAuditLuxYearNote === 'function'
-                ? getAuditLuxYearNote(dataKey, selectedYear, selectedTeam)
-                : '';
-            const attachmentItem = typeof getAuditLuxYearEvidenceItem === 'function'
-                ? getAuditLuxYearEvidenceItem(dataKey, selectedYear, selectedTeam)
-                : null;
-            const yearGuide = selectedYear < now.year
-                ? `${selectedYear}년은 1~4분기 모두 입력할 수 있습니다.`
-                : `${now.year}년은 현재 ${now.quarter}분기까지 입력할 수 있습니다.`;
-            const roomGroups = getAuditLuxWorkspaceRoomGroups(rows);
-            const failRowKeys = getAuditLuxWorkspaceFailRowKeys(rows);
-            const hasFailShortcut = failRowKeys.length > 0;
-            const failShortcutTitle = Number.isFinite(selectedYear) && selectedTeam
-                ? `${selectedYear}년 ${selectedTeam} 기준 미달 항목으로 이동`
-                : '기준 미달 항목으로 이동';
-            const rowsHtml = roomGroups.length
-                ? roomGroups.map((group) => (
-                    group.rows.map((row, rowIndex) => {
-                        const hasRowFailure = hasAuditLuxWorkspaceRowFailure(row);
-                        return `
-                        <tr class="audit-lux-sheet-row ${hasRowFailure ? 'is-fail' : ''}" data-audit-lux-row="${escapeHtml(dataKey)}" data-row-key="${escapeHtml(row.rowKey)}">
-                            ${rowIndex === 0 ? `<th scope="rowgroup" rowspan="${group.rows.length}" class="audit-lux-sheet-room"><div class="audit-lux-room-box">${escapeHtml(group.room || '')}</div></th>` : ''}
-                            <td class="audit-lux-sheet-type"><div class="audit-lux-type-box">${escapeHtml(row.type || '')}</div></td>
-                            <td class="audit-lux-sheet-standard-cell">
-                                <div class="audit-lux-standard-field">
-                                    <span class="audit-lux-cell-caption audit-lux-standard-caption">\uAE30\uC900 \uC870\uB3C4</span>
-                                    <div class="audit-lux-standard-input-wrap">
-                                        <input
-                                            type="text"
-                                            inputmode="decimal"
-                                            class="audit-input audit-lux-standard-input"
-                                            data-audit-lux-standard-input="${dataKey}"
-                                            data-row-key="${escapeHtml(row.rowKey)}"
-                                            data-room="${escapeHtml(row.room || '')}"
-                                            data-type="${escapeHtml(row.type || '')}"
-                                            data-original-standard="${escapeHtml(getAuditLuxNumericDisplayValue(row.baseStandard || row.standard || ''))}"
-                                            value="${escapeHtml(getAuditLuxNumericDisplayValue(row.standard || ''))}"
-                                            oninput="handleAuditLuxStandardInput(this)"
-                                            onblur="handleAuditLuxStandardInput(this, { force: true })"
-                                            onkeydown="handleAuditLuxInputKeydown(event, this)"
-                                        />
-                                        <span class="audit-lux-standard-suffix">\uC774\uC0C1</span>
-                                    </div>
-                                </div>
-                            </td>
-                            ${[1, 2, 3, 4].map((quarter) => buildAuditLuxQuarterCell(row, selectedYear, quarter, dataKey)).join('')}
-                        </tr>
-                    `;
-                    }).join('')
-                )).join('')
-                : '<tr><td colspan="7" class="audit-lux-sheet-empty">선택한 팀의 조도 기준이 아직 등록되지 않았습니다.</td></tr>';
+            const years = getAuditLuxYearRange(yearStart, now.year);
             const contentContainer = document.getElementById('content-container');
             contentContainer.innerHTML = `
-                <div class="audit-lux-shell" data-audit-lux-workspace="${dataKey}">
+                <div class="audit-lux-shell is-file-index" data-audit-lux-workspace="${dataKey}">
                     <div class="audit-lux-window">
                         <div class="audit-lux-window-header">
                             <div class="audit-lux-window-copy">
-                                <span class="audit-lux-window-kicker">조도 입력</span>
+                                <span class="audit-lux-window-kicker">조도 파일</span>
                                 <h2 class="audit-lux-window-title">${escapeHtml(category.title || '조도')}</h2>
-                                <p class="audit-lux-window-desc">좌측 스캔본을 그대로 보면서 우측 양식에 연도별 조도값을 입력합니다. 기준 수정은 선택한 연도부터 이후 연도에 적용됩니다.</p>
+                                <p class="audit-lux-window-desc">팀별 연도 조도본을 보관합니다. 분기마다 같은 연도 카드에서 파일을 교체합니다.</p>
                             </div>
                             <div class="audit-lux-window-actions">
-                                <div class="audit-team-toggle-group" role="group" aria-label="조도 팀 전환">
-                                    <button
-                                        type="button"
-                                        class="audit-team-toggle ${teams.length ? 'is-active' : ''}"
-                                        onclick="cycleAuditLuxWorkspaceTeam('${dataKey}')"
-                                        ${teams.length > 1 ? '' : 'disabled'}
-                                        title="${teams.length > 1 ? '클릭할 때마다 2팀과 3팀이 전환됩니다.' : ''}"
-                                    >${escapeHtml(selectedTeam || '팀 없음')}</button>
-                                </div>
-                                <select class="audit-select audit-lux-year-select" onchange="setAuditLuxWorkspaceYear('${dataKey}', this.value)">${yearOptions}</select>
                                 ${getAuditLuxWorkspaceFullscreenButtonHtml()}
-                                <button type="button" class="work-btn" onclick="openAuditLuxAttachmentPicker('${dataKey}')">${attachmentItem ? '첨부 교체' : '첨부'}</button>
-                                <input type="file" id="audit-lux-attachment-input-${dataKey}" class="audit-hidden-input" accept="image/*,application/pdf" onchange="handleAuditLuxAttachmentChange('${dataKey}', this)" />
-                                <button
-                                    type="button"
-                                    class="audit-help-toggle"
-                                    id="audit-notice-toggle-${dataKey}"
-                                    aria-expanded="false"
-                                    aria-controls="audit-notice-modal-${dataKey}"
-                                    onclick="toggleAuditNotice('${dataKey}')"
-                                    title="주의사항 보기"
-                                >?</button>
                             </div>
                         </div>
-                        <div class="audit-lux-workspace">
-                            <div class="audit-lux-preview-pane">
-                                ${renderAuditLuxWorkspacePreview(dataKey, selectedYear, selectedTeam)}
-                            </div>
-                            <div class="audit-lux-sheet-pane">
-                                <div class="audit-lux-sheet-head audit-lux-sheet-head-document">
-                                    <div class="audit-lux-sheet-docmeta">
-                                        <span>팀 ${escapeHtml(selectedTeam || '')}</span>
-                                        <span>${selectedYear}년</span>
-                                        <button
-                                            type="button"
-                                            class="audit-lux-sheet-jump"
-                                            data-audit-lux-jump="${escapeHtml(dataKey)}"
-                                            onclick="jumpToAuditLuxWorkspaceFailRow('${escapeJs(dataKey)}')"
-                                            title="${escapeHtml(failShortcutTitle)}"
-                                            ${hasFailShortcut ? '' : 'hidden disabled'}
-                                        ><i class="fa-solid fa-arrow-turn-down"></i><span>미달 바로 가기</span></button>
-                                        <span>${escapeHtml(yearGuide)}</span>
-                                    </div>
-                                    <div class="audit-lux-sheet-doctitle">조도 측정 기록표</div>
-                                    <div class="audit-lux-sheet-docsub">기준 수정은 선택한 연도부터 이후 연도에만 반영됩니다.</div>
-                                    <div class="audit-lux-sheet-alert ${alertSummary.failCount > 0 ? '' : 'is-safe'}" data-audit-lux-alert="${dataKey}" title="${escapeHtml(alertTitle)}">
-                                        <span class="audit-lux-sheet-alert-chip ${alertSummary.failCount > 0 ? '' : 'is-safe'}" data-audit-lux-alert-chip="${dataKey}" title="${escapeHtml(alertTitle)}">
-                                            <i class="fa-solid fa-bell"></i>
-                                            <span data-audit-lux-alert-count="${dataKey}" title="${escapeHtml(alertTitle)}">${escapeHtml(getAuditLuxWorkspaceAlertCountLabel(alertSummary))}</span>
-                                        </span>
-                                        <span class="audit-lux-sheet-alert-text" data-audit-lux-alert-guide="${dataKey}" title="${escapeHtml(alertTitle)}">${escapeHtml(alertGuide)}</span>
-                                    </div>
-                                </div>
-                                <div class="audit-lux-sheet-table-wrap">
-                                    <table class="audit-lux-sheet-table">
-                                        <thead>
-                                            <tr>
-                                                <th class="audit-lux-col-room">실 / 구역</th>
-                                                <th class="audit-lux-col-type">측정 위치 / 설비</th>
-                                                <th class="audit-lux-col-standard">기준 조도 (Lux)</th>
-                                                <th class="audit-lux-col-quarter">1분기</th>
-                                                <th class="audit-lux-col-quarter">2분기</th>
-                                                <th class="audit-lux-col-quarter">3분기</th>
-                                                <th class="audit-lux-col-quarter">4분기</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            ${rowsHtml}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="audit-lux-window-footer">
-                            <label class="audit-lux-note-field" for="audit-lux-note-${dataKey}">
-                                <span class="audit-lux-note-label">특이사항</span>
-                                <textarea class="audit-input audit-note-area audit-lux-note-area" id="audit-lux-note-${dataKey}" placeholder="해당 연도 조도 측정의 특이사항을 입력하세요.">${escapeHtml(noteValue || '')}</textarea>
-                            </label>
-                            <div class="audit-filter-actions">
-                                <button type="button" class="work-btn primary" onclick="saveAuditLuxWorkspace('${dataKey}')">저장</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="audit-notice-modal" id="audit-notice-modal-${dataKey}" aria-hidden="true">
-                        <button type="button" class="audit-notice-modal-backdrop" onclick="toggleAuditNotice('${dataKey}')" aria-label="주의사항 닫기"></button>
-                        <div class="audit-notice-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="audit-notice-title-${dataKey}">
-                            <div class="audit-notice-modal-head">
-                                <div class="audit-notice-header">
-                                    <span class="audit-notice-icon"><i class="fa-solid fa-circle-dot"></i></span>
-                                    <div>
-                                        <div class="audit-notice-title" id="audit-notice-title-${dataKey}">조도 측정 주의사항</div>
-                                        <div class="audit-notice-sub">측정 기준을 동일하게 유지하세요.</div>
-                                    </div>
-                                </div>
-                                <button type="button" class="audit-help-close" onclick="toggleAuditNotice('${dataKey}')">닫기</button>
-                            </div>
-                            <div class="audit-notice-list">
-                                <div class="audit-notice-item">
-                                    <span class="audit-notice-chip"><i class="fa-solid fa-bullseye"></i></span>
-                                    <div>
-                                        <div class="audit-notice-label">조도계 사용</div>
-                                        <div class="audit-notice-desc">측정 시 조도계 센서를 정확히 고정합니다.</div>
-                                    </div>
-                                </div>
-                                <div class="audit-notice-item">
-                                    <span class="audit-notice-chip" style="background:#fef3c7;color:#b45309;"><i class="fa-solid fa-ruler-vertical"></i></span>
-                                    <div>
-                                        <div class="audit-notice-label">측정 높이 기준</div>
-                                        <div class="audit-notice-desc">바닥으로부터 0.6 ~ 1.0 m 범위에서 측정합니다.</div>
-                                    </div>
-                                </div>
-                                <div class="audit-notice-item">
-                                    <span class="audit-notice-chip" style="background:#dcfce7;color:#166534;"><i class="fa-solid fa-calendar-check"></i></span>
-                                    <div>
-                                        <div class="audit-notice-label">정기 검교정</div>
-                                        <div class="audit-notice-desc">조도계 연 1회 검교정을 실시합니다.</div>
-                                    </div>
+                        <div class="audit-lux-workspace is-file-index">
+                            <div class="audit-lux-index-panel">
+                                ${renderAuditLuxIndexSummary(dataKey, years, teams)}
+                                <div class="audit-lux-index-year-list">
+                                    ${years.length
+                                        ? years.map((year) => renderAuditLuxYearSection(dataKey, year, teams)).join('')
+                                        : '<div class="audit-lux-index-empty">표시할 년도가 없습니다.</div>'}
                                 </div>
                             </div>
                         </div>
@@ -507,11 +525,6 @@
             `;
             syncAuditLuxDetachedPreview(dataKey, selectedYear, selectedTeam);
             syncAuditLuxWorkspaceFullscreenUi();
-            syncAuditLuxWorkspaceAlert(dataKey);
-            const teamMetaEl = contentContainer.querySelector('.audit-lux-sheet-docmeta span:first-child');
-            if (teamMetaEl) {
-                teamMetaEl.textContent = selectedTeam || '';
-            }
         }
 
         async function saveAuditLuxWorkspace(dataKey, options = {}) {
@@ -600,15 +613,29 @@
                 }
                 return false;
             }
-            const category = AppData?.audit?.categories?.find(cat => cat.dataKey === dataKey);
-            setLastModified(category?.title || 'Audit');
-            if (category) renderAuditContent(category);
+            const category = renderAuditLuxWorkspaceCategory(dataKey);
+            setLastModified(category?.title || '조도');
             return true;
         }
 
         function openAuditLuxAttachmentPicker(dataKey) {
-            const input = document.getElementById(`audit-lux-attachment-input-${dataKey}`);
+            const input = document.getElementById(`audit-lux-attachment-input-${dataKey}`)
+                || document.querySelector(`[data-audit-lux-attachment-input="${dataKey}"]`);
             if (input) input.click();
+        }
+
+        function openAuditLuxAttachmentPickerForTarget(dataKey, year, team) {
+            if (!setAuditLuxWorkspaceTarget(dataKey, year, team, { render: false })) return;
+            const inputId = getAuditLuxAttachmentInputId(dataKey, year, team);
+            const input = document.getElementById(inputId);
+            if (input) input.click();
+        }
+
+        function openAuditLuxDetachedPreviewForTarget(dataKey, year, team) {
+            if (!setAuditLuxWorkspaceTarget(dataKey, year, team, { render: false })) return;
+            if (typeof openAuditLuxDetachedPreview === 'function') {
+                openAuditLuxDetachedPreview(dataKey);
+            }
         }
 
         async function handleAuditLuxAttachmentChange(dataKey, input) {
@@ -617,11 +644,19 @@
             const { entryForm } = getAuditLuxWorkspaceState(dataKey);
             const year = Number(entryForm.year);
             const team = String(entryForm.team || '').trim();
+            return handleAuditLuxAttachmentChangeForTarget(dataKey, year, team, input);
+        }
+
+        async function handleAuditLuxAttachmentChangeForTarget(dataKey, year, team, input) {
+            const file = input?.files?.[0];
+            if (!file) return;
+            const targetYear = Number(year);
+            const targetTeam = String(team || '').trim();
+            setAuditLuxWorkspaceTarget(dataKey, targetYear, targetTeam, { render: false });
             try {
-                await replaceAuditLuxEvidenceForYear(dataKey, year, team, file);
-                const category = AppData?.audit?.categories?.find(cat => cat.dataKey === dataKey);
-                setLastModified(category?.title || 'Audit');
-                if (category) renderAuditContent(category);
+                await replaceAuditLuxEvidenceForYear(dataKey, targetYear, targetTeam, file);
+                const category = renderAuditLuxWorkspaceCategory(dataKey);
+                setLastModified(category?.title || '조도');
             } catch (error) {
                 console.error('[kpi] audit lux attachment replace failed', error);
                 const errorKey = String(error?.message || '').trim();

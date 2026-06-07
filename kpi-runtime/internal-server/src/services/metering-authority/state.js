@@ -172,6 +172,7 @@ export function buildPayloadByRecordKey(rawStore) {
     [RESOURCE_RECORD_KEY_BY_TYPE.gas]: buildResourcePayload(rawStore, 'gas'),
     [RESOURCE_RECORD_KEY_BY_TYPE.waste]: buildResourcePayload(rawStore, 'waste'),
     [RESOURCE_RECORD_KEY_BY_TYPE.production]: buildResourcePayload(rawStore, 'production'),
+    [RESOURCE_RECORD_KEY_BY_TYPE.other]: buildResourcePayload(rawStore, 'other'),
   };
 }
 

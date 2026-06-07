@@ -68,6 +68,9 @@ function createAnalysisRenderContext() {
 
 test('report sheet analysis render registry builds fullscreen gas chart cards and gas/electric analysis bodies', () => {
   assert.doesNotMatch(reportSheetAnalysisRenderSource, /globalThis|window\.|globalScope/);
+  assert.match(reportSheetAnalysisRenderSource, /hideHeadingText = chart\?\.hideHeadingText === true/);
+  assert.match(reportSheetAnalysisRenderSource, /hidePeriodLabel:\s*chart\.hidePeriodLabel === true/);
+  assert.match(reportSheetAnalysisRenderSource, /rangeMetaMode:\s*chart\.rangeMetaMode/);
   assert.match(reportSheetAnalysisRenderSource, /KPIUtilReportRuntimeAdapter/);
 
   const context = createAnalysisRenderContext();
@@ -130,7 +133,19 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
     ],
     range: { from: '2026-01', to: '2026-03' },
     summaryItems: [
-      { key: 'combined', title: 'Gas Total', valueText: '120', tone: 'gas', icon: 'fa-fire', subText: 'delta:+5' }
+      {
+        key: 'combined',
+        title: 'Gas Total',
+        valueText: '120',
+        tone: 'gas',
+        icon: 'fa-fire',
+        subText: 'delta:+5',
+        statItems: [
+          { tone: 'max', label: 'max', valueText: '26.03' },
+          { tone: 'min', label: 'min', valueText: '26.01' },
+          { tone: 'average', label: 'avg', valueText: '12.0' }
+        ]
+      }
     ],
     combinedChart: {
       key: 'combined',
@@ -274,6 +289,9 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
   assert.ok(gasBodyHtml.includes('data-series-label-keys="combined"'));
   assert.ok(gasBodyHtml.includes('data-role="util-sheet-analysis-graph-block"'));
   assert.ok(gasBodyHtml.includes('data-chart-subsection="bar-line"'));
+  assert.ok(gasBodyHtml.includes('util-sheet-analysis-summary-stat is-max'));
+  assert.ok(gasBodyHtml.includes('util-sheet-analysis-summary-stat is-min'));
+  assert.ok(gasBodyHtml.includes('util-sheet-analysis-summary-stat is-average'));
   assert.ok(!gasBodyHtml.includes('data-chart-subsection="circle"'));
   assert.ok(!gasBodyHtml.includes('data-role="util-sheet-analysis-ratio-pie"'));
   assert.ok(!gasBodyHtml.includes('data-role="util-sheet-analysis-ratio-table"'));
@@ -309,7 +327,7 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
 test('kpi html loads report sheet analysis render between modal render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=062');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=064');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');

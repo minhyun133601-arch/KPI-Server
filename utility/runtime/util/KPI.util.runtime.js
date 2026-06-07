@@ -22,8 +22,56 @@
         return context.container?.querySelector?.('[data-role="utility-entry-experiment"]') || null;
     }
 
+    function getUtilityEntryExperimentPeriodFromElement(element) {
+        if (!element || typeof element.closest !== 'function') return '';
+        if (element.closest('.utility-entry-experiment-view.is-monthly')) return 'monthly';
+        if (element.closest('.utility-entry-experiment-view.is-daily')) return 'daily';
+        return '';
+    }
+
+    function getUtilityEntryExperimentCheckedPeriod(host) {
+        if (!host || typeof host.querySelector !== 'function') return '';
+        if (host.querySelector('#utility-entry-experiment-monthly:checked')) return 'monthly';
+        if (host.querySelector('#utility-entry-experiment-daily:checked')) return 'daily';
+        return '';
+    }
+
+    function isUtilityEntryExperimentViewVisible(view) {
+        if (!view) return false;
+        const viewWindow = view.ownerDocument?.defaultView || (typeof window !== 'undefined' ? window : null);
+        const style = typeof viewWindow?.getComputedStyle === 'function'
+            ? viewWindow.getComputedStyle(view)
+            : (typeof getComputedStyle === 'function' ? getComputedStyle(view) : null);
+        if (style) {
+            return style.display !== 'none' && style.visibility !== 'hidden';
+        }
+        if (typeof view.getClientRects === 'function') {
+            return view.getClientRects().length > 0;
+        }
+        return false;
+    }
+
+    function getUtilityEntryExperimentVisiblePeriod(host) {
+        if (!host || typeof host.querySelector !== 'function') return '';
+        const monthlyView = host.querySelector('.utility-entry-experiment-view.is-monthly');
+        if (isUtilityEntryExperimentViewVisible(monthlyView)) return 'monthly';
+        const dailyView = host.querySelector('.utility-entry-experiment-view.is-daily');
+        if (isUtilityEntryExperimentViewVisible(dailyView)) return 'daily';
+        return '';
+    }
+
     function getUtilityEntryExperimentActivePeriod(host) {
-        return host?.querySelector?.('#utility-entry-experiment-monthly:checked') ? 'monthly' : 'daily';
+        if (!host) return 'daily';
+        const activeElement = typeof document !== 'undefined' ? document.activeElement : null;
+        if (activeElement && typeof host.contains === 'function' && host.contains(activeElement)) {
+            const activePeriod = getUtilityEntryExperimentPeriodFromElement(activeElement);
+            if (activePeriod) return activePeriod;
+        }
+        const checkedPeriod = getUtilityEntryExperimentCheckedPeriod(host);
+        if (checkedPeriod) return checkedPeriod;
+        const rememberedPeriod = String(host.dataset?.utilityEntryExperimentActivePeriod || '').trim();
+        if (rememberedPeriod === 'monthly' || rememberedPeriod === 'daily') return rememberedPeriod;
+        return getUtilityEntryExperimentVisiblePeriod(host) || 'daily';
     }
 
     runtime.registerSectionInitializer('data', (context = {}) => {
@@ -481,7 +529,8 @@
         Object.freeze({ key: 'team_01_01', label: '1팀 1파트' }),
         Object.freeze({ key: 'team_01_02', label: '1팀 2파트' }),
         Object.freeze({ key: 'team_02', label: '2팀' }),
-        Object.freeze({ key: 'team_03', label: '3팀' })
+        Object.freeze({ key: 'team_03', label: '3팀' }),
+        Object.freeze({ key: 'other', label: '기타' })
     ]);
     const REPORT_DECK_MEMO_METRIC_OPTIONS = Object.freeze([
         Object.freeze({ key: 'production', label: '생산량' }),
@@ -494,6 +543,7 @@
         Object.freeze({ key: 'lng_unit', label: '생산량 대비 LNG' }),
         Object.freeze({ key: 'lpg', label: 'LPG' }),
         Object.freeze({ key: 'lpg_cost', label: 'LPG 비용' }),
+        Object.freeze({ key: 'gas_cost', label: '가스 비용' }),
         Object.freeze({ key: 'lpg_unit', label: '생산량 대비 LPG' }),
         Object.freeze({ key: 'yield_rate', label: '수율' }),
         Object.freeze({ key: 'operation_rate', label: '가동률' }),
@@ -504,13 +554,15 @@
         Object.freeze({ key: 'production_days', label: '생산일수' }),
         Object.freeze({ key: 'off_days', label: '휴무일수' }),
         Object.freeze({ key: 'product_count', label: '고유 품목수' }),
+        Object.freeze({ key: 'cip_count', label: 'CIP 횟수' }),
         Object.freeze({ key: 'waste_usage', label: '폐수량' }),
         Object.freeze({ key: 'waste_cost_total', label: '폐수 비용 총계' }),
         Object.freeze({ key: 'waste_cost_water', label: '상수 비용' }),
         Object.freeze({ key: 'waste_cost_share', label: '폐수 비용' }),
         Object.freeze({ key: 'waste_cost_sludge', label: '폐수오니 비용' }),
         Object.freeze({ key: 'waste_cost_resin', label: '폐합성수지 비용' }),
-        Object.freeze({ key: 'waste_cost_labor', label: '인건비' })
+        Object.freeze({ key: 'waste_cost_labor', label: '인건비' }),
+        Object.freeze({ key: 'monthly_average_temperature', label: '월간 평균온도' })
     ]);
     const REPORT_DECK_MEMO_LINE_METRIC_PREFIX = 'production_line::';
     const REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY = 'yusan_production_share';
@@ -550,10 +602,11 @@
         team_03: Object.freeze(['Bottle', '기타'])
     });
     const REPORT_DECK_MEMO_TEAM_METRIC_KEYS = Object.freeze({
-        team_01_01: Object.freeze(['production', 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS]),
-        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS])
+        team_01_01: Object.freeze(['production', 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
+        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'gas_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
+        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
+        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
+        other: Object.freeze(['monthly_average_temperature'])
     });
 
     function normalizeReportDeckDate(value) {
