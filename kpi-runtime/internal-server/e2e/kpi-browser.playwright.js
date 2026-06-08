@@ -540,22 +540,24 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('.data-equipment-title-pair')).toContainText('1팀 1파트');
       await expect(page.locator('.data-equipment-title-room')).toHaveValue('외포장실');
       await expect(page.locator('.data-equipment-title-name')).toHaveValue(sampleEquipmentName);
-      await expect(page.locator('[data-equipment-status-toggle="가동중"]')).toHaveAttribute('aria-pressed', 'true');
-      await page.locator('[data-equipment-status-toggle="비가동중"]').click();
-      await expect(page.locator('[data-equipment-status-toggle="비가동중"]')).toHaveAttribute('aria-pressed', 'true');
+      const cardStatusButton = page.locator('[data-equipment-cycle-current-status]');
+      await expect(cardStatusButton).toBeVisible();
+      await expect(cardStatusButton).toContainText('가동중');
+      await cardStatusButton.click();
+      await expect(cardStatusButton).toContainText('비가동중');
       await expect(page.locator('.data-equipment-basic-grid')).toHaveCount(0);
       const topGrid = page.locator('.data-equipment-top-grid');
       await expect(topGrid.locator('.data-equipment-photo-card')).toBeVisible();
-      await expect(topGrid.locator('.data-equipment-photo-info-card')).toBeVisible();
-      await expect(topGrid.locator('[data-equipment-field="room"]')).toHaveAttribute(
+      await expect(topGrid.locator('.data-equipment-photo-info-card')).toHaveCount(0);
+      await expect(page.locator('.data-equipment-title-room')).toHaveAttribute(
         'list',
         'data-equipment-room-options-card'
       );
       await expect(page.locator('#data-equipment-room-options-card')).toBeAttached();
-      await topGrid.locator('[data-equipment-field="process"]').fill('혼합 공정');
-      await topGrid.locator('[data-equipment-field="rate"]').fill('88');
-      await topGrid.locator('[data-equipment-field="manufacturer"]').fill('샘플 제조사');
-      await topGrid.locator('[data-equipment-field="owner"]').fill('ABC 정비');
+      await expect(topGrid.locator('[data-equipment-field="process"]')).toHaveCount(0);
+      await expect(topGrid.locator('[data-equipment-field="rate"]')).toHaveCount(0);
+      await expect(topGrid.locator('[data-equipment-field="manufacturer"]')).toHaveCount(0);
+      await expect(topGrid.locator('[data-equipment-field="owner"]')).toHaveCount(0);
       await page.locator('[data-equipment-history-photo-input]').setInputFiles({
         name: 'sample-equipment.png',
         mimeType: 'image/png',

@@ -81,6 +81,24 @@
         return null;
     }
 
+    function replaceHistoryState(state, title = '') {
+        if (typeof root.history?.replaceState !== 'function') return false;
+        root.history.replaceState(state, title, root.location?.href || '');
+        return true;
+    }
+
+    function pushHistoryState(state, title = '') {
+        if (typeof root.history?.pushState !== 'function') return false;
+        root.history.pushState(state, title, root.location?.href || '');
+        return true;
+    }
+
+    function addPopStateListener(listener) {
+        if (typeof root.addEventListener !== 'function' || typeof listener !== 'function') return null;
+        root.addEventListener('popstate', listener);
+        return () => root.removeEventListener?.('popstate', listener);
+    }
+
     function printHtmlDocument(html, options = {}) {
         const doc = root.document;
         if (!doc?.body || typeof doc.createElement !== 'function' || !html) return false;
@@ -161,6 +179,9 @@
         confirm: confirmMessage,
         print: printPage,
         openPopup,
+        replaceHistoryState,
+        pushHistoryState,
+        addPopStateListener,
         printHtmlDocument,
         getWorkTeamCalendarCategoryMeta,
     });

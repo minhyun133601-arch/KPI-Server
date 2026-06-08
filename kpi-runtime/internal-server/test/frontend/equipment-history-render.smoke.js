@@ -236,37 +236,66 @@ test('equipment-history print document preserves the A4 card form through mainte
     ],
     note: '\uBE44\uACE0 \uB0B4\uC6A9',
   });
-  const html = api.buildEquipmentHistoryPrintDocument(draft);
+  const html = api.buildEquipmentHistoryPrintDocument(draft, { updatedAt: '2026-06-08 10:30' });
+  const emptyHtml = api.buildEquipmentHistoryPrintDocument(api.createDraft({ name: 'Empty Card' }));
 
   assert.equal(typeof api.buildEquipmentHistoryPrintDocument, 'function');
   assert.match(html, /@page \{ size: A4 portrait; margin: 6mm; \}/);
   assert.match(html, /class="equipment-print-page"/);
-  assert.match(html, /class="data-equipment-topbar data-equipment-topbar-dashboard is-card-mode equipment-print-card-topbar"/);
   assert.match(html, /class="data-equipment-layout data-equipment-edit-form equipment-print-form"/);
-  assert.match(html, /class="data-equipment-top-grid"/);
-  assert.match(html, /class="data-equipment-card data-equipment-detail-card"/);
-  assert.match(html, /class="data-equipment-card-grid"/);
+  assert.match(html, /class="data-equipment-hero-grid equipment-print-hero-grid"/);
+  assert.match(html, /class="data-equipment-hero-photo"/);
+  assert.match(html, /class="data-equipment-hero-side"/);
+  assert.match(html, /\uCD5C\uADFC \uC5C5\uB370\uC774\uD2B8 :/);
+  assert.match(html, /2026-06-08 10:30/);
+  assert.match(html, /class="data-equipment-photo-title-row equipment-print-photo-title-row"/);
+  assert.match(html, /class="equipment-print-section-stack"/);
+  assert.match(html, /class="data-equipment-card data-equipment-detail-card equipment-print-spec-summary"/);
   assert.match(html, /class="data-equipment-card data-equipment-history-card equipment-print-maintenance"/);
-  assert.match(html, /class="data-equipment-card data-equipment-doc-card equipment-print-documents"/);
-  assert.match(html, /class="data-equipment-note-field equipment-print-note"/);
-  assert.match(html, /\uAD00\uB828 \uBB38\uC11C/);
+  assert.match(html, /class="data-equipment-card data-equipment-note-card equipment-print-note-card"/);
+  assert.match(html, /class="data-equipment-card data-equipment-doc-card equipment-print-documents data-equipment-hero-doc-card equipment-print-hero-doc-card"/);
+  assert.doesNotMatch(html, /class="data-equipment-topbar data-equipment-topbar-dashboard is-card-mode equipment-print-card-topbar"/);
+  assert.doesNotMatch(html, /class="data-equipment-top-grid"/);
+  assert.doesNotMatch(html, /class="data-equipment-card-grid"/);
+  assert.match(html, /\uBB38\uC11C \uCCA8\uBD80/);
   assert.match(html, /\uC815\uBE44 \uC774\uB825/);
   assert.match(html, /\uBE44\uACE0/);
+  assert.match(html, /grid-template-rows: none/);
+  assert.match(html, /height: auto/);
+  assert.match(html, /data-equipment-hero-grid,[\s\S]+equipment-print-hero-grid[\s\S]+grid-template-columns: minmax\(0, 0\.52fr\) minmax\(0, 0\.48fr\)/);
+  assert.match(html, /data-equipment-hero-side[\s\S]+grid-template-rows: auto auto minmax\(0, 1fr\)/);
+  assert.match(html, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(html, /equipment-print-maintenance-table td:nth-child\(1\) \{ width: 14%; \}/);
+  assert.match(html, /equipment-print-maintenance-table td:nth-child\(3\) \{ width: 44%; \}/);
+  assert.match(html, /equipment-print-note-card\.is-empty \.equipment-print-empty/);
+  assert.match(html, /aspect-ratio: 4 \/ 1/);
   assert.ok(
-    html.indexOf('class="data-equipment-card data-equipment-detail-card"')
+    html.indexOf('class="data-equipment-hero-grid equipment-print-hero-grid"')
+      < html.indexOf('class="data-equipment-card data-equipment-detail-card equipment-print-spec-summary"')
+  );
+  assert.ok(
+    html.indexOf('class="data-equipment-photo-card"')
+      < html.indexOf('class="data-equipment-hero-updated"')
+  );
+  assert.ok(
+    html.indexOf('class="data-equipment-card data-equipment-doc-card equipment-print-documents data-equipment-hero-doc-card equipment-print-hero-doc-card"')
+      < html.indexOf('class="data-equipment-card data-equipment-detail-card equipment-print-spec-summary"')
+  );
+  assert.ok(
+    html.indexOf('class="data-equipment-card data-equipment-detail-card equipment-print-spec-summary"')
       < html.indexOf('class="data-equipment-card data-equipment-history-card equipment-print-maintenance"')
   );
   assert.ok(
     html.indexOf('class="data-equipment-card data-equipment-history-card equipment-print-maintenance"')
-      < html.indexOf('class="data-equipment-card data-equipment-doc-card equipment-print-documents"')
-  );
-  assert.ok(
-    html.indexOf('class="data-equipment-card data-equipment-doc-card equipment-print-documents"')
-      < html.indexOf('class="data-equipment-note-field equipment-print-note"')
+      < html.indexOf('class="data-equipment-card data-equipment-note-card equipment-print-note-card"')
   );
   assert.match(html, /mixer-a-report\.pdf/);
   assert.match(html, /100 kg/);
   assert.match(html, /\uBE44\uACE0 \uB0B4\uC6A9/);
+  assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uC124\uBE44 \uC2A4\uD399\uC774 \uC5C6\uC2B5\uB2C8\uB2E4\./);
+  assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uC815\uBE44 \uC774\uB825\uC774 \uC5C6\uC2B5\uB2C8\uB2E4\./);
+  assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uBE44\uACE0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4\./);
+  assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uAD00\uB828 \uBB38\uC11C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4\./);
   assert.doesNotMatch(html, /data-equipment-save-current|data-equipment-save-action/);
   assert.match(renderSource, /printHtmlDocument/);
   assert.doesNotMatch(renderSource, /noopener,noreferrer/);
@@ -308,8 +337,19 @@ test('equipment-history renderer shows the empty board state and supports author
 
   assert.match(container.innerHTML, /설비 현황/);
   assert.match(container.innerHTML, /설비 이력 카드/);
-  assert.match(container.innerHTML, /설비 추가/);
-  assert.match(container.innerHTML, /등록된 설비가 없습니다/);
+  assert.match(container.innerHTML, />추가</);
+  assert.doesNotMatch(container.innerHTML, /설비 추가/);
+  assert.doesNotMatch(container.innerHTML, /등록된 설비가 없습니다/);
+  [
+    'work_team_calendar_team1_part1',
+    'work_team_calendar_team1_part2',
+    'work_team_calendar_team2',
+    'work_team_calendar_team3',
+    'work_team_calendar_team4',
+  ].forEach((teamKey) => {
+    assert.match(container.innerHTML, new RegExp(`data-equipment-board-team="${teamKey}"`));
+    assert.match(container.innerHTML, new RegExp(`data-equipment-add-team="${teamKey}"`));
+  });
   assert.doesNotMatch(container.innerHTML, /숨김|KPI|설비 이력 관리 기록/);
 
   context.PortalData.data_equipment_history_card = {
@@ -324,7 +364,9 @@ test('equipment-history renderer shows the empty board state and supports author
   };
   registeredRenderer({ title: '설비 이력 카드', dataKey: 'data_equipment_history_card' }, { container });
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team1_part1"/);
+  assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team1_part2"/);
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team2"/);
+  assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team3"/);
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team4"/);
   assert.match(container.innerHTML, /--equipment-team-color:#2563eb/);
   assert.match(container.innerHTML, /--equipment-team-color:#dc2626/);
@@ -340,6 +382,7 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /data-equipment-board-card is-running/);
   assert.match(container.innerHTML, /data-equipment-board-card is-stop/);
   assert.match(container.innerHTML, /data-equipment-board-card is-check/);
+  assert.match(container.innerHTML, /data-equipment-board-card is-running"[^>]*data-equipment-open-card="eq-team1-a"[^>]*tabindex="0"/);
   assert.match(container.innerHTML, /data-equipment-board-room-title/);
   assert.match(container.innerHTML, /data-equipment-board-room-icon/);
   assert.doesNotMatch(container.innerHTML, /\uC2E4 \uAD6C\uBD84/);
@@ -353,16 +396,19 @@ test('equipment-history renderer shows the empty board state and supports author
   const groupedByRoom = api.groupEquipmentItems(api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card));
   const team1BoardGroup = groupedByRoom.find((group) => group.teamDataKey === 'work_team_calendar_team1_part1');
   assert.equal(JSON.stringify(team1BoardGroup.sections.map((section) => section.title)), JSON.stringify(['B\uC2E4', 'A\uC2E4', 'C\uC2E4', '']));
-  assert.match(container.innerHTML, /data-equipment-board-status-button is-running"[^>]*data-equipment-cycle-status-card="eq-team1-a"[^>]*>가동중/);
-  assert.match(container.innerHTML, /data-equipment-board-status-button is-stop"[^>]*data-equipment-cycle-status-card="eq-team1-b"[^>]*>비가동중/);
-  assert.match(container.innerHTML, /data-equipment-board-status-button is-check"[^>]*data-equipment-cycle-status-card="eq-team4"[^>]*>정비중/);
-  assert.doesNotMatch(container.innerHTML, /data-equipment-board-metric[\s\S]*설비코드/);
-  assert.doesNotMatch(container.innerHTML, /data-equipment-board-metric[\s\S]*현재 실적/);
-  assert.doesNotMatch(container.innerHTML, /data-equipment-board-metric[\s\S]*목표 기준/);
-  assert.match(container.innerHTML, /data-equipment-board-metric[\s\S]*다음 점검/);
+  assert.match(container.innerHTML, /data-equipment-board-status-button is-running"[^>]*data-equipment-cycle-status-card="eq-team1-a"[\s\S]+fa-play[\s\S]+<span>가동중<\/span>/);
+  assert.match(container.innerHTML, /data-equipment-board-status-button is-stop"[^>]*data-equipment-cycle-status-card="eq-team1-b"[\s\S]+fa-square[\s\S]+<span>비가동중<\/span>/);
+  assert.match(container.innerHTML, /data-equipment-board-status-button is-check"[^>]*data-equipment-cycle-status-card="eq-team4"[\s\S]+fa-wrench[\s\S]+<span>정비중<\/span>/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-board-metric/);
+  assert.match(container.innerHTML, /data-equipment-board-card-media[\s\S]+data-equipment-board-card-main[\s\S]+data-equipment-board-card-actions/);
   assert.match(container.innerHTML, /data-equipment-order-toggle-team="work_team_calendar_team1_part1"/);
   assert.equal((container.innerHTML.match(/data-equipment-order-toggle-team="work_team_calendar_team1_part1"/g) || []).length, 1);
   assert.doesNotMatch(container.innerHTML, /data-equipment-order-toggle-card/);
+  assert.match(container.innerHTML, /data-equipment-board-team-count[^>]*>4/);
+  assert.match(container.innerHTML, /data-equipment-board-add-button"[^>]*data-equipment-add-team="work_team_calendar_team1_part1"[^>]*>\s*<span>추가<\/span>/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-board-add-card/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-board-team-focus/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-focus-team/);
   assert.match(container.innerHTML, /data-equipment-board-card-tools" aria-hidden="true"/);
   assert.match(container.innerHTML, /data-equipment-board-card-tools/);
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-b"[^>]*data-equipment-move-direction="-1"[^>]*disabled/);
@@ -371,16 +417,65 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-a"[^>]*data-equipment-move-direction="1"/);
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-c"[^>]*data-equipment-move-direction="-1"/);
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-c"[^>]*data-equipment-move-direction="1"[^>]*disabled/);
-  assert.match(container.innerHTML, /data-equipment-board-open-button/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-board-open-button/);
   assert.match(container.innerHTML, /data-equipment-filter-team/);
   assert.match(container.innerHTML, /<option value="work_team_calendar_team1_part1">1팀 1파트<\/option>/);
   assert.match(container.innerHTML, /<option value="work_team_calendar_team2">2팀<\/option>/);
   assert.match(container.innerHTML, /<option value="work_team_calendar_team4">공무환경팀<\/option>/);
   assert.doesNotMatch(container.innerHTML, /B실 \/ 혼합/);
-  assert.match(container.innerHTML, /<p>혼합<\/p>/);
+  assert.doesNotMatch(container.innerHTML, /<p>혼합<\/p>/);
   assert.ok(container.innerHTML.indexOf('1팀 B 혼합기') < container.innerHTML.indexOf('1팀 A 혼합기'));
   assert.ok(container.innerHTML.indexOf('1팀 A 혼합기') < container.innerHTML.indexOf('1팀 C 혼합기'));
   assert.equal(api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card)[1].sourceIndex, 1);
+
+  context.PortalData.data_equipment_history_card = {
+    equipmentList: [
+      { id: 'only-team2', name: '2팀 포장기', team: '2팀', room: 'B실', process: '포장', status: '가동중' },
+      { id: 'only-team4', name: '공무 펌프', team: '유산', room: '처리실', process: '공무', status: '정비중' },
+    ],
+  };
+  registeredRenderer({ title: '설비 이력 카드', dataKey: 'data_equipment_history_card' }, { container });
+  const emptyTeam1Index = container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team1_part1"');
+  const emptyTeam1Part2Index = container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team1_part2"');
+  const team2Index = container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team2"');
+  const emptyTeam3Index = container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team3"');
+  const team4Index = container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team4"');
+  assert.ok(emptyTeam1Index >= 0, '1팀 1파트 empty board column should remain visible');
+  assert.ok(emptyTeam1Part2Index > emptyTeam1Index, '1팀 2파트 empty board column should remain visible');
+  assert.ok(team2Index > emptyTeam1Index, '1팀 1파트 should keep the normal team order even when empty');
+  assert.ok(emptyTeam3Index > team2Index, '3팀 empty board column should remain visible');
+  assert.ok(team4Index > emptyTeam3Index, '공무환경팀 should keep the normal team order');
+  const emptyTeam1Html = container.innerHTML.slice(emptyTeam1Index, team2Index);
+  assert.match(emptyTeam1Html, /data-equipment-board-team-count[^>]*>0/);
+  assert.match(emptyTeam1Html, /data-equipment-add-team="work_team_calendar_team1_part1"/);
+  assert.match(emptyTeam1Html, /<span>추가<\/span>/);
+  assert.doesNotMatch(emptyTeam1Html, /data-equipment-board-card is-/);
+  const emptyTeam1Part2Html = container.innerHTML.slice(emptyTeam1Part2Index, team2Index);
+  assert.match(emptyTeam1Part2Html, /data-equipment-board-team-count[^>]*>0/);
+  assert.match(emptyTeam1Part2Html, /data-equipment-add-team="work_team_calendar_team1_part2"/);
+  assert.doesNotMatch(emptyTeam1Part2Html, /data-equipment-board-card is-/);
+  const emptyTeam3Html = container.innerHTML.slice(emptyTeam3Index, team4Index);
+  assert.match(emptyTeam3Html, /data-equipment-board-team-count[^>]*>0/);
+  assert.match(emptyTeam3Html, /data-equipment-add-team="work_team_calendar_team3"/);
+  assert.doesNotMatch(emptyTeam3Html, /data-equipment-board-card is-/);
+
+  context.PortalData.data_equipment_history_card = { equipmentList: [] };
+  registeredRenderer({ title: '설비 이력 카드', dataKey: 'data_equipment_history_card' }, { container });
+  [
+    'work_team_calendar_team1_part1',
+    'work_team_calendar_team1_part2',
+    'work_team_calendar_team2',
+    'work_team_calendar_team3',
+    'work_team_calendar_team4',
+  ].forEach((teamKey) => {
+    const columnStart = container.innerHTML.indexOf(`data-equipment-board-team="${teamKey}"`);
+    assert.ok(columnStart >= 0, `${teamKey} empty board column should remain visible`);
+    const nextColumnStart = container.innerHTML.indexOf('data-equipment-board-team="', columnStart + 1);
+    const columnHtml = nextColumnStart >= 0 ? container.innerHTML.slice(columnStart, nextColumnStart) : container.innerHTML.slice(columnStart);
+    assert.match(columnHtml, /data-equipment-board-team-count[^>]*>0/);
+    assert.match(columnHtml, new RegExp(`data-equipment-add-team="${teamKey}"`));
+    assert.doesNotMatch(columnHtml, /data-equipment-board-card is-/);
+  });
 
   const documentTableHtml = api.renderDocumentEditableTable([api.createBlankDocumentRow()]);
   assert.match(documentTableHtml, /문서명/);
@@ -511,41 +606,120 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.doesNotMatch(renderSource, /api\.renderFieldGrid\(api\.BASIC_FIELDS/);
   assert.doesNotMatch(renderSource, /data-equipment-status-select/);
   assert.match(renderSource, /function renderHistoryCard\(category, data, state\) \{[\s\S]+const header = data\.header \|\| \{\}/);
-  assert.match(renderSource, /data-equipment-photo-info-card/);
-  assert.match(renderSource, /api\.renderFieldGrid\(api\.PHOTO_INFO_FIELDS/);
+  assert.doesNotMatch(renderSource, /data-equipment-photo-info-card/);
+  assert.doesNotMatch(renderSource, /api\.renderFieldGrid\(api\.PHOTO_INFO_FIELDS/);
   assert.match(renderSource, /function getTeamRoomOptions\(data, team\)/);
   assert.match(renderSource, /data-equipment-room-options-start/);
   assert.match(renderSource, /data-equipment-room-options-card/);
-  assert.match(renderSource, /fieldAttrs: \{ room: `list="\$\{api\.escapeHtml\(CARD_ROOM_DATALIST_ID\)\}"` \}/);
+  assert.doesNotMatch(renderSource, /fieldAttrs: \{ room: `list="\$\{api\.escapeHtml\(CARD_ROOM_DATALIST_ID\)\}"` \}/);
   assert.match(renderSource, /event\.target\.dataset\.equipmentStartField === 'team'[\s\S]+redraw\(\)/);
+  assert.match(renderSource, /function createEquipmentHistoryDraftId/);
+  assert.match(renderSource, /const draftId = createEquipmentHistoryDraftId\(starter\)/);
+  assert.match(renderSource, /id: draftId/);
+  assert.match(renderSource, /equipmentCode: draftId\.toUpperCase\(\)/);
   assert.doesNotMatch(renderSource, /<button type="submit" class="data-equipment-primary-action">[\s\S]*?<i class="fas fa-save"/);
   assert.doesNotMatch(renderSource, /작성 후 저장을 누르면 설비 현황 보드에 즉시 반영됩니다/);
   assert.doesNotMatch(renderSource, /data-equipment-save-current/);
   assert.match(renderSource, /data-equipment-history-print/);
   assert.match(renderSource, /A4 \\uCD9C\\uB825/);
+  assert.match(renderSource, /function renderTopbarCardActions\(state\)/);
+  assert.match(renderSource, /data-equipment-history-print[\s\S]+data-equipment-cycle-current-status[\s\S]+data-equipment-delete-card[\s\S]+data-equipment-clear-form/);
+  assert.match(renderSource, /function getEquipmentStatusIconClass/);
+  assert.match(renderSource, /const statusIcon = getEquipmentStatusIconClass\(statusTone\)/);
+  assert.match(renderSource, /data-equipment-topbar-clear-action/);
+  assert.match(renderSource, /async function cycleCurrentCardStatus\(root, data, state, redraw\)/);
+  assert.match(renderSource, /state\.draft\.status = getNextEquipmentBoardStatus\(state\.draft\.status\)/);
+  assert.doesNotMatch(renderSource, /data-equipment-form-actions/);
+  assert.doesNotMatch(renderSource, /hasEditablePhoto/);
+  assert.doesNotMatch(renderSource, /data-equipment-topbar-photo-edit/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-topbar-photo-edit/);
+  assert.match(renderSource, /data-equipment-title-back/);
+  assert.match(renderSource, /fa-arrow-left/);
+  assert.match(renderSource, /isAuthoring \? '' : `<div class="data-equipment-brand/);
+  assert.match(renderSource, /is-authoring-mode/);
+  assert.match(dataCssSource, /data-equipment-topbar-dashboard\.is-authoring-mode[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto/);
+  assert.doesNotMatch(renderSource, /data-equipment-select/);
+  assert.doesNotMatch(renderSource, /renderEquipmentSelectOptions/);
+  assert.doesNotMatch(renderSource, /data-equipment-title-status-toggle/);
+  assert.doesNotMatch(renderSource, /data-equipment-status-toggle/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-title-status-toggle/);
   assert.match(renderSource, /saveCurrentEquipmentHistoryView\(root, data, state, redraw/);
   assert.match(renderSource, /function bindSaveShortcut/);
   assert.match(renderSource, /root\?\.querySelector\?\.\('\.data-equipment-page'\)/);
   assert.doesNotMatch(renderSource, /state\.view !== 'card' \|\| !isEquipmentHistorySaveShortcut/);
-  assert.match(renderSource, /<p>\$\{api\.escapeHtml\(processLabel\)\}<\/p>/);
+  assert.doesNotMatch(renderSource, /<p>\$\{api\.escapeHtml\(processLabel\)\}<\/p>/);
   assert.doesNotMatch(renderSource, /locationLabel/);
   assert.doesNotMatch(renderSource, /관리 구분 미지정/);
   assert.match(renderSource, /data-equipment-title-input/);
   assert.match(dataCssSource, /data-equipment-title-input/);
   assert.doesNotMatch(dataCssSource, /data-equipment-save-action/);
-  assert.match(dataCssSource, /data-equipment-card-grid[\s\S]+grid-template-columns:\s*minmax\(250px,\s*0\.88fr\)\s*minmax\(380px,\s*1\.18fr\)\s*minmax\(270px,\s*1fr\)/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-form-actions/);
+  assert.match(dataCssSource, /data-equipment-topbar-action/);
+  assert.match(dataCssSource, /data-equipment-card-status-button\.is-running/);
+  assert.match(dataCssSource, /data-equipment-card-status-button\.is-stop/);
+  assert.match(dataCssSource, /data-equipment-card-status-button\.is-check/);
+  assert.match(dataCssSource, /data-equipment-topbar-danger-action/);
+  assert.match(dataCssSource, /data-equipment-topbar-clear-action/);
+  assert.match(dataCssSource, /data-equipment-topbar-dashboard\.is-card-mode\s+\.data-equipment-view-actions\s+\.data-equipment-card-status-button\.is-running[\s\S]+background:\s*#dcfce7/);
+  assert.match(dataCssSource, /data-equipment-topbar-dashboard\.is-card-mode\s+\.data-equipment-view-actions\s+\.data-equipment-card-status-button\.is-stop[\s\S]+background:\s*#fee2e2/);
+  assert.match(dataCssSource, /data-equipment-topbar-dashboard\.is-card-mode\s+\.data-equipment-view-actions\s+\.data-equipment-card-status-button\.is-check[\s\S]+background:\s*#fef3c7/);
+  assert.match(dataCssSource, /data-equipment-topbar-dashboard\.is-card-mode\s+\.data-equipment-view-actions\s+\.data-equipment-topbar-danger-action[\s\S]+background:\s*#dc2626/);
+  assert.match(dataCssSource, /data-equipment-topbar-dashboard\.is-card-mode\s+\.data-equipment-view-actions\s+\.data-equipment-topbar-clear-action[\s\S]+background:\s*#fff7ed/);
+  assert.match(renderSource, /data-equipment-hero-grid[\s\S]+data-equipment-hero-photo[\s\S]+renderPhotoCard\(draft\)[\s\S]+data-equipment-hero-side[\s\S]+renderEquipmentRecentUpdated\(header, data\)[\s\S]+renderEquipmentPhotoTitle\(draft\)[\s\S]+data-equipment-hero-doc-card/);
+  assert.doesNotMatch(renderSource, /data-equipment-retired-doc-card/);
+  assert.match(renderSource, /function renderEquipmentRecentUpdated/);
+  assert.match(renderSource, /\\uCD5C\\uADFC \\uC5C5\\uB370\\uC774\\uD2B8 :/);
+  assert.match(dataCssSource, /data-equipment-hero-grid[\s\S]+grid-template-columns:\s*minmax\(0,\s*0\.52fr\)\s*minmax\(0,\s*0\.48fr\)[\s\S]+gap:\s*8px/);
+  assert.match(dataCssSource, /data-equipment-hero-photo\s+\.data-equipment-photo-card[\s\S]+aspect-ratio:\s*4 \/ 1/);
+  assert.match(dataCssSource, /data-equipment-hero-side[\s\S]+grid-template-rows:\s*auto auto minmax\(0,\s*1fr\)/);
+  assert.match(dataCssSource, /data-equipment-hero-updated[\s\S]+min-height:\s*30px[\s\S]+margin-bottom:\s*4px/);
+  assert.match(
+    dataCssSource,
+    /data-equipment-hero-side\s+\.data-equipment-photo-title-row[\s\S]+grid-template-columns:\s*minmax\(118px,\s*0\.9fr\)\s*minmax\(84px,\s*0\.68fr\)\s*minmax\(150px,\s*1\.2fr\)/
+  );
+  assert.match(dataCssSource, /data-equipment-hero-side\s+\.data-equipment-title-name-field[\s\S]+grid-column:\s*auto/);
+  assert.match(dataCssSource, /data-equipment-hero-doc-card[\s\S]+grid-template-rows:\s*minmax\(0,\s*1fr\)/);
+  assert.match(dataCssSource, /data-equipment-card-grid[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(dataCssSource, /data-equipment-simple-spec[\s\S]+grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(dataCssSource, /data-equipment-simple-spec-row[\s\S]+border:\s*1px solid #dce8f5[\s\S]+background:\s*#ffffff/);
+  assert.match(dataCssSource, /data-equipment-simple-spec-label-input[\s\S]+color:\s*#405270/);
+  assert.match(dataCssSource, /data-equipment-simple-spec-value-input[\s\S]+color:\s*#132844/);
+  assert.match(dataCssSource, /data-equipment-simple-spec-remove[\s\S]+background:\s*transparent/);
+  assert.match(dataCssSource, /data-equipment-maintenance-editor[\s\S]+display:\s*grid[\s\S]+gap:\s*7px/);
+  assert.match(
+    dataCssSource,
+    /data-equipment-maintenance-head,[\s\S]+data-equipment-maintenance-row[\s\S]+grid-template-columns:\s*minmax\(82px,\s*14%\)\s*minmax\(74px,\s*12%\)\s*minmax\(0,\s*44%\)\s*minmax\(74px,\s*12%\)\s*minmax\(84px,\s*18%\)/
+  );
+  assert.match(dataCssSource, /data-equipment-maintenance-remove[\s\S]+position:\s*absolute[\s\S]+top:\s*5px[\s\S]+right:\s*6px/);
+  assert.match(dataCssSource, /data-equipment-maintenance-remove[\s\S]+background:\s*transparent[\s\S]+opacity:\s*0/);
+  assert.match(dataCssSource, /data-equipment-maintenance-row:hover\s+\.data-equipment-maintenance-remove,[\s\S]+data-equipment-maintenance-row:focus-within\s+\.data-equipment-maintenance-remove[\s\S]+opacity:\s*1/);
+  assert.match(dataCssSource, /data-equipment-detail-card,[\s\S]+data-equipment-history-card,[\s\S]+data-equipment-note-card,[\s\S]+data-equipment-doc-card[\s\S]+padding:\s*14px 16px/);
+  assert.match(dataCssSource, /data-equipment-note-card[\s\S]+display:\s*grid[\s\S]+align-content:\s*start/);
+  assert.match(dataCssSource, /data-equipment-note-card\s+\.data-equipment-note-field\s+textarea[\s\S]+min-height:\s*88px[\s\S]+background:\s*#f8fbff/);
+  assert.match(
+    dataCssSource,
+    /data-equipment-history-card\s+\.data-equipment-edit-table th:nth-child\(1\)[\s\S]+width:\s*14%[\s\S]+data-equipment-history-card\s+\.data-equipment-edit-table th:nth-child\(3\)[\s\S]+width:\s*44%/
+  );
   assert.match(dataCssSource, /data-equipment-table-scroll[\s\S]+border:\s*1px solid #d8e5f2/);
   assert.match(dataCssSource, /data-equipment-table-scroll[\s\S]+background:\s*#f8fbff/);
   assert.match(dataCssSource, /data-equipment-edit-table[\s\S]+border-collapse:\s*separate/);
   assert.match(dataCssSource, /data-equipment-edit-table[\s\S]+border-spacing:\s*0 7px/);
-  assert.match(dataCssSource, /data-equipment-document-picker[\s\S]+min-height:\s*34px/);
+  assert.match(dataCssSource, /data-equipment-document-picker[\s\S]+align-items:\s*start[\s\S]+min-height:\s*34px/);
+  assert.match(dataCssSource, /data-equipment-document-picker[\s\S]+border:\s*1px solid transparent[\s\S]+background:\s*transparent/);
+  assert.match(dataCssSource, /data-equipment-doc-list-item[\s\S]+grid-template-columns:\s*minmax\(0,\s*0\.9fr\)\s*minmax\(0,\s*1\.1fr\)/);
+  assert.match(dataCssSource, /data-equipment-doc-list-item[\s\S]+align-items:\s*stretch/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-doc-field-label|data-equipment-doc-title-field|data-equipment-doc-attachment-field/);
+  assert.match(dataCssSource, /data-equipment-document-file-name:empty[\s\S]+color:\s*transparent/);
+  assert.match(dataCssSource, /data-equipment-document-pick[\s\S]+min-width:\s*66px/);
+  assert.match(dataCssSource, /data-equipment-document-remove[\s\S]+background:\s*transparent/);
   assert.match(dataCssSource, /data-equipment-index-overview[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(310px,\s*420px\)/);
   assert.match(dataCssSource, /data-equipment-board-team-title/);
   assert.match(dataCssSource, /data-equipment-board-section[\s\S]+display:\s*grid/);
   assert.match(dataCssSource, /data-equipment-board-section[\s\S]+gap:\s*10px/);
   assert.match(dataCssSource, /data-equipment-board-section[\s\S]+padding:\s*0/);
-  assert.match(dataCssSource, /data-equipment-board-card-row[\s\S]+grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(174px,\s*1fr\)\)/);
-  assert.match(dataCssSource, /data-equipment-board-room-icon[\s\S]+width:\s*26px/);
+  assert.match(dataCssSource, /data-equipment-board-section h3[\s\S]+font-size:\s*0\.98rem/);
+  assert.match(dataCssSource, /data-equipment-board-card-row[\s\S]+grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(240px,\s*1fr\)\)/);
+  assert.match(dataCssSource, /data-equipment-board-room-icon[\s\S]+width:\s*30px[\s\S]+height:\s*30px/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-room-badge/);
   assert.match(dataCssSource, /data-equipment-board-card[\s\S]+margin-top:\s*0/);
   assert.match(dataCssSource, /data-equipment-index-overview[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(310px,\s*420px\)/);
@@ -567,8 +741,21 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /@media \(max-width:\s*780px\)[\s\S]+data-equipment-spec-block-row[\s\S]+grid-template-columns:\s*1fr/);
   assert.doesNotMatch(dataCssSource, /data-equipment-bottom-grid,\s*[\r\n\s]*\.data-equipment-detail-groups/);
   assert.doesNotMatch(dataCssSource, /data-equipment-detail-table th:first-child/);
-  assert.match(dataCssSource, /data-equipment-top-grid\s+\.data-equipment-photo-card[\s\S]+aspect-ratio:\s*2 \/ 1/);
-  assert.match(dataCssSource, /data-equipment-photo-preview[\s\S]+object-fit:\s*cover/);
+  assert.match(dataCssSource, /data-equipment-top-grid[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(dataCssSource, /data-equipment-top-grid\s+\.data-equipment-photo-card[\s\S]+aspect-ratio:\s*4 \/ 1/);
+  assert.match(dataCssSource, /data-equipment-photo-title-row[\s\S]+grid-template-columns:\s*minmax\(180px,\s*0\.62fr\)\s*minmax\(145px,\s*0\.48fr\)\s*minmax\(260px,\s*1\.4fr\)/);
+  assert.match(dataCssSource, /data-equipment-photo-title-row[\s\S]+border:\s*0[\s\S]+background:\s*transparent[\s\S]+padding:\s*0/);
+  assert.match(dataCssSource, /data-equipment-title-field[\s\S]+--equipment-title-value-left:\s*12px/);
+  assert.match(dataCssSource, /data-equipment-title-team-field[\s\S]+position:\s*relative/);
+  assert.match(dataCssSource, /data-equipment-title-team-icon[\s\S]+position:\s*absolute[\s\S]+left:\s*12px/);
+  assert.match(dataCssSource, /data-equipment-title-team-icon[\s\S]+color:\s*var\(--equipment-team-color\)/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-title-label/);
+  assert.match(dataCssSource, /data-equipment-title-team-field[\s\S]+--equipment-title-value-left:\s*50px/);
+  assert.match(dataCssSource, /data-equipment-photo-title-row\s+\.data-equipment-title-input[\s\S]+font-size:\s*1\.13rem/);
+  assert.match(dataCssSource, /data-equipment-photo-title-row\s+\.data-equipment-title-field\s+\.data-equipment-title-input[\s\S]+padding-left:\s*var\(--equipment-title-value-left\)/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-photo-info-card/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-photo-info-grid/);
+  assert.match(dataCssSource, /data-equipment-photo-preview[\s\S]+object-fit:\s*contain/);
   assert.match(dataCssSource, /data-equipment-photo-revert/);
   assert.match(dataCssSource, /data-equipment-photo-card:hover\s+\.data-equipment-photo-revert/);
   assert.match(dataCssSource, /opacity:\s*0/);
@@ -576,21 +763,55 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /data-equipment-board-team-icon/);
   assert.match(renderSource, /data-equipment-board-team-icon/);
   assert.match(dataCssSource, /data-equipment-board-card[\s\S]+background:\s*#ffffff/);
+  assert.match(dataCssSource, /data-equipment-board-card[\s\S]+--equipment-card-separator:\s*#e6edf5/);
+  assert.match(dataCssSource, /data-equipment-board-card[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)[\s\S]+grid-template-rows:\s*auto auto auto[\s\S]+min-height:\s*178px/);
+  assert.match(dataCssSource, /data-equipment-board-card-media[\s\S]+width:\s*100%[\s\S]+aspect-ratio:\s*4 \/ 1[\s\S]+border-bottom:\s*1px solid var\(--equipment-card-separator\)/);
+  assert.match(dataCssSource, /data-equipment-board-card-media img[\s\S]+object-fit:\s*contain/);
+  assert.match(dataCssSource, /data-equipment-board-card-main[\s\S]+min-height:\s*48px[\s\S]+border-bottom:\s*1px solid var\(--equipment-card-separator\)/);
+  assert.match(dataCssSource, /data-equipment-board-card-main strong[\s\S]+font-size:\s*1\.14rem[\s\S]+text-align:\s*center/);
+  assert.match(dataCssSource, /data-equipment-board-card-actions[\s\S]+padding:\s*10px 0 0[\s\S]+background:\s*linear-gradient/);
+  assert.match(dataCssSource, /data-equipment-board-card[\s\S]+cursor:\s*pointer/);
+  assert.match(dataCssSource, /data-equipment-board-card:hover,\s*[\r\n\s]*\.data-equipment-board-card:focus-visible/);
   assert.match(dataCssSource, /data-equipment-board-card\.is-running[\s\S]+--equipment-card-status-color:\s*#16a34a/);
   assert.match(dataCssSource, /data-equipment-board-card\.is-stop[\s\S]+--equipment-card-status-color:\s*#dc2626/);
   assert.match(dataCssSource, /data-equipment-board-card\.is-check[\s\S]+--equipment-card-status-color:\s*#64748b/);
   assert.match(dataCssSource, /data-equipment-board-status-button/);
+  assert.match(dataCssSource, /data-equipment-board-status-button[\s\S]+width:\s*100%[\s\S]+min-height:\s*42px[\s\S]+border-radius:\s*7px/);
+  assert.match(dataCssSource, /data-equipment-board-chip\.is-running[\s\S]+background:\s*#dcfce7[\s\S]+color:\s*#166534/);
+  assert.match(dataCssSource, /data-equipment-board-chip\.is-stop[\s\S]+background:\s*#fee2e2[\s\S]+color:\s*#991b1b/);
+  assert.match(dataCssSource, /data-equipment-board-chip\.is-check[\s\S]+background:\s*#fef3c7[\s\S]+color:\s*#92400e/);
+  assert.match(dataCssSource, /data-equipment-board-team-count/);
+  assert.match(dataCssSource, /data-equipment-board-add-button[\s\S]+min-width:\s*42px[\s\S]+height:\s*28px/);
+  assert.match(dataCssSource, /data-equipment-board-empty-add[\s\S]+min-height:\s*40px/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-board-add-card/);
   assert.match(dataCssSource, /data-equipment-board-team-order-toggle/);
   assert.match(dataCssSource, /data-equipment-board-team-order-toggle[\s\S]+#eff6ff/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-board-team-focus/);
   assert.match(dataCssSource, /data-equipment-board-card-tools/);
   assert.match(dataCssSource, /data-equipment-board-card-tools[\s\S]+display:\s*none/);
   assert.match(dataCssSource, /data-equipment-board-column\.is-ordering\s+\.data-equipment-board-card-tools[\s\S]+display:\s*grid/);
   assert.match(dataCssSource, /data-equipment-board-order-button/);
-  assert.match(dataCssSource, /data-equipment-board-open-button/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-board-open-button/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-card button\s*\{/);
   assert.match(renderSource, /EQUIPMENT_BOARD_STATUS_CYCLE/);
   assert.match(renderSource, /data-equipment-order-toggle-team/);
   assert.doesNotMatch(renderSource, /data-equipment-order-toggle-card/);
+  assert.doesNotMatch(renderSource, /data-equipment-focus-team/);
+  assert.doesNotMatch(renderSource, /equipmentFocusTeam/);
+  assert.match(renderSource, /\[data-equipment-board-card\]\[data-equipment-open-card\]/);
+  assert.match(renderSource, /isEquipmentBoardCardInteractiveTarget\(event\.target\)/);
+  assert.match(renderSource, /openEquipmentBoardCard\(data, state, card\.dataset\.equipmentOpenCard, redraw\)/);
+  assert.match(renderSource, /function resetEquipmentHistoryBoardState/);
+  assert.match(renderSource, /state\.filters = \{ team: '', status: '', search: '' \}/);
+  assert.match(renderSource, /function pushEquipmentHistoryCardHistory/);
+  assert.match(renderSource, /browser\.pushHistoryState/);
+  assert.match(renderSource, /browser\.replaceHistoryState/);
+  assert.match(renderSource, /browser\.addPopStateListener/);
+  assert.match(renderSource, /applyEquipmentHistoryBrowserState\(workingData, state, event\?\.state, redraw\)/);
+  assert.match(adapterSource, /function pushHistoryState/);
+  assert.match(adapterSource, /function replaceHistoryState/);
+  assert.match(adapterSource, /function addPopStateListener/);
+  assert.doesNotMatch(renderSource, /data-equipment-board-open-button/);
   assert.match(renderSource, /aria-hidden="true"/);
   assert.match(renderSource, /column\.classList\.toggle\('is-ordering', isOpen\)/);
   assert.match(renderSource, /async function cycleBoardCardStatus/);
@@ -603,10 +824,57 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-title-team/);
   assert.match(renderSource, /data-equipment-title-room/);
   assert.match(renderSource, /data-equipment-title-name/);
-  assert.match(renderSource, /function renderStatusToggle/);
+  const footerSource = renderSource.match(/function renderFooter\([\s\S]*?\n {4}function renderEquipmentRecentUpdated/)?.[0] || '';
+  assert.doesNotMatch(footerSource, /마지막 업데이트/);
+  assert.doesNotMatch(footerSource, /updatedAt|data\.meta/);
+  assert.match(renderSource, /renderFooter\(state\)/);
+  assert.doesNotMatch(footerSource, /ownerLabel|header\.owner|draft\?\.owner|담당 업체/);
+  assert.match(renderSource, /function renderEquipmentPhotoTitle/);
+  assert.match(renderSource, /renderEquipmentPhotoTitle\(draft\)/);
+  assert.match(renderSource, /function renderTitleTeamSelect/);
+  assert.match(renderSource, /function getEquipmentTeamIconClass/);
+  assert.match(renderSource, /data-equipment-title-field/);
+  assert.match(renderSource, /data-equipment-title-value/);
+  assert.doesNotMatch(renderSource, /data-equipment-title-label/);
+  assert.doesNotMatch(renderSource, /\\uD300 :/);
+  assert.doesNotMatch(renderSource, /\\uC2E4 :/);
+  assert.doesNotMatch(renderSource, /\\uC124\\uBE44\\uBA85 :/);
+  assert.match(renderSource, /data-equipment-title-team-icon/);
+  assert.match(renderSource, /getBoardTeamStyle\(teamMeta\)/);
+  assert.match(renderSource, /function renderTopbarBackButton/);
+  assert.match(dataCssSource, /data-equipment-title-back[\s\S]+width:\s*38px[\s\S]+height:\s*38px/);
+  assert.match(dataCssSource, /data-equipment-topbar-dashboard\.is-card-mode\s+\.data-equipment-title-back/);
   assert.match(renderSource, /\\uC124\\uBE44 \\uC2A4\\uD399/);
   assert.match(renderSource, /renderSimpleSpecEditor\(draft\)/);
+  assert.match(renderSource, /function renderMaintenanceEditor\(rows\)/);
+  assert.match(renderSource, /renderMaintenanceEditor\(draft\.maintenanceHistory\)/);
+  assert.match(renderSource, /class="data-equipment-card data-equipment-note-card"[\s\S]+<h3 class="data-equipment-section-title">비고<\/h3>[\s\S]+data-equipment-field="note"/);
+  const simpleSpecSource = renderSource.match(/function renderSimpleSpecEditor\(draft\) \{[\s\S]*?\n {4}\}/)?.[0] || '';
+  assert.match(simpleSpecSource, /data-equipment-simple-spec-label-input/);
+  assert.match(simpleSpecSource, /data-equipment-simple-spec-value-input/);
+  assert.match(simpleSpecSource, /data-equipment-simple-spec-remove/);
+  assert.doesNotMatch(simpleSpecSource, /fa-trash-alt/);
+  const maintenanceSource = renderSource.match(/function renderMaintenanceEditor\(rows\) \{[\s\S]*?\n {4}\}/)?.[0] || '';
+  assert.match(maintenanceSource, /data-equipment-maintenance-editor/);
+  assert.match(maintenanceSource, /data-equipment-maintenance-row/);
+  assert.match(maintenanceSource, /data-equipment-maintenance-remove/);
+  assert.match(maintenanceSource, /data-equipment-remove-row="maintenanceHistory"/);
+  assert.match(maintenanceSource, /data-equipment-maintenance-input/);
+  assert.doesNotMatch(maintenanceSource, /fa-trash-alt/);
   assert.match(renderSource, /renderCompactDocumentEditor\(draft\.documents\)/);
+  const compactDocumentSource = renderSource.match(/function renderCompactDocumentEditor\(rows\) \{[\s\S]*?\n {4}\}/)?.[0] || '';
+  assert.match(compactDocumentSource, /data-equipment-document-title-input/);
+  assert.doesNotMatch(compactDocumentSource, /data-equipment-doc-field-label|data-equipment-doc-title-field|data-equipment-doc-attachment-field|첨부 없음/);
+  assert.match(compactDocumentSource, /data-equipment-document-file-name/);
+  assert.match(compactDocumentSource, /문서 첨부/);
+  assert.match(compactDocumentSource, /data-equipment-document-remove/);
+  assert.doesNotMatch(compactDocumentSource, /fa-file-pdf|fa-plus|fa-trash-alt/);
+  const cardSource = renderSource.match(/function renderHistoryCard\(category, data, state\) \{[\s\S]*?\n {4}function renderFooter/)?.[0] || '';
+  assert.match(cardSource, /ensureDraftDocumentEditorSlot\(draft\)/);
+  assert.doesNotMatch(cardSource, /renderEditableTable\(api\.MAINTENANCE_FIELDS/);
+  assert.doesNotMatch(cardSource, /data-equipment-add-row="documents"|관련 문서|愿\?\?臾몄꽌/);
+  assert.match(renderSource, /function ensureDraftDocumentEditorSlot/);
+  assert.match(renderSource, /ensureDraftDocumentEditorSlot\(state\.draft\)/);
   assert.match(formSource, /data-equipment-add-block="\$\{api\.escapeHtml\(groupKey\)\}"/);
   assert.match(formSource, /data-equipment-add-row-to-block/);
   assert.match(renderSource, /data-equipment-spec-block-toggle/);
@@ -616,7 +884,6 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.doesNotMatch(renderSource, /equipmentDetailCell/);
   assert.doesNotMatch(renderSource, /focusPendingDetailCell/);
   assert.doesNotMatch(renderSource, /data-equipment-detail-cell/);
-  assert.match(renderSource, /data-equipment-status-toggle/);
   assert.match(renderSource, /data-equipment-delete-card/);
   assert.match(renderSource, /async function deleteDraft/);
   assert.doesNotMatch(renderSource, /data-equipment-board-rate/);
@@ -627,29 +894,57 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /if \(hasPhoto\) \{[\s\S]+data-equipment-photo-card is-locked/);
   assert.match(renderSource, /data-equipment-photo-revert/);
   assert.match(renderSource, /data-equipment-history-photo-select/);
+  assert.match(renderSource, /data-equipment-photo-attach-key/);
+  const photoCardSource = renderSource.slice(
+    renderSource.indexOf('function renderPhotoCard'),
+    renderSource.indexOf('function getStartDraft'),
+  );
+  const hasPhotoBranch = photoCardSource.match(/if \(hasPhoto\) \{[\s\S]*?\r?\n\s*\}\r?\n\s*return `/)?.[0] || '';
+  assert.doesNotMatch(hasPhotoBranch, /data-equipment-photo-attach-key/);
+  assert.match(photoCardSource.slice(hasPhotoBranch.length), /data-equipment-photo-attach-key/);
+  assert.doesNotMatch(renderSource, /card\.addEventListener\('click'[\s\S]+input\.click/);
+  assert.doesNotMatch(renderSource, /card\.addEventListener\('keydown'[\s\S]+input\.click/);
   assert.match(renderSource, /data-equipment-history-photo-paste/);
   assert.match(renderSource, /data-equipment-history-photo-attachment-key/);
   assert.match(renderSource, /getPhotoFileFromClipboardData/);
   assert.match(renderSource, /clipboardData/);
   assert.match(renderSource, /navigator\?\.clipboard/);
+  assert.doesNotMatch(renderSource, /isEventTargetInsideRoot/);
   assert.match(renderSource, /applyEquipmentHistoryPhotoFile/);
-  assert.match(renderSource, /data-equipment-photo-edit-toggle/);
-  assert.match(renderSource, /setPhotoCropEditorMode/);
-  assert.match(renderSource, /state\.photoCropEditing !== true/);
-  assert.match(renderSource, /data-equipment-photo-thumb-capture/);
+  assert.match(renderSource, /function enqueueEquipmentHistoryPhotoUpload/);
+  assert.match(renderSource, /state\.photoUploadPromise/);
+  assert.match(renderSource, /applyEquipmentHistoryPhotoFileNow/);
+  assert.match(renderSource, /const previousPhoto = getDraftPhotoSnapshot\(draft\)/);
+  assert.match(renderSource, /applyDraftPhotoSnapshot\(draft, previousPhoto\)/);
+  assert.match(renderSource, /getEquipmentHistoryPhotoAttachmentFailureMessage\(error\)/);
+  assert.match(renderSource, /file_too_large/);
+  assert.match(renderSource, /unsupported_type/);
+  assert.doesNotMatch(renderSource, /data-equipment-photo-edit-toggle/);
+  assert.doesNotMatch(renderSource, /setPhotoCropEditorMode/);
+  assert.doesNotMatch(renderSource, /photoCropEditing/);
+  assert.doesNotMatch(renderSource, /data-equipment-photo-thumb-capture/);
+  assert.match(renderSource, /<span>되돌리기<\/span>/);
+  assert.doesNotMatch(renderSource, /data-equipment-photo-crop-reset/);
   assert.match(renderSource, /EQUIPMENT_PHOTO_TARGET_WIDTH\s*=\s*1600/);
-  assert.match(renderSource, /EQUIPMENT_PHOTO_TARGET_HEIGHT\s*=\s*800/);
+  assert.match(renderSource, /EQUIPMENT_PHOTO_TARGET_HEIGHT\s*=\s*400/);
+  assert.match(renderSource, /1600 x 400/);
+  assert.match(renderSource, /1600x400\.jpg/);
   assert.match(renderSource, /async function normalizeEquipmentPhotoAttachment/);
   assert.match(renderSource, /getNormalizedEquipmentPhotoFileName/);
-  assert.match(renderSource, /function captureMainPhotoThumb/);
+  assert.doesNotMatch(renderSource, /function captureMainPhotoThumb/);
   assert.match(renderSource, /photoThumbDataUrl/);
-  assert.match(renderSource, /getBoardPhotoSrc\(item\) \{[\s\S]+item\.photoThumbDataUrl/);
-  assert.match(dataCssSource, /data-equipment-photo-frame:hover\s+\.data-equipment-photo-edit-toggle/);
-  assert.match(dataCssSource, /data-equipment-photo-crop-box\[hidden\]/);
-  assert.match(dataCssSource, /data-equipment-photo-crop-box/);
-  assert.match(dataCssSource, /data-equipment-photo-thumb-status/);
+  const boardPhotoSource = renderSource.match(/function getBoardPhotoSrc\(item\) \{[\s\S]*?\n {4}\}/)?.[0] || '';
+  assert.doesNotMatch(boardPhotoSource, /photoThumbDataUrl/);
+  assert.match(boardPhotoSource, /photoPreviewUrl/);
+  assert.match(renderSource, /const scale = Math\.min\([\s\S]+EQUIPMENT_PHOTO_TARGET_WIDTH \/ image\.naturalWidth[\s\S]+EQUIPMENT_PHOTO_TARGET_HEIGHT \/ image\.naturalHeight/);
+  assert.match(renderSource, /context\.drawImage\([\s\S]+targetX[\s\S]+targetY[\s\S]+targetWidth[\s\S]+targetHeight/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-photo-frame/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-photo-crop-box/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-photo-thumb-status/);
   assert.match(dataCssSource, /data-equipment-photo-placeholder-actions/);
   assert.match(dataCssSource, /data-equipment-photo-paste/);
+  assert.match(dataCssSource, /data-equipment-photo-attach-key[\s\S]+position:\s*absolute[\s\S]+left:\s*10px[\s\S]+top:\s*10px/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-photo-card\.is-photo-editing/);
   assert.match(formSource, /photoThumbDataUrl:\s*api\.normalizeText\(source\.photoThumbDataUrl\)/);
   assert.match(formSource, /EQUIPMENT_PHOTO_ATTACHMENT_KEY/);
   assert.match(formSource, /photoAttachmentKey:\s*api\.normalizeText\(source\.photoAttachmentKey \|\| source\.photoAttachmentId\)/);
@@ -660,7 +955,9 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /async function autoSaveDraft/);
   assert.match(renderSource, /async function revertPhoto/);
   assert.match(renderSource, /detailRows\.length <= 1/);
-  assert.match(renderSource, /saveDraft\(data, state, \{ message: '가동 상태를 저장했습니다\.' \}\)/);
+  assert.match(renderSource, /async function cycleBoardCardStatus/);
+  assert.match(renderSource, /data-equipment-cycle-status-card/);
+  assert.match(renderSource, /persistEquipmentHistoryPayload\(data, nextPayload, 'equipment_history_payload_status_failed'\)/);
   assert.match(renderSource, /bindPhotoPreview\(root, state, data, redraw\)/);
 
   const record = api.buildRecordFromDraft({

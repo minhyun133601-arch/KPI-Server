@@ -6,13 +6,18 @@
     const CARD_ROOM_DATALIST_ID = 'data-equipment-room-options-card';
     const EQUIPMENT_PRINT_POPUP_FEATURES = 'width=900,height=1200';
     const EQUIPMENT_PHOTO_TARGET_WIDTH = 1600;
-    const EQUIPMENT_PHOTO_TARGET_HEIGHT = 800;
-    const EQUIPMENT_PHOTO_TARGET_ASPECT = EQUIPMENT_PHOTO_TARGET_WIDTH / EQUIPMENT_PHOTO_TARGET_HEIGHT;
-    const EQUIPMENT_MAIN_THUMB_WIDTH = 640;
-    const EQUIPMENT_MAIN_THUMB_HEIGHT = 320;
-    const EQUIPMENT_MAIN_THUMB_ASPECT = EQUIPMENT_MAIN_THUMB_WIDTH / EQUIPMENT_MAIN_THUMB_HEIGHT;
+    const EQUIPMENT_PHOTO_TARGET_HEIGHT = 400;
     const EQUIPMENT_PHOTO_ATTACHMENT_KEY = api.EQUIPMENT_PHOTO_ATTACHMENT_KEY || 'equipment-photo-main';
+    const EQUIPMENT_BOARD_EMPTY_TEAM_KEYS = Object.freeze([
+        'work_team_calendar_team1_part1',
+        'work_team_calendar_team1_part2',
+        'work_team_calendar_team2',
+        'work_team_calendar_team3',
+        'work_team_calendar_team4',
+    ]);
+    const EQUIPMENT_HISTORY_BROWSER_STATE_KEY = 'equipment-history-card';
     let activeSaveController = null;
+    let activeHistoryUnsubscribe = null;
 
     function getEquipmentTeamDataKey(value) {
         const normalizedTeam = api.normalizeEquipmentHistoryTeamName?.(value) || api.normalizeText(value);
@@ -71,15 +76,6 @@
         `).join('');
     }
 
-    function renderBoardMetric(label, value) {
-        return `
-            <div class="data-equipment-board-metric">
-                <span>${api.escapeHtml(label)}</span>
-                <strong>${api.escapeHtml(value)}</strong>
-            </div>
-        `;
-    }
-
     function getBoardStatusSummary(items) {
         const summary = {
             total: items.length,
@@ -103,20 +99,11 @@
     }
 
     function getBoardPhotoSrc(item) {
-        return item.photoThumbDataUrl
-            || api.getEquipmentPhotoPreviewUrl?.(item)
+        return api.getEquipmentPhotoPreviewUrl?.(item)
             || item.photoPreviewUrl
             || item.photoDownloadUrl
             || item.photoDataUrl
             || '';
-    }
-
-    function getBoardEquipmentModel(item) {
-        return api.normalizeText(item.modelName || item.equipmentCode || item.group || item.process) || '-';
-    }
-
-    function getBoardEquipmentManufacturer(item) {
-        return api.normalizeText(item.manufacturer || item.owner) || '-';
     }
 
     function getBoardEquipmentSearchText(item) {
@@ -164,6 +151,17 @@
         return `--equipment-team-color:${api.escapeHtml(color)};--equipment-team-color-2:${api.escapeHtml(secondaryColor)};--equipment-team-tint:${api.escapeHtml(tint)};`;
     }
 
+    function getEquipmentTeamIconClass(meta) {
+        const icon = api.normalizeText(meta?.icon).split(/\s+/).find((token) => /^fa-[a-z0-9-]+$/i.test(token));
+        return icon || 'fa-industry';
+    }
+
+    function getEquipmentStatusIconClass(statusTone) {
+        if (statusTone === 'stop') return 'fa-square';
+        if (statusTone === 'check') return 'fa-wrench';
+        return 'fa-play';
+    }
+
     function getNextEquipmentBoardStatus(status) {
         const currentLabel = api.getEquipmentStatus(status).label;
         const currentIndex = EQUIPMENT_BOARD_STATUS_CYCLE.indexOf(currentLabel);
@@ -182,21 +180,17 @@
         const statusMeta = item.statusMeta || api.getEquipmentStatus(item.status);
         const statusTone = ['running', 'stop', 'check'].includes(statusMeta.tone) ? statusMeta.tone : 'running';
         const toneClassName = `is-${statusTone}`;
+        const statusIcon = getEquipmentStatusIconClass(statusTone);
         const moveUpLabel = '\uC704\uB85C \uC774\uB3D9';
         const moveDownLabel = '\uC544\uB798\uB85C \uC774\uB3D9';
-        const processLabel = api.normalizeText(item.process || item.group);
         return `
-            <article class="data-equipment-board-card ${toneClassName}" data-equipment-board-card="${api.escapeHtml(item.id)}">
+            <article class="data-equipment-board-card ${toneClassName}" data-equipment-board-card="${api.escapeHtml(item.id)}" data-equipment-open-card="${api.escapeHtml(item.id)}" tabindex="0" aria-label="${api.escapeHtml(`${item.name} \uCE74\uB4DC \uC5F4\uAE30`)}">
                 <div class="data-equipment-board-card-media">
                     ${renderBoardCardMedia(item)}
                 </div>
                 <div class="data-equipment-board-card-main">
                     <strong>${api.escapeHtml(item.name)}</strong>
-                    <span>${api.escapeHtml(`${item.manufacturerLabel || '제조사'}: ${getBoardEquipmentManufacturer(item)}`)}</span>
-                    <span>${api.escapeHtml(`기종: ${getBoardEquipmentModel(item)}`)}</span>
                 </div>
-                <p>${api.escapeHtml(processLabel)}</p>
-                ${renderBoardMetric('다음 점검', item.nextCheck || '-')}
                 <div class="data-equipment-board-card-tools" aria-hidden="true">
                     <button type="button" class="data-equipment-board-order-button" data-equipment-move-card="${api.escapeHtml(item.id)}" data-equipment-move-direction="-1" aria-label="${api.escapeHtml(moveUpLabel)}" title="${api.escapeHtml(moveUpLabel)}"${orderMeta.canMoveUp ? '' : ' disabled'}>
                         <i class="fas fa-arrow-up"></i>
@@ -206,8 +200,9 @@
                     </button>
                 </div>
                 <div class="data-equipment-board-card-actions">
-                    <button type="button" class="data-equipment-board-chip data-equipment-board-status-button is-${statusMeta.tone}" data-equipment-cycle-status-card="${api.escapeHtml(item.id)}" aria-label="${api.escapeHtml('가동 상태 변경')}" title="${api.escapeHtml('클릭하면 가동중, 비가동중, 정비중으로 바뀝니다.')}">${api.escapeHtml(statusMeta.label)}</button>
-                    <button type="button" class="data-equipment-board-open-button" data-equipment-open-card="${api.escapeHtml(item.id)}">카드 열기</button>
+                    <button type="button" class="data-equipment-board-chip data-equipment-board-status-button is-${statusTone}" data-equipment-cycle-status-card="${api.escapeHtml(item.id)}" aria-label="${api.escapeHtml('가동 상태 변경')}" title="${api.escapeHtml('클릭하면 가동중, 비가동중, 정비중으로 바뀝니다.')}">
+                        <i class="fas ${api.escapeHtml(statusIcon)}" aria-hidden="true"></i><span>${api.escapeHtml(statusMeta.label)}</span>
+                    </button>
                 </div>
             </article>
         `;
@@ -310,52 +305,89 @@
         `;
     }
 
-    function renderBoardAddCard(team = '') {
+    function renderBoardAddButton(team = '', className = 'data-equipment-board-add-button') {
         return `
-            <button type="button" class="data-equipment-board-add-card" data-equipment-view-action="card" data-equipment-add-team="${api.escapeHtml(team)}">
-                <i class="fas fa-plus" aria-hidden="true"></i>
-                <span>설비 추가</span>
+            <button type="button" class="${api.escapeHtml(className)}" data-equipment-view-action="card" data-equipment-add-team="${api.escapeHtml(team)}">
+                <span>${api.escapeHtml('\uCD94\uAC00')}</span>
             </button>
         `;
+    }
+
+    function getBoardGroupKey(group) {
+        return group?.teamDataKey || group?.team || '';
+    }
+
+    function createEmptyBoardTeamGroup(teamKey) {
+        const teamMeta = api.getEquipmentHistoryTeamMeta?.(teamKey) || {};
+        return {
+            team: api.normalizeText(teamMeta.title) || teamKey,
+            teamDataKey: teamKey,
+            teamMeta,
+            sortIndex: EQUIPMENT_BOARD_EMPTY_TEAM_KEYS.indexOf(teamKey),
+            equipmentCount: 0,
+            runningCount: 0,
+            stoppedCount: 0,
+            sections: [],
+        };
+    }
+
+    function getBoardGroupsWithEmptyTeams(groups, filters, itemCount) {
+        const normalizedGroups = api.asList(groups);
+        if (api.normalizeText(filters?.status) || api.normalizeText(filters?.search)) return normalizedGroups;
+
+        const teamFilter = api.normalizeText(filters?.team);
+        const groupKeys = new Set(normalizedGroups.map(getBoardGroupKey).filter(Boolean));
+        const missingGroups = EQUIPMENT_BOARD_EMPTY_TEAM_KEYS
+            .filter((teamKey) => !teamFilter || teamFilter === teamKey)
+            .filter((teamKey) => !groupKeys.has(teamKey))
+            .map(createEmptyBoardTeamGroup);
+
+        return [...normalizedGroups, ...missingGroups].sort((left, right) => {
+            const leftIndex = Number.isFinite(left?.sortIndex) ? left.sortIndex : EQUIPMENT_BOARD_EMPTY_TEAM_KEYS.length;
+            const rightIndex = Number.isFinite(right?.sortIndex) ? right.sortIndex : EQUIPMENT_BOARD_EMPTY_TEAM_KEYS.length;
+            return (leftIndex - rightIndex)
+                || api.normalizeText(left?.team).localeCompare(api.normalizeText(right?.team), 'ko-KR', { numeric: true, sensitivity: 'base' });
+        });
     }
 
     function renderBoard(groups, items, state) {
         const filters = getBoardFilters(state);
         const filteredItems = getFilteredBoardItems(items, state);
-        const filteredGroups = api.groupEquipmentItems(filteredItems);
+        const boardGroups = getBoardGroupsWithEmptyTeams(groups, filters, items.length);
+        const filteredGroups = getBoardGroupsWithEmptyTeams(api.groupEquipmentItems(filteredItems), filters, items.length);
         const fullSummary = getBoardStatusSummary(items);
         const filteredSummary = getBoardStatusSummary(filteredItems);
         const hasActiveFilter = Boolean(filters.team || filters.status || filters.search);
         const activeSummary = hasActiveFilter ? filteredSummary : fullSummary;
         const boardBody = filteredGroups.length
-            ? groups.map((group) => {
-                const filteredGroup = filteredGroups.find((candidate) => (candidate.teamDataKey || candidate.team) === (group.teamDataKey || group.team));
+            ? boardGroups.map((group) => {
+                const filteredGroup = filteredGroups.find((candidate) => getBoardGroupKey(candidate) === getBoardGroupKey(group));
                 if (!filteredGroup) return '';
                 const teamMeta = group.teamMeta || api.getEquipmentHistoryTeamMeta?.(group.teamDataKey || group.team) || {};
                 const teamKey = group.teamDataKey || group.team;
                 const orderToggleLabel = `${group.team} \uC21C\uC11C \uC774\uB3D9`;
-                const sectionEquipment = filteredGroup.sections.flatMap((section) => section.equipment);
+                const visibleSections = filteredGroup.sections.length ? filteredGroup.sections : [{ title: '', equipment: [] }];
+                const sectionEquipment = visibleSections.flatMap((section) => section.equipment);
                 return `
                 <section class="data-equipment-board-column" data-equipment-board-team="${api.escapeHtml(teamKey)}" style="${getBoardTeamStyle(teamMeta)}">
                     <header>
                         <div class="data-equipment-board-team-title">
                             <span class="data-equipment-board-team-icon"><i class="fas fa-users" aria-hidden="true"></i></span>
                             <strong>${api.escapeHtml(group.team)}</strong>
-                            <span>${api.escapeHtml(sectionEquipment.length)}대</span>
+                            <span class="data-equipment-board-team-count">${api.escapeHtml(sectionEquipment.length)}${api.escapeHtml('\uB300')}</span>
+                            ${renderBoardAddButton(teamKey)}
                         </div>
                         <div class="data-equipment-board-team-actions">
-                            <button type="button" class="data-equipment-board-team-focus" data-equipment-focus-team="${api.escapeHtml(teamKey)}">모두 보기 <i class="fas fa-chevron-right" aria-hidden="true"></i></button>
                             <button type="button" class="data-equipment-board-team-order-toggle" data-equipment-order-toggle-team="${api.escapeHtml(teamKey)}" aria-label="${api.escapeHtml(orderToggleLabel)}" title="${api.escapeHtml(orderToggleLabel)}" aria-expanded="false">
                                 <i class="fas fa-arrows-up-down" aria-hidden="true"></i>
                             </button>
                         </div>
                     </header>
-                    ${filteredGroup.sections.map((section) => `
+                    ${visibleSections.map((section) => `
                         <div class="data-equipment-board-section">
                             ${renderBoardSectionTitle(section.title)}
                             <div class="data-equipment-board-card-row">
                                 ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex))).join('')}
-                                ${renderBoardAddCard(teamKey)}
                             </div>
                         </div>
                     `).join('')}
@@ -365,8 +397,8 @@
             : `
                 <article class="data-equipment-board-empty">
                     <strong>${api.escapeHtml(hasActiveFilter && items.length ? '조건에 맞는 설비가 없습니다.' : '등록된 설비가 없습니다.')}</strong>
-                    <p>${api.escapeHtml(hasActiveFilter && items.length ? '필터를 조정하거나 초기화하면 전체 설비 목차를 다시 볼 수 있습니다.' : '설비 추가를 누른 뒤 팀과 설비명을 입력하면 이 목차에 카드가 추가됩니다.')}</p>
-                    ${renderBoardAddCard('')}
+                    <p>${api.escapeHtml(hasActiveFilter && items.length ? '필터를 조정하거나 초기화하면 전체 설비 목차를 다시 볼 수 있습니다.' : '추가를 누른 뒤 팀과 설비명을 입력하면 이 목차에 카드가 추가됩니다.')}</p>
+                    ${renderBoardAddButton('', 'data-equipment-board-empty-add')}
                 </article>
             `;
 
@@ -381,20 +413,6 @@
                 </div>
             </section>
         `;
-    }
-
-    function renderEquipmentSelectOptions(groups, selected) {
-        return api.asList(groups).map((group) => {
-            const options = group.sections.flatMap((section) => section.equipment).map((item) => {
-                const label = [item.room, item.name].filter(Boolean).join(' / ') || item.name;
-                return `<option value="${api.escapeHtml(item.id)}"${item.id === selected?.id ? ' selected' : ''}>${api.escapeHtml(label)}</option>`;
-            }).join('');
-            return `
-                <optgroup label="${api.escapeHtml(`${group.team} (${group.equipmentCount})`)}">
-                    ${options}
-                </optgroup>
-            `;
-        }).join('');
     }
 
     function normalizePhotoCropValue(value) {
@@ -416,45 +434,20 @@
         return normalized;
     }
 
-    function getDefaultMainPhotoCrop() {
-        const width = 0.72;
-        const height = Math.min(0.72, width / EQUIPMENT_MAIN_THUMB_ASPECT);
-        return {
-            x: (1 - width) / 2,
-            y: (1 - height) / 2,
-            width,
-            height,
-        };
-    }
-
-    function getDraftPhotoCrop(draft) {
-        return normalizePhotoCropValue(draft?.photoCrop) || getDefaultMainPhotoCrop();
-    }
-
-    function getPhotoCropStyle(draft) {
-        const crop = getDraftPhotoCrop(draft);
-        return [
-            `left:${(crop.x * 100).toFixed(3)}%`,
-            `top:${(crop.y * 100).toFixed(3)}%`,
-            `width:${(crop.width * 100).toFixed(3)}%`,
-            `height:${(crop.height * 100).toFixed(3)}%`,
-        ].join(';');
-    }
-
     function renderPhotoCard(draft) {
         const photoSrc = api.getEquipmentPhotoPreviewUrl?.(draft) || draft.photoDataUrl;
         const hasPhoto = Boolean(photoSrc);
         const attachmentKey = api.escapeHtml(draft.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY);
         const caption = draft.photoName
             ? `현재 첨부: ${draft.photoName}`
-            : '\uC0AC\uC9C4 \uD30C\uC77C\uC744 \uC120\uD0DD\uD558\uAC70\uB098 \uD074\uB9BD\uBCF4\uB4DC \uC774\uBBF8\uC9C0\uB97C Ctrl+V\uB85C \uBD99\uC5EC\uB123\uC73C\uC138\uC694. \uAD8C\uC7A5 \uD06C\uAE30 1600 x 800';
+            : '\uC0AC\uC9C4 \uD30C\uC77C\uC744 \uC120\uD0DD\uD558\uAC70\uB098 \uD074\uB9BD\uBCF4\uB4DC \uC774\uBBF8\uC9C0\uB97C Ctrl+V\uB85C \uBD99\uC5EC\uB123\uC73C\uC138\uC694. \uAD8C\uC7A5 \uD06C\uAE30 1600 x 400';
         if (hasPhoto) {
             return `
                 <div class="data-equipment-photo-card is-locked" tabindex="0" data-equipment-history-photo-card data-equipment-history-photo-attachment-key="${attachmentKey}">
                     <input type="file" accept="image/*" hidden data-equipment-history-photo-input data-equipment-history-photo-attachment-key="${attachmentKey}">
                     <img class="data-equipment-photo-preview" alt="설비 4방향 통합 사진 미리보기" src="${api.escapeHtml(photoSrc)}" data-equipment-history-photo-preview>
                     <button type="button" class="data-equipment-photo-revert" data-equipment-photo-revert>
-                        <i class="fas fa-undo"></i><span>사진 되돌리기</span>
+                        <i class="fas fa-undo"></i><span>되돌리기</span>
                     </button>
                 </div>
             `;
@@ -462,34 +455,21 @@
         return `
             <div class="data-equipment-photo-card" tabindex="0" data-equipment-history-photo-card data-equipment-history-photo-attachment-key="${attachmentKey}">
                 <input type="file" accept="image/*" hidden data-equipment-history-photo-input data-equipment-history-photo-attachment-key="${attachmentKey}">
+                <button type="button" class="data-equipment-photo-select data-equipment-photo-attach-key" data-equipment-history-photo-select data-equipment-history-photo-attachment-key="${attachmentKey}" aria-label="${api.escapeHtml('\uC0AC\uC9C4 \uCCA8\uBD80')}" title="${api.escapeHtml('\uC0AC\uC9C4 \uCCA8\uBD80')}">
+                    <i class="fas fa-paperclip"></i><span>${api.escapeHtml('\uC0AC\uC9C4 \uCCA8\uBD80')}</span>
+                </button>
                 <img class="data-equipment-photo-preview" alt="설비 4방향 통합 사진 미리보기" hidden data-equipment-history-photo-preview>
                 <span class="data-equipment-photo-placeholder" data-equipment-history-photo-placeholder>
                     <i class="fas fa-camera"></i>
                     <strong>${api.escapeHtml('\uC0AC\uC9C4 \uCCA8\uBD80 / \uBD99\uC5EC\uB123\uAE30')}</strong>
                     <small>${api.escapeHtml(caption)}</small>
                     <span class="data-equipment-photo-placeholder-actions">
-                        <button type="button" class="data-equipment-photo-select" data-equipment-history-photo-select data-equipment-history-photo-attachment-key="${attachmentKey}">
-                            <i class="fas fa-paperclip"></i><span>${api.escapeHtml('\uC0AC\uC9C4 \uCCA8\uBD80')}</span>
-                        </button>
                         <button type="button" class="data-equipment-photo-paste" data-equipment-history-photo-paste data-equipment-history-photo-attachment-key="${attachmentKey}">
                             <i class="fas fa-paste"></i><span>${api.escapeHtml('\uBD99\uC5EC\uB123\uAE30')}</span>
                         </button>
                     </span>
                 </span>
             </div>
-        `;
-    }
-
-    function renderStatusToggle(status) {
-        const statusMeta = api.getEquipmentStatus(status);
-        return `
-            <span class="data-equipment-title-status-toggle" role="group" aria-label="설비 가동 상태">
-                ${['가동중', '비가동중', '정비중'].map((item) => `
-                    <button type="button" class="${statusMeta.label === item ? 'is-active' : ''}" aria-pressed="${statusMeta.label === item ? 'true' : 'false'}" data-equipment-status-toggle="${api.escapeHtml(item)}">
-                        ${api.escapeHtml(item)}
-                    </button>
-                `).join('')}
-            </span>
         `;
     }
 
@@ -549,11 +529,34 @@
             <div class="data-equipment-simple-spec" data-equipment-simple-spec>
                 ${rows.map((row, rowIndex) => `
                     <div class="data-equipment-simple-spec-row" data-equipment-row-index="${rowIndex}">
-                        ${api.renderInput(api.DETAIL_ITEM_FIELDS[0], row?.label || '', `data-equipment-row-section="equipmentSpecs" data-equipment-row-index="${rowIndex}" aria-label="스펙 항목"`)}
-                        ${api.renderInput(api.DETAIL_ITEM_FIELDS[1], row?.value || '', `data-equipment-row-section="equipmentSpecs" data-equipment-row-index="${rowIndex}" aria-label="스펙 내용"`)}
-                        <button type="button" class="data-equipment-row-remove data-equipment-detail-remove" data-equipment-remove-row="equipmentSpecs" data-equipment-row-index="${rowIndex}" aria-label="스펙 삭제">
-                            <i class="fas fa-trash-alt"></i>
+                        <button type="button" class="data-equipment-row-remove data-equipment-simple-spec-remove" data-equipment-remove-row="equipmentSpecs" data-equipment-row-index="${rowIndex}" aria-label="스펙 삭제">
+                            삭제
                         </button>
+                        ${api.renderInput(api.DETAIL_ITEM_FIELDS[0], row?.label || '', `class="data-equipment-simple-spec-label-input" data-equipment-row-section="equipmentSpecs" data-equipment-row-index="${rowIndex}" aria-label="스펙 항목"`)}
+                        ${api.renderInput(api.DETAIL_ITEM_FIELDS[1], row?.value || '', `class="data-equipment-simple-spec-value-input" data-equipment-row-section="equipmentSpecs" data-equipment-row-index="${rowIndex}" aria-label="스펙 내용"`)}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function renderMaintenanceEditor(rows) {
+        const list = api.asList(rows);
+        return `
+            <div class="data-equipment-maintenance-editor" data-equipment-maintenance-editor>
+                <div class="data-equipment-maintenance-head" aria-hidden="true">
+                    ${api.MAINTENANCE_FIELDS.map((field) => `<span>${api.escapeHtml(field.label)}</span>`).join('')}
+                </div>
+                ${list.map((row, rowIndex) => `
+                    <div class="data-equipment-maintenance-row" data-equipment-row-index="${rowIndex}">
+                        <button type="button" class="data-equipment-row-remove data-equipment-maintenance-remove" data-equipment-remove-row="maintenanceHistory" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml('\uC815\uBE44 \uC774\uB825 \uC0AD\uC81C')}">
+                            ${api.escapeHtml('\uC0AD\uC81C')}
+                        </button>
+                        ${api.MAINTENANCE_FIELDS.map((field) => `
+                            <div class="data-equipment-maintenance-cell">
+                                ${api.renderInput(field, row?.[field.key] || '', `class="data-equipment-maintenance-input" data-equipment-row-section="maintenanceHistory" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml(field.label)}"`)}
+                            </div>
+                        `).join('')}
                     </div>
                 `).join('')}
             </div>
@@ -565,23 +568,20 @@
         return `
             <div class="data-equipment-doc-list" data-equipment-doc-list>
                 ${list.map((row, rowIndex) => {
-                    const label = row?.pendingFile?.name || row?.fileName || row?.originalName || '선택한 파일 없음';
+                    const label = row?.pendingFile?.name || row?.fileName || row?.originalName || '';
                     return `
                         <div class="data-equipment-doc-list-item" data-equipment-row-index="${rowIndex}">
-                            <i class="fas fa-file-pdf" aria-hidden="true"></i>
-                            <div>
-                                ${api.renderInput(api.DOCUMENT_FIELDS[0], row?.title || '', `data-equipment-row-section="documents" data-equipment-row-index="${rowIndex}" aria-label="문서명"`)}
-                                <div class="data-equipment-document-picker">
-                                    <input type="file" hidden accept="${api.escapeHtml(api.DOCUMENT_ATTACHMENT_ACCEPT || '')}" data-equipment-document-file-input data-equipment-row-index="${rowIndex}">
-                                    <button type="button" class="data-equipment-document-pick" data-equipment-document-pick="${rowIndex}" aria-label="문서 파일 첨부" title="파일 첨부">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                    <span>${api.escapeHtml(label)}</span>
-                                </div>
+                            ${api.renderInput({ ...api.DOCUMENT_FIELDS[0], placeholder: '' }, row?.title || '', `class="data-equipment-document-title-input" data-equipment-row-section="documents" data-equipment-row-index="${rowIndex}" aria-label="문서 제목"`)}
+                            <div class="data-equipment-document-picker">
+                                <input type="file" hidden accept="${api.escapeHtml(api.DOCUMENT_ATTACHMENT_ACCEPT || '')}" data-equipment-document-file-input data-equipment-row-index="${rowIndex}">
+                                <button type="button" class="data-equipment-document-pick" data-equipment-document-pick="${rowIndex}" aria-label="문서 첨부" title="문서 첨부">
+                                    문서 첨부
+                                </button>
+                                <span class="data-equipment-document-file-name">${api.escapeHtml(label)}</span>
+                                <button type="button" class="data-equipment-document-remove" data-equipment-remove-row="documents" data-equipment-row-index="${rowIndex}" aria-label="문서 삭제">
+                                    삭제
+                                </button>
                             </div>
-                            <button type="button" class="data-equipment-row-remove" data-equipment-remove-row="documents" data-equipment-row-index="${rowIndex}" aria-label="문서 삭제">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
                         </div>
                     `;
                 }).join('')}
@@ -589,21 +589,43 @@
         `;
     }
 
+    function isBlankDocumentEditorRow(row) {
+        if (!row) return true;
+        return !api.normalizeText(row.title)
+            && !api.normalizeText(row.pendingFile?.name)
+            && !api.normalizeText(row.fileName || row.originalName)
+            && !api.normalizeText(row.documentId || row.fileId)
+            && !api.normalizeText(row.storageRelPath || row.previewUrl || row.downloadUrl);
+    }
+
+    function ensureDraftDocumentEditorSlot(draft) {
+        if (!draft) return;
+        if (!Array.isArray(draft.documents)) draft.documents = [];
+        if (!draft.documents.length || !isBlankDocumentEditorRow(draft.documents[draft.documents.length - 1])) {
+            draft.documents.push(api.createBlankDocumentRow());
+        }
+    }
+
     function renderHistoryCard(category, data, state) {
         const header = data.header || {};
         const draft = state.draft || api.createDraft();
+        ensureDraftDocumentEditorSlot(draft);
         const roomOptions = getTeamRoomOptions(data, draft.team);
         return `
             <section class="data-equipment-card-view" data-equipment-view="card">
                 <form class="data-equipment-layout data-equipment-edit-form" aria-label="설비 기록 작성" data-equipment-form>
-                    <div class="data-equipment-top-grid">
-                        ${renderPhotoCard(draft)}
-                        <article class="data-equipment-card data-equipment-card-pad data-equipment-photo-info-card">
-                            ${api.renderFieldGrid(api.PHOTO_INFO_FIELDS, draft, 'data-equipment-edit-grid data-equipment-photo-info-grid', {
-                                fieldAttrs: { room: `list="${api.escapeHtml(CARD_ROOM_DATALIST_ID)}"` },
-                            })}
-                            ${renderRoomDatalist(CARD_ROOM_DATALIST_ID, roomOptions)}
-                        </article>
+                    <div class="data-equipment-hero-grid">
+                        <div class="data-equipment-hero-photo">
+                            ${renderPhotoCard(draft)}
+                        </div>
+                        <aside class="data-equipment-hero-side">
+                            ${renderEquipmentRecentUpdated(header, data)}
+                            ${renderEquipmentPhotoTitle(draft)}
+                            <article class="data-equipment-card data-equipment-doc-card data-equipment-hero-doc-card">
+                                ${renderCompactDocumentEditor(draft.documents)}
+                            </article>
+                        </aside>
+                        ${renderRoomDatalist(CARD_ROOM_DATALIST_ID, roomOptions)}
                     </div>
                     <div class="data-equipment-card-grid">
                         <article class="data-equipment-card data-equipment-detail-card">
@@ -623,64 +645,112 @@
                                 </button>
                             </h3>
                             <div class="data-equipment-table-scroll">
-                                ${api.renderEditableTable(api.MAINTENANCE_FIELDS, draft.maintenanceHistory, 'maintenanceHistory')}
+                                ${renderMaintenanceEditor(draft.maintenanceHistory)}
                             </div>
                         </article>
-                        <article class="data-equipment-card data-equipment-doc-card">
-                            <h3 class="data-equipment-section-title">
-                                관련 문서
-                                <button type="button" class="data-equipment-add-row" data-equipment-add-row="documents">
-                                    <i class="fas fa-plus"></i><span>추가</span>
-                                </button>
-                            </h3>
-                            ${renderCompactDocumentEditor(draft.documents)}
-                        </article>
                     </div>
-                    <label class="data-equipment-note-field">
-                        <span>비고</span>
-                        <textarea data-equipment-field="note" placeholder="비고를 입력하세요.">${api.escapeHtml(draft.note || '')}</textarea>
-                    </label>
-                    <div class="data-equipment-form-actions">
-                        ${draft.id ? `
-                            <button type="button" class="data-equipment-danger-action" data-equipment-delete-card>
-                                <i class="fas fa-trash"></i><span>삭제</span>
-                            </button>
-                        ` : ''}
-                        <button type="button" data-equipment-clear-form>
-                            <i class="fas fa-eraser"></i><span>작성 폼 비우기</span>
-                        </button>
-                    </div>
+                    <article class="data-equipment-card data-equipment-note-card">
+                        <h3 class="data-equipment-section-title">비고</h3>
+                        <label class="data-equipment-note-field">
+                            <textarea data-equipment-field="note" placeholder="비고를 입력하세요.">${api.escapeHtml(draft.note || '')}</textarea>
+                        </label>
+                    </article>
                 </form>
-                ${renderFooter(header, data, draft, state)}
+                ${renderFooter(state)}
             </section>
         `;
     }
 
-    function renderFooter(header, data, draft, state) {
+    function renderFooter(state) {
         return `
             <footer class="data-equipment-footer">
                 ${state.message ? `<span>${api.escapeHtml(state.message)}</span>` : '<span aria-hidden="true"></span>'}
-                <span>
-                    <strong>마지막 업데이트</strong>
-                    ${api.escapeHtml(header.updatedAt || data.meta?.updatedAt || '-')}
-                    <strong>${api.escapeHtml(draft?.ownerLabel || header.ownerLabel || '담당 업체')}</strong>
-                    ${api.escapeHtml(draft?.owner || header.owner || '-')}
-                </span>
             </footer>
+        `;
+    }
+
+    function renderEquipmentRecentUpdated(header, data) {
+        const updatedAt = api.normalizeText(header?.updatedAt || data?.meta?.updatedAt) || '-';
+        return `
+            <div class="data-equipment-hero-updated">
+                <span>${api.escapeHtml('\uCD5C\uADFC \uC5C5\uB370\uC774\uD2B8 :')}</span>
+                <strong>${api.escapeHtml(updatedAt)}</strong>
+            </div>
         `;
     }
 
     function renderTitleInput(field, value, label, className, placeholder = '', attrs = '') {
         return `
-            <input
-                type="text"
-                class="data-equipment-title-input ${api.escapeHtml(className)}"
-                value="${api.escapeHtml(value)}"
-                placeholder="${api.escapeHtml(placeholder || label)}"
-                data-equipment-field="${api.escapeHtml(field)}"
-                aria-label="${api.escapeHtml(label)}"
-                ${attrs}
-            >
+            <div class="data-equipment-title-field ${api.escapeHtml(`${className}-field`)}">
+                <input
+                    type="text"
+                    class="data-equipment-title-input ${api.escapeHtml(className)}"
+                    value="${api.escapeHtml(value)}"
+                    placeholder="${api.escapeHtml(placeholder || label)}"
+                    data-equipment-field="${api.escapeHtml(field)}"
+                    aria-label="${api.escapeHtml(label)}"
+                    ${attrs}
+                >
+            </div>
+        `;
+    }
+
+    function renderTitleTeamSelect(value, teamMeta) {
+        const iconClass = getEquipmentTeamIconClass(teamMeta);
+        return `
+            <div class="data-equipment-title-field data-equipment-title-team-field">
+                <span class="data-equipment-title-team-icon" aria-hidden="true">
+                    <i class="fas ${api.escapeHtml(iconClass)}"></i>
+                </span>
+                ${api.renderTeamSelect(
+                    value,
+                    `class="data-equipment-title-input data-equipment-title-team" aria-label="${api.escapeHtml('\uD300')}"`
+                )}
+            </div>
+        `;
+    }
+
+    function renderEquipmentPhotoTitle(draft) {
+        const source = draft || {};
+        const teamName = api.normalizeText(source.team);
+        const roomName = api.normalizeText(source.room);
+        const equipmentName = api.normalizeText(source.name);
+        const teamMeta = api.getEquipmentHistoryTeamMeta?.(teamName) || {};
+        return `
+            <div class="data-equipment-photo-title-row" aria-label="${api.escapeHtml('\uC124\uBE44 \uC81C\uBAA9')}" style="${getBoardTeamStyle(teamMeta)}">
+                ${renderTitleTeamSelect(teamName, teamMeta)}
+                ${renderTitleInput('room', roomName, '\uC2E4', 'data-equipment-title-room', '\uC2E4', `list="${api.escapeHtml(CARD_ROOM_DATALIST_ID)}"`)}
+                ${renderTitleInput('name', equipmentName, '\uC124\uBE44\uBA85', 'data-equipment-title-name', '\uC124\uBE44\uBA85')}
+            </div>
+        `;
+    }
+
+    function renderTopbarBackButton() {
+        return `
+            <button type="button" class="data-equipment-title-back" data-equipment-view-action="board" aria-label="${api.escapeHtml('\uC124\uBE44 \uC774\uB825\uCE74\uB4DC \uBAA9\uCC28\uB85C \uB3CC\uC544\uAC00\uAE30')}" title="${api.escapeHtml('\uC124\uBE44 \uD604\uD669')}">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i>
+            </button>
+        `;
+    }
+
+    function renderTopbarCardActions(state) {
+        const draft = state.draft || {};
+        const statusMeta = api.getEquipmentStatus(draft.status);
+        const statusTone = ['running', 'stop', 'check'].includes(statusMeta.tone) ? statusMeta.tone : 'running';
+        const statusIcon = getEquipmentStatusIconClass(statusTone);
+        return `
+            <button type="button" class="data-equipment-print-btn" data-equipment-history-print>
+                <i class="fas fa-print"></i><span>${api.escapeHtml('A4 \uCD9C\uB825')}</span>
+            </button>
+            <button type="button" class="data-equipment-topbar-action data-equipment-card-status-button is-${statusTone}" data-equipment-cycle-current-status aria-label="${api.escapeHtml('\uAC00\uB3D9 \uC0C1\uD0DC \uBCC0\uACBD')}" title="${api.escapeHtml('\uD074\uB9AD\uD558\uBA74 \uAC00\uB3D9\uC911, \uBE44\uAC00\uB3D9\uC911, \uC815\uBE44\uC911\uC73C\uB85C \uBC14\uB01D\uB2C8\uB2E4.')}">
+                <i class="fas ${api.escapeHtml(statusIcon)}" aria-hidden="true"></i><span>${api.escapeHtml(statusMeta.label)}</span>
+            </button>
+            <button type="button" class="data-equipment-topbar-action data-equipment-topbar-danger-action" data-equipment-delete-card>
+                <i class="fas fa-trash"></i><span>${api.escapeHtml('\uC0AD\uC81C')}</span>
+            </button>
+            <button type="button" class="data-equipment-topbar-action data-equipment-topbar-clear-action" data-equipment-clear-form>
+                <i class="fas fa-eraser"></i><span>${api.escapeHtml('\uBE44\uC6B0\uAE30')}</span>
+            </button>
         `;
     }
 
@@ -688,23 +758,15 @@
         const isCard = state.view === 'card';
         const isCardStart = state.view === 'card-start';
         if (isCard) {
-            const draft = state.draft || {};
-            const teamName = api.normalizeText(draft.team || selected?.team) || '팀명';
-            const roomName = api.normalizeText(draft.room || selected?.room);
-            const equipmentName = api.normalizeText(draft.name || selected?.name) || '설비명';
-            const status = draft.status || selected?.status || '가동중';
             return `
-                <h2 class="data-equipment-title-pair">
-                    <span class="data-equipment-title-team">${api.escapeHtml(teamName)}</span>
-                    ${renderTitleInput('room', roomName, '실', 'data-equipment-title-room', '실', `list="${api.escapeHtml(CARD_ROOM_DATALIST_ID)}"`)}
-                    ${renderTitleInput('name', equipmentName, '설비명', 'data-equipment-title-name', '설비명')}
-                    ${renderStatusToggle(status)}
+                <h2 class="data-equipment-title-pair data-equipment-topbar-card-backline">
+                    ${renderTopbarBackButton()}
                 </h2>
             `;
         }
         if (isCardStart) {
             return `
-                <h2>${api.escapeHtml('팀과 설비명 입력')}</h2>
+                <h2 class="data-equipment-title-pair">${renderTopbarBackButton()}<span>${api.escapeHtml('팀과 설비명 입력')}</span></h2>
                 <p>${api.escapeHtml('입력 후 작성란이 열립니다.')}</p>
             `;
         }
@@ -719,23 +781,16 @@
         const isCardStart = state.view === 'card-start';
         const isAuthoring = isCard || isCardStart;
         return `
-            <header class="data-equipment-topbar data-equipment-topbar-dashboard ${isCard ? 'is-card-mode' : ''}">
-                <div class="data-equipment-brand data-equipment-brand-icon-only" aria-hidden="true">
+            <header class="data-equipment-topbar data-equipment-topbar-dashboard ${isCard ? 'is-card-mode' : ''} ${isAuthoring ? 'is-authoring-mode' : ''}">
+                ${isAuthoring ? '' : `<div class="data-equipment-brand data-equipment-brand-icon-only" aria-hidden="true">
                     <span class="data-equipment-brand-mark"><i class="fas fa-cube"></i></span>
-                </div>
+                </div>`}
                 <div class="data-equipment-title-block">
                     ${renderTopbarTitle(category, selected, state, data)}
                 </div>
                 <div class="data-equipment-actions data-equipment-view-actions">
                     ${isAuthoring ? `
-                        <button type="button" class="${isAuthoring ? '' : 'active'}" data-equipment-view-action="board">설비 현황</button>
-                        <button type="button" class="${isAuthoring ? 'active' : ''}" data-equipment-view-action="card">기록 작성</button>
-                        ${isCard ? `<button type="button" class="data-equipment-print-btn" data-equipment-history-print><i class="fas fa-print"></i><span>${api.escapeHtml('A4 \uCD9C\uB825')}</span></button>` : ''}
-                        ${items.length ? `
-                            <select data-equipment-select aria-label="설비 선택">
-                                ${renderEquipmentSelectOptions(groups, selected)}
-                            </select>
-                        ` : ''}
+                        ${isCard ? renderTopbarCardActions(state) : ''}
                     ` : renderBoardControls(groups, state)}
                 </div>
             </header>
@@ -746,12 +801,13 @@
         const items = api.normalizeEquipmentItems(data);
         const selected = api.getSelectedEquipment(items, state.selectedId);
         const groups = api.groupEquipmentItems(items);
+        const boardGroups = getBoardGroupsWithEmptyTeams(groups, getBoardFilters(state), items.length);
         const isCard = state.view === 'card';
         const isCardStart = state.view === 'card-start';
         return `
             <section class="data-equipment-page">
-                ${renderTopbar(category, data, items, selected, state, groups)}
-                ${isCard ? renderHistoryCard(category, data, state) : isCardStart ? renderCardStarter(state, data) : renderBoard(groups, items, state)}
+                ${renderTopbar(category, data, items, selected, state, isCard || isCardStart ? groups : boardGroups)}
+                ${isCard ? renderHistoryCard(category, data, state) : isCardStart ? renderCardStarter(state, data) : renderBoard(boardGroups, items, state)}
             </section>
         `;
     }
@@ -790,6 +846,12 @@
         });
     }
 
+    function createEquipmentHistoryDraftId(source = {}) {
+        const seed = [source.team, source.room, source.name].map((value) => api.normalizeText(value)).filter(Boolean).join('-') || 'equipment';
+        const slug = seed.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'equipment';
+        return `${slug}-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+    }
+
     function createDraftFromStarter(state) {
         const starter = getStartDraft(state);
         const validationErrors = api.getEquipmentHistoryStartValidationErrors?.(starter) || [];
@@ -797,8 +859,11 @@
             browser.alert(validationErrors[0].message);
             return false;
         }
-        state.selectedId = '';
+        const draftId = createEquipmentHistoryDraftId(starter);
+        state.selectedId = draftId;
         state.draft = api.createDraft({
+            id: draftId,
+            equipmentCode: draftId.toUpperCase(),
             team: starter.team,
             room: starter.room,
             name: starter.name,
@@ -1135,6 +1200,15 @@
         return true;
     }
 
+    async function cycleCurrentCardStatus(root, data, state, redraw) {
+        if (!state.draft) return false;
+        syncDraftFromForm(root, state);
+        state.draft.status = getNextEquipmentBoardStatus(state.draft.status);
+        return saveCurrentEquipmentHistoryView(root, data, state, redraw, {
+            message: '\uAC00\uB3D9 \uC0C1\uD0DC\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.',
+        });
+    }
+
     async function moveBoardCard(data, state, recordId, direction) {
         const normalizedRecordId = api.normalizeText(recordId);
         const moveDirection = Number(direction) < 0 ? -1 : 1;
@@ -1166,6 +1240,53 @@
         state.selectedId = item.id;
         state.message = '\uC124\uBE44 \uD45C\uC2DC \uC21C\uC11C\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
         return true;
+    }
+
+    function isEquipmentBoardCardInteractiveTarget(target) {
+        return Boolean(target?.closest?.('button, a, input, select, textarea'));
+    }
+
+    function getEquipmentHistoryBrowserState(view, selectedId = '') {
+        return {
+            key: EQUIPMENT_HISTORY_BROWSER_STATE_KEY,
+            view,
+            selectedId: api.normalizeText(selectedId),
+        };
+    }
+
+    function resetEquipmentHistoryBoardState(state) {
+        state.view = 'board';
+        state.draft = null;
+        state.starter = null;
+        state.filters = { team: '', status: '', search: '' };
+    }
+
+    function pushEquipmentHistoryCardHistory(state) {
+        browser.pushHistoryState?.(getEquipmentHistoryBrowserState('card', state.selectedId), '');
+    }
+
+    function replaceEquipmentHistoryBoardHistory() {
+        browser.replaceHistoryState?.(getEquipmentHistoryBrowserState('board'), '');
+    }
+
+    function applyEquipmentHistoryBrowserState(data, state, historyState, redraw) {
+        if (historyState?.key === EQUIPMENT_HISTORY_BROWSER_STATE_KEY && historyState.view === 'card' && historyState.selectedId) {
+            state.selectedId = historyState.selectedId;
+            state.view = 'card';
+            state.filters = { team: '', status: '', search: '' };
+            ensureDraft(data, state);
+        } else {
+            resetEquipmentHistoryBoardState(state);
+        }
+        redraw();
+    }
+
+    function openEquipmentBoardCard(data, state, recordId, redraw, options = {}) {
+        state.selectedId = recordId || state.selectedId;
+        state.view = 'card';
+        ensureDraft(data, state);
+        if (options.pushHistory !== false) pushEquipmentHistoryCardHistory(state);
+        redraw();
     }
 
     async function autoSaveDraft(data, state, redraw, message) {
@@ -1278,44 +1399,6 @@
         return api.asList(keys).every((key) => !normalizePrintText(row?.[key]));
     }
 
-    function formatPrintRate(value) {
-        const raw = normalizePrintText(value);
-        if (!raw) return '';
-        if (/%$/.test(raw)) return raw;
-        const numeric = Number(raw.replace(/,/g, ''));
-        return Number.isFinite(numeric) ? `${numeric}%` : raw;
-    }
-
-    function getPrintFieldLabel(field, draft) {
-        if (!field?.editableLabelKey) return field?.label || '';
-        return normalizePrintText(draft?.[field.editableLabelKey]) || field.label || '';
-    }
-
-    function getPrintFieldValue(field, draft) {
-        if (!field?.key) return '';
-        if (field.key === 'rate') return formatPrintRate(draft?.[field.key]);
-        return normalizePrintText(draft?.[field.key]);
-    }
-
-    function renderEquipmentPrintStaticField(label, value, fallback = '-') {
-        return `
-            <label class="equipment-print-static-field">
-                <span>${renderPrintText(label, '')}</span>
-                <div>${renderPrintText(value, fallback)}</div>
-            </label>
-        `;
-    }
-
-    function renderEquipmentPrintInfoGrid(draft) {
-        return `
-            <div class="data-equipment-edit-grid data-equipment-photo-info-grid equipment-print-static-grid">
-                ${api.asList(api.PHOTO_INFO_FIELDS).map((field) => `
-                    ${renderEquipmentPrintStaticField(getPrintFieldLabel(field, draft), getPrintFieldValue(field, draft))}
-                `).join('')}
-            </div>
-        `;
-    }
-
     function renderEquipmentPrintPhoto(draft) {
         const photoSrc = api.getEquipmentPhotoPreviewUrl?.(draft) || draft.photoDataUrl || draft.photoPreviewUrl || '';
         if (!photoSrc) {
@@ -1333,41 +1416,19 @@
             .filter((row) => !isPrintRowBlank(row, ['label', 'value']));
     }
 
-    function chunkEquipmentPrintRows(rows, size = 8) {
-        const result = [];
-        for (let index = 0; index < rows.length; index += size) {
-            result.push(rows.slice(index, index + size));
-        }
-        return result;
-    }
-
     function renderEquipmentPrintSpecRows(draft) {
         const rows = getEquipmentPrintSpecRows(draft);
         if (!rows.length) {
             return `<div class="equipment-print-empty">${api.escapeHtml('\uB4F1\uB85D\uB41C \uC124\uBE44 \uC2A4\uD399\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.')}</div>`;
         }
         return `
-            <div class="data-equipment-detail-groups">
-                <section class="data-equipment-detail-group" data-equipment-detail-group="equipmentSpecs">
-                    <div class="data-equipment-detail-items-grid is-categorized">
-                        <section class="data-equipment-detail-category">
-                            <div class="data-equipment-detail-category-grid">
-                                ${chunkEquipmentPrintRows(rows).map((blockRows, blockIndex) => `
-                                    <article class="data-equipment-spec-block equipment-print-spec-block" data-equipment-spec-block-index="${blockIndex}">
-                                        <div class="data-equipment-spec-block-items">
-                                            ${blockRows.map((row) => `
-                                                <div class="data-equipment-detail-item data-equipment-spec-block-row equipment-print-spec-row">
-                                                    <div class="equipment-print-spec-label">${renderPrintText(row?.label)}</div>
-                                                    <div class="equipment-print-spec-value">${renderPrintText(row?.value)}</div>
-                                                </div>
-                                            `).join('')}
-                                        </div>
-                                    </article>
-                                `).join('')}
-                            </div>
-                        </section>
+            <div class="equipment-print-spec-grid">
+                ${rows.map((row) => `
+                    <div class="equipment-print-spec-cell">
+                        <span>${renderPrintText(row?.label)}</span>
+                        <strong>${renderPrintText(row?.value)}</strong>
                     </div>
-                </section>
+                `).join('')}
             </div>
         `;
     }
@@ -1393,6 +1454,25 @@
         }).join('');
     }
 
+    function renderEquipmentPrintDocumentsCard(draft, className = '') {
+        return `
+            <article class="data-equipment-card data-equipment-doc-card equipment-print-documents${className ? ` ${api.escapeHtml(className)}` : ''}">
+                <h3 class="data-equipment-section-title">${api.escapeHtml('\uBB38\uC11C \uCCA8\uBD80')}</h3>
+                <div class="data-equipment-table-scroll">
+                    <table class="data-equipment-edit-table equipment-print-table equipment-print-doc-table">
+                        <thead>
+                            <tr>
+                                <th>${api.escapeHtml('\uBB38\uC11C\uBA85')}</th>
+                                <th>${api.escapeHtml('\uCCA8\uBD80 \uD30C\uC77C')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>${renderEquipmentPrintDocumentRows(draft)}</tbody>
+                    </table>
+                </div>
+            </article>
+        `;
+    }
+
     function getEquipmentPrintMaintenanceRows(draft) {
         return api.asList(draft?.maintenanceHistory)
             .filter((row) => !isPrintRowBlank(row, ['date', 'type', 'content', 'worker', 'note']));
@@ -1414,14 +1494,29 @@
         `).join('');
     }
 
-    function buildEquipmentHistoryPrintDocument(draftInput) {
+    function renderEquipmentPrintNote(draft) {
+        const hasNote = Boolean(normalizePrintText(draft?.note));
+        return `
+            <article class="data-equipment-card data-equipment-note-card equipment-print-note-card${hasNote ? '' : ' is-empty'}">
+                <h3 class="data-equipment-section-title">${api.escapeHtml('\uBE44\uACE0')}</h3>
+                ${hasNote
+                    ? `<div class="equipment-print-static-note">${renderPrintText(draft.note, '-')}</div>`
+                    : `<div class="equipment-print-empty">${api.escapeHtml('\uB4F1\uB85D\uB41C \uBE44\uACE0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.')}</div>`}
+            </article>
+        `;
+    }
+
+    function buildEquipmentHistoryPrintDocument(draftInput, options = {}) {
         const draft = api.createDraft(draftInput);
         const statusLabel = api.getEquipmentStatus(draft.status).label;
         const title = normalizePrintText(draft.name) || '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC';
-        const metaLabel = [draft.team, draft.room, draft.process, statusLabel].map(normalizePrintText).filter(Boolean).join(' / ');
-        const printedAt = new Date().toLocaleString('ko-KR');
+        const source = draftInput && typeof draftInput === 'object' ? draftInput : {};
+        const printOptions = options && typeof options === 'object' ? options : {};
+        const updatedAt = normalizePrintText(printOptions.updatedAt || source.updatedAt || source?.header?.updatedAt || source?.meta?.updatedAt) || '-';
         const teamLabel = normalizePrintText(draft.team) || '-';
         const roomLabel = normalizePrintText(draft.room) || '-';
+        const teamMeta = api.getEquipmentHistoryTeamMeta?.(draft.team) || {};
+        const teamIconClass = getEquipmentTeamIconClass(teamMeta);
         return `
 <!DOCTYPE html>
 <html lang="ko">
@@ -1434,7 +1529,7 @@
         figure { margin: 0; }
         html, body { margin: 0; background: #ffffff; color: #111827; font-family: 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .equipment-print-page { width: 198mm; height: 285mm; max-height: 285mm; overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 3mm; }
+        .equipment-print-page { width: 198mm; height: 285mm; max-height: 285mm; overflow: hidden; display: grid; align-content: start; gap: 2.4mm; }
         .data-equipment-topbar { display: grid; grid-template-columns: 11mm minmax(0, 1fr) auto; gap: 4mm; align-items: center; }
         .data-equipment-topbar-dashboard.is-card-mode { min-height: 17mm; padding: 3.4mm 4mm; border: 1px solid #132844; border-radius: 8px; background: linear-gradient(135deg, #071a31 0%, #102b4b 100%); color: #ffffff; }
         .data-equipment-brand { display: inline-flex; align-items: center; justify-content: center; min-width: 0; }
@@ -1449,67 +1544,84 @@
         .equipment-print-status-toggle { display: inline-flex; align-items: center; gap: 1mm; border: 1px solid rgba(255, 255, 255, 0.36); border-radius: 999px; background: rgba(255, 255, 255, 0.12); padding: 0.8mm; }
         .equipment-print-status-toggle span { display: inline-flex; align-items: center; min-height: 7mm; border-radius: 999px; background: #ffffff; color: #174c33; padding: 0 3mm; font-size: 9px; font-weight: 900; }
         .equipment-print-date { color: rgba(226, 238, 255, 0.8); font-size: 8px; font-weight: 800; text-align: right; white-space: nowrap; }
-        .data-equipment-card-view { min-height: 0; display: grid; }
+        .data-equipment-card-view { min-height: 0; display: grid; align-content: start; }
         .data-equipment-layout,
-        .data-equipment-edit-form { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) minmax(23mm, auto); gap: 3mm; }
-        .equipment-print-form { height: 100%; }
-        .data-equipment-top-grid { min-height: 0; display: grid; grid-template-columns: minmax(0, 1.48fr) minmax(58mm, 0.78fr); gap: 3mm; align-items: stretch; }
-        .data-equipment-card-grid { min-height: 0; display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) minmax(0, 0.9fr); gap: 3mm; align-items: stretch; }
+        .data-equipment-edit-form { min-height: 0; display: grid; grid-template-rows: none; align-content: start; gap: 2.4mm; }
+        .equipment-print-form { height: auto; }
+        .data-equipment-hero-grid,
+        .equipment-print-hero-grid { min-width: 0; display: grid; grid-template-columns: minmax(0, 0.52fr) minmax(0, 0.48fr); gap: 2mm; align-items: stretch; }
+        .data-equipment-hero-photo { min-width: 0; display: grid; align-items: start; }
+        .data-equipment-hero-side { min-width: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 1.4mm; align-content: stretch; }
+        .data-equipment-hero-updated { min-width: 0; min-height: 6.8mm; display: flex; align-items: center; gap: 1.5mm; padding: 1.3mm 2mm; border: 1px solid #dbe6f3; border-radius: 7px; background: #f8fbff; color: #334155; line-height: 1.15; }
+        .data-equipment-hero-updated span { flex: 0 0 auto; color: #64748b; font-size: 8px; font-weight: 900; white-space: nowrap; }
+        .data-equipment-hero-updated strong { min-width: 0; overflow: hidden; color: #1f2a44; font-size: 8.4px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+        .data-equipment-photo-title-row { min-width: 0; display: grid; grid-template-columns: minmax(34mm, 0.62fr) minmax(28mm, 0.48fr) minmax(0, 1.4fr); gap: 2mm; align-items: center; border: 0; background: transparent; padding: 0; }
+        .data-equipment-photo-title-row .data-equipment-title-team,
+        .data-equipment-photo-title-row .data-equipment-title-room,
+        .data-equipment-photo-title-row .data-equipment-title-name { min-width: 0; min-height: 9mm; display: flex; align-items: center; justify-content: flex-start; gap: 1.6mm; border: 1px solid #d7e2ef; border-radius: 7px; background: #ffffff; color: #132844; padding: 1.5mm 2mm; font-family: 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif; line-height: 1.15; word-break: keep-all; }
+        .data-equipment-title-team-icon { width: 7mm; height: 7mm; display: inline-flex; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--equipment-team-color, #2563eb) 24%, #ffffff); border-radius: 7px; background: color-mix(in srgb, var(--equipment-team-color, #2563eb) 14%, #ffffff); color: var(--equipment-team-color, #2563eb); font-size: 8.5px; flex: 0 0 auto; }
+        .data-equipment-title-value { min-width: 0; overflow: hidden; color: #132844; font-size: 13px; font-weight: 900; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
+        .data-equipment-top-grid { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 3mm; align-items: stretch; }
+        .equipment-print-section-stack { min-height: 0; display: grid; gap: 2mm; align-content: start; }
         .data-equipment-card,
         .data-equipment-photo-card { overflow: hidden; background: #ffffff; border: 1px solid #dbe7f5; border-radius: 8px; box-shadow: none; }
         .data-equipment-card-pad,
         .data-equipment-detail-card,
         .data-equipment-history-card,
+        .data-equipment-note-card,
         .data-equipment-doc-card { min-width: 0; padding: 3mm; }
         .data-equipment-history-card,
-        .data-equipment-doc-card { display: grid; grid-template-rows: auto minmax(0, 1fr); align-content: start; }
-        .data-equipment-photo-card { min-height: 0; aspect-ratio: 2 / 1; display: grid; place-items: center; background: #f8fbff; }
-        .data-equipment-photo-preview { width: 100%; height: 100%; min-height: 0; object-fit: cover; display: block; background: #f8fbff; }
+        .data-equipment-note-card,
+        .data-equipment-doc-card { display: grid; align-content: start; }
+        .data-equipment-photo-card { width: 100%; min-height: 0; aspect-ratio: 4 / 1; display: grid; place-items: center; background: #f8fbff; }
+        .data-equipment-photo-preview { width: 100%; height: 100%; min-height: 0; object-fit: contain; display: block; background: #f8fbff; }
         .data-equipment-photo-placeholder,
         .equipment-print-photo-empty { width: 100%; height: 100%; display: grid; place-items: center; color: #63748e; font-size: 10px; font-weight: 800; text-align: center; }
         .data-equipment-section-title { display: flex; align-items: center; gap: 2mm; margin: 0 0 2mm; color: #1268d8; font-size: 11px; font-weight: 900; line-height: 1.25; }
+        .equipment-print-hero-doc-card { min-height: 0; padding: 2mm; }
+        .equipment-print-hero-doc-card .data-equipment-section-title { margin-bottom: 1mm; font-size: 9.2px; }
+        .equipment-print-hero-doc-card .data-equipment-table-scroll { padding: 1mm; }
+        .equipment-print-hero-doc-card .equipment-print-table { border-spacing: 0 0.6mm; font-size: 7.8px; }
+        .equipment-print-hero-doc-card .equipment-print-table-value { min-height: 4.8mm; padding: 1mm 1.2mm; font-size: 7.8px; }
+        .equipment-print-hero-doc-card .equipment-print-empty-cell { padding: 1.2mm 1mm; font-size: 8px; }
         .equipment-print-status-pill { margin-left: auto; border: 1px solid #b9d8c7; border-radius: 7px; background: #f7fffb; color: #166534; padding: 1mm 2mm; font-size: 8px; font-weight: 900; }
         .data-equipment-edit-grid { display: grid; gap: 2mm; }
-        .data-equipment-photo-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; }
-        .equipment-print-static-field,
         .data-equipment-note-field { display: grid; gap: 1.2mm; min-width: 0; color: #34476c; font-size: 8.5px; font-weight: 900; }
-        .equipment-print-static-field span,
         .data-equipment-note-field span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .equipment-print-static-field div,
         .equipment-print-static-note,
-        .equipment-print-spec-label,
-        .equipment-print-spec-value,
-        .equipment-print-table-value { width: 100%; min-width: 0; border: 1px solid #dce8f5; border-radius: 6px; background: #ffffff; color: #263957; padding: 1.7mm 2mm; font-size: 9.5px; font-weight: 800; line-height: 1.3; word-break: break-word; white-space: normal; }
-        .data-equipment-detail-card { display: grid; grid-template-rows: auto minmax(0, 1fr); }
-        .data-equipment-detail-groups,
-        .data-equipment-detail-group,
-        .data-equipment-detail-items-grid,
-        .data-equipment-detail-category,
-        .data-equipment-detail-category-grid { min-width: 0; display: grid; gap: 2mm; }
-        .data-equipment-detail-items-grid.is-categorized { grid-template-columns: minmax(0, 1fr); }
-        .data-equipment-spec-block { min-width: 0; border: 1px solid #d8e5f2; border-radius: 8px; background: #f8fbff; padding: 2mm; }
-        .data-equipment-spec-block-items { display: grid; grid-auto-flow: column; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, minmax(0, auto)); gap: 1.7mm; min-width: 0; }
-        .data-equipment-spec-block-row { display: grid; grid-template-columns: minmax(24mm, 0.8fr) minmax(0, 1.2fr); gap: 1.7mm; align-items: center; min-width: 0; }
-        .equipment-print-spec-label { background: #f3f7fc; color: #203a5b; font-size: 8.5px; }
-        .equipment-print-spec-value { font-size: 9.5px; }
+        .equipment-print-table-value { width: 100%; min-width: 0; border: 1px solid #dce8f5; border-radius: 6px; background: #ffffff; color: #263957; padding: 1.45mm 1.7mm; font-size: 9.2px; font-weight: 800; line-height: 1.25; word-break: break-word; white-space: normal; }
+        .data-equipment-detail-card { display: grid; align-content: start; }
+        .equipment-print-spec-grid { min-width: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1.5mm; align-items: stretch; }
+        .equipment-print-spec-cell { min-width: 0; display: grid; gap: 0.9mm; border: 1px solid #dce8f5; border-radius: 6px; background: #ffffff; padding: 1.45mm 1.5mm; }
+        .equipment-print-spec-cell span,
+        .equipment-print-spec-cell strong { min-width: 0; overflow: hidden; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+        .equipment-print-spec-cell span { color: #405270; font-size: 8px; font-weight: 900; }
+        .equipment-print-spec-cell strong { color: #132844; font-size: 9.4px; font-weight: 900; }
         .data-equipment-table-scroll { min-width: 0; border: 1px solid #d8e5f2; border-radius: 8px; background: #f8fbff; padding: 2mm; }
         .data-equipment-edit-table,
-        .equipment-print-table { width: 100%; border-collapse: separate; border-spacing: 0 1.4mm; table-layout: fixed; font-size: 8.5px; line-height: 1.2; }
+        .equipment-print-table { width: 100%; border-collapse: separate; border-spacing: 0 1mm; table-layout: fixed; font-size: 8.5px; line-height: 1.2; }
         .data-equipment-edit-table th,
         .data-equipment-edit-table td { border: 0; padding: 0 0.8mm; vertical-align: top; word-break: break-word; }
         .data-equipment-edit-table th { background: transparent; color: #34476c; font-size: 8px; font-weight: 900; text-align: left; padding-bottom: 0.4mm; }
-        .equipment-print-table-value { min-height: 7.2mm; padding: 1.4mm 1.6mm; }
+        .equipment-print-table-value { min-height: 5.8mm; padding: 1.25mm 1.5mm; }
         .equipment-print-maintenance-table th:nth-child(1),
-        .equipment-print-maintenance-table td:nth-child(1) { width: 17%; }
+        .equipment-print-maintenance-table td:nth-child(1) { width: 14%; }
         .equipment-print-maintenance-table th:nth-child(2),
-        .equipment-print-maintenance-table td:nth-child(2) { width: 15%; }
+        .equipment-print-maintenance-table td:nth-child(2) { width: 12%; }
+        .equipment-print-maintenance-table th:nth-child(3),
+        .equipment-print-maintenance-table td:nth-child(3) { width: 44%; }
         .equipment-print-maintenance-table th:nth-child(4),
-        .equipment-print-maintenance-table td:nth-child(4) { width: 16%; }
+        .equipment-print-maintenance-table td:nth-child(4) { width: 12%; }
+        .equipment-print-maintenance-table th:nth-child(5),
+        .equipment-print-maintenance-table td:nth-child(5) { width: 18%; }
+        .equipment-print-maintenance-table .equipment-print-table-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .equipment-print-doc-table th:nth-child(1),
         .equipment-print-doc-table td:nth-child(1) { width: 42%; }
-        .equipment-print-static-note { min-height: 16mm; }
+        .equipment-print-static-note { min-height: 0; }
+        .equipment-print-note-card.is-empty .equipment-print-empty { padding-top: 1.2mm; padding-bottom: 1.2mm; }
         .equipment-print-empty,
         .equipment-print-empty-cell { color: #6b7280; font-size: 9px; font-weight: 800; text-align: center; }
+        .equipment-print-empty { border: 1px dashed #dce8f5; border-radius: 6px; background: #f8fbff; padding: 1.6mm 2mm; }
         @media screen {
             body { padding: 10mm; background: #e5e7eb; }
             .equipment-print-page { width: 198mm; margin: 0 auto; padding: 0; background: #ffffff; box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18); }
@@ -1518,30 +1630,34 @@
 </head>
 <body>
     <main class="equipment-print-page">
-        <header class="data-equipment-topbar data-equipment-topbar-dashboard is-card-mode equipment-print-card-topbar">
-            <div class="data-equipment-brand data-equipment-brand-icon-only" aria-hidden="true">
-                <span class="data-equipment-brand-mark">EQ</span>
-            </div>
-            <div class="data-equipment-title-block">
-                <h2 class="data-equipment-title-pair">
-                    <span class="data-equipment-title-team">${renderPrintText(teamLabel, '-')}</span>
-                    <span class="data-equipment-title-room">${renderPrintText(roomLabel, '-')}</span>
-                    <span class="data-equipment-title-name">${renderPrintText(title, '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC')}</span>
-                    <span class="equipment-print-status-toggle" aria-label="${api.escapeHtml('\uC124\uBE44 \uAC00\uB3D9 \uC0C1\uD0DC')}"><span>${renderPrintText(statusLabel, '-')}</span></span>
-                </h2>
-            </div>
-            <div class="equipment-print-date">${renderPrintText(metaLabel, '-')}<br>${api.escapeHtml('\uCD9C\uB825')} ${renderPrintText(printedAt, '-')}</div>
-        </header>
         <section class="data-equipment-card-view" data-equipment-view="card-print">
             <form class="data-equipment-layout data-equipment-edit-form equipment-print-form" aria-label="${api.escapeHtml('\uC124\uBE44 \uAE30\uB85D \uCD9C\uB825')}">
-                <div class="data-equipment-top-grid">
-                    <figure class="data-equipment-photo-card">${renderEquipmentPrintPhoto(draft)}</figure>
-                    <article class="data-equipment-card data-equipment-card-pad data-equipment-photo-info-card">
-                        ${renderEquipmentPrintInfoGrid(draft)}
-                    </article>
+                <div class="data-equipment-hero-grid equipment-print-hero-grid">
+                    <div class="data-equipment-hero-photo">
+                        <figure class="data-equipment-photo-card">${renderEquipmentPrintPhoto(draft)}</figure>
+                    </div>
+                    <aside class="data-equipment-hero-side">
+                        <div class="data-equipment-hero-updated">
+                            <span>${api.escapeHtml('\uCD5C\uADFC \uC5C5\uB370\uC774\uD2B8 :')}</span>
+                            <strong>${renderPrintText(updatedAt, '-')}</strong>
+                        </div>
+                        <div class="data-equipment-photo-title-row equipment-print-photo-title-row" style="${getBoardTeamStyle(teamMeta)}">
+                            <span class="data-equipment-title-team">
+                                <span class="data-equipment-title-team-icon" aria-hidden="true"><i class="fas ${api.escapeHtml(teamIconClass)}"></i></span>
+                                <span class="data-equipment-title-value">${renderPrintText(teamLabel, '-')}</span>
+                            </span>
+                            <span class="data-equipment-title-room">
+                                <span class="data-equipment-title-value">${renderPrintText(roomLabel, '-')}</span>
+                            </span>
+                            <span class="data-equipment-title-name">
+                                <span class="data-equipment-title-value">${renderPrintText(title, '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC')}</span>
+                            </span>
+                        </div>
+                        ${renderEquipmentPrintDocumentsCard(draft, 'data-equipment-hero-doc-card equipment-print-hero-doc-card')}
+                    </aside>
                 </div>
-                <div class="data-equipment-card-grid">
-                    <article class="data-equipment-card data-equipment-detail-card">
+                <div class="equipment-print-section-stack">
+                    <article class="data-equipment-card data-equipment-detail-card equipment-print-spec-summary">
                         <h3 class="data-equipment-section-title">
                             ${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}
                             <span class="equipment-print-status-pill">${renderPrintText(statusLabel, '-')}</span>
@@ -1565,25 +1681,8 @@
                             </table>
                         </div>
                     </article>
-                    <article class="data-equipment-card data-equipment-doc-card equipment-print-documents">
-                        <h3 class="data-equipment-section-title">${api.escapeHtml('\uAD00\uB828 \uBB38\uC11C')}</h3>
-                        <div class="data-equipment-table-scroll">
-                            <table class="data-equipment-edit-table equipment-print-table equipment-print-doc-table">
-                                <thead>
-                                    <tr>
-                                        <th>${api.escapeHtml('\uBB38\uC11C\uBA85')}</th>
-                                        <th>${api.escapeHtml('\uCCA8\uBD80 \uD30C\uC77C')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>${renderEquipmentPrintDocumentRows(draft)}</tbody>
-                            </table>
-                        </div>
-                    </article>
+                    ${renderEquipmentPrintNote(draft)}
                 </div>
-                <label class="data-equipment-note-field equipment-print-note">
-                    <span>${api.escapeHtml('\uBE44\uACE0')}</span>
-                    <div class="equipment-print-static-note">${renderPrintText(draft.note, '-')}</div>
-                </label>
             </form>
         </section>
     </main>
@@ -1592,13 +1691,15 @@
         `;
     }
 
-    function printEquipmentHistoryCard(root, state) {
+    function printEquipmentHistoryCard(root, state, data) {
         if (!state.draft) {
             browser.alert('\uCD9C\uB825\uD560 \uC124\uBE44 \uC774\uB825\uCE74\uB4DC\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.');
             return;
         }
         syncDraftFromForm(root, state);
-        const printDocument = buildEquipmentHistoryPrintDocument(state.draft);
+        const printDocument = buildEquipmentHistoryPrintDocument(state.draft, {
+            updatedAt: data?.header?.updatedAt || data?.meta?.updatedAt,
+        });
         const printTitle = `${normalizePrintText(state.draft.name) || '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC'} \uCD9C\uB825`;
         if (browser.printHtmlDocument?.(printDocument, { title: printTitle })) {
             return;
@@ -1650,6 +1751,24 @@
         draft.photoName = snapshot.photoName || '';
         if (snapshot.photoFile) draft.photoFile = snapshot.photoFile;
         else delete draft.photoFile;
+    }
+
+    function getEquipmentHistoryPhotoAttachmentFailureMessage(error) {
+        const code = String(error?.message || error || '').trim();
+        if (code === 'file_too_large') return '\uC0AC\uC9C4 \uD30C\uC77C\uC774 \uB108\uBB34 \uD07D\uB2C8\uB2E4. \uC0AC\uC9C4\uC744 \uC904\uC774\uAC70\uB098 \uB2E4\uB978 \uC0AC\uC9C4\uC73C\uB85C \uB2E4\uC2DC \uCCA8\uBD80\uD574 \uC8FC\uC138\uC694.';
+        if (code === 'unsupported_type') return '\uC9C0\uC6D0\uD558\uC9C0 \uC54A\uB294 \uC0AC\uC9C4 \uD615\uC2DD\uC785\uB2C8\uB2E4. JPG, PNG, GIF, WebP \uC774\uBBF8\uC9C0\uB85C \uCCA8\uBD80\uD574 \uC8FC\uC138\uC694.';
+        if (code === 'server_write_unavailable') return '\uC11C\uBC84 \uC800\uC7A5 \uAD8C\uD55C\uC774 \uC5C6\uC5B4 \uC0AC\uC9C4\uC744 \uC800\uC7A5\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.';
+        return '\uC0AC\uC9C4 \uCCA8\uBD80\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uC774\uBBF8\uC9C0 \uD30C\uC77C\uC774\uB098 \uD074\uB9BD\uBCF4\uB4DC\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694.';
+    }
+
+    function enqueueEquipmentHistoryPhotoUpload(state, task) {
+        const previous = state.photoUploadPromise || Promise.resolve();
+        const upload = previous.catch(() => false).then(task);
+        const tracked = upload.finally(() => {
+            if (state.photoUploadPromise === tracked) state.photoUploadPromise = null;
+        });
+        state.photoUploadPromise = tracked;
+        return tracked;
     }
 
     function clearDraftPhoto(draft) {
@@ -1747,157 +1866,6 @@
         return true;
     }
 
-    function getContainedImageRect(img) {
-        const rect = img.getBoundingClientRect();
-        const naturalWidth = Number(img.naturalWidth) || rect.width || 1;
-        const naturalHeight = Number(img.naturalHeight) || rect.height || 1;
-        const imageAspect = naturalWidth / naturalHeight;
-        const rectAspect = rect.width / Math.max(rect.height, 1);
-        let width = rect.width;
-        let height = rect.height;
-        let left = rect.left;
-        let top = rect.top;
-        if (rectAspect > imageAspect) {
-            width = rect.height * imageAspect;
-            left += (rect.width - width) / 2;
-        } else {
-            height = rect.width / imageAspect;
-            top += (rect.height - height) / 2;
-        }
-        return { left, top, width, height };
-    }
-
-    function updatePhotoCropBox(frame, img, box, draft) {
-        if (!frame || !img || !box) return;
-        const frameRect = frame.getBoundingClientRect();
-        const contentRect = getContainedImageRect(img);
-        const crop = getDraftPhotoCrop(draft);
-        box.style.left = `${contentRect.left - frameRect.left + (contentRect.width * crop.x)}px`;
-        box.style.top = `${contentRect.top - frameRect.top + (contentRect.height * crop.y)}px`;
-        box.style.width = `${contentRect.width * crop.width}px`;
-        box.style.height = `${contentRect.height * crop.height}px`;
-    }
-
-    function renderPhotoThumbStatus(status, draft) {
-        const thumbSrc = api.normalizeText(draft?.photoThumbDataUrl);
-        status.innerHTML = thumbSrc
-            ? `<span>${api.escapeHtml('\uBAA9\uCC28 \uBBF8\uB9AC\uBCF4\uAE30')}</span><img src="${api.escapeHtml(thumbSrc)}" alt="${api.escapeHtml('\uBAA9\uCC28 \uC378\uB124\uC77C')}">`
-            : `<span>${api.escapeHtml('\uBAA9\uCC28 \uBBF8\uB9AC\uBCF4\uAE30')}</span><em>${api.escapeHtml('\uC601\uC5ED\uC744 \uB4DC\uB798\uADF8\uD55C \uB4A4 \uBA54\uC778 \uC601\uC5ED \uCEA1\uCCD0\uB97C \uB204\uB974\uC138\uC694.')}</em>`;
-    }
-
-    function setPhotoCropEditorMode(editor, state, isEditing) {
-        if (!editor || !state) return;
-        state.photoCropEditing = Boolean(isEditing);
-        const active = Boolean(state.photoCropEditing);
-        editor.card.classList.toggle('is-photo-editing', active);
-        editor.frame.classList.toggle('is-editing', active);
-        editor.box.hidden = !active;
-        editor.tools.hidden = !active;
-        editor.status.hidden = !active;
-        editor.editButton.setAttribute('aria-pressed', active ? 'true' : 'false');
-        editor.editButton.setAttribute('aria-label', active ? '\uC0AC\uC9C4 \uC218\uC815 \uB05D\uB0B4\uAE30' : '\uC0AC\uC9C4 \uC218\uC815');
-        editor.editButton.setAttribute('title', active ? '\uC0AC\uC9C4 \uC218\uC815 \uB05D\uB0B4\uAE30' : '\uC0AC\uC9C4 \uC218\uC815');
-        if (editor.editLabel) editor.editLabel.textContent = active ? '\uC644\uB8CC' : '\uC0AC\uC9C4 \uC218\uC815';
-    }
-
-    function ensurePhotoCropEditor(root, state) {
-        const card = root.querySelector('[data-equipment-history-photo-card].is-locked');
-        const img = root.querySelector('[data-equipment-history-photo-preview]');
-        if (!card || !img || !state.draft) return null;
-        const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
-        if (!doc) return null;
-        let frame = card.querySelector('[data-equipment-photo-crop-frame]');
-        if (!frame) {
-            frame = doc.createElement('div');
-            frame.className = 'data-equipment-photo-frame';
-            frame.dataset.equipmentPhotoCropFrame = '';
-            img.parentNode?.insertBefore(frame, img);
-            frame.appendChild(img);
-        }
-        let box = frame.querySelector('[data-equipment-photo-crop-box]');
-        if (!box) {
-            box = doc.createElement('span');
-            box.className = 'data-equipment-photo-crop-box';
-            box.dataset.equipmentPhotoCropBox = '';
-            box.setAttribute('aria-hidden', 'true');
-            box.setAttribute('style', getPhotoCropStyle(state.draft));
-            frame.appendChild(box);
-        }
-        let editButton = frame.querySelector('[data-equipment-photo-edit-toggle]');
-        if (!editButton) {
-            editButton = doc.createElement('button');
-            editButton.type = 'button';
-            editButton.className = 'data-equipment-photo-edit-toggle';
-            editButton.dataset.equipmentPhotoEditToggle = '';
-            editButton.innerHTML = `<i class="fas fa-pen" aria-hidden="true"></i><span>${api.escapeHtml('\uC0AC\uC9C4 \uC218\uC815')}</span>`;
-            frame.appendChild(editButton);
-        }
-        let tools = card.querySelector('.data-equipment-photo-tools');
-        if (!tools) {
-            tools = doc.createElement('div');
-            tools.className = 'data-equipment-photo-tools';
-            tools.innerHTML = `
-                <button type="button" class="data-equipment-photo-select" data-equipment-history-photo-select data-equipment-history-photo-attachment-key="${api.escapeHtml(state.draft.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY)}">
-                    <i class="fas fa-paperclip"></i><span>${api.escapeHtml('\uC0AC\uC9C4 \uCCA8\uBD80')}</span>
-                </button>
-                <button type="button" class="data-equipment-photo-paste" data-equipment-history-photo-paste data-equipment-history-photo-attachment-key="${api.escapeHtml(state.draft.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY)}">
-                    <i class="fas fa-paste"></i><span>${api.escapeHtml('\uBD99\uC5EC\uB123\uAE30')}</span>
-                </button>
-                <button type="button" class="data-equipment-photo-capture" data-equipment-photo-thumb-capture>
-                    <i class="fas fa-crop-simple"></i><span>${api.escapeHtml('\uBA54\uC778 \uC601\uC5ED \uCEA1\uCCD0')}</span>
-                </button>
-                <button type="button" class="data-equipment-photo-reset" data-equipment-photo-crop-reset>
-                    <i class="fas fa-crosshairs"></i><span>${api.escapeHtml('\uC911\uC559 \uB9DE\uCDA4')}</span>
-                </button>
-            `;
-            card.appendChild(tools);
-        }
-        const revertButton = card.querySelector('[data-equipment-photo-revert]');
-        if (revertButton && revertButton.parentElement !== tools) {
-            tools.appendChild(revertButton);
-        }
-        let status = card.querySelector('.data-equipment-photo-thumb-status');
-        if (!status) {
-            status = doc.createElement('div');
-            status.className = 'data-equipment-photo-thumb-status';
-            card.appendChild(status);
-        }
-        renderPhotoThumbStatus(status, state.draft);
-        updatePhotoCropBox(frame, img, box, state.draft);
-        const editor = { card, frame, img, box, editButton, editLabel: editButton.querySelector('span'), tools, status };
-        setPhotoCropEditorMode(editor, state, state.photoCropEditing === true);
-        img.addEventListener('load', () => updatePhotoCropBox(frame, img, box, state.draft), { once: true });
-        return editor;
-    }
-
-    function getPhotoCropFromDrag(start, end, img) {
-        const contentRect = getContainedImageRect(img);
-        const minSize = Math.min(contentRect.width, contentRect.height) * 0.06;
-        const left = Math.max(contentRect.left, Math.min(start.x, end.x));
-        const top = Math.max(contentRect.top, Math.min(start.y, end.y));
-        const right = Math.min(contentRect.left + contentRect.width, Math.max(start.x, end.x));
-        const bottom = Math.min(contentRect.top + contentRect.height, Math.max(start.y, end.y));
-        const width = Math.max(minSize, right - left);
-        const height = Math.max(minSize, bottom - top);
-        return normalizePhotoCropValue({
-            x: (left - contentRect.left) / contentRect.width,
-            y: (top - contentRect.top) / contentRect.height,
-            width: width / contentRect.width,
-            height: height / contentRect.height,
-        }) || getDefaultMainPhotoCrop();
-    }
-
-    function waitForImageReady(img) {
-        if (img?.complete && img.naturalWidth && img.naturalHeight) return Promise.resolve();
-        if (typeof img?.decode === 'function') {
-            return img.decode().catch(() => {});
-        }
-        return new Promise((resolve, reject) => {
-            img.addEventListener('load', resolve, { once: true });
-            img.addEventListener('error', reject, { once: true });
-        });
-    }
-
     function loadEquipmentPhotoImage(dataUrl, doc) {
         return new Promise((resolve, reject) => {
             const ImageCtor = doc?.defaultView?.Image || (typeof Image !== 'undefined' ? Image : null);
@@ -1915,7 +1883,7 @@
     function getNormalizedEquipmentPhotoFileName(file) {
         const rawName = api.normalizeText(file?.name) || 'equipment-photo';
         const baseName = rawName.replace(/\.[^.]+$/, '') || 'equipment-photo';
-        return `${baseName}-1600x800.jpg`;
+        return `${baseName}-1600x400.jpg`;
     }
 
     function canvasToJpegBlob(canvas) {
@@ -1934,31 +1902,27 @@
             const context = canvas.getContext('2d');
             if (!context || !image.naturalWidth || !image.naturalHeight) throw new Error('canvas_context_unavailable');
 
-            const sourceAspect = image.naturalWidth / image.naturalHeight;
-            let sourceWidth = image.naturalWidth;
-            let sourceHeight = image.naturalHeight;
-            let sourceX = 0;
-            let sourceY = 0;
-            if (sourceAspect > EQUIPMENT_PHOTO_TARGET_ASPECT) {
-                sourceWidth = image.naturalHeight * EQUIPMENT_PHOTO_TARGET_ASPECT;
-                sourceX = (image.naturalWidth - sourceWidth) / 2;
-            } else if (sourceAspect < EQUIPMENT_PHOTO_TARGET_ASPECT) {
-                sourceHeight = image.naturalWidth / EQUIPMENT_PHOTO_TARGET_ASPECT;
-                sourceY = (image.naturalHeight - sourceHeight) / 2;
-            }
+            const scale = Math.min(
+                EQUIPMENT_PHOTO_TARGET_WIDTH / image.naturalWidth,
+                EQUIPMENT_PHOTO_TARGET_HEIGHT / image.naturalHeight
+            );
+            const targetWidth = image.naturalWidth * scale;
+            const targetHeight = image.naturalHeight * scale;
+            const targetX = (EQUIPMENT_PHOTO_TARGET_WIDTH - targetWidth) / 2;
+            const targetY = (EQUIPMENT_PHOTO_TARGET_HEIGHT - targetHeight) / 2;
 
             context.fillStyle = '#ffffff';
             context.fillRect(0, 0, canvas.width, canvas.height);
             context.drawImage(
                 image,
-                sourceX,
-                sourceY,
-                sourceWidth,
-                sourceHeight,
                 0,
                 0,
-                EQUIPMENT_PHOTO_TARGET_WIDTH,
-                EQUIPMENT_PHOTO_TARGET_HEIGHT,
+                image.naturalWidth,
+                image.naturalHeight,
+                targetX,
+                targetY,
+                targetWidth,
+                targetHeight,
             );
             const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
             const blob = await canvasToJpegBlob(canvas);
@@ -1980,82 +1944,6 @@
             console.warn('[kpi] equipment history photo normalization failed', error);
             return { dataUrl: rawDataUrl, file, name: file?.name || '' };
         }
-    }
-
-    async function captureMainPhotoThumb(root, state, data, redraw) {
-        const editor = ensurePhotoCropEditor(root, state);
-        if (!editor || !state.draft) return;
-        syncDraftFromForm(root, state);
-        try {
-            await waitForImageReady(editor.img);
-            const crop = getDraftPhotoCrop(state.draft);
-            const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
-            if (!doc) throw new Error('document_unavailable');
-            const canvas = doc.createElement('canvas');
-            canvas.width = EQUIPMENT_MAIN_THUMB_WIDTH;
-            canvas.height = EQUIPMENT_MAIN_THUMB_HEIGHT;
-            const context = canvas.getContext('2d');
-            if (!context) throw new Error('canvas_context_unavailable');
-            context.drawImage(
-                editor.img,
-                crop.x * editor.img.naturalWidth,
-                crop.y * editor.img.naturalHeight,
-                crop.width * editor.img.naturalWidth,
-                crop.height * editor.img.naturalHeight,
-                0,
-                0,
-                EQUIPMENT_MAIN_THUMB_WIDTH,
-                EQUIPMENT_MAIN_THUMB_HEIGHT,
-            );
-            state.draft.photoThumbDataUrl = canvas.toDataURL('image/jpeg', 0.86);
-            state.photoCropEditing = false;
-            await autoSaveDraft(data, state, redraw, '\uBA54\uC778 \uC0AC\uC9C4 \uC601\uC5ED\uC744 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.');
-        } catch (error) {
-            console.warn('[kpi] equipment history photo thumbnail capture failed', error);
-            browser.alert('\uBA54\uC778 \uC0AC\uC9C4 \uC601\uC5ED \uCEA1\uCCD0\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.');
-        }
-    }
-
-    function bindPhotoCropEditor(root, state, data, redraw) {
-        const editor = ensurePhotoCropEditor(root, state);
-        if (!editor || !state.draft) return;
-        let dragStart = null;
-        editor.editButton.addEventListener('click', () => {
-            setPhotoCropEditorMode(editor, state, state.photoCropEditing !== true);
-            updatePhotoCropBox(editor.frame, editor.img, editor.box, state.draft);
-        });
-        editor.frame.addEventListener('pointerdown', (event) => {
-            if (state.photoCropEditing !== true) return;
-            if (event.target?.closest?.('button')) return;
-            event.preventDefault?.();
-            dragStart = { x: event.clientX, y: event.clientY };
-            editor.frame.setPointerCapture?.(event.pointerId);
-        });
-        editor.frame.addEventListener('pointermove', (event) => {
-            if (state.photoCropEditing !== true) return;
-            if (!dragStart || !state.draft) return;
-            state.draft.photoCrop = getPhotoCropFromDrag(dragStart, { x: event.clientX, y: event.clientY }, editor.img);
-            updatePhotoCropBox(editor.frame, editor.img, editor.box, state.draft);
-        });
-        const finishDrag = (event) => {
-            if (state.photoCropEditing !== true) return;
-            if (!dragStart || !state.draft) return;
-            state.draft.photoCrop = getPhotoCropFromDrag(dragStart, { x: event.clientX, y: event.clientY }, editor.img);
-            dragStart = null;
-            updatePhotoCropBox(editor.frame, editor.img, editor.box, state.draft);
-        };
-        editor.frame.addEventListener('pointerup', finishDrag);
-        editor.frame.addEventListener('pointercancel', () => {
-            dragStart = null;
-        });
-        root.querySelector('[data-equipment-photo-crop-reset]')?.addEventListener('click', () => {
-            if (!state.draft) return;
-            state.draft.photoCrop = getDefaultMainPhotoCrop();
-            updatePhotoCropBox(editor.frame, editor.img, editor.box, state.draft);
-        });
-        root.querySelector('[data-equipment-photo-thumb-capture]')?.addEventListener('click', () => {
-            captureMainPhotoThumb(root, state, data, redraw);
-        });
     }
 
     function getClipboardImageExtension(type) {
@@ -2155,28 +2043,35 @@
     }
 
     async function applyEquipmentHistoryPhotoFile(root, state, data, redraw, file, message) {
+        if (!file || !state.draft) return false;
+        return enqueueEquipmentHistoryPhotoUpload(state, () => applyEquipmentHistoryPhotoFileNow(root, state, data, redraw, file, message));
+    }
+
+    async function applyEquipmentHistoryPhotoFileNow(root, state, data, redraw, file, message) {
         const preview = root.querySelector('[data-equipment-history-photo-preview]');
         const placeholder = root.querySelector('[data-equipment-history-photo-placeholder]');
         if (!file || !state.draft) return false;
+        const draft = state.draft;
+        const previousPhoto = getDraftPhotoSnapshot(draft);
         try {
-            const previousDocumentId = state.draft.photoDocumentId || '';
+            const previousDocumentId = draft.photoDocumentId || '';
             const rawDataUrl = await readEquipmentPhotoFileAsDataUrl(file);
             const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
             const normalized = doc
                 ? await normalizeEquipmentPhotoAttachment(file, rawDataUrl, doc)
                 : { dataUrl: rawDataUrl, file, name: file.name || '' };
-            state.draft.photoDataUrl = normalized.dataUrl;
-            state.draft.photoThumbDataUrl = '';
-            state.draft.photoCrop = null;
-            state.draft.photoDocumentId = '';
-            state.draft.photoPreviewUrl = '';
-            state.draft.photoDownloadUrl = '';
-            state.draft.photoStorageRelPath = '';
-            state.draft.photoFile = normalized.file || file;
-            state.draft.photoName = normalized.name || file.name || '';
-            state.draft.photoAttachmentKey = state.draft.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY;
+            draft.photoDataUrl = normalized.dataUrl;
+            draft.photoThumbDataUrl = '';
+            draft.photoCrop = null;
+            draft.photoDocumentId = '';
+            draft.photoPreviewUrl = '';
+            draft.photoDownloadUrl = '';
+            draft.photoStorageRelPath = '';
+            draft.photoFile = normalized.file || file;
+            draft.photoName = normalized.name || file.name || '';
+            draft.photoAttachmentKey = draft.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY;
             if (preview) {
-                preview.src = state.draft.photoDataUrl;
+                preview.src = draft.photoDataUrl;
                 preview.hidden = false;
             }
             if (placeholder) placeholder.hidden = true;
@@ -2184,17 +2079,12 @@
             if (saved) await cleanupPreviousEquipmentPhotoDocument(previousDocumentId);
             return saved;
         } catch (error) {
+            applyDraftPhotoSnapshot(draft, previousPhoto);
+            redraw();
             console.warn('[kpi] equipment history photo attachment failed', error);
-            browser.alert('\uC0AC\uC9C4 \uCCA8\uBD80\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uC774\uBBF8\uC9C0 \uD30C\uC77C\uC774\uB098 \uD074\uB9BD\uBCF4\uB4DC\uB97C \uD655\uC778\uD574 \uC8FC\uC138\uC694.');
+            browser.alert(getEquipmentHistoryPhotoAttachmentFailureMessage(error));
             return false;
         }
-    }
-
-    function isEventTargetInsideRoot(root, target) {
-        const doc = root?.ownerDocument || null;
-        if (!target || target === root || target === doc || target === doc?.body) return true;
-        if (typeof root?.contains !== 'function') return true;
-        return root.contains(target);
     }
 
     function bindPhotoSelectControls(root) {
@@ -2205,18 +2095,6 @@
                 event.preventDefault?.();
                 input.click?.();
             });
-        });
-
-        const card = root.querySelector('[data-equipment-history-photo-card]:not(.is-locked)');
-        if (!card) return;
-        card.addEventListener('click', (event) => {
-            if (event.target?.closest?.('button, input, a')) return;
-            input.click?.();
-        });
-        card.addEventListener('keydown', (event) => {
-            if (event.key !== 'Enter' && event.key !== ' ') return;
-            event.preventDefault?.();
-            input.click?.();
         });
     }
 
@@ -2235,7 +2113,6 @@
                 return;
             }
             if (state.view !== 'card' || !state.draft) return;
-            if (!isEventTargetInsideRoot(root, event.target)) return;
 
             const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
             const file = getPhotoFileFromClipboardData(event.clipboardData, doc);
@@ -2286,7 +2163,7 @@
 
     function bindEvents(root, redraw, state, data) {
         root.querySelectorAll('[data-equipment-history-print]').forEach((button) => {
-            button.addEventListener('click', () => printEquipmentHistoryCard(root, state));
+            button.addEventListener('click', () => printEquipmentHistoryCard(root, state, data));
         });
 
         root.querySelectorAll('[data-equipment-view-action]').forEach((button) => {
@@ -2295,7 +2172,8 @@
                     state.pendingAddTeam = button.dataset.equipmentAddTeam || '';
                     startNewCard(state);
                 } else {
-                    state.view = 'board';
+                    resetEquipmentHistoryBoardState(state);
+                    replaceEquipmentHistoryBoardHistory();
                 }
                 redraw();
             });
@@ -2332,20 +2210,16 @@
             redraw();
         });
 
-        root.querySelectorAll('[data-equipment-focus-team]').forEach((button) => {
-            button.addEventListener('click', () => {
-                const filters = getBoardFilters(state);
-                filters.team = button.dataset.equipmentFocusTeam || '';
-                redraw();
+        root.querySelectorAll('[data-equipment-board-card][data-equipment-open-card]').forEach((card) => {
+            card.addEventListener('click', (event) => {
+                if (isEquipmentBoardCardInteractiveTarget(event.target)) return;
+                openEquipmentBoardCard(data, state, card.dataset.equipmentOpenCard, redraw);
             });
-        });
-
-        root.querySelectorAll('[data-equipment-open-card]').forEach((button) => {
-            button.addEventListener('click', () => {
-                state.selectedId = button.dataset.equipmentOpenCard || state.selectedId;
-                state.view = 'card';
-                ensureDraft(data, state);
-                redraw();
+            card.addEventListener('keydown', (event) => {
+                if (event.target !== card) return;
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault?.();
+                openEquipmentBoardCard(data, state, card.dataset.equipmentOpenCard, redraw);
             });
         });
 
@@ -2384,13 +2258,6 @@
             });
         });
 
-        root.querySelector('[data-equipment-select]')?.addEventListener('change', (event) => {
-            state.selectedId = event.target.value;
-            state.view = 'card';
-            ensureDraft(data, state);
-            redraw();
-        });
-
         root.querySelector('[data-equipment-card-start-form]')?.addEventListener('submit', (event) => {
             event.preventDefault();
             submitStarter(root, state, redraw);
@@ -2419,6 +2286,10 @@
             await saveCurrentEquipmentHistoryView(root, data, state, redraw);
         });
 
+        root.querySelector('[data-equipment-cycle-current-status]')?.addEventListener('click', async () => {
+            await cycleCurrentCardStatus(root, data, state, redraw);
+        });
+
         root.querySelector('[data-equipment-clear-form]')?.addEventListener('click', () => {
             startNewCard(state);
             state.message = '';
@@ -2441,22 +2312,6 @@
                 console.warn('[kpi] equipment history photo revert failed', error);
                 browser.alert('사진 되돌리기에 실패했습니다.');
             }
-        });
-
-        root.querySelectorAll('[data-equipment-status-toggle]').forEach((button) => {
-            button.addEventListener('click', async () => {
-                if (!state.draft) return;
-                const previousStatus = state.draft.status;
-                state.draft.status = button.dataset.equipmentStatusToggle || '가동중';
-                try {
-                    if (await saveDraft(data, state, { message: '가동 상태를 저장했습니다.' })) redraw();
-                } catch (error) {
-                    state.draft.status = previousStatus;
-                    console.warn('[kpi] equipment history status auto save failed', error);
-                    browser.alert('가동 상태 저장에 실패했습니다.');
-                    redraw();
-                }
-            });
         });
 
         root.querySelectorAll('[data-equipment-add-row]').forEach((button) => {
@@ -2527,6 +2382,7 @@
             button.addEventListener('click', () => {
                 const blockKey = button.closest('[data-equipment-spec-block]')?.dataset.equipmentSpecBlockKey;
                 removeDraftRow(state, button.dataset.equipmentRemoveRow, Number(button.dataset.equipmentRowIndex));
+                if (button.dataset.equipmentRemoveRow === 'documents') ensureDraftDocumentEditorSlot(state.draft);
                 setEquipmentSpecBlockOpen(state, blockKey, true);
                 redraw();
             });
@@ -2534,7 +2390,10 @@
 
         root.querySelectorAll('[data-equipment-field]').forEach((input) => {
             input.addEventListener('input', (event) => updateDraftFromInput(root, state, event));
-            input.addEventListener('change', (event) => updateDraftFromInput(root, state, event));
+            input.addEventListener('change', (event) => {
+                updateDraftFromInput(root, state, event);
+                if (event.target.dataset.equipmentField === 'team') redraw();
+            });
         });
 
         root.querySelectorAll('[data-equipment-document-pick]').forEach((button) => {
@@ -2551,11 +2410,11 @@
                 if (!file || !row) return;
                 row.pendingFile = file;
                 row.fileName = file.name || '';
+                ensureDraftDocumentEditorSlot(state.draft);
                 redraw();
             });
         });
 
-        bindPhotoCropEditor(root, state, data, redraw);
         bindPhotoPreview(root, state, data, redraw);
         bindSaveShortcut(root, state, data, redraw);
     }
@@ -2577,6 +2436,11 @@
             container.innerHTML = renderShell(category, workingData, state);
             bindEvents(container, redraw, state, workingData);
         };
+        activeHistoryUnsubscribe?.();
+        replaceEquipmentHistoryBoardHistory();
+        activeHistoryUnsubscribe = browser.addPopStateListener?.((event) => {
+            applyEquipmentHistoryBrowserState(workingData, state, event?.state, redraw);
+        }) || null;
         activeSaveController = {
             container,
             save: (options = {}) => saveCurrentEquipmentHistoryView(container, workingData, state, redraw, options),
