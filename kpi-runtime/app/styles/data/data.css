@@ -3404,10 +3404,14 @@
         .data-equipment-board-room-title-main {
             display: inline-flex;
             align-items: center;
-            gap: 9px;
+            column-gap: 9px;
+            row-gap: 6px;
+            flex: 1 1 auto;
+            flex-wrap: wrap;
             min-width: 0;
         }
         .data-equipment-board-room-name {
+            min-width: 0;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -3503,7 +3507,7 @@
         }
         .data-equipment-board-card-media {
             width: 100%;
-            aspect-ratio: 3.7 / 1;
+            aspect-ratio: 3.3 / 1;
             border-bottom: 1px solid var(--equipment-card-separator);
             border-radius: 7px 7px 0 0;
             overflow: hidden;

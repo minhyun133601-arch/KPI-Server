@@ -375,8 +375,6 @@
                     <span class="data-equipment-board-room-icon"><i class="fas fa-door-open" aria-hidden="true"></i></span>
                     <span class="data-equipment-board-room-name">${api.escapeHtml(roomTitle)}</span>
                     ${renderBoardAddButton(teamKey, 'data-equipment-board-add-button data-equipment-board-room-add-button', roomTitle)}
-                </span>
-                <span class="data-equipment-board-room-actions">
                     ${renderBoardStatusActionGroup('room', { team: teamKey, room: roomTitle, items: roomEquipmentItems, disabled: roomEquipmentItems.length <= 0 })}
                 </span>
             </h3>
