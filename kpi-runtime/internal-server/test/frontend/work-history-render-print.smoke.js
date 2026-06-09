@@ -89,18 +89,6 @@ function createContext() {
     getElement(id) {
       return filterInputs[id] || null;
     },
-    ATTACHMENT_SLOT_KEYS: ['report', 'estimate', 'other'],
-    ATTACHMENT_SLOT_META: {
-      report: { label: 'Report' },
-      estimate: { label: 'Estimate' },
-      other: { label: 'Other' }
-    },
-    getRecordAttachments() {
-      return [];
-    },
-    getRecordAttachment() {
-      return null;
-    },
     KPI_FLAG_LABEL: 'KPI',
     KPI_FLAG_PILL_LABEL: 'KPI',
     normalizeRecordCategory(value) {
@@ -146,9 +134,6 @@ function createContext() {
       },
       formatCurrency(value) {
         return `${Number(value || 0).toLocaleString('ko-KR')}원`;
-      },
-      formatFileSize() {
-        return '0B';
       },
       showToast() {}
     }
@@ -214,6 +199,7 @@ test('work history render print registry exposes print helpers and bootstrap sna
   view.printCurrentView();
   assert.match(getWrittenHtml(), /<table>/);
   assert.match(getWrittenHtml(), /Alpha task/);
+  assert.doesNotMatch(getWrittenHtml(), /download|attachment|documentId/i);
 
   fakeWindow.onload?.();
   assert.equal(getPrintCallCount(), 1);
@@ -222,14 +208,14 @@ test('work history render print registry exposes print helpers and bootstrap sna
 
 test('kpi html loads work history render print between render and view bootstrap', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=236');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=237');
   const paginationIndex = kpiHtml.indexOf('runtime/work/history/render/pagination.js?v=1');
-  const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=235');
-  const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=234');
-  const actionsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.js?v=237');
+  const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=236');
+  const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=235');
+  const actionsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.js?v=238');
   const searchIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.search.js?v=3');
-  const recordIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.record.js?v=4');
-  const documentIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.document.js?v=4');
+  const recordIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.record.js?v=5');
+  const documentIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.document.js?v=5');
   const viewIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.js');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');

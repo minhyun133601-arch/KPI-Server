@@ -13,7 +13,7 @@
         setShadowHost
     } = history;
 
-    const CSS_PATH = 'team-report/runtime/work/history/KPI.work.history.css?v=248';
+    const CSS_PATH = 'team-report/runtime/work/history/KPI.work.history.css?v=249';
     const COMPANY_LOGO_SRC = '/shared-assets/logo.jpg';
     const OVERVIEW_KEY = 'overview';
     const DRAG_SCROLL_THRESHOLD = 6;
@@ -242,7 +242,7 @@
         return parts.join(' ');
     }
 
-    function formatFileSize(bytes) {
+    function formatSizeLabel(bytes) {
         if (!bytes) return '저장됨';
         if (bytes < 1024) return `${bytes}B`;
         if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
@@ -290,7 +290,6 @@
         formatDateRange,
         formatDateKorean,
         formatCurrency,
-        formatFileSize,
         formatCostInputValue,
         buildTimestampLabel,
         escapeRegExp

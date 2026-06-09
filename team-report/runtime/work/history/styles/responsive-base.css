@@ -184,11 +184,6 @@
         justify-content: flex-start;
     }
 
-    .attachment-item,
-    .attachment-view-item {
-        flex-direction: column;
-        align-items: flex-start;
-    }
 }
 
 @media (max-width: 1200px) {

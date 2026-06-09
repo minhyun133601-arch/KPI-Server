@@ -17,13 +17,8 @@
         normalizeRecordCategoryGroup,
         isKpiRecord,
         isProductionReportWorkspace,
-        ATTACHMENT_SLOT_KEYS,
         getElement,
         getPayload,
-        getRecordAttachment,
-        flattenAttachmentSlots,
-        uploadPendingAttachments,
-        deleteAttachmentsFromServer,
         savePayload
     } = history;
 
@@ -31,27 +26,7 @@
         return typeof isProductionReportWorkspace === 'function' && isProductionReportWorkspace();
     }
 
-    function getAttachmentSnapshot(attachment = null) {
-        if (!attachment) return null;
-        return {
-            documentId: String(attachment.documentId || '').trim(),
-            assetId: String(attachment.assetId || '').trim(),
-            originalName: String(attachment.originalName || attachment.fileName || attachment.name || '').trim(),
-            size: Number(attachment.size) || 0
-        };
-    }
-
-    function getPendingFileSnapshot(file = null) {
-        if (!file) return null;
-        return {
-            name: String(file.name || '').trim(),
-            size: Number(file.size) || 0,
-            type: String(file.type || '').trim()
-        };
-    }
-
     function getRecordFormSnapshot() {
-        const formState = state.formState || {};
         return {
             sourceTeam: String(getElement('formSourceTeam')?.value || '').trim(),
             index: String(getElement('formIndex')?.value || '').trim(),
@@ -63,16 +38,7 @@
             category: String(getElement('recordCategory')?.value || '').trim(),
             workContent: String(getElement('recordWorkContent')?.value || '').trim(),
             remarks: String(getElement('recordRemarks')?.value || '').trim(),
-            cost: String(getElement('recordCost')?.value || '').trim(),
-            existingAttachments: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [
-                slotKey,
-                getAttachmentSnapshot(formState.existingAttachments?.[slotKey] || null)
-            ])),
-            pendingFiles: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [
-                slotKey,
-                getPendingFileSnapshot(formState.pendingFiles?.[slotKey] || null)
-            ])),
-            removedAttachments: (formState.removedAttachments || []).map(getAttachmentSnapshot)
+            cost: String(getElement('recordCost')?.value || '').trim()
         };
     }
 
@@ -114,10 +80,7 @@
         }
 
         state.formState = {
-            sourceTeam: team,
-            existingAttachments: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, null])),
-            pendingFiles: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, null])),
-            removedAttachments: []
+            sourceTeam: team
         };
 
         const defaultTeam = TeamInfo[team] ? team : 'team1part1';
@@ -141,9 +104,6 @@
                 getElement('recordWorkContent').value = record.workContent || '';
                 getElement('recordRemarks').value = record.remarks || '';
                 getElement('recordCost').value = view.formatCostInputValue(record.cost);
-                state.formState.existingAttachments = Object.fromEntries(
-                    ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, getRecordAttachment(record, slotKey)])
-                );
             }
         } else {
             getElement('modalTitle').textContent = view.getRecordModalTitle?.(false) || '작업내역 추가';
@@ -154,14 +114,7 @@
             getElement('recordCost').value = '';
         }
 
-        ATTACHMENT_SLOT_KEYS.forEach((slotKey) => {
-            const input = getElement(view.getAttachmentInputId?.(slotKey) || '');
-            if (input) input.value = '';
-        });
-        const legacyAttachmentInput = getElement('recordAttachments');
-        if (legacyAttachmentInput) legacyAttachmentInput.value = '';
         updateAssigneePreview(getElement('recordAssignee')?.value || '');
-        view.renderAttachmentList?.();
         rememberRecordFormSnapshot();
         getElement('recordModal')?.classList.add('show');
     }
@@ -271,33 +224,6 @@
             return false;
         }
 
-        const nextAttachmentSlots = Object.fromEntries(
-            ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, state.formState.existingAttachments?.[slotKey] || null])
-        );
-        for (const slotKey of ATTACHMENT_SLOT_KEYS) {
-            const pendingFile = state.formState.pendingFiles?.[slotKey] || null;
-            if (!pendingFile) continue;
-            try {
-                const uploadedAttachments = await uploadPendingAttachments([pendingFile], {
-                    team: targetTeam,
-                    startDate,
-                    endDate,
-                    workContent,
-                    attachmentType: slotKey
-                });
-                nextAttachmentSlots[slotKey] = uploadedAttachments[0] || null;
-            } catch (error) {
-                console.error('[kpi] work history attachment upload failed', error);
-                const errorKey = String(error?.message || '').trim();
-                if (errorKey === 'attachment_pdf_only' || errorKey === 'unsupported_type' || errorKey === 'file_too_large') {
-                    browser.alert(view.getAttachmentValidationMessage?.(errorKey) || '첨부 파일을 다시 선택해 주세요.');
-                } else {
-                    browser.alert('첨부 파일 업로드 중 오류가 발생했습니다.');
-                }
-                return false;
-            }
-        }
-
         const nextRecord = {
             team: targetTeam,
             startDate,
@@ -309,11 +235,6 @@
             assignee: assignees.join(', '),
             workContent,
             remarks,
-            attachmentSlots: nextAttachmentSlots,
-            reportAttachment: nextAttachmentSlots.report,
-            estimateAttachment: nextAttachmentSlots.estimate,
-            otherAttachment: nextAttachmentSlots.other,
-            attachments: flattenAttachmentSlots(nextAttachmentSlots),
             cost
         };
 
@@ -336,9 +257,6 @@
         }
 
         const saved = await savePayload(payload);
-        if (saved && state.formState.removedAttachments.length) {
-            await deleteAttachmentsFromServer(state.formState.removedAttachments);
-        }
 
         closeRecordModal({ force: true });
         view.renderCurrentView?.();
@@ -373,13 +291,8 @@
         const teamRecords = payload.teams?.[team];
         if (!Array.isArray(teamRecords) || !teamRecords[index]) return false;
 
-        const deletedRecord = teamRecords[index];
         teamRecords.splice(index, 1);
         const saved = await savePayload(payload);
-
-        if (saved && deletedRecord.attachments?.length) {
-            await deleteAttachmentsFromServer(deletedRecord.attachments);
-        }
 
         closeDeleteModal();
         view.renderCurrentView?.();

@@ -167,18 +167,6 @@
                 void view.confirmDelete?.();
                 return;
             }
-            if (action === 'remove-existing-attachment') {
-                view.removeExistingAttachment?.(actionTarget.dataset.slot || actionTarget.dataset.index);
-                return;
-            }
-            if (action === 'remove-pending-attachment') {
-                view.removePendingAttachment?.(actionTarget.dataset.slot || actionTarget.dataset.index);
-                return;
-            }
-            if (action === 'pick-attachment') {
-                view.openAttachmentPicker?.(actionTarget.dataset.slot || '');
-                return;
-            }
         }
 
         if (event.target.classList.contains('modal')) {
@@ -208,16 +196,6 @@
             return;
         }
 
-        if (target.matches?.('.attachment-file-input')) {
-            const slotKey = target.dataset.slot || '';
-            view.handleAttachmentSelection?.(slotKey, target.files);
-            return;
-        }
-
-        if (target.id === 'recordAttachments' || target.id === 'recordBillingAttachment') { view.handleAttachmentSelection?.('other', target.files); return; }
-
-        if (/^record(?:StartDate|EndDate|Team)$/.test(target.id || '')) { view.renderAttachmentList?.(); return; }
-
         const filterPrefix = target.dataset.filterPrefix;
         if (!filterPrefix) return;
         view.resetRecordPage?.(filterPrefix);
@@ -243,8 +221,6 @@
             view.updateAssigneePreview?.(target.value);
             return;
         }
-
-        if (target.id === 'recordWorkContent') { view.renderAttachmentList?.(); return; }
 
         if (target.id === 'recordCost') {
             target.value = view.formatCostInputValue(target.value);

@@ -11,7 +11,7 @@
     } = history;
 
     const DEFAULT_TITLE = '작업 이력 기입';
-    const DEFAULT_SUBTITLE = '기간, 팀, 작업자, 업무내용, 첨부 문서, 비용까지 기록하는 KPI 작업내역 화면';
+    const DEFAULT_SUBTITLE = '기간, 팀, 작업자, 업무내용, 비용과 비고만 기록하는 KPI 작업내역 화면';
     const DEFAULT_DELETE_MESSAGE = '이 작업내역을 삭제하시겠습니까?';
     const DEFAULT_DELETE_SUB_MESSAGE = '삭제 후에는 복구되지 않습니다.';
     const PRODUCTION_REPORT_TITLE = '생산 본부 실적보고';
@@ -71,8 +71,6 @@
         const modalTitleEl = getElement('modalTitle');
         const workContentLabelEl = getElement('recordWorkContentLabel');
         const remarksLabelEl = getElement('recordRemarksLabel');
-        const attachmentLabelEl = getElement('recordAttachmentLabel');
-        const attachmentHelpEl = getElement('recordAttachmentHelp');
         const workContentInput = getElement('recordWorkContent');
         const remarksInput = getElement('recordRemarks');
         const saveButtonEl = getElement('recordSaveButton');
@@ -81,7 +79,6 @@
         const deleteSubMessageEl = getElement('deleteModalSubMessage');
         const guideRequiredEl = getElement('recordGuideItemRequired');
         const guideCostEl = getElement('recordGuideItemCost');
-        const guideAttachmentEl = getElement('recordGuideItemAttachment');
         const isProductionReport = isProductionWorkspace();
 
         if (rootEl) {
@@ -108,14 +105,6 @@
         }
         if (remarksLabelEl) {
             remarksLabelEl.textContent = isProductionReport ? '보고 메모' : '비고';
-        }
-        if (attachmentLabelEl) {
-            attachmentLabelEl.textContent = isProductionReport ? '보고 첨부' : '첨부 파일';
-        }
-        if (attachmentHelpEl) {
-            attachmentHelpEl.textContent = isProductionReport
-                ? '보고서 문서 1건을 선택합니다.'
-                : '보고서, 견적서, 기타 칸에서 각각 문서 1건씩 선택합니다.';
         }
         if (workContentInput) {
             workContentInput.placeholder = isProductionReport
@@ -148,11 +137,6 @@
             guideCostEl.textContent = isProductionReport
                 ? '비용은 실적 보고에 필요한 경우에만 입력합니다.'
                 : '비용은 필요한 경우에만 입력합니다.';
-        }
-        if (guideAttachmentEl) {
-            guideAttachmentEl.textContent = isProductionReport
-                ? '실적 보고 화면에서는 보고서 문서 1건만 첨부할 수 있습니다.'
-                : '첨부는 보고서, 견적서, 기타로 구분되며 PDF·엑셀·PPT·워드·한글 문서를 올릴 수 있습니다.';
         }
         queryAll('[data-role="add-record-label"]').forEach((node) => {
             node.textContent = getAddRecordLabel();

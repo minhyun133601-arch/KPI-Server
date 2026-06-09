@@ -4,9 +4,6 @@
 
     const view = history.view || (history.view = {});
     const {
-        ATTACHMENT_SLOT_KEYS,
-        ATTACHMENT_SLOT_META,
-        getRecordAttachment,
         getRecordCategoryGroupLabel,
         KPI_FLAG_LABEL,
         KPI_FLAG_PILL_LABEL,
@@ -55,41 +52,6 @@
                 `).join('')}
             </div>
         `;
-    }
-
-    function buildAttachmentLinks(record) {
-        const slotKeys = typeof view.getVisibleAttachmentSlotKeys === 'function'
-            ? view.getVisibleAttachmentSlotKeys()
-            : ATTACHMENT_SLOT_KEYS;
-        const items = slotKeys.map((slotKey) => {
-            const meta = ATTACHMENT_SLOT_META[slotKey];
-            const attachment = getRecordAttachment(record, slotKey);
-            if (!attachment) {
-                return `
-                    <div class="attachment-view-item is-empty">
-                        <span class="attachment-type-label">${escapeHtml(meta.label)}</span>
-                        <span class="attachment-empty">첨부 없음</span>
-                    </div>
-                `;
-            }
-
-            const previewUrl = attachment.previewUrl || attachment.url || attachment.downloadUrl || '#';
-            const downloadUrl = attachment.downloadUrl || attachment.url || previewUrl;
-            return `
-                <div class="attachment-view-item">
-                    <span class="attachment-type-label">${escapeHtml(meta.label)}</span>
-                    <div class="attachment-view-meta">
-                        <span class="attachment-file-label">${escapeHtml(attachment.originalName)}</span>
-                        <span class="attachment-view-actions">
-                            <a class="attachment-view-btn" href="${escapeAttribute(downloadUrl)}" download="${escapeAttribute(attachment.originalName || 'attachment')}" target="_blank" rel="noopener">다운로드</a>
-                            <span class="attachment-size">${escapeHtml(view.formatFileSize(attachment.size))}</span>
-                        </span>
-                    </div>
-                </div>
-            `;
-        });
-
-        return items.join('');
     }
 
     function buildCompactRecordCard(record, options = {}) {
@@ -157,7 +119,6 @@
 
     Object.assign(view, {
         buildSummaryContent,
-        buildAttachmentLinks,
         buildCompactRecordCard,
         renderEmptyState
     });

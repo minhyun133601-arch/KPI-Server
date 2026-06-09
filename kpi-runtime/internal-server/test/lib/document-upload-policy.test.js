@@ -126,9 +126,28 @@ test('document upload policy bounds report runtime images', () => {
   }, 'unsupported_type');
 });
 
-test('document upload policy keeps managed attachment office and hwp types bounded', () => {
+test('document upload policy rejects disabled work history record uploads', () => {
   const baseInput = {
     ownerDomain: 'work.history',
+    fileCategory: 'attachment',
+    base64Data: Buffer.from('attachment').toString('base64'),
+  };
+
+  assertRejectsUpload({
+    ...baseInput,
+    originalName: 'report.pdf',
+    mimeType: 'application/pdf',
+  }, 'unsupported_type');
+  assertRejectsUpload({
+    ...baseInput,
+    originalName: 'report.docx',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  }, 'unsupported_type');
+});
+
+test('document upload policy keeps work calendar attachment office and hwp types bounded', () => {
+  const baseInput = {
+    ownerDomain: 'work.team_calendar',
     fileCategory: 'attachment',
     base64Data: Buffer.from('attachment').toString('base64'),
   };
@@ -203,7 +222,7 @@ test('document upload policy rejects managed uploads over the byte limit', () =>
   const tooLargeBase64 = 'A'.repeat(Math.ceil(((DOCUMENT_UPLOAD_MAX_BYTES + 1) * 4) / 3));
 
   assertRejectsUpload({
-    ownerDomain: 'work.history',
+    ownerDomain: 'work.team_calendar',
     fileCategory: 'attachment',
     originalName: 'report.pdf',
     mimeType: 'application/pdf',

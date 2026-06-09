@@ -9,7 +9,6 @@
         state,
         getPayload,
         getElement,
-        getRecordAttachments,
         KPI_FLAG_LABEL,
         normalizeRecordCategory,
         getRecordCategoryGroupLabel,
@@ -109,9 +108,6 @@
     }
 
     function buildSearchHaystack(record) {
-        const attachmentNames = getRecordAttachments(record)
-            .map(attachment => attachment.originalName || '')
-            .join(' ');
         const categoryText = getRecordCategoryText(record);
         const categoryGroupText = typeof getRecordCategoryGroupLabel === 'function'
             ? getRecordCategoryGroupLabel(record)
@@ -126,7 +122,6 @@
             view.formatAssigneeText(record),
             record.workContent || '',
             record.remarks || '',
-            attachmentNames,
             view.formatCurrency(record.cost)
         ].join(' ').toLowerCase();
     }
@@ -166,7 +161,6 @@
         const summaryTitleLabel = isProductionReport ? '보고 제목' : '제목';
         const contentSectionTitle = isProductionReport ? '보고 내용' : '업무내용';
         const remarksSectionTitle = isProductionReport ? '보고 메모' : '비고';
-        const attachmentSectionTitle = isProductionReport ? '보고 첨부' : '첨부 문서';
         const emptyContentText = isProductionReport ? '입력된 보고 내용이 없습니다.' : '입력된 업무내용이 없습니다.';
         return `
             <details class="report-card ${escapeHtml(info.class || '')}">
@@ -206,10 +200,6 @@
                             <div class="report-section-title"><span class="section-icon">${view.getSectionIconSvg('summary')}</span>기본 정보</div>
                             <div class="report-section-content">${view.buildSummaryContent(record)}</div>
                         </div>
-                        <div class="report-section attachment-section">
-                            <div class="report-section-title"><span class="section-icon">${view.getSectionIconSvg('attachment')}</span>${attachmentSectionTitle}</div>
-                            <div class="report-section-content attachment-view-list">${view.buildAttachmentLinks(record)}</div>
-                        </div>
                         <div class="report-section record-content">
                             <div class="report-section-title"><span class="section-icon">${view.getSectionIconSvg('work')}</span>${contentSectionTitle}</div>
                             <div class="report-section-content">${highlightText(escapeHtml(record.workContent) || emptyContentText)}</div>
@@ -231,11 +221,9 @@
             .split(/\r?\n/)
             .map(line => String(line || '').trim())
             .find(Boolean);
-        const hasAttachments = getRecordAttachments(record).length > 0;
 
         if (workTitle) return `${importantPrefix}${workTitle}`;
         if (categoryText) return `${importantPrefix}${categoryText}`;
-        if (hasAttachments) return `${importantPrefix}첨부 문서`;
         const remarksTitle = String(record?.remarks || '')
             .split(/\r?\n/)
             .map(line => String(line || '').trim())

@@ -627,7 +627,7 @@ test('section factory adapter registers dashboard sections without direct sectio
 
 test('kpi html loads section factory adapter before all section factories', () => {
   const adapterIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.factory-adapter.js?v=1');
-  const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=231');
+  const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=232');
   const graphTemplateIndex = kpiHtml.indexOf('data-entry/runtime/data/utility-graph-template/app.js?v=41');
   const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=135');
   const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=98');

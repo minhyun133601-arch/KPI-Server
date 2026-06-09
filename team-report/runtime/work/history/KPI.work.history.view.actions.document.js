@@ -7,14 +7,9 @@
     const {
         DATA_KEY,
         state,
-        ATTACHMENT_SLOT_KEYS,
-        ATTACHMENT_SLOT_META,
-        WORK_HISTORY_ATTACHMENT_MAX_BYTES,
         getElement,
         getPayload,
         isProductionReportWorkspace,
-        validateWorkHistoryAttachment,
-        formatAttachmentFileName,
         saveNow,
         getRecordRuntimeConfig,
         buildExportScript
@@ -22,154 +17,6 @@
 
     function isProductionWorkspace() {
         return typeof isProductionReportWorkspace === 'function' && isProductionReportWorkspace();
-    }
-
-    function getVisibleAttachmentSlotKeys() {
-        return isProductionWorkspace() ? ['report'] : ATTACHMENT_SLOT_KEYS;
-    }
-
-    function getAttachmentValidationMessage(errorKey) {
-        if (errorKey === 'unsupported_type' || errorKey === 'attachment_pdf_only') {
-            return 'PDF, 엑셀, PPT/PPTM, 워드, 한글 파일만 첨부할 수 있습니다.';
-        }
-        if (errorKey === 'file_too_large') {
-            const maxMb = Math.max(1, Math.round((Number(WORK_HISTORY_ATTACHMENT_MAX_BYTES) || 0) / (1024 * 1024)));
-            return `첨부 파일은 ${maxMb}MB 이하만 업로드할 수 있습니다.`;
-        }
-        return '첨부 파일을 다시 선택해 주세요.';
-    }
-
-    function getAttachmentInputId(slotKey) {
-        const normalizedSlotKey = String(slotKey || '').trim();
-        const suffix = normalizedSlotKey
-            .split('-')
-            .map(part => part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : '')
-            .join('');
-        return suffix ? `record${suffix}Attachment` : '';
-    }
-
-    function getCurrentAttachmentNameContext() {
-        return {
-            team: getElement('recordTeam')?.value || '',
-            startDate: getElement('recordStartDate')?.value || '',
-            endDate: getElement('recordEndDate')?.value || '',
-            workContent: getElement('recordWorkContent')?.value || ''
-        };
-    }
-
-    function getPendingAttachmentName(slotKey, file) {
-        const meta = ATTACHMENT_SLOT_META[slotKey] || {};
-        return typeof formatAttachmentFileName === 'function'
-            ? formatAttachmentFileName(getCurrentAttachmentNameContext(), meta, file?.name, file?.type)
-            : String(file?.name || '').trim();
-    }
-
-    function openAttachmentPicker(slotKey) {
-        const normalizedSlotKey = ATTACHMENT_SLOT_KEYS.includes(String(slotKey || '').trim())
-            ? String(slotKey).trim()
-            : '';
-        if (!normalizedSlotKey) return;
-        const input = getElement(getAttachmentInputId(normalizedSlotKey));
-        input?.click?.();
-    }
-
-    function handleAttachmentSelection(slotKey, fileList) {
-        const normalizedSlotKey = ATTACHMENT_SLOT_KEYS.includes(String(slotKey || '').trim())
-            ? String(slotKey).trim()
-            : '';
-        const files = Array.from(fileList || []);
-        if (!normalizedSlotKey || !files.length) return;
-
-        const file = files[0];
-        const errorKey = typeof validateWorkHistoryAttachment === 'function'
-            ? validateWorkHistoryAttachment(file)
-            : '';
-        if (errorKey) {
-            browser.alert(getAttachmentValidationMessage(errorKey));
-            const input = getElement(getAttachmentInputId(normalizedSlotKey));
-            if (input) input.value = '';
-            return;
-        }
-
-        state.formState.pendingFiles[normalizedSlotKey] = file;
-        const input = getElement(getAttachmentInputId(normalizedSlotKey));
-        if (input) input.value = '';
-        renderAttachmentList();
-    }
-
-    function renderAttachmentList() {
-        const container = getElement('attachmentList');
-        if (!container) return;
-        const groups = getVisibleAttachmentSlotKeys().map((slotKey) => {
-            const meta = ATTACHMENT_SLOT_META[slotKey];
-            const existing = state.formState.existingAttachments?.[slotKey] || null;
-            const pending = state.formState.pendingFiles?.[slotKey] || null;
-            const pendingName = pending ? getPendingAttachmentName(slotKey, pending) : '';
-            const pickerButtonHtml = `
-                <button type="button" class="attachment-pick-btn" data-action="pick-attachment" data-slot="${slotKey}">파일 선택</button>
-            `;
-            const itemHtml = pending
-                ? `
-                    <div class="attachment-item pending">
-                        <div class="attachment-meta">
-                            <span class="attachment-name">${history.escapeHtml(pendingName || pending.name)}</span>
-                            <span class="attachment-size">${history.escapeHtml(view.formatFileSize(pending.size))}</span>
-                        </div>
-                        <div class="attachment-actions">
-                            <button type="button" class="btn btn-secondary btn-sm" data-action="remove-pending-attachment" data-slot="${slotKey}">취소</button>
-                        </div>
-                    </div>
-                `
-                : existing
-                    ? `
-                        <div class="attachment-item">
-                            <div class="attachment-meta">
-                                <span class="attachment-name">${history.escapeHtml(existing.originalName)}</span>
-                                <span class="attachment-size">${history.escapeHtml(view.formatFileSize(existing.size))}</span>
-                            </div>
-                            <div class="attachment-actions">
-                                <a class="btn btn-secondary btn-sm" href="${history.escapeAttribute(existing.downloadUrl || existing.url || existing.previewUrl || '#')}" download="${history.escapeAttribute(existing.originalName || 'attachment')}" target="_blank" rel="noopener">다운로드</a>
-                                <button type="button" class="btn btn-secondary btn-sm" data-action="remove-existing-attachment" data-slot="${slotKey}">제거</button>
-                            </div>
-                        </div>
-                    `
-                    : '<div class="attachment-empty">첨부된 파일이 없습니다.</div>';
-
-            return `
-                <div class="attachment-slot-group">
-                    <div class="attachment-slot-head">
-                        <div class="attachment-slot-title">${history.escapeHtml(meta.label)}</div>
-                        ${pickerButtonHtml}
-                    </div>
-                    <div class="attachment-slot-hint">PDF, 엑셀, PPT/PPTM, 워드, 한글 문서 중 1건</div>
-                    <div class="attachment-slot-body">${itemHtml}</div>
-                </div>
-            `;
-        });
-
-        container.innerHTML = groups.join('');
-    }
-
-    function removeExistingAttachment(slotKey) {
-        const normalizedSlotKey = ATTACHMENT_SLOT_KEYS.includes(String(slotKey || '').trim())
-            ? String(slotKey).trim()
-            : '';
-        if (!normalizedSlotKey) return;
-        const removed = state.formState.existingAttachments?.[normalizedSlotKey] || null;
-        if (removed) {
-            state.formState.removedAttachments.push(removed);
-        }
-        state.formState.existingAttachments[normalizedSlotKey] = null;
-        renderAttachmentList();
-    }
-
-    function removePendingAttachment(slotKey) {
-        const normalizedSlotKey = ATTACHMENT_SLOT_KEYS.includes(String(slotKey || '').trim())
-            ? String(slotKey).trim()
-            : '';
-        if (!normalizedSlotKey) return;
-        state.formState.pendingFiles[normalizedSlotKey] = null;
-        renderAttachmentList();
     }
 
     async function exportAllData() {
@@ -240,14 +87,6 @@
     }
 
     Object.assign(view, {
-        getAttachmentValidationMessage,
-        getAttachmentInputId,
-        openAttachmentPicker,
-        handleAttachmentSelection,
-        getVisibleAttachmentSlotKeys,
-        renderAttachmentList,
-        removeExistingAttachment,
-        removePendingAttachment,
         exportAllData,
         performPrimarySave,
         downloadBackupSnapshot,

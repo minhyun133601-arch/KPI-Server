@@ -8,9 +8,6 @@
         TeamInfo,
         state,
         getElement,
-        ATTACHMENT_SLOT_KEYS,
-        ATTACHMENT_SLOT_META,
-        getRecordAttachment,
         escapeHtml
     } = history;
 
@@ -59,16 +56,6 @@
                 <td>${escapeHtml(record.workContent || '').replace(/\n/g, '<br>')}</td>
                 <td>${escapeHtml(view.formatCurrency(record.cost))}</td>
                 <td>${escapeHtml(view.buildRecordRemarkText(record)).replace(/\n/g, '<br>')}</td>
-                <td>${escapeHtml(
-                    (typeof view.getVisibleAttachmentSlotKeys === 'function' ? view.getVisibleAttachmentSlotKeys() : ATTACHMENT_SLOT_KEYS)
-                        .map((slotKey) => {
-                            const meta = ATTACHMENT_SLOT_META[slotKey];
-                            const attachment = getRecordAttachment(record, slotKey);
-                            return attachment ? `${meta.label} 첨부` : '';
-                        })
-                        .filter(Boolean)
-                        .join(', ') || '첨부 없음'
-                )}</td>
             </tr>
         `).join('');
 
@@ -99,7 +86,6 @@
                             <th>업무내용</th>
                             <th>비용</th>
                             <th>비고</th>
-                            <th>첨부</th>
                         </tr>
                     </thead>
                     <tbody>${rows}</tbody>

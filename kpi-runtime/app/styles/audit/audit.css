@@ -231,13 +231,7 @@
         .audit-lux-index-file-thumb { color: #1d4ed8; background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%); font-size: 0.78rem; font-weight: 900; }
         .audit-lux-index-file-thumb.is-pdf { color: #be123c; background: linear-gradient(135deg, #fff1f2 0%, #ffffff 100%); }
         .audit-lux-index-card-main { min-width: 0; display: grid; gap: 0.35rem; }
-        .audit-lux-index-card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
-        .audit-lux-index-team { font-size: 0.82rem; font-weight: 950; color: var(--audit-lux-team-accent); background: #ffffff; border: 1px solid var(--audit-lux-team-soft); border-radius: 999px; padding: 4px 10px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65); }
-        .audit-lux-index-state { font-size: 0.7rem; font-weight: 900; border-radius: 999px; padding: 3px 8px; border: 1px solid #e2e8f0; color: #64748b; background: #f8fafc; }
-        .audit-lux-index-state.is-attached { color: #15803d; background: #ecfdf5; border-color: #bbf7d0; }
-        .audit-lux-index-state.is-empty { color: #c2410c; background: #fff7ed; border-color: #fed7aa; }
         .audit-lux-index-card-main strong { min-width: 0; color: #0f172a; font-size: 0.98rem; font-weight: 950; line-height: 1.25; }
-        .audit-lux-index-file { min-width: 0; color: #64748b; font-size: 0.76rem; font-weight: 700; line-height: 1.35; word-break: break-all; }
         .audit-lux-index-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; padding-top: 0.1rem; }
         .audit-lux-index-card-actions .work-btn { min-width: 0; min-height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 8px 9px; border-radius: 9px; font-size: 0.76rem; font-weight: 800; line-height: 1.1; text-align: center; text-decoration: none; white-space: nowrap; }
         .audit-lux-index-card-actions .work-btn i { flex: 0 0 auto; font-size: 0.72rem; opacity: 0.82; }

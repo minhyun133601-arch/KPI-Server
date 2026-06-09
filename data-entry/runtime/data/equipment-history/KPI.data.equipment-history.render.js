@@ -18,6 +18,7 @@
     const EQUIPMENT_HISTORY_BROWSER_STATE_KEY = 'equipment-history-card';
     let activeSaveController = null;
     let activeHistoryUnsubscribe = null;
+    let equipmentHistoryFullscreenListenerBound = false;
 
     function getEquipmentTeamDataKey(value) {
         const normalizedTeam = api.normalizeEquipmentHistoryTeamName?.(value) || api.normalizeText(value);
@@ -35,6 +36,109 @@
             if (room) rooms.add(room);
         });
         return Array.from(rooms).sort((a, b) => a.localeCompare(b, 'ko-KR', { numeric: true, sensitivity: 'base' }));
+    }
+
+    function getEquipmentHistoryFullscreenDocument() {
+        return typeof document !== 'undefined' ? document : null;
+    }
+
+    function getEquipmentHistoryFullscreenTarget() {
+        return getEquipmentHistoryFullscreenDocument()?.getElementById?.('content-container') || null;
+    }
+
+    function isEquipmentHistoryFullscreen(target = getEquipmentHistoryFullscreenTarget()) {
+        const documentRef = getEquipmentHistoryFullscreenDocument();
+        return !!target && documentRef?.fullscreenElement === target;
+    }
+
+    function getEquipmentHistoryFullscreenLabel(isActive = isEquipmentHistoryFullscreen()) {
+        return isActive ? '전체화면 해제' : '전체화면';
+    }
+
+    function getEquipmentHistoryFullscreenIconClass(isActive = isEquipmentHistoryFullscreen()) {
+        return isActive ? 'fa-compress' : 'fa-expand';
+    }
+
+    function renderEquipmentHistoryFullscreenButton() {
+        const isActive = isEquipmentHistoryFullscreen();
+        const label = getEquipmentHistoryFullscreenLabel(isActive);
+        return `
+            <button
+                type="button"
+                class="data-equipment-fullscreen-toggle ${isActive ? 'is-active' : ''}"
+                data-equipment-fullscreen-toggle
+                aria-pressed="${isActive ? 'true' : 'false'}"
+                aria-label="${api.escapeHtml(label)}"
+                title="${api.escapeHtml(label)}"
+            >
+                <span class="data-equipment-fullscreen-toggle-icon">
+                    <i class="fas ${getEquipmentHistoryFullscreenIconClass(isActive)}" data-equipment-fullscreen-icon aria-hidden="true"></i>
+                </span>
+            </button>
+        `;
+    }
+
+    function syncEquipmentHistoryFullscreenUi() {
+        const host = getEquipmentHistoryFullscreenTarget();
+        const isActive = isEquipmentHistoryFullscreen(host);
+        if (host) {
+            host.classList?.toggle?.('is-data-equipment-browser-fullscreen', isActive);
+        }
+        const label = getEquipmentHistoryFullscreenLabel(isActive);
+        Array.from(getEquipmentHistoryFullscreenDocument()?.querySelectorAll?.('[data-equipment-fullscreen-toggle]') || []).forEach((button) => {
+            button.classList.toggle('is-active', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+            button.setAttribute('aria-label', label);
+            button.setAttribute('title', label);
+            const icon = button.querySelector('[data-equipment-fullscreen-icon]');
+            if (icon) {
+                icon.className = `fas ${getEquipmentHistoryFullscreenIconClass(isActive)}`;
+            }
+        });
+    }
+
+    function ensureEquipmentHistoryFullscreenListener() {
+        const documentRef = getEquipmentHistoryFullscreenDocument();
+        if (equipmentHistoryFullscreenListenerBound || typeof documentRef?.addEventListener !== 'function') return;
+        equipmentHistoryFullscreenListenerBound = true;
+        documentRef.addEventListener('fullscreenchange', syncEquipmentHistoryFullscreenUi);
+    }
+
+    async function exitEquipmentHistoryFullscreen() {
+        if (!isEquipmentHistoryFullscreen()) return;
+        const documentRef = getEquipmentHistoryFullscreenDocument();
+        try {
+            await documentRef?.exitFullscreen?.();
+        } catch (error) {
+            console.warn('[kpi] equipment history fullscreen exit failed', error);
+        } finally {
+            syncEquipmentHistoryFullscreenUi();
+        }
+    }
+
+    async function toggleEquipmentHistoryFullscreen() {
+        const documentRef = getEquipmentHistoryFullscreenDocument();
+        const target = getEquipmentHistoryFullscreenTarget();
+        if (!documentRef || !target) return;
+        if (isEquipmentHistoryFullscreen(target)) {
+            await exitEquipmentHistoryFullscreen();
+            return;
+        }
+        if (typeof target.requestFullscreen !== 'function') {
+            browser.alert('이 브라우저에서는 전체화면 기능을 지원하지 않습니다.');
+            return;
+        }
+        try {
+            if (documentRef.fullscreenElement && documentRef.fullscreenElement !== target) {
+                await documentRef.exitFullscreen?.();
+            }
+            await target.requestFullscreen();
+        } catch (error) {
+            console.warn('[kpi] equipment history fullscreen toggle failed', error);
+            browser.alert('전체화면 전환에 실패했습니다.');
+        } finally {
+            syncEquipmentHistoryFullscreenUi();
+        }
     }
 
     function renderRoomDatalist(id, rooms) {
@@ -300,7 +404,10 @@
                     <input type="search" value="${api.escapeHtml(filters.search)}" placeholder="설비명 또는 제조사 검색" data-equipment-filter-search aria-label="설비명 또는 제조사 검색">
                     <i class="fas fa-search" aria-hidden="true"></i>
                 </label>
-                <button type="button" class="data-equipment-filter-reset" data-equipment-filter-reset>필터 초기화</button>
+                <div class="data-equipment-filter-actions">
+                    <button type="button" class="data-equipment-filter-reset" data-equipment-filter-reset>필터 초기화</button>
+                    ${renderEquipmentHistoryFullscreenButton()}
+                </div>
             </div>
         `;
     }
@@ -2206,6 +2313,10 @@
             redraw();
         });
 
+        root.querySelector('[data-equipment-fullscreen-toggle]')?.addEventListener('click', () => {
+            void toggleEquipmentHistoryFullscreen();
+        });
+
         root.querySelectorAll('[data-equipment-board-card][data-equipment-open-card]').forEach((card) => {
             card.addEventListener('click', (event) => {
                 if (isEquipmentBoardCardInteractiveTarget(event.target)) return;
@@ -2412,11 +2523,13 @@
 
         bindPhotoPreview(root, state, data, redraw);
         bindSaveShortcut(root, state, data, redraw);
+        syncEquipmentHistoryFullscreenUi();
     }
 
     function render(category, context = {}, data = {}) {
         const container = context.container || document.getElementById('content-container');
         if (!container) return;
+        ensureEquipmentHistoryFullscreenListener();
         const workingData = data;
         const items = api.normalizeEquipmentItems(workingData);
         const state = {

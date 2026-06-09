@@ -336,18 +336,15 @@
             const teamClass = getAuditLuxTeamClass(team);
             const openUrl = viewUrl || downloadUrl || '#';
             const downloadHref = downloadUrl || viewUrl || '#';
+            const teamLabel = team || '팀 없음';
+            const cardLabel = hasAttachment ? teamLabel : `${teamLabel} 미첨부`;
             return `
                 <article class="audit-lux-index-card ${teamClass} ${hasAttachment ? 'is-attached' : 'is-empty'}" data-audit-lux-card="${escapeHtml(dataKey)}" data-year="${escapeHtml(year)}" data-team="${escapeHtml(team)}">
                     <div class="audit-lux-index-card-media">
                         ${renderAuditLuxAttachmentThumb(dataKey, year, team, attachmentItem)}
                     </div>
                     <div class="audit-lux-index-card-main">
-                        <div class="audit-lux-index-card-head">
-                            <span class="audit-lux-index-team">${escapeHtml(team || '팀 없음')}</span>
-                            <span class="audit-lux-index-state ${hasAttachment ? 'is-attached' : 'is-empty'}">${hasAttachment ? '첨부됨' : '미첨부'}</span>
-                        </div>
-                        <strong>${escapeHtml(team || '팀 없음')} ${escapeHtml(year)}년 조도본</strong>
-                        <span class="audit-lux-index-file">${escapeHtml(fileLabel || '등록된 파일 없음')}</span>
+                        <strong>${escapeHtml(cardLabel)}</strong>
                     </div>
                     <div class="audit-lux-index-card-actions">
                         <button type="button" class="work-btn primary audit-lux-index-replace" onclick="openAuditLuxAttachmentPickerForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}')"><i class="fa-solid fa-arrow-rotate-right" aria-hidden="true"></i><span>교체</span></button>

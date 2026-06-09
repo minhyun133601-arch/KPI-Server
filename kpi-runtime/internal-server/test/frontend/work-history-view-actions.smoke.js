@@ -92,28 +92,6 @@ function createContext() {
     isKpiRecord() {
       return false;
     },
-    ATTACHMENT_SLOT_KEYS: ['report', 'estimate', 'other'],
-    ATTACHMENT_SLOT_META: {
-      report: { label: 'Report' },
-      estimate: { label: 'Estimate' },
-      other: { label: 'Other' },
-    },
-    WORK_HISTORY_ATTACHMENT_MAX_BYTES: 10 * 1024 * 1024,
-    getRecordAttachment() {
-      return null;
-    },
-    flattenAttachmentSlots() {
-      return [];
-    },
-    validateWorkHistoryAttachment() {
-      return '';
-    },
-    uploadPendingAttachments() {
-      return Promise.resolve([]);
-    },
-    deleteAttachmentsFromServer() {
-      return Promise.resolve();
-    },
     savePayload() {
       return Promise.resolve();
     },
@@ -342,7 +320,6 @@ test('work history overlay close confirms when the record form has unsaved edits
     'recordRemarks',
     'recordCost',
     'modalTitle',
-    'attachmentList',
     'deleteModal',
   ].forEach(id => {
     elements.set(id, createFormElement(''));

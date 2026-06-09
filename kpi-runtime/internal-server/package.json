@@ -32,6 +32,7 @@
     "migrate:work-history-reports": "node src/scripts/one-shot/migrateWorkHistoryReportRecords.js",
     "repair:work-history-report-authority": "node src/scripts/one-shot/repairWorkHistoryReportAuthority.js",
     "repair:work-history-attachment-categories": "node src/scripts/one-shot/repairWorkHistoryAttachmentCategories.js",
+    "purge:work-history-attachments": "node src/scripts/one-shot/purgeWorkHistoryAttachments.js",
     "repair:metering-billing-storage": "node src/scripts/one-shot/repairMeteringBillingDocumentStorage.js",
     "sessions:prune": "node src/scripts/pruneExpiredSessions.js",
     "report:legacy-attachments": "node src/scripts/reportLegacyAttachmentStatus.js",

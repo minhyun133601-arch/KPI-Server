@@ -18,46 +18,6 @@
         team4: { name: '공무환경팀', desc: '폐수 · 전체 · 기타', class: 'team4' }
     });
     const LOCAL_BACKUP_KEY = `workhistory:${DATA_KEY}`;
-    const ATTACHMENT_SLOT_KEYS = ['report', 'estimate', 'other'];
-    const LEGACY_ATTACHMENT_SLOT_MAP = Object.freeze({
-        billing: 'other'
-    });
-    const ATTACHMENT_SLOT_META = Object.freeze({
-        report: {
-            label: '보고서',
-            fileCategory: 'report_document'
-        },
-        estimate: {
-            label: '견적서',
-            fileCategory: 'estimate_document'
-        },
-        other: {
-            label: '기타',
-            fileCategory: 'other_document'
-        }
-    });
-    const WORK_HISTORY_ATTACHMENT_MAX_BYTES = 25 * 1024 * 1024;
-    const WORK_HISTORY_ATTACHMENT_RULES = Object.freeze({
-        '.pdf': Object.freeze(['application/pdf']),
-        '.xls': Object.freeze(['application/vnd.ms-excel']),
-        '.xlsx': Object.freeze(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
-        '.ppt': Object.freeze(['application/vnd.ms-powerpoint']),
-        '.pptx': Object.freeze(['application/vnd.openxmlformats-officedocument.presentationml.presentation']),
-        '.pptm': Object.freeze(['application/vnd.ms-powerpoint.presentation.macroenabled.12']),
-        '.doc': Object.freeze(['application/msword']),
-        '.docx': Object.freeze(['application/vnd.openxmlformats-officedocument.wordprocessingml.document']),
-        '.hwp': Object.freeze(['application/x-hwp', 'application/haansofthwp']),
-        '.hwpx': Object.freeze(['application/x-hwp+zip', 'application/haansofthwpx'])
-    });
-    const WORK_HISTORY_ATTACHMENT_ALLOWED_EXTENSIONS = Object.freeze(Object.keys(WORK_HISTORY_ATTACHMENT_RULES));
-    const WORK_HISTORY_ATTACHMENT_EXTENSION_BY_MIME = Object.freeze(
-        Object.fromEntries(
-            WORK_HISTORY_ATTACHMENT_ALLOWED_EXTENSIONS.flatMap((ext) => (
-                (WORK_HISTORY_ATTACHMENT_RULES[ext] || []).map((mimeType) => [mimeType, ext])
-            ))
-        )
-    );
-    const WORK_HISTORY_ATTACHMENT_ACCEPT = WORK_HISTORY_ATTACHMENT_ALLOWED_EXTENSIONS.join(',');
     const KPI_FLAG_LABEL = '★';
     const KPI_FLAG_PILL_LABEL = '★';
     const IMPORTANT_FLAG_LABEL = '★';
@@ -111,14 +71,6 @@
         TEAM_DATA_VAR_NAMES,
         TeamInfo,
         LOCAL_BACKUP_KEY,
-        ATTACHMENT_SLOT_KEYS,
-        LEGACY_ATTACHMENT_SLOT_MAP,
-        ATTACHMENT_SLOT_META,
-        WORK_HISTORY_ATTACHMENT_MAX_BYTES,
-        WORK_HISTORY_ATTACHMENT_RULES,
-        WORK_HISTORY_ATTACHMENT_ALLOWED_EXTENSIONS,
-        WORK_HISTORY_ATTACHMENT_EXTENSION_BY_MIME,
-        WORK_HISTORY_ATTACHMENT_ACCEPT,
         KPI_FLAG_LABEL,
         KPI_FLAG_PILL_LABEL,
         IMPORTANT_FLAG_LABEL,

@@ -50,7 +50,6 @@ const DOCUMENT_ATTACHMENT_ALLOWED_MIME_TYPES = new Set([
   'application/haansofthwpx'
 ]);
 const DOCUMENT_WORK_HISTORY_OWNER_DOMAINS = new Set([
-  'work.history',
   'work.team_calendar'
 ]);
 const DOCUMENT_WORK_HISTORY_MACRO_POWERPOINT_EXTENSION = '.pptm';
@@ -89,6 +88,10 @@ function isWorkHistoryUpload({ ownerDomain }) {
   return DOCUMENT_WORK_HISTORY_OWNER_DOMAINS.has(ownerDomain);
 }
 
+function isDisabledWorkHistoryRecordUpload({ ownerDomain }) {
+  return ownerDomain === 'work.history';
+}
+
 function isPdfUploadType({ extension, mimeType }) {
   return extension === '.pdf' && mimeType === 'application/pdf';
 }
@@ -107,6 +110,9 @@ function hasAllowedAttachmentUploadType({ extension, mimeType }) {
 }
 
 function hasAllowedUploadType({ ownerDomain, fileCategory, extension, mimeType }) {
+  if (isDisabledWorkHistoryRecordUpload({ ownerDomain })) {
+    return false;
+  }
   if (isMeteringBillingDocumentUpload({ ownerDomain, fileCategory })) {
     return isPdfUploadType({ extension, mimeType });
   }

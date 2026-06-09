@@ -101,16 +101,8 @@ function createContext() {
               endDate: '2026-04-01',
               categoryGroup: 'report',
               workContent: 'Alpha task',
-              attachments: [
-                {
-                  attachmentType: 'report',
-                  originalName: 'report.pdf',
-                  storedName: 'report.pdf',
-                  url: '/attachments/report.pdf',
-                  previewUrl: '/attachments/report.pdf',
-                  downloadUrl: '/attachments/report.pdf',
-                },
-              ],
+              attachments: [{ attachmentType: 'report', originalName: 'report.pdf' }],
+              reportAttachment: { originalName: 'report.pdf' },
             },
           ],
           team1part2: [],
@@ -154,33 +146,6 @@ test('work history core split files expose normalized payload and storage hooks 
   assert.equal(typeof history.waitForPendingSave, 'function');
   assert.equal(typeof history.buildExportScript, 'function');
   assert.equal(typeof history.getRecordCategoryGroupLabel, 'function');
-  assert.equal(typeof history.getRecordAttachment, 'function');
-  assert.ok(history.WORK_HISTORY_ATTACHMENT_ACCEPT.includes('.pptm'));
-  assert.equal(
-    history.getWorkHistoryAttachmentExtension(
-      'macro-report',
-      'application/vnd.ms-powerpoint.presentation.macroEnabled.12'
-    ),
-    '.pptm'
-  );
-  assert.equal(
-    history.getWorkHistoryAttachmentMimeType('macro-report.pptm', ''),
-    'application/vnd.ms-powerpoint.presentation.macroenabled.12'
-  );
-  assert.equal(
-    history.getWorkHistoryAttachmentMimeType('macro-report.pptm', 'application/octet-stream'),
-    'application/vnd.ms-powerpoint.presentation.macroenabled.12'
-  );
-  assert.deepEqual([...history.ATTACHMENT_SLOT_KEYS], ['report', 'estimate', 'other']);
-  assert.equal(
-    history.normalizeAttachment({
-      attachmentType: 'billing',
-      originalName: 'legacy-billing.pdf',
-      storedName: 'legacy-billing.pdf',
-      url: '/attachments/legacy-billing.pdf',
-    }).attachmentType,
-    'other'
-  );
   assert.equal(history.normalizeCost('150,000,000원'), 150000000);
   assert.equal(history.normalizeCost('abc'), null);
   assert.deepEqual(history.normalizeAssignees(['미정', 'Alpha', '미입력', '-', 'Beta']), ['Alpha', 'Beta']);
@@ -206,8 +171,8 @@ test('work history core split files expose normalized payload and storage hooks 
   assert.equal(payload.meta.moduleKey, 'work_history_records');
   assert.equal(payload.teams.team1part1.length, 1);
   assert.equal(payload.teams.team1part1[0].categoryGroup, 'report');
-  assert.equal(payload.teams.team1part1[0].attachments.length, 1);
-  assert.equal(payload.teams.team1part1[0].reportAttachment.originalName, 'report.pdf');
+  assert.equal(payload.teams.team1part1[0].attachments, undefined);
+  assert.equal(payload.teams.team1part1[0].reportAttachment, undefined);
   assert.deepEqual(
     JSON.parse(JSON.stringify(context.KpiWorkHistoryBrowserAdapter.readPortalData('work_history_records'))),
     JSON.parse(JSON.stringify(payload))
@@ -218,11 +183,11 @@ test('work history core split files expose normalized payload and storage hooks 
 
 test('kpi html loads work history core split files before layout bootstrap', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=4');
-  const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=218');
-  const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=4');
-  const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=4');
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=254');
+  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=5');
+  const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=219');
+  const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=5');
+  const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=5');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=255');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(configIndex >= 0, 'work history core config loader is missing');

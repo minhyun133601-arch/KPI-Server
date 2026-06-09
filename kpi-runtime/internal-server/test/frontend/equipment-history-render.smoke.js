@@ -196,7 +196,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=16');
   const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=25');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=3');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=44');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=45');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=5');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -206,7 +206,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(storageIndex > formIndex, 'equipment-history storage loader must load after the form');
   assert.ok(renderIndex > storageIndex, 'equipment-history render loader must load after storage');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
-  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=092') >= 0, 'data css cache version is stale');
+  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=093') >= 0, 'data css cache version is stale');
   assert.ok(bootManifestSource.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js') >= 0);
 });
 
@@ -349,6 +349,8 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /설비 현황/);
   assert.match(container.innerHTML, /설비 이력 카드/);
   assert.match(container.innerHTML, />추가</);
+  assert.match(container.innerHTML, /data-equipment-filter-reset[\s\S]*data-equipment-fullscreen-toggle/);
+  assert.match(container.innerHTML, /aria-label="전체화면"/);
   assert.doesNotMatch(container.innerHTML, /설비 추가/);
   assert.doesNotMatch(container.innerHTML, /등록된 설비가 없습니다/);
   [
@@ -817,6 +819,15 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /openEquipmentBoardCard\(data, state, card\.dataset\.equipmentOpenCard, redraw\)/);
   assert.match(renderSource, /function resetEquipmentHistoryBoardState/);
   assert.match(renderSource, /state\.filters = \{ team: '', status: '', search: '' \}/);
+  assert.match(renderSource, /function renderEquipmentHistoryFullscreenButton/);
+  assert.match(renderSource, /data-equipment-fullscreen-toggle/);
+  assert.match(renderSource, /function toggleEquipmentHistoryFullscreen/);
+  assert.match(renderSource, /requestFullscreen/);
+  assert.match(renderSource, /fullscreenchange/);
+  assert.match(renderSource, /is-data-equipment-browser-fullscreen/);
+  assert.match(dataCssSource, /data-equipment-filter-actions/);
+  assert.match(dataCssSource, /data-equipment-fullscreen-toggle/);
+  assert.match(dataCssSource, /#content-container\.is-data-equipment-browser-fullscreen/);
   assert.match(renderSource, /function pushEquipmentHistoryCardHistory/);
   assert.match(renderSource, /browser\.pushHistoryState/);
   assert.match(renderSource, /browser\.replaceHistoryState/);

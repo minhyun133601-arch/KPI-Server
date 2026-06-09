@@ -10,7 +10,6 @@
         RECORD_CATEGORY_GROUP_ORDER,
         RECORD_CATEGORY_GROUPS,
         state,
-        WORK_HISTORY_ATTACHMENT_ACCEPT,
         escapeHtml,
         escapeAttribute
     } = history;
@@ -303,7 +302,6 @@
                             <ul>
                                 <li id="recordGuideItemRequired">기간, 팀, 작업자, 업무내용은 필수입니다.</li>
                                 <li id="recordGuideItemCost">비용은 필요한 경우에만 입력합니다.</li>
-                                <li id="recordGuideItemAttachment">첨부는 보고서, 견적서, 기타로 구분되며 PDF·엑셀·PPT·워드·한글 문서를 올릴 수 있습니다.</li>
                             </ul>
                         </div>
 
@@ -374,16 +372,6 @@
                                 </div>
                             </div>
 
-                            <div class="form-group">
-                                <label id="recordAttachmentLabel">${isProductionWorkspace() ? '보고 첨부' : '첨부 파일'}</label>
-                                <div class="file-help" id="recordAttachmentHelp">${isProductionWorkspace() ? '보고서 문서 1건을 선택합니다.' : '보고서, 견적서, 기타 칸에서 각각 문서 1건씩 선택합니다.'}</div>
-                                <div class="attachment-list" id="attachmentList"></div>
-                                <div class="attachment-inputs" aria-hidden="true">
-                                    <input type="file" id="recordReportAttachment" class="attachment-file-input" data-slot="report" accept="${escapeAttribute(WORK_HISTORY_ATTACHMENT_ACCEPT || '')}" tabindex="-1">
-                                    <input type="file" id="recordEstimateAttachment" class="attachment-file-input" data-slot="estimate" accept="${escapeAttribute(WORK_HISTORY_ATTACHMENT_ACCEPT || '')}" tabindex="-1">
-                                    <input type="file" id="recordOtherAttachment" class="attachment-file-input" data-slot="other" accept="${escapeAttribute(WORK_HISTORY_ATTACHMENT_ACCEPT || '')}" tabindex="-1">
-                                </div>
-                            </div>
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -431,7 +419,6 @@
     function getSectionIconSvg(type) {
         const icons = {
             summary: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 7H18M6 12H18M6 17H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
-            attachment: '<svg viewBox="0 0 24 24" fill="none"><path d="M9 12.5L13.5 8C15.2 6.3 18 6.3 19.7 8C21.4 9.7 21.4 12.5 19.7 14.2L12.2 21.7C9.7 24.2 5.7 24.2 3.2 21.7C0.7 19.2 0.7 15.2 3.2 12.7L10 5.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             work: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 6.5H19M5 12H19M5 17.5H14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
             remarks: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 4.5H18C19.1 4.5 20 5.4 20 6.5V15.5C20 16.6 19.1 17.5 18 17.5H10L6 20.5V17.5H6C4.9 17.5 4 16.6 4 15.5V6.5C4 5.4 4.9 4.5 6 4.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>'
         };

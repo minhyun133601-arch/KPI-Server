@@ -8,10 +8,6 @@
         TEAM_DATA_VAR_NAMES,
         TeamInfo,
         LOCAL_BACKUP_KEY,
-        ATTACHMENT_SLOT_KEYS,
-        ATTACHMENT_SLOT_META,
-        WORK_HISTORY_ATTACHMENT_MAX_BYTES,
-        WORK_HISTORY_ATTACHMENT_ACCEPT,
         KPI_FLAG_LABEL,
         KPI_FLAG_PILL_LABEL,
         IMPORTANT_FLAG_LABEL,
@@ -39,10 +35,7 @@
         currentCategoryFilter: '',
         pendingDelete: { team: null, index: null },
         formState: {
-            sourceTeam: '',
-            existingAttachments: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, null])),
-            pendingFiles: Object.fromEntries(ATTACHMENT_SLOT_KEYS.map(slotKey => [slotKey, null])),
-            removedAttachments: []
+            sourceTeam: ''
         },
         toastTimer: null,
         workspaceMode: DEFAULT_WORKSPACE_MODE,
@@ -222,10 +215,6 @@
         RECORD_CATEGORY_GROUPS,
         RECORD_CATEGORY_ALIAS_MAP,
         RECORD_CATEGORY_OPTIONS,
-        ATTACHMENT_SLOT_KEYS,
-        ATTACHMENT_SLOT_META,
-        WORK_HISTORY_ATTACHMENT_MAX_BYTES,
-        WORK_HISTORY_ATTACHMENT_ACCEPT,
         DEFAULT_WORKSPACE_MODE,
         PRODUCTION_REPORT_WORKSPACE_MODE,
         getElement,
