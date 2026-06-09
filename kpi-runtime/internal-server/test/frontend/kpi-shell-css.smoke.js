@@ -41,8 +41,8 @@ const styleEntries = [
     relativeSegments: ['metering', 'metering.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/audit/audit.css?v=062`,
-    manifestHref: './styles/audit/audit.css?v=062',
+    href: `${runtimeDirName}/app/styles/audit/audit.css?v=064`,
+    manifestHref: './styles/audit/audit.css?v=064',
     fileName: 'audit.css',
     relativeSegments: ['audit', 'audit.css'],
   },

@@ -163,7 +163,7 @@
                 ? `${entryForm.year}년 ${entryForm.quarter}분기 ${entryForm.team}`
                 : '선택 대상 없음';
             const luxPreviewHtml = isLuxAudit
-                ? renderAuditLuxEntryPreviewHtml(dataKey, entryForm.year, entryForm.team)
+                ? renderAuditLuxEntryPreviewHtml(dataKey, entryForm.year, entryForm.team, entryForm.quarter)
                 : '';
             const luxBatchRowsHtml = isLuxAudit && entryForm.batchActive
                 ? (luxBatchRows.length
@@ -224,7 +224,14 @@
             const evidenceGroupsHtml = evidenceApplied ? evidenceTeams.map(team => {
                 const items = evidenceFiltered
                     .filter(item => item.team === team)
-                    .sort((a, b) => (b.year || 0) - (a.year || 0));
+                    .sort((a, b) => {
+                        const yearDiff = (b.year || 0) - (a.year || 0);
+                        if (yearDiff !== 0) return yearDiff;
+                        if (typeof normalizeAuditLuxEvidenceQuarter === 'function') {
+                            return normalizeAuditLuxEvidenceQuarter(b) - normalizeAuditLuxEvidenceQuarter(a);
+                        }
+                        return 0;
+                    });
                 const groupId = `audit-evidence-${dataKey}-${encodeURIComponent(team)}`;
                 const isOpen = !!evidenceOpenState[team];
                 return `
@@ -236,7 +243,7 @@
                         <div class="audit-evidence-list">
                             ${items.map(item => `
                                 <button class="audit-evidence-item ${item.id === selectedEvidenceId ? 'is-selected' : ''}" data-evidence-item data-evidence-id="${item.id}" onclick="selectAuditEvidence('${dataKey}', '${encodeURIComponent(item.id)}')">
-                                    <span class="audit-evidence-date">${item.year ? item.year + '년' : ''}</span>
+                                    <span class="audit-evidence-date">${item.year ? (typeof getAuditLuxEvidencePeriodLabel === 'function' ? getAuditLuxEvidencePeriodLabel(item) : item.year + '년') : ''}</span>
                                     <span class="audit-evidence-team">${escapeHtml(item.team || '')}</span>
                                 </button>
                             `).join('')}

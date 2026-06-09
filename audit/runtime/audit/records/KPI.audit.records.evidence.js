@@ -61,21 +61,73 @@
             return normalized < 0 ? normalized + 360 : normalized;
         }
 
-        function makeAuditLuxEvidenceId(year, team) {
-            const safeYear = Number(year);
-            const safeTeam = normalizeAuditZone(team || '').replace(/[^a-z0-9]+/g, '-') || 'team';
-            return `audit-lux-${safeYear}-${safeTeam}`;
+        function getAuditLuxMaxQuarterForYear(year) {
+            const targetYear = Number(year);
+            if (!Number.isFinite(targetYear)) return 0;
+            const now = typeof getAuditCurrentQuarterInfo === 'function'
+                ? getAuditCurrentQuarterInfo()
+                : getQuarterInfo(new Date());
+            if (targetYear < now.year) return 4;
+            if (targetYear > now.year) return 0;
+            return Math.min(Math.max(Number(now.quarter) || 1, 1), 4);
         }
 
-        function getAuditLuxYearEvidenceItem(dataKey, year, team) {
+        function normalizeAuditLuxEvidenceQuarter(yearOrItem, quarter = null) {
+            const item = yearOrItem && typeof yearOrItem === 'object' ? yearOrItem : null;
+            const targetYear = Number(item ? item.year : yearOrItem);
+            const rawQuarter = item
+                ? (item.quarter ?? item.metadata?.quarter ?? item.period?.quarter)
+                : quarter;
+            const maxQuarter = getAuditLuxMaxQuarterForYear(targetYear);
+            const numericQuarter = Number(rawQuarter);
+            if (
+                Number.isFinite(numericQuarter)
+                && numericQuarter >= 1
+                && numericQuarter <= 4
+                && (maxQuarter === 0 || numericQuarter <= maxQuarter)
+            ) {
+                return numericQuarter;
+            }
+            const legacyQuarter = targetYear === 2026 ? 2 : 4;
+            if (maxQuarter > 0) return Math.min(legacyQuarter, maxQuarter);
+            return legacyQuarter;
+        }
+
+        function getAuditLuxEvidenceQuarterLabel(yearOrItem, quarter = null) {
+            const normalizedQuarter = normalizeAuditLuxEvidenceQuarter(yearOrItem, quarter);
+            return `${normalizedQuarter}분기`;
+        }
+
+        function getAuditLuxEvidencePeriodLabel(yearOrItem, quarter = null) {
+            const item = yearOrItem && typeof yearOrItem === 'object' ? yearOrItem : null;
+            const targetYear = Number(item ? item.year : yearOrItem);
+            const normalizedQuarter = normalizeAuditLuxEvidenceQuarter(yearOrItem, quarter);
+            return `${targetYear}년 ${normalizedQuarter}분기`;
+        }
+
+        function makeAuditLuxEvidenceId(year, team, quarter = null) {
+            const safeYear = Number(year);
+            const safeQuarter = normalizeAuditLuxEvidenceQuarter(safeYear, quarter);
+            const safeTeam = normalizeAuditZone(team || '').replace(/[^a-z0-9]+/g, '-') || 'team';
+            return `audit-lux-${safeYear}-q${safeQuarter}-${safeTeam}`;
+        }
+
+        function getAuditLuxYearEvidenceItem(dataKey, year, team, quarter = null) {
             if (String(dataKey || '').trim() !== 'audit_lux') return null;
             const normalizedTeam = normalizeAuditZone(team || '');
             if (!normalizedTeam) return null;
             const targetYear = Number(year);
-            return getAuditEvidenceList(dataKey).find((item) => (
-                normalizeAuditZone(item?.team || '') === normalizedTeam
-                && Number(item?.year) === targetYear
-            )) || null;
+            const targetQuarter = quarter === null || quarter === undefined || quarter === ''
+                ? null
+                : normalizeAuditLuxEvidenceQuarter(targetYear, quarter);
+            const matches = getAuditEvidenceList(dataKey)
+                .filter((item) => (
+                    normalizeAuditZone(item?.team || '') === normalizedTeam
+                    && Number(item?.year) === targetYear
+                    && (targetQuarter === null || normalizeAuditLuxEvidenceQuarter(item) === targetQuarter)
+                ))
+                .sort((a, b) => normalizeAuditLuxEvidenceQuarter(b) - normalizeAuditLuxEvidenceQuarter(a));
+            return matches[0] || null;
         }
 
         function validateAuditLuxEvidenceFile(file) {
@@ -107,7 +159,7 @@
             });
         }
 
-        function getAuditLuxEvidenceUploadName(file, year, team) {
+        function getAuditLuxEvidenceUploadName(file, year, team, quarter = null) {
             const sourceName = String(file?.name || '').trim();
             const sourceMimeType = String(file?.type || '').trim().toLowerCase();
             const nameMatch = sourceName.match(/(\.[A-Za-z0-9]{1,16})$/);
@@ -117,16 +169,17 @@
                 || (sourceMimeType === 'image/webp' ? '.webp' : '')
                 || (sourceMimeType === 'image/gif' ? '.gif' : '')
                 || (sourceMimeType.startsWith('image/') ? '.jpg' : '');
-            return `${Number(year)} ${String(team || '').trim()} 조도${ext}`;
+            return `${Number(year)} ${normalizeAuditLuxEvidenceQuarter(year, quarter)}분기 ${String(team || '').trim()} 조도${ext}`;
         }
 
-        async function uploadAuditLuxEvidenceToServer(dataKey, year, team, file) {
+        async function uploadAuditLuxEvidenceToServer(dataKey, year, team, quarter, file) {
             const runtime = getAuditServerRuntimeConfig(dataKey);
             if (!auditRecordsEvidenceBrowser.canUseServerWrite(runtime?.writeEnabled === true) || !auditRecordsEvidenceBrowser.hasFetch()) {
                 throw new Error('server_write_unavailable');
             }
             validateAuditLuxEvidenceFile(file);
-            const originalName = getAuditLuxEvidenceUploadName(file, year, team);
+            const targetQuarter = normalizeAuditLuxEvidenceQuarter(year, quarter);
+            const originalName = getAuditLuxEvidenceUploadName(file, year, team, targetQuarter);
             const mimeType = String(file?.type || '').trim() || 'application/octet-stream';
             const base64Data = await readAuditLuxEvidenceAsBase64(file);
             const response = await auditRecordsEvidenceBrowser.fetch(`${runtime.apiBase.replace(/\/+$/, '')}/files/base64`, {
@@ -138,7 +191,7 @@
                 body: JSON.stringify({
                     permissionKey: runtime.permissionKey,
                     ownerDomain: AUDIT_LUX_EVIDENCE_OWNER_DOMAIN,
-                    ownerKey: `${String(dataKey || '').trim()}:${Number(year)}:${String(team || '').trim()}`,
+                    ownerKey: `${String(dataKey || '').trim()}:${Number(year)}:Q${targetQuarter}:${String(team || '').trim()}`,
                     fileCategory: 'evidence',
                     originalName,
                     mimeType,
@@ -146,6 +199,7 @@
                     metadata: {
                         dataKey: String(dataKey || '').trim(),
                         year: Number(year),
+                        quarter: targetQuarter,
                         team: String(team || '').trim(),
                         originalName,
                         storageFolder: AUDIT_LUX_EVIDENCE_STORAGE_FOLDER
@@ -158,9 +212,10 @@
             }
             const document = payload.document;
             return {
-                id: makeAuditLuxEvidenceId(year, team),
+                id: makeAuditLuxEvidenceId(year, team, targetQuarter),
                 team: String(team || '').trim(),
                 year: Number(year),
+                quarter: targetQuarter,
                 documentId: String(document.id || '').trim(),
                 fileName: String(document.original_name || originalName).trim(),
                 originalName: String(document.original_name || originalName).trim(),
@@ -185,25 +240,34 @@
             return true;
         }
 
-        async function replaceAuditLuxEvidenceForYear(dataKey, year, team, file) {
+        async function replaceAuditLuxEvidenceForYear(dataKey, year, team, quarterOrFile, maybeFile) {
             if (String(dataKey || '').trim() !== 'audit_lux') {
                 throw new Error('invalid_data_key');
             }
             const normalizedTeam = String(team || '').trim();
             const targetYear = Number(year);
+            const file = maybeFile || quarterOrFile;
+            const quarter = maybeFile ? quarterOrFile : null;
+            const targetQuarter = normalizeAuditLuxEvidenceQuarter(targetYear, quarter);
             if (!normalizedTeam || !Number.isFinite(targetYear)) {
                 throw new Error('invalid_target');
             }
             const data = getAuditData(dataKey, dataKey);
             const previousData = cloneAuditDataPayload(data);
-            const currentEvidence = getAuditLuxYearEvidenceItem(dataKey, targetYear, normalizedTeam);
-            const uploaded = await uploadAuditLuxEvidenceToServer(dataKey, targetYear, normalizedTeam, file);
+            const currentEvidence = getAuditLuxYearEvidenceItem(dataKey, targetYear, normalizedTeam, targetQuarter);
+            const uploaded = await uploadAuditLuxEvidenceToServer(dataKey, targetYear, normalizedTeam, targetQuarter, file);
             const nextEvidence = (Array.isArray(data.evidence) ? data.evidence : [])
-                .filter((item) => !(Number(item?.year) === targetYear && normalizeAuditZone(item?.team || '') === normalizeAuditZone(normalizedTeam)));
+                .filter((item) => !(
+                    Number(item?.year) === targetYear
+                    && normalizeAuditZone(item?.team || '') === normalizeAuditZone(normalizedTeam)
+                    && normalizeAuditLuxEvidenceQuarter(item) === targetQuarter
+                ));
             nextEvidence.push(uploaded);
             data.evidence = nextEvidence.sort((a, b) => {
                 const yearDiff = Number(b?.year || 0) - Number(a?.year || 0);
                 if (yearDiff !== 0) return yearDiff;
+                const quarterDiff = normalizeAuditLuxEvidenceQuarter(b) - normalizeAuditLuxEvidenceQuarter(a);
+                if (quarterDiff !== 0) return quarterDiff;
                 return String(a?.team || '').localeCompare(String(b?.team || ''), 'ko');
             });
             let saved = false;
@@ -238,16 +302,24 @@
             return uploaded;
         }
 
-        function getAuditLuxEntryPreviewItem(dataKey, year, team) {
+        function getAuditLuxEntryPreviewItem(dataKey, year, team, quarter = null) {
             if (String(dataKey || '').trim() !== 'audit_lux') return null;
             const normalizedTeam = normalizeAuditZone(team || '');
             if (!normalizedTeam) return null;
             const targetYear = Number(year);
+            const targetQuarter = normalizeAuditLuxEvidenceQuarter(targetYear, quarter);
             const teamMatches = getAuditEvidenceList(dataKey)
                 .filter(item => normalizeAuditZone(item?.team || '') === normalizedTeam)
-                .sort((a, b) => Number(b?.year || 0) - Number(a?.year || 0));
+                .sort((a, b) => {
+                    const yearDiff = Number(b?.year || 0) - Number(a?.year || 0);
+                    if (yearDiff !== 0) return yearDiff;
+                    return normalizeAuditLuxEvidenceQuarter(b) - normalizeAuditLuxEvidenceQuarter(a);
+                });
             if (!teamMatches.length) return null;
-            const exact = teamMatches.find(item => Number(item?.year) === targetYear);
+            const exact = teamMatches.find(item => (
+                Number(item?.year) === targetYear
+                && normalizeAuditLuxEvidenceQuarter(item) === targetQuarter
+            ));
             if (exact) return { ...exact, previewFallback: false };
             return { ...teamMatches[0], previewFallback: true };
         }
@@ -268,8 +340,8 @@
             AuditState.luxPreviewRotation[normalizedDataKey][normalizedId] = normalizeAuditRotation(offset);
         }
 
-        function renderAuditLuxEntryPreviewHtml(dataKey, year, team) {
-            const previewItem = getAuditLuxEntryPreviewItem(dataKey, year, team);
+        function renderAuditLuxEntryPreviewHtml(dataKey, year, team, quarter = null) {
+            const previewItem = getAuditLuxEntryPreviewItem(dataKey, year, team, quarter);
             if (!String(team || '').trim()) {
                 return `
                     <div class="audit-lux-preview-card" data-audit-lux-preview="${escapeHtml(dataKey)}">
@@ -284,8 +356,9 @@
                     </div>
                 `;
             }
-            const title = `${String(previewItem.team || team).trim()} ${String(previewItem.year || year).trim()}년 스캔본`;
-            const fileUrl = resolveAuditEvidenceFileUrl(previewItem.file || previewItem.path || '');
+            const periodLabel = getAuditLuxEvidencePeriodLabel(previewItem);
+            const title = `${String(previewItem.team || team).trim()} ${periodLabel} 스캔본`;
+            const fileUrl = getAuditEvidenceViewUrl(previewItem);
             if (!fileUrl) {
                 return `
                     <div class="audit-lux-preview-card" data-audit-lux-preview="${escapeHtml(dataKey)}">
@@ -296,8 +369,8 @@
             const rotation = getAuditLuxEntryPreviewRotation(dataKey, previewItem);
             const encodedId = encodeURIComponent(String(previewItem.id || '').trim());
             const sourceText = previewItem.previewFallback
-                ? `선택 연도 스캔본이 없어 ${previewItem.year}년 최신 등록본을 표시 중입니다.`
-                : `${previewItem.year}년 스캔본을 표시 중입니다.`;
+                ? `선택 분기 스캔본이 없어 ${getAuditLuxEvidencePeriodLabel(previewItem)} 최신 등록본을 표시 중입니다.`
+                : `${periodLabel} 스캔본을 표시 중입니다.`;
             return `
                 <div class="audit-lux-preview-card" data-audit-lux-preview="${escapeHtml(dataKey)}">
                     <div class="audit-lux-preview-head">
@@ -333,7 +406,7 @@
         function rotateAuditLuxEntryPreview(dataKey, delta) {
             const entryForm = typeof getAuditEntryFormState === 'function' ? getAuditEntryFormState(dataKey) : null;
             if (!entryForm) return;
-            const previewItem = getAuditLuxEntryPreviewItem(dataKey, entryForm.year, entryForm.team);
+            const previewItem = getAuditLuxEntryPreviewItem(dataKey, entryForm.year, entryForm.team, entryForm.quarter);
             if (!previewItem?.id) return;
             const baseRotation = Number.isFinite(parseFloat(previewItem.rotate)) ? parseFloat(previewItem.rotate) : 0;
             const currentRotation = getAuditLuxEntryPreviewRotation(dataKey, previewItem);
@@ -369,13 +442,14 @@
             }
             if (filter?.startQuarter && filter?.endQuarter) {
                 const range = normalizeQuarterRange(filter.startQuarter, filter.endQuarter);
-                const startYear = parseQuarterKey(range.start)?.year;
-                const endYear = parseQuarterKey(range.end)?.year;
-                if (startYear && endYear) {
+                const startIndex = quarterIndex(range.start);
+                const endIndex = quarterIndex(range.end);
+                if (Number.isFinite(startIndex) && Number.isFinite(endIndex)) {
                     filtered = filtered.filter(item => {
-                        const year = parseInt(item.year, 10);
-                        if (Number.isNaN(year)) return false;
-                        return year >= startYear && year <= endYear;
+                        const year = Number(item.year);
+                        if (!Number.isFinite(year)) return false;
+                        const itemIndex = quarterIndex(makeQuarterKey(year, normalizeAuditLuxEvidenceQuarter(item)));
+                        return itemIndex >= startIndex && itemIndex <= endIndex;
                     });
                 }
             }
@@ -388,19 +462,18 @@
             }
             const titleParts = [];
             if (item.team) titleParts.push(item.team);
-            if (item.year) titleParts.push(String(item.year) + '년');
+            if (item.year) titleParts.push(getAuditLuxEvidencePeriodLabel(item));
             const title = titleParts.join(' ') || '조도 스캔본';
-            const file = item.file || item.path || '';
-            if (!file) {
+            const viewUrl = getAuditEvidenceViewUrl(item);
+            if (!viewUrl) {
                 return `<div class="audit-ref-empty">파일 경로가 없습니다.</div>`;
             }
             const rotate = Number.isFinite(parseFloat(item.rotate)) ? parseFloat(item.rotate) : 0;
             const rotateStyle = rotate ? ` style="transform: rotate(${rotate}deg);"` : '';
-            const imagePath = resolveAuditEvidenceFileUrl(file);
             const encodedId = encodeURIComponent(item.id || '');
             return `
                 <div class="audit-ref-preview">
-                    <img class="audit-ref-image" src="${imagePath}" alt="${escapeHtml(title)}" loading="lazy" decoding="async"${rotateStyle} />
+                    <img class="audit-ref-image" src="${escapeHtml(viewUrl)}" alt="${escapeHtml(title)}" loading="lazy" decoding="async"${rotateStyle} />
                     <div class="audit-ref-meta">
                         <div>
                             <div class="audit-ref-meta-title">${escapeHtml(title)}</div>
@@ -424,7 +497,7 @@
             const list = getAuditEvidenceList(dataKey);
             const selected = list.find(item => item.id === id);
             preview.innerHTML = renderAuditEvidencePreviewHtml(dataKey, selected);
-            preview.classList.toggle('has-image', !!selected?.file || !!selected?.path);
+            preview.classList.toggle('has-image', !!getAuditEvidenceViewUrl(selected));
         }
 
         function openAuditEvidence(dataKey, evidenceKey) {
@@ -432,9 +505,8 @@
             const list = getAuditEvidenceList(dataKey);
             const item = list.find(entry => entry.id === id);
             if (!item) return;
-            const file = item.file || item.path || '';
-            if (!file) return;
-            const url = auditRecordsEvidenceBrowser.resolveUrl(file);
+            const url = getAuditEvidenceViewUrl(item);
+            if (!url) return;
             auditRecordsEvidenceBrowser.openWindow(url, '_blank');
         }
 
@@ -453,14 +525,13 @@
             if (!items.length) items = list;
 
             const pages = items.map(item => {
-                const file = item.file || item.path || '';
-                if (!file) return '';
+                const imagePath = getAuditEvidenceViewUrl(item);
+                if (!imagePath) return '';
                 const rotate = Number.isFinite(parseFloat(item.rotate)) ? parseFloat(item.rotate) : 0;
                 const rotateStyle = rotate ? ` style="transform: rotate(${rotate}deg);"` : '';
-                const imagePath = auditRecordsEvidenceBrowser.resolveUrl(file);
                 const titleParts = [];
                 if (item.team) titleParts.push(item.team);
-                if (item.year) titleParts.push(String(item.year) + '년');
+                if (item.year) titleParts.push(getAuditLuxEvidencePeriodLabel(item));
                 const title = titleParts.join(' ') || '조도 스캔본';
                 return `
                     <div class="print-page">

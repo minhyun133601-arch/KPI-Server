@@ -71,6 +71,7 @@ function createPreviewActionsContext({ blockedPopup = false } = {}) {
       return {
         entryForm: {
           year: '2026',
+          quarter: '2',
           team: 'A team',
         },
       };
@@ -132,7 +133,9 @@ test('audit lux preview actions open and sync detached preview through the brows
   assert.equal(state.popup, context.popup);
   assert.equal(state.dataKey, 'audit_lux');
   assert.equal(state.year, 2026);
+  assert.equal(state.quarter, 2);
   assert.equal(state.team, 'A team');
+  assert.match(context.popup.html, /2026.*2분기/);
 });
 
 test('audit lux preview actions use adapter popout fallback when the popup is blocked', () => {

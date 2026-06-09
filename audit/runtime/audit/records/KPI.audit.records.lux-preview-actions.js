@@ -20,11 +20,12 @@
                     popup: null,
                     dataKey: '',
                     year: null,
+                    quarter: null,
                     team: ''
             }));
         }
 
-        function syncAuditLuxDetachedPreview(dataKey, year, team) {
+        function syncAuditLuxDetachedPreview(dataKey, year, team, quarter = null) {
             const state = getAuditLuxDetachedPreviewState();
             const popup = state.popup;
             if (!popup || popup.closed) {
@@ -32,8 +33,11 @@
                 return;
             }
             if (!isAuditLuxDataKey(dataKey)) return;
+            const selectedQuarter = typeof normalizeAuditLuxEvidenceQuarter === 'function'
+                ? normalizeAuditLuxEvidenceQuarter(year, quarter)
+                : Number(quarter || 1);
             const attachmentItem = typeof getAuditLuxYearEvidenceItem === 'function'
-                ? getAuditLuxYearEvidenceItem(dataKey, year, team)
+                ? getAuditLuxYearEvidenceItem(dataKey, year, team, selectedQuarter)
                 : null;
             const viewUrl = typeof getAuditEvidenceViewUrl === 'function'
                 ? getAuditEvidenceViewUrl(attachmentItem)
@@ -50,10 +54,13 @@
             const rotation = Number.isFinite(parseFloat(attachmentItem?.rotate))
                 ? parseFloat(attachmentItem.rotate)
                 : 0;
-            const title = `${String(team || '').trim()} ${String(year || '').trim()}년 조도 스캔본`;
+            const periodLabel = typeof getAuditLuxEvidencePeriodLabel === 'function'
+                ? getAuditLuxEvidencePeriodLabel(year, selectedQuarter)
+                : `${String(year || '').trim()}년 ${selectedQuarter}분기`;
+            const title = `${String(team || '').trim()} ${periodLabel} 조도 스캔본`;
             const html = buildDetachedPreviewHtml({
                 title,
-                meta: `${String(team || '').trim()} ${String(year || '').trim()}년`,
+                meta: `${String(team || '').trim()} ${periodLabel}`,
                 fileLabel,
                 viewUrl,
                 downloadUrl,
@@ -65,6 +72,7 @@
             popup.document.close();
             state.dataKey = dataKey;
             state.year = year;
+            state.quarter = selectedQuarter;
             state.team = team;
         }
 
@@ -72,6 +80,7 @@
             if (!isAuditLuxDataKey(dataKey)) return;
             const { entryForm } = getAuditLuxWorkspaceState(dataKey);
             const year = Number(entryForm.year);
+            const quarter = Number(entryForm.quarter);
             const team = String(entryForm.team || '').trim();
             const state = getAuditLuxDetachedPreviewState();
             let popup = state.popup;
@@ -80,7 +89,7 @@
                 if (!popup) {
                     showToast('원본 창을 열지 못했습니다. 팝업 차단을 확인해 주세요.');
                     const attachmentItem = typeof getAuditLuxYearEvidenceItem === 'function'
-                        ? getAuditLuxYearEvidenceItem(dataKey, year, team)
+                        ? getAuditLuxYearEvidenceItem(dataKey, year, team, quarter)
                         : null;
                     const fallbackUrl = typeof getAuditEvidenceViewUrl === 'function'
                         ? getAuditEvidenceViewUrl(attachmentItem)
@@ -92,7 +101,7 @@
                 }
                 state.popup = popup;
             }
-            syncAuditLuxDetachedPreview(dataKey, year, team);
+            syncAuditLuxDetachedPreview(dataKey, year, team, quarter);
             try {
                 popup.focus();
             } catch (error) {
