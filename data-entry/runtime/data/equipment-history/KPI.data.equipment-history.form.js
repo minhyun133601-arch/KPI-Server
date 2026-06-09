@@ -87,6 +87,7 @@
     const DOCUMENT_FIELDS = [
         { key: 'title', label: '문서명', placeholder: '예: 점검 보고서' },
     ];
+    const DEFAULT_DOCUMENT_ROW_COUNT = 1;
 
     const DOCUMENT_ATTACHMENT_ACCEPT = '.pdf,.xls,.xlsx,.ppt,.pptx,.doc,.docx,.hwp,.hwpx,.jpg,.jpeg,.png,.webp,.gif,.bmp';
     const EQUIPMENT_PHOTO_ATTACHMENT_KEY = 'equipment-photo-main';
@@ -166,9 +167,10 @@
         return row;
     }
 
-    function normalizeRows(rows, factory) {
+    function normalizeRows(rows, factory, minimumLength = 1) {
         const list = api.asList(rows).map((row) => ({ ...factory(), ...(row || {}) }));
-        return list.length ? list : [factory()];
+        while (list.length < minimumLength) list.push(factory());
+        return list;
     }
 
     function normalizeOptionalRows(rows, factory) {
@@ -312,7 +314,7 @@
             detailInfo: editableDetailInfo,
             detailGroups,
             maintenanceHistory: normalizeRows(source.maintenanceHistory, createBlankMaintenanceRow),
-            documents: normalizeRows(source.documents, createBlankDocumentRow),
+            documents: normalizeRows(source.documents, createBlankDocumentRow, DEFAULT_DOCUMENT_ROW_COUNT),
         };
     }
 
@@ -790,6 +792,7 @@
         EQUIPMENT_SPEC_BLOCK_SIZE,
         MAINTENANCE_FIELDS,
         DOCUMENT_FIELDS,
+        DEFAULT_DOCUMENT_ROW_COUNT,
         DOCUMENT_ATTACHMENT_ACCEPT,
         EQUIPMENT_PHOTO_ATTACHMENT_KEY,
         DOCUMENT_SAVE_FIELDS,

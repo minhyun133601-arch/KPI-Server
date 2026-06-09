@@ -200,7 +200,7 @@
         }
         .data-equipment-hero-grid {
             display: grid;
-            grid-template-columns: minmax(0, 0.52fr) minmax(0, 0.48fr);
+            grid-template-columns: minmax(0, 1fr);
             gap: 8px;
             align-items: stretch;
         }
@@ -212,7 +212,7 @@
         .data-equipment-hero-photo .data-equipment-photo-card {
             width: 100%;
             min-height: 0;
-            aspect-ratio: 4 / 1;
+            aspect-ratio: 16 / 5;
         }
         .data-equipment-hero-side {
             min-width: 0;
@@ -235,6 +235,17 @@
             color: #334155;
             font-family: "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif;
             letter-spacing: 0;
+        }
+        .data-equipment-card-heading {
+            min-width: 0;
+            display: grid;
+            grid-template-columns: minmax(220px, 0.28fr) minmax(0, 1fr);
+            gap: 8px;
+            align-items: center;
+        }
+        .data-equipment-card-heading .data-equipment-hero-updated {
+            min-height: 50px;
+            margin-bottom: 0;
         }
         .data-equipment-hero-updated span {
             flex: 0 0 auto;
@@ -316,8 +327,10 @@
             align-items: stretch;
         }
         .data-equipment-top-grid .data-equipment-photo-card {
+            width: min(100%, 1600px);
+            justify-self: center;
             min-height: 0;
-            aspect-ratio: 4 / 1;
+            aspect-ratio: 16 / 5;
         }
         .data-equipment-photo-title-row {
             --equipment-team-color: #2563eb;
@@ -2577,44 +2590,55 @@
         }
         .data-equipment-doc-list {
             display: grid;
-            gap: 8px;
-            min-width: 0;
-        }
-        .data-equipment-doc-list-item {
-            display: grid;
-            grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-            gap: 8px;
-            align-items: center;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 7px;
             min-width: 0;
             border: 1px solid #d8e5f2;
             border-radius: 8px;
             background: #f8fbff;
             padding: 8px;
         }
+        .data-equipment-doc-list-item {
+            position: relative;
+            display: grid;
+            gap: 5px;
+            align-content: start;
+            min-width: 0;
+            border: 1px solid #dce8f5;
+            border-radius: 6px;
+            background: #ffffff;
+            padding: 8px 34px 9px 8px;
+        }
         .data-equipment-doc-list-item input[data-equipment-field="title"] {
             box-sizing: border-box;
             width: 100%;
             min-width: 0;
-            min-height: 32px;
-            height: 34px;
-            border: 1px solid #dce8f5;
-            border-radius: 6px;
-            background: #ffffff;
-            color: #263957;
-            padding: 7px 8px;
+            min-height: 21px;
+            overflow: hidden;
+            border: 0;
+            border-radius: 4px;
+            background: transparent;
+            color: #405270;
+            padding: 1px 2px;
             font: inherit;
-            font-size: 0.78rem;
-            font-weight: 800;
-            line-height: 1.35;
+            font-size: 0.76rem;
+            font-weight: 900;
+            line-height: 1.2;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .data-equipment-doc-list-item input[data-equipment-field="title"]:focus {
+            outline: 2px solid rgba(37, 99, 235, 0.16);
+            background: #f8fbff;
         }
         .data-equipment-document-picker {
             box-sizing: border-box;
             display: grid;
-            grid-template-columns: auto minmax(0, 1fr) auto;
-            align-items: start;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: center;
             gap: 6px;
-            min-height: 34px;
-            height: 34px;
+            min-height: 24px;
+            height: auto;
             min-width: 0;
             border: 1px solid transparent;
             border-radius: 6px;
@@ -2639,22 +2663,38 @@
             border-radius: 6px;
             background: #edf5ff;
             color: #31506f;
-            min-width: 66px;
-            height: 26px;
+            min-width: 44px;
+            height: 24px;
             padding: 0 9px;
             font-size: 0.72rem;
             font-weight: 900;
             cursor: pointer;
         }
         .data-equipment-document-remove {
+            position: absolute;
+            top: 5px;
+            right: 6px;
+            z-index: 2;
+            width: auto;
+            height: auto;
+            min-height: 0;
             border: 0;
             background: transparent;
             color: #9f1239;
             padding: 0 2px;
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             font-weight: 900;
+            line-height: 1.1;
+            opacity: 0;
+            pointer-events: none;
             cursor: pointer;
             white-space: nowrap;
+        }
+        .data-equipment-doc-list-item:hover .data-equipment-document-remove,
+        .data-equipment-doc-list-item:focus-within .data-equipment-document-remove,
+        .data-equipment-document-remove:focus-visible {
+            opacity: 1;
+            pointer-events: auto;
         }
         .data-equipment-document-remove:hover {
             color: #be123c;
@@ -3632,6 +3672,12 @@
             .data-equipment-top-grid {
                 grid-template-columns: 1fr;
             }
+            .data-equipment-card-heading {
+                grid-template-columns: 1fr;
+            }
+            .data-equipment-doc-list {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
             .data-equipment-photo-card {
                 min-height: 0;
             }
@@ -3688,6 +3734,9 @@
                 min-height: 0;
             }
             .data-equipment-photo-title-row {
+                grid-template-columns: 1fr;
+            }
+            .data-equipment-doc-list {
                 grid-template-columns: 1fr;
             }
             .data-equipment-photo-title-row .data-equipment-title-name {

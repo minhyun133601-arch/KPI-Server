@@ -6,7 +6,7 @@
     const CARD_ROOM_DATALIST_ID = 'data-equipment-room-options-card';
     const EQUIPMENT_PRINT_POPUP_FEATURES = 'width=900,height=1200';
     const EQUIPMENT_PHOTO_TARGET_WIDTH = 1600;
-    const EQUIPMENT_PHOTO_TARGET_HEIGHT = 400;
+    const EQUIPMENT_PHOTO_TARGET_HEIGHT = 500;
     const EQUIPMENT_PHOTO_ATTACHMENT_KEY = api.EQUIPMENT_PHOTO_ATTACHMENT_KEY || 'equipment-photo-main';
     const EQUIPMENT_BOARD_EMPTY_TEAM_KEYS = Object.freeze([
         'work_team_calendar_team1_part1',
@@ -440,7 +440,7 @@
         const attachmentKey = api.escapeHtml(draft.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY);
         const caption = draft.photoName
             ? `현재 첨부: ${draft.photoName}`
-            : '\uC0AC\uC9C4 \uD30C\uC77C\uC744 \uC120\uD0DD\uD558\uAC70\uB098 \uD074\uB9BD\uBCF4\uB4DC \uC774\uBBF8\uC9C0\uB97C Ctrl+V\uB85C \uBD99\uC5EC\uB123\uC73C\uC138\uC694. \uAD8C\uC7A5 \uD06C\uAE30 1600 x 400';
+            : '\uC0AC\uC9C4 \uD30C\uC77C\uC744 \uC120\uD0DD\uD558\uAC70\uB098 \uD074\uB9BD\uBCF4\uB4DC \uC774\uBBF8\uC9C0\uB97C Ctrl+V\uB85C \uBD99\uC5EC\uB123\uC73C\uC138\uC694. \uAD8C\uC7A5 \uD06C\uAE30 1600 x 500';
         if (hasPhoto) {
             return `
                 <div class="data-equipment-photo-card is-locked" tabindex="0" data-equipment-history-photo-card data-equipment-history-photo-attachment-key="${attachmentKey}">
@@ -571,11 +571,11 @@
                     const label = row?.pendingFile?.name || row?.fileName || row?.originalName || '';
                     return `
                         <div class="data-equipment-doc-list-item" data-equipment-row-index="${rowIndex}">
-                            ${api.renderInput({ ...api.DOCUMENT_FIELDS[0], placeholder: '' }, row?.title || '', `class="data-equipment-document-title-input" data-equipment-row-section="documents" data-equipment-row-index="${rowIndex}" aria-label="문서 제목"`)}
+                            ${api.renderInput({ ...api.DOCUMENT_FIELDS[0], placeholder: '\uC81C\uBAA9' }, row?.title || '', `class="data-equipment-document-title-input" data-equipment-row-section="documents" data-equipment-row-index="${rowIndex}" aria-label="문서 제목"`)}
                             <div class="data-equipment-document-picker">
                                 <input type="file" hidden accept="${api.escapeHtml(api.DOCUMENT_ATTACHMENT_ACCEPT || '')}" data-equipment-document-file-input data-equipment-row-index="${rowIndex}">
                                 <button type="button" class="data-equipment-document-pick" data-equipment-document-pick="${rowIndex}" aria-label="문서 첨부" title="문서 첨부">
-                                    문서 첨부
+                                    문서
                                 </button>
                                 <span class="data-equipment-document-file-name">${api.escapeHtml(label)}</span>
                                 <button type="button" class="data-equipment-document-remove" data-equipment-remove-row="documents" data-equipment-row-index="${rowIndex}" aria-label="문서 삭제">
@@ -601,9 +601,8 @@
     function ensureDraftDocumentEditorSlot(draft) {
         if (!draft) return;
         if (!Array.isArray(draft.documents)) draft.documents = [];
-        if (!draft.documents.length || !isBlankDocumentEditorRow(draft.documents[draft.documents.length - 1])) {
-            draft.documents.push(api.createBlankDocumentRow());
-        }
+        const minimumRows = Math.max(1, Number(api.DEFAULT_DOCUMENT_ROW_COUNT) || 1);
+        while (draft.documents.length < minimumRows) draft.documents.push(api.createBlankDocumentRow());
     }
 
     function renderHistoryCard(category, data, state) {
@@ -614,17 +613,14 @@
         return `
             <section class="data-equipment-card-view" data-equipment-view="card">
                 <form class="data-equipment-layout data-equipment-edit-form" aria-label="설비 기록 작성" data-equipment-form>
-                    <div class="data-equipment-hero-grid">
+                    <div class="data-equipment-top-grid">
+                        <div class="data-equipment-card-heading">
+                            ${renderEquipmentRecentUpdated(header, data)}
+                            ${renderEquipmentPhotoTitle(draft)}
+                        </div>
                         <div class="data-equipment-hero-photo">
                             ${renderPhotoCard(draft)}
                         </div>
-                        <aside class="data-equipment-hero-side">
-                            ${renderEquipmentRecentUpdated(header, data)}
-                            ${renderEquipmentPhotoTitle(draft)}
-                            <article class="data-equipment-card data-equipment-doc-card data-equipment-hero-doc-card">
-                                ${renderCompactDocumentEditor(draft.documents)}
-                            </article>
-                        </aside>
                         ${renderRoomDatalist(CARD_ROOM_DATALIST_ID, roomOptions)}
                     </div>
                     <div class="data-equipment-card-grid">
@@ -654,6 +650,15 @@
                         <label class="data-equipment-note-field">
                             <textarea data-equipment-field="note" placeholder="비고를 입력하세요.">${api.escapeHtml(draft.note || '')}</textarea>
                         </label>
+                    </article>
+                    <article class="data-equipment-card data-equipment-doc-card">
+                        <h3 class="data-equipment-section-title">
+                            ${api.escapeHtml('\uBB38\uC11C \uCCA8\uBD80')}
+                            <button type="button" class="data-equipment-add-row" data-equipment-add-row="documents">
+                                <i class="fas fa-plus"></i><span>추가</span>
+                            </button>
+                        </h3>
+                        ${renderCompactDocumentEditor(draft.documents)}
                     </article>
                 </form>
                 ${renderFooter(state)}
@@ -1441,15 +1446,15 @@
     function renderEquipmentPrintDocumentRows(draft) {
         const rows = getEquipmentPrintDocumentRows(draft);
         if (!rows.length) {
-            return `<tr><td colspan="2" class="equipment-print-empty-cell">${api.escapeHtml('\uB4F1\uB85D\uB41C \uAD00\uB828 \uBB38\uC11C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.')}</td></tr>`;
+            return `<div class="equipment-print-empty equipment-print-doc-empty">${api.escapeHtml('\uB4F1\uB85D\uB41C \uAD00\uB828 \uBB38\uC11C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.')}</div>`;
         }
         return rows.map((row) => {
             const fileLabel = row?.pendingFile?.name || row?.fileName || row?.originalName || row?.downloadUrl || '-';
             return `
-                <tr>
-                    <td><div class="equipment-print-table-value">${renderPrintText(row?.title || row?.fileName || row?.originalName)}</div></td>
-                    <td><div class="equipment-print-table-value">${renderPrintText(fileLabel)}</div></td>
-                </tr>
+                <div class="equipment-print-doc-cell">
+                    <span>${renderPrintText(row?.title || row?.fileName || row?.originalName, '\uC81C\uBAA9')}</span>
+                    <strong>${renderPrintText(fileLabel, '\uBB38\uC11C')}</strong>
+                </div>
             `;
         }).join('');
     }
@@ -1458,16 +1463,8 @@
         return `
             <article class="data-equipment-card data-equipment-doc-card equipment-print-documents${className ? ` ${api.escapeHtml(className)}` : ''}">
                 <h3 class="data-equipment-section-title">${api.escapeHtml('\uBB38\uC11C \uCCA8\uBD80')}</h3>
-                <div class="data-equipment-table-scroll">
-                    <table class="data-equipment-edit-table equipment-print-table equipment-print-doc-table">
-                        <thead>
-                            <tr>
-                                <th>${api.escapeHtml('\uBB38\uC11C\uBA85')}</th>
-                                <th>${api.escapeHtml('\uCCA8\uBD80 \uD30C\uC77C')}</th>
-                            </tr>
-                        </thead>
-                        <tbody>${renderEquipmentPrintDocumentRows(draft)}</tbody>
-                    </table>
+                <div class="equipment-print-doc-grid">
+                    ${renderEquipmentPrintDocumentRows(draft)}
                 </div>
             </article>
         `;
@@ -1508,7 +1505,6 @@
 
     function buildEquipmentHistoryPrintDocument(draftInput, options = {}) {
         const draft = api.createDraft(draftInput);
-        const statusLabel = api.getEquipmentStatus(draft.status).label;
         const title = normalizePrintText(draft.name) || '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC';
         const source = draftInput && typeof draftInput === 'object' ? draftInput : {};
         const printOptions = options && typeof options === 'object' ? options : {};
@@ -1541,18 +1537,18 @@
         .data-equipment-title-name { color: #ffffff; font-size: 16px; font-weight: 900; word-break: keep-all; }
         .data-equipment-title-room { min-width: 22mm; padding: 2.1mm 3.2mm; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 7px; background: rgba(255, 255, 255, 0.1); text-align: center; }
         .data-equipment-title-name { min-width: 44mm; }
-        .equipment-print-status-toggle { display: inline-flex; align-items: center; gap: 1mm; border: 1px solid rgba(255, 255, 255, 0.36); border-radius: 999px; background: rgba(255, 255, 255, 0.12); padding: 0.8mm; }
-        .equipment-print-status-toggle span { display: inline-flex; align-items: center; min-height: 7mm; border-radius: 999px; background: #ffffff; color: #174c33; padding: 0 3mm; font-size: 9px; font-weight: 900; }
         .equipment-print-date { color: rgba(226, 238, 255, 0.8); font-size: 8px; font-weight: 800; text-align: right; white-space: nowrap; }
         .data-equipment-card-view { min-height: 0; display: grid; align-content: start; }
         .data-equipment-layout,
         .data-equipment-edit-form { min-height: 0; display: grid; grid-template-rows: none; align-content: start; gap: 2.4mm; }
         .equipment-print-form { height: auto; }
-        .data-equipment-hero-grid,
-        .equipment-print-hero-grid { min-width: 0; display: grid; grid-template-columns: minmax(0, 0.52fr) minmax(0, 0.48fr); gap: 2mm; align-items: stretch; }
+        .data-equipment-top-grid,
+        .equipment-print-top-grid { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2mm; align-items: stretch; }
+        .data-equipment-card-heading,
+        .equipment-print-card-heading { min-width: 0; display: grid; grid-template-columns: minmax(34mm, 0.32fr) minmax(0, 1fr); gap: 2mm; align-items: center; }
         .data-equipment-hero-photo { min-width: 0; display: grid; align-items: start; }
         .data-equipment-hero-side { min-width: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 1.4mm; align-content: stretch; }
-        .data-equipment-hero-updated { min-width: 0; min-height: 6.8mm; display: flex; align-items: center; gap: 1.5mm; padding: 1.3mm 2mm; border: 1px solid #dbe6f3; border-radius: 7px; background: #f8fbff; color: #334155; line-height: 1.15; }
+        .data-equipment-hero-updated { min-width: 0; min-height: 9mm; display: flex; align-items: center; gap: 1.5mm; padding: 1.3mm 2mm; border: 1px solid #dbe6f3; border-radius: 7px; background: #f8fbff; color: #334155; line-height: 1.15; }
         .data-equipment-hero-updated span { flex: 0 0 auto; color: #64748b; font-size: 8px; font-weight: 900; white-space: nowrap; }
         .data-equipment-hero-updated strong { min-width: 0; overflow: hidden; color: #1f2a44; font-size: 8.4px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
         .data-equipment-photo-title-row { min-width: 0; display: grid; grid-template-columns: minmax(34mm, 0.62fr) minmax(28mm, 0.48fr) minmax(0, 1.4fr); gap: 2mm; align-items: center; border: 0; background: transparent; padding: 0; }
@@ -1561,7 +1557,6 @@
         .data-equipment-photo-title-row .data-equipment-title-name { min-width: 0; min-height: 9mm; display: flex; align-items: center; justify-content: flex-start; gap: 1.6mm; border: 1px solid #d7e2ef; border-radius: 7px; background: #ffffff; color: #132844; padding: 1.5mm 2mm; font-family: 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif; line-height: 1.15; word-break: keep-all; }
         .data-equipment-title-team-icon { width: 7mm; height: 7mm; display: inline-flex; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--equipment-team-color, #2563eb) 24%, #ffffff); border-radius: 7px; background: color-mix(in srgb, var(--equipment-team-color, #2563eb) 14%, #ffffff); color: var(--equipment-team-color, #2563eb); font-size: 8.5px; flex: 0 0 auto; }
         .data-equipment-title-value { min-width: 0; overflow: hidden; color: #132844; font-size: 13px; font-weight: 900; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
-        .data-equipment-top-grid { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 3mm; align-items: stretch; }
         .equipment-print-section-stack { min-height: 0; display: grid; gap: 2mm; align-content: start; }
         .data-equipment-card,
         .data-equipment-photo-card { overflow: hidden; background: #ffffff; border: 1px solid #dbe7f5; border-radius: 8px; box-shadow: none; }
@@ -1573,7 +1568,7 @@
         .data-equipment-history-card,
         .data-equipment-note-card,
         .data-equipment-doc-card { display: grid; align-content: start; }
-        .data-equipment-photo-card { width: 100%; min-height: 0; aspect-ratio: 4 / 1; display: grid; place-items: center; background: #f8fbff; }
+        .data-equipment-photo-card { width: 100%; min-height: 0; aspect-ratio: 16 / 5; display: grid; place-items: center; background: #f8fbff; }
         .data-equipment-photo-preview { width: 100%; height: 100%; min-height: 0; object-fit: contain; display: block; background: #f8fbff; }
         .data-equipment-photo-placeholder,
         .equipment-print-photo-empty { width: 100%; height: 100%; display: grid; place-items: center; color: #63748e; font-size: 10px; font-weight: 800; text-align: center; }
@@ -1584,7 +1579,6 @@
         .equipment-print-hero-doc-card .equipment-print-table { border-spacing: 0 0.6mm; font-size: 7.8px; }
         .equipment-print-hero-doc-card .equipment-print-table-value { min-height: 4.8mm; padding: 1mm 1.2mm; font-size: 7.8px; }
         .equipment-print-hero-doc-card .equipment-print-empty-cell { padding: 1.2mm 1mm; font-size: 8px; }
-        .equipment-print-status-pill { margin-left: auto; border: 1px solid #b9d8c7; border-radius: 7px; background: #f7fffb; color: #166534; padding: 1mm 2mm; font-size: 8px; font-weight: 900; }
         .data-equipment-edit-grid { display: grid; gap: 2mm; }
         .data-equipment-note-field { display: grid; gap: 1.2mm; min-width: 0; color: #34476c; font-size: 8.5px; font-weight: 900; }
         .data-equipment-note-field span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1615,8 +1609,13 @@
         .equipment-print-maintenance-table th:nth-child(5),
         .equipment-print-maintenance-table td:nth-child(5) { width: 18%; }
         .equipment-print-maintenance-table .equipment-print-table-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .equipment-print-doc-table th:nth-child(1),
-        .equipment-print-doc-table td:nth-child(1) { width: 42%; }
+        .equipment-print-doc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5mm; }
+        .equipment-print-doc-cell { min-width: 0; display: grid; gap: 0.9mm; border: 1px solid #dce8f5; border-radius: 6px; background: #ffffff; padding: 1.45mm 1.5mm; }
+        .equipment-print-doc-cell span,
+        .equipment-print-doc-cell strong { min-width: 0; overflow: hidden; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+        .equipment-print-doc-cell span { color: #405270; font-size: 8px; font-weight: 900; }
+        .equipment-print-doc-cell strong { color: #132844; font-size: 9.4px; font-weight: 900; }
+        .equipment-print-doc-empty { grid-column: 1 / -1; }
         .equipment-print-static-note { min-height: 0; }
         .equipment-print-note-card.is-empty .equipment-print-empty { padding-top: 1.2mm; padding-bottom: 1.2mm; }
         .equipment-print-empty,
@@ -1632,11 +1631,8 @@
     <main class="equipment-print-page">
         <section class="data-equipment-card-view" data-equipment-view="card-print">
             <form class="data-equipment-layout data-equipment-edit-form equipment-print-form" aria-label="${api.escapeHtml('\uC124\uBE44 \uAE30\uB85D \uCD9C\uB825')}">
-                <div class="data-equipment-hero-grid equipment-print-hero-grid">
-                    <div class="data-equipment-hero-photo">
-                        <figure class="data-equipment-photo-card">${renderEquipmentPrintPhoto(draft)}</figure>
-                    </div>
-                    <aside class="data-equipment-hero-side">
+                <div class="data-equipment-top-grid equipment-print-top-grid">
+                    <div class="data-equipment-card-heading equipment-print-card-heading">
                         <div class="data-equipment-hero-updated">
                             <span>${api.escapeHtml('\uCD5C\uADFC \uC5C5\uB370\uC774\uD2B8 :')}</span>
                             <strong>${renderPrintText(updatedAt, '-')}</strong>
@@ -1653,15 +1649,14 @@
                                 <span class="data-equipment-title-value">${renderPrintText(title, '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC')}</span>
                             </span>
                         </div>
-                        ${renderEquipmentPrintDocumentsCard(draft, 'data-equipment-hero-doc-card equipment-print-hero-doc-card')}
-                    </aside>
+                    </div>
+                    <div class="data-equipment-hero-photo">
+                        <figure class="data-equipment-photo-card">${renderEquipmentPrintPhoto(draft)}</figure>
+                    </div>
                 </div>
                 <div class="equipment-print-section-stack">
                     <article class="data-equipment-card data-equipment-detail-card equipment-print-spec-summary">
-                        <h3 class="data-equipment-section-title">
-                            ${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}
-                            <span class="equipment-print-status-pill">${renderPrintText(statusLabel, '-')}</span>
-                        </h3>
+                        <h3 class="data-equipment-section-title">${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}</h3>
                         ${renderEquipmentPrintSpecRows(draft)}
                     </article>
                     <article class="data-equipment-card data-equipment-history-card equipment-print-maintenance">
@@ -1682,6 +1677,7 @@
                         </div>
                     </article>
                     ${renderEquipmentPrintNote(draft)}
+                    ${renderEquipmentPrintDocumentsCard(draft)}
                 </div>
             </form>
         </section>
@@ -1883,7 +1879,7 @@
     function getNormalizedEquipmentPhotoFileName(file) {
         const rawName = api.normalizeText(file?.name) || 'equipment-photo';
         const baseName = rawName.replace(/\.[^.]+$/, '') || 'equipment-photo';
-        return `${baseName}-1600x400.jpg`;
+        return `${baseName}-1600x500.jpg`;
     }
 
     function canvasToJpegBlob(canvas) {
@@ -2410,7 +2406,6 @@
                 if (!file || !row) return;
                 row.pendingFile = file;
                 row.fileName = file.name || '';
-                ensureDraftDocumentEditorSlot(state.draft);
                 redraw();
             });
         });
