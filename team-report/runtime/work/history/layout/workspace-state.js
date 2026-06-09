@@ -10,8 +10,8 @@
         isProductionReportWorkspace
     } = history;
 
-    const DEFAULT_TITLE = '작업 이력 기입';
-    const DEFAULT_SUBTITLE = '기간, 팀, 작업자, 업무내용, 비용과 비고만 기록하는 KPI 작업내역 화면';
+    const DEFAULT_TITLE = '작업 이력';
+    const DEFAULT_SUBTITLE = '팀별 작업 기록을 카드형으로 조회하고 관리합니다.';
     const DEFAULT_DELETE_MESSAGE = '이 작업내역을 삭제하시겠습니까?';
     const DEFAULT_DELETE_SUB_MESSAGE = '삭제 후에는 복구되지 않습니다.';
     const PRODUCTION_REPORT_TITLE = '생산 본부 실적보고';
@@ -25,7 +25,7 @@
         if (isProductionWorkspace()) {
             return state.workspaceTitle || PRODUCTION_REPORT_TITLE;
         }
-        return category?.title ? `팀별내역서 ${category.title}` : DEFAULT_TITLE;
+        return category?.title || DEFAULT_TITLE;
     }
 
     function getWorkspaceSubtitle(category = null) {

@@ -157,14 +157,18 @@ test('work history render card parts registry exposes summary, compact card, and
 
   assert.equal(typeof view.buildSummaryContent, 'function');
   assert.equal(typeof view.buildCompactRecordCard, 'function');
+  assert.equal(typeof view.buildExperimentBoard, 'function');
+  assert.equal(typeof view.buildExperimentRecordCard, 'function');
   assert.equal(typeof view.renderEmptyState, 'function');
 
   assert.match(view.buildSummaryContent(record), /summary-grid/);
   assert.match(view.buildCompactRecordCard(record), /Alpha task/);
+  assert.match(view.buildExperimentBoard([record]), /work-history-experiment-board/);
+  assert.match(view.buildExperimentBoard([record]), /Alpha task/);
   assert.match(view.renderEmptyState('empty'), /empty/);
 });
 
-test('work history render paginates long record lists by numbered pages', () => {
+test('work history render keeps the card board as the only overview record surface', () => {
   const overviewRecords = {
     innerHTML: '',
     scrollIntoView() {
@@ -185,21 +189,20 @@ test('work history render paginates long record lists by numbered pages', () => 
   const view = context.KpiWorkHistory.view;
 
   view.renderOverview();
-  assert.equal((overviewRecords.innerHTML.match(/<details class="report-card/g) || []).length, 8);
-  assert.match(overviewRecords.innerHTML, /history-pagination/);
-  assert.match(overviewRecords.innerHTML, /data-page="2"/);
+  assert.match(overviewRecords.innerHTML, /work-history-experiment-board/);
+  assert.match(overviewRecords.innerHTML, /work-history-experiment-card/);
+  assert.match(overviewRecords.innerHTML, /카드형 보기/);
+  assert.doesNotMatch(overviewRecords.innerHTML, /실험본/);
+  assert.equal((overviewRecords.innerHTML.match(/<details class="report-card/g) || []).length, 0);
+  assert.doesNotMatch(overviewRecords.innerHTML, /history-pagination/);
+  assert.doesNotMatch(overviewRecords.innerHTML, /data-page="2"/);
   assert.match(overviewRecords.innerHTML, /Task 9/);
-  assert.doesNotMatch(overviewRecords.innerHTML, /Task 1/);
-
-  view.setRecordPage('overview', 2);
-  assert.equal((overviewRecords.innerHTML.match(/<details class="report-card/g) || []).length, 1);
   assert.match(overviewRecords.innerHTML, /Task 1/);
-  assert.equal(overviewRecords.scrolled, true);
 });
 
 test('kpi html loads work history render card parts between render and print', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=237');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=239');
   const paginationIndex = kpiHtml.indexOf('runtime/work/history/render/pagination.js?v=1');
   const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=236');
   const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=235');

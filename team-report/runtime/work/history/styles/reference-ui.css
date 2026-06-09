@@ -56,32 +56,120 @@
 }
 
 .work-history-app .history-page-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 18px;
-    margin-bottom: 18px;
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    min-height: 88px;
+    margin-bottom: 14px;
+    padding: 16px 18px;
+    border: 1px solid #132844;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #071a31 0%, #102b4b 100%);
+    color: #ffffff;
+    box-shadow: 0 16px 34px rgba(15, 35, 62, 0.18);
 }
 
 .work-history-app .history-title-area {
     min-width: 0;
+    text-align: center;
 }
 
 .work-history-app .history-title-area h1 {
     margin: 0;
-    color: var(--history-ink);
-    font-size: 36px;
+    color: #ffffff;
+    font-size: clamp(1.55rem, 2.1vw, 2.05rem);
     font-weight: 900;
-    line-height: 1.08;
+    line-height: 1.1;
     letter-spacing: 0;
 }
 
 .work-history-app .history-title-area p {
-    margin: 9px 0 0;
-    color: var(--history-muted);
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.5;
+    margin: 4px 0 0;
+    color: rgba(226, 238, 255, 0.84);
+    font-size: 0.92rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.work-history-app .history-topbar-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.work-history-app .history-topbar-brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(34, 197, 94, 0.28);
+    border-radius: 12px;
+    background: rgba(34, 197, 94, 0.16);
+    color: #35d47e;
+}
+
+.work-history-app .history-topbar-brand-mark svg {
+    width: 22px;
+    height: 22px;
+}
+
+.work-history-app .history-topbar-team-switch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+.work-history-app .history-topbar-team-button {
+    display: inline-grid;
+    grid-template-columns: minmax(0, auto) auto;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    max-width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.84);
+    padding: 0 9px;
+    font-size: 0.78rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.work-history-app .history-topbar-team-button:hover,
+.work-history-app .history-topbar-team-button:focus-visible {
+    border-color: rgba(47, 226, 124, 0.68);
+    background: rgba(255, 255, 255, 0.16);
+    outline: none;
+}
+
+.work-history-app .history-topbar-team-button.active {
+    border-color: rgba(47, 226, 124, 0.86);
+    background: rgba(47, 226, 124, 0.18);
+    color: #ffffff;
+}
+
+.work-history-app .history-topbar-team-button span,
+.work-history-app .history-topbar-team-button small {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.work-history-app .history-topbar-team-button small {
+    color: rgba(226, 238, 255, 0.72);
+    font-size: 0.68rem;
+    font-weight: 900;
+}
+
+.work-history-app .history-topbar-actions {
+    justify-content: flex-end;
 }
 
 .work-history-app .history-page-tools {
@@ -96,6 +184,10 @@
     display: none;
 }
 
+.work-history-app .history-topbar .history-page-tools {
+    display: flex;
+}
+
 .work-history-app .history-tool-pill {
     display: inline-flex;
     align-items: center;
@@ -104,11 +196,11 @@
     min-height: 38px;
     max-width: 100%;
     padding: 0 13px;
-    border: 1px solid var(--history-line);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.96);
-    color: #344054;
-    box-shadow: 0 9px 18px rgba(33, 51, 84, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.86);
+    box-shadow: none;
     font-size: 12px;
     font-weight: 800;
     line-height: 1.2;
@@ -551,12 +643,12 @@
 
 @media (max-width: 960px) {
     .work-history-app .history-page-head {
-        flex-direction: column;
-        align-items: stretch;
+        grid-template-columns: 44px minmax(0, 1fr);
     }
 
     .work-history-app .history-page-tools {
-        justify-content: flex-start;
+        grid-column: 1 / -1;
+        justify-content: center;
     }
 
     .work-history-app .record-summary-fields {
@@ -567,6 +659,12 @@
 @media (max-width: 760px) {
     .work-history-app .container {
         padding: 12px 10px 18px;
+    }
+
+    .work-history-app .history-page-head {
+        grid-template-columns: minmax(0, 1fr);
+        justify-items: center;
+        padding: 14px;
     }
 
     .work-history-app .history-title-area h1 {

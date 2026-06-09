@@ -123,8 +123,10 @@
     }
 
     function syncActiveTabUi() {
-        history.queryAll('.tab-btn').forEach(button => {
-            button.classList.toggle('active', button.dataset.team === state.currentTeam);
+        history.queryAll('.tab-btn, .history-topbar-team-button').forEach(button => {
+            const isActive = button.dataset.team === state.currentTeam;
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
         });
         history.queryAll('.team-section').forEach(section => {
             section.classList.toggle('active', section.id === state.currentTeam);

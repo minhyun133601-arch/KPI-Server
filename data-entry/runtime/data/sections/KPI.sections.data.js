@@ -7775,10 +7775,10 @@ html, body {
                     content: buildUtilityEntryExperimentContent()
                 },
                 {
-                    title: '작업 이력 기입',
+                    title: '작업 이력',
                     icon: 'fa-clipboard-list',
-                    color: '#2563eb',
-                    desc: '팀별 작업 이력 입력 및 문서 첨부 화면 바로가기',
+                    color: '#0f766e',
+                    desc: '팀별 작업 기록을 카드형으로 조회하고 관리합니다.',
                     shortcutTarget: {
                         sectionId: 'work',
                         dataKey: 'work_history_records',

@@ -187,7 +187,7 @@ test('kpi html loads work history core split files before layout bootstrap', () 
   const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=219');
   const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=5');
   const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=5');
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=255');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=257');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(configIndex >= 0, 'work history core config loader is missing');

@@ -17,6 +17,7 @@ const expectedHistoryStyleImports = [
   './styles/content-cards.css',
   './styles/responsive-base.css',
   './styles/reference-ui.css',
+  './styles/experiment-board.css',
 ];
 const adapterSource = await fs.readFile(adapterPath, 'utf8');
 const layoutSource = await fs.readFile(layoutPath, 'utf8');
@@ -141,11 +142,15 @@ test('work history layout templates registry exposes shell and modal builders', 
   const shellHtml = view.buildShellHtml();
   const pageHeaderHtml = view.buildPageHeader();
   assert.match(pageHeaderHtml, /history-page-head/);
+  assert.match(pageHeaderHtml, /history-topbar/);
+  assert.match(pageHeaderHtml, /history-topbar-team-switch/);
   assert.match(pageHeaderHtml, /data-role="current-date"/);
   assert.match(pageHeaderHtml, /id="history-title"/);
   assert.match(pageHeaderHtml, /id="history-subtitle"/);
   assert.match(shellHtml, /history-main-content/);
   assert.match(shellHtml, /history-page-head/);
+  assert.doesNotMatch(shellHtml, /tab-navigation/);
+  assert.doesNotMatch(shellHtml, /id="keywordSearch"/);
   assert.match(shellHtml, /overview-records/);
   assert.match(shellHtml, /recordModal/);
   assert.match(shellHtml, /deleteModal/);
@@ -153,10 +158,10 @@ test('work history layout templates registry exposes shell and modal builders', 
 
 test('kpi html loads work history layout templates between layout and render', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=255');
-  const workspaceStateIndex = kpiHtml.indexOf('runtime/work/history/layout/workspace-state.js?v=3');
-  const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=253');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=237');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=257');
+  const workspaceStateIndex = kpiHtml.indexOf('runtime/work/history/layout/workspace-state.js?v=5');
+  const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=255');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=239');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(layoutIndex >= 0, 'work history layout loader is missing');
@@ -171,7 +176,7 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   const view = context.KpiWorkHistory.view;
   const { importHrefs, sources } = await readImportedHistoryStyles();
 
-  assert.equal(view.CSS_PATH, 'team-report/runtime/work/history/KPI.work.history.css?v=249');
+  assert.equal(view.CSS_PATH, 'team-report/runtime/work/history/KPI.work.history.css?v=251');
   assert.match(layoutSource, /<link rel="stylesheet" href="\$\{CSS_PATH\}">/);
   assert.match(templatesSource, /pattern="\[0-9\]\*"/);
   assert.match(templatesSource, /<input type="text" id="recordAssignee"/);
@@ -184,16 +189,23 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   sources.forEach(({ href, source }) => {
     assert.ok(countLines(source) < 800, `${href} has ${countLines(source)} lines`);
   });
-  assert.match(sources.map(({ source }) => source).join('\n'), /\.work-history-app\s*\{/);
-  assert.match(sources.map(({ source }) => source).join('\n'), /\.report-card-summary\s*\{/);
-  assert.match(sources.map(({ source }) => source).join('\n'), /\.record-detail-grid\s*,/);
+  const combinedStyles = sources.map(({ source }) => source).join('\n');
+  assert.match(combinedStyles, /\.work-history-app\s*\{/);
+  assert.match(combinedStyles, /\.history-topbar-team-switch\s*\{/);
+  assert.match(combinedStyles, /\.report-card-summary\s*\{/);
+  assert.match(combinedStyles, /\.record-detail-grid\s*,/);
+  assert.match(combinedStyles, /\.work-history-experiment-board\s*\{/);
+  assert.match(combinedStyles, /\.work-history-experiment-card-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(combinedStyles, /\.main-content\.is-browser-fullscreen \.work-history-experiment-board/);
+  assert.match(combinedStyles, /\.main-content\.is-browser-fullscreen \.work-history-experiment-card h4/);
 });
 
 test('work history templates keep the default work-history surface', () => {
   const context = createContext();
   const shellHtml = context.KpiWorkHistory.view.buildShellHtml();
 
-  assert.match(shellHtml, /작업 이력 기입/);
+  assert.match(shellHtml, /작업 이력/);
+  assert.doesNotMatch(shellHtml, /작업 이력 기입|작업이력 기입/);
   assert.match(shellHtml, /내역 추가/);
   assert.match(shellHtml, /작업내역 추가/);
   assert.match(shellHtml, /id="history-workspace-pill" hidden>보고 전용/);

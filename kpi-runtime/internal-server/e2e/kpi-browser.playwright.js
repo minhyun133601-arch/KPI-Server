@@ -505,14 +505,10 @@ test.describe('KPI browser smoke', () => {
       await clickSidebarButton(page, '유틸리티');
       await expectUtilityEntryExperimentSurface(page);
 
-      await clickSidebarButton(page, '작업 이력 기입');
+      await clickSidebarButton(page, '작업 이력');
       await expect(page.locator('.kpi-work-history-host')).toBeVisible();
-      await expectWorkHistoryShadowText(page, 'history-title', /팀별내역서 작업내역/);
-      await expectWorkHistoryShadowText(
-        page,
-        'history-subtitle',
-        /기간별 작업자, 구분, 비용과 문서 첨부까지 기록하는 통합 작업내역 도구/
-      );
+      await expectWorkHistoryShadowText(page, 'history-title', /작업 이력/);
+      await expectWorkHistoryShadowText(page, 'history-subtitle', /팀별 작업 기록을 카드형으로 조회하고 관리합니다\./);
       await page.waitForTimeout(1000);
 
       await clickSidebarButton(page, '설비 이력 카드');

@@ -1,0 +1,334 @@
+.work-history-app .work-history-experiment-board {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 10px;
+    padding: 14px;
+    border: 1px solid #e7edf6;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    box-shadow: 0 14px 30px rgba(33, 51, 84, 0.07);
+}
+
+.work-history-app .work-history-experiment-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.work-history-app .work-history-experiment-head h3 {
+    margin: 4px 0 5px;
+    color: #172033;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1.25;
+}
+
+.work-history-app .work-history-experiment-head p {
+    margin: 0;
+    color: #667085;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.work-history-app .work-history-experiment-kicker {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border: 1px solid rgba(8, 145, 178, 0.18);
+    border-radius: 999px;
+    background: rgba(8, 145, 178, 0.09);
+    color: #0e7490;
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.work-history-app .work-history-experiment-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(72px, 1fr));
+    gap: 7px;
+    min-width: min(100%, 360px);
+}
+
+.work-history-app .work-history-experiment-metrics span {
+    display: grid;
+    gap: 2px;
+    min-height: 52px;
+    padding: 8px 9px;
+    border: 1px solid #edf2f7;
+    border-radius: 10px;
+    background: #ffffff;
+}
+
+.work-history-app .work-history-experiment-metrics b {
+    color: #172033;
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.work-history-app .work-history-experiment-metrics em {
+    color: #667085;
+    font-size: 10px;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.work-history-app .work-history-experiment-team {
+    --experiment-team: var(--team1part1-color);
+    --experiment-soft: var(--team1part1-soft);
+    display: grid;
+    gap: 10px;
+    padding: 11px;
+    border: 1px solid color-mix(in srgb, var(--experiment-team) 22%, #e7edf6);
+    border-top: 3px solid var(--experiment-team);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--experiment-soft) 42%, #ffffff);
+}
+
+.work-history-app .work-history-experiment-team.team1part2 {
+    --experiment-team: var(--team1part2-color);
+    --experiment-soft: var(--team1part2-soft);
+}
+
+.work-history-app .work-history-experiment-team.team2 {
+    --experiment-team: var(--team2-color);
+    --experiment-soft: var(--team2-soft);
+}
+
+.work-history-app .work-history-experiment-team.team3 {
+    --experiment-team: var(--team3-color);
+    --experiment-soft: var(--team3-soft);
+}
+
+.work-history-app .work-history-experiment-team.team4 {
+    --experiment-team: var(--team4-color);
+    --experiment-soft: var(--team4-soft);
+}
+
+.work-history-app .work-history-experiment-team-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.work-history-app .work-history-experiment-team-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: #172033;
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.work-history-app .work-history-experiment-team-title strong,
+.work-history-app .work-history-experiment-card dd {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.work-history-app .work-history-experiment-team-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    border-radius: 9px;
+    background: #ffffff;
+    color: var(--experiment-team);
+}
+
+.work-history-app .work-history-experiment-team-icon svg {
+    width: 15px;
+    height: 15px;
+}
+
+.work-history-app .work-history-experiment-team-count {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--experiment-team);
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.work-history-app .work-history-experiment-card-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 9px;
+}
+
+.work-history-app .work-history-experiment-card {
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: 9px;
+    min-width: 0;
+    min-height: 214px;
+    padding: 11px;
+    border: 1px solid #e8edf5;
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 8px 18px rgba(33, 51, 84, 0.045);
+}
+
+.work-history-app .work-history-experiment-card h4 {
+    margin: 0;
+    color: #172033;
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.35;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.work-history-app .work-history-experiment-card dl {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+}
+
+.work-history-app .work-history-experiment-card dl div {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+}
+
+.work-history-app .work-history-experiment-card dt {
+    color: #98a2b3;
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.work-history-app .work-history-experiment-card dd {
+    margin: 0;
+    color: #344054;
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.work-history-app .work-history-experiment-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #f2f4f7;
+    color: #475467;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.work-history-app .work-history-experiment-status.is-complete {
+    background: #ecfdf3;
+    color: #047857;
+}
+
+.work-history-app .work-history-experiment-status.is-progress {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.work-history-app .work-history-experiment-status.is-waiting {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.work-history-app .work-history-experiment-card p {
+    margin: 0;
+    padding-top: 9px;
+    border-top: 1px solid #eef2f7;
+    color: #667085;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.45;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.work-history-app .work-history-experiment-card p strong {
+    display: block;
+    margin-bottom: 3px;
+    color: #344054;
+    font-size: 10px;
+    font-weight: 900;
+}
+
+.work-history-app .work-history-experiment-empty {
+    padding: 18px;
+    border: 1px dashed #d9e2ef;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #667085;
+    font-size: 13px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.work-history-app .main-content.is-browser-fullscreen .work-history-experiment-board,
+.work-history-app .main-content:fullscreen .work-history-experiment-board {
+    min-height: 100%;
+}
+
+.work-history-app .main-content.is-browser-fullscreen .work-history-experiment-card,
+.work-history-app .main-content:fullscreen .work-history-experiment-card {
+    min-height: 0;
+}
+
+.work-history-app .main-content.is-browser-fullscreen .work-history-experiment-card h4,
+.work-history-app .main-content.is-browser-fullscreen .work-history-experiment-card p,
+.work-history-app .main-content:fullscreen .work-history-experiment-card h4,
+.work-history-app .main-content:fullscreen .work-history-experiment-card p {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: initial;
+    -webkit-box-orient: initial;
+}
+
+.work-history-app .main-content.is-browser-fullscreen .work-history-experiment-card dd,
+.work-history-app .main-content:fullscreen .work-history-experiment-card dd {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 1280px) {
+    .work-history-app .work-history-experiment-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .work-history-app .work-history-experiment-head {
+        display: grid;
+    }
+
+    .work-history-app .work-history-experiment-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        min-width: 0;
+    }
+
+    .work-history-app .work-history-experiment-card-grid {
+        grid-template-columns: 1fr;
+    }
+}

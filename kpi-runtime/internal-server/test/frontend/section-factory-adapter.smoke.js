@@ -159,7 +159,11 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(utilityEntryCategory.content, /data-role="utility-entry-experiment-billing-attach"/);
   assert.doesNotMatch(utilityEntryCategory.content, /data-kpi-metering-root/);
   assert.doesNotMatch(JSON.stringify(appData.data.categories), /총괄 비율/);
+  assert.equal(appData.data.categories[1].title, '작업 이력');
+  assert.equal(appData.data.categories[1].desc, '팀별 작업 기록을 카드형으로 조회하고 관리합니다.');
   assert.equal(appData.data.categories[1].shortcutTarget.sectionId, 'work');
+  assert.equal(appData.work.categories[1].title, '작업 이력');
+  assert.equal(appData.work.categories[1].desc, '팀별 작업 기록을 카드형으로 조회하고 관리합니다.');
   assert.equal(appData.data.categories[2].title, '설비 이력 카드');
   assert.equal(appData.data.categories[2].dataKey, 'data_equipment_history_card');
   assert.equal(appData.data.categories[3].dataKey, 'audit_lux');
@@ -627,9 +631,9 @@ test('section factory adapter registers dashboard sections without direct sectio
 
 test('kpi html loads section factory adapter before all section factories', () => {
   const adapterIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.factory-adapter.js?v=1');
-  const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=232');
+  const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=233');
   const graphTemplateIndex = kpiHtml.indexOf('data-entry/runtime/data/utility-graph-template/app.js?v=41');
-  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=135');
+  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=137');
   const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=98');
   const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=42');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');

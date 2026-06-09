@@ -39,24 +39,9 @@
     }
 
     function buildShellHtml() {
-        const searchLabel = isProductionWorkspace() ? '실적보고 검색' : '작업내역 검색';
         return `
             <div class="container">
-                <div class="week-search-bar no-print">
-                    <div class="keyword-search-group">
-                        <span class="search-label">${searchLabel}</span>
-                        <input type="text" id="keywordSearch" placeholder="검색어 입력">
-                        <button class="btn btn-primary btn-sm" type="button" data-action="search">검색</button>
-                        <span class="search-result-count" id="searchResultCount"></span>
-                    </div>
-                </div>
-
                 ${buildPageHeader()}
-
-                <nav class="tab-navigation no-print">
-                    ${buildTabButton(OVERVIEW_KEY)}
-                    ${TEAM_KEYS.map(team => buildTabButton(team)).join('')}
-                </nav>
 
                 <main id="history-main-content" class="main-content">
                     ${buildOverviewSection()}
@@ -77,25 +62,25 @@
     function buildPageHeader() {
         const title = typeof view.getWorkspaceTitle === 'function'
             ? view.getWorkspaceTitle()
-            : '작업 이력 기입';
+            : '작업이력';
         const subtitle = typeof view.getWorkspaceSubtitle === 'function'
             ? view.getWorkspaceSubtitle()
             : '전체 팀의 작업 현황과 기록을 한눈에 확인합니다.';
         return `
-                <div class="history-page-head no-print">
-                    <div class="history-title-area">
+                <header class="history-page-head history-topbar no-print">
+                    <div class="history-topbar-brand" aria-hidden="true">
+                        <span class="history-topbar-brand-mark">${getTeamIconSvg(OVERVIEW_KEY)}</span>
+                    </div>
+                    <div class="history-title-area history-topbar-title">
                         <h1 id="history-title">${escapeHtml(title)}</h1>
                         <p id="history-subtitle">${escapeHtml(subtitle)}</p>
+                        <div class="history-topbar-team-switch" aria-label="작업이력 범위 선택">
+                            ${buildTopbarTeamButton(OVERVIEW_KEY)}
+                            ${TEAM_KEYS.map(team => buildTopbarTeamButton(team)).join('')}
+                        </div>
                     </div>
-                    <div class="history-page-tools" aria-label="작업 이력 보기 정보">
+                    <div class="history-page-tools history-topbar-actions" aria-label="작업이력 보기 정보">
                         <span class="history-tool-pill history-tool-mode" id="history-workspace-pill"${isProductionWorkspace() ? '' : ' hidden'}>보고 전용</span>
-                        <button class="history-tool-pill history-tool-select" type="button" data-action="switch-tab" data-team="${OVERVIEW_KEY}">
-                            <span>전체</span>
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                            </svg>
-                        </button>
-                        <span class="history-tool-pill history-tool-view">주간 뷰</span>
                         <span class="history-tool-pill history-tool-date">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M7 3v3M17 3v3M4 9h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -103,7 +88,20 @@
                             <span data-role="current-date">-</span>
                         </span>
                     </div>
-                </div>
+                </header>
+        `;
+    }
+
+    function buildTopbarTeamButton(teamKey) {
+        const meta = TAB_META[teamKey];
+        const isActive = state.currentTeam === teamKey;
+        return `
+            <button class="history-topbar-team-button ${isActive ? 'active' : ''}" type="button" data-action="switch-tab" data-team="${teamKey}" aria-pressed="${isActive ? 'true' : 'false'}">
+                <span>${escapeHtml(meta.title)}</span>
+                <small data-team-metrics="${teamKey}">
+                    <span class="tab-metrics-count">0건</span>
+                </small>
+            </button>
         `;
     }
 
@@ -431,6 +429,7 @@
         buildCategoryGroupOptionsMarkup,
         buildCategoryOptionsMarkup,
         buildTabButton,
+        buildTopbarTeamButton,
         getFullscreenIconSvg,
         buildOverviewSection,
         buildTeamSection,

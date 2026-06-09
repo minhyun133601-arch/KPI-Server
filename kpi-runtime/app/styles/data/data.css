@@ -3386,16 +3386,26 @@
         .data-equipment-board-section {
             display: grid;
             gap: 10px;
-            padding: 0;
+            padding: 0 0 12px 10px;
             border: 0;
+            border-left: 3px solid color-mix(in srgb, var(--equipment-team-color) 24%, #d7e2ef);
             background: transparent;
+        }
+        .data-equipment-board-section + .data-equipment-board-section {
+            margin-top: 10px;
+            padding-top: 12px;
+            border-top: 1px solid #e6edf5;
         }
         .data-equipment-board-section h3 {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            margin: 10px 0 2px;
+            margin: 8px 0 0;
+            padding: 6px 8px;
+            border: 1px solid color-mix(in srgb, var(--equipment-team-color) 10%, #e6edf5);
+            border-radius: 7px;
+            background: color-mix(in srgb, var(--equipment-team-color) 5%, #ffffff);
             color: #233957;
             font-size: 0.98rem;
             font-weight: 900;
@@ -3521,7 +3531,7 @@
             height: 100%;
             object-fit: contain;
             object-position: center 56%;
-            transform: translateY(2px);
+            transform: translateY(3px);
             transform-origin: center center;
             display: block;
         }

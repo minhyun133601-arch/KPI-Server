@@ -206,7 +206,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(storageIndex > formIndex, 'equipment-history storage loader must load after the form');
   assert.ok(renderIndex > storageIndex, 'equipment-history render loader must load after storage');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
-  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=098') >= 0, 'data css cache version is stale');
+  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=101') >= 0, 'data css cache version is stale');
   assert.ok(bootManifestSource.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js') >= 0);
 });
 
@@ -741,8 +741,9 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /data-equipment-board-team-title/);
   assert.match(dataCssSource, /data-equipment-board-section[\s\S]+display:\s*grid/);
   assert.match(dataCssSource, /data-equipment-board-section[\s\S]+gap:\s*10px/);
-  assert.match(dataCssSource, /data-equipment-board-section[\s\S]+padding:\s*0/);
-  assert.match(dataCssSource, /data-equipment-board-section h3[\s\S]+font-size:\s*0\.98rem/);
+  assert.match(dataCssSource, /data-equipment-board-section[\s\S]+padding:\s*0 0 12px 10px[\s\S]+border-left:\s*3px solid color-mix\(in srgb,\s*var\(--equipment-team-color\) 24%,\s*#d7e2ef\)/);
+  assert.match(dataCssSource, /data-equipment-board-section \+ \.data-equipment-board-section[\s\S]+margin-top:\s*10px[\s\S]+padding-top:\s*12px[\s\S]+border-top:\s*1px solid #e6edf5/);
+  assert.match(dataCssSource, /data-equipment-board-section h3[\s\S]+margin:\s*8px 0 0[\s\S]+padding:\s*6px 8px[\s\S]+background:\s*color-mix\(in srgb,\s*var\(--equipment-team-color\) 5%,\s*#ffffff\)[\s\S]+font-size:\s*0\.98rem/);
   assert.match(dataCssSource, /data-equipment-board-card-row[\s\S]+grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(240px,\s*1fr\)\)/);
   assert.match(dataCssSource, /data-equipment-board-room-icon[\s\S]+width:\s*30px[\s\S]+height:\s*30px/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-room-badge/);
@@ -799,7 +800,7 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /data-equipment-board-room-name[\s\S]+min-width:\s*0[\s\S]+text-overflow:\s*ellipsis[\s\S]+white-space:\s*nowrap/);
   assert.match(dataCssSource, /data-equipment-board-room-add-button[\s\S]+flex:\s*0 0 auto/);
   assert.match(dataCssSource, /data-equipment-board-card-media[\s\S]+width:\s*100%[\s\S]+aspect-ratio:\s*3\.3 \/ 1[\s\S]+border-bottom:\s*1px solid var\(--equipment-card-separator\)/);
-  assert.match(dataCssSource, /data-equipment-board-card-media img[\s\S]+width:\s*100%[\s\S]+height:\s*100%[\s\S]+object-fit:\s*contain[\s\S]+object-position:\s*center 56%[\s\S]+transform:\s*translateY\(2px\)/);
+  assert.match(dataCssSource, /data-equipment-board-card-media img[\s\S]+width:\s*100%[\s\S]+height:\s*100%[\s\S]+object-fit:\s*contain[\s\S]+object-position:\s*center 56%[\s\S]+transform:\s*translateY\(3px\)/);
   assert.match(dataCssSource, /data-equipment-board-card-main[\s\S]+min-height:\s*48px[\s\S]+border-bottom:\s*1px solid var\(--equipment-card-separator\)/);
   assert.match(dataCssSource, /data-equipment-board-card-main strong[\s\S]+font-size:\s*1\.14rem[\s\S]+text-align:\s*center/);
   assert.match(dataCssSource, /data-equipment-board-card-actions[\s\S]+padding:\s*10px 0 0[\s\S]+background:\s*linear-gradient/);

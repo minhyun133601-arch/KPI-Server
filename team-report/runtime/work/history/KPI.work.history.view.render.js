@@ -137,20 +137,14 @@
         const container = getElement('overview-records');
         if (!container) return;
         const records = getFilteredOverviewRecords();
-        const pageData = view.getPagedRecords?.(view.OVERVIEW_KEY, records) || { records };
-        container.innerHTML = records.length
-            ? `${(pageData.records || records).map(record => buildRecordCard(record, true)).join('')}${view.buildRecordPagination?.(view.OVERVIEW_KEY, pageData) || ''}`
-            : view.renderEmptyState(view.getEmptyStateMessage?.() || '조건에 맞는 작업내역이 없습니다.');
+        container.innerHTML = buildExperimentBoard(records);
     }
 
     function renderTeam(team) {
         const container = getElement(`${team}-records`);
         if (!container) return;
         const records = getFilteredTeamRecords(team);
-        const pageData = view.getPagedRecords?.(team, records) || { records };
-        container.innerHTML = records.length
-            ? `${(pageData.records || records).map(record => buildRecordCard(record, false)).join('')}${view.buildRecordPagination?.(team, pageData) || ''}`
-            : view.renderEmptyState(view.getEmptyStateMessage?.() || '조건에 맞는 작업내역이 없습니다.');
+        container.innerHTML = buildExperimentBoard(records);
     }
 
     function buildRecordCard(record, showTeam) {
@@ -214,6 +208,96 @@
         `;
     }
 
+    function buildExperimentBoard(records = []) {
+        const normalizedRecords = Array.isArray(records) ? records : [];
+        const totalCost = normalizedRecords.reduce((sum, record) => sum + (Number(record?.cost) || 0), 0);
+        const activeTeamCount = TEAM_KEYS.filter(team => normalizedRecords.some(record => (record.team || record._team) === team)).length;
+        const latestDate = normalizedRecords
+            .map(record => record.endDate || record.startDate || '')
+            .filter(Boolean)
+            .sort()
+            .pop() || '';
+        const groupedMarkup = TEAM_KEYS.map(team => buildExperimentTeamSection(team, normalizedRecords))
+            .filter(Boolean)
+            .join('');
+        return `
+            <section class="work-history-experiment-board" data-role="work-history-experiment-board" aria-label="작업이력 카드 보기">
+                <div class="work-history-experiment-head">
+                    <div>
+                        <span class="work-history-experiment-kicker">작업이력</span>
+                        <h3>카드형 보기</h3>
+                        <p>팀별 작업이력을 카드로 확인합니다.</p>
+                    </div>
+                    <div class="work-history-experiment-metrics" aria-label="작업이력 요약">
+                        <span><b>${escapeHtml(normalizedRecords.length)}</b><em>전체</em></span>
+                        <span><b>${escapeHtml(activeTeamCount)}</b><em>팀</em></span>
+                        <span><b>${escapeHtml(view.formatCurrency(totalCost))}</b><em>비용</em></span>
+                        <span><b>${escapeHtml(view.formatDateKorean(latestDate))}</b><em>최근</em></span>
+                    </div>
+                </div>
+                ${groupedMarkup || '<div class="work-history-experiment-empty">표시할 작업이력이 없습니다.</div>'}
+            </section>
+        `;
+    }
+
+    function buildExperimentTeamSection(team, records = []) {
+        const info = TeamInfo[team] || {};
+        const teamRecords = records.filter(record => (record.team || record._team) === team);
+        if (!teamRecords.length) return '';
+        return `
+            <section class="work-history-experiment-team ${escapeAttribute(info.class || team)}">
+                <header class="work-history-experiment-team-head">
+                    <span class="work-history-experiment-team-title">
+                        <span class="work-history-experiment-team-icon">${view.getTeamIconSvg(team)}</span>
+                        <strong>${escapeHtml(info.name || team)}</strong>
+                    </span>
+                    <span class="work-history-experiment-team-count">${escapeHtml(teamRecords.length)}건</span>
+                </header>
+                <div class="work-history-experiment-card-grid">
+                    ${teamRecords.map(record => buildExperimentRecordCard(record)).join('')}
+                </div>
+            </section>
+        `;
+    }
+
+    function buildExperimentRecordCard(record) {
+        const title = getRecordSummaryTitle(record);
+        const categoryText = getRecordCategoryText(record) || getRecordCategoryFilterText(record) || '-';
+        const status = getExperimentRecordStatus(record);
+        const memo = buildRecordRemarkText(record);
+        return `
+            <article class="work-history-experiment-card">
+                <h4 title="${escapeAttribute(title)}">${highlightText(escapeHtml(title))}</h4>
+                <dl>
+                    <div><dt>구분</dt><dd>${escapeHtml(categoryText)}</dd></div>
+                    <div><dt>기간</dt><dd>${escapeHtml(view.formatDateRange(record.startDate, record.endDate))}</dd></div>
+                    <div><dt>상태</dt><dd><span class="work-history-experiment-status ${escapeAttribute(status.className)}">${escapeHtml(status.label)}</span></dd></div>
+                    <div><dt>비용</dt><dd>${escapeHtml(view.formatCurrency(record.cost))}</dd></div>
+                    <div><dt>담당자</dt><dd>${escapeHtml(view.formatAssigneeText(record) || '-')}</dd></div>
+                </dl>
+                <p><strong>메모</strong>${escapeHtml(memo || '-')}</p>
+            </article>
+        `;
+    }
+
+    function getExperimentRecordStatus(record) {
+        const today = new Date();
+        const todayKey = [
+            today.getFullYear(),
+            String(today.getMonth() + 1).padStart(2, '0'),
+            String(today.getDate()).padStart(2, '0')
+        ].join('-');
+        const startDate = String(record?.startDate || '').trim();
+        const endDate = String(record?.endDate || startDate || '').trim();
+        if (endDate && endDate <= todayKey) {
+            return { label: '완료', className: 'is-complete' };
+        }
+        if (startDate && startDate <= todayKey) {
+            return { label: '진행중', className: 'is-progress' };
+        }
+        return { label: '대기', className: 'is-waiting' };
+    }
+
     function getRecordSummaryTitle(record) {
         const categoryText = getRecordCategoryText(record);
         const importantPrefix = isImportantRecord(record) ? `${KPI_FLAG_LABEL} · ` : '';
@@ -269,6 +353,8 @@
         renderOverview,
         renderTeam,
         buildRecordCard,
+        buildExperimentBoard,
+        buildExperimentRecordCard,
         getRecordTags,
         getRecordTeamInfo,
         getRecordCategoryText,
