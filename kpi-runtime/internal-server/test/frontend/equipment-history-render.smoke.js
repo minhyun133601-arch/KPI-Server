@@ -196,7 +196,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=16');
   const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=25');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=3');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=45');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=46');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=5');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -206,7 +206,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(storageIndex > formIndex, 'equipment-history storage loader must load after the form');
   assert.ok(renderIndex > storageIndex, 'equipment-history render loader must load after storage');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
-  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=094') >= 0, 'data css cache version is stale');
+  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=095') >= 0, 'data css cache version is stale');
   assert.ok(bootManifestSource.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js') >= 0);
 });
 
@@ -412,6 +412,11 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /data-equipment-board-status-button is-running"[^>]*data-equipment-cycle-status-card="eq-team1-a"[\s\S]+fa-play[\s\S]+<span>가동중<\/span>/);
   assert.match(container.innerHTML, /data-equipment-board-status-button is-stop"[^>]*data-equipment-cycle-status-card="eq-team1-b"[\s\S]+fa-square[\s\S]+<span>비가동중<\/span>/);
   assert.match(container.innerHTML, /data-equipment-board-status-button is-check"[^>]*data-equipment-cycle-status-card="eq-team4"[\s\S]+fa-wrench[\s\S]+<span>정비중<\/span>/);
+  assert.match(container.innerHTML, /data-equipment-board-global-actions/);
+  assert.match(container.innerHTML, /data-equipment-status-scope="all"/);
+  assert.match(container.innerHTML, /data-equipment-status-scope="team"[^>]*data-equipment-status-team="work_team_calendar_team1_part1"/);
+  assert.match(container.innerHTML, /data-equipment-status-scope="room"[^>]*data-equipment-status-team="work_team_calendar_team1_part1"[^>]*data-equipment-status-room="A\uC2E4"/);
+  assert.match(container.innerHTML, /data-equipment-add-team="work_team_calendar_team1_part1"[^>]*data-equipment-add-room="A\uC2E4"/);
   assert.doesNotMatch(container.innerHTML, /data-equipment-board-metric/);
   assert.match(container.innerHTML, /data-equipment-board-card-media[\s\S]+data-equipment-board-card-main[\s\S]+data-equipment-board-card-actions/);
   assert.match(container.innerHTML, /data-equipment-order-toggle-team="work_team_calendar_team1_part1"/);
@@ -781,7 +786,12 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /data-equipment-board-card[\s\S]+background:\s*#ffffff/);
   assert.match(dataCssSource, /data-equipment-board-card[\s\S]+--equipment-card-separator:\s*#e6edf5/);
   assert.match(dataCssSource, /data-equipment-board-card[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)[\s\S]+grid-template-rows:\s*auto auto auto[\s\S]+min-height:\s*178px/);
-  assert.match(dataCssSource, /data-equipment-board-card-media[\s\S]+width:\s*100%[\s\S]+aspect-ratio:\s*4 \/ 1[\s\S]+border-bottom:\s*1px solid var\(--equipment-card-separator\)/);
+  assert.match(dataCssSource, /data-equipment-board-global-actions[\s\S]+grid-column:\s*1 \/ -1/);
+  assert.match(dataCssSource, /data-equipment-board-status-actions[\s\S]+display:\s*inline-flex[\s\S]+flex-wrap:\s*wrap/);
+  assert.match(dataCssSource, /data-equipment-board-status-set[\s\S]+min-height:\s*28px[\s\S]+white-space:\s*nowrap/);
+  assert.match(dataCssSource, /data-equipment-board-team-title[\s\S]+flex-wrap:\s*wrap/);
+  assert.match(dataCssSource, /data-equipment-board-room-actions[\s\S]+display:\s*inline-flex[\s\S]+flex-wrap:\s*wrap/);
+  assert.match(dataCssSource, /data-equipment-board-card-media[\s\S]+width:\s*100%[\s\S]+aspect-ratio:\s*3\.7 \/ 1[\s\S]+border-bottom:\s*1px solid var\(--equipment-card-separator\)/);
   assert.match(dataCssSource, /data-equipment-board-card-media img[\s\S]+width:\s*100%[\s\S]+height:\s*100%[\s\S]+object-fit:\s*contain[\s\S]+object-position:\s*center 56%[\s\S]+transform:\s*translateY\(2px\)/);
   assert.match(dataCssSource, /data-equipment-board-card-main[\s\S]+min-height:\s*48px[\s\S]+border-bottom:\s*1px solid var\(--equipment-card-separator\)/);
   assert.match(dataCssSource, /data-equipment-board-card-main strong[\s\S]+font-size:\s*1\.14rem[\s\S]+text-align:\s*center/);
@@ -810,6 +820,9 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.doesNotMatch(dataCssSource, /data-equipment-board-open-button/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-card button\s*\{/);
   assert.match(renderSource, /EQUIPMENT_BOARD_STATUS_CYCLE/);
+  assert.match(renderSource, /function renderBoardStatusActionGroup/);
+  assert.match(renderSource, /async function setBoardStatus/);
+  assert.match(renderSource, /state\.pendingAddRoom = button\.dataset\.equipmentAddRoom/);
   assert.match(renderSource, /data-equipment-order-toggle-team/);
   assert.doesNotMatch(renderSource, /data-equipment-order-toggle-card/);
   assert.doesNotMatch(renderSource, /data-equipment-focus-team/);

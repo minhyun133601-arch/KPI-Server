@@ -3215,6 +3215,75 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        .data-equipment-board-global-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 10px;
+            min-width: 0;
+            padding: 10px 12px;
+            border: 1px solid #dde7f2;
+            border-radius: 8px;
+            background: #ffffff;
+            box-shadow: 0 10px 24px rgba(31, 51, 83, 0.05);
+        }
+        .data-equipment-board-global-actions > strong {
+            color: #233957;
+            font-size: 0.78rem;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+        .data-equipment-board-status-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            min-width: 0;
+            flex: 0 1 auto;
+            flex-wrap: wrap;
+        }
+        .data-equipment-board-status-set {
+            min-height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            border: 1px solid #d7e2ef;
+            border-radius: 7px;
+            background: #ffffff;
+            color: #334155;
+            padding: 0 8px;
+            font-size: 0.7rem;
+            font-weight: 900;
+            line-height: 1;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .data-equipment-board-status-set i {
+            font-size: 0.72rem;
+        }
+        .data-equipment-board-status-set.is-running {
+            border-color: #86efac;
+            background: #dcfce7;
+            color: #166534;
+        }
+        .data-equipment-board-status-set.is-stop {
+            border-color: #fecaca;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .data-equipment-board-status-set.is-check {
+            border-color: #fbbf24;
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .data-equipment-board-status-set:hover {
+            filter: brightness(1.04);
+        }
+        .data-equipment-board-status-set:disabled {
+            opacity: 0.42;
+            cursor: not-allowed;
+        }
         .data-equipment-board {
             display: grid;
             grid-template-columns: 1fr;
@@ -3277,6 +3346,7 @@
             gap: 9px;
             flex: 1 1 auto;
             min-width: 0;
+            flex-wrap: wrap;
         }
         .data-equipment-board-team-icon {
             width: 28px;
@@ -3347,6 +3417,7 @@
             color: #233957;
             font-size: 0.98rem;
             font-weight: 900;
+            flex-wrap: wrap;
         }
         .data-equipment-board-room-title-main {
             display: inline-flex;
@@ -3358,6 +3429,14 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+        .data-equipment-board-room-actions {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+            margin-left: auto;
+            flex-wrap: wrap;
         }
         .data-equipment-board-room-icon {
             width: 30px;
@@ -3439,7 +3518,7 @@
         }
         .data-equipment-board-card-media {
             width: 100%;
-            aspect-ratio: 4 / 1;
+            aspect-ratio: 3.7 / 1;
             border-bottom: 1px solid var(--equipment-card-separator);
             border-radius: 7px 7px 0 0;
             overflow: hidden;

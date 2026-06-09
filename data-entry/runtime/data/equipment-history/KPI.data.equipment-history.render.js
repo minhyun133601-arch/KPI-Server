@@ -321,7 +321,36 @@
         };
     }
 
-    function renderBoardSectionTitle(title) {
+    function renderBoardStatusActionGroup(scope, options = {}) {
+        const targetTeam = api.normalizeText(options.team || '');
+        const targetRoom = api.normalizeText(options.room || '');
+        const disabled = options.disabled === true;
+        return `
+            <span class="data-equipment-board-status-actions" data-equipment-board-status-actions="${api.escapeHtml(scope)}">
+                ${EQUIPMENT_BOARD_STATUS_CYCLE.map((status) => {
+                    const statusMeta = api.getEquipmentStatus(status);
+                    const statusTone = ['running', 'stop', 'check'].includes(statusMeta.tone) ? statusMeta.tone : 'running';
+                    const statusIcon = getEquipmentStatusIconClass(statusTone);
+                    return `
+                        <button type="button" class="data-equipment-board-status-set is-${statusTone}" data-equipment-set-board-status="${api.escapeHtml(statusMeta.label)}" data-equipment-status-scope="${api.escapeHtml(scope)}" data-equipment-status-team="${api.escapeHtml(targetTeam)}" data-equipment-status-room="${api.escapeHtml(targetRoom)}" aria-label="${api.escapeHtml(`${statusMeta.label} 일괄 적용`)}" title="${api.escapeHtml(`${statusMeta.label} 일괄 적용`)}"${disabled ? ' disabled' : ''}>
+                            <i class="fas ${api.escapeHtml(statusIcon)}" aria-hidden="true"></i><span>${api.escapeHtml(statusMeta.label)}</span>
+                        </button>
+                    `;
+                }).join('')}
+            </span>
+        `;
+    }
+
+    function renderBoardGlobalStatusActions(itemCount = 0) {
+        return `
+            <div class="data-equipment-board-global-actions">
+                <strong>상태 일괄 변경</strong>
+                ${renderBoardStatusActionGroup('all', { disabled: itemCount <= 0 })}
+            </div>
+        `;
+    }
+
+    function renderBoardSectionTitle(title, teamKey = '', equipmentCount = 0) {
         const roomTitle = api.normalizeText(title);
         if (!roomTitle) return '';
         return `
@@ -329,6 +358,10 @@
                 <span class="data-equipment-board-room-title-main">
                     <span class="data-equipment-board-room-icon"><i class="fas fa-door-open" aria-hidden="true"></i></span>
                     <span>${api.escapeHtml(roomTitle)}</span>
+                </span>
+                <span class="data-equipment-board-room-actions">
+                    ${renderBoardAddButton(teamKey, 'data-equipment-board-add-button data-equipment-board-room-add-button', roomTitle)}
+                    ${renderBoardStatusActionGroup('room', { team: teamKey, room: roomTitle, disabled: equipmentCount <= 0 })}
                 </span>
             </h3>
         `;
@@ -412,9 +445,9 @@
         `;
     }
 
-    function renderBoardAddButton(team = '', className = 'data-equipment-board-add-button') {
+    function renderBoardAddButton(team = '', className = 'data-equipment-board-add-button', room = '') {
         return `
-            <button type="button" class="${api.escapeHtml(className)}" data-equipment-view-action="card" data-equipment-add-team="${api.escapeHtml(team)}">
+            <button type="button" class="${api.escapeHtml(className)}" data-equipment-view-action="card" data-equipment-add-team="${api.escapeHtml(team)}" data-equipment-add-room="${api.escapeHtml(room)}">
                 <span>${api.escapeHtml('\uCD94\uAC00')}</span>
             </button>
         `;
@@ -483,6 +516,7 @@
                             <strong>${api.escapeHtml(group.team)}</strong>
                             <span class="data-equipment-board-team-count">${api.escapeHtml(sectionEquipment.length)}${api.escapeHtml('\uB300')}</span>
                             ${renderBoardAddButton(teamKey)}
+                            ${renderBoardStatusActionGroup('team', { team: teamKey, disabled: sectionEquipment.length <= 0 })}
                         </div>
                         <div class="data-equipment-board-team-actions">
                             <button type="button" class="data-equipment-board-team-order-toggle" data-equipment-order-toggle-team="${api.escapeHtml(teamKey)}" aria-label="${api.escapeHtml(orderToggleLabel)}" title="${api.escapeHtml(orderToggleLabel)}" aria-expanded="false">
@@ -492,7 +526,7 @@
                     </header>
                     ${visibleSections.map((section) => `
                         <div class="data-equipment-board-section">
-                            ${renderBoardSectionTitle(section.title)}
+                            ${renderBoardSectionTitle(section.title, teamKey, section.equipment.length)}
                             <div class="data-equipment-board-card-row">
                                 ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex))).join('')}
                             </div>
@@ -514,6 +548,7 @@
                 <div class="data-equipment-index-overview">
                     ${renderBoardSummary(activeSummary)}
                     ${renderBoardStatusOverview(activeSummary)}
+                    ${renderBoardGlobalStatusActions(items.length)}
                 </div>
                 <div class="data-equipment-board ${filteredGroups.length ? '' : 'is-empty'}">
                     ${boardBody}
@@ -939,6 +974,10 @@
             state.starter.team = api.normalizeEquipmentHistoryTeamName?.(state.pendingAddTeam) || state.pendingAddTeam;
             state.pendingAddTeam = '';
         }
+        if (state.pendingAddRoom) {
+            state.starter.room = state.pendingAddRoom;
+            state.pendingAddRoom = '';
+        }
         state.view = 'card-start';
         state.message = '';
         state.openEquipmentSpecBlocks = {};
@@ -1309,6 +1348,45 @@
         await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_status_failed');
         state.selectedId = item.id;
         state.message = '\uAC00\uB3D9 \uC0C1\uD0DC\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
+        return true;
+    }
+
+    function doesEquipmentItemMatchStatusScope(item, scope, targetTeam, targetRoom) {
+        if (!item) return false;
+        if (scope === 'all') return true;
+        const itemTeam = item.teamDataKey || getEquipmentTeamDataKey(item.team) || api.normalizeText(item.team || '');
+        if (targetTeam && itemTeam !== targetTeam) return false;
+        if (scope === 'team') return Boolean(targetTeam);
+        if (scope === 'room') return Boolean(targetTeam) && api.normalizeText(item.room || '') === targetRoom;
+        return false;
+    }
+
+    async function setBoardStatus(data, state, options = {}) {
+        const targetStatus = api.getEquipmentStatus(options.status).label;
+        if (!EQUIPMENT_BOARD_STATUS_CYCLE.includes(targetStatus)) return false;
+        const scope = api.normalizeText(options.scope || 'all');
+        const targetTeam = api.normalizeText(options.team || '');
+        const targetRoom = api.normalizeText(options.room || '');
+        const nextList = getPayloadEquipmentList(data);
+        const normalizedItems = api.normalizeEquipmentItems({ equipmentList: nextList });
+        let changedCount = 0;
+        normalizedItems.forEach((item) => {
+            if (!Number.isInteger(item.sourceIndex)) return;
+            if (!doesEquipmentItemMatchStatusScope(item, scope, targetTeam, targetRoom)) return;
+            nextList[item.sourceIndex] = {
+                ...nextList[item.sourceIndex],
+                status: targetStatus,
+            };
+            changedCount += 1;
+        });
+        if (!changedCount) return false;
+        const nextPayload = {
+            ...clonePayload(data),
+            equipmentList: nextList,
+        };
+        await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_status_failed');
+        state.selectedId = '';
+        state.message = `${changedCount}\uB300 \uC0C1\uD0DC\uB97C ${targetStatus}\uC73C\uB85C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.`;
         return true;
     }
 
@@ -2273,6 +2351,7 @@
             button.addEventListener('click', () => {
                 if (button.dataset.equipmentViewAction === 'card') {
                     state.pendingAddTeam = button.dataset.equipmentAddTeam || '';
+                    state.pendingAddRoom = button.dataset.equipmentAddRoom || '';
                     startNewCard(state);
                 } else {
                     resetEquipmentHistoryBoardState(state);
@@ -2334,6 +2413,22 @@
             button.addEventListener('click', async () => {
                 try {
                     if (await cycleBoardCardStatus(data, state, button.dataset.equipmentCycleStatusCard)) redraw();
+                } catch (error) {
+                    console.warn('[kpi] equipment history board status save failed', error);
+                    browser.alert('\uAC00\uB3D9 \uC0C1\uD0DC \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.');
+                }
+            });
+        });
+
+        root.querySelectorAll('[data-equipment-set-board-status]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                try {
+                    if (await setBoardStatus(data, state, {
+                        status: button.dataset.equipmentSetBoardStatus,
+                        scope: button.dataset.equipmentStatusScope,
+                        team: button.dataset.equipmentStatusTeam,
+                        room: button.dataset.equipmentStatusRoom,
+                    })) redraw();
                 } catch (error) {
                     console.warn('[kpi] equipment history board status save failed', error);
                     browser.alert('\uAC00\uB3D9 \uC0C1\uD0DC \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.');
