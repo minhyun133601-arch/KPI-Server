@@ -321,47 +321,63 @@
         };
     }
 
+    function getBoardStatusCycleStatus(items = []) {
+        const labels = (Array.isArray(items) ? items : [])
+            .map((item) => api.getEquipmentStatus(item?.status).label)
+            .filter((label) => EQUIPMENT_BOARD_STATUS_CYCLE.includes(label));
+        const uniqueLabels = Array.from(new Set(labels));
+        return uniqueLabels.length === 1 ? uniqueLabels[0] : EQUIPMENT_BOARD_STATUS_CYCLE[0];
+    }
+
+    function getBoardStatusCycleTargetStatus(items = []) {
+        const labels = (Array.isArray(items) ? items : [])
+            .map((item) => api.getEquipmentStatus(item?.status).label)
+            .filter((label) => EQUIPMENT_BOARD_STATUS_CYCLE.includes(label));
+        const uniqueLabels = Array.from(new Set(labels));
+        return uniqueLabels.length === 1
+            ? getNextEquipmentBoardStatus(uniqueLabels[0])
+            : EQUIPMENT_BOARD_STATUS_CYCLE[0];
+    }
+
     function renderBoardStatusActionGroup(scope, options = {}) {
         const targetTeam = api.normalizeText(options.team || '');
         const targetRoom = api.normalizeText(options.room || '');
+        const statusMeta = api.getEquipmentStatus(getBoardStatusCycleStatus(options.items));
+        const statusTone = ['running', 'stop', 'check'].includes(statusMeta.tone) ? statusMeta.tone : 'running';
+        const statusIcon = getEquipmentStatusIconClass(statusTone);
         const disabled = options.disabled === true;
         return `
             <span class="data-equipment-board-status-actions" data-equipment-board-status-actions="${api.escapeHtml(scope)}">
-                ${EQUIPMENT_BOARD_STATUS_CYCLE.map((status) => {
-                    const statusMeta = api.getEquipmentStatus(status);
-                    const statusTone = ['running', 'stop', 'check'].includes(statusMeta.tone) ? statusMeta.tone : 'running';
-                    const statusIcon = getEquipmentStatusIconClass(statusTone);
-                    return `
-                        <button type="button" class="data-equipment-board-status-set is-${statusTone}" data-equipment-set-board-status="${api.escapeHtml(statusMeta.label)}" data-equipment-status-scope="${api.escapeHtml(scope)}" data-equipment-status-team="${api.escapeHtml(targetTeam)}" data-equipment-status-room="${api.escapeHtml(targetRoom)}" aria-label="${api.escapeHtml(`${statusMeta.label} 일괄 적용`)}" title="${api.escapeHtml(`${statusMeta.label} 일괄 적용`)}"${disabled ? ' disabled' : ''}>
-                            <i class="fas ${api.escapeHtml(statusIcon)}" aria-hidden="true"></i><span>${api.escapeHtml(statusMeta.label)}</span>
-                        </button>
-                    `;
-                }).join('')}
+                <button type="button" class="data-equipment-board-chip data-equipment-board-status-cycle is-${statusTone}" data-equipment-cycle-board-status data-equipment-status-scope="${api.escapeHtml(scope)}" data-equipment-status-team="${api.escapeHtml(targetTeam)}" data-equipment-status-room="${api.escapeHtml(targetRoom)}" aria-label="${api.escapeHtml(`${statusMeta.label} 일괄 상태 전환`)}" title="${api.escapeHtml('클릭하면 이 범위가 가동중, 비가동중, 정비중으로 바뀝니다.')}"${disabled ? ' disabled' : ''}>
+                    <i class="fas ${api.escapeHtml(statusIcon)}" aria-hidden="true"></i><span>${api.escapeHtml(statusMeta.label)}</span>
+                </button>
             </span>
         `;
     }
 
-    function renderBoardGlobalStatusActions(itemCount = 0) {
+    function renderBoardGlobalStatusActions(items = []) {
+        const itemCount = Array.isArray(items) ? items.length : 0;
         return `
             <div class="data-equipment-board-global-actions">
                 <strong>상태 일괄 변경</strong>
-                ${renderBoardStatusActionGroup('all', { disabled: itemCount <= 0 })}
+                ${renderBoardStatusActionGroup('all', { items, disabled: itemCount <= 0 })}
             </div>
         `;
     }
 
-    function renderBoardSectionTitle(title, teamKey = '', equipmentCount = 0) {
+    function renderBoardSectionTitle(title, teamKey = '', equipmentItems = []) {
         const roomTitle = api.normalizeText(title);
         if (!roomTitle) return '';
+        const roomEquipmentItems = Array.isArray(equipmentItems) ? equipmentItems : [];
         return `
             <h3 class="data-equipment-board-room-title">
                 <span class="data-equipment-board-room-title-main">
                     <span class="data-equipment-board-room-icon"><i class="fas fa-door-open" aria-hidden="true"></i></span>
-                    <span>${api.escapeHtml(roomTitle)}</span>
+                    <span class="data-equipment-board-room-name">${api.escapeHtml(roomTitle)}</span>
+                    ${renderBoardAddButton(teamKey, 'data-equipment-board-add-button data-equipment-board-room-add-button', roomTitle)}
                 </span>
                 <span class="data-equipment-board-room-actions">
-                    ${renderBoardAddButton(teamKey, 'data-equipment-board-add-button data-equipment-board-room-add-button', roomTitle)}
-                    ${renderBoardStatusActionGroup('room', { team: teamKey, room: roomTitle, disabled: equipmentCount <= 0 })}
+                    ${renderBoardStatusActionGroup('room', { team: teamKey, room: roomTitle, items: roomEquipmentItems, disabled: roomEquipmentItems.length <= 0 })}
                 </span>
             </h3>
         `;
@@ -516,7 +532,7 @@
                             <strong>${api.escapeHtml(group.team)}</strong>
                             <span class="data-equipment-board-team-count">${api.escapeHtml(sectionEquipment.length)}${api.escapeHtml('\uB300')}</span>
                             ${renderBoardAddButton(teamKey)}
-                            ${renderBoardStatusActionGroup('team', { team: teamKey, disabled: sectionEquipment.length <= 0 })}
+                            ${renderBoardStatusActionGroup('team', { team: teamKey, items: sectionEquipment, disabled: sectionEquipment.length <= 0 })}
                         </div>
                         <div class="data-equipment-board-team-actions">
                             <button type="button" class="data-equipment-board-team-order-toggle" data-equipment-order-toggle-team="${api.escapeHtml(teamKey)}" aria-label="${api.escapeHtml(orderToggleLabel)}" title="${api.escapeHtml(orderToggleLabel)}" aria-expanded="false">
@@ -526,7 +542,7 @@
                     </header>
                     ${visibleSections.map((section) => `
                         <div class="data-equipment-board-section">
-                            ${renderBoardSectionTitle(section.title, teamKey, section.equipment.length)}
+                            ${renderBoardSectionTitle(section.title, teamKey, section.equipment)}
                             <div class="data-equipment-board-card-row">
                                 ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex))).join('')}
                             </div>
@@ -548,7 +564,7 @@
                 <div class="data-equipment-index-overview">
                     ${renderBoardSummary(activeSummary)}
                     ${renderBoardStatusOverview(activeSummary)}
-                    ${renderBoardGlobalStatusActions(items.length)}
+                    ${renderBoardGlobalStatusActions(items)}
                 </div>
                 <div class="data-equipment-board ${filteredGroups.length ? '' : 'is-empty'}">
                     ${boardBody}
@@ -1361,32 +1377,31 @@
         return false;
     }
 
-    async function setBoardStatus(data, state, options = {}) {
-        const targetStatus = api.getEquipmentStatus(options.status).label;
-        if (!EQUIPMENT_BOARD_STATUS_CYCLE.includes(targetStatus)) return false;
+    async function cycleBoardStatus(data, state, options = {}) {
         const scope = api.normalizeText(options.scope || 'all');
         const targetTeam = api.normalizeText(options.team || '');
         const targetRoom = api.normalizeText(options.room || '');
         const nextList = getPayloadEquipmentList(data);
         const normalizedItems = api.normalizeEquipmentItems({ equipmentList: nextList });
-        let changedCount = 0;
-        normalizedItems.forEach((item) => {
-            if (!Number.isInteger(item.sourceIndex)) return;
-            if (!doesEquipmentItemMatchStatusScope(item, scope, targetTeam, targetRoom)) return;
+        const scopeItems = normalizedItems.filter((item) => (
+            Number.isInteger(item.sourceIndex)
+            && doesEquipmentItemMatchStatusScope(item, scope, targetTeam, targetRoom)
+        ));
+        if (!scopeItems.length) return false;
+        const targetStatus = getBoardStatusCycleTargetStatus(scopeItems);
+        scopeItems.forEach((item) => {
             nextList[item.sourceIndex] = {
                 ...nextList[item.sourceIndex],
                 status: targetStatus,
             };
-            changedCount += 1;
         });
-        if (!changedCount) return false;
         const nextPayload = {
             ...clonePayload(data),
             equipmentList: nextList,
         };
         await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_status_failed');
         state.selectedId = '';
-        state.message = `${changedCount}\uB300 \uC0C1\uD0DC\uB97C ${targetStatus}\uC73C\uB85C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.`;
+        state.message = `${scopeItems.length}\uB300 \uC0C1\uD0DC\uB97C ${targetStatus}\uC73C\uB85C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.`;
         return true;
     }
 
@@ -2420,11 +2435,10 @@
             });
         });
 
-        root.querySelectorAll('[data-equipment-set-board-status]').forEach((button) => {
+        root.querySelectorAll('[data-equipment-cycle-board-status]').forEach((button) => {
             button.addEventListener('click', async () => {
                 try {
-                    if (await setBoardStatus(data, state, {
-                        status: button.dataset.equipmentSetBoardStatus,
+                    if (await cycleBoardStatus(data, state, {
                         scope: button.dataset.equipmentStatusScope,
                         team: button.dataset.equipmentStatusTeam,
                         room: button.dataset.equipmentStatusRoom,
