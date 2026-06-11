@@ -11,7 +11,7 @@
     } = history;
 
     const DEFAULT_TITLE = '작업 이력';
-    const DEFAULT_SUBTITLE = '팀별 작업 기록을 카드형으로 조회하고 관리합니다.';
+    const DEFAULT_SUBTITLE = '';
     const DEFAULT_DELETE_MESSAGE = '이 작업내역을 삭제하시겠습니까?';
     const DEFAULT_DELETE_SUB_MESSAGE = '삭제 후에는 복구되지 않습니다.';
     const PRODUCTION_REPORT_TITLE = '생산 본부 실적보고';
@@ -66,8 +66,8 @@
         const rootEl = getElement('work-history-root');
         const titleEl = getElement('history-title');
         const subtitleEl = getElement('history-subtitle');
-        const workspacePillEl = getElement('history-workspace-pill');
-        const categoryRow = getElement('recordCategoryRow');
+        const categoryGroupField = getElement('recordCategoryGroupField');
+        const categoryField = getElement('recordCategoryField');
         const modalTitleEl = getElement('modalTitle');
         const workContentLabelEl = getElement('recordWorkContentLabel');
         const remarksLabelEl = getElement('recordRemarksLabel');
@@ -91,11 +91,11 @@
         if (subtitleEl) {
             subtitleEl.textContent = getWorkspaceSubtitle(category);
         }
-        if (workspacePillEl) {
-            workspacePillEl.hidden = !isProductionReport;
+        if (categoryGroupField) {
+            categoryGroupField.hidden = isProductionReport;
         }
-        if (categoryRow) {
-            categoryRow.hidden = isProductionReport;
+        if (categoryField) {
+            categoryField.hidden = isProductionReport;
         }
         if (modalTitleEl) {
             modalTitleEl.textContent = getRecordModalTitle(false);

@@ -63,9 +63,6 @@
         const title = typeof view.getWorkspaceTitle === 'function'
             ? view.getWorkspaceTitle()
             : '작업이력';
-        const subtitle = typeof view.getWorkspaceSubtitle === 'function'
-            ? view.getWorkspaceSubtitle()
-            : '전체 팀의 작업 현황과 기록을 한눈에 확인합니다.';
         return `
                 <header class="history-page-head history-topbar no-print">
                     <div class="history-topbar-brand" aria-hidden="true">
@@ -73,35 +70,68 @@
                     </div>
                     <div class="history-title-area history-topbar-title">
                         <h1 id="history-title">${escapeHtml(title)}</h1>
-                        <p id="history-subtitle">${escapeHtml(subtitle)}</p>
-                        <div class="history-topbar-team-switch" aria-label="작업이력 범위 선택">
-                            ${buildTopbarTeamButton(OVERVIEW_KEY)}
-                            ${TEAM_KEYS.map(team => buildTopbarTeamButton(team)).join('')}
-                        </div>
                     </div>
-                    <div class="history-page-tools history-topbar-actions" aria-label="작업이력 보기 정보">
-                        <span class="history-tool-pill history-tool-mode" id="history-workspace-pill"${isProductionWorkspace() ? '' : ' hidden'}>보고 전용</span>
-                        <span class="history-tool-pill history-tool-date">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M7 3v3M17 3v3M4 9h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                            </svg>
-                            <span data-role="current-date">-</span>
-                        </span>
+                    <div class="history-page-tools history-topbar-actions" aria-label="작업이력 필터">
+                        ${buildWorkspaceFilterControls()}
                     </div>
                 </header>
         `;
     }
 
-    function buildTopbarTeamButton(teamKey) {
-        const meta = TAB_META[teamKey];
-        const isActive = state.currentTeam === teamKey;
+    function buildWorkspaceFilterControls() {
         return `
-            <button class="history-topbar-team-button ${isActive ? 'active' : ''}" type="button" data-action="switch-tab" data-team="${teamKey}" aria-pressed="${isActive ? 'true' : 'false'}">
-                <span>${escapeHtml(meta.title)}</span>
-                <small data-team-metrics="${teamKey}">
-                    <span class="tab-metrics-count">0건</span>
-                </small>
-            </button>
+            <div class="history-workspace-controls no-print" aria-label="작업이력 필터">
+                <select class="history-workspace-select" data-role="topbar-team-filter" aria-label="팀 필터">
+                    ${buildTeamFilterOptionsMarkup()}
+                </select>
+                ${getWorkspaceCategoryFilterMarkup()}
+                <label class="history-workspace-search">
+                    <input
+                        class="history-workspace-search-input"
+                        type="search"
+                        data-role="keyword-search"
+                        value="${escapeAttribute(state.currentKeyword || '')}"
+                        placeholder="텍스트 검색"
+                        aria-label="텍스트 검색"
+                    >
+                    <span class="history-workspace-search-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" focusable="false">
+                            <circle cx="8.5" cy="8.5" r="5.2"></circle>
+                            <path d="M12.4 12.4L16.5 16.5"></path>
+                        </svg>
+                    </span>
+                </label>
+                <div class="history-workspace-filter-actions">
+                    <button class="history-workspace-filter-reset" type="button" data-action="reset-topbar-filters">필터 초기화</button>
+                    ${buildFullscreenToggleButton(OVERVIEW_KEY, 'history-workspace-fullscreen-toggle')}
+                </div>
+            </div>
+        `;
+    }
+
+    function buildTeamFilterOptionsMarkup() {
+        return [
+            `<option value="${OVERVIEW_KEY}"${state.currentTeam === OVERVIEW_KEY ? ' selected' : ''}>전체 팀</option>`,
+            ...TEAM_KEYS.map(teamKey => (
+                `<option value="${escapeAttribute(teamKey)}"${state.currentTeam === teamKey ? ' selected' : ''}>${escapeHtml(TAB_META[teamKey]?.title || TeamInfo[teamKey]?.name || teamKey)}</option>`
+            ))
+        ].join('');
+    }
+
+    function getWorkspaceCategoryFilterMarkup() {
+        const fixedFilter = typeof history.getFixedCategoryFilter === 'function'
+            ? history.getFixedCategoryFilter()
+            : '';
+        if (fixedFilter) {
+            return `
+                <input type="hidden" data-role="category-filter" value="${escapeAttribute(fixedFilter)}">
+                <span class="history-workspace-filter-lock" data-role="fixed-category-pill">보고만 보기</span>
+            `;
+        }
+        return `
+            <select class="history-workspace-select" data-role="category-filter" aria-label="구분 필터">
+                ${buildCategoryFilterOptionsMarkup()}
+            </select>
         `;
     }
 
@@ -111,7 +141,7 @@
             .map(groupKey => RECORD_CATEGORY_GROUPS[groupKey]?.label || groupKey)
             .filter(Boolean);
         return [
-            `<option value=""${state.currentCategoryFilter ? '' : ' selected'}>전체</option>`,
+            `<option value=""${state.currentCategoryFilter ? '' : ' selected'}>전체 구분</option>`,
             ...RECORD_CATEGORY_OPTIONS.map(category => (
                 `<option value="${escapeAttribute(category)}"${state.currentCategoryFilter === category ? ' selected' : ''}>${escapeHtml(category)}</option>`
             )),
@@ -188,43 +218,27 @@
         `;
     }
 
-    function getFullscreenIconSvg(isActive = false) {
-        if (isActive) {
-            return `
-                <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                    <path d="M8 3H3V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M12 3H17V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M8 17H3V12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M12 17H17V12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M8 3L3 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                    <path d="M12 3L17 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                    <path d="M8 17L3 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                    <path d="M12 17L17 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                </svg>
-            `;
-        }
-        return `
-            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M7 3H3V7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M13 3H17V7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M7 17H3V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M13 17H17V13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M7 7L3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M13 7L17 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M7 13L3 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M13 13L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-        `;
+    function getFullscreenIconClass(isActive = false) {
+        return isActive ? 'fa-compress' : 'fa-expand';
     }
 
-    function buildFullscreenToggleButton(prefix) {
+    function getFullscreenIconSvg(isActive = false) {
+        return isActive
+            ? '<svg class="history-fullscreen-icon-svg" viewBox="0 0 20 20" focusable="false"><path d="M8 3v5H3M12 3v5h5M8 17v-5H3M12 17v-5h5"></path></svg>'
+            : '<svg class="history-fullscreen-icon-svg" viewBox="0 0 20 20" focusable="false"><path d="M7 3H3v4M3 3l5 5M13 3h4v4M17 3l-5 5M7 17H3v-4M3 17l5-5M13 17h4v-4M17 17l-5-5"></path></svg>';
+    }
+
+    function buildFullscreenToggleButton(prefix, extraClassName = '') {
         const sectionTitle = prefix === OVERVIEW_KEY
             ? '전체 팀 작업내역'
             : `${TeamInfo[prefix]?.name || '팀'} 작업내역`;
         const label = `${sectionTitle} 전체화면`;
+        const className = ['btn btn-secondary btn-sm history-fullscreen-toggle', extraClassName]
+            .filter(Boolean)
+            .join(' ');
         return `
             <button
-                class="btn btn-secondary btn-sm history-fullscreen-toggle"
+                class="${escapeAttribute(className)}"
                 type="button"
                 data-action="toggle-fullscreen"
                 data-prefix="${escapeAttribute(prefix)}"
@@ -232,7 +246,9 @@
                 aria-label="${escapeAttribute(label)}"
                 title="${escapeAttribute(label)}"
             >
-                <span class="history-fullscreen-toggle-icon" data-fullscreen-icon>${getFullscreenIconSvg(false)}</span>
+                <span class="history-fullscreen-toggle-icon" data-fullscreen-icon aria-hidden="true">
+                    ${getFullscreenIconSvg(false)}
+                </span>
             </button>
         `;
     }
@@ -253,15 +269,29 @@
         const isActive = state.currentTeam === OVERVIEW_KEY;
         return `
             <section class="team-section ${isActive ? 'active' : ''}" id="overview">
-                <div class="section-header no-print">
-                    <h2><span class="team-badge overview">통합 현황</span></h2>
-                    <div class="section-actions">
-                        ${buildHistorySearchPanel({ isOverview: true })}
-                        ${buildDateRangeSelector(OVERVIEW_KEY)}
-                    </div>
-                </div>
                 <div class="overview-container" id="overview-records"></div>
             </section>
+        `;
+    }
+
+    function buildTeamAddButton(teamKey, extraClassName = '') {
+        const info = TeamInfo[teamKey] || {};
+        const teamClass = String(info.class || teamKey || '').trim();
+        const teamName = info.name || TAB_META[teamKey]?.title || teamKey || '';
+        const label = '\uCD94\uAC00';
+        const ariaLabel = `${teamName} \uB0B4\uC5ED \uCD94\uAC00`;
+        const className = ['work-history-team-add-button', teamClass, extraClassName]
+            .filter(Boolean)
+            .join(' ');
+        return `
+            <button
+                class="${escapeAttribute(className)}"
+                type="button"
+                data-action="add-record"
+                data-team="${escapeAttribute(teamKey)}"
+                aria-label="${escapeAttribute(ariaLabel)}"
+                title="${escapeAttribute(ariaLabel)}"
+            >${escapeHtml(label)}</button>
         `;
     }
 
@@ -274,12 +304,8 @@
                 <div class="section-header no-print">
                     <h2>
                         <span class="team-badge ${escapeHtml(info.class || '')}">${escapeHtml(meta.title)}</span>
-                        <button class="btn btn-success btn-sm" type="button" data-action="add-record" data-team="${teamKey}"><span data-role="add-record-label">${escapeHtml(typeof view.getAddRecordLabel === 'function' ? view.getAddRecordLabel() : '내역 추가')}</span></button>
+                        ${buildTeamAddButton(teamKey)}
                     </h2>
-                    <div class="section-actions">
-                        ${buildHistorySearchPanel()}
-                        ${buildDateRangeSelector(teamKey)}
-                    </div>
                 </div>
                 <div class="reports-container" id="${teamKey}-records"></div>
             </section>
@@ -307,19 +333,31 @@
                             <input type="hidden" id="formSourceTeam" value="">
                             <input type="hidden" id="formIndex" value="">
 
-                            <div class="form-row" id="recordCategoryRow"${isProductionWorkspace() ? ' hidden' : ''}>
-                                <div class="form-group">
+                            <div class="form-row record-meta-row" id="recordCategoryRow">
+                                <div class="form-group record-category-field" id="recordCategoryGroupField"${isProductionWorkspace() ? ' hidden' : ''}>
                                     <label for="recordCategoryGroup">구분</label>
                                     <select id="recordCategoryGroup" required>
                                         ${buildCategoryGroupOptionsMarkup()}
                                     </select>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group record-category-field" id="recordCategoryField"${isProductionWorkspace() ? ' hidden' : ''}>
                                     <label for="recordCategory">하위 카테고리</label>
                                     <select id="recordCategory" required>
                                         ${buildCategoryOptionsMarkup()}
                                     </select>
                                     <div class="file-help">구분에 따라 하위 카테고리를 고를 수 있습니다.</div>
+                                </div>
+                                <div class="form-group record-assignee-field">
+                                    <label for="recordAssignee">작업자</label>
+                                    <input type="text" id="recordAssignee" autocomplete="off" placeholder="김민현, 김철수" required>
+                                    <div class="field-helper">
+                                        <span class="field-helper-badge">쉼표 구분</span>
+                                        <span class="field-helper-text">여러 명은 쉼표로 구분합니다.</span>
+                                    </div>
+                                </div>
+                                <div class="form-group record-cost-field">
+                                    <label for="recordCost">비용</label>
+                                    <input type="text" id="recordCost" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="숫자만 입력 (원 단위)">
                                 </div>
                             </div>
 
@@ -350,21 +388,6 @@
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="recordAssignee">작업자</label>
-                                    <input type="text" id="recordAssignee" autocomplete="off" placeholder="김민현, 김철수" required>
-                                    <div class="field-helper">
-                                        <span class="field-helper-badge">쉼표 구분</span>
-                                        <span class="field-helper-text">여러 명은 쉼표로 구분합니다.</span>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="recordCost">비용</label>
-                                    <input type="text" id="recordCost" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="숫자만 입력 (원 단위)">
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
                                     <label for="recordRemarks" id="recordRemarksLabel">${isProductionWorkspace() ? '보고 메모' : '비고'}</label>
                                     <textarea id="recordRemarks" rows="3" placeholder="${escapeAttribute(isProductionWorkspace() ? '실적 수치, 특이사항, 후속 메모를 적습니다.' : '특이사항, 후속 메모, 참고 내용을 적습니다.')}"></textarea>
                                 </div>
@@ -373,8 +396,9 @@
                         </form>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" id="recordCancelButton" data-action="close-record-modal">취소</button>
-                        <button type="button" class="btn btn-primary" id="recordSaveButton" data-action="save-record">${escapeHtml(typeof view.getRecordSaveButtonLabel === 'function' ? view.getRecordSaveButtonLabel() : '저장')}</button>
+                        <button type="button" class="btn btn-secondary record-modal-action-button" id="recordCancelButton" data-action="close-record-modal">취소</button>
+                        <button type="button" class="btn btn-danger record-modal-action-button" id="recordDeleteButton" data-action="delete-current-record" hidden>삭제</button>
+                        <button type="button" class="btn btn-primary record-modal-action-button" id="recordSaveButton" data-action="save-record">${escapeHtml(typeof view.getRecordSaveButtonLabel === 'function' ? view.getRecordSaveButtonLabel() : '저장')}</button>
                     </div>
                 </div>
             </div>
@@ -404,12 +428,12 @@
 
     function getTeamIconSvg(team) {
         const icons = {
-            overview: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="4" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="14" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="14" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.8"/></svg>',
-            team1part1: '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5V5.2M12 18.8V21.5M21.5 12H18.8M5.2 12H2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
-            team1part2: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3C10.2 5.1 9.3 6.7 9.3 8.2C9.3 9.8 10.5 11 12 11C13.5 11 14.7 9.8 14.7 8.2C14.7 6.7 13.8 5.1 12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M6 16C6 12.7 8.6 10 12 10C15.4 10 18 12.7 18 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
-            team2: '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 8.5L12 4L19.5 8.5V17L12 21L4.5 17V8.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4.5 8.5L12 13L19.5 8.5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
-            team3: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3C9.1 6.4 6 9.2 6 13C6 16.3 8.7 19 12 19C15.3 19 18 16.3 18 13C18 9.2 14.9 6.4 12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
-            team4: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 4V18M7 9H17L14.5 13H17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="17" cy="18" r="3" stroke="currentColor" stroke-width="1.8"/></svg>'
+            overview: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 19V10M12 19V5M19 19V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 19.5H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+            team1part1: '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 15.5L15.7 6.1C16.7 5.3 18.2 5.7 18.7 6.9L21 12.2V18.5H4.5V15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.2" cy="11" r="1.1" fill="currentColor"/><circle cx="10.2" cy="15.2" r="1.1" fill="currentColor"/><path d="M4.5 15.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+            team1part2: '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 15.5L15.7 6.1C16.7 5.3 18.2 5.7 18.7 6.9L21 12.2V18.5H4.5V15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.2" cy="11" r="1.1" fill="currentColor"/><circle cx="10.2" cy="15.2" r="1.1" fill="currentColor"/><path d="M4.5 15.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+            team2: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 9.2L12 12.8L19 9.2M5 9.2L8.2 5.5L12 7.4L15.8 5.5L19 9.2V16.8L12 20.5L5 16.8V9.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 12.8V20.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+            team3: '<svg viewBox="0 0 24 24" fill="none"><path d="M10 3.5H14M10.6 3.5V6.4L8.8 8.4V19C8.8 20.1 9.7 21 10.8 21H13.2C14.3 21 15.2 20.1 15.2 19V8.4L13.4 6.4V3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 13.3C10.8 12.2 12.7 14.5 15 13.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+            team4: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 18L14.8 9.2M13.5 6.2L17.8 10.5M16.2 4.5L19.5 7.8L17.8 10.5L13.5 6.2L16.2 4.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.2 6.2L7.5 8.5M7.5 8.5L5.7 10.3L4 8.6L5.8 6.8L7.5 8.5ZM7.5 8.5L18 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         };
         return icons[team] || icons.overview;
     }
@@ -418,6 +442,8 @@
         const icons = {
             summary: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 7H18M6 12H18M6 17H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
             work: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 6.5H19M5 12H19M5 17.5H14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+            cost: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 7.5H17M7 12H17M7 16.5H13.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5 4H19V20H5V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+            date: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 4V7M17 4V7M5 9H19M7 13H10M14 13H17M7 17H10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5 6.5H19V20H5V6.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
             remarks: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 4.5H18C19.1 4.5 20 5.4 20 6.5V15.5C20 16.6 19.1 17.5 18 17.5H10L6 20.5V17.5H6C4.9 17.5 4 16.6 4 15.5V6.5C4 5.4 4.9 4.5 6 4.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>'
         };
         return icons[type] || icons.summary;
@@ -429,7 +455,11 @@
         buildCategoryGroupOptionsMarkup,
         buildCategoryOptionsMarkup,
         buildTabButton,
-        buildTopbarTeamButton,
+        buildTeamAddButton,
+        buildWorkspaceFilterControls,
+        buildTeamFilterOptionsMarkup,
+        getWorkspaceCategoryFilterMarkup,
+        getFullscreenIconClass,
         getFullscreenIconSvg,
         buildOverviewSection,
         buildTeamSection,

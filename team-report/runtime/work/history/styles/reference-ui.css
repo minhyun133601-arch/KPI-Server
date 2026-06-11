@@ -57,28 +57,28 @@
 
 .work-history-app .history-page-head {
     display: grid;
-    grid-template-columns: 52px minmax(0, 1fr) auto;
+    grid-template-columns: 44px minmax(260px, 1fr) minmax(360px, 620px);
     align-items: center;
     gap: 14px;
-    min-height: 88px;
+    min-height: 78px;
     margin-bottom: 14px;
     padding: 16px 18px;
-    border: 1px solid #132844;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #071a31 0%, #102b4b 100%);
-    color: #ffffff;
-    box-shadow: 0 16px 34px rgba(15, 35, 62, 0.18);
+    border: 1px solid #dde7f2;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #172b4d;
+    box-shadow: 0 12px 32px rgba(31, 51, 83, 0.07);
 }
 
 .work-history-app .history-title-area {
     min-width: 0;
-    text-align: center;
+    text-align: left;
 }
 
 .work-history-app .history-title-area h1 {
     margin: 0;
-    color: #ffffff;
-    font-size: clamp(1.55rem, 2.1vw, 2.05rem);
+    color: #172b4d;
+    font-size: clamp(1.32rem, 1.75vw, 1.72rem);
     font-weight: 900;
     line-height: 1.1;
     letter-spacing: 0;
@@ -86,8 +86,8 @@
 
 .work-history-app .history-title-area p {
     margin: 4px 0 0;
-    color: rgba(226, 238, 255, 0.84);
-    font-size: 0.92rem;
+    color: #6b7d99;
+    font-size: 0.88rem;
     font-weight: 800;
     line-height: 1.35;
 }
@@ -102,74 +102,108 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 42px;
-    height: 42px;
-    border: 1px solid rgba(34, 197, 94, 0.28);
-    border-radius: 12px;
-    background: rgba(34, 197, 94, 0.16);
-    color: #35d47e;
+    width: 34px;
+    height: 34px;
+    border: 1px solid #cfe1f8;
+    border-radius: 8px;
+    background: #eaf3ff;
+    color: #2563eb;
 }
 
 .work-history-app .history-topbar-brand-mark svg {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
 }
 
-.work-history-app .history-topbar-team-switch {
-    display: flex;
+.work-history-app .history-workspace-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(116px, 1fr) minmax(124px, 1fr) minmax(220px, 2fr) auto;
+    gap: 8px;
     align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 10px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
-.work-history-app .history-topbar-team-button {
-    display: inline-grid;
-    grid-template-columns: minmax(0, auto) auto;
-    align-items: center;
-    gap: 6px;
-    min-height: 30px;
-    max-width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.22);
+.work-history-app .history-workspace-select,
+.work-history-app .history-workspace-filter-lock,
+.work-history-app .history-workspace-search-input {
+    width: 100%;
+    height: 38px;
+    border: 1px solid #d7e2ef;
     border-radius: 7px;
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.84);
-    padding: 0 9px;
-    font-size: 0.78rem;
-    font-weight: 900;
-    cursor: pointer;
+    background: #ffffff;
+    color: #243b61;
+    padding: 0 12px;
+    font-size: 0.8rem;
+    font-weight: 800;
 }
 
-.work-history-app .history-topbar-team-button:hover,
-.work-history-app .history-topbar-team-button:focus-visible {
-    border-color: rgba(47, 226, 124, 0.68);
-    background: rgba(255, 255, 255, 0.16);
-    outline: none;
+.work-history-app .history-workspace-select {
+    appearance: none;
+    padding-right: 34px;
+    background-image: linear-gradient(45deg, transparent 50%, #607697 50%), linear-gradient(135deg, #607697 50%, transparent 50%), linear-gradient(to right, #d7e2ef, #d7e2ef);
+    background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%, calc(100% - 32px) 50%;
+    background-repeat: no-repeat;
+    background-size: 5px 5px, 5px 5px, 1px 20px;
 }
 
-.work-history-app .history-topbar-team-button.active {
-    border-color: rgba(47, 226, 124, 0.86);
-    background: rgba(47, 226, 124, 0.18);
-    color: #ffffff;
+.work-history-app .history-workspace-select::-ms-expand { display: none; }
+
+.work-history-app .history-workspace-select:focus,
+.work-history-app .history-workspace-search-input:focus {
+    outline: none; border-color: #8fb9ef; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
-.work-history-app .history-topbar-team-button span,
-.work-history-app .history-topbar-team-button small {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.work-history-app .history-workspace-search { position: relative; display: block; min-width: 0; }
+
+.work-history-app .history-workspace-search-input { padding-right: 34px; }
+
+.work-history-app .history-workspace-search-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; color: #607697; pointer-events: none; }
+.work-history-app .history-workspace-search-icon svg { width: 15px; height: 15px; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.work-history-app .history-workspace-filter-lock { display: inline-flex; align-items: center; }
+
+.work-history-app .history-workspace-filter-actions { width: 100%; min-width: 0; display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; }
+
+.work-history-app .history-workspace-filter-reset {
+    height: 38px; border: 1px solid #d7e2ef; border-radius: 7px; background: #ffffff; color: #243b61;
+    padding: 0 13px; font-size: 0.8rem; font-weight: 900; white-space: nowrap; cursor: pointer;
 }
 
-.work-history-app .history-topbar-team-button small {
-    color: rgba(226, 238, 255, 0.72);
-    font-size: 0.68rem;
-    font-weight: 900;
+.work-history-app .btn.history-workspace-fullscreen-toggle {
+    width: 38px; min-width: 38px; height: 38px; min-height: 38px; display: inline-flex;
+    align-items: center; justify-content: center; gap: 0; padding: 0; border: 1px solid #d7e2ef;
+    border-radius: 7px; background: #ffffff; color: #243b61; cursor: pointer;
+}
+
+.work-history-app .btn.history-workspace-fullscreen-toggle:hover,
+.work-history-app .btn.history-workspace-fullscreen-toggle:focus-visible {
+    border-color: #8fb9ef; background: #eff6ff; color: #0d67d6; outline: none;
+}
+
+.work-history-app .btn.history-workspace-fullscreen-toggle.is-active {
+    border-color: #93c5fd; background: #dbeafe; color: #1d4ed8;
+}
+
+.work-history-app .btn.history-workspace-fullscreen-toggle .history-fullscreen-toggle-icon {
+    display: inline-flex; align-items: center; justify-content: center; width: 1rem; font-size: 0.92rem;
+}
+
+.work-history-app .btn.history-workspace-fullscreen-toggle .history-fullscreen-toggle-icon svg { width: 15px; height: 15px; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.work-history-app .history-workspace-filter-reset:hover,
+.work-history-app .history-workspace-filter-reset:focus-visible {
+    border-color: #8fb9ef; background: #eff6ff; color: #0d67d6; outline: none;
 }
 
 .work-history-app .history-topbar-actions {
     justify-content: flex-end;
+    min-width: 0;
 }
 
 .work-history-app .history-page-tools {
@@ -458,6 +492,11 @@
 }
 
 .work-history-app .history-search-panel {
+    width: 100%;
+    min-width: 0;
+    max-width: 620px;
+    display: grid;
+    flex: 1 1 620px;
     align-items: center;
     gap: 10px;
     margin-bottom: 18px;
@@ -468,8 +507,32 @@
     box-shadow: none;
 }
 
+.work-history-app .history-search-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(220px, 2fr) minmax(124px, 1fr) auto minmax(0, auto);
+    gap: 8px;
+    align-items: center;
+    flex: none;
+    min-width: 0;
+}
+
 .work-history-app .history-search-input,
-.work-history-app .history-search-panel select,
+.work-history-app .history-search-panel select {
+    width: 100%;
+    min-width: 0;
+    height: 38px;
+    border: 1px solid #d7e2ef;
+    border-radius: 7px;
+    background: #ffffff;
+    box-shadow: none;
+    color: #243b61;
+    padding: 0 12px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    flex: none;
+}
+
 .work-history-app .date-range-selector input {
     height: 38px;
     border-color: #e4e9f2;
@@ -479,6 +542,21 @@
     color: #344054;
     font-size: 12px;
     font-weight: 700;
+}
+
+.work-history-app .btn.history-search-action {
+    height: 38px;
+    min-height: 38px;
+    min-width: 78px;
+    border-radius: 7px;
+}
+
+.work-history-app .search-result-count {
+    min-width: 0;
+    color: #607697;
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
 }
 
 .work-history-app .date-range-selector {
@@ -593,19 +671,19 @@
 .work-history-app .team-badge.team2 {
     background: rgba(5, 150, 105, 0.12);
     border-color: rgba(5, 150, 105, 0.2);
-    color: #047857;
+    color: var(--team2-strong);
 }
 
 .work-history-app .team-badge.team3 {
     background: rgba(124, 58, 237, 0.12);
     border-color: rgba(124, 58, 237, 0.2);
-    color: #5b21b6;
+    color: var(--team3-strong);
 }
 
 .work-history-app .team-badge.team4 {
     background: rgba(220, 38, 38, 0.12);
     border-color: rgba(220, 38, 38, 0.2);
-    color: #b91c1c;
+    color: var(--team4-strong);
 }
 
 .work-history-app .record-team-icon {
@@ -642,6 +720,14 @@
 }
 
 @media (max-width: 960px) {
+    .work-history-app .history-workspace-controls {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .work-history-app .history-workspace-filter-actions {
+        grid-column: 1 / -1;
+    }
+
     .work-history-app .history-page-head {
         grid-template-columns: 44px minmax(0, 1fr);
     }
@@ -669,6 +755,22 @@
 
     .work-history-app .history-title-area h1 {
         font-size: 28px;
+    }
+
+    .work-history-app .history-workspace-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .work-history-app .history-search-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .work-history-app .history-workspace-filter-actions {
+        justify-content: stretch;
+    }
+
+    .work-history-app .history-workspace-filter-reset {
+        flex: 1 1 auto;
     }
 
     .work-history-app .tab-navigation,

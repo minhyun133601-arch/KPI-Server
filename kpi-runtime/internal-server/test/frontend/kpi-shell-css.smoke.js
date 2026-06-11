@@ -41,8 +41,8 @@ const styleEntries = [
     relativeSegments: ['metering', 'metering.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/audit/audit.css?v=064`,
-    manifestHref: './styles/audit/audit.css?v=064',
+    href: `${runtimeDirName}/app/styles/audit/audit.css?v=070`,
+    manifestHref: './styles/audit/audit.css?v=070',
     fileName: 'audit.css',
     relativeSegments: ['audit', 'audit.css'],
   },
@@ -153,6 +153,50 @@ test('split shell css keeps key selectors in the expected files', () => {
 
   assert.match(styleContents['audit.css'], /\.audit-panel\s*\{/);
   assert.match(styleContents['audit.css'], /\.print-sheet\s*\{/);
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-shell\s*\{[^}]*height:\s*calc\(100vh - 84px\);[^}]*padding:\s*14px\s*16px\s*20px;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-window\s*\{[^}]*height:\s*100%;[^}]*grid-template-rows:\s*auto\s*minmax\(0,\s*1fr\)\s*auto;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /#content-container\.is-audit-lux-browser-fullscreen \.audit-lux-shell,\s*[\r\n\s]*#content-container:fullscreen \.audit-lux-shell\s*\{[^}]*height:\s*100dvh;[^}]*padding:\s*0;/s
+  );
+  assert.match(styleContents['audit.css'], /\.audit-lux-window-icon\s*\{/);
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-window-header\s*\{[^}]*grid-template-columns:\s*44px\s*minmax\(260px,\s*1fr\)\s*auto;[^}]*min-height:\s*78px;[^}]*padding:\s*16px\s*18px;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-window-title\s*\{[^}]*font-size:\s*clamp\(1\.32rem,\s*1\.75vw,\s*1\.72rem\);[^}]*line-height:\s*1\.1;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-fullscreen-toggle\s*\{[^}]*width:\s*38px;[^}]*height:\s*38px;[^}]*border-radius:\s*7px;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-index-card\s*\{[^}]*min-height:\s*252px;[^}]*grid-template-rows:\s*auto\s*96px\s*auto;[^}]*border-radius:\s*8px;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-index-card-media-link\s*\{[^}]*cursor:\s*zoom-in;[^}]*text-decoration:\s*none;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-index-card-actions\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*gap:\s*0\.45rem;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-index-empty-thumb\s*\{[^}]*font-size:\s*0\.82rem;[^}]*font-weight:\s*900;/s
+  );
+  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-card-status\s*\{/);
+  assert.match(styleContents['audit.css'], /\.audit-lux-index-team-icon\s*\{/);
+  assert.doesNotMatch(styleContents['audit.css'], /audit-lux-index-card\s*\{\s*grid-template-rows:\s*150px\s*auto\s*auto/);
 });
 
 test('utility sheet report modal stays above the viewer layer', () => {

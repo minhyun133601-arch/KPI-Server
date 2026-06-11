@@ -64,12 +64,15 @@
         form?.reset();
         const sourceTeamInput = getElement('formSourceTeam');
         const formIndexInput = getElement('formIndex');
+        const recordDeleteButton = getElement('recordDeleteButton');
         const recordStartDate = getElement('recordStartDate');
         const recordEndDate = getElement('recordEndDate');
         const minDate = typeof view.minInputValue === 'function' ? view.minInputValue() : '2024-01-01';
         const today = view.todayInputValue();
+        const isEditMode = index !== null && Number.isFinite(index);
         if (sourceTeamInput) sourceTeamInput.value = team;
-        if (formIndexInput) formIndexInput.value = index !== null ? String(index) : '';
+        if (formIndexInput) formIndexInput.value = isEditMode ? String(index) : '';
+        if (recordDeleteButton) recordDeleteButton.hidden = !isEditMode;
         if (recordStartDate) {
             recordStartDate.min = minDate;
             recordStartDate.max = today;
@@ -87,7 +90,7 @@
         const recordTeam = getElement('recordTeam');
         if (recordTeam) recordTeam.value = defaultTeam;
 
-        if (index !== null && Number.isFinite(index)) {
+        if (isEditMode) {
             const record = getPayload().teams?.[team]?.[index];
             if (record) {
                 const editCategory = normalizeRecordCategory(record.category, { preserveLegacy: true }) || String(record.category || '').trim();
@@ -134,6 +137,15 @@
     function openDeleteModal(team, index) {
         state.pendingDelete = { team, index };
         getElement('deleteModal')?.classList.add('show');
+    }
+
+    function deleteCurrentRecordFromModal() {
+        const sourceTeam = String(getElement('formSourceTeam')?.value || '').trim();
+        const index = Number(String(getElement('formIndex')?.value || '').trim());
+        if (!TeamInfo[sourceTeam] || !Number.isInteger(index) || index < 0) return false;
+        closeRecordModal({ force: true });
+        openDeleteModal(sourceTeam, index);
+        return true;
     }
 
     function closeDeleteModal() {
@@ -312,6 +324,7 @@
         closeRecordModal,
         isRecordModalOpen,
         openDeleteModal,
+        deleteCurrentRecordFromModal,
         closeDeleteModal,
         isDeleteModalOpen,
         updateAssigneePreview,

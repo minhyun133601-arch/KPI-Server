@@ -224,6 +224,21 @@
         ].map((value) => api.normalizeText(value).toLowerCase()).filter(Boolean).join(' ');
     }
 
+    function escapeEquipmentSearchRegExp(value) {
+        return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function getBoardSearchKeyword(state) {
+        return api.normalizeText(getBoardFilters(state).search);
+    }
+
+    function highlightBoardSearchText(value, state) {
+        const text = api.escapeHtml(value);
+        const keyword = getBoardSearchKeyword(state);
+        if (!keyword || !text) return text;
+        return text.replace(new RegExp(`(${escapeEquipmentSearchRegExp(api.escapeHtml(keyword))})`, 'gi'), '<mark>$1</mark>');
+    }
+
     function getBoardFilters(state) {
         if (!state.filters) state.filters = { team: '', status: '', search: '' };
         return state.filters;
@@ -243,6 +258,20 @@
         });
     }
 
+    function applyBoardSearchFilter(root, state, redraw, input) {
+        const filters = getBoardFilters(state);
+        const value = input?.value || '';
+        filters.search = value;
+        const selectionStart = Number.isFinite(input?.selectionStart) ? input.selectionStart : value.length;
+        redraw();
+        const nextInput = root.querySelector?.('[data-equipment-filter-search]');
+        if (nextInput) {
+            nextInput.value = value;
+            nextInput.focus?.();
+            nextInput.setSelectionRange?.(selectionStart, selectionStart);
+        }
+    }
+
     function getSafeBoardTeamColor(value, fallback) {
         const raw = api.normalizeText(value);
         return /^#[0-9a-f]{6}$/i.test(raw) ? raw : fallback;
@@ -255,9 +284,26 @@
         return `--equipment-team-color:${api.escapeHtml(color)};--equipment-team-color-2:${api.escapeHtml(secondaryColor)};--equipment-team-tint:${api.escapeHtml(tint)};`;
     }
 
-    function getEquipmentTeamIconClass(meta) {
-        const icon = api.normalizeText(meta?.icon).split(/\s+/).find((token) => /^fa-[a-z0-9-]+$/i.test(token));
-        return icon || 'fa-industry';
+    function getEquipmentTeamIconKey(meta) {
+        const dataKey = api.normalizeText(meta?.dataKey || '');
+        if (dataKey) return dataKey;
+        const icon = api.normalizeText(meta?.icon);
+        if (icon.includes('fa-cheese')) return 'work_team_calendar_team1_part1';
+        if (icon.includes('fa-box-open')) return 'work_team_calendar_team2';
+        if (icon.includes('fa-bottle-water')) return 'work_team_calendar_team3';
+        if (icon.includes('fa-screwdriver-wrench')) return 'work_team_calendar_team4';
+        return api.resolveEquipmentHistoryTeamDataKey?.(meta?.title || '') || '';
+    }
+
+    function getEquipmentTeamIconSvg(meta) {
+        const icons = {
+            work_team_calendar_team1_part1: '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 15.5L15.7 6.1C16.7 5.3 18.2 5.7 18.7 6.9L21 12.2V18.5H4.5V15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.2" cy="11" r="1.1" fill="currentColor"/><circle cx="10.2" cy="15.2" r="1.1" fill="currentColor"/><path d="M4.5 15.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+            work_team_calendar_team1_part2: '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 15.5L15.7 6.1C16.7 5.3 18.2 5.7 18.7 6.9L21 12.2V18.5H4.5V15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.2" cy="11" r="1.1" fill="currentColor"/><circle cx="10.2" cy="15.2" r="1.1" fill="currentColor"/><path d="M4.5 15.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+            work_team_calendar_team2: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 9.2L12 12.8L19 9.2M5 9.2L8.2 5.5L12 7.4L15.8 5.5L19 9.2V16.8L12 20.5L5 16.8V9.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 12.8V20.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+            work_team_calendar_team3: '<svg viewBox="0 0 24 24" fill="none"><path d="M10 3.5H14M10.6 3.5V6.4L8.8 8.4V19C8.8 20.1 9.7 21 10.8 21H13.2C14.3 21 15.2 20.1 15.2 19V8.4L13.4 6.4V3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 13.3C10.8 12.2 12.7 14.5 15 13.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+            work_team_calendar_team4: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 18L14.8 9.2M13.5 6.2L17.8 10.5M16.2 4.5L19.5 7.8L17.8 10.5L13.5 6.2L16.2 4.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.2 6.2L7.5 8.5M7.5 8.5L5.7 10.3L4 8.6L5.8 6.8L7.5 8.5ZM7.5 8.5L18 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        };
+        return icons[getEquipmentTeamIconKey(meta)] || '<svg viewBox="0 0 24 24" fill="none"><path d="M5 19V10M12 19V5M19 19V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 19.5H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
     }
 
     function getEquipmentStatusIconClass(statusTone) {
@@ -280,7 +326,7 @@
         return `<span><i class="fas fa-industry" aria-hidden="true"></i></span>`;
     }
 
-    function renderBoardCard(item, orderMeta = {}) {
+    function renderBoardCard(item, orderMeta = {}, state = {}) {
         const statusMeta = item.statusMeta || api.getEquipmentStatus(item.status);
         const statusTone = ['running', 'stop', 'check'].includes(statusMeta.tone) ? statusMeta.tone : 'running';
         const toneClassName = `is-${statusTone}`;
@@ -293,7 +339,7 @@
                     ${renderBoardCardMedia(item)}
                 </div>
                 <div class="data-equipment-board-card-main">
-                    <strong>${api.escapeHtml(item.name)}</strong>
+                    <strong>${highlightBoardSearchText(item.name, state)}</strong>
                 </div>
                 <div class="data-equipment-board-card-tools" aria-hidden="true">
                     <button type="button" class="data-equipment-board-order-button" data-equipment-move-card="${api.escapeHtml(item.id)}" data-equipment-move-direction="-1" aria-label="${api.escapeHtml(moveUpLabel)}" title="${api.escapeHtml(moveUpLabel)}"${orderMeta.canMoveUp ? '' : ' disabled'}>
@@ -526,7 +572,7 @@
                 <section class="data-equipment-board-column" data-equipment-board-team="${api.escapeHtml(teamKey)}" style="${getBoardTeamStyle(teamMeta)}">
                     <header>
                         <div class="data-equipment-board-team-title">
-                            <span class="data-equipment-board-team-icon"><i class="fas fa-users" aria-hidden="true"></i></span>
+                            <span class="data-equipment-board-team-icon" aria-hidden="true">${getEquipmentTeamIconSvg(teamMeta)}</span>
                             <strong>${api.escapeHtml(group.team)}</strong>
                             <span class="data-equipment-board-team-count">${api.escapeHtml(sectionEquipment.length)}${api.escapeHtml('\uB300')}</span>
                             ${renderBoardAddButton(teamKey)}
@@ -542,7 +588,7 @@
                         <div class="data-equipment-board-section">
                             ${renderBoardSectionTitle(section.title, teamKey, section.equipment)}
                             <div class="data-equipment-board-card-row">
-                                ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex))).join('')}
+                                ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex), state)).join('')}
                             </div>
                         </div>
                     `).join('')}
@@ -857,11 +903,10 @@
     }
 
     function renderTitleTeamSelect(value, teamMeta) {
-        const iconClass = getEquipmentTeamIconClass(teamMeta);
         return `
             <div class="data-equipment-title-field data-equipment-title-team-field">
                 <span class="data-equipment-title-team-icon" aria-hidden="true">
-                    <i class="fas ${api.escapeHtml(iconClass)}"></i>
+                    ${getEquipmentTeamIconSvg(teamMeta)}
                 </span>
                 ${api.renderTeamSelect(
                     value,
@@ -928,12 +973,10 @@
         if (isCardStart) {
             return `
                 <h2 class="data-equipment-title-pair">${renderTopbarBackButton()}<span>${api.escapeHtml('팀과 설비명 입력')}</span></h2>
-                <p>${api.escapeHtml('입력 후 작성란이 열립니다.')}</p>
             `;
         }
         return `
             <h2>${api.escapeHtml(data?.header?.title || '설비 이력 카드')}</h2>
-            <p>${api.escapeHtml('팀별 설비 현황과 상태를 한눈에 확인하고, 상세 이력 카드를 열람합니다.')}</p>
         `;
     }
 
@@ -1710,7 +1753,7 @@
         const teamLabel = normalizePrintText(draft.team) || '-';
         const roomLabel = normalizePrintText(draft.room) || '-';
         const teamMeta = api.getEquipmentHistoryTeamMeta?.(draft.team) || {};
-        const teamIconClass = getEquipmentTeamIconClass(teamMeta);
+        const teamIconSvg = getEquipmentTeamIconSvg(teamMeta);
         return `
 <!DOCTYPE html>
 <html lang="ko">
@@ -1754,6 +1797,7 @@
         .data-equipment-photo-title-row .data-equipment-title-room,
         .data-equipment-photo-title-row .data-equipment-title-name { min-width: 0; min-height: 9mm; display: flex; align-items: center; justify-content: flex-start; gap: 1.6mm; border: 1px solid #d7e2ef; border-radius: 7px; background: #ffffff; color: #132844; padding: 1.5mm 2mm; font-family: 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif; line-height: 1.15; word-break: keep-all; }
         .data-equipment-title-team-icon { width: 7mm; height: 7mm; display: inline-flex; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--equipment-team-color, #2563eb) 24%, #ffffff); border-radius: 7px; background: color-mix(in srgb, var(--equipment-team-color, #2563eb) 14%, #ffffff); color: var(--equipment-team-color, #2563eb); font-size: 8.5px; flex: 0 0 auto; }
+        .data-equipment-title-team-icon svg { width: 4.8mm; height: 4.8mm; display: block; }
         .data-equipment-title-value { min-width: 0; overflow: hidden; color: #132844; font-size: 13px; font-weight: 900; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
         .equipment-print-section-stack { min-height: 0; display: grid; gap: 2mm; align-content: start; }
         .data-equipment-card,
@@ -1837,7 +1881,7 @@
                         </div>
                         <div class="data-equipment-photo-title-row equipment-print-photo-title-row" style="${getBoardTeamStyle(teamMeta)}">
                             <span class="data-equipment-title-team">
-                                <span class="data-equipment-title-team-icon" aria-hidden="true"><i class="fas ${api.escapeHtml(teamIconClass)}"></i></span>
+                                <span class="data-equipment-title-team-icon" aria-hidden="true">${teamIconSvg}</span>
                                 <span class="data-equipment-title-value">${renderPrintText(teamLabel, '-')}</span>
                             </span>
                             <span class="data-equipment-title-room">
@@ -2387,17 +2431,17 @@
         });
 
         root.querySelector('[data-equipment-filter-search]')?.addEventListener('change', (event) => {
-            const filters = getBoardFilters(state);
-            filters.search = event.target.value || '';
-            redraw();
+            applyBoardSearchFilter(root, state, redraw, event.target);
+        });
+
+        root.querySelector('[data-equipment-filter-search]')?.addEventListener('input', (event) => {
+            applyBoardSearchFilter(root, state, redraw, event.target);
         });
 
         root.querySelector('[data-equipment-filter-search]')?.addEventListener('keydown', (event) => {
             if (event.key !== 'Enter') return;
             event.preventDefault();
-            const filters = getBoardFilters(state);
-            filters.search = event.target.value || '';
-            redraw();
+            applyBoardSearchFilter(root, state, redraw, event.target);
         });
 
         root.querySelector('[data-equipment-filter-reset]')?.addEventListener('click', () => {

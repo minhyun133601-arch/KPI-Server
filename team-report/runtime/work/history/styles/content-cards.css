@@ -87,6 +87,52 @@
     vertical-align: middle;
 }
 
+.work-history-team-add-button {
+    --history-team-accent: var(--primary-700);
+    min-width: 42px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--history-team-accent) 34%, #d7e2ef);
+    border-radius: 7px;
+    background: #ffffff;
+    color: color-mix(in srgb, var(--history-team-accent) 78%, #172b4d);
+    padding: 0 8px;
+    font-size: 0.72rem;
+    font-weight: 900;
+    line-height: 1;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.work-history-team-add-button.team1part1 {
+    --history-team-accent: var(--team1part1-color);
+}
+
+.work-history-team-add-button.team1part2 {
+    --history-team-accent: var(--team1part2-color);
+}
+
+.work-history-team-add-button.team2 {
+    --history-team-accent: var(--team2-color);
+}
+
+.work-history-team-add-button.team3 {
+    --history-team-accent: var(--team3-color);
+}
+
+.work-history-team-add-button.team4 {
+    --history-team-accent: var(--team4-color);
+}
+
+.work-history-team-add-button:hover,
+.work-history-team-add-button:focus-visible {
+    border-color: color-mix(in srgb, var(--history-team-accent) 55%, #bfdbfe);
+    background: color-mix(in srgb, var(--history-team-accent) 10%, #ffffff);
+    outline: none;
+}
+
 .section-actions {
     display: flex;
     align-items: center;
@@ -243,15 +289,15 @@
 }
 
 .team-badge.team2 {
-    background: linear-gradient(135deg, var(--team2-color), #047857);
+    background: linear-gradient(135deg, var(--team2-color), var(--team2-strong));
 }
 
 .team-badge.team3 {
-    background: linear-gradient(135deg, var(--team3-color), #5b21b6);
+    background: linear-gradient(135deg, var(--team3-color), var(--team3-strong));
 }
 
 .team-badge.team4 {
-    background: linear-gradient(135deg, var(--team4-color), #b91c1c);
+    background: linear-gradient(135deg, var(--team4-color), var(--team4-strong));
 }
 
 .btn {
@@ -563,15 +609,15 @@
 }
 
 .report-card.team2 .report-card-header {
-    background: linear-gradient(135deg, var(--team2-color), #047857);
+    background: linear-gradient(135deg, var(--team2-color), var(--team2-strong));
 }
 
 .report-card.team3 .report-card-header {
-    background: linear-gradient(135deg, var(--team3-color), #5b21b6);
+    background: linear-gradient(135deg, var(--team3-color), var(--team3-strong));
 }
 
 .report-card.team4 .report-card-header {
-    background: linear-gradient(135deg, var(--team4-color), #b91c1c);
+    background: linear-gradient(135deg, var(--team4-color), var(--team4-strong));
 }
 
 .report-card.team1part1 .report-card-header {

@@ -37,17 +37,14 @@
             categories: Object.freeze([
                 '설비 가동률 증대',
                 '자체 정비',
-                '계획 이행률',
-                '건조기 설치',
-                '법규 준수'
+                '계획 이행률'
             ])
         }),
         focus: Object.freeze({
             label: '중점 추진 과제',
             categories: Object.freeze([
                 '모니터링 운영 체계',
-                '데이터 관리 체계',
-                '법규 리스크 제로'
+                '데이터 관리 체계'
             ])
         }),
         report: Object.freeze({

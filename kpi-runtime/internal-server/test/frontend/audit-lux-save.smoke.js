@@ -87,3 +87,23 @@ test('audit lux workspace loads detached preview template before workspace behav
   assert.match(auditPreviewActionsSource, /KPIAuditLuxDetachedPreview must load before KPI\.audit\.records\.lux-preview-actions\.js/);
   assert.doesNotMatch(auditWorkspaceSource, /function buildAuditLuxDetachedPreviewHtml/);
 });
+
+test('audit lux workspace keeps a compact title-only file header', () => {
+  assert.match(auditWorkspaceSource, /<div class="audit-lux-window-brand" aria-hidden="true">/);
+  assert.match(auditWorkspaceSource, /<span class="audit-lux-window-icon"><i class="fa-solid fa-lightbulb"><\/i><\/span>/);
+  assert.match(auditWorkspaceSource, /<h2 class="audit-lux-window-title">조도<\/h2>/);
+  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-window-kicker/);
+  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-window-desc/);
+  assert.doesNotMatch(auditWorkspaceSource, /조도 파일/);
+  assert.doesNotMatch(auditWorkspaceSource, /팀별 연도 조도본을 보관합니다/);
+});
+
+test('audit lux file cards use team report icons and quiet status headers', () => {
+  assert.match(auditWorkspaceSource, /function getAuditLuxTeamIconSvg/);
+  assert.match(auditWorkspaceSource, /team1part1: '<svg viewBox="0 0 24 24" fill="none"><path d="M4\.5 15\.5L15\.7 6\.1/);
+  assert.match(auditWorkspaceSource, /team2: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 9\.2L12 12\.8L19 9\.2/);
+  assert.match(auditWorkspaceSource, /<span class="audit-lux-index-team-icon" aria-hidden="true">\$\{getAuditLuxTeamIconSvg\(teamKey\)\}<\/span>/);
+  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-card-status/);
+  assert.doesNotMatch(auditWorkspaceSource, /statusLabel/);
+  assert.doesNotMatch(auditWorkspaceSource, /`\$\{teamLabel\} 미첨부`/);
+});

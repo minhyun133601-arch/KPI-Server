@@ -20,10 +20,20 @@
     }
 
     function getActiveSearchInput(triggerTarget = null) {
+        if (triggerTarget?.matches?.('[data-role="keyword-search"]')) {
+            return triggerTarget;
+        }
+
         const panel = triggerTarget?.closest?.('.history-search-panel') || null;
         if (panel) {
             const panelInput = panel.querySelector('[data-role="keyword-search"]');
             if (panelInput) return panelInput;
+        }
+
+        const workspaceControls = triggerTarget?.closest?.('.history-workspace-controls') || null;
+        if (workspaceControls) {
+            const workspaceInput = workspaceControls.querySelector('[data-role="keyword-search"]');
+            if (workspaceInput) return workspaceInput;
         }
 
         const activeSection = history.queryAll('.team-section.active')[0] || null;
@@ -36,10 +46,20 @@
     }
 
     function getActiveCategoryFilterSelect(triggerTarget = null) {
+        if (triggerTarget?.matches?.('[data-role="category-filter"]')) {
+            return triggerTarget;
+        }
+
         const panel = triggerTarget?.closest?.('.history-search-panel') || null;
         if (panel) {
             const panelSelect = panel.querySelector('[data-role="category-filter"]');
             if (panelSelect) return panelSelect;
+        }
+
+        const workspaceControls = triggerTarget?.closest?.('.history-workspace-controls') || null;
+        if (workspaceControls) {
+            const workspaceSelect = workspaceControls.querySelector('[data-role="category-filter"]');
+            if (workspaceSelect) return workspaceSelect;
         }
 
         const activeSection = history.queryAll('.team-section.active')[0] || null;
@@ -122,6 +142,15 @@
         view.updateSearchCount?.();
     }
 
+    function syncTopbarFilterUi() {
+        const currentTeam = TEAM_KEYS.includes(state.currentTeam) || state.currentTeam === view.OVERVIEW_KEY
+            ? state.currentTeam
+            : view.OVERVIEW_KEY;
+        history.queryAll('[data-role="topbar-team-filter"]').forEach((select) => {
+            select.value = currentTeam;
+        });
+    }
+
     function syncActiveTabUi() {
         history.queryAll('.tab-btn, .history-topbar-team-button').forEach(button => {
             const isActive = button.dataset.team === state.currentTeam;
@@ -131,6 +160,7 @@
         history.queryAll('.team-section').forEach(section => {
             section.classList.toggle('active', section.id === state.currentTeam);
         });
+        syncTopbarFilterUi();
         view.syncFullscreenButtons?.();
     }
 
@@ -144,6 +174,20 @@
         syncSearchInputs('');
         syncCategoryFilterInputs(state.currentCategoryFilter);
         view.resetRecordPage?.(prefix);
+        view.renderCurrentView?.();
+    }
+
+    function resetTopbarFilters() {
+        history.queryAll('.date-range-selector input[type="date"]').forEach((input) => {
+            input.value = '';
+        });
+        state.currentTeam = view.OVERVIEW_KEY;
+        state.currentKeyword = '';
+        state.currentCategoryFilter = getResolvedCategoryFilter('');
+        syncSearchInputs('');
+        syncCategoryFilterInputs(state.currentCategoryFilter);
+        syncActiveTabUi();
+        view.resetRecordPage?.();
         view.renderCurrentView?.();
     }
 
@@ -173,8 +217,10 @@
         syncCategoryFilterInputs,
         syncRecordCategoryInputs,
         switchTab,
+        syncTopbarFilterUi,
         syncActiveTabUi,
         resetDateFilters,
+        resetTopbarFilters,
         searchByKeyword,
         clearSearch
     });

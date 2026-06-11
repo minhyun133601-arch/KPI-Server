@@ -37,7 +37,7 @@
             return `
                 <button
                     type="button"
-                    class="work-btn audit-lux-fullscreen-toggle ${isActive ? 'is-active' : ''}"
+                    class="audit-lux-fullscreen-toggle ${isActive ? 'is-active' : ''}"
                     data-action="audit-lux-toggle-fullscreen"
                     aria-pressed="${isActive ? 'true' : 'false'}"
                     aria-label="${label}"

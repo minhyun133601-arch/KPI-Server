@@ -137,7 +137,7 @@
                     color: '#0f766e',
                     secondaryColor: '#14b8a6',
                     tint: '#ecfeff',
-                    desc: '팀별 작업 기록을 카드형으로 조회하고 관리합니다.',
+                    desc: '',
                     navHidden: true,
                     dataKey: 'work_history_records',
                     view: 'history_tool',

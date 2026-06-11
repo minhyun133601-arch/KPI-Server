@@ -21,10 +21,13 @@
     --team1part2-soft: #fff7ed;
     --team1-color: var(--team1part1-color);
     --team2-color: #059669;
+    --team2-strong: #047857;
     --team2-soft: #ecfdf5;
     --team3-color: #7c3aed;
+    --team3-strong: #5b21b6;
     --team3-soft: #f5f3ff;
     --team4-color: #dc2626;
+    --team4-strong: #b91c1c;
     --team4-soft: #fef2f2;
     --overview-color: #0891b2;
     --gray-900: #111827;
@@ -451,8 +454,8 @@
 
 .tab-btn[data-team="team2"] {
     --tab-accent: var(--team2-color);
-    --tab-accent-strong: #047857;
-    --tab-soft-bg: #ecfdf5;
+    --tab-accent-strong: var(--team2-strong);
+    --tab-soft-bg: var(--team2-soft);
     --tab-border: rgba(5, 150, 105, 0.22);
     --tab-shadow: rgba(5, 150, 105, 0.2);
     --tab-icon-bg: linear-gradient(135deg, rgba(5, 150, 105, 0.16), rgba(5, 150, 105, 0.28));
@@ -461,8 +464,8 @@
 
 .tab-btn[data-team="team3"] {
     --tab-accent: var(--team3-color);
-    --tab-accent-strong: #5b21b6;
-    --tab-soft-bg: #f5f3ff;
+    --tab-accent-strong: var(--team3-strong);
+    --tab-soft-bg: var(--team3-soft);
     --tab-border: rgba(124, 58, 237, 0.22);
     --tab-shadow: rgba(124, 58, 237, 0.2);
     --tab-icon-bg: linear-gradient(135deg, rgba(124, 58, 237, 0.16), rgba(124, 58, 237, 0.26));
@@ -471,8 +474,8 @@
 
 .tab-btn[data-team="team4"] {
     --tab-accent: var(--team4-color);
-    --tab-accent-strong: #b91c1c;
-    --tab-soft-bg: #fef2f2;
+    --tab-accent-strong: var(--team4-strong);
+    --tab-soft-bg: var(--team4-soft);
     --tab-border: rgba(220, 38, 38, 0.22);
     --tab-shadow: rgba(220, 38, 38, 0.2);
     --tab-icon-bg: linear-gradient(135deg, rgba(220, 38, 38, 0.16), rgba(220, 38, 38, 0.28));

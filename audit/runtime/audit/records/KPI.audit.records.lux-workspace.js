@@ -297,7 +297,7 @@
             if (!attachmentItem) {
                 return `
                     <div class="audit-lux-index-empty-thumb">
-                        <i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i>
+                        <span>${escapeHtml('\uBBF8\uB4F1\uB85D')}</span>
                     </div>
                 `;
             }
@@ -316,13 +316,50 @@
             `;
         }
 
-        function getAuditLuxTeamClass(team) {
+        function renderAuditLuxAttachmentMedia(dataKey, year, team, quarter, attachmentItem, openUrl) {
+            const thumbHtml = renderAuditLuxAttachmentThumb(dataKey, year, team, quarter, attachmentItem);
+            if (!attachmentItem || !openUrl || openUrl === '#') {
+                return `<div class="audit-lux-index-card-media">${thumbHtml}</div>`;
+            }
+            const mediaLabel = `${team || ''} ${year} ${quarter}${'\uBD84\uAE30'} ${'\uC6D0\uBCF8 \uC5F4\uAE30'}`.trim();
+            return `
+                <a class="audit-lux-index-card-media audit-lux-index-card-media-link" href="${escapeHtml(openUrl)}" target="_blank" rel="noopener" aria-label="${escapeHtml(mediaLabel)}">
+                    ${thumbHtml}
+                </a>
+            `;
+        }
+
+        function getAuditLuxTeamKey(team) {
             const label = String(team || '').trim();
-            if (label.includes('1팀') && label.includes('1파트')) return 'is-team-1-part-1';
-            if (label.includes('1팀') && label.includes('2파트')) return 'is-team-1-part-2';
-            if (label.startsWith('2팀')) return 'is-team-2';
-            if (label.startsWith('3팀')) return 'is-team-3';
-            return 'is-team-default';
+            if (label.includes('1팀') && label.includes('1파트')) return 'team1part1';
+            if (label.includes('1팀') && label.includes('2파트')) return 'team1part2';
+            if (label.startsWith('2팀')) return 'team2';
+            if (label.startsWith('3팀')) return 'team3';
+            if (label.startsWith('4팀')) return 'team4';
+            return 'overview';
+        }
+
+        function getAuditLuxTeamClass(team) {
+            const classNames = {
+                team1part1: 'is-team-1-part-1',
+                team1part2: 'is-team-1-part-2',
+                team2: 'is-team-2',
+                team3: 'is-team-3',
+                team4: 'is-team-4'
+            };
+            return classNames[getAuditLuxTeamKey(team)] || 'is-team-default';
+        }
+
+        function getAuditLuxTeamIconSvg(team) {
+            const icons = {
+                overview: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 19V10M12 19V5M19 19V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 19.5H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+                team1part1: '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 15.5L15.7 6.1C16.7 5.3 18.2 5.7 18.7 6.9L21 12.2V18.5H4.5V15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.2" cy="11" r="1.1" fill="currentColor"/><circle cx="10.2" cy="15.2" r="1.1" fill="currentColor"/><path d="M4.5 15.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+                team1part2: '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 15.5L15.7 6.1C16.7 5.3 18.2 5.7 18.7 6.9L21 12.2V18.5H4.5V15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.2" cy="11" r="1.1" fill="currentColor"/><circle cx="10.2" cy="15.2" r="1.1" fill="currentColor"/><path d="M4.5 15.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+                team2: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 9.2L12 12.8L19 9.2M5 9.2L8.2 5.5L12 7.4L15.8 5.5L19 9.2V16.8L12 20.5L5 16.8V9.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 12.8V20.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+                team3: '<svg viewBox="0 0 24 24" fill="none"><path d="M10 3.5H14M10.6 3.5V6.4L8.8 8.4V19C8.8 20.1 9.7 21 10.8 21H13.2C14.3 21 15.2 20.1 15.2 19V8.4L13.4 6.4V3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 13.3C10.8 12.2 12.7 14.5 15 13.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+                team4: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 18L14.8 9.2M13.5 6.2L17.8 10.5M16.2 4.5L19.5 7.8L17.8 10.5L13.5 6.2L16.2 4.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.2 6.2L7.5 8.5M7.5 8.5L5.7 10.3L4 8.6L5.8 6.8L7.5 8.5ZM7.5 8.5L18 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+            };
+            return icons[team] || icons.overview;
         }
 
         function renderAuditLuxAttachmentCard(dataKey, year, team) {
@@ -334,29 +371,27 @@
             const { viewUrl, downloadUrl, fileLabel } = hasAttachment ? getAuditLuxEvidenceMeta(attachmentItem) : {};
             const inputId = getAuditLuxAttachmentInputId(dataKey, year, team, selectedQuarter);
             const teamClass = getAuditLuxTeamClass(team);
+            const teamKey = getAuditLuxTeamKey(team);
             const openUrl = viewUrl || downloadUrl || '#';
             const downloadHref = downloadUrl || viewUrl || '#';
             const teamLabel = team || '팀 없음';
-            const cardLabel = hasAttachment ? teamLabel : `${teamLabel} 미첨부`;
             return `
                 <article class="audit-lux-index-card ${teamClass} ${hasAttachment ? 'is-attached' : 'is-empty'}" data-audit-lux-card="${escapeHtml(dataKey)}" data-year="${escapeHtml(year)}" data-quarter="${escapeHtml(selectedQuarter)}" data-team="${escapeHtml(team)}">
-                    <div class="audit-lux-index-card-media">
-                        ${renderAuditLuxAttachmentThumb(dataKey, year, team, selectedQuarter, attachmentItem)}
-                    </div>
-                    <div class="audit-lux-index-card-main">
-                        <strong>${escapeHtml(cardLabel)}</strong>
+                    <div class="audit-lux-index-card-head">
+                        <span class="audit-lux-index-team-icon" aria-hidden="true">${getAuditLuxTeamIconSvg(teamKey)}</span>
+                        <div class="audit-lux-index-card-main">
+                            <strong>${escapeHtml(teamLabel)}</strong>
+                        </div>
                         <select class="audit-select audit-lux-index-card-quarter-select" aria-label="${escapeHtml(`${teamLabel} 분기`)}" onchange="setAuditLuxAttachmentQuarterForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', this.value)">
                             ${getAuditLuxQuarterSelectOptionsForYear(year, selectedQuarter)}
                         </select>
                     </div>
+                    ${renderAuditLuxAttachmentMedia(dataKey, year, team, selectedQuarter, attachmentItem, openUrl)}
                     <div class="audit-lux-index-card-actions">
-                        <button type="button" class="work-btn primary audit-lux-index-replace" onclick="openAuditLuxAttachmentPickerForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', ${Number(selectedQuarter)})"><i class="fa-solid fa-arrow-rotate-right" aria-hidden="true"></i><span>교체</span></button>
+                        <button type="button" class="work-btn primary audit-lux-index-replace" onclick="openAuditLuxAttachmentPickerForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', ${Number(selectedQuarter)})"><i class="fa-solid fa-arrow-rotate-right" aria-hidden="true"></i><span>${escapeHtml('\uAD50\uCCB4')}</span></button>
                         ${hasAttachment
-                            ? `<a class="work-btn audit-ref-open" href="${escapeHtml(openUrl)}" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i><span>원본 열기</span></a>`
-                            : '<button type="button" class="work-btn" disabled><i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i><span>원본 열기</span></button>'}
-                        ${hasAttachment
-                            ? `<a class="work-btn audit-ref-download" href="${escapeHtml(downloadHref)}" download="${escapeHtml(fileLabel || `${year}-${team}-lux`)}"><i class="fa-solid fa-download" aria-hidden="true"></i><span>원본 다운</span></a>`
-                            : '<button type="button" class="work-btn" disabled><i class="fa-solid fa-download" aria-hidden="true"></i><span>원본 다운</span></button>'}
+                            ? `<a class="work-btn audit-ref-download" href="${escapeHtml(downloadHref)}" download="${escapeHtml(fileLabel || `${year}-${team}-lux`)}"><i class="fa-solid fa-download" aria-hidden="true"></i><span>${escapeHtml('\uB2E4\uC6B4\uB85C\uB4DC')}</span></a>`
+                            : `<button type="button" class="work-btn" disabled><i class="fa-solid fa-download" aria-hidden="true"></i><span>${escapeHtml('\uB2E4\uC6B4\uB85C\uB4DC')}</span></button>`}
                         <input
                             type="file"
                             id="${escapeHtml(inputId)}"
@@ -499,10 +534,11 @@
                 <div class="audit-lux-shell is-file-index" data-audit-lux-workspace="${dataKey}">
                     <div class="audit-lux-window">
                         <div class="audit-lux-window-header">
+                            <div class="audit-lux-window-brand" aria-hidden="true">
+                                <span class="audit-lux-window-icon"><i class="fa-solid fa-lightbulb"></i></span>
+                            </div>
                             <div class="audit-lux-window-copy">
-                                <span class="audit-lux-window-kicker">조도 파일</span>
-                                <h2 class="audit-lux-window-title">${escapeHtml(category.title || '조도')}</h2>
-                                <p class="audit-lux-window-desc">팀별 연도 조도본을 보관합니다. 분기마다 같은 연도 카드에서 파일을 교체합니다.</p>
+                                <h2 class="audit-lux-window-title">조도</h2>
                             </div>
                             <div class="audit-lux-window-actions">
                                 ${getAuditLuxWorkspaceFullscreenButtonHtml()}

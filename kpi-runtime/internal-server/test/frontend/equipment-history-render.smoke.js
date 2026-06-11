@@ -196,7 +196,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=16');
   const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=25');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=3');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=48');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=51');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=5');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -206,7 +206,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(storageIndex > formIndex, 'equipment-history storage loader must load after the form');
   assert.ok(renderIndex > storageIndex, 'equipment-history render loader must load after storage');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
-  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=101') >= 0, 'data css cache version is stale');
+  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=108') >= 0, 'data css cache version is stale');
   assert.ok(bootManifestSource.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js') >= 0);
 });
 
@@ -346,8 +346,9 @@ test('equipment-history renderer shows the empty board state and supports author
     }
   );
 
-  assert.match(container.innerHTML, /설비 현황/);
   assert.match(container.innerHTML, /설비 이력 카드/);
+  assert.match(container.innerHTML, /전체 팀/);
+  assert.match(container.innerHTML, /전체 상태/);
   assert.match(container.innerHTML, />추가</);
   assert.match(container.innerHTML, /data-equipment-filter-reset[\s\S]*data-equipment-fullscreen-toggle/);
   assert.match(container.innerHTML, /aria-label="전체화면"/);
@@ -383,8 +384,12 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team4"/);
   assert.match(container.innerHTML, /--equipment-team-color:#2563eb/);
   assert.match(container.innerHTML, /--equipment-team-color:#dc2626/);
+  assert.match(container.innerHTML, /data-equipment-board-team-icon"[^>]*>[\s\S]*15\.7 6\.1/);
+  assert.match(container.innerHTML, /data-equipment-board-team-icon"[^>]*>[\s\S]*M5 9\.2L12 12\.8L19 9\.2/);
+  assert.match(container.innerHTML, /data-equipment-board-team-icon"[^>]*>[\s\S]*M6 18L14\.8 9\.2/);
   assert.doesNotMatch(container.innerHTML, /fa-cheese/);
   assert.doesNotMatch(container.innerHTML, /fa-screwdriver-wrench/);
+  assert.doesNotMatch(container.innerHTML, /fa-users/);
   assert.doesNotMatch(container.innerHTML, /분말 · 건조/);
   assert.doesNotMatch(container.innerHTML, /폐수 · 기타 · 공무환경/);
   assert.ok(
@@ -659,7 +664,18 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /fa-arrow-left/);
   assert.match(renderSource, /isAuthoring \? '' : `<div class="data-equipment-brand/);
   assert.match(renderSource, /is-authoring-mode/);
+  assert.match(dataCssSource, /data-equipment-topbar-dashboard\s*\{[\s\S]*grid-template-columns:\s*44px minmax\(260px,\s*1fr\) minmax\(360px,\s*620px\)/);
+  assert.match(dataCssSource, /data-equipment-topbar-dashboard \.data-equipment-brand strong,\s*[\s\S]*data-equipment-topbar-dashboard \.data-equipment-title-block h2\s*\{[\s\S]*font-size:\s*clamp\(1\.32rem,\s*1\.75vw,\s*1\.72rem\)[\s\S]*letter-spacing:\s*0/);
+  assert.match(dataCssSource, /data-equipment-topbar-dashboard \.data-equipment-brand small,\s*[\s\S]*data-equipment-topbar-dashboard \.data-equipment-title-block p\s*\{[\s\S]*font-size:\s*0\.88rem[\s\S]*font-weight:\s*800/);
+  assert.match(dataCssSource, /data-equipment-index-controls select\s*\{[\s\S]*appearance:\s*none[\s\S]*background-image:/);
+  assert.match(dataCssSource, /data-equipment-view-actions\s+\.data-equipment-index-controls select\s*\{[\s\S]*min-width:\s*0[\s\S]*font-weight:\s*800/);
+  assert.match(dataCssSource, /data-equipment-filter-reset\s*\{[\s\S]*font-size:\s*0\.8rem[\s\S]*font-weight:\s*900/);
+  assert.match(dataCssSource, /data-equipment-index-controls select:focus/);
   assert.match(dataCssSource, /data-equipment-topbar-dashboard\.is-authoring-mode[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)\s*auto/);
+  assert.match(dataCssSource, /data-equipment-view-actions button,\s*[\s\S]*data-equipment-view-actions select\s*\{[\s\S]*font-size:\s*0\.8rem/);
+  assert.match(dataCssSource, /data-equipment-page\s*\{[\s\S]*width:\s*100%[\s\S]*padding:\s*14px 16px 20px/);
+  assert.doesNotMatch(renderSource, /팀별 설비 현황과 상태를 한눈에 확인하고/);
+  assert.doesNotMatch(renderSource, /입력 후 작성란이 열립니다/);
   assert.doesNotMatch(renderSource, /data-equipment-select/);
   assert.doesNotMatch(renderSource, /renderEquipmentSelectOptions/);
   assert.doesNotMatch(renderSource, /data-equipment-title-status-toggle/);
@@ -775,6 +791,7 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /data-equipment-title-team-field[\s\S]+position:\s*relative/);
   assert.match(dataCssSource, /data-equipment-title-team-icon[\s\S]+position:\s*absolute[\s\S]+left:\s*12px/);
   assert.match(dataCssSource, /data-equipment-title-team-icon[\s\S]+color:\s*var\(--equipment-team-color\)/);
+  assert.match(dataCssSource, /data-equipment-title-team-icon svg[\s\S]+width:\s*18px[\s\S]+height:\s*18px/);
   assert.doesNotMatch(dataCssSource, /data-equipment-title-label/);
   assert.match(dataCssSource, /data-equipment-title-team-field[\s\S]+--equipment-title-value-left:\s*50px/);
   assert.match(dataCssSource, /data-equipment-photo-title-row\s+\.data-equipment-title-input[\s\S]+font-size:\s*1\.13rem/);
@@ -787,7 +804,10 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /opacity:\s*0/);
   assert.match(dataCssSource, /--equipment-team-color/);
   assert.match(dataCssSource, /data-equipment-board-team-icon/);
+  assert.match(dataCssSource, /data-equipment-board-team-icon svg[\s\S]+width:\s*18px[\s\S]+height:\s*18px/);
   assert.match(renderSource, /data-equipment-board-team-icon/);
+  assert.match(renderSource, /function getEquipmentTeamIconSvg/);
+  assert.match(renderSource, /M5 9\.2L12 12\.8L19 9\.2/);
   assert.match(dataCssSource, /data-equipment-board-card[\s\S]+background:\s*#ffffff/);
   assert.match(dataCssSource, /data-equipment-board-card[\s\S]+--equipment-card-separator:\s*#e6edf5/);
   assert.match(dataCssSource, /data-equipment-board-card[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)[\s\S]+grid-template-rows:\s*auto auto auto[\s\S]+min-height:\s*178px/);
@@ -845,12 +865,16 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /state\.filters = \{ team: '', status: '', search: '' \}/);
   assert.match(renderSource, /function renderEquipmentHistoryFullscreenButton/);
   assert.match(renderSource, /data-equipment-fullscreen-toggle/);
+  assert.match(renderSource, /addEventListener\('input'[\s\S]*applyBoardSearchFilter\(root, state, redraw, event\.target\)/);
+  assert.match(renderSource, /function highlightBoardSearchText/);
+  assert.match(renderSource, /<strong>\$\{highlightBoardSearchText\(item\.name, state\)\}<\/strong>/);
   assert.match(renderSource, /function toggleEquipmentHistoryFullscreen/);
   assert.match(renderSource, /requestFullscreen/);
   assert.match(renderSource, /fullscreenchange/);
   assert.match(renderSource, /is-data-equipment-browser-fullscreen/);
   assert.match(dataCssSource, /data-equipment-filter-actions/);
   assert.match(dataCssSource, /data-equipment-fullscreen-toggle/);
+  assert.match(dataCssSource, /data-equipment-board-card-main mark\s*\{[\s\S]*background:\s*#fef08a/);
   assert.match(dataCssSource, /#content-container\.is-data-equipment-browser-fullscreen/);
   assert.match(renderSource, /function pushEquipmentHistoryCardHistory/);
   assert.match(renderSource, /browser\.pushHistoryState/);
@@ -881,7 +905,8 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /function renderEquipmentPhotoTitle/);
   assert.match(renderSource, /renderEquipmentPhotoTitle\(draft\)/);
   assert.match(renderSource, /function renderTitleTeamSelect/);
-  assert.match(renderSource, /function getEquipmentTeamIconClass/);
+  assert.match(renderSource, /function getEquipmentTeamIconSvg/);
+  assert.doesNotMatch(renderSource, /function getEquipmentTeamIconClass/);
   assert.match(renderSource, /data-equipment-title-field/);
   assert.match(renderSource, /data-equipment-title-value/);
   assert.doesNotMatch(renderSource, /data-equipment-title-label/);
@@ -1228,6 +1253,49 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-start-field="room"/);
   assert.match(renderSource, /data-equipment-start-field="name"/);
   assert.match(renderSource, /state\.view = 'card-start'/);
+});
+
+test('equipment-history board search filters immediately and highlights visible matches', () => {
+  const { context, container, registeredRenderer } = createEquipmentHistoryRuntime();
+  const handlers = {};
+  let focused = false;
+  let selectionRange = null;
+  const searchInput = {
+    value: '',
+    selectionStart: 0,
+    addEventListener(type, handler) {
+      handlers[type] = handler;
+    },
+    focus() {
+      focused = true;
+    },
+    setSelectionRange(start, end) {
+      selectionRange = [start, end];
+    },
+  };
+  container.querySelector = (selector) => (
+    selector === '[data-equipment-filter-search]' ? searchInput : null
+  );
+  container.querySelectorAll = () => [];
+
+  context.PortalData.data_equipment_history_card = {
+    equipmentList: [
+      { id: 'eq-pump', name: 'Alpha Pump', team: '1팀 1파트', room: 'A실', status: '가동중' },
+      { id: 'eq-mixer', name: 'Beta Mixer', team: '1팀 1파트', room: 'B실', status: '가동중' },
+    ],
+  };
+  registeredRenderer({ title: '설비 이력 카드', dataKey: 'data_equipment_history_card' }, { container });
+
+  assert.equal(typeof handlers.input, 'function');
+  searchInput.value = 'Pump';
+  searchInput.selectionStart = 4;
+  handlers.input({ target: searchInput });
+
+  assert.match(container.innerHTML, /Alpha <mark>Pump<\/mark>/);
+  assert.doesNotMatch(container.innerHTML, /Beta Mixer/);
+  assert.equal(searchInput.value, 'Pump');
+  assert.equal(focused, true);
+  assert.deepEqual(selectionRange, [4, 4]);
 });
 
 test('equipment-history save confirms payload persistence before publishing uploaded assets', () => {

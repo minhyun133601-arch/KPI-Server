@@ -15,6 +15,7 @@ const historyCssPath = path.join(repoRoot, 'team-report', 'runtime', 'work', 'hi
 const expectedHistoryStyleImports = [
   './styles/shell-tabs.css',
   './styles/content-cards.css',
+  './styles/modals.css',
   './styles/responsive-base.css',
   './styles/reference-ui.css',
   './styles/experiment-board.css',
@@ -131,8 +132,13 @@ test('work history layout templates registry exposes shell and modal builders', 
   assert.equal(typeof view.buildPageHeader, 'function');
   assert.equal(typeof view.buildRecordModal, 'function');
   assert.equal(typeof view.buildDeleteModal, 'function');
+  assert.equal(typeof view.buildTeamAddButton, 'function');
   assert.equal(typeof view.getTeamIconSvg, 'function');
   assert.equal(typeof view.getSectionIconSvg, 'function');
+  assert.match(view.getTeamIconSvg('team1part1'), /15\.7 6\.1/);
+  assert.match(view.getTeamIconSvg('team2'), /M5 9\.2L12 12\.8L19 9\.2/);
+  assert.match(view.getTeamIconSvg('team3'), /V19/);
+  assert.match(view.getTeamIconSvg('team4'), /M6 18L14\.8 9\.2/);
   assert.equal(view.formatCostInputValue('1,234원'), '1234');
   assert.equal(view.formatCurrency(150000000), '1억 5천만원');
   assert.equal(view.formatCurrency(100000000), '1억원');
@@ -143,25 +149,44 @@ test('work history layout templates registry exposes shell and modal builders', 
   const pageHeaderHtml = view.buildPageHeader();
   assert.match(pageHeaderHtml, /history-page-head/);
   assert.match(pageHeaderHtml, /history-topbar/);
-  assert.match(pageHeaderHtml, /history-topbar-team-switch/);
-  assert.match(pageHeaderHtml, /data-role="current-date"/);
+  assert.doesNotMatch(pageHeaderHtml, /history-topbar-team-switch/);
+  assert.doesNotMatch(pageHeaderHtml, /data-role="current-date"/);
   assert.match(pageHeaderHtml, /id="history-title"/);
-  assert.match(pageHeaderHtml, /id="history-subtitle"/);
+  assert.doesNotMatch(pageHeaderHtml, /id="history-subtitle"/);
+  assert.doesNotMatch(pageHeaderHtml, /팀별 작업 기록을 카드형으로 조회하고 관리합니다/);
   assert.match(shellHtml, /history-main-content/);
+  assert.match(shellHtml, /history-workspace-controls/);
+  assert.match(shellHtml, /data-role="topbar-team-filter"/);
+  assert.match(shellHtml, /history-workspace-search/);
+  assert.match(shellHtml, /placeholder="텍스트 검색"/);
+  assert.match(shellHtml, /history-workspace-search[\s\S]*history-workspace-search-icon[\s\S]*<svg/);
+  assert.match(shellHtml, /history-workspace-fullscreen-toggle/);
+  assert.match(shellHtml, /data-fullscreen-icon/);
+  assert.match(shellHtml, /history-fullscreen-icon-svg/);
+  assert.match(shellHtml, /data-action="toggle-fullscreen"/);
+  assert.match(shellHtml, /data-action="reset-topbar-filters"/);
+  assert.match(pageHeaderHtml, /history-workspace-controls/);
   assert.match(shellHtml, /history-page-head/);
   assert.doesNotMatch(shellHtml, /tab-navigation/);
   assert.doesNotMatch(shellHtml, /id="keywordSearch"/);
   assert.match(shellHtml, /overview-records/);
   assert.match(shellHtml, /recordModal/);
+  assert.match(shellHtml, /id="recordCancelButton"[\s\S]*data-action="close-record-modal"[\s\S]*>취소<\/button>/);
+  assert.match(shellHtml, /id="recordDeleteButton"[\s\S]*data-action="delete-current-record"[\s\S]*hidden[\s\S]*>삭제<\/button>/);
+  assert.match(shellHtml, /id="recordSaveButton"[\s\S]*data-action="save-record"/);
+  assert.match(
+    shellHtml,
+    /record-meta-row[\s\S]*recordCategoryGroup[\s\S]*recordCategory[\s\S]*recordAssignee[\s\S]*recordCost/
+  );
   assert.match(shellHtml, /deleteModal/);
 });
 
 test('kpi html loads work history layout templates between layout and render', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=257');
-  const workspaceStateIndex = kpiHtml.indexOf('runtime/work/history/layout/workspace-state.js?v=5');
-  const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=255');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=239');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=274');
+  const workspaceStateIndex = kpiHtml.indexOf('runtime/work/history/layout/workspace-state.js?v=7');
+  const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=266');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=246');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(layoutIndex >= 0, 'work history layout loader is missing');
@@ -176,10 +201,13 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   const view = context.KpiWorkHistory.view;
   const { importHrefs, sources } = await readImportedHistoryStyles();
 
-  assert.equal(view.CSS_PATH, 'team-report/runtime/work/history/KPI.work.history.css?v=251');
+  assert.equal(view.CSS_PATH, 'team-report/runtime/work/history/KPI.work.history.css?v=268');
   assert.match(layoutSource, /<link rel="stylesheet" href="\$\{CSS_PATH\}">/);
   assert.match(templatesSource, /pattern="\[0-9\]\*"/);
   assert.match(templatesSource, /<input type="text" id="recordAssignee"/);
+  assert.match(templatesSource, /record-meta-row/);
+  assert.match(templatesSource, /id="recordCategoryGroupField"/);
+  assert.match(templatesSource, /id="recordCategoryField"/);
   assert.doesNotMatch(templatesSource, /<textarea id="recordAssignee"/);
   assert.doesNotMatch(templatesSource, /attachment/i);
   assert.doesNotMatch(templatesSource, /줄바꿈 입력/);
@@ -191,11 +219,34 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   });
   const combinedStyles = sources.map(({ source }) => source).join('\n');
   assert.match(combinedStyles, /\.work-history-app\s*\{/);
-  assert.match(combinedStyles, /\.history-topbar-team-switch\s*\{/);
+  assert.match(combinedStyles, /\.work-history-team-add-button\s*\{/);
+  assert.match(combinedStyles, /\.modal\.show\s*\{/);
+  assert.match(combinedStyles, /\.record-meta-row\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)[\s\S]*row-gap:\s*0/);
+  assert.match(combinedStyles, /--team2-strong:\s*#047857/);
+  assert.match(combinedStyles, /--team3-strong:\s*#5b21b6/);
+  assert.match(combinedStyles, /--team4-strong:\s*#b91c1c/);
+  assert.match(combinedStyles, /\.history-workspace-controls\s*\{/);
+  assert.match(combinedStyles, /history-workspace-controls\s*\{[\s\S]*grid-template-columns:\s*minmax\(116px,\s*1fr\)\s*minmax\(124px,\s*1fr\)\s*minmax\(220px,\s*2fr\)\s*auto/);
+  assert.match(combinedStyles, /history-workspace-select\s*\{[\s\S]*appearance:\s*none[\s\S]*background-image:/);
+  assert.match(combinedStyles, /\.history-workspace-search\s*\{[^}]*display:\s*block/);
+  assert.match(combinedStyles, /\.history-workspace-search-icon\s*\{[\s\S]*right:\s*12px[\s\S]*width:\s*15px/);
+  assert.match(combinedStyles, /history-workspace-search-icon svg\s*\{[\s\S]*stroke:\s*currentColor[\s\S]*stroke-linejoin:\s*round/);
+  assert.match(combinedStyles, /\.btn\.history-workspace-fullscreen-toggle\s*\{[\s\S]*width:\s*38px[\s\S]*height:\s*38px[\s\S]*border-radius:\s*7px/);
+  assert.match(combinedStyles, /history-fullscreen-toggle-icon[\s\S]+font-size:\s*0\.92rem/);
+  assert.match(combinedStyles, /history-fullscreen-toggle-icon svg\s*\{[\s\S]*stroke:\s*currentColor[\s\S]*stroke-linejoin:\s*round/);
+  assert.match(combinedStyles, /history-search-controls\s*\{[\s\S]*grid-template-columns:\s*minmax\(220px,\s*2fr\)\s*minmax\(124px,\s*1fr\)\s*auto\s*minmax\(0,\s*auto\)/);
+  assert.match(combinedStyles, /history-search-panel\s*\{[\s\S]*width:\s*100%[\s\S]*max-width:\s*620px/);
+  assert.match(combinedStyles, /\.modal-footer \.record-modal-action-button\s*\{[\s\S]*min-height:\s*38px[\s\S]*border-radius:\s*7px/);
+  assert.match(combinedStyles, /\.modal-footer \.btn-danger\s*\{[\s\S]*background:\s*#fff5f5[\s\S]*color:\s*#b91c1c/);
+  assert.match(combinedStyles, /\.work-history-experiment-team-view\s*\{/);
   assert.match(combinedStyles, /\.report-card-summary\s*\{/);
   assert.match(combinedStyles, /\.record-detail-grid\s*,/);
   assert.match(combinedStyles, /\.work-history-experiment-board\s*\{/);
+  assert.match(combinedStyles, /\.work-history-experiment-metrics\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(combinedStyles, /\.work-history-experiment-metric-card\s*\{[\s\S]*min-height:\s*98px[\s\S]*border-radius:\s*8px/);
   assert.match(combinedStyles, /\.work-history-experiment-card-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(combinedStyles, /\.work-history-experiment-card-edit\s*\{[\s\S]*position:\s*absolute[\s\S]*right:\s*8px[\s\S]*opacity:\s*0/);
+  assert.match(combinedStyles, /\.work-history-experiment-card:hover \.work-history-experiment-card-edit/);
   assert.match(combinedStyles, /\.main-content\.is-browser-fullscreen \.work-history-experiment-board/);
   assert.match(combinedStyles, /\.main-content\.is-browser-fullscreen \.work-history-experiment-card h4/);
 });
@@ -206,8 +257,13 @@ test('work history templates keep the default work-history surface', () => {
 
   assert.match(shellHtml, /작업 이력/);
   assert.doesNotMatch(shellHtml, /작업 이력 기입|작업이력 기입/);
+  assert.match(shellHtml, /work-history-team-add-button/);
+  assert.match(shellHtml, /data-action="add-record"/);
+  assert.match(shellHtml, />\uCD94\uAC00<\/button>/);
+  assert.doesNotMatch(shellHtml, /data-role="add-record-label"/);
   assert.match(shellHtml, /내역 추가/);
   assert.match(shellHtml, /작업내역 추가/);
-  assert.match(shellHtml, /id="history-workspace-pill" hidden>보고 전용/);
+  assert.doesNotMatch(shellHtml, /team-badge overview/);
+  assert.doesNotMatch(shellHtml, /history-workspace-pill/);
   assert.doesNotMatch(shellHtml, /data-role="fixed-category-pill"/);
 });

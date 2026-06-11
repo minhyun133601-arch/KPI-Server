@@ -1,8 +1,10 @@
         /* Data management */
         .data-equipment-page {
-            width: min(1520px, calc(100% - 18px));
-            margin: 0 auto;
-            padding: 14px 0 22px;
+            width: 100%;
+            margin: 0;
+            padding: 14px 16px 20px;
+            min-height: 100%;
+            height: 100%;
             color: #314465;
         }
         #content-container.is-data-equipment-browser-fullscreen.is-data-equipment-browser-fullscreen {
@@ -16,9 +18,9 @@
             padding: 0;
         }
         #content-container.is-data-equipment-browser-fullscreen .data-equipment-page {
-            width: min(1800px, calc(100% - 24px));
+            width: 100%;
             min-height: 100dvh;
-            padding: 12px 0 18px;
+            padding: 14px 16px 20px;
         }
         .data-equipment-topbar {
             display: grid;
@@ -393,6 +395,11 @@
             font-size: 0.8rem;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
             pointer-events: none;
+        }
+        .data-equipment-title-team-icon svg {
+            width: 18px;
+            height: 18px;
+            display: block;
         }
         .data-equipment-photo-title-row .data-equipment-title-input {
             width: 100%;
@@ -2828,11 +2835,11 @@
             margin-top: 12px;
             padding: 0 10px;
             color: #647795;
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             font-weight: 800;
         }
         .data-equipment-topbar-dashboard {
-            grid-template-columns: 44px minmax(260px, 1fr) minmax(520px, 720px);
+            grid-template-columns: 44px minmax(260px, 1fr) minmax(360px, 620px);
             align-items: center;
             padding: 16px 18px;
             border: 1px solid #dde7f2;
@@ -2846,10 +2853,15 @@
         .data-equipment-topbar-dashboard .data-equipment-brand strong,
         .data-equipment-topbar-dashboard .data-equipment-title-block h2 {
             color: #172b4d;
+            font-size: clamp(1.32rem, 1.75vw, 1.72rem);
+            line-height: 1.1;
+            letter-spacing: 0;
         }
         .data-equipment-topbar-dashboard .data-equipment-brand small,
         .data-equipment-topbar-dashboard .data-equipment-title-block p {
             color: #6b7d99;
+            font-size: 0.88rem;
+            font-weight: 800;
             letter-spacing: 0;
         }
         .data-equipment-topbar-dashboard .data-equipment-brand-mark {
@@ -2990,7 +3002,7 @@
             background: #ffffff;
             color: #243b61;
             padding: 0 10px;
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             font-weight: 900;
         }
         .data-equipment-view-actions button.active {
@@ -3020,6 +3032,44 @@
             font-size: 0.8rem;
             font-weight: 800;
         }
+        .data-equipment-index-controls select {
+            appearance: none;
+            padding-right: 34px;
+            background-image:
+                linear-gradient(45deg, transparent 50%, #607697 50%),
+                linear-gradient(135deg, #607697 50%, transparent 50%),
+                linear-gradient(to right, #d7e2ef, #d7e2ef);
+            background-position:
+                calc(100% - 18px) 50%,
+                calc(100% - 13px) 50%,
+                calc(100% - 32px) 50%;
+            background-repeat: no-repeat;
+            background-size:
+                5px 5px,
+                5px 5px,
+                1px 20px;
+        }
+        .data-equipment-view-actions .data-equipment-index-controls select {
+            min-width: 0;
+            min-height: 38px;
+            height: 38px;
+            border: 1px solid #d7e2ef;
+            border-radius: 7px;
+            background-color: #ffffff;
+            color: #243b61;
+            padding: 0 34px 0 12px;
+            font-size: 0.8rem;
+            font-weight: 800;
+        }
+        .data-equipment-index-controls select::-ms-expand {
+            display: none;
+        }
+        .data-equipment-index-controls select:focus,
+        .data-equipment-index-controls input:focus {
+            outline: none;
+            border-color: #8fb9ef;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
         .data-equipment-index-search {
             position: relative;
             display: block;
@@ -3038,6 +3088,8 @@
             pointer-events: none;
         }
         .data-equipment-filter-reset {
+            font-size: 0.8rem;
+            font-weight: 900;
             white-space: nowrap;
         }
         .data-equipment-filter-actions {
@@ -3341,6 +3393,11 @@
             background: color-mix(in srgb, var(--equipment-team-color) 15%, #ffffff);
             color: var(--equipment-team-color);
         }
+        .data-equipment-board-team-icon svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+        }
         .data-equipment-board-team-title strong {
             overflow-wrap: anywhere;
             font-size: 1rem;
@@ -3555,6 +3612,14 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             text-align: center;
+        }
+        .data-equipment-board-card-main mark {
+            border-radius: 4px;
+            background: #fef08a;
+            color: inherit;
+            padding: 0 2px;
+            box-decoration-break: clone;
+            -webkit-box-decoration-break: clone;
         }
         .data-equipment-board-team-order-toggle {
             width: 30px;
@@ -3826,8 +3891,8 @@
         }
         @media (max-width: 780px) {
             .data-equipment-page {
-                width: min(100% - 16px, 1520px);
-                padding-top: 10px;
+                width: 100%;
+                padding: 12px 10px 18px;
             }
             .data-equipment-topbar {
                 grid-template-columns: 1fr;

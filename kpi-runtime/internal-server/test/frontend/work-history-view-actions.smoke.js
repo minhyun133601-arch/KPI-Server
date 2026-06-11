@@ -203,6 +203,31 @@ function createFormElement(value = '') {
   };
 }
 
+function seedRecordModalElements(elements) {
+  [
+    'recordForm',
+    'formSourceTeam',
+    'formIndex',
+    'recordStartDate',
+    'recordEndDate',
+    'recordTeam',
+    'recordAssignee',
+    'recordCategoryGroup',
+    'recordCategory',
+    'recordWorkContent',
+    'recordRemarks',
+    'recordCost',
+    'recordDeleteButton',
+    'modalTitle',
+    'deleteModal',
+  ].forEach(id => {
+    elements.set(id, createFormElement(''));
+  });
+  elements.set('recordModal', {
+    classList: createClassList(),
+  });
+}
+
 test('work history split action files expose view and history hooks after bootstrap', () => {
   const context = createContext();
   const history = context.KpiWorkHistory;
@@ -248,6 +273,165 @@ test('work history page buttons dispatch to numbered pagination state', () => {
   assert.deepEqual(calls, [{ prefix: 'team1part1', page: 2 }]);
 });
 
+test('work history topbar filters switch team and reset to overview', () => {
+  const context = createContext();
+  const history = context.KpiWorkHistory;
+  const view = history.view;
+  const elements = context.__elements;
+  const teamFilter = {
+    value: 'team1part1',
+    dataset: {},
+    matches(selector) {
+      return selector === '[data-role="topbar-team-filter"]';
+    },
+  };
+  const categoryFilter = {
+    value: 'monthly',
+    dataset: {},
+  };
+  const overviewSection = {
+    id: 'overview',
+    classList: createClassList(['active']),
+  };
+  const teamSection = {
+    id: 'team1part1',
+    classList: createClassList(),
+  };
+  elements.set('history-main-content', {
+    classList: createClassList(),
+  });
+  history.queryAll = (selector) => {
+    if (selector === '[data-role="topbar-team-filter"]') return [teamFilter];
+    if (selector === '[data-role="category-filter"]') return [categoryFilter];
+    if (selector === '[data-role="topbar-fullscreen-toggle"]') return [];
+    if (selector === '[data-action="toggle-fullscreen"]') return [];
+    if (selector === '.team-section') return [overviewSection, teamSection];
+    if (selector === '.tab-btn, .history-topbar-team-button') return [];
+    if (selector === '[data-role="keyword-search"]') return [];
+    if (selector === '.date-range-selector input[type="date"]') return [];
+    return [];
+  };
+
+  view.handleRootChange({ target: teamFilter });
+  assert.equal(history.state.currentTeam, 'team1part1');
+  assert.equal(teamSection.classList.contains('active'), true);
+
+  history.state.currentKeyword = 'pump';
+  history.state.currentCategoryFilter = 'monthly';
+  view.handleRootClick({
+    target: {
+      closest(selector) {
+        return selector === '[data-action]' ? { dataset: { action: 'reset-topbar-filters' } } : null;
+      },
+      classList: { contains: () => false },
+    },
+  });
+
+  assert.equal(history.state.currentTeam, 'overview');
+  assert.equal(history.state.currentKeyword, '');
+  assert.equal(history.state.currentCategoryFilter, '');
+  assert.equal(teamFilter.value, 'overview');
+  assert.equal(categoryFilter.value, '');
+  assert.equal(overviewSection.classList.contains('active'), true);
+});
+
+test('work history topbar keyword input searches immediately from the active input', () => {
+  const context = createContext();
+  const history = context.KpiWorkHistory;
+  const view = history.view;
+  const peerInput = {
+    value: '',
+    matches(selector) {
+      return selector === '[data-role="keyword-search"]';
+    },
+  };
+  const categoryFilter = {
+    value: '',
+    matches(selector) {
+      return selector === '[data-role="category-filter"]';
+    },
+  };
+  const workspaceControls = {
+    querySelector(selector) {
+      if (selector === '[data-role="keyword-search"]') return keywordInput;
+      if (selector === '[data-role="category-filter"]') return categoryFilter;
+      return null;
+    },
+  };
+  const keywordInput = {
+    value: 'Alpha 작업자',
+    matches(selector) {
+      return selector === '[data-role="keyword-search"]';
+    },
+    closest(selector) {
+      return selector === '.history-workspace-controls' ? workspaceControls : null;
+    },
+  };
+  let resetCount = 0;
+  let renderCount = 0;
+  history.queryAll = (selector) => {
+    if (selector === '[data-role="keyword-search"]') return [keywordInput, peerInput];
+    if (selector === '[data-role="category-filter"]') return [categoryFilter];
+    return [];
+  };
+  view.resetRecordPage = () => {
+    resetCount += 1;
+  };
+  view.renderCurrentView = () => {
+    renderCount += 1;
+  };
+
+  view.handleRootInput({ target: keywordInput });
+
+  assert.equal(history.state.currentKeyword, 'Alpha 작업자');
+  assert.equal(peerInput.value, 'Alpha 작업자');
+  assert.equal(resetCount, 1);
+  assert.equal(renderCount, 1);
+});
+
+test('work history fullscreen changes rerender the current card board', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  const target = {
+    classList: createClassList(),
+  };
+  const button = {
+    dataset: { prefix: 'overview' },
+    classList: createClassList(),
+    attributes: {},
+    setAttribute(name, value) {
+      this.attributes[name] = value;
+    },
+    querySelector(selector) {
+      return selector === '[data-fullscreen-icon]' ? icon : null;
+    },
+  };
+  const icon = { innerHTML: '<svg data-state="expand"></svg>', className: 'history-fullscreen-toggle-icon' };
+  let renderCount = 0;
+  let layoutSyncCount = 0;
+  context.__elements.set('history-main-content', target);
+  context.document.fullscreenElement = target;
+  context.KpiWorkHistory.queryAll = (selector) => {
+    return selector === '[data-action="toggle-fullscreen"]' ? [button] : [];
+  };
+  view.getFullscreenIconSvg = (isActive) => (isActive ? '<svg data-state="compress"></svg>' : '<svg data-state="expand"></svg>');
+  view.renderCurrentView = () => {
+    renderCount += 1;
+  };
+  view.syncViewportLayout = () => {
+    layoutSyncCount += 1;
+  };
+
+  view.handleFullscreenChange();
+
+  assert.equal(renderCount, 1);
+  assert.equal(layoutSyncCount, 1);
+  assert.equal(target.classList.contains('is-browser-fullscreen'), true);
+  assert.equal(button.classList.contains('is-active'), true);
+  assert.equal(button.attributes['aria-pressed'], 'true');
+  assert.equal(icon.innerHTML, '<svg data-state="compress"></svg>');
+});
+
 test('work history record modal ignores backdrop clicks while editing', () => {
   const context = createContext();
   const view = context.KpiWorkHistory.view;
@@ -270,6 +454,78 @@ test('work history record modal ignores backdrop clicks while editing', () => {
 
   assert.equal(defaultPrevented, true);
   assert.equal(recordModal.classList.contains('show'), true);
+});
+
+test('work history add-record buttons open the record modal for their team', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  const elements = context.__elements;
+  seedRecordModalElements(elements);
+
+  view.handleRootClick({
+    target: {
+      closest(selector) {
+        return selector === '[data-action]'
+          ? { dataset: { action: 'add-record', team: 'team1part1' } }
+          : null;
+      },
+      classList: { contains: () => false },
+    },
+  });
+
+  assert.equal(elements.get('recordModal').classList.contains('show'), true);
+  assert.equal(elements.get('formSourceTeam').value, 'team1part1');
+  assert.equal(elements.get('recordTeam').value, 'team1part1');
+  assert.equal(elements.get('recordDeleteButton').hidden, true);
+});
+
+test('work history card edit buttons open the record modal for editing', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  let modalRequest = null;
+  view.openRecordModal = (team, index) => {
+    modalRequest = { team, index };
+  };
+
+  view.handleRootClick({
+    target: {
+      closest(selector) {
+        return selector === '[data-action]'
+          ? { dataset: { action: 'edit-record', team: 'team1part1', index: '0' } }
+          : null;
+      },
+      classList: { contains: () => false },
+    },
+  });
+
+  assert.deepEqual(modalRequest, { team: 'team1part1', index: 0 });
+});
+
+test('work history record modal delete button only appears while editing and opens delete confirm', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  const elements = context.__elements;
+  seedRecordModalElements(elements);
+
+  view.openRecordModal('team1part1', 0);
+  assert.equal(elements.get('recordDeleteButton').hidden, false);
+  assert.equal(elements.get('recordModal').classList.contains('show'), true);
+
+  view.handleRootClick({
+    target: {
+      closest(selector) {
+        return selector === '[data-action]'
+          ? { dataset: { action: 'delete-current-record' } }
+          : null;
+      },
+      classList: { contains: () => false },
+    },
+  });
+
+  assert.equal(elements.get('recordModal').classList.contains('show'), false);
+  assert.equal(elements.get('deleteModal').classList.contains('show'), true);
+  assert.equal(context.KpiWorkHistory.state.pendingDelete.team, 'team1part1');
+  assert.equal(context.KpiWorkHistory.state.pendingDelete.index, 0);
 });
 
 test('work history Ctrl+S saves the open record modal', () => {
@@ -306,27 +562,7 @@ test('work history overlay close confirms when the record form has unsaved edits
   const context = createContext();
   const view = context.KpiWorkHistory.view;
   const elements = context.__elements;
-  [
-    'recordForm',
-    'formSourceTeam',
-    'formIndex',
-    'recordStartDate',
-    'recordEndDate',
-    'recordTeam',
-    'recordAssignee',
-    'recordCategoryGroup',
-    'recordCategory',
-    'recordWorkContent',
-    'recordRemarks',
-    'recordCost',
-    'modalTitle',
-    'deleteModal',
-  ].forEach(id => {
-    elements.set(id, createFormElement(''));
-  });
-  elements.set('recordModal', {
-    classList: createClassList(),
-  });
+  seedRecordModalElements(elements);
 
   view.openRecordModal('team1part1');
   assert.equal(view.hasRecordFormChanged(), false);

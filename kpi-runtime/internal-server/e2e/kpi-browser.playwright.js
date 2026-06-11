@@ -508,7 +508,13 @@ test.describe('KPI browser smoke', () => {
       await clickSidebarButton(page, '작업 이력');
       await expect(page.locator('.kpi-work-history-host')).toBeVisible();
       await expectWorkHistoryShadowText(page, 'history-title', /작업 이력/);
-      await expectWorkHistoryShadowText(page, 'history-subtitle', /팀별 작업 기록을 카드형으로 조회하고 관리합니다\./);
+      await expect
+        .poll(async () => {
+          return await page.locator('.kpi-work-history-host').evaluate((host) => {
+            return host?.shadowRoot?.querySelector('#history-subtitle') ? 1 : 0;
+          });
+        })
+        .toBe(0);
       await page.waitForTimeout(1000);
 
       await clickSidebarButton(page, '설비 이력 카드');

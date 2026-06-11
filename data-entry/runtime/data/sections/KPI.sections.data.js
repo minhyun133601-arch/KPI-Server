@@ -7778,7 +7778,7 @@ html, body {
                     title: '작업 이력',
                     icon: 'fa-clipboard-list',
                     color: '#0f766e',
-                    desc: '팀별 작업 기록을 카드형으로 조회하고 관리합니다.',
+                    desc: '',
                     shortcutTarget: {
                         sectionId: 'work',
                         dataKey: 'work_history_records',
@@ -7790,7 +7790,7 @@ html, body {
                     icon: 'fa-screwdriver-wrench',
                     color: '#475569',
                     viewerMode: 'full-bleed',
-                    desc: '설비 이력카드 목차에서 팀별 설비 현황, 상태, 상세 이력 카드를 함께 관리합니다.',
+                    desc: '',
                     dataKey: 'data_equipment_history_card',
                     fileName: 'Central Server DB / Equipment History Card',
                     readOnly: false,

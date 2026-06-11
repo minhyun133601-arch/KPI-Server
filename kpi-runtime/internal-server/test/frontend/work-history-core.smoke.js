@@ -146,6 +146,22 @@ test('work history core split files expose normalized payload and storage hooks 
   assert.equal(typeof history.waitForPendingSave, 'function');
   assert.equal(typeof history.buildExportScript, 'function');
   assert.equal(typeof history.getRecordCategoryGroupLabel, 'function');
+  assert.deepEqual(Array.from(history.RECORD_CATEGORY_GROUPS.kpi.categories), [
+    '설비 가동률 증대',
+    '자체 정비',
+    '계획 이행률',
+  ]);
+  assert.deepEqual(Array.from(history.RECORD_CATEGORY_GROUPS.focus.categories), [
+    '모니터링 운영 체계',
+    '데이터 관리 체계',
+  ]);
+  assert.deepEqual(Array.from(history.RECORD_CATEGORY_OPTIONS), [
+    '설비 가동률 증대',
+    '자체 정비',
+    '계획 이행률',
+    '모니터링 운영 체계',
+    '데이터 관리 체계',
+  ]);
   assert.equal(history.normalizeCost('150,000,000원'), 150000000);
   assert.equal(history.normalizeCost('abc'), null);
   assert.deepEqual(history.normalizeAssignees(['미정', 'Alpha', '미입력', '-', 'Beta']), ['Alpha', 'Beta']);
@@ -183,11 +199,11 @@ test('work history core split files expose normalized payload and storage hooks 
 
 test('kpi html loads work history core split files before layout bootstrap', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=5');
+  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=6');
   const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=219');
   const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=5');
   const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=5');
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=257');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=274');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(configIndex >= 0, 'work history core config loader is missing');

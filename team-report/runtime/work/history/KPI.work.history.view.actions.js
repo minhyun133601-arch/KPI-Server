@@ -72,12 +72,15 @@
             const icon = button.querySelector('[data-fullscreen-icon]');
             if (icon && typeof view.getFullscreenIconSvg === 'function') {
                 icon.innerHTML = view.getFullscreenIconSvg(isActive);
+            } else if (icon && typeof view.getFullscreenIconClass === 'function') {
+                icon.className = `fas ${view.getFullscreenIconClass(isActive)}`;
             }
         });
     }
 
     function handleFullscreenChange() {
         syncFullscreenButtons();
+        view.renderCurrentView?.();
         view.syncViewportLayout?.();
     }
 
@@ -131,6 +134,10 @@
                 view.resetDateFilters?.(actionTarget.dataset.prefix || view.OVERVIEW_KEY);
                 return;
             }
+            if (action === 'reset-topbar-filters') {
+                view.resetTopbarFilters?.();
+                return;
+            }
             if (action === 'change-page') {
                 view.setRecordPage?.(actionTarget.dataset.prefix || view.OVERVIEW_KEY, Number(actionTarget.dataset.page));
                 return;
@@ -149,6 +156,10 @@
             }
             if (action === 'delete-record') {
                 view.openDeleteModal?.(actionTarget.dataset.team || 'team1part1', Number(actionTarget.dataset.index));
+                return;
+            }
+            if (action === 'delete-current-record') {
+                view.deleteCurrentRecordFromModal?.();
                 return;
             }
             if (action === 'close-record-modal') {
@@ -180,6 +191,11 @@
     function handleRootChange(event) {
         const target = event.target;
         if (!target) return;
+
+        if (target.matches?.('[data-role="topbar-team-filter"]')) {
+            view.switchTab?.(target.value || view.OVERVIEW_KEY);
+            return;
+        }
 
         if (target.matches?.('[data-role="category-filter"]')) {
             state.currentCategoryFilter = typeof history.getFixedCategoryFilter === 'function'
@@ -213,7 +229,7 @@
         if (!target) return;
 
         if (target.matches?.('[data-role="keyword-search"]')) {
-            view.syncSearchInputs?.(target.value, target);
+            view.searchByKeyword?.(target);
             return;
         }
 

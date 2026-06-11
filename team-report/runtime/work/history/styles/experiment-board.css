@@ -9,75 +9,83 @@
     box-shadow: 0 14px 30px rgba(33, 51, 84, 0.07);
 }
 
-.work-history-app .work-history-experiment-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 14px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #eef2f7;
-}
-
-.work-history-app .work-history-experiment-head h3 {
-    margin: 4px 0 5px;
-    color: #172033;
-    font-size: 18px;
-    font-weight: 900;
-    line-height: 1.25;
-}
-
-.work-history-app .work-history-experiment-head p {
-    margin: 0;
-    color: #667085;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1.45;
-}
-
-.work-history-app .work-history-experiment-kicker {
-    display: inline-flex;
-    align-items: center;
-    min-height: 22px;
-    padding: 0 8px;
-    border: 1px solid rgba(8, 145, 178, 0.18);
-    border-radius: 999px;
-    background: rgba(8, 145, 178, 0.09);
-    color: #0e7490;
-    font-size: 10px;
-    font-weight: 900;
-}
-
 .work-history-app .work-history-experiment-metrics {
     display: grid;
-    grid-template-columns: repeat(4, minmax(72px, 1fr));
-    gap: 7px;
-    min-width: min(100%, 360px);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
 }
 
-.work-history-app .work-history-experiment-metrics span {
-    display: grid;
-    gap: 2px;
-    min-height: 52px;
-    padding: 8px 9px;
-    border: 1px solid #edf2f7;
-    border-radius: 10px;
+.work-history-app .work-history-experiment-metric-card {
+    min-height: 98px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+    padding: 18px 22px;
+    border: 1px solid #dde7f2;
+    border-radius: 8px;
     background: #ffffff;
+    box-shadow: 0 12px 32px rgba(31, 51, 83, 0.06);
 }
 
-.work-history-app .work-history-experiment-metrics b {
-    color: #172033;
-    font-size: 16px;
+.work-history-app .work-history-experiment-metric-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+}
+
+.work-history-app .work-history-experiment-metric-icon svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+}
+
+.work-history-app .work-history-experiment-metric-card.is-total .work-history-experiment-metric-icon {
+    background: #eaf3ff;
+    color: #2563eb;
+}
+
+.work-history-app .work-history-experiment-metric-card.is-cost .work-history-experiment-metric-icon {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.work-history-app .work-history-experiment-metric-card.is-recent .work-history-experiment-metric-icon {
+    background: #fef3c7;
+    color: #b45309;
+}
+
+.work-history-app .work-history-experiment-metric-card div {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.work-history-app .work-history-experiment-metric-card div > span {
+    color: #53657f;
+    font-size: 0.8rem;
     font-weight: 900;
-    line-height: 1.1;
+}
+
+.work-history-app .work-history-experiment-metric-card strong {
+    min-width: 0;
     overflow: hidden;
+    color: #162847;
+    font-size: 1.26rem;
+    font-weight: 900;
+    line-height: 1;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.work-history-app .work-history-experiment-metrics em {
-    color: #667085;
-    font-size: 10px;
-    font-style: normal;
+.work-history-app .work-history-experiment-metric-card small {
+    margin-left: 4px;
+    color: #344869;
+    font-size: 0.76rem;
     font-weight: 900;
 }
 
@@ -124,6 +132,8 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
     min-width: 0;
     color: #172033;
     font-size: 14px;
@@ -155,14 +165,48 @@
     height: 15px;
 }
 
+.work-history-app .work-history-experiment-team-add {
+    flex: 0 0 auto;
+}
+
 .work-history-app .work-history-experiment-team-count {
     flex: 0 0 auto;
-    padding: 4px 8px;
+    min-height: 22px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 8px;
     border-radius: 999px;
     background: #ffffff;
     color: var(--experiment-team);
     font-size: 11px;
     font-weight: 900;
+}
+
+.work-history-app .work-history-experiment-team-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+.work-history-app .work-history-experiment-team-view {
+    min-height: 22px;
+    border: 1px solid color-mix(in srgb, var(--experiment-team) 24%, #d7e2ef);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--experiment-team);
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 900;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.work-history-app .work-history-experiment-team-view:hover,
+.work-history-app .work-history-experiment-team-view:focus-visible {
+    background: color-mix(in srgb, var(--experiment-team) 10%, #ffffff);
+    outline: none;
 }
 
 .work-history-app .work-history-experiment-card-grid {
@@ -172,6 +216,7 @@
 }
 
 .work-history-app .work-history-experiment-card {
+    position: relative;
     display: grid;
     grid-template-rows: auto auto 1fr;
     gap: 9px;
@@ -184,8 +229,48 @@
     box-shadow: 0 8px 18px rgba(33, 51, 84, 0.045);
 }
 
+.work-history-app .work-history-experiment-card-edit {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    min-height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 9px;
+    border: 1px solid #d7e2ef;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #243b61;
+    font-size: 11px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 8px 18px rgba(31, 51, 83, 0.1);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-2px);
+    transition: opacity 0.16s ease, transform 0.16s ease, border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
+}
+
+.work-history-app .work-history-experiment-card:hover .work-history-experiment-card-edit,
+.work-history-app .work-history-experiment-card:focus-within .work-history-experiment-card-edit {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.work-history-app .work-history-experiment-card-edit:hover,
+.work-history-app .work-history-experiment-card-edit:focus-visible {
+    border-color: #8fb9ef;
+    background: #eff6ff;
+    color: #0d67d6;
+    outline: none;
+}
+
 .work-history-app .work-history-experiment-card h4 {
     margin: 0;
+    padding-right: 42px;
     color: #172033;
     font-size: 14px;
     font-weight: 900;
@@ -319,13 +404,8 @@
 }
 
 @media (max-width: 760px) {
-    .work-history-app .work-history-experiment-head {
-        display: grid;
-    }
-
     .work-history-app .work-history-experiment-metrics {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        min-width: 0;
+        grid-template-columns: 1fr;
     }
 
     .work-history-app .work-history-experiment-card-grid {

@@ -18,6 +18,7 @@
         escapeHtml,
         escapeAttribute
     } = history;
+    const EXPERIMENT_TEAM_PREVIEW_LIMIT = 5;
 
     function isProductionWorkspace() {
         return typeof isProductionReportWorkspace === 'function' && isProductionReportWorkspace();
@@ -211,7 +212,6 @@
     function buildExperimentBoard(records = []) {
         const normalizedRecords = Array.isArray(records) ? records : [];
         const totalCost = normalizedRecords.reduce((sum, record) => sum + (Number(record?.cost) || 0), 0);
-        const activeTeamCount = TEAM_KEYS.filter(team => normalizedRecords.some(record => (record.team || record._team) === team)).length;
         const latestDate = normalizedRecords
             .map(record => record.endDate || record.startDate || '')
             .filter(Boolean)
@@ -221,40 +221,67 @@
             .filter(Boolean)
             .join('');
         return `
-            <section class="work-history-experiment-board" data-role="work-history-experiment-board" aria-label="작업이력 카드 보기">
-                <div class="work-history-experiment-head">
-                    <div>
-                        <span class="work-history-experiment-kicker">작업이력</span>
-                        <h3>카드형 보기</h3>
-                        <p>팀별 작업이력을 카드로 확인합니다.</p>
-                    </div>
-                    <div class="work-history-experiment-metrics" aria-label="작업이력 요약">
-                        <span><b>${escapeHtml(normalizedRecords.length)}</b><em>전체</em></span>
-                        <span><b>${escapeHtml(activeTeamCount)}</b><em>팀</em></span>
-                        <span><b>${escapeHtml(view.formatCurrency(totalCost))}</b><em>비용</em></span>
-                        <span><b>${escapeHtml(view.formatDateKorean(latestDate))}</b><em>최근</em></span>
-                    </div>
+            <section class="work-history-experiment-board" data-role="work-history-experiment-board" aria-label="작업이력 요약">
+                <div class="work-history-experiment-metrics" aria-label="작업이력 요약">
+                    <article class="work-history-experiment-metric-card is-total">
+                        <span class="work-history-experiment-metric-icon" aria-hidden="true">${view.getSectionIconSvg('summary')}</span>
+                        <div><span>전체</span><strong>${escapeHtml(normalizedRecords.length)}<small>건</small></strong></div>
+                    </article>
+                    <article class="work-history-experiment-metric-card is-cost">
+                        <span class="work-history-experiment-metric-icon" aria-hidden="true">${view.getSectionIconSvg('cost')}</span>
+                        <div><span>비용</span><strong>${escapeHtml(view.formatCurrency(totalCost))}</strong></div>
+                    </article>
+                    <article class="work-history-experiment-metric-card is-recent">
+                        <span class="work-history-experiment-metric-icon" aria-hidden="true">${view.getSectionIconSvg('date')}</span>
+                        <div><span>최근</span><strong>${escapeHtml(view.formatDateKorean(latestDate))}</strong></div>
+                    </article>
                 </div>
                 ${groupedMarkup || '<div class="work-history-experiment-empty">표시할 작업이력이 없습니다.</div>'}
             </section>
         `;
     }
 
+    function shouldShowAllExperimentTeamRecords(team, teamRecords = []) {
+        return teamRecords.length <= EXPERIMENT_TEAM_PREVIEW_LIMIT
+            || (state.currentTeam === team && typeof view.isHistoryFullscreen === 'function' && view.isHistoryFullscreen());
+    }
+
     function buildExperimentTeamSection(team, records = []) {
         const info = TeamInfo[team] || {};
         const teamRecords = records.filter(record => (record.team || record._team) === team);
         if (!teamRecords.length) return '';
+        const visibleRecords = shouldShowAllExperimentTeamRecords(team, teamRecords)
+            ? teamRecords
+            : teamRecords.slice(0, EXPERIMENT_TEAM_PREVIEW_LIMIT);
+        const shouldShowFullView = teamRecords.length > EXPERIMENT_TEAM_PREVIEW_LIMIT;
+        const fullViewLabel = `${info.name || team} 전체보기`;
+        const addButton = typeof view.buildTeamAddButton === 'function'
+            ? view.buildTeamAddButton(team, 'work-history-experiment-team-add')
+            : '';
         return `
             <section class="work-history-experiment-team ${escapeAttribute(info.class || team)}">
                 <header class="work-history-experiment-team-head">
                     <span class="work-history-experiment-team-title">
                         <span class="work-history-experiment-team-icon">${view.getTeamIconSvg(team)}</span>
                         <strong>${escapeHtml(info.name || team)}</strong>
+                        <span class="work-history-experiment-team-count">${escapeHtml(teamRecords.length)}건</span>
+                        ${addButton}
                     </span>
-                    <span class="work-history-experiment-team-count">${escapeHtml(teamRecords.length)}건</span>
+                    <span class="work-history-experiment-team-actions">
+                        ${shouldShowFullView ? `
+                            <button
+                                class="work-history-experiment-team-view"
+                                type="button"
+                                data-action="toggle-fullscreen"
+                                data-prefix="${escapeAttribute(team)}"
+                                aria-label="${escapeAttribute(fullViewLabel)}"
+                                title="${escapeAttribute(fullViewLabel)}"
+                            >전체보기</button>
+                        ` : ''}
+                    </span>
                 </header>
                 <div class="work-history-experiment-card-grid">
-                    ${teamRecords.map(record => buildExperimentRecordCard(record)).join('')}
+                    ${visibleRecords.map(record => buildExperimentRecordCard(record)).join('')}
                 </div>
             </section>
         `;
@@ -267,6 +294,15 @@
         const memo = buildRecordRemarkText(record);
         return `
             <article class="work-history-experiment-card">
+                <button
+                    class="work-history-experiment-card-edit"
+                    type="button"
+                    data-action="edit-record"
+                    data-team="${escapeAttribute(record.team || record._team || '')}"
+                    data-index="${escapeAttribute(record._index)}"
+                    aria-label="${escapeAttribute(`${title || '작업이력'} 수정`)}"
+                    title="수정"
+                >수정</button>
                 <h4 title="${escapeAttribute(title)}">${highlightText(escapeHtml(title))}</h4>
                 <dl>
                     <div><dt>구분</dt><dd>${escapeHtml(categoryText)}</dd></div>
