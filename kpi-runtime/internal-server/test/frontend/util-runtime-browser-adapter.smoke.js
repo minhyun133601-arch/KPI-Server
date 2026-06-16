@@ -1041,9 +1041,41 @@ async function flushMicrotasks() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-function getCurrentReportMonthKey() {
+function getCurrentCalendarMonthKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getLatestReportMonthKey() {
+  const now = new Date();
+  const latest = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return `${latest.getFullYear()}-${String(latest.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getReportRecordUrl(monthKey) {
+  return `/api/modules/report_runtime/records/report_${String(monthKey || '').replace('-', '_')}`;
+}
+
+function getReportRecordKey(monthKey) {
+  return `report_${String(monthKey || '').replace('-', '_')}`;
+}
+
+function getReportMonthNumber(monthKey, offset = 0) {
+  const year = Number.parseInt(String(monthKey || '').slice(0, 4), 10);
+  const month = Number.parseInt(String(monthKey || '').slice(5, 7), 10);
+  const date = new Date(year, month - 1 + offset, 1);
+  return date.getMonth() + 1;
+}
+
+function getReportDateForMonth(monthKey, day = 15) {
+  const year = Number.parseInt(String(monthKey || '').slice(0, 4), 10);
+  const month = Number.parseInt(String(monthKey || '').slice(5, 7), 10);
+  const date = new Date(year, month, day);
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getReportDateInputForMonth(monthKey, day = 15) {
+  return getReportDateForMonth(monthKey, day).replaceAll('.', '-');
 }
 
 function createCompletedSettlement(monthValue) {
@@ -1100,6 +1132,8 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.match(adapterSource, /data-report-export-capture-zip/);
   assert.doesNotMatch(adapterSource, /showDirectoryPicker/);
   assert.match(adapterSource, /data-report-export-fullscreen/);
+  assert.match(adapterSource, /isReportDeckExportFullscreenAdvanceClick/);
+  assert.match(adapterSource, /isReportDeckExportFullscreenAdvanceClick\(event\.target\)[\s\S]*moveSlide\(1\);/);
   assert.match(adapterSource, /data-report-export-print/);
   assert.doesNotMatch(adapterSource, /<button[^>]+data-report-export-print/);
   assert.doesNotMatch(adapterSource, /PDF\uC778\uC1C4/);
@@ -2123,7 +2157,7 @@ test('util runtime report deck rendering omits null future month values', async 
 
   await flushMicrotasks();
 
-  assert.equal(deckDom.root.dataset.reportMonth, '2025-11');
+  assert.equal(deckDom.root.dataset.reportMonth, getLatestReportMonthKey());
   assert.match(deckDom.autoChartPlots.gas.innerHTML, />0\.100</);
   assert.doesNotMatch(deckDom.autoChartPlots.gas.innerHTML, />0\.000</);
   assert.match(deckDom.autoChartPlots.electric.innerHTML, />0\.200</);
@@ -3354,11 +3388,15 @@ test('report deck editor loads and saves through server module records', async (
   const team1ContentsItem1Field = deckDom.fields.find((field) => field.dataset.reportField === 'productionTeam1ContentsItem1');
   const team1ContentsItem1Ref = deckDom.fieldRefs.find((field) => field.dataset.reportFieldRef === 'productionTeam1ContentsItem1');
   const contentsItem4Field = deckDom.fields.find((field) => field.dataset.reportField === 'contentsItem4');
-  assert.equal(titleField.textContent, '12월 실적 보고');
+  const latestReportMonth = getLatestReportMonthKey();
+  const latestReportRecordUrl = getReportRecordUrl(latestReportMonth);
+  const latestReportMonthNumber = getReportMonthNumber(latestReportMonth);
+  const nextReportMonthNumber = getReportMonthNumber(latestReportMonth, 1);
+  assert.equal(titleField.textContent.startsWith(`${latestReportMonthNumber}`), true);
   assert.equal(departmentField.textContent, '생산본부');
-  assert.equal(slide8TitleField.textContent, '3. 12월 공사 및 정비 현황');
-  assert.equal(slide9TitleField.textContent, '4. 1월 주요 계획');
-  assert.equal(dateField.textContent, '2026.01.15');
+  assert.equal(slide8TitleField.textContent.startsWith(`3. ${latestReportMonthNumber}`), true);
+  assert.equal(slide9TitleField.textContent.startsWith(`4. ${nextReportMonthNumber}`), true);
+  assert.equal(dateField.textContent, getReportDateForMonth(latestReportMonth));
   assert.equal(team1ContentsTitleField.textContent, 'Contents');
   assert.equal(team1ContentsItem1Field.textContent, '생산실적(생산량)');
   assert.equal(team1ContentsItem1Ref.textContent, '생산실적(생산량)');
@@ -3366,15 +3404,14 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.fields.find((field) => field.dataset.reportField === 'slide8Item1Text').textContent, 'DB plan text');
   assert.equal(deckDom.planImages[0].src, 'data:image/png;base64,AAAA');
   assert.equal(deckDom.planImageFrames.slide8BeforeImage1.dataset.hasImage, 'true');
-  assert.equal(deckDom.dateInput.value, '2026-01-15');
+  assert.equal(deckDom.dateInput.value, getReportDateInputForMonth(latestReportMonth));
   assert.equal(deckDom.status.textContent, '');
-  assert.equal(deckDom.monthSelect.value, '2025-12');
+  assert.equal(deckDom.monthSelect.value, latestReportMonth);
   assert.equal(deckDom.monthSelect.disabled, false);
-  assert.match(deckDom.monthSelect.innerHTML, /2025-12/);
-  assert.match(deckDom.monthSelect.innerHTML, /2026-01/);
-  assert.equal(deckDom.monthSelect.innerHTML.includes(getCurrentReportMonthKey()), true);
+  assert.equal(deckDom.monthSelect.innerHTML.includes(latestReportMonth), true);
+  assert.equal(deckDom.monthSelect.innerHTML.includes(getCurrentCalendarMonthKey()), false);
   assert.equal(fetchCalls[0].url, '/api/shared-store');
-  assert.equal(fetchCalls[1].url, '/api/modules/report_runtime/records/report_2025_12');
+  assert.equal(fetchCalls[1].url, latestReportRecordUrl);
   assert.equal(deckDom.root.dataset.reportEditMode, 'view');
   assert.equal(deckDom.root.dataset.reportActiveView, 'hq');
   assert.equal(deckDom.root.dataset.reportActiveSlide, '0');
@@ -3434,7 +3471,7 @@ test('report deck editor loads and saves through server module records', async (
   });
   await flushMicrotasks();
   assert.equal(fetchCalls.length, 2);
-  assert.equal(titleField.textContent, '12월 실적 보고');
+  assert.equal(titleField.textContent.startsWith(`${latestReportMonthNumber}`), true);
   assert.equal(deckDom.status.textContent, '저장 완료');
   assert.equal(deckDom.root.dataset.reportEditMode, 'view');
   assert.equal(titleField.contenteditable, 'false');
@@ -3474,7 +3511,7 @@ test('report deck editor loads and saves through server module records', async (
   await flushMicrotasks();
 
   assert.equal(fetchCalls.length, 2);
-  assert.equal(titleField.textContent, '12월 실적 보고');
+  assert.equal(titleField.textContent.startsWith(`${latestReportMonthNumber}`), true);
   assert.equal(deckDom.status.textContent, '');
 
   slide8TitleField.textContent = '수정 불가 제목';
@@ -3483,7 +3520,7 @@ test('report deck editor loads and saves through server module records', async (
   });
   await flushMicrotasks();
   assert.equal(fetchCalls.length, 2);
-  assert.equal(slide8TitleField.textContent, '3. 12월 공사 및 정비 현황');
+  assert.equal(slide8TitleField.textContent.startsWith(`3. ${latestReportMonthNumber}`), true);
   assert.equal(deckDom.status.textContent, '');
 
   team1ContentsItem1Field.textContent = '생산량 실적';
@@ -3499,7 +3536,7 @@ test('report deck editor loads and saves through server module records', async (
     target: deckDom.dateInput,
   });
   await flushMicrotasks();
-  assert.equal(dateField.textContent, '2026.01.16');
+  assert.equal(dateField.textContent, getReportDateForMonth(latestReportMonth, 16));
   assert.equal(fetchCalls.length, 2);
 
   const slide8OverviewField = deckDom.fields.find((field) => field.dataset.reportField === 'slide8Item1Text');
@@ -3599,13 +3636,14 @@ test('report deck editor loads and saves through server module records', async (
   await flushMicrotasks();
   assert.equal(ctrlSavePrevented, true);
   assert.equal(ctrlSaveStopped, true);
-  assert.equal(fetchCalls[2].url, '/api/modules/report_runtime/records/report_2025_12');
+  assert.equal(fetchCalls[2].url, latestReportRecordUrl);
   assert.equal(fetchCalls[2].options.method, 'PUT');
-  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.title, '12월 실적 보고');
+  const savedReportPayload = JSON.parse(fetchCalls[2].options.body).payload;
+  assert.equal(savedReportPayload.title.startsWith(`${latestReportMonthNumber}`), true);
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.productionTeam1ContentsItem1, '생산량 실적');
-  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Title, '3. 12월 공사 및 정비 현황');
-  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Title, '4. 1월 주요 계획');
-  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.reportDate, '2026.01.16');
+  assert.equal(savedReportPayload.slide8Title.startsWith(`3. ${latestReportMonthNumber}`), true);
+  assert.equal(savedReportPayload.slide9Title.startsWith(`4. ${nextReportMonthNumber}`), true);
+  assert.equal(savedReportPayload.reportDate, getReportDateForMonth(latestReportMonth, 16));
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8SlotCount, '3');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Team, '공무환경팀');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Title, '환경 설비 보수');
@@ -3662,6 +3700,20 @@ test('report deck editor loads and saves through server module records', async (
   });
   assert.equal(deckDom.root.fullscreenRequestCount, 1);
   assert.equal(deckDom.stage.focusCount, 2);
+
+  let fullscreenClickPrevented = false;
+  deckDom.listeners.click({
+    target: {
+      closest() {
+        return null;
+      },
+    },
+    preventDefault() {
+      fullscreenClickPrevented = true;
+    },
+  });
+  assert.equal(fullscreenClickPrevented, true);
+  assert.equal(deckDom.root.dataset.reportActiveSlide, '5');
 
   deckDom.listeners.click({
     target: deckDom.navButtons[8],
@@ -3917,7 +3969,7 @@ test('report deck editor externalizes inline image data before saving records', 
   assert.ok(saveIndex > uploadIndex, 'record save must happen after image upload');
   const uploadBody = JSON.parse(fetchCalls[uploadIndex].options.body);
   assert.equal(uploadBody.ownerDomain, 'report.runtime');
-  assert.equal(uploadBody.ownerKey, 'report_2025_12');
+  assert.equal(uploadBody.ownerKey, getReportRecordKey(getLatestReportMonthKey()));
   assert.equal(uploadBody.base64Data, 'QUJD');
   const savedBody = JSON.parse(fetchCalls[saveIndex].options.body);
   assert.equal(savedBody.payload.slide8BeforeImage1, '/api/files/doc-inline-image-1/view');
@@ -4038,7 +4090,7 @@ test('report deck editor accepts clipboard image paste into plan image slots', a
   assert.ok(uploadCall, 'clipboard image upload was not called');
   const uploadBody = JSON.parse(uploadCall.options.body);
   assert.equal(uploadBody.ownerDomain, 'report.runtime');
-  assert.equal(uploadBody.ownerKey, 'report_2025_12');
+  assert.equal(uploadBody.ownerKey, getReportRecordKey(getLatestReportMonthKey()));
   assert.equal(uploadBody.originalName, 'clipboard.png');
   assert.equal(uploadBody.mimeType, 'image/png');
   assert.equal(uploadBody.base64Data, 'UEFTVEU=');
@@ -5176,7 +5228,7 @@ test('report deck output derives optional order and prints only filled plan cell
   const slide10TitleField = deckDom.fields.find((field) => field.dataset.reportField === 'slide10Title');
   const slide9SectionField = deckDom.fields.find((field) => field.dataset.reportField === 'slide9Section');
   const slide10SectionField = deckDom.fields.find((field) => field.dataset.reportField === 'slide10Section');
-  assert.equal(slide9TitleField.textContent, '3. 1월 주요 계획');
+  assert.equal(slide9TitleField.textContent.startsWith(`3. ${getReportMonthNumber(getLatestReportMonthKey(), 1)}`), true);
   assert.equal(slide10TitleField.textContent, '4. 자율 안전 신고제');
   assert.equal(slide9SectionField.textContent, 'Ⅲ. 공무환경팀');
   assert.equal(slide10SectionField.textContent, 'Ⅳ. 공무환경팀');
@@ -5301,8 +5353,8 @@ test('report deck output titles and roman headers are corrected from printed opt
     preventDefault() {},
   });
 
-  assert.equal(slide8TitleField.textContent, '3. 12월 공사 및 정비 현황');
-  assert.equal(slide9TitleField.textContent, '4. 1월 주요 계획');
+  assert.equal(slide8TitleField.textContent.startsWith(`3. ${getReportMonthNumber(getLatestReportMonthKey())}`), true);
+  assert.equal(slide9TitleField.textContent.startsWith(`4. ${getReportMonthNumber(getLatestReportMonthKey(), 1)}`), true);
   assert.equal(slide10TitleField.textContent, '5. 자율 안전 신고제');
   assert.equal(slide8SectionField.textContent, 'Ⅲ. 공무환경팀');
   assert.equal(slide9SectionField.textContent, 'Ⅳ. 공무환경팀');

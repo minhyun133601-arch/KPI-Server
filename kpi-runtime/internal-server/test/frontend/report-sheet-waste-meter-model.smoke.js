@@ -231,7 +231,7 @@ test('report sheet waste meter model aggregates bukjeong and yusan for the all s
 
 test('kpi html loads updated waste sheet assets in report-sheet order', () => {
   const wasteMeterIndex = kpiHtml.indexOf('runtime/util/report/sheet/waste/meter-model.js?v=010');
-  const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=058');
+  const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=059');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
   const wasteAnalysisIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/waste/model.js?v=008');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=064');

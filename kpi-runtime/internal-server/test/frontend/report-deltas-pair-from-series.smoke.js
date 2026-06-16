@@ -134,9 +134,69 @@ function loadProductionMonthlyValueMap() {
   return api;
 }
 
+function loadReportMonthOptionApi() {
+  const helperSources = [
+    'getUtilReportMonthIndex',
+    'shiftUtilReportMonthKey',
+    'getUtilReportMaxMonthKey',
+    'isUtilReportMonthWithinMax',
+    'buildUtilReportMonthOptions',
+  ].map((functionName) => extractFunctionSource(deltasSource, functionName));
+  const wrapped = `(function () {
+    const UTIL_ELECTRIC_ENTRIES = [
+      { year: 2026, month: 4, usage: 1 },
+      { year: 2026, month: 6, usage: 1 },
+    ];
+    const UTIL_GAS_ENTRIES = [
+      { year: 2026, month: 5, usage: 1 },
+    ];
+    const UTIL_WASTE_ENTRIES = [
+      { year: 2026, month: 7, usage: 1 },
+    ];
+    function getCurrentMonthKey() {
+      return '2026-06';
+    }
+    function parseUtilMonthValue(value) {
+      if (value && typeof value === 'object') {
+        const year = Number(value.year);
+        const month = Number(value.month);
+        return Number.isFinite(year) && Number.isFinite(month) ? { year, month } : null;
+      }
+      const match = String(value || '').match(/^(\\d{4})-(\\d{2})$/);
+      return match ? { year: Number(match[1]), month: Number(match[2]) } : null;
+    }
+    function buildUtilMonthOptions(entries) {
+      return (Array.isArray(entries) ? entries : [])
+        .map((entry) => {
+          const parsed = parseUtilMonthValue(entry);
+          return parsed ? {
+            value: \`\${parsed.year}-\${String(parsed.month).padStart(2, '0')}\`,
+            year: parsed.year,
+            month: parsed.month,
+          } : null;
+        })
+        .filter(Boolean)
+        .sort((left, right) => (left.year * 100 + left.month) - (right.year * 100 + right.month));
+    }
+    function formatUtilReportMonthShort(monthKey) {
+      return monthKey;
+    }
+    ${helperSources.join('\n')}
+    return {
+      buildUtilReportMonthOptions,
+      getUtilReportMaxMonthKey,
+      isUtilReportMonthWithinMax,
+    };
+  })()`;
+  return vm.runInThisContext(wrapped, {
+    filename: 'KPI.util.report.deltas.month-options.extract.js',
+  });
+}
+
 const buildDeltaPair = loadBuildDeltaPair();
 const normalizeProductionLineBucket = loadProductionLineBucket();
 const productionMonthlyValueMapApi = loadProductionMonthlyValueMap();
+const reportMonthOptionApi = loadReportMonthOptionApi();
 
 test('extraction sentinel: deltas.js still defines buildUtilReportDeltaPairFromSeries with delta/prev rate formula', () => {
   assert.match(
@@ -148,6 +208,16 @@ test('extraction sentinel: deltas.js still defines buildUtilReportDeltaPairFromS
     deltasSource,
     /prev\s*!==\s*0\s*\?\s*\(\s*delta\s*\/\s*prev\s*\)\s*\*\s*100\s*:\s*null/,
     'rate formula `prev !== 0 ? (delta / prev) * 100 : null` must be preserved'
+  );
+});
+
+test('report month options cap at previous month for monthly report publishing', () => {
+  assert.equal(reportMonthOptionApi.getUtilReportMaxMonthKey(), '2026-05');
+  assert.equal(reportMonthOptionApi.isUtilReportMonthWithinMax('2026-05'), true);
+  assert.equal(reportMonthOptionApi.isUtilReportMonthWithinMax('2026-06'), false);
+  assert.deepEqual(
+    reportMonthOptionApi.buildUtilReportMonthOptions().map((option) => option.value),
+    ['2026-04', '2026-05']
   );
 });
 

@@ -151,13 +151,31 @@
         return `${shifted.getFullYear()}-${String(shifted.getMonth() + 1).padStart(2, '0')}`;
     }
 
+    function getUtilSheetReportMaxMonthKey() {
+        const currentMonth = typeof getCurrentMonthKey === 'function'
+            ? getCurrentMonthKey()
+            : (() => {
+                const now = new Date();
+                return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            })();
+        return shiftUtilSheetMonthKey(currentMonth, -1);
+    }
+
+    function isUtilSheetReportMonthWithinMax(monthKey = '') {
+        const parsed = parseUtilMonthValue(monthKey);
+        const maxParsed = parseUtilMonthValue(getUtilSheetReportMaxMonthKey());
+        if (!parsed) return false;
+        if (!maxParsed) return true;
+        return ((parsed.year * 12) + parsed.month) <= ((maxParsed.year * 12) + maxParsed.month);
+    }
+
     function buildUtilSheetMonthBounds(datasetKey) {
         const monthOptions = typeof buildUtilMonthOptions === 'function'
             ? buildUtilMonthOptions(getUtilSheetEntries(datasetKey))
             : [];
         const monthKeys = monthOptions
             .map(item => item?.value || item?.key || '')
-            .filter(Boolean)
+            .filter(value => value && isUtilSheetReportMonthWithinMax(value))
             .sort(compareUtilSheetMonthKeys);
         if (!monthKeys.length) return null;
         const from = monthKeys[0];
@@ -215,6 +233,8 @@
         buildUtilSheetCompareSub,
         isUtilSheetPlainObject,
         shiftUtilSheetMonthKey,
+        getUtilSheetReportMaxMonthKey,
+        isUtilSheetReportMonthWithinMax,
         buildUtilSheetMonthBounds,
         summarizeUtilSheetRows,
         getUtilSheetEntryMonthKey,

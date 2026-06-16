@@ -155,11 +155,24 @@
         return parsedLeft.month - parsedRight.month;
     }
 
+    function getReportMaxMonthKey() {
+        const now = new Date();
+        return shiftMonthKey(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`, -1);
+    }
+
+    function isMonthWithinReportMax(monthKey = '') {
+        const parsed = parseMonthValue(monthKey);
+        const maxParsed = parseMonthValue(getReportMaxMonthKey());
+        if (!parsed) return false;
+        if (!maxParsed) return true;
+        return ((parsed.year * 12) + parsed.month) <= ((maxParsed.year * 12) + maxParsed.month);
+    }
+
     function mergeUtilSheetMonthOptions(options = []) {
         const optionMap = new Map();
         (Array.isArray(options) ? options : []).forEach(option => {
             const value = String(option?.value || '').trim();
-            if (!value || !parseMonthValue(value)) return;
+            if (!value || !parseMonthValue(value) || !isMonthWithinReportMax(value)) return;
             const existing = optionMap.get(value) || {};
             optionMap.set(value, {
                 value,
@@ -377,7 +390,9 @@
         if (!panel) return;
         const sheetType = normalizeUtilSheetType(panel.dataset.sheetType);
         const datasetKey = resolveUtilSheetReportDatasetKey(sheetType, panel.dataset.datasetKey || UtilSheetReportState[sheetType] || 'gas');
-        const selectedMonthKey = String(panel.dataset.monthKey || UtilSheetReportMonthState[sheetType] || '').trim();
+        const selectedMonthKey = panel.dataset.monthUserSelected === 'true'
+            ? String(panel.dataset.monthKey || UtilSheetReportMonthState[sheetType] || '').trim()
+            : '';
         const compareKey = normalizeUtilSheetCompareKey(panel.dataset.compareKey || UtilSheetCompareState[sheetType] || 'month');
         const model = buildUtilSheetPreviewModel(sheetType, datasetKey, selectedMonthKey);
         const datasetResult = model.result || { monthOptions: [], activeMonthKey: '' };

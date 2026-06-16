@@ -211,6 +211,7 @@
             panel.dataset.sheetType = normalizedSheetType;
             panel.dataset.datasetKey = normalizedDatasetKey;
             panel.dataset.monthKey = String(UtilSheetReportMonthState[normalizedSheetType] || panel.dataset.monthKey || '').trim();
+            panel.dataset.monthUserSelected = panel.dataset.monthKey ? 'true' : 'false';
             panel.dataset.compareKey = normalizeUtilSheetCompareKey(UtilSheetCompareState[normalizedSheetType] || panel.dataset.compareKey || 'month');
             if (typeof runtime.renderUtilSheetPanel === 'function') {
                 runtime.renderUtilSheetPanel(panel);
@@ -239,7 +240,8 @@
                 panel.dataset.datasetKey || UtilSheetReportState[sheetType] || 'gas'
             );
             panel.dataset.datasetKey = defaultDatasetKey;
-            panel.dataset.monthKey = String(panel.dataset.monthKey || UtilSheetReportMonthState[sheetType] || '').trim();
+            panel.dataset.monthKey = String(panel.dataset.monthKey || '').trim();
+            panel.dataset.monthUserSelected = 'false';
             panel.dataset.compareKey = normalizeUtilSheetCompareKey(panel.dataset.compareKey || UtilSheetCompareState[sheetType] || 'month');
 
             panel.querySelectorAll('[data-role="util-sheet-type-select"]').forEach(button => {
@@ -248,7 +250,9 @@
                 button.addEventListener('click', () => {
                     panel.dataset.sheetType = 'meter';
                     panel.dataset.datasetKey = resolveUtilSheetReportDatasetKey('meter', panel.dataset.datasetKey || UtilSheetReportState.meter || 'gas');
-                    panel.dataset.monthKey = String(UtilSheetReportMonthState.meter || panel.dataset.monthKey || '').trim();
+                    panel.dataset.monthKey = panel.dataset.monthUserSelected === 'true'
+                        ? String(panel.dataset.monthKey || UtilSheetReportMonthState.meter || '').trim()
+                        : '';
                     panel.dataset.compareKey = normalizeUtilSheetCompareKey(UtilSheetCompareState.meter || panel.dataset.compareKey || 'month');
                     if (typeof runtime.renderUtilSheetPanel === 'function') {
                         runtime.renderUtilSheetPanel(panel);
@@ -263,6 +267,7 @@
                     const activeSheetType = normalizeUtilSheetType(panel.dataset.sheetType);
                     const monthKey = String(monthSelect.value || '').trim();
                     panel.dataset.monthKey = monthKey;
+                    panel.dataset.monthUserSelected = 'true';
                     UtilSheetReportMonthState[activeSheetType] = monthKey;
                     if (typeof runtime.renderUtilSheetPanel === 'function') {
                         runtime.renderUtilSheetPanel(panel);

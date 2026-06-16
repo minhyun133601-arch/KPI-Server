@@ -503,11 +503,6 @@
     const REPORT_DECK_COMPLETE_EDIT_EVENT = 'kpi:report-deck-complete-edit';
     const REPORT_DECK_MONTH_RECORD_PREFIX = 'report_';
     const REPORT_DECK_OPEN_MONTH_START = '2024-01';
-    const REPORT_DECK_SETTLEMENT_SCOPE_REQUIREMENTS = Object.freeze({
-        electric: Object.freeze(['yusan', 'bukjeong']),
-        gas: Object.freeze(['gas_bukjeong', 'yusan_lng', 'yusan_lpg']),
-        waste: Object.freeze(['waste_bukjeong', 'waste_yusan'])
-    });
     const REPORT_DECK_SLIDE8_OVERVIEW_TEAMS = Object.freeze(['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀']);
     const REPORT_DECK_PLAN_MAX_ITEMS = 8;
     const REPORT_DECK_PLAN_MAX_ITEMS_BY_SLIDE = Object.freeze({
@@ -704,9 +699,10 @@
         return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}`;
     }
 
-    function getReportDeckCurrentMonth() {
+    function getReportDeckLatestOpenMonth() {
         const now = new Date();
-        return normalizeReportDeckMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+        const latest = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        return normalizeReportDeckMonth(`${latest.getFullYear()}-${String(latest.getMonth() + 1).padStart(2, '0')}`);
     }
 
     function buildReportDeckMonthRange(startMonthValue, endMonthValue) {
@@ -1657,79 +1653,8 @@
         return /^slide10Item\d+Text$/.test(String(key || '').trim());
     }
 
-    function isReportDeckPlainObject(value) {
-        return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-    }
-
-    function getReportDeckResourceDataset(store, resourceKey) {
-        const resourceDatasets = isReportDeckPlainObject(store?.resourceDatasets)
-            ? store.resourceDatasets
-            : {};
-        const dataset = resourceDatasets[String(resourceKey || '').trim()];
-        return isReportDeckPlainObject(dataset) ? dataset : {};
-    }
-
-    function getReportDeckBillingSettlementEntries(store, resourceKey) {
-        const dataset = getReportDeckResourceDataset(store, resourceKey);
-        return isReportDeckPlainObject(dataset.billingSettlementEntries)
-            ? dataset.billingSettlementEntries
-            : {};
-    }
-
-    function isReportDeckSettlementLeafComplete(entry) {
-        if (!isReportDeckPlainObject(entry) || entry.completed !== true) return false;
-        const fields = isReportDeckPlainObject(entry.fields) ? entry.fields : entry;
-        return Object.keys(fields).some(key => key !== 'completed' && key !== 'updatedAt' && key !== 'monthValue');
-    }
-
-    function getReportDeckSettlementScopeMap(entry) {
-        if (!isReportDeckPlainObject(entry)) return {};
-        const source = isReportDeckPlainObject(entry.scopes) ? entry.scopes : entry;
-        return Object.entries(source).reduce((scopeMap, [scopeKey, scopeEntry]) => {
-            if (isReportDeckPlainObject(scopeEntry)) {
-                scopeMap[String(scopeKey || '').trim()] = scopeEntry;
-            }
-            return scopeMap;
-        }, {});
-    }
-
-    function isReportDeckResourceMonthSettled(entries, monthValue, requiredScopes = []) {
-        const entry = entries?.[monthValue];
-        if (!isReportDeckPlainObject(entry)) return false;
-        const scopeMap = getReportDeckSettlementScopeMap(entry);
-        const normalizedRequiredScopes = (Array.isArray(requiredScopes) ? requiredScopes : [])
-            .map(scopeKey => String(scopeKey || '').trim())
-            .filter(Boolean);
-        if (normalizedRequiredScopes.length) {
-            return normalizedRequiredScopes.every(scopeKey => isReportDeckSettlementLeafComplete(scopeMap[scopeKey]));
-        }
-        return isReportDeckSettlementLeafComplete(entry);
-    }
-
-    function buildReportDeckSettledMonthsFromStore(store) {
-        if (!isReportDeckPlainObject(store)) return [];
-        const resourceEntries = Object.entries(REPORT_DECK_SETTLEMENT_SCOPE_REQUIREMENTS).map(([resourceKey, requiredScopes]) => ({
-            resourceKey,
-            requiredScopes,
-            entries: getReportDeckBillingSettlementEntries(store, resourceKey)
-        }));
-        if (resourceEntries.some(item => !Object.keys(item.entries).length)) return [];
-        const candidateMonths = new Set();
-        resourceEntries.forEach(item => {
-            Object.keys(item.entries).forEach(monthValue => {
-                const month = normalizeReportDeckMonth(monthValue);
-                if (month) candidateMonths.add(month);
-            });
-        });
-        return Array.from(candidateMonths)
-            .filter(monthValue => resourceEntries.every(item => (
-                isReportDeckResourceMonthSettled(item.entries, monthValue, item.requiredScopes)
-            )))
-            .sort((left, right) => right.localeCompare(left));
-    }
-
     function buildReportDeckOpenMonthsUntilCurrent() {
-        const currentMonth = getReportDeckCurrentMonth();
+        const currentMonth = getReportDeckLatestOpenMonth();
         const startMonth = REPORT_DECK_OPEN_MONTH_START.localeCompare(currentMonth) <= 0
             ? REPORT_DECK_OPEN_MONTH_START
             : currentMonth;
@@ -5121,6 +5046,40 @@
         setReportDeckSlide(root, next);
     }
 
+    function isReportDeckFullscreenAdvanceClick(root, target) {
+        if (!root || !target || root.dataset.reportEditMode === 'editing') return false;
+        const doc = root?.ownerDocument;
+        const fullscreenElement = doc?.fullscreenElement || doc?.webkitFullscreenElement || null;
+        if (fullscreenElement !== root) return false;
+        if (typeof target.closest !== 'function') return true;
+        return !target.closest([
+            'button',
+            'a',
+            'input',
+            'textarea',
+            'select',
+            'label',
+            'summary',
+            '[role="button"]',
+            '[role="link"]',
+            '[contenteditable="true"]',
+            '[data-report-slide-target]',
+            '[data-report-jump-slide]',
+            '[data-report-fullscreen]',
+            '[data-report-export-html]',
+            '[data-report-capture-pdf]',
+            '[data-report-capture-zip]',
+            '[data-report-print-pdf]',
+            '[data-report-edit-toggle]',
+            '[data-report-memo-overview-toggle]',
+            '[data-report-plan-image-input]',
+            '[data-report-plan-image-upload]',
+            '[data-report-plan-image-clear]',
+            '[data-report-chart-highlight-toggle]',
+            '[data-report-chart-highlight-reset]'
+        ].join(', '));
+    }
+
     function toggleReportDeckFullscreen(root) {
         const doc = root?.ownerDocument;
         const fullscreenElement = doc?.fullscreenElement || doc?.webkitFullscreenElement || null;
@@ -5733,12 +5692,11 @@
             const result = await browser.fetchMeteringSharedStore();
             meta.sharedStore = result?.store || null;
             const months = buildReportDeckOpenMonthsUntilCurrent();
-            const settledMonths = buildReportDeckSettledMonthsFromStore(result?.store || {});
             meta.months = months;
             meta.monthPlaceholder = months.length ? '' : '선택 가능 월 없음';
             meta.selectedMonth = months.includes(meta.selectedMonth)
                 ? meta.selectedMonth
-                : (settledMonths.find(month => months.includes(month)) || months[0] || '');
+                : (months[0] || '');
             meta.recordKey = meta.selectedMonth ? buildReportDeckMonthRecordKey(meta.selectedMonth) : '';
             syncReportDeckMonthSelect(root, meta);
             if (!meta.selectedMonth) {
@@ -6176,9 +6134,16 @@
             }
 
             const slideButton = event.target?.closest?.('[data-report-slide-target]');
-            if (!slideButton) return;
-            event.preventDefault();
-            setReportDeckSlide(root, slideButton.dataset.reportSlideTarget);
+            if (slideButton) {
+                event.preventDefault();
+                setReportDeckSlide(root, slideButton.dataset.reportSlideTarget);
+                return;
+            }
+
+            if (isReportDeckFullscreenAdvanceClick(root, event.target)) {
+                event.preventDefault?.();
+                moveReportDeckSlide(root, 1);
+            }
         });
 
         function handleReportDeckInput(event) {

@@ -26,9 +26,23 @@ const kpiHtml = await fs.readFile(
   'utf8'
 );
 
+function createFixedDate(isoString) {
+  const fixedTime = new Date(isoString).getTime();
+  return class FixedDate extends Date {
+    constructor(...args) {
+      super(...(args.length ? args : [fixedTime]));
+    }
+
+    static now() {
+      return fixedTime;
+    }
+  };
+}
+
 test('report sheet helper functions are split out of sheet runtime', () => {
   const context = {
     console,
+    Date: createFixedDate('2026-06-16T00:00:00.000Z'),
     escapeHtml: (value) => `escaped:${value}`,
     parseUtilMonthValue: (value) => {
       const match = String(value || '').match(/^(\d{4})-(\d{2})$/u);
@@ -55,6 +69,7 @@ test('report sheet helper functions are split out of sheet runtime', () => {
   assert.equal(context.escapeUtilSheetHtml('x'), 'escaped:x');
   assert.ok(context.formatUtilSheetCost(1234).includes('1,234'));
   assert.equal(context.compareUtilSheetMonthKeys('2026-01', '2026-02'), -1);
+  assert.equal(context.getUtilSheetReportMaxMonthKey(), '2026-05');
   assert.equal(
     JSON.stringify(context.buildUtilSheetMonthBounds('gas')),
     JSON.stringify({ from: '2026-01', to: '2026-03' })
@@ -81,9 +96,50 @@ test('report sheet helper functions are split out of sheet runtime', () => {
   assert.match(sheetHelpersSource, /KPIUtilReportRuntimeAdapter/);
 });
 
+test('report sheet helper month bounds cap at the previous month', () => {
+  const context = {
+    console,
+    Date: createFixedDate('2026-06-16T00:00:00.000Z'),
+    escapeHtml: (value) => String(value ?? ''),
+    parseUtilMonthValue: (value) => {
+      const match = String(value || '').match(/^(\d{4})-(\d{2})$/u);
+      return match ? { year: Number(match[1]), month: Number(match[2]) } : null;
+    },
+    buildUtilMonthOptions: () => [
+      { value: '2026-04' },
+      { value: '2026-05' },
+      { value: '2026-06' },
+      { value: '2026-07' },
+    ],
+    UTIL_GAS_ENTRIES: [],
+    UTIL_ELECTRIC_ENTRIES: [],
+  };
+  context.globalThis = context;
+  context.window = context;
+  vm.createContext(context);
+
+  vm.runInContext(adapterSource, context, {
+    filename: 'KPI.util.report.runtime-adapter.js',
+  });
+  vm.runInContext(sheetConfigSource, context, {
+    filename: 'KPI.util.report.sheet.config.js',
+  });
+  vm.runInContext(sheetHelpersSource, context, {
+    filename: 'KPI.util.report.sheet.helpers.js',
+  });
+
+  assert.equal(context.getUtilSheetReportMaxMonthKey(), '2026-05');
+  assert.equal(context.isUtilSheetReportMonthWithinMax('2026-05'), true);
+  assert.equal(context.isUtilSheetReportMonthWithinMax('2026-06'), false);
+  assert.equal(
+    JSON.stringify(context.buildUtilSheetMonthBounds('gas')),
+    JSON.stringify({ from: '2026-04', to: '2026-05' })
+  );
+});
+
 test('kpi html loads report sheet helpers before sheet runtime', () => {
   const summaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=064');
-  const helpersIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.helpers.js?v=341');
+  const helpersIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.helpers.js?v=342');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=067');
 
   assert.ok(summaryIndex >= 0, 'report sheet summary loader is missing');

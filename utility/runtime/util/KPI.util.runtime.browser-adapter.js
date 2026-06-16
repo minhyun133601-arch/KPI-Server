@@ -949,6 +949,29 @@ ${getNodeOuterHtml(deck)}
         }
         setSlide((current + direction + slides.length) % slides.length);
     };
+    const isReportDeckExportFullscreenAdvanceClick = target => {
+        if (!target) return false;
+        const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || null;
+        if (fullscreenElement !== root) return false;
+        if (typeof target.closest !== 'function') return true;
+        return !target.closest([
+            'button',
+            'a',
+            'input',
+            'textarea',
+            'select',
+            'label',
+            'summary',
+            '[role="button"]',
+            '[role="link"]',
+            '[contenteditable="true"]',
+            '[data-report-slide-target]',
+            '[data-report-jump-slide]',
+            '[data-report-export-fullscreen]',
+            '[data-report-export-print]',
+            '[data-report-export-capture-zip]'
+        ].join(', '));
+    };
     const waitForDocumentImages = doc => Promise.all(Array.from(doc?.images || []).map(image => {
         const source = image.getAttribute?.('src') || image.currentSrc || image.src || '';
         if (!String(source || '').trim() || image.complete) return Promise.resolve();
@@ -1136,11 +1159,17 @@ ${getNodeOuterHtml(deck)}
                 result?.catch?.(() => {});
                 stage?.focus?.();
             }
+            return;
         }
         const printButton = event.target.closest?.('[data-report-export-print]');
         if (printButton) {
             event.preventDefault();
             printSlides();
+            return;
+        }
+        if (isReportDeckExportFullscreenAdvanceClick(event.target)) {
+            event.preventDefault();
+            moveSlide(1);
         }
     });
     document.addEventListener('keydown', event => {

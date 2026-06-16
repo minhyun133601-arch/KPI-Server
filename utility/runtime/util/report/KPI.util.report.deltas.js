@@ -558,22 +558,59 @@
             }
         }
 
+        function getUtilReportMonthIndex(monthKey = '') {
+            const parsed = parseUtilMonthValue(monthKey);
+            if (!parsed) return NaN;
+            return (parsed.year * 12) + (parsed.month - 1);
+        }
+
+        function shiftUtilReportMonthKey(monthKey = '', offset = 0) {
+            const parsed = parseUtilMonthValue(monthKey);
+            const monthOffset = Number(offset);
+            if (!parsed || !Number.isFinite(monthOffset)) return '';
+            const shiftedIndex = getUtilReportMonthIndex(monthKey) + monthOffset;
+            const year = Math.floor(shiftedIndex / 12);
+            const month = (shiftedIndex % 12) + 1;
+            if (!Number.isFinite(year) || !Number.isFinite(month)) return '';
+            return `${year}-${String(month).padStart(2, '0')}`;
+        }
+
+        function getUtilReportMaxMonthKey() {
+            const currentMonth = typeof getCurrentMonthKey === 'function'
+                ? getCurrentMonthKey()
+                : (() => {
+                    const now = new Date();
+                    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                })();
+            return shiftUtilReportMonthKey(currentMonth, -1);
+        }
+
+        function isUtilReportMonthWithinMax(monthKey = '') {
+            const monthIndex = getUtilReportMonthIndex(monthKey);
+            const maxIndex = getUtilReportMonthIndex(getUtilReportMaxMonthKey());
+            if (!Number.isFinite(monthIndex)) return false;
+            if (!Number.isFinite(maxIndex)) return true;
+            return monthIndex <= maxIndex;
+        }
+
         function buildUtilReportMonthOptions() {
             const allEntries = []
                 .concat(UTIL_ELECTRIC_ENTRIES || [])
                 .concat(UTIL_GAS_ENTRIES || [])
                 .concat(UTIL_WASTE_ENTRIES || []);
-            const options = buildUtilMonthOptions(allEntries).map(item => ({
-                ...item,
-                label: formatUtilReportMonthShort(item.value)
-            }));
+            const options = buildUtilMonthOptions(allEntries)
+                .filter(item => isUtilReportMonthWithinMax(item?.value || item?.key || ''))
+                .map(item => ({
+                    ...item,
+                    label: formatUtilReportMonthShort(item.value)
+                }));
             if (options.length) return options;
-            const current = getCurrentMonthKey();
-            const parsed = parseUtilMonthValue(current);
+            const fallbackMonth = getUtilReportMaxMonthKey();
+            const parsed = parseUtilMonthValue(fallbackMonth);
             if (!parsed) return [];
             return [{
-                value: current,
-                label: formatUtilReportMonthShort(current),
+                value: fallbackMonth,
+                label: formatUtilReportMonthShort(fallbackMonth),
                 year: parsed.year,
                 month: parsed.month
             }];
