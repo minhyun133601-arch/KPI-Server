@@ -589,6 +589,7 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(appData.experiment.categories[0].content, /data-exp-year-overlap-years/);
   assert.match(appData.experiment.categories[0].content, /KpiExperimentGraphPrototype/);
   assert.match(appData.experiment.categories[0].content, /data-exp-report-chart-style="report-auto"/);
+  assert.match(appData.experiment.categories[0].content, /data-exp-card="production-total"/);
   assert.match(appData.experiment.categories[0].content, /<option value="cost">비용<\/option>/);
   [
     'cost-team-01-01',
@@ -622,6 +623,8 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(experimentSource, /hidePeriodLabel:\s*true/);
   assert.match(experimentSource, /rangeMetaMode:\s*'labeled-min-max'/);
   assert.match(experimentSource, /hideLegend:\s*period\?\.yearOverlap !== true/);
+  assert.match(experimentSource, /suppressChartLabelToggle:\s*true/);
+  assert.match(experimentSource, /controlItems:\s*summarySeries\.map\(item => \(\{[\s\S]*hideLabelToggle:\s*true/);
   assert.doesNotMatch(experimentSource, /선택 지표 통합 그래프/);
   assert.doesNotMatch(experimentSource, /월별 실제값/);
   assert.match(experimentSource, /const\s+COST_CARDS\s*=\s*Object\.freeze\(\[/);
