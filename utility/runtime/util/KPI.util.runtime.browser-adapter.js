@@ -121,7 +121,7 @@
         team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'gas_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
         team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
         team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
-        site_yusan: Object.freeze(REPORT_DECK_MEMO_CIP_METRIC_KEYS),
+        site_yusan: Object.freeze(REPORT_DECK_MEMO_YUSAN_OVERVIEW_METRIC_KEYS),
         site_total: Object.freeze(REPORT_DECK_MEMO_CIP_METRIC_KEYS),
         other: Object.freeze(REPORT_DECK_MEMO_OTHER_METRIC_KEYS)
     });
@@ -2564,6 +2564,25 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
             };
         }
         const metric = getReportDeckMemoMetric(team.key, metricKey);
+        if (team.key === REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key) {
+            const candidate = buildReportDeckMemoYusanOverviewCandidate(
+                activeMonthInfo,
+                metricKey,
+                optionApi,
+                gasApi,
+                electricApi,
+                memoBuildCache,
+                options.store || root.__LOCAL_APP_STORE__
+            );
+            return {
+                ok: true,
+                teamKey: team.key,
+                metricKey,
+                availableMetricKeys,
+                monthKey: activeMonthInfo.key,
+                candidates: candidate ? [candidate] : []
+            };
+        }
         const previousMonthKey = getReportDeckRelativeMonthKey(activeMonthInfo, -1);
         const previousYearKey = toReportDeckMonthKey(activeMonthInfo.year - 1, activeMonthInfo.month);
         const currentMonthKey = activeMonthInfo.key;

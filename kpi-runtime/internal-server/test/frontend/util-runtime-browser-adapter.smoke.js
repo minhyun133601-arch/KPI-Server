@@ -69,6 +69,7 @@ function createContext(options = {}) {
       writeEnabled: true,
     },
     fetchImpl = null,
+    openImpl = null,
   } = options;
   const registered = {
     initializers: new Map(),
@@ -80,6 +81,7 @@ function createContext(options = {}) {
     sheetReportContainers: [],
     printCount: 0,
     alertMessages: [],
+    openCalls: [],
   };
   const context = {
     console,
@@ -87,6 +89,10 @@ function createContext(options = {}) {
     clearTimeout,
     alert(message) {
       registered.alertMessages.push(String(message || ''));
+    },
+    open(...args) {
+      registered.openCalls.push(args);
+      return typeof openImpl === 'function' ? openImpl(...args) : null;
     },
     window: null,
     ['global' + 'This']: null,
@@ -148,7 +154,8 @@ function createContext(options = {}) {
   return { context, registered };
 }
 
-function createReportDeckContainer() {
+function createReportDeckContainer(options = {}) {
+  const withMemoOverviewWindow = options.withMemoOverviewWindow === true;
   const listeners = {};
   const status = { dataset: {}, textContent: '', hidden: false };
   const counter = { textContent: '' };
@@ -336,6 +343,70 @@ function createReportDeckContainer() {
       if (selector === '[data-report-memo-candidates]') return memoCandidates;
       if (selector === '[data-report-memo-manual-input]') return memoManualInput;
       return null;
+    },
+  };
+  const memoOverviewWindowListeners = {};
+  const memoOverviewWindow = {
+    innerWidth: 1000,
+    innerHeight: 700,
+    addEventListener(type, listener) {
+      memoOverviewWindowListeners[type] = listener;
+    },
+    removeEventListener(type, listener) {
+      if (memoOverviewWindowListeners[type] === listener) {
+        delete memoOverviewWindowListeners[type];
+      }
+    },
+  };
+  const reportOwnerDocument = {
+    fullscreenElement: null,
+    exitCount: 0,
+    documentElement: {
+      clientWidth: 1000,
+      clientHeight: 700,
+    },
+    exitFullscreen() {
+      this.exitCount += 1;
+      this.fullscreenElement = null;
+    },
+  };
+  if (withMemoOverviewWindow) {
+    reportOwnerDocument.defaultView = memoOverviewWindow;
+  }
+  const memoOverviewList = { innerHTML: '' };
+  const memoOverviewDialog = {
+    hidden: true,
+    dataset: {},
+    style: {},
+    classList: makeClassList(),
+    ownerDocument: reportOwnerDocument,
+    offsetWidth: 320,
+    offsetHeight: 200,
+    getBoundingClientRect() {
+      return {
+        left: Number.parseFloat(this.style.left || '24') || 24,
+        top: Number.parseFloat(this.style.top || '64') || 64,
+        width: 320,
+        height: 200,
+      };
+    },
+    querySelector(selector) {
+      if (selector === '[data-report-memo-overview-list]') return memoOverviewList;
+      return null;
+    },
+  };
+  const memoOverviewDragHandle = {
+    pointerCaptures: [],
+    releasedPointerCaptures: [],
+    closest(selector) {
+      if (selector === '[data-report-memo-overview-drag-handle]') return this;
+      return null;
+    },
+    setPointerCapture(pointerId) {
+      this.pointerCaptures.push(pointerId);
+    },
+    releasePointerCapture(pointerId) {
+      this.releasedPointerCaptures.push(pointerId);
     },
   };
   const memoTargets = [
@@ -888,14 +959,7 @@ function createReportDeckContainer() {
   const root = {
     dataset: {},
     fullscreenRequestCount: 0,
-    ownerDocument: {
-      fullscreenElement: null,
-      exitCount: 0,
-      exitFullscreen() {
-        this.exitCount += 1;
-        this.fullscreenElement = null;
-      },
-    },
+    ownerDocument: reportOwnerDocument,
     requestFullscreen() {
       this.fullscreenRequestCount += 1;
       this.ownerDocument.fullscreenElement = this;
@@ -908,6 +972,7 @@ function createReportDeckContainer() {
       if (selector === '[data-report-month-select]') return monthSelect;
       if (selector === '[data-report-overview-dialog]') return overviewDialog;
       if (selector === '[data-report-memo-dialog]') return memoDialog;
+      if (selector === '[data-report-memo-overview-dialog]') return memoOverviewDialog;
       if (selector === '[data-report-memo-key="slide3GasMemo"]') return memoTargets[0];
       if (selector === '[data-report-slide-counter]') return counter;
       if (selector === '[data-report-stage]') return stage;
@@ -1013,6 +1078,9 @@ function createReportDeckContainer() {
     memoManualInput,
     memoManualAddButton,
     memoDialog,
+    memoOverviewDialog,
+    memoOverviewDragHandle,
+    memoOverviewWindowListeners,
     memoTargets,
     memoContents,
     analysisColumns,
@@ -1067,6 +1135,32 @@ function assertOptionalContentHidden(deckDom, optionalPage, hidden) {
   items.forEach((item) => {
     assert.equal(item.hidden, hidden);
   });
+}
+
+function createPopupWindowMock() {
+  return {
+    closed: false,
+    focusCount: 0,
+    document: {
+      openCount: 0,
+      closeCount: 0,
+      html: '',
+      writes: [],
+      open() {
+        this.openCount += 1;
+      },
+      write(html) {
+        this.html = String(html || '');
+        this.writes.push(this.html);
+      },
+      close() {
+        this.closeCount += 1;
+      },
+    },
+    focus() {
+      this.focusCount += 1;
+    },
+  };
 }
 
 async function flushMicrotasks() {
@@ -1626,12 +1720,121 @@ test('report deck memo dialogs defer heavy work and cache repeated candidate res
   assert.match(runtimeSource, /memoCandidateCache:\s*new Map\(\)/);
   assert.match(runtimeSource, /memoOverviewCache:\s*new Map\(\)/);
   assert.match(runtimeSource, /buildReportDeckMemoCandidateCacheKey/);
+  assert.match(runtimeSource, /function startReportDeckMemoOverviewDrag/);
+  assert.match(runtimeSource, /data-report-memo-overview-drag-handle/);
+  assert.match(runtimeSource, /function setReportDeckMemoOverviewPosition/);
+  assert.match(runtimeSource, /function syncReportDeckMemoTeamOptions/);
+  assert.match(runtimeSource, /REPORT_DECK_MEMO_YUSAN_OVERVIEW_METRIC_KEYS/);
+  assert.match(adapterSource, /site_yusan:\s*Object\.freeze\(REPORT_DECK_MEMO_YUSAN_OVERVIEW_METRIC_KEYS\)/);
+  assert.match(runtimeSource, /root\.addEventListener\?\.\('pointerdown'[\s\S]*startReportDeckMemoOverviewDrag\(root, event\);/);
+  assert.match(runtimeSource, /function openReportDeckMemoOverviewPopupOrDialog/);
+  assert.match(runtimeSource, /ownerWindow\.open\(/);
+  assert.match(runtimeSource, /void openReportDeckMemoOverviewPopupOrDialog\(root, meta\);/);
+  assert.match(runtimeSource, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(runtimeSource, /report-memo-overview-row\.is-up/);
+  assert.match(runtimeSource, /report-memo-overview-row\.is-down/);
   assert.match(adapterSource, /function getReportDeckMemoBuildCacheMap/);
   assert.match(adapterSource, /skipUtilityReady:\s*true/);
   assert.match(adapterSource, /'productionStats'/);
   assert.match(adapterSource, /'electricRows'/);
   assert.match(adapterSource, /'lineValueMaps'/);
   assert.match(adapterSource, /'wasteRows'/);
+});
+
+test('report deck memo overview popup can be dragged as a floating panel', () => {
+  const deckDom = createReportDeckContainer({ withMemoOverviewWindow: true });
+  const { registered } = createContext();
+  let preventCount = 0;
+
+  registered.initializers.get('report')({
+    category: { content: '' },
+    container: deckDom.container,
+  });
+
+  deckDom.memoOverviewDialog.hidden = false;
+  deckDom.listeners.pointerdown({
+    target: deckDom.memoOverviewDragHandle,
+    button: 0,
+    pointerId: 7,
+    clientX: 100,
+    clientY: 80,
+    preventDefault() {
+      preventCount += 1;
+    },
+  });
+
+  assert.equal(deckDom.memoOverviewDialog.classList.contains('is-dragging'), true);
+  assert.deepEqual(deckDom.memoOverviewDragHandle.pointerCaptures, [7]);
+  assert.equal(typeof deckDom.memoOverviewWindowListeners.pointermove, 'function');
+  assert.equal(typeof deckDom.memoOverviewWindowListeners.pointerup, 'function');
+
+  deckDom.memoOverviewWindowListeners.pointermove({
+    clientX: 180,
+    clientY: 140,
+    preventDefault() {
+      preventCount += 1;
+    },
+  });
+
+  assert.equal(deckDom.memoOverviewDialog.style.left, '104px');
+  assert.equal(deckDom.memoOverviewDialog.style.top, '124px');
+  assert.equal(deckDom.memoOverviewDialog.style.right, 'auto');
+  assert.equal(deckDom.memoOverviewDialog.dataset.reportMemoOverviewFloating, 'true');
+
+  const pointerUp = deckDom.memoOverviewWindowListeners.pointerup;
+  pointerUp({});
+
+  assert.equal(deckDom.memoOverviewDialog.classList.contains('is-dragging'), false);
+  assert.deepEqual(deckDom.memoOverviewDragHandle.releasedPointerCaptures, [7]);
+  assert.equal(deckDom.memoOverviewWindowListeners.pointermove, undefined);
+  assert.equal(deckDom.memoOverviewWindowListeners.pointerup, undefined);
+  assert.equal(preventCount, 2);
+});
+
+test('report deck memo overview opens in a separate browser popup window', async () => {
+  const popup = createPopupWindowMock();
+  const deckDom = createReportDeckContainer();
+  const { registered } = createContext({
+    openImpl: () => popup,
+  });
+  const overviewButton = {
+    closest(selector) {
+      return selector === '[data-report-memo-overview-toggle]' ? this : null;
+    },
+  };
+  let prevented = false;
+
+  registered.initializers.get('report')({
+    category: { content: '' },
+    container: deckDom.container,
+  });
+  deckDom.root.__reportDeckMeta.selectedMonth = '2025-12';
+  deckDom.root.__reportDeckMeta.sharedStore = createReportDeckSharedStore();
+
+  deckDom.listeners.click({
+    target: overviewButton,
+    preventDefault() {
+      prevented = true;
+    },
+  });
+  await flushMicrotasks();
+
+  assert.equal(prevented, true);
+  assert.equal(registered.openCalls.length, 1);
+  assert.equal(registered.openCalls[0][1], 'kpi_report_memo_overview');
+  assert.match(registered.openCalls[0][2], /width=920/);
+  assert.equal(deckDom.memoOverviewDialog.hidden, true);
+  assert.equal(popup.document.openCount >= 2, true);
+  assert.equal(popup.document.closeCount, popup.document.openCount);
+  assert.equal(popup.focusCount >= 2, true);
+  assert.match(popup.document.writes[0], /report-memo-overview-empty/);
+  assert.match(popup.document.html, /report-memo-overview-popup-head/);
+  assert.match(popup.document.html, /data-report-memo-overview-list/);
+  assert.match(popup.document.html, /report-memo-overview-row/);
+  assert.match(popup.document.html, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(popup.document.html, /report-memo-overview-row\{[^}]*grid-template-columns:40px minmax\(0,1fr\);[^}]*min-height:18px;[^}]*font-size:5\.2px;[^}]*line-height:1\.08;/);
+  assert.match(popup.document.html, /report-memo-overview-row\.is-up/);
+  assert.match(popup.document.html, /report-memo-overview-row\.is-down/);
 });
 
 test('report deck memo dialog edits existing lines and appends manual entries', async () => {
@@ -1698,6 +1901,9 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
   });
 
   assert.equal(deckDom.memoDialog.hidden, false);
+  assert.match(deckDom.memoTeamSelect.innerHTML, /value="site_yusan"/);
+  assert.match(deckDom.memoTeamSelect.innerHTML, /value="site_total"/);
+  assert.match(deckDom.memoTeamSelect.innerHTML, /value="other"/);
   assert.match(deckDom.memoLines.innerHTML, /data-report-memo-line-input="0"/);
   assert.match(deckDom.memoContents[0].innerHTML, /report-auto-memo-delta">/);
   assert.match(deckDom.memoContents[0].innerHTML, /<span class="report-auto-memo-change is-up"> 10, 5% ↑<\/span> 검정/);
@@ -2926,8 +3132,33 @@ test('util runtime browser adapter builds report memo candidates with direction 
     metricKey: 'cip_time',
     store: aggregateCipStore,
   });
-  assert.equal(JSON.stringify(yusanCipTime.availableMetricKeys), JSON.stringify(['cip_count', 'cip_time']));
+  assert.equal(
+    JSON.stringify(yusanCipTime.availableMetricKeys),
+    JSON.stringify([
+      'production',
+      'electric',
+      'electric_cost',
+      'electric_unit',
+      'lng',
+      'lng_cost',
+      'lng_unit',
+      'lpg',
+      'lpg_cost',
+      'gas_cost',
+      'lpg_unit',
+      'cip_count',
+      'cip_time',
+    ])
+  );
   assert.match(yusanCipTime.candidates[0].text, /유산 CIP 시간 13\.5시간 전년대비 4\.5시간 ↑, 전월대비 0\.5시간 ↓/);
+
+  const yusanProduction = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'site_yusan',
+    metricKey: 'production',
+  });
+  assert.equal(yusanProduction.candidates.length, 1);
+  assert.match(yusanProduction.candidates[0].text, /2,500kg/);
+  assert.match(yusanProduction.candidates[0].text, /500kg, 25\.0%/);
 
   const totalCipCount = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'site_total',

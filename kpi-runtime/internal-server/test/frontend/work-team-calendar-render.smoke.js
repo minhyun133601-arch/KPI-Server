@@ -289,6 +289,8 @@ test('work team calendar overview modal renders after split files are loaded tog
   });
   assert.match(modal.innerHTML, /work-team-calendar-utility-strip/);
   assert.match(modal.innerHTML, /설비이력/);
+  assert.doesNotMatch(modal.innerHTML, /클릭하여 작업내역 보기/);
+  assert.doesNotMatch(modal.innerHTML, /클릭하여 설비 목록 보기/);
   assert.match(modal.innerHTML, /work-team-calendar-grid/);
   assert.match(modal.innerHTML, /data-work-save-status="overview"/);
 });
@@ -313,6 +315,7 @@ test('work team calendar equipment summary uses selected month maintenance rows'
   assert.match(modal.innerHTML, /Belt check/);
   assert.match(modal.innerHTML, /Waste Pump/);
   assert.match(modal.innerHTML, /Legacy team check/);
+  assert.doesNotMatch(modal.innerHTML, /클릭하여 설비 목록 보기/);
 });
 
 test('work team calendar equipment summary renders duplicate equipment names with numbered labels', () => {

@@ -280,7 +280,6 @@ function renderWorkTeamCalendarEquipmentSummaryChipHtml(summary, isActive = fals
             <span class="work-team-calendar-utility-label">설비이력</span>
             <span class="work-team-calendar-utility-value">${escapeWorkTeamCalendarEquipmentHtml(`등록 설비 ${formatWorkTeamCalendarEquipmentCount(safeSummary.equipmentCount || 0)}`)}</span>
             <span class="work-team-calendar-utility-meta">${escapeWorkTeamCalendarEquipmentHtml(`${safeSummary.monthLabel || '-'} 정비 ${formatWorkTeamCalendarEquipmentCount(safeSummary.maintenanceCount || 0)}`)}</span>
-            <span class="work-team-calendar-utility-hint">클릭하여 설비 목록 보기</span>
         </button>
     `;
 }

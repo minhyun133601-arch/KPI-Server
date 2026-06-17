@@ -849,9 +849,9 @@
 
     function buildReportMemoOverviewDialog() {
         return `
-            <div class="report-memo-overview-dialog" data-report-memo-overview-dialog hidden role="dialog" aria-modal="true" aria-label="특이사항 전체 확인">
-                <div class="report-memo-overview-panel">
-                    <div class="report-memo-overview-head">
+            <div class="report-memo-overview-dialog" data-report-memo-overview-dialog hidden role="dialog" aria-modal="false" aria-label="특이사항 전체 확인">
+                <div class="report-memo-overview-panel" data-report-memo-overview-panel>
+                    <div class="report-memo-overview-head" data-report-memo-overview-drag-handle title="드래그해서 이동">
                         <strong>특이사항 전체 확인</strong>
                         <button type="button" data-report-memo-overview-close aria-label="닫기">닫기</button>
                     </div>
@@ -1939,6 +1939,7 @@ ${colgroup}
                 .report-deck-workspace { min-height: 0; display: grid; grid-template-columns: 154px minmax(0, 1fr); gap: 0; align-items: stretch; }
                 .report-deck-sidebar { min-height: 0; border: 0; border-right: 1px solid #dbe4f3; border-radius: 0; background: #ffffff; padding: 6px; overflow: auto; }
                 .report-deck-sidebar strong { display: block; margin-bottom: 5px; font-size: 0.76rem; font-weight: 900; color: #0f172a; }
+                .report-deck-sidebar-action { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 28px; margin: 0 0 6px; border: 1px solid #bfdbfe; border-radius: 5px; background: #eff6ff; color: #1d4ed8; padding: 0 8px; font-size: 0.7rem; font-weight: 900; cursor: pointer; }
                 .report-slide-nav { display: grid; gap: 4px; }
                 .report-slide-nav button { display: grid; grid-template-columns: 26px 1fr; gap: 5px; align-items: center; min-height: 30px; border: 1px solid #e2e8f0; border-radius: 5px; background: #ffffff; color: #334155; padding: 0 6px; text-align: left; cursor: pointer; }
                 .report-slide-nav button[hidden] { display: none !important; }
@@ -2038,9 +2039,9 @@ ${colgroup}
                 .report-chart-highlight-hit.is-range-start { fill: transparent; stroke: #111827; stroke-width: 2.4; stroke-dasharray: 4 3; pointer-events: all; }
                 .report-chart-highlight-range { fill: none; stroke: #111827; stroke-width: 2.4; pointer-events: none; }
                 .report-auto-memo-box { display: grid; grid-template-columns: 13.5% 1fr; min-height: 0; border: 1.4px solid #111827; background: #ffffff; color: #020617; }
-                .report-auto-memo-box strong { display: grid; place-items: center; border-right: 1px solid #111827; font-size: 15px; font-weight: 900; }
+                .report-auto-memo-box strong { display: grid; place-items: center; border-right: 1px solid #111827; font-size: 13px; font-weight: 900; }
                 .report-auto-memo-blank { min-width: 0; }
-                .report-auto-memo-content { display: grid; align-content: start; gap: 4px; padding: 5px 8px; overflow: hidden; color: #020617; font-size: 11.2px; font-weight: 900; line-height: 1.2; text-align: left; word-break: keep-all; }
+                .report-auto-memo-content { display: grid; align-content: start; gap: 3px; padding: 4px 7px; overflow: hidden; color: #020617; font-size: 10.4px; font-weight: 900; line-height: 1.18; text-align: left; word-break: keep-all; }
                 .report-auto-memo-content[data-empty="true"]::before { content: ""; }
                 .report-auto-memo-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; }
                 .report-auto-memo-line-text { min-width: 0; white-space: nowrap; }
@@ -2049,6 +2050,7 @@ ${colgroup}
                 .report-auto-memo-segment { color: #111827; }
                 .report-auto-memo-basis { color: #111827; }
                 .report-auto-memo-delta { color: #111827; }
+                .report-auto-memo-change { font-weight: 900; }
                 .report-auto-memo-change.is-up { color: #c00000; }
                 .report-auto-memo-change.is-down { color: #2f75b5; }
                 .report-auto-memo-change.is-flat { color: #111827; }
@@ -2082,27 +2084,32 @@ ${colgroup}
                 .report-memo-manual textarea:focus { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 1px; border-color: #60a5fa; }
                 .report-memo-manual button { min-width: 72px; }
                 .report-memo-candidates { display: grid; gap: 6px; max-height: 220px; overflow: auto; }
-                .report-memo-candidate { width: 100%; min-height: 30px !important; display: grid !important; grid-template-columns: 22px minmax(0, 1fr); align-items: center; justify-content: stretch; gap: 6px; border-color: #dbe4f3 !important; background: #f8fafc !important; padding: 4px 8px !important; text-align: left; white-space: nowrap; font-size: 11.2px; line-height: 1.16; color: #111827 !important; }
+                .report-memo-candidate { width: 100%; min-height: 30px !important; display: grid !important; grid-template-columns: 22px minmax(0, 1fr); align-items: center; justify-content: stretch; gap: 6px; border-color: #dbe4f3 !important; background: #f8fafc !important; padding: 4px 8px !important; text-align: left; white-space: nowrap; font-size: 10.8px; line-height: 1.16; color: #111827 !important; }
                 .report-memo-candidate-add { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #cbd5e1; border-radius: 50%; background: #ffffff; color: #0f172a; font-size: 15px; font-weight: 900; line-height: 1; }
-                .report-memo-candidate-text { min-width: 0; color: #111827; white-space: nowrap; }
+                .report-memo-candidate-text { min-width: 0; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 .report-memo-candidate.is-up, .report-memo-candidate.is-down { color: #111827 !important; }
                 .report-memo-candidate.is-flat, .report-memo-candidate.is-mixed { color: #111827 !important; }
                 .report-memo-empty { min-height: 34px; display: grid; place-items: center; border: 1px dashed #cbd5e1; border-radius: 5px; color: #64748b; font-size: 12px; font-weight: 900; }
                 .report-memo-dialog-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
                 .report-memo-overview-dialog[hidden] { display: none !important; }
-                .report-memo-overview-dialog { position: fixed; inset: 0; z-index: 10001; display: grid; place-items: center; background: rgba(15, 23, 42, 0.44); }
-                .report-memo-overview-panel { width: min(920px, calc(100vw - 36px)); max-height: calc(100vh - 48px); display: grid; grid-template-rows: auto minmax(0, 1fr); border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28); color: #0f172a; overflow: hidden; }
-                .report-memo-overview-head { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 14px; border-bottom: 1px solid #e2e8f0; }
-                .report-memo-overview-head strong { font-size: 16px; font-weight: 900; }
+                .report-memo-overview-dialog { position: fixed; top: 64px; right: 24px; z-index: 10001; display: grid; width: min(920px, calc(100vw - 36px)); max-height: calc(100vh - 48px); background: transparent; pointer-events: none; box-sizing: border-box; }
+                .report-memo-overview-dialog[data-report-memo-overview-floating="true"] { right: auto; }
+                .report-memo-overview-dialog.is-dragging { user-select: none; }
+                .report-memo-overview-panel { width: 100%; max-height: inherit; display: grid; grid-template-rows: auto minmax(0, 1fr); border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28); color: #0f172a; overflow: hidden; pointer-events: auto; }
+                .report-memo-overview-head { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 14px; border-bottom: 1px solid #e2e8f0; cursor: grab; user-select: none; touch-action: none; }
+                .report-memo-overview-dialog.is-dragging .report-memo-overview-head { cursor: grabbing; }
+                .report-memo-overview-head strong { font-size: 14px; font-weight: 900; }
                 .report-memo-overview-head button { min-width: 48px; height: 30px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; color: #334155; font-size: 12px; font-weight: 900; cursor: pointer; }
                 .report-memo-overview-body { min-height: 0; padding: 12px 14px 14px; overflow: auto; }
                 .report-memo-overview-group + .report-memo-overview-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
-                .report-memo-overview-group-title { margin: 0 0 7px; color: #0f172a; font-size: 13px; font-weight: 900; }
-                .report-memo-overview-rows { display: grid; gap: 5px; }
-                .report-memo-overview-row { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: start; gap: 8px; min-height: 32px; border: 1px solid #e2e8f0; border-radius: 5px; background: #ffffff; padding: 6px 8px; color: #111827; font-size: 12px; font-weight: 900; line-height: 1.28; }
-                .report-memo-overview-row-label { color: #475569; white-space: nowrap; }
-                .report-memo-overview-row-text { min-width: 0; overflow-wrap: anywhere; }
-                .report-memo-overview-empty { min-height: 86px; display: grid; place-items: center; border: 1px dashed #cbd5e1; border-radius: 6px; color: #64748b; font-size: 13px; font-weight: 900; text-align: center; }
+                .report-memo-overview-group-title { margin: 0 0 7px; color: #0f172a; font-size: 12px; font-weight: 900; }
+                .report-memo-overview-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 6px; }
+                .report-memo-overview-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 3px; min-height: 18px; border: 1px solid #e2e8f0; border-left: 3px solid #94a3b8; border-radius: 4px; background: #ffffff; padding: 2px 4px; color: #111827; font-size: 5.2px; font-weight: 900; line-height: 1.08; }
+                .report-memo-overview-row.is-up { border-left-color: #dc2626; background: #fffafa; }
+                .report-memo-overview-row.is-down { border-left-color: #2563eb; background: #f8fbff; }
+                .report-memo-overview-row-label { color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .report-memo-overview-row-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .report-memo-overview-empty { min-height: 86px; display: grid; place-items: center; border: 1px dashed #cbd5e1; border-radius: 6px; color: #64748b; font-size: 12px; font-weight: 900; text-align: center; }
                 .report-lpg-trend-note { position: absolute; left: calc(3.4% + ((100% - 3.4% - 2.9% - 5.2%) / 2) + 5.2% - 2px); right: 2.9%; top: 5.3%; height: 2.3%; display: flex; align-items: flex-end; justify-content: flex-start; color: #ff0000; font-size: 20px; font-weight: 900; text-align: left; line-height: 1; }
                 .report-yusan-lpg-grid { top: 8.4%; bottom: 8.8%; }
                 .report-yusan-lpg-analysis-slide .report-bukjeong-analysis-column { grid-template-rows: var(--report-analysis-table-row, 28%) var(--report-analysis-chart-row, 62%) var(--report-analysis-memo-row, 6%); gap: 2.6%; min-height: 0; }
@@ -2131,7 +2138,7 @@ ${colgroup}
                 .report-chart-bars i:nth-child(1) { height: 46%; } .report-chart-bars i:nth-child(2) { height: 70%; } .report-chart-bars i:nth-child(3) { height: 55%; } .report-chart-bars i:nth-child(4) { height: 76%; } .report-chart-bars i:nth-child(5) { height: 60%; }
                 .report-chart-line { position: absolute; left: 18%; right: 15%; top: 32%; height: 22%; border-top: 3px solid #334155; transform: skewY(-10deg); opacity: 0.7; }
                 .report-memo-box { display: grid; grid-template-columns: 19% 1fr; grid-template-rows: repeat(3, 1fr); align-items: center; gap: 0 12px; border: 1.4px solid #111827; background: #ffffff; padding: 7px 10px; }
-                .report-memo-box strong { grid-row: 1 / 4; align-self: stretch; display: grid; place-items: center; border-right: 1px solid #111827; padding-right: 10px; font-size: 13px; font-weight: 900; }
+                .report-memo-box strong { grid-row: 1 / 4; align-self: stretch; display: grid; place-items: center; border-right: 1px solid #111827; padding-right: 10px; font-size: 12px; font-weight: 900; }
                 .report-waste-grid { position: absolute; left: 3.4%; right: 2.8%; top: 8.2%; bottom: 8%; display: grid; grid-template-columns: 47% 47%; grid-template-rows: 73% 19%; gap: 5% 6%; }
                 .report-waste-table { min-height: 0; }
                 .report-waste-grid .report-chart-box { min-height: 0; }
@@ -2148,7 +2155,7 @@ ${colgroup}
                 .report-waste-auto-total-label { font-size: 13px; }
                 .report-waste-auto-chart { min-height: 0; }
                 .report-waste-auto-memo { grid-column: 1 / 3; display: grid; grid-template-columns: 13% 1fr; min-height: 0; border: 1.4px solid #111827; background: #ffffff; color: #020617; }
-                .report-waste-auto-memo strong { display: grid; place-items: center; border-right: 1px solid #111827; font-size: 22px; font-weight: 900; }
+                .report-waste-auto-memo strong { display: grid; place-items: center; border-right: 1px solid #111827; font-size: 18px; font-weight: 900; }
                 .report-work-layout { position: absolute; left: 1.2%; right: 1.6%; top: 10.5%; bottom: 10.5%; display: grid; grid-template-columns: 76% 22%; gap: 2%; }
                 .report-work-table { width: 100%; height: 100%; border: 1.4px solid #111827; border-collapse: collapse; table-layout: fixed; background: #ffffff; }
                 .report-work-table th, .report-work-table td { border: 1px solid #111827; padding: 5px; vertical-align: middle; text-align: center; }
@@ -2490,7 +2497,6 @@ ${colgroup}
                                 <option value="">월 확인 중</option>
                             </select>
                         </label>
-                        <button type="button" class="report-deck-action-button" data-report-memo-overview-toggle>특이사항</button>
                         <button type="button" class="report-deck-action-button" data-report-edit-toggle aria-pressed="false">수정</button>
                         <button type="button" class="report-deck-action-button" data-report-add-page="slide10">페이지 추가</button>
                         <div class="report-capture-controls" data-report-capture-controls>
@@ -2512,6 +2518,7 @@ ${colgroup}
                 <div class="report-deck-workspace">
                     <aside class="report-deck-sidebar" aria-label="보고서 목차">
                         <strong>목차</strong>
+                        <button type="button" class="report-deck-sidebar-action" data-report-memo-overview-toggle>특이사항</button>
                         <div class="report-slide-nav">${buildSlideNav()}</div>
                         <button type="button" class="report-deck-back-button" data-report-jump-slide="1" data-report-jump-view="${REPORT_HQ_VIEW}" data-report-return-hq hidden>이전</button>
                     </aside>

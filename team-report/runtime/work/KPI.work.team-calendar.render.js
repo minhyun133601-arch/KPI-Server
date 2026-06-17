@@ -205,7 +205,6 @@
                     <span class="work-team-calendar-utility-label">${escapeHtml(utilitySummary.workEntryLabel || '작업내역')}</span>
                     <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.workEntryCountText || '0건')}</span>
                     <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.workCostText || '-')}</span>
-                    <span class="work-team-calendar-utility-hint">클릭하여 작업내역 보기</span>
                 </button>
             `;
             const wasteUtilityChipHtml = utilitySummary.waste
@@ -294,14 +293,15 @@
                 const renderOverviewUtilityChip = (metricKey, label, valueText, metaText) => {
                     const isActionMetric = metricKey === 'electric' || metricKey === 'gas' || metricKey === 'work';
                     const activeClass = utilityPopupMetric === metricKey ? ' is-active' : '';
-                    const hintText = metricKey === 'work'
-                        ? '클릭하여 작업내역 보기'
-                        : '클릭하여 팀별 상세 보기';
+                    const hintText = '클릭하여 팀별 상세 보기';
+                    const hintHtml = isActionMetric && metricKey !== 'work'
+                        ? `<span class="work-team-calendar-utility-hint">${escapeHtml(hintText)}</span>`
+                        : '';
                     const bodyHtml = `
                         <span class="work-team-calendar-utility-label">${escapeHtml(label)}</span>
                         <span class="work-team-calendar-utility-value">${escapeHtml(valueText || '-')}</span>
                         <span class="work-team-calendar-utility-meta">${escapeHtml(metaText || '-')}</span>
-                        ${isActionMetric ? `<span class="work-team-calendar-utility-hint">${escapeHtml(hintText)}</span>` : ''}
+                        ${hintHtml}
                         ${metricKey === 'production' ? productionSummaryActionMenuHtml : ''}
                     `;
                     if (!isActionMetric) {

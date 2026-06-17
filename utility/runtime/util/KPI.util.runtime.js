@@ -565,6 +565,21 @@
     ]);
     const REPORT_DECK_MEMO_LINE_METRIC_PREFIX = 'production_line::';
     const REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY = 'yusan_production_share';
+    const REPORT_DECK_MEMO_YUSAN_OVERVIEW_METRIC_KEYS = Object.freeze([
+        'production',
+        'electric',
+        'electric_cost',
+        'electric_unit',
+        'lng',
+        'lng_cost',
+        'lng_unit',
+        'lpg',
+        'lpg_cost',
+        'gas_cost',
+        'lpg_unit',
+        'cip_count',
+        'cip_time'
+    ]);
     const REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS = Object.freeze([
         'yield_rate',
         'operation_rate',
@@ -605,7 +620,7 @@
         team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'gas_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
         team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
         team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
-        site_yusan: Object.freeze(['cip_count', 'cip_time']),
+        site_yusan: Object.freeze(REPORT_DECK_MEMO_YUSAN_OVERVIEW_METRIC_KEYS),
         site_total: Object.freeze(['cip_count', 'cip_time']),
         other: Object.freeze(['monthly_average_temperature'])
     });
@@ -2194,6 +2209,18 @@
             : REPORT_DECK_MEMO_TEAM_OPTIONS[0].key;
     }
 
+    function syncReportDeckMemoTeamOptions(dialog, preferredTeamKey = '') {
+        const teamSelect = dialog?.querySelector?.('[data-report-memo-team]');
+        const teamKey = normalizeReportDeckMemoTeamKey(preferredTeamKey || teamSelect?.value);
+        if (teamSelect) {
+            teamSelect.innerHTML = REPORT_DECK_MEMO_TEAM_OPTIONS.map(option => (
+                `<option value="${escapeReportDeckHtml(option.key)}">${escapeReportDeckHtml(option.label)}</option>`
+            )).join('');
+            teamSelect.value = teamKey;
+        }
+        return teamKey;
+    }
+
     function normalizeReportDeckMemoMetricKey(value = '') {
         const key = String(value || '').trim();
         return REPORT_DECK_MEMO_METRIC_OPTIONS.some(option => option.key === key)
@@ -2253,10 +2280,9 @@
     function syncReportDeckMemoMetricOptions(dialog, preferredMetricKey = '') {
         const teamSelect = dialog?.querySelector?.('[data-report-memo-team]');
         const metricSelect = dialog?.querySelector?.('[data-report-memo-metric]');
-        const teamKey = normalizeReportDeckMemoTeamKey(teamSelect?.value);
+        const teamKey = syncReportDeckMemoTeamOptions(dialog, teamSelect?.value);
         const memoKey = String(dialog?.dataset?.reportMemoTarget || '').trim();
         const metricKey = normalizeReportDeckMemoMetricKeyForTeam(preferredMetricKey || metricSelect?.value, teamKey, memoKey);
-        if (teamSelect) teamSelect.value = teamKey;
         if (metricSelect) {
             const options = getReportDeckMemoMetricOptionsForTeam(teamKey, memoKey);
             metricSelect.innerHTML = options.map(option => (
@@ -2281,6 +2307,194 @@
 
     function getReportDeckMemoOverviewDialog(root) {
         return root?.querySelector?.('[data-report-memo-overview-dialog]') || null;
+    }
+
+    const REPORT_DECK_MEMO_OVERVIEW_POPUP_NAME = 'kpi_report_memo_overview';
+    const REPORT_DECK_MEMO_OVERVIEW_POPUP_FEATURES = [
+        'popup=yes',
+        'width=920',
+        'height=680',
+        'left=80',
+        'top=80',
+        'resizable=yes',
+        'scrollbars=yes'
+    ].join(',');
+    const REPORT_DECK_MEMO_OVERVIEW_MARGIN = 12;
+
+    function getReportDeckMemoOverviewWindow(dialog) {
+        return dialog?.ownerDocument?.defaultView || (typeof window !== 'undefined' ? window : null);
+    }
+
+    function getReportDeckMemoOverviewViewport(dialog) {
+        const ownerWindow = getReportDeckMemoOverviewWindow(dialog);
+        const width = Number(ownerWindow?.innerWidth)
+            || Number(dialog?.ownerDocument?.documentElement?.clientWidth)
+            || 0;
+        const height = Number(ownerWindow?.innerHeight)
+            || Number(dialog?.ownerDocument?.documentElement?.clientHeight)
+            || 0;
+        return {
+            width: Math.max(0, width),
+            height: Math.max(0, height)
+        };
+    }
+
+    function getReportDeckMemoOverviewRect(dialog) {
+        const rect = dialog?.getBoundingClientRect?.();
+        return {
+            left: Number(rect?.left) || 0,
+            top: Number(rect?.top) || 0,
+            width: Math.max(0, Number(rect?.width) || Number(dialog?.offsetWidth) || 0),
+            height: Math.max(0, Number(rect?.height) || Number(dialog?.offsetHeight) || 0)
+        };
+    }
+
+    function clampReportDeckMemoOverviewPosition(dialog, left, top) {
+        const viewport = getReportDeckMemoOverviewViewport(dialog);
+        const rect = getReportDeckMemoOverviewRect(dialog);
+        const maxLeft = Math.max(
+            REPORT_DECK_MEMO_OVERVIEW_MARGIN,
+            viewport.width - rect.width - REPORT_DECK_MEMO_OVERVIEW_MARGIN
+        );
+        const maxTop = Math.max(
+            REPORT_DECK_MEMO_OVERVIEW_MARGIN,
+            viewport.height - rect.height - REPORT_DECK_MEMO_OVERVIEW_MARGIN
+        );
+        const safeLeft = Number.isFinite(left) ? left : rect.left;
+        const safeTop = Number.isFinite(top) ? top : rect.top;
+        return {
+            left: Math.min(Math.max(safeLeft, REPORT_DECK_MEMO_OVERVIEW_MARGIN), maxLeft),
+            top: Math.min(Math.max(safeTop, REPORT_DECK_MEMO_OVERVIEW_MARGIN), maxTop)
+        };
+    }
+
+    function setReportDeckMemoOverviewPosition(dialog, left, top) {
+        if (!dialog?.style) return;
+        const position = clampReportDeckMemoOverviewPosition(dialog, left, top);
+        dialog.style.left = `${position.left}px`;
+        dialog.style.top = `${position.top}px`;
+        dialog.style.right = 'auto';
+        if (dialog.dataset) {
+            dialog.dataset.reportMemoOverviewFloating = 'true';
+        }
+    }
+
+    function syncReportDeckMemoOverviewFloatingPosition(dialog) {
+        if (!dialog || dialog.hidden || dialog.dataset?.reportMemoOverviewFloating !== 'true') return;
+        const rect = getReportDeckMemoOverviewRect(dialog);
+        setReportDeckMemoOverviewPosition(dialog, rect.left, rect.top);
+    }
+
+    function stopReportDeckMemoOverviewDrag(dialog) {
+        dialog?.__reportMemoOverviewDragCleanup?.();
+        delete dialog?.__reportMemoOverviewDragCleanup;
+        dialog?.classList?.remove?.('is-dragging');
+    }
+
+    function startReportDeckMemoOverviewDrag(root, event) {
+        if (!event || Number(event.button) > 0) return false;
+        const handle = event.target?.closest?.('[data-report-memo-overview-drag-handle]');
+        if (!handle || event.target?.closest?.('[data-report-memo-overview-close]')) return false;
+        const dialog = getReportDeckMemoOverviewDialog(root);
+        if (!dialog || dialog.hidden) return false;
+        const ownerWindow = getReportDeckMemoOverviewWindow(dialog);
+        if (!ownerWindow?.addEventListener) return false;
+        const startX = Number(event.clientX);
+        const startY = Number(event.clientY);
+        if (!Number.isFinite(startX) || !Number.isFinite(startY)) return false;
+        const rect = getReportDeckMemoOverviewRect(dialog);
+        const pointerId = event.pointerId;
+        let dragging = true;
+        const move = moveEvent => {
+            if (!dragging) return;
+            const nextX = Number(moveEvent?.clientX);
+            const nextY = Number(moveEvent?.clientY);
+            if (!Number.isFinite(nextX) || !Number.isFinite(nextY)) return;
+            setReportDeckMemoOverviewPosition(dialog, rect.left + nextX - startX, rect.top + nextY - startY);
+            moveEvent?.preventDefault?.();
+        };
+        const cleanup = () => {
+            if (!dragging) return;
+            dragging = false;
+            dialog.classList?.remove?.('is-dragging');
+            ownerWindow.removeEventListener?.('pointermove', move);
+            ownerWindow.removeEventListener?.('pointerup', cleanup);
+            ownerWindow.removeEventListener?.('pointercancel', cleanup);
+            if (pointerId !== undefined) {
+                handle.releasePointerCapture?.(pointerId);
+            }
+            delete dialog.__reportMemoOverviewDragCleanup;
+        };
+        stopReportDeckMemoOverviewDrag(dialog);
+        dialog.classList?.add?.('is-dragging');
+        dialog.__reportMemoOverviewDragCleanup = cleanup;
+        if (pointerId !== undefined) {
+            handle.setPointerCapture?.(pointerId);
+        }
+        ownerWindow.addEventListener('pointermove', move);
+        ownerWindow.addEventListener('pointerup', cleanup);
+        ownerWindow.addEventListener('pointercancel', cleanup);
+        event.preventDefault?.();
+        return true;
+    }
+
+    function buildReportDeckMemoOverviewPopupHtml(contentHtml = '') {
+        return '<!doctype html>'
+            + '<html lang="ko">'
+            + '<head>'
+            + '<meta charset="utf-8">'
+            + '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            + '<title>특이사항 전체 확인</title>'
+            + '<style>'
+            + 'html,body{margin:0;min-height:100%;background:#f8fafc;color:#0f172a;font-family:Arial,"Malgun Gothic","맑은 고딕",sans-serif;}'
+            + 'body{display:grid;grid-template-rows:auto minmax(0,1fr);height:100vh;overflow:hidden;}'
+            + '.report-memo-overview-popup-head{min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #cbd5e1;background:#fff;padding:0 14px;box-sizing:border-box;}'
+            + '.report-memo-overview-popup-head strong{font-size:14px;font-weight:900;}'
+            + '.report-memo-overview-popup-head button{min-width:48px;height:30px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#334155;font-size:12px;font-weight:900;cursor:pointer;}'
+            + '.report-memo-overview-body{min-height:0;padding:12px 14px 14px;overflow:auto;box-sizing:border-box;}'
+            + '.report-memo-overview-group + .report-memo-overview-group{margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;}'
+            + '.report-memo-overview-group-title{margin:0 0 7px;color:#0f172a;font-size:12px;font-weight:900;}'
+            + '.report-memo-overview-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 6px;}'
+            + '.report-memo-overview-row{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:3px;min-height:18px;border:1px solid #e2e8f0;border-left:3px solid #94a3b8;border-radius:4px;background:#fff;padding:2px 4px;color:#111827;font-size:5.2px;font-weight:900;line-height:1.08;}'
+            + '.report-memo-overview-row.is-up{border-left-color:#dc2626;background:#fffafa;}'
+            + '.report-memo-overview-row.is-down{border-left-color:#2563eb;background:#f8fbff;}'
+            + '.report-memo-overview-row-label{color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+            + '.report-memo-overview-row-text{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+            + '.report-memo-overview-empty{min-height:120px;display:grid;place-items:center;border:1px dashed #cbd5e1;border-radius:6px;background:#fff;color:#64748b;font-size:12px;font-weight:900;text-align:center;}'
+            + '</style>'
+            + '</head>'
+            + '<body>'
+            + '<header class="report-memo-overview-popup-head"><strong>특이사항 전체 확인</strong><button type="button" data-report-memo-overview-popup-close aria-label="닫기">닫기</button></header>'
+            + `<main class="report-memo-overview-body" data-report-memo-overview-list>${contentHtml}</main>`
+            + '<script>document.querySelector("[data-report-memo-overview-popup-close]")?.addEventListener("click",()=>self.close());</script>'
+            + '</body>'
+            + '</html>';
+    }
+
+    function writeReportDeckMemoOverviewPopup(popup, contentHtml = '') {
+        const doc = popup?.document;
+        if (!doc?.open || !doc?.write || !doc?.close) return false;
+        doc.open();
+        doc.write(buildReportDeckMemoOverviewPopupHtml(contentHtml));
+        doc.close();
+        popup.focus?.();
+        return true;
+    }
+
+    function openReportDeckMemoOverviewPopup(root, meta = {}) {
+        const ownerWindow = getReportDeckMemoOverviewWindow(root);
+        if (!ownerWindow?.open) return null;
+        let popup = meta.memoOverviewPopup;
+        if (!popup || popup.closed) {
+            popup = ownerWindow.open(
+                '',
+                REPORT_DECK_MEMO_OVERVIEW_POPUP_NAME,
+                REPORT_DECK_MEMO_OVERVIEW_POPUP_FEATURES
+            );
+            if (!popup || popup.closed) return null;
+            meta.memoOverviewPopup = popup;
+        }
+        return popup;
     }
 
     function waitReportDeckUiFrame() {
@@ -2324,6 +2538,7 @@
     function closeReportDeckMemoOverviewDialog(root) {
         const dialog = getReportDeckMemoOverviewDialog(root);
         if (!dialog) return;
+        stopReportDeckMemoOverviewDrag(dialog);
         dialog.hidden = true;
         delete dialog.dataset.reportMemoOverviewSequence;
     }
@@ -2368,6 +2583,7 @@
         const dialog = getReportDeckMemoOverviewDialog(root);
         if (!dialog) return false;
         dialog.hidden = false;
+        syncReportDeckMemoOverviewFloatingPosition(dialog);
         dialog.dataset.reportMemoOverviewSequence = String((Number(dialog.dataset.reportMemoOverviewSequence || '0') || 0) + 1);
         const sequence = dialog.dataset.reportMemoOverviewSequence;
         setReportDeckMemoOverviewMessage(dialog, '특이사항 항목을 불러오는 중입니다.');
@@ -2402,6 +2618,68 @@
             void error;
             if (dialog.dataset.reportMemoOverviewSequence === sequence) {
                 setReportDeckMemoOverviewMessage(dialog, '특이사항 항목을 불러오지 못했습니다.');
+            }
+        }
+        return true;
+    }
+
+    function buildReportDeckMemoOverviewDialogHtml(groups = []) {
+        const list = { innerHTML: '' };
+        renderReportDeckMemoOverviewDialog({
+            querySelector(selector) {
+                return selector === '[data-report-memo-overview-list]' ? list : null;
+            }
+        }, groups);
+        return list.innerHTML;
+    }
+
+    function buildReportDeckMemoOverviewPopupMessageHtml(message) {
+        return `<div class="report-memo-overview-empty">${escapeReportDeckHtml(message)}</div>`;
+    }
+
+    async function openReportDeckMemoOverviewPopupOrDialog(root, meta) {
+        meta = meta || {};
+        const popup = openReportDeckMemoOverviewPopup(root, meta);
+        if (!popup) {
+            return openReportDeckMemoOverviewDialog(root, meta);
+        }
+        closeReportDeckMemoOverviewDialog(root);
+        meta.memoOverviewPopupSequence = (Number(meta.memoOverviewPopupSequence || 0) || 0) + 1;
+        const sequence = meta.memoOverviewPopupSequence;
+        if (!writeReportDeckMemoOverviewPopup(popup, buildReportDeckMemoOverviewPopupMessageHtml('특이사항 항목을 불러오는 중입니다.'))) {
+            return openReportDeckMemoOverviewDialog(root, meta);
+        }
+        if (!meta?.selectedMonth || typeof browser?.buildReportDeckMemoOverview !== 'function') {
+            writeReportDeckMemoOverviewPopup(popup, buildReportDeckMemoOverviewPopupMessageHtml('보고서용 데이터가 준비되지 않았습니다.'));
+            return true;
+        }
+        const cacheKey = normalizeReportDeckMonth(meta.selectedMonth);
+        const overviewCache = getReportDeckMemoOverviewCache(meta);
+        if (cacheKey && overviewCache.has(cacheKey)) {
+            writeReportDeckMemoOverviewPopup(popup, buildReportDeckMemoOverviewDialogHtml(overviewCache.get(cacheKey)?.groups || []));
+            return true;
+        }
+        await waitReportDeckUiFrame();
+        if (meta.memoOverviewPopupSequence !== sequence || popup.closed === true) return true;
+        try {
+            const result = await browser.buildReportDeckMemoOverview(meta.selectedMonth, {
+                store: meta.sharedStore
+            });
+            if (meta.memoOverviewPopupSequence !== sequence || popup.closed === true) return true;
+            if (result?.ok !== true) {
+                writeReportDeckMemoOverviewPopup(popup, buildReportDeckMemoOverviewPopupMessageHtml('특이사항 항목을 불러오지 못했습니다.'));
+                return true;
+            }
+            if (cacheKey) {
+                overviewCache.set(cacheKey, {
+                    groups: Array.isArray(result.groups) ? result.groups : []
+                });
+            }
+            writeReportDeckMemoOverviewPopup(popup, buildReportDeckMemoOverviewDialogHtml(result.groups || []));
+        } catch (error) {
+            void error;
+            if (meta.memoOverviewPopupSequence === sequence && popup.closed !== true) {
+                writeReportDeckMemoOverviewPopup(popup, buildReportDeckMemoOverviewPopupMessageHtml('특이사항 항목을 불러오지 못했습니다.'));
             }
         }
         return true;
@@ -5984,6 +6262,14 @@
         setReportDeckSlide(root, 0);
         void loadReportDeckMonthOptions(root, state, meta);
 
+        root.addEventListener?.('pointerdown', event => {
+            startReportDeckMemoOverviewDrag(root, event);
+        });
+
+        getReportDeckMemoOverviewWindow(root)?.addEventListener?.('resize', () => {
+            syncReportDeckMemoOverviewFloatingPosition(getReportDeckMemoOverviewDialog(root));
+        });
+
         root.addEventListener?.('click', event => {
             const editButton = event.target?.closest?.('[data-report-edit-toggle]');
             if (editButton) {
@@ -6068,19 +6354,12 @@
             const memoOverviewButton = event.target?.closest?.('[data-report-memo-overview-toggle]');
             if (memoOverviewButton) {
                 event.preventDefault();
-                void openReportDeckMemoOverviewDialog(root, meta);
+                void openReportDeckMemoOverviewPopupOrDialog(root, meta);
                 return;
             }
 
             const memoOverviewCloseButton = event.target?.closest?.('[data-report-memo-overview-close]');
             if (memoOverviewCloseButton) {
-                event.preventDefault();
-                closeReportDeckMemoOverviewDialog(root);
-                return;
-            }
-
-            const memoOverviewBackdrop = event.target?.closest?.('[data-report-memo-overview-dialog]');
-            if (memoOverviewBackdrop && event.target === memoOverviewBackdrop) {
                 event.preventDefault();
                 closeReportDeckMemoOverviewDialog(root);
                 return;
