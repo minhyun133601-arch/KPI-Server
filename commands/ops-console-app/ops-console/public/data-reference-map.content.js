@@ -203,7 +203,7 @@ const dataFlows = [
   {
     id: 'equipment-history',
     tone: 'green',
-    title: { ko: '설비 이력 카드', en: 'Equipment History Cards' },
+    title: { ko: '설비 이력', en: 'Equipment History Cards' },
     summary: {
       ko: '설비 보드와 이력 카드 본문은 data_equipment_history_card 레코드에, 사진/첨부는 설비명 기반 폴더에 저장합니다.',
       en: 'Equipment board and card payloads go to data_equipment_history_card; photos and attachments go to equipment-name folders.',
@@ -511,7 +511,7 @@ const appModuleRecordGroups = [
     source: 'kpi-runtime/internal-server/src/lib/portal-data-registry.js',
     records: [
       { recordKey: 'audit_lux', feature: { ko: '조도', en: 'Lux' }, permissionKey: 'audit.lux' },
-      { recordKey: 'data_equipment_history_card', feature: { ko: '설비 이력 카드', en: 'Equipment History Cards' }, permissionKey: 'data.equipment_history' },
+      { recordKey: 'data_equipment_history_card', feature: { ko: '설비 이력', en: 'Equipment History Cards' }, permissionKey: 'data.equipment_history' },
       { recordKey: 'work_history_records', feature: { ko: '작업내역 통합 기록', en: 'Work History Records' }, permissionKey: 'work.team_calendar' },
       { recordKey: 'work_monthly_plan', feature: { ko: '작업 월간 계획', en: 'Work Monthly Plan' }, permissionKey: 'work.plan.monthly' },
       { recordKey: 'work_operator_b', feature: { ko: 'Operator B 작업 기록', en: 'Operator B work record' }, permissionKey: 'work.person.operator_b' },

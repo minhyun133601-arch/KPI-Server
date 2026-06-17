@@ -3483,6 +3483,13 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        .data-equipment-board-room-tools {
+            display: none;
+            grid-template-columns: repeat(2, 28px);
+            gap: 4px;
+            align-items: center;
+            flex: 0 0 auto;
+        }
         .data-equipment-board-room-add-button {
             flex: 0 0 auto;
         }
@@ -3719,6 +3726,14 @@
         .data-equipment-board-column.is-ordering .data-equipment-board-card-tools {
             display: grid;
         }
+        .data-equipment-board-column.is-ordering .data-equipment-board-room-tools {
+            display: inline-grid;
+        }
+        .data-equipment-board-column.is-ordering .data-equipment-board-add-button,
+        .data-equipment-board-column.is-ordering .data-equipment-board-status-actions,
+        .data-equipment-board-column.is-ordering .data-equipment-board-card-actions {
+            display: none;
+        }
         .data-equipment-board-order-button {
             border: 1px solid color-mix(in srgb, var(--equipment-card-status-color) 32%, #d7e2ef);
             border-radius: 7px;
@@ -3730,6 +3745,13 @@
         }
         .data-equipment-board-order-button {
             min-height: 30px;
+        }
+        .data-equipment-board-room-order-button {
+            min-width: 28px;
+            min-height: 28px;
+            border-color: color-mix(in srgb, var(--equipment-team-color) 32%, #d7e2ef);
+            background: color-mix(in srgb, var(--equipment-team-color) 8%, #ffffff);
+            color: color-mix(in srgb, var(--equipment-team-color) 76%, #172b4d);
         }
         .data-equipment-board-order-button:disabled {
             opacity: 0.34;

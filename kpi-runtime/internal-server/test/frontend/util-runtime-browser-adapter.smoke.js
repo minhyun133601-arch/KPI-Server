@@ -14,18 +14,17 @@ const reportSectionSource = await fs.readFile(
   path.join(repoRoot, 'kpi-runtime/sections/KPI.sections.report.js'),
   'utf8'
 );
-const manifestSource = await fs.readFile(
-  path.join(repoRoot, 'kpi-runtime/app/boot/KPI.boot.manifest.js'),
-  'utf8'
-);
+const manifestSource = await fs.readFile(path.join(repoRoot, 'kpi-runtime/app/boot/KPI.boot.manifest.js'), 'utf8');
 const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
 
 function readScriptSources() {
-  return Array.from(kpiHtml.matchAll(/<script src="([^"]+)"/g)).map(match => normalizeSource(match[1]));
+  return Array.from(kpiHtml.matchAll(/<script src="([^"]+)"/g)).map((match) => normalizeSource(match[1]));
 }
 
 function normalizeSource(source) {
-  return String(source || '').replace(/[?#].*$/, '').replace(/^\/+/, '');
+  return String(source || '')
+    .replace(/[?#].*$/, '')
+    .replace(/^\/+/, '');
 }
 
 function assertScriptOrder(sources, before, after) {
@@ -50,8 +49,8 @@ function loadManifestScripts() {
   context['global' + 'This'] = context;
   vm.createContext(context);
   vm.runInContext(manifestSource, context, { filename: 'KPI.boot.manifest.js' });
-  return Array.from(context.KPI_BOOT_MANIFEST.groups, group =>
-    Array.from(group.scripts, script => normalizeSource(script))
+  return Array.from(context.KPI_BOOT_MANIFEST.groups, (group) =>
+    Array.from(group.scripts, (script) => normalizeSource(script))
   ).flat();
 }
 
@@ -80,11 +79,15 @@ function createContext(options = {}) {
     reportPanelContainers: [],
     sheetReportContainers: [],
     printCount: 0,
+    alertMessages: [],
   };
   const context = {
     console,
     setTimeout,
     clearTimeout,
+    alert(message) {
+      registered.alertMessages.push(String(message || ''));
+    },
     window: null,
     ['global' + 'This']: null,
     __KPI_SERVER_RUNTIME_CONFIG__: {
@@ -335,25 +338,29 @@ function createReportDeckContainer() {
       return null;
     },
   };
-  const memoTargets = [{
-    dataset: {
-      reportMemoKey: 'slide3GasMemo',
-      reportMemoDefaultTeam: 'team_01_01',
-      reportMemoDefaultMetric: 'production',
+  const memoTargets = [
+    {
+      dataset: {
+        reportMemoKey: 'slide3GasMemo',
+        reportMemoDefaultTeam: 'team_01_01',
+        reportMemoDefaultMetric: 'production',
+      },
+      attributes: {},
+      setAttribute(name, value) {
+        this.attributes[name] = value;
+        this[name] = value;
+      },
+      closest(selector) {
+        return selector === '[data-report-memo-key]' ? this : null;
+      },
     },
-    attributes: {},
-    setAttribute(name, value) {
-      this.attributes[name] = value;
-      this[name] = value;
+  ];
+  const memoContents = [
+    {
+      dataset: { reportMemoContent: 'slide3GasMemo' },
+      innerHTML: '',
     },
-    closest(selector) {
-      return selector === '[data-report-memo-key]' ? this : null;
-    },
-  }];
-  const memoContents = [{
-    dataset: { reportMemoContent: 'slide3GasMemo' },
-    innerHTML: '',
-  }];
+  ];
   const createStyleCapture = () => ({
     values: {},
     setProperty(name, value) {
@@ -548,14 +555,12 @@ function createReportDeckContainer() {
       delete this[name];
     },
   }));
-  const planImagePlaceholders = Object.fromEntries(planImages.map((image) => [
-    image.dataset.reportPlanImage,
-    { textContent: '' },
-  ]));
-  const planImageSourceLabels = Object.fromEntries(planImages.map((image) => [
-    image.dataset.reportPlanImage,
-    { textContent: '', hidden: true },
-  ]));
+  const planImagePlaceholders = Object.fromEntries(
+    planImages.map((image) => [image.dataset.reportPlanImage, { textContent: '' }])
+  );
+  const planImageSourceLabels = Object.fromEntries(
+    planImages.map((image) => [image.dataset.reportPlanImage, { textContent: '', hidden: true }])
+  );
   const planImagePasteButtons = planImages.map((image) => ({
     dataset: { reportPlanImagePaste: image.dataset.reportPlanImage },
     textContent: '',
@@ -606,60 +611,76 @@ function createReportDeckContainer() {
       return null;
     },
   }));
-  const optionalContentItems = ['slide10', 'slide8', 'slide9'].map((optionalPage) => ({
+  const optionalContentItems = ['slide8', 'slide9', 'slide10', 'slide8', 'slide9'].map((optionalPage) => ({
     dataset: { reportOptionalContent: optionalPage },
     hidden: true,
   }));
-  const planImageFrames = Object.fromEntries(planImages.map((image) => [
-    image.dataset.reportPlanImage,
-    {
-      dataset: {},
-      querySelector(selector) {
-        if (selector === '[data-report-plan-image-input]') {
-          return planImageInputs.find((input) => input.dataset.reportPlanImageKey === image.dataset.reportPlanImage)
-            || planImageInputs[planImages.indexOf(image)]
-            || null;
-        }
-        if (selector === '[data-report-plan-image-upload]') {
-          return planImageUploadButtons.find((button) => button.dataset.reportPlanImageUpload === image.dataset.reportPlanImage)
-            || planImageUploadButtons[planImages.indexOf(image)]
-            || null;
-        }
-        if (selector === '[data-report-plan-image-clear]') {
-          return planImageClearButtons.find((button) => button.dataset.reportPlanImageClear === image.dataset.reportPlanImage)
-            || planImageClearButtons[planImages.indexOf(image)]
-            || null;
-        }
-        if (selector === '[data-report-plan-image]') {
-          return image;
-        }
-        if (selector === '[data-report-plan-image-placeholder]') {
-          return planImagePlaceholders[image.dataset.reportPlanImage] || null;
-        }
-        if (selector === '[data-report-plan-image-source-label]') return null;
-        if (selector === '[data-report-plan-image-paste]') {
-          return planImagePasteButtons.find((button) => button.dataset.reportPlanImagePaste === image.dataset.reportPlanImage)
-            || planImagePasteButtons[planImages.indexOf(image)]
-            || null;
-        }
-        return null;
+  const planImageFrames = Object.fromEntries(
+    planImages.map((image) => [
+      image.dataset.reportPlanImage,
+      {
+        dataset: {},
+        querySelector(selector) {
+          if (selector === '[data-report-plan-image-input]') {
+            return (
+              planImageInputs.find((input) => input.dataset.reportPlanImageKey === image.dataset.reportPlanImage) ||
+              planImageInputs[planImages.indexOf(image)] ||
+              null
+            );
+          }
+          if (selector === '[data-report-plan-image-upload]') {
+            return (
+              planImageUploadButtons.find(
+                (button) => button.dataset.reportPlanImageUpload === image.dataset.reportPlanImage
+              ) ||
+              planImageUploadButtons[planImages.indexOf(image)] ||
+              null
+            );
+          }
+          if (selector === '[data-report-plan-image-clear]') {
+            return (
+              planImageClearButtons.find(
+                (button) => button.dataset.reportPlanImageClear === image.dataset.reportPlanImage
+              ) ||
+              planImageClearButtons[planImages.indexOf(image)] ||
+              null
+            );
+          }
+          if (selector === '[data-report-plan-image]') {
+            return image;
+          }
+          if (selector === '[data-report-plan-image-placeholder]') {
+            return planImagePlaceholders[image.dataset.reportPlanImage] || null;
+          }
+          if (selector === '[data-report-plan-image-source-label]') return null;
+          if (selector === '[data-report-plan-image-paste]') {
+            return (
+              planImagePasteButtons.find(
+                (button) => button.dataset.reportPlanImagePaste === image.dataset.reportPlanImage
+              ) ||
+              planImagePasteButtons[planImages.indexOf(image)] ||
+              null
+            );
+          }
+          return null;
+        },
+        closest(selector) {
+          return selector === '[data-report-plan-image-frame]' ? this : null;
+        },
+        focusCount: 0,
+        focus() {
+          this.focusCount += 1;
+        },
+        setAttribute(name, value) {
+          if (String(name).startsWith('data-')) {
+            this.dataset[name.replace(/^data-/, '').replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = value;
+            return;
+          }
+          this[name] = value;
+        },
       },
-      closest(selector) {
-        return selector === '[data-report-plan-image-frame]' ? this : null;
-      },
-      focusCount: 0,
-      focus() {
-        this.focusCount += 1;
-      },
-      setAttribute(name, value) {
-        if (String(name).startsWith('data-')) {
-          this.dataset[name.replace(/^data-/, '').replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = value;
-          return;
-        }
-        this[name] = value;
-      },
-    },
-  ]));
+    ])
+  );
   const planImageInputs = planImages.map((image) => ({
     dataset: { reportPlanImageKey: image.dataset.reportPlanImage },
     disabled: true,
@@ -694,9 +715,8 @@ function createReportDeckContainer() {
     },
   }));
   planImages.forEach((image) => {
-    image.closest = (selector) => (selector === '[data-report-plan-image-frame]'
-      ? planImageFrames[image.dataset.reportPlanImage] || null
-      : null);
+    image.closest = (selector) =>
+      selector === '[data-report-plan-image-frame]' ? planImageFrames[image.dataset.reportPlanImage] || null : null;
   });
   const autoChartPlots = {
     gas: { innerHTML: '' },
@@ -819,6 +839,11 @@ function createReportDeckContainer() {
     'approvedBy',
     'contentsItem4',
     'contentsItem5',
+    'slide3Title',
+    'slide4Title',
+    'slide5Title',
+    'slide6Title',
+    'slide7Title',
     'productionTeam1ContentsTitle',
     'productionTeam1ContentsItem1',
     'productionTeam1ContentsItem2',
@@ -837,7 +862,9 @@ function createReportDeckContainer() {
   ].map((key) => ({
     dataset: {
       reportField: key,
-      ...(key.match(/^slide8Item([1-4])Text$/) ? { reportSlide8Overview: key.match(/^slide8Item([1-4])Text$/)[1] } : {}),
+      ...(key.match(/^slide8Item([1-4])Text$/)
+        ? { reportSlide8Overview: key.match(/^slide8Item([1-4])Text$/)[1] }
+        : {}),
     },
     textContent: '',
     contentEditable: 'false',
@@ -854,10 +881,7 @@ function createReportDeckContainer() {
       return selector === '[data-report-field]' ? this : null;
     },
   }));
-  const fieldRefs = [
-    'contentsItem4',
-    'productionTeam1ContentsItem1',
-  ].map((key) => ({
+  const fieldRefs = ['contentsItem4', 'productionTeam1ContentsItem1'].map((key) => ({
     dataset: { reportFieldRef: key },
     textContent: '',
   }));
@@ -901,11 +925,8 @@ function createReportDeckContainer() {
       if (selector === '[data-report-plan-slide]') return planSlides;
       if (selector === '[data-report-plan-image]') return planImages;
       if (selector === '[data-report-plan-image-frame]') return Object.values(planImageFrames);
-      if (selector === '[data-report-plan-add-slot], [data-report-plan-image-input], [data-report-plan-image-upload]') return [
-        ...planAddSlotButtons,
-        ...planImageInputs,
-        ...planImageUploadButtons,
-      ];
+      if (selector === '[data-report-plan-add-slot], [data-report-plan-image-input], [data-report-plan-image-upload]')
+        return [...planAddSlotButtons, ...planImageInputs, ...planImageUploadButtons];
       if (selector === '[data-report-plan-add-slot]') return planAddSlotButtons;
       if (selector === '[data-report-safety-add-control]') return [safetyAddControl];
       if (selector === '[data-report-safety-team-select]') return [safetyTeamSelect];
@@ -937,7 +958,9 @@ function createReportDeckContainer() {
       dataset: {
         reportSlidePage: String(index),
         reportSlideView: index < 2 ? 'hq' : 'public-works',
-        ...(index === 10 ? { reportOptionalPage: 'slide10' } : {}),
+        ...(index === 8 ? { reportOptionalPage: 'slide8', reportDynamicPage: '0' } : {}),
+        ...(index === 9 ? { reportOptionalPage: 'slide9', reportDynamicPage: '0' } : {}),
+        ...(index === 10 ? { reportOptionalPage: 'slide10', reportDynamicPage: '0' } : {}),
       },
       hidden: false,
       pageNumber,
@@ -1032,6 +1055,18 @@ function createReportDeckContainer() {
       },
     },
   };
+}
+
+function getOptionalContentItems(deckDom, optionalPage) {
+  return deckDom.optionalContentItems.filter((item) => item.dataset.reportOptionalContent === optionalPage);
+}
+
+function assertOptionalContentHidden(deckDom, optionalPage, hidden) {
+  const items = getOptionalContentItems(deckDom, optionalPage);
+  assert.ok(items.length > 0, `${optionalPage} optional contents should exist`);
+  items.forEach((item) => {
+    assert.equal(item.hidden, hidden);
+  });
 }
 
 async function flushMicrotasks() {
@@ -1141,7 +1176,10 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.doesNotMatch(adapterSource, /function buildReportDeckExportMemoOverviewDialog/);
   assert.doesNotMatch(adapterSource, /data-report-memo-overview-toggle>특이사항/);
   assert.doesNotMatch(adapterSource, /deck\.appendChild\(buildReportDeckExportMemoOverviewDialog/);
-  assert.doesNotMatch(adapterSource, /const memoOverviewButton = event\.target\.closest\?\.\('\[data-report-memo-overview-toggle\]'\);/);
+  assert.doesNotMatch(
+    adapterSource,
+    /const memoOverviewButton = event\.target\.closest\?\.\('\[data-report-memo-overview-toggle\]'\);/
+  );
   assert.match(adapterSource, /report-print-viewer/);
   assert.match(adapterSource, /report-print-page/);
   assert.match(adapterSource, /report-print-slide-frame/);
@@ -1161,12 +1199,21 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.match(adapterSource, /format:\s*'pdf'/);
   assert.match(adapterSource, /pageNumbers/);
   assert.match(adapterSource, /pageRange/);
-  assert.match(adapterSource, /const range = normalizeReportDeckCapturePageRange\(options\.pageRange, slides\.length\);/);
+  assert.match(
+    adapterSource,
+    /const range = normalizeReportDeckCapturePageRange\(options\.pageRange, slides\.length\);/
+  );
   assert.match(adapterSource, /const captureZipDataUrl = String\(options\.captureZipDataUrl \|\| ''\)\.trim\(\);/);
-  assert.match(adapterSource, /const captureZipFileName = String\(options\.captureZipFileName \|\| options\.filename \|\| 'report-capture\.zip'\)\.replace/);
+  assert.match(
+    adapterSource,
+    /const captureZipFileName = String\(options\.captureZipFileName \|\| options\.filename \|\| 'report-capture\.zip'\)\.replace/
+  );
   assert.match(adapterSource, /pageRange:\s*options\.pageRange/);
   assert.match(runtimeSource, /buildReportDeckExportTimeMinuteToken/);
-  assert.match(runtimeSource, /KPI-report-capture-\$\{buildReportDeckExportDateToken\(state, meta\)\}-\$\{buildReportDeckExportTimeMinuteToken\(\)\}\.zip/);
+  assert.match(
+    runtimeSource,
+    /KPI-report-capture-\$\{buildReportDeckExportDateToken\(state, meta\)\}-\$\{buildReportDeckExportTimeMinuteToken\(\)\}\.zip/
+  );
   assert.match(runtimeSource, /data-report-capture-zip/);
   assert.match(runtimeSource, /data-report-capture-pdf/);
   assert.match(runtimeSource, /data-report-capture-range-start/);
@@ -1178,7 +1225,10 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.match(runtimeSource, /reportCaptureBusy/);
   assert.match(adapterSource, /report-print-slide-image/);
   assert.match(adapterSource, /image\/svg\+xml;charset=utf-8/);
-  assert.match(adapterSource, /if \(!String\(source \|\| ''\)\.trim\(\) \|\| image\.complete\) return Promise\.resolve\(\);/);
+  assert.match(
+    adapterSource,
+    /if \(!String\(source \|\| ''\)\.trim\(\) \|\| image\.complete\) return Promise\.resolve\(\);/
+  );
   assert.match(adapterSource, /getReportDeckPrintableSlides/);
   assert.match(adapterSource, /divideReportDeckMetricValues/);
   assert.match(adapterSource, /normalizeReportDeckPositiveMetric/);
@@ -1186,11 +1236,23 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.match(runtimeSource, /formatReportDeckAutoNumberOrBlank/);
   assert.match(runtimeSource, /slide3Title:\s*'1\. 북 정 \(가스, 전기 비용\) 분석'/);
   assert.match(runtimeSource, /slide4Title:\s*'1\. 유 산 \(가스, 전기 비용\) 분석'/);
+  assert.match(runtimeSource, /slide5Title:\s*'1\. 유 산 \(가스 비용\) 분석'/);
+  assert.match(runtimeSource, /slide6Title:\s*'2\. 북 정 \(폐수 비용\) 분석'/);
+  assert.match(runtimeSource, /slide7Title:\s*'2\. 유 산 \(폐수 비용\) 분석'/);
   assert.match(runtimeSource, /String\(rowKey\) === '2'/);
-  assert.match(adapterSource, /@page \{ size: \$\{REPORT_DECK_PRINT_PAGE_WIDTH\} \$\{REPORT_DECK_PRINT_PAGE_HEIGHT\}; margin: 0; \}/);
+  assert.match(
+    adapterSource,
+    /@page \{ size: \$\{REPORT_DECK_PRINT_PAGE_WIDTH\} \$\{REPORT_DECK_PRINT_PAGE_HEIGHT\}; margin: 0; \}/
+  );
   assert.match(adapterSource, /padding:\s*\$\{REPORT_DECK_PRINT_PAGE_MARGIN\} !important/);
-  assert.match(adapterSource, /width:\s*\$\{REPORT_DECK_PRINT_SLIDE_CSS_WIDTH\} !important; height:\s*\$\{REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT\} !important; max-width:\s*100% !important; max-height:\s*100% !important; margin:\s*0 auto !important/);
-  assert.match(adapterSource, /\*::-webkit-scrollbar \{ width: 0 !important; height: 0 !important; display: none !important; \}/);
+  assert.match(
+    adapterSource,
+    /width:\s*\$\{REPORT_DECK_PRINT_SLIDE_CSS_WIDTH\} !important; height:\s*\$\{REPORT_DECK_PRINT_SLIDE_CSS_HEIGHT\} !important; max-width:\s*100% !important; max-height:\s*100% !important; margin:\s*0 auto !important/
+  );
+  assert.match(
+    adapterSource,
+    /\*::-webkit-scrollbar \{ width: 0 !important; height: 0 !important; display: none !important; \}/
+  );
   assert.equal(registered.bootTasks.size, 3);
   assert.ok(registered.closers.size >= 10);
 
@@ -1349,19 +1411,38 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   assert.equal(registered.utilityEntrySaveCalls[3]?.host, rememberedMonthlyHost);
   assert.equal(registered.utilityEntrySaveCalls[3]?.period, 'monthly');
 
-  assert.equal(providerFactory({
-    sectionId: 'data',
-    category: { utilitySurface: 'analysis' },
-    container: {},
-  }), null);
+  assert.equal(
+    providerFactory({
+      sectionId: 'data',
+      category: { utilitySurface: 'analysis' },
+      container: {},
+    }),
+    null
+  );
 });
 
 test('report public works tables place prior-year month before current month', () => {
   [
-    ['data-report-auto-month-label="reference"', 'data-report-auto-month-label="current"', 'data-report-auto-month-label="previous"'],
-    ['data-report-yusan-lpg-month-label="reference"', 'data-report-yusan-lpg-month-label="current"', 'data-report-yusan-lpg-month-label="previous"'],
-    ['data-report-yusan-lpg-cost-month-label="reference"', 'data-report-yusan-lpg-cost-month-label="current"', 'data-report-yusan-lpg-cost-month-label="previous"'],
-    ['data-report-waste-auto-month-label="reference"', 'data-report-waste-auto-month-label="current"', 'data-report-waste-auto-month-label="previous"'],
+    [
+      'data-report-auto-month-label="reference"',
+      'data-report-auto-month-label="current"',
+      'data-report-auto-month-label="previous"',
+    ],
+    [
+      'data-report-yusan-lpg-month-label="reference"',
+      'data-report-yusan-lpg-month-label="current"',
+      'data-report-yusan-lpg-month-label="previous"',
+    ],
+    [
+      'data-report-yusan-lpg-cost-month-label="reference"',
+      'data-report-yusan-lpg-cost-month-label="current"',
+      'data-report-yusan-lpg-cost-month-label="previous"',
+    ],
+    [
+      'data-report-waste-auto-month-label="reference"',
+      'data-report-waste-auto-month-label="current"',
+      'data-report-waste-auto-month-label="previous"',
+    ],
   ].forEach(([referenceLabel, currentLabel, previousLabel]) => {
     assertSourceTokenOrder(reportSectionSource, [
       referenceLabel,
@@ -1415,13 +1496,16 @@ test('report public works tables place prior-year month before current month', (
       'data-report-waste-auto-value="total.previous"',
       'data-report-waste-auto-value="total.mom"',
     ],
-  ].forEach(tokens => assertSourceTokenOrder(reportSectionSource, tokens));
+  ].forEach((tokens) => assertSourceTokenOrder(reportSectionSource, tokens));
 });
 
 test('report safety summary keeps two equal-size compact lines', () => {
   assert.match(reportSectionSource, /\.report-safety-summary-cell \{[^}]*padding: 2px 4px !important;/);
   assert.match(reportSectionSource, /\.report-safety-summary-text \{[^}]*gap: 3px;[^}]*line-height: 1\.05;/);
-  assert.match(reportSectionSource, /\.report-safety-summary-title, \.report-safety-summary-meta \{ font-size: 11px; \}/);
+  assert.match(
+    reportSectionSource,
+    /\.report-safety-summary-title, \.report-safety-summary-meta \{ font-size: 11px; \}/
+  );
   assert.doesNotMatch(reportSectionSource, /\.report-safety-summary-meta \{ font-size: 9px; \}/);
 });
 
@@ -1637,7 +1721,10 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
   assert.match(deckDom.memoLines.innerHTML, /data-report-memo-move-line="1"/);
   assert.match(deckDom.memoLines.innerHTML, /data-report-memo-move-direction="up"/);
   assert.match(deckDom.memoLines.innerHTML, /data-report-memo-move-direction="down"/);
-  assert.match(deckDom.memoLines.innerHTML, /<textarea[^>]+data-report-memo-line-input="1"[^>]*>Manual memo<\/textarea>/);
+  assert.match(
+    deckDom.memoLines.innerHTML,
+    /<textarea[^>]+data-report-memo-line-input="1"[^>]*>Manual memo<\/textarea>/
+  );
 
   deckDom.memoManualLineInput.value = 'Manual memo revised';
   deckDom.listeners.input({ target: deckDom.memoManualLineInput });
@@ -1649,7 +1736,10 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
     target: deckDom.memoLineMoveButton,
     preventDefault() {},
   });
-  assert.match(deckDom.memoLines.innerHTML, /<textarea[^>]+data-report-memo-line-input="1"[^>]*>Second manual memo<\/textarea>/);
+  assert.match(
+    deckDom.memoLines.innerHTML,
+    /<textarea[^>]+data-report-memo-line-input="1"[^>]*>Second manual memo<\/textarea>/
+  );
 
   deckDom.memoLineMoveButton.dataset.reportMemoMoveLine = '1';
   deckDom.memoLineMoveButton.dataset.reportMemoMoveDirection = 'up';
@@ -1657,7 +1747,10 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
     target: deckDom.memoLineMoveButton,
     preventDefault() {},
   });
-  assert.match(deckDom.memoLines.innerHTML, /<textarea[^>]+data-report-memo-line-input="0"[^>]*>Second manual memo<\/textarea>/);
+  assert.match(
+    deckDom.memoLines.innerHTML,
+    /<textarea[^>]+data-report-memo-line-input="0"[^>]*>Second manual memo<\/textarea>/
+  );
 
   deckDom.listeners.keydown({
     key: 's',
@@ -1671,7 +1764,7 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
   });
   await flushMicrotasks();
 
-  const saveCall = fetchCalls.filter(call => call.options?.method === 'PUT').at(-1);
+  const saveCall = fetchCalls.filter((call) => call.options?.method === 'PUT').at(-1);
   assert.ok(saveCall, 'report memo save request was not sent');
   const savedPayload = JSON.parse(saveCall.options.body).payload;
   assert.equal(savedPayload.slide3GasMemo, 'Second manual memo\nEdited memo\nManual memo revised');
@@ -1683,43 +1776,137 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
   assert.equal(deckDom.wasteLayouts[1].style.getPropertyValue('--report-waste-memo-row'), '6.5%');
 });
 
+test('report deck completion saves pending manual memo input to server', async () => {
+  const fetchCalls = [];
+  const deckDom = createReportDeckContainer();
+  const { registered } = createContext({
+    fetchImpl: async (url, options = {}) => {
+      fetchCalls.push({ url, options });
+      if (url === '/api/shared-store') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            store: createReportDeckSharedStore(),
+          }),
+        };
+      }
+      if (options.method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            record: {
+              payload: {
+                reportDate: '2025.12.15',
+                slide3GasMemo: '',
+              },
+              version: 1,
+              updated_at: '2026-05-15T00:00:00.000Z',
+            },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          record: {
+            payload: JSON.parse(options.body).payload,
+            version: 2,
+            updated_at: '2026-05-15T00:01:00.000Z',
+          },
+        }),
+      };
+    },
+  });
+
+  registered.initializers.get('report')({
+    category: { content: '' },
+    container: deckDom.container,
+  });
+  await flushMicrotasks();
+
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+  deckDom.listeners.click({
+    target: deckDom.memoTargets[0],
+    preventDefault() {},
+  });
+
+  deckDom.memoManualInput.value = '북정 가스 직접 입력\n북정 전기 직접 입력';
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+  await flushMicrotasks();
+
+  const saveCall = fetchCalls.filter((call) => call.options?.method === 'PUT').at(-1);
+  assert.ok(saveCall, 'pending manual memo was not saved');
+  const savedPayload = JSON.parse(saveCall.options.body).payload;
+  assert.equal(savedPayload.slide3GasMemo, '북정 가스 직접 입력\n북정 전기 직접 입력');
+  assert.equal(deckDom.memoManualInput.value, '');
+  assert.equal(deckDom.memoDialog.hidden, true);
+  assert.equal(deckDom.status.textContent, '저장되었습니다');
+  assert.deepEqual(registered.alertMessages, ['저장되었습니다']);
+});
+
 test('util runtime browser adapter builds production team 1 start chart model from daily entries', async () => {
   const { context } = createContext();
   const entriesByMonth = new Map([
-    ['2024-01', [
-      { dateLabel: '2024-01-02', lineName: 'SD', amount: 500000 },
-      { dateLabel: '2024-01-03', lineName: 'MSD', amount: 200000 },
-      { dateLabel: '2024-01-04', lineName: 'ICA', amount: 400000 },
-      { dateLabel: '2024-01-05', lineName: '지대', amount: 300000 },
-    ]],
-    ['2025-01', [
-      { dateLabel: '2025-01-02', lineName: 'SD', amount: 800000 },
-      { dateLabel: '2025-01-03', lineName: 'MSD', amount: 200000 },
-      { dateLabel: '2025-01-04', lineName: 'ICA', amount: 600000 },
-      { dateLabel: '2025-01-05', lineName: '지대', amount: 500000 },
-    ]],
-    ['2025-12', [
-      { dateLabel: '2025-12-02', lineName: 'SD', amount: 700000 },
-      { dateLabel: '2025-12-03', lineName: 'MSD', amount: 250000 },
-      { dateLabel: '2025-12-04', lineName: 'ICA', amount: 640000 },
-      { dateLabel: '2025-12-05', lineName: '지대', amount: 560000 },
-    ]],
-    ['2026-01', [
-      { dateLabel: '2026-01-02', lineName: 'S/D 건조', amount: 900000 },
-      { dateLabel: '2026-01-03', lineName: 'MSD', amount: 300000 },
-      { dateLabel: '2026-01-04', lineName: 'ICA', amount: 660000 },
-      { dateLabel: '2026-01-05', lineName: '지대', amount: 540000 },
-    ]],
+    [
+      '2024-01',
+      [
+        { dateLabel: '2024-01-02', lineName: 'SD', amount: 500000 },
+        { dateLabel: '2024-01-03', lineName: 'MSD', amount: 200000 },
+        { dateLabel: '2024-01-04', lineName: 'ICA', amount: 400000 },
+        { dateLabel: '2024-01-05', lineName: '지대', amount: 300000 },
+      ],
+    ],
+    [
+      '2025-01',
+      [
+        { dateLabel: '2025-01-02', lineName: 'SD', amount: 800000 },
+        { dateLabel: '2025-01-03', lineName: 'MSD', amount: 200000 },
+        { dateLabel: '2025-01-04', lineName: 'ICA', amount: 600000 },
+        { dateLabel: '2025-01-05', lineName: '지대', amount: 500000 },
+      ],
+    ],
+    [
+      '2025-12',
+      [
+        { dateLabel: '2025-12-02', lineName: 'SD', amount: 700000 },
+        { dateLabel: '2025-12-03', lineName: 'MSD', amount: 250000 },
+        { dateLabel: '2025-12-04', lineName: 'ICA', amount: 640000 },
+        { dateLabel: '2025-12-05', lineName: '지대', amount: 560000 },
+      ],
+    ],
+    [
+      '2026-01',
+      [
+        { dateLabel: '2026-01-02', lineName: 'S/D 건조', amount: 900000 },
+        { dateLabel: '2026-01-03', lineName: 'MSD', amount: 300000 },
+        { dateLabel: '2026-01-04', lineName: 'ICA', amount: 660000 },
+        { dateLabel: '2026-01-05', lineName: '지대', amount: 540000 },
+      ],
+    ],
   ]);
   context.listUtilDailyEntriesByMetric = (teamName, year, month, metricKey) => {
     assert.equal(metricKey, 'amount');
     const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-    const entries = (entriesByMonth.get(monthKey) || []).filter(entry => {
+    const entries = (entriesByMonth.get(monthKey) || []).filter((entry) => {
       const isPart2 = String(teamName).includes('2');
-      const lineToken = String(entry.lineName || '').replace(/[^a-z0-9가-힣]/gi, '').toLowerCase();
+      const lineToken = String(entry.lineName || '')
+        .replace(/[^a-z0-9가-힣]/gi, '')
+        .toLowerCase();
       return isPart2
-        ? (entry.lineName === 'ICA' || entry.lineName === '지대')
-        : (lineToken.includes('sd') || lineToken.includes('msd'));
+        ? entry.lineName === 'ICA' || entry.lineName === '지대'
+        : lineToken.includes('sd') || lineToken.includes('msd');
     });
     return { period: null, entries };
   };
@@ -1733,18 +1920,21 @@ test('util runtime browser adapter builds production team 1 start chart model fr
   assert.equal(model.monthKeys.at(-1), '2026-01');
   assert.equal(model.monthKeys.length, 4);
   assert.equal(model.monthKeys.includes('2023-01'), false);
-  const part1 = model.parts.find(part => part.key === 'part1');
-  const sd = part1.rows.find(row => row.key === 'sd');
-  const total = part1.rows.find(row => row.key === 'total');
+  const part1 = model.parts.find((part) => part.key === 'part1');
+  const sd = part1.rows.find((row) => row.key === 'sd');
+  const total = part1.rows.find((row) => row.key === 'total');
   assert.equal(sd.reference, 800);
   assert.equal(sd.previous, 700);
   assert.equal(sd.current, 900);
-  assert.equal(sd.momIndex, 900 / 700 * 100);
-  assert.equal(sd.yoyIndex, 900 / 800 * 100);
+  assert.equal(sd.momIndex, (900 / 700) * 100);
+  assert.equal(sd.yoyIndex, (900 / 800) * 100);
   assert.equal(sd.yoyRate, 100 / 800);
   assert.equal(total.current, 1200);
   assert.equal(JSON.stringify(part1.chart.monthKeys), JSON.stringify(['2024-01', '2025-01', '2025-12', '2026-01']));
-  assert.equal(JSON.stringify(part1.chart.series[0].points.map(point => point.value)), JSON.stringify([500, 800, 700, 900]));
+  assert.equal(
+    JSON.stringify(part1.chart.series[0].points.map((point) => point.value)),
+    JSON.stringify([500, 800, 700, 900])
+  );
   assert.equal(part1.chart.series[0].points.length, 4);
   assert.equal(part1.chart.series[0].points.at(-1).monthKey, '2026-01');
   assert.equal(part1.chart.series[0].points.at(-1).value, 900);
@@ -1753,40 +1943,50 @@ test('util runtime browser adapter builds production team 1 start chart model fr
     teamKey: 'team_01',
   });
   assert.equal(earlyModel.monthKeys.includes('2023-01'), false);
-  assert.equal(JSON.stringify(earlyModel.parts.find(part => part.key === 'part1').chart.monthKeys), JSON.stringify(['2024-01', '2025-01']));
+  assert.equal(
+    JSON.stringify(earlyModel.parts.find((part) => part.key === 'part1').chart.monthKeys),
+    JSON.stringify(['2024-01', '2025-01'])
+  );
 });
 
 test('util runtime browser adapter builds production team 1 yield model from daily entries', async () => {
   const { context } = createContext();
   const entriesByMonth = new Map([
-    ['2025-01', [
-      { dateLabel: '2025-01-02', lineName: 'SD', amount: 100, moistureExcludedYield: 90 },
-      { dateLabel: '2025-01-03', lineName: 'MSD', amount: 100, moistureExcludedYield: 80 },
-      { dateLabel: '2025-01-04', lineName: 'ICA', amount: 100, moistureExcludedYield: 95 },
-      { dateLabel: '2025-01-05', lineName: '\uC9C0\uB300', amount: 100, moistureExcludedYield: 97 },
-    ]],
-    ['2025-12', [
-      { dateLabel: '2025-12-02', lineName: 'SD', amount: 100, moistureExcludedYield: 92 },
-      { dateLabel: '2025-12-03', lineName: 'MSD', amount: 100, moistureExcludedYield: 82 },
-      { dateLabel: '2025-12-04', lineName: 'ICA', amount: 100, moistureExcludedYield: 96 },
-      { dateLabel: '2025-12-05', lineName: '\uC9C0\uB300', amount: 100, moistureExcludedYield: 98 },
-    ]],
-    ['2026-01', [
-      { dateLabel: '2026-01-02', lineName: 'SD', amount: 100, moistureExcludedYield: 96 },
-      { dateLabel: '2026-01-03', lineName: 'MSD', amount: 300, moistureExcludedYield: 84 },
-      { dateLabel: '2026-01-04', lineName: 'ICA', amount: 100, moistureExcludedYield: 98 },
-      { dateLabel: '2026-01-05', lineName: '\uC9C0\uB300', amount: 100, moistureExcludedYield: 100 },
-    ]],
+    [
+      '2025-01',
+      [
+        { dateLabel: '2025-01-02', lineName: 'SD', amount: 100, moistureExcludedYield: 90 },
+        { dateLabel: '2025-01-03', lineName: 'MSD', amount: 100, moistureExcludedYield: 80 },
+        { dateLabel: '2025-01-04', lineName: 'ICA', amount: 100, moistureExcludedYield: 95 },
+        { dateLabel: '2025-01-05', lineName: '\uC9C0\uB300', amount: 100, moistureExcludedYield: 97 },
+      ],
+    ],
+    [
+      '2025-12',
+      [
+        { dateLabel: '2025-12-02', lineName: 'SD', amount: 100, moistureExcludedYield: 92 },
+        { dateLabel: '2025-12-03', lineName: 'MSD', amount: 100, moistureExcludedYield: 82 },
+        { dateLabel: '2025-12-04', lineName: 'ICA', amount: 100, moistureExcludedYield: 96 },
+        { dateLabel: '2025-12-05', lineName: '\uC9C0\uB300', amount: 100, moistureExcludedYield: 98 },
+      ],
+    ],
+    [
+      '2026-01',
+      [
+        { dateLabel: '2026-01-02', lineName: 'SD', amount: 100, moistureExcludedYield: 96 },
+        { dateLabel: '2026-01-03', lineName: 'MSD', amount: 300, moistureExcludedYield: 84 },
+        { dateLabel: '2026-01-04', lineName: 'ICA', amount: 100, moistureExcludedYield: 98 },
+        { dateLabel: '2026-01-05', lineName: '\uC9C0\uB300', amount: 100, moistureExcludedYield: 100 },
+      ],
+    ],
   ]);
   context.listUtilDailyEntriesByMetric = (teamName, year, month, metricKey) => {
     assert.equal(metricKey, 'amount');
     const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-    const entries = (entriesByMonth.get(monthKey) || []).filter(entry => {
+    const entries = (entriesByMonth.get(monthKey) || []).filter((entry) => {
       const isPart2 = String(teamName).includes('2');
       const lineName = String(entry.lineName || '');
-      return isPart2
-        ? (lineName === 'ICA' || lineName === '\uC9C0\uB300')
-        : (lineName === 'SD' || lineName === 'MSD');
+      return isPart2 ? lineName === 'ICA' || lineName === '\uC9C0\uB300' : lineName === 'SD' || lineName === 'MSD';
     });
     return { period: null, entries };
   };
@@ -1798,22 +1998,22 @@ test('util runtime browser adapter builds production team 1 yield model from dai
   assert.equal(model.ok, true);
   assert.equal(model.monthKeys[0], '2025-01');
   assert.equal(model.monthKeys.at(-1), '2026-01');
-  const part1 = model.parts.find(part => part.key === 'part1');
-  const sd = part1.rows.find(row => row.key === 'sd');
-  const total = part1.rows.find(row => row.key === 'total');
+  const part1 = model.parts.find((part) => part.key === 'part1');
+  const sd = part1.rows.find((row) => row.key === 'sd');
+  const total = part1.rows.find((row) => row.key === 'total');
   assert.equal(sd.current, 96);
   assert.equal(total.reference, 85);
   assert.equal(total.previous, 87);
   assert.equal(total.current, 87);
   assert.equal(total.yoyDelta, 2);
-  assert.equal(total.yoyIndex, 87 / 85 * 100);
-  assert.equal(JSON.stringify(part1.chart.series.map(series => series.key)), JSON.stringify(['sd', 'msd']));
-  assert.equal(JSON.stringify(part1.chart.series[0].points.map(point => point.value)), JSON.stringify([90, 92, 96]));
-  const part2 = model.parts.find(part => part.key === 'part2');
+  assert.equal(total.yoyIndex, (87 / 85) * 100);
+  assert.equal(JSON.stringify(part1.chart.series.map((series) => series.key)), JSON.stringify(['sd', 'msd']));
+  assert.equal(JSON.stringify(part1.chart.series[0].points.map((point) => point.value)), JSON.stringify([90, 92, 96]));
+  const part2 = model.parts.find((part) => part.key === 'part2');
   assert.equal(part2.rows.length, 1);
   assert.equal(part2.rows[0].current, 99);
   assert.equal(part2.chart.series[0].key, 'total');
-  assert.equal(JSON.stringify(part2.chart.series[0].points.map(point => point.value)), JSON.stringify([96, 97, 99]));
+  assert.equal(JSON.stringify(part2.chart.series[0].points.map((point) => point.value)), JSON.stringify([96, 97, 99]));
 });
 
 test('util runtime browser adapter reads and writes report deck module records', async () => {
@@ -1867,7 +2067,10 @@ test('util runtime browser adapter reads and writes report deck module records',
   const sharedStore = await adapter.fetchMeteringSharedStore();
   assert.equal(fetchCalls[2].url, '/api/shared-store');
   assert.equal(fetchCalls[2].options.method, 'GET');
-  assert.equal(sharedStore.store.resourceDatasets.electric.billingSettlementEntries['2025-12'].scopes.bukjeong.completed, true);
+  assert.equal(
+    sharedStore.store.resourceDatasets.electric.billingSettlementEntries['2025-12'].scopes.bukjeong.completed,
+    true
+  );
 });
 
 test('util runtime browser adapter uploads report deck images as managed files', async () => {
@@ -1991,7 +2194,7 @@ test('util runtime browser adapter builds bukjeong report analysis model from sh
   assert.equal(model.gas.rows.unit.reference, 10 / 100);
   assert.equal(model.gas.rows.unit.current, 9 / 80);
   assert.equal(model.gas.rows.unit.previous, 8 / 75);
-  assert.equal(model.gas.rows.unit.delta, (9 / 80) - (10 / 100));
+  assert.equal(model.gas.rows.unit.delta, 9 / 80 - 10 / 100);
   assert.equal(model.gas.rows.cost.reference, 950);
   assert.equal(model.gas.rows.cost.current, 850);
   assert.equal(model.gas.rows.cost.delta, -100);
@@ -2059,7 +2262,7 @@ test('util runtime browser adapter caps report analysis data at selected month',
   });
 
   assert.equal(model.ok, true);
-  assert.equal(JSON.stringify(model.gas.chart.series.map(item => item.key)), JSON.stringify(['2024', '2025']));
+  assert.equal(JSON.stringify(model.gas.chart.series.map((item) => item.key)), JSON.stringify(['2024', '2025']));
   assert.equal(model.monthLabels.reference, '24.11');
   assert.equal(model.monthLabels.current, '25.11');
   assert.equal(model.gas.rows.usage.reference, 10);
@@ -2170,14 +2373,6 @@ test('util runtime browser adapter builds yusan report analysis model from sheet
     getUtilGasAnalysisCategoryOption(value) {
       return { key: value };
     },
-    getUtilElectricMeterTeamOption(value) {
-      assert.equal(value, 'combined');
-      return {
-        key: value,
-        reportTeamFilters: ['1팀 2파트', '2팀', '3팀', '관리동'],
-        productionTeamNames: ['1팀 2파트', '2팀', '3팀'],
-      };
-    },
     getUtilElectricAnalysisTeamOption(value) {
       return { key: value };
     },
@@ -2204,8 +2399,14 @@ test('util runtime browser adapter builds yusan report analysis model from sheet
       assert.ok(monthKeys.includes('2026-04'));
       assert.equal(monthKeys.includes('2026-05'), false);
       return new Map([
-        ['2025-04', { production: 300, lngUsage: 30, lngCost: 3000, lpgCost: 700, gasCost: 3700, ratioProduction: { lng: 300 } }],
-        ['2026-04', { production: 240, lngUsage: 24, lngCost: 2500, lpgCost: 800, gasCost: 3300, ratioProduction: { lng: 240 } }],
+        [
+          '2025-04',
+          { production: 300, lngUsage: 30, lngCost: 3000, lpgCost: 700, gasCost: 3700, ratioProduction: { lng: 300 } },
+        ],
+        [
+          '2026-04',
+          { production: 240, lngUsage: 24, lngCost: 2500, lpgCost: 800, gasCost: 3300, ratioProduction: { lng: 240 } },
+        ],
       ]);
     },
   };
@@ -2214,8 +2415,8 @@ test('util runtime browser adapter builds yusan report analysis model from sheet
       assert.equal(bounds.from, '2024-01');
       assert.equal(bounds.to, '2026-04');
       assert.equal(option.key, 'yusan');
-      assert.deepEqual(option.reportTeamFilters, ['1팀 2파트', '2팀', '3팀', '관리동']);
-      assert.deepEqual(option.productionTeamNames, ['1팀 2파트', '2팀', '3팀']);
+      assert.deepEqual(Array.from(option.reportTeamFilters), ['1팀 2파트', '2팀', '3팀']);
+      assert.deepEqual(Array.from(option.productionTeamNames), ['1팀 2파트', '2팀', '3팀']);
       return [
         { monthKey: '2025-04', production: 300, electricUsage: 60, electricCost: 600 },
         { monthKey: '2026-04', production: 240, electricUsage: 48, electricCost: 500 },
@@ -2255,33 +2456,42 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
       assert.ok(monthKeys.includes('2025-11'));
       assert.equal(monthKeys.includes('2025-12'), false);
       return new Map([
-        ['2024-11', {
-          production: 1000,
-          lpgUsage: 70,
-          lpgCost: 9300,
-          lngCost: 12000,
-          lpgConversionRatio: 9300 / 10000,
-          gasCost: 21300,
-          ratioProduction: { lpg: 1000 },
-        }],
-        ['2025-10', {
-          production: 780,
-          lpgUsage: 60,
-          lpgCost: 8200,
-          lngCost: 19000,
-          lpgConversionRatio: 8200 / 15000,
-          gasCost: 27200,
-          ratioProduction: { lpg: 780 },
-        }],
-        ['2025-11', {
-          production: 800,
-          lpgUsage: 64,
-          lpgCost: 8600,
-          lngCost: 20000,
-          lpgConversionRatio: 8600 / 16000,
-          gasCost: 28600,
-          ratioProduction: { lpg: 800 },
-        }],
+        [
+          '2024-11',
+          {
+            production: 1000,
+            lpgUsage: 70,
+            lpgCost: 9300,
+            lngCost: 12000,
+            lpgConversionRatio: 9300 / 10000,
+            gasCost: 21300,
+            ratioProduction: { lpg: 1000 },
+          },
+        ],
+        [
+          '2025-10',
+          {
+            production: 780,
+            lpgUsage: 60,
+            lpgCost: 8200,
+            lngCost: 19000,
+            lpgConversionRatio: 8200 / 15000,
+            gasCost: 27200,
+            ratioProduction: { lpg: 780 },
+          },
+        ],
+        [
+          '2025-11',
+          {
+            production: 800,
+            lpgUsage: 64,
+            lpgCost: 8600,
+            lngCost: 20000,
+            lpgConversionRatio: 8600 / 16000,
+            gasCost: 28600,
+            ratioProduction: { lpg: 800 },
+          },
+        ],
       ]);
     },
   };
@@ -2308,7 +2518,7 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
   assert.equal(model.rows.unit.reference, 70 / 1000);
   assert.equal(model.rows.unit.current, 64 / 800);
   assert.equal(model.rows.unit.previous, 60 / 780);
-  assert.equal(model.rows.unit.monthDelta, (64 / 800) - (60 / 780));
+  assert.equal(model.rows.unit.monthDelta, 64 / 800 - 60 / 780);
   assert.equal(model.rows.amount.reference, 9300);
   assert.equal(model.rows.amount.current, 8600);
   assert.equal(model.rows.amount.delta, -700);
@@ -2325,26 +2535,62 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
   assert.equal(model.costRows[2].reference, 9300 / 10000);
   assert.equal(model.costRows[2].current, 8600 / 16000);
   assert.equal(model.costRows[2].previous, 8200 / 15000);
-  assert.ok(Math.abs(model.costRows[2].delta - ((8600 / 16000) - (9300 / 10000))) < 1e-12);
-  assert.ok(Math.abs(model.costRows[2].rate - (((8600 / 16000) - (9300 / 10000)) / (9300 / 10000))) < 1e-12);
+  assert.ok(Math.abs(model.costRows[2].delta - (8600 / 16000 - 9300 / 10000)) < 1e-12);
+  assert.ok(Math.abs(model.costRows[2].rate - (8600 / 16000 - 9300 / 10000) / (9300 / 10000)) < 1e-12);
   assert.equal(model.costChart.title, 'LPG 실제 금액 / LNG 환산 금액');
-  assert.equal(model.costChart.series.find(item => item.key === '2025').points.find(point => point.month === 11).value, 8600 / 16000);
-  assert.equal(model.chart.series.find(item => item.key === '2025').points.find(point => point.month === 11).value, 0.08);
-  assert.equal(model.chart.series.find(item => item.key === '2025').points.find(point => point.month === 12).value, null);
+  assert.equal(
+    model.costChart.series.find((item) => item.key === '2025').points.find((point) => point.month === 11).value,
+    8600 / 16000
+  );
+  assert.equal(
+    model.chart.series.find((item) => item.key === '2025').points.find((point) => point.month === 11).value,
+    0.08
+  );
+  assert.equal(
+    model.chart.series.find((item) => item.key === '2025').points.find((point) => point.month === 12).value,
+    null
+  );
 });
 
 test('util runtime browser adapter builds report memo candidates with direction markers', async () => {
   const { context } = createContext();
   const monthly = new Map([
-    ['2025-04', { productionByTeam: { '1팀 2파트': 1100, '2팀': 500, '3팀': 400 }, lng: 75, lngCost: 7500, lpg: 40, lpgCost: 4000 }],
-    ['2026-03', { productionByTeam: { '1팀 2파트': 800, '2팀': 700, '3팀': 500 }, lng: 65, lngCost: 6500, lpg: 60, lpgCost: 6000 }],
-    ['2026-04', { productionByTeam: { '1팀 2파트': 1000, '2팀': 900, '3팀': 600 }, lng: 70, lngCost: 7000, lpg: 50, lpgCost: 5000 }],
+    [
+      '2025-04',
+      {
+        productionByTeam: { '1팀 2파트': 1100, '2팀': 500, '3팀': 400 },
+        lng: 75,
+        lngCost: 7500,
+        lpg: 40,
+        lpgCost: 4000,
+      },
+    ],
+    [
+      '2026-03',
+      {
+        productionByTeam: { '1팀 2파트': 800, '2팀': 700, '3팀': 500 },
+        lng: 65,
+        lngCost: 6500,
+        lpg: 60,
+        lpgCost: 6000,
+      },
+    ],
+    [
+      '2026-04',
+      {
+        productionByTeam: { '1팀 2파트': 1000, '2팀': 900, '3팀': 600 },
+        lng: 70,
+        lngCost: 7000,
+        lpg: 50,
+        lpgCost: 5000,
+      },
+    ],
   ]);
   const readProduction = (monthKey, teamNames = []) => {
     const productionByTeam = monthly.get(monthKey)?.productionByTeam || {};
     let total = 0;
     let hasValue = false;
-    (Array.isArray(teamNames) ? teamNames : []).forEach(teamName => {
+    (Array.isArray(teamNames) ? teamNames : []).forEach((teamName) => {
       const value = Number(productionByTeam[teamName]);
       if (!Number.isFinite(value)) return;
       total += value;
@@ -2398,13 +2644,18 @@ test('util runtime browser adapter builds report memo candidates with direction 
       return NaN;
     },
     buildUtilGasAnalysisMetricMap(monthKeys) {
-      return new Map(monthKeys.map(monthKey => {
-        const row = monthly.get(monthKey) || {};
-        return [monthKey, {
-          lngCost: row.lngCost ?? null,
-          lpgCost: row.lpgCost ?? null,
-        }];
-      }));
+      return new Map(
+        monthKeys.map((monthKey) => {
+          const row = monthly.get(monthKey) || {};
+          return [
+            monthKey,
+            {
+              lngCost: row.lngCost ?? null,
+              lpgCost: row.lpgCost ?? null,
+            },
+          ];
+        })
+      );
     },
   };
   context.KPIUtilReportSheetAnalysisElectricModel = {
@@ -2449,35 +2700,42 @@ test('util runtime browser adapter builds report memo candidates with direction 
     metricKey: 'production',
   });
   assert.equal(production.ok, true);
-  assert.equal(JSON.stringify(production.availableMetricKeys), JSON.stringify([
-    'production',
-    'yusan_production_share',
-    'electric',
-    'electric_cost',
-    'electric_unit',
-    'lng',
-    'lng_cost',
-    'lng_unit',
-    'lpg',
-    'lpg_cost',
-    'gas_cost',
-    'lpg_unit',
-    'yield_rate',
-    'operation_rate',
-    'work_time',
-    'operation_time',
-    'rework_production',
-    'rework_production_share',
-    'production_days',
-    'off_days',
-    'product_count',
-    'cip_count',
-    'production_line::지대',
-    'production_line::ICA',
-  ]));
+  assert.equal(
+    JSON.stringify(production.availableMetricKeys),
+    JSON.stringify([
+      'production',
+      'yusan_production_share',
+      'electric',
+      'electric_cost',
+      'electric_unit',
+      'lng',
+      'lng_cost',
+      'lng_unit',
+      'lpg',
+      'lpg_cost',
+      'gas_cost',
+      'lpg_unit',
+      'yield_rate',
+      'operation_rate',
+      'work_time',
+      'operation_time',
+      'rework_production',
+      'rework_production_share',
+      'production_days',
+      'off_days',
+      'product_count',
+      'cip_count',
+      'cip_time',
+      'production_line::지대',
+      'production_line::ICA',
+    ])
+  );
   assert.equal(production.candidates.length, 1);
   assert.equal(production.candidates[0].direction, 'mixed');
-  assert.match(production.candidates[0].text, /1팀 2파트 생산량 1,000kg 전년대비 100kg, 9\.1% ↓, 전월대비 200kg, 25\.0% ↑/);
+  assert.match(
+    production.candidates[0].text,
+    /1팀 2파트 생산량 1,000kg 전년대비 100kg, 9\.1% ↓, 전월대비 200kg, 25\.0% ↑/
+  );
   assert.equal(production.candidates[0].segments[0].direction, 'down');
   assert.equal(production.candidates[0].segments[1].direction, 'up');
 
@@ -2502,21 +2760,30 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(electricCost.candidates[0].direction, 'mixed');
   assert.equal(electricCost.candidates[0].segments[0].direction, 'down');
   assert.equal(electricCost.candidates[0].segments[1].direction, 'up');
-  assert.match(electricCost.candidates[0].text, /전기 비용 10,000원 전년대비 2,000원, 16\.7% ↓, 전월대비 1,000원, 11\.1% ↑/);
+  assert.match(
+    electricCost.candidates[0].text,
+    /전기 비용 10,000원 전년대비 2,000원, 16\.7% ↓, 전월대비 1,000원, 11\.1% ↑/
+  );
 
   const electricUnit = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'electric_unit',
   });
   assert.equal(electricUnit.candidates[0].direction, 'down');
-  assert.match(electricUnit.candidates[0].text, /생산량 대비 전력량 0\.100kWh\/kg 전년대비 0\.009kWh\/kg, 8\.3% ↓, 전월대비 0\.013kWh\/kg, 11\.1% ↓/);
+  assert.match(
+    electricUnit.candidates[0].text,
+    /생산량 대비 전력량 0\.100kWh\/kg 전년대비 0\.009kWh\/kg, 8\.3% ↓, 전월대비 0\.013kWh\/kg, 11\.1% ↓/
+  );
 
   const lngUnit = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'lng_unit',
   });
   assert.equal(lngUnit.candidates[0].direction, 'mixed');
-  assert.match(lngUnit.candidates[0].text, /생산량 대비 LNG 0\.070m³\/kg 전년대비 0\.002m³\/kg, 2\.7% ↑, 전월대비 0\.011m³\/kg, 13\.8% ↓/);
+  assert.match(
+    lngUnit.candidates[0].text,
+    /생산량 대비 LNG 0\.070m³\/kg 전년대비 0\.002m³\/kg, 2\.7% ↑, 전월대비 0\.011m³\/kg, 13\.8% ↓/
+  );
 
   const lngCost = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
@@ -2557,7 +2824,34 @@ test('util runtime browser adapter builds report memo candidates with direction 
     metricKey: 'lpg_unit',
   });
   assert.equal(lpgUnit.candidates[0].direction, 'mixed');
-  assert.match(lpgUnit.candidates[0].text, /생산량 대비 LPG 0\.050kg\/kg 전년대비 0\.014kg\/kg, 37\.5% ↑, 전월대비 0\.025kg\/kg, 33\.3% ↓/);
+  assert.match(
+    lpgUnit.candidates[0].text,
+    /생산량 대비 LPG 0\.050kg\/kg 전년대비 0\.014kg\/kg, 37\.5% ↑, 전월대비 0\.025kg\/kg, 33\.3% ↓/
+  );
+
+  const originalLpgUnitReferenceMonth = monthly.get('2025-04');
+  const originalLpgUnitCurrentMonth = monthly.get('2026-04');
+  monthly.set('2025-04', {
+    ...monthly.get('2025-04'),
+    productionByTeam: { ...monthly.get('2025-04')?.productionByTeam, '1팀 2파트': 1000 },
+    lpg: 50,
+  });
+  monthly.set('2026-04', {
+    ...monthly.get('2026-04'),
+    productionByTeam: { ...monthly.get('2026-04')?.productionByTeam, '1팀 2파트': 1000 },
+    lpg: 49.95,
+  });
+  const lpgUnitTinyDelta = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'lpg_unit',
+  });
+  assert.equal(lpgUnitTinyDelta.candidates[0].segments[0].basis, '전년대비');
+  assert.equal(lpgUnitTinyDelta.candidates[0].segments[0].direction, 'flat');
+  assert.equal(lpgUnitTinyDelta.candidates[0].segments[0].text, '전년대비 동일');
+  assert.equal(lpgUnitTinyDelta.candidates[0].segments[1].basis, '전월대비');
+  assert.equal(lpgUnitTinyDelta.candidates[0].segments[1].direction, 'down');
+  monthly.set('2025-04', originalLpgUnitReferenceMonth);
+  monthly.set('2026-04', originalLpgUnitCurrentMonth);
 
   const cipCount = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
@@ -2580,30 +2874,97 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.match(cipCount.candidates[0].text, /1팀 2파트 CIP 횟수 4회 전년대비 2회 ↑, 전월대비 1회 ↓/);
   assert.doesNotMatch(cipCount.candidates[0].text, /%/);
 
+  const cipTime = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'cip_time',
+    store: {
+      resourceDatasets: {
+        other: {
+          teamMonthlyEntries: {
+            '2025-04': { team_01_02: { cip_time: 2 } },
+            '2026-03': { team_01_02: { cip_time: 5 } },
+            '2026-04': { team_01_02: { cip_time: 4.5 } },
+          },
+        },
+      },
+    },
+  });
+  assert.equal(cipTime.candidates[0].direction, 'mixed');
+  assert.equal(cipTime.candidates[0].segments[0].direction, 'up');
+  assert.equal(cipTime.candidates[0].segments[1].direction, 'down');
+  assert.match(cipTime.candidates[0].text, /1팀 2파트 CIP 시간 4\.5시간 전년대비 2\.5시간 ↑, 전월대비 0\.5시간 ↓/);
+  assert.doesNotMatch(cipTime.candidates[0].text, /%/);
+
+  const aggregateCipStore = {
+    resourceDatasets: {
+      other: {
+        teamMonthlyEntries: {
+          '2025-04': {
+            team_01_01: { cip_count: 1, cip_time: 1.5 },
+            team_01_02: { cip_count: 2, cip_time: 2 },
+            team_02: { cip_count: 3, cip_time: 3 },
+            team_03: { cip_count: 4, cip_time: 4 },
+          },
+          '2026-03': {
+            team_01_01: { cip_count: 2, cip_time: 2 },
+            team_01_02: { cip_count: 5, cip_time: 5 },
+            team_02: { cip_count: 3, cip_time: 3 },
+            team_03: { cip_count: 6, cip_time: 6 },
+          },
+          '2026-04': {
+            team_01_01: { cip_count: 3, cip_time: 3 },
+            team_01_02: { cip_count: 4, cip_time: 4.5 },
+            team_02: { cip_count: 4, cip_time: 4 },
+            team_03: { cip_count: 5, cip_time: 5 },
+          },
+        },
+      },
+    },
+  };
+  const yusanCipTime = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'site_yusan',
+    metricKey: 'cip_time',
+    store: aggregateCipStore,
+  });
+  assert.equal(JSON.stringify(yusanCipTime.availableMetricKeys), JSON.stringify(['cip_count', 'cip_time']));
+  assert.match(yusanCipTime.candidates[0].text, /유산 CIP 시간 13\.5시간 전년대비 4\.5시간 ↑, 전월대비 0\.5시간 ↓/);
+
+  const totalCipCount = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'site_total',
+    metricKey: 'cip_count',
+    store: aggregateCipStore,
+  });
+  assert.equal(JSON.stringify(totalCipCount.availableMetricKeys), JSON.stringify(['cip_count', 'cip_time']));
+  assert.match(totalCipCount.candidates[0].text, /전체 CIP 횟수 16회 전년대비 6회 ↑, 전월대비 동일/);
+
   const otherTeamLpg = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_02',
     metricKey: 'lpg',
   });
   assert.equal(otherTeamLpg.ok, true);
-  assert.equal(JSON.stringify(otherTeamLpg.availableMetricKeys), JSON.stringify([
-    'production',
-    'yusan_production_share',
-    'electric',
-    'electric_cost',
-    'electric_unit',
-    'yield_rate',
-    'operation_rate',
-    'work_time',
-    'operation_time',
-    'rework_production',
-    'rework_production_share',
-    'production_days',
-    'off_days',
-    'product_count',
-    'cip_count',
-    'production_line::로터리·버티컬',
-    'production_line::스틱',
-  ]));
+  assert.equal(
+    JSON.stringify(otherTeamLpg.availableMetricKeys),
+    JSON.stringify([
+      'production',
+      'yusan_production_share',
+      'electric',
+      'electric_cost',
+      'electric_unit',
+      'yield_rate',
+      'operation_rate',
+      'work_time',
+      'operation_time',
+      'rework_production',
+      'rework_production_share',
+      'production_days',
+      'off_days',
+      'product_count',
+      'cip_count',
+      'cip_time',
+      'production_line::로터리·버티컬',
+      'production_line::스틱',
+    ])
+  );
   assert.equal(otherTeamLpg.metricKey, 'lpg');
   assert.equal(otherTeamLpg.candidates.length, 0);
 
@@ -2618,25 +2979,29 @@ test('util runtime browser adapter builds report memo candidates with direction 
     metricKey: 'lng',
   });
   assert.equal(otherTeamLng.ok, true);
-  assert.equal(JSON.stringify(otherTeamLng.availableMetricKeys), JSON.stringify([
-    'production',
-    'yusan_production_share',
-    'electric',
-    'electric_cost',
-    'electric_unit',
-    'yield_rate',
-    'operation_rate',
-    'work_time',
-    'operation_time',
-    'rework_production',
-    'rework_production_share',
-    'production_days',
-    'off_days',
-    'product_count',
-    'cip_count',
-    'production_line::로터리·버티컬',
-    'production_line::스틱',
-  ]));
+  assert.equal(
+    JSON.stringify(otherTeamLng.availableMetricKeys),
+    JSON.stringify([
+      'production',
+      'yusan_production_share',
+      'electric',
+      'electric_cost',
+      'electric_unit',
+      'yield_rate',
+      'operation_rate',
+      'work_time',
+      'operation_time',
+      'rework_production',
+      'rework_production_share',
+      'production_days',
+      'off_days',
+      'product_count',
+      'cip_count',
+      'cip_time',
+      'production_line::로터리·버티컬',
+      'production_line::스틱',
+    ])
+  );
   assert.equal(otherTeamLng.metricKey, 'lng');
   assert.equal(otherTeamLng.candidates.length, 0);
 
@@ -2651,30 +3016,37 @@ test('util runtime browser adapter builds report memo candidates with direction 
     metricKey: 'production_line::SD',
   });
   assert.equal(lineProduction.ok, true);
-  assert.equal(JSON.stringify(lineProduction.availableMetricKeys), JSON.stringify([
-    'production',
-    'electric',
-    'electric_cost',
-    'electric_unit',
-    'lng',
-    'lng_cost',
-    'lng_unit',
-    'yield_rate',
-    'operation_rate',
-    'work_time',
-    'operation_time',
-    'rework_production',
-    'rework_production_share',
-    'production_days',
-    'off_days',
-    'product_count',
-    'cip_count',
-    'production_line::SD',
-    'production_line::MSD',
-  ]));
+  assert.equal(
+    JSON.stringify(lineProduction.availableMetricKeys),
+    JSON.stringify([
+      'production',
+      'electric',
+      'electric_cost',
+      'electric_unit',
+      'lng',
+      'lng_cost',
+      'lng_unit',
+      'yield_rate',
+      'operation_rate',
+      'work_time',
+      'operation_time',
+      'rework_production',
+      'rework_production_share',
+      'production_days',
+      'off_days',
+      'product_count',
+      'cip_count',
+      'cip_time',
+      'production_line::SD',
+      'production_line::MSD',
+    ])
+  );
   assert.equal(lineProduction.candidates.length, 1);
   assert.equal(lineProduction.candidates[0].direction, 'mixed');
-  assert.match(lineProduction.candidates[0].text, /1팀 1파트 SD 생산량 700kg 전년대비 100kg, 12\.5% ↓, 전월대비 200kg, 40\.0% ↑/);
+  assert.match(
+    lineProduction.candidates[0].text,
+    /1팀 1파트 SD 생산량 700kg 전년대비 100kg, 12\.5% ↓, 전월대비 200kg, 40\.0% ↑/
+  );
 
   const temperature = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'other',
@@ -2755,7 +3127,7 @@ test('util runtime browser adapter omits prior-year memo comparison when the pri
   assert.equal(electric.candidates[0].segments[0].basis, '전월대비');
   assert.doesNotMatch(electric.candidates[0].text, /전년대비/);
 
-  const makeEntry = dateLabel => ({
+  const makeEntry = (dateLabel) => ({
     dateLabel,
     teamName: '1팀 2파트',
     lineName: 'ICA',
@@ -2803,13 +3175,43 @@ test('util runtime browser adapter builds report memo overview with current valu
     team_03: '3팀',
   };
   const monthly = new Map([
-    ['2025-04', { production: 1100, electric: 120, yusanProduction: 3000, yusanElectric: 300, yusanLngCost: 7500, yusanLpgCost: 4000 }],
-    ['2026-03', { production: 800, electric: 90, yusanProduction: 2400, yusanElectric: 270, yusanLngCost: 6500, yusanLpgCost: 6000 }],
-    ['2026-04', { production: 1000, electric: 100, yusanProduction: 2700, yusanElectric: 330, yusanLngCost: 7000, yusanLpgCost: 5000 }],
+    [
+      '2025-04',
+      {
+        production: 1100,
+        electric: 120,
+        yusanProduction: 3000,
+        yusanElectric: 300,
+        yusanLngCost: 7500,
+        yusanLpgCost: 4000,
+      },
+    ],
+    [
+      '2026-03',
+      {
+        production: 800,
+        electric: 90,
+        yusanProduction: 2400,
+        yusanElectric: 270,
+        yusanLngCost: 6500,
+        yusanLpgCost: 6000,
+      },
+    ],
+    [
+      '2026-04',
+      {
+        production: 1000,
+        electric: 100,
+        yusanProduction: 2700,
+        yusanElectric: 330,
+        yusanLngCost: 7000,
+        yusanLpgCost: 5000,
+      },
+    ],
   ]);
-  const isYusanTeamNames = teamNames => {
+  const isYusanTeamNames = (teamNames) => {
     const names = new Set((Array.isArray(teamNames) ? teamNames : []).filter(Boolean));
-    return ['1팀 2파트', '2팀', '3팀'].every(teamName => names.has(teamName));
+    return ['1팀 2파트', '2팀', '3팀'].every((teamName) => names.has(teamName));
   };
   context.KPIUtilReportSheetOptions = {
     getUtilGasAnalysisCategoryOption(value) {
@@ -2855,20 +3257,25 @@ test('util runtime browser adapter builds report memo overview with current valu
   context.KPIUtilReportSheetGasScopedMetrics = {
     getUtilGasAnalysisProductionValue(monthKey, teamNames = []) {
       return isYusanTeamNames(teamNames)
-        ? monthly.get(monthKey)?.yusanProduction ?? NaN
-        : monthly.get(monthKey)?.production ?? NaN;
+        ? (monthly.get(monthKey)?.yusanProduction ?? NaN)
+        : (monthly.get(monthKey)?.production ?? NaN);
     },
     getUtilGasAnalysisTeamUsageValue() {
       return NaN;
     },
     buildUtilGasAnalysisMetricMap(monthKeys) {
-      return new Map(monthKeys.map(monthKey => {
-        const row = monthly.get(monthKey) || {};
-        return [monthKey, {
-          lngCost: row.yusanLngCost ?? null,
-          lpgCost: row.yusanLpgCost ?? null,
-        }];
-      }));
+      return new Map(
+        monthKeys.map((monthKey) => {
+          const row = monthly.get(monthKey) || {};
+          return [
+            monthKey,
+            {
+              lngCost: row.yusanLngCost ?? null,
+              lpgCost: row.yusanLpgCost ?? null,
+            },
+          ];
+        })
+      );
     },
   };
   context.KPIUtilReportSheetAnalysisElectricModel = {
@@ -2910,22 +3317,22 @@ test('util runtime browser adapter builds report memo overview with current valu
           },
           teamMonthlyEntries: {
             '2025-04': {
-              team_01_01: { cip_count: 1 },
-              team_01_02: { cip_count: 2 },
-              team_02: { cip_count: 3 },
-              team_03: { cip_count: 4 },
+              team_01_01: { cip_count: 1, cip_time: 1.5 },
+              team_01_02: { cip_count: 2, cip_time: 2 },
+              team_02: { cip_count: 3, cip_time: 3 },
+              team_03: { cip_count: 4, cip_time: 4 },
             },
             '2026-03': {
-              team_01_01: { cip_count: 2 },
-              team_01_02: { cip_count: 5 },
-              team_02: { cip_count: 3 },
-              team_03: { cip_count: 6 },
+              team_01_01: { cip_count: 2, cip_time: 2 },
+              team_01_02: { cip_count: 5, cip_time: 5 },
+              team_02: { cip_count: 3, cip_time: 3 },
+              team_03: { cip_count: 6, cip_time: 6 },
             },
             '2026-04': {
-              team_01_01: { cip_count: 3 },
-              team_01_02: { cip_count: 4 },
-              team_02: { cip_count: 4 },
-              team_03: { cip_count: 5 },
+              team_01_01: { cip_count: 3, cip_time: 3 },
+              team_01_02: { cip_count: 4, cip_time: 4.5 },
+              team_02: { cip_count: 4, cip_time: 4 },
+              team_03: { cip_count: 5, cip_time: 5 },
             },
           },
         },
@@ -2935,17 +3342,23 @@ test('util runtime browser adapter builds report memo overview with current valu
   assert.equal(overview.ok, true);
   assert.equal(overview.groups[0]?.key, 'site_yusan');
   assert.equal(overview.groups[0]?.label, '유산');
-  assert.ok(overview.groups.some(group => group.key === 'team_01_02'));
-  assert.ok(overview.groups.some(group => group.key === 'other' && group.label === '기타'));
-  const joined = overview.candidates.map(candidate => candidate.text).join('\n');
+  assert.ok(overview.groups.some((group) => group.key === 'site_total' && group.label === '전체'));
+  assert.ok(overview.groups.some((group) => group.key === 'team_01_02'));
+  assert.ok(overview.groups.some((group) => group.key === 'other' && group.label === '기타'));
+  const joined = overview.candidates.map((candidate) => candidate.text).join('\n');
   assert.match(joined, /유산 생산량 2,700kg 전년대비 300kg, 10\.0% ↓, 전월대비 300kg, 12\.5% ↑/);
   assert.match(joined, /유산 전력량 330kWh 전년대비 30kWh, 10\.0% ↑, 전월대비 60kWh, 22\.2% ↑/);
   assert.match(joined, /유산 가스 비용 12,000원 전년대비 500원, 4\.3% ↑, 전월대비 500원, 4\.0% ↓/);
+  assert.match(joined, /유산 CIP 횟수 13회 전년대비 4회 ↑, 전월대비 1회 ↓/);
+  assert.match(joined, /유산 CIP 시간 13\.5시간 전년대비 4\.5시간 ↑, 전월대비 0\.5시간 ↓/);
+  assert.match(joined, /전체 CIP 횟수 16회 전년대비 6회 ↑, 전월대비 동일/);
+  assert.match(joined, /전체 CIP 시간 16\.5시간 전년대비 6\.0시간 ↑, 전월대비 0\.5시간 ↑/);
   assert.match(joined, /1팀 2파트 생산량 1,000kg 전년대비 100kg, 9\.1% ↓, 전월대비 200kg, 25\.0% ↑/);
   assert.match(joined, /전력량 100kWh 전년대비 20kWh, 16\.7% ↓, 전월대비 10kWh, 11\.1% ↑/);
   assert.match(joined, /1팀 2파트 가스 비용 12,000원 전년대비 500원, 4\.3% ↑, 전월대비 500원, 4\.0% ↓/);
   assert.match(joined, /1팀 1파트 CIP 횟수 3회 전년대비 2회 ↑, 전월대비 1회 ↑/);
   assert.match(joined, /1팀 2파트 CIP 횟수 4회 전년대비 2회 ↑, 전월대비 1회 ↓/);
+  assert.match(joined, /1팀 2파트 CIP 시간 4\.5시간 전년대비 2\.5시간 ↑, 전월대비 0\.5시간 ↓/);
   assert.match(joined, /2팀 CIP 횟수 4회 전년대비 1회 ↑, 전월대비 1회 ↑/);
   assert.match(joined, /3팀 CIP 횟수 5회 전년대비 1회 ↑, 전월대비 1회 ↓/);
   assert.match(joined, /기타 월간 평균온도 23\.4℃ 전년대비 2\.2℃ ↑, 전월대비 0\.7℃ ↓/);
@@ -2972,17 +3385,9 @@ test('util runtime browser adapter sums normal and rework detail rows for report
     ['2026-04', { startDate: new Date(2026, 3, 1), endDate: new Date(2026, 3, 2) }],
   ]);
   const entriesByMonth = new Map([
-    ['2025-04', [
-      makeEntry('2025-04-01'),
-    ]],
-    ['2026-03', [
-      makeEntry('2026-03-01'),
-    ]],
-    ['2026-04', [
-      makeEntry('2026-04-01'),
-      makeEntry('2026-04-01'),
-      makeEntry('2026-04-01', 'rework'),
-    ]],
+    ['2025-04', [makeEntry('2025-04-01')]],
+    ['2026-03', [makeEntry('2026-03-01')]],
+    ['2026-04', [makeEntry('2026-04-01'), makeEntry('2026-04-01'), makeEntry('2026-04-01', 'rework')]],
   ]);
   context.listUtilDailyEntriesByMetric = (_teamName, year, month, metricKey) => {
     assert.equal(metricKey, 'amount');
@@ -3023,18 +3428,9 @@ test('util runtime browser adapter builds rework production memo candidates', as
     ['2026-04', { startDate: new Date(2026, 3, 1), endDate: new Date(2026, 3, 2) }],
   ]);
   const entriesByMonth = new Map([
-    ['2025-04', [
-      makeEntry('2025-04-01', 900),
-      makeEntry('2025-04-01', 100, 'rework'),
-    ]],
-    ['2026-03', [
-      makeEntry('2026-03-01', 700),
-      makeEntry('2026-03-01', 100, 'rework'),
-    ]],
-    ['2026-04', [
-      makeEntry('2026-04-01', 800),
-      makeEntry('2026-04-01', 200, 'rework'),
-    ]],
+    ['2025-04', [makeEntry('2025-04-01', 900), makeEntry('2025-04-01', 100, 'rework')]],
+    ['2026-03', [makeEntry('2026-03-01', 700), makeEntry('2026-03-01', 100, 'rework')]],
+    ['2026-04', [makeEntry('2026-04-01', 800), makeEntry('2026-04-01', 200, 'rework')]],
   ]);
   context.listUtilDailyEntriesByMetric = (_teamName, year, month, metricKey) => {
     assert.equal(metricKey, 'amount');
@@ -3078,7 +3474,15 @@ test('util runtime browser adapter builds rework production memo candidates', as
 
 test('util runtime browser adapter builds report memo candidates for production stats', async () => {
   const { context } = createContext();
-  const makeEntry = (dateLabel, amount, productName, moistureExcludedYield, equipmentCapa, workTime = null, operationTime = null) => ({
+  const makeEntry = (
+    dateLabel,
+    amount,
+    productName,
+    moistureExcludedYield,
+    equipmentCapa,
+    workTime = null,
+    operationTime = null
+  ) => ({
     dateLabel,
     teamName: '1팀 2파트',
     lineName: 'ICA',
@@ -3095,17 +3499,18 @@ test('util runtime browser adapter builds report memo candidates for production 
     ['2026-04', { startDate: new Date(2026, 3, 1), endDate: new Date(2026, 3, 3) }],
   ]);
   const entriesByMonth = new Map([
-    ['2025-04', [
-      makeEntry('2025-04-01', 100, '제품 A', 85, 200, 8, 6),
-      makeEntry('2025-04-02', 100, '제품 B', 85, 200, 10, 8),
-    ]],
-    ['2026-03', [
-      makeEntry('2026-03-01', 100, '제품 A', 70, 200, 12, 10),
-    ]],
-    ['2026-04', [
-      makeEntry('2026-04-01', 100, '제품 A', 90, 200, 11.5, 9.5),
-      makeEntry('2026-04-03', 200, '제품 B', 80, 300, 8.5, 6.5),
-    ]],
+    [
+      '2025-04',
+      [makeEntry('2025-04-01', 100, '제품 A', 85, 200, 8, 6), makeEntry('2025-04-02', 100, '제품 B', 85, 200, 10, 8)],
+    ],
+    ['2026-03', [makeEntry('2026-03-01', 100, '제품 A', 70, 200, 12, 10)]],
+    [
+      '2026-04',
+      [
+        makeEntry('2026-04-01', 100, '제품 A', 90, 200, 11.5, 9.5),
+        makeEntry('2026-04-03', 200, '제품 B', 80, 300, 8.5, 6.5),
+      ],
+    ],
   ]);
   context.listUtilDailyEntriesByMetric = (teamName, year, month, metricKey) => {
     assert.equal(teamName, '1팀 2파트');
@@ -3139,26 +3544,38 @@ test('util runtime browser adapter builds report memo candidates for production 
     teamKey: 'team_01_02',
     metricKey: 'work_time',
   });
-  assert.match(workTimeResult.candidates[0].text, /1팀 2파트 조업시간 20\.0시간 전년대비 2\.0시간, 11\.1% ↑, 전월대비 8\.0시간, 66\.7% ↑/);
+  assert.match(
+    workTimeResult.candidates[0].text,
+    /1팀 2파트 조업시간 20\.0시간 전년대비 2\.0시간, 11\.1% ↑, 전월대비 8\.0시간, 66\.7% ↑/
+  );
 
   const operationTimeResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'operation_time',
   });
-  assert.match(operationTimeResult.candidates[0].text, /1팀 2파트 가동시간 16\.0시간 전년대비 2\.0시간, 14\.3% ↑, 전월대비 6\.0시간, 60\.0% ↑/);
+  assert.match(
+    operationTimeResult.candidates[0].text,
+    /1팀 2파트 가동시간 16\.0시간 전년대비 2\.0시간, 14\.3% ↑, 전월대비 6\.0시간, 60\.0% ↑/
+  );
 
   const productCountResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'product_count',
   });
-  assert.match(productCountResult.candidates[0].text, /1팀 2파트 고유 품목수 2개 전년대비 동일, 전월대비 1개, 100\.0% ↑/);
+  assert.match(
+    productCountResult.candidates[0].text,
+    /1팀 2파트 고유 품목수 2개 전년대비 동일, 전월대비 1개, 100\.0% ↑/
+  );
 
   const productionDaysResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
     metricKey: 'production_days',
   });
   assert.equal(productionDaysResult.candidates[0].segments[0].direction, 'flat');
-  assert.match(productionDaysResult.candidates[0].text, /1팀 2파트 생산일수 2일 전년대비 동일, 전월대비 1일, 100\.0% ↑/);
+  assert.match(
+    productionDaysResult.candidates[0].text,
+    /1팀 2파트 생산일수 2일 전년대비 동일, 전월대비 1일, 100\.0% ↑/
+  );
 
   const offDaysResult = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
@@ -3220,7 +3637,10 @@ test('util runtime browser adapter limits waste memo candidates to waste slides'
     metricKey: 'waste_cost_total',
     memoKey: 'slide6WasteMemo',
   });
-  assert.match(wasteCost.candidates[0].text, /북정 폐수 비용 총계 1,300원 전년대비 300원, 30\.0% ↑, 전월대비 500원, 62\.5% ↑/);
+  assert.match(
+    wasteCost.candidates[0].text,
+    /북정 폐수 비용 총계 1,300원 전년대비 300원, 30\.0% ↑, 전월대비 500원, 62\.5% ↑/
+  );
 });
 
 test('util runtime browser adapter builds waste report analysis model from sheet APIs', async () => {
@@ -3305,7 +3725,7 @@ test('util runtime browser adapter builds waste report analysis model from sheet
   assert.equal(model.rows.unit.reference, 20 / 1);
   assert.equal(model.rows.unit.current, 16 / 0.8);
   assert.equal(model.rows.unit.previous, 15 / 0.76);
-  assert.equal(model.rows.unit.monthDelta, (16 / 0.8) - (15 / 0.76));
+  assert.equal(model.rows.unit.monthDelta, 16 / 0.8 - 15 / 0.76);
   assert.equal(model.rows.water.delta, -10);
   assert.equal(model.rows.water.previous, 85);
   assert.equal(model.rows.water.monthDelta, 5);
@@ -3348,6 +3768,9 @@ test('report deck editor loads and saves through server module records', async (
                 reportDate: isNovember ? '2025.11.15' : '2025.12.15',
                 department: '생산본부 공무환경팀',
                 preparedBy: '작성자',
+                slide5Title: '1. 유산 (가스 비용) 분석',
+                slide6Title: '2. 북정 (폐수 비용) 분석',
+                slide7Title: '2. 유산 (폐수 비용) 분석',
                 slide8SlotCount: '3',
                 slide8Item1Text: 'DB plan text',
                 slide8BeforeImage1: 'data:image/png;base64,AAAA',
@@ -3382,11 +3805,20 @@ test('report deck editor loads and saves through server module records', async (
   const titleField = deckDom.fields.find((field) => field.dataset.reportField === 'title');
   const dateField = deckDom.fields.find((field) => field.dataset.reportField === 'reportDate');
   const departmentField = deckDom.fields.find((field) => field.dataset.reportField === 'department');
+  const slide5TitleField = deckDom.fields.find((field) => field.dataset.reportField === 'slide5Title');
+  const slide6TitleField = deckDom.fields.find((field) => field.dataset.reportField === 'slide6Title');
+  const slide7TitleField = deckDom.fields.find((field) => field.dataset.reportField === 'slide7Title');
   const slide8TitleField = deckDom.fields.find((field) => field.dataset.reportField === 'slide8Title');
   const slide9TitleField = deckDom.fields.find((field) => field.dataset.reportField === 'slide9Title');
-  const team1ContentsTitleField = deckDom.fields.find((field) => field.dataset.reportField === 'productionTeam1ContentsTitle');
-  const team1ContentsItem1Field = deckDom.fields.find((field) => field.dataset.reportField === 'productionTeam1ContentsItem1');
-  const team1ContentsItem1Ref = deckDom.fieldRefs.find((field) => field.dataset.reportFieldRef === 'productionTeam1ContentsItem1');
+  const team1ContentsTitleField = deckDom.fields.find(
+    (field) => field.dataset.reportField === 'productionTeam1ContentsTitle'
+  );
+  const team1ContentsItem1Field = deckDom.fields.find(
+    (field) => field.dataset.reportField === 'productionTeam1ContentsItem1'
+  );
+  const team1ContentsItem1Ref = deckDom.fieldRefs.find(
+    (field) => field.dataset.reportFieldRef === 'productionTeam1ContentsItem1'
+  );
   const contentsItem4Field = deckDom.fields.find((field) => field.dataset.reportField === 'contentsItem4');
   const latestReportMonth = getLatestReportMonthKey();
   const latestReportRecordUrl = getReportRecordUrl(latestReportMonth);
@@ -3394,6 +3826,9 @@ test('report deck editor loads and saves through server module records', async (
   const nextReportMonthNumber = getReportMonthNumber(latestReportMonth, 1);
   assert.equal(titleField.textContent.startsWith(`${latestReportMonthNumber}`), true);
   assert.equal(departmentField.textContent, '생산본부');
+  assert.equal(slide5TitleField.textContent, '1. 유 산 (가스 비용) 분석');
+  assert.equal(slide6TitleField.textContent, '2. 북 정 (폐수 비용) 분석');
+  assert.equal(slide7TitleField.textContent, '2. 유 산 (폐수 비용) 분석');
   assert.equal(slide8TitleField.textContent.startsWith(`3. ${latestReportMonthNumber}`), true);
   assert.equal(slide9TitleField.textContent.startsWith(`4. ${nextReportMonthNumber}`), true);
   assert.equal(dateField.textContent, getReportDateForMonth(latestReportMonth));
@@ -3401,7 +3836,10 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(team1ContentsItem1Field.textContent, '생산실적(생산량)');
   assert.equal(team1ContentsItem1Ref.textContent, '생산실적(생산량)');
   assert.equal(contentsItem4Field.textContent, '주요계획');
-  assert.equal(deckDom.fields.find((field) => field.dataset.reportField === 'slide8Item1Text').textContent, 'DB plan text');
+  assert.equal(
+    deckDom.fields.find((field) => field.dataset.reportField === 'slide8Item1Text').textContent,
+    'DB plan text'
+  );
   assert.equal(deckDom.planImages[0].src, 'data:image/png;base64,AAAA');
   assert.equal(deckDom.planImageFrames.slide8BeforeImage1.dataset.hasImage, 'true');
   assert.equal(deckDom.dateInput.value, getReportDateInputForMonth(latestReportMonth));
@@ -3427,9 +3865,10 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.root.dataset.reportPrintView, 'all');
   assert.equal(deckDom.slides[0].dataset.reportPrintVisible, 'true');
   assert.equal(deckDom.slides[2].dataset.reportPrintVisible, 'true');
-  assert.equal(deckDom.slides[9].dataset.reportPrintVisible, 'true');
+  assert.equal(deckDom.slides[8].dataset.reportPrintVisible, 'true');
+  assert.equal(deckDom.slides[9].dataset.reportPrintVisible, 'false');
   assert.equal(deckDom.slides[10].dataset.reportPrintVisible, 'false');
-  assert.equal(deckDom.slides[9].dataset.reportPrintLast, 'true');
+  assert.equal(deckDom.slides[8].dataset.reportPrintLast, 'true');
   deckDom.listeners.click({
     target: deckDom.productionContentsJumpButton,
     preventDefault() {},
@@ -3451,9 +3890,10 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.root.dataset.reportPrintView, 'public-works');
   assert.equal(deckDom.slides[0].dataset.reportPrintVisible, 'false');
   assert.equal(deckDom.slides[2].dataset.reportPrintVisible, 'true');
-  assert.equal(deckDom.slides[9].dataset.reportPrintVisible, 'true');
+  assert.equal(deckDom.slides[8].dataset.reportPrintVisible, 'true');
+  assert.equal(deckDom.slides[9].dataset.reportPrintVisible, 'false');
   assert.equal(deckDom.slides[10].dataset.reportPrintVisible, 'false');
-  assert.equal(deckDom.slides[9].dataset.reportPrintLast, 'true');
+  assert.equal(deckDom.slides[8].dataset.reportPrintLast, 'true');
   assert.equal(titleField.contenteditable, 'false');
   assert.equal(dateField.contenteditable, 'false');
   assert.equal(deckDom.dateInput.disabled, true);
@@ -3472,7 +3912,8 @@ test('report deck editor loads and saves through server module records', async (
   await flushMicrotasks();
   assert.equal(fetchCalls.length, 2);
   assert.equal(titleField.textContent.startsWith(`${latestReportMonthNumber}`), true);
-  assert.equal(deckDom.status.textContent, '저장 완료');
+  assert.equal(deckDom.status.textContent, '저장되었습니다');
+  assert.deepEqual(registered.alertMessages, ['저장되었습니다']);
   assert.equal(deckDom.root.dataset.reportEditMode, 'view');
   assert.equal(titleField.contenteditable, 'false');
   assert.equal(dateField.contenteditable, 'false');
@@ -3569,7 +4010,10 @@ test('report deck editor loads and saves through server module records', async (
   await flushMicrotasks();
   assert.equal(deckDom.overviewDialog.hidden, true);
   assert.equal(deckDom.overviewDialogFields.amount.customValidity, '');
-  assert.equal(slide8OverviewField.textContent, '공무환경팀\n환경 설비 보수\n▶ 효과 : 점검 시간 단축\n▶ 완료 날짜 : 12.20 完\n▶ 금액 : 5.5 백만원');
+  assert.equal(
+    slide8OverviewField.textContent,
+    '공무환경팀\n환경 설비 보수\n▶ 효과 : 점검 시간 단축\n▶ 완료 날짜 : 12.20 完\n▶ 금액 : 5.5 백만원'
+  );
 
   const slide9SummaryField = {
     dataset: { reportPlanSummary: 'slide9', reportPlanSourceSlot: '1' },
@@ -3643,6 +4087,9 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.productionTeam1ContentsItem1, '생산량 실적');
   assert.equal(savedReportPayload.slide8Title.startsWith(`3. ${latestReportMonthNumber}`), true);
   assert.equal(savedReportPayload.slide9Title.startsWith(`4. ${nextReportMonthNumber}`), true);
+  assert.equal(savedReportPayload.slide5Title, '1. 유 산 (가스 비용) 분석');
+  assert.equal(savedReportPayload.slide6Title, '2. 북 정 (폐수 비용) 분석');
+  assert.equal(savedReportPayload.slide7Title, '2. 유 산 (폐수 비용) 분석');
   assert.equal(savedReportPayload.reportDate, getReportDateForMonth(latestReportMonth, 16));
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8SlotCount, '3');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Team, '공무환경팀');
@@ -3650,7 +4097,10 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Effect, '점검 시간 단축');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Date, '2025-12-20');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Amount, '5.5');
-  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Text, '공무환경팀\n환경 설비 보수\n▶ 효과 : 점검 시간 단축\n▶ 완료 날짜 : 12.20 完\n▶ 금액 : 5.5 백만원');
+  assert.equal(
+    JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Text,
+    '공무환경팀\n환경 설비 보수\n▶ 효과 : 점검 시간 단축\n▶ 완료 날짜 : 12.20 完\n▶ 금액 : 5.5 백만원'
+  );
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9SlotCount, '1');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Team, '1팀 2파트');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Title, '외포장실 안전장치 설치');
@@ -3658,9 +4108,13 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Detail, '안전사고 예방');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Date, '2025-12');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Amount, '6.5');
-  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Text, '1팀 2파트\n외포장실 안전장치 설치\n▶ 목적 : 안전사고 예방\n▶ 예상 날짜 : 25.12월 中\n▶ 예상 금액 : 6.5 백만원');
+  assert.equal(
+    JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Text,
+    '1팀 2파트\n외포장실 안전장치 설치\n▶ 목적 : 안전사고 예방\n▶ 예상 날짜 : 25.12월 中\n▶ 예상 금액 : 6.5 백만원'
+  );
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8BeforeImage1, '');
-  assert.equal(deckDom.status.textContent, '저장 완료');
+  assert.equal(deckDom.status.textContent, '저장되었습니다');
+  assert.deepEqual(registered.alertMessages, ['저장되었습니다', '저장되었습니다']);
   assert.equal(deckDom.root.dataset.reportEditMode, 'view');
   assert.equal(titleField.contenteditable, 'false');
   assert.equal(dateField.contenteditable, 'false');
@@ -3700,6 +4154,12 @@ test('report deck editor loads and saves through server module records', async (
   });
   assert.equal(deckDom.root.fullscreenRequestCount, 1);
   assert.equal(deckDom.stage.focusCount, 2);
+  assert.equal(deckDom.root.dataset.reportFullscreenOutputMode, 'true');
+  assert.equal(deckDom.counter.textContent, '5 / 7');
+  assert.equal(deckDom.slides[8].dataset.reportOutputPrepared, 'true');
+  assert.equal(deckDom.slides[9].dataset.reportOutputPrepared, undefined);
+  assert.equal(deckDom.slides[10].dataset.reportOutputPrepared, undefined);
+  assert.equal(deckDom.navButtons[7].hidden, true);
 
   let fullscreenClickPrevented = false;
   deckDom.listeners.click({
@@ -3716,10 +4176,10 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.root.dataset.reportActiveSlide, '5');
 
   deckDom.listeners.click({
-    target: deckDom.navButtons[8],
+    target: deckDom.navButtons[6],
     preventDefault() {},
   });
-  assert.equal(deckDom.root.dataset.reportActiveSlide, '8');
+  assert.equal(deckDom.root.dataset.reportActiveSlide, '6');
   assert.equal(deckDom.root.ownerDocument.fullscreenElement, deckDom.root);
 
   deckDom.listeners.keydown({
@@ -3728,6 +4188,8 @@ test('report deck editor loads and saves through server module records', async (
   });
   assert.equal(deckDom.root.dataset.reportActiveSlide, '0');
   assert.equal(deckDom.counter.textContent, '1 / 9');
+  assert.equal(deckDom.root.dataset.reportFullscreenOutputMode, undefined);
+  assert.equal(deckDom.slides[9].dataset.reportOutputPrepared, undefined);
   assert.equal(deckDom.root.ownerDocument.exitCount, 1);
   assert.equal(deckDom.root.ownerDocument.fullscreenElement, null);
 
@@ -3816,7 +4278,10 @@ test('report deck overview blank amount renders self handled text', async () => 
   });
   await flushMicrotasks();
 
-  assert.equal(slide8OverviewField.textContent, '공무환경팀\n보일러 배관 보수\n▶ 효과 : 누수 예방\n▶ 완료 날짜 : 05.20 完\n▶ 금액 : 자체 처리');
+  assert.equal(
+    slide8OverviewField.textContent,
+    '공무환경팀\n보일러 배관 보수\n▶ 효과 : 누수 예방\n▶ 완료 날짜 : 05.20 完\n▶ 금액 : 자체 처리'
+  );
 
   const slide9SummaryField = {
     dataset: { reportPlanSummary: 'slide9', reportPlanSourceSlot: '1' },
@@ -3862,10 +4327,16 @@ test('report deck overview blank amount renders self handled text', async () => 
 
   const savedPayload = JSON.parse(fetchCalls[2].options.body).payload;
   assert.equal(savedPayload.slide8Item1Amount, '');
-  assert.equal(savedPayload.slide8Item1Text, '공무환경팀\n보일러 배관 보수\n▶ 효과 : 누수 예방\n▶ 완료 날짜 : 05.20 完\n▶ 금액 : 자체 처리');
+  assert.equal(
+    savedPayload.slide8Item1Text,
+    '공무환경팀\n보일러 배관 보수\n▶ 효과 : 누수 예방\n▶ 완료 날짜 : 05.20 完\n▶ 금액 : 자체 처리'
+  );
   assert.equal(savedPayload.slide9Item1Amount, '');
   assert.equal(savedPayload.slide9Item1Date, '2026-06');
-  assert.equal(savedPayload.slide9Item1Text, '1팀 2파트\n압축공기 라인 개선\n▶ 목적 : 작업 안정화\n▶ 예상 날짜 : 26.06월 中\n▶ 예상 금액 : 자체 처리');
+  assert.equal(
+    savedPayload.slide9Item1Text,
+    '1팀 2파트\n압축공기 라인 개선\n▶ 목적 : 작업 안정화\n▶ 예상 날짜 : 26.06월 中\n▶ 예상 금액 : 자체 처리'
+  );
 
   deckDom.listeners.click({
     target: deckDom.editButton,
@@ -3974,7 +4445,7 @@ test('report deck editor externalizes inline image data before saving records', 
   const savedBody = JSON.parse(fetchCalls[saveIndex].options.body);
   assert.equal(savedBody.payload.slide8BeforeImage1, '/api/files/doc-inline-image-1/view');
   assert.equal(deckDom.planImages[0].src, '/api/files/doc-inline-image-1/view');
-  assert.equal(deckDom.status.textContent, '저장 완료');
+  assert.equal(deckDom.status.textContent, '저장되었습니다');
 });
 
 test('report deck editor accepts clipboard image paste into plan image slots', async () => {
@@ -4070,12 +4541,14 @@ test('report deck editor accepts clipboard image paste into plan image slots', a
   deckDom.listeners.paste({
     target: deckDom.planImages[0],
     clipboardData: {
-      items: [{
-        type: 'image/png',
-        getAsFile() {
-          return { name: 'clipboard.png', type: 'image/png' };
+      items: [
+        {
+          type: 'image/png',
+          getAsFile() {
+            return { name: 'clipboard.png', type: 'image/png' };
+          },
         },
-      }],
+      ],
       files: [],
     },
     preventDefault() {
@@ -4151,12 +4624,14 @@ test('report deck editor accepts clipboard image paste into plan image slots', a
   deckDom.listeners.paste({
     target: deckDom.planImages[0],
     clipboardData: {
-      items: [{
-        type: 'image/png',
-        getAsFile() {
-          return { name: 'replacement.png', type: 'image/png' };
+      items: [
+        {
+          type: 'image/png',
+          getAsFile() {
+            return { name: 'replacement.png', type: 'image/png' };
+          },
         },
-      }],
+      ],
       files: [],
     },
     preventDefault() {
@@ -4242,10 +4717,12 @@ test('report deck safety image paste stays in the selected slide10 team row slot
         json: async () => ({
           ok: true,
           record: {
-            payload: options?.body ? JSON.parse(options.body).payload : {
-              title: 'Safety image report',
-              reportDate: '2025.12.15',
-            },
+            payload: options?.body
+              ? JSON.parse(options.body).payload
+              : {
+                  title: 'Safety image report',
+                  reportDate: '2025.12.15',
+                },
             version: 1,
             updated_at: '2026-05-15T00:00:00.000Z',
           },
@@ -4273,7 +4750,9 @@ test('report deck safety image paste stays in the selected slide10 team row slot
 
   const targetKey = 'slide10BeforeImage13';
   const targetImage = deckDom.planImages.find((image) => image.dataset.reportPlanImage === targetKey);
-  const targetPasteButton = deckDom.planImagePasteButtons.find((button) => button.dataset.reportPlanImagePaste === targetKey);
+  const targetPasteButton = deckDom.planImagePasteButtons.find(
+    (button) => button.dataset.reportPlanImagePaste === targetKey
+  );
   assert.ok(targetImage, 'slide10 3-team image slot is missing from the test DOM');
   assert.ok(targetPasteButton, 'slide10 3-team paste button is missing from the test DOM');
   assert.equal(targetPasteButton.disabled, false);
@@ -4285,12 +4764,14 @@ test('report deck safety image paste stays in the selected slide10 team row slot
   deckDom.listeners.paste({
     target: targetImage,
     clipboardData: {
-      items: [{
-        type: 'image/png',
-        getAsFile() {
-          return { name: 'slide10-team3.png', type: 'image/png' };
+      items: [
+        {
+          type: 'image/png',
+          getAsFile() {
+            return { name: 'slide10-team3.png', type: 'image/png' };
+          },
         },
-      }],
+      ],
       files: [],
     },
     preventDefault() {},
@@ -4521,7 +5002,7 @@ test('report deck plan overviews sort by team date and amount', async () => {
   });
   await flushMicrotasks();
 
-  const saveCall = fetchCalls.filter(call => call.options?.method === 'PUT').at(-1);
+  const saveCall = fetchCalls.filter((call) => call.options?.method === 'PUT').at(-1);
   assert.ok(saveCall, 'sorted report payload was not saved');
   const savedPayload = JSON.parse(saveCall.options.body).payload;
   assert.equal(savedPayload.slide8Item1Title, '같은 날짜 저액 정비');
@@ -4611,7 +5092,7 @@ test('report deck plan slot add requires saved complete overview and delete remo
     stopPropagation() {},
   });
   await flushMicrotasks();
-  assert.equal(deckDom.status.textContent, '저장 완료');
+  assert.equal(deckDom.status.textContent, '저장되었습니다');
 
   deckDom.listeners.click({
     target: deckDom.editButton,
@@ -4816,9 +5297,18 @@ test('report deck safety groups each team and balances rows after four items', a
               payload: {
                 reportDate: '2025.12.15',
                 slide10SlotCount: '5',
-                ...Object.fromEntries(Array.from({ length: 5 }, (_, index) => [`slide10Item${index + 1}Team`, '1팀 1파트'])),
-                ...Object.fromEntries(Array.from({ length: 5 }, (_, index) => [`slide10Item${index + 1}Effect`, '미끄럼'])),
-                ...Object.fromEntries(Array.from({ length: 5 }, (_, index) => [`slide10Item${index + 1}Date`, `2025-12-${String(index + 1).padStart(2, '0')}`])),
+                ...Object.fromEntries(
+                  Array.from({ length: 5 }, (_, index) => [`slide10Item${index + 1}Team`, '1팀 1파트'])
+                ),
+                ...Object.fromEntries(
+                  Array.from({ length: 5 }, (_, index) => [`slide10Item${index + 1}Effect`, '미끄럼'])
+                ),
+                ...Object.fromEntries(
+                  Array.from({ length: 5 }, (_, index) => [
+                    `slide10Item${index + 1}Date`,
+                    `2025-12-${String(index + 1).padStart(2, '0')}`,
+                  ])
+                ),
               },
               version: 1,
               updated_at: '2026-05-15T00:00:00.000Z',
@@ -4914,6 +5404,9 @@ test('report deck safety page stays visible but blank output omits it and saves 
   });
   await flushMicrotasks();
 
+  assertOptionalContentHidden(deckDom, 'slide8', true);
+  assertOptionalContentHidden(deckDom, 'slide9', true);
+  assertOptionalContentHidden(deckDom, 'slide10', true);
   assert.equal(deckDom.slides[10].hidden, false);
   assert.equal(deckDom.root.dataset.reportSlide10Enabled, 'true');
   deckDom.listeners.click({
@@ -4925,13 +5418,18 @@ test('report deck safety page stays visible but blank output omits it and saves 
     target: deckDom.printButton,
     preventDefault() {},
   });
+  assert.equal(deckDom.slides[8].dataset.reportPrintVisible, 'false');
+  assert.equal(deckDom.slides[9].dataset.reportPrintVisible, 'false');
   assert.equal(deckDom.slides[10].hidden, false);
   assert.equal(deckDom.slides[10].dataset.reportPrintVisible, 'false');
   assert.equal(deckDom.slides[10].dataset.reportPrintPageText, undefined);
   assert.equal(deckDom.root.dataset.reportPrintSlide8Visible, 'false');
   assert.equal(deckDom.root.dataset.reportPrintSlide9Visible, 'false');
   assert.equal(deckDom.root.dataset.reportPrintSlide10Visible, 'false');
-  assert.equal(deckDom.slides[9].dataset.reportPrintLast, 'true');
+  assertOptionalContentHidden(deckDom, 'slide8', true);
+  assertOptionalContentHidden(deckDom, 'slide9', true);
+  assertOptionalContentHidden(deckDom, 'slide10', true);
+  assert.equal(deckDom.slides[7].dataset.reportPrintLast, 'true');
   deckDom.listeners.click({
     target: deckDom.productionContentsJumpButton,
     preventDefault() {},
@@ -5004,8 +5502,9 @@ test('report deck safety page stays visible but blank output omits it and saves 
     preventDefault() {},
   });
   assert.equal(deckDom.slides[10].dataset.reportPrintVisible, 'true');
-  assert.equal(deckDom.slides[10].dataset.reportPrintPageText, '9/9');
+  assert.equal(deckDom.slides[10].dataset.reportPrintPageText, '7/7');
   assert.equal(deckDom.root.dataset.reportPrintSlide10Visible, 'true');
+  assertOptionalContentHidden(deckDom, 'slide10', false);
 
   deckDom.listeners.keydown({
     key: 's',
@@ -5087,10 +5586,9 @@ test('report deck safety deleted slot can be restored from the report payload', 
     target: deckDom.editButton,
     preventDefault() {},
   });
-  const slide10DeleteButton = deckDom.planDeleteButtons.find((button) => (
-    button.dataset.reportPlanDeleteSlot === 'slide10'
-    && button.dataset.reportPlanLocalSlot === '1'
-  ));
+  const slide10DeleteButton = deckDom.planDeleteButtons.find(
+    (button) => button.dataset.reportPlanDeleteSlot === 'slide10' && button.dataset.reportPlanLocalSlot === '1'
+  );
   assert.equal(slide10DeleteButton?.dataset.reportPlanSourceSlot, '1');
 
   deckDom.listeners.click({
@@ -5228,10 +5726,16 @@ test('report deck output derives optional order and prints only filled plan cell
   const slide10TitleField = deckDom.fields.find((field) => field.dataset.reportField === 'slide10Title');
   const slide9SectionField = deckDom.fields.find((field) => field.dataset.reportField === 'slide9Section');
   const slide10SectionField = deckDom.fields.find((field) => field.dataset.reportField === 'slide10Section');
-  assert.equal(slide9TitleField.textContent.startsWith(`3. ${getReportMonthNumber(getLatestReportMonthKey(), 1)}`), true);
+  assert.equal(
+    slide9TitleField.textContent.startsWith(`3. ${getReportMonthNumber(getLatestReportMonthKey(), 1)}`),
+    true
+  );
   assert.equal(slide10TitleField.textContent, '4. 자율 안전 신고제');
   assert.equal(slide9SectionField.textContent, 'Ⅲ. 공무환경팀');
   assert.equal(slide10SectionField.textContent, 'Ⅳ. 공무환경팀');
+  assertOptionalContentHidden(deckDom, 'slide8', true);
+  assertOptionalContentHidden(deckDom, 'slide9', false);
+  assertOptionalContentHidden(deckDom, 'slide10', false);
   assert.equal(deckDom.planSlides[1].dataset.reportPlanFilledSlotCount, '1');
   assert.equal(
     deckDom.planSlotCells.find((cell) => cell.dataset.reportPlanSlot === 'slide9.1')?.dataset.reportPlanFilled,
@@ -5252,6 +5756,42 @@ test('report deck output derives optional order and prints only filled plan cell
   );
 
   deckDom.listeners.click({
+    target: deckDom.fullscreenButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.root.dataset.reportFullscreenOutputMode, 'true');
+  assert.equal(deckDom.root.dataset.reportPrintSlide8Visible, 'false');
+  assert.equal(deckDom.root.dataset.reportPrintSlide9Visible, 'true');
+  assert.equal(deckDom.root.dataset.reportPrintSlide10Visible, 'true');
+  assert.equal(deckDom.slides[8].dataset.reportOutputPrepared, undefined);
+  assert.equal(deckDom.slides[9].dataset.reportOutputPrepared, 'true');
+  assert.equal(deckDom.slides[10].dataset.reportOutputPrepared, 'true');
+  assertOptionalContentHidden(deckDom, 'slide8', true);
+  assertOptionalContentHidden(deckDom, 'slide9', false);
+  assertOptionalContentHidden(deckDom, 'slide10', false);
+
+  deckDom.listeners.click({
+    target: deckDom.fullscreenButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.root.dataset.reportFullscreenOutputMode, undefined);
+  assertOptionalContentHidden(deckDom, 'slide8', true);
+  assertOptionalContentHidden(deckDom, 'slide9', false);
+  assertOptionalContentHidden(deckDom, 'slide10', false);
+
+  deckDom.listeners.click({
+    target: deckDom.exportButton,
+    preventDefault() {},
+  });
+  await flushMicrotasks();
+  assert.equal(deckDom.root.dataset.reportPrintSlide8Visible, 'false');
+  assert.equal(deckDom.root.dataset.reportPrintSlide9Visible, 'true');
+  assert.equal(deckDom.root.dataset.reportPrintSlide10Visible, 'true');
+  assertOptionalContentHidden(deckDom, 'slide8', true);
+  assertOptionalContentHidden(deckDom, 'slide9', false);
+  assertOptionalContentHidden(deckDom, 'slide10', false);
+
+  deckDom.listeners.click({
     target: deckDom.printButton,
     preventDefault() {},
   });
@@ -5259,9 +5799,9 @@ test('report deck output derives optional order and prints only filled plan cell
   assert.equal(deckDom.root.dataset.reportPrintSlide8Visible, 'false');
   assert.equal(deckDom.root.dataset.reportPrintSlide9Visible, 'true');
   assert.equal(deckDom.root.dataset.reportPrintSlide10Visible, 'true');
-  assert.equal(deckDom.optionalContentItems.find((item) => item.dataset.reportOptionalContent === 'slide8')?.hidden, true);
-  assert.equal(deckDom.optionalContentItems.find((item) => item.dataset.reportOptionalContent === 'slide9')?.hidden, false);
-  assert.equal(deckDom.optionalContentItems.find((item) => item.dataset.reportOptionalContent === 'slide10')?.hidden, false);
+  assertOptionalContentHidden(deckDom, 'slide8', true);
+  assertOptionalContentHidden(deckDom, 'slide9', false);
+  assertOptionalContentHidden(deckDom, 'slide10', false);
 });
 
 test('report deck output titles and roman headers are corrected from printed optional pages', async () => {
@@ -5354,7 +5894,10 @@ test('report deck output titles and roman headers are corrected from printed opt
   });
 
   assert.equal(slide8TitleField.textContent.startsWith(`3. ${getReportMonthNumber(getLatestReportMonthKey())}`), true);
-  assert.equal(slide9TitleField.textContent.startsWith(`4. ${getReportMonthNumber(getLatestReportMonthKey(), 1)}`), true);
+  assert.equal(
+    slide9TitleField.textContent.startsWith(`4. ${getReportMonthNumber(getLatestReportMonthKey(), 1)}`),
+    true
+  );
   assert.equal(slide10TitleField.textContent, '5. 자율 안전 신고제');
   assert.equal(slide8SectionField.textContent, 'Ⅲ. 공무환경팀');
   assert.equal(slide9SectionField.textContent, 'Ⅳ. 공무환경팀');
@@ -5486,16 +6029,22 @@ test('util runtime save provider only serves the utility entry experiment host',
   const { registered } = createContext();
   const providerFactory = registered.saveProviders.get('util-entry-experiment-save');
 
-  assert.equal(providerFactory({
-    sectionId: 'data',
-    category: { utilitySurface: 'entry' },
-    container: {},
-  }), null);
-  assert.equal(providerFactory({
-    sectionId: 'data',
-    category: { utilitySurface: 'entry-experiment' },
-    container: {},
-  }), null);
+  assert.equal(
+    providerFactory({
+      sectionId: 'data',
+      category: { utilitySurface: 'entry' },
+      container: {},
+    }),
+    null
+  );
+  assert.equal(
+    providerFactory({
+      sectionId: 'data',
+      category: { utilitySurface: 'entry-experiment' },
+      container: {},
+    }),
+    null
+  );
 });
 
 test('kpi html and boot manifest load util runtime browser adapter before util runtime', () => {

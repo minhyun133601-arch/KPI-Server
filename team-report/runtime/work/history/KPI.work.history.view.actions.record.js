@@ -26,6 +26,12 @@
         return typeof isProductionReportWorkspace === 'function' && isProductionReportWorkspace();
     }
 
+    function showSavedPopup(options = {}) {
+        if (options.showSavedPopup !== true) return false;
+        browser.alert('저장되었습니다');
+        return true;
+    }
+
     function getRecordFormSnapshot() {
         return {
             sourceTeam: String(getElement('formSourceTeam')?.value || '').trim(),
@@ -286,6 +292,7 @@
                     ? (isProductionWorkspace() ? '실적 보고서가 수정되었습니다.' : '작업내역이 수정되었습니다.')
                     : (isProductionWorkspace() ? '실적 보고서가 저장되었습니다.' : '작업내역이 저장되었습니다.')
             );
+            showSavedPopup(options);
         } else if (!options.invokedByShortcut) {
             view.showToast?.(isProductionWorkspace()
                 ? '브라우저에는 반영됐지만 실적 보고서 서버 저장은 실패했습니다.'

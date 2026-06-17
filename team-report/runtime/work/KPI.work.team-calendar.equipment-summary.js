@@ -136,8 +136,45 @@ function formatWorkTeamCalendarEquipmentCount(value, suffix = '건') {
     return `${formatted}${suffix}`;
 }
 
+function getWorkTeamCalendarEquipmentNameDuplicateKey(item) {
+    const name = normalizeWorkTeamCalendarEquipmentText(item?.name);
+    return name ? name.toLocaleLowerCase('ko-KR') : '';
+}
+
+function applyWorkTeamCalendarEquipmentNameSequence(items) {
+    const counts = new Map();
+    asWorkTeamCalendarEquipmentList(items).forEach(item => {
+        const key = getWorkTeamCalendarEquipmentNameDuplicateKey(item);
+        if (!key) return;
+        counts.set(key, (counts.get(key) || 0) + 1);
+    });
+
+    const seen = new Map();
+    return asWorkTeamCalendarEquipmentList(items).map(item => {
+        const key = getWorkTeamCalendarEquipmentNameDuplicateKey(item);
+        const duplicateNameCount = key ? counts.get(key) || 0 : 0;
+        if (duplicateNameCount <= 1) {
+            return {
+                ...item,
+                displayName: item.name,
+                duplicateNameCount,
+                nameSequence: 0,
+            };
+        }
+
+        const nameSequence = (seen.get(key) || 0) + 1;
+        seen.set(key, nameSequence);
+        return {
+            ...item,
+            displayName: `${item.name} #${nameSequence}`,
+            duplicateNameCount,
+            nameSequence,
+        };
+    });
+}
+
 function normalizeWorkTeamCalendarEquipmentItems(payload = readWorkTeamCalendarEquipmentPayload()) {
-    return asWorkTeamCalendarEquipmentList(payload?.equipmentList)
+    const items = asWorkTeamCalendarEquipmentList(payload?.equipmentList)
         .map((item, index) => {
             const detailInfo = asWorkTeamCalendarEquipmentList(item?.detailInfo);
             const operationInfo = asWorkTeamCalendarEquipmentList(item?.operationInfo);
@@ -178,6 +215,7 @@ function normalizeWorkTeamCalendarEquipmentItems(payload = readWorkTeamCalendarE
             };
         })
         .filter(item => item.name && item.teamDataKey);
+    return applyWorkTeamCalendarEquipmentNameSequence(items);
 }
 
 function getWorkTeamCalendarEquipmentMaintenanceItems(equipmentItems, monthKey) {
@@ -188,7 +226,8 @@ function getWorkTeamCalendarEquipmentMaintenanceItems(equipmentItems, monthKey) 
             return {
                 id: `${equipment.id || equipment.name}-${rowIndex}`,
                 equipmentId: equipment.id,
-                equipmentName: equipment.name,
+                equipmentName: equipment.displayName || equipment.name,
+                equipmentBaseName: equipment.name,
                 teamDataKey: equipment.teamDataKey,
                 teamLabel: equipment.teamLabel,
                 process: equipment.process,
@@ -317,7 +356,7 @@ function renderWorkTeamCalendarEquipmentListHtml(summary) {
                     return `
                         <div class="work-team-calendar-production-item">
                             <div class="work-team-calendar-production-main">
-                                <div class="work-team-calendar-production-name">${escapeWorkTeamCalendarEquipmentHtml(item.name)}</div>
+                                <div class="work-team-calendar-production-name">${escapeWorkTeamCalendarEquipmentHtml(item.displayName || item.name)}</div>
                                 <div class="work-team-calendar-production-meta">${escapeWorkTeamCalendarEquipmentHtml(metaParts.join(' · ') || '설비 정보 미입력')}</div>
                                 <div class="work-team-calendar-production-summary">${escapeWorkTeamCalendarEquipmentHtml(checkParts.join(' · ') || '점검일 미입력')}</div>
                             </div>

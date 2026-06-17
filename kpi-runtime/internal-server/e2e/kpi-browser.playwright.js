@@ -133,10 +133,10 @@ async function expectUtilityEntryExperimentSurface(page) {
   await expect(page.locator('[data-role="utility-entry-experiment-save"]')).toHaveCount(2);
   await expect(page.locator('.utility-entry-experiment-rule-card')).toHaveCount(2);
   await expect(page.locator('.utility-entry-experiment-rule-card').first()).toBeVisible();
-  await expect(page.locator('[data-role="utility-entry-experiment-meter-open"]')).toHaveCount(6);
+  await expect(page.locator('[data-role="utility-entry-experiment-meter-open"]')).toHaveCount(7);
   await expect(
     page.locator('.utility-entry-experiment-settlement-title-button[data-role="utility-entry-experiment-meter-open"]')
-  ).toHaveCount(6);
+  ).toHaveCount(7);
   await expect(page.locator('[data-role="utility-entry-experiment-graph-toggle"]')).toHaveCount(0);
 }
 
@@ -470,18 +470,6 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('.experiment-chart-mount .util-analytics-chart-line')).toHaveCount(1);
       const valueLabels = page.locator('.experiment-chart-mount .util-analytics-chart-value');
       await expect(valueLabels.first()).toBeVisible();
-      await page.locator('.experiment-chart-mount [data-chart-label-toggle]').uncheck();
-      await expect(valueLabels).toHaveCount(0);
-      await page.locator('.experiment-chart-mount [data-chart-label-toggle]').check();
-      await expect(valueLabels.first()).toBeVisible();
-      await page.locator('.experiment-chart-mount [data-chart-label-toggle]').uncheck();
-      await expect(valueLabels).toHaveCount(0);
-      await page
-        .locator(
-          '.experiment-chart-mount [data-role="util-sheet-analysis-series-label-toggle"][data-chart-key="production-total"]'
-        )
-        .check();
-      await expect(valueLabels.first()).toBeVisible();
       await page
         .locator(
           '.experiment-chart-mount [data-role="util-sheet-analysis-series-type"][data-chart-key="production-total"][data-chart-type="none"]'
@@ -500,7 +488,7 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('#sidebar')).toBeVisible();
 
       await clickSidebarButton(page, '조도');
-      await expect(page.locator('#content-container')).toContainText('조도 입력');
+      await expect(page.locator('#content-container')).toContainText('관리 분기');
 
       await clickSidebarButton(page, '유틸리티');
       await expectUtilityEntryExperimentSurface(page);
@@ -517,7 +505,7 @@ test.describe('KPI browser smoke', () => {
         .toBe(0);
       await page.waitForTimeout(1000);
 
-      await clickSidebarButton(page, '설비 이력 카드');
+      await clickSidebarButton(page, '설비 이력');
       await expect(page.locator('#content-container')).toContainText('설비 현황');
       await expect(page.locator('.data-equipment-page')).toBeVisible();
       const existingEquipmentCards = page.locator('.data-equipment-board-card');

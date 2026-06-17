@@ -143,6 +143,7 @@
     });
 
     const REPORT_DECK_DEFAULT_VIEW = 'hq';
+    const REPORT_DECK_SAVED_MESSAGE = '저장되었습니다';
 
     const REPORT_DECK_DEFAULT = Object.freeze({
         title: '월 실적 보고',
@@ -203,11 +204,11 @@
         slide4Section: 'Ⅰ. 공무환경팀',
         slide4Title: '1. 유 산 (가스, 전기 비용) 분석',
         slide5Section: 'Ⅰ. 공무환경팀',
-        slide5Title: '1. 유산 (가스 비용) 분석',
+        slide5Title: '1. 유 산 (가스 비용) 분석',
         slide6Section: 'Ⅱ. 공무환경팀',
-        slide6Title: '2. 북정 (폐수 비용) 분석',
+        slide6Title: '2. 북 정 (폐수 비용) 분석',
         slide7Section: 'Ⅱ. 공무환경팀',
-        slide7Title: '2. 유산 (폐수 비용) 분석',
+        slide7Title: '2. 유 산 (폐수 비용) 분석',
         slide3GasMemo: '',
         slide3ElectricMemo: '',
         slide4GasMemo: '',
@@ -513,7 +514,7 @@
     const REPORT_DECK_SLIDE10_SLOTS_PER_PAGE = 8;
     const REPORT_DECK_SLIDE10_COLUMNS_PER_ROW = 4;
     const REPORT_DECK_SLIDE10_ROWS_PER_PAGE = 2;
-    const REPORT_DECK_SLIDE10_PAGE_COUNT = 2;
+    const REPORT_DECK_SLIDE10_PAGE_COUNT = 1;
     const REPORT_DECK_SLIDE10_BASE_SLOT_COUNT = REPORT_DECK_SLIDE10_SLOTS_PER_PAGE * REPORT_DECK_SLIDE10_PAGE_COUNT;
     const REPORT_DECK_SLIDE10_DELETE_BACKUP_LIMIT = 12;
     const REPORT_DECK_SLIDE10_HAZARD_OPTIONS = Object.freeze(['미끄럼', '넘어짐', '끼임', '충돌', '낙하/비래', '베임/찔림', '화재', '감전', '누출', '화상']);
@@ -525,6 +526,8 @@
         Object.freeze({ key: 'team_01_02', label: '1팀 2파트' }),
         Object.freeze({ key: 'team_02', label: '2팀' }),
         Object.freeze({ key: 'team_03', label: '3팀' }),
+        Object.freeze({ key: 'site_yusan', label: '유산' }),
+        Object.freeze({ key: 'site_total', label: '전체' }),
         Object.freeze({ key: 'other', label: '기타' })
     ]);
     const REPORT_DECK_MEMO_METRIC_OPTIONS = Object.freeze([
@@ -550,6 +553,7 @@
         Object.freeze({ key: 'off_days', label: '휴무일수' }),
         Object.freeze({ key: 'product_count', label: '고유 품목수' }),
         Object.freeze({ key: 'cip_count', label: 'CIP 횟수' }),
+        Object.freeze({ key: 'cip_time', label: 'CIP 시간' }),
         Object.freeze({ key: 'waste_usage', label: '폐수량' }),
         Object.freeze({ key: 'waste_cost_total', label: '폐수 비용 총계' }),
         Object.freeze({ key: 'waste_cost_water', label: '상수 비용' }),
@@ -597,10 +601,12 @@
         team_03: Object.freeze(['Bottle', '기타'])
     });
     const REPORT_DECK_MEMO_TEAM_METRIC_KEYS = Object.freeze({
-        team_01_01: Object.freeze(['production', 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
-        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'gas_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
-        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
-        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
+        team_01_01: Object.freeze(['production', 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
+        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'gas_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
+        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
+        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
+        site_yusan: Object.freeze(['cip_count', 'cip_time']),
+        site_total: Object.freeze(['cip_count', 'cip_time']),
         other: Object.freeze(['monthly_average_temperature'])
     });
 
@@ -768,6 +774,13 @@
     }
 
     const REPORT_DECK_OPTIONAL_SECTION_ORDER = Object.freeze(['slide8', 'slide9', 'slide10']);
+    const REPORT_DECK_SITE_TITLE_SPACING_KEYS = Object.freeze([
+        'slide3Title',
+        'slide4Title',
+        'slide5Title',
+        'slide6Title',
+        'slide7Title'
+    ]);
 
     function getReportDeckOptionalSectionNumbers(state = {}, includedOptionalPages = null) {
         const includedSet = includedOptionalPages instanceof Set ? includedOptionalPages : null;
@@ -778,6 +791,29 @@
             if (shouldCount) nextNumber += 1;
             return numbers;
         }, {});
+    }
+
+    function getReportDeckOptionalContentVisibility(state = {}, includedOptionalPages = null) {
+        const includedSet = includedOptionalPages instanceof Set ? includedOptionalPages : null;
+        return REPORT_DECK_OPTIONAL_SECTION_ORDER.reduce((visibility, slideKey) => {
+            visibility[slideKey] = includedSet ? includedSet.has(slideKey) : hasReportDeckOptionalContent(state, slideKey);
+            return visibility;
+        }, {});
+    }
+
+    function normalizeReportDeckSiteTitleSpacing(value) {
+        return String(value || '')
+            .replace(/북정/g, '북 정')
+            .replace(/유산/g, '유 산');
+    }
+
+    function normalizeReportDeckHeaderTitleSpacing(state = {}) {
+        REPORT_DECK_SITE_TITLE_SPACING_KEYS.forEach(key => {
+            if (Object.prototype.hasOwnProperty.call(state, key)) {
+                state[key] = normalizeReportDeckSiteTitleSpacing(state[key]);
+            }
+        });
+        return state;
     }
 
     function formatReportDeckOptionalSectionRoman(sectionNumber = 3) {
@@ -882,6 +918,7 @@
         state.title = buildReportDeckTitleForMonth(meta.selectedMonth);
         state.reportDate = buildReportDeckDateForMonth(meta.selectedMonth, state.reportDate);
         state.department = normalizeReportDeckDepartment(state.department);
+        normalizeReportDeckHeaderTitleSpacing(state);
         normalizeReportDeckSlide8OverviewOrder(state);
         normalizeReportDeckSlide9OverviewOrder(state);
         normalizeReportDeckSlide10OverviewOrder(state);
@@ -1512,7 +1549,9 @@
         REPORT_DECK_SLIDE10_TEAM_ROWS.forEach(team => {
             const teamEntries = filledEntries.filter(entry => entry.team === team);
             if (!teamEntries.length) {
-                if (includeEmpty && !hasFilledEntries) rows.push({ team, sourceIndexes: [] });
+                if (includeEmpty && !hasFilledEntries && rows.length < REPORT_DECK_SLIDE10_ROWS_PER_PAGE) {
+                    rows.push({ team, sourceIndexes: [] });
+                }
                 return;
             }
             let offset = 0;
@@ -1683,7 +1722,7 @@
                 normalizedState[key] = String(source[key] || '');
             }
         });
-        return normalizedState;
+        return normalizeReportDeckHeaderTitleSpacing(normalizedState);
     }
 
     function getReportDeckRuntimeConfig() {
@@ -1705,6 +1744,16 @@
             status.textContent = text || '';
             status.hidden = !text;
         }
+    }
+
+    function showReportDeckSavedPopup(root, message = REPORT_DECK_SAVED_MESSAGE) {
+        const popupMessage = String(message || '').trim();
+        if (!popupMessage) return false;
+        const scope = root?.ownerDocument?.defaultView
+            || (typeof window !== 'undefined' ? window : null);
+        if (typeof scope?.alert !== 'function') return false;
+        scope.alert(popupMessage);
+        return true;
     }
 
     function setReportDeckCaptureBusy(root, isBusy) {
@@ -3119,6 +3168,98 @@
         syncReportDeckPlanControls(root, state);
         markReportDeckDirty(root, state, meta);
         closeReportDeckOverviewDialog(root);
+        return true;
+    }
+
+    function captureReportDeckOpenOverviewDialog(root, state, meta) {
+        const dialog = getReportDeckOverviewDialog(root);
+        if (!dialog || dialog.hidden) return true;
+        return saveReportDeckOverviewDialog(root, state, meta);
+    }
+
+    function updateReportDeckStateValue(state, key, value) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
+        const nextValue = String(value || '');
+        if (String(state[normalizedKey] || '') === nextValue) return false;
+        state[normalizedKey] = nextValue;
+        return true;
+    }
+
+    function captureReportDeckOpenMemoDialog(root, state, meta) {
+        const dialog = getReportDeckMemoDialog(root);
+        if (!dialog || dialog.hidden) return false;
+        const key = getReportDeckMemoDialogTargetKey(dialog);
+        if (!key || !Object.prototype.hasOwnProperty.call(state, key)) return false;
+        let changed = false;
+
+        const lineInputs = Array.from(dialog.querySelectorAll?.('[data-report-memo-line-input]') || []);
+        if (lineInputs.length) {
+            const nextLines = getReportDeckMemoLines(state[key]);
+            lineInputs.forEach(input => {
+                const index = Number.parseInt(String(input?.dataset?.reportMemoLineInput || ''), 10);
+                if (!Number.isInteger(index) || index < 0) return;
+                nextLines[index] = String(input.value || '');
+            });
+            const nextText = nextLines.map(line => String(line || '').trim()).filter(Boolean).join('\n');
+            if (nextText !== String(state[key] || '')) {
+                changed = setReportDeckMemoLines(root, state, meta, dialog, key, nextLines, { syncDialog: false }) || changed;
+            }
+        }
+
+        const manualInput = dialog.querySelector?.('[data-report-memo-manual-input]');
+        const manualLines = getReportDeckMemoLines(manualInput?.value || '');
+        if (manualLines.length && appendReportDeckMemoLines(root, state, meta, dialog, key, manualLines)) {
+            clearReportDeckMemoManualInput(dialog);
+            changed = true;
+        }
+        return changed;
+    }
+
+    function captureReportDeckEditableFields(root, state, meta) {
+        let changed = false;
+        Array.from(root?.querySelectorAll?.('[data-report-field]') || []).forEach(field => {
+            const key = String(field?.dataset?.reportField || '').trim();
+            const editable = String(field?.contentEditable || field?.contenteditable || '').toLowerCase() === 'true';
+            if (
+                !key
+                || !editable
+                || isReportDeckLockedFieldKey(key)
+                || isReportDeckSlide8OverviewKey(key)
+                || isReportDeckSlide9OverviewKey(key)
+                || isReportDeckSlide10OverviewKey(key)
+            ) return;
+            changed = updateReportDeckStateValue(state, key, field.textContent || '') || changed;
+        });
+
+        Array.from(root?.querySelectorAll?.('[data-report-date-input]') || []).forEach(input => {
+            if (input?.disabled || !String(input?.value || '').trim()) return;
+            const nextDate = normalizeReportDeckDate(input?.value) || REPORT_DECK_DEFAULT.reportDate;
+            changed = updateReportDeckStateValue(state, 'reportDate', nextDate) || changed;
+        });
+
+        Array.from(root?.querySelectorAll?.('[data-report-plan-count-select]') || []).forEach(select => {
+            const key = String(select?.dataset?.reportPlanCountSelect || '').trim();
+            if (!key || select?.disabled || !String(select?.value || '').trim()) return;
+            changed = updateReportDeckStateValue(state, key, normalizeReportDeckPlanSlotCount(select.value)) || changed;
+        });
+
+        if (changed) {
+            applyReportDeckDerivedFields(state, meta);
+            syncReportDeckFieldRefs(root, state);
+            syncReportDeckPlanControls(root, state);
+        }
+        return changed;
+    }
+
+    function captureReportDeckPendingEdits(root, state, meta) {
+        if (!captureReportDeckOpenOverviewDialog(root, state, meta)) return false;
+        const memoChanged = captureReportDeckOpenMemoDialog(root, state, meta);
+        const fieldChanged = captureReportDeckEditableFields(root, state, meta);
+        const changed = memoChanged || fieldChanged;
+        if (changed) {
+            markReportDeckDirty(root, state, meta);
+        }
         return true;
     }
 
@@ -4853,6 +4994,10 @@
     function getReportDeckVisibleSlides(root, view = getReportDeckActiveView(root)) {
         return Array.from(root?.querySelectorAll?.('[data-report-slide-page]') || [])
             .filter(slide => slide.hidden !== true && String(slide.dataset.reportSlidePage || '') !== '-1')
+            .filter(slide => (
+                root?.dataset?.reportFullscreenOutputMode !== 'true'
+                || String(slide?.dataset?.reportPrintVisible || '') === 'true'
+            ))
             .filter(slide => isReportDeckSlideInView(root, slide, view));
     }
 
@@ -4922,18 +5067,20 @@
 
     function syncReportDeckDynamicSlides(root) {
         const slides = Array.from(root?.querySelectorAll?.('[data-report-slide-page]') || []);
-        const visibleSlides = slides.filter(slide => slide.hidden !== true);
-        const visibleOptionalPages = new Set(visibleSlides
-            .map(slide => String(slide.dataset.reportOptionalPage || '').trim())
-            .filter(Boolean));
-        Array.from(root?.querySelectorAll?.('[data-report-optional-content]') || []).forEach(element => {
-            const optionalPageKey = String(element.dataset.reportOptionalContent || '').trim();
-            element.hidden = !optionalPageKey || !visibleOptionalPages.has(optionalPageKey);
-        });
+        const usePreparedOutputSlides = root?.dataset?.reportFullscreenOutputMode === 'true';
+        const visibleSlides = slides.filter(slide => (
+            slide.hidden !== true
+            && (!usePreparedOutputSlides || String(slide?.dataset?.reportPrintVisible || '') === 'true')
+        ));
+        const visibleSlideSet = new Set(visibleSlides);
+        syncReportDeckOutputOptionalContents(
+            root,
+            getReportDeckOptionalContentVisibility(root?.__reportDeckState || {})
+        );
         visibleSlides.forEach((slide, index) => {
             slide.dataset.reportSlidePage = String(index);
         });
-        slides.filter(slide => slide.hidden === true).forEach(slide => {
+        slides.filter(slide => slide.hidden === true || !visibleSlideSet.has(slide)).forEach(slide => {
             slide.dataset.reportSlidePage = '-1';
             slide.dataset.reportSlideViewPage = '-1';
             slide.classList?.toggle?.('is-active', false);
@@ -4994,14 +5141,13 @@
         if (!slideCount) return;
         const nextIndex = Math.max(0, Math.min(slideCount - 1, Number.parseInt(String(slideIndex), 10) || 0));
         const activeView = getReportDeckActiveView(root);
+        const activeSlides = getReportDeckVisibleSlides(root, activeView);
+        const activeSlide = activeSlides[nextIndex] || null;
         root.dataset.reportActiveView = activeView;
         root.dataset.reportActiveSlide = String(nextIndex);
 
         Array.from(root.querySelectorAll?.('[data-report-slide-page]') || []).forEach(slide => {
-            const slidePage = Number.parseInt(String(slide.dataset.reportSlideViewPage || slide.dataset.reportSlidePage || '0'), 10);
-            const active = slide.hidden !== true
-                && isReportDeckSlideInView(root, slide, activeView)
-                && slidePage === nextIndex;
+            const active = slide === activeSlide;
             slide.classList?.toggle?.('is-active', active);
             slide.setAttribute?.('aria-hidden', active ? 'false' : 'true');
         });
@@ -5040,6 +5186,7 @@
             const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
             const result = exit?.call?.(doc);
             result?.catch?.(() => {});
+            clearReportDeckFullscreenOutputState(root, root.__reportDeckState || {});
             return;
         }
         const next = (current + direction + slideCount) % slideCount;
@@ -5080,6 +5227,71 @@
         ].join(', '));
     }
 
+    function applyReportDeckFullscreenOutputPreparedState(root) {
+        const optionalVisibility = {
+            slide8: String(root?.dataset?.reportPrintSlide8Visible || '') === 'true',
+            slide9: String(root?.dataset?.reportPrintSlide9Visible || '') === 'true',
+            slide10: String(root?.dataset?.reportPrintSlide10Visible || '') === 'true'
+        };
+        syncReportDeckOutputOptionalContents(root, optionalVisibility);
+        Array.from(root?.querySelectorAll?.('[data-report-slide-page]') || []).forEach(slide => {
+            const printable = String(slide?.dataset?.reportPrintVisible || '') === 'true';
+            if (!printable) {
+                delete slide.dataset.reportOutputPrepared;
+                return;
+            }
+            slide.dataset.reportOutputPrepared = 'true';
+            const pageText = String(slide?.dataset?.reportPrintPageText || '').trim();
+            const pageNumber = slide.querySelector?.('[data-report-page-number]');
+            if (pageNumber && pageText) pageNumber.textContent = pageText;
+        });
+    }
+
+    function clearReportDeckPrintOutputState(root) {
+        if (!root?.dataset) return;
+        delete root.dataset.reportPrintMode;
+        delete root.dataset.reportPrintView;
+        delete root.dataset.reportPrintSlide8Visible;
+        delete root.dataset.reportPrintSlide9Visible;
+        delete root.dataset.reportPrintSlide10Visible;
+        Array.from(root.querySelectorAll?.('[data-report-slide-page]') || []).forEach(slide => {
+            delete slide.dataset.reportPrintVisible;
+            delete slide.dataset.reportPrintLast;
+            delete slide.dataset.reportPrintPageText;
+        });
+    }
+
+    function clearReportDeckFullscreenOutputState(root, state = {}) {
+        if (!root?.dataset || root.dataset.reportFullscreenOutputMode !== 'true') return;
+        const hadPrintMode = root.dataset.reportFullscreenHadPrintMode === 'true';
+        delete root.dataset.reportFullscreenOutputMode;
+        delete root.dataset.reportFullscreenHadPrintMode;
+        Array.from(root.querySelectorAll?.('[data-report-slide-page]') || []).forEach(slide => {
+            delete slide.dataset.reportOutputPrepared;
+        });
+        if (!hadPrintMode) {
+            clearReportDeckPrintOutputState(root);
+        }
+        syncReportDeckFields(root, state, { selectedMonth: root.dataset.reportMonth || '' });
+        syncReportDeckPlanControls(root, state);
+    }
+
+    function prepareReportDeckFullscreenOutputState(root, state = {}) {
+        if (!root?.dataset) return false;
+        root.dataset.reportFullscreenHadPrintMode = root.dataset.reportPrintMode === 'true' ? 'true' : 'false';
+        const outputCount = prepareReportDeckPdfPrint(root, state);
+        if (outputCount <= 0) {
+            root.dataset.reportFullscreenOutputMode = 'true';
+            clearReportDeckFullscreenOutputState(root, state);
+            setReportDeckStatus(root, 'error', '전체화면으로 볼 페이지 없음');
+            return false;
+        }
+        root.dataset.reportFullscreenOutputMode = 'true';
+        syncReportDeckDynamicSlides(root);
+        applyReportDeckFullscreenOutputPreparedState(root);
+        return true;
+    }
+
     function toggleReportDeckFullscreen(root) {
         const doc = root?.ownerDocument;
         const fullscreenElement = doc?.fullscreenElement || doc?.webkitFullscreenElement || null;
@@ -5087,11 +5299,19 @@
             const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
             const result = exit?.call?.(doc);
             result?.catch?.(() => {});
+            clearReportDeckFullscreenOutputState(root, root.__reportDeckState || {});
             return;
         }
+        if (!prepareReportDeckFullscreenOutputState(root, root.__reportDeckState || {})) return;
         const request = root?.requestFullscreen || root?.webkitRequestFullscreen;
+        if (typeof request !== 'function') {
+            clearReportDeckFullscreenOutputState(root, root.__reportDeckState || {});
+            return;
+        }
         const result = request?.call?.(root);
-        result?.catch?.(() => {});
+        result?.catch?.(() => {
+            clearReportDeckFullscreenOutputState(root, root.__reportDeckState || {});
+        });
         const stage = root?.querySelector?.('[data-report-stage]');
         stage?.focus?.();
     }
@@ -5187,6 +5407,7 @@
         root.dataset.reportPrintSlide9Visible = optionalVisibility.slide9 ? 'true' : 'false';
         root.dataset.reportPrintSlide10Visible = optionalVisibility.slide10 ? 'true' : 'false';
         syncReportDeckOutputOptionalContents(root, optionalVisibility);
+        syncReportDeckContentsPageRanges(root, printSlides);
         setReportDeckOutputPageNumbers(root, printSlides);
         Array.from(root?.querySelectorAll?.('[data-report-slide-page]') || []).forEach(slide => {
             const printable = printSlideSet.has(slide);
@@ -5490,7 +5711,10 @@
             }
             meta.dirty = false;
             syncReportDeckJson(root, state, meta);
-            setReportDeckStatus(root, 'saved', options.showSavedMessage === false ? '' : '저장 완료');
+            setReportDeckStatus(root, 'saved', options.showSavedMessage === false ? '' : REPORT_DECK_SAVED_MESSAGE);
+            if (options.showSavedPopup === true) {
+                showReportDeckSavedPopup(root);
+            }
             return true;
         } catch (error) {
             if (saveSequence === meta.saveSequence) {
@@ -5622,10 +5846,12 @@
 
     async function completeReportDeckEdit(root, state, meta) {
         if (root?.dataset?.reportEditMode !== 'editing') return false;
+        if (!captureReportDeckPendingEdits(root, state, meta)) return false;
         if (meta.dirty !== true) {
             meta.dirty = false;
             syncReportDeckJson(root, state, meta);
-            setReportDeckStatus(root, 'saved', '저장 완료');
+            setReportDeckStatus(root, 'saved', REPORT_DECK_SAVED_MESSAGE);
+            showReportDeckSavedPopup(root);
             meta.highlightChartKey = '';
             meta.highlightChartMode = 'point';
             meta.highlightRangeChartKey = '';
@@ -5636,7 +5862,8 @@
         }
         meta.saveSequence += 1;
         const saved = await saveReportDeckStateToServer(root, state, meta, meta.saveSequence, {
-            showSavedMessage: true
+            showSavedMessage: true,
+            showSavedPopup: true
         });
         if (saved) {
             meta.highlightChartKey = '';
@@ -5656,6 +5883,10 @@
             return;
         }
         if (!Array.isArray(meta.months) || !meta.months.includes(nextMonth)) {
+            syncReportDeckMonthSelect(root, meta);
+            return;
+        }
+        if (root?.dataset?.reportEditMode === 'editing' && !captureReportDeckPendingEdits(root, state, meta)) {
             syncReportDeckMonthSelect(root, meta);
             return;
         }
@@ -6268,5 +6499,19 @@
                 moveReportDeckSlide(root, -1);
             }
         });
+
+        const reportDeckDocument = root?.ownerDocument || null;
+        const handleReportDeckFullscreenChange = () => {
+            const fullscreenElement = reportDeckDocument?.fullscreenElement || reportDeckDocument?.webkitFullscreenElement || null;
+            if (fullscreenElement === root) {
+                if (root.dataset.reportFullscreenOutputMode === 'true') {
+                    applyReportDeckFullscreenOutputPreparedState(root);
+                }
+                return;
+            }
+            clearReportDeckFullscreenOutputState(root, state);
+        };
+        reportDeckDocument?.addEventListener?.('fullscreenchange', handleReportDeckFullscreenChange);
+        reportDeckDocument?.addEventListener?.('webkitfullscreenchange', handleReportDeckFullscreenChange);
     }
 })();

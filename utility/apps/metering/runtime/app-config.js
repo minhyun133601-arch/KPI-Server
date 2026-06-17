@@ -39,6 +39,10 @@ const GAS_YUSAN_LNG_TEAM_KEY = "gas_yusan_lng";
 const GAS_YUSAN_LPG_TEAM_KEY = "gas_yusan_lpg";
 const WASTE_BUKJEONG_TEAM_KEY = "waste_bukjeong";
 const WASTE_YUSAN_TEAM_KEY = "waste_yusan";
+const WASTE_BILLING_SETTLEMENT_PRODUCTION_TEAM_NAMES_BY_SCOPE = Object.freeze({
+  [WASTE_BILLING_SETTLEMENT_SCOPE_BUKJEONG_KEY]: Object.freeze(["1팀 1파트"]),
+  [WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY]: Object.freeze(["1팀 2파트", "2팀", "3팀"]),
+});
 const ELECTRIC_BILLING_SETTLEMENT_FIELDS = [
   { key: "base_charge", label: "기본요금" },
   { key: "power_charge", label: "전력량요금" },
@@ -81,8 +85,9 @@ const WASTE_BILLING_SETTLEMENT_FIELDS_BUKJEONG = [
   { key: "sludge", label: "폐수오니 처리비용" },
   { key: "resin", label: "혼합수지 처리비용" },
   { key: "labor", label: "인건비" },
-  { key: "unit_price", label: "단가" },
   { key: "billing_amount", label: "총비용" },
+  { key: "unit_price", label: "단가" },
+  { key: "waste_per_production_ton", label: "생산량 대비 폐수량" },
 ];
 const WASTE_BILLING_SETTLEMENT_FIELDS_YUSAN = [
   { key: "water", label: "용수비" },
@@ -90,8 +95,9 @@ const WASTE_BILLING_SETTLEMENT_FIELDS_YUSAN = [
   { key: "sludge", label: "폐수오니 처리비용" },
   { key: "resin", label: "혼합수지 처리비용" },
   { key: "labor", label: "인건비" },
-  { key: "unit_price", label: "단가" },
   { key: "billing_amount", label: "총비용" },
+  { key: "unit_price", label: "단가" },
+  { key: "waste_per_production_ton", label: "생산량 대비 폐수량" },
 ];
 const WASTE_BILLING_SETTLEMENT_BILLING_AMOUNT_COMPONENTS_BUKJEONG = Object.freeze([
   { key: "water", sign: 1 },
@@ -140,8 +146,9 @@ const GAS_LPG_CONVERSION_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set
   []
 );
 const WASTE_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS = new Set([
-  "unit_price",
   "billing_amount",
+  "unit_price",
+  "waste_per_production_ton",
 ]);
 const BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS =
   ELECTRIC_BILLING_SETTLEMENT_AUTO_CALCULATED_FIELD_KEYS;
@@ -205,8 +212,9 @@ const GAS_LPG_CONVERSION_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
   conversion_ratio: "보고서 LPG동향 비율입니다. LNG 환산 금액 = LPG 총액 ÷ 비율",
 });
 const WASTE_BILLING_SETTLEMENT_FORMULA_GUIDES = Object.freeze({
-  unit_price: "총비용 ÷ 해당 월 사용량",
   billing_amount: "입력한 세부 비용 합계",
+  unit_price: "총비용 ÷ 해당 월 사용량",
+  waste_per_production_ton: "폐수/생산량",
 });
 const BILLING_SETTLEMENT_FORMULA_GUIDES = ELECTRIC_BILLING_SETTLEMENT_FORMULA_GUIDES;
 const BILLING_SETTLEMENT_SCOPE_DEFINITIONS_BY_RESOURCE = Object.freeze({

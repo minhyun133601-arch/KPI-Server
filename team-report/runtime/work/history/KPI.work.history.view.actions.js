@@ -167,7 +167,7 @@
                 return;
             }
             if (action === 'save-record') {
-                void view.saveRecord?.();
+                void view.saveRecord?.({ showSavedPopup: true });
                 return;
             }
             if (action === 'close-delete-modal') {
@@ -250,7 +250,7 @@
         if (isSaveShortcut && view.isRecordModalOpen?.()) {
             event.preventDefault();
             event.stopPropagation();
-            void view.saveRecord?.({ invokedByShortcut: true });
+            void view.saveRecord?.({ invokedByShortcut: true, showSavedPopup: true });
             return;
         }
 

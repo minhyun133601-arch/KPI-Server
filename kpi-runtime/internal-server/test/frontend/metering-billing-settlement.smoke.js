@@ -67,6 +67,7 @@ function createBillingSettlementContext(options = {}) {
     'resin',
     'labor',
     'outsourcing',
+    'waste_per_production_ton',
   ]);
 
   const context = {
@@ -292,7 +293,7 @@ function createBillingSettlementContext(options = {}) {
         return new Set(['electricity_charge_total', 'unit_price', 'billing_amount']);
       }
 
-      return new Set(['unit_price', 'billing_amount']);
+      return new Set(['billing_amount', 'unit_price', 'waste_per_production_ton']);
     },
     getBillingSettlementZeroDefaultFieldKeys(
       nextResourceType = resourceType,
@@ -339,6 +340,18 @@ function createBillingSettlementContext(options = {}) {
         { key: 'usage_fee', sign: 1 },
         { key: 'discount', sign: -1 },
       ];
+    },
+    getUtilDailyProductionValue(teamName, year, month) {
+      const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+      const key = `${teamName}:${monthKey}`;
+      if (
+        options.productionValueMap &&
+        Object.prototype.hasOwnProperty.call(options.productionValueMap, key)
+      ) {
+        return { value: options.productionValueMap[key] };
+      }
+
+      return null;
     },
     buildWasteBillingSettlementFallbackEntry(monthValue, scopeKey) {
       return {
@@ -600,6 +613,44 @@ test('billing settlement reads legacy yusan outsourcing as labor', () => {
   assert.equal(fields.labor, '25');
   assert.equal(fields.outsourcing, undefined);
   assert.equal(fields.billing_amount, '125');
+});
+
+test('billing settlement calculates waste usage against production tons', () => {
+  const { context } = createBillingSettlementContext({
+    resourceType: 'waste',
+    currentScopeKey: 'waste_yusan',
+    resourceTypeByScope: { waste_yusan: 'waste' },
+    wasteUsageBaseValue: 125,
+    productionValueMap: {
+      '1팀 2파트:2026-04': 10000,
+      '2팀:2026-04': 5000,
+      '3팀:2026-04': 10000,
+    },
+    fields: [
+      { key: 'water' },
+      { key: 'labor' },
+      { key: 'billing_amount' },
+      { key: 'unit_price' },
+      { key: 'waste_per_production_ton' },
+    ],
+    wasteBillingAmountComponents: [
+      { key: 'water', sign: 1 },
+      { key: 'labor', sign: 1 },
+    ],
+  });
+
+  const fields = context.resolveBillingSettlementFields(
+    {
+      water: '100',
+      labor: '25',
+    },
+    '2026-04',
+    'waste_yusan'
+  );
+
+  assert.equal(fields.billing_amount, '125');
+  assert.equal(fields.unit_price, '1');
+  assert.equal(fields.waste_per_production_ton, '5');
 });
 
 test('billing settlement completion state excludes calorific value when gas usage base is missing', () => {

@@ -30,6 +30,17 @@ function appendManualSaveHistoryRecord(record) {
   ]);
 }
 
+function showManualSaveSuccessPopup(options = {}) {
+  if (options.showSavedPopup === false) {
+    return false;
+  }
+  if (typeof meteringStoreSyncBrowser.alert !== "function") {
+    return false;
+  }
+  meteringStoreSyncBrowser.alert("저장되었습니다");
+  return true;
+}
+
 async function waitForQueuedPersistence() {
   await Promise.allSettled([sharedServerPersistenceState.writeChain]);
 }
@@ -196,6 +207,7 @@ async function performManualSave(options = {}) {
   state.cleanStatusText = "서버 저장을 완료했습니다.";
   updateDirtyState();
   updateActionState();
+  showManualSaveSuccessPopup(options);
   return true;
 }
 

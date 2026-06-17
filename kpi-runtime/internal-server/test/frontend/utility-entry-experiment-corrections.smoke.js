@@ -100,6 +100,14 @@ function createCorrectionContext(options = {}) {
   return context.window.__utilityEntryExperimentCorrectionTest;
 }
 
+test('utility entry explicit save button requests saved popup for touched saves only', () => {
+  assert.match(dataSectionSource, /function showUtilityEntryExperimentSavedPopup\(options = \{\}\)/);
+  assert.match(dataSectionSource, /options\.showSavedPopup !== true/);
+  assert.match(dataSectionSource, /showUtilityEntryExperimentSavedPopup\(options\)/);
+  assert.match(dataSectionSource, /if \(!result\.touchedCount\) \{[\s\S]+return true;\s+\}/);
+  assert.match(dataSectionSource, /saveUtilityEntryExperiment\(\s+host,\s+saveButton\.dataset\.utilityEntryExperimentPeriod \|\| 'daily',\s+\{ showSavedPopup: true \}\s+\)/);
+});
+
 function createDailyCurrentInput(options = {}) {
   const attrs = new Map();
   const classTokens = new Set();
@@ -1873,7 +1881,7 @@ test('utility entry daily save marks the day complete without a completion check
   assert.equal(entry.completed, true);
 });
 
-test('utility entry monthly save keeps average temperature and CIP count fields', () => {
+test('utility entry monthly save keeps average temperature and CIP fields', () => {
   const api = createCorrectionContext();
   const temperatureInput = createDailyCurrentInput({
     value: '23.4',
@@ -1891,9 +1899,18 @@ test('utility entry monthly save keeps average temperature and CIP count fields'
   cipInput.dataset.utilityEntryExperimentFieldKey = 'cip_count';
   cipInput.dataset.utilityEntryExperimentTeamKey = 'team_01_02';
   cipInput.dataset.utilityEntryExperimentDirty = 'true';
+  const cipTimeInput = createDailyCurrentInput({
+    value: '1.75',
+    saveKind: 'other-team-monthly-field',
+    resourceType: 'other',
+  });
+  cipTimeInput.dataset.utilityEntryExperimentFieldKey = 'cip_time';
+  cipTimeInput.dataset.utilityEntryExperimentTeamKey = 'team_01_02';
+  cipTimeInput.dataset.utilityEntryExperimentNumberKind = 'float';
+  cipTimeInput.dataset.utilityEntryExperimentDirty = 'true';
   const host = createMonthlySaveHost({
     otherMonthlyField: [temperatureInput],
-    otherTeamMonthlyField: [cipInput],
+    otherTeamMonthlyField: [cipInput, cipTimeInput],
   });
   const store = { resourceDatasets: { other: {} } };
 
@@ -1901,9 +1918,10 @@ test('utility entry monthly save keeps average temperature and CIP count fields'
     updatedAt: '2026-06-01T00:00:00.000Z',
   });
 
-  assert.equal(result.touchedCount, 2);
+  assert.equal(result.touchedCount, 3);
   assert.equal(store.resourceDatasets.other.monthlyEntries['2026-04'].average_temperature, 23.4);
   assert.equal(store.resourceDatasets.other.teamMonthlyEntries['2026-04'].team_01_02.cip_count, 4);
+  assert.equal(store.resourceDatasets.other.teamMonthlyEntries['2026-04'].team_01_02.cip_time, 1.75);
 });
 
 test('utility entry monthly average temperature rejects non-float values without overwriting stored value', () => {
@@ -1934,6 +1952,37 @@ test('utility entry monthly average temperature rejects non-float values without
     /invalid_monthly_number/
   );
   assert.equal(store.resourceDatasets.other.monthlyEntries['2026-04'].average_temperature, 23.4);
+});
+
+test('utility entry monthly CIP time rejects non-float values without overwriting stored value', () => {
+  const api = createCorrectionContext();
+  const cipTimeInput = createDailyCurrentInput({
+    value: 'abc',
+    saveKind: 'other-team-monthly-field',
+    resourceType: 'other',
+  });
+  cipTimeInput.dataset.utilityEntryExperimentFieldKey = 'cip_time';
+  cipTimeInput.dataset.utilityEntryExperimentTeamKey = 'team_01_02';
+  cipTimeInput.dataset.utilityEntryExperimentNumberKind = 'float';
+  cipTimeInput.dataset.utilityEntryExperimentDirty = 'true';
+  const host = createMonthlySaveHost({
+    otherTeamMonthlyField: [cipTimeInput],
+  });
+  const store = {
+    resourceDatasets: {
+      other: {
+        teamMonthlyEntries: {
+          '2026-04': { team_01_02: { cip_time: 1.5 } },
+        },
+      },
+    },
+  };
+
+  assert.throws(
+    () => api.applyMonthlyInputsToStore(host, store, { updatedAt: '2026-06-01T00:00:00.000Z' }),
+    /invalid_monthly_number/
+  );
+  assert.equal(store.resourceDatasets.other.teamMonthlyEntries['2026-04'].team_01_02.cip_time, 1.5);
 });
 
 test('utility entry monthly save preserves untouched average temperature when saving CIP only', () => {

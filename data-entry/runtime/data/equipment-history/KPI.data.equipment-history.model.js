@@ -177,6 +177,43 @@
             || compareEquipmentHistoryText(left?.name, right?.name);
     }
 
+    function getEquipmentNameDuplicateKey(item) {
+        const name = normalizeText(item?.name);
+        return name ? name.toLocaleLowerCase('ko-KR') : '';
+    }
+
+    function applyEquipmentNameSequence(items) {
+        const counts = new Map();
+        asList(items).forEach((item) => {
+            const key = getEquipmentNameDuplicateKey(item);
+            if (!key) return;
+            counts.set(key, (counts.get(key) || 0) + 1);
+        });
+
+        const seen = new Map();
+        return asList(items).map((item) => {
+            const key = getEquipmentNameDuplicateKey(item);
+            const duplicateNameCount = key ? counts.get(key) || 0 : 0;
+            if (duplicateNameCount <= 1) {
+                return {
+                    ...item,
+                    displayName: item.name,
+                    duplicateNameCount,
+                    nameSequence: 0,
+                };
+            }
+
+            const nameSequence = (seen.get(key) || 0) + 1;
+            seen.set(key, nameSequence);
+            return {
+                ...item,
+                displayName: `${item.name} #${nameSequence}`,
+                duplicateNameCount,
+                nameSequence,
+            };
+        });
+    }
+
     function normalizeDocuments(rows) {
         return asList(rows).map((row) => ({
             title: normalizeText(row?.title || row?.name || row?.file || row?.fileName || row?.originalName || row?.attachmentKey || row?.key),
@@ -258,9 +295,10 @@
     }
 
     function normalizeEquipmentItems(data) {
-        return asList(data?.equipmentList)
+        const items = asList(data?.equipmentList)
             .map(normalizeEquipmentItem)
             .filter((item) => item.id && item.name);
+        return applyEquipmentNameSequence(items);
     }
 
     function groupEquipmentItems(items) {

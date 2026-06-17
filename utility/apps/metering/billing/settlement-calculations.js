@@ -91,6 +91,152 @@ function getBillingSettlementUnitPrice(
   return getBillingSettlementNumericField("unit_price", monthValue, scopeKey);
 }
 
+function getBillingSettlementGlobalObjectCandidates() {
+  const candidates = [];
+  const appendCandidate = (candidate) => {
+    if (
+      (candidate && typeof candidate === "object") ||
+      typeof candidate === "function"
+    ) {
+      if (!candidates.includes(candidate)) {
+        candidates.push(candidate);
+      }
+    }
+  };
+
+  if (typeof globalThis !== "undefined") {
+    appendCandidate(globalThis);
+  }
+
+  if (typeof window !== "undefined") {
+    appendCandidate(window);
+    try {
+      appendCandidate(window.parent);
+    } catch (error) {
+      void error;
+    }
+    try {
+      appendCandidate(window.top);
+    } catch (error) {
+      void error;
+    }
+  }
+
+  return candidates;
+}
+
+function getBillingSettlementGlobalFunction(functionName) {
+  const normalizedName = normalizeText(functionName);
+  if (!normalizedName) {
+    return null;
+  }
+
+  for (const candidate of getBillingSettlementGlobalObjectCandidates()) {
+    try {
+      if (typeof candidate?.[normalizedName] === "function") {
+        return candidate[normalizedName].bind(candidate);
+      }
+    } catch (error) {
+      void error;
+    }
+  }
+
+  if (
+    typeof KpiMeteringBrowserAdapter === "object" &&
+    KpiMeteringBrowserAdapter &&
+    typeof KpiMeteringBrowserAdapter.getGlobal === "function"
+  ) {
+    const value = KpiMeteringBrowserAdapter.getGlobal(normalizedName);
+    if (typeof value === "function") {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function getWasteBillingSettlementProductionTeamNames(scopeKey) {
+  const normalizedScopeKey = normalizeText(scopeKey);
+  const configuredTeamNames =
+    typeof WASTE_BILLING_SETTLEMENT_PRODUCTION_TEAM_NAMES_BY_SCOPE === "object"
+      ? WASTE_BILLING_SETTLEMENT_PRODUCTION_TEAM_NAMES_BY_SCOPE?.[normalizedScopeKey]
+      : null;
+
+  if (Array.isArray(configuredTeamNames)) {
+    return configuredTeamNames
+      .map((teamName) => normalizeText(teamName))
+      .filter(Boolean);
+  }
+
+  if (normalizedScopeKey === "waste_yusan") {
+    return ["1팀 2파트", "2팀", "3팀"];
+  }
+
+  if (normalizedScopeKey === "waste_bukjeong") {
+    return ["1팀 1파트"];
+  }
+
+  return [];
+}
+
+function getWasteBillingSettlementMonthlyProductionKg(scopeKey, monthValue) {
+  const normalizedMonth = normalizeMonthValue(monthValue);
+  const monthMatch = /^(\d{4})-(\d{2})$/.exec(normalizedMonth);
+  const productionGetter = getBillingSettlementGlobalFunction("getUtilDailyProductionValue");
+  const teamNames = getWasteBillingSettlementProductionTeamNames(scopeKey);
+  if (!monthMatch || typeof productionGetter !== "function" || !teamNames.length) {
+    return null;
+  }
+
+  let total = 0;
+  let hasValue = false;
+  const year = Number(monthMatch[1]);
+  const month = Number(monthMatch[2]);
+  teamNames.forEach((teamName) => {
+    const result = productionGetter(teamName, year, month);
+    const value = parseBillingSettlementNumericValue(result?.value ?? result);
+    if (!Number.isFinite(value)) {
+      return;
+    }
+
+    total += value;
+    hasValue = true;
+  });
+
+  return hasValue ? total : null;
+}
+
+function calculateBillingSettlementWastePerProductionTonValue(
+  monthValue,
+  scopeKey = DEFAULT_BILLING_SETTLEMENT_SCOPE_KEY
+) {
+  const resourceType = getBillingSettlementResourceType(scopeKey, getCurrentResourceType());
+  if (resourceType !== RESOURCE_TYPES.WASTE) {
+    return null;
+  }
+
+  const wasteUsage = calculateWasteSettlementScopeMonthlyUsage(scopeKey, monthValue);
+  const productionKg = getWasteBillingSettlementMonthlyProductionKg(scopeKey, monthValue);
+  const productionTon = Number.isFinite(productionKg) ? productionKg / 1000 : null;
+  if (
+    !Number.isFinite(wasteUsage) ||
+    !Number.isFinite(productionTon) ||
+    productionTon <= 0
+  ) {
+    return null;
+  }
+
+  return wasteUsage / productionTon;
+}
+
+function calculateBillingSettlementWastePerProductionTon(
+  monthValue,
+  scopeKey = DEFAULT_BILLING_SETTLEMENT_SCOPE_KEY
+) {
+  const value = calculateBillingSettlementWastePerProductionTonValue(monthValue, scopeKey);
+  return Number.isFinite(value) ? formatNumber(value) : "";
+}
+
 function getBillingSettlementBaseCharge(monthValue = state.currentMonth) {
   return getBillingSettlementNumericField("base_charge", monthValue);
 }
@@ -259,7 +405,7 @@ function formatBillingSettlementFieldDisplayValue(
     return formatBillingSettlementDecimalDisplayValue(normalizedValue);
   }
 
-  if (fieldKey === "unit_price") {
+  if (fieldKey === "unit_price" || fieldKey === "waste_per_production_ton") {
     return formatNumber(numericValue);
   }
 

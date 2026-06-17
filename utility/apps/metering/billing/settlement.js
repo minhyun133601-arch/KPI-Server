@@ -77,6 +77,9 @@ function resolveBillingSettlementFields(
   );
   const preservedUnitPrice = normalizeBillingSettlementInputValue(rawFields?.unit_price);
   const preservedBillingAmount = normalizeBillingSettlementInputValue(rawFields?.billing_amount);
+  const preservedWastePerProductionTon = normalizeBillingSettlementInputValue(
+    rawFields?.waste_per_production_ton
+  );
   const yusanWasteScopeKey = typeof WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY !== "undefined"
     ? WASTE_BILLING_SETTLEMENT_SCOPE_YUSAN_KEY
     : "waste_yusan";
@@ -185,6 +188,18 @@ function resolveBillingSettlementFields(
     fields.billing_amount = billingAmount;
   } else if (preservedBillingAmount) {
     fields.billing_amount = preservedBillingAmount;
+  }
+
+  if (resourceType === RESOURCE_TYPES.WASTE) {
+    const wastePerProductionTon = calculateBillingSettlementWastePerProductionTon(
+      monthValue,
+      scopeKey
+    );
+    if (wastePerProductionTon) {
+      fields.waste_per_production_ton = wastePerProductionTon;
+    } else if (preservedWastePerProductionTon) {
+      fields.waste_per_production_ton = preservedWastePerProductionTon;
+    }
   }
 
   return fields;

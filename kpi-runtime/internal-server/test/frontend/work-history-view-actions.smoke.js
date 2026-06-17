@@ -44,6 +44,7 @@ const splitSources = await Promise.all(
 function createContext() {
   const elements = new Map();
   const confirmMessages = [];
+  const alertMessages = [];
   const history = {
     TEAM_KEYS: ['team1part1'],
     TeamInfo: {
@@ -146,7 +147,9 @@ function createContext() {
   context.window = context;
   context.globalThis = context;
   context.KpiWorkHistory = history;
-  context.alert = () => {};
+  context.alert = (message) => {
+    alertMessages.push(String(message || ''));
+  };
   context.confirm = (message) => {
     confirmMessages.push(message);
     return context.__confirmResult !== false;
@@ -154,6 +157,7 @@ function createContext() {
   context.setLastModified = () => {};
   context.__elements = elements;
   context.__confirmMessages = confirmMessages;
+  context.__alertMessages = alertMessages;
   vm.createContext(context);
 
   splitSources.forEach(({ filename, source }) => {
@@ -501,6 +505,29 @@ test('work history card edit buttons open the record modal for editing', () => {
   assert.deepEqual(modalRequest, { team: 'team1part1', index: 0 });
 });
 
+test('work history save-record action requests a saved popup', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  let saveOptions = null;
+  view.saveRecord = (options) => {
+    saveOptions = options;
+    return true;
+  };
+
+  view.handleRootClick({
+    target: {
+      closest(selector) {
+        return selector === '[data-action]'
+          ? { dataset: { action: 'save-record' } }
+          : null;
+      },
+      classList: { contains: () => false },
+    },
+  });
+
+  assert.equal(saveOptions?.showSavedPopup, true);
+});
+
 test('work history record modal delete button only appears while editing and opens delete confirm', () => {
   const context = createContext();
   const view = context.KpiWorkHistory.view;
@@ -556,6 +583,7 @@ test('work history Ctrl+S saves the open record modal', () => {
   assert.equal(defaultPrevented, true);
   assert.equal(propagationStopped, true);
   assert.equal(saveOptions?.invokedByShortcut, true);
+  assert.equal(saveOptions?.showSavedPopup, true);
 });
 
 test('work history overlay close confirms when the record form has unsaved edits', () => {

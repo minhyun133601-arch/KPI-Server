@@ -14,7 +14,7 @@
 
     setPortalDataDefault('data_equipment_history_card', {
         meta: { moduleKey: 'data_equipment_history_card', moduleName: 'Demo Equipment History Card', version: 2, updatedAt: UPDATED_AT },
-        header: { brandName: '', brandSub: '', title: '설비 이력 카드', subtitle: '', status: '', updatedAt: '2026.04.26 10:30', owner: '', equipmentName: '', note: '설비 현황 보드에서 설비 상태를 보고, 같은 화면에서 기록 작성과 첨부 입력을 이어서 처리합니다.' },
+        header: { brandName: '', brandSub: '', title: '설비 이력', subtitle: '', status: '', updatedAt: '2026.04.26 10:30', owner: '', equipmentName: '', note: '설비 현황 보드에서 설비 상태를 보고, 같은 화면에서 기록 작성과 첨부 입력을 이어서 처리합니다.' },
         equipmentList: [],
         operationInfo: [],
         detailInfo: [],

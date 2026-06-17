@@ -5,6 +5,8 @@
     { key: 'team_01_02', label: '1팀 2파트' },
     { key: 'team_02', label: '2팀' },
     { key: 'team_03', label: '3팀' },
+    { key: 'site_yusan', label: '유산' },
+    { key: 'site_total', label: '전체' },
     { key: 'other', label: '기타' }
   ];
   const memoMetricOptions = [
@@ -20,6 +22,7 @@
     { key: 'waste_usage', label: '폐수 방류량' },
     { key: 'waste_cost_total', label: '폐수 처리비용' },
     { key: 'cip_count', label: 'CIP 횟수' },
+    { key: 'cip_time', label: 'CIP 시간' },
     { key: 'monthly_average_temperature', label: '월간 평균온도' }
   ];
 

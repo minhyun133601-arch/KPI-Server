@@ -338,15 +338,15 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.equal(api.getEquipmentStatus('\uC6B4\uC601\uC911').label, '\uAC00\uB3D9\uC911');
 
   registeredRenderer(
-    { title: '설비 이력 카드', dataKey: 'data_equipment_history_card' },
+    { title: '설비 이력', dataKey: 'data_equipment_history_card' },
     { container },
     {
-      header: { title: '설비 이력 카드', brandName: '숨김', brandSub: '숨김 문구' },
+      header: { title: '설비 이력', brandName: '숨김', brandSub: '숨김 문구' },
       equipmentList: [],
     }
   );
 
-  assert.match(container.innerHTML, /설비 이력 카드/);
+  assert.match(container.innerHTML, /설비 이력/);
   assert.match(container.innerHTML, /전체 팀/);
   assert.match(container.innerHTML, /전체 상태/);
   assert.match(container.innerHTML, />추가</);
@@ -376,7 +376,7 @@ test('equipment-history renderer shows the empty board state and supports author
       { id: 'eq-team4', name: '폐수 펌프', team: '유산', room: '처리장', process: '폐수', status: '정비중' },
     ],
   };
-  registeredRenderer({ title: '설비 이력 카드', dataKey: 'data_equipment_history_card' }, { container });
+  registeredRenderer({ title: '설비 이력', dataKey: 'data_equipment_history_card' }, { container });
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team1_part1"/);
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team1_part2"/);
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team2"/);
@@ -438,6 +438,13 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.doesNotMatch(container.innerHTML, /data-equipment-focus-team/);
   assert.match(container.innerHTML, /data-equipment-board-card-tools" aria-hidden="true"/);
   assert.match(container.innerHTML, /data-equipment-board-card-tools/);
+  assert.match(container.innerHTML, /data-equipment-board-room-tools" aria-hidden="true"/);
+  assert.match(container.innerHTML, /data-equipment-move-room[^>]*data-equipment-move-team="work_team_calendar_team1_part1"[^>]*data-equipment-move-room-title="B\uC2E4"[^>]*data-equipment-move-direction="-1"[^>]*disabled/);
+  assert.match(container.innerHTML, /data-equipment-move-room[^>]*data-equipment-move-team="work_team_calendar_team1_part1"[^>]*data-equipment-move-room-title="B\uC2E4"[^>]*data-equipment-move-direction="1"/);
+  assert.match(container.innerHTML, /data-equipment-move-room[^>]*data-equipment-move-team="work_team_calendar_team1_part1"[^>]*data-equipment-move-room-title="A\uC2E4"[^>]*data-equipment-move-direction="-1"/);
+  assert.match(container.innerHTML, /data-equipment-move-room[^>]*data-equipment-move-team="work_team_calendar_team1_part1"[^>]*data-equipment-move-room-title="A\uC2E4"[^>]*data-equipment-move-direction="1"/);
+  assert.match(container.innerHTML, /data-equipment-move-room[^>]*data-equipment-move-team="work_team_calendar_team1_part1"[^>]*data-equipment-move-room-title="C\uC2E4"[^>]*data-equipment-move-direction="-1"/);
+  assert.match(container.innerHTML, /data-equipment-move-room[^>]*data-equipment-move-team="work_team_calendar_team1_part1"[^>]*data-equipment-move-room-title="C\uC2E4"[^>]*data-equipment-move-direction="1"[^>]*disabled/);
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-b"[^>]*data-equipment-move-direction="-1"[^>]*disabled/);
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-b"[^>]*data-equipment-move-direction="1"/);
   assert.match(container.innerHTML, /data-equipment-move-card="eq-team1-a"[^>]*data-equipment-move-direction="-1"/);
@@ -461,7 +468,7 @@ test('equipment-history renderer shows the empty board state and supports author
       { id: 'only-team4', name: '공무 펌프', team: '유산', room: '처리실', process: '공무', status: '정비중' },
     ],
   };
-  registeredRenderer({ title: '설비 이력 카드', dataKey: 'data_equipment_history_card' }, { container });
+  registeredRenderer({ title: '설비 이력', dataKey: 'data_equipment_history_card' }, { container });
   const emptyTeam1Index = container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team1_part1"');
   const emptyTeam1Part2Index = container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team1_part2"');
   const team2Index = container.innerHTML.indexOf('data-equipment-board-team="work_team_calendar_team2"');
@@ -487,7 +494,7 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.doesNotMatch(emptyTeam3Html, /data-equipment-board-card is-/);
 
   context.PortalData.data_equipment_history_card = { equipmentList: [] };
-  registeredRenderer({ title: '설비 이력 카드', dataKey: 'data_equipment_history_card' }, { container });
+  registeredRenderer({ title: '설비 이력', dataKey: 'data_equipment_history_card' }, { container });
   [
     'work_team_calendar_team1_part1',
     'work_team_calendar_team1_part2',
@@ -844,6 +851,11 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /data-equipment-board-card-tools/);
   assert.match(dataCssSource, /data-equipment-board-card-tools[\s\S]+display:\s*none/);
   assert.match(dataCssSource, /data-equipment-board-column\.is-ordering\s+\.data-equipment-board-card-tools[\s\S]+display:\s*grid/);
+  assert.match(dataCssSource, /data-equipment-board-room-tools[\s\S]+display:\s*none/);
+  assert.match(dataCssSource, /data-equipment-board-column\.is-ordering\s+\.data-equipment-board-room-tools[\s\S]+display:\s*inline-grid/);
+  assert.match(dataCssSource, /data-equipment-board-column\.is-ordering\s+\.data-equipment-board-add-button[\s\S]+display:\s*none/);
+  assert.match(dataCssSource, /data-equipment-board-column\.is-ordering[\s\S]+\.data-equipment-board-status-actions[\s\S]+display:\s*none/);
+  assert.match(dataCssSource, /data-equipment-board-column\.is-ordering[\s\S]+\.data-equipment-board-card-actions[\s\S]+display:\s*none/);
   assert.match(dataCssSource, /data-equipment-board-order-button/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-open-button/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-card button\s*\{/);
@@ -855,6 +867,8 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.doesNotMatch(renderSource, /data-equipment-set-board-status/);
   assert.match(renderSource, /state\.pendingAddRoom = button\.dataset\.equipmentAddRoom/);
   assert.match(renderSource, /data-equipment-order-toggle-team/);
+  assert.match(renderSource, /data-equipment-move-room/);
+  assert.match(renderSource, /async function moveBoardRoom/);
   assert.doesNotMatch(renderSource, /data-equipment-order-toggle-card/);
   assert.doesNotMatch(renderSource, /data-equipment-focus-team/);
   assert.doesNotMatch(renderSource, /equipmentFocusTeam/);
@@ -867,7 +881,7 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(renderSource, /data-equipment-fullscreen-toggle/);
   assert.match(renderSource, /addEventListener\('input'[\s\S]*applyBoardSearchFilter\(root, state, redraw, event\.target\)/);
   assert.match(renderSource, /function highlightBoardSearchText/);
-  assert.match(renderSource, /<strong>\$\{highlightBoardSearchText\(item\.name, state\)\}<\/strong>/);
+  assert.match(renderSource, /<strong>\$\{highlightBoardSearchText\(displayName, state\)\}<\/strong>/);
   assert.match(renderSource, /function toggleEquipmentHistoryFullscreen/);
   assert.match(renderSource, /requestFullscreen/);
   assert.match(renderSource, /fullscreenchange/);
@@ -1284,7 +1298,7 @@ test('equipment-history board search filters immediately and highlights visible 
       { id: 'eq-mixer', name: 'Beta Mixer', team: '1팀 1파트', room: 'B실', status: '가동중' },
     ],
   };
-  registeredRenderer({ title: '설비 이력 카드', dataKey: 'data_equipment_history_card' }, { container });
+  registeredRenderer({ title: '설비 이력', dataKey: 'data_equipment_history_card' }, { container });
 
   assert.equal(typeof handlers.input, 'function');
   searchInput.value = 'Pump';
@@ -1296,6 +1310,132 @@ test('equipment-history board search filters immediately and highlights visible 
   assert.equal(searchInput.value, 'Pump');
   assert.equal(focused, true);
   assert.deepEqual(selectionRange, [4, 4]);
+});
+
+test('equipment-history board room order controls persist room group order and keep order mode', async () => {
+  const { context, container, registeredRenderer } = createEquipmentHistoryRuntime();
+  const api = context.KpiDataEquipmentHistory;
+  let roomMoveHandler = null;
+  let orderToggleHandler = null;
+  const columnClassList = {
+    isOrdering: false,
+    contains(name) {
+      return name === 'is-ordering' && this.isOrdering;
+    },
+    toggle(name, value) {
+      if (name === 'is-ordering') this.isOrdering = value;
+    },
+  };
+  const column = {
+    classList: columnClassList,
+    querySelectorAll(selector) {
+      return selector === '.data-equipment-board-card-tools, .data-equipment-board-room-tools'
+        ? [{ setAttribute() {} }]
+        : [];
+    },
+  };
+  const orderToggleButton = {
+    dataset: { equipmentOrderToggleTeam: 'work_team_calendar_team1_part1' },
+    closest(selector) {
+      return selector === '.data-equipment-board-column' ? column : null;
+    },
+    setAttribute() {},
+    addEventListener(type, handler) {
+      if (type === 'click') orderToggleHandler = handler;
+    },
+  };
+  const moveRoomButton = {
+    dataset: {
+      equipmentMoveTeam: 'work_team_calendar_team1_part1',
+      equipmentMoveRoomTitle: 'B',
+      equipmentMoveDirection: '1',
+    },
+    addEventListener(type, handler) {
+      if (type === 'click') roomMoveHandler = handler;
+    },
+  };
+  container.querySelectorAll = (selector) => {
+    if (selector === '[data-equipment-order-toggle-team]') return [orderToggleButton];
+    if (selector === '[data-equipment-move-room]') return [moveRoomButton];
+    return [];
+  };
+
+  context.PortalData.data_equipment_history_card = {
+    equipmentList: [
+      { id: 'eq-b-1', name: 'B First', teamDataKey: 'work_team_calendar_team1_part1', room: 'B', status: '가동중' },
+      { id: 'eq-b-2', name: 'B Second', teamDataKey: 'work_team_calendar_team1_part1', room: 'B', status: '가동중' },
+      { id: 'eq-a-1', name: 'A First', teamDataKey: 'work_team_calendar_team1_part1', room: 'A', status: '가동중' },
+      { id: 'eq-c-1', name: 'C First', teamDataKey: 'work_team_calendar_team1_part1', room: 'C', status: '가동중' },
+    ],
+  };
+
+  registeredRenderer({ title: 'Equipment History', dataKey: 'data_equipment_history_card' }, { container });
+  assert.equal(typeof orderToggleHandler, 'function');
+  assert.equal(typeof roomMoveHandler, 'function');
+  orderToggleHandler();
+  await roomMoveHandler();
+
+  assert.equal(
+    JSON.stringify(context.PortalData.data_equipment_history_card.equipmentList.map((item) => item.id)),
+    JSON.stringify(['eq-a-1', 'eq-b-1', 'eq-b-2', 'eq-c-1'])
+  );
+  const grouped = api.groupEquipmentItems(api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card));
+  assert.equal(JSON.stringify(grouped[0].sections.map((section) => section.title)), JSON.stringify(['A', 'B', 'C']));
+  assert.match(container.innerHTML, /class="data-equipment-board-column is-ordering" data-equipment-board-team="work_team_calendar_team1_part1"/);
+  assert.match(container.innerHTML, /data-equipment-order-toggle-team="work_team_calendar_team1_part1"[^>]*aria-expanded="true"/);
+  assert.match(container.innerHTML, /data-equipment-board-room-tools" aria-hidden="false"/);
+  assert.match(container.innerHTML, /data-equipment-board-card-tools" aria-hidden="false"/);
+});
+
+test('equipment-history duplicate equipment names render numbered display labels', () => {
+  const { context, container, registeredRenderer } = createEquipmentHistoryRuntime();
+  const api = context.KpiDataEquipmentHistory;
+  context.PortalData.data_equipment_history_card = {
+    equipmentList: [
+      { id: 'eq-twin-a', name: 'Twin Pump', teamDataKey: 'work_team_calendar_team1_part1', room: 'A', status: '가동중' },
+      { id: 'eq-twin-b', name: 'Twin Pump', teamDataKey: 'work_team_calendar_team1_part1', room: 'A', status: '가동중' },
+      { id: 'eq-solo', name: 'Solo Pump', teamDataKey: 'work_team_calendar_team1_part1', room: 'A', status: '가동중' },
+    ],
+  };
+
+  const items = api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card);
+  assert.deepEqual(
+    items.map((item) => ({ name: item.name, displayName: item.displayName, nameSequence: item.nameSequence })),
+    [
+      { name: 'Twin Pump', displayName: 'Twin Pump #1', nameSequence: 1 },
+      { name: 'Twin Pump', displayName: 'Twin Pump #2', nameSequence: 2 },
+      { name: 'Solo Pump', displayName: 'Solo Pump', nameSequence: 0 },
+    ]
+  );
+
+  registeredRenderer({ title: 'Equipment History', dataKey: 'data_equipment_history_card' }, { container });
+  assert.match(container.innerHTML, /Twin Pump #1/);
+  assert.match(container.innerHTML, /Twin Pump #2/);
+  assert.match(container.innerHTML, /Solo Pump/);
+});
+
+test('equipment-history save assigns a unique id when the payload already has a duplicate id', async () => {
+  const { context, container, registeredRenderer, registeredSaveProvider } = createEquipmentHistoryRuntime();
+  context.PortalData.data_equipment_history_card = {
+    equipmentList: [
+      { id: 'dup-id', equipmentCode: 'DUP-ID', name: 'First Pump', teamDataKey: 'work_team_calendar_team1_part1', room: 'A', status: '가동중' },
+      { id: 'dup-id', equipmentCode: 'DUP-ID', name: 'Second Pump', teamDataKey: 'work_team_calendar_team1_part1', room: 'A', status: '가동중' },
+    ],
+  };
+
+  registeredRenderer({ title: 'Equipment History', dataKey: 'data_equipment_history_card' }, { container });
+  const action = registeredSaveProvider({
+    sectionId: 'data',
+    category: { dataKey: 'data_equipment_history_card' },
+  });
+  assert.equal(typeof action?.perform, 'function');
+  assert.equal(await action.perform(), true);
+
+  const list = context.PortalData.data_equipment_history_card.equipmentList;
+  assert.equal(JSON.stringify(list.map((item) => item.id)), JSON.stringify(['dup-id-2', 'dup-id']));
+  assert.equal(JSON.stringify(list.map((item) => item.equipmentCode)), JSON.stringify(['DUP-ID-2', 'DUP-ID']));
+  const ids = list.map((item) => item.id);
+  assert.equal(new Set(ids).size, ids.length);
 });
 
 test('equipment-history save confirms payload persistence before publishing uploaded assets', () => {
@@ -1311,6 +1451,15 @@ test('equipment-history save confirms payload persistence before publishing uplo
   assert.match(renderSource, /code === 'KeyS'/);
   assert.match(renderSource, /api\.getEquipmentHistorySaveAction = getEquipmentHistorySaveAction/);
   assert.match(bridgeSource, /registerSaveProvider\('data-equipment-history-save'/);
+});
+
+test('equipment-history direct save paths request the saved popup without changing autosave', () => {
+  assert.match(renderSource, /const EQUIPMENT_HISTORY_SAVED_POPUP_MESSAGE = '저장되었습니다'/);
+  assert.match(renderSource, /function showEquipmentHistorySavedPopup\(options = \{\}\)/);
+  assert.match(renderSource, /showSavedPopup !== true/);
+  assert.match(renderSource, /showEquipmentHistorySavedPopup\(options\)/);
+  assert.match(renderSource, /saveCurrentEquipmentHistoryView\(root, data, state, redraw, \{ showSavedPopup: true \}\)/);
+  assert.match(renderSource, /autoSaveDraft[\s\S]+saveDraft\(data, state, \{ message \}\)/);
 });
 
 test('equipment-history rate preserves explicit zero and rejects invalid authoring input', () => {

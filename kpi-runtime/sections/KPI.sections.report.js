@@ -7,7 +7,7 @@
     const REPORT_INITIAL_SLIDE_COUNT = 2;
     const REPORT_SAFETY_SLOTS_PER_PAGE = 8;
     const REPORT_SAFETY_COLUMNS_PER_ROW = 4;
-    const REPORT_SAFETY_PAGE_COUNT = 2;
+    const REPORT_SAFETY_PAGE_COUNT = 1;
     const REPORT_SAFETY_TEAM_ROWS = ['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀'];
     const REPORT_SAFETY_HAZARD_OPTIONS = ['미끄럼', '넘어짐', '끼임', '충돌', '낙하/비래', '베임/찔림', '화재', '감전', '누출', '화상'];
     const SLIDE_NAV_ITEMS = [
@@ -42,7 +42,6 @@
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '공사 및 정비' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '주요 계획' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '주요 계획' },
-        { view: REPORT_PUBLIC_WORKS_VIEW, label: '자율 안전 신고제' },
         { view: REPORT_PUBLIC_WORKS_VIEW, label: '자율 안전 신고제' }
     ];
 
@@ -692,7 +691,7 @@
                 sectionKey,
                 titleKey,
                 scopeLabel: '북정',
-                chartTitle: '북정 폐수 (m³) / 톤'
+                chartTitle: '북정 폐수 (m³) / 생산량 (톤)'
             });
         }
         if (Number(index) === 7) {
@@ -703,7 +702,7 @@
                 sectionKey,
                 titleKey,
                 scopeLabel: '유산',
-                chartTitle: '유산 폐수 (m³) / 톤'
+                chartTitle: '유산 폐수 (m³) / 생산량 (톤)'
             });
         }
         return `
@@ -1562,9 +1561,9 @@ ${colgroup}
         return `<span class="report-contents-item-text">${content}${lines}</span>`;
     }
 
-    function buildContentsListItems(items = []) {
+    function buildContentsListItems(items = [], options = {}) {
         return items.map(item => (
-            `<li${item?.optionalPage ? ` data-report-optional-content="${item.optionalPage}" hidden` : ''}>${buildContentsListItemContent(item)}</li>`
+            `<li${item?.optionalPage ? ` data-report-optional-content="${item.optionalPage}" hidden` : ''}>${buildContentsListItemContent(item, options)}</li>`
         )).join('');
     }
 
@@ -1594,9 +1593,7 @@ ${colgroup}
         const content = `
             <h2><span>${title}</span>${pageRangeMarkup}</h2>
             <ol>
-                ${items.map(item => (
-                    `<li>${buildContentsListItemContent(item, { ref: true })}</li>`
-                )).join('')}
+                ${buildContentsListItems(items, { ref: true })}
             </ol>
         `;
         if (options.jumpTarget !== undefined || options.jumpView) {
@@ -1683,8 +1680,8 @@ ${colgroup}
                     '목차',
                     { fieldKey: 'contentsItem1', text: '에너지 실적', ref: true },
                     { fieldKey: 'contentsItem2', text: '폐수처리장 운영실적', ref: true },
-                    { fieldKey: 'contentsItem3', text: '공사 및 정비현황', ref: true },
-                    { fieldKey: 'contentsItem4', text: '주요계획', nextMonth: true, ref: true }
+                    { fieldKey: 'contentsItem3', text: '공사 및 정비현황', optionalPage: 'slide8', ref: true },
+                    { fieldKey: 'contentsItem4', text: '주요계획', nextMonth: true, optionalPage: 'slide9', ref: true }
                 ]
             }
         ];
@@ -1992,6 +1989,7 @@ ${colgroup}
                 .report-contents-title { position: absolute; left: 5.3%; top: 5.5%; width: 30%; font-size: 62px; font-weight: 900; color: #0f172a; }
                 .report-contents-list { position: absolute; left: 5.3%; top: 29.5%; width: 72%; display: grid; gap: 18px; margin: 0; padding: 0; list-style: none; counter-reset: report-contents; color: #111827; font-size: 30px; font-weight: 900; line-height: 1.35; }
                 .report-contents-list li { counter-increment: report-contents; display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; min-width: 0; word-break: keep-all; overflow-wrap: normal; }
+                .report-deck-editor [data-report-optional-content][hidden] { display: none !important; }
                 .report-contents-list li::before { content: counter(report-contents) "."; grid-column: 1; color: #111827; font: inherit; }
                 .report-contents-item-text { grid-column: 2; min-width: 0; white-space: nowrap; }
                 .report-contents-subitems { display: block; margin-top: 2px; white-space: normal; }

@@ -315,6 +315,34 @@ test('work team calendar equipment summary uses selected month maintenance rows'
   assert.match(modal.innerHTML, /Legacy team check/);
 });
 
+test('work team calendar equipment summary renders duplicate equipment names with numbered labels', () => {
+  const { context, modal } = createContext();
+  context.PortalData.data_equipment_history_card.equipmentList.push({
+    id: 'eq-mixer-2',
+    equipmentCode: 'EQ-MIX-002',
+    name: 'Mixer 1',
+    teamDataKey: 'work_team_calendar_team1_part1',
+    process: 'Mixing',
+    status: '가동중',
+    maintenanceHistory: [
+      { date: '2026.04.20', type: '정기점검', content: 'Duplicate name check', worker: 'Gamma' },
+    ],
+  });
+
+  const summary = context.getWorkTeamCalendarEquipmentSummary('overview', '2026-04');
+  assert.equal(summary.equipmentCount, 3);
+  assert.ok(summary.equipmentItems.some((item) => item.displayName === 'Mixer 1 #1'));
+  assert.ok(summary.equipmentItems.some((item) => item.displayName === 'Mixer 1 #2'));
+  assert.ok(summary.maintenanceItems.some((item) => item.equipmentName === 'Mixer 1 #1'));
+  assert.ok(summary.maintenanceItems.some((item) => item.equipmentName === 'Mixer 1 #2'));
+
+  assert.equal(context.openWorkTeamCalendarUtilityPopup('equipment', { render: false }), true);
+  context.renderWorkTeamCalendarModal();
+  assert.match(modal.innerHTML, /Mixer 1 #1/);
+  assert.match(modal.innerHTML, /Mixer 1 #2/);
+  assert.match(modal.innerHTML, /Duplicate name check/);
+});
+
 test('work team calendar single-date production popup renders the metric line once', () => {
   const metricLine = '수율 98.5% · CAPA 72,000 · 가동률 98.6% · 조업시간 48.0시간 · 가동시간 46.3시간';
   const { context, modal } = createContext({

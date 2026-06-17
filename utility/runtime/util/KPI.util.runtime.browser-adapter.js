@@ -13,6 +13,8 @@
         Object.freeze({ key: 'team_01_02', label: '1팀 2파트' }),
         Object.freeze({ key: 'team_02', label: '2팀' }),
         Object.freeze({ key: 'team_03', label: '3팀' }),
+        Object.freeze({ key: 'site_yusan', label: '유산' }),
+        Object.freeze({ key: 'site_total', label: '전체' }),
         Object.freeze({ key: 'other', label: '기타' })
     ]);
     const REPORT_DECK_MEMO_METRICS = Object.freeze({
@@ -38,6 +40,7 @@
         off_days: Object.freeze({ key: 'off_days', label: '휴무일수', unit: '일' }),
         product_count: Object.freeze({ key: 'product_count', label: '고유 품목수', unit: '개' }),
         cip_count: Object.freeze({ key: 'cip_count', label: 'CIP 횟수', unit: '회', decimals: 0, omitRate: true, otherTeamMonthlyFieldKey: 'cip_count' }),
+        cip_time: Object.freeze({ key: 'cip_time', label: 'CIP 시간', unit: '시간', decimals: 1, omitRate: true, otherTeamMonthlyFieldKey: 'cip_time' }),
         waste_usage: Object.freeze({ key: 'waste_usage', label: '폐수량', unit: 'm³', wasteValueKey: 'wasteUsage' }),
         waste_cost_total: Object.freeze({ key: 'waste_cost_total', label: '폐수 비용 총계', unit: '원', wasteDetailKey: '' }),
         waste_cost_water: Object.freeze({ key: 'waste_cost_water', label: '상수 비용', unit: '원', wasteDetailKey: 'water' }),
@@ -51,6 +54,12 @@
     const REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY = 'yusan_production_share';
     const REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_TEAM_KEYS = Object.freeze(['team_01_02', 'team_02', 'team_03']);
     const REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP = Object.freeze({ key: 'site_yusan', label: '유산' });
+    const REPORT_DECK_MEMO_TOTAL_OVERVIEW_GROUP = Object.freeze({ key: 'site_total', label: '전체' });
+    const REPORT_DECK_MEMO_TOTAL_TEAM_KEYS = Object.freeze(['team_01_01', 'team_01_02', 'team_02', 'team_03']);
+    const REPORT_DECK_MEMO_AGGREGATE_TEAM_KEYS = Object.freeze([
+        REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key,
+        REPORT_DECK_MEMO_TOTAL_OVERVIEW_GROUP.key
+    ]);
     const REPORT_DECK_MEMO_YUSAN_GAS_CATEGORY_KEY = 'yusan';
     const REPORT_DECK_MEMO_YUSAN_OVERVIEW_METRIC_KEYS = Object.freeze([
         'production',
@@ -63,7 +72,9 @@
         'lpg',
         'lpg_cost',
         'gas_cost',
-        'lpg_unit'
+        'lpg_unit',
+        'cip_count',
+        'cip_time'
     ]);
     const REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS = Object.freeze([
         'yield_rate',
@@ -76,6 +87,7 @@
         'off_days',
         'product_count'
     ]);
+    const REPORT_DECK_MEMO_CIP_METRIC_KEYS = Object.freeze(['cip_count', 'cip_time']);
     const REPORT_DECK_MEMO_WASTE_METRIC_KEYS = Object.freeze([
         'waste_usage',
         'waste_cost_total',
@@ -105,10 +117,12 @@
         team_03: Object.freeze(['Bottle', '기타'])
     });
     const REPORT_DECK_MEMO_TEAM_METRIC_KEYS = Object.freeze({
-        team_01_01: Object.freeze(['production', 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
-        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'gas_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
-        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
-        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count']),
+        team_01_01: Object.freeze(['production', 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
+        team_01_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', 'lpg', 'lpg_cost', 'gas_cost', 'lpg_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
+        team_02: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
+        team_03: Object.freeze(['production', REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_KEY, 'electric', 'electric_cost', 'electric_unit', 'lng', 'lng_cost', 'lng_unit', ...REPORT_DECK_MEMO_PRODUCTION_STAT_KEYS, 'cip_count', 'cip_time']),
+        site_yusan: Object.freeze(REPORT_DECK_MEMO_CIP_METRIC_KEYS),
+        site_total: Object.freeze(REPORT_DECK_MEMO_CIP_METRIC_KEYS),
         other: Object.freeze(REPORT_DECK_MEMO_OTHER_METRIC_KEYS)
     });
 
@@ -1779,6 +1793,20 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         return delta > 0 ? 'up' : (delta < 0 ? 'down' : 'flat');
     }
 
+    function isReportDeckMemoDisplayedDeltaZero(delta, metric = {}) {
+        const text = formatReportDeckMemoNumber(delta, metric);
+        if (!text) return false;
+        const number = Number(String(text).replace(/,/g, '').trim());
+        return Number.isFinite(number) && number === 0;
+    }
+
+    function getReportDeckMemoDisplayDirection(delta, metric = {}) {
+        const direction = getReportDeckMemoDirection(delta);
+        return direction !== 'flat' && isReportDeckMemoDisplayedDeltaZero(delta, metric)
+            ? 'flat'
+            : direction;
+    }
+
     function getReportDeckMemoArrow(direction) {
         if (direction === 'up') return '↑';
         if (direction === 'down') return '↓';
@@ -1788,7 +1816,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
     function buildReportDeckMemoComparisonSegment(metric, basisLabel, referenceValue, currentValue) {
         const pair = buildReportDeckMetricPair(referenceValue, currentValue);
         if (pair.reference === null || pair.current === null || pair.delta === null) return null;
-        const direction = getReportDeckMemoDirection(pair.delta);
+        const direction = getReportDeckMemoDisplayDirection(pair.delta, metric);
         const arrow = getReportDeckMemoArrow(direction);
         const deltaText = `${formatReportDeckMemoNumber(pair.delta, metric)}${metric.unit || ''}`;
         if (direction === 'flat') {
@@ -2454,6 +2482,56 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         return toFiniteNumber(teamRecord[normalizedFieldKey]);
     }
 
+    function getReportDeckMemoAggregateTeamKeys(teamKey = '') {
+        const normalizedTeamKey = normalizeReportDeckMemoTeamKey(teamKey);
+        if (normalizedTeamKey === REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key) {
+            return Array.from(REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_TEAM_KEYS);
+        }
+        if (normalizedTeamKey === REPORT_DECK_MEMO_TOTAL_OVERVIEW_GROUP.key) {
+            return Array.from(REPORT_DECK_MEMO_TOTAL_TEAM_KEYS);
+        }
+        return [];
+    }
+
+    function readReportDeckMemoOtherTeamMonthlyAggregateValue(store, monthKey = '', teamKeys = [], fieldKey = '') {
+        let total = 0;
+        let hasValue = false;
+        (Array.isArray(teamKeys) ? teamKeys : []).forEach(teamKey => {
+            const value = readReportDeckMemoOtherTeamMonthlyValue(store, monthKey, teamKey, fieldKey);
+            if (value === null) return;
+            total += value;
+            hasValue = true;
+        });
+        return hasValue ? total : null;
+    }
+
+    function buildReportDeckMemoAggregateOtherTeamMonthlyCandidate(activeMonthInfo, group, metricKey, store) {
+        if (!activeMonthInfo) return null;
+        const metric = getReportDeckMemoMetric(group?.key, metricKey);
+        if (!metric.otherTeamMonthlyFieldKey) return null;
+        const teamKeys = Array.isArray(group?.teamKeys) && group.teamKeys.length
+            ? group.teamKeys
+            : getReportDeckMemoAggregateTeamKeys(group?.key);
+        if (!teamKeys.length) return null;
+        const previousMonthKey = getReportDeckRelativeMonthKey(activeMonthInfo, -1);
+        const previousYearKey = toReportDeckMonthKey(activeMonthInfo.year - 1, activeMonthInfo.month);
+        const currentMonthKey = activeMonthInfo.key;
+        const readValue = monthKey => readReportDeckMemoOtherTeamMonthlyAggregateValue(
+            store || root.__LOCAL_APP_STORE__,
+            monthKey,
+            teamKeys,
+            metric.otherTeamMonthlyFieldKey
+        );
+        const currentValue = readValue(currentMonthKey);
+        const hasCurrentData = hasReportDeckMemoFiniteValue(currentValue);
+        const hasComparisonData = (_monthKey, value) => hasReportDeckMemoFiniteValue(value);
+        const comparisonSegments = hasCurrentData ? [
+            buildReportDeckMemoComparisonSegmentForMonth(metric, '전년대비', previousYearKey, readValue, hasComparisonData, currentValue),
+            buildReportDeckMemoComparisonSegmentForMonth(metric, '전월대비', previousMonthKey, readValue, hasComparisonData, currentValue)
+        ].filter(Boolean) : [];
+        return buildReportDeckMemoCandidate(group, metric, comparisonSegments);
+    }
+
     async function buildReportDeckMemoCandidates(monthValue, options = {}) {
         const activeMonthInfo = parseReportDeckMonthKey(monthValue);
         if (!activeMonthInfo) {
@@ -2556,12 +2634,20 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
             hasComparisonData = (monthKey, value) => hasReportDeckMemoWasteRowData(wasteRowMap, monthKey)
                 && hasReportDeckMemoFiniteValue(value);
         } else if (metric.otherTeamMonthlyFieldKey) {
-            readValue = monthKey => readReportDeckMemoOtherTeamMonthlyValue(
-                options.store || root.__LOCAL_APP_STORE__,
-                monthKey,
-                team.key,
-                metric.otherTeamMonthlyFieldKey
-            );
+            const aggregateTeamKeys = getReportDeckMemoAggregateTeamKeys(team.key);
+            readValue = aggregateTeamKeys.length
+                ? monthKey => readReportDeckMemoOtherTeamMonthlyAggregateValue(
+                    options.store || root.__LOCAL_APP_STORE__,
+                    monthKey,
+                    aggregateTeamKeys,
+                    metric.otherTeamMonthlyFieldKey
+                )
+                : monthKey => readReportDeckMemoOtherTeamMonthlyValue(
+                    options.store || root.__LOCAL_APP_STORE__,
+                    monthKey,
+                    team.key,
+                    metric.otherTeamMonthlyFieldKey
+                );
         } else if (REPORT_DECK_MEMO_OTHER_METRIC_KEYS.includes(metricKey)) {
             readValue = monthKey => readReportDeckMemoOtherMonthlyValue(
                 options.store || root.__LOCAL_APP_STORE__,
@@ -2600,8 +2686,19 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         };
     }
 
-    function buildReportDeckMemoYusanOverviewCandidate(activeMonthInfo, metricKey, optionApi, gasApi, electricApi, memoBuildCache = null) {
+    function buildReportDeckMemoYusanOverviewCandidate(activeMonthInfo, metricKey, optionApi, gasApi, electricApi, memoBuildCache = null, store = null) {
         if (!activeMonthInfo) return null;
+        if (REPORT_DECK_MEMO_CIP_METRIC_KEYS.includes(metricKey)) {
+            return buildReportDeckMemoAggregateOtherTeamMonthlyCandidate(
+                activeMonthInfo,
+                {
+                    ...REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP,
+                    teamKeys: Array.from(REPORT_DECK_MEMO_YUSAN_PRODUCTION_SHARE_TEAM_KEYS)
+                },
+                metricKey,
+                store || root.__LOCAL_APP_STORE__
+            );
+        }
         const metric = getReportDeckMemoMetric('team_01_02', metricKey);
         const previousMonthKey = getReportDeckRelativeMonthKey(activeMonthInfo, -1);
         const previousYearKey = toReportDeckMonthKey(activeMonthInfo.year - 1, activeMonthInfo.month);
@@ -2672,7 +2769,8 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 optionApi,
                 gasApi,
                 electricApi,
-                options.memoBuildCache || null
+                options.memoBuildCache || null,
+                options.store || root.__LOCAL_APP_STORE__
             );
             const text = String(candidate?.text || '').trim();
             const dedupeKey = `${REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key}:${metricKey}:${text}`;
@@ -2691,6 +2789,36 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         return {
             key: REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.key,
             label: REPORT_DECK_MEMO_YUSAN_OVERVIEW_GROUP.label,
+            candidates
+        };
+    }
+
+    function collectReportDeckMemoAggregateOverviewGroup(activeMonthInfo, group = {}, metricKeys = [], options = {}, seen = new Set()) {
+        const candidates = [];
+        for (const metricKey of Array.from(new Set((Array.isArray(metricKeys) ? metricKeys : []).filter(Boolean)))) {
+            const candidate = buildReportDeckMemoAggregateOtherTeamMonthlyCandidate(
+                activeMonthInfo,
+                group,
+                metricKey,
+                options.store || root.__LOCAL_APP_STORE__
+            );
+            const text = String(candidate?.text || '').trim();
+            const dedupeKey = `${group.key || ''}:${metricKey}:${text}`;
+            if (!text || seen.has(dedupeKey)) continue;
+            seen.add(dedupeKey);
+            const metric = getReportDeckMemoMetric(group.key, metricKey);
+            candidates.push(cloneReportDeckMemoOverviewCandidate(candidate, {
+                groupKey: group.key || '',
+                groupLabel: group.label || '',
+                teamKey: group.key || '',
+                teamLabel: group.label || '',
+                metricKey,
+                metricLabel: metric.label
+            }));
+        }
+        return {
+            key: group.key || '',
+            label: group.label || '',
             candidates
         };
     }
@@ -2745,11 +2873,23 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         const memoBuildCache = {};
         const yusanGroup = collectReportDeckMemoYusanOverviewGroup(
             activeMonthInfo,
-            { memoBuildCache },
+            { store: options.store || root.__LOCAL_APP_STORE__, memoBuildCache },
             seen
         );
         if (yusanGroup.candidates.length) groups.push(yusanGroup);
+        const totalGroup = collectReportDeckMemoAggregateOverviewGroup(
+            activeMonthInfo,
+            {
+                ...REPORT_DECK_MEMO_TOTAL_OVERVIEW_GROUP,
+                teamKeys: Array.from(REPORT_DECK_MEMO_TOTAL_TEAM_KEYS)
+            },
+            REPORT_DECK_MEMO_CIP_METRIC_KEYS,
+            { store: options.store || root.__LOCAL_APP_STORE__ },
+            seen
+        );
+        if (totalGroup.candidates.length) groups.push(totalGroup);
         for (const team of REPORT_DECK_MEMO_TEAMS) {
+            if (REPORT_DECK_MEMO_AGGREGATE_TEAM_KEYS.includes(team.key)) continue;
             const group = await collectReportDeckMemoOverviewGroup(
                 activeMonthInfo.key,
                 { key: team.key, label: team.label, teamKey: team.key },
@@ -2935,23 +3075,24 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 key: 'yusan',
                 label: '유산',
                 siteKey: 'yusan',
-                chartTitle: '유산 폐수 (m³) / 톤'
+                chartTitle: '유산 폐수 (m³) / 생산량 (톤)'
             };
         }
         return {
             key: 'bukjeong',
             label: '북정',
             siteKey: 'bukjeong',
-            chartTitle: '북정 폐수 (m³) / 톤'
+            chartTitle: '북정 폐수 (m³) / 생산량 (톤)'
         };
     }
 
     function buildReportDeckYusanElectricFallbackOption() {
+        const teamNames = getReportDeckMemoYusanProductionTeamNames();
         return {
             key: 'yusan',
             label: '유산',
-            reportTeamFilters: ['1팀 2파트', '2팀', '3팀', '관리동'],
-            productionTeamNames: ['1팀 2파트', '2팀', '3팀']
+            reportTeamFilters: teamNames,
+            productionTeamNames: teamNames
         };
     }
 
@@ -2971,15 +3112,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
 
     function resolveReportDeckElectricOption(optionApi, scopeConfig) {
         if (scopeConfig.key === 'yusan') {
-            const meterOption = typeof optionApi?.getUtilElectricMeterTeamOption === 'function'
-                ? optionApi.getUtilElectricMeterTeamOption(scopeConfig.electricMeterTeamKey || 'combined')
-                : null;
-            const fallback = buildReportDeckYusanElectricFallbackOption();
-            return {
-                ...(meterOption || fallback),
-                key: 'yusan',
-                label: '유산'
-            };
+            return buildReportDeckYusanElectricFallbackOption();
         }
         return optionApi?.getUtilElectricAnalysisTeamOption?.(scopeConfig.electricTeamKey) || { key: scopeConfig.electricTeamKey };
     }

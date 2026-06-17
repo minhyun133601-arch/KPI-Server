@@ -88,6 +88,10 @@ function createWindowStub(eventLog) {
   const windowStub = {
     __LOCAL_APP_STORE__: null,
     __PRESET_ELECTRIC_ENTRIES__: null,
+    __alertMessages: [],
+    alert(message) {
+      windowStub.__alertMessages.push(String(message || ''));
+    },
     clearTimeout() {},
     setTimeout(handler) {
       if (typeof handler === 'function') {
@@ -529,6 +533,7 @@ test('performManualSave reports unsupported shared persistence as an error', asy
   const didSave = await context.performManualSave({ trigger: 'button' });
 
   assert.equal(didSave, false);
+  assert.deepEqual(context.window.__alertMessages, []);
   assert.equal(dirtyCalls, 1);
   assert.equal(actionCalls, 1);
   assert.equal(context.sharedServerPersistenceState.lastErrorMessage.length > 0, true);
@@ -569,6 +574,7 @@ test('performManualSave appends manual save history on successful save', async (
   assert.equal(context.state.store.manualSaveHistory.length, 1);
   assert.equal(context.state.store.manualSaveHistory[0].trigger, 'shortcut');
   assert.equal(context.state.store.manualSaveHistory[0].contextLabel, '전기 2026-04-18 설비별');
+  assert.deepEqual(context.window.__alertMessages, ['저장되었습니다']);
   assert.equal(dirtyCalls, 1);
   assert.equal(actionCalls, 1);
 });

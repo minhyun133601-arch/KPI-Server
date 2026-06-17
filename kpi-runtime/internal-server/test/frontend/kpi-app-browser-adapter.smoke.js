@@ -279,6 +279,7 @@ test('app shell records internal navigation in browser history and restores on b
   assert.match(globalSaveSource, /function completeReportDeckEditShortcut\(evt\)/);
   assert.match(globalSaveSource, /kpi:report-deck-complete-edit/);
   assert.match(globalSaveSource, /\uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4\./);
+  assert.match(globalSaveSource, /successAlertMessage = '저장되었습니다'/);
   assert.match(appSource, /bindAppHistoryNavigation\(\);/);
   assert.match(appSource, /goHome\(\{ __skipHistory: true \}\);/);
   assert.match(appSource, /initializeAppHistoryState\(\);/);

@@ -471,8 +471,9 @@
             ['폐수오니 처리비용', 'sludge'],
             ['혼합수지 처리비용', 'resin'],
             ['인건비', 'labor'],
+            ['총비용', 'billing_amount'],
             ['단가', 'unit_price'],
-            ['총비용', 'billing_amount']
+            ['생산량 대비 폐수량', 'waste_per_production_ton']
         ])
     });
     let utilityEntryExperimentActualRecordPromise = null;
@@ -4595,6 +4596,25 @@ html, body {
         return hasValue ? roundUtilityEntryExperimentWholeNumber(total) : null;
     }
 
+    function getUtilityEntryExperimentWasteProductionTeamNames(scopeKey = '') {
+        return String(scopeKey || '').trim() === 'waste_bukjeong'
+            ? ['1팀 1파트']
+            : ['1팀 2파트', '2팀', '3팀'];
+    }
+
+    function getUtilityEntryExperimentWasteMonthlyProduction(scopeKey = '', monthValue = '') {
+        return getUtilityEntryExperimentGraphMonthlyProduction({
+            productionTeamNames: getUtilityEntryExperimentWasteProductionTeamNames(scopeKey)
+        }, monthValue);
+    }
+
+    function calculateUtilityEntryExperimentWastePerProductionTon(usage, productionKg) {
+        const productionTon = Number.isFinite(productionKg) ? productionKg / 1000 : null;
+        return Number.isFinite(usage) && Number.isFinite(productionTon) && productionTon > 0
+            ? roundUtilityEntryExperimentNumber(usage / productionTon, 3)
+            : null;
+    }
+
     function getUtilityEntryExperimentGraphAmountValue(fields = {}) {
         const billingAmount = parseUtilityEntryExperimentNumber(fields.billing_amount);
         if (Number.isFinite(billingAmount)) return roundUtilityEntryExperimentWholeNumber(billingAmount);
@@ -4922,8 +4942,11 @@ html, body {
 
         const billingAmount = calculateUtilityEntryExperimentSignedTotal(fields, UTILITY_ENTRY_EXPERIMENT_WASTE_BILLING_COMPONENTS);
         const unitPrice = calculateUtilityEntryExperimentUnitPrice(billingAmount, usageBase);
-        if (Number.isFinite(unitPrice)) fields.unit_price = unitPrice;
+        const production = getUtilityEntryExperimentWasteMonthlyProduction(scopeKey, monthValue);
+        const wastePerProductionTon = calculateUtilityEntryExperimentWastePerProductionTon(usageBase, production);
         if (Number.isFinite(billingAmount)) fields.billing_amount = roundUtilityEntryExperimentWholeNumber(billingAmount);
+        if (Number.isFinite(unitPrice)) fields.unit_price = unitPrice;
+        if (Number.isFinite(wastePerProductionTon)) fields.waste_per_production_ton = wastePerProductionTon;
         return fields;
     }
 
@@ -5048,16 +5071,21 @@ html, body {
             getUtilityEntryExperimentOtherMonthlyField(records.other, monthValue, 'average_temperature')
         );
         [
-            ['유산 CIP 횟수 1팀 2파트', 'team_01_02'],
-            ['유산 CIP 횟수 2팀', 'team_02'],
-            ['유산 CIP 횟수 3팀', 'team_03'],
-            ['북정 CIP 횟수 1팀 1파트', 'team_01_01']
-        ].forEach(([label, teamKey]) => {
-            setUtilityEntryExperimentInputValue(
-                host,
-                label,
-                getUtilityEntryExperimentOtherTeamMonthlyField(records.other, monthValue, teamKey, 'cip_count')
-            );
+            ['유산', '1팀 2파트', 'team_01_02'],
+            ['유산', '2팀', 'team_02'],
+            ['유산', '3팀', 'team_03'],
+            ['북정', '1팀 1파트', 'team_01_01']
+        ].forEach(([siteLabel, teamLabel, teamKey]) => {
+            [
+                ['횟수', 'cip_count'],
+                ['시간', 'cip_time']
+            ].forEach(([fieldLabel, fieldKey]) => {
+                setUtilityEntryExperimentInputValue(
+                    host,
+                    `${siteLabel} CIP ${fieldLabel} ${teamLabel}`,
+                    getUtilityEntryExperimentOtherTeamMonthlyField(records.other, monthValue, teamKey, fieldKey)
+                );
+            });
         });
     }
 
@@ -5185,6 +5213,12 @@ html, body {
         if (typeof utilityEntryExperimentRoot?.alert === 'function') {
             utilityEntryExperimentRoot.alert(message);
         }
+    }
+
+    function showUtilityEntryExperimentSavedPopup(options = {}) {
+        if (options.showSavedPopup !== true) return false;
+        alertUtilityEntryExperimentUser('저장되었습니다');
+        return true;
     }
 
     function confirmUtilityEntryExperimentUser(message) {
@@ -5904,10 +5938,18 @@ html, body {
                     dataset.teamMonthlyEntries[monthValue][teamKey] = {};
                 }
 
-                const normalizedValue = getUtilityEntryExperimentInputNormalizedValue(input);
-                const numericValue = parseUtilityEntryExperimentNumber(normalizedValue);
+                const validation = getUtilityEntryExperimentValidatedNumberInputValue(input);
+                if (!validation.ok) {
+                    const error = new Error('invalid_monthly_number');
+                    error.fieldKey = fieldKey;
+                    error.teamKey = teamKey;
+                    throw error;
+                }
+                const numericValue = validation.numericValue;
                 if (Number.isFinite(numericValue)) {
-                    dataset.teamMonthlyEntries[monthValue][teamKey][fieldKey] = roundUtilityEntryExperimentWholeNumber(numericValue);
+                    dataset.teamMonthlyEntries[monthValue][teamKey][fieldKey] = input.dataset.utilityEntryExperimentNumberKind === 'float'
+                        ? roundUtilityEntryExperimentNumber(numericValue, 3)
+                        : roundUtilityEntryExperimentWholeNumber(numericValue);
                 } else {
                     delete dataset.teamMonthlyEntries[monthValue][teamKey][fieldKey];
                 }
@@ -5954,7 +5996,7 @@ html, body {
         return { touchedCount, touchedScopes: [...scopedDrafts.keys()] };
     }
 
-    async function saveUtilityEntryExperiment(host, period = 'daily') {
+    async function saveUtilityEntryExperiment(host, period = 'daily', options = {}) {
         if (!host) return false;
         const savePeriod = period === 'monthly' ? 'monthly' : 'daily';
         if (savePeriod === 'daily' && blockUtilityEntryExperimentDailySaveForValidation(host)) {
@@ -5981,6 +6023,7 @@ html, body {
             await populateUtilityEntryExperimentActualValues(host);
             setUtilityEntryExperimentSaveStatus(host, 'saved', '저장됨');
             syncUtilityEntryExperimentDailyValidation(host);
+            showUtilityEntryExperimentSavedPopup(options);
             return true;
         } catch (error) {
             const message = error?.message === 'version_conflict'
@@ -6474,7 +6517,8 @@ html, body {
                 event.preventDefault();
                 saveUtilityEntryExperiment(
                     host,
-                    saveButton.dataset.utilityEntryExperimentPeriod || 'daily'
+                    saveButton.dataset.utilityEntryExperimentPeriod || 'daily',
+                    { showSavedPopup: true }
                 );
                 return;
             }
@@ -6951,6 +6995,7 @@ html, body {
         if (label === '사용량') return inputLabelPrefix.includes('LPG') ? 'kg' : 'm³';
         if (label === '가스 사용량') return 'm³';
         if (label === '방류량' || label === '폐수 방류량') return 'm³';
+        if (label === '생산량 대비 폐수량') return 'm3/톤';
         if (label === 'LPG / LNG환산') return '';
         if (label === 'Nm3 단가') return '원/M3';
         if (label === '단가') {
@@ -6995,6 +7040,9 @@ html, body {
         }
         if (label === '총비용' && inputLabelPrefix.includes('폐수')) {
             return '용수비 + 폐수 분담금 + 폐수오니 처리비용 + 혼합수지 처리비용 + 인건비.';
+        }
+        if (label === '생산량 대비 폐수량' && inputLabelPrefix.includes('폐수')) {
+            return '폐수/생산량';
         }
         if (label === '단가') {
             if (inputLabelPrefix.includes('전기')) return '전기요금계 / 전력 총량.';
@@ -7298,7 +7346,7 @@ html, body {
         const emphasisRows = new Set(options.emphasisRows || []);
         const totalRows = new Set(options.totalRows || []);
         const usageRows = new Set(options.usageRows || ['전력 총량', '사용량', '가스 사용량', '방류량', '폐수 방류량']);
-        const calculatedRows = new Set(options.calculatedRows || ['전기요금계', '단가', '청구금액', '총액', '총비용']);
+        const calculatedRows = new Set(options.calculatedRows || ['전기요금계', '총비용', '단가', '청구금액', '총액', '생산량 대비 폐수량']);
         const inputLabelPrefix = options.inputLabelPrefix || title;
         const fieldRows = Array.isArray(options.fieldRows) ? options.fieldRows : [];
         const attachmentKeyHtml = buildUtilityEntryExperimentSettlementAttachmentKey({
@@ -7401,7 +7449,7 @@ html, body {
         `;
     }
 
-    function buildUtilityEntryExperimentCipCountCard(siteLabel, teams = []) {
+    function buildUtilityEntryExperimentCipCard(siteLabel, teams = []) {
         const normalizedSiteLabel = String(siteLabel || '').trim();
         const normalizedTeams = (Array.isArray(teams) ? teams : [])
             .map(team => ({
@@ -7413,18 +7461,32 @@ html, body {
         return `
             <section class="utility-entry-experiment-settlement is-cip">
                 <div class="utility-entry-experiment-settlement-heading">
-                    <h3>CIP 횟수</h3>
+                    <h3>CIP</h3>
                 </div>
                 <table class="utility-entry-experiment-form-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">팀</th>
+                            <th scope="col">횟수</th>
+                            <th scope="col">시간</th>
+                        </tr>
+                    </thead>
                     <tbody>
                         ${normalizedTeams.map(team => `
                         <tr>
-                            <th>${escapeUtilityEntryExperimentHtml(team.label)}</th>
+                            <th scope="row">${escapeUtilityEntryExperimentHtml(team.label)}</th>
                             <td>${buildUtilityEntryExperimentInputWithUnit(`${normalizedSiteLabel} CIP 횟수 ${team.label}`, '회', {
                                 saveKind: 'other-team-monthly-field',
                                 resourceType: 'other',
                                 teamKey: team.key,
                                 fieldKey: 'cip_count'
+                            })}</td>
+                            <td>${buildUtilityEntryExperimentInputWithUnit(`${normalizedSiteLabel} CIP 시간 ${team.label}`, '시간', {
+                                saveKind: 'other-team-monthly-field',
+                                resourceType: 'other',
+                                teamKey: team.key,
+                                fieldKey: 'cip_time',
+                                numberKind: 'float'
                             })}</td>
                         </tr>
                         `).join('')}
@@ -7543,7 +7605,7 @@ html, body {
         const yusanElectricCalculatedRows = ['전력 총량', '전기요금계', '단가', '청구금액', '총액', '총비용'];
         const yusanGasLngCalculatedRows = ['사용량', '단가', '청구금액', '총액', '총비용'];
         const yusanGasLpgCalculatedRows = ['사용량', '단가', 'Nm3 단가', '총액'];
-        const wasteRows = ['방류량', '용수비', '폐수 분담금', '폐수오니 처리비용', '혼합수지 처리비용', '인건비', '단가', '총비용'];
+        const wasteRows = ['방류량', '용수비', '폐수 분담금', '폐수오니 처리비용', '혼합수지 처리비용', '인건비', '총비용', '단가', '생산량 대비 폐수량'];
 
         return `
             <div class="utility-entry-experiment-stack">
@@ -7605,7 +7667,7 @@ html, body {
                             directMonthlyFirstRow: { resourceType: 'waste', teamKey: 'waste_yusan' },
                             totalRows: ['총비용']
                         })}
-                        ${buildUtilityEntryExperimentCipCountCard('유산', [
+                        ${buildUtilityEntryExperimentCipCard('유산', [
                             { key: 'team_01_02', label: '1팀 2파트' },
                             { key: 'team_02', label: '2팀' },
                             { key: 'team_03', label: '3팀' }
@@ -7656,7 +7718,7 @@ html, body {
                             directMonthlyFirstRow: { resourceType: 'waste', teamKey: 'waste_bukjeong' },
                             totalRows: ['총비용']
                         })}
-                        ${buildUtilityEntryExperimentCipCountCard('북정', [
+                        ${buildUtilityEntryExperimentCipCard('북정', [
                             { key: 'team_01_01', label: '1팀 1파트' }
                         ])}
                             </div>
@@ -7786,7 +7848,7 @@ html, body {
                     }
                 },
                 {
-                    title: '설비 이력 카드',
+                    title: '설비 이력',
                     icon: 'fa-screwdriver-wrench',
                     color: '#475569',
                     viewerMode: 'full-bleed',

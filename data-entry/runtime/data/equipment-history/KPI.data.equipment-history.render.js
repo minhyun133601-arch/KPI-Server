@@ -5,6 +5,7 @@
     const START_ROOM_DATALIST_ID = 'data-equipment-room-options-start';
     const CARD_ROOM_DATALIST_ID = 'data-equipment-room-options-card';
     const EQUIPMENT_PRINT_POPUP_FEATURES = 'width=900,height=1200';
+    const EQUIPMENT_HISTORY_SAVED_POPUP_MESSAGE = '저장되었습니다';
     const EQUIPMENT_PHOTO_TARGET_WIDTH = 1600;
     const EQUIPMENT_PHOTO_TARGET_HEIGHT = 500;
     const EQUIPMENT_PHOTO_ATTACHMENT_KEY = api.EQUIPMENT_PHOTO_ATTACHMENT_KEY || 'equipment-photo-main';
@@ -320,28 +321,41 @@
 
     function renderBoardCardMedia(item) {
         const photoSrc = getBoardPhotoSrc(item);
+        const displayName = getEquipmentDisplayName(item);
         if (photoSrc) {
-            return `<img src="${api.escapeHtml(photoSrc)}" alt="${api.escapeHtml(`${item.name} 설비 사진`)}" loading="lazy">`;
+            return `<img src="${api.escapeHtml(photoSrc)}" alt="${api.escapeHtml(`${displayName} 설비 사진`)}" loading="lazy">`;
         }
         return `<span><i class="fas fa-industry" aria-hidden="true"></i></span>`;
     }
 
-    function renderBoardCard(item, orderMeta = {}, state = {}) {
+    function getEquipmentDisplayName(item) {
+        return api.normalizeText(item?.displayName) || api.normalizeText(item?.name);
+    }
+
+    function getEquipmentDraftDisplayName(draft) {
+        const name = api.normalizeText(draft?.name);
+        const displayName = api.normalizeText(draft?.displayName);
+        if (!displayName || !name) return name;
+        return displayName === name || displayName.startsWith(`${name} #`) ? displayName : name;
+    }
+
+    function renderBoardCard(item, orderMeta = {}, state = {}, isOrdering = false) {
         const statusMeta = item.statusMeta || api.getEquipmentStatus(item.status);
         const statusTone = ['running', 'stop', 'check'].includes(statusMeta.tone) ? statusMeta.tone : 'running';
         const toneClassName = `is-${statusTone}`;
         const statusIcon = getEquipmentStatusIconClass(statusTone);
         const moveUpLabel = '\uC704\uB85C \uC774\uB3D9';
         const moveDownLabel = '\uC544\uB798\uB85C \uC774\uB3D9';
+        const displayName = getEquipmentDisplayName(item);
         return `
-            <article class="data-equipment-board-card ${toneClassName}" data-equipment-board-card="${api.escapeHtml(item.id)}" data-equipment-open-card="${api.escapeHtml(item.id)}" tabindex="0" aria-label="${api.escapeHtml(`${item.name} \uCE74\uB4DC \uC5F4\uAE30`)}">
+            <article class="data-equipment-board-card ${toneClassName}" data-equipment-board-card="${api.escapeHtml(item.id)}" data-equipment-open-card="${api.escapeHtml(item.id)}" tabindex="0" aria-label="${api.escapeHtml(`${displayName} \uCE74\uB4DC \uC5F4\uAE30`)}">
                 <div class="data-equipment-board-card-media">
                     ${renderBoardCardMedia(item)}
                 </div>
                 <div class="data-equipment-board-card-main">
-                    <strong>${highlightBoardSearchText(item.name, state)}</strong>
+                    <strong>${highlightBoardSearchText(displayName, state)}</strong>
                 </div>
-                <div class="data-equipment-board-card-tools" aria-hidden="true">
+                <div class="data-equipment-board-card-tools" aria-hidden="${isOrdering ? 'false' : 'true'}">
                     <button type="button" class="data-equipment-board-order-button" data-equipment-move-card="${api.escapeHtml(item.id)}" data-equipment-move-direction="-1" aria-label="${api.escapeHtml(moveUpLabel)}" title="${api.escapeHtml(moveUpLabel)}"${orderMeta.canMoveUp ? '' : ' disabled'}>
                         <i class="fas fa-arrow-up"></i>
                     </button>
@@ -364,6 +378,36 @@
         return {
             canMoveUp: Boolean(previous),
             canMoveDown: Boolean(next),
+        };
+    }
+
+    function getBoardOrderingTeams(state) {
+        if (!state || typeof state !== 'object') return {};
+        if (!state.orderingTeams || typeof state.orderingTeams !== 'object') state.orderingTeams = {};
+        return state.orderingTeams;
+    }
+
+    function isBoardTeamOrdering(state, teamKey) {
+        return getBoardOrderingTeams(state)[api.normalizeText(teamKey)] === true;
+    }
+
+    function setBoardTeamOrdering(state, teamKey, isOrdering) {
+        const normalizedTeamKey = api.normalizeText(teamKey);
+        if (!normalizedTeamKey || !state || typeof state !== 'object') return;
+        const orderingTeams = getBoardOrderingTeams(state);
+        if (isOrdering) {
+            orderingTeams[normalizedTeamKey] = true;
+        } else {
+            delete orderingTeams[normalizedTeamKey];
+        }
+    }
+
+    function getBoardRoomOrderMeta(sections = [], index = 0) {
+        const previous = sections[index - 1];
+        const next = sections[index + 1];
+        return {
+            canMoveUp: Boolean(previous?.title),
+            canMoveDown: Boolean(next?.title),
         };
     }
 
@@ -411,15 +455,25 @@
         `;
     }
 
-    function renderBoardSectionTitle(title, teamKey = '', equipmentItems = []) {
+    function renderBoardSectionTitle(title, teamKey = '', equipmentItems = [], orderMeta = {}, isOrdering = false) {
         const roomTitle = api.normalizeText(title);
         if (!roomTitle) return '';
         const roomEquipmentItems = Array.isArray(equipmentItems) ? equipmentItems : [];
+        const moveUpLabel = '\uC2E4 \uC704\uB85C \uC774\uB3D9';
+        const moveDownLabel = '\uC2E4 \uC544\uB798\uB85C \uC774\uB3D9';
         return `
             <h3 class="data-equipment-board-room-title">
                 <span class="data-equipment-board-room-title-main">
                     <span class="data-equipment-board-room-icon"><i class="fas fa-door-open" aria-hidden="true"></i></span>
                     <span class="data-equipment-board-room-name">${api.escapeHtml(roomTitle)}</span>
+                    <span class="data-equipment-board-room-tools" aria-hidden="${isOrdering ? 'false' : 'true'}">
+                        <button type="button" class="data-equipment-board-order-button data-equipment-board-room-order-button" data-equipment-move-room data-equipment-move-team="${api.escapeHtml(teamKey)}" data-equipment-move-room-title="${api.escapeHtml(roomTitle)}" data-equipment-move-direction="-1" aria-label="${api.escapeHtml(moveUpLabel)}" title="${api.escapeHtml(moveUpLabel)}"${orderMeta.canMoveUp ? '' : ' disabled'}>
+                            <i class="fas fa-arrow-up" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="data-equipment-board-order-button data-equipment-board-room-order-button" data-equipment-move-room data-equipment-move-team="${api.escapeHtml(teamKey)}" data-equipment-move-room-title="${api.escapeHtml(roomTitle)}" data-equipment-move-direction="1" aria-label="${api.escapeHtml(moveDownLabel)}" title="${api.escapeHtml(moveDownLabel)}"${orderMeta.canMoveDown ? '' : ' disabled'}>
+                            <i class="fas fa-arrow-down" aria-hidden="true"></i>
+                        </button>
+                    </span>
                     ${renderBoardAddButton(teamKey, 'data-equipment-board-add-button data-equipment-board-room-add-button', roomTitle)}
                     ${renderBoardStatusActionGroup('room', { team: teamKey, room: roomTitle, items: roomEquipmentItems, disabled: roomEquipmentItems.length <= 0 })}
                 </span>
@@ -566,10 +620,11 @@
                 const teamMeta = group.teamMeta || api.getEquipmentHistoryTeamMeta?.(group.teamDataKey || group.team) || {};
                 const teamKey = group.teamDataKey || group.team;
                 const orderToggleLabel = `${group.team} \uC21C\uC11C \uC774\uB3D9`;
+                const isOrdering = isBoardTeamOrdering(state, teamKey);
                 const visibleSections = filteredGroup.sections.length ? filteredGroup.sections : [{ title: '', equipment: [] }];
                 const sectionEquipment = visibleSections.flatMap((section) => section.equipment);
                 return `
-                <section class="data-equipment-board-column" data-equipment-board-team="${api.escapeHtml(teamKey)}" style="${getBoardTeamStyle(teamMeta)}">
+                <section class="data-equipment-board-column${isOrdering ? ' is-ordering' : ''}" data-equipment-board-team="${api.escapeHtml(teamKey)}" style="${getBoardTeamStyle(teamMeta)}">
                     <header>
                         <div class="data-equipment-board-team-title">
                             <span class="data-equipment-board-team-icon" aria-hidden="true">${getEquipmentTeamIconSvg(teamMeta)}</span>
@@ -579,16 +634,16 @@
                             ${renderBoardStatusActionGroup('team', { team: teamKey, items: sectionEquipment, disabled: sectionEquipment.length <= 0 })}
                         </div>
                         <div class="data-equipment-board-team-actions">
-                            <button type="button" class="data-equipment-board-team-order-toggle" data-equipment-order-toggle-team="${api.escapeHtml(teamKey)}" aria-label="${api.escapeHtml(orderToggleLabel)}" title="${api.escapeHtml(orderToggleLabel)}" aria-expanded="false">
+                            <button type="button" class="data-equipment-board-team-order-toggle" data-equipment-order-toggle-team="${api.escapeHtml(teamKey)}" aria-label="${api.escapeHtml(orderToggleLabel)}" title="${api.escapeHtml(orderToggleLabel)}" aria-expanded="${isOrdering ? 'true' : 'false'}">
                                 <i class="fas fa-arrows-up-down" aria-hidden="true"></i>
                             </button>
                         </div>
                     </header>
-                    ${visibleSections.map((section) => `
+                    ${visibleSections.map((section, sectionIndex) => `
                         <div class="data-equipment-board-section">
-                            ${renderBoardSectionTitle(section.title, teamKey, section.equipment)}
+                            ${renderBoardSectionTitle(section.title, teamKey, section.equipment, getBoardRoomOrderMeta(visibleSections, sectionIndex), isOrdering)}
                             <div class="data-equipment-board-card-row">
-                                ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex), state)).join('')}
+                                ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex), state, isOrdering)).join('')}
                             </div>
                         </div>
                     `).join('')}
@@ -976,7 +1031,7 @@
             `;
         }
         return `
-            <h2>${api.escapeHtml(data?.header?.title || '설비 이력 카드')}</h2>
+            <h2>${api.escapeHtml(data?.header?.title || '설비 이력')}</h2>
         `;
     }
 
@@ -1318,15 +1373,54 @@
         return '저장에 실패했습니다.';
     }
 
-    function buildEquipmentListWithRecord(data, record) {
+    function showEquipmentHistorySavedPopup(options = {}) {
+        if (options.showSavedPopup !== true) return false;
+        browser.alert(EQUIPMENT_HISTORY_SAVED_POPUP_MESSAGE);
+        return true;
+    }
+
+    function getUniqueEquipmentRecordId(record, list, replaceIndex) {
+        const baseId = api.normalizeText(record?.id) || createEquipmentHistoryDraftId(record);
+        const usedIds = new Set(api.asList(list)
+            .map((item, index) => (index === replaceIndex ? '' : api.normalizeText(item?.id)))
+            .filter(Boolean));
+        if (!usedIds.has(baseId)) return baseId;
+        let sequence = 2;
+        let candidate = `${baseId}-${sequence}`;
+        while (usedIds.has(candidate)) {
+            sequence += 1;
+            candidate = `${baseId}-${sequence}`;
+        }
+        return candidate;
+    }
+
+    function applyUniqueEquipmentRecordId(record, list, replaceIndex) {
+        const baseId = api.normalizeText(record?.id);
+        const uniqueId = getUniqueEquipmentRecordId(record, list, replaceIndex);
+        if (!baseId || uniqueId === baseId) return record;
+        const baseCode = api.normalizeText(record?.equipmentCode);
+        const shouldUpdateGeneratedCode = !baseCode || baseCode === baseId || baseCode === baseId.toUpperCase();
+        return {
+            ...record,
+            id: uniqueId,
+            equipmentCode: shouldUpdateGeneratedCode ? uniqueId.toUpperCase() : record.equipmentCode,
+        };
+    }
+
+    function buildEquipmentListWithRecord(data, record, selectedId = '') {
         const nextList = getPayloadEquipmentList(data);
-        const matched = api.normalizeEquipmentItems({ equipmentList: nextList })
-            .find((item) => item.id === record.id);
+        const normalizedItems = api.normalizeEquipmentItems({ equipmentList: nextList });
+        const targetId = api.normalizeText(selectedId || record.id);
+        const matched = normalizedItems.find((item) => item.id === targetId)
+            || normalizedItems.find((item) => item.id === record.id);
+        const replaceIndex = matched && Number.isInteger(matched.sourceIndex) ? matched.sourceIndex : -1;
+        const safeRecord = applyUniqueEquipmentRecordId(record, nextList, replaceIndex);
+        if (safeRecord !== record) Object.assign(record, safeRecord);
         if (matched && Number.isInteger(matched.sourceIndex)) {
-            nextList[matched.sourceIndex] = record;
+            nextList[matched.sourceIndex] = safeRecord;
             return nextList;
         }
-        return [record, ...nextList];
+        return [safeRecord, ...nextList];
     }
 
     async function saveDraft(data, state, options = {}) {
@@ -1357,7 +1451,7 @@
 
             nextPayload = {
                 ...JSON.parse(JSON.stringify(data || {})),
-                equipmentList: buildEquipmentListWithRecord(data, record),
+                equipmentList: buildEquipmentListWithRecord(data, record, state.selectedId),
             };
             if (canSaveToServer) {
                 const savedPayload = await api.saveEquipmentHistoryPayload?.(nextPayload);
@@ -1381,7 +1475,9 @@
         browser.writePortalPayload('data_equipment_history_card', nextPayload);
 
         state.selectedId = record.id;
-        state.draft = api.createDraft(record);
+        const savedRecord = api.normalizeEquipmentItems({ equipmentList: nextPayload.equipmentList })
+            .find((item) => item.id === record.id) || record;
+        state.draft = api.createDraft(savedRecord);
         state.message = options.message || '작성 내용이 설비 현황 보드에 반영되었습니다.';
         return true;
     }
@@ -1488,6 +1584,70 @@
         return true;
     }
 
+    function getBoardTeamIdentitySet(value) {
+        const raw = api.normalizeText(value);
+        const normalized = api.normalizeEquipmentHistoryTeamName?.(raw) || raw;
+        const dataKey = api.resolveEquipmentHistoryTeamDataKey?.(raw)
+            || api.resolveEquipmentHistoryTeamDataKey?.(normalized)
+            || (/^work_team_calendar_team(?:1_part[12]|[234])$/.test(raw) ? raw : '');
+        return new Set([raw, normalized, dataKey].filter(Boolean));
+    }
+
+    function isBoardTeamMatch(item, targetTeam) {
+        const targetKeys = getBoardTeamIdentitySet(targetTeam);
+        if (!targetKeys.size) return false;
+        const itemKeys = getBoardTeamIdentitySet(item?.team);
+        if (item?.teamDataKey) itemKeys.add(api.normalizeText(item.teamDataKey));
+        return Array.from(itemKeys).some((key) => targetKeys.has(key));
+    }
+
+    async function moveBoardRoom(data, state, options = {}) {
+        const targetTeam = api.normalizeText(options.team);
+        const targetRoom = api.normalizeText(options.room);
+        const moveDirection = Number(options.direction) < 0 ? -1 : 1;
+        if (!targetTeam || !targetRoom) return false;
+
+        const nextList = getPayloadEquipmentList(data);
+        const items = api.normalizeEquipmentItems({ equipmentList: nextList });
+        const teamItems = items
+            .filter((item) => isBoardTeamMatch(item, targetTeam) && Number.isInteger(item.sourceIndex))
+            .sort((left, right) => left.sourceIndex - right.sourceIndex);
+        const roomGroups = [];
+        teamItems.forEach((item) => {
+            const room = api.normalizeText(item.room || '');
+            let group = roomGroups.find((candidate) => candidate.room === room);
+            if (!group) {
+                group = { room, items: [] };
+                roomGroups.push(group);
+            }
+            group.items.push(item);
+        });
+
+        const roomIndex = roomGroups.findIndex((group) => group.room === targetRoom);
+        const swapIndex = roomIndex + moveDirection;
+        if (roomIndex < 0 || !roomGroups[swapIndex]?.room) return false;
+
+        const currentGroup = roomGroups[roomIndex];
+        roomGroups[roomIndex] = roomGroups[swapIndex];
+        roomGroups[swapIndex] = currentGroup;
+
+        const targetIndexes = teamItems.map((item) => item.sourceIndex).sort((left, right) => left - right);
+        const orderedItems = roomGroups.flatMap((group) => group.items);
+        const rawBySourceIndex = new Map(teamItems.map((item) => [item.sourceIndex, nextList[item.sourceIndex]]));
+        orderedItems.forEach((item, index) => {
+            nextList[targetIndexes[index]] = rawBySourceIndex.get(item.sourceIndex);
+        });
+
+        const nextPayload = {
+            ...clonePayload(data),
+            equipmentList: nextList,
+        };
+        await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_room_order_failed');
+        state.selectedId = '';
+        state.message = '\uC2E4 \uD45C\uC2DC \uC21C\uC11C\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
+        return true;
+    }
+
     function isEquipmentBoardCardInteractiveTarget(target) {
         return Boolean(target?.closest?.('button, a, input, select, textarea'));
     }
@@ -1505,6 +1665,7 @@
         state.draft = null;
         state.starter = null;
         state.filters = { team: '', status: '', search: '' };
+        state.orderingTeams = {};
     }
 
     function pushEquipmentHistoryCardHistory(state) {
@@ -1573,7 +1734,10 @@
                 state.view = 'board';
                 state.draft = null;
             }
-            if (saved) redraw();
+            if (saved) {
+                redraw();
+                showEquipmentHistorySavedPopup(options);
+            }
             return saved;
         } catch (error) {
             console.warn('[kpi] equipment history save failed', error);
@@ -1605,7 +1769,7 @@
             if (!isEquipmentHistorySaveShortcut(event)) return;
 
             event.preventDefault?.();
-            await saveCurrentEquipmentHistoryView(root, data, state, redraw);
+            await saveCurrentEquipmentHistoryView(root, data, state, redraw, { showSavedPopup: true });
         };
 
         keyboardRoot.addEventListener('keydown', handleKeydown);
@@ -1746,7 +1910,7 @@
 
     function buildEquipmentHistoryPrintDocument(draftInput, options = {}) {
         const draft = api.createDraft(draftInput);
-        const title = normalizePrintText(draft.name) || '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC';
+        const title = normalizePrintText(getEquipmentDraftDisplayName(draft)) || '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC';
         const source = draftInput && typeof draftInput === 'object' ? draftInput : {};
         const printOptions = options && typeof options === 'object' ? options : {};
         const updatedAt = normalizePrintText(printOptions.updatedAt || source.updatedAt || source?.header?.updatedAt || source?.meta?.updatedAt) || '-';
@@ -1938,7 +2102,7 @@
         const printDocument = buildEquipmentHistoryPrintDocument(state.draft, {
             updatedAt: data?.header?.updatedAt || data?.meta?.updatedAt,
         });
-        const printTitle = `${normalizePrintText(state.draft.name) || '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC'} \uCD9C\uB825`;
+        const printTitle = `${normalizePrintText(getEquipmentDraftDisplayName(state.draft)) || '\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC'} \uCD9C\uB825`;
         if (browser.printHtmlDocument?.(printDocument, { title: printTitle })) {
             return;
         }
@@ -2497,11 +2661,27 @@
                 const column = button.closest?.('.data-equipment-board-column');
                 if (!column) return;
                 const isOpen = !column.classList.contains('is-ordering');
+                setBoardTeamOrdering(state, button.dataset.equipmentOrderToggleTeam, isOpen);
                 column.classList.toggle('is-ordering', isOpen);
                 button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-                column.querySelectorAll('.data-equipment-board-card-tools').forEach((tools) => {
+                column.querySelectorAll('.data-equipment-board-card-tools, .data-equipment-board-room-tools').forEach((tools) => {
                     tools.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
                 });
+            });
+        });
+
+        root.querySelectorAll('[data-equipment-move-room]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                try {
+                    if (await moveBoardRoom(data, state, {
+                        team: button.dataset.equipmentMoveTeam,
+                        room: button.dataset.equipmentMoveRoomTitle,
+                        direction: button.dataset.equipmentMoveDirection,
+                    })) redraw();
+                } catch (error) {
+                    console.warn('[kpi] equipment history board room order save failed', error);
+                    browser.alert('\uC2E4 \uC21C\uC11C \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.');
+                }
             });
         });
 
@@ -2541,7 +2721,7 @@
 
         root.querySelector('[data-equipment-form]')?.addEventListener('submit', async (event) => {
             event.preventDefault();
-            await saveCurrentEquipmentHistoryView(root, data, state, redraw);
+            await saveCurrentEquipmentHistoryView(root, data, state, redraw, { showSavedPopup: true });
         });
 
         root.querySelector('[data-equipment-cycle-current-status]')?.addEventListener('click', async () => {
@@ -2690,6 +2870,7 @@
             starter: null,
             message: '',
             openEquipmentSpecBlocks: {},
+            orderingTeams: {},
         };
         const redraw = () => {
             container.innerHTML = renderShell(category, workingData, state);

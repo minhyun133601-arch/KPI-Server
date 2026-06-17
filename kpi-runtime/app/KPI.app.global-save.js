@@ -199,7 +199,7 @@
                     ? `저장되었습니다. ${savedTime}`
                     : '저장되었습니다.';
                 GlobalSaveUiState.tone = 'success';
-                successAlertMessage = '저장되었습니다.';
+                successAlertMessage = '저장되었습니다';
                 return true;
             } catch (error) {
                 console.error('KPI global save failed.', error);
