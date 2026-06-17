@@ -360,10 +360,12 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(appData.report.categories[0].content, /\.report-memo-overview-panel \{[^}]*max-height: inherit;[^}]*pointer-events: auto;/);
   assert.match(appData.report.categories[0].content, /\.report-memo-overview-head \{[^}]*cursor: grab;[^}]*touch-action: none;/);
   assert.match(appData.report.categories[0].content, /\.report-memo-overview-rows \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
-  assert.match(appData.report.categories[0].content, /\.report-memo-overview-row \{[^}]*grid-template-columns: 40px minmax\(0, 1fr\);[^}]*min-height: 18px;[^}]*font-size: 5\.2px;[^}]*line-height: 1\.08;/);
-  assert.match(appData.report.categories[0].content, /\.report-memo-overview-row\.is-up \{ border-left-color: #dc2626; background: #fffafa; \}/);
-  assert.match(appData.report.categories[0].content, /\.report-memo-overview-row\.is-down \{ border-left-color: #2563eb; background: #f8fbff; \}/);
+  assert.match(appData.report.categories[0].content, /\.report-memo-overview-row \{[^}]*grid-template-columns: minmax\(48px, max-content\) minmax\(0, 1fr\) auto;[^}]*border: 1px solid #e5e7eb;[^}]*background: #fbfdff;[^}]*font-size: 5\.2px;[^}]*line-height: 1\.08;/);
+  assert.doesNotMatch(appData.report.categories[0].content, /\.report-memo-overview-row\.is-up \{/);
+  assert.doesNotMatch(appData.report.categories[0].content, /\.report-memo-overview-row\.is-down \{/);
+  assert.match(appData.report.categories[0].content, /\.report-memo-overview-row-label \{[^}]*white-space: normal;[^}]*overflow: visible;[^}]*text-overflow: clip;/);
   assert.match(appData.report.categories[0].content, /\.report-memo-overview-row-text \{[^}]*white-space: nowrap;[^}]*text-overflow: ellipsis;/);
+  assert.match(appData.report.categories[0].content, /\.report-memo-overview-copy \{[^}]*height: 14px;[^}]*font-size: 5\.2px;/);
   assert.match(appData.report.categories[0].content, /\.report-memo-lines \{[^}]*min-height: 180px;[^}]*max-height: 320px;[^}]*overflow: auto;/);
   assert.match(appData.report.categories[0].content, /\.report-memo-candidate \{[^}]*grid-template-columns: 22px minmax\(0, 1fr\);[^}]*white-space: nowrap;[^}]*font-size: 10\.8px;/);
   assert.match(appData.report.categories[0].content, /\.report-memo-candidate-text \{[^}]*white-space: nowrap;[^}]*text-overflow: ellipsis;/);
@@ -664,7 +666,7 @@ test('kpi html loads section factory adapter before all section factories', () =
   const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=234');
   const graphTemplateIndex = kpiHtml.indexOf('data-entry/runtime/data/utility-graph-template/app.js?v=41');
   const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=138');
-  const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=103');
+  const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=106');
   const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=42');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
   const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=5');

@@ -70,6 +70,7 @@ function createContext(options = {}) {
     },
     fetchImpl = null,
     openImpl = null,
+    clipboardWriteTextImpl = null,
   } = options;
   const registered = {
     initializers: new Map(),
@@ -90,6 +91,14 @@ function createContext(options = {}) {
     alert(message) {
       registered.alertMessages.push(String(message || ''));
     },
+    navigator:
+      typeof clipboardWriteTextImpl === 'function'
+        ? {
+            clipboard: {
+              writeText: clipboardWriteTextImpl,
+            },
+          }
+        : undefined,
     open(...args) {
       registered.openCalls.push(args);
       return typeof openImpl === 'function' ? openImpl(...args) : null;
@@ -1731,8 +1740,16 @@ test('report deck memo dialogs defer heavy work and cache repeated candidate res
   assert.match(runtimeSource, /ownerWindow\.open\(/);
   assert.match(runtimeSource, /void openReportDeckMemoOverviewPopupOrDialog\(root, meta\);/);
   assert.match(runtimeSource, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(runtimeSource, /report-memo-overview-row\.is-up/);
-  assert.match(runtimeSource, /report-memo-overview-row\.is-down/);
+  assert.match(runtimeSource, /data-report-memo-overview-copy/);
+  assert.match(runtimeSource, /data-report-memo-copy-text/);
+  assert.match(runtimeSource, /report-memo-overview-row-label" title="\$\{escapeReportDeckHtml\(metricLabel\)\}"/);
+  assert.match(runtimeSource, /report-memo-overview-row-text" title="\$\{escapeReportDeckHtml\(memoText\)\}"/);
+  assert.match(runtimeSource, /function copyReportDeckMemoOverviewText/);
+  assert.match(runtimeSource, /copyReportDeckTextToClipboard/);
+  assert.doesNotMatch(runtimeSource, /report-memo-overview-row\.is-up\{/);
+  assert.doesNotMatch(runtimeSource, /report-memo-overview-row\.is-down\{/);
+  assert.match(runtimeSource, /report-auto-memo-change\.is-up\{color:#c00000;\}/);
+  assert.match(runtimeSource, /report-auto-memo-change\.is-down\{color:#2f75b5;\}/);
   assert.match(adapterSource, /function getReportDeckMemoBuildCacheMap/);
   assert.match(adapterSource, /skipUtilityReady:\s*true/);
   assert.match(adapterSource, /'productionStats'/);
@@ -1832,9 +1849,52 @@ test('report deck memo overview opens in a separate browser popup window', async
   assert.match(popup.document.html, /data-report-memo-overview-list/);
   assert.match(popup.document.html, /report-memo-overview-row/);
   assert.match(popup.document.html, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
-  assert.match(popup.document.html, /report-memo-overview-row\{[^}]*grid-template-columns:40px minmax\(0,1fr\);[^}]*min-height:18px;[^}]*font-size:5\.2px;[^}]*line-height:1\.08;/);
-  assert.match(popup.document.html, /report-memo-overview-row\.is-up/);
-  assert.match(popup.document.html, /report-memo-overview-row\.is-down/);
+  assert.match(popup.document.html, /report-memo-overview-row\{[^}]*grid-template-columns:minmax\(48px,max-content\) minmax\(0,1fr\) auto;[^}]*border:1px solid #e5e7eb;[^}]*background:#fbfdff;[^}]*font-size:5\.2px;[^}]*line-height:1\.08;/);
+  assert.doesNotMatch(popup.document.html, /report-memo-overview-row\.is-up\{/);
+  assert.doesNotMatch(popup.document.html, /report-memo-overview-row\.is-down\{/);
+  assert.match(popup.document.html, /report-memo-overview-copy\{[^}]*height:14px;[^}]*font-size:5\.2px;/);
+  assert.match(popup.document.html, /data-report-memo-overview-copy/);
+  assert.match(popup.document.html, /data-report-memo-copy-state/);
+  assert.match(popup.document.html, /report-auto-memo-change\.is-up\{color:#c00000;\}/);
+  assert.match(popup.document.html, /report-auto-memo-change\.is-down\{color:#2f75b5;\}/);
+});
+
+test('report deck memo overview copy button writes one memo line to clipboard', async () => {
+  const copiedTexts = [];
+  const deckDom = createReportDeckContainer();
+  const { registered } = createContext({
+    clipboardWriteTextImpl: async (text) => {
+      copiedTexts.push(text);
+    },
+  });
+  const copyButton = {
+    dataset: {
+      reportMemoCopyText: '유산 생산량은 전월대비 10% 상승했습니다.',
+    },
+    textContent: '복사',
+    closest(selector) {
+      return selector === '[data-report-memo-overview-copy]' ? this : null;
+    },
+  };
+  let prevented = false;
+
+  registered.initializers.get('report')({
+    category: { content: '' },
+    container: deckDom.container,
+  });
+
+  deckDom.listeners.click({
+    target: copyButton,
+    preventDefault() {
+      prevented = true;
+    },
+  });
+  await flushMicrotasks();
+
+  assert.equal(prevented, true);
+  assert.deepEqual(copiedTexts, ['유산 생산량은 전월대비 10% 상승했습니다.']);
+  assert.equal(copyButton.textContent, '복사됨');
+  assert.equal(copyButton.dataset.reportMemoCopyState, 'copied');
 });
 
 test('report deck memo dialog edits existing lines and appends manual entries', async () => {

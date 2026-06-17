@@ -2104,11 +2104,12 @@ ${colgroup}
                 .report-memo-overview-group + .report-memo-overview-group { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
                 .report-memo-overview-group-title { margin: 0 0 7px; color: #0f172a; font-size: 12px; font-weight: 900; }
                 .report-memo-overview-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 6px; }
-                .report-memo-overview-row { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 3px; min-height: 18px; border: 1px solid #e2e8f0; border-left: 3px solid #94a3b8; border-radius: 4px; background: #ffffff; padding: 2px 4px; color: #111827; font-size: 5.2px; font-weight: 900; line-height: 1.08; }
-                .report-memo-overview-row.is-up { border-left-color: #dc2626; background: #fffafa; }
-                .report-memo-overview-row.is-down { border-left-color: #2563eb; background: #f8fbff; }
-                .report-memo-overview-row-label { color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .report-memo-overview-row { display: grid; grid-template-columns: minmax(48px, max-content) minmax(0, 1fr) auto; align-items: center; gap: 4px; min-height: 18px; border: 1px solid #e5e7eb; border-radius: 3px; background: #fbfdff; padding: 2px 3px; color: #111827; font-size: 5.2px; font-weight: 900; line-height: 1.08; }
+                .report-memo-overview-row-label { color: #334155; white-space: normal; overflow: visible; text-overflow: clip; word-break: keep-all; }
                 .report-memo-overview-row-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .report-memo-overview-copy { min-width: 23px; height: 14px; border: 1px solid #cbd5e1; border-radius: 3px; background: #ffffff; color: #334155; padding: 0 3px; font-size: 5.2px; font-weight: 900; line-height: 1; cursor: pointer; }
+                .report-memo-overview-copy[data-report-memo-copy-state="copied"] { border-color: #94a3b8; color: #111827; }
+                .report-memo-overview-copy[data-report-memo-copy-state="failed"] { border-color: #fecaca; color: #b91c1c; }
                 .report-memo-overview-empty { min-height: 86px; display: grid; place-items: center; border: 1px dashed #cbd5e1; border-radius: 6px; color: #64748b; font-size: 12px; font-weight: 900; text-align: center; }
                 .report-lpg-trend-note { position: absolute; left: calc(3.4% + ((100% - 3.4% - 2.9% - 5.2%) / 2) + 5.2% - 2px); right: 2.9%; top: 5.3%; height: 2.3%; display: flex; align-items: flex-end; justify-content: flex-start; color: #ff0000; font-size: 20px; font-weight: 900; text-align: left; line-height: 1; }
                 .report-yusan-lpg-grid { top: 8.4%; bottom: 8.8%; }

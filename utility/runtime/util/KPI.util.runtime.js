@@ -2005,6 +2005,10 @@
             .replace(/'/g, '&#39;');
     }
 
+    function getReportDeckWindow(root) {
+        return root?.ownerDocument?.defaultView || (typeof window !== 'undefined' ? window : null);
+    }
+
     function getReportDeckMemoLineClass(lineText = '') {
         const text = String(lineText || '');
         const hasUp = text.includes('↑') || text.includes('▲');
@@ -2438,6 +2442,59 @@
         return true;
     }
 
+    async function copyReportDeckTextToClipboard(root, text = '') {
+        const value = String(text || '');
+        if (!value) return false;
+        const ownerWindow = getReportDeckWindow(root);
+        const clipboard = ownerWindow?.navigator?.clipboard
+            || (typeof navigator !== 'undefined' ? navigator.clipboard : null);
+        if (typeof clipboard?.writeText === 'function') {
+            await clipboard.writeText(value);
+            return true;
+        }
+        const ownerDocument = root?.ownerDocument || (typeof document !== 'undefined' ? document : null);
+        if (!ownerDocument?.createElement || typeof ownerDocument?.execCommand !== 'function') return false;
+        const textarea = ownerDocument.createElement('textarea');
+        textarea.value = value;
+        textarea.setAttribute?.('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        ownerDocument.body?.appendChild?.(textarea);
+        textarea.focus?.();
+        textarea.select?.();
+        let copied = false;
+        try {
+            copied = ownerDocument.execCommand('copy') === true;
+        } finally {
+            textarea.remove?.();
+        }
+        return copied;
+    }
+
+    function markReportDeckMemoCopyButton(button, copied) {
+        if (!button) return;
+        button.textContent = copied ? '복사됨' : '실패';
+        if (button.dataset) {
+            button.dataset.reportMemoCopyState = copied ? 'copied' : 'failed';
+        }
+        const schedule = typeof setTimeout === 'function' ? setTimeout : null;
+        if (typeof schedule !== 'function') return;
+        schedule(() => {
+            button.textContent = '복사';
+            if (button.dataset) {
+                delete button.dataset.reportMemoCopyState;
+            }
+        }, copied ? 900 : 1400);
+    }
+
+    async function copyReportDeckMemoOverviewText(root, button) {
+        const text = String(button?.dataset?.reportMemoCopyText || '').trim();
+        const copied = await copyReportDeckTextToClipboard(root, text);
+        markReportDeckMemoCopyButton(button, copied);
+        return copied;
+    }
+
     function buildReportDeckMemoOverviewPopupHtml(contentHtml = '') {
         return '<!doctype html>'
             + '<html lang="ko">'
@@ -2455,18 +2512,23 @@
             + '.report-memo-overview-group + .report-memo-overview-group{margin-top:12px;padding-top:12px;border-top:1px solid #e2e8f0;}'
             + '.report-memo-overview-group-title{margin:0 0 7px;color:#0f172a;font-size:12px;font-weight:900;}'
             + '.report-memo-overview-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 6px;}'
-            + '.report-memo-overview-row{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:3px;min-height:18px;border:1px solid #e2e8f0;border-left:3px solid #94a3b8;border-radius:4px;background:#fff;padding:2px 4px;color:#111827;font-size:5.2px;font-weight:900;line-height:1.08;}'
-            + '.report-memo-overview-row.is-up{border-left-color:#dc2626;background:#fffafa;}'
-            + '.report-memo-overview-row.is-down{border-left-color:#2563eb;background:#f8fbff;}'
-            + '.report-memo-overview-row-label{color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+            + '.report-memo-overview-row{display:grid;grid-template-columns:minmax(48px,max-content) minmax(0,1fr) auto;align-items:center;gap:4px;min-height:18px;border:1px solid #e5e7eb;border-radius:3px;background:#fbfdff;padding:2px 3px;color:#111827;font-size:5.2px;font-weight:900;line-height:1.08;}'
+            + '.report-memo-overview-row-label{color:#334155;white-space:normal;overflow:visible;text-overflow:clip;word-break:keep-all;}'
             + '.report-memo-overview-row-text{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+            + '.report-memo-overview-copy{min-width:23px;height:14px;border:1px solid #cbd5e1;border-radius:3px;background:#fff;color:#334155;padding:0 3px;font-size:5.2px;font-weight:900;line-height:1;cursor:pointer;}'
+            + '.report-memo-overview-copy[data-report-memo-copy-state="copied"]{border-color:#94a3b8;color:#111827;}'
+            + '.report-memo-overview-copy[data-report-memo-copy-state="failed"]{border-color:#fecaca;color:#b91c1c;}'
+            + '.report-auto-memo-change{font-weight:900;}'
+            + '.report-auto-memo-change.is-up{color:#c00000;}'
+            + '.report-auto-memo-change.is-down{color:#2f75b5;}'
+            + '.report-auto-memo-change.is-flat{color:#111827;}'
             + '.report-memo-overview-empty{min-height:120px;display:grid;place-items:center;border:1px dashed #cbd5e1;border-radius:6px;background:#fff;color:#64748b;font-size:12px;font-weight:900;text-align:center;}'
             + '</style>'
             + '</head>'
             + '<body>'
             + '<header class="report-memo-overview-popup-head"><strong>특이사항 전체 확인</strong><button type="button" data-report-memo-overview-popup-close aria-label="닫기">닫기</button></header>'
             + `<main class="report-memo-overview-body" data-report-memo-overview-list>${contentHtml}</main>`
-            + '<script>document.querySelector("[data-report-memo-overview-popup-close]")?.addEventListener("click",()=>self.close());</script>'
+            + '<script>(()=>{const copyFallback=(text)=>{const area=document.createElement("textarea");area.value=text;area.setAttribute("readonly","");area.style.position="fixed";area.style.left="-9999px";document.body.appendChild(area);area.focus();area.select();let ok=false;try{ok=document.execCommand("copy")===true;}finally{area.remove();}return ok;};const mark=(button,ok)=>{button.textContent=ok?"복사됨":"실패";button.dataset.reportMemoCopyState=ok?"copied":"failed";setTimeout(()=>{button.textContent="복사";delete button.dataset.reportMemoCopyState;},ok?900:1400);};document.querySelector("[data-report-memo-overview-popup-close]")?.addEventListener("click",()=>self.close());document.addEventListener("click",async(event)=>{const button=event.target?.closest?.("[data-report-memo-overview-copy]");if(!button)return;event.preventDefault();const text=String(button.dataset.reportMemoCopyText||"").trim();if(!text){mark(button,false);return;}let ok=false;try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);ok=true;}else{ok=copyFallback(text);}}catch(error){try{ok=copyFallback(text);}catch(fallbackError){ok=false;}}mark(button,ok);});})();</script>'
             + '</body>'
             + '</html>';
     }
@@ -2569,9 +2631,11 @@
                 + group.candidates.map(candidate => {
                     const direction = String(candidate?.direction || 'flat').trim() || 'flat';
                     const metricLabel = String(candidate?.metricLabel || '').trim();
+                    const memoText = String(candidate?.text || '').trim();
                     return `<div class="report-memo-overview-row is-${escapeReportDeckHtml(direction)}">`
-                        + `<span class="report-memo-overview-row-label">${escapeReportDeckHtml(metricLabel)}</span>`
-                        + `<span class="report-memo-overview-row-text">${renderReportDeckMemoLineHtml(candidate?.text || '')}</span>`
+                        + `<span class="report-memo-overview-row-label" title="${escapeReportDeckHtml(metricLabel)}">${escapeReportDeckHtml(metricLabel)}</span>`
+                        + `<span class="report-memo-overview-row-text" title="${escapeReportDeckHtml(memoText)}">${renderReportDeckMemoLineHtml(memoText)}</span>`
+                        + `<button type="button" class="report-memo-overview-copy" data-report-memo-overview-copy data-report-memo-copy-text="${escapeReportDeckHtml(memoText)}" aria-label="특이사항 문장 복사" title="특이사항 문장 복사">복사</button>`
                     + '</div>';
                 }).join('')
                 + '</div>'
@@ -6355,6 +6419,13 @@
             if (memoOverviewButton) {
                 event.preventDefault();
                 void openReportDeckMemoOverviewPopupOrDialog(root, meta);
+                return;
+            }
+
+            const memoOverviewCopyButton = event.target?.closest?.('[data-report-memo-overview-copy]');
+            if (memoOverviewCopyButton) {
+                event.preventDefault();
+                void copyReportDeckMemoOverviewText(root, memoOverviewCopyButton);
                 return;
             }
 
