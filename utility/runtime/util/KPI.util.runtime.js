@@ -2749,8 +2749,16 @@
         return true;
     }
 
+    function normalizeReportDeckMemoLineText(line = '') {
+        return String(line || '').trim();
+    }
+
+    function getReportDeckMemoLineIdentity(line = '') {
+        return normalizeReportDeckMemoLineText(line).replace(/\s+/g, ' ');
+    }
+
     function getReportDeckMemoLines(text = '') {
-        return String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        return String(text || '').split(/\r?\n/).map(normalizeReportDeckMemoLineText).filter(Boolean);
     }
 
     function getReportDeckMemoDialogTargetKey(dialog) {
@@ -2797,11 +2805,18 @@
         const normalizedKey = String(key || '').trim();
         if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
         const lines = getReportDeckMemoLines(state[normalizedKey]);
-        const nextLines = lines.concat(
-            (Array.isArray(addedLines) ? addedLines : [])
-                .map(line => String(line || '').trim())
-                .filter(Boolean)
-        );
+        const seen = new Set(lines.map(getReportDeckMemoLineIdentity));
+        const nextLines = lines.slice();
+        (Array.isArray(addedLines) ? addedLines : [])
+            .map(normalizeReportDeckMemoLineText)
+            .filter(Boolean)
+            .forEach(line => {
+                const identity = getReportDeckMemoLineIdentity(line);
+                if (seen.has(identity)) return;
+                seen.add(identity);
+                nextLines.push(line);
+            });
+        if (nextLines.length === lines.length) return false;
         return setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, nextLines);
     }
 
@@ -3551,9 +3566,10 @@
 
         const manualInput = dialog.querySelector?.('[data-report-memo-manual-input]');
         const manualLines = getReportDeckMemoLines(manualInput?.value || '');
-        if (manualLines.length && appendReportDeckMemoLines(root, state, meta, dialog, key, manualLines)) {
+        if (manualLines.length) {
+            const appended = appendReportDeckMemoLines(root, state, meta, dialog, key, manualLines);
             clearReportDeckMemoManualInput(dialog);
-            changed = true;
+            changed = appended || changed;
         }
         return changed;
     }
@@ -6500,7 +6516,8 @@
                 const key = getReportDeckMemoDialogTargetKey(dialog);
                 const input = dialog?.querySelector?.('[data-report-memo-manual-input]');
                 const addedLines = getReportDeckMemoLines(input?.value || '');
-                if (key && addedLines.length && appendReportDeckMemoLines(root, state, meta, dialog, key, addedLines)) {
+                if (key && addedLines.length) {
+                    appendReportDeckMemoLines(root, state, meta, dialog, key, addedLines);
                     clearReportDeckMemoManualInput(dialog);
                 }
                 return;

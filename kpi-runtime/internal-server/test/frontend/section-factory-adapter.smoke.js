@@ -345,6 +345,8 @@ test('section factory adapter registers dashboard sections without direct sectio
   assert.match(appData.report.categories[0].content, /data-report-memo-manual-input/);
   assert.match(appData.report.categories[0].content, /data-report-memo-manual-add/);
   assert.match(appData.report.categories[0].content, /\.report-memo-line-input/);
+  assert.match(appData.report.categories[0].content, /\.report-memo-line-input \{[^}]*resize: none;/);
+  assert.match(appData.report.categories[0].content, /\.report-memo-manual textarea \{[^}]*resize: none;/);
   assert.match(appData.report.categories[0].content, /\.report-memo-line-actions/);
   assert.match(appData.report.categories[0].content, /\.report-auto-memo-line\.is-up,\s*\.report-auto-memo-line\.is-down \{ color: #111827; \}/);
   assert.match(appData.report.categories[0].content, /\.report-auto-memo-delta \{ color: #111827; \}/);
@@ -666,7 +668,7 @@ test('kpi html loads section factory adapter before all section factories', () =
   const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=234');
   const graphTemplateIndex = kpiHtml.indexOf('data-entry/runtime/data/utility-graph-template/app.js?v=41');
   const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=138');
-  const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=106');
+  const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=107');
   const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=42');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
   const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=5');

@@ -1991,6 +1991,15 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
     deckDom.memoLines.innerHTML,
     /<textarea[^>]+data-report-memo-line-input="1"[^>]*>Manual memo<\/textarea>/
   );
+  const memoLinesAfterManualAdd = deckDom.memoLines.innerHTML;
+  deckDom.memoManualInput.value = 'Manual memo\nSecond manual memo';
+  deckDom.listeners.click({
+    target: deckDom.memoManualAddButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.memoManualInput.value, '');
+  assert.equal(deckDom.memoLines.innerHTML, memoLinesAfterManualAdd);
+  assert.doesNotMatch(deckDom.memoLines.innerHTML, /data-report-memo-line-input="3"/);
 
   deckDom.memoManualLineInput.value = 'Manual memo revised';
   deckDom.listeners.input({ target: deckDom.memoManualLineInput });
@@ -2120,6 +2129,25 @@ test('report deck completion saves pending manual memo input to server', async (
   assert.equal(deckDom.memoDialog.hidden, true);
   assert.equal(deckDom.status.textContent, '저장되었습니다');
   assert.deepEqual(registered.alertMessages, ['저장되었습니다']);
+
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+  deckDom.listeners.click({
+    target: deckDom.memoTargets[0],
+    preventDefault() {},
+  });
+  deckDom.memoManualInput.value = '북정 가스 직접 입력';
+  const putCountBeforeDuplicatePending = fetchCalls.filter((call) => call.options?.method === 'PUT').length;
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+  await flushMicrotasks();
+
+  assert.equal(deckDom.memoManualInput.value, '');
+  assert.equal(fetchCalls.filter((call) => call.options?.method === 'PUT').length, putCountBeforeDuplicatePending);
 });
 
 test('util runtime browser adapter builds production team 1 start chart model from daily entries', async () => {

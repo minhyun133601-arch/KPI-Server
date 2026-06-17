@@ -2073,14 +2073,14 @@ ${colgroup}
                 .report-memo-lines { display: grid; gap: 6px; margin-bottom: 10px; min-height: 180px; max-height: 320px; overflow: auto; }
                 .report-memo-line-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; border: 1px solid #e2e8f0; border-radius: 5px; background: #ffffff; padding: 6px 7px; }
                 .report-memo-line-text { min-width: 0; color: #111827; font-size: 12px; font-weight: 900; line-height: 1.25; overflow-wrap: anywhere; }
-                .report-memo-line-input { width: 100%; min-width: 0; min-height: 38px; max-height: 96px; border: 1px solid #dbe4f3; border-radius: 4px; background: #f8fafc; color: #111827; padding: 6px 7px; font-size: 12px; font-weight: 900; line-height: 1.25; resize: vertical; box-sizing: border-box; }
+                .report-memo-line-input { width: 100%; min-width: 0; min-height: 38px; max-height: 96px; border: 1px solid #dbe4f3; border-radius: 4px; background: #f8fafc; color: #111827; padding: 6px 7px; font-size: 12px; font-weight: 900; line-height: 1.25; resize: none; box-sizing: border-box; }
                 .report-memo-line-input:focus { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 1px; border-color: #60a5fa; background: #ffffff; }
                 .report-memo-line-actions { display: grid; grid-template-columns: repeat(3, auto); gap: 4px; align-items: start; }
                 .report-memo-line-actions button { min-width: 28px; min-height: 26px; padding: 0 7px; color: #475569; }
                 .report-memo-line-actions button:disabled { opacity: 0.35; cursor: default; }
                 .report-memo-lines-empty { min-height: 30px; display: grid; place-items: center; border: 1px dashed #cbd5e1; border-radius: 5px; color: #64748b; font-size: 12px; font-weight: 900; }
                 .report-memo-manual { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: stretch; margin-bottom: 8px; }
-                .report-memo-manual textarea { width: 100%; min-width: 0; min-height: 48px; max-height: 92px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 7px 8px; font-size: 12px; font-weight: 900; line-height: 1.35; resize: vertical; box-sizing: border-box; }
+                .report-memo-manual textarea { width: 100%; min-width: 0; min-height: 48px; max-height: 92px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 7px 8px; font-size: 12px; font-weight: 900; line-height: 1.35; resize: none; box-sizing: border-box; }
                 .report-memo-manual textarea:focus { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 1px; border-color: #60a5fa; }
                 .report-memo-manual button { min-width: 72px; }
                 .report-memo-candidates { display: grid; gap: 6px; max-height: 220px; overflow: auto; }
