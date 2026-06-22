@@ -505,7 +505,7 @@ test('kpi html loads report sheet analysis model scripts before analysis render 
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=054');
   const electricModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/model.js?v=058');
   const gasModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/gas/model.js?v=057');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=064');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=068');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');

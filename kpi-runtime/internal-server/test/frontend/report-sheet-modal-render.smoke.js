@@ -1021,7 +1021,7 @@ test('kpi html loads report sheet modal render between modal shell and sheet.js'
   const gasRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/runtime-sync.js?v=054');
   const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=123');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=064');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=068');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');

@@ -155,6 +155,14 @@ function average(values) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+function getTextChildrenByClass(svg, className) {
+  return svg.children.filter(
+    child =>
+      child.tagName === 'text' &&
+      String(child.attributes.class || '').split(/\s+/).includes(className)
+  );
+}
+
 test('utility graph top auto scale separates series bands and uses local trend range', () => {
   const context = createContext();
   const { root, nodes } = createRoot();
@@ -205,4 +213,53 @@ test('utility graph top auto scale separates series bands and uses local trend r
   assert.ok(Math.max(...redYValues) - Math.min(...redYValues) > 20, 'production line should use local min/max trend range');
   assert.ok(average(redYValues) + 35 < average(blueYValues), 'production should sit above amount');
   assert.ok(average(blueYValues) + 35 < average(yellowBottoms), 'amount should sit above the usage baseline');
+});
+
+test('utility graph top labels anchor edge text inside the plot box', () => {
+  const context = createContext();
+  const { root, nodes } = createRoot();
+  const months = context.KpiUtilityGraphTemplate.buildMonths('2026-01', '2026-03');
+
+  context.KpiUtilityGraphTemplate.render(root, {
+    title: 'Edge Label Test',
+    topMonths: months,
+    tableMonths: months,
+    bottomMonths: months,
+    replaceTableMonths: true,
+    topSeries: {
+      usage: { '2026-01': 1234, '2026-02': 4567, '2026-03': 7890 },
+      amount: { '2026-01': 1234567, '2026-02': 4567890, '2026-03': 9876543 },
+      production: { '2026-01': 3456, '2026-02': 5678, '2026-03': 6789 }
+    },
+    bottomSeries: { '2026-01': 0.5, '2026-02': 0.52, '2026-03': 0.54 },
+    options: {
+      top: {
+        autoScale: true,
+        showDataLabels: true
+      },
+      bottom: {
+        showDataLabels: false
+      }
+    }
+  });
+
+  const dataLabels = [
+    ...getTextChildrenByClass(nodes.topSvg, 'svg-data-label-black'),
+    ...getTextChildrenByClass(nodes.topSvg, 'svg-data-label-blue'),
+    ...getTextChildrenByClass(nodes.topSvg, 'svg-data-label-red')
+  ];
+  const firstLabelTexts = new Set(['1,234', '1,234,567', '3,456']);
+  const lastLabelTexts = new Set(['7,890', '9,876,543', '6,789']);
+  const firstDataLabels = dataLabels.filter(label => firstLabelTexts.has(label.textContent));
+  const lastDataLabels = dataLabels.filter(label => lastLabelTexts.has(label.textContent));
+  const monthLabels = getTextChildrenByClass(nodes.topSvg, 'report-auto-chart-month');
+  const firstMonthLabel = monthLabels.find(label => label.textContent === '26.01');
+  const lastMonthLabel = monthLabels.find(label => label.textContent === '26.03');
+
+  assert.equal(firstDataLabels.length, 3);
+  assert.equal(lastDataLabels.length, 3);
+  firstDataLabels.forEach(label => assert.equal(label.attributes['text-anchor'], 'start'));
+  lastDataLabels.forEach(label => assert.equal(label.attributes['text-anchor'], 'end'));
+  assert.equal(firstMonthLabel?.attributes['text-anchor'], 'start');
+  assert.equal(lastMonthLabel?.attributes['text-anchor'], 'end');
 });

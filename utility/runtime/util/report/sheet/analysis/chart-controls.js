@@ -126,9 +126,12 @@
             .map(digits => `<option value="${digits}" ${digits === selectedDigits ? 'selected' : ''}>${digits}</option>`)
             .join('');
         return `
-            <select class="util-sheet-analysis-series-select util-sheet-analysis-decimals-select" data-role="util-sheet-analysis-decimals" data-chart-key="${escapeHtml(item.key)}" aria-label="${escapeHtml(item.title || item.label || item.key)} decimal places">
-                ${optionsHtml}
-            </select>
+            <label class="util-sheet-analysis-control-field util-sheet-analysis-decimals-field">
+                <span class="util-sheet-analysis-control-field-label">소수점</span>
+                <select class="util-sheet-analysis-series-select util-sheet-analysis-decimals-select" data-role="util-sheet-analysis-decimals" data-chart-key="${escapeHtml(item.key)}" aria-label="${escapeHtml(item.title || item.label || item.key)} decimal places">
+                    ${optionsHtml}
+                </select>
+            </label>
         `;
     }
 
@@ -136,7 +139,17 @@
         if (!item?.key) return '';
         const options = (Array.isArray(item?.unitOptions) ? item.unitOptions : [])
             .filter(option => option && option.key);
-        if (options.length < 2) return '';
+        if (options.length < 2) {
+            const staticUnitLabel = String(item.unitLabel || item.metricLabel || options[0]?.label || '').trim();
+            return staticUnitLabel
+                ? `
+            <span class="util-sheet-analysis-control-field util-sheet-analysis-unit-field is-static">
+                <span class="util-sheet-analysis-control-field-label">단위</span>
+                <span class="util-sheet-analysis-unit-static">${escapeHtml(staticUnitLabel)}</span>
+            </span>
+        `
+                : '';
+        }
         const selectedKey = String(item.unitKey || options[0]?.key || '').trim();
         const optionsHtml = options
             .map(option => {
@@ -145,9 +158,12 @@
             })
             .join('');
         return `
-            <select class="util-sheet-analysis-series-select util-sheet-analysis-unit-select" data-role="util-sheet-analysis-unit" data-chart-key="${escapeHtml(item.key)}" aria-label="${escapeHtml(item.title || item.label || item.key)} unit">
-                ${optionsHtml}
-            </select>
+            <label class="util-sheet-analysis-control-field util-sheet-analysis-unit-field">
+                <span class="util-sheet-analysis-control-field-label">단위</span>
+                <select class="util-sheet-analysis-series-select util-sheet-analysis-unit-select" data-role="util-sheet-analysis-unit" data-chart-key="${escapeHtml(item.key)}" aria-label="${escapeHtml(item.title || item.label || item.key)} unit">
+                    ${optionsHtml}
+                </select>
+            </label>
         `;
     }
 

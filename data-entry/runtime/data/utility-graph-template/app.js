@@ -900,7 +900,7 @@
           text: labelText,
           className: 'svg-data-label-black',
           attrs: {
-            'text-anchor': 'middle'
+            'text-anchor': getChartEdgeTextAnchor(i, months.length)
           }
         });
       }
@@ -920,7 +920,7 @@
       labelMinY: labelBounds.amount.minY,
       labelMaxY: labelBounds.amount.maxY,
       showLabels: options.showDataLabels,
-      edgeTextAnchors: false,
+      edgeTextAnchors: true,
       seriesKey: 'amount',
       labelFontSize: 10.5,
       deferredLabels
@@ -940,7 +940,7 @@
       labelMinY: labelBounds.production.minY,
       labelMaxY: labelBounds.production.maxY,
       showLabels: options.showDataLabels,
-      edgeTextAnchors: false,
+      edgeTextAnchors: true,
       seriesKey: 'production',
       labelFontSize: 10.5,
       deferredLabels
@@ -950,7 +950,7 @@
 
     months.forEach((month, i) => {
       addText(svg, xFor(i), layout.y + layout.h + 18, month.label || month.key, 'report-auto-chart-month', {
-        'text-anchor': 'middle'
+        'text-anchor': getChartEdgeTextAnchor(i, months.length)
       });
     });
 

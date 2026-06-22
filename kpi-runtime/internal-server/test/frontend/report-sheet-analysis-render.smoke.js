@@ -105,7 +105,7 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
       return true;
     },
     buildUtilGasAnalysisSeriesControlHtml(controlItem) {
-      return `<button class="series-control" data-key="${String(controlItem?.key || '')}">series</button><input type="checkbox" data-role="util-sheet-analysis-series-label-toggle" data-chart-key="${String(controlItem?.key || '')}">`;
+      return `<button class="series-control" data-key="${String(controlItem?.key || '')}">series</button>${controlItem?.hideLabelToggle === true ? '' : `<input type="checkbox" data-role="util-sheet-analysis-series-label-toggle" data-chart-key="${String(controlItem?.key || '')}">`}`;
     },
     buildUtilGasAnalysisPopupOnlyControlHtml(item) {
       return `<button class="popup-only-control" data-key="${String(item?.key || '')}">popup</button>`;
@@ -140,6 +140,8 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
         tone: 'gas',
         icon: 'fa-fire',
         subText: 'delta:+5',
+        actionHtml: '<button type="button" class="sample-summary-action">x</button>',
+        seriesBadge: { index: 2, color: '#be0032' },
         statItems: [
           { tone: 'max', label: 'max', valueText: '26.03' },
           { tone: 'min', label: 'min', valueText: '26.01' },
@@ -154,6 +156,7 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
       icon: 'fa-fire',
       color: '#2563eb',
       decimals: 1,
+      headerToolsHtml: '<button type="button" class="sample-header-tool">카드 추가</button>',
       reportValueOrderLabels: true,
       series: [{ points: [{ value: 10 }, { value: 12 }, { value: 14 }] }],
       chartDataList: [{ key: 'lng' }],
@@ -285,6 +288,9 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
   assert.ok(gasBodyHtml.includes('floating-table'));
   assert.ok(gasBodyHtml.includes('ratio-combined'));
   assert.ok(gasBodyHtml.includes('series-control'));
+  assert.ok(gasBodyHtml.includes('util-sheet-analysis-chart-actions-left'));
+  assert.ok(gasBodyHtml.includes('util-sheet-analysis-chart-actions-right'));
+  assert.ok(gasBodyHtml.includes('sample-header-tool'));
   assert.ok(gasBodyHtml.includes('data-role="util-sheet-analysis-series-label-toggle"'));
   assert.ok(gasBodyHtml.includes('data-series-label-keys="combined"'));
   assert.ok(gasBodyHtml.includes('data-role="util-sheet-analysis-graph-block"'));
@@ -292,6 +298,21 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
   assert.ok(gasBodyHtml.includes('util-sheet-analysis-summary-stat is-max'));
   assert.ok(gasBodyHtml.includes('util-sheet-analysis-summary-stat is-min'));
   assert.ok(gasBodyHtml.includes('util-sheet-analysis-summary-stat is-average'));
+  assert.ok(gasBodyHtml.includes('util-sheet-analysis-summary-stat-row'));
+  assert.ok(gasBodyHtml.includes('util-sheet-analysis-summary-label-toggle'));
+  assert.ok(gasBodyHtml.includes('util-sheet-analysis-summary-badge'));
+  assert.ok(gasBodyHtml.includes('util-sheet-analysis-summary-card-actions'));
+  assert.ok(gasBodyHtml.includes('sample-summary-action'));
+  assert.ok(gasBodyHtml.includes('--util-summary-badge-color:#be0032;'));
+  assert.ok(gasBodyHtml.includes('aria-label="그래프 2"'));
+  const summaryTitleIndex = gasBodyHtml.indexOf('Gas Total');
+  const summaryControlIndex = gasBodyHtml.indexOf('series-control', summaryTitleIndex);
+  const summaryStatRowIndex = gasBodyHtml.indexOf('util-sheet-analysis-summary-stat-row', summaryTitleIndex);
+  const summaryLabelToggleIndex = gasBodyHtml.indexOf('util-sheet-analysis-summary-label-toggle', summaryStatRowIndex);
+  assert.ok(summaryTitleIndex >= 0);
+  assert.ok(summaryControlIndex > summaryTitleIndex);
+  assert.ok(summaryStatRowIndex > summaryControlIndex);
+  assert.ok(summaryLabelToggleIndex > summaryStatRowIndex);
   assert.ok(!gasBodyHtml.includes('data-chart-subsection="circle"'));
   assert.ok(!gasBodyHtml.includes('data-role="util-sheet-analysis-ratio-pie"'));
   assert.ok(!gasBodyHtml.includes('data-role="util-sheet-analysis-ratio-table"'));
@@ -327,7 +348,7 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
 test('kpi html loads report sheet analysis render between modal render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=064');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=068');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');

@@ -9,6 +9,24 @@
     const RATIO_BUILDER_CARD_KEY = 'ratio-builder';
     const RATIO_CARD_PREFIX = 'ratio:';
     const EXPERIMENT_SHELL_STATE = new WeakMap();
+    const EXPERIMENT_DISTINCT_SERIES_COLORS = Object.freeze([
+        '#0067a5',
+        '#be0032',
+        '#008856',
+        '#875692',
+        '#f38400',
+        '#00a1c2',
+        '#b3446c',
+        '#654522',
+        '#8db600',
+        '#222222',
+        '#604e97',
+        '#e25822',
+        '#2b3d26',
+        '#f3c300',
+        '#848482',
+        '#a1caf1'
+    ]);
     const YEAR_OVERLAP_COLORS = Object.freeze(['#1f4e79', '#c00000', '#70ad47', '#7030a0', '#ed7d31', '#4472c4']);
 
     const NORMALIZATION_UNITS = Object.freeze({
@@ -18,6 +36,11 @@
         lpg_kg: Object.freeze({ key: 'lpg_kg', label: 'kg', family: 'lpg', dimension: 'mass' }),
         waste_m3: Object.freeze({ key: 'waste_m3', label: 'm3', family: 'waste', dimension: 'volume' }),
         money_krw: Object.freeze({ key: 'money_krw', label: 'KRW', family: 'money', dimension: 'money' }),
+        percent: Object.freeze({ key: 'percent', label: '%', family: 'percent', dimension: 'ratio' }),
+        time_hour: Object.freeze({ key: 'time_hour', label: '시간', family: 'time', dimension: 'time' }),
+        day_count: Object.freeze({ key: 'day_count', label: '일', family: 'day', dimension: 'count' }),
+        item_count: Object.freeze({ key: 'item_count', label: '개', family: 'item', dimension: 'count' }),
+        ea_count: Object.freeze({ key: 'ea_count', label: 'EA', family: 'ea', dimension: 'count' }),
         ratio_index: Object.freeze({ key: 'ratio_index', label: 'ratio', family: 'ratio', dimension: 'ratio' }),
         unknown: Object.freeze({ key: 'unknown', label: '', family: 'unknown', dimension: 'unknown' })
     });
@@ -46,6 +69,17 @@
         });
     }
 
+    function getSummaryMetricNormalizationUnitKey(metricKey = '') {
+        const key = String(metricKey || '').trim();
+        if (key === 'yield_rate' || key === 'operation_rate') return 'percent';
+        if (key === 'work_time' || key === 'total_work_time' || key === 'operation_time') return 'time_hour';
+        if (key === 'production_days' || key === 'off_days') return 'day_count';
+        if (key === 'product_count') return 'item_count';
+        if (key === 'stick_ea') return 'ea_count';
+        if (key === 'equipment_capa' || key === 'rework_production') return 'production_kg';
+        return 'unknown';
+    }
+
     function inferCardNormalization(card) {
         const key = String(card?.key || '').trim();
         if (!key || key === RATIO_BUILDER_CARD_KEY || key.startsWith(RATIO_CARD_PREFIX) || key.includes('-per-')) {
@@ -55,6 +89,14 @@
             return makeNormalization({
                 metricKind: 'production',
                 unitKey: 'production_kg',
+                fractionRole: 'both'
+            });
+        }
+        const summaryCard = parseSummaryCardKey(key);
+        if (summaryCard) {
+            return makeNormalization({
+                metricKind: 'team-detail',
+                unitKey: getSummaryMetricNormalizationUnitKey(summaryCard.metricKey),
                 fractionRole: 'both'
             });
         }
@@ -79,7 +121,7 @@
                 fractionRole: 'both'
             });
         }
-        if (key === 'waste-discharge') {
+        if (key === 'waste-discharge' || key.startsWith('waste-discharge-')) {
             return makeNormalization({
                 metricKind: 'usage',
                 unitKey: 'waste_m3',
@@ -95,6 +137,7 @@
             || key.startsWith('lng-cost-')
             || key.startsWith('lpg-cost-')
             || key === 'waste-cost'
+            || key.startsWith('waste-cost-')
             || /^waste-.+-cost$/.test(key)
             || key === 'cost-total'
             || key.startsWith('cost-')
@@ -191,6 +234,215 @@
         YUSAN_PRODUCTION_VALUES.map((value, index) => value + Number(BUKJEONG_PRODUCTION_VALUES[index] || 0))
     );
 
+    function createSummaryLineSelectionOption({
+        key,
+        subjectKey = key,
+        label,
+        scopeKeys = [],
+        teamKey = '',
+        lineNames = [],
+        color = '#2563eb'
+    } = {}) {
+        return Object.freeze({
+            key,
+            subjectKey,
+            label,
+            scopeKeys: Object.freeze((Array.isArray(scopeKeys) ? scopeKeys : []).filter(Boolean)),
+            teamKey,
+            lineNames: Object.freeze((Array.isArray(lineNames) ? lineNames : []).filter(Boolean)),
+            color
+        });
+    }
+
+    const SUMMARY_LINE_SELECTION_OPTIONS = Object.freeze([
+        createSummaryLineSelectionOption({ key: 'sd', label: 'SD', scopeKeys: ['total', 'bukjeong'], teamKey: 'team-01-01', lineNames: ['S/D 건조'], color: '#2563eb' }),
+        createSummaryLineSelectionOption({ key: 'msd', label: 'MSD', scopeKeys: ['total', 'bukjeong'], teamKey: 'team-01-01', lineNames: ['MSD'], color: '#ec4899' }),
+        createSummaryLineSelectionOption({ key: 'ica-1', label: 'ica -1', scopeKeys: ['total', 'yusan', 'team-01-02'], teamKey: 'team-01-02', lineNames: ['ica -1'], color: '#14b8a6' }),
+        createSummaryLineSelectionOption({ key: 'ica-2', label: 'ica -2', scopeKeys: ['total', 'yusan', 'team-01-02'], teamKey: 'team-01-02', lineNames: ['ica -2'], color: '#0d9488' }),
+        createSummaryLineSelectionOption({ key: 'ica-3', label: 'ica -3', scopeKeys: ['total', 'yusan', 'team-01-02'], teamKey: 'team-01-02', lineNames: ['ica -3'], color: '#0f766e' }),
+        createSummaryLineSelectionOption({ key: 'jidae', label: '지대', scopeKeys: ['total', 'yusan', 'team-01-02'], teamKey: 'team-01-02', lineNames: ['지대'], color: '#f97316' }),
+        createSummaryLineSelectionOption({ key: 'bag-20kg', label: '20kg bag포장', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['20kg bag포장'], color: '#a855f7' }),
+        createSummaryLineSelectionOption({ key: 'rotary-1', label: '로타리 1호기', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['로타리 1호기'], color: '#7c3aed' }),
+        createSummaryLineSelectionOption({ key: 'rotary-2', label: '로타리 2호기', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['로타리 2호기'], color: '#6d28d9' }),
+        createSummaryLineSelectionOption({ key: 'vertical-2', label: '버티컬 2호기', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['버티컬 2호기'], color: '#5b21b6' }),
+        createSummaryLineSelectionOption({ key: 'stick-1', label: '스틱1호기', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['스틱1호기'], color: '#22c55e' }),
+        createSummaryLineSelectionOption({ key: 'stick-2', label: '스틱2호기', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['스틱2호기'], color: '#16a34a' }),
+        createSummaryLineSelectionOption({ key: 'stick-3', label: '스틱3호기', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['스틱3호기'], color: '#15803d' }),
+        createSummaryLineSelectionOption({ key: 'stick-4', label: '스틱4호기', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['스틱4호기'], color: '#166534' }),
+        createSummaryLineSelectionOption({ key: 'stick-5', label: '스틱5호기', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['스틱5호기'], color: '#4d7c0f' }),
+        createSummaryLineSelectionOption({ key: 'stick-6', label: '스틱6호기', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['스틱6호기'], color: '#65a30d' }),
+        createSummaryLineSelectionOption({ key: 'stick-7', label: '스틱7호기', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['스틱7호기'], color: '#84cc16' }),
+        createSummaryLineSelectionOption({ key: 'stick-8', label: '스틱8호기', scopeKeys: ['total', 'yusan', 'team-02'], teamKey: 'team-02', lineNames: ['스틱8호기'], color: '#a3e635' }),
+        createSummaryLineSelectionOption({ key: 'bottle-28', label: 'Bottle 28', scopeKeys: ['total', 'yusan', 'team-03'], teamKey: 'team-03', lineNames: ['Bottle 28'], color: '#ef4444' }),
+        createSummaryLineSelectionOption({ key: 'bottle-38-manual', label: 'Bottle 38(수동)', scopeKeys: ['total', 'yusan', 'team-03'], teamKey: 'team-03', lineNames: ['Bottle 38(수동)'], color: '#dc2626' }),
+        createSummaryLineSelectionOption({ key: 'bottle-38-auto', label: 'Bottle 38(자동)', scopeKeys: ['total', 'yusan', 'team-03'], teamKey: 'team-03', lineNames: ['Bottle 38(자동)'], color: '#b91c1c' }),
+        createSummaryLineSelectionOption({ key: 'cheer-pack', label: 'Cheer pack', scopeKeys: ['total', 'yusan', 'team-03'], teamKey: 'team-03', lineNames: ['Cheer pack'], color: '#f59e0b' }),
+        createSummaryLineSelectionOption({ key: 'pouch', label: 'Pouch', scopeKeys: ['total', 'yusan', 'team-03'], teamKey: 'team-03', lineNames: ['Pouch'], color: '#d97706' }),
+        createSummaryLineSelectionOption({ key: 'team-03-stick', label: 'Stick', scopeKeys: ['total', 'yusan', 'team-03'], teamKey: 'team-03', lineNames: ['Stick'], color: '#0ea5e9' }),
+        createSummaryLineSelectionOption({ key: 'syrup-filling', label: '시럽충진', scopeKeys: ['total', 'yusan', 'team-03'], teamKey: 'team-03', lineNames: ['시럽충진'], color: '#0284c7' }),
+        createSummaryLineSelectionOption({ key: 'liquid-stick', label: '액상스틱', scopeKeys: ['total', 'yusan', 'team-03'], teamKey: 'team-03', lineNames: ['액상스틱'], color: '#0369a1' }),
+        createSummaryLineSelectionOption({ key: 'jehwan', label: '제환', scopeKeys: ['total', 'yusan', 'team-03'], teamKey: 'team-03', lineNames: ['제환'], color: '#0891b2' }),
+        createSummaryLineSelectionOption({ key: 'pearl-pouch', label: '펄-파우치충진', scopeKeys: ['total', 'yusan', 'team-03'], teamKey: 'team-03', lineNames: ['펄-파우치충진'], color: '#06b6d4' })
+    ]);
+
+    const SUMMARY_LINE_SUBJECT_KEYS = Object.freeze(PRODUCTION_LINES.map(line => line.key));
+
+    function getSummaryLineSelectionOptionBySubjectKey(subjectKey = '') {
+        const key = String(subjectKey || '').trim();
+        return SUMMARY_LINE_SELECTION_OPTIONS.find(option => option.subjectKey === key) || null;
+    }
+
+    function getSummaryLineSelectionSubjectScope(option = null) {
+        if (!option) return 'total';
+        if (option.scopeKeys?.includes('bukjeong')) return 'bukjeong';
+        if (option.scopeKeys?.includes('yusan')) return 'yusan';
+        return option.scopeKeys?.[0] || 'total';
+    }
+
+    const SUMMARY_EXACT_LINE_SUBJECTS = Object.freeze(SUMMARY_LINE_SELECTION_OPTIONS
+        .filter(option => !SUMMARY_LINE_SUBJECT_KEYS.includes(option.subjectKey))
+        .map(option => Object.freeze({
+            key: option.subjectKey,
+            label: option.label,
+            scopeKey: getSummaryLineSelectionSubjectScope(option),
+            teamKeys: Object.freeze([option.teamKey]),
+            lineNames: option.lineNames,
+            values: sumProductionTeamValues([option.teamKey]),
+            color: option.color
+        })));
+
+    const SUMMARY_LINE_SELECTION_MATCHES = Object.freeze([
+        Object.freeze({ subjectKey: 'ica', lineKeys: Object.freeze(['ica-1', 'ica-2', 'ica-3']) }),
+        Object.freeze({ subjectKey: 'rotary-vertical', lineKeys: Object.freeze(['rotary-1', 'rotary-2', 'vertical-2']) }),
+        Object.freeze({ subjectKey: 'stick', lineKeys: Object.freeze(['stick-1', 'stick-2', 'stick-3', 'stick-4', 'stick-5', 'stick-6', 'stick-7', 'stick-8']) }),
+        Object.freeze({ subjectKey: 'bottle', lineKeys: Object.freeze(['bottle-28', 'bottle-38-manual', 'bottle-38-auto']) }),
+        Object.freeze({ subjectKey: 'etc', lineKeys: Object.freeze(['cheer-pack', 'pouch', 'team-03-stick', 'syrup-filling', 'liquid-stick', 'jehwan', 'pearl-pouch']) })
+    ]);
+
+    const SUMMARY_METRIC_DEFINITIONS = Object.freeze([
+        Object.freeze({ key: 'yield_rate', label: '수율', unitLabel: '%', decimals: 1, color: '#0f766e' }),
+        Object.freeze({ key: 'operation_rate', label: '가동률', unitLabel: '%', decimals: 1, color: '#2563eb' }),
+        Object.freeze({ key: 'operation_time', label: '가동시간', unitLabel: '시간', decimals: 1, color: '#7c3aed', icon: 'fa-clock' }),
+        Object.freeze({ key: 'work_time', label: '조업시간', unitLabel: '시간', decimals: 1, color: '#0891b2', icon: 'fa-clock' }),
+        Object.freeze({ key: 'total_work_time', label: '총 조업시간', unitLabel: '시간', decimals: 1, color: '#0369a1', icon: 'fa-clock' }),
+        Object.freeze({ key: 'production_days', label: '생산일수', unitLabel: '일', decimals: 0, color: '#15803d', icon: 'fa-calendar-days' }),
+        Object.freeze({ key: 'off_days', label: '휴무일수', unitLabel: '일', decimals: 0, color: '#64748b', icon: 'fa-calendar-xmark' }),
+        Object.freeze({ key: 'product_count', label: '고유 품목수', unitLabel: '개', decimals: 0, color: '#ca8a04', icon: 'fa-boxes-stacked' }),
+        Object.freeze({ key: 'equipment_capa', label: '설비 CAPA', unitLabel: 'kg', decimals: 0, color: '#4f46e5', icon: 'fa-industry' }),
+        Object.freeze({ key: 'stick_ea', label: '스틱 입수량', unitLabel: 'EA', decimals: 0, color: '#db2777', icon: 'fa-cubes' }),
+        Object.freeze({ key: 'rework_production', label: '재가공품 생산량', unitLabel: 'kg', decimals: 0, color: '#be123c', icon: 'fa-recycle' })
+    ]);
+    const SUMMARY_METRIC_KEYS = Object.freeze(SUMMARY_METRIC_DEFINITIONS.map(metric => metric.key));
+    const SUMMARY_EFFICIENCY_METRIC_KEYS = Object.freeze([
+        'yield_rate',
+        'operation_rate',
+        'work_time',
+        'total_work_time',
+        'operation_time',
+        'equipment_capa'
+    ]);
+    const SUMMARY_DETAIL_METRIC_KEYS = Object.freeze([
+        'production_days',
+        'off_days',
+        'product_count',
+        'stick_ea',
+        'rework_production'
+    ]);
+    const SUMMARY_SUBJECTS = Object.freeze([
+        Object.freeze({ key: 'total', label: '전체', scopeKey: 'total', teamKeys: PRODUCTION_TEAMS.map(team => team.key), values: TOTAL_PRODUCTION_VALUES, color: '#111827' }),
+        Object.freeze({ key: 'bukjeong', label: '북정', scopeKey: 'bukjeong', teamKeys: BUKJEONG_PRODUCTION_TEAM_KEYS, values: BUKJEONG_PRODUCTION_VALUES, color: '#334155' }),
+        ...PRODUCTION_LINES
+            .filter(line => line.teamKey === 'team-01-01')
+            .map(line => Object.freeze({ key: line.key, label: line.label, scopeKey: 'bukjeong', teamKeys: [line.teamKey], lineKey: line.key, values: line.values, color: line.color })),
+        Object.freeze({ key: 'yusan', label: '유산', scopeKey: 'yusan', teamKeys: YUSAN_PRODUCTION_TEAM_KEYS, values: YUSAN_PRODUCTION_VALUES, color: '#0f766e' }),
+        ...PRODUCTION_TEAMS
+            .filter(team => team.key !== 'team-01-01')
+            .flatMap(team => [
+                Object.freeze({ key: team.key, label: team.label, scopeKey: team.key, teamKeys: [team.key], values: team.values, color: team.color }),
+                ...PRODUCTION_LINES
+                    .filter(line => line.teamKey === team.key)
+                    .map(line => Object.freeze({ key: line.key, label: line.label, scopeKey: team.key, teamKeys: [team.key], lineKey: line.key, values: line.values, color: line.color }))
+            ]),
+        ...SUMMARY_EXACT_LINE_SUBJECTS
+    ]);
+
+    function parseSummaryCardKey(cardKey = '') {
+        const key = String(cardKey || '').trim();
+        const metricKey = SUMMARY_METRIC_KEYS.find(item => key.endsWith(`-${item}`));
+        if (!metricKey || !key.startsWith('summary-')) return null;
+        const subjectKey = key.slice('summary-'.length, -(`-${metricKey}`).length);
+        return subjectKey ? { subjectKey, metricKey } : null;
+    }
+
+    function buildSummaryCardKey(subjectKey = '', metricKey = '') {
+        return `summary-${subjectKey}-${metricKey}`;
+    }
+
+    function getSummarySubjectOption(subjectKey = '') {
+        const key = String(subjectKey || '').trim();
+        return SUMMARY_SUBJECTS.find(subject => subject.key === key)
+            || GENERATED_SUMMARY_SUBJECTS.get(key)
+            || null;
+    }
+
+    function getSummaryMetricDefinition(metricKey = '') {
+        const key = String(metricKey || '').trim();
+        return SUMMARY_METRIC_DEFINITIONS.find(metric => metric.key === key) || null;
+    }
+
+    function getSummarySubjectBaseValues(subject = null) {
+        const values = Array.isArray(subject?.values) ? subject.values : [];
+        if (values.length) return values;
+        return sumProductionTeamValues(Array.isArray(subject?.teamKeys) ? subject.teamKeys : []);
+    }
+
+    function buildSummaryMetricFallbackValues(subject = null, metric = null) {
+        const baseValues = getSummarySubjectBaseValues(subject);
+        if (!baseValues.length) return [0, 0, 0, 0, 0, 0];
+        const averageBase = baseValues.reduce((sum, value) => sum + Number(value || 0), 0) / baseValues.length;
+        return baseValues.map((value, index) => {
+            const normalized = averageBase ? Number(value || 0) / averageBase : 1;
+            if (metric?.key === 'yield_rate') return Math.round((93 + normalized * 4 + index * 0.12) * 10) / 10;
+            if (metric?.key === 'operation_rate') return Math.round((78 + normalized * 9 + index * 0.18) * 10) / 10;
+            if (metric?.key === 'operation_time') return Math.round((Math.max(1, Number(value || 0)) * 0.18) * 10) / 10;
+            if (metric?.key === 'work_time') return Math.round((Math.max(1, Number(value || 0)) * 0.22) * 10) / 10;
+            if (metric?.key === 'total_work_time') return Math.round((Math.max(1, Number(value || 0)) * 0.28) * 10) / 10;
+            if (metric?.key === 'production_days') return Math.max(1, Math.round(18 + normalized * 4 + (index % 3)));
+            if (metric?.key === 'off_days') return Math.max(0, Math.round(3 - normalized + (index % 2)));
+            if (metric?.key === 'product_count') return Math.max(1, Math.round(8 + normalized * 5 + index));
+            if (metric?.key === 'equipment_capa') return Math.round(Math.max(1, Number(value || 0)) * 1.18);
+            if (metric?.key === 'stick_ea') return Math.round(Math.max(1, Number(value || 0)) * 6);
+            if (metric?.key === 'rework_production') return Math.round(Math.max(0, Number(value || 0)) * 0.045);
+            return Math.round(Number(value || 0) * 10) / 10;
+        });
+    }
+
+    function formatSummaryMetricCardValue(value, metric = null) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return '-';
+        const decimals = Math.max(0, Math.min(2, Math.trunc(Number(metric?.decimals) || 0)));
+        return `${number.toFixed(decimals)}${metric?.unitLabel || ''}`;
+    }
+
+    function createSummaryAnalysisCard(subject = null, metric = null) {
+        const values = buildSummaryMetricFallbackValues(subject, metric);
+        return createCard({
+            key: buildSummaryCardKey(subject?.key, metric?.key),
+            title: `${subject?.label || ''} ${metric?.label || ''}`.trim(),
+            valueText: `${formatSummaryMetricCardValue(values[0], metric)} → ${formatSummaryMetricCardValue(lastValue(values), metric)}`,
+            metaText: `종합 · ${subject?.label || ''} · 팀별내역서`,
+            subText: '팀별내역서 월별 집계',
+            icon: metric?.icon || (metric?.key === 'operation_time' ? 'fa-clock' : 'fa-gauge-high'),
+            tone: 'production',
+            color: subject?.color || metric?.color || '#2563eb',
+            values
+        });
+    }
+
+    const SUMMARY_CARDS = Object.freeze(SUMMARY_SUBJECTS.flatMap(subject => (
+        SUMMARY_METRIC_DEFINITIONS.map(metric => createSummaryAnalysisCard(subject, metric))
+    )));
+
     const ELECTRIC_USAGE_TEAM_DEFINITIONS = Object.freeze([
         { key: 'team-01-01', label: '1팀 1파트', color: '#eab308', values: [100, 103, 107, 111, 115, 117] },
         { key: 'team-01-02', label: '1팀 2파트', color: '#f59e0b', values: [100, 106, 111, 116, 121, 126] },
@@ -227,6 +479,7 @@
     const ELECTRIC_USAGE_TOTAL_VALUES = Object.freeze(sumMetricDefinitionValues(ELECTRIC_USAGE_TEAM_DEFINITIONS));
     const LNG_USAGE_YUSAN_VALUES = Object.freeze(sumMetricDefinitionValues(LNG_USAGE_TEAM_DEFINITIONS, ['team-01-02', 'team-03']));
     const LNG_USAGE_TOTAL_VALUES = Object.freeze(sumMetricDefinitionValues(LNG_USAGE_TEAM_DEFINITIONS));
+    const LPG_USAGE_TOTAL_VALUES = Object.freeze(sumMetricDefinitionValues(LPG_USAGE_TEAM_DEFINITIONS));
     const LPG_USAGE_TEAM_01_02_VALUES = Object.freeze(sumMetricDefinitionValues(LPG_USAGE_TEAM_DEFINITIONS, ['team-01-02']));
     const GAS_COST_TEAM_01_02_DISPLAY_VALUES = Object.freeze(sumMetricDefinitionValues(
         [...LNG_USAGE_TEAM_DEFINITIONS, ...LPG_USAGE_TEAM_DEFINITIONS],
@@ -375,6 +628,17 @@
             color: team.color,
             values: team.values
         })),
+        createCard({
+            key: 'lpg-usage',
+            title: 'LPG 사용량',
+            valueText: `${LPG_USAGE_TOTAL_VALUES[0]} → ${lastValue(LPG_USAGE_TOTAL_VALUES)}`,
+            metaText: '가스 · LPG 전체 · kg',
+            subText: `전월대비 ${formatSignedDelta(LPG_USAGE_TOTAL_VALUES)}`,
+            icon: 'fa-fire-flame-curved',
+            tone: 'gas',
+            color: '#f97316',
+            values: LPG_USAGE_TOTAL_VALUES
+        }),
         ...LPG_USAGE_TEAM_DEFINITIONS.map(team => createCard({
             key: `lpg-usage-${team.key}`,
             title: `${team.label} LPG 사용량`,
@@ -480,7 +744,16 @@
         });
     }
 
+    const WASTE_DISCHARGE_TOTAL_VALUES = Object.freeze([100, 99, 104, 108, 112, 116]);
+    const WASTE_DISCHARGE_BUKJEONG_VALUES = Object.freeze([35, 35, 36, 38, 39, 41]);
+    const WASTE_DISCHARGE_YUSAN_VALUES = Object.freeze(WASTE_DISCHARGE_TOTAL_VALUES.map((value, index) => (
+        value - Number(WASTE_DISCHARGE_BUKJEONG_VALUES[index] || 0)
+    )));
     const WASTE_COST_TOTAL_VALUES = Object.freeze(sumDefinitionValues(WASTE_COST_DETAIL_DEFINITIONS));
+    const WASTE_COST_BUKJEONG_VALUES = Object.freeze(WASTE_COST_TOTAL_VALUES.map(value => Math.round(Number(value || 0) * 0.35)));
+    const WASTE_COST_YUSAN_VALUES = Object.freeze(WASTE_COST_TOTAL_VALUES.map((value, index) => (
+        value - Number(WASTE_COST_BUKJEONG_VALUES[index] || 0)
+    )));
 
     const COST_TEAM_01_01_VALUES = Object.freeze(sumValueArrays([
         getMetricDefinitionValues(ELECTRIC_USAGE_TEAM_DEFINITIONS, 'team-01-01'),
@@ -500,13 +773,16 @@
     ]));
     const COST_BUKJEONG_VALUES = Object.freeze(sumValueArrays([
         COST_TEAM_01_01_VALUES,
-        WASTE_COST_TOTAL_VALUES
+        WASTE_COST_BUKJEONG_VALUES
     ]));
-    const COST_YUSAN_VALUES = Object.freeze(sumValueArrays([
+    const COST_YUSAN_EXCLUDING_WASTE_VALUES = Object.freeze(sumValueArrays([
         COST_TEAM_01_02_VALUES,
         COST_TEAM_02_VALUES,
-        COST_TEAM_03_VALUES,
-        WASTE_COST_TOTAL_VALUES
+        COST_TEAM_03_VALUES
+    ]));
+    const COST_YUSAN_VALUES = Object.freeze(sumValueArrays([
+        COST_YUSAN_EXCLUDING_WASTE_VALUES,
+        WASTE_COST_YUSAN_VALUES
     ]));
     const COST_TOTAL_VALUES = Object.freeze(sumValueArrays([
         COST_TEAM_01_01_VALUES,
@@ -517,7 +793,9 @@
     ]));
 
     const WASTE_CARDS = Object.freeze([
-        createCard({ key: 'waste-discharge', title: '폐수 방류량', valueText: '100 → 116', metaText: '폐수 · 방류량 · ㎥', subText: '전월대비 +7.0%', icon: 'fa-water', tone: 'waste', color: '#7c3aed', values: [100, 99, 104, 108, 112, 116] }),
+        createCard({ key: 'waste-discharge', title: '폐수 방류량', valueText: `${WASTE_DISCHARGE_TOTAL_VALUES[0]} → ${lastValue(WASTE_DISCHARGE_TOTAL_VALUES)}`, metaText: '폐수 · 전체 방류량 · ㎥', subText: `전월대비 ${formatSignedDelta(WASTE_DISCHARGE_TOTAL_VALUES)}`, icon: 'fa-water', tone: 'waste', color: '#7c3aed', values: WASTE_DISCHARGE_TOTAL_VALUES }),
+        createCard({ key: 'waste-discharge-bukjeong', title: '북정 폐수 방류량', valueText: `${WASTE_DISCHARGE_BUKJEONG_VALUES[0]} → ${lastValue(WASTE_DISCHARGE_BUKJEONG_VALUES)}`, metaText: '폐수 · 북정 방류량 · ㎥', subText: `전월대비 ${formatSignedDelta(WASTE_DISCHARGE_BUKJEONG_VALUES)}`, icon: 'fa-water', tone: 'waste', color: '#0891b2', values: WASTE_DISCHARGE_BUKJEONG_VALUES }),
+        createCard({ key: 'waste-discharge-yusan', title: '유산 폐수 방류량', valueText: `${WASTE_DISCHARGE_YUSAN_VALUES[0]} → ${lastValue(WASTE_DISCHARGE_YUSAN_VALUES)}`, metaText: '폐수 · 유산 방류량 · ㎥', subText: `전월대비 ${formatSignedDelta(WASTE_DISCHARGE_YUSAN_VALUES)}`, icon: 'fa-water', tone: 'waste', color: '#0f766e', values: WASTE_DISCHARGE_YUSAN_VALUES }),
         createCard({
             key: 'waste-cost',
             title: '폐수 처리 비용',
@@ -528,6 +806,28 @@
             tone: 'cost',
             color: '#dc2626',
             values: WASTE_COST_TOTAL_VALUES
+        }),
+        createCard({
+            key: 'waste-cost-bukjeong',
+            title: '북정 폐수 처리 비용',
+            valueText: `${WASTE_COST_BUKJEONG_VALUES[0]} → ${lastValue(WASTE_COST_BUKJEONG_VALUES)}`,
+            metaText: '폐수 · 북정 처리 비용 · 원',
+            subText: `전월대비 ${formatSignedDelta(WASTE_COST_BUKJEONG_VALUES)}`,
+            icon: 'fa-coins',
+            tone: 'cost',
+            color: '#0891b2',
+            values: WASTE_COST_BUKJEONG_VALUES
+        }),
+        createCard({
+            key: 'waste-cost-yusan',
+            title: '유산 폐수 처리 비용',
+            valueText: `${WASTE_COST_YUSAN_VALUES[0]} → ${lastValue(WASTE_COST_YUSAN_VALUES)}`,
+            metaText: '폐수 · 유산 처리 비용 · 원',
+            subText: `전월대비 ${formatSignedDelta(WASTE_COST_YUSAN_VALUES)}`,
+            icon: 'fa-coins',
+            tone: 'cost',
+            color: '#0f766e',
+            values: WASTE_COST_YUSAN_VALUES
         }),
         ...WASTE_COST_DETAIL_DEFINITIONS.map(createCard)
     ]);
@@ -576,6 +876,13 @@
             values: COST_YUSAN_VALUES
         }),
         createCostSummaryCard({
+            key: 'cost-yusan-excluding-waste',
+            title: '유산 폐수 제외 비용',
+            metaText: '비용 · 유산 · 가스+전기 · 원',
+            color: '#2563eb',
+            values: COST_YUSAN_EXCLUDING_WASTE_VALUES
+        }),
+        createCostSummaryCard({
             key: 'cost-total',
             title: '비용',
             metaText: '비용 · 전체 · 전기+가스+폐수 모든 비용 총 합 · 원',
@@ -604,10 +911,13 @@
         Object.freeze({ key: 'gas', title: '가스', desc: 'LNG/LPG 사용량과 금액', cards: GAS_CARDS }),
         Object.freeze({ key: 'waste', title: '폐수', desc: '방류량과 처리비용', cards: WASTE_CARDS }),
         Object.freeze({ key: 'cost', title: '비용', desc: '팀/사업장별 전기+가스+폐수 비용 합계', cards: COST_CARDS }),
+        Object.freeze({ key: 'summary', title: '종합', desc: '팀별내역서 주요 생산 내역', cards: SUMMARY_CARDS }),
         Object.freeze({ key: 'ratio', title: '비율', desc: '정규화된 지표 조합으로 비율을 만듭니다.', cards: RATIO_CARDS })
     ]);
 
     const ALL_ANALYSIS_CARDS = Object.freeze(ANALYSIS_CARD_GROUPS.flatMap(group => group.cards));
+    const GENERATED_SUMMARY_SUBJECTS = new Map();
+    const GENERATED_SUMMARY_CARDS = [];
     const EXPERIMENT_TEAM_DATA_KEYS = Object.freeze({
         'team-01-01': 'work_team_calendar_team1_part1',
         'team-01-02': 'work_team_calendar_team1_part2',
@@ -647,6 +957,21 @@
             Object.freeze({ key: 'thousand-krw', label: '천원', scale: 1000, decimals: 0 }),
             Object.freeze({ key: 'million-krw', label: '백만원', scale: 1000000, decimals: 1 })
         ]),
+        percent: Object.freeze([
+            Object.freeze({ key: 'percent', label: '%', scale: 1, decimals: 1 })
+        ]),
+        time: Object.freeze([
+            Object.freeze({ key: 'hour', label: '시간', scale: 1, decimals: 1 })
+        ]),
+        day: Object.freeze([
+            Object.freeze({ key: 'day', label: '일', scale: 1, decimals: 0 })
+        ]),
+        item: Object.freeze([
+            Object.freeze({ key: 'item', label: '개', scale: 1, decimals: 0 })
+        ]),
+        ea: Object.freeze([
+            Object.freeze({ key: 'ea', label: 'EA', scale: 1, decimals: 0 })
+        ]),
         ratio: Object.freeze([
             Object.freeze({ key: 'ratio', label: 'ratio', scale: 1, decimals: 3 })
         ])
@@ -658,6 +983,26 @@
         'waste-resin-cost': 'resin',
         'waste-labor-cost': 'labor'
     });
+    const CARD_BUILDER_CATEGORIES = Object.freeze([
+        Object.freeze({ key: 'production', title: '생산량' }),
+        Object.freeze({ key: 'utility', title: '유틸리티' }),
+        Object.freeze({ key: 'cost', title: '비용' })
+    ]);
+    const CARD_BUILDER_GROUPS = CARD_BUILDER_CATEGORIES;
+    const CARD_BUILDER_TARGETS = Object.freeze([
+        Object.freeze({ key: 'total', label: '전체' }),
+        Object.freeze({ key: 'bukjeong', label: '북정' }),
+        Object.freeze({ key: 'yusan', label: '유산' }),
+        Object.freeze({ key: 'team-01-02', label: '1팀 2파트' }),
+        Object.freeze({ key: 'team-02', label: '2팀' }),
+        Object.freeze({ key: 'team-03', label: '3팀' })
+    ]);
+    const DEFAULT_CARD_BUILDER_MODE = 'basic';
+    const CARD_BUILDER_MODES = Object.freeze([
+        Object.freeze({ key: 'basic', label: '기본' }),
+        Object.freeze({ key: 'efficiency', label: '효율' }),
+        Object.freeze({ key: 'detail', label: '내역' })
+    ]);
 
     function getCardKey(cardOrKey) {
         return String(cardOrKey?.key || cardOrKey || '').trim();
@@ -666,7 +1011,593 @@
     function findAnalysisCard(cardOrKey) {
         const cardKey = getCardKey(cardOrKey);
         if (!cardKey) return null;
-        return ALL_ANALYSIS_CARDS.find(card => card.key === cardKey) || null;
+        return ALL_ANALYSIS_CARDS.find(card => card.key === cardKey)
+            || GENERATED_SUMMARY_CARDS.find(card => card.key === cardKey)
+            || null;
+    }
+
+    function normalizeCardBuilderGroupKey(groupKey = DEFAULT_GROUP_KEY) {
+        const raw = String(groupKey || DEFAULT_GROUP_KEY).trim();
+        if (raw === 'electric' || raw === 'gas' || raw === 'waste') return 'utility';
+        return CARD_BUILDER_CATEGORIES.some(group => group.key === raw) ? raw : DEFAULT_GROUP_KEY;
+    }
+
+    function getCardBuilderGroupOption(groupKey = DEFAULT_GROUP_KEY) {
+        const normalizedKey = normalizeCardBuilderGroupKey(groupKey);
+        return CARD_BUILDER_CATEGORIES.find(group => group.key === normalizedKey) || CARD_BUILDER_CATEGORIES[0];
+    }
+
+    function normalizeCardBuilderScopeKey(scopeKey = 'total') {
+        const raw = String(scopeKey || 'total').trim();
+        return CARD_BUILDER_TARGETS.some(scope => scope.key === raw) ? raw : 'total';
+    }
+
+    function getCardBuilderScopeOption(scopeKey = 'total') {
+        const normalizedKey = normalizeCardBuilderScopeKey(scopeKey);
+        return CARD_BUILDER_TARGETS.find(scope => scope.key === normalizedKey) || CARD_BUILDER_TARGETS[0];
+    }
+
+    function normalizeCardBuilderModeKey(modeKey = DEFAULT_CARD_BUILDER_MODE) {
+        const raw = String(modeKey || DEFAULT_CARD_BUILDER_MODE).trim();
+        return CARD_BUILDER_MODES.some(mode => mode.key === raw) ? raw : DEFAULT_CARD_BUILDER_MODE;
+    }
+
+    function getCardBuilderModeOption(modeKey = DEFAULT_CARD_BUILDER_MODE) {
+        const normalizedKey = normalizeCardBuilderModeKey(modeKey);
+        return CARD_BUILDER_MODES.find(mode => mode.key === normalizedKey) || CARD_BUILDER_MODES[0];
+    }
+
+    function isSummaryCardBuilderMode(modeKey = '') {
+        const key = String(modeKey || '').trim();
+        return key === 'efficiency' || key === 'detail' || key === 'summary';
+    }
+
+    function getSummaryModeMetricKeys(modeKey = '') {
+        const key = String(modeKey || '').trim();
+        if (key === 'efficiency') return SUMMARY_EFFICIENCY_METRIC_KEYS;
+        if (key === 'detail') return SUMMARY_DETAIL_METRIC_KEYS;
+        return SUMMARY_METRIC_KEYS;
+    }
+
+    function getSummaryModeKeyForMetric(metricKey = '') {
+        const key = String(metricKey || '').trim();
+        if (SUMMARY_DETAIL_METRIC_KEYS.includes(key)) return 'detail';
+        if (SUMMARY_EFFICIENCY_METRIC_KEYS.includes(key)) return 'efficiency';
+        return 'efficiency';
+    }
+
+    function getSummarySubjectOptions(scopeKey = 'total') {
+        const scope = normalizeCardBuilderScopeKey(scopeKey);
+        return SUMMARY_SUBJECTS.filter(subject => subject.scopeKey === scope);
+    }
+
+    function getSummaryLineOptionByKey(lineKey = '') {
+        const key = String(lineKey || '').trim();
+        return SUMMARY_LINE_SELECTION_OPTIONS.find(option => option.key === key) || null;
+    }
+
+    function getSummaryLineOptionsForScope(scopeKey = 'total') {
+        const scope = normalizeCardBuilderScopeKey(scopeKey);
+        return SUMMARY_LINE_SELECTION_OPTIONS.filter(option => option.scopeKeys.includes(scope));
+    }
+
+    function normalizeSummaryLineSelection(scopeKey = 'total', lineKeys = []) {
+        const options = getSummaryLineOptionsForScope(scopeKey);
+        const requestedKeys = new Set((Array.isArray(lineKeys) ? lineKeys : [])
+            .map(key => String(key || '').trim())
+            .filter(Boolean));
+        return options
+            .map(option => option.key)
+            .filter(key => requestedKeys.has(key));
+    }
+
+    function getSummaryLineSelectionStorageKey(scopeKey = 'total') {
+        return normalizeCardBuilderScopeKey(scopeKey);
+    }
+
+    function getSummaryLineSelectionKeys(shell, scopeKey = 'total') {
+        const state = getExperimentShellState(shell);
+        if (!state.summaryLineSelections || typeof state.summaryLineSelections !== 'object') state.summaryLineSelections = {};
+        const storageKey = getSummaryLineSelectionStorageKey(scopeKey);
+        const options = getSummaryLineOptionsForScope(storageKey);
+        if (!options.length) return [];
+        const storedKeys = Array.isArray(state.summaryLineSelections[storageKey])
+            ? state.summaryLineSelections[storageKey]
+            : options.map(option => option.key);
+        const normalizedKeys = normalizeSummaryLineSelection(storageKey, storedKeys);
+        state.summaryLineSelections[storageKey] = normalizedKeys;
+        return normalizedKeys;
+    }
+
+    function setSummaryLineSelectionKeys(shell, scopeKey = 'total', lineKeys = []) {
+        const state = getExperimentShellState(shell);
+        if (!state.summaryLineSelections || typeof state.summaryLineSelections !== 'object') state.summaryLineSelections = {};
+        const storageKey = getSummaryLineSelectionStorageKey(scopeKey);
+        const normalizedKeys = normalizeSummaryLineSelection(storageKey, lineKeys);
+        state.summaryLineSelections[storageKey] = normalizedKeys;
+        return normalizedKeys;
+    }
+
+    function areSameSummaryLineKeySet(leftKeys = [], rightKeys = []) {
+        const left = (Array.isArray(leftKeys) ? leftKeys : []).map(key => String(key || '').trim()).filter(Boolean).sort();
+        const right = (Array.isArray(rightKeys) ? rightKeys : []).map(key => String(key || '').trim()).filter(Boolean).sort();
+        return left.length === right.length && left.every((key, index) => key === right[index]);
+    }
+
+    function getSummaryMatchedLineSubject(lineKeys = []) {
+        const match = SUMMARY_LINE_SELECTION_MATCHES.find(item => areSameSummaryLineKeySet(item.lineKeys, lineKeys));
+        return match ? getSummarySubjectOption(match.subjectKey) : null;
+    }
+
+    function buildGeneratedSummarySubjectKey(scopeKey = 'total', lineKeys = []) {
+        const scope = normalizeCardBuilderScopeKey(scopeKey);
+        const keyPart = (Array.isArray(lineKeys) ? lineKeys : [])
+            .map(key => String(key || '').trim())
+            .filter(Boolean)
+            .join('__');
+        return keyPart ? `custom-${scope}-${keyPart}` : '';
+    }
+
+    function ensureGeneratedSummarySubject(scopeKey = 'total', lineKeys = []) {
+        const normalizedKeys = normalizeSummaryLineSelection(scopeKey, lineKeys);
+        const subjectKey = buildGeneratedSummarySubjectKey(scopeKey, normalizedKeys);
+        if (!subjectKey) return null;
+        if (GENERATED_SUMMARY_SUBJECTS.has(subjectKey)) return GENERATED_SUMMARY_SUBJECTS.get(subjectKey);
+        const lineOptions = normalizedKeys.map(getSummaryLineOptionByKey).filter(Boolean);
+        if (!lineOptions.length) return null;
+        const teamKeys = Array.from(new Set(lineOptions.map(option => option.teamKey).filter(Boolean)));
+        const lineNames = Array.from(new Set(lineOptions.flatMap(option => option.lineNames || [])));
+        const label = lineOptions.map(option => option.label).join(' + ');
+        const subject = Object.freeze({
+            key: subjectKey,
+            label,
+            scopeKey: normalizeCardBuilderScopeKey(scopeKey),
+            teamKeys: Object.freeze(teamKeys),
+            lineNames: Object.freeze(lineNames),
+            values: sumProductionTeamValues(teamKeys),
+            color: lineOptions[0]?.color || getCardBuilderScopeOption(scopeKey)?.color || '#2563eb'
+        });
+        GENERATED_SUMMARY_SUBJECTS.set(subjectKey, subject);
+        return subject;
+    }
+
+    function resolveSummaryLineSelectionSubject(scopeKey = 'total', selectedLineKeys = []) {
+        const options = getSummaryLineOptionsForScope(scopeKey);
+        const normalizedKeys = normalizeSummaryLineSelection(scopeKey, selectedLineKeys);
+        if (!options.length || !normalizedKeys.length) return null;
+        if (normalizedKeys.length === options.length) return getSummarySubjectOption(normalizeCardBuilderScopeKey(scopeKey));
+        const matchedSubject = getSummaryMatchedLineSubject(normalizedKeys);
+        if (matchedSubject) return matchedSubject;
+        if (normalizedKeys.length === 1) {
+            const option = getSummaryLineOptionByKey(normalizedKeys[0]);
+            return getSummarySubjectOption(option?.subjectKey) || ensureGeneratedSummarySubject(scopeKey, normalizedKeys);
+        }
+        return ensureGeneratedSummarySubject(scopeKey, normalizedKeys);
+    }
+
+    function resolveSummaryLineSelection(shell, scopeKey = 'total') {
+        const lineOptions = getSummaryLineOptionsForScope(scopeKey);
+        const selectedLineKeys = getSummaryLineSelectionKeys(shell, scopeKey);
+        const selectedOptions = selectedLineKeys.map(getSummaryLineOptionByKey).filter(Boolean);
+        const subject = resolveSummaryLineSelectionSubject(scopeKey, selectedLineKeys);
+        const isAll = Boolean(lineOptions.length && selectedLineKeys.length === lineOptions.length);
+        const generatedSubjectKey = buildGeneratedSummarySubjectKey(scopeKey, selectedLineKeys);
+        const label = isAll
+            ? '전체'
+            : (subject && subject.key !== generatedSubjectKey
+                ? subject.label
+                : selectedOptions.map(option => option.label).join(' + '));
+        return {
+            lineOptions,
+            selectedLineKeys,
+            selectedOptions,
+            subject,
+            isAll,
+            label: label || '라인 선택'
+        };
+    }
+
+    function ensureGeneratedSummaryAnalysisCard(subject = null, metricOrKey = '') {
+        const metric = typeof metricOrKey === 'object' ? metricOrKey : getSummaryMetricDefinition(metricOrKey);
+        if (!subject || !metric) return null;
+        const cardKey = buildSummaryCardKey(subject.key, metric.key);
+        const staticCard = ALL_ANALYSIS_CARDS.find(card => card.key === cardKey);
+        if (staticCard) return staticCard;
+        const existingCard = GENERATED_SUMMARY_CARDS.find(card => card.key === cardKey);
+        if (existingCard) return existingCard;
+        const card = createSummaryAnalysisCard(subject, metric);
+        GENERATED_SUMMARY_CARDS.push(card);
+        return card;
+    }
+
+    function canQueryExperimentSummaryProductionData() {
+        return typeof root.getUtilDailyProductionValue === 'function';
+    }
+
+    function getSummaryMetricAvailabilityMonthKeys(shell = null) {
+        if (shell?.querySelector) {
+            const period = getActivePeriod(shell);
+            if (Array.isArray(period?.monthKeys) && period.monthKeys.length) return period.monthKeys;
+        }
+        return buildMonthKeys(DEFAULT_PERIOD_START, DEFAULT_PERIOD_END);
+    }
+
+    function hasSummaryMetricValue(subjectKey = '', metricKey = '', monthKeys = []) {
+        if (!canQueryExperimentSummaryProductionData()) return true;
+        const months = Array.isArray(monthKeys) && monthKeys.length
+            ? monthKeys
+            : buildMonthKeys(DEFAULT_PERIOD_START, DEFAULT_PERIOD_END);
+        return months.some(monthKey => Number.isFinite(getSummaryMetricValue(subjectKey, metricKey, monthKey)));
+    }
+
+    function addSummaryCardBuilderOption(options, subjectKey = '', metricKey = '', label = '', subjectOverride = null) {
+        const cardKey = buildSummaryCardKey(subjectKey, metricKey);
+        const metric = getSummaryMetricDefinition(metricKey);
+        const card = findAnalysisCard(cardKey) || ensureGeneratedSummaryAnalysisCard(subjectOverride, metric);
+        if (!card || options.some(item => item.key === card.key)) return;
+        options.push({
+            key: card.key,
+            label: label || metric?.label || getCompactAnalysisCardTitle(card),
+            card
+        });
+    }
+
+    function getSummaryMetricOptions(subjectKey = '', shell = null, modeKey = '') {
+        const subject = getSummarySubjectOption(subjectKey);
+        if (!subject) return [];
+        const options = [];
+        const monthKeys = getSummaryMetricAvailabilityMonthKeys(shell);
+        const allowedMetricKeys = new Set(getSummaryModeMetricKeys(modeKey));
+        SUMMARY_METRIC_DEFINITIONS.forEach(metric => {
+            if (!allowedMetricKeys.has(metric.key)) return;
+            if (!hasSummaryMetricValue(subject.key, metric.key, monthKeys)) return;
+            addSummaryCardBuilderOption(options, subject.key, metric.key, metric.label, subject);
+        });
+        return options;
+    }
+
+    function addCardBuilderOption(options, cardKey = '', label = '') {
+        const card = findAnalysisCard(cardKey);
+        if (!card || options.some(item => item.key === card.key)) return;
+        options.push({
+            key: card.key,
+            label: label || getCompactAnalysisCardTitle(card),
+            card
+        });
+    }
+
+    function matchesCardBuilderTeamTarget(targetKey = 'total', teamKey = '') {
+        const target = String(targetKey || 'total').trim();
+        const team = String(teamKey || '').trim();
+        if (target === 'total') return false;
+        if (target === 'bukjeong') return team === 'team-01-01';
+        if (target === 'yusan') return EXPERIMENT_YUSAN_TEAM_KEYS.includes(team);
+        return target === team;
+    }
+
+    function getProductionTargetTotalCardKey(targetKey = 'total') {
+        const target = String(targetKey || 'total').trim();
+        if (target === 'total') return 'production-total';
+        if (target === 'bukjeong') return 'production-team-01-01';
+        if (target === 'yusan') return 'production-yusan';
+        return EXPERIMENT_TEAM_DATA_KEYS[target] ? `production-${target}` : '';
+    }
+
+    function buildProductionCardBuilderDetails(targetKey = 'total') {
+        const target = String(targetKey || 'total').trim();
+        const options = [];
+        addCardBuilderOption(options, getProductionTargetTotalCardKey(target));
+        if (target === 'total' || target === 'yusan') return options;
+        PRODUCTION_LINES
+            .filter(line => matchesCardBuilderTeamTarget(target, line.teamKey))
+            .forEach(line => addCardBuilderOption(options, `line-${line.key}-production`));
+        return options;
+    }
+
+    function buildUtilityCardBuilderDetails(targetKey = 'total') {
+        const target = String(targetKey || 'total').trim();
+        const options = [];
+        if (target === 'total') {
+            addCardBuilderOption(options, 'electric-usage', '전기 사용량');
+            addCardBuilderOption(options, 'lng-usage', 'LNG 사용량');
+            addCardBuilderOption(options, 'lpg-usage', 'LPG 사용량');
+            addCardBuilderOption(options, 'waste-discharge', '폐수 방류량');
+            return options;
+        }
+        if (target === 'bukjeong') {
+            addCardBuilderOption(options, 'electric-usage-team-01-01', '전기 사용량');
+            addCardBuilderOption(options, 'lng-usage-team-01-01', 'LNG 사용량');
+            addCardBuilderOption(options, 'waste-discharge-bukjeong', '폐수 방류량');
+            return options;
+        }
+        if (target === 'yusan') {
+            addCardBuilderOption(options, 'electric-usage-yusan', '전기 사용량');
+            addCardBuilderOption(options, 'lng-usage-yusan', 'LNG 사용량');
+            addCardBuilderOption(options, 'lpg-usage-team-01-02', 'LPG 사용량');
+            addCardBuilderOption(options, 'waste-discharge-yusan', '폐수 방류량');
+            return options;
+        }
+        addCardBuilderOption(options, `electric-usage-${target}`, '전기 사용량');
+        addCardBuilderOption(options, `lng-usage-${target}`, 'LNG 사용량');
+        addCardBuilderOption(options, `lpg-usage-${target}`, 'LPG 사용량');
+        return options;
+    }
+
+    function addTeamCostCardBuilderDetails(options, teamKey = '', totalLabel = '전체 비용') {
+        addCardBuilderOption(options, `cost-${teamKey}`, totalLabel);
+        addCardBuilderOption(options, `electric-cost-${teamKey}`, '전기 비용');
+        addCardBuilderOption(options, `lng-cost-${teamKey}`, 'LNG 비용');
+        addCardBuilderOption(options, `lpg-cost-${teamKey}`, 'LPG 비용');
+        if (teamKey === 'team-01-02') addCardBuilderOption(options, 'gas-cost-team-01-02', '가스 비용');
+    }
+
+    function buildCostCardBuilderDetails(targetKey = 'total') {
+        const target = String(targetKey || 'total').trim();
+        const options = [];
+        if (target === 'total') {
+            addCardBuilderOption(options, 'cost-total', '전체 비용');
+            addCardBuilderOption(options, 'electric-cost', '전기 비용');
+            addCardBuilderOption(options, 'gas-cost', '가스 비용');
+            addCardBuilderOption(options, 'lng-cost', 'LNG 비용');
+            addCardBuilderOption(options, 'waste-cost', '폐수 처리비용');
+            return options;
+        }
+        if (target === 'bukjeong') {
+            addCardBuilderOption(options, 'cost-bukjeong', '북정 전체 비용');
+            addCardBuilderOption(options, 'waste-cost-bukjeong', '폐수 비용');
+            addTeamCostCardBuilderDetails(options, 'team-01-01', '1팀 1파트 비용');
+            return options;
+        }
+        if (target === 'yusan') {
+            addCardBuilderOption(options, 'cost-yusan', '전체 비용');
+            addCardBuilderOption(options, 'cost-yusan-excluding-waste', '폐수 제외 비용');
+            addCardBuilderOption(options, 'electric-cost-yusan', '전기 비용');
+            addCardBuilderOption(options, 'gas-cost-yusan', '가스 비용');
+            addCardBuilderOption(options, 'lng-cost-yusan', 'LNG 비용');
+            addCardBuilderOption(options, 'lpg-cost-team-01-02', 'LPG 비용');
+            addCardBuilderOption(options, 'waste-cost-yusan', '폐수 비용');
+            return options;
+        }
+        addTeamCostCardBuilderDetails(options, target);
+        return options;
+    }
+
+    function getCardBuilderDetailOptions(groupKey = DEFAULT_GROUP_KEY, targetKey = 'total') {
+        const group = normalizeCardBuilderGroupKey(groupKey);
+        if (group === 'production') return buildProductionCardBuilderDetails(targetKey);
+        if (group === 'utility') return buildUtilityCardBuilderDetails(targetKey);
+        if (group === 'cost') return buildCostCardBuilderDetails(targetKey);
+        return [];
+    }
+
+    function getCardBuilderTargetOptions(groupKey = DEFAULT_GROUP_KEY) {
+        const group = normalizeCardBuilderGroupKey(groupKey);
+        return CARD_BUILDER_TARGETS.filter(target => getCardBuilderDetailOptions(group, target.key).length > 0);
+    }
+
+    function getCardBuilderCategoryOptions(scopeKey = 'total') {
+        const scope = normalizeCardBuilderScopeKey(scopeKey);
+        return CARD_BUILDER_CATEGORIES.filter(category => getCardBuilderDetailOptions(category.key, scope).length > 0);
+    }
+
+    function getAutoSelectedCardBuilderDetailKey(detailOptions = [], requestedDetailKey = '') {
+        const detailKey = String(requestedDetailKey || '').trim();
+        if (detailOptions.some(option => option.key === detailKey)) return detailKey;
+        return detailOptions.length === 1 ? detailOptions[0].key : '';
+    }
+
+    function getCurrentCardBuilderModeKey(shell) {
+        return normalizeCardBuilderModeKey(shell?.querySelector?.('[data-exp-card-mode]')?.value || DEFAULT_CARD_BUILDER_MODE);
+    }
+
+    function getSummaryLinePicker(shell) {
+        return shell?.querySelector?.('[data-exp-summary-line-picker]') || null;
+    }
+
+    function hideSummaryLinePickerControls(shell) {
+        const button = shell?.querySelector?.('[data-exp-summary-line-open]');
+        const targetSelect = shell?.querySelector?.('[data-exp-card-target]');
+        if (targetSelect) targetSelect.hidden = false;
+        if (button) {
+            button.hidden = true;
+            button.disabled = true;
+            button.textContent = '라인 선택';
+        }
+        const picker = getSummaryLinePicker(shell);
+        if (picker) picker.hidden = true;
+    }
+
+    function buildSummaryLinePickerOptionsHtml(scopeKey = 'total', selection = null) {
+        const resolved = selection || { lineOptions: [], selectedLineKeys: [], isAll: false, label: '라인 선택' };
+        const scopeLabel = getCardBuilderScopeOption(scopeKey)?.label || '';
+        const selectedSet = new Set(resolved.selectedLineKeys || []);
+        const allChecked = Boolean(resolved.lineOptions?.length && resolved.selectedLineKeys?.length === resolved.lineOptions.length);
+        if (!resolved.lineOptions?.length) {
+            return '<div class="util-sheet-empty experiment-summary-line-empty">선택할 라인이 없습니다.</div>';
+        }
+        const allHtml = `
+            <label class="experiment-summary-line-option is-all">
+                <input
+                    type="checkbox"
+                    data-exp-summary-line-check="all"
+                    onchange="KpiExperimentGraphPrototype.toggleSummaryLineSelection(this)"
+                    ${allChecked ? 'checked' : ''}
+                >
+                <span>전체</span>
+            </label>
+        `;
+        const optionHtml = resolved.lineOptions.map(option => `
+            <label class="experiment-summary-line-option">
+                <input
+                    type="checkbox"
+                    data-exp-summary-line-check="${escapeHtml(option.key)}"
+                    onchange="KpiExperimentGraphPrototype.toggleSummaryLineSelection(this)"
+                    ${selectedSet.has(option.key) ? 'checked' : ''}
+                >
+                <span>${escapeHtml(option.label)}</span>
+            </label>
+        `).join('');
+        return `
+            <div class="experiment-summary-line-context">
+                <span>${escapeHtml(scopeLabel)}</span>
+                <strong>${escapeHtml(resolved.label || '라인 선택')}</strong>
+            </div>
+            <div class="experiment-summary-line-check-grid">
+                ${allHtml}
+                ${optionHtml}
+            </div>
+        `;
+    }
+
+    function syncSummaryLinePicker(shell, scopeKey = '', selection = null) {
+        const picker = getSummaryLinePicker(shell);
+        if (!shell || !picker) return;
+        const normalizedScope = String(scopeKey || '').trim() ? normalizeCardBuilderScopeKey(scopeKey) : '';
+        const titleEl = picker.querySelector('[data-exp-summary-line-title]');
+        const optionsEl = picker.querySelector('[data-exp-summary-line-options]');
+        const resolved = normalizedScope ? (selection || resolveSummaryLineSelection(shell, normalizedScope)) : null;
+        if (titleEl) {
+            const scopeLabel = normalizedScope ? getCardBuilderScopeOption(normalizedScope)?.label : '';
+            titleEl.textContent = scopeLabel ? `${scopeLabel} 라인 선택` : '라인 선택';
+        }
+        if (optionsEl) optionsEl.innerHTML = normalizedScope ? buildSummaryLinePickerOptionsHtml(normalizedScope, resolved) : '';
+    }
+
+    function syncSummaryLineOpenButton(shell, scopeKey = '', selection = null) {
+        const button = shell?.querySelector?.('[data-exp-summary-line-open]');
+        if (!button) return;
+        const normalizedScope = String(scopeKey || '').trim() ? normalizeCardBuilderScopeKey(scopeKey) : '';
+        const resolved = normalizedScope ? (selection || resolveSummaryLineSelection(shell, normalizedScope)) : null;
+        const enabled = Boolean(normalizedScope && resolved?.lineOptions?.length);
+        button.hidden = !enabled;
+        button.disabled = !enabled;
+        button.textContent = resolved?.label || '라인 선택';
+        button.title = enabled ? '라인 선택' : '';
+    }
+
+    function setSummaryLinePickerOpen(shell, isOpen) {
+        const picker = getSummaryLinePicker(shell);
+        if (!shell || !picker) return;
+        const scopeKey = normalizeCardBuilderScopeKey(shell.querySelector('[data-exp-card-kind]')?.value || 'total');
+        if (isOpen) syncSummaryLinePicker(shell, scopeKey);
+        picker.hidden = !isOpen;
+    }
+
+    function buildCardBuilderOptionHtml(options = [], selectedKey = '', selectedKeys = null) {
+        const selectedSet = selectedKeys instanceof Set ? selectedKeys : new Set();
+        return (Array.isArray(options) ? options : []).map(option => {
+            const label = String(option?.label || option?.title || option?.key || '').trim();
+            return `<option value="${escapeHtml(option.key)}"${option.key === selectedKey ? ' selected' : ''}>${escapeHtml(selectedSet.has(option.key) ? `${label} · 추가됨` : label)}</option>`;
+        }).join('');
+    }
+
+    function buildCardBuilderSelectHtml(options = [], selectedKey = '', placeholder = '선택', selectedKeys = null) {
+        const selected = String(selectedKey || '').trim();
+        const placeholderHtml = `<option value=""${selected ? '' : ' selected'} disabled>${escapeHtml(placeholder)}</option>`;
+        return `${placeholderHtml}${buildCardBuilderOptionHtml(options, selected, selectedKeys)}`;
+    }
+
+    function buildCardBuilderStepOptionHtml(options = [], selectedKey = '', placeholder = '선택', contextParts = [], selectedKeys = null) {
+        const list = Array.isArray(options) ? options : [];
+        const context = (Array.isArray(contextParts) ? contextParts : [])
+            .map(part => String(part || '').trim())
+            .filter(Boolean);
+        const selectedSet = selectedKeys instanceof Set ? selectedKeys : new Set();
+        const placeholderHtml = `<option value=""${selectedKey ? '' : ' selected'} disabled>${escapeHtml(placeholder)}</option>`;
+        return `${placeholderHtml}${list.map(option => (
+            `<option value="${escapeHtml(option.key)}"${option.key === selectedKey ? ' selected' : ''}>${escapeHtml(`${context.concat(option.label || option.title || option.key).join(' / ')}${selectedSet.has(option.key) ? ' · 추가됨' : ''}`)}</option>`
+        )).join('')}`;
+    }
+
+    function getRatioCandidateKeySet(role = 'numerator', counterpartKey = '') {
+        return new Set(getRatioCandidateCards(role, counterpartKey).map(card => card.key));
+    }
+
+    function getRatioDetailOptions(role = 'numerator', categoryKey = DEFAULT_GROUP_KEY, scopeKey = 'total', counterpartKey = '', modeKey = DEFAULT_CARD_BUILDER_MODE) {
+        const allowedKeys = getRatioCandidateKeySet(role, counterpartKey);
+        const normalizedMode = normalizeCardBuilderModeKey(modeKey);
+        if (isSummaryCardBuilderMode(normalizedMode)) {
+            return getSummaryMetricOptions(categoryKey, null, normalizedMode).filter(option => allowedKeys.has(option.key));
+        }
+        return getCardBuilderDetailOptions(categoryKey, scopeKey).filter(option => allowedKeys.has(option.key));
+    }
+
+    function getRatioCategoryOptions(role = 'numerator', scopeKey = 'total', counterpartKey = '', modeKey = DEFAULT_CARD_BUILDER_MODE) {
+        const scope = normalizeCardBuilderScopeKey(scopeKey);
+        const normalizedMode = normalizeCardBuilderModeKey(modeKey);
+        if (isSummaryCardBuilderMode(normalizedMode)) {
+            return getSummarySubjectOptions(scope)
+                .filter(subject => getRatioDetailOptions(role, subject.key, scope, counterpartKey, normalizedMode).length > 0);
+        }
+        return CARD_BUILDER_CATEGORIES.filter(category => getRatioDetailOptions(role, category.key, scope, counterpartKey, 'basic').length > 0);
+    }
+
+    function getRatioScopeOptions(role = 'numerator', counterpartKey = '', modeKey = DEFAULT_CARD_BUILDER_MODE) {
+        const normalizedMode = normalizeCardBuilderModeKey(modeKey);
+        return CARD_BUILDER_TARGETS.filter(scope => getRatioCategoryOptions(role, scope.key, counterpartKey, normalizedMode).length > 0);
+    }
+
+    function getRatioModeOptions(role = 'numerator', counterpartKey = '') {
+        return CARD_BUILDER_MODES.filter(mode => getRatioScopeOptions(role, counterpartKey, mode.key).length > 0);
+    }
+
+    function findCardBuilderSelectionForCard(cardKey = '', allowedKeys = null) {
+        const key = String(cardKey || '').trim();
+        if (!key || (allowedKeys instanceof Set && !allowedKeys.has(key))) return null;
+        const summaryPath = parseSummaryCardKey(key);
+        if (summaryPath) {
+            const subject = getSummarySubjectOption(summaryPath.subjectKey);
+            if (subject) {
+                return {
+                    modeKey: getSummaryModeKeyForMetric(summaryPath.metricKey),
+                    scopeKey: subject.scopeKey,
+                    categoryKey: subject.key,
+                    detailKey: key
+                };
+            }
+        }
+        for (const scope of CARD_BUILDER_TARGETS) {
+            for (const category of getCardBuilderCategoryOptions(scope.key)) {
+                const detail = getCardBuilderDetailOptions(category.key, scope.key).find(option => option.key === key);
+                if (detail) {
+                    return {
+                        modeKey: 'basic',
+                        scopeKey: scope.key,
+                        categoryKey: category.key,
+                        detailKey: detail.key
+                    };
+                }
+            }
+        }
+        return null;
+    }
+
+    function getCardBuilderStep(scopeKey = '', categoryKey = '') {
+        const scope = String(scopeKey || '').trim();
+        const category = String(categoryKey || '').trim();
+        if (!scope) return 'group';
+        if (!category) return 'target';
+        return 'detail';
+    }
+
+    function buildCardBuilderPathHtml({ scopeOption = null, groupOption = null, targetLabel = '', detailOption = null, alreadySelected = false } = {}) {
+        const items = [];
+        if (scopeOption || groupOption) {
+            const option = scopeOption || groupOption;
+            items.push({ step: 'group', label: option.label || option.title || option.key || '' });
+        }
+        if (targetLabel) {
+            items.push({ step: 'target', label: targetLabel });
+        }
+        if (detailOption) {
+            items.push({ step: 'detail', label: alreadySelected ? `${detailOption.label} · 추가됨` : detailOption.label });
+        }
+        if (!items.length) return '';
+        return items.map(item => `
+            <button type="button" class="experiment-card-step-chip" data-exp-card-step-edit="${escapeHtml(item.step)}" onclick="KpiExperimentGraphPrototype.editBuilderStep(this)">
+                <span>${escapeHtml(item.label)}</span>
+            </button>
+        `).join('');
     }
 
     function isValidNumerator(card) {
@@ -735,6 +1666,16 @@
         return ALL_ANALYSIS_CARDS.filter(card => allowedKeys.has(card.key));
     }
 
+    function getAllRatioDenominatorCards() {
+        return ALL_ANALYSIS_CARDS.filter(card => isValidDenominator(card) && getAllowedNumeratorKeys(card).length > 0);
+    }
+
+    function getRatioCandidateCards(role = 'numerator', counterpartKey = '') {
+        const key = String(counterpartKey || '').trim();
+        if (role === 'denominator') return key ? getRatioDenominatorCards(key) : getAllRatioDenominatorCards();
+        return getRatioNumeratorCards(key);
+    }
+
     function getDefaultRatioNumeratorKey() {
         const preferred = ['electric-usage', 'lng-usage', 'lpg-usage', 'waste-discharge', 'production-total'];
         const numeratorCards = getRatioNumeratorCards();
@@ -778,7 +1719,7 @@
     root.KpiExperimentNormalizationRules = Object.freeze({
         units: NORMALIZATION_UNITS,
         fractionRules: Object.freeze([VALUE_RATIO_RULE]),
-        getCards: () => ALL_ANALYSIS_CARDS,
+        getCards: () => [...ALL_ANALYSIS_CARDS, ...GENERATED_SUMMARY_CARDS],
         findCard: findAnalysisCard,
         getCardNormalization: cardOrKey => findAnalysisCard(cardOrKey)?.normalization || null,
         resolveFractionRule,
@@ -821,6 +1762,8 @@
             unitKeys: {},
             seriesLabels: {},
             ratioCards: [],
+            summaryCards: [],
+            summaryLineSelections: {},
             showLabels: true,
             chartViewMode: 'chart',
             yearOverlap: false,
@@ -839,6 +1782,8 @@
         if (!state.unitKeys || typeof state.unitKeys !== 'object') state.unitKeys = {};
         if (!state.seriesLabels || typeof state.seriesLabels !== 'object') state.seriesLabels = {};
         if (!Array.isArray(state.ratioCards)) state.ratioCards = [];
+        if (!Array.isArray(state.summaryCards)) state.summaryCards = [];
+        if (!state.summaryLineSelections || typeof state.summaryLineSelections !== 'object') state.summaryLineSelections = {};
         if (typeof state.showLabels !== 'boolean') state.showLabels = true;
         if (String(state.chartViewMode || '').trim().toLowerCase() !== 'table') state.chartViewMode = 'chart';
         if (typeof state.yearOverlap !== 'boolean') state.yearOverlap = false;
@@ -904,7 +1849,8 @@
             .filter(Boolean);
         const staticCards = ALL_ANALYSIS_CARDS
             .filter(card => card.key !== RATIO_BUILDER_CARD_KEY && selectedKeys.includes(card.key));
-        return [...staticCards, ...getExperimentShellState(shell).ratioCards];
+        const state = getExperimentShellState(shell);
+        return [...staticCards, ...state.summaryCards, ...state.ratioCards];
     }
 
     function normalizeMonthKey(value, fallback = DEFAULT_PERIOD_START) {
@@ -1123,6 +2069,76 @@
         return String(value ?? '').trim().toLowerCase().replace(/\s+/g, '');
     }
 
+    function normalizeExperimentProductionText(value = '') {
+        return String(value ?? '').trim().replace(/\s+/g, ' ');
+    }
+
+    function normalizeExperimentProductKey(value = '') {
+        return normalizeExperimentProductionText(value).toLowerCase();
+    }
+
+    function formatExperimentDateKey(date) {
+        if (!date || typeof date.getFullYear !== 'function' || typeof date.getTime !== 'function' || Number.isNaN(date.getTime())) return '';
+        return [
+            String(date.getFullYear()).padStart(4, '0'),
+            String(date.getMonth() + 1).padStart(2, '0'),
+            String(date.getDate()).padStart(2, '0')
+        ].join('-');
+    }
+
+    function normalizeExperimentDateKey(value = '') {
+        if (value && typeof value.getFullYear === 'function') return formatExperimentDateKey(value);
+        const raw = String(value || '').trim();
+        const match = raw.match(/^(\d{4})[-.](\d{1,2})[-.](\d{1,2})$/);
+        if (!match) return '';
+        return [
+            match[1],
+            String(Number(match[2])).padStart(2, '0'),
+            String(Number(match[3])).padStart(2, '0')
+        ].join('-');
+    }
+
+    function getExperimentProductionEntryDateKey(entry = {}) {
+        return normalizeExperimentDateKey(entry?.dateLabel || entry?.date || entry?.productionDate);
+    }
+
+    function normalizeExperimentProductionKind(value) {
+        const normalized = String(value ?? '')
+            .trim()
+            .toLowerCase()
+            .replace(/[\s_-]+/g, '');
+        if (
+            normalized === 'rework'
+            || normalized === 'reprocess'
+            || normalized === 'reprocessed'
+            || normalized === 'reprocessedproduct'
+            || normalized === 'reworkproduct'
+            || normalized === '재가공'
+            || normalized === '재가공품'
+        ) {
+            return 'rework';
+        }
+        return 'normal';
+    }
+
+    function countExperimentOffDays(dateKeys = []) {
+        const sortedKeys = Array.from(new Set((Array.isArray(dateKeys) ? dateKeys : []).filter(Boolean))).sort();
+        if (sortedKeys.length < 2) return 0;
+        const activeSet = new Set(sortedKeys);
+        const firstDate = new Date(`${sortedKeys[0]}T00:00:00`);
+        const lastDate = new Date(`${sortedKeys[sortedKeys.length - 1]}T00:00:00`);
+        if (Number.isNaN(firstDate.getTime()) || Number.isNaN(lastDate.getTime())) return 0;
+        let offDays = 0;
+        const cursor = new Date(firstDate);
+        cursor.setDate(cursor.getDate() + 1);
+        while (cursor < lastDate) {
+            const dateKey = formatExperimentDateKey(cursor);
+            if (dateKey && !activeSet.has(dateKey)) offDays += 1;
+            cursor.setDate(cursor.getDate() + 1);
+        }
+        return offDays;
+    }
+
     function isProductionLineMatch(lineKey = '', entry = {}) {
         const lineText = normalizeExperimentLineText(entry?.lineName);
         if (!lineText) return false;
@@ -1141,6 +2157,23 @@
         if (lineKey === 'bottle') return lineText.includes('bottle');
         if (lineKey === 'etc') return !lineText.includes('bottle');
         return false;
+    }
+
+    function isProductionLineNameMatch(lineNames = [], entry = {}) {
+        const lineText = normalizeExperimentLineText(entry?.lineName);
+        if (!lineText) return false;
+        return (Array.isArray(lineNames) ? lineNames : [])
+            .map(normalizeExperimentLineText)
+            .filter(Boolean)
+            .some(lineName => lineName === lineText);
+    }
+
+    function isSummarySubjectEntryMatch(subject = null, entry = {}) {
+        if (Array.isArray(subject?.lineNames) && subject.lineNames.length) {
+            return isProductionLineNameMatch(subject.lineNames, entry);
+        }
+        if (subject?.lineKey) return isProductionLineMatch(subject.lineKey, entry);
+        return true;
     }
 
     function getProductionLineValue(lineKey = '', teamKey = '', monthKey = '') {
@@ -1170,6 +2203,144 @@
             hasValue = true;
         });
         return hasValue ? Math.round(total) : NaN;
+    }
+
+    function getExperimentProductionEntriesByTeamKey(teamKey = '', monthKey = '') {
+        const parts = parseExperimentMonthParts(monthKey);
+        const teamName = EXPERIMENT_TEAM_LABELS[teamKey];
+        if (!parts || !teamName || typeof root.getUtilDailyProductionValue !== 'function') return [];
+        const daily = root.getUtilDailyProductionValue(teamName, parts.year, parts.month);
+        return Array.isArray(daily?.details) ? daily.details : [];
+    }
+
+    function getExperimentSummarySubjectEntries(subject = null, monthKey = '') {
+        const teamKeys = Array.isArray(subject?.teamKeys) ? subject.teamKeys : [];
+        const seen = new Set();
+        const entries = [];
+        teamKeys.forEach(teamKey => {
+            getExperimentProductionEntriesByTeamKey(teamKey, monthKey).forEach(entry => {
+                if (!isSummarySubjectEntryMatch(subject, entry)) return;
+                const dedupeKey = String(entry?.entryKey || '').trim() || [
+                    String(entry?.dateLabel || '').trim(),
+                    String(entry?.teamName || EXPERIMENT_TEAM_LABELS[teamKey] || '').trim(),
+                    String(entry?.lineName || '').trim(),
+                    String(entry?.productionKind || entry?.production_kind || entry?.kind || '').trim(),
+                    String(entry?.productCode || entry?.itemCode || entry?.code || '').trim(),
+                    String(entry?.productName || '').trim()
+                ].join('::');
+                if (dedupeKey && seen.has(dedupeKey)) return;
+                if (dedupeKey) seen.add(dedupeKey);
+                entries.push(entry);
+            });
+        });
+        return entries;
+    }
+
+    function summarizeExperimentProductionMetrics(entries = []) {
+        let totalAmount = 0;
+        let reworkAmount = 0;
+        let hasReworkAmount = false;
+        let yieldSum = 0;
+        let yieldCount = 0;
+        let weightedYieldSum = 0;
+        let weightedYieldWeight = 0;
+        let totalEquipmentCapa = 0;
+        let hasEquipmentCapa = false;
+        let operationRateSum = 0;
+        let operationRateCount = 0;
+        let totalWorkTime = 0;
+        let hasWorkTime = false;
+        let totalOverallWorkTime = 0;
+        let hasOverallWorkTime = false;
+        let totalOperationTime = 0;
+        let hasOperationTime = false;
+        let totalStickEa = 0;
+        let hasStickEa = false;
+        const activeDateSet = new Set();
+        const productSet = new Set();
+        (Array.isArray(entries) ? entries : []).forEach(entry => {
+            const amount = parseExperimentNumberText(entry?.amount ?? entry?.production ?? entry?.value);
+            const yieldRate = parseExperimentNumberText(entry?.moistureExcludedYield ?? entry?.moistureFreeYield ?? entry?.yieldExcludingMoisture ?? entry?.yieldRate);
+            const equipmentCapa = parseExperimentNumberText(entry?.equipmentCapa ?? entry?.capa ?? entry?.equipmentCapacity);
+            const operationRate = parseExperimentNumberText(entry?.equipmentUtilization ?? entry?.operationRate ?? entry?.equipmentRate ?? entry?.utilizationRate);
+            const workTime = parseExperimentNumberText(entry?.workTime ?? entry?.inputTime ?? entry?.feedTime ?? entry?.loadingTime ?? entry?.injectionTime);
+            const overallWorkTime = parseExperimentNumberText(entry?.totalWorkTime ?? entry?.total_work_time ?? entry?.totalLaborHours);
+            const operationTime = parseExperimentNumberText(entry?.operationTime ?? entry?.operatingTime ?? entry?.runtime ?? entry?.runTime ?? entry?.operationHours);
+            const stickEa = parseExperimentNumberText(entry?.stickEa ?? entry?.stickEA ?? entry?.stick_ea);
+            const productionKind = normalizeExperimentProductionKind(entry?.productionKind ?? entry?.production_kind ?? entry?.productionType ?? entry?.production_type ?? entry?.kind);
+            const dateKey = getExperimentProductionEntryDateKey(entry);
+            const productKey = normalizeExperimentProductKey(entry?.productName || entry?.product || entry?.itemName || '');
+            if (Number.isFinite(amount)) {
+                totalAmount += amount;
+                if (productionKind === 'rework') {
+                    reworkAmount += amount;
+                    if (amount > 0) hasReworkAmount = true;
+                }
+                if (amount > 0) {
+                    if (dateKey) activeDateSet.add(dateKey);
+                    if (productKey) productSet.add(productKey);
+                }
+            }
+            if (Number.isFinite(yieldRate)) {
+                yieldSum += yieldRate;
+                yieldCount += 1;
+                if (Number.isFinite(amount) && amount > 0) {
+                    weightedYieldSum += yieldRate * amount;
+                    weightedYieldWeight += amount;
+                }
+            }
+            if (Number.isFinite(equipmentCapa)) {
+                totalEquipmentCapa += equipmentCapa;
+                hasEquipmentCapa = true;
+            }
+            if (Number.isFinite(operationRate)) {
+                operationRateSum += operationRate;
+                operationRateCount += 1;
+            }
+            if (Number.isFinite(workTime)) {
+                totalWorkTime += workTime;
+                hasWorkTime = true;
+            }
+            if (Number.isFinite(overallWorkTime)) {
+                totalOverallWorkTime += overallWorkTime;
+                hasOverallWorkTime = true;
+            }
+            if (Number.isFinite(operationTime)) {
+                totalOperationTime += operationTime;
+                hasOperationTime = true;
+            }
+            if (Number.isFinite(stickEa)) {
+                totalStickEa += stickEa;
+                hasStickEa = true;
+            }
+        });
+        const yieldRate = weightedYieldWeight > 0
+            ? weightedYieldSum / weightedYieldWeight
+            : (yieldCount > 0 ? yieldSum / yieldCount : NaN);
+        const operationRate = hasEquipmentCapa && totalEquipmentCapa > 0
+            ? (totalAmount / totalEquipmentCapa) * 100
+            : (operationRateCount > 0 ? operationRateSum / operationRateCount : NaN);
+        return {
+            yield_rate: Number.isFinite(yieldRate) ? yieldRate : NaN,
+            operation_rate: Number.isFinite(operationRate) ? operationRate : NaN,
+            work_time: hasWorkTime ? totalWorkTime : NaN,
+            total_work_time: hasOverallWorkTime ? totalOverallWorkTime : NaN,
+            operation_time: hasOperationTime ? totalOperationTime : NaN,
+            production_days: activeDateSet.size > 0 ? activeDateSet.size : NaN,
+            off_days: activeDateSet.size > 0 ? countExperimentOffDays(Array.from(activeDateSet)) : NaN,
+            product_count: productSet.size > 0 ? productSet.size : NaN,
+            equipment_capa: hasEquipmentCapa ? totalEquipmentCapa : NaN,
+            stick_ea: hasStickEa ? totalStickEa : NaN,
+            rework_production: hasReworkAmount ? reworkAmount : NaN
+        };
+    }
+
+    function getSummaryMetricValue(subjectKey = '', metricKey = '', monthKey = '') {
+        const subject = getSummarySubjectOption(subjectKey);
+        if (!subject) return NaN;
+        const metrics = summarizeExperimentProductionMetrics(getExperimentSummarySubjectEntries(subject, monthKey));
+        const value = Number(metrics?.[metricKey]);
+        return Number.isFinite(value) ? value : NaN;
     }
 
     function getUtilitySummary(dataKey = '', monthKey = '') {
@@ -1285,6 +2456,13 @@
         ]);
     }
 
+    function getCostYusanExcludingWasteValue(monthKey = '') {
+        return sumFiniteValues([
+            sumUtilityValueByTeamKeys(EXPERIMENT_YUSAN_TEAM_KEYS, monthKey, 'electricCost'),
+            getYusanGasCostValue(monthKey)
+        ]);
+    }
+
     function getCostTotalValue(monthKey = '') {
         return sumFiniteValues([
             getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'electricCost'),
@@ -1332,6 +2510,11 @@
             const line = PRODUCTION_LINES.find(item => item.key === productionLineMatch[1]);
             return line ? getProductionLineValue(line.key, line.teamKey, monthKey) : NaN;
         }
+        const summaryCard = parseSummaryCardKey(cardKey);
+        if (summaryCard) {
+            const liveValue = getSummaryMetricValue(summaryCard.subjectKey, summaryCard.metricKey, monthKey);
+            return Number.isFinite(liveValue) ? liveValue : NaN;
+        }
         if (cardKey === 'electric-usage') return getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'electricUsage');
         if (cardKey === 'electric-usage-yusan') return sumUtilityValueByTeamKeys(EXPERIMENT_YUSAN_TEAM_KEYS, monthKey, 'electricUsage');
         if (cardKey.startsWith('electric-usage-')) {
@@ -1347,6 +2530,7 @@
         if (cardKey.startsWith('lng-usage-')) {
             return getUtilityValueByTeamKey(parseTeamKeyFromCardKey(cardKey, 'lng-usage-'), monthKey, 'lngUsage');
         }
+        if (cardKey === 'lpg-usage') return getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'lpgUsage');
         if (cardKey.startsWith('lpg-usage-')) {
             return getUtilityValueByTeamKey(parseTeamKeyFromCardKey(cardKey, 'lpg-usage-'), monthKey, 'lpgUsage');
         }
@@ -1362,7 +2546,11 @@
             return getUtilityValueByTeamKey(parseTeamKeyFromCardKey(cardKey, 'lpg-cost-'), monthKey, 'lpgCost');
         }
         if (cardKey === 'waste-discharge') return getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'wasteUsage');
+        if (cardKey === 'waste-discharge-bukjeong') return getUtilityValueByDataKey('work_team_calendar_group_bukjeong', monthKey, 'wasteUsage');
+        if (cardKey === 'waste-discharge-yusan') return getUtilityValueByDataKey('work_team_calendar_group_yusan', monthKey, 'wasteUsage');
         if (cardKey === 'waste-cost') return getUtilityValueByDataKey('work_team_calendar_overview', monthKey, 'wasteCost');
+        if (cardKey === 'waste-cost-bukjeong') return getUtilityValueByDataKey('work_team_calendar_group_bukjeong', monthKey, 'wasteCost');
+        if (cardKey === 'waste-cost-yusan') return getUtilityValueByDataKey('work_team_calendar_group_yusan', monthKey, 'wasteCost');
         if (Object.prototype.hasOwnProperty.call(WASTE_COST_DETAIL_KEYS, cardKey)) {
             return getWasteCostDetailValue(cardKey, monthKey);
         }
@@ -1372,6 +2560,7 @@
         if (cardKey === 'cost-team-03') return getCostTeam3Value(monthKey);
         if (cardKey === 'cost-bukjeong') return getCostBukjeongValue(monthKey);
         if (cardKey === 'cost-yusan') return getCostYusanValue(monthKey);
+        if (cardKey === 'cost-yusan-excluding-waste') return getCostYusanExcludingWasteValue(monthKey);
         if (cardKey === 'cost-total') return getCostTotalValue(monthKey);
         return NaN;
     }
@@ -1402,6 +2591,18 @@
         return /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(color) ? color : '#64748b';
     }
 
+    function getDistinctExperimentSeriesColor(index = 0, fallbackColor = '') {
+        const colorIndex = Math.abs(Math.trunc(Number(index) || 0)) % EXPERIMENT_DISTINCT_SERIES_COLORS.length;
+        return getSafeChartColor(EXPERIMENT_DISTINCT_SERIES_COLORS[colorIndex] || fallbackColor);
+    }
+
+    function resolveExperimentSeriesColor(card, seriesIndex = 0, detailIndex = 0, detailCount = 1) {
+        const baseIndex = Math.max(0, Math.trunc(Number(seriesIndex) || 0));
+        const detailSlot = Math.max(0, Math.trunc(Number(detailIndex) || 0));
+        const slotsPerSeries = Math.max(1, Math.trunc(Number(detailCount) || 1));
+        return getDistinctExperimentSeriesColor(baseIndex * slotsPerSeries + detailSlot, card?.color);
+    }
+
     function resolveSeriesValue(values = [], monthKey, decimals = 1) {
         if (!Array.isArray(values) || !values.length) return 0;
         if (values.length === 1) return roundMetricValue(values[0], decimals);
@@ -1420,7 +2621,7 @@
             const denominator = findAnalysisCard(card.denominatorKey);
             const numeratorValue = resolveRawPeriodValue(numerator, monthKey);
             const denominatorValue = resolveRawPeriodValue(denominator, monthKey);
-            if (!Number.isFinite(numeratorValue) || !Number.isFinite(denominatorValue) || denominatorValue === 0) return 0;
+            if (!Number.isFinite(numeratorValue) || !Number.isFinite(denominatorValue) || denominatorValue === 0) return NaN;
             const ratioValue = numeratorValue / denominatorValue;
             return roundMetricValue(ratioValue, card?.decimals);
         }
@@ -1472,13 +2673,30 @@
         }));
     }
 
-    function buildSummaryItem(card, series) {
+    function buildSummaryItem(card, series, index = 0) {
+        const compactTitle = getCompactAnalysisCardTitle(card) || card.title || card.key;
         return {
             key: card.key,
             title: card.title,
             valueText: '',
             icon: card.icon,
             tone: card.tone,
+            seriesBadge: {
+                index: Math.max(1, Math.trunc(Number(index) || 0) + 1),
+                color: getSafeChartColor(series?.color || card.color)
+            },
+            actionHtml: `
+                <button
+                    type="button"
+                    class="experiment-summary-remove-button"
+                    data-exp-card-remove-key="${escapeHtml(card.key)}"
+                    aria-label="${escapeHtml(`${compactTitle} 삭제`)}"
+                    title="삭제"
+                    onclick="KpiExperimentGraphPrototype.removeSelectedCard(this)"
+                >
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            `,
             statItems: buildExperimentSummaryStatItems(card, series)
         };
     }
@@ -1535,10 +2753,6 @@
         }
         return `
             <article class="util-sheet-analysis-table-card experiment-chart-table-card" data-tone="combined">
-                <div class="util-sheet-analysis-table-head">
-                    <div class="util-sheet-analysis-table-title">선택 지표 월별 표</div>
-                    <div class="util-sheet-analysis-table-sub"></div>
-                </div>
                 <div class="util-sheet-table-wrap">
                     <table class="util-sheet-table util-sheet-analysis-table experiment-chart-table">
                         <thead>
@@ -1567,11 +2781,11 @@
         return '';
     }
 
-    function buildCardSeries(card, period, shell) {
-        const monthKeys = Array.isArray(period?.monthKeys) && period.monthKeys.length
+    function buildCardSeries(card, period, shell, seriesIndex = 0) {
+        const monthKeys = Array.isArray(period?.monthKeys)
             ? period.monthKeys
             : buildMonthKeys(DEFAULT_PERIOD_START, DEFAULT_PERIOD_END);
-        const monthLabels = Array.isArray(period?.monthLabels) && period.monthLabels.length
+        const monthLabels = Array.isArray(period?.monthLabels)
             ? period.monthLabels
             : monthKeys.map(monthKey => formatPointLabel(monthKey));
         const displayMode = getCardDisplayMode(shell, card);
@@ -1582,7 +2796,7 @@
         return {
             label: formatSeriesLabelWithUnit(card.title, unitLabel),
             rawLabel: card.title,
-            color: card.color,
+            color: resolveExperimentSeriesColor(card, seriesIndex),
             type: displayMode,
             lineWidth: 3.2,
             lineDash: isDerivedRatioCard(card) ? '7 5' : '',
@@ -1600,11 +2814,11 @@
         };
     }
 
-    function buildYearOverlapSeries(card, period, shell) {
+    function buildYearOverlapSeries(card, period, shell, seriesIndex = 0) {
         const plan = period?.overlapPlan || {};
         const years = Array.isArray(plan.years) ? plan.years : [];
         const months = Array.isArray(plan.months) ? plan.months : [];
-        if (!years.length || !months.length) return [buildCardSeries(card, period, shell)];
+        if (!years.length || !months.length) return [buildCardSeries(card, period, shell, seriesIndex)];
         const monthLabels = Array.isArray(plan.monthLabels) && plan.monthLabels.length
             ? plan.monthLabels
             : months.map(month => formatPointLabel(`${years[0]}-${month}`));
@@ -1615,43 +2829,97 @@
         const unitKey = getCardUnitKey(shell, card);
         const unitLabel = getCardUnitLabel(shell, card);
         const unitOptions = getCardUnitOptions(card);
-        return years.map(year => ({
-            label: String(year),
-            rawLabel: String(year),
-            color: YEAR_OVERLAP_COLORS[Math.max(0, colorYears.indexOf(year)) % YEAR_OVERLAP_COLORS.length] || card.color,
-            type: displayMode,
-            lineWidth: 3.2,
-            lineDash: isDerivedRatioCard(card) ? '7 5' : '',
-            seriesKey: card.key,
-            axisGroupKey: card.key,
-            decimals,
-            unitKey,
-            unitLabel,
-            unitOptions,
-            points: months.map((month, index) => {
-                const monthKey = `${year}-${month}`;
-                return {
-                    key: `${card.key}:${monthKey}`,
-                    monthKey,
-                    label: monthLabels[index] || formatPointLabel(monthKey),
-                    value: activeMonthKeys.has(monthKey) ? resolvePeriodValue(card, monthKey, shell) : NaN
-                };
-            })
-        }));
+        return years.map(year => {
+            const yearColorIndex = Math.max(0, colorYears.indexOf(year));
+            return {
+                label: String(year),
+                rawLabel: String(year),
+                color: resolveExperimentSeriesColor(card, seriesIndex, yearColorIndex, colorYears.length || YEAR_OVERLAP_COLORS.length),
+                type: displayMode,
+                lineWidth: 3.2,
+                lineDash: isDerivedRatioCard(card) ? '7 5' : '',
+                seriesKey: card.key,
+                axisGroupKey: card.key,
+                decimals,
+                unitKey,
+                unitLabel,
+                unitOptions,
+                points: months.map((month, index) => {
+                    const monthKey = `${year}-${month}`;
+                    return {
+                        key: `${card.key}:${monthKey}`,
+                        monthKey,
+                        label: monthLabels[index] || formatPointLabel(monthKey),
+                        value: activeMonthKeys.has(monthKey) ? resolvePeriodValue(card, monthKey, shell) : NaN
+                    };
+                })
+            };
+        });
     }
 
-    function buildCardSeriesList(card, period, shell) {
+    function buildCardSeriesList(card, period, shell, seriesIndex = 0) {
         return period?.yearOverlap === true
-            ? buildYearOverlapSeries(card, period, shell)
-            : [buildCardSeries(card, period, shell)];
+            ? buildYearOverlapSeries(card, period, shell, seriesIndex)
+            : [buildCardSeries(card, period, shell, seriesIndex)];
+    }
+
+    function hasExperimentCardValueForMonth(card, monthKey = '', shell = null) {
+        return Number.isFinite(resolvePeriodValue(card, monthKey, shell));
+    }
+
+    function filterExperimentPeriodByAvailableValues(cards = [], period = {}, shell = null) {
+        const sourceMonthKeys = Array.isArray(period?.monthKeys) && period.monthKeys.length
+            ? period.monthKeys
+            : buildMonthKeys(DEFAULT_PERIOD_START, DEFAULT_PERIOD_END);
+        const activeCards = (Array.isArray(cards) ? cards : []).filter(Boolean);
+        if (!sourceMonthKeys.length || !activeCards.length) return period;
+        const filteredMonthKeys = sourceMonthKeys.filter(monthKey => (
+            activeCards.some(card => hasExperimentCardValueForMonth(card, monthKey, shell))
+        ));
+        if (filteredMonthKeys.length === sourceMonthKeys.length) return period;
+        if (!filteredMonthKeys.length) {
+            return {
+                ...period,
+                startMonth: '',
+                endMonth: '',
+                label: '',
+                monthKeys: [],
+                monthLabels: [],
+                yearOverlap: false,
+                overlapPlan: buildYearOverlapPlan([])
+            };
+        }
+        const hasYearBoundary = filteredMonthKeys.some(monthKey => monthKey.slice(0, 4) !== filteredMonthKeys[0]?.slice(0, 4));
+        const overlapPlan = buildYearOverlapPlan(filteredMonthKeys);
+        const availableOverlapYears = normalizeOverlapYearList(overlapPlan.years);
+        const selectedOverlapYears = Array.isArray(period?.overlapPlan?.selectedYears) && period.overlapPlan.selectedYears.length
+            ? period.overlapPlan.selectedYears.filter(year => availableOverlapYears.includes(year))
+            : availableOverlapYears;
+        const yearOverlap = period?.yearOverlap === true && availableOverlapYears.length > 1 && selectedOverlapYears.length > 0;
+        return {
+            ...period,
+            startMonth: filteredMonthKeys[0],
+            endMonth: filteredMonthKeys[filteredMonthKeys.length - 1],
+            label: `${formatRangeMonth(filteredMonthKeys[0])} - ${formatRangeMonth(filteredMonthKeys[filteredMonthKeys.length - 1])}`,
+            monthKeys: filteredMonthKeys,
+            monthLabels: filteredMonthKeys.map(monthKey => formatPointLabel(monthKey, hasYearBoundary)),
+            yearOverlap,
+            overlapPlan: {
+                ...overlapPlan,
+                availableYears: availableOverlapYears,
+                selectedYears: selectedOverlapYears,
+                years: yearOverlap ? selectedOverlapYears : availableOverlapYears
+            }
+        };
     }
 
     function buildAnalysisChartModel(selectedCards, period, shell) {
-        const summarySeries = selectedCards.map(card => buildCardSeries(card, {
-            ...period,
+        const valuePeriod = filterExperimentPeriodByAvailableValues(selectedCards, period, shell);
+        const summarySeries = selectedCards.map((card, index) => buildCardSeries(card, {
+            ...valuePeriod,
             yearOverlap: false
-        }, shell));
-        const allSeries = selectedCards.flatMap(card => buildCardSeriesList(card, period, shell));
+        }, shell, index));
+        const allSeries = selectedCards.flatMap((card, index) => buildCardSeriesList(card, valuePeriod, shell, index));
         const visibleSeries = allSeries.filter(item => item.type !== 'none');
         const maxDecimals = [...allSeries, ...summarySeries].reduce((maxValue, item) => Math.max(maxValue, Number.isFinite(item.decimals) ? item.decimals : 1), 1);
         const selectedCardMap = new Map(selectedCards.map(card => [String(card?.key || ''), card]));
@@ -1665,7 +2933,7 @@
                 decimals: maxDecimals,
                 series: visibleSeries,
                 chartDataList: visibleSeries.map(item => ({ seriesKey: item.seriesKey, points: item.points })),
-                showViewToggle: true,
+                showViewToggle: false,
                 viewMode: getExperimentChartViewMode(shell),
                 tableHtml: buildExperimentChartTableHtml(summarySeries, selectedCards, shell),
                 suppressChartLabelToggle: true,
@@ -1679,18 +2947,16 @@
                     unitLabel: item.unitLabel,
                     unitOptions: item.unitOptions,
                     displayMode: item.type,
-                    hideLabelToggle: true,
                     isDerivedRatio: isDerivedRatioCard(selectedCardMap.get(item.seriesKey)),
                     points: item.points
                 })),
-                summaryItems: selectedCards.map((card, index) => buildSummaryItem(card, summarySeries[index])),
+                summaryItems: selectedCards.map((card, index) => buildSummaryItem(card, summarySeries[index], index)),
                 reportValueOrderLabels: period?.yearOverlap === true,
-                hideRangeMeta: period?.yearOverlap === true,
+                hideRangeMeta: true,
                 hideHeadingText: true,
                 hideTopCenterTitle: true,
                 hidePeriodLabel: true,
-                rangeMetaMode: 'labeled-min-max',
-                hideLegend: period?.yearOverlap !== true,
+                hideLegend: false,
                 dedupeLegend: period?.yearOverlap === true
             },
             model: {
@@ -1740,6 +3006,7 @@
         const countEl = shell.querySelector('[data-exp-selected-count]');
         if (countEl) countEl.textContent = `선택 ${selectedKeys.length}개`;
         updateSelectedDeleteControl(shell, selectedCards);
+        syncCardBuilderControlsLegacy(shell);
     }
 
     function updateCardButton(trigger, isSelected) {
@@ -1845,6 +3112,47 @@
         });
     }
 
+    function buildExperimentChartViewToggleHtml(activeViewMode = 'chart') {
+        const viewMode = String(activeViewMode || '').trim().toLowerCase() === 'table' ? 'table' : 'chart';
+        return `
+            <div class="experiment-chart-view-toggle" data-exp-chart-view-toggle role="group" aria-label="보기 전환">
+                <button
+                    type="button"
+                    class="experiment-chart-view-button${viewMode === 'chart' ? ' is-active' : ''}"
+                    data-exp-chart-view="chart"
+                    aria-pressed="${viewMode === 'chart' ? 'true' : 'false'}"
+                    onclick="KpiExperimentGraphPrototype.selectChartView(this)"
+                >
+                    <i class="fa-solid fa-chart-line" aria-hidden="true"></i>
+                    <span>그래프</span>
+                </button>
+                <button
+                    type="button"
+                    class="experiment-chart-view-button${viewMode === 'table' ? ' is-active' : ''}"
+                    data-exp-chart-view="table"
+                    aria-pressed="${viewMode === 'table' ? 'true' : 'false'}"
+                    onclick="KpiExperimentGraphPrototype.selectChartView(this)"
+                >
+                    <i class="fa-solid fa-table" aria-hidden="true"></i>
+                    <span>표</span>
+                </button>
+            </div>
+        `;
+    }
+
+    function syncExperimentChartViewToggle(shell) {
+        if (!shell?.querySelectorAll) return;
+        const activeViewMode = getExperimentChartViewMode(shell);
+        shell.querySelectorAll('[data-exp-chart-view]').forEach(button => {
+            const buttonViewMode = String(button?.dataset?.expChartView || '').trim().toLowerCase() === 'table'
+                ? 'table'
+                : 'chart';
+            const active = buttonViewMode === activeViewMode;
+            button.classList?.toggle?.('is-active', active);
+            button.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+        });
+    }
+
     function syncExperimentAnalysisState(shell, selectedCards = []) {
         const stateApi = getAnalysisStateApi();
         if (!stateApi) return;
@@ -1867,14 +3175,81 @@
         return false;
     }
 
+    function buildExperimentChartToolsHtml(period = null) {
+        const selectableMaxMonth = getSelectableMaxMonth();
+        const startMonth = clampSelectableMonthKey(period?.startMonth, DEFAULT_PERIOD_START);
+        const endMonth = clampSelectableMonthKey(period?.endMonth, DEFAULT_PERIOD_END);
+        const overlapPressed = period?.yearOverlap === true ? 'true' : 'false';
+        return `
+            <div class="experiment-chart-inline-tools" data-exp-chart-inline-tools>
+                <button
+                    type="button"
+                    class="experiment-add-card-trigger"
+                    data-exp-card-picker-toggle
+                    aria-expanded="false"
+                    onclick="KpiExperimentGraphPrototype.togglePicker(this)"
+                >
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                    <span>카드 추가</span>
+                </button>
+                <div class="experiment-selected-count" data-exp-selected-count>선택 0개</div>
+                <div class="experiment-period-range" aria-label="그래프 기간">
+                    <label class="experiment-period-field">
+                        <span>시작월</span>
+                        <input
+                            type="month"
+                            class="experiment-period-input"
+                            data-exp-period-start
+                            min="${escapeHtml(PERIOD_MIN_MONTH)}"
+                            max="${escapeHtml(selectableMaxMonth)}"
+                            value="${escapeHtml(startMonth)}"
+                            oninput="KpiExperimentGraphPrototype.selectPeriod(this)"
+                            onchange="KpiExperimentGraphPrototype.selectPeriod(this)"
+                        >
+                    </label>
+                    <label class="experiment-period-field">
+                        <span>종료월</span>
+                        <input
+                            type="month"
+                            class="experiment-period-input"
+                            data-exp-period-end
+                            min="${escapeHtml(PERIOD_MIN_MONTH)}"
+                            max="${escapeHtml(selectableMaxMonth)}"
+                            value="${escapeHtml(endMonth)}"
+                            oninput="KpiExperimentGraphPrototype.selectPeriod(this)"
+                            onchange="KpiExperimentGraphPrototype.selectPeriod(this)"
+                        >
+                    </label>
+                </div>
+                <button
+                    type="button"
+                    class="experiment-year-overlap-button"
+                    data-exp-year-overlap
+                    aria-pressed="${overlapPressed}"
+                    onclick="KpiExperimentGraphPrototype.toggleYearOverlap(this)"
+                >
+                    <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+                    <span>년도 겹치기</span>
+                </button>
+                <div class="experiment-year-overlap-years" data-exp-year-overlap-years hidden></div>
+                ${buildExperimentFullscreenButtonHtml()}
+                <span class="experiment-chart-inline-spacer" aria-hidden="true"></span>
+                ${buildExperimentChartViewToggleHtml()}
+            </div>
+        `;
+    }
+
     function renderExactAnalysisChart(shell, retryCount = 0) {
         const mount = shell.querySelector('[data-exp-chart-mount]');
         if (!mount) return;
         syncYearOverlapControl(shell);
         const selectedCards = getSelectedCards(shell);
+        const activePeriod = getActivePeriod(shell);
         if (!selectedCards.length) {
             mount.innerHTML = buildExperimentEmptyState();
             updateSelectedState(shell, selectedCards);
+            syncYearOverlapControl(shell);
+            syncExperimentChartViewToggle(shell);
             return;
         }
         const api = getAnalysisRenderApi();
@@ -1885,7 +3260,6 @@
             }
             return;
         }
-        const activePeriod = getActivePeriod(shell);
         const { chart, model } = buildAnalysisChartModel(selectedCards, activePeriod, shell);
         syncExperimentAnalysisState(shell, selectedCards);
         mount.innerHTML = api.buildUtilGasAnalysisChartCardHtmlV2(chart, model, {
@@ -1895,6 +3269,7 @@
         });
         bindRenderedChartControls(shell);
         updateSelectedState(shell, selectedCards);
+        syncExperimentChartViewToggle(shell);
     }
 
     function buildExperimentEmptyState() {
@@ -1956,18 +3331,51 @@
                     onclick="KpiExperimentGraphPrototype.openRatioDialog(this)"
                     ${isDisabled ? 'disabled' : ''}
                 >
-                    <i class="fa-solid fa-divide" aria-hidden="true"></i>
-                    <span>비율 추가</span>
+                    <span>비율</span>
                 </button>
             </article>
         `;
     }
 
+    function buildRatioPartSelectorHtml(role = 'numerator', title = '분자') {
+        const handler = role === 'denominator' ? 'selectRatioDenominator' : 'selectRatioNumerator';
+        return `
+            <section class="experiment-ratio-fraction-card" data-exp-ratio-part="${escapeHtml(role)}">
+                <div class="experiment-ratio-fraction-card-head">
+                    <span class="experiment-ratio-role-badge">${escapeHtml(title)}</span>
+                    <strong data-exp-ratio-part-title>선택 대기</strong>
+                </div>
+                <div class="experiment-ratio-part-grid">
+                    <label class="experiment-ratio-field">
+                        <span>1차 유형</span>
+                        <select class="experiment-ratio-select" data-exp-ratio-mode data-exp-ratio-step="mode" onchange="KpiExperimentGraphPrototype.${handler}(this)">
+                            ${buildCardBuilderSelectHtml([], '', '유형 선택')}
+                        </select>
+                    </label>
+                    <label class="experiment-ratio-field">
+                        <span>2차 범위</span>
+                        <select class="experiment-ratio-select" data-exp-ratio-scope data-exp-ratio-step="scope" onchange="KpiExperimentGraphPrototype.${handler}(this)">
+                            ${buildCardBuilderSelectHtml([], '', '범위 선택')}
+                        </select>
+                    </label>
+                    <label class="experiment-ratio-field">
+                        <span>3차 분류</span>
+                        <select class="experiment-ratio-select" data-exp-ratio-category data-exp-ratio-step="category" onchange="KpiExperimentGraphPrototype.${handler}(this)" disabled>
+                            ${buildCardBuilderSelectHtml([], '', '분류 선택')}
+                        </select>
+                    </label>
+                    <label class="experiment-ratio-field">
+                        <span>4차 세부</span>
+                        <select class="experiment-ratio-select" data-exp-ratio-detail data-exp-ratio-step="detail" onchange="KpiExperimentGraphPrototype.${handler}(this)" disabled>
+                            ${buildCardBuilderSelectHtml([], '', '세부 선택')}
+                        </select>
+                    </label>
+                </div>
+            </section>
+        `;
+    }
+
     function buildRatioDialog() {
-        const numeratorCards = getRatioNumeratorCards();
-        const selectedNumeratorKey = getDefaultRatioNumeratorKey();
-        const selectedDenominatorKey = getDefaultRatioDenominatorKey(selectedNumeratorKey);
-        const rule = resolveFractionRule(selectedNumeratorKey, selectedDenominatorKey);
         return `
             <div class="experiment-ratio-dialog" data-exp-ratio-dialog hidden onclick="KpiExperimentGraphPrototype.closeRatioDialogFromBackdrop(event)">
                 <div class="experiment-ratio-dialog-panel" role="dialog" aria-modal="true" aria-label="비율 만들기" onclick="event.stopPropagation()">
@@ -1985,31 +3393,68 @@
                             <span>닫기</span>
                         </button>
                     </div>
-                    <div class="experiment-ratio-builder-grid">
-                        <label class="experiment-ratio-field">
-                            <span>분자</span>
-                            <select class="experiment-ratio-select" data-exp-ratio-numerator onchange="KpiExperimentGraphPrototype.selectRatioNumerator(this)">
-                                ${numeratorCards.map(item => buildRatioOption(item, selectedNumeratorKey)).join('')}
-                            </select>
-                        </label>
-                        <label class="experiment-ratio-field">
-                            <span>분모</span>
-                            <select class="experiment-ratio-select" data-exp-ratio-denominator onchange="KpiExperimentGraphPrototype.selectRatioDenominator(this)">
-                                ${buildRatioDenominatorOptions(selectedNumeratorKey, selectedDenominatorKey)}
-                            </select>
-                        </label>
-                        <div class="experiment-ratio-status" data-exp-ratio-status>${rule.allowed ? `생성 단위 ${escapeHtml(rule.outputUnitLabel || 'ratio')}` : '조합할 수 없는 비율입니다.'}</div>
+                    <div class="experiment-ratio-fraction-builder">
+                        ${buildRatioPartSelectorHtml('numerator', '분자')}
+                        <div class="experiment-ratio-fraction-bar" aria-hidden="true"><span></span></div>
+                        ${buildRatioPartSelectorHtml('denominator', '분모')}
                     </div>
+                    <div class="experiment-ratio-status" data-exp-ratio-status>분자와 분모를 선택하세요.</div>
                     <div class="experiment-ratio-dialog-actions">
                         <button type="button" class="experiment-ratio-cancel-button" data-exp-ratio-cancel onclick="KpiExperimentGraphPrototype.closeRatioDialog(this)">
                             취소
                         </button>
                         <button type="button" class="experiment-ratio-add-button" data-exp-ratio-add onclick="KpiExperimentGraphPrototype.addRatioCard(this)">
-                            <i class="fa-solid fa-divide" aria-hidden="true"></i>
-                            <span data-exp-ratio-add-label>비율 추가</span>
+                            <span data-exp-ratio-add-label>비율</span>
                         </button>
                     </div>
                 </div>
+            </div>
+        `;
+    }
+
+    function buildSummaryLinePickerDialog() {
+        return `
+            <div class="experiment-ratio-dialog experiment-summary-line-dialog" data-exp-summary-line-picker hidden onclick="KpiExperimentGraphPrototype.closeSummaryLinePickerFromBackdrop(event)">
+                <div class="experiment-ratio-dialog-panel experiment-summary-line-dialog-panel" role="dialog" aria-modal="true" aria-label="라인 선택" onclick="event.stopPropagation()">
+                    <div class="experiment-ratio-dialog-head">
+                        <strong data-exp-summary-line-title>라인 선택</strong>
+                        <button
+                            type="button"
+                            class="experiment-card-picker-close"
+                            data-exp-summary-line-close
+                            aria-label="라인 선택 닫기"
+                            title="라인 선택 닫기"
+                            onclick="KpiExperimentGraphPrototype.closeSummaryLinePicker(this)"
+                        >
+                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                            <span>닫기</span>
+                        </button>
+                    </div>
+                    <div class="experiment-summary-line-options" data-exp-summary-line-options></div>
+                    <div class="experiment-ratio-dialog-actions">
+                        <button type="button" class="experiment-ratio-add-button" data-exp-summary-line-done onclick="KpiExperimentGraphPrototype.closeSummaryLinePicker(this)">
+                            <span>확인</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function buildInlineRatioBuilderHtml() {
+        return `
+            <div class="experiment-inline-ratio-builder" data-exp-inline-ratio-builder hidden>
+                <div class="experiment-inline-ratio-summary">
+                    <span class="experiment-ratio-role-badge">분자</span>
+                    <strong data-exp-inline-ratio-numerator>3차 세부를 먼저 선택하세요.</strong>
+                </div>
+                <div class="experiment-inline-ratio-denominator">
+                    ${buildRatioPartSelectorHtml('denominator', '분모')}
+                    <button type="button" class="experiment-ratio-add-button" data-exp-inline-ratio-add onclick="KpiExperimentGraphPrototype.addInlineRatioCard(this)" disabled>
+                        <span>추가</span>
+                    </button>
+                </div>
+                <div class="experiment-ratio-status" data-exp-inline-ratio-status>분자로 쓸 카드를 먼저 선택하세요.</div>
             </div>
         `;
     }
@@ -2042,6 +3487,7 @@
         if (key === 'lng-usage') return 'LNG 가스';
         if (key === 'lng-usage-yusan') return '유산 LNG 가스';
         if (key.startsWith('lng-usage-')) return title.replace(/\s*사용량\s*$/u, ' 가스').trim();
+        if (key === 'lpg-usage') return 'LPG 가스';
         if (key.startsWith('lpg-usage-')) return title.replace(/\s*사용량\s*$/u, ' 가스').trim();
         if (key === 'gas-cost') return '가스 비용';
         if (key === 'gas-cost-yusan') return '유산 가스 비용';
@@ -2051,7 +3497,9 @@
         if (key.startsWith('lng-cost-')) return title.replace(/\s*비용\s*$/u, ' 비용').trim();
         if (key.startsWith('lpg-cost-')) return title.replace(/\s*비용\s*$/u, ' 비용').trim();
         if (key === 'waste-discharge') return '폐수 방류량';
+        if (key.startsWith('waste-discharge-')) return title;
         if (key === 'waste-cost') return '폐수 비용 합계';
+        if (key.startsWith('waste-cost-')) return title;
         if (key === 'cost-total') return '비용';
         if (key.startsWith('cost-')) return title.replace(/\s*비용\s*$/u, ' 비용').trim();
         return title;
@@ -2085,9 +3533,8 @@
     }
 
     function buildCardGroup(group) {
-        const isActive = group.key === DEFAULT_GROUP_KEY;
         return `
-            <section class="experiment-card-group" data-exp-card-group="${escapeHtml(group.key)}"${isActive ? '' : ' hidden'}>
+            <section class="experiment-card-group" data-exp-card-group="${escapeHtml(group.key)}" hidden>
                 <div class="experiment-card-group-head">
                     <strong>${escapeHtml(group.title)}</strong>
                     <span>${group.cards.length}개 지표</span>
@@ -2100,126 +3547,397 @@
         `;
     }
 
+    function syncCardBuilderControls(shell, requestedGroupKey = '') {
+        if (!shell) return;
+        const builder = shell.querySelector('[data-exp-card-builder]');
+        const stepSelect = shell.querySelector('[data-exp-card-step-select]');
+        const groupSelect = shell.querySelector('[data-exp-card-kind]');
+        const targetSelect = shell.querySelector('[data-exp-card-target]');
+        const detailSelect = shell.querySelector('[data-exp-card-detail]');
+        const addButton = shell.querySelector('[data-exp-card-builder-add]');
+        const pathEl = shell.querySelector('[data-exp-card-step-path]');
+        const previewEl = shell.querySelector('[data-exp-card-selection-preview]');
+        const selectedCards = getSelectedCards(shell);
+        const selectedCardKeys = new Set(selectedCards.map(card => card.key));
+
+        const rawScopeKey = String(requestedGroupKey || groupSelect?.value || '').trim();
+        const scopeKey = rawScopeKey ? normalizeCardBuilderScopeKey(rawScopeKey) : '';
+        const scopeOption = scopeKey ? getCardBuilderScopeOption(scopeKey) : null;
+        if (groupSelect) groupSelect.value = scopeKey;
+
+        const targetOptions = scopeKey ? getCardBuilderCategoryOptions(scopeKey) : [];
+        let targetKey = String(targetSelect?.value || '').trim();
+        if (!scopeKey || !targetOptions.some(option => option.key === targetKey)) targetKey = '';
+        if (targetSelect) {
+            targetSelect.innerHTML = buildCardBuilderOptionHtml(targetOptions, targetKey);
+            targetSelect.value = targetKey;
+            targetSelect.disabled = targetOptions.length === 0;
+        }
+
+        const detailOptions = scopeKey && targetKey ? getCardBuilderDetailOptions(targetKey, scopeKey) : [];
+        const detailKey = scopeKey && targetKey ? getAutoSelectedCardBuilderDetailKey(detailOptions, detailSelect?.value) : '';
+        if (detailSelect) {
+            detailSelect.innerHTML = buildCardBuilderOptionHtml(detailOptions, detailKey, selectedCardKeys);
+            detailSelect.value = detailKey;
+            detailSelect.disabled = detailOptions.length === 0;
+        }
+
+        const step = getCardBuilderStep(scopeKey, targetKey);
+        if (builder) builder.dataset.expCardBuilderStep = step;
+        if (stepSelect) {
+            if (step === 'group') {
+                stepSelect.innerHTML = buildCardBuilderStepOptionHtml(CARD_BUILDER_TARGETS, scopeKey, '범위 선택');
+                stepSelect.value = scopeKey;
+            } else if (step === 'target') {
+                stepSelect.innerHTML = buildCardBuilderStepOptionHtml(targetOptions, targetKey, '분류 선택', [scopeOption?.label]);
+                stepSelect.value = targetKey;
+            } else {
+                stepSelect.innerHTML = buildCardBuilderStepOptionHtml(detailOptions, detailKey, '세부 선택', [scopeOption?.label, targetOptions.find(option => option.key === targetKey)?.title]);
+                stepSelect.value = detailKey;
+            }
+            stepSelect.dataset.expCardStep = step;
+            stepSelect.disabled = step === 'target' ? targetOptions.length === 0 : (step === 'detail' ? detailOptions.length === 0 : false);
+        }
+
+        const selectedDetail = detailOptions.find(option => option.key === detailKey) || null;
+        const alreadySelected = selectedDetail ? selectedCardKeys.has(selectedDetail.key) : false;
+        if (addButton) {
+            addButton.disabled = !selectedDetail || alreadySelected;
+            const label = alreadySelected ? '추가됨' : '추가';
+            addButton.innerHTML = `<span data-exp-card-builder-add-label>${label}</span>`;
+        }
+        syncInlineRatioToggleAvailability(shell, selectedDetail?.card || selectedDetail?.key || '');
+
+        const targetLabel = targetOptions.find(option => option.key === targetKey)?.title || '';
+        if (pathEl) {
+            pathEl.innerHTML = buildCardBuilderPathHtml({ scopeOption, targetLabel, detailOption: selectedDetail, alreadySelected });
+            pathEl.hidden = !pathEl.innerHTML.trim();
+        }
+        if (previewEl) {
+            const detailLabel = selectedDetail?.label || '';
+            const selectedIndex = selectedDetail ? selectedCards.findIndex(card => card.key === selectedDetail.key) : -1;
+            const previewIndex = selectedIndex >= 0 ? selectedIndex : selectedCards.length;
+            const previewColor = selectedDetail ? resolveExperimentSeriesColor(selectedDetail.card, previewIndex) : '#64748b';
+            const previewParts = [scopeOption?.label, targetLabel, detailLabel].filter(Boolean);
+            const previewText = previewParts.join(' · ');
+            const stateText = alreadySelected ? '이미 추가됨' : (selectedDetail ? '추가 가능' : '선택 진행');
+            const stateClass = alreadySelected ? 'is-selected' : (selectedDetail ? 'is-ready' : 'is-empty');
+            previewEl.style.setProperty('--exp-preview-color', getSafeChartColor(previewColor));
+            previewEl.hidden = !scopeOption;
+            previewEl.innerHTML = scopeOption ? `
+                <span class="experiment-card-selection-preview-kicker">추가할 카드</span>
+                <span class="experiment-card-selection-preview-swatch" aria-hidden="true"></span>
+                <strong class="experiment-card-selection-preview-title">${escapeHtml(previewText)}</strong>
+                <span class="experiment-card-selection-preview-state ${stateClass}">${escapeHtml(stateText)}</span>
+            ` : '';
+        }
+    }
+
+    function resetCardBuilderSelection(shell) {
+        if (!shell) return;
+        const modeSelect = shell.querySelector('[data-exp-card-mode]');
+        const groupSelect = shell.querySelector('[data-exp-card-kind]');
+        const targetSelect = shell.querySelector('[data-exp-card-target]');
+        const detailSelect = shell.querySelector('[data-exp-card-detail]');
+        if (modeSelect) modeSelect.value = DEFAULT_CARD_BUILDER_MODE;
+        if (groupSelect) groupSelect.value = '';
+        if (targetSelect) {
+            targetSelect.innerHTML = '';
+            targetSelect.value = '';
+        }
+        if (detailSelect) {
+            detailSelect.innerHTML = '';
+            detailSelect.value = '';
+        }
+    }
+
+    function syncCardBuilderControlsSimple(shell, requestedGroupKey = '') {
+        if (!shell) return;
+        const builder = shell.querySelector('[data-exp-card-builder]');
+        const stepSelect = shell.querySelector('[data-exp-card-step-select]');
+        const groupSelect = shell.querySelector('[data-exp-card-kind]');
+        const targetSelect = shell.querySelector('[data-exp-card-target]');
+        const detailSelect = shell.querySelector('[data-exp-card-detail]');
+        const addButton = shell.querySelector('[data-exp-card-builder-add]');
+        const selectedCards = getSelectedCards(shell);
+        const selectedCardKeys = new Set(selectedCards.map(card => card.key));
+
+        const rawScopeKey = String(requestedGroupKey || groupSelect?.value || '').trim();
+        const scopeKey = rawScopeKey ? normalizeCardBuilderScopeKey(rawScopeKey) : '';
+        const scopeOption = scopeKey ? getCardBuilderScopeOption(scopeKey) : null;
+        if (groupSelect) groupSelect.value = scopeKey;
+
+        const targetOptions = scopeKey ? getCardBuilderCategoryOptions(scopeKey) : [];
+        let targetKey = String(targetSelect?.value || '').trim();
+        if (!scopeKey || !targetOptions.some(option => option.key === targetKey)) targetKey = '';
+        if (targetSelect) {
+            targetSelect.innerHTML = buildCardBuilderOptionHtml(targetOptions, targetKey);
+            targetSelect.value = targetKey;
+        }
+
+        const detailOptions = scopeKey && targetKey ? getCardBuilderDetailOptions(targetKey, scopeKey) : [];
+        const detailKey = scopeKey && targetKey ? getAutoSelectedCardBuilderDetailKey(detailOptions, detailSelect?.value) : '';
+        if (detailSelect) {
+            detailSelect.innerHTML = buildCardBuilderOptionHtml(detailOptions, detailKey, selectedCardKeys);
+            detailSelect.value = detailKey;
+        }
+
+        const step = getCardBuilderStep(scopeKey, targetKey);
+        const targetLabel = targetOptions.find(option => option.key === targetKey)?.title || '';
+        if (builder) builder.dataset.expCardBuilderStep = step;
+        if (stepSelect) {
+            if (step === 'group') {
+                stepSelect.innerHTML = buildCardBuilderStepOptionHtml(CARD_BUILDER_TARGETS, scopeKey, '범위 선택');
+                stepSelect.value = scopeKey;
+            } else if (step === 'target') {
+                const targetPlaceholder = [scopeOption?.label, '분류 선택'].filter(Boolean).join(' / ');
+                stepSelect.innerHTML = buildCardBuilderStepOptionHtml(targetOptions, targetKey, targetPlaceholder || '분류 선택', [scopeOption?.label]);
+                stepSelect.value = targetKey;
+            } else {
+                const detailPlaceholder = [scopeOption?.label, targetLabel, '세부 선택'].filter(Boolean).join(' / ');
+                stepSelect.innerHTML = buildCardBuilderStepOptionHtml(detailOptions, detailKey, detailPlaceholder || '세부 선택', [scopeOption?.label, targetLabel], selectedCardKeys);
+                stepSelect.value = detailKey;
+            }
+            stepSelect.dataset.expCardStep = step;
+            stepSelect.disabled = step === 'target' ? targetOptions.length === 0 : (step === 'detail' ? detailOptions.length === 0 : false);
+        }
+
+        const selectedDetail = detailOptions.find(option => option.key === detailKey) || null;
+        const alreadySelected = selectedDetail ? selectedCardKeys.has(selectedDetail.key) : false;
+        if (addButton) {
+            addButton.disabled = !selectedDetail || alreadySelected;
+            addButton.innerHTML = `<span data-exp-card-builder-add-label>${alreadySelected ? '추가됨' : '추가'}</span>`;
+        }
+        syncInlineRatioToggleAvailability(shell, selectedDetail?.card || selectedDetail?.key || '');
+    }
+
+    function syncSummaryCardBuilderControlsLegacy(shell, requestedGroupKey = '', modeKey = 'efficiency') {
+        if (!shell) return;
+        const normalizedMode = normalizeCardBuilderModeKey(modeKey);
+        const groupSelect = shell.querySelector('[data-exp-card-kind]');
+        const targetSelect = shell.querySelector('[data-exp-card-target]');
+        const detailSelect = shell.querySelector('[data-exp-card-detail]');
+        const addButton = shell.querySelector('[data-exp-card-builder-add]');
+        const previewEl = shell.querySelector('[data-exp-card-selection-preview]');
+        const rawScopeKey = String(requestedGroupKey || groupSelect?.value || '').trim();
+        const scopeKey = rawScopeKey ? normalizeCardBuilderScopeKey(rawScopeKey) : '';
+        const scopeOption = scopeKey ? getCardBuilderScopeOption(scopeKey) : null;
+        if (groupSelect) {
+            groupSelect.innerHTML = buildCardBuilderSelectHtml(CARD_BUILDER_TARGETS, scopeKey, '범위 선택');
+            groupSelect.value = scopeKey;
+        }
+        const selectedCards = getSelectedCards(shell);
+        const selectedCardKeys = new Set(selectedCards.map(card => card.key));
+
+        const lineSelection = scopeKey ? resolveSummaryLineSelection(shell, scopeKey) : null;
+        const selectedSubject = lineSelection?.subject || null;
+        const targetOptions = selectedSubject ? [{ key: selectedSubject.key, label: lineSelection.label || selectedSubject.label }] : [];
+        const targetKey = selectedSubject?.key || '';
+        if (targetSelect) {
+            targetSelect.innerHTML = buildCardBuilderSelectHtml(targetOptions, targetKey, '하위범위 선택');
+            targetSelect.value = targetKey;
+            targetSelect.disabled = true;
+            targetSelect.hidden = Boolean(scopeKey);
+        }
+        syncSummaryLineOpenButton(shell, scopeKey, lineSelection);
+        syncSummaryLinePicker(shell, scopeKey, lineSelection);
+
+        const detailOptions = scopeKey && targetKey ? getSummaryMetricOptions(targetKey, shell, normalizedMode) : [];
+        const detailKey = scopeKey && targetKey ? getAutoSelectedCardBuilderDetailKey(detailOptions, detailSelect?.value) : '';
+        if (detailSelect) {
+            detailSelect.innerHTML = buildCardBuilderSelectHtml(detailOptions, detailKey, '값 선택', selectedCardKeys);
+            detailSelect.value = detailKey;
+            detailSelect.disabled = !scopeKey || !targetKey || detailOptions.length === 0;
+        }
+
+        const selectedDetail = detailOptions.find(option => option.key === detailKey) || null;
+        const alreadySelected = selectedDetail ? selectedCardKeys.has(selectedDetail.key) : false;
+        if (addButton) {
+            addButton.disabled = !selectedDetail || alreadySelected;
+            const label = alreadySelected ? '추가됨' : '추가';
+            addButton.innerHTML = `<span data-exp-card-builder-add-label>${label}</span>`;
+        }
+        syncInlineRatioToggleAvailability(shell, selectedDetail?.card || selectedDetail?.key || '');
+
+        if (previewEl) {
+            if (!scopeOption) {
+                previewEl.hidden = true;
+                previewEl.innerHTML = '';
+                syncInlineRatioBuilder(shell);
+                return;
+            }
+            const subjectLabel = lineSelection?.label || targetOptions.find(option => option.key === targetKey)?.label || '-';
+            const detailLabel = selectedDetail?.label || detailOptions[0]?.label || '-';
+            const selectedIndex = selectedDetail ? selectedCards.findIndex(card => card.key === selectedDetail.key) : -1;
+            const previewIndex = selectedIndex >= 0 ? selectedIndex : selectedCards.length;
+            const previewColor = selectedDetail ? resolveExperimentSeriesColor(selectedDetail.card, previewIndex) : '#64748b';
+            const previewText = `${getCardBuilderModeOption(normalizedMode).label} · ${scopeOption.label} · ${subjectLabel} · ${detailLabel}`;
+            const stateText = alreadySelected ? '이미 추가됨' : (selectedDetail ? '추가 가능' : '선택 없음');
+            const stateClass = alreadySelected ? 'is-selected' : (selectedDetail ? 'is-ready' : 'is-empty');
+            previewEl.style.setProperty('--exp-preview-color', getSafeChartColor(previewColor));
+            previewEl.hidden = false;
+            previewEl.innerHTML = `
+                <span class="experiment-card-selection-preview-kicker">추가할 카드</span>
+                <span class="experiment-card-selection-preview-swatch" aria-hidden="true"></span>
+                <strong class="experiment-card-selection-preview-title">${escapeHtml(previewText)}</strong>
+                <span class="experiment-card-selection-preview-state ${stateClass}">${escapeHtml(stateText)}</span>
+            `;
+        }
+        syncInlineRatioBuilder(shell);
+    }
+
+    function syncCardBuilderControlsLegacy(shell, requestedGroupKey = '') {
+        if (!shell) return;
+        const modeSelect = shell.querySelector('[data-exp-card-mode]');
+        const rawModeKey = String(modeSelect?.value || DEFAULT_CARD_BUILDER_MODE).trim();
+        const modeKey = normalizeCardBuilderModeKey(rawModeKey);
+        if (modeSelect) {
+            modeSelect.innerHTML = buildCardBuilderSelectHtml(CARD_BUILDER_MODES, modeKey, '유형 선택');
+            modeSelect.value = modeKey;
+        }
+        if (isSummaryCardBuilderMode(modeKey)) {
+            syncSummaryCardBuilderControlsLegacy(shell, requestedGroupKey, modeKey);
+            return;
+        }
+        hideSummaryLinePickerControls(shell);
+        const groupSelect = shell.querySelector('[data-exp-card-kind]');
+        const targetSelect = shell.querySelector('[data-exp-card-target]');
+        const detailSelect = shell.querySelector('[data-exp-card-detail]');
+        const addButton = shell.querySelector('[data-exp-card-builder-add]');
+        const previewEl = shell.querySelector('[data-exp-card-selection-preview]');
+        const rawScopeKey = String(requestedGroupKey || groupSelect?.value || '').trim();
+        const scopeKey = rawScopeKey ? normalizeCardBuilderScopeKey(rawScopeKey) : '';
+        const scopeOption = scopeKey ? getCardBuilderScopeOption(scopeKey) : null;
+        if (groupSelect) {
+            groupSelect.innerHTML = buildCardBuilderSelectHtml(CARD_BUILDER_TARGETS, scopeKey, '범위 선택');
+            groupSelect.value = scopeKey;
+        }
+        const selectedCards = getSelectedCards(shell);
+        const selectedCardKeys = new Set(selectedCards.map(card => card.key));
+
+        const targetOptions = scopeKey ? getCardBuilderCategoryOptions(scopeKey) : [];
+        let targetKey = String(targetSelect?.value || '').trim();
+        if (!scopeKey || !targetOptions.some(option => option.key === targetKey)) targetKey = '';
+        if (targetSelect) {
+            targetSelect.innerHTML = buildCardBuilderSelectHtml(targetOptions, targetKey, '분류 선택');
+            targetSelect.value = targetKey;
+            targetSelect.disabled = !scopeKey || targetOptions.length === 0;
+        }
+
+        const detailOptions = scopeKey && targetKey ? getCardBuilderDetailOptions(targetKey, scopeKey) : [];
+        const detailKey = scopeKey && targetKey ? getAutoSelectedCardBuilderDetailKey(detailOptions, detailSelect?.value) : '';
+        if (detailSelect) {
+            detailSelect.innerHTML = buildCardBuilderSelectHtml(detailOptions, detailKey, '세부 선택', selectedCardKeys);
+            detailSelect.value = detailKey;
+            detailSelect.disabled = !scopeKey || !targetKey || detailOptions.length === 0;
+        }
+
+        const selectedDetail = detailOptions.find(option => option.key === detailKey) || null;
+        const alreadySelected = selectedDetail ? selectedCardKeys.has(selectedDetail.key) : false;
+        if (addButton) {
+            addButton.disabled = !selectedDetail || alreadySelected;
+            const label = alreadySelected ? '추가됨' : '추가';
+            addButton.innerHTML = `<span data-exp-card-builder-add-label>${label}</span>`;
+        }
+        syncInlineRatioToggleAvailability(shell, selectedDetail?.card || selectedDetail?.key || '');
+        const targetLabel = targetOptions.find(option => option.key === targetKey)?.title || '-';
+        if (previewEl) {
+            if (!scopeOption) {
+                previewEl.hidden = true;
+                previewEl.innerHTML = '';
+                syncInlineRatioBuilder(shell);
+                return;
+            }
+            const detailLabel = selectedDetail?.label || detailOptions[0]?.label || '-';
+            const selectedIndex = selectedDetail ? selectedCards.findIndex(card => card.key === selectedDetail.key) : -1;
+            const previewIndex = selectedIndex >= 0 ? selectedIndex : selectedCards.length;
+            const previewColor = selectedDetail ? resolveExperimentSeriesColor(selectedDetail.card, previewIndex) : '#64748b';
+            const previewText = `${scopeOption.label} · ${targetLabel} · ${detailLabel}`;
+            const stateText = alreadySelected ? '이미 추가됨' : (selectedDetail ? '추가 가능' : '선택 없음');
+            const stateClass = alreadySelected ? 'is-selected' : (selectedDetail ? 'is-ready' : 'is-empty');
+            previewEl.style.setProperty('--exp-preview-color', getSafeChartColor(previewColor));
+            previewEl.hidden = false;
+            previewEl.innerHTML = `
+                <span class="experiment-card-selection-preview-kicker">추가할 카드</span>
+                <span class="experiment-card-selection-preview-swatch" aria-hidden="true"></span>
+                <strong class="experiment-card-selection-preview-title">${escapeHtml(previewText)}</strong>
+                <span class="experiment-card-selection-preview-state ${stateClass}">${escapeHtml(stateText)}</span>
+            `;
+        }
+        syncInlineRatioBuilder(shell);
+    }
+
     function buildExperimentUnifiedAnalysisContent() {
-        const initialGroup = ANALYSIS_CARD_GROUPS.find(group => group.key === DEFAULT_GROUP_KEY) || ANALYSIS_CARD_GROUPS[0];
-        const initialSelected = [];
-        const selectableMaxMonth = getSelectableMaxMonth();
         return `
             <section class="experiment-unified-shell" aria-label="통합 그래프 분석">
-                <header class="experiment-unified-head">
-                    <span class="experiment-unified-kicker">통합 분석</span>
-                    <h1 class="experiment-unified-title">
-                        <strong class="experiment-toolbar-title">지표 통합 그래프</strong>
-                    </h1>
-                    ${buildExperimentFullscreenButtonHtml()}
-                </header>
                 <div class="experiment-card-composer">
                     <div class="experiment-chart-area">
-                        <div class="experiment-chart-toolbar">
-                            <div class="experiment-toolbar-actions">
-                                <button
-                                    type="button"
-                                    class="experiment-add-card-trigger"
-                                    data-exp-card-picker-toggle
-                                    aria-expanded="false"
-                                    onclick="KpiExperimentGraphPrototype.togglePicker(this)"
-                                >
-                                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
-                                    <span>카드 추가</span>
-                                </button>
-                                <div class="experiment-selected-count" data-exp-selected-count>선택 0개</div>
-                            </div>
-                            <div class="experiment-period-range" aria-label="그래프 기간">
-                                <label class="experiment-period-field">
-                                    <span>시작월</span>
-                                    <input
-                                        type="month"
-                                        class="experiment-period-input"
-                                        data-exp-period-start
-                                        min="${escapeHtml(PERIOD_MIN_MONTH)}"
-                                        max="${escapeHtml(selectableMaxMonth)}"
-                                        value="${escapeHtml(DEFAULT_PERIOD_START)}"
-                                        oninput="KpiExperimentGraphPrototype.selectPeriod(this)"
-                                        onchange="KpiExperimentGraphPrototype.selectPeriod(this)"
-                                    >
-                                </label>
-                                <label class="experiment-period-field">
-                                    <span>종료월</span>
-                                    <input
-                                        type="month"
-                                        class="experiment-period-input"
-                                        data-exp-period-end
-                                        min="${escapeHtml(PERIOD_MIN_MONTH)}"
-                                        max="${escapeHtml(selectableMaxMonth)}"
-                                        value="${escapeHtml(DEFAULT_PERIOD_END)}"
-                                        oninput="KpiExperimentGraphPrototype.selectPeriod(this)"
-                                        onchange="KpiExperimentGraphPrototype.selectPeriod(this)"
-                                    >
-                                </label>
-                            </div>
-                            <button
-                                type="button"
-                                class="experiment-year-overlap-button"
-                                data-exp-year-overlap
-                                aria-pressed="false"
-                                onclick="KpiExperimentGraphPrototype.toggleYearOverlap(this)"
-                            >
-                                <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
-                                <span>년도 겹치기</span>
-                            </button>
-                            <div class="experiment-year-overlap-years" data-exp-year-overlap-years hidden></div>
-                            <label class="experiment-remove-field">
-                                <span>선택 카드</span>
-                                <select class="experiment-remove-select" data-exp-selected-card-select onchange="KpiExperimentGraphPrototype.selectSelectedCard(this)">
-                                    ${initialSelected.map(card => `<option value="${escapeHtml(card.key)}">${escapeHtml(getCompactAnalysisCardTitle(card))}</option>`).join('')}
-                                </select>
-                            </label>
-                            <button
-                                type="button"
-                                class="experiment-edit-ratio-button"
-                                data-exp-card-edit
-                                onclick="KpiExperimentGraphPrototype.editSelectedRatioCard(this)"
-                                disabled
-                            >
-                                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-                                <span>수정</span>
-                            </button>
-                            <button
-                                type="button"
-                                class="experiment-remove-card-button"
-                                data-exp-card-remove
-                                onclick="KpiExperimentGraphPrototype.removeSelectedCard(this)"
-                            >
-                                <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
-                                <span>삭제</span>
-                            </button>
+                        <div class="experiment-chart-toolbar" data-exp-chart-toolbar>
+                            ${buildExperimentChartToolsHtml()}
                         </div>
-                        <div class="experiment-card-picker" data-exp-card-picker hidden onclick="KpiExperimentGraphPrototype.closePickerFromBackdrop(event)">
+                        <div
+                            class="experiment-card-picker"
+                            data-exp-card-picker
+                            hidden
+                        >
                             <div class="experiment-card-picker-panel" role="dialog" aria-modal="true" aria-label="카드 목록" onclick="event.stopPropagation()">
                                 <div class="experiment-card-picker-head">
                                     <strong>카드 목록</strong>
-                                    <button
-                                        type="button"
-                                        class="experiment-card-picker-close"
-                                        data-exp-card-picker-close
-                                        aria-label="카드 목록 닫기"
-                                        title="카드 목록 닫기"
-                                        onclick="KpiExperimentGraphPrototype.closePicker(this)"
-                                    >
-                                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
-                                        <span>닫기</span>
-                                    </button>
+                                    <div class="experiment-card-picker-actions">
+                                        <button
+                                            type="button"
+                                            class="experiment-card-picker-close"
+                                            data-exp-card-picker-close
+                                            aria-label="카드 목록 닫기"
+                                            title="카드 목록 닫기"
+                                            onclick="KpiExperimentGraphPrototype.closePicker(this)"
+                                        >
+                                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                                            <span>닫기</span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <label class="experiment-kind-field">
-                                    <span>구분</span>
-                                    <select class="experiment-kind-select" data-exp-card-kind onchange="KpiExperimentGraphPrototype.selectGroup(this)">
-                                        ${ANALYSIS_CARD_GROUPS.map(group => `<option value="${escapeHtml(group.key)}"${group.key === DEFAULT_GROUP_KEY ? ' selected' : ''}>${escapeHtml(group.title)}</option>`).join('')}
-                                    </select>
-                                </label>
-                                <div class="experiment-card-source-note" data-exp-card-group-note>
-                                    ${escapeHtml(initialGroup.title)} · ${initialGroup.cards.length}개 지표
+                                <div class="experiment-ratio-builder-grid" data-exp-card-builder>
+                                    <label class="experiment-ratio-field">
+                                        <span>1차 유형</span>
+                                        <select class="experiment-ratio-select" data-exp-card-mode onchange="KpiExperimentGraphPrototype.selectBuilderMode(this)">
+                                            ${buildCardBuilderSelectHtml(CARD_BUILDER_MODES, DEFAULT_CARD_BUILDER_MODE, '유형 선택')}
+                                        </select>
+                                    </label>
+                                    <label class="experiment-ratio-field">
+                                        <span>2차 범위</span>
+                                        <select class="experiment-ratio-select" data-exp-card-kind onchange="KpiExperimentGraphPrototype.selectGroup(this)">
+                                            ${buildCardBuilderSelectHtml(CARD_BUILDER_TARGETS, '', '범위 선택')}
+                                        </select>
+                                    </label>
+                                    <label class="experiment-ratio-field">
+                                        <span>3차 분류</span>
+                                        <select class="experiment-ratio-select" data-exp-card-target onchange="KpiExperimentGraphPrototype.selectBuilderTarget(this)" disabled>
+                                            ${buildCardBuilderSelectHtml([], '', '분류 선택')}
+                                        </select>
+                                        <button type="button" class="experiment-summary-line-open-button" data-exp-summary-line-open onclick="KpiExperimentGraphPrototype.openSummaryLinePicker(this)" hidden>
+                                            라인 선택
+                                        </button>
+                                    </label>
+                                    <label class="experiment-ratio-field">
+                                        <span>4차 세부</span>
+                                        <select class="experiment-ratio-select" data-exp-card-detail onchange="KpiExperimentGraphPrototype.selectBuilderDetail(this)" disabled>
+                                            ${buildCardBuilderSelectHtml([], '', '세부 선택')}
+                                        </select>
+                                    </label>
+                                    <div class="experiment-card-builder-actions">
+                                        <button type="button" class="experiment-ratio-add-button" data-exp-card-builder-add onclick="KpiExperimentGraphPrototype.addBuilderCard(this)" disabled>
+                                            <span data-exp-card-builder-add-label>추가</span>
+                                        </button>
+                                        <button type="button" class="experiment-ratio-add-button experiment-card-ratio-direct-button" data-exp-ratio-open aria-expanded="false" onclick="KpiExperimentGraphPrototype.toggleInlineRatioBuilder(this)" disabled>
+                                            <span>비율</span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="experiment-card-groups">
+                                <div class="experiment-card-selection-preview" data-exp-card-selection-preview style="--exp-preview-color:#64748b;" hidden></div>
+                                ${buildSummaryLinePickerDialog()}
+                                ${buildInlineRatioBuilderHtml()}
+                                <div class="experiment-card-groups" data-exp-card-groups-source hidden>
                                     ${ANALYSIS_CARD_GROUPS.map(buildCardGroup).join('')}
                                 </div>
                             </div>
@@ -2350,44 +4068,136 @@
     }
 
     function getRatioBuilderCard(element) {
-        return element?.closest?.('[data-exp-ratio-dialog]') || element?.closest?.('.experiment-ratio-builder-card') || null;
+        return element?.closest?.('[data-exp-inline-ratio-builder]')
+            || element?.closest?.('[data-exp-ratio-dialog]')
+            || element?.closest?.('.experiment-ratio-builder-card')
+            || null;
+    }
+
+    function getRatioPartElements(builderCard, role = 'numerator') {
+        const partEl = builderCard?.querySelector?.(`[data-exp-ratio-part="${escapeSelector(role)}"]`);
+        return {
+            partEl,
+            modeSelect: partEl?.querySelector?.('[data-exp-ratio-mode]') || null,
+            scopeSelect: partEl?.querySelector?.('[data-exp-ratio-scope]') || null,
+            categorySelect: partEl?.querySelector?.('[data-exp-ratio-category]') || null,
+            detailSelect: partEl?.querySelector?.('[data-exp-ratio-detail]') || null,
+            titleEl: partEl?.querySelector?.('[data-exp-ratio-part-title]') || null
+        };
+    }
+
+    function getRatioPartSelectedCardKey(builderCard, role = 'numerator') {
+        return String(getRatioPartElements(builderCard, role).detailSelect?.value || '').trim();
+    }
+
+    function hasRatioPartSelectionInput(builderCard, role = 'numerator') {
+        const { modeSelect, scopeSelect, categorySelect, detailSelect } = getRatioPartElements(builderCard, role);
+        return Boolean(
+            String(modeSelect?.value || '').trim()
+            || String(scopeSelect?.value || '').trim()
+            || String(categorySelect?.value || '').trim()
+            || String(detailSelect?.value || '').trim()
+        );
+    }
+
+    function resetRatioPartSelection(builderCard, role = 'numerator') {
+        const { modeSelect, scopeSelect, categorySelect, detailSelect } = getRatioPartElements(builderCard, role);
+        [modeSelect, scopeSelect, categorySelect, detailSelect].forEach(select => {
+            if (select) select.value = '';
+        });
+    }
+
+    function resetRatioPartDependentSelects(select) {
+        const partEl = select?.closest?.('[data-exp-ratio-part]');
+        const step = String(select?.dataset?.expRatioStep || '').trim();
+        if (!partEl) return;
+        if (step === 'mode') {
+            const scopeSelect = partEl.querySelector('[data-exp-ratio-scope]');
+            const categorySelect = partEl.querySelector('[data-exp-ratio-category]');
+            const detailSelect = partEl.querySelector('[data-exp-ratio-detail]');
+            if (scopeSelect) scopeSelect.value = '';
+            if (categorySelect) categorySelect.value = '';
+            if (detailSelect) detailSelect.value = '';
+        } else if (step === 'scope') {
+            const categorySelect = partEl.querySelector('[data-exp-ratio-category]');
+            const detailSelect = partEl.querySelector('[data-exp-ratio-detail]');
+            if (categorySelect) categorySelect.value = '';
+            if (detailSelect) detailSelect.value = '';
+        } else if (step === 'category') {
+            const detailSelect = partEl.querySelector('[data-exp-ratio-detail]');
+            if (detailSelect) detailSelect.value = '';
+        }
+    }
+
+    function syncRatioPartControls(builderCard, role = 'numerator', counterpartKey = '', requestedCardKey = '') {
+        const { modeSelect, scopeSelect, categorySelect, detailSelect, titleEl } = getRatioPartElements(builderCard, role);
+        if (!modeSelect || !scopeSelect || !categorySelect || !detailSelect) return '';
+
+        const allowedKeys = getRatioCandidateKeySet(role, counterpartKey);
+        const requestedPath = findCardBuilderSelectionForCard(requestedCardKey, allowedKeys);
+        const currentDetailKey = String(detailSelect.value || '').trim();
+        const currentPath = findCardBuilderSelectionForCard(currentDetailKey, allowedKeys);
+        const modeOptions = getRatioModeOptions(role, counterpartKey);
+
+        let modeKey = requestedPath?.modeKey || currentPath?.modeKey || String(modeSelect.value || '').trim();
+        if (!modeOptions.some(option => option.key === modeKey)) modeKey = '';
+        modeSelect.innerHTML = buildCardBuilderSelectHtml(modeOptions, modeKey, '유형 선택');
+        modeSelect.value = modeKey;
+        modeSelect.disabled = modeOptions.length === 0;
+
+        const scopeOptions = modeKey ? getRatioScopeOptions(role, counterpartKey, modeKey) : [];
+        let scopeKey = requestedPath?.scopeKey || currentPath?.scopeKey || String(scopeSelect.value || '').trim();
+        if (!scopeOptions.some(option => option.key === scopeKey)) scopeKey = '';
+        scopeSelect.innerHTML = buildCardBuilderSelectHtml(scopeOptions, scopeKey, '범위 선택');
+        scopeSelect.value = scopeKey;
+        scopeSelect.disabled = !modeKey || scopeOptions.length === 0;
+
+        const categoryOptions = scopeKey ? getRatioCategoryOptions(role, scopeKey, counterpartKey, modeKey) : [];
+        let categoryKey = requestedPath?.categoryKey || currentPath?.categoryKey || String(categorySelect.value || '').trim();
+        if (!categoryOptions.some(option => option.key === categoryKey)) {
+            categoryKey = categoryOptions.length === 1 ? categoryOptions[0].key : '';
+        }
+        categorySelect.innerHTML = buildCardBuilderSelectHtml(categoryOptions, categoryKey, isSummaryCardBuilderMode(modeKey) ? '하위범위 선택' : '분류 선택');
+        categorySelect.value = categoryKey;
+        categorySelect.disabled = !scopeKey || categoryOptions.length === 0 || (isSummaryCardBuilderMode(modeKey) && categoryOptions.length <= 1);
+
+        const detailOptions = scopeKey && categoryKey ? getRatioDetailOptions(role, categoryKey, scopeKey, counterpartKey, modeKey) : [];
+        const nextRequestedDetailKey = requestedPath?.detailKey || currentPath?.detailKey || String(detailSelect.value || '').trim();
+        const detailKey = scopeKey && categoryKey ? getAutoSelectedCardBuilderDetailKey(detailOptions, nextRequestedDetailKey) : '';
+        detailSelect.innerHTML = buildCardBuilderSelectHtml(detailOptions, detailKey, '세부 선택');
+        detailSelect.value = detailKey;
+        detailSelect.disabled = !scopeKey || !categoryKey || detailOptions.length === 0;
+
+        if (titleEl) {
+            const selectedDetail = detailOptions.find(option => option.key === detailKey);
+            titleEl.textContent = selectedDetail?.label || selectedDetail?.title || '선택 대기';
+        }
+        return detailKey;
     }
 
     function updateRatioBuilderControls(builderCard, changedControl = 'numerator', requestedSelection = {}) {
         if (!builderCard) return;
-        const numeratorSelect = builderCard.querySelector('[data-exp-ratio-numerator]');
-        const denominatorSelect = builderCard.querySelector('[data-exp-ratio-denominator]');
         const statusEl = builderCard.querySelector('[data-exp-ratio-status]');
         const addButton = builderCard.querySelector('[data-exp-ratio-add]');
-        if (!numeratorSelect || !denominatorSelect) return;
         const requestedNumeratorKey = String(requestedSelection.numeratorKey || '').trim();
         const requestedDenominatorKey = String(requestedSelection.denominatorKey || '').trim();
-        const previousNumeratorKey = requestedNumeratorKey || String(numeratorSelect.value || '').trim();
-        const previousDenominatorKey = requestedDenominatorKey || String(denominatorSelect.value || '').trim();
-        let numeratorCards = getRatioNumeratorCards();
-        let selectedNumeratorKey = numeratorCards.some(card => card.key === previousNumeratorKey)
-            ? previousNumeratorKey
-            : getDefaultRatioNumeratorKey();
-        let denominatorCards = getRatioDenominatorCards(selectedNumeratorKey);
-        let selectedDenominatorKey = denominatorCards.some(card => card.key === previousDenominatorKey)
-            ? previousDenominatorKey
-            : (denominatorCards[0]?.key || '');
+        const previousNumeratorKey = requestedNumeratorKey || getRatioPartSelectedCardKey(builderCard, 'numerator');
+        const previousDenominatorKey = requestedDenominatorKey || getRatioPartSelectedCardKey(builderCard, 'denominator');
+        const numeratorFallbackKey = previousNumeratorKey || (hasRatioPartSelectionInput(builderCard, 'numerator') ? '' : getDefaultRatioNumeratorKey());
+        let selectedNumeratorKey = '';
+        let selectedDenominatorKey = '';
 
-        if (changedControl === 'denominator' && previousDenominatorKey) {
-            numeratorCards = getRatioNumeratorCards(previousDenominatorKey);
-            selectedNumeratorKey = numeratorCards.some(card => card.key === previousNumeratorKey)
-                ? previousNumeratorKey
-                : (numeratorCards[0]?.key || '');
-            denominatorCards = getRatioDenominatorCards(selectedNumeratorKey);
-            selectedDenominatorKey = denominatorCards.some(card => card.key === previousDenominatorKey)
-                ? previousDenominatorKey
-                : (denominatorCards[0]?.key || '');
+        if (changedControl === 'denominator') {
+            selectedDenominatorKey = syncRatioPartControls(builderCard, 'denominator', '', previousDenominatorKey);
+            selectedNumeratorKey = syncRatioPartControls(builderCard, 'numerator', selectedDenominatorKey, numeratorFallbackKey);
+            selectedDenominatorKey = syncRatioPartControls(builderCard, 'denominator', selectedNumeratorKey, selectedDenominatorKey);
+        } else {
+            selectedNumeratorKey = syncRatioPartControls(builderCard, 'numerator', '', numeratorFallbackKey);
+            const denominatorFallbackKey = previousDenominatorKey || (hasRatioPartSelectionInput(builderCard, 'denominator') ? '' : getDefaultRatioDenominatorKey(selectedNumeratorKey));
+            selectedDenominatorKey = syncRatioPartControls(builderCard, 'denominator', selectedNumeratorKey, denominatorFallbackKey);
+            selectedNumeratorKey = syncRatioPartControls(builderCard, 'numerator', selectedDenominatorKey, selectedNumeratorKey);
         }
 
-        numeratorSelect.innerHTML = numeratorCards.map(card => buildRatioOption(card, selectedNumeratorKey)).join('');
-        numeratorSelect.disabled = numeratorCards.length === 0;
-        denominatorSelect.innerHTML = denominatorCards.map(card => buildRatioOption(card, selectedDenominatorKey)).join('');
-        denominatorSelect.disabled = denominatorCards.length === 0;
         const rule = resolveFractionRule(selectedNumeratorKey, selectedDenominatorKey);
         if (statusEl) {
             statusEl.textContent = rule.allowed
@@ -2395,6 +4205,125 @@
                 : '조합할 수 없는 비율입니다.';
         }
         if (addButton) addButton.disabled = !rule.allowed;
+    }
+
+    function getCurrentBuilderCardKey(shell) {
+        const cardKey = String(shell?.querySelector?.('[data-exp-card-detail]')?.value || '').trim();
+        return findAnalysisCard(cardKey) ? cardKey : '';
+    }
+
+    function getInlineRatioBuilder(shell) {
+        return shell?.querySelector?.('[data-exp-inline-ratio-builder]') || null;
+    }
+
+    function getInlineRatioToggle(shell) {
+        return shell?.querySelector?.('.experiment-card-ratio-direct-button[data-exp-ratio-open]')
+            || shell?.querySelector?.('[data-exp-ratio-open]')
+            || null;
+    }
+
+    function syncInlineRatioToggleAvailability(shell, selectedCardOrKey = '') {
+        const trigger = getInlineRatioToggle(shell);
+        if (!trigger) return;
+        const card = findAnalysisCard(selectedCardOrKey || getCurrentBuilderCardKey(shell));
+        const enabled = Boolean(card && isValidNumerator(card));
+        trigger.disabled = !enabled;
+        if (!enabled && trigger.getAttribute('aria-expanded') === 'true') {
+            setInlineRatioBuilderOpen(shell, false);
+        }
+    }
+
+    function updateInlineRatioToggleState(shell, isOpen = false) {
+        const trigger = getInlineRatioToggle(shell);
+        if (!trigger) return;
+        trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        trigger.classList.toggle('is-active', isOpen);
+    }
+
+    function setInlineRatioBuilderOpen(shell, isOpen) {
+        const builder = getInlineRatioBuilder(shell);
+        if (!shell || !builder) return;
+        const cardBuilder = shell.querySelector('[data-exp-card-builder]');
+        if (cardBuilder) {
+            if (isOpen) cardBuilder.dataset.expRatioMode = 'true';
+            else delete cardBuilder.dataset.expRatioMode;
+            cardBuilder.querySelectorAll('[data-exp-card-mode], [data-exp-card-kind], [data-exp-card-target], [data-exp-card-detail]').forEach(select => {
+                select.disabled = Boolean(isOpen);
+            });
+        }
+        builder.hidden = !isOpen;
+        updateInlineRatioToggleState(shell, isOpen);
+        if (isOpen) {
+            resetRatioPartSelection(builder, 'denominator');
+            syncInlineRatioBuilder(shell, false);
+        }
+        else syncCardBuilderControlsLegacy(shell);
+    }
+
+    function syncInlineRatioBuilder(shell, allowDefaultDenominator = true) {
+        const builder = getInlineRatioBuilder(shell);
+        if (!shell || !builder || builder.hidden) return;
+        const numeratorKey = getCurrentBuilderCardKey(shell);
+        const numeratorCard = findAnalysisCard(numeratorKey);
+        const numeratorTitleEl = builder.querySelector('[data-exp-inline-ratio-numerator]');
+        const statusEl = builder.querySelector('[data-exp-inline-ratio-status]');
+        const addButton = builder.querySelector('[data-exp-inline-ratio-add]');
+        const primaryAddButton = shell.querySelector('[data-exp-card-builder-add]');
+        const syncPrimaryAddButton = () => {
+            if (!primaryAddButton) return;
+            primaryAddButton.disabled = true;
+            primaryAddButton.innerHTML = `<span data-exp-card-builder-add-label>추가</span>`;
+        };
+
+        if (numeratorTitleEl) {
+            numeratorTitleEl.textContent = numeratorCard ? getCompactAnalysisCardTitle(numeratorCard) : '4차 세부를 먼저 선택하세요.';
+        }
+
+        if (!numeratorCard) {
+            syncRatioPartControls(builder, 'denominator', '', '');
+            if (statusEl) statusEl.textContent = '분자로 쓸 카드를 먼저 선택하세요.';
+            if (addButton) addButton.disabled = true;
+            syncPrimaryAddButton(false);
+            return;
+        }
+
+        const previousDenominatorKey = getRatioPartSelectedCardKey(builder, 'denominator')
+            || (allowDefaultDenominator ? getDefaultRatioDenominatorKey(numeratorKey) : '');
+        const denominatorKey = syncRatioPartControls(builder, 'denominator', numeratorKey, previousDenominatorKey);
+        const rule = resolveFractionRule(numeratorKey, denominatorKey);
+        if (statusEl) {
+            statusEl.textContent = rule.allowed
+                ? `${getCompactAnalysisCardTitle(numeratorCard)} / ${getCompactAnalysisCardTitle(findAnalysisCard(denominatorKey))}`
+                : '조합할 수 없는 비율입니다.';
+        }
+        if (addButton) addButton.disabled = !rule.allowed;
+        syncPrimaryAddButton(rule.allowed);
+    }
+
+    function clearCardRuntimeState(shell, cardKey = '') {
+        if (!shell || !cardKey) return;
+        const state = getExperimentShellState(shell);
+        delete state.displayModes[cardKey];
+        delete state.decimalDigits[cardKey];
+        delete state.unitKeys[cardKey];
+        delete state.seriesLabels[cardKey];
+    }
+
+    function addGeneratedSummaryCard(shell, summaryCard) {
+        if (!shell || !summaryCard) return false;
+        const state = getExperimentShellState(shell);
+        const exists = state.summaryCards.some(card => card.key === summaryCard.key);
+        if (!exists) state.summaryCards.push(summaryCard);
+        return !exists;
+    }
+
+    function removeGeneratedSummaryCard(shell, cardKey = '') {
+        if (!shell || !cardKey) return false;
+        const state = getExperimentShellState(shell);
+        const previousLength = state.summaryCards.length;
+        state.summaryCards = state.summaryCards.filter(card => card.key !== cardKey);
+        clearCardRuntimeState(shell, cardKey);
+        return state.summaryCards.length !== previousLength;
     }
 
     function addGeneratedRatioCard(shell, ratioCard) {
@@ -2448,24 +4377,43 @@
         const state = getExperimentShellState(shell);
         const previousLength = state.ratioCards.length;
         state.ratioCards = state.ratioCards.filter(card => card.key !== cardKey);
-        delete state.displayModes[cardKey];
-        delete state.decimalDigits[cardKey];
-        delete state.unitKeys[cardKey];
-        delete state.seriesLabels[cardKey];
+        clearCardRuntimeState(shell, cardKey);
         return state.ratioCards.length !== previousLength;
     }
 
-    function setVisibleGroup(shell, groupKey) {
-        const normalizedKey = String(groupKey || DEFAULT_GROUP_KEY).trim();
-        const activeGroup = ANALYSIS_CARD_GROUPS.find(group => group.key === normalizedKey) || ANALYSIS_CARD_GROUPS[0];
-        shell.querySelectorAll('[data-exp-card-group]').forEach(groupEl => {
-            groupEl.hidden = String(groupEl.dataset.expCardGroup || '') !== activeGroup.key;
-        });
-        const noteEl = shell.querySelector('[data-exp-card-group-note]');
-        if (noteEl) noteEl.textContent = `${activeGroup.title} · ${activeGroup.cards.length}개 지표`;
-        if (activeGroup.key === 'ratio') {
-            shell.querySelectorAll('.experiment-ratio-builder-card').forEach(updateRatioBuilderControls);
+    function addInlineRatioCardFromShell(shell) {
+        const builder = getInlineRatioBuilder(shell);
+        const numeratorKey = getCurrentBuilderCardKey(shell);
+        const denominatorKey = getRatioPartSelectedCardKey(builder, 'denominator');
+        const statusEl = builder?.querySelector?.('[data-exp-inline-ratio-status]');
+        const ratioCard = buildRatioCard(numeratorKey, denominatorKey);
+        if (!shell || !builder || !ratioCard) {
+            if (statusEl) statusEl.textContent = '조합할 수 없는 비율입니다.';
+            syncInlineRatioBuilder(shell);
+            return false;
         }
+        const changed = addGeneratedRatioCard(shell, ratioCard);
+        if (statusEl) statusEl.textContent = changed ? '비율을 추가했습니다.' : '이미 추가된 비율입니다.';
+        renderExactAnalysisChart(shell);
+        const selectedControl = shell.querySelector('[data-exp-selected-card-select]');
+        if (selectedControl && getSelectedCards(shell).some(card => card.key === ratioCard.key)) {
+            selectedControl.value = ratioCard.key;
+            updateSelectedDeleteControl(shell);
+        }
+        setPickerOpen(shell, false);
+        return changed;
+    }
+
+    function setVisibleGroup(shell, scopeKey) {
+        const normalizedKey = String(scopeKey || '').trim() ? normalizeCardBuilderScopeKey(scopeKey) : '';
+        shell.querySelectorAll('[data-exp-card-group]').forEach(groupEl => {
+            groupEl.hidden = true;
+        });
+        const targetSelect = shell?.querySelector?.('[data-exp-card-target]');
+        const detailSelect = shell?.querySelector?.('[data-exp-card-detail]');
+        if (targetSelect) targetSelect.value = '';
+        if (detailSelect) detailSelect.value = '';
+        syncCardBuilderControlsLegacy(shell, normalizedKey);
     }
 
     function updatePickerToggleState(shell, isOpen) {
@@ -2481,8 +4429,12 @@
         picker.hidden = !isOpen;
         updatePickerToggleState(shell, isOpen);
         if (isOpen) {
-            const select = shell.querySelector('[data-exp-card-kind]');
-            setVisibleGroup(shell, select?.value || DEFAULT_GROUP_KEY);
+            resetCardBuilderSelection(shell);
+            setInlineRatioBuilderOpen(shell, false);
+            syncCardBuilderControlsLegacy(shell);
+        } else {
+            resetCardBuilderSelection(shell);
+            setInlineRatioBuilderOpen(shell, false);
         }
     }
 
@@ -2497,7 +4449,7 @@
             const titleEl = dialog.querySelector('[data-exp-ratio-dialog-title]');
             const addLabelEl = dialog.querySelector('[data-exp-ratio-add-label]');
             if (titleEl) titleEl.textContent = editKey ? '비율 수정' : '비율 만들기';
-            if (addLabelEl) addLabelEl.textContent = editKey ? '비율 수정' : '비율 추가';
+            if (addLabelEl) addLabelEl.textContent = editKey ? '비율 수정' : '비율';
             updateRatioBuilderControls(dialog, 'numerator', {
                 numeratorKey: ratioCard?.numeratorKey || '',
                 denominatorKey: ratioCard?.denominatorKey || ''
@@ -2510,7 +4462,7 @@
     function mountExperimentShell(shell) {
         if (!shell || shell.dataset.expChartMounted === 'true') return;
         shell.dataset.expChartMounted = 'true';
-        setVisibleGroup(shell, DEFAULT_GROUP_KEY);
+        syncCardBuilderControlsLegacy(shell);
         updatePickerToggleState(shell, false);
         renderExactAnalysisChart(shell);
     }
@@ -2558,16 +4510,30 @@
             if (!shell) return;
             setPickerOpen(shell, false);
         },
-        closePickerFromBackdrop(event) {
-            if (event?.target !== event?.currentTarget) return;
-            const shell = event?.currentTarget?.closest?.('.experiment-unified-shell');
-            if (!shell) return;
-            setPickerOpen(shell, false);
-        },
         openRatioDialog(trigger) {
             const shell = trigger?.closest?.('.experiment-unified-shell');
             if (!shell) return;
             setRatioDialogOpen(shell, true);
+        },
+        toggleInlineRatioBuilder(trigger) {
+            const shell = trigger?.closest?.('.experiment-unified-shell');
+            const builder = getInlineRatioBuilder(shell);
+            if (!shell || !builder) return;
+            setInlineRatioBuilderOpen(shell, builder.hidden);
+        },
+        selectBuilderMode(select) {
+            const shell = select?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            const groupSelect = shell.querySelector('[data-exp-card-kind]');
+            const targetSelect = shell.querySelector('[data-exp-card-target]');
+            const detailSelect = shell.querySelector('[data-exp-card-detail]');
+            if (select) select.value = normalizeCardBuilderModeKey(select.value);
+            if (groupSelect) groupSelect.value = '';
+            if (targetSelect) targetSelect.value = '';
+            if (detailSelect) detailSelect.value = '';
+            setInlineRatioBuilderOpen(shell, false);
+            setSummaryLinePickerOpen(shell, false);
+            syncCardBuilderControlsLegacy(shell);
         },
         closeRatioDialog(trigger) {
             const shell = trigger?.closest?.('.experiment-unified-shell');
@@ -2583,11 +4549,116 @@
         selectGroup(select) {
             const shell = select?.closest?.('.experiment-unified-shell');
             if (!shell) return;
+            const shouldOpenSummaryLinePicker = isSummaryCardBuilderMode(getCurrentCardBuilderModeKey(shell)) && Boolean(String(select?.value || '').trim());
             setVisibleGroup(shell, select.value);
+            if (shouldOpenSummaryLinePicker) setSummaryLinePickerOpen(shell, true);
+        },
+        openSummaryLinePicker(trigger) {
+            const shell = trigger?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            setSummaryLinePickerOpen(shell, true);
+        },
+        closeSummaryLinePicker(trigger) {
+            const shell = trigger?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            setSummaryLinePickerOpen(shell, false);
+        },
+        closeSummaryLinePickerFromBackdrop(event) {
+            if (event?.target !== event?.currentTarget) return;
+            const shell = event?.currentTarget?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            setSummaryLinePickerOpen(shell, false);
+        },
+        toggleSummaryLineSelection(input) {
+            const shell = input?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            const scopeKey = normalizeCardBuilderScopeKey(shell.querySelector('[data-exp-card-kind]')?.value || 'total');
+            const lineOptions = getSummaryLineOptionsForScope(scopeKey);
+            const allKeys = lineOptions.map(option => option.key);
+            const currentKeys = getSummaryLineSelectionKeys(shell, scopeKey);
+            const checkKey = String(input?.dataset?.expSummaryLineCheck || '').trim();
+            let nextKeys = currentKeys;
+            if (checkKey === 'all') {
+                nextKeys = input.checked ? allKeys : [];
+            } else if (checkKey) {
+                const selectedSet = new Set(currentKeys);
+                if (input.checked) selectedSet.add(checkKey);
+                else selectedSet.delete(checkKey);
+                nextKeys = allKeys.filter(key => selectedSet.has(key));
+            }
+            setSummaryLineSelectionKeys(shell, scopeKey, nextKeys);
+            const detailSelect = shell.querySelector('[data-exp-card-detail]');
+            if (detailSelect) detailSelect.value = '';
+            syncCardBuilderControlsLegacy(shell, scopeKey);
+            setSummaryLinePickerOpen(shell, true);
+        },
+        selectBuilderStep(select) {
+            const shell = select?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            const step = String(select?.dataset?.expCardStep || 'group').trim();
+            const value = String(select?.value || '').trim();
+            const groupSelect = shell.querySelector('[data-exp-card-kind]');
+            const targetSelect = shell.querySelector('[data-exp-card-target]');
+            const detailSelect = shell.querySelector('[data-exp-card-detail]');
+            if (!value) {
+                syncCardBuilderControlsLegacy(shell);
+                return;
+            }
+            if (step === 'group') {
+                if (groupSelect) groupSelect.value = normalizeCardBuilderScopeKey(value);
+                if (targetSelect) targetSelect.value = '';
+                if (detailSelect) detailSelect.value = '';
+            } else if (step === 'target') {
+                if (targetSelect) targetSelect.value = value;
+                if (detailSelect) detailSelect.value = '';
+            } else {
+                if (detailSelect) detailSelect.value = value;
+            }
+            syncCardBuilderControlsLegacy(shell);
+        },
+        editBuilderStep(trigger) {
+            const shell = trigger?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            const step = String(trigger?.dataset?.expCardStepEdit || '').trim();
+            const groupSelect = shell.querySelector('[data-exp-card-kind]');
+            const targetSelect = shell.querySelector('[data-exp-card-target]');
+            const detailSelect = shell.querySelector('[data-exp-card-detail]');
+            if (step === 'group') {
+                if (groupSelect) groupSelect.value = '';
+                if (targetSelect) targetSelect.value = '';
+                if (detailSelect) detailSelect.value = '';
+            } else if (step === 'target') {
+                if (targetSelect) targetSelect.value = '';
+                if (detailSelect) detailSelect.value = '';
+            } else if (step === 'detail') {
+                if (detailSelect) detailSelect.value = '';
+            }
+            syncCardBuilderControlsLegacy(shell);
+        },
+        selectBuilderTarget(select) {
+            const shell = select?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            const detailSelect = shell.querySelector('[data-exp-card-detail]');
+            if (detailSelect) detailSelect.value = '';
+            syncCardBuilderControlsLegacy(shell);
+        },
+        selectBuilderDetail(select) {
+            const shell = select?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            syncCardBuilderControlsLegacy(shell);
         },
         selectPeriod(select) {
             const shell = select?.closest?.('.experiment-unified-shell');
             if (!shell) return;
+            renderExactAnalysisChart(shell);
+        },
+        selectChartView(trigger) {
+            const shell = trigger?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            getExperimentShellState(shell).chartViewMode = String(trigger?.dataset?.expChartView || '').trim().toLowerCase() === 'table'
+                ? 'table'
+                : 'chart';
+            syncExperimentChartViewToggle(shell);
             renderExactAnalysisChart(shell);
         },
         toggleYearOverlap(trigger) {
@@ -2622,9 +4693,16 @@
             updateSelectedDeleteControl(shell);
         },
         selectRatioNumerator(select) {
+            resetRatioPartDependentSelects(select);
             updateRatioBuilderControls(getRatioBuilderCard(select), 'numerator');
         },
         selectRatioDenominator(select) {
+            resetRatioPartDependentSelects(select);
+            const inlineBuilder = select?.closest?.('[data-exp-inline-ratio-builder]');
+            if (inlineBuilder) {
+                syncInlineRatioBuilder(inlineBuilder.closest('.experiment-unified-shell'), false);
+                return;
+            }
             updateRatioBuilderControls(getRatioBuilderCard(select), 'denominator');
         },
         editSelectedRatioCard(trigger) {
@@ -2637,8 +4715,8 @@
         addRatioCard(trigger) {
             const shell = getRatioBuilderShell(trigger);
             const builderCard = getRatioBuilderCard(trigger);
-            const numeratorKey = String(builderCard?.querySelector?.('[data-exp-ratio-numerator]')?.value || '').trim();
-            const denominatorKey = String(builderCard?.querySelector?.('[data-exp-ratio-denominator]')?.value || '').trim();
+            const numeratorKey = getRatioPartSelectedCardKey(builderCard, 'numerator');
+            const denominatorKey = getRatioPartSelectedCardKey(builderCard, 'denominator');
             const statusEl = builderCard?.querySelector?.('[data-exp-ratio-status]');
             const editKey = String(builderCard?.dataset?.expRatioEditKey || '').trim();
             const ratioCard = buildRatioCard(numeratorKey, denominatorKey);
@@ -2662,6 +4740,38 @@
             }
             setRatioDialogOpen(shell, false);
         },
+        addInlineRatioCard(trigger) {
+            const shell = trigger?.closest?.('.experiment-unified-shell');
+            addInlineRatioCardFromShell(shell);
+        },
+        addBuilderCard(trigger) {
+            const shell = trigger?.closest?.('.experiment-unified-shell');
+            if (!shell) return;
+            const inlineBuilder = getInlineRatioBuilder(shell);
+            if (inlineBuilder && !inlineBuilder.hidden) {
+                addInlineRatioCardFromShell(shell);
+                return;
+            }
+            const rawScopeKey = String(shell.querySelector('[data-exp-card-kind]')?.value || '').trim();
+            if (!rawScopeKey) {
+                syncCardBuilderControlsLegacy(shell);
+                return;
+            }
+            const scopeKey = normalizeCardBuilderScopeKey(rawScopeKey);
+            const cardKey = String(shell.querySelector('[data-exp-card-detail]')?.value || '').trim();
+            const card = findAnalysisCard(cardKey);
+            if (!card) {
+                syncCardBuilderControlsLegacy(shell, scopeKey);
+                return;
+            }
+            if (ALL_ANALYSIS_CARDS.some(item => item.key === card.key)) {
+                setCardSelected(shell, card.key, true);
+            } else {
+                addGeneratedSummaryCard(shell, card);
+            }
+            renderExactAnalysisChart(shell);
+            setPickerOpen(shell, false);
+        },
         toggleCard(trigger) {
             const shell = trigger?.closest?.('.experiment-unified-shell');
             const cardKey = String(trigger?.dataset?.expCardToggle || '').trim();
@@ -2675,10 +4785,11 @@
         },
         removeSelectedCard(trigger) {
             const shell = trigger?.closest?.('.experiment-unified-shell');
+            const directCardKey = String(trigger?.dataset?.expCardRemoveKey || '').trim();
             const select = shell?.querySelector?.('[data-exp-selected-card-select]');
-            const cardKey = String(select?.value || '').trim();
+            const cardKey = directCardKey || String(select?.value || '').trim();
             if (!shell || !cardKey) return;
-            if (!removeGeneratedRatioCard(shell, cardKey)) {
+            if (!removeGeneratedRatioCard(shell, cardKey) && !removeGeneratedSummaryCard(shell, cardKey)) {
                 setCardSelected(shell, cardKey, false);
             }
             renderExactAnalysisChart(shell);

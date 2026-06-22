@@ -17,8 +17,8 @@ const shellManifestPath = path.join(appRoot, 'KPI.app.shell.css');
 
 const styleEntries = [
   {
-    href: `${runtimeDirName}/app/styles/shell/dashboard.css?v=077`,
-    manifestHref: './styles/shell/dashboard.css?v=077',
+    href: `${runtimeDirName}/app/styles/shell/dashboard.css?v=106`,
+    manifestHref: './styles/shell/dashboard.css?v=106',
     fileName: 'dashboard.css',
     relativeSegments: ['shell', 'dashboard.css'],
   },
@@ -90,17 +90,37 @@ test('shell css compatibility manifest imports split files', () => {
 test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['dashboard.css'], /#dashboard\s*\{/);
   assert.match(styleContents['dashboard.css'], /\.dashboard-version-badge\s*\{/);
-  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-report-chart-shell \.util-analytics-chart\s*\{[^}]*border:\s*1\.4px solid #111827;[^}]*background:\s*#ffffff;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-chart-card\s*\{[^}]*border:\s*1px solid #111827;[^}]*background:\s*#ffffff;[^}]*gap:\s*0;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-report-chart-shell \.util-analytics-chart\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*padding:\s*0;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-analytics-chart-grid\s*\{\s*display:\s*none;\s*\}/);
   assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-analytics-chart-value\s*\{[^}]*paint-order:\s*stroke;[^}]*stroke:\s*#ffffff;[^}]*stroke-width:\s*3px;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-analytics-chart-canvas svg > rect\[opacity\]\s*\{[^}]*opacity:\s*1;[^}]*stroke:\s*#ffffff;[^}]*rx:\s*2px;[^}]*shape-rendering:\s*crispEdges;/s);
-  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-grid\s*\{[^}]*grid-template-columns:\s*1fr;/s);
-  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-card\s*\{[^}]*grid-template-columns:\s*minmax\(280px,\s*1fr\) auto;[^}]*align-items:\s*center;/s);
-  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-controls\s*\{[^}]*grid-column:\s*2;[^}]*border-top:\s*0;/s);
-  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-control-actions\s*\{[^}]*display:\s*inline-flex;[^}]*flex-wrap:\s*nowrap;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(min\(100%,\s*340px\),\s*420px\)\);[^}]*justify-content:\s*start;[^}]*border-bottom:\s*1px solid #d1d5db;[^}]*background:\s*#f8fafc;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-card\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*row-gap:\s*5px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-card-actions\s*\{[^}]*top:\s*8px;[^}]*right:\s*9px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-summary-remove-button\s*\{[^}]*width:\s*20px;[^}]*height:\s*20px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-badge\s*\{[^}]*background:\s*var\(--util-summary-badge-color,\s*#64748b\);[^}]*color:\s*#ffffff;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-label\s*\{[^}]*max-width:\s*100%;[^}]*text-overflow:\s*ellipsis;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-controls\s*\{[^}]*grid-column:\s*1;[^}]*border-top:\s*0;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-control-actions\s*\{[^}]*display:\s*inline-flex;[^}]*border:\s*0;[^}]*border-top:\s*1px solid #e5e7eb;[^}]*padding:\s*4px 0 0;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-chart-surface\.util-sheet-analysis-table-chart\s*\{[^}]*display:\s*grid;[^}]*align-items:\s*stretch;[^}]*padding:\s*0;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-table-chart-frame\s*\{[^}]*min-height:\s*100%;[^}]*height:\s*100%;[^}]*display:\s*block;[^}]*border:\s*0;[^}]*padding:\s*0;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.experiment-chart-table-card\s*\{[^}]*min-height:\s*100%;[^}]*height:\s*100%;[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*padding:\s*0;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-table-chart \.util-sheet-table-wrap\s*\{[^}]*min-height:\s*100%;[^}]*height:\s*100%;[^}]*overflow:\s*visible;[^}]*border:\s*0;[^}]*background:\s*transparent;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.experiment-chart-table\s*\{[^}]*width:\s*100%;[^}]*height:\s*100%;[^}]*border-collapse:\s*collapse;[^}]*border-spacing:\s*0;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.experiment-chart-table-card \.util-sheet-analysis-table-head\s*\{[^}]*min-height:\s*34px;[^}]*padding:\s*0 10px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-stat-row\s*\{[^}]*display:\s*flex;[^}]*border-top:\s*1px solid #e5e7eb;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-label-toggle\s*\{[^}]*border:\s*1px solid #cbd5e1;[^}]*font-size:\s*10\.5px;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-stat\.is-max\s*\{[^}]*background:\s*#fef2f2;[^}]*color:\s*#b91c1c;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount\[data-exp-report-chart-style="report-auto"\] \.util-sheet-analysis-summary-stat\.is-min\s*\{[^}]*background:\s*#eff6ff;[^}]*color:\s*#1d4ed8;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-chart-toolbar\s*\{[^}]*min-height:\s*40px;[^}]*border-bottom:\s*1px solid #dbe4f3;[^}]*box-shadow:\s*none;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-unified-shell\s*\{[^}]*grid-template-rows:\s*minmax\(0,\s*1fr\);/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-inline-tools\s*\{[^}]*width:\s*100%;[^}]*min-height:\s*30px;[^}]*flex-wrap:\s*nowrap;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-inline-spacer\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-width:\s*12px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-view-toggle\s*\{[^}]*flex:\s*0 0 auto;[^}]*border:\s*1px solid #111827;[^}]*overflow:\s*hidden;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-view-button\.is-active\s*\{[^}]*background:\s*#111827;[^}]*color:\s*#ffffff;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-chart-mount > \.util-sheet-empty\.experiment-empty-state\s*\{[^}]*place-items:\s*stretch center;[^}]*align-content:\s*start;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-empty-state \.experiment-chart-inline-tools\s*\{[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*padding:\s*0;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-add-card-trigger\s*\{[^}]*min-height:\s*30px;[^}]*border:\s*1px solid #cbd5e1;[^}]*background:\s*#ffffff;[^}]*box-shadow:\s*none;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-period-input\s*\{[^}]*height:\s*30px;[^}]*border-radius:\s*6px;[^}]*font-size:\s*0\.74rem;[^}]*box-shadow:\s*none;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-fullscreen-button\s*\{[^}]*min-height:\s*30px;[^}]*border:\s*1px solid #cbd5e1;[^}]*white-space:\s*nowrap;/s);
@@ -112,6 +132,30 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['dashboard.css'], /\.experiment-year-overlap-year\[aria-pressed="true"\]\s*\{[^}]*border-color:\s*#111827;[^}]*background:\s*#f1f5f9;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-remove-select\s*\{[^}]*height:\s*30px;[^}]*border-radius:\s*6px;[^}]*font-size:\s*0\.74rem;[^}]*box-shadow:\s*none;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-card-palette\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);[^}]*gap:\s*6px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-card-groups\[hidden\],[\s\S]*\.experiment-card-groups\[data-exp-card-groups-source\]\s*\{\s*display:\s*none !important;\s*\}/);
+  assert.match(styleContents['dashboard.css'], /\.experiment-card-step-control\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(74px,\s*auto\);[^}]*border:\s*1px solid #111827;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-card-step-select\s*\{[^}]*height:\s*42px;[^}]*background:\s*#f8fafc;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-ratio-builder-grid\[data-exp-card-builder-source\]\s*\{\s*display:\s*none !important;\s*\}/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-card-selection-preview\s*\{\s*display:\s*none !important;\s*\}/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-card-step-control \.experiment-ratio-add-button:disabled\s*\{[^}]*background:\s*#111827;[^}]*color:\s*#ffffff;[^}]*opacity:\s*0\.48;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-inline-ratio-builder \.experiment-inline-ratio-summary,[\s\S]*\.experiment-inline-ratio-builder \.experiment-ratio-fraction-card-head,[\s\S]*\.experiment-inline-ratio-builder \.experiment-ratio-status\s*\{\s*display:\s*none !important;\s*\}/);
+  assert.match(styleContents['dashboard.css'], /\.experiment-inline-ratio-builder\s*\{[^}]*gap:\s*0;[^}]*border:\s*0;[^}]*background:\s*transparent;[^}]*padding:\s*0;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-summary-line-check-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\);[^}]*gap:\s*6px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-summary-line-open-button\[hidden\]\s*\{\s*display:\s*none !important;\s*\}/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-ratio-part-grid\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-ratio-part-grid \.experiment-ratio-field:nth-of-type\(4\)\s*\{\s*border-right:\s*0;\s*\}/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-inline-ratio-denominator\s*\{[^}]*position:\s*relative;[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) minmax\(74px,\s*auto\);[^}]*gap:\s*0;[^}]*border:\s*1px solid #111827;[^}]*padding-left:\s*58px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-ratio-builder-grid\[data-exp-card-builder\]\[data-exp-ratio-mode="true"\]\s*\{[^}]*position:\s*relative;[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\) minmax\(74px,\s*auto\);[^}]*padding-left:\s*58px;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-ratio-builder-grid\[data-exp-card-builder\]\[data-exp-ratio-mode="true"\]::before,[\s\S]*\.experiment-inline-ratio-denominator::before\s*\{[^}]*position:\s*absolute;[^}]*left:\s*8px;[^}]*top:\s*50%;[^}]*width:\s*42px;[^}]*border:\s*1px solid #111827;[^}]*background:\s*#ffffff;[^}]*font-weight:\s*900;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-ratio-builder-grid\[data-exp-card-builder\]\[data-exp-ratio-mode="true"\]::before\s*\{\s*content:\s*"분자";\s*\}/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-inline-ratio-denominator::before\s*\{\s*content:\s*"분모";\s*\}/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-inline-ratio-denominator \.experiment-ratio-fraction-card\s*\{[^}]*border:\s*0;[^}]*border-radius:\s*0;[^}]*background:\s*transparent;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-inline-ratio-denominator \.experiment-ratio-add-button\s*\{[^}]*min-height:\s*50px;[^}]*border:\s*0;[^}]*background:\s*#111827;[^}]*color:\s*#ffffff;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-ratio-builder-grid\[data-exp-card-builder\]\s*\{[^}]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\) minmax\(148px,\s*auto\);[^}]*gap:\s*0;[^}]*border:\s*1px solid #111827;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-ratio-builder-grid\[data-exp-card-builder\] \.experiment-ratio-field\s*\{[^}]*min-height:\s*50px;[^}]*border-right:\s*1px solid #d1d5db;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-card-builder-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(74px,\s*auto\)\);[^}]*border-left:\s*1px solid #d1d5db;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-ratio-builder-grid\[data-exp-card-builder\] \.experiment-ratio-add-button\s*\{[^}]*min-height:\s*50px;[^}]*background:\s*#111827;[^}]*color:\s*#ffffff;/s);
+  assert.match(styleContents['dashboard.css'], /\.experiment-ratio-builder-grid\[data-exp-card-builder\]\[data-exp-ratio-mode="true"\] \[data-exp-card-builder-add\]\s*\{\s*display:\s*none;\s*\}/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-selector-card\s*\{[^}]*min-height:\s*42px;[^}]*padding:\s*7px\s*76px\s*7px\s*10px;/s);
   assert.match(styleContents['dashboard.css'], /\.experiment-card-action\s*\{[^}]*top:\s*50%;[^}]*right:\s*8px;[^}]*width:\s*58px;/s);
 

@@ -156,7 +156,10 @@ test('report sheet analysis chart controls registry builds labels charts and pop
   assert.ok(seriesControlsHtml.includes('checked'));
   assert.ok(seriesControlsHtml.includes('data-role="util-sheet-analysis-series-label-toggle"'));
   assert.equal(seriesControlsHtml.includes('data-role="util-sheet-analysis-unit"'), false);
+  assert.ok(seriesControlsHtml.includes('util-sheet-analysis-unit-static'));
+  assert.ok(seriesControlsHtml.includes('Nm3'));
   assert.ok(seriesControlsHtml.includes('data-role="util-sheet-analysis-decimals"'));
+  assert.ok(seriesControlsHtml.includes('util-sheet-analysis-decimals-field'));
   assert.ok(seriesControlsHtml.includes('<option value="4" selected>4</option>'));
   assert.ok(seriesControlsHtml.includes('data-role="util-sheet-analysis-open-ratio-table"'));
 
@@ -181,7 +184,7 @@ test('report sheet analysis chart controls registry builds labels charts and pop
 test('kpi html loads report sheet analysis chart controls between compare-select and electric chart model', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
   const compareSelectIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/compare-select.js?v=053');
-  const chartControlsIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/chart-controls.js?v=057');
+  const chartControlsIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/chart-controls.js?v=058');
   const electricChartModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/electric/chart-model.js?v=054');
   const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=067');
 

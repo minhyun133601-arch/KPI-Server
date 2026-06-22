@@ -427,7 +427,12 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('[data-exp-card-picker]')).toContainText('총 생산량');
       await expect(page.locator('[data-exp-card-picker]')).not.toContainText('100 →');
       await expect(page.locator('[data-exp-card-picker]')).not.toContainText('전월대비');
-      await page.locator('[data-exp-card-toggle="production-total"]').click();
+      await page.locator('[data-exp-card-kind]').selectOption('total');
+      await expect(page.locator('[data-exp-card-target]')).toBeEnabled();
+      await page.locator('[data-exp-card-target]').selectOption('production');
+      await expect(page.locator('[data-exp-card-detail]')).toHaveValue('production-total');
+      await expect(page.locator('[data-exp-card-builder-add]')).toBeEnabled();
+      await page.locator('[data-exp-card-builder-add]').click();
       await expect(page.locator('[data-exp-card-picker]')).toBeHidden();
       await expect(page.locator('[data-exp-chart-mount]')).toHaveAttribute(
         'data-exp-report-chart-style',

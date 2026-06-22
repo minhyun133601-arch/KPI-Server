@@ -48,6 +48,11 @@
         return String(value ?? '');
     }
 
+    function getSafeInlineColor(value = '') {
+        const color = String(value || '').trim();
+        return /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(color) ? color : '#64748b';
+    }
+
     function normalizeAnalysisDatasetKey(datasetKey = 'gas') {
         if (typeof runtime.normalizeUtilSheetAnalysisDatasetKey === 'function') {
             return runtime.normalizeUtilSheetAnalysisDatasetKey(datasetKey);
@@ -109,6 +114,22 @@
             return runtime.buildUtilGasAnalysisPopupOnlyControlHtml(item);
         }
         return '';
+    }
+
+    function buildSummarySeriesLabelToggleHtml(item = {}, datasetKey = 'gas') {
+        const seriesKey = String(item?.key || '').trim();
+        if (!seriesKey || item?.hideLabelToggle === true) return '';
+        return `
+            <label class="util-sheet-analysis-summary-control-label util-sheet-analysis-summary-label-toggle">
+                <input
+                    type="checkbox"
+                    data-role="util-sheet-analysis-series-label-toggle"
+                    data-chart-key="${escapeHtml(seriesKey)}"
+                    ${getAnalysisSeriesShowLabels(datasetKey, seriesKey) ? 'checked' : ''}
+                >
+                <span>레이블</span>
+            </label>
+        `;
     }
 
     function getInlineRatioTableKey(modal, tableKey = '') {
@@ -345,6 +366,16 @@
             `
             : '';
         const surfaceHtml = activeViewMode === 'table' ? tableHtml : chartHtml;
+        const surfaceClassName = [
+            'util-sheet-analysis-chart-surface',
+            activeViewMode === 'table' ? 'util-sheet-analysis-table-chart' : ''
+        ].filter(Boolean).join(' ');
+        const frameClassName = [
+            'util-report-chart-shell',
+            'util-sheet-analysis-chart-frame',
+            activeViewMode === 'table' ? 'util-sheet-analysis-table-chart-frame' : '',
+            'theme-total'
+        ].filter(Boolean).join(' ');
         const buttonTitle = !hideChartFullscreenButton && hasVisibleSeries
             ? (isFullscreenChart ? `${chart.title} 전체화면 종료` : `${chart.title} 전체화면`)
             : '표시할 시리즈가 없습니다.';
@@ -355,6 +386,27 @@
                             <i class="fa-solid ${isFullscreenChart ? 'fa-compress' : 'fa-expand'}" aria-hidden="true"></i>
                         </button>
                     `;
+        const headerToolsHtml = String(chart?.headerToolsHtml || '').trim();
+        const headerRightHtml = `${viewToggleHtml}${fullscreenButtonHtml}`.trim();
+        const titleWrapHtml = hideHeadingText ? '' : `<div class="util-sheet-analysis-chart-title-wrap">
+                        <span class="util-sheet-analysis-chart-icon" aria-hidden="true"><i class="fa-solid ${escapeHtml(chart.icon || 'fa-chart-line')}"></i></span>
+                        <div>
+                            <div class="util-sheet-analysis-chart-title">${escapeHtml(chart.title)}</div>
+                            <div class="util-sheet-analysis-chart-sub">${escapeHtml(model.rangeLabel)}</div>
+                        </div>
+                    </div>`;
+        const chartActionsHtml = headerToolsHtml || headerRightHtml
+            ? `<div class="util-sheet-analysis-chart-actions">
+                        ${headerToolsHtml ? `<div class="util-sheet-analysis-chart-actions-left">${headerToolsHtml}</div>` : ''}
+                        ${headerRightHtml ? `<div class="util-sheet-analysis-chart-actions-right">${headerRightHtml}</div>` : ''}
+                    </div>`
+            : '';
+        const chartHeadHtml = titleWrapHtml || chartActionsHtml
+            ? `<div class="util-sheet-analysis-chart-head">
+                    ${titleWrapHtml}
+                    ${chartActionsHtml}
+                </div>`
+            : '';
         const summaryBlockHtml = Array.isArray(chart?.summaryItems) && chart.summaryItems.length
             ? buildUtilSheetAnalysisSummaryGridHtml(
                 chart.summaryItems,
@@ -371,22 +423,10 @@
 
         return `
             <article class="${escapeHtml(cardClassName)}" data-role="util-sheet-analysis-chart-card" data-analysis-chart-key="${escapeHtml(chartKey)}" data-tone="${escapeHtml(chart.tone || 'neutral')}">
-                <div class="util-sheet-analysis-chart-head">
-                    ${hideHeadingText ? '' : `<div class="util-sheet-analysis-chart-title-wrap">
-                        <span class="util-sheet-analysis-chart-icon" aria-hidden="true"><i class="fa-solid ${escapeHtml(chart.icon || 'fa-chart-line')}"></i></span>
-                        <div>
-                            <div class="util-sheet-analysis-chart-title">${escapeHtml(chart.title)}</div>
-                            <div class="util-sheet-analysis-chart-sub">${escapeHtml(model.rangeLabel)}</div>
-                        </div>
-                    </div>`}
-                    <div class="util-sheet-analysis-chart-actions">
-                        ${viewToggleHtml}
-                        ${fullscreenButtonHtml}
-                    </div>
-                </div>
+                ${chartHeadHtml}
                 ${summaryBlockHtml}
-                <div class="util-sheet-analysis-chart-surface">
-                    <div class="util-report-chart-shell util-sheet-analysis-chart-frame theme-total" style="--util-chart-accent:${escapeHtml(chart.color || '#1d4ed8')};--util-chart-bar:${escapeHtml(chart.color || '#60a5fa')};">
+                <div class="${escapeHtml(surfaceClassName)}">
+                    <div class="${escapeHtml(frameClassName)}" style="--util-chart-accent:${escapeHtml(chart.color || '#1d4ed8')};--util-chart-bar:${escapeHtml(chart.color || '#60a5fa')};">
                         ${surfaceHtml}
                     </div>
                 </div>
@@ -490,6 +530,12 @@
                 ${items.map(item => {
                     const itemKey = String(item?.key || '').trim();
                     const valueText = String(item?.valueText ?? '').trim();
+                    const seriesBadge = item?.seriesBadge && typeof item.seriesBadge === 'object' ? item.seriesBadge : null;
+                    const badgeIndex = Math.max(1, Math.trunc(Number(seriesBadge?.index) || 0));
+                    const badgeColor = getSafeInlineColor(seriesBadge?.color || item?.color || '');
+                    const badgeHtml = seriesBadge
+                        ? `<span class="util-sheet-analysis-summary-badge" style="--util-summary-badge-color:${escapeHtml(badgeColor)};" title="${escapeHtml(`그래프 ${badgeIndex}`)}" aria-label="${escapeHtml(`그래프 ${badgeIndex}`)}">${escapeHtml(badgeIndex)}</span>`
+                        : '';
                     const statItems = Array.isArray(item?.statItems)
                         ? item.statItems.filter(stat => stat && (stat.label || stat.valueText))
                         : [];
@@ -510,15 +556,23 @@
                         `
                         : '';
                     const controlItem = controlMap.get(itemKey) || normalizedControlMap.get(itemKey.toLowerCase()) || null;
+                    const labelToggleHtml = controlItem
+                        ? buildSummarySeriesLabelToggleHtml(controlItem, datasetKey)
+                        : '';
                     const controlHtml = controlItem
-                        ? buildGasAnalysisSeriesControlHtml({ ...controlItem, datasetKey })
+                        ? buildGasAnalysisSeriesControlHtml({ ...controlItem, datasetKey, hideLabelToggle: true })
                         : buildGasAnalysisPopupOnlyControlHtml(item);
+                    const actionHtml = String(item?.actionHtml || '').trim();
+                    const statRowHtml = statsHtml || labelToggleHtml
+                        ? `<div class="util-sheet-analysis-summary-stat-row">${statsHtml}${labelToggleHtml}</div>`
+                        : '';
                     return `
                     <article class="util-sheet-analysis-summary-card" data-tone="${escapeHtml(item.tone || 'neutral')}">
+                        ${actionHtml ? `<div class="util-sheet-analysis-summary-card-actions">${actionHtml}</div>` : ''}
                         <div class="util-sheet-analysis-summary-head">
+                            ${badgeHtml}
                             <span class="util-sheet-analysis-summary-icon" aria-hidden="true"><i class="fa-solid ${escapeHtml(item.icon || 'fa-circle')}"></i></span>
                             <span class="util-sheet-analysis-summary-label">${escapeHtml(item.title)}</span>
-                            ${statsHtml}
                         </div>
                         ${valueText ? `<div class="util-sheet-analysis-summary-value">${escapeHtml(valueText)}</div>` : ''}
                         ${item.secondaryValueText ? `<div class="util-sheet-analysis-summary-meta">${escapeHtml(item.secondaryLabelText || '금액')}</div>` : ''}
@@ -526,6 +580,7 @@
                         ${item.metaText ? `<div class="util-sheet-analysis-summary-meta">${escapeHtml(item.metaText)}</div>` : ''}
                         ${item.subText ? `<div class="util-sheet-analysis-summary-sub">${escapeHtml(item.subText)}</div>` : ''}
                         ${controlHtml}
+                        ${statRowHtml}
                     </article>
                 `;
                 }).join('')}

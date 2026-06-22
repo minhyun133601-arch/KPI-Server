@@ -492,7 +492,7 @@ test('analysis report memo items follow compare toggle and collapse aggregate ga
 
 test('kpi html loads report sheet summary render between analysis render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=064');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=068');
   const summaryRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/summary/render.js?v=064');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 

@@ -234,7 +234,7 @@ test('kpi html loads updated waste sheet assets in report-sheet order', () => {
   const panelRuntimeIndex = kpiHtml.indexOf('runtime/util/report/sheet/panel/runtime.js?v=059');
   const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
   const wasteAnalysisIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/waste/model.js?v=008');
-  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=064');
+  const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=068');
 
   assert.ok(wasteMeterIndex >= 0, 'waste meter model loader is missing');
   assert.ok(panelRuntimeIndex > wasteMeterIndex, 'panel runtime must load after waste meter model');
