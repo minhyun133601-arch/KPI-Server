@@ -241,6 +241,11 @@
         const runtime = getRuntimeConfig();
         if (!runtime || !canSaveEquipmentHistoryToServer()) return false;
         const nextPayload = cloneJson(payload);
+        if (api.hasDuplicateEquipmentNames?.(nextPayload)) {
+            const error = new Error('equipment_history_duplicate_equipment_name');
+            error.payload = nextPayload;
+            throw error;
+        }
         nextPayload.meta = nextPayload.meta || {};
         nextPayload.meta.updatedAt = new Date().toISOString();
         browser.writePortalPayload(DATA_KEY, nextPayload);

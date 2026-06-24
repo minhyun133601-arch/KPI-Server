@@ -3483,6 +3483,18 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
+        .data-equipment-board-room-count {
+            min-height: 22px;
+            display: inline-flex;
+            align-items: center;
+            flex: 0 0 auto;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--equipment-team-color) 12%, #ffffff);
+            color: var(--equipment-team-color);
+            padding: 0 8px;
+            font-size: 0.7rem;
+            font-weight: 900;
+        }
         .data-equipment-board-room-tools {
             display: none;
             grid-template-columns: repeat(2, 28px);

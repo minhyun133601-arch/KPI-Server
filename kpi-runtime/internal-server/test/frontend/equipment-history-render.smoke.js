@@ -29,6 +29,7 @@ function createEquipmentHistoryRuntime() {
 
   let registeredRenderer = null;
   let registeredSaveProvider = null;
+  const alertMessages = [];
   const context = {
     console,
     document: {
@@ -49,7 +50,9 @@ function createEquipmentHistoryRuntime() {
     },
     PortalData: {},
     FileReader: class FileReader {},
-    alert() {},
+    alert(message) {
+      alertMessages.push(message);
+    },
     print() {},
     Array,
     Object,
@@ -75,13 +78,15 @@ function createEquipmentHistoryRuntime() {
 
   assert.equal(typeof registeredRenderer, 'function', 'data section renderer must be registered');
   assert.equal(typeof registeredSaveProvider, 'function', 'equipment-history save provider must be registered');
-  return { context, container, registeredRenderer, registeredSaveProvider };
+  return { context, container, registeredRenderer, registeredSaveProvider, alertMessages };
 }
 
 test('equipment-history browser adapter wraps runtime portal fetch alert and print bridges', async () => {
   const fetchCalls = [];
   const alerts = [];
   const confirms = [];
+  let warningSoundStarted = false;
+  let warningSoundClosed = false;
   let printed = false;
   let printFrameHtml = '';
   let printFrameRemoved = false;
@@ -140,6 +145,37 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
         fetchCalls.push(args);
         return { ok: true, args };
       },
+      AudioContext: class AudioContext {
+        currentTime = 0;
+        destination = {};
+
+        createOscillator() {
+          return {
+            frequency: {
+              setValueAtTime() {},
+            },
+            connect() {},
+            start() {
+              warningSoundStarted = true;
+            },
+            stop() {},
+          };
+        }
+
+        createGain() {
+          return {
+            gain: {
+              setValueAtTime() {},
+              exponentialRampToValueAtTime() {},
+            },
+            connect() {},
+          };
+        }
+
+        close() {
+          warningSoundClosed = true;
+        }
+      },
       alert(message) {
         alerts.push(message);
       },
@@ -178,10 +214,14 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
   await adapter.fetch('/api/files/base64', { method: 'POST' });
   assert.equal(fetchCalls[0][0], '/api/files/base64');
   adapter.alert('message');
+  adapter.alertWarning('warning');
   assert.equal(adapter.confirm('delete?'), false);
   adapter.print();
-  assert.deepEqual(alerts, ['message']);
+  assert.deepEqual(alerts, ['message', 'warning']);
   assert.deepEqual(confirms, ['delete?']);
+  assert.equal(warningSoundStarted, true);
+  assert.equal(warningSoundClosed, true);
+  assert.equal(typeof adapter.playWarningSound, 'function');
   assert.equal(printed, true);
   assert.equal(typeof adapter.openPopup, 'function');
   assert.equal(typeof adapter.printHtmlDocument, 'function');
@@ -192,11 +232,11 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
 });
 
 test('kpi html loads equipment-history modules before the data runtime bridge', () => {
-  const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=5');
-  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=16');
+  const adapterIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=6');
+  const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=17');
   const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=25');
-  const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=3');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=51');
+  const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=4');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=52');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=5');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -408,6 +448,9 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(container.innerHTML, /<span class="data-equipment-board-room-name">B\uC2E4<\/span>/);
   assert.match(container.innerHTML, /<span class="data-equipment-board-room-name">A\uC2E4<\/span>/);
   assert.match(container.innerHTML, /<span class="data-equipment-board-room-name">C\uC2E4<\/span>/);
+  assert.match(container.innerHTML, /<span class="data-equipment-board-room-name">B\uC2E4<\/span>\s*<span class="data-equipment-board-room-count">1\uB300<\/span>/);
+  assert.match(container.innerHTML, /<span class="data-equipment-board-room-name">A\uC2E4<\/span>\s*<span class="data-equipment-board-room-count">1\uB300<\/span>/);
+  assert.match(container.innerHTML, /<span class="data-equipment-board-room-name">C\uC2E4<\/span>\s*<span class="data-equipment-board-room-count">1\uB300<\/span>/);
   assert.doesNotMatch(container.innerHTML, /<h3>\uD63C\uD569<\/h3>/);
   assert.doesNotMatch(container.innerHTML, /<h3>\uC2E4 \uBBF8\uC9C0\uC815<\/h3>/);
   assert.doesNotMatch(container.innerHTML, /<h3><\/h3>/);
@@ -769,6 +812,7 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(dataCssSource, /data-equipment-board-section h3[\s\S]+margin:\s*8px 0 0[\s\S]+padding:\s*6px 8px[\s\S]+background:\s*color-mix\(in srgb,\s*var\(--equipment-team-color\) 5%,\s*#ffffff\)[\s\S]+font-size:\s*0\.98rem/);
   assert.match(dataCssSource, /data-equipment-board-card-row[\s\S]+grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(240px,\s*1fr\)\)/);
   assert.match(dataCssSource, /data-equipment-board-room-icon[\s\S]+width:\s*30px[\s\S]+height:\s*30px/);
+  assert.match(dataCssSource, /data-equipment-board-room-count[\s\S]+min-height:\s*22px[\s\S]+font-weight:\s*900/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-room-badge/);
   assert.match(dataCssSource, /data-equipment-board-card[\s\S]+margin-top:\s*0/);
   assert.match(dataCssSource, /data-equipment-index-overview[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(310px,\s*420px\)/);
@@ -1047,7 +1091,8 @@ test('equipment-history renderer shows the empty board state and supports author
   assert.match(modelSource, /photoAttachmentKey:\s*normalizeText\(item\?\.photoAttachmentKey \|\| item\?\.photoAttachmentId\)/);
   assert.match(storageSource, /rowId:\s*photoAttachmentKey/);
   assert.match(storageSource, /attachmentKey:\s*photoAttachmentKey/);
-  assert.match(renderSource, /async function autoSaveDraft/);
+  assert.doesNotMatch(renderSource, /async function autoSaveDraft/);
+  assert.match(renderSource, /cleanupQueuedEquipmentHistoryPhotoDocuments/);
   assert.match(renderSource, /async function revertPhoto/);
   assert.match(renderSource, /detailRows\.length <= 1/);
   assert.match(renderSource, /async function cycleBoardCardStatus/);
@@ -1387,8 +1432,59 @@ test('equipment-history board room order controls persist room group order and k
   assert.match(container.innerHTML, /data-equipment-board-card-tools" aria-hidden="false"/);
 });
 
-test('equipment-history duplicate equipment names render numbered display labels', () => {
-  const { context, container, registeredRenderer } = createEquipmentHistoryRuntime();
+test('equipment-history current card status changes are saved only by explicit save', async () => {
+  const { context, container, registeredRenderer, registeredSaveProvider } = createEquipmentHistoryRuntime();
+  let openCardHandler = null;
+  let statusClickHandler = null;
+  const boardCard = {
+    dataset: { equipmentOpenCard: 'eq-status' },
+    addEventListener(type, handler) {
+      if (type === 'click') openCardHandler = handler;
+    },
+  };
+  const statusButton = {
+    addEventListener(type, handler) {
+      if (type === 'click') statusClickHandler = handler;
+    },
+  };
+  container.querySelector = (selector) => {
+    if (selector === '[data-equipment-cycle-current-status]' && container.innerHTML.includes('data-equipment-view="card"')) {
+      return statusButton;
+    }
+    return null;
+  };
+  container.querySelectorAll = (selector) => {
+    if (selector === '[data-equipment-board-card][data-equipment-open-card]' && container.innerHTML.includes('data-equipment-board')) {
+      return [boardCard];
+    }
+    return [];
+  };
+
+  context.PortalData.data_equipment_history_card = {
+    equipmentList: [
+      { id: 'eq-status', name: 'Status Pump', teamDataKey: 'work_team_calendar_team1_part1', room: 'A', status: '가동중' },
+    ],
+  };
+
+  registeredRenderer({ title: 'Equipment History', dataKey: 'data_equipment_history_card' }, { container });
+  assert.equal(typeof openCardHandler, 'function');
+  openCardHandler({ target: { closest: () => null } });
+  assert.equal(typeof statusClickHandler, 'function');
+
+  await statusClickHandler();
+  assert.equal(context.PortalData.data_equipment_history_card.equipmentList[0].status, '가동중');
+  assert.match(container.innerHTML, /저장을 눌러야 반영됩니다/);
+
+  const action = registeredSaveProvider({
+    sectionId: 'data',
+    category: { dataKey: 'data_equipment_history_card' },
+  });
+  assert.equal(await action.perform(), true);
+  assert.equal(context.PortalData.data_equipment_history_card.equipmentList[0].status, '비가동중');
+});
+
+test('equipment-history duplicate equipment names keep plain labels and block saves', async () => {
+  const { context, container, registeredRenderer, registeredSaveProvider, alertMessages } = createEquipmentHistoryRuntime();
   const api = context.KpiDataEquipmentHistory;
   context.PortalData.data_equipment_history_card = {
     equipmentList: [
@@ -1402,16 +1498,28 @@ test('equipment-history duplicate equipment names render numbered display labels
   assert.deepEqual(
     items.map((item) => ({ name: item.name, displayName: item.displayName, nameSequence: item.nameSequence })),
     [
-      { name: 'Twin Pump', displayName: 'Twin Pump #1', nameSequence: 1 },
-      { name: 'Twin Pump', displayName: 'Twin Pump #2', nameSequence: 2 },
+      { name: 'Twin Pump', displayName: 'Twin Pump', nameSequence: 1 },
+      { name: 'Twin Pump', displayName: 'Twin Pump', nameSequence: 2 },
       { name: 'Solo Pump', displayName: 'Solo Pump', nameSequence: 0 },
     ]
   );
+  assert.equal(
+    JSON.stringify(api.findDuplicateEquipmentNames(context.PortalData.data_equipment_history_card)),
+    JSON.stringify([{ name: 'Twin Pump', count: 2 }])
+  );
 
   registeredRenderer({ title: 'Equipment History', dataKey: 'data_equipment_history_card' }, { container });
-  assert.match(container.innerHTML, /Twin Pump #1/);
-  assert.match(container.innerHTML, /Twin Pump #2/);
+  assert.doesNotMatch(container.innerHTML, /Twin Pump #1|Twin Pump #2/);
   assert.match(container.innerHTML, /Solo Pump/);
+
+  const beforeSave = JSON.stringify(context.PortalData.data_equipment_history_card);
+  const action = registeredSaveProvider({
+    sectionId: 'data',
+    category: { dataKey: 'data_equipment_history_card' },
+  });
+  assert.equal(await action.perform(), false);
+  assert.equal(JSON.stringify(context.PortalData.data_equipment_history_card), beforeSave);
+  assert.match(alertMessages.at(-1), /\uC124\uBE44\uBA85\uC774 \uC911\uBCF5\uB418\uC5C8\uC2B5\uB2C8\uB2E4/);
 });
 
 test('equipment-history save assigns a unique id when the payload already has a duplicate id', async () => {
@@ -1453,13 +1561,22 @@ test('equipment-history save confirms payload persistence before publishing uplo
   assert.match(bridgeSource, /registerSaveProvider\('data-equipment-history-save'/);
 });
 
-test('equipment-history direct save paths request the saved popup without changing autosave', () => {
+test('equipment-history photo changes stay draft-only until explicit save', () => {
+  assert.doesNotMatch(renderSource, /autoSaveDraft/);
+  assert.match(renderSource, /queueEquipmentHistoryPhotoDocumentCleanup\(state, previousDocumentId\)/);
+  assert.match(renderSource, /queueEquipmentHistoryPhotoDocumentCleanup\(state, previousPhoto\.photoDocumentId\)/);
+  assert.match(renderSource, /await cleanupQueuedEquipmentHistoryPhotoDocuments\(state\)/);
+  assert.ok(renderSource.includes('\\uC0AC\\uC9C4\\uC744 \\uCCA8\\uBD80\\uD588\\uC2B5\\uB2C8\\uB2E4. \\uC800\\uC7A5\\uC744 \\uB20C\\uB7EC\\uC57C \\uBC18\\uC601\\uB429\\uB2C8\\uB2E4.'));
+  assert.ok(renderSource.includes('사진 첨부를 되돌렸습니다. 저장을 눌러야 반영됩니다.'));
+});
+
+test('equipment-history direct save paths request the saved popup without implicit save', () => {
   assert.match(renderSource, /const EQUIPMENT_HISTORY_SAVED_POPUP_MESSAGE = '저장되었습니다'/);
   assert.match(renderSource, /function showEquipmentHistorySavedPopup\(options = \{\}\)/);
   assert.match(renderSource, /showSavedPopup !== true/);
   assert.match(renderSource, /showEquipmentHistorySavedPopup\(options\)/);
   assert.match(renderSource, /saveCurrentEquipmentHistoryView\(root, data, state, redraw, \{ showSavedPopup: true \}\)/);
-  assert.match(renderSource, /autoSaveDraft[\s\S]+saveDraft\(data, state, \{ message \}\)/);
+  assert.match(renderSource, /state\.message = '\\uAC00\\uB3D9 \\uC0C1\\uD0DC\\uB97C \\uBCC0\\uACBD\\uD588\\uC2B5\\uB2C8\\uB2E4\./);
 });
 
 test('equipment-history rate preserves explicit zero and rejects invalid authoring input', () => {

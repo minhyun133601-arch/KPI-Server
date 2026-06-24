@@ -63,8 +63,43 @@
         return fetchFn.apply(root, args);
     }
 
+    function playWarningSound() {
+        const AudioContextCtor = root.AudioContext || root.webkitAudioContext;
+        if (typeof AudioContextCtor !== 'function') return false;
+        try {
+            const audioContext = new AudioContextCtor();
+            const oscillator = audioContext.createOscillator?.();
+            const gain = audioContext.createGain?.();
+            if (!oscillator || !gain) {
+                audioContext.close?.();
+                return false;
+            }
+            const now = Number(audioContext.currentTime) || 0;
+            oscillator.type = 'square';
+            oscillator.frequency?.setValueAtTime?.(880, now);
+            gain.gain?.setValueAtTime?.(0.001, now);
+            gain.gain?.exponentialRampToValueAtTime?.(0.18, now + 0.02);
+            gain.gain?.exponentialRampToValueAtTime?.(0.001, now + 0.18);
+            oscillator.connect?.(gain);
+            gain.connect?.(audioContext.destination);
+            oscillator.start?.(now);
+            oscillator.stop?.(now + 0.2);
+            const closeContext = () => audioContext.close?.();
+            if (typeof root.setTimeout === 'function') root.setTimeout(closeContext, 260);
+            else closeContext();
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     function alertMessage(message) {
         if (typeof root.alert === 'function') root.alert(message);
+    }
+
+    function alertWarning(message) {
+        playWarningSound();
+        alertMessage(message);
     }
 
     function confirmMessage(message) {
@@ -176,6 +211,8 @@
         hasFetch,
         fetch: fetchFromRoot,
         alert: alertMessage,
+        alertWarning,
+        playWarningSound,
         confirm: confirmMessage,
         print: printPage,
         openPopup,

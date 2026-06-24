@@ -207,11 +207,47 @@
             seen.set(key, nameSequence);
             return {
                 ...item,
-                displayName: `${item.name} #${nameSequence}`,
+                displayName: item.name,
                 duplicateNameCount,
                 nameSequence,
             };
         });
+    }
+
+    function findDuplicateEquipmentNames(data) {
+        const counts = new Map();
+        const labels = new Map();
+        asList(data?.equipmentList)
+            .map(normalizeEquipmentItem)
+            .filter((item) => item.name)
+            .forEach((item) => {
+                const key = getEquipmentNameDuplicateKey(item);
+                if (!key) return;
+                counts.set(key, (counts.get(key) || 0) + 1);
+                if (!labels.has(key)) labels.set(key, item.name);
+            });
+        return [...counts.entries()]
+            .filter(([, count]) => count > 1)
+            .map(([key, count]) => ({
+                name: labels.get(key) || key,
+                count,
+            }));
+    }
+
+    function hasDuplicateEquipmentNames(data) {
+        return findDuplicateEquipmentNames(data).length > 0;
+    }
+
+    function getDuplicateEquipmentNameWarningMessage(data) {
+        const duplicates = findDuplicateEquipmentNames(data);
+        if (!duplicates.length) return '';
+        const names = duplicates
+            .slice(0, 3)
+            .map((item) => `${item.name} (${item.count})`)
+            .join(', ');
+        const extraCount = duplicates.length - 3;
+        const suffix = extraCount > 0 ? ` \uC678 ${extraCount}\uAC74` : '';
+        return `\uC124\uBE44\uBA85\uC774 \uC911\uBCF5\uB418\uC5C8\uC2B5\uB2C8\uB2E4: ${names}${suffix}. \uC124\uBE44\uBA85\uC744 \uB2E4\uB974\uAC8C \uC785\uB825\uD574\uC57C \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.`;
     }
 
     function normalizeDocuments(rows) {
@@ -373,6 +409,9 @@
         getEquipmentStatus,
         getEquipmentHistoryTeamMeta,
         normalizeEquipmentItems,
+        findDuplicateEquipmentNames,
+        hasDuplicateEquipmentNames,
+        getDuplicateEquipmentNameWarningMessage,
         groupEquipmentItems,
         getSelectedEquipment,
         EQUIPMENT_PHOTO_ATTACHMENT_KEY,

@@ -6,6 +6,7 @@
     const CARD_ROOM_DATALIST_ID = 'data-equipment-room-options-card';
     const EQUIPMENT_PRINT_POPUP_FEATURES = 'width=900,height=1200';
     const EQUIPMENT_HISTORY_SAVED_POPUP_MESSAGE = '저장되었습니다';
+    const EQUIPMENT_HISTORY_DUPLICATE_NAME_ERROR = 'equipment_history_duplicate_equipment_name';
     const EQUIPMENT_PHOTO_TARGET_WIDTH = 1600;
     const EQUIPMENT_PHOTO_TARGET_HEIGHT = 500;
     const EQUIPMENT_PHOTO_ATTACHMENT_KEY = api.EQUIPMENT_PHOTO_ATTACHMENT_KEY || 'equipment-photo-main';
@@ -336,7 +337,7 @@
         const name = api.normalizeText(draft?.name);
         const displayName = api.normalizeText(draft?.displayName);
         if (!displayName || !name) return name;
-        return displayName === name || displayName.startsWith(`${name} #`) ? displayName : name;
+        return displayName === name ? displayName : name;
     }
 
     function renderBoardCard(item, orderMeta = {}, state = {}, isOrdering = false) {
@@ -466,6 +467,7 @@
                 <span class="data-equipment-board-room-title-main">
                     <span class="data-equipment-board-room-icon"><i class="fas fa-door-open" aria-hidden="true"></i></span>
                     <span class="data-equipment-board-room-name">${api.escapeHtml(roomTitle)}</span>
+                    <span class="data-equipment-board-room-count">${api.escapeHtml(roomEquipmentItems.length)}${api.escapeHtml('\uB300')}</span>
                     <span class="data-equipment-board-room-tools" aria-hidden="${isOrdering ? 'false' : 'true'}">
                         <button type="button" class="data-equipment-board-order-button data-equipment-board-room-order-button" data-equipment-move-room data-equipment-move-team="${api.escapeHtml(teamKey)}" data-equipment-move-room-title="${api.escapeHtml(roomTitle)}" data-equipment-move-direction="-1" aria-label="${api.escapeHtml(moveUpLabel)}" title="${api.escapeHtml(moveUpLabel)}"${orderMeta.canMoveUp ? '' : ' disabled'}>
                             <i class="fas fa-arrow-up" aria-hidden="true"></i>
@@ -1076,6 +1078,7 @@
         const selected = api.getSelectedEquipment(items, state.selectedId);
         state.draft = api.createDraft(selected);
         state.openEquipmentSpecBlocks = {};
+        clearEquipmentHistoryPhotoDocumentCleanupQueue(state);
     }
 
     function startNewCard(state) {
@@ -1093,6 +1096,7 @@
         state.view = 'card-start';
         state.message = '';
         state.openEquipmentSpecBlocks = {};
+        clearEquipmentHistoryPhotoDocumentCleanupQueue(state);
     }
 
     function updateStarterFromInput(state, event) {
@@ -1134,6 +1138,7 @@
         state.view = 'card';
         state.message = '';
         state.openEquipmentSpecBlocks = {};
+        clearEquipmentHistoryPhotoDocumentCleanupQueue(state);
         return true;
     }
 
@@ -1370,6 +1375,9 @@
         if (code === 'unauthorized') {
             return '로그인이 만료되었습니다. 다시 로그인한 뒤 저장해 주세요.';
         }
+        if (code === EQUIPMENT_HISTORY_DUPLICATE_NAME_ERROR) {
+            return api.getDuplicateEquipmentNameWarningMessage?.(error?.payload) || '\uC124\uBE44\uBA85\uC774 \uC911\uBCF5\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC124\uBE44\uBA85\uC744 \uB2E4\uB974\uAC8C \uC785\uB825\uD574\uC57C \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.';
+        }
         return '저장에 실패했습니다.';
     }
 
@@ -1377,6 +1385,39 @@
         if (options.showSavedPopup !== true) return false;
         browser.alert(EQUIPMENT_HISTORY_SAVED_POPUP_MESSAGE);
         return true;
+    }
+
+    function rejectDuplicateEquipmentNames(payload) {
+        const message = api.getDuplicateEquipmentNameWarningMessage?.(payload) || '';
+        if (!message) return false;
+        if (typeof browser.alertWarning === 'function') browser.alertWarning(message);
+        else browser.alert(message);
+        return true;
+    }
+
+    function queueEquipmentHistoryPhotoDocumentCleanup(state, documentId) {
+        const normalizedDocumentId = api.normalizeText(documentId);
+        if (!state || !normalizedDocumentId) return;
+        if (!Array.isArray(state.pendingPhotoDocumentCleanupIds)) state.pendingPhotoDocumentCleanupIds = [];
+        if (!state.pendingPhotoDocumentCleanupIds.includes(normalizedDocumentId)) {
+            state.pendingPhotoDocumentCleanupIds.push(normalizedDocumentId);
+        }
+    }
+
+    function clearEquipmentHistoryPhotoDocumentCleanupQueue(state) {
+        if (!state) return;
+        state.pendingPhotoDocumentCleanupIds = [];
+    }
+
+    async function cleanupQueuedEquipmentHistoryPhotoDocuments(state) {
+        const queuedIds = Array.from(new Set(api.asList(state?.pendingPhotoDocumentCleanupIds)
+            .map((documentId) => api.normalizeText(documentId))
+            .filter(Boolean)));
+        if (!queuedIds.length) return;
+        state.pendingPhotoDocumentCleanupIds = [];
+        for (const documentId of queuedIds) {
+            await cleanupPreviousEquipmentPhotoDocument(documentId);
+        }
     }
 
     function getUniqueEquipmentRecordId(record, list, replaceIndex) {
@@ -1442,7 +1483,6 @@
         let record = null;
         let nextPayload = null;
         try {
-            if (canSaveToServer) await api.uploadEquipmentHistoryDraftAssets?.(draft);
             record = api.buildRecordFromDraft(draft);
             if (!record.name) {
                 browser.alert('설비명을 입력해 주세요.');
@@ -1453,7 +1493,14 @@
                 ...JSON.parse(JSON.stringify(data || {})),
                 equipmentList: buildEquipmentListWithRecord(data, record, state.selectedId),
             };
+            if (rejectDuplicateEquipmentNames(nextPayload)) return false;
             if (canSaveToServer) {
+                await api.uploadEquipmentHistoryDraftAssets?.(draft);
+                record = api.buildRecordFromDraft(draft);
+                nextPayload = {
+                    ...JSON.parse(JSON.stringify(data || {})),
+                    equipmentList: buildEquipmentListWithRecord(data, record, state.selectedId),
+                };
                 const savedPayload = await api.saveEquipmentHistoryPayload?.(nextPayload);
                 if (!savedPayload) throw new Error('equipment_history_payload_save_failed');
                 nextPayload = savedPayload;
@@ -1473,6 +1520,7 @@
         Object.keys(data || {}).forEach((key) => delete data[key]);
         Object.assign(data, nextPayload);
         browser.writePortalPayload('data_equipment_history_card', nextPayload);
+        await cleanupQueuedEquipmentHistoryPhotoDocuments(state);
 
         state.selectedId = record.id;
         const savedRecord = api.normalizeEquipmentItems({ equipmentList: nextPayload.equipmentList })
@@ -1498,6 +1546,7 @@
             ...clonePayload(data),
             equipmentList: nextList,
         };
+        if (rejectDuplicateEquipmentNames(nextPayload)) return false;
         await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_status_failed');
         state.selectedId = item.id;
         state.message = '\uAC00\uB3D9 \uC0C1\uD0DC\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
@@ -1536,6 +1585,7 @@
             ...clonePayload(data),
             equipmentList: nextList,
         };
+        if (rejectDuplicateEquipmentNames(nextPayload)) return false;
         await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_status_failed');
         state.selectedId = '';
         state.message = `${scopeItems.length}\uB300 \uC0C1\uD0DC\uB97C ${targetStatus}\uC73C\uB85C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.`;
@@ -1546,9 +1596,9 @@
         if (!state.draft) return false;
         syncDraftFromForm(root, state);
         state.draft.status = getNextEquipmentBoardStatus(state.draft.status);
-        return saveCurrentEquipmentHistoryView(root, data, state, redraw, {
-            message: '\uAC00\uB3D9 \uC0C1\uD0DC\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.',
-        });
+        state.message = '\uAC00\uB3D9 \uC0C1\uD0DC\uB97C \uBCC0\uACBD\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC744 \uB20C\uB7EC\uC57C \uBC18\uC601\uB429\uB2C8\uB2E4.';
+        redraw();
+        return true;
     }
 
     async function moveBoardCard(data, state, recordId, direction) {
@@ -1578,6 +1628,7 @@
             ...clonePayload(data),
             equipmentList: nextList,
         };
+        if (rejectDuplicateEquipmentNames(nextPayload)) return false;
         await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_order_failed');
         state.selectedId = item.id;
         state.message = '\uC124\uBE44 \uD45C\uC2DC \uC21C\uC11C\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
@@ -1642,6 +1693,7 @@
             ...clonePayload(data),
             equipmentList: nextList,
         };
+        if (rejectDuplicateEquipmentNames(nextPayload)) return false;
         await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_room_order_failed');
         state.selectedId = '';
         state.message = '\uC2E4 \uD45C\uC2DC \uC21C\uC11C\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
@@ -1666,6 +1718,7 @@
         state.starter = null;
         state.filters = { team: '', status: '', search: '' };
         state.orderingTeams = {};
+        clearEquipmentHistoryPhotoDocumentCleanupQueue(state);
     }
 
     function pushEquipmentHistoryCardHistory(state) {
@@ -1694,18 +1747,6 @@
         ensureDraft(data, state);
         if (options.pushHistory !== false) pushEquipmentHistoryCardHistory(state);
         redraw();
-    }
-
-    async function autoSaveDraft(data, state, redraw, message) {
-        try {
-            const saved = await saveDraft(data, state, { message });
-            if (saved) redraw();
-            return saved;
-        } catch (error) {
-            console.warn('[kpi] equipment history auto save failed', error);
-            browser.alert(getEquipmentHistorySaveFailureMessage(error));
-            return false;
-        }
     }
 
     async function saveCurrentEquipmentHistoryView(root, data, state, redraw, options = {}) {
@@ -2192,26 +2233,10 @@
         if (!previousPhoto.photoDataUrl && !previousPhoto.photoDocumentId && !previousPhoto.photoFile && !previousPhoto.photoThumbDataUrl) return false;
 
         clearDraftPhoto(draft);
-        try {
-            const saved = await saveDraft(data, state, { message: '사진 첨부를 되돌렸습니다.' });
-            if (!saved) {
-                applyDraftPhotoSnapshot(draft, previousPhoto);
-                return false;
-            }
-            if (previousPhoto.photoDocumentId && api.canSaveEquipmentHistoryToServer?.() === true) {
-                try {
-                    await api.deleteEquipmentHistoryDraftAssets?.({ photoDocumentId: previousPhoto.photoDocumentId, documents: [] });
-                } catch (cleanupError) {
-                    console.warn('[kpi] equipment history reverted photo cleanup failed', cleanupError);
-                    browser.alert('사진 연결은 해제했지만 기존 첨부 파일 삭제는 실패했습니다.');
-                }
-            }
-            redraw();
-            return true;
-        } catch (error) {
-            applyDraftPhotoSnapshot(draft, previousPhoto);
-            throw error;
-        }
+        queueEquipmentHistoryPhotoDocumentCleanup(state, previousPhoto.photoDocumentId);
+        state.message = '사진 첨부를 되돌렸습니다. 저장을 눌러야 반영됩니다.';
+        redraw();
+        return true;
     }
 
     async function deleteDraft(data, state) {
@@ -2235,6 +2260,7 @@
             ...JSON.parse(JSON.stringify(data || {})),
             equipmentList: nextList,
         };
+        if (rejectDuplicateEquipmentNames(nextPayload)) return false;
         const canSaveToServer = api.canSaveEquipmentHistoryToServer?.() === true;
         try {
             if (canSaveToServer) {
@@ -2472,14 +2498,15 @@
             draft.photoFile = normalized.file || file;
             draft.photoName = normalized.name || file.name || '';
             draft.photoAttachmentKey = draft.photoAttachmentKey || EQUIPMENT_PHOTO_ATTACHMENT_KEY;
+            queueEquipmentHistoryPhotoDocumentCleanup(state, previousDocumentId);
             if (preview) {
                 preview.src = draft.photoDataUrl;
                 preview.hidden = false;
             }
             if (placeholder) placeholder.hidden = true;
-            const saved = await autoSaveDraft(data, state, redraw, message || '\uC0AC\uC9C4\uC744 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.');
-            if (saved) await cleanupPreviousEquipmentPhotoDocument(previousDocumentId);
-            return saved;
+            state.message = message || '\uC0AC\uC9C4\uC744 \uCCA8\uBD80\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC744 \uB20C\uB7EC\uC57C \uBC18\uC601\uB429\uB2C8\uB2E4.';
+            redraw();
+            return true;
         } catch (error) {
             applyDraftPhotoSnapshot(draft, previousPhoto);
             redraw();
@@ -2521,7 +2548,7 @@
             if (!file) return;
 
             event.preventDefault?.();
-            await applyEquipmentHistoryPhotoFile(root, state, data, redraw, file, '\uD074\uB9BD\uBCF4\uB4DC \uC0AC\uC9C4\uC744 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.');
+            await applyEquipmentHistoryPhotoFile(root, state, data, redraw, file, '\uD074\uB9BD\uBCF4\uB4DC \uC0AC\uC9C4\uC744 \uCCA8\uBD80\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC744 \uB20C\uB7EC\uC57C \uBC18\uC601\uB429\uB2C8\uB2E4.');
         };
 
         pasteRoot.addEventListener('paste', handlePaste);
@@ -2546,7 +2573,7 @@
                         browser.alert('\uC0AC\uC9C4\uC744 \uBCF5\uC0AC\uD55C \uB4A4 \uC124\uBE44 \uC0AC\uC9C4 \uCE74\uB4DC\uC5D0\uC11C Ctrl+V\uB85C \uBD99\uC5EC\uB123\uC5B4 \uC8FC\uC138\uC694.');
                         return;
                     }
-                    await applyEquipmentHistoryPhotoFile(root, state, data, redraw, file, '\uD074\uB9BD\uBCF4\uB4DC \uC0AC\uC9C4\uC744 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.');
+                    await applyEquipmentHistoryPhotoFile(root, state, data, redraw, file, '\uD074\uB9BD\uBCF4\uB4DC \uC0AC\uC9C4\uC744 \uCCA8\uBD80\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC744 \uB20C\uB7EC\uC57C \uBC18\uC601\uB429\uB2C8\uB2E4.');
                 } catch (error) {
                     console.warn('[kpi] equipment history clipboard photo read failed', error);
                     browser.alert('\uD074\uB9BD\uBCF4\uB4DC\uC5D0\uC11C \uC0AC\uC9C4\uC744 \uC77D\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC0AC\uC9C4\uC744 \uBCF5\uC0AC\uD55C \uB4A4 Ctrl+V\uB85C \uBD99\uC5EC\uB123\uC5B4 \uC8FC\uC138\uC694.');
@@ -2558,7 +2585,7 @@
         input.addEventListener('change', async (event) => {
             const [file] = event.target.files || [];
             if (!file || !state.draft) return;
-            await applyEquipmentHistoryPhotoFile(root, state, data, redraw, file, '\uC0AC\uC9C4\uC744 \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.');
+            await applyEquipmentHistoryPhotoFile(root, state, data, redraw, file, '\uC0AC\uC9C4\uC744 \uCCA8\uBD80\uD588\uC2B5\uB2C8\uB2E4. \uC800\uC7A5\uC744 \uB20C\uB7EC\uC57C \uBC18\uC601\uB429\uB2C8\uB2E4.');
             event.target.value = '';
         });
     }
@@ -2871,6 +2898,7 @@
             message: '',
             openEquipmentSpecBlocks: {},
             orderingTeams: {},
+            pendingPhotoDocumentCleanupIds: [],
         };
         const redraw = () => {
             container.innerHTML = renderShell(category, workingData, state);
