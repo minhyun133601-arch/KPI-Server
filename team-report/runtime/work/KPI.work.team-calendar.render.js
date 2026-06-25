@@ -69,7 +69,11 @@
             const hasSelectedEntryContent = selectedHistoryRecords.length > 0;
             const hasReadonlyEntryContent = hasSelectedEntryContent && !isOverviewCalendar;
             const historyKpiLabel = workTeamCalendarRenderBrowser?.getHistoryImportantFlagLabel?.() || '\u2605';
-            const selectedHistoryStarCount = hasSelectedEntryContent ? selectedHistoryRecords.length : 0;
+            const selectedHistoryStarCount = hasSelectedEntryContent
+                ? (typeof workTeamCalendarRenderBrowser?.isHistoryImportantRecord === 'function'
+                    ? selectedHistoryRecords.filter(record => workTeamCalendarRenderBrowser.isHistoryImportantRecord(record)).length
+                    : selectedHistoryRecords.length)
+                : 0;
             const selectedHistoryCostSummary = hasSelectedEntryContent && typeof getWorkTeamCalendarHistoryCostSummary === 'function'
                 ? getWorkTeamCalendarHistoryCostSummary(selectedHistoryRecords)
                 : { totalCost: 0, costText: '-' };
@@ -487,7 +491,7 @@
                 if (items.length) {
                     const itemHtml = items.map(item => `
                         <span class="work-team-calendar-day-history-item">
-                            <span class="work-team-calendar-day-history-star">${escapeHtml(item?.star || '★')}</span>
+                            ${item?.star ? `<span class="work-team-calendar-day-history-star">${escapeHtml(item.star)}</span>` : ''}
                             <span class="work-team-calendar-day-history-category">${escapeHtml(item?.subcategory || '작업내역')}</span>
                         </span>
                     `).join('');
@@ -497,7 +501,11 @@
                         : '';
                     return `<span class="work-team-calendar-day-history-list">${itemHtml}${moreHtml}</span>`;
                 }
-                return `<span class="work-team-calendar-day-summary is-history-count">${escapeHtml(`★ ${formatUtilNumber(historyCount, 0)}건`)}</span>`;
+                const starCount = Number(summary?.starCount || summary?.kpiCount || 0);
+                const summaryText = starCount > 0
+                    ? `★ ${formatUtilNumber(starCount, 0)}건`
+                    : `${formatUtilNumber(historyCount, 0)}건`;
+                return `<span class="work-team-calendar-day-summary is-history-count">${escapeHtml(summaryText)}</span>`;
             }
             function buildWorkTeamCalendarProductionCueHtml(count, totalAmount) {
                 const productionCount = Number(count || 0);

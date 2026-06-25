@@ -68,6 +68,7 @@
         const subtitleEl = getElement('history-subtitle');
         const categoryGroupField = getElement('recordCategoryGroupField');
         const categoryField = getElement('recordCategoryField');
+        const resultTypeField = getElement('recordResultTypeField');
         const modalTitleEl = getElement('modalTitle');
         const workContentLabelEl = getElement('recordWorkContentLabel');
         const remarksLabelEl = getElement('recordRemarksLabel');
@@ -96,6 +97,9 @@
         }
         if (categoryField) {
             categoryField.hidden = isProductionReport;
+        }
+        if (resultTypeField) {
+            resultTypeField.hidden = isProductionReport;
         }
         if (modalTitleEl) {
             modalTitleEl.textContent = getRecordModalTitle(false);

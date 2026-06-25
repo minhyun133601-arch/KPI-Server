@@ -91,54 +91,10 @@ function getBillingSettlementUnitPrice(
   return getBillingSettlementNumericField("unit_price", monthValue, scopeKey);
 }
 
-function getBillingSettlementGlobalObjectCandidates() {
-  const candidates = [];
-  const appendCandidate = (candidate) => {
-    if (
-      (candidate && typeof candidate === "object") ||
-      typeof candidate === "function"
-    ) {
-      if (!candidates.includes(candidate)) {
-        candidates.push(candidate);
-      }
-    }
-  };
-
-  if (typeof globalThis !== "undefined") {
-    appendCandidate(globalThis);
-  }
-
-  if (typeof window !== "undefined") {
-    appendCandidate(window);
-    try {
-      appendCandidate(window.parent);
-    } catch (error) {
-      void error;
-    }
-    try {
-      appendCandidate(window.top);
-    } catch (error) {
-      void error;
-    }
-  }
-
-  return candidates;
-}
-
 function getBillingSettlementGlobalFunction(functionName) {
   const normalizedName = normalizeText(functionName);
   if (!normalizedName) {
     return null;
-  }
-
-  for (const candidate of getBillingSettlementGlobalObjectCandidates()) {
-    try {
-      if (typeof candidate?.[normalizedName] === "function") {
-        return candidate[normalizedName].bind(candidate);
-      }
-    } catch (error) {
-      void error;
-    }
   }
 
   if (

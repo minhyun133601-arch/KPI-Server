@@ -364,6 +364,11 @@ function createBillingSettlementContext(options = {}) {
     },
   };
 
+  context.KpiMeteringBrowserAdapter = {
+    getGlobal(name) {
+      return context[name];
+    },
+  };
   context.globalThis = context;
   vm.createContext(context);
   vm.runInContext(billingSettlementCalculationsSource, context, {

@@ -12,6 +12,7 @@
         KPI_FLAG_LABEL,
         normalizeRecordCategory,
         getRecordCategoryGroupLabel,
+        getRecordResultTypeLabel,
         isImportantRecord,
         isProductionReportWorkspace,
         getRecordTagLabels,
@@ -94,6 +95,12 @@
             : '';
     }
 
+    function getRecordResultTypeText(record) {
+        return typeof getRecordResultTypeLabel === 'function'
+            ? getRecordResultTypeLabel(record)
+            : String(record?.resultType || '').trim();
+    }
+
     function getRecordTeamInfo(record) {
         const teamKey = record?.team || record?._team;
         return TeamInfo[teamKey] || TeamInfo.team1part1;
@@ -113,12 +120,14 @@
         const categoryGroupText = typeof getRecordCategoryGroupLabel === 'function'
             ? getRecordCategoryGroupLabel(record)
             : '';
+        const resultTypeText = getRecordResultTypeText(record);
         const tagText = getRecordTags(record).join(' ');
         return [
             TeamInfo[record.team]?.name || '',
             TeamInfo[record.team]?.desc || '',
             categoryGroupText,
             categoryText,
+            resultTypeText,
             tagText,
             view.formatAssigneeText(record),
             record.workContent || '',
@@ -290,6 +299,7 @@
     function buildExperimentRecordCard(record) {
         const title = getRecordSummaryTitle(record);
         const categoryText = getRecordCategoryText(record) || getRecordCategoryFilterText(record) || '-';
+        const resultTypeText = getRecordResultTypeText(record) || '-';
         const status = getExperimentRecordStatus(record);
         const memo = buildRecordRemarkText(record);
         return `
@@ -306,6 +316,7 @@
                 <h4 title="${escapeAttribute(title)}">${highlightText(escapeHtml(title))}</h4>
                 <dl>
                     <div><dt>구분</dt><dd>${escapeHtml(categoryText)}</dd></div>
+                    <div><dt>실적</dt><dd>${escapeHtml(resultTypeText)}</dd></div>
                     <div><dt>기간</dt><dd>${escapeHtml(view.formatDateRange(record.startDate, record.endDate))}</dd></div>
                     <div><dt>상태</dt><dd><span class="work-history-experiment-status ${escapeAttribute(status.className)}">${escapeHtml(status.label)}</span></dd></div>
                     <div><dt>비용</dt><dd>${escapeHtml(view.formatCurrency(record.cost))}</dd></div>
@@ -394,6 +405,7 @@
         getRecordTags,
         getRecordTeamInfo,
         getRecordCategoryText,
+        getRecordResultTypeText,
         getRecordSummaryTitle,
         buildRecordRemarkText,
         updateSearchCount,

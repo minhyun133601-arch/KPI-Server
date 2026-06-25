@@ -2980,6 +2980,12 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         return actualCost !== null && ratio !== null ? actualCost / ratio : null;
     }
 
+    function subtractReportDeckMetricValues(leftValue, rightValue) {
+        const left = toFiniteNumber(leftValue);
+        const right = toFiniteNumber(rightValue);
+        return left !== null && right !== null ? left - right : null;
+    }
+
     function divideReportDeckMetricValues(numeratorValue, denominatorValue) {
         const numerator = toFiniteNumber(numeratorValue);
         const denominator = toFiniteNumber(denominatorValue);
@@ -3158,6 +3164,33 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                     month,
                     monthKey,
                     value: value !== null && value > 0 ? value : null
+                };
+            })
+        }));
+    }
+
+    function buildReportDeckSignedMetricSeries(timeline, activeMonthInfo, valueGetter) {
+        const meta = [
+            { color: '#5b9bd5', marker: 'triangle' },
+            { color: '#70ad47', marker: 'square' },
+            { color: '#e15759', marker: 'diamond' }
+        ];
+        const monthKeySet = new Set(Array.isArray(timeline?.monthKeys) ? timeline.monthKeys : []);
+        return timeline.years.map((year, index) => ({
+            key: String(year),
+            label: `${String(year).slice(2)}년`,
+            color: meta[index]?.color || '#64748b',
+            marker: meta[index]?.marker || 'circle',
+            points: Array.from({ length: 12 }, (_, pointIndex) => {
+                const month = pointIndex + 1;
+                const monthKey = toReportDeckMonthKey(year, month);
+                const value = !monthKeySet.has(monthKey) || (year === activeMonthInfo.year && month > activeMonthInfo.month)
+                    ? null
+                    : toFiniteNumber(valueGetter(monthKey));
+                return {
+                    month,
+                    monthKey,
+                    value
                 };
             })
         }));
@@ -3861,6 +3894,9 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
             previousActualLpgCost,
             previousLpgConversionRatio
         );
+        const referenceLpgCostDifference = subtractReportDeckMetricValues(referenceActualLpgCost, referenceLpgConversionCost);
+        const currentLpgCostDifference = subtractReportDeckMetricValues(currentActualLpgCost, currentLpgConversionCost);
+        const previousLpgCostDifference = subtractReportDeckMetricValues(previousActualLpgCost, previousLpgConversionCost);
         const costRows = {
             0: buildReportDeckMetricComparison(
                 referenceActualLpgCost,
@@ -3876,6 +3912,11 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 referenceLpgConversionRatio,
                 currentLpgConversionRatio,
                 previousLpgConversionRatio
+            ),
+            3: buildReportDeckMetricComparison(
+                referenceLpgCostDifference,
+                currentLpgCostDifference,
+                previousLpgCostDifference
             )
         };
         const unitSeries = buildReportDeckRatioSeries(timeline, activeMonthInfo, monthKey => {
@@ -3884,8 +3925,13 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
             const production = toFiniteNumber(metric?.ratioProduction?.lpg ?? metric.production);
             return usage !== null && production !== null && production > 0 ? usage / production : null;
         });
-        const costSeries = buildReportDeckRatioSeries(timeline, activeMonthInfo, monthKey => {
-            return normalizeReportDeckPositiveMetric(readLpgConversionRatio(monthKey));
+        const costSeries = buildReportDeckSignedMetricSeries(timeline, activeMonthInfo, monthKey => {
+            const actualLpgCost = readReportDeckGasLpgCost(gasMetricMap, monthKey);
+            const conversionCost = calculateReportDeckGasLpgConversionCost(
+                actualLpgCost,
+                normalizeReportDeckPositiveMetric(readLpgConversionRatio(monthKey))
+            );
+            return subtractReportDeckMetricValues(actualLpgCost, conversionCost);
         });
 
         return {
@@ -3907,7 +3953,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 series: unitSeries
             },
             costChart: {
-                title: 'LPG 실제 금액 / LNG 환산 금액',
+                title: '금액 차이 (LPG - LNG환산)',
                 series: costSeries
             }
         };

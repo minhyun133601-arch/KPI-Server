@@ -529,7 +529,7 @@
                     </div>
                     <div class="report-bukjeong-analysis-column">
                         ${buildYusanLpgCostTable()}
-                        ${buildYusanLpgChart('cost', 'LPG 실제 금액 / LNG 환산 금액')}
+                        ${buildYusanLpgChart('cost', '금액 차이 (LPG - LNG환산)')}
                         ${buildYusanLpgMemoBox('slide5CostMemo', { defaultTeam: 'team_01_02', defaultMetric: 'lpg' })}
                     </div>
                 </div>
@@ -576,9 +576,9 @@
 
     function buildYusanLpgCostTable() {
         const formatRowLabel = (label, index) => index === 2
-            ? `${label}<small class="report-yusan-lpg-ratio-formula">LPG실사용/<br>LNG환산</small>`
-            : label;
-        const rows = ['LPG', 'LNG', '비율'].map((label, index) => `
+            ? `${label}<small class="report-yusan-lpg-ratio-formula">LPG/LNG환산</small>`
+            : (index === 3 ? `${label}<small class="report-yusan-lpg-ratio-formula">LPG - LNG환산</small>` : label);
+        const rows = ['LPG', 'LNG', '비율', '금액 차이'].map((label, index) => `
             <tr>
                 <th class="report-auto-row-label">${formatRowLabel(label, index)}</th>
                 <td data-report-yusan-lpg-cost-value="${index}.reference"></td>
@@ -592,7 +592,7 @@
             <table class="report-auto-metric-table report-yusan-lpg-table" data-report-yusan-lpg-table="right">
                 <tbody>
                     <tr>
-                        <th class="report-auto-resource-cell report-yusan-lpg-cost-resource" rowspan="4">비용<br><span>(원)</span><small>LPG ⇒ LNG<br>환산</small></th>
+                        <th class="report-auto-resource-cell report-yusan-lpg-cost-resource" rowspan="5">비용<br><span>(원)</span><small>LPG ⇒ LNG<br>환산</small></th>
                         <th class="report-auto-row-label">유 산</th>
                         <th data-report-yusan-lpg-cost-month-label="reference"></th>
                         <th data-report-yusan-lpg-cost-month-label="current"></th>
@@ -2022,6 +2022,11 @@ ${colgroup}
                 .report-auto-chart-month { fill: #020617; font-size: 13px; font-weight: 900; }
                 .report-auto-chart-label { font-size: 11px; font-weight: 900; paint-order: stroke; stroke: #ffffff; stroke-width: 3px; stroke-linejoin: round; }
                 .report-auto-chart-legend { fill: #020617; font-size: 13px; font-weight: 900; }
+                .report-auto-chart-legend.is-compact { font-size: 10.5px; }
+                .report-auto-chart-legend-overlay { position: absolute; top: 3.2%; right: 1.2%; z-index: 2; height: calc(18px * 1.1); display: inline-flex; align-items: center; gap: 12px; color: #020617; font-size: 13px; font-weight: 900; line-height: 1.1; white-space: nowrap; pointer-events: none; }
+                .report-auto-chart-legend-overlay .report-auto-chart-legend-item { display: inline-flex; align-items: center; gap: 4px; }
+                .report-auto-chart-legend-overlay .report-auto-chart-legend-mark { display: block; width: 24px; height: 16px; flex: 0 0 auto; overflow: visible; }
+                .report-auto-chart-legend-overlay .report-auto-chart-legend-label { line-height: 1; }
                 .report-auto-chart-empty { fill: #94a3b8; font-size: 15px; font-weight: 900; }
                 .report-chart-highlight-controls { position: absolute; right: 6px; top: 5px; z-index: 4; display: none; align-items: center; gap: 4px; }
                 .report-chart-highlight-toggle, .report-chart-highlight-reset { position: absolute; right: 6px; top: 5px; z-index: 4; display: none; align-items: center; justify-content: center; height: 24px; min-width: 44px; border: 1px solid #fecaca; border-radius: 5px; background: rgba(255, 255, 255, 0.95); color: #b91c1c; padding: 0 8px; font-size: 11px; font-weight: 900; line-height: 1; cursor: pointer; box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); transition: background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease; }
@@ -2043,7 +2048,7 @@ ${colgroup}
                 .report-auto-memo-blank { min-width: 0; }
                 .report-auto-memo-content { display: grid; align-content: start; gap: 3px; padding: 4px 7px; overflow: hidden; color: #020617; font-size: 10.4px; font-weight: 900; line-height: 1.18; text-align: left; word-break: keep-all; }
                 .report-auto-memo-content[data-empty="true"]::before { content: ""; }
-                .report-auto-memo-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; }
+                .report-auto-memo-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; font-size: var(--report-auto-memo-line-font-size, inherit); line-height: var(--report-auto-memo-line-line-height, inherit); }
                 .report-auto-memo-line-text { min-width: 0; white-space: nowrap; }
                 .report-auto-memo-line.is-up, .report-auto-memo-line.is-down { color: #111827; }
                 .report-auto-memo-line.is-flat, .report-auto-memo-line.is-mixed { color: #111827; }
@@ -2075,7 +2080,7 @@ ${colgroup}
                 .report-memo-line-text { min-width: 0; color: #111827; font-size: 12px; font-weight: 900; line-height: 1.25; overflow-wrap: anywhere; }
                 .report-memo-line-input { width: 100%; min-width: 0; min-height: 38px; max-height: 96px; border: 1px solid #dbe4f3; border-radius: 4px; background: #f8fafc; color: #111827; padding: 6px 7px; font-size: 12px; font-weight: 900; line-height: 1.25; resize: none; box-sizing: border-box; }
                 .report-memo-line-input:focus { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 1px; border-color: #60a5fa; background: #ffffff; }
-                .report-memo-line-actions { display: grid; grid-template-columns: repeat(3, auto); gap: 4px; align-items: start; }
+                .report-memo-line-actions { display: grid; grid-template-columns: repeat(5, auto); gap: 4px; align-items: start; }
                 .report-memo-line-actions button { min-width: 28px; min-height: 26px; padding: 0 7px; color: #475569; }
                 .report-memo-line-actions button:disabled { opacity: 0.35; cursor: default; }
                 .report-memo-lines-empty { min-height: 30px; display: grid; place-items: center; border: 1px dashed #cbd5e1; border-radius: 5px; color: #64748b; font-size: 12px; font-weight: 900; }
@@ -2115,15 +2120,13 @@ ${colgroup}
                 .report-yusan-lpg-grid { top: 8.4%; bottom: 8.8%; }
                 .report-yusan-lpg-analysis-slide .report-bukjeong-analysis-column { grid-template-rows: var(--report-analysis-table-row, 28%) var(--report-analysis-chart-row, 62%) var(--report-analysis-memo-row, 6%); gap: 2.6%; min-height: 0; }
                 .report-yusan-lpg-analysis-slide .report-yusan-lpg-table, .report-yusan-lpg-analysis-slide .report-lpg-chart, .report-yusan-lpg-analysis-slide .report-yusan-lpg-memo { width: 100%; height: 100%; min-width: 0; min-height: 0; align-self: stretch; justify-self: stretch; }
-                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table[data-report-yusan-lpg-table="left"] tbody > tr:first-child { height: 14%; }
-                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table[data-report-yusan-lpg-table="left"] tbody > tr:not(:first-child) { height: 21.5%; }
-                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table[data-report-yusan-lpg-table="right"] tbody > tr:first-child { height: 15.9%; }
-                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table[data-report-yusan-lpg-table="right"] tbody > tr:not(:first-child) { height: 28.033333%; }
+                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table tbody > tr:first-child { height: 14%; }
+                .report-yusan-lpg-analysis-slide .report-yusan-lpg-table tbody > tr:not(:first-child) { height: 21.5%; }
                 .report-yusan-lpg-analysis-slide .report-yusan-lpg-table .report-auto-resource-cell,
                 .report-yusan-lpg-analysis-slide .report-yusan-lpg-table .report-auto-row-label,
                 .report-yusan-lpg-analysis-slide .report-yusan-lpg-table .report-auto-note-cell { width: 14%; }
                 .report-yusan-lpg-cost-resource small { display: block; margin-top: 3px; color: #020617; font-size: 10px; font-weight: 900; line-height: 1.12; }
-                .report-yusan-lpg-ratio-formula { display: block; margin-top: 3px; color: #334155; font-size: 9.5px; font-weight: 900; line-height: 1.12; white-space: normal; }
+                .report-yusan-lpg-ratio-formula { display: block; margin-top: 3px; color: #334155; font-size: 9.5px; font-weight: 900; line-height: 1.12; white-space: nowrap; }
                 .report-yusan-lpg-memo { grid-template-columns: 13.5% 1fr; }
                 .report-slide-page-number { position: absolute; right: 1.6%; bottom: 1.2%; z-index: 2; color: #020617; font-size: 16px; font-weight: 500; line-height: 1; }
                 .report-template-table { width: 100%; height: 100%; border: 1.4px solid #111827; border-collapse: collapse; table-layout: fixed; background: #ffffff; color: #020617; }

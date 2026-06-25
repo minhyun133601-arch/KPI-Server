@@ -15,6 +15,8 @@
         isAllowedRecordCategory,
         normalizeRecordCategory,
         normalizeRecordCategoryGroup,
+        normalizeRecordResultType,
+        DEFAULT_RECORD_RESULT_TYPE,
         isKpiRecord,
         isProductionReportWorkspace,
         getElement,
@@ -42,6 +44,7 @@
             assignee: String(getElement('recordAssignee')?.value || '').trim(),
             categoryGroup: String(getElement('recordCategoryGroup')?.value || '').trim(),
             category: String(getElement('recordCategory')?.value || '').trim(),
+            resultType: String(getElement('recordResultType')?.value || '').trim(),
             workContent: String(getElement('recordWorkContent')?.value || '').trim(),
             remarks: String(getElement('recordRemarks')?.value || '').trim(),
             cost: String(getElement('recordCost')?.value || '').trim()
@@ -104,12 +107,18 @@
                     category: editCategory,
                     kpi: isKpiRecord(record)
                 });
+                const editResultType = typeof normalizeRecordResultType === 'function'
+                    ? normalizeRecordResultType(record.resultType, { defaultValue: DEFAULT_RECORD_RESULT_TYPE || 'non-performance' })
+                    : (record.resultType || DEFAULT_RECORD_RESULT_TYPE || 'non-performance');
                 getElement('modalTitle').textContent = view.getRecordModalTitle?.(true) || '작업내역 수정';
                 getElement('recordStartDate').value = record.startDate || '';
                 getElement('recordEndDate').value = record.endDate || '';
                 getElement('recordTeam').value = record.team || defaultTeam;
                 getElement('recordAssignee').value = normalizeAssignees(record.assignees || record.assignee || record.worker || '').join(', ');
                 view.syncRecordCategoryInputs?.(isProductionWorkspace() ? 'report' : editCategoryGroup, isProductionWorkspace() ? '' : editCategory);
+                if (getElement('recordResultType')) {
+                    getElement('recordResultType').value = isProductionWorkspace() ? (DEFAULT_RECORD_RESULT_TYPE || 'non-performance') : editResultType;
+                }
                 getElement('recordWorkContent').value = record.workContent || '';
                 getElement('recordRemarks').value = record.remarks || '';
                 getElement('recordCost').value = view.formatCostInputValue(record.cost);
@@ -119,6 +128,9 @@
             getElement('recordStartDate').value = view.todayInputValue();
             getElement('recordEndDate').value = view.todayInputValue();
             view.syncRecordCategoryInputs?.(isProductionWorkspace() ? 'report' : '', '');
+            if (getElement('recordResultType')) {
+                getElement('recordResultType').value = DEFAULT_RECORD_RESULT_TYPE || 'non-performance';
+            }
             getElement('recordAssignee').value = '';
             getElement('recordCost').value = '';
         }
@@ -196,6 +208,9 @@
             category: normalizedCategory,
             kpi
         });
+        const normalizedResultType = isProductionWorkspace()
+            ? (DEFAULT_RECORD_RESULT_TYPE || 'non-performance')
+            : normalizeRecordResultType(getElement('recordResultType')?.value || '', { defaultValue: '' });
         const requiresCategory = normalizedCategoryGroup !== 'report' && !isProductionWorkspace();
         const categoryOptionValues = Array.from(getElement('recordCategory')?.options || [])
             .map(option => String(option.value || '').trim())
@@ -233,8 +248,12 @@
             browser.alert('구분을 선택해 주세요.');
             return false;
         }
+        if (!isProductionWorkspace() && !normalizedResultType) {
+            browser.alert('실적 구분을 선택해 주세요.');
+            return false;
+        }
         if (requiresCategory && (!normalizedCategory || !categoryOptionValues.includes(normalizedCategory) || (!isAllowedRecordCategory(normalizedCategory) && normalizedCategory !== category))) {
-            browser.alert('세부 카테고리를 선택해 주세요.');
+            browser.alert('작업 분류를 선택해 주세요.');
             return false;
         }
         if (!workContent) {
@@ -248,6 +267,7 @@
             endDate,
             categoryGroup: normalizedCategoryGroup,
             category: requiresCategory ? normalizedCategory : '',
+            resultType: normalizedResultType || DEFAULT_RECORD_RESULT_TYPE || 'non-performance',
             kpi,
             assignees,
             assignee: assignees.join(', '),

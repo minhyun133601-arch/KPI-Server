@@ -119,7 +119,7 @@
         ));
         categorySelect.disabled = history.isProductionReportWorkspace?.() === true
             ? true
-            : (!normalizedGroupValue || !hasSelectableCategories);
+            : !hasSelectableCategories;
         groupSelect.value = normalizedGroupValue;
 
         const optionValues = Array.from(categorySelect.options || [])
@@ -130,6 +130,17 @@
             : (optionValues.includes(normalizedCategoryValue)
                 ? normalizedCategoryValue
                 : '');
+    }
+
+    function syncRecordCategoryGroupFromCategory(categoryValue = '') {
+        const groupSelect = getElement('recordCategoryGroup');
+        if (!groupSelect || history.isProductionReportWorkspace?.() === true) return '';
+        const normalizedCategoryValue = normalizeRecordCategory(categoryValue, { preserveLegacy: true }) || String(categoryValue || '').trim();
+        const normalizedGroupValue = normalizeRecordCategoryGroup('', {
+            category: normalizedCategoryValue
+        });
+        groupSelect.value = normalizedGroupValue;
+        return normalizedGroupValue;
     }
 
     function switchTab(teamKey) {
@@ -215,6 +226,7 @@
         getActiveCategoryFilterSelect,
         syncSearchInputs,
         syncCategoryFilterInputs,
+        syncRecordCategoryGroupFromCategory,
         syncRecordCategoryInputs,
         switchTab,
         syncTopbarFilterUi,

@@ -918,6 +918,7 @@
     const ALL_ANALYSIS_CARDS = Object.freeze(ANALYSIS_CARD_GROUPS.flatMap(group => group.cards));
     const GENERATED_SUMMARY_SUBJECTS = new Map();
     const GENERATED_SUMMARY_CARDS = [];
+    const GENERATED_PRODUCTION_CARDS = [];
     const EXPERIMENT_TEAM_DATA_KEYS = Object.freeze({
         'team-01-01': 'work_team_calendar_team1_part1',
         'team-01-02': 'work_team_calendar_team1_part2',
@@ -1013,7 +1014,19 @@
         if (!cardKey) return null;
         return ALL_ANALYSIS_CARDS.find(card => card.key === cardKey)
             || GENERATED_SUMMARY_CARDS.find(card => card.key === cardKey)
+            || GENERATED_PRODUCTION_CARDS.find(card => card.key === cardKey)
+            || ensureGeneratedProductionAnalysisCardForKey(cardKey)
             || null;
+    }
+
+    function getRatioSelectableCards() {
+        const seenKeys = new Set();
+        return [...ALL_ANALYSIS_CARDS, ...GENERATED_SUMMARY_CARDS, ...GENERATED_PRODUCTION_CARDS].filter(card => {
+            const key = String(card?.key || '').trim();
+            if (!key || seenKeys.has(key)) return false;
+            seenKeys.add(key);
+            return true;
+        });
     }
 
     function normalizeCardBuilderGroupKey(groupKey = DEFAULT_GROUP_KEY) {
@@ -1071,6 +1084,22 @@
         return SUMMARY_SUBJECTS.filter(subject => subject.scopeKey === scope);
     }
 
+    function getRatioSummarySubjectOptions(scopeKey = 'total') {
+        const scope = normalizeCardBuilderScopeKey(scopeKey);
+        const seenKeys = new Set();
+        return [
+            ...getSummarySubjectOptions(scope),
+            ...getSummaryLineOptionsForScope(scope)
+                .map(option => getSummarySubjectOption(option.subjectKey))
+                .filter(Boolean)
+        ].filter(subject => {
+            const key = String(subject?.key || '').trim();
+            if (!key || seenKeys.has(key)) return false;
+            seenKeys.add(key);
+            return true;
+        });
+    }
+
     function getSummaryLineOptionByKey(lineKey = '') {
         const key = String(lineKey || '').trim();
         return SUMMARY_LINE_SELECTION_OPTIONS.find(option => option.key === key) || null;
@@ -1106,6 +1135,46 @@
             : options.map(option => option.key);
         const normalizedKeys = normalizeSummaryLineSelection(storageKey, storedKeys);
         state.summaryLineSelections[storageKey] = normalizedKeys;
+        return normalizedKeys;
+    }
+
+    function getSummaryLineKeysForSubject(scopeKey = 'total', subjectKey = '') {
+        const storageKey = getSummaryLineSelectionStorageKey(scopeKey);
+        const normalizedSubjectKey = String(subjectKey || '').trim();
+        const options = getSummaryLineOptionsForScope(storageKey);
+        if (!normalizedSubjectKey || !options.length) return [];
+        if (normalizedSubjectKey === storageKey) return options.map(option => option.key);
+        const matchedSubject = SUMMARY_LINE_SELECTION_MATCHES.find(item => item.subjectKey === normalizedSubjectKey);
+        if (matchedSubject) return normalizeSummaryLineSelection(storageKey, matchedSubject.lineKeys);
+        const exactOption = options.find(option => option.subjectKey === normalizedSubjectKey);
+        if (exactOption) return [exactOption.key];
+        const customPrefix = `custom-${storageKey}-`;
+        if (normalizedSubjectKey.startsWith(customPrefix)) {
+            return normalizeSummaryLineSelection(storageKey, normalizedSubjectKey.slice(customPrefix.length).split('__'));
+        }
+        return [];
+    }
+
+    function getRatioLineSelectionKeys(partEl, scopeKey = 'total') {
+        const storageKey = getSummaryLineSelectionStorageKey(scopeKey);
+        const options = getSummaryLineOptionsForScope(storageKey);
+        if (!partEl || !options.length) return [];
+        const storedScope = String(partEl.dataset?.expRatioLineScope || '').trim();
+        const rawKeys = storedScope === storageKey
+            ? String(partEl.dataset?.expRatioLineKeys || '').split(',').map(key => key.trim()).filter(Boolean)
+            : options.map(option => option.key);
+        const normalizedKeys = normalizeSummaryLineSelection(storageKey, rawKeys);
+        partEl.dataset.expRatioLineScope = storageKey;
+        partEl.dataset.expRatioLineKeys = normalizedKeys.join(',');
+        return normalizedKeys;
+    }
+
+    function setRatioLineSelectionKeys(partEl, scopeKey = 'total', lineKeys = []) {
+        if (!partEl) return [];
+        const storageKey = getSummaryLineSelectionStorageKey(scopeKey);
+        const normalizedKeys = normalizeSummaryLineSelection(storageKey, lineKeys);
+        partEl.dataset.expRatioLineScope = storageKey;
+        partEl.dataset.expRatioLineKeys = normalizedKeys.join(',');
         return normalizedKeys;
     }
 
@@ -1197,6 +1266,28 @@
         };
     }
 
+    function resolveRatioLineSelection(partEl, scopeKey = 'total') {
+        const lineOptions = getSummaryLineOptionsForScope(scopeKey);
+        const selectedLineKeys = getRatioLineSelectionKeys(partEl, scopeKey);
+        const selectedOptions = selectedLineKeys.map(getSummaryLineOptionByKey).filter(Boolean);
+        const subject = resolveSummaryLineSelectionSubject(scopeKey, selectedLineKeys);
+        const isAll = Boolean(lineOptions.length && selectedLineKeys.length === lineOptions.length);
+        const generatedSubjectKey = buildGeneratedSummarySubjectKey(scopeKey, selectedLineKeys);
+        const label = isAll
+            ? '전체'
+            : (subject && subject.key !== generatedSubjectKey
+                ? subject.label
+                : selectedOptions.map(option => option.label).join(' + '));
+        return {
+            lineOptions,
+            selectedLineKeys,
+            selectedOptions,
+            subject,
+            isAll,
+            label: label || '라인 선택'
+        };
+    }
+
     function ensureGeneratedSummaryAnalysisCard(subject = null, metricOrKey = '') {
         const metric = typeof metricOrKey === 'object' ? metricOrKey : getSummaryMetricDefinition(metricOrKey);
         if (!subject || !metric) return null;
@@ -1256,6 +1347,20 @@
         return options;
     }
 
+    function isSummarySubjectInScope(subjectKey = '', scopeKey = 'total') {
+        const subject = getSummarySubjectOption(subjectKey);
+        if (!subject) return false;
+        const scope = normalizeCardBuilderScopeKey(scopeKey);
+        if (String(subject.scopeKey || '').trim() === scope) return true;
+        return getRatioSummarySubjectOptions(scope).some(option => option.key === subject.key);
+    }
+
+    function getScopedSummaryMetricOptions(subjectKey = '', shell = null, modeKey = '', scopeKey = 'total') {
+        return isSummarySubjectInScope(subjectKey, scopeKey)
+            ? getSummaryMetricOptions(subjectKey, shell, modeKey)
+            : [];
+    }
+
     function addCardBuilderOption(options, cardKey = '', label = '') {
         const card = findAnalysisCard(cardKey);
         if (!card || options.some(item => item.key === card.key)) return;
@@ -1283,15 +1388,169 @@
         return EXPERIMENT_TEAM_DATA_KEYS[target] ? `production-${target}` : '';
     }
 
+    function getProductionCardKeyForSubject(subject = null) {
+        const subjectKey = String(subject?.key || '').trim();
+        if (!subjectKey) return '';
+        const aggregateKey = getProductionTargetTotalCardKey(subjectKey);
+        return aggregateKey || `line-${subjectKey}-production`;
+    }
+
+    function createProductionAnalysisCardFromSubject(subject = null) {
+        const cardKey = getProductionCardKeyForSubject(subject);
+        if (!cardKey) return null;
+        const values = getSummarySubjectBaseValues(subject);
+        const safeValues = values.length ? values : [0, 0, 0, 0, 0, 0];
+        return createCard({
+            key: cardKey,
+            title: `${subject?.label || ''} 생산량`.trim(),
+            valueText: `${safeValues[0]} → ${lastValue(safeValues)}`,
+            metaText: `생산량 · ${subject?.label || ''} · kg`,
+            subText: '팀별내역서 라인 기준',
+            icon: 'fa-chart-simple',
+            tone: 'production',
+            color: subject?.color || '#16a34a',
+            chartType: 'bar',
+            values: safeValues
+        });
+    }
+
+    function ensureGeneratedProductionAnalysisCard(subject = null) {
+        const cardKey = getProductionCardKeyForSubject(subject);
+        if (!cardKey) return null;
+        const staticCard = ALL_ANALYSIS_CARDS.find(card => card.key === cardKey);
+        if (staticCard) return staticCard;
+        const existingCard = GENERATED_PRODUCTION_CARDS.find(card => card.key === cardKey);
+        if (existingCard) return existingCard;
+        const card = createProductionAnalysisCardFromSubject(subject);
+        if (!card) return null;
+        GENERATED_PRODUCTION_CARDS.push(card);
+        return card;
+    }
+
+    function ensureSummarySubjectFromGeneratedKey(subjectKey = '') {
+        const key = String(subjectKey || '').trim();
+        if (!key) return null;
+        const existingSubject = getSummarySubjectOption(key);
+        if (existingSubject) return existingSubject;
+        const scopes = CARD_BUILDER_TARGETS
+            .map(target => target.key)
+            .sort((left, right) => right.length - left.length);
+        const matchedScope = scopes.find(scope => key.startsWith(`custom-${scope}-`));
+        if (!matchedScope) return null;
+        const lineKeyText = key.slice(`custom-${matchedScope}-`.length);
+        return ensureGeneratedSummarySubject(matchedScope, lineKeyText.split('__'));
+    }
+
+    function ensureGeneratedProductionAnalysisCardForKey(cardKey = '') {
+        const key = String(cardKey || '').trim();
+        const productionLineMatch = /^line-(.+)-production$/.exec(key);
+        if (!productionLineMatch) return null;
+        const subject = ensureSummarySubjectFromGeneratedKey(productionLineMatch[1]);
+        return subject ? ensureGeneratedProductionAnalysisCard(subject) : null;
+    }
+
+    function addProductionLineCardBuilderOption(options, scopeKey = 'total', lineOption = null) {
+        const subject = getSummarySubjectOption(lineOption?.subjectKey)
+            || ensureGeneratedSummarySubject(scopeKey, [lineOption?.key]);
+        const card = ensureGeneratedProductionAnalysisCard(subject);
+        if (card) addCardBuilderOption(options, card.key, lineOption?.label || subject?.label || '');
+    }
+
     function buildProductionCardBuilderDetails(targetKey = 'total') {
-        const target = String(targetKey || 'total').trim();
+        const target = normalizeCardBuilderScopeKey(targetKey);
         const options = [];
         addCardBuilderOption(options, getProductionTargetTotalCardKey(target));
-        if (target === 'total' || target === 'yusan') return options;
-        PRODUCTION_LINES
-            .filter(line => matchesCardBuilderTeamTarget(target, line.teamKey))
-            .forEach(line => addCardBuilderOption(options, `line-${line.key}-production`));
+        getSummaryLineOptionsForScope(target)
+            .forEach(lineOption => addProductionLineCardBuilderOption(options, target, lineOption));
         return options;
+    }
+
+    function getProductionDetailLineKeysForCardKey(scopeKey = 'total', detailKey = '') {
+        const scope = normalizeCardBuilderScopeKey(scopeKey);
+        const key = String(detailKey || '').trim();
+        const lineOptions = getSummaryLineOptionsForScope(scope);
+        if (!key || !lineOptions.length) return [];
+        if (key === getProductionTargetTotalCardKey(scope)) return lineOptions.map(option => option.key);
+        const productionLineMatch = /^line-(.+)-production$/.exec(key);
+        if (!productionLineMatch) return [];
+        return getSummaryLineKeysForSubject(scope, productionLineMatch[1]);
+    }
+
+    function getProductionDetailCardKeyForLineKeys(scopeKey = 'total', lineKeys = []) {
+        const scope = normalizeCardBuilderScopeKey(scopeKey);
+        const lineOptions = getSummaryLineOptionsForScope(scope);
+        const normalizedKeys = normalizeSummaryLineSelection(scope, lineKeys);
+        if (!lineOptions.length || !normalizedKeys.length) return '';
+        if (normalizedKeys.length === lineOptions.length) return getProductionTargetTotalCardKey(scope);
+        const subject = resolveSummaryLineSelectionSubject(scope, normalizedKeys);
+        return ensureGeneratedProductionAnalysisCard(subject)?.key || '';
+    }
+
+    function resolveProductionDetailSelection(scopeKey = 'total', detailKey = '') {
+        const scope = normalizeCardBuilderScopeKey(scopeKey);
+        const lineOptions = getSummaryLineOptionsForScope(scope);
+        const selectedLineKeys = normalizeSummaryLineSelection(scope, getProductionDetailLineKeysForCardKey(scope, detailKey));
+        const selectedOptions = selectedLineKeys.map(getSummaryLineOptionByKey).filter(Boolean);
+        const subject = resolveSummaryLineSelectionSubject(scope, selectedLineKeys);
+        const isAll = Boolean(lineOptions.length && selectedLineKeys.length === lineOptions.length);
+        const generatedSubjectKey = buildGeneratedSummarySubjectKey(scope, selectedLineKeys);
+        const label = isAll
+            ? '전체'
+            : (subject && subject.key !== generatedSubjectKey
+                ? subject.label
+                : selectedOptions.map(option => option.label).join(' + '));
+        return {
+            lineOptions,
+            selectedLineKeys,
+            selectedOptions,
+            subject,
+            isAll,
+            label: label || '라인 선택',
+            cardKey: getProductionDetailCardKeyForLineKeys(scope, selectedLineKeys)
+        };
+    }
+
+    function resolveProductionDetailSelectionForShell(shell, scopeKey = 'total') {
+        const scope = normalizeCardBuilderScopeKey(scopeKey);
+        const selection = resolveSummaryLineSelection(shell, scope);
+        return {
+            ...selection,
+            cardKey: getProductionDetailCardKeyForLineKeys(scope, selection.selectedLineKeys)
+        };
+    }
+
+    function setProductionDetailBlankState(detailSelect = null, isBlank = false) {
+        if (!detailSelect) return;
+        if (isBlank) detailSelect.dataset.expProductionDetailBlank = 'true';
+        else delete detailSelect.dataset.expProductionDetailBlank;
+    }
+
+    function isProductionDetailBlankState(detailSelect = null) {
+        return detailSelect?.dataset?.expProductionDetailBlank === 'true';
+    }
+
+    function getAutoSelectedProductionDetailKey(scopeKey = 'total', detailOptions = [], requestedDetailKey = '', allowBlank = false) {
+        const requestedKey = String(requestedDetailKey || '').trim();
+        if (!requestedKey && allowBlank) return '';
+        if (requestedKey && (detailOptions.some(option => option.key === requestedKey) || findAnalysisCard(requestedKey))) {
+            return requestedKey;
+        }
+        const aggregateKey = getProductionTargetTotalCardKey(scopeKey);
+        return detailOptions.some(option => option.key === aggregateKey)
+            ? aggregateKey
+            : getAutoSelectedCardBuilderDetailKey(detailOptions, requestedKey);
+    }
+
+    function getAutoSelectedCardBuilderDetailKeyForTarget(targetKey = '', scopeKey = 'total', detailOptions = [], requestedDetailKey = '', allowBlank = false) {
+        return String(targetKey || '').trim() === 'production'
+            ? getAutoSelectedProductionDetailKey(scopeKey, detailOptions, requestedDetailKey, allowBlank)
+            : getAutoSelectedCardBuilderDetailKey(detailOptions, requestedDetailKey);
+    }
+
+    function ensureCardBuilderDetailOption(options = [], detailKey = '', label = '') {
+        const key = String(detailKey || '').trim();
+        if (!Array.isArray(options) || !key || options.some(option => option.key === key)) return;
+        addCardBuilderOption(options, key, label);
     }
 
     function buildUtilityCardBuilderDetails(targetKey = 'total') {
@@ -1390,8 +1649,15 @@
         return normalizeCardBuilderModeKey(shell?.querySelector?.('[data-exp-card-mode]')?.value || DEFAULT_CARD_BUILDER_MODE);
     }
 
-    function getSummaryLinePicker(shell) {
-        return shell?.querySelector?.('[data-exp-summary-line-picker]') || null;
+    function getSummaryLinePicker(anchor) {
+        if (!anchor) return null;
+        if (anchor.matches?.('[data-exp-summary-line-picker]')) return anchor;
+        const localRoot = anchor.closest?.('[data-exp-ratio-dialog], [data-exp-card-picker]');
+        const localPicker = localRoot?.querySelector?.('[data-exp-summary-line-picker]');
+        if (localPicker) return localPicker;
+        return anchor.querySelector?.('[data-exp-summary-line-picker]')
+            || anchor.closest?.('.experiment-unified-shell')?.querySelector?.('[data-exp-summary-line-picker]')
+            || null;
     }
 
     function hideSummaryLinePickerControls(shell) {
@@ -1449,13 +1715,90 @@
         `;
     }
 
-    function syncSummaryLinePicker(shell, scopeKey = '', selection = null) {
-        const picker = getSummaryLinePicker(shell);
+    function getCardDetailOpenButton(shell) {
+        return shell?.querySelector?.('[data-exp-card-detail-open]') || null;
+    }
+
+    function isBasicProductionDetailPickerEnabled(shell) {
+        if (!shell) return false;
+        const modeKey = getCurrentCardBuilderModeKey(shell);
+        const scopeKey = String(shell.querySelector('[data-exp-card-kind]')?.value || '').trim();
+        const targetKey = String(shell.querySelector('[data-exp-card-target]')?.value || '').trim();
+        return modeKey === DEFAULT_CARD_BUILDER_MODE && Boolean(scopeKey) && targetKey === 'production';
+    }
+
+    function buildCardDetailPickerOptionsHtml(shell) {
+        const scopeKey = normalizeCardBuilderScopeKey(shell?.querySelector?.('[data-exp-card-kind]')?.value || 'total');
+        return buildSummaryLinePickerOptionsHtml(scopeKey, resolveProductionDetailSelectionForShell(shell, scopeKey));
+    }
+
+    function syncCardDetailPicker(anchor) {
+        const picker = getSummaryLinePicker(anchor);
+        const shell = anchor?.closest?.('.experiment-unified-shell') || picker?.closest?.('.experiment-unified-shell');
         if (!shell || !picker) return;
+        const titleEl = picker.querySelector('[data-exp-summary-line-title]');
+        const optionsEl = picker.querySelector('[data-exp-summary-line-options]');
+        if (titleEl) {
+            const scopeKey = normalizeCardBuilderScopeKey(shell.querySelector('[data-exp-card-kind]')?.value || 'total');
+            const scopeLabel = getCardBuilderScopeOption(scopeKey)?.label || '';
+            titleEl.textContent = scopeLabel ? `${scopeLabel} 라인 선택` : '라인 선택';
+        }
+        if (optionsEl) optionsEl.innerHTML = buildCardDetailPickerOptionsHtml(shell);
+    }
+
+    function syncCardDetailOpenButton(shell, detailOptions = [], detailKey = '') {
+        const detailSelect = shell?.querySelector?.('[data-exp-card-detail]');
+        const button = getCardDetailOpenButton(shell);
+        const scopeKey = normalizeCardBuilderScopeKey(shell?.querySelector?.('[data-exp-card-kind]')?.value || 'total');
+        const selection = resolveProductionDetailSelectionForShell(shell, scopeKey);
+        const enabled = isBasicProductionDetailPickerEnabled(shell) && selection.lineOptions.length > 0;
+        if (detailSelect) detailSelect.hidden = enabled;
+        if (button) {
+            button.hidden = !enabled;
+            button.disabled = !enabled;
+            button.textContent = enabled ? (selection.label || '라인 선택') : '라인 선택';
+            button.title = enabled ? '생산량 라인 선택' : '';
+        }
+        const picker = getSummaryLinePicker(shell);
+        if (!enabled && picker?.dataset?.expSummaryLineContext === 'builder-detail') {
+            closeSummaryLinePickerElement(picker);
+        }
+    }
+
+    function setCardDetailPickerOpen(trigger, isOpen) {
+        const shell = trigger?.closest?.('.experiment-unified-shell');
+        const picker = getSummaryLinePicker(trigger);
+        if (!shell || !picker) return;
+        if (!isOpen || !isBasicProductionDetailPickerEnabled(shell)) {
+            closeSummaryLinePickerElement(picker);
+            return;
+        }
+        picker.dataset.expSummaryLineContext = 'builder-detail';
+        syncCardDetailPicker(shell);
+        picker.hidden = false;
+    }
+
+    function shouldAutoOpenCardDetailPicker(select) {
+        const shell = select?.closest?.('.experiment-unified-shell');
+        const targetKey = String(select?.value || '').trim();
+        return Boolean(shell && targetKey === 'production' && isBasicProductionDetailPickerEnabled(shell));
+    }
+
+    function openCardDetailPickerAfterTargetSelection(select) {
+        if (shouldAutoOpenCardDetailPicker(select)) setCardDetailPickerOpen(select, true);
+    }
+
+    function syncSummaryLinePicker(anchor, scopeKey = '', selection = null) {
+        const picker = getSummaryLinePicker(anchor);
+        if (!picker) return;
+        if (picker.dataset?.expSummaryLineContext === 'builder-detail') {
+            syncCardDetailPicker(anchor);
+            return;
+        }
         const normalizedScope = String(scopeKey || '').trim() ? normalizeCardBuilderScopeKey(scopeKey) : '';
         const titleEl = picker.querySelector('[data-exp-summary-line-title]');
         const optionsEl = picker.querySelector('[data-exp-summary-line-options]');
-        const resolved = normalizedScope ? (selection || resolveSummaryLineSelection(shell, normalizedScope)) : null;
+        const resolved = normalizedScope ? (selection || resolveSummaryLineSelection(anchor, normalizedScope)) : null;
         if (titleEl) {
             const scopeLabel = normalizedScope ? getCardBuilderScopeOption(normalizedScope)?.label : '';
             titleEl.textContent = scopeLabel ? `${scopeLabel} 라인 선택` : '라인 선택';
@@ -1478,9 +1821,81 @@
     function setSummaryLinePickerOpen(shell, isOpen) {
         const picker = getSummaryLinePicker(shell);
         if (!shell || !picker) return;
+        picker.dataset.expSummaryLineContext = 'builder';
         const scopeKey = normalizeCardBuilderScopeKey(shell.querySelector('[data-exp-card-kind]')?.value || 'total');
         if (isOpen) syncSummaryLinePicker(shell, scopeKey);
         picker.hidden = !isOpen;
+    }
+
+    function closeSummaryLinePickerElement(picker) {
+        if (!picker) return;
+        const shell = picker.closest?.('.experiment-unified-shell');
+        picker.hidden = true;
+        delete picker.dataset.expSummaryLineContext;
+        delete picker.dataset.expSummaryLineScope;
+        shell?.querySelectorAll?.('[data-exp-ratio-line-active="true"]').forEach(partEl => {
+            delete partEl.dataset.expRatioLineActive;
+        });
+    }
+
+    function getActiveRatioLinePart(picker) {
+        return picker?.closest?.('[data-exp-ratio-dialog], [data-exp-card-picker], .experiment-unified-shell')
+            ?.querySelector?.('[data-exp-ratio-line-active="true"]') || null;
+    }
+
+    function syncRatioPartAfterLineSelection(partEl) {
+        if (!partEl) return;
+        const builderCard = getRatioBuilderCard(partEl);
+        const role = String(partEl.dataset?.expRatioPart || 'denominator').trim();
+        const inlineBuilder = partEl.closest?.('[data-exp-inline-ratio-builder]');
+        if (inlineBuilder) {
+            syncInlineRatioBuilder(inlineBuilder.closest('.experiment-unified-shell'), false);
+            return;
+        }
+        updateRatioBuilderControls(builderCard, role === 'numerator' ? 'numerator' : 'denominator');
+    }
+
+    function shouldAutoOpenRatioLinePicker(select) {
+        const partEl = select?.closest?.('[data-exp-ratio-part]');
+        const step = String(select?.dataset?.expRatioStep || '').trim();
+        if (!partEl || step !== 'scope') return false;
+        const builderCard = getRatioBuilderCard(partEl);
+        const role = String(partEl.dataset?.expRatioPart || 'denominator').trim();
+        const { modeSelect, scopeSelect, lineButton } = getRatioPartElements(builderCard, role);
+        const modeKey = normalizeCardBuilderModeKey(modeSelect?.value || '');
+        const scopeKey = String(scopeSelect?.value || '').trim();
+        return Boolean(
+            isSummaryCardBuilderMode(modeKey)
+            && scopeKey
+            && lineButton
+            && !lineButton.hidden
+            && !lineButton.disabled
+        );
+    }
+
+    function openRatioLinePickerAfterScopeSelection(select) {
+        if (shouldAutoOpenRatioLinePicker(select)) setRatioLinePickerOpen(select, true);
+    }
+
+    function setRatioLinePickerOpen(trigger, isOpen) {
+        const partEl = trigger?.closest?.('[data-exp-ratio-part]');
+        const picker = getSummaryLinePicker(trigger);
+        if (!partEl || !picker) return;
+        if (!isOpen) {
+            closeSummaryLinePickerElement(picker);
+            return;
+        }
+        const { scopeSelect } = getRatioPartElements(getRatioBuilderCard(partEl), partEl.dataset?.expRatioPart || 'denominator');
+        const scopeKey = normalizeCardBuilderScopeKey(scopeSelect?.value || 'total');
+        const shell = picker.closest?.('.experiment-unified-shell');
+        shell?.querySelectorAll?.('[data-exp-ratio-line-active="true"]').forEach(activePart => {
+            delete activePart.dataset.expRatioLineActive;
+        });
+        partEl.dataset.expRatioLineActive = 'true';
+        picker.dataset.expSummaryLineContext = 'ratio-part';
+        picker.dataset.expSummaryLineScope = scopeKey;
+        syncSummaryLinePicker(picker, scopeKey, resolveRatioLineSelection(partEl, scopeKey));
+        picker.hidden = false;
     }
 
     function buildCardBuilderOptionHtml(options = [], selectedKey = '', selectedKeys = null) {
@@ -1514,11 +1929,13 @@
     }
 
     function getRatioDetailOptions(role = 'numerator', categoryKey = DEFAULT_GROUP_KEY, scopeKey = 'total', counterpartKey = '', modeKey = DEFAULT_CARD_BUILDER_MODE) {
-        const allowedKeys = getRatioCandidateKeySet(role, counterpartKey);
         const normalizedMode = normalizeCardBuilderModeKey(modeKey);
         if (isSummaryCardBuilderMode(normalizedMode)) {
-            return getSummaryMetricOptions(categoryKey, null, normalizedMode).filter(option => allowedKeys.has(option.key));
+            const options = getScopedSummaryMetricOptions(categoryKey, null, normalizedMode, scopeKey);
+            const allowedKeys = getRatioCandidateKeySet(role, counterpartKey);
+            return options.filter(option => allowedKeys.has(option.key));
         }
+        const allowedKeys = getRatioCandidateKeySet(role, counterpartKey);
         return getCardBuilderDetailOptions(categoryKey, scopeKey).filter(option => allowedKeys.has(option.key));
     }
 
@@ -1526,7 +1943,7 @@
         const scope = normalizeCardBuilderScopeKey(scopeKey);
         const normalizedMode = normalizeCardBuilderModeKey(modeKey);
         if (isSummaryCardBuilderMode(normalizedMode)) {
-            return getSummarySubjectOptions(scope)
+            return getRatioSummarySubjectOptions(scope)
                 .filter(subject => getRatioDetailOptions(role, subject.key, scope, counterpartKey, normalizedMode).length > 0);
         }
         return CARD_BUILDER_CATEGORIES.filter(category => getRatioDetailOptions(role, category.key, scope, counterpartKey, 'basic').length > 0);
@@ -1641,13 +2058,13 @@
     }
 
     function getAllowedDenominatorKeys(numeratorCardOrKey) {
-        return ALL_ANALYSIS_CARDS
+        return getRatioSelectableCards()
             .filter(card => resolveFractionRule(numeratorCardOrKey, card).allowed)
             .map(card => card.key);
     }
 
     function getAllowedNumeratorKeys(denominatorCardOrKey) {
-        return ALL_ANALYSIS_CARDS
+        return getRatioSelectableCards()
             .filter(card => resolveFractionRule(card, denominatorCardOrKey).allowed)
             .map(card => card.key);
     }
@@ -1655,19 +2072,19 @@
     function getRatioNumeratorCards(denominatorCardOrKey = '') {
         const denominatorKey = getCardKey(denominatorCardOrKey);
         if (!denominatorKey) {
-            return ALL_ANALYSIS_CARDS.filter(card => isValidNumerator(card) && getAllowedDenominatorKeys(card).length > 0);
+            return getRatioSelectableCards().filter(card => isValidNumerator(card) && getAllowedDenominatorKeys(card).length > 0);
         }
         const allowedKeys = new Set(getAllowedNumeratorKeys(denominatorKey));
-        return ALL_ANALYSIS_CARDS.filter(card => allowedKeys.has(card.key));
+        return getRatioSelectableCards().filter(card => allowedKeys.has(card.key));
     }
 
     function getRatioDenominatorCards(numeratorCardOrKey = '') {
         const allowedKeys = new Set(getAllowedDenominatorKeys(numeratorCardOrKey));
-        return ALL_ANALYSIS_CARDS.filter(card => allowedKeys.has(card.key));
+        return getRatioSelectableCards().filter(card => allowedKeys.has(card.key));
     }
 
     function getAllRatioDenominatorCards() {
-        return ALL_ANALYSIS_CARDS.filter(card => isValidDenominator(card) && getAllowedNumeratorKeys(card).length > 0);
+        return getRatioSelectableCards().filter(card => isValidDenominator(card) && getAllowedNumeratorKeys(card).length > 0);
     }
 
     function getRatioCandidateCards(role = 'numerator', counterpartKey = '') {
@@ -1719,7 +2136,7 @@
     root.KpiExperimentNormalizationRules = Object.freeze({
         units: NORMALIZATION_UNITS,
         fractionRules: Object.freeze([VALUE_RATIO_RULE]),
-        getCards: () => [...ALL_ANALYSIS_CARDS, ...GENERATED_SUMMARY_CARDS],
+        getCards: () => [...ALL_ANALYSIS_CARDS, ...GENERATED_SUMMARY_CARDS, ...GENERATED_PRODUCTION_CARDS],
         findCard: findAnalysisCard,
         getCardNormalization: cardOrKey => findAnalysisCard(cardOrKey)?.normalization || null,
         resolveFractionRule,
@@ -2238,6 +2655,7 @@
 
     function summarizeExperimentProductionMetrics(entries = []) {
         let totalAmount = 0;
+        let hasAmount = false;
         let reworkAmount = 0;
         let hasReworkAmount = false;
         let yieldSum = 0;
@@ -2272,6 +2690,7 @@
             const productKey = normalizeExperimentProductKey(entry?.productName || entry?.product || entry?.itemName || '');
             if (Number.isFinite(amount)) {
                 totalAmount += amount;
+                hasAmount = true;
                 if (productionKind === 'rework') {
                     reworkAmount += amount;
                     if (amount > 0) hasReworkAmount = true;
@@ -2321,6 +2740,7 @@
             ? (totalAmount / totalEquipmentCapa) * 100
             : (operationRateCount > 0 ? operationRateSum / operationRateCount : NaN);
         return {
+            production_amount: hasAmount ? totalAmount : NaN,
             yield_rate: Number.isFinite(yieldRate) ? yieldRate : NaN,
             operation_rate: Number.isFinite(operationRate) ? operationRate : NaN,
             work_time: hasWorkTime ? totalWorkTime : NaN,
@@ -2340,6 +2760,16 @@
         if (!subject) return NaN;
         const metrics = summarizeExperimentProductionMetrics(getExperimentSummarySubjectEntries(subject, monthKey));
         const value = Number(metrics?.[metricKey]);
+        return Number.isFinite(value) ? value : NaN;
+    }
+
+    function getSummarySubjectProductionValue(subjectKeyOrOption = '', monthKey = '') {
+        const subject = typeof subjectKeyOrOption === 'object'
+            ? subjectKeyOrOption
+            : getSummarySubjectOption(subjectKeyOrOption);
+        if (!subject) return NaN;
+        const metrics = summarizeExperimentProductionMetrics(getExperimentSummarySubjectEntries(subject, monthKey));
+        const value = Number(metrics?.production_amount);
         return Number.isFinite(value) ? value : NaN;
     }
 
@@ -2507,6 +2937,9 @@
         }
         const productionLineMatch = /^line-(.+)-production$/.exec(cardKey);
         if (productionLineMatch) {
+            const subject = getSummarySubjectOption(productionLineMatch[1]);
+            const subjectValue = getSummarySubjectProductionValue(subject, monthKey);
+            if (Number.isFinite(subjectValue)) return subjectValue;
             const line = PRODUCTION_LINES.find(item => item.key === productionLineMatch[1]);
             return line ? getProductionLineValue(line.key, line.teamKey, monthKey) : NaN;
         }
@@ -2709,62 +3142,266 @@
         return resolvePeriodValue(card, monthKey, shell);
     }
 
-    function buildExperimentChartTableHtml(seriesList = [], cards = [], shell = null) {
-        const rows = [];
+    function getExperimentTableUnitHeaderLabel(seriesList = []) {
+        const unitLabels = Array.from(new Set((Array.isArray(seriesList) ? seriesList : [])
+            .map(series => String(series?.unitLabel || '').trim())
+            .filter(Boolean)));
+        if (unitLabels.length === 1) return `단위: ${unitLabels[0]}`;
+        if (unitLabels.length > 1 && unitLabels.length <= 3) return `단위: ${unitLabels.join(' / ')}`;
+        if (unitLabels.length > 3) return '단위: 혼합';
+        return '단위';
+    }
+
+    function buildExperimentChartTableEntries(seriesList = [], cards = []) {
         const cardMap = new Map((Array.isArray(cards) ? cards : []).map(card => [String(card?.key || ''), card]));
-        const monthHeaders = Array.from({ length: 12 }, (_, index) => `<th>${index + 1}월</th>`).join('');
-        (Array.isArray(seriesList) ? seriesList : []).forEach((series, seriesIndex) => {
+        return (Array.isArray(seriesList) ? seriesList : []).map((series, seriesIndex) => {
             const seriesKey = String(series?.seriesKey || '').trim();
-            const card = cardMap.get(seriesKey) || null;
-            const accentColor = getSafeChartColor(series?.color || card?.color);
             const pointMap = new Map();
             (Array.isArray(series?.points) ? series.points : []).forEach(point => {
                 const monthKey = String(point?.monthKey || point?.key || '').trim();
                 if (/^\d{4}-\d{2}$/.test(monthKey)) pointMap.set(monthKey, point);
             });
-            const years = Array.from(new Set(Array.from(pointMap.keys()).map(monthKey => monthKey.slice(0, 4)))).sort();
-            years.forEach((year, yearIndex) => {
-                const cells = Array.from({ length: 12 }, (_, index) => {
-                    const monthKey = `${year}-${String(index + 1).padStart(2, '0')}`;
-                    const point = pointMap.get(monthKey);
-                    const value = getExperimentTablePointValue(point, card, monthKey, shell);
-                    const isValue = Number.isFinite(value);
-                    const valueText = isValue
-                        ? formatMetricTableValue(value, Number.isFinite(series?.decimals) ? series.decimals : 0, isDerivedRatioCard(card))
-                        : '';
-                    return `<td class="${isValue ? 'is-strong' : 'is-empty'}">${escapeHtml(valueText)}</td>`;
-                }).join('');
-                rows.push(`
-                    <tr class="experiment-chart-table-row${yearIndex === 0 ? ' is-series-start' : ''}" data-exp-series-index="${seriesIndex % 6}" style="--exp-series-color:${escapeHtml(accentColor)};">
-                        <th>
-                            <div class="util-sheet-analysis-table-row-title experiment-chart-table-row-title">
-                                <span class="experiment-chart-table-swatch" aria-hidden="true"></span>
-                                <span>${escapeHtml(String(year).slice(-2))}년 ${escapeHtml(series?.rawLabel || series?.label || '')}</span>
-                            </div>
-                            <div class="util-sheet-analysis-table-row-unit">(${escapeHtml(series?.unitLabel || '')})</div>
-                        </th>
-                        ${cells}
-                    </tr>
-                `);
-            });
-        });
-        if (!rows.length) {
-            return '<div class="util-sheet-empty experiment-chart-table-empty">표시할 표 데이터가 없습니다.</div>';
-        }
+            return {
+                series,
+                seriesIndex,
+                seriesKey,
+                card: cardMap.get(seriesKey) || null,
+                pointMap,
+                years: Array.from(new Set(Array.from(pointMap.keys()).map(monthKey => monthKey.slice(0, 4)))).sort(),
+                accentColor: getSafeChartColor(series?.color || cardMap.get(seriesKey)?.color)
+            };
+        }).filter(entry => entry.years.length);
+    }
+
+    function buildExperimentChartSingleTableHtml(entry, shell = null, index = 0) {
+        const { series, seriesIndex, card, pointMap, years, accentColor } = entry;
+        const monthHeaders = Array.from({ length: 12 }, (_, index) => `<th>${index + 1}월</th>`).join('');
+        const unitHeaderLabel = getExperimentTableUnitHeaderLabel([series]);
+        const tableNumber = Math.max(1, Math.trunc(Number(index) || 0) + 1);
+        const rows = years.map((year, yearIndex) => {
+            const cells = Array.from({ length: 12 }, (_, index) => {
+                const monthKey = `${year}-${String(index + 1).padStart(2, '0')}`;
+                const point = pointMap.get(monthKey);
+                const value = getExperimentTablePointValue(point, card, monthKey, shell);
+                const isValue = Number.isFinite(value);
+                const valueText = isValue
+                    ? formatMetricTableValue(value, Number.isFinite(series?.decimals) ? series.decimals : 0, isDerivedRatioCard(card))
+                    : '';
+                return `<td class="${isValue ? 'is-strong' : 'is-empty'}">${escapeHtml(valueText)}</td>`;
+            }).join('');
+            return `
+                <tr class="experiment-chart-table-row${yearIndex === 0 ? ' is-series-start' : ''}" data-exp-series-index="${seriesIndex % 6}" style="--exp-series-color:${escapeHtml(accentColor)};">
+                    <th>
+                        <div class="util-sheet-analysis-table-row-title experiment-chart-table-row-title">
+                            <span class="experiment-chart-table-swatch" aria-hidden="true"></span>
+                            <span>${escapeHtml(String(year).slice(-2))}년 ${escapeHtml(series?.rawLabel || series?.label || '')}</span>
+                        </div>
+                    </th>
+                    ${cells}
+                </tr>
+            `;
+        }).join('');
         return `
-            <article class="util-sheet-analysis-table-card experiment-chart-table-card" data-tone="combined">
+            <article class="util-sheet-analysis-table-card experiment-chart-table-card" data-tone="combined" data-exp-chart-table-card="${escapeHtml(entry.seriesKey)}">
                 <div class="util-sheet-table-wrap">
                     <table class="util-sheet-table util-sheet-analysis-table experiment-chart-table">
                         <thead>
                             <tr>
-                                <th>구분</th>
+                                <th class="experiment-chart-table-unit-head">
+                                    <span class="experiment-chart-table-unit-label">
+                                        <span class="experiment-chart-table-number">${escapeHtml(tableNumber)}</span>
+                                        <span>${escapeHtml(unitHeaderLabel)}</span>
+                                    </span>
+                                </th>
                                 ${monthHeaders}
                             </tr>
                         </thead>
-                        <tbody>${rows.join('')}</tbody>
+                        <tbody>${rows}</tbody>
                     </table>
                 </div>
             </article>
+        `;
+    }
+
+    function formatExperimentChartMemoNumber(value, metric = {}, current = false) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return '';
+        const absValue = Math.abs(number);
+        const fixedDecimals = Number.isInteger(metric.decimals) ? Math.max(0, Math.min(metric.decimals, 6)) : null;
+        const roundedAbsValue = fixedDecimals !== null
+            ? Math.round((absValue + 1e-12) * (10 ** fixedDecimals)) / (10 ** fixedDecimals)
+            : absValue;
+        const displayValue = current ? Math.sign(number) * roundedAbsValue : roundedAbsValue;
+        const maximumFractionDigits = fixedDecimals !== null
+            ? fixedDecimals
+            : (metric.deltaMode === 'percentagePoint' || absValue < 100 ? 1 : 0);
+        return displayValue.toLocaleString('ko-KR', {
+            maximumFractionDigits,
+            minimumFractionDigits: fixedDecimals !== null ? fixedDecimals : 0
+        });
+    }
+
+    function formatExperimentChartMemoRate(rate) {
+        const number = Number(rate);
+        if (!Number.isFinite(number)) return '';
+        return `${Math.abs(number * 100).toLocaleString('ko-KR', {
+            maximumFractionDigits: 1,
+            minimumFractionDigits: 1
+        })}%`;
+    }
+
+    function getExperimentChartMemoDirection(delta) {
+        return delta > 0 ? 'up' : (delta < 0 ? 'down' : 'flat');
+    }
+
+    function isExperimentChartMemoDisplayedDeltaZero(delta, metric = {}) {
+        const text = formatExperimentChartMemoNumber(delta, metric);
+        if (!text) return false;
+        const number = Number(String(text).replace(/,/g, '').trim());
+        return Number.isFinite(number) && number === 0;
+    }
+
+    function getExperimentChartMemoDisplayDirection(delta, metric = {}) {
+        const direction = getExperimentChartMemoDirection(delta);
+        return direction !== 'flat' && isExperimentChartMemoDisplayedDeltaZero(delta, metric)
+            ? 'flat'
+            : direction;
+    }
+
+    function getExperimentChartMemoArrow(direction) {
+        if (direction === 'up') return '↑';
+        if (direction === 'down') return '↓';
+        return '-';
+    }
+
+    function getExperimentChartMemoMetric(series = {}) {
+        const unitLabel = String(series?.unitLabel || '').trim();
+        const isPercentagePoint = unitLabel === '%' || unitLabel === '%p';
+        return {
+            label: String(series?.rawLabel || series?.label || '').trim(),
+            currentUnit: isPercentagePoint ? '%' : unitLabel,
+            deltaUnit: isPercentagePoint ? '%p' : unitLabel,
+            deltaMode: isPercentagePoint ? 'percentagePoint' : '',
+            decimals: Number.isFinite(series?.decimals) ? Math.max(0, Math.min(Number(series.decimals), 6)) : null
+        };
+    }
+
+    function buildExperimentChartMemoComparisonSegment(metric, basisLabel, referenceValue, currentValue) {
+        const reference = Number(referenceValue);
+        const current = Number(currentValue);
+        if (!Number.isFinite(reference) || !Number.isFinite(current)) return null;
+        const delta = current - reference;
+        const rate = reference === 0 ? NaN : delta / Math.abs(reference);
+        const direction = getExperimentChartMemoDisplayDirection(delta, metric);
+        const arrow = getExperimentChartMemoArrow(direction);
+        const deltaText = `${formatExperimentChartMemoNumber(delta, metric)}${metric.deltaUnit || ''}`;
+        if (direction === 'flat') {
+            return { basis: basisLabel, direction, text: `${basisLabel} 동일`, reference, current, delta, rate };
+        }
+        if (metric.deltaMode === 'percentagePoint') {
+            return { basis: basisLabel, direction, text: `${basisLabel} ${deltaText} ${arrow}`, reference, current, delta, rate };
+        }
+        const rateText = Number.isFinite(rate) ? formatExperimentChartMemoRate(rate) : '-';
+        return { basis: basisLabel, direction, text: `${basisLabel} ${deltaText}, ${rateText} ${arrow}`, reference, current, delta, rate };
+    }
+
+    function getExperimentChartTableValueForMonth(entry, monthKey, shell = null) {
+        const point = entry.pointMap.get(monthKey);
+        return getExperimentTablePointValue(point, entry.card, monthKey, shell);
+    }
+
+    function getExperimentChartTableCurrentEntry(entry, shell = null) {
+        return (Array.isArray(entry.series?.points) ? entry.series.points : [])
+            .map(point => {
+                const monthKey = String(point?.monthKey || point?.key || '').trim();
+                const value = /^\d{4}-\d{2}$/.test(monthKey)
+                    ? getExperimentTablePointValue(point, entry.card, monthKey, shell)
+                    : NaN;
+                return { monthKey, value };
+            })
+            .filter(item => /^\d{4}-\d{2}$/.test(item.monthKey) && Number.isFinite(item.value))
+            .sort((left, right) => left.monthKey.localeCompare(right.monthKey))
+            .pop() || null;
+    }
+
+    function getExperimentChartMemoCombinedDirection(segments = []) {
+        const directions = new Set((Array.isArray(segments) ? segments : [])
+            .map(segment => segment?.direction)
+            .filter(direction => direction === 'up' || direction === 'down'));
+        if (directions.size > 1) return 'mixed';
+        if (directions.has('up')) return 'up';
+        if (directions.has('down')) return 'down';
+        return 'flat';
+    }
+
+    function buildExperimentChartTableMemo(entry, shell = null) {
+        const currentEntry = getExperimentChartTableCurrentEntry(entry, shell);
+        if (!currentEntry) return null;
+        const metric = getExperimentChartMemoMetric(entry.series);
+        const previousYearValue = getExperimentChartTableValueForMonth(entry, addMonths(currentEntry.monthKey, -12), shell);
+        const previousMonthValue = getExperimentChartTableValueForMonth(entry, addMonths(currentEntry.monthKey, -1), shell);
+        const segments = [
+            buildExperimentChartMemoComparisonSegment(metric, '전년대비', previousYearValue, currentEntry.value),
+            buildExperimentChartMemoComparisonSegment(metric, '전월대비', previousMonthValue, currentEntry.value)
+        ].filter(Boolean);
+        if (!segments.length) return null;
+        const currentText = `${formatExperimentChartMemoNumber(currentEntry.value, metric, true)}${metric.currentUnit || ''}`;
+        return {
+            direction: getExperimentChartMemoCombinedDirection(segments),
+            label: metric.label,
+            currentText,
+            segments,
+            text: `${metric.label}${currentText ? ` ${currentText}` : ''} ${segments.map(segment => segment.text).join(', ')}`
+        };
+    }
+
+    function buildExperimentChartTableMemoLineHtml(entry, shell = null, index = 0) {
+        const memo = buildExperimentChartTableMemo(entry, shell);
+        const direction = memo?.direction || 'flat';
+        const segments = Array.isArray(memo?.segments) ? memo.segments : [];
+        const bodyHtml = memo
+            ? `
+                <span class="experiment-chart-table-memo-main">${escapeHtml(memo.label)}${memo.currentText ? ` ${escapeHtml(memo.currentText)}` : ''}</span>
+                ${segments.map((segment, segmentIndex) => `
+                    <span class="experiment-chart-table-memo-segment is-${escapeHtml(segment.direction || 'flat')}">${escapeHtml(segment.text)}${segmentIndex < segments.length - 1 ? ',' : ''}</span>
+                `).join('')}
+            `
+            : '<span class="experiment-chart-table-memo-empty-text">표시할 특이사항 데이터가 없습니다.</span>';
+        return `
+            <div class="experiment-chart-table-memo-line is-${escapeHtml(direction)}" data-exp-chart-table-memo="${escapeHtml(entry.seriesKey)}" data-exp-chart-table-memo-text="${escapeHtml(`${index + 1} ${memo?.text || '표시할 특이사항 데이터가 없습니다.'}`)}">
+                <span class="experiment-chart-table-memo-index">${escapeHtml(index + 1)}</span>
+                <span class="experiment-chart-table-memo-text">${bodyHtml}</span>
+                <button type="button" class="experiment-chart-table-memo-copy" data-exp-chart-table-memo-copy aria-label="${escapeHtml(`${index + 1}번 특이사항 복사`)}" title="이 항목 복사" onclick="KpiExperimentGraphPrototype.copyTableMemo(this)">복사</button>
+            </div>
+        `;
+    }
+
+    function buildExperimentChartTableMemoBoardHtml(entries = [], shell = null) {
+        return `
+            <section class="experiment-chart-table-memo-board" data-exp-chart-table-memo-board aria-label="특이사항">
+                <strong>
+                    <span>특이사항</span>
+                </strong>
+                <div class="experiment-chart-table-memo-list">
+                    ${(Array.isArray(entries) ? entries : []).map((entry, index) => buildExperimentChartTableMemoLineHtml(entry, shell, index)).join('')}
+                </div>
+            </section>
+        `;
+    }
+
+    function buildExperimentChartTableHtml(seriesList = [], cards = [], shell = null) {
+        const entries = buildExperimentChartTableEntries(seriesList, cards);
+        if (!entries.length) {
+            return '<div class="util-sheet-empty experiment-chart-table-empty">표시할 표 데이터가 없습니다.</div>';
+        }
+        const tableCount = Math.max(1, entries.length);
+        return `
+            <div class="experiment-chart-table-set" data-exp-chart-table-set data-exp-table-count="${tableCount}" style="--exp-table-count:${tableCount};">
+                <div class="experiment-chart-table-grid">
+                    ${entries.map((entry, index) => buildExperimentChartSingleTableHtml(entry, shell, index)).join('')}
+                </div>
+                ${buildExperimentChartTableMemoBoardHtml(entries, shell)}
+            </div>
         `;
     }
 
@@ -2923,6 +3560,7 @@
         const visibleSeries = allSeries.filter(item => item.type !== 'none');
         const maxDecimals = [...allSeries, ...summarySeries].reduce((maxValue, item) => Math.max(maxValue, Number.isFinite(item.decimals) ? item.decimals : 1), 1);
         const selectedCardMap = new Map(selectedCards.map(card => [String(card?.key || ''), card]));
+        const viewMode = getExperimentChartViewMode(shell);
         return {
             chart: {
                 key: EXPERIMENT_CHART_KEY,
@@ -2934,7 +3572,7 @@
                 series: visibleSeries,
                 chartDataList: visibleSeries.map(item => ({ seriesKey: item.seriesKey, points: item.points })),
                 showViewToggle: false,
-                viewMode: getExperimentChartViewMode(shell),
+                viewMode,
                 tableHtml: buildExperimentChartTableHtml(summarySeries, selectedCards, shell),
                 suppressChartLabelToggle: true,
                 controlItems: summarySeries.map(item => ({
@@ -2950,7 +3588,9 @@
                     isDerivedRatio: isDerivedRatioCard(selectedCardMap.get(item.seriesKey)),
                     points: item.points
                 })),
-                summaryItems: selectedCards.map((card, index) => buildSummaryItem(card, summarySeries[index], index)),
+                summaryItems: viewMode === 'table'
+                    ? []
+                    : selectedCards.map((card, index) => buildSummaryItem(card, summarySeries[index], index)),
                 reportValueOrderLabels: period?.yearOverlap === true,
                 hideRangeMeta: true,
                 hideHeadingText: true,
@@ -3363,6 +4003,9 @@
                         <select class="experiment-ratio-select" data-exp-ratio-category data-exp-ratio-step="category" onchange="KpiExperimentGraphPrototype.${handler}(this)" disabled>
                             ${buildCardBuilderSelectHtml([], '', '분류 선택')}
                         </select>
+                        <button type="button" class="experiment-summary-line-open-button" data-exp-ratio-line-open onclick="KpiExperimentGraphPrototype.openRatioLinePicker(this)" hidden>
+                            라인 선택
+                        </button>
                     </label>
                     <label class="experiment-ratio-field">
                         <span>4차 세부</span>
@@ -3408,6 +4051,7 @@
                         </button>
                     </div>
                 </div>
+                ${buildSummaryLinePickerDialog()}
             </div>
         `;
     }
@@ -3575,8 +4219,14 @@
         }
 
         const detailOptions = scopeKey && targetKey ? getCardBuilderDetailOptions(targetKey, scopeKey) : [];
-        const detailKey = scopeKey && targetKey ? getAutoSelectedCardBuilderDetailKey(detailOptions, detailSelect?.value) : '';
+        const detailKey = scopeKey && targetKey
+            ? (targetKey === 'production'
+                ? resolveProductionDetailSelectionForShell(shell, scopeKey).cardKey
+                : getAutoSelectedCardBuilderDetailKeyForTarget(targetKey, scopeKey, detailOptions, detailSelect?.value, isProductionDetailBlankState(detailSelect)))
+            : '';
+        ensureCardBuilderDetailOption(detailOptions, detailKey);
         if (detailSelect) {
+            if (detailKey || targetKey !== 'production') setProductionDetailBlankState(detailSelect, false);
             detailSelect.innerHTML = buildCardBuilderOptionHtml(detailOptions, detailKey, selectedCardKeys);
             detailSelect.value = detailKey;
             detailSelect.disabled = detailOptions.length === 0;
@@ -3676,8 +4326,14 @@
         }
 
         const detailOptions = scopeKey && targetKey ? getCardBuilderDetailOptions(targetKey, scopeKey) : [];
-        const detailKey = scopeKey && targetKey ? getAutoSelectedCardBuilderDetailKey(detailOptions, detailSelect?.value) : '';
+        const detailKey = scopeKey && targetKey
+            ? (targetKey === 'production'
+                ? resolveProductionDetailSelectionForShell(shell, scopeKey).cardKey
+                : getAutoSelectedCardBuilderDetailKeyForTarget(targetKey, scopeKey, detailOptions, detailSelect?.value, isProductionDetailBlankState(detailSelect)))
+            : '';
+        ensureCardBuilderDetailOption(detailOptions, detailKey);
         if (detailSelect) {
+            if (detailKey || targetKey !== 'production') setProductionDetailBlankState(detailSelect, false);
             detailSelect.innerHTML = buildCardBuilderOptionHtml(detailOptions, detailKey, selectedCardKeys);
             detailSelect.value = detailKey;
         }
@@ -3742,13 +4398,14 @@
         syncSummaryLineOpenButton(shell, scopeKey, lineSelection);
         syncSummaryLinePicker(shell, scopeKey, lineSelection);
 
-        const detailOptions = scopeKey && targetKey ? getSummaryMetricOptions(targetKey, shell, normalizedMode) : [];
+        const detailOptions = scopeKey && targetKey ? getScopedSummaryMetricOptions(targetKey, shell, normalizedMode, scopeKey) : [];
         const detailKey = scopeKey && targetKey ? getAutoSelectedCardBuilderDetailKey(detailOptions, detailSelect?.value) : '';
         if (detailSelect) {
             detailSelect.innerHTML = buildCardBuilderSelectHtml(detailOptions, detailKey, '값 선택', selectedCardKeys);
             detailSelect.value = detailKey;
             detailSelect.disabled = !scopeKey || !targetKey || detailOptions.length === 0;
         }
+        syncCardDetailOpenButton(shell, [], '');
 
         const selectedDetail = detailOptions.find(option => option.key === detailKey) || null;
         const alreadySelected = selectedDetail ? selectedCardKeys.has(selectedDetail.key) : false;
@@ -3825,12 +4482,19 @@
         }
 
         const detailOptions = scopeKey && targetKey ? getCardBuilderDetailOptions(targetKey, scopeKey) : [];
-        const detailKey = scopeKey && targetKey ? getAutoSelectedCardBuilderDetailKey(detailOptions, detailSelect?.value) : '';
+        const detailKey = scopeKey && targetKey
+            ? (targetKey === 'production'
+                ? resolveProductionDetailSelectionForShell(shell, scopeKey).cardKey
+                : getAutoSelectedCardBuilderDetailKeyForTarget(targetKey, scopeKey, detailOptions, detailSelect?.value, isProductionDetailBlankState(detailSelect)))
+            : '';
+        ensureCardBuilderDetailOption(detailOptions, detailKey);
         if (detailSelect) {
+            if (detailKey || targetKey !== 'production') setProductionDetailBlankState(detailSelect, false);
             detailSelect.innerHTML = buildCardBuilderSelectHtml(detailOptions, detailKey, '세부 선택', selectedCardKeys);
             detailSelect.value = detailKey;
             detailSelect.disabled = !scopeKey || !targetKey || detailOptions.length === 0;
         }
+        syncCardDetailOpenButton(shell, detailOptions, detailKey);
 
         const selectedDetail = detailOptions.find(option => option.key === detailKey) || null;
         const alreadySelected = selectedDetail ? selectedCardKeys.has(selectedDetail.key) : false;
@@ -3924,6 +4588,9 @@
                                         <select class="experiment-ratio-select" data-exp-card-detail onchange="KpiExperimentGraphPrototype.selectBuilderDetail(this)" disabled>
                                             ${buildCardBuilderSelectHtml([], '', '세부 선택')}
                                         </select>
+                                        <button type="button" class="experiment-summary-line-open-button" data-exp-card-detail-open onclick="KpiExperimentGraphPrototype.openCardDetailPicker(this)" hidden>
+                                            세부 선택
+                                        </button>
                                     </label>
                                     <div class="experiment-card-builder-actions">
                                         <button type="button" class="experiment-ratio-add-button" data-exp-card-builder-add onclick="KpiExperimentGraphPrototype.addBuilderCard(this)" disabled>
@@ -4081,6 +4748,7 @@
             modeSelect: partEl?.querySelector?.('[data-exp-ratio-mode]') || null,
             scopeSelect: partEl?.querySelector?.('[data-exp-ratio-scope]') || null,
             categorySelect: partEl?.querySelector?.('[data-exp-ratio-category]') || null,
+            lineButton: partEl?.querySelector?.('[data-exp-ratio-line-open]') || null,
             detailSelect: partEl?.querySelector?.('[data-exp-ratio-detail]') || null,
             titleEl: partEl?.querySelector?.('[data-exp-ratio-part-title]') || null
         };
@@ -4129,8 +4797,16 @@
         }
     }
 
+    function syncRatioLineSelectionFromPath(partEl, scopeKey = 'total', path = null) {
+        if (!partEl || !path || !isSummaryCardBuilderMode(path.modeKey)) return;
+        const normalizedScope = normalizeCardBuilderScopeKey(scopeKey);
+        if (normalizeCardBuilderScopeKey(path.scopeKey) !== normalizedScope) return;
+        const lineKeys = getSummaryLineKeysForSubject(normalizedScope, path.categoryKey);
+        if (lineKeys.length) setRatioLineSelectionKeys(partEl, normalizedScope, lineKeys);
+    }
+
     function syncRatioPartControls(builderCard, role = 'numerator', counterpartKey = '', requestedCardKey = '') {
-        const { modeSelect, scopeSelect, categorySelect, detailSelect, titleEl } = getRatioPartElements(builderCard, role);
+        const { partEl, modeSelect, scopeSelect, categorySelect, lineButton, detailSelect, titleEl } = getRatioPartElements(builderCard, role);
         if (!modeSelect || !scopeSelect || !categorySelect || !detailSelect) return '';
 
         const allowedKeys = getRatioCandidateKeySet(role, counterpartKey);
@@ -4152,14 +4828,32 @@
         scopeSelect.value = scopeKey;
         scopeSelect.disabled = !modeKey || scopeOptions.length === 0;
 
-        const categoryOptions = scopeKey ? getRatioCategoryOptions(role, scopeKey, counterpartKey, modeKey) : [];
+        const isSummaryMode = isSummaryCardBuilderMode(modeKey);
+        if (isSummaryMode) {
+            syncRatioLineSelectionFromPath(partEl, scopeKey, requestedPath || currentPath);
+        }
+        const lineSelection = isSummaryMode && scopeKey ? resolveRatioLineSelection(partEl, scopeKey) : null;
+        const categoryOptions = scopeKey
+            ? (isSummaryMode && lineSelection?.subject
+                ? [lineSelection.subject]
+                : getRatioCategoryOptions(role, scopeKey, counterpartKey, modeKey))
+            : [];
         let categoryKey = requestedPath?.categoryKey || currentPath?.categoryKey || String(categorySelect.value || '').trim();
+        if (isSummaryMode) categoryKey = lineSelection?.subject?.key || '';
         if (!categoryOptions.some(option => option.key === categoryKey)) {
             categoryKey = categoryOptions.length === 1 ? categoryOptions[0].key : '';
         }
         categorySelect.innerHTML = buildCardBuilderSelectHtml(categoryOptions, categoryKey, isSummaryCardBuilderMode(modeKey) ? '하위범위 선택' : '분류 선택');
         categorySelect.value = categoryKey;
-        categorySelect.disabled = !scopeKey || categoryOptions.length === 0 || (isSummaryCardBuilderMode(modeKey) && categoryOptions.length <= 1);
+        categorySelect.hidden = Boolean(isSummaryMode);
+        categorySelect.disabled = !scopeKey || categoryOptions.length === 0 || (isSummaryMode && categoryOptions.length <= 1);
+        if (lineButton) {
+            const lineEnabled = Boolean(isSummaryMode && scopeKey && getSummaryLineOptionsForScope(scopeKey).length);
+            lineButton.hidden = !lineEnabled;
+            lineButton.disabled = !lineEnabled;
+            lineButton.textContent = lineSelection?.label || '라인 선택';
+            lineButton.title = lineEnabled ? '라인 선택' : '';
+        }
 
         const detailOptions = scopeKey && categoryKey ? getRatioDetailOptions(role, categoryKey, scopeKey, counterpartKey, modeKey) : [];
         const nextRequestedDetailKey = requestedPath?.detailKey || currentPath?.detailKey || String(detailSelect.value || '').trim();
@@ -4412,7 +5106,10 @@
         const targetSelect = shell?.querySelector?.('[data-exp-card-target]');
         const detailSelect = shell?.querySelector?.('[data-exp-card-detail]');
         if (targetSelect) targetSelect.value = '';
-        if (detailSelect) detailSelect.value = '';
+        if (detailSelect) {
+            detailSelect.value = '';
+            setProductionDetailBlankState(detailSelect, false);
+        }
         syncCardBuilderControlsLegacy(shell, normalizedKey);
     }
 
@@ -4495,9 +5192,77 @@
         documentRef.addEventListener('MSFullscreenChange', syncExperimentFullscreenState);
     }
 
+    function getExperimentTableMemoCopyText(board = null) {
+        return Array.from(board?.querySelectorAll?.('[data-exp-chart-table-memo]') || [])
+            .map(line => getExperimentTableMemoLineCopyText(line))
+            .filter(Boolean)
+            .join('\n');
+    }
+
+    function getExperimentTableMemoLineCopyText(line = null) {
+        return String(line?.dataset?.expChartTableMemoText || line?.innerText || '').trim();
+    }
+
+    function fallbackCopyExperimentText(ownerDocument, text = '') {
+        if (!ownerDocument?.body) return false;
+        const area = ownerDocument.createElement('textarea');
+        area.value = String(text || '');
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.left = '-9999px';
+        ownerDocument.body.appendChild(area);
+        area.focus();
+        area.select();
+        let copied = false;
+        try {
+            copied = ownerDocument.execCommand?.('copy') === true;
+        } finally {
+            area.remove();
+        }
+        return copied;
+    }
+
+    async function copyExperimentTextToClipboard(ownerDocument, text = '') {
+        const value = String(text || '').trim();
+        if (!value) return false;
+        const ownerWindow = ownerDocument?.defaultView || root;
+        const clipboard = ownerWindow?.navigator?.clipboard || root.navigator?.clipboard || null;
+        if (typeof clipboard?.writeText === 'function') {
+            try {
+                await clipboard.writeText(value);
+                return true;
+            } catch (error) {
+                return fallbackCopyExperimentText(ownerDocument, value);
+            }
+        }
+        return fallbackCopyExperimentText(ownerDocument, value);
+    }
+
+    function markExperimentMemoCopyButton(button, copied) {
+        if (!button) return;
+        button.dataset.expChartTableMemoCopyState = copied ? 'copied' : 'failed';
+        button.textContent = copied ? '복사됨' : '실패';
+        root.setTimeout?.(() => {
+            button.textContent = '복사';
+            delete button.dataset.expChartTableMemoCopyState;
+        }, copied ? 900 : 1400);
+    }
+
+    async function copyExperimentChartTableMemo(trigger) {
+        const line = trigger?.closest?.('[data-exp-chart-table-memo]');
+        const board = trigger?.closest?.('[data-exp-chart-table-memo-board]');
+        const ownerDocument = trigger?.ownerDocument || root.document;
+        const copyText = line ? getExperimentTableMemoLineCopyText(line) : getExperimentTableMemoCopyText(board);
+        const copied = await copyExperimentTextToClipboard(ownerDocument, copyText);
+        markExperimentMemoCopyButton(trigger, copied);
+    }
+
     root.KpiExperimentGraphPrototype = Object.freeze({
         toggleFullscreen(trigger) {
             toggleExperimentFullscreen(trigger);
+        },
+        copyTableMemo(trigger) {
+            void copyExperimentChartTableMemo(trigger);
         },
         togglePicker(trigger) {
             const shell = trigger?.closest?.('.experiment-unified-shell');
@@ -4530,7 +5295,10 @@
             if (select) select.value = normalizeCardBuilderModeKey(select.value);
             if (groupSelect) groupSelect.value = '';
             if (targetSelect) targetSelect.value = '';
-            if (detailSelect) detailSelect.value = '';
+            if (detailSelect) {
+                detailSelect.value = '';
+                setProductionDetailBlankState(detailSelect, false);
+            }
             setInlineRatioBuilderOpen(shell, false);
             setSummaryLinePickerOpen(shell, false);
             syncCardBuilderControlsLegacy(shell);
@@ -4558,24 +5326,37 @@
             if (!shell) return;
             setSummaryLinePickerOpen(shell, true);
         },
+        openCardDetailPicker(trigger) {
+            setCardDetailPickerOpen(trigger, true);
+        },
+        openRatioLinePicker(trigger) {
+            setRatioLinePickerOpen(trigger, true);
+        },
         closeSummaryLinePicker(trigger) {
-            const shell = trigger?.closest?.('.experiment-unified-shell');
-            if (!shell) return;
-            setSummaryLinePickerOpen(shell, false);
+            const picker = trigger?.closest?.('[data-exp-summary-line-picker]') || getSummaryLinePicker(trigger);
+            closeSummaryLinePickerElement(picker);
         },
         closeSummaryLinePickerFromBackdrop(event) {
             if (event?.target !== event?.currentTarget) return;
-            const shell = event?.currentTarget?.closest?.('.experiment-unified-shell');
-            if (!shell) return;
-            setSummaryLinePickerOpen(shell, false);
+            closeSummaryLinePickerElement(event?.currentTarget);
         },
         toggleSummaryLineSelection(input) {
             const shell = input?.closest?.('.experiment-unified-shell');
-            if (!shell) return;
-            const scopeKey = normalizeCardBuilderScopeKey(shell.querySelector('[data-exp-card-kind]')?.value || 'total');
+            const picker = input?.closest?.('[data-exp-summary-line-picker]');
+            if (!shell || !picker) return;
+            const ratioPart = picker.dataset?.expSummaryLineContext === 'ratio-part'
+                ? getActiveRatioLinePart(picker)
+                : null;
+            const scopeKey = normalizeCardBuilderScopeKey(
+                ratioPart
+                    ? (picker.dataset?.expSummaryLineScope || getRatioPartElements(getRatioBuilderCard(ratioPart), ratioPart.dataset?.expRatioPart || 'denominator').scopeSelect?.value || 'total')
+                    : (shell.querySelector('[data-exp-card-kind]')?.value || 'total')
+            );
             const lineOptions = getSummaryLineOptionsForScope(scopeKey);
             const allKeys = lineOptions.map(option => option.key);
-            const currentKeys = getSummaryLineSelectionKeys(shell, scopeKey);
+            const currentKeys = ratioPart
+                ? getRatioLineSelectionKeys(ratioPart, scopeKey)
+                : getSummaryLineSelectionKeys(shell, scopeKey);
             const checkKey = String(input?.dataset?.expSummaryLineCheck || '').trim();
             let nextKeys = currentKeys;
             if (checkKey === 'all') {
@@ -4586,11 +5367,64 @@
                 else selectedSet.delete(checkKey);
                 nextKeys = allKeys.filter(key => selectedSet.has(key));
             }
+            if (ratioPart) {
+                setRatioLineSelectionKeys(ratioPart, scopeKey, nextKeys);
+                const { detailSelect } = getRatioPartElements(getRatioBuilderCard(ratioPart), ratioPart.dataset?.expRatioPart || 'denominator');
+                if (detailSelect) detailSelect.value = '';
+                syncSummaryLinePicker(picker, scopeKey, resolveRatioLineSelection(ratioPart, scopeKey));
+                syncRatioPartAfterLineSelection(ratioPart);
+                return;
+            }
+            if (picker.dataset?.expSummaryLineContext === 'builder-detail') {
+                setSummaryLineSelectionKeys(shell, scopeKey, nextKeys);
+                syncCardBuilderControlsLegacy(shell, scopeKey);
+                setCardDetailPickerOpen(shell, true);
+                return;
+            }
             setSummaryLineSelectionKeys(shell, scopeKey, nextKeys);
             const detailSelect = shell.querySelector('[data-exp-card-detail]');
             if (detailSelect) detailSelect.value = '';
             syncCardBuilderControlsLegacy(shell, scopeKey);
             setSummaryLinePickerOpen(shell, true);
+        },
+        toggleProductionDetailSelection(input) {
+            const shell = input?.closest?.('.experiment-unified-shell');
+            const detailSelect = shell?.querySelector?.('[data-exp-card-detail]');
+            if (!shell || !detailSelect) return;
+            const scopeKey = normalizeCardBuilderScopeKey(shell.querySelector('[data-exp-card-kind]')?.value || 'total');
+            const lineOptions = getSummaryLineOptionsForScope(scopeKey);
+            const allKeys = lineOptions.map(option => option.key);
+            const selection = resolveProductionDetailSelection(scopeKey, detailSelect.value);
+            const checkKey = String(input?.dataset?.expCardDetailCheck || '').trim();
+            let nextKeys = selection.selectedLineKeys;
+            if (checkKey === 'all') {
+                nextKeys = input.checked ? allKeys : [];
+            } else if (checkKey) {
+                const selectedSet = new Set(selection.selectedLineKeys);
+                if (input.checked) selectedSet.add(checkKey);
+                else selectedSet.delete(checkKey);
+                nextKeys = allKeys.filter(key => selectedSet.has(key));
+            }
+            const detailKey = getProductionDetailCardKeyForLineKeys(scopeKey, nextKeys);
+            detailSelect.value = detailKey || '';
+            setProductionDetailBlankState(detailSelect, !detailKey);
+            syncCardBuilderControlsLegacy(shell);
+            setCardDetailPickerOpen(shell, true);
+        },
+        selectCardDetailFromPopup(input) {
+            const shell = input?.closest?.('.experiment-unified-shell');
+            const detailSelect = shell?.querySelector?.('[data-exp-card-detail]');
+            const selectedKey = String(input?.dataset?.expCardDetailCheck || '').trim();
+            if (!shell || !detailSelect || !selectedKey) return;
+            const scopeKey = normalizeCardBuilderScopeKey(shell.querySelector('[data-exp-card-kind]')?.value || 'total');
+            const detailKey = selectedKey === 'all'
+                ? getProductionTargetTotalCardKey(scopeKey)
+                : (getProductionDetailCardKeyForLineKeys(scopeKey, [selectedKey]) || selectedKey);
+            if (!detailKey) return;
+            detailSelect.value = detailKey;
+            setProductionDetailBlankState(detailSelect, false);
+            syncCardBuilderControlsLegacy(shell);
+            setCardDetailPickerOpen(shell, true);
         },
         selectBuilderStep(select) {
             const shell = select?.closest?.('.experiment-unified-shell');
@@ -4607,14 +5441,22 @@
             if (step === 'group') {
                 if (groupSelect) groupSelect.value = normalizeCardBuilderScopeKey(value);
                 if (targetSelect) targetSelect.value = '';
-                if (detailSelect) detailSelect.value = '';
+                if (detailSelect) {
+                    detailSelect.value = '';
+                    setProductionDetailBlankState(detailSelect, false);
+                }
             } else if (step === 'target') {
                 if (targetSelect) targetSelect.value = value;
-                if (detailSelect) detailSelect.value = '';
+                if (detailSelect) {
+                    detailSelect.value = '';
+                    setProductionDetailBlankState(detailSelect, false);
+                }
             } else {
                 if (detailSelect) detailSelect.value = value;
+                setProductionDetailBlankState(detailSelect, false);
             }
             syncCardBuilderControlsLegacy(shell);
+            if (step === 'target') openCardDetailPickerAfterTargetSelection(select);
         },
         editBuilderStep(trigger) {
             const shell = trigger?.closest?.('.experiment-unified-shell');
@@ -4626,12 +5468,21 @@
             if (step === 'group') {
                 if (groupSelect) groupSelect.value = '';
                 if (targetSelect) targetSelect.value = '';
-                if (detailSelect) detailSelect.value = '';
+                if (detailSelect) {
+                    detailSelect.value = '';
+                    setProductionDetailBlankState(detailSelect, false);
+                }
             } else if (step === 'target') {
                 if (targetSelect) targetSelect.value = '';
-                if (detailSelect) detailSelect.value = '';
+                if (detailSelect) {
+                    detailSelect.value = '';
+                    setProductionDetailBlankState(detailSelect, false);
+                }
             } else if (step === 'detail') {
-                if (detailSelect) detailSelect.value = '';
+                if (detailSelect) {
+                    detailSelect.value = '';
+                    setProductionDetailBlankState(detailSelect, false);
+                }
             }
             syncCardBuilderControlsLegacy(shell);
         },
@@ -4639,8 +5490,12 @@
             const shell = select?.closest?.('.experiment-unified-shell');
             if (!shell) return;
             const detailSelect = shell.querySelector('[data-exp-card-detail]');
-            if (detailSelect) detailSelect.value = '';
+            if (detailSelect) {
+                detailSelect.value = '';
+                setProductionDetailBlankState(detailSelect, false);
+            }
             syncCardBuilderControlsLegacy(shell);
+            openCardDetailPickerAfterTargetSelection(select);
         },
         selectBuilderDetail(select) {
             const shell = select?.closest?.('.experiment-unified-shell');
@@ -4695,15 +5550,18 @@
         selectRatioNumerator(select) {
             resetRatioPartDependentSelects(select);
             updateRatioBuilderControls(getRatioBuilderCard(select), 'numerator');
+            openRatioLinePickerAfterScopeSelection(select);
         },
         selectRatioDenominator(select) {
             resetRatioPartDependentSelects(select);
             const inlineBuilder = select?.closest?.('[data-exp-inline-ratio-builder]');
             if (inlineBuilder) {
                 syncInlineRatioBuilder(inlineBuilder.closest('.experiment-unified-shell'), false);
+                openRatioLinePickerAfterScopeSelection(select);
                 return;
             }
             updateRatioBuilderControls(getRatioBuilderCard(select), 'denominator');
+            openRatioLinePickerAfterScopeSelection(select);
         },
         editSelectedRatioCard(trigger) {
             const shell = trigger?.closest?.('.experiment-unified-shell');
@@ -4803,7 +5661,7 @@
     KpiSectionFactoryAdapter.registerFactory('experiment', function buildExperimentSection() {
         return {
             id: 'experiment',
-            name: '그래프',
+            name: '분석',
             icon: 'fa-flask-vial',
             color: 'cyan',
             accent: '#0891b2',

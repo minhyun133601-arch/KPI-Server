@@ -5,6 +5,7 @@
     const view = history.view || (history.view = {});
     const {
         getRecordCategoryGroupLabel,
+        getRecordResultTypeLabel,
         KPI_FLAG_LABEL,
         KPI_FLAG_PILL_LABEL,
         isImportantRecord,
@@ -23,6 +24,9 @@
             ? getRecordCategoryGroupLabel(record)
             : '';
         const categoryText = view.getRecordCategoryText(record);
+        const resultTypeText = typeof getRecordResultTypeLabel === 'function'
+            ? getRecordResultTypeLabel(record)
+            : String(record?.resultType || '').trim();
         const items = isProductionWorkspace()
             ? [
                 ['보고 팀', info.name],
@@ -36,6 +40,7 @@
                 ['작업 팀', info.name],
                 ['구분', categoryGroupText || '-'],
                 ['카테고리', categoryText || '-'],
+                ['실적 구분', resultTypeText || '-'],
                 ['실적 표시', isImportantRecord(record) ? KPI_FLAG_LABEL : '-'],
                 ['작업자', view.formatAssigneeText(record) || '미입력'],
                 ['기간', view.formatDateRange(record.startDate, record.endDate)],

@@ -212,6 +212,11 @@
             return;
         }
 
+        if (target.id === 'recordCategory') {
+            view.syncRecordCategoryGroupFromCategory?.(target.value);
+            return;
+        }
+
         const filterPrefix = target.dataset.filterPrefix;
         if (!filterPrefix) return;
         view.resetRecordPage?.(filterPrefix);

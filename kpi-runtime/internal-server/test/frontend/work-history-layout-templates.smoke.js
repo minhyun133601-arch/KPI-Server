@@ -69,11 +69,18 @@ function createContext(options = {}) {
       team3: { name: 'Team 3', class: 'team3' },
       team4: { name: 'Team 4', class: 'team4' }
     },
-    RECORD_CATEGORY_OPTIONS: ['monthly'],
-    RECORD_CATEGORY_GROUP_ORDER: ['report'],
+    RECORD_CATEGORY_OPTIONS: ['설비 가동률 증대', '통합 모니터링 운영 체계 구축'],
+    RECORD_CATEGORY_GROUP_ORDER: ['kpi', 'focus', 'report'],
     RECORD_CATEGORY_GROUPS: {
+      kpi: { label: '1차 KPI', categories: ['설비 가동률 증대'] },
+      focus: { label: '중점추진과제', categories: ['통합 모니터링 운영 체계 구축'] },
       report: { label: 'Report', categories: ['monthly'] }
     },
+    RECORD_RESULT_TYPE_OPTIONS: [
+      { value: 'non-performance', label: '실적외' },
+      { value: 'performance', label: '실적' },
+    ],
+    DEFAULT_RECORD_RESULT_TYPE: 'non-performance',
     state,
     escapeHtml(value) {
       return String(value ?? '');
@@ -176,7 +183,7 @@ test('work history layout templates registry exposes shell and modal builders', 
   assert.match(shellHtml, /id="recordSaveButton"[\s\S]*data-action="save-record"/);
   assert.match(
     shellHtml,
-    /record-meta-row[\s\S]*recordCategoryGroup[\s\S]*recordCategory[\s\S]*recordAssignee[\s\S]*recordCost/
+    /id="recordCategoryGroup"[\s\S]*record-meta-row[\s\S]*recordCategory[\s\S]*recordResultType[\s\S]*recordAssignee[\s\S]*recordCost/
   );
   assert.match(shellHtml, /deleteModal/);
 });
@@ -206,8 +213,9 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   assert.match(templatesSource, /pattern="\[0-9\]\*"/);
   assert.match(templatesSource, /<input type="text" id="recordAssignee"/);
   assert.match(templatesSource, /record-meta-row/);
-  assert.match(templatesSource, /id="recordCategoryGroupField"/);
+  assert.match(templatesSource, /type="hidden" id="recordCategoryGroup"/);
   assert.match(templatesSource, /id="recordCategoryField"/);
+  assert.match(templatesSource, /id="recordResultTypeField"/);
   assert.doesNotMatch(templatesSource, /<textarea id="recordAssignee"/);
   assert.doesNotMatch(templatesSource, /attachment/i);
   assert.doesNotMatch(templatesSource, /줄바꿈 입력/);

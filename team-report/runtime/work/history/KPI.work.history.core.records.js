@@ -11,6 +11,8 @@
         RECORD_CATEGORY_GROUPS,
         RECORD_CATEGORY_ALIAS_MAP,
         RECORD_CATEGORY_OPTIONS,
+        DEFAULT_RECORD_RESULT_TYPE,
+        RECORD_RESULT_TYPE_OPTIONS,
         IMPORTANT_FLAG_LABEL,
         cloneJson
     } = history;
@@ -72,8 +74,16 @@
         if (RECORD_CATEGORY_GROUPS[lowerValue]) {
             return lowerValue;
         }
+        const compactValue = rawValue.replace(/\s+/g, '');
+        if (compactValue === 'KPI' || compactValue === '1차KPI') {
+            return 'kpi';
+        }
+        if (compactValue === '중점추진과제') {
+            return 'focus';
+        }
         const matchedGroupKey = RECORD_CATEGORY_GROUP_ORDER.find(groupKey => (
             RECORD_CATEGORY_GROUPS[groupKey]?.label === rawValue
+            || String(RECORD_CATEGORY_GROUPS[groupKey]?.label || '').replace(/\s+/g, '') === compactValue
         ));
         if (matchedGroupKey) {
             return matchedGroupKey;
@@ -93,6 +103,39 @@
         }
 
         return options.preserveLegacy === false ? '' : '';
+    }
+
+    function normalizeRecordResultType(value, options = {}) {
+        const rawValue = String(value ?? '').trim();
+        const defaultValue = Object.prototype.hasOwnProperty.call(options, 'defaultValue')
+            ? String(options.defaultValue || '').trim()
+            : DEFAULT_RECORD_RESULT_TYPE;
+        if (!rawValue) return defaultValue;
+        const lowerValue = rawValue.toLowerCase();
+        if (['performance', 'actual', 'achievement', 'result', 'true', '1'].includes(lowerValue)
+            || rawValue === '실적') {
+            return 'performance';
+        }
+        if (['non-performance', 'nonperformance', 'non_actual', 'non-actual', 'none', 'false', '0'].includes(lowerValue)
+            || rawValue === '실적외'
+            || rawValue === '실적 외') {
+            return 'non-performance';
+        }
+        const matchedOption = (RECORD_RESULT_TYPE_OPTIONS || []).find(option => (
+            String(option?.value || '').trim() === rawValue
+            || String(option?.label || '').trim() === rawValue
+        ));
+        if (matchedOption) return String(matchedOption.value || '').trim();
+        return defaultValue || DEFAULT_RECORD_RESULT_TYPE;
+    }
+
+    function getRecordResultTypeLabel(recordOrType) {
+        const rawValue = recordOrType && typeof recordOrType === 'object'
+            ? (recordOrType.resultType || recordOrType.performanceType || recordOrType.achievementType || recordOrType.resultCategory || '')
+            : recordOrType;
+        const normalizedValue = normalizeRecordResultType(rawValue);
+        const option = (RECORD_RESULT_TYPE_OPTIONS || []).find(item => item?.value === normalizedValue);
+        return option?.label || normalizedValue || '';
     }
 
     function getRecordCategoryGroupOptions() {
@@ -157,8 +200,28 @@
         });
     }
 
+    function isPerformanceRecord(record) {
+        if (record?.isPerformance === true || record?.performance === true) return true;
+        if (record?.isPerformance === false || record?.performance === false) return false;
+        return normalizeRecordResultType(
+            record?.resultType || record?.performanceType || record?.achievementType || record?.resultCategory || '',
+            { defaultValue: '' }
+        ) === 'performance';
+    }
+
+    function hasExplicitRecordResultType(record) {
+        if (!record || typeof record !== 'object') return false;
+        return record.isPerformance === true
+            || record.isPerformance === false
+            || record.performance === true
+            || record.performance === false
+            || String(record.resultType || record.performanceType || record.achievementType || record.resultCategory || '').trim().length > 0;
+    }
+
     function isImportantRecord(record) {
-        return isAchievementRecord(record);
+        return hasExplicitRecordResultType(record)
+            ? isPerformanceRecord(record)
+            : isAchievementRecord(record);
     }
 
     function isKpiRecord(record) {
@@ -209,6 +272,10 @@
                 kpi: isKpiRecord(record)
             }
         );
+        const resultType = normalizeRecordResultType(
+            record?.resultType || record?.performanceType || record?.achievementType || record?.resultCategory || '',
+            { defaultValue: isAchievementRecord(record) ? 'performance' : DEFAULT_RECORD_RESULT_TYPE }
+        );
         return {
             team: TeamInfo[record?.team] ? String(record.team) : fallbackTeam,
             startDate: String(record?.startDate || record?.weekStart || record?.date || '').trim(),
@@ -216,6 +283,7 @@
             plannedEndDate: String(record?.plannedEndDate || record?.expectedEndDate || '').trim(),
             categoryGroup,
             category,
+            resultType,
             kpi: isKpiRecord(record),
             assignees,
             assignee: assignees.join(', '),
@@ -274,9 +342,13 @@
         getRecordCategoryGroupOptions,
         getRecordCategoryOptionsForGroup,
         getRecordCategoryGroupLabel,
+        normalizeRecordResultType,
+        getRecordResultTypeLabel,
         isKpiRecord,
         isReportRecord,
         isAchievementRecord,
+        isPerformanceRecord,
+        hasExplicitRecordResultType,
         isImportantRecord,
         getRecordTagLabels,
         formatRecordTagText,

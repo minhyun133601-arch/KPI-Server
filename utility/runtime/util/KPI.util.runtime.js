@@ -217,6 +217,7 @@
         slide5CostMemo: '',
         slide6WasteMemo: '',
         slide7WasteMemo: '',
+        reportMemoLineSizes: '{}',
         chartHighlights: '',
         chartHighlightRanges: '',
         slide8Section: 'Ⅲ. 공무환경팀',
@@ -609,6 +610,14 @@
         'slide5CostMemo'
     ]);
     const REPORT_DECK_MEMO_WASTE_MEMO_KEYS = Object.freeze(['slide6WasteMemo', 'slide7WasteMemo']);
+    const REPORT_DECK_MEMO_KEYS = Object.freeze([
+        ...REPORT_DECK_MEMO_ANALYSIS_MEMO_KEYS,
+        ...REPORT_DECK_MEMO_WASTE_MEMO_KEYS
+    ]);
+    const REPORT_DECK_MEMO_LINE_FONT_SIZE_MIN = -2;
+    const REPORT_DECK_MEMO_LINE_FONT_SIZE_MAX = 3;
+    const REPORT_DECK_MEMO_LINE_FONT_SIZE_BASE = 10.4;
+    const REPORT_DECK_MEMO_LINE_FONT_SIZE_STEP = 1.2;
     const REPORT_DECK_MEMO_PRODUCTION_LINES = Object.freeze({
         team_01_01: Object.freeze(['SD', 'MSD']),
         team_01_02: Object.freeze(['지대', 'ICA']),
@@ -1725,11 +1734,14 @@
                 state[key] = normalizeReportDeckDate(rawValue) || REPORT_DECK_DEFAULT.reportDate;
             } else if (key === 'department') {
                 state[key] = normalizeReportDeckDepartment(rawValue);
+            } else if (key === 'reportMemoLineSizes') {
+                state[key] = normalizeReportDeckMemoLineSizes(rawValue);
             } else {
                 state[key] = String(rawValue);
             }
             return state;
         }, {});
+        normalizedState.reportMemoLineSizes = normalizeReportDeckMemoLineSizesForState(normalizedState);
         Object.keys(source).forEach(key => {
             if (isReportDeckPlanImageSourceKey(key)) {
                 normalizedState[key] = normalizeReportDeckPlanImageSource(source[key]);
@@ -2122,7 +2134,104 @@
             : '';
     }
 
-    function renderReportDeckMemoContent(container, text = '', key = '') {
+    function normalizeReportDeckMemoLineFontSizeLevel(value) {
+        const number = Number.parseInt(String(value ?? '0'), 10);
+        if (!Number.isFinite(number)) return 0;
+        return Math.max(REPORT_DECK_MEMO_LINE_FONT_SIZE_MIN, Math.min(REPORT_DECK_MEMO_LINE_FONT_SIZE_MAX, number));
+    }
+
+    function getReportDeckMemoLineFontSizePx(level = 0) {
+        const normalizedLevel = normalizeReportDeckMemoLineFontSizeLevel(level);
+        return Number((REPORT_DECK_MEMO_LINE_FONT_SIZE_BASE + (normalizedLevel * REPORT_DECK_MEMO_LINE_FONT_SIZE_STEP)).toFixed(1));
+    }
+
+    function getReportDeckMemoLineFontSizeScale(level = 0) {
+        const normalizedLevel = normalizeReportDeckMemoLineFontSizeLevel(level);
+        return Math.max(0.82, 1 + (normalizedLevel * 0.18));
+    }
+
+    function getReportDeckMemoLineFontSizeStyle(level = 0) {
+        const normalizedLevel = normalizeReportDeckMemoLineFontSizeLevel(level);
+        const fontSize = getReportDeckMemoLineFontSizePx(normalizedLevel);
+        const lineHeight = normalizedLevel > 0 ? 1.14 : 1.18;
+        return `--report-auto-memo-line-font-size: ${fontSize}px; --report-auto-memo-line-line-height: ${lineHeight};`;
+    }
+
+    function parseReportDeckMemoLineSizes(value = '') {
+        if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+        try {
+            const parsed = JSON.parse(String(value || '{}'));
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function normalizeReportDeckMemoLineSizeArray(value = [], lineCount = null) {
+        const source = Array.isArray(value) ? value : [];
+        const count = Number.isInteger(lineCount) ? Math.max(0, lineCount) : source.length;
+        return Array.from({ length: count }, (_, index) => normalizeReportDeckMemoLineFontSizeLevel(source[index]));
+    }
+
+    function getReportDeckMemoLineSizesMap(state = {}) {
+        return parseReportDeckMemoLineSizes(state?.reportMemoLineSizes);
+    }
+
+    function normalizeReportDeckMemoLineSizes(value = '') {
+        const map = parseReportDeckMemoLineSizes(value);
+        const normalized = {};
+        REPORT_DECK_MEMO_KEYS.forEach(key => {
+            const sizes = normalizeReportDeckMemoLineSizeArray(map[key] || []);
+            if (sizes.some(size => size !== 0)) {
+                normalized[key] = sizes;
+            }
+        });
+        return JSON.stringify(normalized);
+    }
+
+    function normalizeReportDeckMemoLineSizesForState(state = {}) {
+        const map = getReportDeckMemoLineSizesMap(state);
+        const normalized = {};
+        REPORT_DECK_MEMO_KEYS.forEach(key => {
+            const lineCount = countReportDeckMemoLayoutLines(state?.[key]);
+            const sizes = normalizeReportDeckMemoLineSizeArray(map[key] || [], lineCount);
+            if (sizes.some(size => size !== 0)) {
+                normalized[key] = sizes;
+            }
+        });
+        return JSON.stringify(normalized);
+    }
+
+    function getReportDeckMemoLineSizeArray(state = {}, key = '', lineCount = null) {
+        const normalizedKey = String(key || '').trim();
+        const map = getReportDeckMemoLineSizesMap(state);
+        const count = Number.isInteger(lineCount)
+            ? Math.max(0, lineCount)
+            : countReportDeckMemoLayoutLines(state?.[normalizedKey]);
+        return normalizeReportDeckMemoLineSizeArray(map[normalizedKey] || [], count);
+    }
+
+    function setReportDeckMemoLineSizeArray(state = {}, key = '', sizes = []) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey) return false;
+        const map = getReportDeckMemoLineSizesMap(state);
+        const lineCount = countReportDeckMemoLayoutLines(state?.[normalizedKey]);
+        const nextSizes = normalizeReportDeckMemoLineSizeArray(sizes, lineCount);
+        if (nextSizes.some(size => size !== 0)) {
+            map[normalizedKey] = nextSizes;
+        } else {
+            delete map[normalizedKey];
+        }
+        state.reportMemoLineSizes = normalizeReportDeckMemoLineSizes(map);
+        return true;
+    }
+
+    function getReportDeckMemoLineFontSizeLevel(state = {}, key = '', index = 0) {
+        const sizes = getReportDeckMemoLineSizeArray(state, key);
+        return normalizeReportDeckMemoLineFontSizeLevel(sizes[index]);
+    }
+
+    function renderReportDeckMemoContent(container, text = '', key = '', state = {}) {
         const rawText = String(text || '').trim();
         if (!container) return;
         container.dataset.empty = rawText ? 'false' : 'true';
@@ -2132,8 +2241,9 @@
             return;
         }
         const lines = rawText.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        const sizes = getReportDeckMemoLineSizeArray(state, key, lines.length);
         container.innerHTML = lines.map((line, index) => (
-            `<span class="report-auto-memo-line ${getReportDeckMemoLineClass(line)}">`
+            `<span class="report-auto-memo-line ${getReportDeckMemoLineClass(line)}" data-report-memo-line-size="${getReportDeckMemoLineFontSizeLevel(state, key, index)}" style="${getReportDeckMemoLineFontSizeStyle(sizes[index])}">`
                 + `<span class="report-auto-memo-line-text">${renderReportDeckMemoLineHtml(line)}</span>`
                 + `<button type="button" class="report-auto-memo-delete" data-report-memo-delete-key="${escapeReportDeckHtml(key)}" data-report-memo-delete-line="${index}" title="특이사항 삭제">-</button>`
             + '</span>'
@@ -2144,8 +2254,20 @@
         return String(value || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).length;
     }
 
+    function getReportDeckMemoWeightedLayoutLineCount(state = {}, key = '') {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey) return 0;
+        const lines = getReportDeckMemoLines(state?.[normalizedKey]);
+        if (!lines.length) return 0;
+        const sizes = getReportDeckMemoLineSizeArray(state, normalizedKey, lines.length);
+        return lines.reduce((sum, line, index) => {
+            void line;
+            return sum + getReportDeckMemoLineFontSizeScale(sizes[index]);
+        }, 0);
+    }
+
     function getReportDeckMemoGroupLayoutLineCount(state = {}, keys = []) {
-        return keys.reduce((max, key) => Math.max(max, countReportDeckMemoLayoutLines(state?.[key])), 0);
+        return keys.reduce((max, key) => Math.max(max, getReportDeckMemoWeightedLayoutLineCount(state, key)), 0);
     }
 
     function formatReportDeckLayoutPercent(value) {
@@ -2201,7 +2323,7 @@
     function syncReportDeckMemoControls(root, state) {
         Array.from(root?.querySelectorAll?.('[data-report-memo-content]') || []).forEach(container => {
             const key = String(container?.dataset?.reportMemoContent || '').trim();
-            renderReportDeckMemoContent(container, key && Object.prototype.hasOwnProperty.call(state, key) ? state[key] : '', key);
+            renderReportDeckMemoContent(container, key && Object.prototype.hasOwnProperty.call(state, key) ? state[key] : '', key, state);
         });
         applyReportDeckMemoResponsiveLayout(root, state);
     }
@@ -2761,6 +2883,32 @@
         return String(text || '').split(/\r?\n/).map(normalizeReportDeckMemoLineText).filter(Boolean);
     }
 
+    function reconcileReportDeckMemoLineSizes(previousLines = [], previousSizes = [], nextLines = []) {
+        const used = new Set();
+        const normalizedPrevious = Array.isArray(previousLines) ? previousLines : [];
+        const normalizedSizes = normalizeReportDeckMemoLineSizeArray(previousSizes, normalizedPrevious.length);
+        return (Array.isArray(nextLines) ? nextLines : []).map((line, index) => {
+            const identity = getReportDeckMemoLineIdentity(line);
+            if (
+                index < normalizedPrevious.length
+                && !used.has(index)
+                && getReportDeckMemoLineIdentity(normalizedPrevious[index]) === identity
+            ) {
+                used.add(index);
+                return normalizedSizes[index];
+            }
+            const matchedIndex = normalizedPrevious.findIndex((previousLine, previousIndex) => (
+                !used.has(previousIndex)
+                && getReportDeckMemoLineIdentity(previousLine) === identity
+            ));
+            if (matchedIndex >= 0) {
+                used.add(matchedIndex);
+                return normalizedSizes[matchedIndex];
+            }
+            return normalizeReportDeckMemoLineFontSizeLevel(normalizedSizes[index]);
+        });
+    }
+
     function getReportDeckMemoDialogTargetKey(dialog) {
         return String(dialog?.dataset?.reportMemoTarget || '').trim();
     }
@@ -2773,10 +2921,16 @@
     function setReportDeckMemoLines(root, state, meta, dialog, key, lines = [], options = {}) {
         const normalizedKey = String(key || '').trim();
         if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
-        state[normalizedKey] = (Array.isArray(lines) ? lines : [])
+        const previousLines = getReportDeckMemoLines(state[normalizedKey]);
+        const previousSizes = getReportDeckMemoLineSizeArray(state, normalizedKey, previousLines.length);
+        const normalizedLines = (Array.isArray(lines) ? lines : [])
             .map(line => String(line || '').trim())
-            .filter(Boolean)
-            .join('\n');
+            .filter(Boolean);
+        state[normalizedKey] = normalizedLines.join('\n');
+        const nextSizes = Array.isArray(options.lineSizes)
+            ? normalizeReportDeckMemoLineSizeArray(options.lineSizes, normalizedLines.length)
+            : reconcileReportDeckMemoLineSizes(previousLines, previousSizes, normalizedLines);
+        setReportDeckMemoLineSizeArray(state, normalizedKey, nextSizes);
         syncReportDeckMemoControls(root, state);
         if (options.syncDialog !== false) {
             syncReportDeckMemoDialogLines(dialog, state);
@@ -2796,9 +2950,33 @@
         const toIndex = fromIndex + offset;
         if (toIndex < 0 || toIndex >= lines.length) return false;
         if (toIndex === fromIndex) return false;
+        const sizes = getReportDeckMemoLineSizeArray(state, normalizedKey, lines.length);
         const [line] = lines.splice(fromIndex, 1);
+        const [size] = sizes.splice(fromIndex, 1);
         lines.splice(toIndex, 0, line);
-        return setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, lines);
+        sizes.splice(toIndex, 0, size);
+        return setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, lines, { lineSizes: sizes });
+    }
+
+    function adjustReportDeckMemoLineFontSize(root, state, meta, dialog, key, lineIndex, delta) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
+        const lines = getReportDeckMemoLines(state[normalizedKey]);
+        if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= lines.length) return false;
+        const normalizedDelta = Number.parseInt(String(delta || '0'), 10);
+        if (!Number.isFinite(normalizedDelta) || normalizedDelta === 0) return false;
+        const sizes = getReportDeckMemoLineSizeArray(state, normalizedKey, lines.length);
+        const nextSize = normalizeReportDeckMemoLineFontSizeLevel(sizes[lineIndex] + normalizedDelta);
+        if (nextSize === sizes[lineIndex]) {
+            syncReportDeckMemoDialogLines(dialog, state);
+            return false;
+        }
+        sizes[lineIndex] = nextSize;
+        setReportDeckMemoLineSizeArray(state, normalizedKey, sizes);
+        syncReportDeckMemoControls(root, state);
+        syncReportDeckMemoDialogLines(dialog, state);
+        markReportDeckDirty(root, state, meta);
+        return true;
     }
 
     function appendReportDeckMemoLines(root, state, meta, dialog, key, addedLines = []) {
@@ -2827,21 +3005,26 @@
         const lines = key && Object.prototype.hasOwnProperty.call(state, key)
             ? getReportDeckMemoLines(state[key])
             : [];
+        const sizes = getReportDeckMemoLineSizeArray(state, key, lines.length);
         list.dataset.empty = lines.length ? 'false' : 'true';
         if (!lines.length) {
             list.innerHTML = '<div class="report-memo-lines-empty">기입된 특이사항이 없습니다.</div>';
             return;
         }
-        list.innerHTML = lines.map((line, index) => (
-            `<div class="report-memo-line-row" data-report-memo-line-row="${index}">`
+        list.innerHTML = lines.map((line, index) => {
+            const sizeLevel = normalizeReportDeckMemoLineFontSizeLevel(sizes[index]);
+            const sizeStyle = getReportDeckMemoLineFontSizeStyle(sizeLevel);
+            return `<div class="report-memo-line-row" data-report-memo-line-row="${index}" data-report-memo-line-size="${sizeLevel}" style="${sizeStyle}">`
                 + `<textarea class="report-memo-line-input ${getReportDeckMemoLineClass(line)}" data-report-memo-line-input="${index}" rows="2" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1}">${escapeReportDeckHtml(line)}</textarea>`
                 + '<span class="report-memo-line-actions">'
                     + `<button type="button" data-report-memo-move-line="${index}" data-report-memo-move-direction="up" ${index <= 0 ? 'disabled' : ''} title="&#50948;&#47196;" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1} &#50948;&#47196;">&#9650;</button>`
                     + `<button type="button" data-report-memo-move-line="${index}" data-report-memo-move-direction="down" ${index >= lines.length - 1 ? 'disabled' : ''} title="&#50500;&#47000;&#47196;" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1} &#50500;&#47000;&#47196;">&#9660;</button>`
+                    + `<button type="button" data-report-memo-line-font-size="${index}" data-report-memo-line-font-size-delta="-1" ${sizeLevel <= REPORT_DECK_MEMO_LINE_FONT_SIZE_MIN ? 'disabled' : ''} title="&#44544;&#51088; &#51089;&#44172;" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1} &#44544;&#51088; &#51089;&#44172;">-</button>`
+                    + `<button type="button" data-report-memo-line-font-size="${index}" data-report-memo-line-font-size-delta="1" ${sizeLevel >= REPORT_DECK_MEMO_LINE_FONT_SIZE_MAX ? 'disabled' : ''} title="&#44544;&#51088; &#53356;&#44172;" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1} &#44544;&#51088; &#53356;&#44172;">+</button>`
                     + `<button type="button" data-report-memo-delete-line="${index}">삭제</button>`
                 + '</span>'
             + '</div>'
-        )).join('');
+        }).join('');
     }
 
     function setReportDeckMemoCandidateMessage(dialog, message) {
@@ -4293,19 +4476,22 @@
         const row = rowModel || {};
         const isRatioRow = String(rowKey) === '2';
         const isConversionRow = String(rowKey) === '1';
+        const isDifferenceRow = String(rowKey) === '3';
+        const getDifferenceToneValue = value => (isDifferenceRow && toReportDeckFiniteNumber(value) !== null ? value : null);
+        const formatCostValue = value => (isRatioRow
+            ? formatReportDeckAutoPercentOrBlank(value)
+            : (isConversionRow ? formatReportDeckAutoNumberOrBlank(value) : formatReportDeckAutoNumber(value)));
         setReportDeckAutoCellText(
             root,
             `[data-report-yusan-lpg-cost-value="${rowKey}.reference"]`,
-            isRatioRow
-                ? formatReportDeckAutoPercentOrBlank(row.reference)
-                : (isConversionRow ? formatReportDeckAutoNumberOrBlank(row.reference) : formatReportDeckAutoNumber(row.reference))
+            formatCostValue(row.reference),
+            getDifferenceToneValue(row.reference)
         );
         setReportDeckAutoCellText(
             root,
             `[data-report-yusan-lpg-cost-value="${rowKey}.current"]`,
-            isRatioRow
-                ? formatReportDeckAutoPercentOrBlank(row.current)
-                : (isConversionRow ? formatReportDeckAutoNumberOrBlank(row.current) : formatReportDeckAutoNumber(row.current))
+            formatCostValue(row.current),
+            getDifferenceToneValue(row.current)
         );
         renderReportDeckAutoComparisonCell(
             root,
@@ -4325,9 +4511,8 @@
         setReportDeckAutoCellText(
             root,
             `[data-report-yusan-lpg-cost-value="${rowKey}.previous"]`,
-            isRatioRow
-                ? formatReportDeckAutoPercentOrBlank(row.previous)
-                : (isConversionRow ? formatReportDeckAutoNumberOrBlank(row.previous) : formatReportDeckAutoNumber(row.previous))
+            formatCostValue(row.previous),
+            getDifferenceToneValue(row.previous)
         );
         renderReportDeckAutoComparisonCell(
             root,
@@ -4490,9 +4675,11 @@
             .replace(/"/g, '&quot;');
     }
 
-    function formatReportDeckChartValue(value) {
+    function formatReportDeckChartValue(value, decimals = 3, format = 'decimal') {
         const number = toReportDeckFiniteNumber(value);
-        return number === null ? '' : number.toFixed(3);
+        if (number === null) return '';
+        if (format === 'number') return formatReportDeckAutoNumber(number, decimals);
+        return number.toFixed(decimals);
     }
 
     function buildReportDeckChartMarkerSvg(x, y, color, marker) {
@@ -4507,6 +4694,19 @@
             return `<polygon points="${x},${y - 7} ${x - 7},${y} ${x},${y + 7} ${x + 7},${y}" fill="${safeColor}" stroke="${safeColor}" stroke-width="1.4"></polygon>`;
         }
         return `<circle cx="${x}" cy="${y}" r="5" fill="${safeColor}" stroke="${safeColor}" stroke-width="1.4"></circle>`;
+    }
+
+    function buildReportDeckAutoChartLegendHtml(series) {
+        const items = (Array.isArray(series) ? series : []).map(item => `
+            <span class="report-auto-chart-legend-item">
+                <svg class="report-auto-chart-legend-mark" viewBox="0 0 24 16" aria-hidden="true" focusable="false">
+                    <line x1="2" y1="8" x2="18" y2="8" stroke="${escapeReportDeckSvgText(item.color)}" stroke-width="2.4"></line>
+                    ${buildReportDeckChartMarkerSvg(10, 8, item.color, item.marker)}
+                </svg>
+                <span class="report-auto-chart-legend-label">${escapeReportDeckSvgText(item.label)}</span>
+            </span>
+        `).join('');
+        return items ? `<div class="report-auto-chart-legend-overlay">${items}</div>` : '';
     }
 
     function buildReportDeckChartHighlightHitSvg(x, y, chartKey = '', monthKey = '', highlighted = false) {
@@ -4586,12 +4786,14 @@
             });
     }
 
-    function placeReportDeckChartValueLabels(labelItems, plotTop, plotBottomY) {
+    function placeReportDeckChartValueLabels(labelItems, plotTop, plotBottomY, options = {}) {
         const placed = [];
         const placedByInputOrder = new Map();
-        const offsets = [0, 16, -16, 26, -26, 36, -36, 46, -46];
-        const minY = plotTop + 12;
-        const maxY = plotBottomY - 8;
+        const offsets = Array.isArray(options.offsets) && options.offsets.length
+            ? options.offsets
+            : [0, 16, 26, 36, 46];
+        const minY = plotTop + (Number.isFinite(Number(options.topPadding)) ? Number(options.topPadding) : 12);
+        const maxY = plotBottomY - (Number.isFinite(Number(options.bottomPadding)) ? Number(options.bottomPadding) : 8);
         sortReportDeckChartLabelsByValue(labelItems).forEach(({ item, index }) => {
             const baseY = Number(item?.baseLabelY) || 0;
             const candidates = offsets.reduce((list, offset) => {
@@ -4692,17 +4894,30 @@
         }).join('');
     }
 
+    function getReportDeckAutoChartLegendStart(width, plotRight, seriesLength, legendItemWidth, title, compactHeader) {
+        const legendWidth = Math.max(1, Number(seriesLength) || 0) * legendItemWidth;
+        if (!compactHeader) return (width - legendWidth) / 2;
+        // Pin the legend hard against the right wall (minimal right margin) so it sits on the
+        // chart-title line at the far right instead of leaving a wide gap to the right edge.
+        const rightMargin = 8;
+        const maxStart = width - rightMargin - legendWidth;
+        return Math.max(0, maxStart);
+    }
+
     function buildReportDeckAutoChartSvg(chart, options = {}) {
         const width = 640;
         const height = 330;
-        const plotLeft = 52;
-        const plotRight = 24;
-        const plotTop = 76;
-        const plotBottom = 38;
+        const compactHeader = options.compactHeader !== false;
+        const roomyPlot = options.roomyPlot === true;
+        const plotLeft = compactHeader ? (roomyPlot ? 26 : 34) : 52;
+        const plotRight = compactHeader ? (roomyPlot ? 26 : 34) : 52;
+        const plotTop = compactHeader ? (roomyPlot ? 50 : 54) : 76;
+        const plotBottom = compactHeader ? (roomyPlot ? 24 : 32) : 38;
         const plotWidth = width - plotLeft - plotRight;
         const plotHeight = height - plotTop - plotBottom;
         const chartKey = String(options.chartKey || '').trim();
-        const valueDecimals = Number.isFinite(Number(options.valueDecimals)) ? Math.max(0, Number(options.valueDecimals)) : 0;
+        const valueDecimals = Number.isFinite(Number(options.valueDecimals)) ? Math.max(0, Number(options.valueDecimals)) : 3;
+        const valueFormat = String(options.valueFormat || 'decimal').trim() || 'decimal';
         const highlightMonthSet = new Set((Array.isArray(options.highlightMonthKeys) ? options.highlightMonthKeys : [])
             .map(normalizeReportDeckMonth)
             .filter(Boolean));
@@ -4732,12 +4947,16 @@
             const x = xScale(month);
             return `
                 <line class="report-auto-chart-tick" x1="${x.toFixed(2)}" y1="${(plotTop + plotHeight).toFixed(2)}" x2="${x.toFixed(2)}" y2="${(plotTop + plotHeight + 5).toFixed(2)}"></line>
-                <text class="report-auto-chart-month" x="${x.toFixed(2)}" y="${height - 10}" text-anchor="middle">${month}월</text>
+                <text class="report-auto-chart-month" x="${x.toFixed(2)}" y="${height - (roomyPlot ? 5 : 10)}" text-anchor="middle">${month}월</text>
             `;
         }).join('');
-        const legendStart = (width - (series.length * 72)) / 2;
-        const legend = series.map((item, index) => {
-            const x = legendStart + (index * 72);
+        const legendItemWidth = compactHeader ? 48 : 72;
+        const legendStart = getReportDeckAutoChartLegendStart(width, plotRight, series.length, legendItemWidth, chart?.title, compactHeader);
+        // Compact charts render the legend as an HTML overlay (see legendHtml below) so it lands
+        // exactly on the HTML chart-title line; the in-SVG legend is kept only for the legacy
+        // non-compact layout where the legend sits at the bottom of the plot.
+        const legend = compactHeader ? '' : series.map((item, index) => {
+            const x = legendStart + (index * legendItemWidth);
             const y = 50;
             return `
                 <line x1="${x}" y1="${y}" x2="${x + 30}" y2="${y}" stroke="${escapeReportDeckSvgText(item.color)}" stroke-width="3"></line>
@@ -4745,6 +4964,7 @@
                 <text class="report-auto-chart-legend" x="${x + 38}" y="${y + 5}">${escapeReportDeckSvgText(item.label)}</text>
             `;
         }).join('');
+        const legendHtml = compactHeader ? buildReportDeckAutoChartLegendHtml(series) : '';
         const rangeRects = highlightRanges.map(range => {
             const startMonth = Number(String(range[0] || '').slice(5, 7));
             const endMonth = Number(String(range[1] || '').slice(5, 7));
@@ -4777,7 +4997,7 @@
                     y,
                     value,
                     baseLabelY: y - 11,
-                    text: formatReportDeckChartValue(value),
+                    text: formatReportDeckChartValue(value, valueDecimals, valueFormat),
                     color: item.color,
                     monthKey,
                     highlighted: monthKey ? highlightMonthSet.has(monthKey) : false
@@ -4788,12 +5008,24 @@
                 return buildReportDeckChartMarkerSvg(x, y, item.color, item.marker);
             })
         )).join('');
-        const placedLabels = placeReportDeckChartValueLabels(labelItems, plotTop, plotTop + plotHeight);
+        const placedLabels = placeReportDeckChartValueLabels(
+            labelItems,
+            plotTop,
+            plotTop + plotHeight,
+            compactHeader
+                ? {
+                    offsets: [0, 18, 31, 44, 56],
+                    topPadding: 16,
+                    bottomPadding: 12
+                }
+                : {}
+        );
         const labels = renderReportDeckChartValueLabels(placedLabels);
         const emptyText = values.length
             ? ''
             : `<text class="report-auto-chart-empty" x="${width / 2}" y="${plotTop + (plotHeight / 2)}" text-anchor="middle">데이터 없음</text>`;
         return `
+            ${legendHtml}
             <svg viewBox="0 0 ${width} ${height}" role="img" aria-hidden="true" focusable="false">
                 ${legend}
                 <line class="report-auto-chart-axis" x1="${plotLeft}" y1="${plotTop + plotHeight}" x2="${plotLeft + plotWidth}" y2="${plotTop + plotHeight}"></line>
@@ -5073,6 +5305,7 @@
             Array.from(root?.querySelectorAll?.(`[data-report-auto-chart-plot="${chartKey}"]`) || []).forEach(plot => {
                 plot.innerHTML = buildReportDeckAutoChartSvg(chart || {}, {
                     chartKey: persistedChartKey,
+                    roomyPlot: true,
                     highlightMonthKeys: getReportDeckChartHighlightMonthKeys(state, persistedChartKey),
                     highlightRanges: getReportDeckChartHighlightRanges(state, persistedChartKey)
                 });
@@ -5119,7 +5352,7 @@
         ['production', 'usage', 'unit', 'amount'].forEach(rowKey => {
             renderReportDeckYusanLpgMetricRow(root, rowKey, model.rows?.[rowKey]);
         });
-        ['0', '1', '2'].forEach(rowKey => {
+        ['0', '1', '2', '3'].forEach(rowKey => {
             renderReportDeckYusanLpgCostMetricRow(root, rowKey, model.costRows?.[rowKey]);
         });
         Array.from(root?.querySelectorAll?.('[data-report-yusan-lpg-chart-plot="unit"]') || []).forEach(plot => {
@@ -5134,6 +5367,8 @@
             const chartKey = 'auto:yusan-lpg:cost';
             plot.innerHTML = buildReportDeckAutoChartSvg(model.costChart || {}, {
                 chartKey,
+                valueDecimals: 0,
+                valueFormat: 'number',
                 highlightMonthKeys: getReportDeckChartHighlightMonthKeys(state, chartKey),
                 highlightRanges: getReportDeckChartHighlightRanges(state, chartKey)
             });
@@ -6480,6 +6715,16 @@
                 return;
             }
 
+            const memoLineFontSizeButton = event.target?.closest?.('[data-report-memo-line-font-size]');
+            if (memoLineFontSizeButton && root.dataset.reportEditMode === 'editing') {
+                event.preventDefault();
+                const dialog = getReportDeckMemoDialog(root);
+                const key = getReportDeckMemoDialogTargetKey(dialog);
+                const index = Number.parseInt(String(memoLineFontSizeButton.dataset.reportMemoLineFontSize || ''), 10);
+                adjustReportDeckMemoLineFontSize(root, state, meta, dialog, key, index, memoLineFontSizeButton.dataset.reportMemoLineFontSizeDelta);
+                return;
+            }
+
             const memoLineDeleteButton = event.target?.closest?.('[data-report-memo-delete-line]');
             if (memoLineDeleteButton && root.dataset.reportEditMode === 'editing') {
                 event.preventDefault();
@@ -6489,8 +6734,10 @@
                 if (key && Number.isInteger(index) && Object.prototype.hasOwnProperty.call(state, key)) {
                     const lines = getReportDeckMemoLines(state[key]);
                     if (index >= 0 && index < lines.length) {
+                        const sizes = getReportDeckMemoLineSizeArray(state, key, lines.length);
                         lines.splice(index, 1);
-                        setReportDeckMemoLines(root, state, meta, dialog, key, lines);
+                        sizes.splice(index, 1);
+                        setReportDeckMemoLines(root, state, meta, dialog, key, lines, { lineSizes: sizes });
                     }
                 }
                 return;

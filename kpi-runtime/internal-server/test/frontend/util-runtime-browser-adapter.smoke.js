@@ -472,6 +472,12 @@ function createReportDeckContainer(options = {}) {
       return selector === '[data-report-memo-move-line]' ? this : null;
     },
   };
+  const memoLineFontSizeButton = {
+    dataset: { reportMemoLineFontSize: '0', reportMemoLineFontSizeDelta: '1' },
+    closest(selector) {
+      return selector === '[data-report-memo-line-font-size]' ? this : null;
+    },
+  };
   const dateInput = {
     value: '',
     disabled: true,
@@ -1097,6 +1103,7 @@ function createReportDeckContainer(options = {}) {
     memoLineInput,
     memoManualLineInput,
     memoLineMoveButton,
+    memoLineFontSizeButton,
     dateInput,
     planCountSelects,
     planAddSlotButtons,
@@ -1618,7 +1625,8 @@ test('report deck auto chart labels render above markers and avoid only differen
   assert.match(runtimeSource, /baseLabelY: y - 11/);
   assert.match(runtimeSource, /function alignReportDeckSameValueLabels/);
   assert.match(runtimeSource, /function sortReportDeckChartLabelsByValue/);
-  assert.match(runtimeSource, /const offsets = \[0, 16, -16, 26, -26, 36, -36, 46, -46\];/);
+  assert.match(runtimeSource, /: \[0, 16, 26, 36, 46\];/);
+  assert.match(runtimeSource, /options\.offsets/);
   assert.match(runtimeSource, /sortReportDeckChartLabelsByValue\(labelItems\)\.forEach/);
   assert.match(runtimeSource, /placedByInputOrder\.set\(index, chosen\);/);
   assert.match(runtimeSource, /value,\s*baseLabelY: y - 11/);
@@ -1955,6 +1963,8 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
     target: deckDom.editButton,
     preventDefault() {},
   });
+  const normalMemoRow = deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-memo-row');
+
   deckDom.listeners.click({
     target: deckDom.memoTargets[0],
     preventDefault() {},
@@ -1974,6 +1984,18 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
   deckDom.memoLineInput.value = 'Edited memo';
   deckDom.listeners.input({ target: deckDom.memoLineInput });
   assert.match(deckDom.memoContents[0].innerHTML, /Edited memo/);
+
+  deckDom.memoLineFontSizeButton.dataset.reportMemoLineFontSize = '0';
+  deckDom.memoLineFontSizeButton.dataset.reportMemoLineFontSizeDelta = '1';
+  deckDom.listeners.click({
+    target: deckDom.memoLineFontSizeButton,
+    preventDefault() {},
+  });
+  assert.match(deckDom.memoContents[0].innerHTML, /data-report-memo-line-size="1"/);
+  assert.match(deckDom.memoLines.innerHTML, /data-report-memo-line-font-size="0"/);
+  assert.match(deckDom.memoLines.innerHTML, /data-report-memo-line-font-size-delta="-1"/);
+  assert.match(deckDom.memoLines.innerHTML, /data-report-memo-line-font-size-delta="1"/);
+  assert.notEqual(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-memo-row'), normalMemoRow);
 
   deckDom.memoManualInput.value = 'Manual memo\nSecond manual memo';
   deckDom.listeners.click({
@@ -2043,10 +2065,11 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
   assert.ok(saveCall, 'report memo save request was not sent');
   const savedPayload = JSON.parse(saveCall.options.body).payload;
   assert.equal(savedPayload.slide3GasMemo, 'Second manual memo\nEdited memo\nManual memo revised');
-  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-table-row'), '27.1%');
-  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-chart-row'), '58.7%');
-  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-memo-row'), '10.3%');
-  assert.equal(deckDom.analysisColumns[5].style.getPropertyValue('--report-analysis-memo-row'), '10.3%');
+  assert.deepEqual(JSON.parse(savedPayload.reportMemoLineSizes), { slide3GasMemo: [0, 1, 0] });
+  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-table-row'), '27%');
+  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-chart-row'), '58.5%');
+  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-memo-row'), '10.5%');
+  assert.equal(deckDom.analysisColumns[5].style.getPropertyValue('--report-analysis-memo-row'), '10.5%');
   assert.equal(deckDom.wasteLayouts[0].style.getPropertyValue('--report-waste-main-row'), '83.5%');
   assert.equal(deckDom.wasteLayouts[1].style.getPropertyValue('--report-waste-memo-row'), '6.5%');
 });
@@ -2831,11 +2854,37 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
   assert.equal(model.costRows[2].previous, 8200 / 15000);
   assert.ok(Math.abs(model.costRows[2].delta - (8600 / 16000 - 9300 / 10000)) < 1e-12);
   assert.ok(Math.abs(model.costRows[2].rate - (8600 / 16000 - 9300 / 10000) / (9300 / 10000)) < 1e-12);
-  assert.equal(model.costChart.title, 'LPG 실제 금액 / LNG 환산 금액');
+  assert.equal(model.costRows[3].reference, -700);
+  assert.equal(model.costRows[3].current, -7400);
+  assert.equal(model.costRows[3].previous, -6800);
+  assert.equal(model.costRows[3].delta, -6700);
+  assert.equal(model.costRows[3].monthDelta, -600);
+  assert.equal(model.costChart.title, '금액 차이 (LPG - LNG환산)');
   assert.equal(
     model.costChart.series.find((item) => item.key === '2025').points.find((point) => point.month === 11).value,
-    8600 / 16000
+    -7400
   );
+  assert.equal(
+    model.costChart.series.find((item) => item.key === '2025').points.find((point) => point.month === 12).value,
+    null
+  );
+  assert.match(runtimeSource, /const compactHeader = options\.compactHeader !== false/);
+  assert.match(runtimeSource, /const roomyPlot = options\.roomyPlot === true/);
+  assert.doesNotMatch(runtimeSource, /compactHeader:\s*true/);
+  assert.match(runtimeSource, /function getReportDeckAutoChartLegendStart/);
+  assert.match(runtimeSource, /const maxStart = width - rightMargin - legendWidth/);
+  assert.match(runtimeSource, /const plotLeft = compactHeader \? \(roomyPlot \? 26 : 34\) : 52/);
+  assert.match(runtimeSource, /const plotRight = compactHeader \? \(roomyPlot \? 26 : 34\) : 52/);
+  assert.match(runtimeSource, /const plotTop = compactHeader \? \(roomyPlot \? 50 : 54\) : 76/);
+  assert.match(runtimeSource, /const plotBottom = compactHeader \? \(roomyPlot \? 24 : 32\) : 38/);
+  assert.match(runtimeSource, /height - \(roomyPlot \? 5 : 10\)/);
+  assert.match(runtimeSource, /roomyPlot:\s*true/);
+  assert.match(runtimeSource, /getReportDeckAutoChartLegendStart\(width,\s*plotRight,\s*series\.length,\s*legendItemWidth,\s*chart\?\.title,\s*compactHeader\)/);
+  assert.match(runtimeSource, /offsets:\s*\[0,\s*18,\s*31,\s*44,\s*56\]/);
+  assert.match(runtimeSource, /const legendHtml = compactHeader \? buildReportDeckAutoChartLegendHtml\(series\) : ''/);
+  assert.match(runtimeSource, /report-auto-chart-legend-overlay/);
+  assert.match(runtimeSource, /valueFormat:\s*'number'/);
+  assert.match(runtimeSource, /formatReportDeckChartValue\(value,\s*valueDecimals,\s*valueFormat\)/);
   assert.equal(
     model.chart.series.find((item) => item.key === '2025').points.find((point) => point.month === 11).value,
     0.08

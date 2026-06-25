@@ -33,18 +33,19 @@
     const RECORD_CATEGORY_GROUP_ORDER = Object.freeze(['kpi', 'focus', 'report']);
     const RECORD_CATEGORY_GROUPS = Object.freeze({
         kpi: Object.freeze({
-            label: 'KPI',
+            label: '1차 KPI',
             categories: Object.freeze([
                 '설비 가동률 증대',
-                '자체 정비',
-                '계획 이행률'
+                '자체 정비 비용 절감',
+                '연간 투자 계획 이행률'
             ])
         }),
         focus: Object.freeze({
-            label: '중점 추진 과제',
+            label: '중점추진과제',
             categories: Object.freeze([
-                '모니터링 운영 체계',
-                '데이터 관리 체계'
+                '통합 모니터링 운영 체계 구축',
+                '유틸리티 데이터 관리 체계 구축',
+                '대외 지적 사항 선제 대응'
             ])
         }),
         report: Object.freeze({
@@ -53,12 +54,24 @@
         })
     });
     const RECORD_CATEGORY_ALIAS_MAP = Object.freeze({
-        '계획 이행': '계획 이행률',
-        '운영 체계 구축': '모니터링 운영 체계'
+        '자체 정비': '자체 정비 비용 절감',
+        '계획 이행': '연간 투자 계획 이행률',
+        '계획 이행률': '연간 투자 계획 이행률',
+        '연간 투자 계획': '연간 투자 계획 이행률',
+        '모니터링 운영 체계': '통합 모니터링 운영 체계 구축',
+        '운영 체계 구축': '통합 모니터링 운영 체계 구축',
+        '데이터 관리 체계': '유틸리티 데이터 관리 체계 구축',
+        '유틸리티 데이터 관리 체계': '유틸리티 데이터 관리 체계 구축',
+        '대외 지적 사항 대응': '대외 지적 사항 선제 대응'
     });
     const RECORD_CATEGORY_OPTIONS = Object.freeze(
         RECORD_CATEGORY_GROUP_ORDER.flatMap(groupKey => RECORD_CATEGORY_GROUPS[groupKey]?.categories || [])
     );
+    const DEFAULT_RECORD_RESULT_TYPE = 'non-performance';
+    const RECORD_RESULT_TYPE_OPTIONS = Object.freeze([
+        Object.freeze({ value: 'non-performance', label: '실적외' }),
+        Object.freeze({ value: 'performance', label: '실적' })
+    ]);
     const DEFAULT_WORKSPACE_MODE = 'default';
     const PRODUCTION_REPORT_WORKSPACE_MODE = 'production-report';
 
@@ -77,6 +90,8 @@
         RECORD_CATEGORY_GROUPS,
         RECORD_CATEGORY_ALIAS_MAP,
         RECORD_CATEGORY_OPTIONS,
+        DEFAULT_RECORD_RESULT_TYPE,
+        RECORD_RESULT_TYPE_OPTIONS,
         DEFAULT_WORKSPACE_MODE,
         PRODUCTION_REPORT_WORKSPACE_MODE
     });

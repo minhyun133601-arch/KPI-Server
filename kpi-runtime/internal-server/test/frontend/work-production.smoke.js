@@ -99,6 +99,7 @@ function createContext() {
           endDate: '2026-04-15',
           category: 'Inspection',
           categoryGroup: 'report',
+          resultType: 'performance',
           workContent: 'Boiler check',
           assignees: ['Alpha'],
           cost: 100000,

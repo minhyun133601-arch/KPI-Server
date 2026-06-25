@@ -9,6 +9,8 @@
         RECORD_CATEGORY_OPTIONS,
         RECORD_CATEGORY_GROUP_ORDER,
         RECORD_CATEGORY_GROUPS,
+        RECORD_RESULT_TYPE_OPTIONS,
+        DEFAULT_RECORD_RESULT_TYPE,
         state,
         escapeHtml,
         escapeAttribute
@@ -137,7 +139,7 @@
 
     function buildCategoryFilterOptionsMarkup() {
         const emptyCategoryGroupLabels = RECORD_CATEGORY_GROUP_ORDER
-            .filter(groupKey => !(RECORD_CATEGORY_GROUPS[groupKey]?.categories || []).length)
+            .filter(groupKey => groupKey !== 'report' && !(RECORD_CATEGORY_GROUPS[groupKey]?.categories || []).length)
             .map(groupKey => RECORD_CATEGORY_GROUPS[groupKey]?.label || groupKey)
             .filter(Boolean);
         return [
@@ -183,6 +185,31 @@
 
     function buildCategoryOptionsMarkup(selectedGroup = '', selectedCategory = '') {
         const normalizedSelectedGroup = isProductionWorkspace() ? 'report' : selectedGroup;
+        const visibleGroupKeys = RECORD_CATEGORY_GROUP_ORDER.filter(groupKey => (
+            groupKey !== 'report'
+            && (RECORD_CATEGORY_GROUPS[groupKey]?.categories || []).length > 0
+        ));
+        const selected = String(selectedCategory || '').trim();
+        const hasKnownSelectedCategory = visibleGroupKeys.some(groupKey => (
+            (RECORD_CATEGORY_GROUPS[groupKey]?.categories || []).includes(selected)
+        ));
+        if (!isProductionWorkspace()) {
+            return [
+                '<option value="">작업 분류 선택</option>',
+                ...visibleGroupKeys.map(groupKey => {
+                    const label = RECORD_CATEGORY_GROUPS[groupKey]?.label || groupKey;
+                    const options = (RECORD_CATEGORY_GROUPS[groupKey]?.categories || [])
+                        .map(category => (
+                            `<option value="${escapeAttribute(category)}"${selected === category ? ' selected' : ''}>${escapeHtml(category)}</option>`
+                        ))
+                        .join('');
+                    return `<optgroup label="${escapeAttribute(label)}">${options}</optgroup>`;
+                }),
+                selected && !hasKnownSelectedCategory
+                    ? `<option value="${escapeAttribute(selected)}" selected>${escapeHtml(selected)}</option>`
+                    : ''
+            ].join('');
+        }
         const categories = typeof history.getRecordCategoryOptionsForGroup === 'function'
             ? history.getRecordCategoryOptionsForGroup(normalizedSelectedGroup, { includeLegacyValue: selectedCategory })
             : [];
@@ -194,6 +221,15 @@
                 `<option value="${escapeAttribute(category)}"${selectedCategory === category ? ' selected' : ''}>${escapeHtml(category)}</option>`
             ))
         ].join('');
+    }
+
+    function buildResultTypeOptionsMarkup(selectedValue = '') {
+        const normalizedSelectedValue = String(selectedValue || DEFAULT_RECORD_RESULT_TYPE || 'non-performance').trim();
+        return (RECORD_RESULT_TYPE_OPTIONS || []).map(option => {
+            const value = String(option?.value || '').trim();
+            const label = String(option?.label || value).trim();
+            return `<option value="${escapeAttribute(value)}"${normalizedSelectedValue === value ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+        }).join('');
     }
 
     function buildTabButton(teamKey) {
@@ -333,19 +369,22 @@
                             <input type="hidden" id="formSourceTeam" value="">
                             <input type="hidden" id="formIndex" value="">
 
+                            <input type="hidden" id="recordCategoryGroup" value="${isProductionWorkspace() ? 'report' : ''}">
+
                             <div class="form-row record-meta-row" id="recordCategoryRow">
-                                <div class="form-group record-category-field" id="recordCategoryGroupField"${isProductionWorkspace() ? ' hidden' : ''}>
-                                    <label for="recordCategoryGroup">구분</label>
-                                    <select id="recordCategoryGroup" required>
-                                        ${buildCategoryGroupOptionsMarkup()}
-                                    </select>
-                                </div>
                                 <div class="form-group record-category-field" id="recordCategoryField"${isProductionWorkspace() ? ' hidden' : ''}>
-                                    <label for="recordCategory">하위 카테고리</label>
+                                    <label for="recordCategory">작업 분류</label>
                                     <select id="recordCategory" required>
                                         ${buildCategoryOptionsMarkup()}
                                     </select>
-                                    <div class="file-help">구분에 따라 하위 카테고리를 고를 수 있습니다.</div>
+                                    <div class="file-help">1차 KPI 또는 중점추진과제 항목을 선택합니다.</div>
+                                </div>
+                                <div class="form-group record-result-field" id="recordResultTypeField"${isProductionWorkspace() ? ' hidden' : ''}>
+                                    <label for="recordResultType">실적 구분</label>
+                                    <select id="recordResultType" required>
+                                        ${buildResultTypeOptionsMarkup()}
+                                    </select>
+                                    <div class="file-help">실적으로 선택한 내역만 별 표시됩니다.</div>
                                 </div>
                                 <div class="form-group record-assignee-field">
                                     <label for="recordAssignee">작업자</label>

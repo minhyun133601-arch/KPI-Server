@@ -45,6 +45,7 @@ function createContext() {
   const elements = new Map();
   const confirmMessages = [];
   const alertMessages = [];
+  let latestSavedPayload = null;
   const history = {
     TEAM_KEYS: ['team1part1'],
     TeamInfo: {
@@ -66,9 +67,20 @@ function createContext() {
     normalizeRecordCategory(value) {
       return String(value || '').trim();
     },
-    normalizeRecordCategoryGroup(value) {
-      return String(value || '').trim();
+    normalizeRecordCategoryGroup(value, options = {}) {
+      const raw = String(value || '').trim();
+      if (raw) return raw;
+      const category = String(options.category || '').trim();
+      if (category === '설비 가동률 증대') return 'kpi';
+      return category ? 'focus' : '';
     },
+    normalizeRecordResultType(value, options = {}) {
+      const raw = String(value || '').trim();
+      if (raw === 'performance' || raw === '실적') return 'performance';
+      if (raw === 'non-performance' || raw === '실적외') return 'non-performance';
+      return Object.prototype.hasOwnProperty.call(options, 'defaultValue') ? options.defaultValue : 'non-performance';
+    },
+    DEFAULT_RECORD_RESULT_TYPE: 'non-performance',
     normalizePayload(payload) {
       return payload;
     },
@@ -76,7 +88,7 @@ function createContext() {
       return Number(value || 0);
     },
     normalizeAssignees(value) {
-      return Array.isArray(value) ? value : [];
+      return Array.isArray(value) ? value : String(value || '').split(',').map(item => item.trim()).filter(Boolean);
     },
     cloneJson(value) {
       return JSON.parse(JSON.stringify(value));
@@ -93,8 +105,9 @@ function createContext() {
     isKpiRecord() {
       return false;
     },
-    savePayload() {
-      return Promise.resolve();
+    savePayload(payload) {
+      latestSavedPayload = payload;
+      return Promise.resolve(true);
     },
     saveNow() {
       return Promise.resolve();
@@ -158,6 +171,7 @@ function createContext() {
   context.__elements = elements;
   context.__confirmMessages = confirmMessages;
   context.__alertMessages = alertMessages;
+  context.__getSavedPayload = () => latestSavedPayload;
   vm.createContext(context);
 
   splitSources.forEach(({ filename, source }) => {
@@ -218,6 +232,7 @@ function seedRecordModalElements(elements) {
     'recordAssignee',
     'recordCategoryGroup',
     'recordCategory',
+    'recordResultType',
     'recordWorkContent',
     'recordRemarks',
     'recordCost',
@@ -526,6 +541,31 @@ test('work history save-record action requests a saved popup', () => {
   });
 
   assert.equal(saveOptions?.showSavedPopup, true);
+});
+
+test('work history save-record stores result type separately from category', async () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  const elements = context.__elements;
+  seedRecordModalElements(elements);
+
+  elements.get('recordCategory').options = [{ value: '설비 가동률 증대' }];
+  view.openRecordModal('team1part1');
+
+  elements.get('recordCategory').value = '설비 가동률 증대';
+  view.syncRecordCategoryGroupFromCategory(elements.get('recordCategory').value);
+  elements.get('recordResultType').value = 'performance';
+  elements.get('recordAssignee').value = 'Alpha';
+  elements.get('recordWorkContent').value = 'Pump repair';
+
+  const saved = await view.saveRecord();
+  const payload = context.__getSavedPayload();
+  const record = payload.teams.team1part1[0];
+
+  assert.equal(saved, true);
+  assert.equal(record.categoryGroup, 'kpi');
+  assert.equal(record.category, '설비 가동률 증대');
+  assert.equal(record.resultType, 'performance');
 });
 
 test('work history record modal delete button only appears while editing and opens delete confirm', () => {

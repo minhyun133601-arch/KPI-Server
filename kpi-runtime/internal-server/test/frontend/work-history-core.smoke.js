@@ -148,20 +148,27 @@ test('work history core split files expose normalized payload and storage hooks 
   assert.equal(typeof history.getRecordCategoryGroupLabel, 'function');
   assert.deepEqual(Array.from(history.RECORD_CATEGORY_GROUPS.kpi.categories), [
     '설비 가동률 증대',
-    '자체 정비',
-    '계획 이행률',
+    '자체 정비 비용 절감',
+    '연간 투자 계획 이행률',
   ]);
   assert.deepEqual(Array.from(history.RECORD_CATEGORY_GROUPS.focus.categories), [
-    '모니터링 운영 체계',
-    '데이터 관리 체계',
+    '통합 모니터링 운영 체계 구축',
+    '유틸리티 데이터 관리 체계 구축',
+    '대외 지적 사항 선제 대응',
   ]);
   assert.deepEqual(Array.from(history.RECORD_CATEGORY_OPTIONS), [
     '설비 가동률 증대',
-    '자체 정비',
-    '계획 이행률',
-    '모니터링 운영 체계',
-    '데이터 관리 체계',
+    '자체 정비 비용 절감',
+    '연간 투자 계획 이행률',
+    '통합 모니터링 운영 체계 구축',
+    '유틸리티 데이터 관리 체계 구축',
+    '대외 지적 사항 선제 대응',
   ]);
+  assert.equal(history.normalizeRecordCategory('자체 정비'), '자체 정비 비용 절감');
+  assert.equal(history.normalizeRecordCategory('모니터링 운영 체계'), '통합 모니터링 운영 체계 구축');
+  assert.equal(history.normalizeRecordResultType('실적'), 'performance');
+  assert.equal(history.normalizeRecordResultType('실적외'), 'non-performance');
+  assert.equal(history.getRecordResultTypeLabel({ resultType: 'performance' }), '실적');
   assert.equal(history.normalizeCost('150,000,000원'), 150000000);
   assert.equal(history.normalizeCost('abc'), null);
   assert.deepEqual(history.normalizeAssignees(['미정', 'Alpha', '미입력', '-', 'Beta']), ['Alpha', 'Beta']);
@@ -183,6 +190,8 @@ test('work history core split files expose normalized payload and storage hooks 
     }),
     true
   );
+  assert.equal(history.isImportantRecord({ resultType: 'performance' }), true);
+  assert.equal(history.isImportantRecord({ resultType: 'non-performance' }), false);
 
   assert.equal(payload.meta.moduleKey, 'work_history_records');
   assert.equal(payload.teams.team1part1.length, 1);

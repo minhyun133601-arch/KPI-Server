@@ -69,8 +69,10 @@
             if (typeof history?.isKpiRecord === 'function') {
                 return history.isKpiRecord(record);
             }
-            return String(record?.category || '').trim() === 'KPI'
-                || String(record?.categoryGroup || record?.categoryType || '').trim() === 'report';
+            const resultType = String(record?.resultType || record?.performanceType || record?.achievementType || '').trim().toLowerCase();
+            if (resultType === 'performance' || resultType === 'actual' || resultType === 'achievement') return true;
+            if (resultType === 'non-performance' || resultType === 'nonperformance' || resultType === 'non-actual') return false;
+            return String(record?.category || '').trim() === 'KPI';
         }
 
         function normalizeWorkTeamCalendarHistoryCategory(record) {
@@ -87,8 +89,8 @@
                 return String(history.getRecordCategoryGroupLabel(record) || '').trim();
             }
             const groupKey = String(record?.categoryGroup || record?.categoryType || '').trim().toLowerCase();
-            if (groupKey === 'kpi') return 'KPI';
-            if (groupKey === 'focus') return '중점 추진 과제';
+            if (groupKey === 'kpi') return '1차 KPI';
+            if (groupKey === 'focus') return '중점추진과제';
             if (groupKey === 'report') return '보고';
             return String(record?.categoryGroup || record?.categoryType || '').trim();
         }
@@ -104,7 +106,7 @@
             const labels = [];
             const importantFlagLabel = history?.IMPORTANT_FLAG_LABEL || history?.KPI_FLAG_LABEL || '★';
             const kpiFlagLabel = history?.KPI_FLAG_LABEL || '★';
-            if (importantFlagLabel) {
+            if (isWorkTeamCalendarHistoryKpi(record) && importantFlagLabel) {
                 labels.push(importantFlagLabel);
             }
             if (typeof history?.getRecordTagLabels === 'function') {
@@ -140,7 +142,7 @@
                 || history?.KPI_FLAG_LABEL
                 || '★';
             return list.slice(0, 2).map(record => ({
-                star: starLabel,
+                star: isWorkTeamCalendarHistoryKpi(record) ? starLabel : '',
                 subcategory: getWorkTeamCalendarHistorySubcategory(record),
                 title: getWorkTeamCalendarHistoryDayCueTitle(record)
             }));
@@ -311,7 +313,7 @@
                     count: records.length,
                     hasKpi: records.some(record => isWorkTeamCalendarHistoryKpi(record)),
                     kpiCount: records.filter(record => isWorkTeamCalendarHistoryKpi(record)).length,
-                    starCount: records.length,
+                    starCount: records.filter(record => isWorkTeamCalendarHistoryKpi(record)).length,
                     items: getWorkTeamCalendarHistoryDayCueItems(records),
                     remainingCount: Math.max(0, records.length - 2),
                     title: leadRecord ? getWorkTeamCalendarHistoryRecordTitle(leadRecord) : '',
