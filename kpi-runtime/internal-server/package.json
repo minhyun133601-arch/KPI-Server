@@ -154,13 +154,13 @@
     "verify": "npm run verify:cleanup-baseline && npm run verify:server-structure && npm test"
   },
   "dependencies": {
-    "pg": "^8.13.1"
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.59.1",
-    "eslint": "^10.2.1",
-    "globals": "^17.5.0",
-    "prettier": "^3.8.3"
+    "@playwright/test": "^1.61.1",
+    "eslint": "^10.6.0",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.4"
   }
 }
