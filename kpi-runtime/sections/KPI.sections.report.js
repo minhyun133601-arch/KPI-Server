@@ -8,8 +8,7 @@
     const REPORT_SAFETY_SLOTS_PER_PAGE = 8;
     const REPORT_SAFETY_COLUMNS_PER_ROW = 4;
     const REPORT_SAFETY_PAGE_COUNT = 1;
-    const REPORT_SAFETY_TEAM_ROWS = ['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀'];
-    const REPORT_SAFETY_HAZARD_OPTIONS = ['미끄럼', '넘어짐', '끼임', '충돌', '낙하/비래', '베임/찔림', '화재', '감전', '누출', '화상'];
+    const REPORT_SAFETY_TEAM_ROWS = ['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀', '물류센터', '기타'];
     const SLIDE_NAV_ITEMS = [
         { view: REPORT_HQ_VIEW, label: '표지' },
         { view: REPORT_HQ_VIEW, label: '본부 목차' },
@@ -248,6 +247,17 @@
         `;
     }
 
+    function buildReportSafetyTableMoveControls() {
+        return `
+            <div class="report-safety-table-controls" data-report-safety-table-controls>
+                <button type="button" class="report-safety-table-move" data-report-safety-table-move="left" title="왼쪽" aria-label="왼쪽">&larr;</button>
+                <button type="button" class="report-safety-table-move" data-report-safety-table-move="right" title="오른쪽" aria-label="오른쪽">&rarr;</button>
+                <button type="button" class="report-safety-table-move" data-report-safety-table-move="up" title="위로" aria-label="위로">&uarr;</button>
+                <button type="button" class="report-safety-table-move" data-report-safety-table-move="down" title="아래로" aria-label="아래로">&darr;</button>
+            </div>
+        `;
+    }
+
     function buildReportSafetyTable(rowIndex = 0, pageIndex = 0) {
         const firstSlotIndex = rowIndex * REPORT_SAFETY_COLUMNS_PER_ROW + 1;
         const slotIndexes = Array.from({ length: REPORT_SAFETY_COLUMNS_PER_ROW }, (_, index) => firstSlotIndex + index);
@@ -258,10 +268,10 @@
             const teamContent = index === 0
                 ? `<span class="report-safety-row-team-label" data-report-plan-row-team-label></span>`
                 : '';
-            return `<th${teamAttrs} data-report-plan-slot="slide10.${slotIndex}" data-report-plan-local-slot="${slotIndex}">${teamContent}</th>`;
+            return `<th${teamAttrs} data-report-plan-slot="slide10.${slotIndex}" data-report-plan-local-slot="${slotIndex}">${teamContent}${buildReportSafetyTableMoveControls()}</th>`;
         }).join('');
         return `
-            <table class="report-safety-table" data-report-safety-row="${rowIndex}" aria-label="자율 안전 신고제">
+            <table class="report-safety-table" data-report-safety-row="${rowIndex}" data-report-safety-table-index="${rowIndex}" aria-label="자율 안전 신고제">
                 <colgroup>
                     <col class="report-safety-label-col">
                     ${slotIndexes.map((slotIndex, index) => `<col class="report-safety-slot-col" data-report-plan-slot="slide10.${slotIndex}" data-report-plan-local-slot="${slotIndex}"${index === 0 ? ' data-report-safety-row-anchor="true"' : ''}>`).join('')}
@@ -372,11 +382,8 @@
     }
 
     function buildReportOverviewDialog() {
-        const teamOptions = ['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀']
+        const teamOptions = REPORT_SAFETY_TEAM_ROWS
             .map(team => `<option value="${team}">${team}</option>`)
-            .join('');
-        const hazardOptions = REPORT_SAFETY_HAZARD_OPTIONS
-            .map(hazard => `<option value="${hazard}">${hazard}</option>`)
             .join('');
         return `
             <div class="report-overview-dialog" data-report-overview-dialog hidden>
@@ -390,6 +397,10 @@
                             <span>팀</span>
                             <select data-report-overview-team>${teamOptions}</select>
                         </label>
+                        <label data-report-overview-custom-team-row hidden>
+                            <span>팀명</span>
+                            <input type="text" data-report-overview-custom-team placeholder="예: 협력업체">
+                        </label>
                         <label data-report-overview-title-row>
                             <span>제목</span>
                             <input type="text" data-report-overview-title>
@@ -400,7 +411,7 @@
                         </label>
                         <label data-report-overview-mode="slide10" data-report-overview-hazard-row>
                             <span>예방</span>
-                            <select data-report-overview-hazard>${hazardOptions}</select>
+                            <input type="text" data-report-overview-hazard placeholder="예: 낙하, 넘어짐">
                         </label>
                         <div class="report-overview-toggle-row" data-report-overview-mode="slide9">
                             <span>구분</span>
@@ -420,9 +431,12 @@
                         </label>
                         <label data-report-overview-amount-row>
                             <span data-report-overview-amount-label>금액</span>
-                            <span class="report-overview-amount-field">
-                                <input type="number" step="any" inputmode="decimal" data-report-overview-amount placeholder="예: 3.4">
-                                <em>백만원</em>
+                            <span class="report-overview-amount-line">
+                                <span class="report-overview-amount-field">
+                                    <input type="number" step="any" inputmode="decimal" data-report-overview-amount placeholder="예: 3.4">
+                                    <em>백만원</em>
+                                </span>
+                                <input type="text" data-report-overview-mode="slide10" data-report-overview-amount-text placeholder="직접 입력">
                             </span>
                         </label>
                     </div>
@@ -529,7 +543,7 @@
                     </div>
                     <div class="report-bukjeong-analysis-column">
                         ${buildYusanLpgCostTable()}
-                        ${buildYusanLpgChart('cost', '금액 차이 (LPG - LNG환산)')}
+                        ${buildYusanLpgChart('cost', 'LPG, LNG환산 (원)')}
                         ${buildYusanLpgMemoBox('slide5CostMemo', { defaultTeam: 'team_01_02', defaultMetric: 'lpg' })}
                     </div>
                 </div>
@@ -811,7 +825,7 @@
     function buildReportMemoDialog() {
         return `
             <div class="report-memo-dialog" data-report-memo-dialog hidden>
-                <div class="report-memo-dialog-head">
+                <div class="report-memo-dialog-head" data-report-memo-drag-handle title="드래그해서 이동">
                     <strong>특이사항 선택</strong>
                     <button type="button" data-report-memo-close>닫기</button>
                 </div>
@@ -834,15 +848,18 @@
                         </select>
                     </label>
                 </div>
-                <div class="report-memo-lines" data-report-memo-lines></div>
-                <div class="report-memo-manual" data-report-memo-manual>
-                    <textarea data-report-memo-manual-input rows="2" placeholder="&#53945;&#51060;&#49324;&#54637; &#51649;&#51217; &#51077;&#47141;"></textarea>
-                    <button type="button" data-report-memo-manual-add>&#51649;&#51217; &#52628;&#44032;</button>
+                <div class="report-memo-notepad-wrap">
+                    <textarea class="report-memo-notepad" data-report-memo-notepad rows="9" spellcheck="false" placeholder="&#53945;&#51060;&#49324;&#54637; &#51077;&#47141;"></textarea>
+                    <div class="report-memo-notepad-actions" aria-label="특이사항 서식">
+                        <button type="button" data-report-memo-notepad-font-size-delta="-1" title="선택 영역 글자 작게" aria-label="선택 영역 글자 작게">-</button>
+                        <button type="button" data-report-memo-notepad-font-size-delta="1" title="선택 영역 글자 크게" aria-label="선택 영역 글자 크게">+</button>
+                        <input type="text" class="report-memo-notepad-size-input" inputmode="numeric" value="3" data-report-memo-notepad-font-size-input aria-label="선택 영역 글자 크기">
+                        <button type="button" class="report-memo-line-color-button is-red" data-report-memo-notepad-color="red" title="선택 영역 빨강" aria-label="선택 영역 빨강"><span></span></button>
+                        <button type="button" class="report-memo-line-color-button is-blue" data-report-memo-notepad-color="blue" title="선택 영역 파랑" aria-label="선택 영역 파랑"><span></span></button>
+                        <button type="button" class="report-memo-line-color-button is-clear" data-report-memo-notepad-color="clear" title="색 초기화" aria-label="선택 영역 색 초기화">&#8630;</button>
+                    </div>
                 </div>
                 <div class="report-memo-candidates" data-report-memo-candidates></div>
-                <div class="report-memo-dialog-actions">
-                    <button type="button" data-report-memo-clear>내용 비우기</button>
-                </div>
             </div>
         `;
     }
@@ -1916,19 +1933,25 @@ ${colgroup}
                 .report-deck-month-field { min-height: 30px; display: inline-flex; align-items: center; gap: 6px; color: #334155; font-size: 0.72rem; font-weight: 900; }
                 .report-deck-month-field select { height: 30px; min-width: 112px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; color: #0f172a; padding: 0 24px 0 9px; font-size: 0.74rem; font-weight: 900; }
                 .report-deck-month-field select:disabled { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
+                .report-save-menu { position: relative; display: inline-flex; align-items: center; }
+                .report-save-menu-panel { position: absolute; top: calc(100% + 7px); right: 0; z-index: 60; width: min(332px, calc(100vw - 24px)); display: grid; gap: 8px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18); }
+                .report-save-menu-panel[hidden] { display: none !important; }
                 .report-capture-controls { min-height: 30px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid #dbe4f3; border-radius: 6px; background: #f8fafc; color: #334155; padding: 2px 6px; font-size: 0.72rem; font-weight: 900; }
+                .report-save-menu-panel .report-capture-controls { width: 100%; min-height: 0; display: grid; grid-template-columns: auto 54px auto 54px; gap: 7px; align-items: center; box-sizing: border-box; padding: 8px; }
                 .report-capture-controls input[type="number"] { width: 48px; height: 24px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 0 4px; font-size: 0.72rem; font-weight: 900; text-align: center; }
                 .report-capture-controls input[type="number"]:disabled { background: #f1f5f9; color: #94a3b8; }
                 .report-capture-current-only { display: inline-flex; align-items: center; gap: 4px; margin-left: 4px; white-space: nowrap; }
+                .report-save-menu-panel .report-capture-current-only { grid-column: 1 / -1; margin-left: 0; }
                 .report-capture-current-only input { width: 14px; height: 14px; accent-color: #2563eb; }
+                .report-save-menu-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+                .report-save-menu-actions .report-deck-action-button { width: 100%; }
                 @keyframes reportDeckCaptureSpin { to { transform: rotate(360deg); } }
                 .report-deck-action-button { position: relative; min-height: 30px; border: 1px solid #bfdbfe; border-radius: 6px; background: #eff6ff; color: #1d4ed8; padding: 0 11px; font-size: 0.74rem; font-weight: 900; cursor: pointer; }
                 .report-deck-action-button:disabled { border-color: #cbd5e1; background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
                 .report-deck-action-button.is-active { border-color: #2563eb; background: #2563eb; color: #ffffff; }
-                .report-deck-editor:not([data-report-edit-mode="editing"]) [data-report-capture-controls],
-                .report-deck-editor:not([data-report-edit-mode="editing"]) [data-report-capture-zip],
-                .report-deck-editor:not([data-report-edit-mode="editing"]) [data-report-capture-pdf],
-                .report-deck-editor:not([data-report-edit-mode="editing"]) [data-report-export-html] { display: none; }
+                .report-deck-icon-button { width: 32px; min-width: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+                .report-deck-fullscreen-icon { font-size: 17px; font-weight: 900; line-height: 1; }
+                .report-deck-contents-toggle { display: none; }
                 .report-deck-editor[data-report-capture-busy="true"] [data-report-capture-zip],
                 .report-deck-editor[data-report-capture-busy="true"] [data-report-capture-pdf],
                 .report-deck-editor[data-report-capture-busy="true"] [data-report-export-capture-zip] { padding-left: 30px; cursor: wait; opacity: 0.82; }
@@ -2046,10 +2069,12 @@ ${colgroup}
                 .report-auto-memo-box { display: grid; grid-template-columns: 13.5% 1fr; min-height: 0; border: 1.4px solid #111827; background: #ffffff; color: #020617; }
                 .report-auto-memo-box strong { display: grid; place-items: center; border-right: 1px solid #111827; font-size: 13px; font-weight: 900; }
                 .report-auto-memo-blank { min-width: 0; }
-                .report-auto-memo-content { display: grid; align-content: start; gap: 3px; padding: 4px 7px; overflow: hidden; color: #020617; font-size: 10.4px; font-weight: 900; line-height: 1.18; text-align: left; word-break: keep-all; }
+                .report-auto-memo-content { display: grid; align-content: start; gap: 5px; padding: 6px 7px; overflow: hidden; color: #020617; font-size: 10.4px; font-weight: 900; line-height: 1.18; text-align: left; word-break: keep-all; }
                 .report-auto-memo-content[data-empty="true"]::before { content: ""; }
-                .report-auto-memo-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px; min-width: 0; white-space: nowrap; font-size: var(--report-auto-memo-line-font-size, inherit); line-height: var(--report-auto-memo-line-line-height, inherit); }
+                .report-auto-memo-line { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 4px; min-width: 0; white-space: nowrap; font-size: var(--report-auto-memo-line-font-size, inherit); line-height: var(--report-auto-memo-line-line-height, inherit); }
                 .report-auto-memo-line-text { min-width: 0; white-space: nowrap; }
+                .report-auto-memo-line.is-preserve-format { white-space: pre-wrap; overflow: visible; text-overflow: clip; }
+                .report-auto-memo-line.is-preserve-format .report-auto-memo-line-text { white-space: pre-wrap; overflow: visible; text-overflow: clip; }
                 .report-auto-memo-line.is-up, .report-auto-memo-line.is-down { color: #111827; }
                 .report-auto-memo-line.is-flat, .report-auto-memo-line.is-mixed { color: #111827; }
                 .report-auto-memo-segment { color: #111827; }
@@ -2059,35 +2084,42 @@ ${colgroup}
                 .report-auto-memo-change.is-up { color: #c00000; }
                 .report-auto-memo-change.is-down { color: #2f75b5; }
                 .report-auto-memo-change.is-flat { color: #111827; }
-                .report-auto-memo-add, .report-auto-memo-delete { display: none; align-items: center; justify-content: center; border: 1px solid #2563eb; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 14px; font-weight: 900; line-height: 1; cursor: pointer; }
+                .report-auto-memo-manual-color { font-weight: 900; }
+                .report-auto-memo-manual-color.is-red { color: #c00000; }
+                .report-auto-memo-manual-color.is-blue { color: #2f75b5; }
+                .report-auto-memo-manual-size { font-weight: 900; vertical-align: baseline; }
+                .report-auto-memo-add { display: none; align-items: center; justify-content: center; border: 1px solid #2563eb; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 14px; font-weight: 900; line-height: 1; cursor: pointer; }
                 .report-auto-memo-add { width: 26px; height: 26px; margin-top: 1px; }
-                .report-auto-memo-delete { width: 22px; height: 22px; border-color: #fecaca; background: #fff5f5; color: #b91c1c; }
-                .report-deck-editor[data-report-edit-mode="editing"] .report-auto-memo-add,
-                .report-deck-editor[data-report-edit-mode="editing"] .report-auto-memo-delete { display: inline-flex; }
+                .report-deck-editor[data-report-edit-mode="editing"] .report-auto-memo-add { display: inline-flex; }
                 .report-deck-editor[data-report-edit-mode="editing"] [data-report-memo-key] { cursor: pointer; }
                 .report-deck-editor[data-report-edit-mode="editing"] [data-report-memo-key]:focus-visible,
                 .report-deck-editor[data-report-edit-mode="editing"] [data-report-memo-key]:hover { outline: 2px solid rgba(37, 99, 235, 0.42); outline-offset: 2px; }
                 .report-memo-dialog { position: absolute; right: 18px; top: 54px; z-index: 20; width: min(980px, calc(100vw - 36px)); max-height: calc(100vh - 92px); overflow: auto; border: 1px solid #94a3b8; border-radius: 6px; background: #ffffff; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.24); color: #0f172a; padding: 12px; }
+                .report-memo-dialog[data-report-memo-floating="true"] { right: auto; }
+                .report-memo-dialog.is-dragging { user-select: none; }
                 .report-memo-dialog[hidden] { display: none !important; }
-                .report-memo-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+                .report-memo-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; cursor: grab; user-select: none; touch-action: none; }
+                .report-memo-dialog.is-dragging .report-memo-dialog-head { cursor: grabbing; }
                 .report-memo-dialog-head strong { color: #0f172a; font-size: 15px; font-weight: 900; }
                 .report-memo-dialog button { min-height: 28px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #334155; padding: 0 9px; font-size: 12px; font-weight: 900; cursor: pointer; }
                 .report-memo-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 9px; }
                 .report-memo-controls label { display: grid; gap: 4px; color: #334155; font-size: 12px; font-weight: 900; }
                 .report-memo-controls select { height: 30px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 0 8px; font-size: 13px; font-weight: 900; }
-                .report-memo-lines { display: grid; gap: 6px; margin-bottom: 10px; min-height: 180px; max-height: 320px; overflow: auto; }
-                .report-memo-line-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; border: 1px solid #e2e8f0; border-radius: 5px; background: #ffffff; padding: 6px 7px; }
-                .report-memo-line-text { min-width: 0; color: #111827; font-size: 12px; font-weight: 900; line-height: 1.25; overflow-wrap: anywhere; }
-                .report-memo-line-input { width: 100%; min-width: 0; min-height: 38px; max-height: 96px; border: 1px solid #dbe4f3; border-radius: 4px; background: #f8fafc; color: #111827; padding: 6px 7px; font-size: 12px; font-weight: 900; line-height: 1.25; resize: none; box-sizing: border-box; }
-                .report-memo-line-input:focus { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 1px; border-color: #60a5fa; background: #ffffff; }
-                .report-memo-line-actions { display: grid; grid-template-columns: repeat(5, auto); gap: 4px; align-items: start; }
-                .report-memo-line-actions button { min-width: 28px; min-height: 26px; padding: 0 7px; color: #475569; }
-                .report-memo-line-actions button:disabled { opacity: 0.35; cursor: default; }
-                .report-memo-lines-empty { min-height: 30px; display: grid; place-items: center; border: 1px dashed #cbd5e1; border-radius: 5px; color: #64748b; font-size: 12px; font-weight: 900; }
-                .report-memo-manual { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; align-items: stretch; margin-bottom: 8px; }
-                .report-memo-manual textarea { width: 100%; min-width: 0; min-height: 48px; max-height: 92px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 7px 8px; font-size: 12px; font-weight: 900; line-height: 1.35; resize: none; box-sizing: border-box; }
-                .report-memo-manual textarea:focus { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 1px; border-color: #60a5fa; }
-                .report-memo-manual button { min-width: 72px; }
+                .report-memo-notepad-wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; margin-bottom: 10px; }
+                .report-memo-notepad { width: 100%; min-width: 0; min-height: 230px; max-height: 380px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 9px 10px; font-size: 13px; font-weight: 900; line-height: 1.38; resize: vertical; box-sizing: border-box; }
+                .report-memo-notepad:focus { outline: 2px solid rgba(37, 99, 235, 0.28); outline-offset: 1px; border-color: #60a5fa; }
+                .report-memo-notepad-actions { display: grid; grid-template-columns: 28px 28px 42px; justify-content: start; gap: 4px; width: 110px; }
+                .report-memo-notepad-actions button { min-width: 28px; min-height: 26px; padding: 0 7px; color: #475569; }
+                .report-memo-notepad-size-input { width: 42px; min-width: 0; height: 26px; border: 1px solid #cbd5e1; border-radius: 5px; background: #ffffff; color: #0f172a; padding: 0 4px; font-size: 10px; font-weight: 900; text-align: center; box-sizing: border-box; }
+                .report-memo-notepad-size-input:disabled { background: #f1f5f9; color: #94a3b8; }
+                .report-memo-line-color-actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, 28px); justify-content: start; gap: 4px; margin-top: 2px; }
+                .report-memo-line-color-button { width: 28px !important; min-width: 28px !important; max-width: 28px; min-height: 26px; height: 26px; padding: 0 !important; display: grid; place-items: center; box-sizing: border-box; }
+                .report-memo-line-color-button span { display: block; width: 18px; height: 10px; border-radius: 999px; }
+                .report-memo-line-color-button.is-red { border-color: #c00000; background: #fff5f5; }
+                .report-memo-line-color-button.is-red span { background: #c00000; }
+                .report-memo-line-color-button.is-blue { border-color: #2f75b5; background: #eff6ff; }
+                .report-memo-line-color-button.is-blue span { background: #2f75b5; }
+                .report-memo-line-color-button.is-clear { background: #ffffff; color: #475569; font-size: 15px; line-height: 1; }
                 .report-memo-candidates { display: grid; gap: 6px; max-height: 220px; overflow: auto; }
                 .report-memo-candidate { width: 100%; min-height: 30px !important; display: grid !important; grid-template-columns: 22px minmax(0, 1fr); align-items: center; justify-content: stretch; gap: 6px; border-color: #dbe4f3 !important; background: #f8fafc !important; padding: 4px 8px !important; text-align: left; white-space: nowrap; font-size: 10.8px; line-height: 1.16; color: #111827 !important; }
                 .report-memo-candidate-add { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #cbd5e1; border-radius: 50%; background: #ffffff; color: #0f172a; font-size: 15px; font-weight: 900; line-height: 1; }
@@ -2257,8 +2289,14 @@ ${colgroup}
                 .report-deck-editor[data-report-print-mode="true"] .report-safety-table[data-report-plan-row-filled-slot-count="4"] { --report-safety-table-width: 100%; --report-safety-label-width: 4.6%; --report-safety-slot-width: 23.85%; }
                 .report-safety-table th, .report-safety-table td { border: 1px solid #94a3b8; padding: 0; text-align: center; vertical-align: middle; }
                 .report-safety-table thead th { height: 11%; background: #5d9bd3; color: #ffffff; font-size: 18px; font-weight: 900; line-height: 1.1; }
-                .report-safety-table .report-safety-row-team { padding: 0 8px; overflow: hidden; text-align: left; white-space: nowrap; }
+                .report-safety-table thead th[data-report-plan-slot] { position: relative; }
+                .report-safety-table .report-safety-row-team { position: relative; padding: 0 8px; overflow: hidden; text-align: left; white-space: nowrap; }
                 .report-safety-row-team-label { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+                .report-safety-table-controls { position: absolute; right: 4px; top: 50%; z-index: 3; display: none; align-items: center; gap: 2px; transform: translateY(-50%); }
+                .report-safety-table-move { width: 19px; height: 19px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.72); border-radius: 4px; background: rgba(255, 255, 255, 0.94); color: #0f172a; padding: 0; font-size: 12px; font-weight: 900; line-height: 1; cursor: pointer; }
+                .report-safety-table-move:disabled { border-color: rgba(226, 232, 240, 0.78); background: rgba(248, 250, 252, 0.78); color: #94a3b8; cursor: not-allowed; }
+                .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-safety-table th[data-report-plan-filled="true"] .report-safety-table-controls { display: inline-flex; }
+                .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-safety-table th[data-report-plan-filled="true"].report-safety-row-team .report-safety-row-team-label { max-width: calc(100% - 90px); }
                 .report-safety-add-control { position: absolute; left: 3.4%; right: 2.9%; top: 8.4%; z-index: 5; display: none; justify-content: flex-end; align-items: center; gap: 8px; min-height: 30px; }
                 .report-safety-add-control select[hidden] { display: none !important; }
                 .report-safety-add-control button { height: 28px; border: 1px solid #bfdbfe; border-radius: 6px; background: #ffffff; color: #0f172a; padding: 0 9px; font-size: 12px; font-weight: 900; }
@@ -2271,15 +2309,18 @@ ${colgroup}
                 .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-safety-add-control { display: flex; }
                 .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-safety-layout { top: 12.2%; }
                 .report-deck-editor[data-report-print-mode="true"] .report-safety-add-control,
-                .report-slide[data-report-output-prepared="true"] .report-safety-add-control { display: none !important; }
+                .report-deck-editor[data-report-print-mode="true"] .report-safety-table-controls,
+                .report-slide[data-report-output-prepared="true"] .report-safety-add-control,
+                .report-slide[data-report-output-prepared="true"] .report-safety-table-controls { display: none !important; }
                 .report-safety-table tbody th { background: #d9e2f1; color: #020617; font-size: 20px; font-weight: 900; line-height: 1; text-align: center; }
                 .report-safety-before-row, .report-safety-after-row { height: 36%; }
                 .report-safety-summary-row { height: 17%; }
                 .report-safety-image-cell { position: relative; min-width: 0; min-height: 0; padding: 4px !important; }
                 .report-safety-image-frame { inset: 4px; border-width: 1.4px; box-shadow: none; }
                 .report-safety-summary-cell { position: relative; padding: 2px 4px !important; text-align: left !important; vertical-align: middle !important; }
-                .report-safety-summary-text { min-width: 0; max-height: 100%; overflow: hidden; display: grid; align-content: center; gap: 3px; color: #020617; font-weight: 900; line-height: 1.05; text-align: center; white-space: normal; word-break: keep-all; }
-                .report-safety-summary-title, .report-safety-summary-meta { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                .report-safety-summary-text { min-width: 0; max-height: 100%; overflow: hidden; display: grid; align-content: center; gap: 2px; color: #020617; font-weight: 900; line-height: 1.05; text-align: center; white-space: normal; word-break: keep-all; }
+                .report-safety-summary-team, .report-safety-summary-title, .report-safety-summary-meta { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                .report-safety-summary-team { color: #1d4ed8; font-size: 10px; }
                 .report-safety-summary-title, .report-safety-summary-meta { font-size: 11px; }
                 .report-safety-delete-slot { right: 4px; bottom: 3px; height: 22px; }
                 .report-deck-editor[data-report-edit-mode="editing"] .report-slide.is-active .report-safety-summary-cell[data-report-plan-active="true"] .report-safety-delete-slot { display: inline-flex; align-items: center; justify-content: center; }
@@ -2420,9 +2461,17 @@ ${colgroup}
                 .report-production-yield-chart-legend .is-blue { background: #4472c4; }
                 .report-production-yield-chart-legend .is-red { background: #ff0000; }
                 .report-production-yield-chart-legend .is-green { background: #70ad47; }
-                .report-deck-editor:fullscreen { width: 100vw; height: 100vh; min-height: 0; grid-template-rows: minmax(0, 1fr); gap: 0; padding: 0; background: #111827; }
-                .report-deck-editor:fullscreen .report-deck-toolbar, .report-deck-editor:fullscreen .report-deck-sidebar { display: none; }
-                .report-deck-editor:fullscreen .report-deck-workspace { height: 100vh; grid-template-columns: minmax(0, 1fr); gap: 0; }
+                .report-deck-editor:fullscreen { width: 100vw; height: 100vh; min-height: 0; gap: 0; padding: 0; background: #111827; }
+                .report-deck-editor:fullscreen:not([data-report-edit-fullscreen-mode="true"]) { grid-template-rows: minmax(0, 1fr); }
+                .report-deck-editor:fullscreen:not([data-report-edit-fullscreen-mode="true"]) .report-deck-toolbar,
+                .report-deck-editor:fullscreen:not([data-report-edit-fullscreen-mode="true"]) .report-deck-sidebar { display: none; }
+                .report-deck-editor:fullscreen:not([data-report-edit-fullscreen-mode="true"]) .report-deck-workspace { height: 100vh; grid-template-columns: minmax(0, 1fr); gap: 0; }
+                .report-deck-editor:fullscreen[data-report-edit-fullscreen-mode="true"] { grid-template-rows: auto minmax(0, 1fr); }
+                .report-deck-editor:fullscreen[data-report-edit-fullscreen-mode="true"] .report-deck-toolbar { display: flex; }
+                .report-deck-editor:fullscreen[data-report-edit-fullscreen-mode="true"] .report-deck-workspace { min-height: 0; }
+                .report-deck-editor:fullscreen[data-report-edit-fullscreen-mode="true"] .report-deck-contents-toggle { display: inline-flex; }
+                .report-deck-editor:fullscreen[data-report-edit-fullscreen-mode="true"][data-report-contents-collapsed="true"] .report-deck-workspace { grid-template-columns: minmax(0, 1fr); }
+                .report-deck-editor:fullscreen[data-report-edit-fullscreen-mode="true"][data-report-contents-collapsed="true"] .report-deck-sidebar { display: none; }
                 .report-deck-editor:fullscreen .report-deck-stage { border: 0; border-radius: 0; padding: 0; background: #111827; }
                 .report-deck-editor:fullscreen .report-slide { width: min(100vw, 177.777vh); max-width: none; border: 0; box-shadow: none; }
                 @media print {
@@ -2466,11 +2515,13 @@ ${colgroup}
                 .report-overview-dialog[data-report-overview-slide-key="slide10"] [data-report-overview-amount-row] { order: 2; }
                 .report-overview-dialog[data-report-overview-slide-key="slide10"] [data-report-overview-hazard-row] { order: 3; }
                 .report-overview-form input, .report-overview-form select { width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; color: #0f172a; padding: 0 10px; font-size: 13px; font-weight: 800; }
+                .report-overview-form input:disabled { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
                 .report-overview-toggle-row { display: grid; grid-template-columns: 82px minmax(0, 1fr); align-items: center; gap: 10px; color: #0f172a; font-size: 13px; font-weight: 900; }
                 .report-overview-toggle { display: grid; grid-template-columns: 1fr 1fr; width: 100%; height: 34px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #ffffff; }
                 .report-overview-toggle button { border: 0; border-right: 1px solid #cbd5e1; background: #ffffff; color: #334155; font-size: 13px; font-weight: 900; cursor: pointer; }
                 .report-overview-toggle button:last-of-type { border-right: 0; }
                 .report-overview-toggle button.is-active { background: #2563eb; color: #ffffff; }
+                .report-overview-amount-line { display: grid; grid-template-columns: minmax(130px, 168px) minmax(0, 1fr); align-items: center; gap: 8px; }
                 .report-overview-amount-field { display: grid; grid-template-columns: minmax(0, 1fr) 54px; align-items: center; gap: 6px; }
                 .report-overview-amount-field em { font-style: normal; color: #475569; font-size: 13px; font-weight: 900; }
                 .report-overview-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 14px 14px; }
@@ -2501,22 +2552,29 @@ ${colgroup}
                                 <option value="">월 확인 중</option>
                             </select>
                         </label>
-                        <button type="button" class="report-deck-action-button" data-report-edit-toggle aria-pressed="false">수정</button>
-                        <button type="button" class="report-deck-action-button" data-report-add-page="slide10">페이지 추가</button>
-                        <div class="report-capture-controls" data-report-capture-controls>
-                            <span>범위</span>
-                            <input type="number" min="1" step="1" inputmode="numeric" pattern="[0-9]*" value="1" data-report-capture-range-start aria-label="시작 페이지">
-                            <span>~</span>
-                            <input type="number" min="1" step="1" inputmode="numeric" pattern="[0-9]*" value="1" data-report-capture-range-end aria-label="끝 페이지">
-                            <label class="report-capture-current-only">
-                                <input type="checkbox" data-report-capture-current-only>
-                                <span>현재 페이지만</span>
-                            </label>
+                        <div class="report-save-menu" data-report-save-menu>
+                            <button type="button" class="report-deck-action-button" data-report-save-menu-toggle aria-haspopup="dialog" aria-expanded="false">저장</button>
+                            <div class="report-save-menu-panel" data-report-save-menu-panel role="dialog" aria-label="저장 옵션" hidden>
+                                <div class="report-capture-controls" data-report-capture-controls>
+                                    <span>범위</span>
+                                    <input type="number" min="1" step="1" inputmode="numeric" pattern="[0-9]*" value="1" data-report-capture-range-start aria-label="시작 페이지">
+                                    <span>~</span>
+                                    <input type="number" min="1" step="1" inputmode="numeric" pattern="[0-9]*" value="1" data-report-capture-range-end aria-label="끝 페이지">
+                                    <label class="report-capture-current-only">
+                                        <input type="checkbox" data-report-capture-current-only>
+                                        <span>현재 페이지만</span>
+                                    </label>
+                                </div>
+                                <div class="report-save-menu-actions">
+                                    <button type="button" class="report-deck-action-button" data-report-capture-zip>&#52897;&#52432;</button>
+                                    <button type="button" class="report-deck-action-button" data-report-capture-pdf>PDF</button>
+                                    <button type="button" class="report-deck-action-button" data-report-export-html>HTML</button>
+                                </div>
+                            </div>
                         </div>
-                        <button type="button" class="report-deck-action-button" data-report-capture-zip>&#52897;&#52432;</button>
-                        <button type="button" class="report-deck-action-button" data-report-capture-pdf>PDF</button>
-                        <button type="button" class="report-deck-action-button" data-report-export-html>HTML</button>
-                        <button type="button" class="report-deck-action-button" data-report-fullscreen>전체화면</button>
+                        <button type="button" class="report-deck-action-button" data-report-edit-toggle aria-pressed="false">수정</button>
+                        <button type="button" class="report-deck-action-button report-deck-icon-button" data-report-fullscreen aria-label="발표" title="발표"><span class="report-deck-fullscreen-icon" aria-hidden="true">&#9974;</span></button>
+                        <button type="button" class="report-deck-action-button" data-report-add-page="slide10">페이지 추가</button>
                     </div>
                 </div>
                 <div class="report-deck-workspace">

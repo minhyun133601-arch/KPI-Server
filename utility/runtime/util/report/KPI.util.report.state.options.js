@@ -23,7 +23,7 @@
             usageDecimals: 1,
             costDecimals: 1,
             productionDecimals: 1,
-            ratioDecimals: 3,
+            ratioDecimals: 1,
             decimals: 1,
             showLabels: false,
             usageChartType: 'bar',

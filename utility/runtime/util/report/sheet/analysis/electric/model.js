@@ -719,7 +719,7 @@
             icon: 'fa-gauge-high',
             tone: 'electric',
             metricLabel: 'kWh/kg',
-            decimals: 3,
+            decimals: 1,
             color: '#111827',
             chartType: 'line',
             lineWidth: 3.2,

@@ -305,7 +305,7 @@
 
     function resolveUtilGasAnalysisDefaultDecimals(chartKey = '', unitKey = getUtilGasAnalysisUnitKey(chartKey)) {
         const options = getUtilGasAnalysisUnitOptions(chartKey);
-        if (!options.length && isUtilGasAnalysisRatioSeriesKey(chartKey)) return 3;
+        if (!options.length && isUtilGasAnalysisRatioSeriesKey(chartKey)) return 1;
         return normalizeUtilSheetAnalysisDecimalDigits(getUtilGasAnalysisUnitOption(chartKey, unitKey)?.decimals, 0);
     }
 

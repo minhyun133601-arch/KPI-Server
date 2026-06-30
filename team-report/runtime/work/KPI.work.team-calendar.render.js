@@ -142,6 +142,18 @@
                     : (selectedProductionSummary?.isOffday ? '-' : (category.emptyProductionLabel || '\uD488\uBAA9 \uC5C6\uC74C'));
                 detailCountBadgeText = detailCountText;
             }
+            if (!hasSelectedEntryContent) {
+                detailCountBadgeText = '';
+            }
+            const detailCountBadgeHtml = detailCountBadgeText
+                ? `<span class="work-team-calendar-editor-count" data-work-team-member-count>${escapeHtml(detailCountBadgeText)}</span>`
+                : '';
+            const showProductionDetailField = !(selectedProductionSummary?.isOffday && hasSelectedEntryContent);
+            const showSelectionClearButton = detailOverlayActive && !workInputActive;
+            const detailEditorStateClass = [
+                workInputActive ? 'is-work-active' : '',
+                showSelectionClearButton ? 'has-selection-clear' : ''
+            ].filter(Boolean).join(' ');
             const isInline = isWorkTeamCalendarInlineMode();
             const isFullscreenActive = isWorkTeamCalendarFullscreen();
             const fullscreenToggleLabel = getWorkTeamCalendarFullscreenLabel(isFullscreenActive);
@@ -198,6 +210,7 @@
                 `
                 : '';
             const isWorkPopupActive = utilityPopupMetric === 'work';
+            const isProductionPopupActive = utilityPopupMetric === 'production';
             const workUtilityChipHtml = `
                 <button
                     type="button"
@@ -210,6 +223,22 @@
                     <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.workEntryCountText || '0건')}</span>
                     <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.workCostText || '-')}</span>
                 </button>
+            `;
+            const buildProductionUtilityChipHtml = (label = '총 생산량') => `
+                <div
+                    role="button"
+                    tabindex="0"
+                    class="work-team-calendar-utility-chip is-button${isProductionPopupActive ? ' is-active' : ''}"
+                    onclick="openWorkTeamCalendarUtilityPopup('production')"
+                    onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openWorkTeamCalendarUtilityPopup('production')}"
+                    aria-pressed="${isProductionPopupActive ? 'true' : 'false'}"
+                    aria-label="${escapeHtml(label)} 열기"
+                >
+                    <span class="work-team-calendar-utility-label">${escapeHtml(label)}</span>
+                    <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.production?.totalAmountText || '-')}</span>
+                    <span class="work-team-calendar-utility-meta">${escapeHtml(utilitySummary.production?.itemCountText || '-')}</span>
+                    <span class="work-team-calendar-utility-action-slot" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">${productionSummaryActionMenuHtml}</span>
+                </div>
             `;
             const wasteUtilityChipHtml = utilitySummary.waste
                 ? `
@@ -246,12 +275,7 @@
                             ${gasChoiceHtml}
                         </div>
                         ${wasteUtilityChipHtml}
-                        <div class="work-team-calendar-utility-chip">
-                            <span class="work-team-calendar-utility-label">총 생산량</span>
-                            <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.production?.totalAmountText || '-')}</span>
-                            <span class="work-team-calendar-utility-meta">${escapeHtml(utilitySummary.production?.itemCountText || '-')}</span>
-                            ${productionSummaryActionMenuHtml}
-                        </div>
+                        ${buildProductionUtilityChipHtml('총 생산량')}
                         ${workUtilityChipHtml}
                         ${equipmentUtilityChipHtml}
                     </div>
@@ -290,6 +314,40 @@
                 `
                 : utilitySummaryHtml;
             let utilityPopupHtml = '';
+            const buildProductionUtilityPopupHtml = () => {
+                const productionPopupMonthLabel = formatWorkTeamCalendarMonthOptionLabel(monthKey);
+                const productionPopupTitle = `${isOverviewSummary ? '전체' : (category.title || '팀')} 총 생산량`;
+                const productionTableHtml = typeof renderWorkTeamCalendarProductionTableHtml === 'function'
+                    ? renderWorkTeamCalendarProductionTableHtml(dataKey, monthDateKeys, category)
+                    : '<div class="work-team-calendar-production-empty">생산량 표를 불러오지 못했습니다.</div>';
+                return `
+                    <div class="work-team-calendar-overlay-layer">
+                        <button type="button" class="work-team-calendar-overlay-backdrop" onclick="closeWorkTeamCalendarUtilityPopup()" aria-label="총 생산량 팝업 닫기"></button>
+                        <div class="work-team-calendar-editor is-floating is-utility-popup" data-work-team-editor>
+                            <div class="work-team-calendar-editor-head">
+                                <div class="work-team-calendar-editor-handle" data-work-team-editor-handle>
+                                    <div class="work-team-calendar-editor-title">${escapeHtml(productionPopupTitle)}</div>
+                                    <div class="work-team-calendar-editor-sub">${escapeHtml(productionPopupMonthLabel + ' 상세')}</div>
+                                </div>
+                                <div class="work-team-calendar-editor-actions">
+                                    <span class="work-team-calendar-editor-count">${escapeHtml(utilitySummary.production?.itemCountText || '-')}</span>
+                                    <button type="button" class="work-team-calendar-editor-btn" onclick="closeWorkTeamCalendarUtilityPopup()" aria-label="총 생산량 팝업 닫기"><i class="fas fa-xmark"></i>닫기</button>
+                                </div>
+                            </div>
+                            <div class="work-team-calendar-field">
+                                <div class="work-team-calendar-field-head">
+                                    <span class="work-team-calendar-field-label">날짜별 생산량</span>
+                                </div>
+                                <div class="work-team-calendar-utility-popup-total">
+                                    <span class="work-team-calendar-utility-popup-total-value">${escapeHtml(utilitySummary.production?.totalAmountText || '-')}</span>
+                                    <span class="work-team-calendar-utility-popup-total-meta">${escapeHtml(utilitySummary.production?.itemCountText || '-')}</span>
+                                </div>
+                                ${productionTableHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            };
             if (isOverviewSummary) {
                 const utilityBreakdown = typeof buildWorkTeamCalendarOverviewUtilityBreakdown === 'function'
                     ? buildWorkTeamCalendarOverviewUtilityBreakdown(monthKey)
@@ -306,7 +364,6 @@
                         <span class="work-team-calendar-utility-value">${escapeHtml(valueText || '-')}</span>
                         <span class="work-team-calendar-utility-meta">${escapeHtml(metaText || '-')}</span>
                         ${hintHtml}
-                        ${metricKey === 'production' ? productionSummaryActionMenuHtml : ''}
                     `;
                     if (!isActionMetric) {
                         return `<div class="work-team-calendar-utility-chip">${bodyHtml}</div>`;
@@ -327,7 +384,7 @@
                         ${renderOverviewUtilityChip('electric', '전기 사용량', utilitySummary.electric?.usageText || '-', `비용 ${utilitySummary.electric?.costText || '-'}`)}
                         ${renderOverviewUtilityChip('gas', '가스 사용량', utilitySummary.gas?.usageText || '-', `비용 ${utilitySummary.gas?.costText || '-'}`)}
                         ${renderOverviewUtilityChip('waste', '폐수 방류량', utilitySummary.waste?.usageText || '-', `비용 ${utilitySummary.waste?.costText || '-'}`)}
-                        ${renderOverviewUtilityChip('production', '총생산량', utilitySummary.production?.totalAmountText || '-', utilitySummary.production?.itemCountText || '-')}
+                        ${buildProductionUtilityChipHtml('총생산량')}
                         ${renderOverviewUtilityChip('work', '작업내역', utilitySummary.workEntryCountText || '0건', `비용 ${utilitySummary.workCostText || '-'}`)}
                         ${equipmentUtilityChipHtml}
                     </div>
@@ -335,6 +392,8 @@
                 if (hasUtilityPopup) {
                     if (utilityPopupMetric === 'equipment' && typeof renderWorkTeamCalendarEquipmentPopupHtml === 'function') {
                         utilityPopupHtml = renderWorkTeamCalendarEquipmentPopupHtml(equipmentSummary, category);
+                    } else if (utilityPopupMetric === 'production') {
+                        utilityPopupHtml = buildProductionUtilityPopupHtml();
                     } else if (utilityPopupMetric === 'work') {
                         const workPopupMonthLabel = utilityBreakdown.monthLabel || formatWorkTeamCalendarMonthOptionLabel(monthKey);
                         const workPopupHistoryHtml = renderWorkTeamCalendarGroupedHistoryHtml(dataKey, monthDateKeys);
@@ -453,6 +512,9 @@
             if (!isOverviewSummary && hasUtilityPopup && utilityPopupMetric === 'equipment' && typeof renderWorkTeamCalendarEquipmentPopupHtml === 'function') {
                 utilityPopupHtml = renderWorkTeamCalendarEquipmentPopupHtml(equipmentSummary, category);
             }
+            if (!isOverviewSummary && hasUtilityPopup && utilityPopupMetric === 'production') {
+                utilityPopupHtml = buildProductionUtilityPopupHtml();
+            }
             if (!isOverviewSummary && hasUtilityPopup && utilityPopupMetric === 'work') {
                 const workPopupMonthLabel = formatWorkTeamCalendarMonthOptionLabel(monthKey);
                 const workPopupHistoryHtml = renderWorkTeamCalendarGroupedHistoryHtml(dataKey, monthDateKeys);
@@ -526,6 +588,7 @@
                 const historyCount = Number(historySummary?.count || 0);
                 const hasHistory = inMonth && historyCount > 0;
                 const isOffday = inMonth && !!productionSummary?.isOffday;
+                const canOpenDate = inMonth && !isLocked && !(isOffday && !hasHistory);
                 const classes = [
                     'work-team-calendar-day',
                     inMonth ? '' : 'is-out',
@@ -579,7 +642,7 @@
                     cueHtml = `<span class="work-team-calendar-day-summary">\uAE30\uB85D \uC5C6\uC74C</span>`;
                 }
                 return `
-                    <button type="button" class="${classes}" data-work-team-date="${inMonth ? escapeHtml(dateKey) : ''}" ${inMonth && !isLocked ? `onclick="workTeamCalendarSelectDate('${dateKey}', event)"` : 'disabled'}>
+                    <button type="button" class="${classes}" data-work-team-date="${inMonth ? escapeHtml(dateKey) : ''}" ${canOpenDate ? `onclick="workTeamCalendarSelectDate('${dateKey}', event)"` : 'disabled'}>
                         <div class="work-team-calendar-day-top">
                             <div class="work-team-calendar-day-main">
                                 <span class="work-team-calendar-day-number">${date.getDate()}</span>
@@ -628,14 +691,14 @@
                             ${detailOverlayActive ? `
                                 <div class="work-team-calendar-overlay-layer">
                                     <button type="button" class="work-team-calendar-overlay-backdrop" onclick="clearWorkTeamCalendarSelection()" aria-label="선택 닫기"></button>
-                                    <div class="work-team-calendar-editor is-floating ${workInputActive ? 'is-work-active' : ''}" data-work-team-editor>
+                                    <div class="work-team-calendar-editor is-floating${detailEditorStateClass ? ` ${detailEditorStateClass}` : ''}" data-work-team-editor>
                                         <div class="work-team-calendar-editor-head">
                                             <div class="work-team-calendar-editor-handle" data-work-team-editor-handle>
                                                 ${detailTitle ? `<div class="work-team-calendar-editor-title">${escapeHtml(detailTitle)}</div>` : ''}
                                                 ${detailSub ? `<div class="work-team-calendar-editor-sub">${escapeHtml(detailSub)}</div>` : ''}
                                             </div>
                                             <div class="work-team-calendar-editor-actions">
-                                                <span class="work-team-calendar-editor-count" data-work-team-member-count>${escapeHtml(detailCountBadgeText)}</span>
+                                                ${detailCountBadgeHtml}
                                                 ${workInputActive ? `
                                                     <label class="work-team-calendar-editor-btn">
                                                         <i class="fas fa-paperclip"></i>첨부
@@ -644,6 +707,9 @@
                                                     <button type="button" class="work-team-calendar-editor-btn is-danger" onclick="deleteWorkTeamCalendarSelectedEntries()" ${hasSelectedEntryContent ? 'title="\uC120\uD0DD\uD55C \uC791\uC5C5\uB0B4\uC5ED\uC744 \uC0AD\uC81C\uD569\uB2C8\uB2E4."' : 'disabled title="\uC0AD\uC81C\uD560 \uC791\uC5C5\uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."'}><i class="fas fa-trash-can"></i>${escapeHtml(isBatchSelection ? '\uC120\uD0DD \uC0AD\uC81C' : '\uC791\uC5C5\uB0B4\uC5ED \uC0AD\uC81C')}</button>
                                                     <button type="button" class="work-team-calendar-editor-btn is-primary" onclick="completeWorkTeamCalendarEditor()"><i class="fas fa-check"></i>완료</button>
                                                     <button type="button" class="work-team-calendar-editor-btn" onclick="closeWorkTeamCalendarEditor()" aria-label="닫기"><i class="fas fa-xmark"></i></button>
+                                                ` : ''}
+                                                ${showSelectionClearButton ? `
+                                                    <button type="button" class="work-team-calendar-editor-btn is-selection-clear" onclick="clearWorkTeamCalendarSelection()" aria-label="\uC120\uD0DD \uD574\uC81C" title="\uC120\uD0DD \uD574\uC81C"><i class="fas fa-xmark"></i></button>
                                                 ` : ''}
                                             </div>
                                         </div>
@@ -705,16 +771,17 @@
                                                 ${readonlyEntriesHtml}
                                             </div>
                                         ` : ''}
+                                        ${showProductionDetailField ? `
                                         <div class="work-team-calendar-field">
-                                            <div class="work-team-calendar-field-head">
-                                                <span class="work-team-calendar-field-label">${isOverviewCalendar ? '팀별 생산 품목' : '생산량'}</span>
-                                                <div class="work-team-calendar-production-card-actions">
-                                                    <button type="button" class="work-team-calendar-editor-btn" onclick="clearWorkTeamCalendarSelection()" aria-label="선택 해제"><i class="fas fa-xmark"></i>선택 해제</button>
+                                            ${isOverviewCalendar ? `
+                                                <div class="work-team-calendar-field-head">
+                                                    <span class="work-team-calendar-field-label">팀별 생산 품목</span>
                                                 </div>
-                                            </div>
+                                            ` : ''}
                                             ${productionMetricText ? `<div class="work-team-calendar-production-summary${productionMetricClass}">${escapeHtml(productionMetricText)}</div>` : ''}
                                             <div class="work-team-calendar-production-groups">${productionGroupsHtml}</div>
                                         </div>
+                                        ` : ''}
                                     </div>
                                 </div>
                             ` : ''}

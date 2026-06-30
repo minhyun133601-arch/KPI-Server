@@ -75,8 +75,8 @@ test('report sheet analysis range-ratio registry builds tables, chart html, and 
     getUtilGasAnalysisChartUnitLabel(chartKey, unitKey) {
       return String(unitKey || '').trim() === 'kg' ? 'kg' : '%';
     },
-    getUtilGasAnalysisChartDecimals(chartKey) {
-      return String(chartKey || '').trim() === 'line-a' ? 1 : 3;
+    getUtilGasAnalysisChartDecimals() {
+      return 1;
     },
     getUtilGasAnalysisUnitOptions(chartKey) {
       return String(chartKey || '').trim() === 'line-a'
@@ -107,7 +107,8 @@ test('report sheet analysis range-ratio registry builds tables, chart html, and 
       return JSON.stringify({
         seriesCount: Array.isArray(series) ? series.length : 0,
         chartTitle: options.chartTitle,
-        axisYLabel: options.axisYLabel
+        axisYLabel: options.axisYLabel,
+        decimals: options.decimals
       });
     }
   });
@@ -135,6 +136,7 @@ test('report sheet analysis range-ratio registry builds tables, chart html, and 
   const parsedChartHtml = JSON.parse(rangeChartHtml);
   assert.equal(parsedChartHtml.seriesCount, 1);
   assert.equal(parsedChartHtml.axisYLabel, 'kg/kg');
+  assert.equal(parsedChartHtml.decimals, 1);
 
   const combinedModel = registry.buildUtilGasAnalysisRatioCombinedChartModel(rangeTables, '2026-01 ~ 2026-02', {
     activeMonthKey: '2026-02',
@@ -159,8 +161,11 @@ test('report sheet analysis range-ratio registry builds tables, chart html, and 
   });
 
   assert.equal(combinedModel?.key, 'ratio-combined');
+  assert.equal(combinedModel?.decimals, 1);
   assert.equal(combinedModel?.series?.length, 3);
   assert.equal(combinedModel?.controlItems?.length, 3);
+  assert.equal(combinedModel?.controlItems?.find((item) => item.key === 'ratio-lng')?.decimals, 1);
+  assert.equal(combinedModel?.series?.find((series) => series.seriesKey === 'ratio-lng')?.decimals, 1);
   assert.equal(combinedModel?.summaryItems?.length, 3);
   assert.equal(combinedModel?.summaryControlItems?.length, 3);
   assert.equal(combinedModel?.hasVisibleSeries, true);

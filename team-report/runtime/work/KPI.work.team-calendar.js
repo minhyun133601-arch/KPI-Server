@@ -332,7 +332,7 @@
 
         function getWorkTeamCalendarUtilityPopupMetric(dataKey = WorkState.teamCalendarModal) {
             const raw = String(WorkState.teamCalendarUtilityPopup?.[dataKey] || '').trim().toLowerCase();
-            return ['electric', 'gas', 'work', 'equipment'].includes(raw) ? raw : '';
+            return ['electric', 'gas', 'production', 'work', 'equipment'].includes(raw) ? raw : '';
         }
 
         function closeWorkTeamCalendarUtilityPopup(dataKey = WorkState.teamCalendarModal, options = {}) {
@@ -352,7 +352,7 @@
             const isOverviewCalendar = typeof isWorkTeamCalendarOverview === 'function'
                 ? isWorkTeamCalendarOverview(dataKey)
                 : false;
-            const allowedMetrics = isOverviewCalendar ? ['electric', 'gas', 'work', 'equipment'] : ['work', 'equipment'];
+            const allowedMetrics = isOverviewCalendar ? ['electric', 'gas', 'production', 'work', 'equipment'] : ['production', 'work', 'equipment'];
             if (!allowedMetrics.includes(normalizedMetric)) return false;
             if (!normalizedMetric) return false;
             const currentMetric = getWorkTeamCalendarUtilityPopupMetric(dataKey);

@@ -218,6 +218,9 @@
         slide6WasteMemo: '',
         slide7WasteMemo: '',
         reportMemoLineSizes: '{}',
+        reportMemoLineSizeRanges: '{}',
+        reportMemoLineColors: '{}',
+        reportMemoPreserveFormatting: '{}',
         chartHighlights: '',
         chartHighlightRanges: '',
         slide8Section: 'Ⅲ. 공무환경팀',
@@ -372,96 +375,112 @@
         slide10Item1Effect: '',
         slide10Item1Date: '',
         slide10Item1Amount: '',
+        slide10Item1AmountText: '',
         slide10Item2Text: '',
         slide10Item2Team: '',
         slide10Item2Title: '',
         slide10Item2Effect: '',
         slide10Item2Date: '',
         slide10Item2Amount: '',
+        slide10Item2AmountText: '',
         slide10Item3Text: '',
         slide10Item3Team: '',
         slide10Item3Title: '',
         slide10Item3Effect: '',
         slide10Item3Date: '',
         slide10Item3Amount: '',
+        slide10Item3AmountText: '',
         slide10Item4Text: '',
         slide10Item4Team: '',
         slide10Item4Title: '',
         slide10Item4Effect: '',
         slide10Item4Date: '',
         slide10Item4Amount: '',
+        slide10Item4AmountText: '',
         slide10Item5Text: '',
         slide10Item5Team: '',
         slide10Item5Title: '',
         slide10Item5Effect: '',
         slide10Item5Date: '',
         slide10Item5Amount: '',
+        slide10Item5AmountText: '',
         slide10Item6Text: '',
         slide10Item6Team: '',
         slide10Item6Title: '',
         slide10Item6Effect: '',
         slide10Item6Date: '',
         slide10Item6Amount: '',
+        slide10Item6AmountText: '',
         slide10Item7Text: '',
         slide10Item7Team: '',
         slide10Item7Title: '',
         slide10Item7Effect: '',
         slide10Item7Date: '',
         slide10Item7Amount: '',
+        slide10Item7AmountText: '',
         slide10Item8Text: '',
         slide10Item8Team: '',
         slide10Item8Title: '',
         slide10Item8Effect: '',
         slide10Item8Date: '',
         slide10Item8Amount: '',
+        slide10Item8AmountText: '',
         slide10Item9Text: '',
         slide10Item9Team: '',
         slide10Item9Title: '',
         slide10Item9Effect: '',
         slide10Item9Date: '',
         slide10Item9Amount: '',
+        slide10Item9AmountText: '',
         slide10Item10Text: '',
         slide10Item10Team: '',
         slide10Item10Title: '',
         slide10Item10Effect: '',
         slide10Item10Date: '',
         slide10Item10Amount: '',
+        slide10Item10AmountText: '',
         slide10Item11Text: '',
         slide10Item11Team: '',
         slide10Item11Title: '',
         slide10Item11Effect: '',
         slide10Item11Date: '',
         slide10Item11Amount: '',
+        slide10Item11AmountText: '',
         slide10Item12Text: '',
         slide10Item12Team: '',
         slide10Item12Title: '',
         slide10Item12Effect: '',
         slide10Item12Date: '',
         slide10Item12Amount: '',
+        slide10Item12AmountText: '',
         slide10Item13Text: '',
         slide10Item13Team: '',
         slide10Item13Title: '',
         slide10Item13Effect: '',
         slide10Item13Date: '',
         slide10Item13Amount: '',
+        slide10Item13AmountText: '',
         slide10Item14Text: '',
         slide10Item14Team: '',
         slide10Item14Title: '',
         slide10Item14Effect: '',
         slide10Item14Date: '',
         slide10Item14Amount: '',
+        slide10Item14AmountText: '',
         slide10Item15Text: '',
         slide10Item15Team: '',
         slide10Item15Title: '',
         slide10Item15Effect: '',
         slide10Item15Date: '',
         slide10Item15Amount: '',
+        slide10Item15AmountText: '',
         slide10Item16Text: '',
         slide10Item16Team: '',
         slide10Item16Title: '',
         slide10Item16Effect: '',
         slide10Item16Date: '',
         slide10Item16Amount: '',
+        slide10Item16AmountText: '',
         slide10BeforeImage1: '',
         slide10BeforeImage2: '',
         slide10BeforeImage3: '',
@@ -494,6 +513,7 @@
         slide10AfterImage14: '',
         slide10AfterImage15: '',
         slide10AfterImage16: '',
+        slide10TableOrder: '',
         slide10DeletedSlotBackups: ''
     });
 
@@ -505,12 +525,14 @@
     const REPORT_DECK_COMPLETE_EDIT_EVENT = 'kpi:report-deck-complete-edit';
     const REPORT_DECK_MONTH_RECORD_PREFIX = 'report_';
     const REPORT_DECK_OPEN_MONTH_START = '2024-01';
-    const REPORT_DECK_SLIDE8_OVERVIEW_TEAMS = Object.freeze(['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀']);
+    const REPORT_DECK_OTHER_TEAM_LABEL = '기타';
+    const REPORT_DECK_SLIDE8_OVERVIEW_TEAMS = Object.freeze(['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀', '물류센터', REPORT_DECK_OTHER_TEAM_LABEL]);
     const REPORT_DECK_PLAN_MAX_ITEMS = 8;
+    const REPORT_DECK_PLAN_SLIDE_KEYS = Object.freeze(['slide8', 'slide9', 'slide10']);
+    // Slide10 keeps the 2-row x 4-slot page format while allowing unlimited total records across pages.
     const REPORT_DECK_PLAN_MAX_ITEMS_BY_SLIDE = Object.freeze({
         slide8: 8,
-        slide9: 8,
-        slide10: 16
+        slide9: 8
     });
     const REPORT_DECK_SLIDE10_SLOTS_PER_PAGE = 8;
     const REPORT_DECK_SLIDE10_COLUMNS_PER_ROW = 4;
@@ -518,9 +540,7 @@
     const REPORT_DECK_SLIDE10_PAGE_COUNT = 1;
     const REPORT_DECK_SLIDE10_BASE_SLOT_COUNT = REPORT_DECK_SLIDE10_SLOTS_PER_PAGE * REPORT_DECK_SLIDE10_PAGE_COUNT;
     const REPORT_DECK_SLIDE10_DELETE_BACKUP_LIMIT = 12;
-    const REPORT_DECK_SLIDE10_HAZARD_OPTIONS = Object.freeze(['미끄럼', '넘어짐', '끼임', '충돌', '낙하/비래', '베임/찔림', '화재', '감전', '누출', '화상']);
     const REPORT_DECK_SLIDE10_TEAM_ROWS = Object.freeze(REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.slice());
-    const REPORT_DECK_SLIDE10_SELF_HANDLED_AMOUNT_LABEL = '자체처리';
     const REPORT_DECK_SELF_HANDLED_AMOUNT_LABEL = '자체 처리';
     const REPORT_DECK_MEMO_TEAM_OPTIONS = Object.freeze([
         Object.freeze({ key: 'team_01_01', label: '1팀 1파트' }),
@@ -618,6 +638,7 @@
     const REPORT_DECK_MEMO_LINE_FONT_SIZE_MAX = 3;
     const REPORT_DECK_MEMO_LINE_FONT_SIZE_BASE = 10.4;
     const REPORT_DECK_MEMO_LINE_FONT_SIZE_STEP = 1.2;
+    const REPORT_DECK_MEMO_LINE_BREAK = '\u2028';
     const REPORT_DECK_MEMO_PRODUCTION_LINES = Object.freeze({
         team_01_01: Object.freeze(['SD', 'MSD']),
         team_01_02: Object.freeze(['지대', 'ICA']),
@@ -715,6 +736,10 @@
         const number = Number(numberText);
         if (!Number.isFinite(number)) return '';
         return String(number);
+    }
+
+    function normalizeReportDeckOverviewAmountText(value) {
+        return String(value || '').trim();
     }
 
     function normalizeReportDeckMonth(value) {
@@ -965,13 +990,25 @@
         return REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.includes(team) ? team : '';
     }
 
+    function normalizeReportDeckOverviewTeamValue(value) {
+        return String(value || '').trim();
+    }
+
+    function normalizeReportDeckSlide10Team(value) {
+        return normalizeReportDeckOverviewTeamValue(value);
+    }
+
+    function getReportDeckOverviewCustomTeam(value) {
+        const team = normalizeReportDeckOverviewTeamValue(value);
+        return team && !normalizeReportDeckOverviewTeam(team) ? team : '';
+    }
+
     function normalizeReportDeckSlide9Kind(value) {
         return String(value || '').trim() === 'purpose' ? 'purpose' : 'cause';
     }
 
     function normalizeReportDeckSlide10Hazard(value) {
-        const hazard = String(value || '').trim();
-        return REPORT_DECK_SLIDE10_HAZARD_OPTIONS.includes(hazard) ? hazard : '';
+        return String(value || '').trim();
     }
 
     function getReportDeckSlide9KindLabel(value) {
@@ -979,8 +1016,14 @@
     }
 
     function getReportDeckOverviewTeamOrder(team) {
-        const index = REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.indexOf(normalizeReportDeckOverviewTeam(team));
-        return index >= 0 ? index : REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.length + 1;
+        const normalizedTeam = normalizeReportDeckOverviewTeam(team);
+        const index = REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.indexOf(normalizedTeam);
+        if (index >= 0) return index;
+        if (normalizeReportDeckOverviewTeamValue(team)) {
+            const otherIndex = REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.indexOf(REPORT_DECK_OTHER_TEAM_LABEL);
+            return otherIndex >= 0 ? otherIndex : REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.length;
+        }
+        return REPORT_DECK_SLIDE8_OVERVIEW_TEAMS.length + 1;
     }
 
     function compareReportDeckOverviewDate(leftDate = '', rightDate = '') {
@@ -1018,12 +1061,12 @@
     }
 
     function isReportDeckSlide10PayloadKey(key = '') {
-        return /^slide10Item\d+(?:Text|Team|Title|Effect|Date|Amount)$/.test(String(key || '').trim())
+        return /^slide10Item\d+(?:Text|Team|Title|Effect|Date|Amount|AmountText)$/.test(String(key || '').trim())
             || /^slide10(?:Before|After)Image\d+$/.test(String(key || '').trim());
     }
 
     function getReportDeckSlide10PayloadKeyIndex(key = '') {
-        const match = String(key || '').trim().match(/^slide10Item(\d+)(?:Text|Team|Title|Effect|Date|Amount)$|^slide10(?:Before|After)Image(\d+)$/);
+        const match = String(key || '').trim().match(/^slide10Item(\d+)(?:Text|Team|Title|Effect|Date|Amount|AmountText)$|^slide10(?:Before|After)Image(\d+)$/);
         return match ? normalizeReportDeckPositiveIndex(match[1] || match[2]) : 0;
     }
 
@@ -1050,7 +1093,7 @@
     function getReportDeckSlide8OverviewEntry(state, slotIndex) {
         const index = Math.max(1, Math.min(REPORT_DECK_PLAN_MAX_ITEMS, Number.parseInt(String(slotIndex || ''), 10) || 1));
         return {
-            team: normalizeReportDeckOverviewTeam(state[`slide8Item${index}Team`]),
+            team: normalizeReportDeckOverviewTeamValue(state[`slide8Item${index}Team`]),
             title: String(state[`slide8Item${index}Title`] || '').trim(),
             effect: String(state[`slide8Item${index}Effect`] || '').trim(),
             date: normalizeReportDeckOverviewDate(state[`slide8Item${index}Date`]),
@@ -1090,7 +1133,7 @@
     function setReportDeckSlide8OverviewEntry(state, slotIndex, entry = {}) {
         const index = Math.max(1, Math.min(REPORT_DECK_PLAN_MAX_ITEMS, Number.parseInt(String(slotIndex || ''), 10) || 1));
         const normalizedEntry = {
-            team: normalizeReportDeckOverviewTeam(entry.team),
+            team: normalizeReportDeckOverviewTeamValue(entry.team),
             title: String(entry.title || '').trim(),
             effect: String(entry.effect || '').trim(),
             date: normalizeReportDeckOverviewDate(entry.date),
@@ -1135,7 +1178,7 @@
     function getReportDeckSlide9OverviewEntry(state, slotIndex) {
         const index = Math.max(1, Math.min(REPORT_DECK_PLAN_MAX_ITEMS, Number.parseInt(String(slotIndex || ''), 10) || 1));
         return {
-            team: normalizeReportDeckOverviewTeam(state[`slide9Item${index}Team`]),
+            team: normalizeReportDeckOverviewTeamValue(state[`slide9Item${index}Team`]),
             title: String(state[`slide9Item${index}Title`] || '').trim(),
             kind: normalizeReportDeckSlide9Kind(state[`slide9Item${index}Kind`]),
             detail: String(state[`slide9Item${index}Detail`] || '').trim(),
@@ -1174,7 +1217,7 @@
     function setReportDeckSlide9OverviewEntry(state, slotIndex, entry = {}) {
         const index = Math.max(1, Math.min(REPORT_DECK_PLAN_MAX_ITEMS, Number.parseInt(String(slotIndex || ''), 10) || 1));
         const normalizedEntry = {
-            team: normalizeReportDeckOverviewTeam(entry.team),
+            team: normalizeReportDeckOverviewTeamValue(entry.team),
             title: String(entry.title || '').trim(),
             kind: normalizeReportDeckSlide9Kind(entry.kind),
             detail: String(entry.detail || '').trim(),
@@ -1218,22 +1261,25 @@
 
     function normalizeReportDeckPlanSlideKey(value) {
         const key = String(value || '').trim();
-        return Object.prototype.hasOwnProperty.call(REPORT_DECK_PLAN_MAX_ITEMS_BY_SLIDE, key) ? key : '';
+        return REPORT_DECK_PLAN_SLIDE_KEYS.includes(key) ? key : '';
     }
 
     function getReportDeckPlanMaxItems(slideKey = '') {
         const normalizedSlideKey = normalizeReportDeckPlanSlideKey(slideKey);
+        if (normalizedSlideKey === 'slide10') return Number.POSITIVE_INFINITY;
         return REPORT_DECK_PLAN_MAX_ITEMS_BY_SLIDE[normalizedSlideKey] || REPORT_DECK_PLAN_MAX_ITEMS;
     }
 
     function getReportDeckSlide10OverviewEntry(state, slotIndex) {
         const index = normalizeReportDeckPositiveIndex(slotIndex);
+        const amount = normalizeReportDeckOverviewAmount(state[`slide10Item${index}Amount`]);
         return {
-            team: normalizeReportDeckOverviewTeam(state[`slide10Item${index}Team`]),
+            team: normalizeReportDeckSlide10Team(state[`slide10Item${index}Team`]),
             title: String(state[`slide10Item${index}Title`] || '').trim(),
             effect: normalizeReportDeckSlide10Hazard(state[`slide10Item${index}Effect`]) || String(state[`slide10Item${index}Effect`] || '').trim(),
             date: normalizeReportDeckOverviewDate(state[`slide10Item${index}Date`]),
-            amount: normalizeReportDeckOverviewAmount(state[`slide10Item${index}Amount`]),
+            amount,
+            amountText: normalizeReportDeckOverviewAmountText(state[`slide10Item${index}AmountText`]),
             text: String(state[`slide10Item${index}Text`] || ''),
             beforeImage: String(state[`slide10BeforeImage${index}`] || ''),
             afterImage: String(state[`slide10AfterImage${index}`] || ''),
@@ -1243,13 +1289,19 @@
 
     function getReportDeckSlide10OverviewLines(entry = {}) {
         const title = String(entry.title || '').trim();
-        if (!title && !entry.effect && !entry.date && !entry.amount) {
+        const customAmountText = normalizeReportDeckOverviewAmountText(entry.amountText);
+        if (!title && !entry.effect && !entry.date && !entry.amount && !customAmountText) {
             return { title: '', meta: '', text: String(entry.text || '') };
         }
         const parts = [];
         if (entry.date) parts.push(formatReportDeckOverviewDate(entry.date));
         const amountText = formatReportDeckOverviewAmount(entry.amount);
-        parts.push(amountText ? `${amountText} 소요` : REPORT_DECK_SLIDE10_SELF_HANDLED_AMOUNT_LABEL);
+        if (amountText) {
+            parts.push(`${amountText} 소요`);
+        }
+        if (customAmountText) {
+            parts.push(customAmountText);
+        }
         if (entry.effect) parts.push(`${entry.effect} 예방`);
         const meta = parts.join(', ');
         return {
@@ -1265,15 +1317,18 @@
 
     function renderReportDeckSlide10OverviewSummaryHtml(entry = {}) {
         const lines = getReportDeckSlide10OverviewLines(entry);
+        const team = normalizeReportDeckSlide10Team(entry.team);
+        const teamHtml = team ? `<span class="report-safety-summary-team">${escapeReportDeckHtml(team)}</span>` : '';
         if (lines.title || lines.meta) {
             return [
+                teamHtml,
                 lines.title ? `<span class="report-safety-summary-title">${escapeReportDeckHtml(lines.title)}</span>` : '',
                 lines.meta ? `<span class="report-safety-summary-meta">${escapeReportDeckHtml(lines.meta)}</span>` : ''
             ].filter(Boolean).join('');
         }
         return lines.text
-            ? `<span class="report-safety-summary-meta">${escapeReportDeckHtml(lines.text)}</span>`
-            : '';
+            ? [teamHtml, `<span class="report-safety-summary-meta">${escapeReportDeckHtml(lines.text)}</span>`].filter(Boolean).join('')
+            : teamHtml;
     }
 
     function hasReportDeckSlide10OverviewData(entry = {}) {
@@ -1283,6 +1338,7 @@
             || entry.effect
             || entry.date
             || entry.amount
+            || entry.amountText
             || String(entry.text || '').trim()
             || entry.beforeImage
             || entry.afterImage
@@ -1292,11 +1348,12 @@
     function setReportDeckSlide10OverviewEntry(state, slotIndex, entry = {}) {
         const index = normalizeReportDeckPositiveIndex(slotIndex);
         const normalizedEntry = {
-            team: normalizeReportDeckOverviewTeam(entry.team),
+            team: normalizeReportDeckSlide10Team(entry.team),
             title: String(entry.title || '').trim(),
             effect: normalizeReportDeckSlide10Hazard(entry.effect) || String(entry.effect || '').trim(),
             date: normalizeReportDeckOverviewDate(entry.date),
             amount: normalizeReportDeckOverviewAmount(entry.amount),
+            amountText: normalizeReportDeckOverviewAmountText(entry.amountText),
             text: String(entry.text || ''),
             beforeImage: String(entry.beforeImage || ''),
             afterImage: String(entry.afterImage || '')
@@ -1306,6 +1363,7 @@
         state[`slide10Item${index}Effect`] = normalizedEntry.effect;
         state[`slide10Item${index}Date`] = normalizedEntry.date;
         state[`slide10Item${index}Amount`] = normalizedEntry.amount;
+        state[`slide10Item${index}AmountText`] = normalizedEntry.amountText;
         state[`slide10Item${index}Text`] = formatReportDeckSlide10OverviewText(normalizedEntry);
         state[`slide10BeforeImage${index}`] = normalizedEntry.beforeImage;
         state[`slide10AfterImage${index}`] = normalizedEntry.afterImage;
@@ -1327,11 +1385,12 @@
         if (!backup || typeof backup !== 'object') return null;
         const sourceEntry = backup.entry && typeof backup.entry === 'object' ? backup.entry : backup;
         const entry = {
-            team: normalizeReportDeckOverviewTeam(sourceEntry.team),
+            team: normalizeReportDeckSlide10Team(sourceEntry.team),
             title: String(sourceEntry.title || '').trim(),
             effect: normalizeReportDeckSlide10Hazard(sourceEntry.effect) || String(sourceEntry.effect || '').trim(),
             date: normalizeReportDeckOverviewDate(sourceEntry.date),
             amount: normalizeReportDeckOverviewAmount(sourceEntry.amount),
+            amountText: normalizeReportDeckOverviewAmountText(sourceEntry.amountText),
             text: String(sourceEntry.text || ''),
             beforeImage: String(sourceEntry.beforeImage || ''),
             afterImage: String(sourceEntry.afterImage || '')
@@ -1376,6 +1435,7 @@
                 effect: entry.effect,
                 date: entry.date,
                 amount: entry.amount,
+                amountText: entry.amountText,
                 text: entry.text,
                 beforeImage: entry.beforeImage,
                 afterImage: entry.afterImage
@@ -1498,7 +1558,7 @@
     function ensureReportDeckSlide10TeamForSourceIndex(state = {}, sourceIndex = 0) {
         const index = normalizeReportDeckPositiveIndex(sourceIndex);
         const teamKey = `slide10Item${index}Team`;
-        if (normalizeReportDeckOverviewTeam(state[teamKey])) return false;
+        if (normalizeReportDeckSlide10Team(state[teamKey])) return false;
         const team = getReportDeckSlide10DefaultTeamForSourceIndex(index);
         if (!team) return false;
         state[teamKey] = team;
@@ -1519,6 +1579,7 @@
             && !entry.effect
             && !entry.date
             && !entry.amount
+            && !entry.amountText
             && !String(entry.text || '').trim()
             && !entry.beforeImage
             && !entry.afterImage
@@ -1556,6 +1617,74 @@
             .sort(compareReportDeckOverviewEntries);
     }
 
+    function normalizeReportDeckSlide10RowOrderIndex(value = 0) {
+        const index = Number.parseInt(String(value || ''), 10);
+        return Number.isInteger(index) && index >= 1 ? index : 0;
+    }
+
+    function trimReportDeckSlide10TrailingEmptySourceRows(rows = []) {
+        const normalizedRows = (Array.isArray(rows) ? rows : [])
+            .map(row => (Array.isArray(row) ? row : [])
+                .map(normalizeReportDeckSlide10RowOrderIndex)
+                .filter(index => index >= 1));
+        while (normalizedRows.length && !normalizedRows[normalizedRows.length - 1].length) {
+            normalizedRows.pop();
+        }
+        return normalizedRows;
+    }
+
+    function parseReportDeckSlide10TableOrder(value = '') {
+        const raw = String(value || '').trim();
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return [];
+            const usedIndexes = new Set();
+            const rows = parsed.map(row => {
+                if (!Array.isArray(row)) return [];
+                return row
+                    .map(normalizeReportDeckSlide10RowOrderIndex)
+                    .filter(index => {
+                        if (index < 1 || usedIndexes.has(index)) return false;
+                        usedIndexes.add(index);
+                        return true;
+                    });
+            });
+            return trimReportDeckSlide10TrailingEmptySourceRows(rows);
+        } catch (error) {
+            void error;
+            return [];
+        }
+    }
+
+    function serializeReportDeckSlide10TableOrder(rows = []) {
+        const usedIndexes = new Set();
+        const normalizedRows = (Array.isArray(rows) ? rows : []).map(row => {
+            const sourceIndexes = Array.isArray(row?.sourceIndexes) ? row.sourceIndexes : row;
+            return (Array.isArray(sourceIndexes) ? sourceIndexes : [])
+                .map(normalizeReportDeckSlide10RowOrderIndex)
+                .filter(index => {
+                    if (index < 1 || usedIndexes.has(index)) return false;
+                    usedIndexes.add(index);
+                    return true;
+                });
+        });
+        const trimmedRows = trimReportDeckSlide10TrailingEmptySourceRows(normalizedRows);
+        return trimmedRows.length ? JSON.stringify(trimmedRows) : '';
+    }
+
+    function getReportDeckSlide10RowTeamLabel(state = {}, sourceIndexes = [], fallback = '') {
+        const teams = [];
+        (Array.isArray(sourceIndexes) ? sourceIndexes : []).forEach(sourceIndex => {
+            const index = normalizeReportDeckSlide10RowOrderIndex(sourceIndex);
+            if (!index) return;
+            const entry = getReportDeckSlide10OverviewEntry(state, index);
+            const team = entry.team || getReportDeckSlide10DefaultTeamForSourceIndex(index);
+            if (team && !teams.includes(team)) teams.push(team);
+        });
+        return teams.join(' / ') || String(fallback || '').trim();
+    }
+
     function getReportDeckSlide10RowSizes(count = 0) {
         const total = Math.max(0, Number.parseInt(String(count || '0'), 10) || 0);
         if (total <= 0) return [];
@@ -1565,17 +1694,67 @@
         return Array.from({ length: rowCount }, (_, index) => baseSize + (index < extraCount ? 1 : 0));
     }
 
-    function buildReportDeckSlide10RowObjects(state = {}, options = {}) {
-        const includeEmpty = options.includeEmpty !== false;
-        const filledEntries = getReportDeckSlide10FilledEntries(state);
-        const hasFilledEntries = filledEntries.length > 0;
+    function appendReportDeckSlide10EditableEmptyRows(rows = [], options = {}) {
+        if (!rows.length) {
+            REPORT_DECK_SLIDE10_TEAM_ROWS
+                .slice(0, REPORT_DECK_SLIDE10_ROWS_PER_PAGE)
+                .forEach(team => rows.push({ team, sourceIndexes: [] }));
+            return rows;
+        }
+        if (options.includeEditableEmptyRows !== true) return rows;
+        const remainder = rows.length % REPORT_DECK_SLIDE10_ROWS_PER_PAGE;
+        if (!remainder) return rows;
+        const emptyCount = REPORT_DECK_SLIDE10_ROWS_PER_PAGE - remainder;
+        const usedTeams = new Set(rows.map(row => row.team).filter(Boolean));
+        for (let offset = 0; offset < emptyCount; offset += 1) {
+            const fallbackIndex = (rows.length + offset) % REPORT_DECK_SLIDE10_TEAM_ROWS.length;
+            const team = REPORT_DECK_SLIDE10_TEAM_ROWS.find(candidate => !usedTeams.has(candidate))
+                || REPORT_DECK_SLIDE10_TEAM_ROWS[fallbackIndex]
+                || '';
+            if (team) usedTeams.add(team);
+            rows.push({ team, sourceIndexes: [] });
+        }
+        return rows;
+    }
+
+    function getReportDeckSlide10EntryTeamLabel(entry = {}) {
+        return normalizeReportDeckSlide10Team(entry.team) || getReportDeckSlide10DefaultTeamForSourceIndex(entry.originalIndex);
+    }
+
+    function getReportDeckSlide10AutoRowTeams(entries = []) {
+        const teams = [];
+        REPORT_DECK_SLIDE10_TEAM_ROWS.forEach(knownTeam => {
+            if (knownTeam === REPORT_DECK_OTHER_TEAM_LABEL) {
+                entries.forEach(entry => {
+                    const entryTeam = normalizeReportDeckSlide10Team(entry.team);
+                    if (entryTeam && !normalizeReportDeckOverviewTeam(entryTeam) && !teams.includes(entryTeam)) {
+                        teams.push(entryTeam);
+                    }
+                });
+            }
+            if (entries.some(entry => entry.team === knownTeam) && !teams.includes(knownTeam)) {
+                teams.push(knownTeam);
+            }
+        });
+        entries.forEach(entry => {
+            const entryTeam = normalizeReportDeckSlide10Team(entry.team);
+            if (entryTeam && !teams.includes(entryTeam)) teams.push(entryTeam);
+        });
+        return teams;
+    }
+
+    function buildReportDeckSlide10AutoRowObjectsFromEntries(filledEntries = []) {
+        const entries = (Array.isArray(filledEntries) ? filledEntries : [])
+            .filter(entry => entry && normalizeReportDeckSlide10RowOrderIndex(entry.originalIndex) >= 1)
+            .map(entry => ({
+                ...entry,
+                team: getReportDeckSlide10EntryTeamLabel(entry)
+            }))
+            .sort(compareReportDeckOverviewEntries);
         const rows = [];
-        REPORT_DECK_SLIDE10_TEAM_ROWS.forEach(team => {
-            const teamEntries = filledEntries.filter(entry => entry.team === team);
+        getReportDeckSlide10AutoRowTeams(entries).forEach(team => {
+            const teamEntries = entries.filter(entry => entry.team === team);
             if (!teamEntries.length) {
-                if (includeEmpty && !hasFilledEntries && rows.length < REPORT_DECK_SLIDE10_ROWS_PER_PAGE) {
-                    rows.push({ team, sourceIndexes: [] });
-                }
                 return;
             }
             let offset = 0;
@@ -1588,13 +1767,56 @@
         return rows;
     }
 
+    function buildReportDeckSlide10ManualRowObjectsFromEntries(state = {}, filledEntries = []) {
+        const manualSourceRows = parseReportDeckSlide10TableOrder(state.slide10TableOrder);
+        if (!manualSourceRows.length) return null;
+        const filledEntryMap = new Map(
+            (Array.isArray(filledEntries) ? filledEntries : [])
+                .map(entry => [normalizeReportDeckSlide10RowOrderIndex(entry?.originalIndex), entry])
+                .filter(([index, entry]) => index >= 1 && entry)
+        );
+        const usedIndexes = new Set();
+        const rows = manualSourceRows.map(sourceIndexes => {
+            const rowSourceIndexes = sourceIndexes.filter(index => {
+                if (!filledEntryMap.has(index) || usedIndexes.has(index)) return false;
+                usedIndexes.add(index);
+                return true;
+            });
+            return {
+                team: getReportDeckSlide10RowTeamLabel(state, rowSourceIndexes),
+                sourceIndexes: rowSourceIndexes
+            };
+        });
+        while (rows.length && !rows[rows.length - 1].sourceIndexes.length) {
+            rows.pop();
+        }
+        if (!rows.some(row => row.sourceIndexes.length)) return null;
+        const remainingEntries = (Array.isArray(filledEntries) ? filledEntries : [])
+            .filter(entry => !usedIndexes.has(normalizeReportDeckSlide10RowOrderIndex(entry?.originalIndex)));
+        buildReportDeckSlide10AutoRowObjectsFromEntries(remainingEntries).forEach(row => rows.push(row));
+        return rows;
+    }
+
+    function buildReportDeckSlide10RowObjects(state = {}, options = {}) {
+        const includeEmpty = options.includeEmpty !== false;
+        const filledEntries = getReportDeckSlide10FilledEntries(state);
+        const rows = buildReportDeckSlide10ManualRowObjectsFromEntries(state, filledEntries)
+            || buildReportDeckSlide10AutoRowObjectsFromEntries(filledEntries);
+        return includeEmpty ? appendReportDeckSlide10EditableEmptyRows(rows, {
+            includeEditableEmptyRows: options.includeEditableEmptyRows === true
+        }) : rows;
+    }
+
     function buildReportDeckSlide10Rows(state = {}, options = {}) {
         return buildReportDeckSlide10RowObjects(state, options)
             .map(row => Array.from({ length: REPORT_DECK_SLIDE10_COLUMNS_PER_ROW }, (_, index) => row.sourceIndexes[index] || 0));
     }
 
     function getReportDeckSlide10RequiredPageCount(state = {}, options = {}) {
-        const rowCount = buildReportDeckSlide10RowObjects(state, { includeEmpty: options.includeEmpty !== false }).length;
+        const rowCount = buildReportDeckSlide10RowObjects(state, {
+            includeEmpty: options.includeEmpty !== false,
+            includeEditableEmptyRows: options.includeEditableEmptyRows === true
+        }).length;
         return Math.max(1, Math.ceil(rowCount / REPORT_DECK_SLIDE10_ROWS_PER_PAGE));
     }
 
@@ -1608,7 +1830,10 @@
     function getReportDeckSlide10PageRow(state = {}, pageIndex = 0, rowIndex = 0, options = {}) {
         const page = Math.max(0, Number.parseInt(String(pageIndex || '0'), 10) || 0);
         const row = Math.max(0, Number.parseInt(String(rowIndex || '0'), 10) || 0);
-        const rows = buildReportDeckSlide10RowObjects(state, { includeEmpty: options.includeEmpty !== false });
+        const rows = buildReportDeckSlide10RowObjects(state, {
+            includeEmpty: options.includeEmpty !== false,
+            includeEditableEmptyRows: options.includeEditableEmptyRows === true
+        });
         return rows[page * REPORT_DECK_SLIDE10_ROWS_PER_PAGE + row] || { team: '', sourceIndexes: [] };
     }
 
@@ -1692,7 +1917,10 @@
         const localIndex = Math.max(1, Number.parseInt(String(localSlotIndex || '1'), 10) || 1);
         const rowIndex = Math.floor((localIndex - 1) / REPORT_DECK_SLIDE10_COLUMNS_PER_ROW);
         const columnIndex = (localIndex - 1) % REPORT_DECK_SLIDE10_COLUMNS_PER_ROW;
-        const row = getReportDeckSlide10PageRows(state, pageIndex, { includeEmpty: options.includeEmpty !== false })[rowIndex] || [];
+        const row = getReportDeckSlide10PageRows(state, pageIndex, {
+            includeEmpty: options.includeEmpty !== false,
+            includeEditableEmptyRows: options.includeEditableEmptyRows === true
+        })[rowIndex] || [];
         return row[columnIndex] || 0;
     }
 
@@ -1736,12 +1964,20 @@
                 state[key] = normalizeReportDeckDepartment(rawValue);
             } else if (key === 'reportMemoLineSizes') {
                 state[key] = normalizeReportDeckMemoLineSizes(rawValue);
+            } else if (key === 'reportMemoLineSizeRanges') {
+                state[key] = normalizeReportDeckMemoLineFontSizeRangesMap(rawValue);
+            } else if (key === 'reportMemoLineColors') {
+                state[key] = normalizeReportDeckMemoLineColors(rawValue);
+            } else if (key === 'reportMemoPreserveFormatting') {
+                state[key] = normalizeReportDeckMemoPreserveFormatting(rawValue);
             } else {
                 state[key] = String(rawValue);
             }
             return state;
         }, {});
         normalizedState.reportMemoLineSizes = normalizeReportDeckMemoLineSizesForState(normalizedState);
+        normalizedState.reportMemoLineSizeRanges = normalizeReportDeckMemoLineFontSizeRangesForState(normalizedState);
+        normalizedState.reportMemoLineColors = normalizeReportDeckMemoLineColorsForState(normalizedState);
         Object.keys(source).forEach(key => {
             if (isReportDeckPlanImageSourceKey(key)) {
                 normalizedState[key] = normalizeReportDeckPlanImageSource(source[key]);
@@ -1794,6 +2030,47 @@
             button.disabled = Boolean(isBusy);
             button.setAttribute?.('aria-busy', isBusy ? 'true' : 'false');
         });
+    }
+
+    function getReportDeckSaveMenuElements(root) {
+        return {
+            menu: root?.querySelector?.('[data-report-save-menu]') || null,
+            toggle: root?.querySelector?.('[data-report-save-menu-toggle]') || null,
+            panel: root?.querySelector?.('[data-report-save-menu-panel]') || null
+        };
+    }
+
+    function setReportDeckSaveMenuOpen(root, isOpen) {
+        const open = isOpen === true;
+        const elements = getReportDeckSaveMenuElements(root);
+        if (elements.panel) {
+            elements.panel.hidden = !open;
+        }
+        if (elements.menu?.dataset) {
+            if (open) {
+                elements.menu.dataset.reportSaveMenuOpen = 'true';
+            } else {
+                delete elements.menu.dataset.reportSaveMenuOpen;
+            }
+        }
+        if (elements.toggle) {
+            elements.toggle.classList?.toggle?.('is-active', open);
+            elements.toggle.setAttribute?.('aria-expanded', open ? 'true' : 'false');
+        }
+    }
+
+    function isReportDeckSaveMenuOpen(root) {
+        const panel = getReportDeckSaveMenuElements(root).panel;
+        return Boolean(panel && panel.hidden === false);
+    }
+
+    function toggleReportDeckSaveMenu(root, state = {}) {
+        syncReportDeckCaptureControls(root, state);
+        setReportDeckSaveMenuOpen(root, !isReportDeckSaveMenuOpen(root));
+    }
+
+    function closeReportDeckSaveMenu(root) {
+        setReportDeckSaveMenuOpen(root, false);
     }
 
     function getReportDeckCaptureControls(root) {
@@ -2086,7 +2363,7 @@
         }, -1);
     }
 
-    function renderReportDeckMemoLineHtml(lineText = '') {
+    function renderReportDeckMemoSingleLineHtml(lineText = '') {
         const text = String(lineText || '');
         let cursor = 0;
         let basisIndex = findReportDeckMemoBasisIndex(text, 0);
@@ -2127,6 +2404,74 @@
         return parts.join('');
     }
 
+    function getReportDeckMemoManualRangeValueAt(ranges = [], offset = 0, valueKey = '') {
+        const normalizedOffset = Math.max(0, Number.parseInt(String(offset), 10));
+        const range = (Array.isArray(ranges) ? ranges : []).find(item => (
+            item
+            && item.start <= normalizedOffset
+            && item.end > normalizedOffset
+        ));
+        return range ? range[valueKey] : null;
+    }
+
+    function renderReportDeckMemoSingleLineWithManualStylesHtml(lineText = '', colorRanges = [], sizeRanges = [], baseOffset = 0) {
+        const text = String(lineText || '');
+        const normalizedColorRanges = normalizeReportDeckMemoLineColorRanges(colorRanges, null)
+            .map(range => ({
+                ...range,
+                start: Math.max(0, Math.min(text.length, range.start - baseOffset)),
+                end: Math.max(0, Math.min(text.length, range.end - baseOffset))
+            }))
+            .filter(range => range.end > range.start)
+            .sort((left, right) => left.start - right.start || left.end - right.end);
+        const normalizedSizeRanges = normalizeReportDeckMemoLineFontSizeRanges(sizeRanges, null)
+            .map(range => ({
+                ...range,
+                start: Math.max(0, Math.min(text.length, range.start - baseOffset)),
+                end: Math.max(0, Math.min(text.length, range.end - baseOffset))
+            }))
+            .filter(range => range.end > range.start)
+            .sort((left, right) => left.start - right.start || left.end - right.end);
+        if (!normalizedColorRanges.length && !normalizedSizeRanges.length) return renderReportDeckMemoSingleLineHtml(text);
+        const boundaries = new Set([0, text.length]);
+        normalizedColorRanges.forEach(range => {
+            boundaries.add(range.start);
+            boundaries.add(range.end);
+        });
+        normalizedSizeRanges.forEach(range => {
+            boundaries.add(range.start);
+            boundaries.add(range.end);
+        });
+        const points = Array.from(boundaries).sort((left, right) => left - right);
+        const parts = [];
+        for (let index = 0; index < points.length - 1; index += 1) {
+            const start = points[index];
+            const end = points[index + 1];
+            if (end <= start) continue;
+            const color = getReportDeckMemoManualRangeValueAt(normalizedColorRanges, start, 'color');
+            const size = getReportDeckMemoManualRangeValueAt(normalizedSizeRanges, start, 'size');
+            let html = renderReportDeckMemoSingleLineHtml(text.slice(start, end));
+            if (color) {
+                html = `<span class="report-auto-memo-manual-color is-${escapeReportDeckHtml(color)}">${html}</span>`;
+            }
+            if (Number.isInteger(size)) {
+                html = `<span class="report-auto-memo-manual-size" style="${getReportDeckMemoLineInlineFontSizeStyle(size)}">${html}</span>`;
+            }
+            parts.push(html);
+        }
+        return parts.join('');
+    }
+
+    function renderReportDeckMemoLineHtml(lineText = '', colorRanges = [], sizeRanges = []) {
+        return normalizeReportDeckMemoLineBreaks(lineText)
+            .split('\n')
+            .map((line, index, lines) => {
+                const baseOffset = lines.slice(0, index).reduce((sum, item) => sum + item.length + 1, 0);
+                return renderReportDeckMemoSingleLineWithManualStylesHtml(line, colorRanges, sizeRanges, baseOffset);
+            })
+            .join('<br>');
+    }
+
     function renderReportDeckMemoAddButtonHtml(key = '') {
         const normalizedKey = String(key || '').trim();
         return normalizedKey
@@ -2145,6 +2490,36 @@
         return Number((REPORT_DECK_MEMO_LINE_FONT_SIZE_BASE + (normalizedLevel * REPORT_DECK_MEMO_LINE_FONT_SIZE_STEP)).toFixed(1));
     }
 
+    function getReportDeckMemoLineFontSizeLevelFromPx(value) {
+        const normalizedValue = String(value ?? '').replace(/[^\d.-]/g, '').trim();
+        if (!normalizedValue) return null;
+        const number = Number.parseFloat(normalizedValue);
+        if (!Number.isFinite(number)) return null;
+        return normalizeReportDeckMemoLineFontSizeLevel(
+            Math.round((number - REPORT_DECK_MEMO_LINE_FONT_SIZE_BASE) / REPORT_DECK_MEMO_LINE_FONT_SIZE_STEP)
+        );
+    }
+
+    function getReportDeckMemoLineFontSizeDisplayMax() {
+        return REPORT_DECK_MEMO_LINE_FONT_SIZE_MAX - REPORT_DECK_MEMO_LINE_FONT_SIZE_MIN + 1;
+    }
+
+    function getReportDeckMemoLineFontSizeDisplayValue(level = 0) {
+        return String(normalizeReportDeckMemoLineFontSizeLevel(level) - REPORT_DECK_MEMO_LINE_FONT_SIZE_MIN + 1);
+    }
+
+    function getReportDeckMemoLineFontSizeLevelFromDisplayValue(value) {
+        const raw = String(value ?? '').trim();
+        if (!raw || raw === '?') return null;
+        if (/^-?\d+$/.test(raw)) {
+            const displayLevel = Number.parseInt(raw, 10);
+            if (!Number.isFinite(displayLevel)) return null;
+            const normalizedDisplayLevel = Math.max(1, Math.min(getReportDeckMemoLineFontSizeDisplayMax(), displayLevel));
+            return normalizeReportDeckMemoLineFontSizeLevel(normalizedDisplayLevel + REPORT_DECK_MEMO_LINE_FONT_SIZE_MIN - 1);
+        }
+        return getReportDeckMemoLineFontSizeLevelFromPx(raw);
+    }
+
     function getReportDeckMemoLineFontSizeScale(level = 0) {
         const normalizedLevel = normalizeReportDeckMemoLineFontSizeLevel(level);
         return Math.max(0.82, 1 + (normalizedLevel * 0.18));
@@ -2155,6 +2530,12 @@
         const fontSize = getReportDeckMemoLineFontSizePx(normalizedLevel);
         const lineHeight = normalizedLevel > 0 ? 1.14 : 1.18;
         return `--report-auto-memo-line-font-size: ${fontSize}px; --report-auto-memo-line-line-height: ${lineHeight};`;
+    }
+
+    function getReportDeckMemoLineInlineFontSizeStyle(level = 0) {
+        const normalizedLevel = normalizeReportDeckMemoLineFontSizeLevel(level);
+        const fontSize = getReportDeckMemoLineFontSizePx(normalizedLevel);
+        return `font-size:${fontSize}px;line-height:1;`;
     }
 
     function parseReportDeckMemoLineSizes(value = '') {
@@ -2226,6 +2607,416 @@
         return true;
     }
 
+    function parseReportDeckMemoLineFontSizeRangesMap(value = '') {
+        if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+        try {
+            const parsed = JSON.parse(String(value || '{}'));
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function normalizeReportDeckMemoLineFontSizeRanges(value = [], lineText = null) {
+        const source = Array.isArray(value) ? value : [];
+        const hasLineText = lineText !== null;
+        const maxLength = hasLineText
+            ? normalizeReportDeckMemoLineText(lineText).length
+            : Number.MAX_SAFE_INTEGER;
+        return source.map(range => {
+            const start = Math.max(0, Math.min(maxLength, Number.parseInt(String(range?.start ?? '0'), 10)));
+            const end = Math.max(0, Math.min(maxLength, Number.parseInt(String(range?.end ?? '0'), 10)));
+            const size = normalizeReportDeckMemoLineFontSizeLevel(range?.size);
+            if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+            return { start, end, size };
+        }).filter(Boolean).sort((left, right) => left.start - right.start || left.end - right.end);
+    }
+
+    function normalizeReportDeckMemoLineFontSizeRangeArray(value = [], lines = null) {
+        const source = Array.isArray(value) ? value : [];
+        const hasLines = Array.isArray(lines);
+        const count = hasLines ? lines.length : source.length;
+        return Array.from({ length: count }, (_, index) => (
+            normalizeReportDeckMemoLineFontSizeRanges(source[index] || [], hasLines ? lines[index] : null)
+        ));
+    }
+
+    function getReportDeckMemoLineFontSizeRangesMap(state = {}) {
+        return parseReportDeckMemoLineFontSizeRangesMap(state?.reportMemoLineSizeRanges);
+    }
+
+    function normalizeReportDeckMemoLineFontSizeRangesMap(value = '') {
+        const map = parseReportDeckMemoLineFontSizeRangesMap(value);
+        const normalized = {};
+        REPORT_DECK_MEMO_KEYS.forEach(key => {
+            const ranges = normalizeReportDeckMemoLineFontSizeRangeArray(map[key] || []);
+            if (ranges.some(lineRanges => lineRanges.length)) {
+                normalized[key] = ranges;
+            }
+        });
+        return JSON.stringify(normalized);
+    }
+
+    function normalizeReportDeckMemoLineFontSizeRangesForState(state = {}) {
+        const map = getReportDeckMemoLineFontSizeRangesMap(state);
+        const normalized = {};
+        REPORT_DECK_MEMO_KEYS.forEach(key => {
+            const lines = getReportDeckMemoLines(state?.[key]);
+            const baseSizes = getReportDeckMemoLineSizeArray(state, key, lines.length);
+            const ranges = normalizeReportDeckMemoLineFontSizeRangeArray(map[key] || [], lines)
+                .map((lineRanges, index) => (
+                    lineRanges.filter(range => range.size !== normalizeReportDeckMemoLineFontSizeLevel(baseSizes[index]))
+                ));
+            if (ranges.some(lineRanges => lineRanges.length)) {
+                normalized[key] = ranges;
+            }
+        });
+        return JSON.stringify(normalized);
+    }
+
+    function getReportDeckMemoLineSizeRangeArray(state = {}, key = '', lineCount = null) {
+        const normalizedKey = String(key || '').trim();
+        const map = getReportDeckMemoLineFontSizeRangesMap(state);
+        const lines = getReportDeckMemoLines(state?.[normalizedKey]);
+        const count = Number.isInteger(lineCount) ? Math.max(0, lineCount) : lines.length;
+        return normalizeReportDeckMemoLineFontSizeRangeArray(map[normalizedKey] || [], lines.slice(0, count));
+    }
+
+    function setReportDeckMemoLineSizeRangeArray(state = {}, key = '', sizeRanges = []) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey) return false;
+        const map = getReportDeckMemoLineFontSizeRangesMap(state);
+        const lines = getReportDeckMemoLines(state?.[normalizedKey]);
+        const baseSizes = getReportDeckMemoLineSizeArray(state, normalizedKey, lines.length);
+        const nextRanges = normalizeReportDeckMemoLineFontSizeRangeArray(sizeRanges, lines)
+            .map((lineRanges, index) => (
+                lineRanges.filter(range => range.size !== normalizeReportDeckMemoLineFontSizeLevel(baseSizes[index]))
+            ));
+        if (nextRanges.some(lineRanges => lineRanges.length)) {
+            map[normalizedKey] = nextRanges;
+        } else {
+            delete map[normalizedKey];
+        }
+        state.reportMemoLineSizeRanges = normalizeReportDeckMemoLineFontSizeRangesForState({
+            ...state,
+            reportMemoLineSizeRanges: JSON.stringify(map)
+        });
+        return true;
+    }
+
+    function reconcileReportDeckMemoLineSizeRanges(previousLines = [], previousRanges = [], nextLines = []) {
+        const used = new Set();
+        const normalizedPrevious = Array.isArray(previousLines) ? previousLines : [];
+        const normalizedRanges = normalizeReportDeckMemoLineFontSizeRangeArray(previousRanges, normalizedPrevious);
+        return (Array.isArray(nextLines) ? nextLines : []).map((line, index) => {
+            const identity = getReportDeckMemoLineIdentity(line);
+            if (
+                index < normalizedPrevious.length
+                && !used.has(index)
+                && getReportDeckMemoLineIdentity(normalizedPrevious[index]) === identity
+            ) {
+                used.add(index);
+                return normalizeReportDeckMemoLineFontSizeRanges(normalizedRanges[index] || [], line);
+            }
+            const matchedIndex = normalizedPrevious.findIndex((previousLine, previousIndex) => (
+                !used.has(previousIndex)
+                && getReportDeckMemoLineIdentity(previousLine) === identity
+            ));
+            if (matchedIndex >= 0) {
+                used.add(matchedIndex);
+                return normalizeReportDeckMemoLineFontSizeRanges(normalizedRanges[matchedIndex] || [], line);
+            }
+            return [];
+        });
+    }
+
+    function getReportDeckMemoLineFontSizeLevelAtOffset(baseLevel = 0, ranges = [], offset = 0) {
+        const size = getReportDeckMemoManualRangeValueAt(
+            normalizeReportDeckMemoLineFontSizeRanges(ranges),
+            offset,
+            'size'
+        );
+        return Number.isInteger(size)
+            ? normalizeReportDeckMemoLineFontSizeLevel(size)
+            : normalizeReportDeckMemoLineFontSizeLevel(baseLevel);
+    }
+
+    function getReportDeckMemoLineSelectionFontSizeLevel(baseLevel = 0, ranges = [], start = 0, end = 0, delta = 0) {
+        const levels = getReportDeckMemoLineSelectionFontSizeLevels(baseLevel, ranges, start, end);
+        void delta;
+        return levels.length ? Math.max(...levels) : normalizeReportDeckMemoLineFontSizeLevel(baseLevel);
+    }
+
+    function getReportDeckMemoLineSelectionFontSizeLevels(baseLevel = 0, ranges = [], start = 0, end = 0) {
+        const rangeStart = Math.max(0, Number.parseInt(String(start), 10));
+        const rangeEnd = Math.max(0, Number.parseInt(String(end), 10));
+        if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd) || rangeEnd <= rangeStart) {
+            return [normalizeReportDeckMemoLineFontSizeLevel(baseLevel)];
+        }
+        const boundaries = new Set([rangeStart, rangeEnd]);
+        normalizeReportDeckMemoLineFontSizeRanges(ranges).forEach(range => {
+            if (range.start > rangeStart && range.start < rangeEnd) boundaries.add(range.start);
+            if (range.end > rangeStart && range.end < rangeEnd) boundaries.add(range.end);
+        });
+        const points = Array.from(boundaries).sort((left, right) => left - right);
+        const levels = [];
+        for (let index = 0; index < points.length - 1; index += 1) {
+            const point = points[index];
+            if (points[index + 1] <= point) continue;
+            levels.push(getReportDeckMemoLineFontSizeLevelAtOffset(baseLevel, ranges, point));
+        }
+        if (!levels.length) levels.push(normalizeReportDeckMemoLineFontSizeLevel(baseLevel));
+        return Array.from(new Set(levels.map(normalizeReportDeckMemoLineFontSizeLevel)));
+    }
+
+    function applyReportDeckMemoLineFontSizeRange(ranges = [], start = 0, end = 0, size = 0) {
+        const rangeStart = Math.max(0, Number.parseInt(String(start), 10));
+        const rangeEnd = Math.max(0, Number.parseInt(String(end), 10));
+        if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd) || rangeEnd <= rangeStart) {
+            return normalizeReportDeckMemoLineFontSizeRanges(ranges);
+        }
+        const normalizedSize = normalizeReportDeckMemoLineFontSizeLevel(size);
+        const nextRanges = [];
+        normalizeReportDeckMemoLineFontSizeRanges(ranges).forEach(range => {
+            if (range.end <= rangeStart || range.start >= rangeEnd) {
+                nextRanges.push(range);
+                return;
+            }
+            if (range.start < rangeStart) {
+                nextRanges.push({ start: range.start, end: rangeStart, size: range.size });
+            }
+            if (range.end > rangeEnd) {
+                nextRanges.push({ start: rangeEnd, end: range.end, size: range.size });
+            }
+        });
+        nextRanges.push({ start: rangeStart, end: rangeEnd, size: normalizedSize });
+        return normalizeReportDeckMemoLineFontSizeRanges(nextRanges).reduce((merged, range) => {
+            const previous = merged[merged.length - 1];
+            if (previous && previous.size === range.size && previous.end === range.start) {
+                previous.end = range.end;
+            } else {
+                merged.push({ ...range });
+            }
+            return merged;
+        }, []);
+    }
+
+    function normalizeReportDeckMemoLineColor(value = '') {
+        const color = String(value || '').trim().toLowerCase();
+        return color === 'red' || color === 'blue' ? color : '';
+    }
+
+    function parseReportDeckMemoLineColors(value = '') {
+        if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+        try {
+            const parsed = JSON.parse(String(value || '{}'));
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function normalizeReportDeckMemoLineColorRanges(value = [], lineText = null) {
+        const source = Array.isArray(value) ? value : [];
+        const hasLineText = lineText !== null;
+        const maxLength = hasLineText
+            ? normalizeReportDeckMemoLineText(lineText).length
+            : Number.MAX_SAFE_INTEGER;
+        return source.map(range => {
+            const color = normalizeReportDeckMemoLineColor(range?.color);
+            const start = Math.max(0, Math.min(maxLength, Number.parseInt(String(range?.start ?? '0'), 10)));
+            const end = Math.max(0, Math.min(maxLength, Number.parseInt(String(range?.end ?? '0'), 10)));
+            if (!color || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+            return { start, end, color };
+        }).filter(Boolean).sort((left, right) => left.start - right.start || left.end - right.end);
+    }
+
+    function normalizeReportDeckMemoLineColorArray(value = [], lines = null) {
+        const source = Array.isArray(value) ? value : [];
+        const hasLines = Array.isArray(lines);
+        const count = hasLines ? lines.length : source.length;
+        return Array.from({ length: count }, (_, index) => (
+            normalizeReportDeckMemoLineColorRanges(source[index] || [], hasLines ? lines[index] : null)
+        ));
+    }
+
+    function getReportDeckMemoLineColorsMap(state = {}) {
+        return parseReportDeckMemoLineColors(state?.reportMemoLineColors);
+    }
+
+    function normalizeReportDeckMemoLineColors(value = '') {
+        const map = parseReportDeckMemoLineColors(value);
+        const normalized = {};
+        REPORT_DECK_MEMO_KEYS.forEach(key => {
+            const colors = normalizeReportDeckMemoLineColorArray(map[key] || []);
+            if (colors.some(ranges => ranges.length)) {
+                normalized[key] = colors;
+            }
+        });
+        return JSON.stringify(normalized);
+    }
+
+    function normalizeReportDeckMemoLineColorsForState(state = {}) {
+        const map = getReportDeckMemoLineColorsMap(state);
+        const normalized = {};
+        REPORT_DECK_MEMO_KEYS.forEach(key => {
+            const lines = getReportDeckMemoLines(state?.[key]);
+            const colors = normalizeReportDeckMemoLineColorArray(map[key] || [], lines);
+            if (colors.some(ranges => ranges.length)) {
+                normalized[key] = colors;
+            }
+        });
+        return JSON.stringify(normalized);
+    }
+
+    function parseReportDeckMemoPreserveFormatting(value = '') {
+        if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+        try {
+            const parsed = JSON.parse(String(value || '{}'));
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function normalizeReportDeckMemoPreserveFormatting(value = '') {
+        const map = parseReportDeckMemoPreserveFormatting(value);
+        const normalized = {};
+        REPORT_DECK_MEMO_KEYS.forEach(key => {
+            if (map[key] === true || map[key] === 'true') {
+                normalized[key] = true;
+            }
+        });
+        return JSON.stringify(normalized);
+    }
+
+    function getReportDeckMemoPreserveFormattingMap(state = {}) {
+        return parseReportDeckMemoPreserveFormatting(state?.reportMemoPreserveFormatting);
+    }
+
+    function isReportDeckMemoFormattingPreserved(state = {}, key = '') {
+        const normalizedKey = String(key || '').trim();
+        return Boolean(normalizedKey && getReportDeckMemoPreserveFormattingMap(state)[normalizedKey]);
+    }
+
+    function setReportDeckMemoFormattingPreserved(state = {}, key = '', preserved = false) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey) return false;
+        const map = getReportDeckMemoPreserveFormattingMap(state);
+        if (preserved) {
+            map[normalizedKey] = true;
+        } else {
+            delete map[normalizedKey];
+        }
+        state.reportMemoPreserveFormatting = normalizeReportDeckMemoPreserveFormatting(map);
+        return true;
+    }
+
+    function getReportDeckMemoLineColorArray(state = {}, key = '', lineCount = null) {
+        const normalizedKey = String(key || '').trim();
+        const map = getReportDeckMemoLineColorsMap(state);
+        const lines = getReportDeckMemoLines(state?.[normalizedKey]);
+        const count = Number.isInteger(lineCount) ? Math.max(0, lineCount) : lines.length;
+        return normalizeReportDeckMemoLineColorArray(map[normalizedKey] || [], lines.slice(0, count));
+    }
+
+    function setReportDeckMemoLineColorArray(state = {}, key = '', colors = []) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey) return false;
+        const map = getReportDeckMemoLineColorsMap(state);
+        const lines = getReportDeckMemoLines(state?.[normalizedKey]);
+        const nextColors = normalizeReportDeckMemoLineColorArray(colors, lines);
+        if (nextColors.some(ranges => ranges.length)) {
+            map[normalizedKey] = nextColors;
+        } else {
+            delete map[normalizedKey];
+        }
+        state.reportMemoLineColors = normalizeReportDeckMemoLineColorsForState({
+            ...state,
+            reportMemoLineColors: JSON.stringify(map)
+        });
+        return true;
+    }
+
+    function reconcileReportDeckMemoLineColors(previousLines = [], previousColors = [], nextLines = []) {
+        const used = new Set();
+        const normalizedPrevious = Array.isArray(previousLines) ? previousLines : [];
+        const normalizedColors = normalizeReportDeckMemoLineColorArray(previousColors, normalizedPrevious);
+        return (Array.isArray(nextLines) ? nextLines : []).map((line, index) => {
+            const identity = getReportDeckMemoLineIdentity(line);
+            if (
+                index < normalizedPrevious.length
+                && !used.has(index)
+                && getReportDeckMemoLineIdentity(normalizedPrevious[index]) === identity
+            ) {
+                used.add(index);
+                return normalizeReportDeckMemoLineColorRanges(normalizedColors[index] || [], line);
+            }
+            const matchedIndex = normalizedPrevious.findIndex((previousLine, previousIndex) => (
+                !used.has(previousIndex)
+                && getReportDeckMemoLineIdentity(previousLine) === identity
+            ));
+            if (matchedIndex >= 0) {
+                used.add(matchedIndex);
+                return normalizeReportDeckMemoLineColorRanges(normalizedColors[matchedIndex] || [], line);
+            }
+            return [];
+        });
+    }
+
+    function applyReportDeckMemoLineColorRange(ranges = [], start = 0, end = 0, color = '') {
+        const normalizedColor = normalizeReportDeckMemoLineColor(color);
+        const rangeStart = Math.max(0, Number.parseInt(String(start), 10));
+        const rangeEnd = Math.max(0, Number.parseInt(String(end), 10));
+        if (!normalizedColor || !Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd) || rangeEnd <= rangeStart) {
+            return normalizeReportDeckMemoLineColorRanges(ranges);
+        }
+        const nextRanges = [];
+        normalizeReportDeckMemoLineColorRanges(ranges).forEach(range => {
+            if (range.end <= rangeStart || range.start >= rangeEnd) {
+                nextRanges.push(range);
+                return;
+            }
+            if (range.start < rangeStart) {
+                nextRanges.push({ start: range.start, end: rangeStart, color: range.color });
+            }
+            if (range.end > rangeEnd) {
+                nextRanges.push({ start: rangeEnd, end: range.end, color: range.color });
+            }
+        });
+        nextRanges.push({ start: rangeStart, end: rangeEnd, color: normalizedColor });
+        return normalizeReportDeckMemoLineColorRanges(nextRanges).reduce((merged, range) => {
+            const previous = merged[merged.length - 1];
+            if (previous && previous.color === range.color && previous.end === range.start) {
+                previous.end = range.end;
+            } else {
+                merged.push({ ...range });
+            }
+            return merged;
+        }, []);
+    }
+
+    function clearReportDeckMemoLineColorRange(ranges = [], start = 0, end = 0) {
+        const rangeStart = Math.max(0, Number.parseInt(String(start), 10));
+        const rangeEnd = Math.max(0, Number.parseInt(String(end), 10));
+        if (!Number.isFinite(rangeStart) || !Number.isFinite(rangeEnd) || rangeEnd <= rangeStart) {
+            return normalizeReportDeckMemoLineColorRanges(ranges);
+        }
+        return normalizeReportDeckMemoLineColorRanges(ranges).reduce((nextRanges, range) => {
+            if (range.end <= rangeStart || range.start >= rangeEnd) {
+                nextRanges.push(range);
+                return nextRanges;
+            }
+            if (range.start < rangeStart) {
+                nextRanges.push({ start: range.start, end: rangeStart, color: range.color });
+            }
+            if (range.end > rangeEnd) {
+                nextRanges.push({ start: rangeEnd, end: range.end, color: range.color });
+            }
+            return nextRanges;
+        }, []);
+    }
+
     function getReportDeckMemoLineFontSizeLevel(state = {}, key = '', index = 0) {
         const sizes = getReportDeckMemoLineSizeArray(state, key);
         return normalizeReportDeckMemoLineFontSizeLevel(sizes[index]);
@@ -2240,18 +3031,25 @@
             container.innerHTML = addButtonHtml;
             return;
         }
-        const lines = rawText.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        const preserveFormatting = isReportDeckMemoFormattingPreserved(state, key);
+        const lines = getReportDeckMemoLines(rawText);
         const sizes = getReportDeckMemoLineSizeArray(state, key, lines.length);
+        const colors = getReportDeckMemoLineColorArray(state, key, lines.length);
+        const sizeRanges = getReportDeckMemoLineSizeRangeArray(state, key, lines.length);
         container.innerHTML = lines.map((line, index) => (
-            `<span class="report-auto-memo-line ${getReportDeckMemoLineClass(line)}" data-report-memo-line-size="${getReportDeckMemoLineFontSizeLevel(state, key, index)}" style="${getReportDeckMemoLineFontSizeStyle(sizes[index])}">`
-                + `<span class="report-auto-memo-line-text">${renderReportDeckMemoLineHtml(line)}</span>`
-                + `<button type="button" class="report-auto-memo-delete" data-report-memo-delete-key="${escapeReportDeckHtml(key)}" data-report-memo-delete-line="${index}" title="특이사항 삭제">-</button>`
+            `<span class="report-auto-memo-line ${getReportDeckMemoLineClass(line)}${preserveFormatting ? ' is-preserve-format' : ''}" data-report-memo-line-size="${getReportDeckMemoLineFontSizeLevel(state, key, index)}" style="${getReportDeckMemoLineFontSizeStyle(sizes[index])}">`
+                + `<span class="report-auto-memo-line-text">${renderReportDeckMemoLineHtml(line, colors[index] || [], sizeRanges[index] || [])}</span>`
             + '</span>'
         )).join('') + addButtonHtml;
     }
 
     function countReportDeckMemoLayoutLines(value = '') {
-        return String(value || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).length;
+        return getReportDeckMemoLines(value).length;
+    }
+
+    function countReportDeckMemoVisualLines(value = '') {
+        const parts = normalizeReportDeckMemoLineBreaks(value).split('\n');
+        return Math.max(1, parts.length);
     }
 
     function getReportDeckMemoWeightedLayoutLineCount(state = {}, key = '') {
@@ -2260,9 +3058,11 @@
         const lines = getReportDeckMemoLines(state?.[normalizedKey]);
         if (!lines.length) return 0;
         const sizes = getReportDeckMemoLineSizeArray(state, normalizedKey, lines.length);
+        const sizeRanges = getReportDeckMemoLineSizeRangeArray(state, normalizedKey, lines.length);
         return lines.reduce((sum, line, index) => {
-            void line;
-            return sum + getReportDeckMemoLineFontSizeScale(sizes[index]);
+            const rangeLevels = (sizeRanges[index] || []).map(range => normalizeReportDeckMemoLineFontSizeLevel(range.size));
+            const maxLevel = Math.max(normalizeReportDeckMemoLineFontSizeLevel(sizes[index]), ...rangeLevels);
+            return sum + (getReportDeckMemoLineFontSizeScale(maxLevel) * countReportDeckMemoVisualLines(line));
         }, 0);
     }
 
@@ -2426,9 +3226,129 @@
     function closeReportDeckMemoDialog(root) {
         const dialog = getReportDeckMemoDialog(root);
         if (!dialog) return;
+        stopReportDeckMemoDialogDrag(dialog);
         dialog.hidden = true;
         delete dialog.dataset.reportMemoTarget;
         dialog.__reportMemoCandidates = [];
+    }
+
+    const REPORT_DECK_MEMO_DIALOG_MARGIN = 12;
+
+    function getReportDeckMemoDialogWindow(dialog) {
+        return dialog?.ownerDocument?.defaultView || (typeof window !== 'undefined' ? window : null);
+    }
+
+    function getReportDeckMemoDialogViewport(dialog) {
+        const ownerWindow = getReportDeckMemoDialogWindow(dialog);
+        const width = Number(ownerWindow?.innerWidth)
+            || Number(dialog?.ownerDocument?.documentElement?.clientWidth)
+            || 0;
+        const height = Number(ownerWindow?.innerHeight)
+            || Number(dialog?.ownerDocument?.documentElement?.clientHeight)
+            || 0;
+        return {
+            width: Math.max(0, width),
+            height: Math.max(0, height)
+        };
+    }
+
+    function getReportDeckMemoDialogRect(dialog) {
+        const rect = dialog?.getBoundingClientRect?.();
+        return {
+            left: Number(rect?.left) || 0,
+            top: Number(rect?.top) || 0,
+            width: Math.max(0, Number(rect?.width) || Number(dialog?.offsetWidth) || 0),
+            height: Math.max(0, Number(rect?.height) || Number(dialog?.offsetHeight) || 0)
+        };
+    }
+
+    function clampReportDeckMemoDialogPosition(dialog, left, top) {
+        const viewport = getReportDeckMemoDialogViewport(dialog);
+        const rect = getReportDeckMemoDialogRect(dialog);
+        const maxLeft = Math.max(
+            REPORT_DECK_MEMO_DIALOG_MARGIN,
+            viewport.width - rect.width - REPORT_DECK_MEMO_DIALOG_MARGIN
+        );
+        const maxTop = Math.max(
+            REPORT_DECK_MEMO_DIALOG_MARGIN,
+            viewport.height - rect.height - REPORT_DECK_MEMO_DIALOG_MARGIN
+        );
+        const safeLeft = Number.isFinite(left) ? left : rect.left;
+        const safeTop = Number.isFinite(top) ? top : rect.top;
+        return {
+            left: Math.min(Math.max(safeLeft, REPORT_DECK_MEMO_DIALOG_MARGIN), maxLeft),
+            top: Math.min(Math.max(safeTop, REPORT_DECK_MEMO_DIALOG_MARGIN), maxTop)
+        };
+    }
+
+    function setReportDeckMemoDialogPosition(dialog, left, top) {
+        if (!dialog?.style) return;
+        const position = clampReportDeckMemoDialogPosition(dialog, left, top);
+        dialog.style.left = `${position.left}px`;
+        dialog.style.top = `${position.top}px`;
+        dialog.style.right = 'auto';
+        if (dialog.dataset) {
+            dialog.dataset.reportMemoFloating = 'true';
+        }
+    }
+
+    function syncReportDeckMemoDialogFloatingPosition(dialog) {
+        if (!dialog || dialog.hidden || dialog.dataset?.reportMemoFloating !== 'true') return;
+        const rect = getReportDeckMemoDialogRect(dialog);
+        setReportDeckMemoDialogPosition(dialog, rect.left, rect.top);
+    }
+
+    function stopReportDeckMemoDialogDrag(dialog) {
+        dialog?.__reportMemoDialogDragCleanup?.();
+        if (dialog) delete dialog.__reportMemoDialogDragCleanup;
+        dialog?.classList?.remove?.('is-dragging');
+    }
+
+    function startReportDeckMemoDialogDrag(root, event) {
+        if (!event || Number(event.button) > 0) return false;
+        const handle = event.target?.closest?.('[data-report-memo-drag-handle]');
+        if (!handle || event.target?.closest?.('[data-report-memo-close]')) return false;
+        const dialog = getReportDeckMemoDialog(root);
+        if (!dialog || dialog.hidden) return false;
+        const ownerWindow = getReportDeckMemoDialogWindow(dialog);
+        if (!ownerWindow?.addEventListener) return false;
+        const startX = Number(event.clientX);
+        const startY = Number(event.clientY);
+        if (!Number.isFinite(startX) || !Number.isFinite(startY)) return false;
+        const rect = getReportDeckMemoDialogRect(dialog);
+        const pointerId = event.pointerId;
+        let dragging = true;
+        const move = moveEvent => {
+            if (!dragging) return;
+            const nextX = Number(moveEvent?.clientX);
+            const nextY = Number(moveEvent?.clientY);
+            if (!Number.isFinite(nextX) || !Number.isFinite(nextY)) return;
+            setReportDeckMemoDialogPosition(dialog, rect.left + nextX - startX, rect.top + nextY - startY);
+            moveEvent?.preventDefault?.();
+        };
+        const cleanup = () => {
+            if (!dragging) return;
+            dragging = false;
+            dialog.classList?.remove?.('is-dragging');
+            ownerWindow.removeEventListener?.('pointermove', move);
+            ownerWindow.removeEventListener?.('pointerup', cleanup);
+            ownerWindow.removeEventListener?.('pointercancel', cleanup);
+            if (pointerId !== undefined) {
+                handle.releasePointerCapture?.(pointerId);
+            }
+            delete dialog.__reportMemoDialogDragCleanup;
+        };
+        stopReportDeckMemoDialogDrag(dialog);
+        dialog.classList?.add?.('is-dragging');
+        dialog.__reportMemoDialogDragCleanup = cleanup;
+        if (pointerId !== undefined) {
+            handle.setPointerCapture?.(pointerId);
+        }
+        ownerWindow.addEventListener('pointermove', move);
+        ownerWindow.addEventListener('pointerup', cleanup);
+        ownerWindow.addEventListener('pointercancel', cleanup);
+        event.preventDefault?.();
+        return true;
     }
 
     function getReportDeckMemoOverviewDialog(root) {
@@ -2871,8 +3791,33 @@
         return true;
     }
 
+    function normalizeReportDeckMemoLineBreaks(value = '') {
+        return String(value || '')
+            .replace(/\r\n?/g, '\n')
+            .split(REPORT_DECK_MEMO_LINE_BREAK)
+            .join('\n');
+    }
+
+    function encodeReportDeckMemoLineBreaks(value = '') {
+        return normalizeReportDeckMemoLineBreaks(value)
+            .trim()
+            .replace(/\n/g, REPORT_DECK_MEMO_LINE_BREAK);
+    }
+
     function normalizeReportDeckMemoLineText(line = '') {
-        return String(line || '').trim();
+        return normalizeReportDeckMemoLineBreaks(line).trim();
+    }
+
+    function normalizeReportDeckMemoLineArray(lines = []) {
+        return (Array.isArray(lines) ? lines : [])
+            .map(normalizeReportDeckMemoLineText)
+            .filter(Boolean);
+    }
+
+    function serializeReportDeckMemoLines(lines = []) {
+        return normalizeReportDeckMemoLineArray(lines)
+            .map(encodeReportDeckMemoLineBreaks)
+            .join('\n');
     }
 
     function getReportDeckMemoLineIdentity(line = '') {
@@ -2880,7 +3825,11 @@
     }
 
     function getReportDeckMemoLines(text = '') {
-        return String(text || '').split(/\r?\n/).map(normalizeReportDeckMemoLineText).filter(Boolean);
+        return String(text || '')
+            .replace(/\r\n?/g, '\n')
+            .split('\n')
+            .map(normalizeReportDeckMemoLineText)
+            .filter(Boolean);
     }
 
     function reconcileReportDeckMemoLineSizes(previousLines = [], previousSizes = [], nextLines = []) {
@@ -2913,6 +3862,204 @@
         return String(dialog?.dataset?.reportMemoTarget || '').trim();
     }
 
+    function getReportDeckMemoNotepadInput(dialog) {
+        return dialog?.querySelector?.('[data-report-memo-notepad]') || null;
+    }
+
+    function getReportDeckMemoNotepadFontSizeInput(dialog) {
+        return dialog?.querySelector?.('[data-report-memo-notepad-font-size-input]') || null;
+    }
+
+    function getReportDeckMemoPreview(dialog) {
+        return dialog?.querySelector?.('[data-report-memo-preview]') || null;
+    }
+
+    function rememberReportDeckMemoNotepadSelection(dialog, input) {
+        if (!dialog || !input) return null;
+        const start = Number(input.selectionStart);
+        const end = Number(input.selectionEnd);
+        if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+            delete dialog.__reportMemoNotepadSelection;
+            return null;
+        }
+        dialog.__reportMemoNotepadSelection = {
+            start,
+            end,
+            value: String(input.value || '')
+        };
+        return dialog.__reportMemoNotepadSelection;
+    }
+
+    function getReportDeckMemoNotepadSelection(input, dialog = null) {
+        const start = Number(input?.selectionStart);
+        const end = Number(input?.selectionEnd);
+        if (Number.isFinite(start) && Number.isFinite(end) && end > start) {
+            return { start, end };
+        }
+        const stored = dialog?.__reportMemoNotepadSelection;
+        if (
+            stored
+            && String(stored.value || '') === String(input?.value || '')
+            && Number.isFinite(Number(stored.start))
+            && Number.isFinite(Number(stored.end))
+            && Number(stored.end) > Number(stored.start)
+        ) {
+            return { start: Number(stored.start), end: Number(stored.end) };
+        }
+        return null;
+    }
+
+    function getReportDeckMemoNotepadValueFromState(state = {}, key = '') {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return '';
+        if (isReportDeckMemoFormattingPreserved(state, normalizedKey)) {
+            return normalizeReportDeckMemoLineBreaks(state[normalizedKey]);
+        }
+        return getReportDeckMemoLines(state[normalizedKey]).join('\n');
+    }
+
+    function buildReportDeckMemoNotepadLineRanges(value = '', preserveFormatting = false) {
+        const text = normalizeReportDeckMemoLineBreaks(value);
+        if (preserveFormatting) {
+            const preservedText = normalizeReportDeckMemoLineText(text);
+            if (!preservedText) return { text, lines: [], ranges: [] };
+            const leading = text.length - text.replace(/^\s+/, '').length;
+            const trailing = text.length - text.replace(/\s+$/, '').length;
+            return {
+                text,
+                lines: [preservedText],
+                ranges: [{
+                    index: 0,
+                    rawStart: leading,
+                    rawEnd: text.length - trailing,
+                    text: preservedText
+                }]
+            };
+        }
+        const rawLines = text.split('\n');
+        const lines = [];
+        const ranges = [];
+        let cursor = 0;
+        rawLines.forEach(rawLine => {
+            const trimmedText = normalizeReportDeckMemoLineText(rawLine);
+            if (trimmedText) {
+                const leading = rawLine.length - rawLine.replace(/^\s+/, '').length;
+                const trailing = rawLine.length - rawLine.replace(/\s+$/, '').length;
+                lines.push(trimmedText);
+                ranges.push({
+                    index: lines.length - 1,
+                    rawStart: cursor + leading,
+                    rawEnd: cursor + rawLine.length - trailing,
+                    text: trimmedText
+                });
+            }
+            cursor += rawLine.length + 1;
+        });
+        return { text, lines, ranges };
+    }
+
+    function getReportDeckMemoNotepadSelectionRanges(input, dialog = null, state = null, key = '') {
+        const selection = getReportDeckMemoNotepadSelection(input, dialog);
+        if (!selection) {
+            return [];
+        }
+        const model = buildReportDeckMemoNotepadLineRanges(
+            input?.value || '',
+            state ? isReportDeckMemoFormattingPreserved(state, key || getReportDeckMemoDialogTargetKey(dialog)) : false
+        );
+        return model.ranges.map(lineRange => {
+            const start = Math.max(lineRange.rawStart, selection.start);
+            const end = Math.min(lineRange.rawEnd, selection.end);
+            if (end <= start) return null;
+            return {
+                lineIndex: lineRange.index,
+                start: Math.max(0, start - lineRange.rawStart),
+                end: Math.min(lineRange.text.length, end - lineRange.rawStart)
+            };
+        }).filter(range => range && range.end > range.start);
+    }
+
+    function syncReportDeckMemoNotepadToState(root, state, meta, dialog, key, options = {}) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
+        const input = getReportDeckMemoNotepadInput(dialog);
+        const model = buildReportDeckMemoNotepadLineRanges(input?.value || '', isReportDeckMemoFormattingPreserved(state, normalizedKey));
+        if (serializeReportDeckMemoLines(model.lines) === String(state[normalizedKey] || '')) return false;
+        return setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, model.lines, {
+            syncDialog: options.syncDialog === true
+        });
+    }
+
+    function syncReportDeckMemoDialogNotepad(dialog, state) {
+        const input = getReportDeckMemoNotepadInput(dialog);
+        if (!input) return;
+        const key = getReportDeckMemoDialogTargetKey(dialog);
+        const value = getReportDeckMemoNotepadValueFromState(state, key);
+        if (String(input.value || '') !== value) {
+            input.value = value;
+            delete dialog.__reportMemoNotepadSelection;
+        }
+        syncReportDeckMemoDialogPreview(dialog, state);
+        syncReportDeckMemoNotepadFontSizeControl(dialog, state);
+    }
+
+    function getReportDeckMemoNotepadSelectionFontSizeLevel(state = {}, key = '', dialog = null) {
+        const input = getReportDeckMemoNotepadInput(dialog);
+        const selectedRanges = getReportDeckMemoNotepadSelectionRanges(input, dialog, state, key);
+        if (!input || !selectedRanges.length) return 0;
+        const normalizedKey = String(key || '').trim();
+        const lines = getReportDeckMemoLines(state?.[normalizedKey]);
+        const sizes = getReportDeckMemoLineSizeArray(state, normalizedKey, lines.length);
+        const sizeRanges = getReportDeckMemoLineSizeRangeArray(state, normalizedKey, lines.length);
+        const selectedLevels = selectedRanges.flatMap(range => {
+            if (range.lineIndex < 0 || range.lineIndex >= lines.length) return [];
+            return getReportDeckMemoLineSelectionFontSizeLevels(
+                sizes[range.lineIndex],
+                sizeRanges[range.lineIndex] || [],
+                range.start,
+                range.end
+            );
+        }).filter(level => Number.isInteger(level));
+        const uniqueLevels = Array.from(new Set(selectedLevels.map(normalizeReportDeckMemoLineFontSizeLevel)));
+        if (uniqueLevels.length > 1) return null;
+        return uniqueLevels.length ? uniqueLevels[0] : 0;
+    }
+
+    function syncReportDeckMemoNotepadFontSizeControl(dialog, state = {}) {
+        const sizeInput = getReportDeckMemoNotepadFontSizeInput(dialog);
+        if (!sizeInput) return;
+        const key = getReportDeckMemoDialogTargetKey(dialog);
+        const input = getReportDeckMemoNotepadInput(dialog);
+        const selectedRanges = getReportDeckMemoNotepadSelectionRanges(input, dialog, state, key);
+        const sizeLevel = selectedRanges.length ? getReportDeckMemoNotepadSelectionFontSizeLevel(state, key, dialog) : 0;
+        sizeInput.value = sizeLevel === null
+            ? '?'
+            : getReportDeckMemoLineFontSizeDisplayValue(sizeLevel);
+        sizeInput.disabled = !selectedRanges.length;
+    }
+
+    function syncReportDeckMemoDialogPreview(dialog, state = {}) {
+        const preview = getReportDeckMemoPreview(dialog);
+        if (!preview) return;
+        const key = getReportDeckMemoDialogTargetKey(dialog);
+        const rawText = key && Object.prototype.hasOwnProperty.call(state, key) ? state[key] : '';
+        const preserveFormatting = isReportDeckMemoFormattingPreserved(state, key);
+        const lines = getReportDeckMemoLines(rawText);
+        preview.dataset.empty = lines.length ? 'false' : 'true';
+        if (!lines.length) {
+            preview.innerHTML = '';
+            return;
+        }
+        const sizes = getReportDeckMemoLineSizeArray(state, key, lines.length);
+        const colors = getReportDeckMemoLineColorArray(state, key, lines.length);
+        const sizeRanges = getReportDeckMemoLineSizeRangeArray(state, key, lines.length);
+        preview.innerHTML = lines.map((line, index) => (
+            `<span class="report-memo-preview-line ${getReportDeckMemoLineClass(line)}${preserveFormatting ? ' is-preserve-format' : ''}" style="${getReportDeckMemoLineFontSizeStyle(sizes[index])}">`
+                + `${renderReportDeckMemoLineHtml(line, colors[index] || [], sizeRanges[index] || [])}`
+            + '</span>'
+        )).join('');
+    }
+
     function clearReportDeckMemoManualInput(dialog) {
         const input = dialog?.querySelector?.('[data-report-memo-manual-input]');
         if (input) input.value = '';
@@ -2923,17 +4070,28 @@
         if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
         const previousLines = getReportDeckMemoLines(state[normalizedKey]);
         const previousSizes = getReportDeckMemoLineSizeArray(state, normalizedKey, previousLines.length);
-        const normalizedLines = (Array.isArray(lines) ? lines : [])
-            .map(line => String(line || '').trim())
-            .filter(Boolean);
-        state[normalizedKey] = normalizedLines.join('\n');
+        const previousSizeRanges = getReportDeckMemoLineSizeRangeArray(state, normalizedKey, previousLines.length);
+        const previousColors = getReportDeckMemoLineColorArray(state, normalizedKey, previousLines.length);
+        const normalizedLines = normalizeReportDeckMemoLineArray(lines);
+        state[normalizedKey] = serializeReportDeckMemoLines(normalizedLines);
         const nextSizes = Array.isArray(options.lineSizes)
             ? normalizeReportDeckMemoLineSizeArray(options.lineSizes, normalizedLines.length)
             : reconcileReportDeckMemoLineSizes(previousLines, previousSizes, normalizedLines);
+        const nextSizeRanges = Array.isArray(options.lineSizeRanges)
+            ? normalizeReportDeckMemoLineFontSizeRangeArray(options.lineSizeRanges, normalizedLines)
+            : reconcileReportDeckMemoLineSizeRanges(previousLines, previousSizeRanges, normalizedLines);
+        const nextColors = Array.isArray(options.lineColors)
+            ? normalizeReportDeckMemoLineColorArray(options.lineColors, normalizedLines)
+            : reconcileReportDeckMemoLineColors(previousLines, previousColors, normalizedLines);
         setReportDeckMemoLineSizeArray(state, normalizedKey, nextSizes);
+        setReportDeckMemoLineSizeRangeArray(state, normalizedKey, nextSizeRanges);
+        setReportDeckMemoLineColorArray(state, normalizedKey, nextColors);
         syncReportDeckMemoControls(root, state);
         if (options.syncDialog !== false) {
             syncReportDeckMemoDialogLines(dialog, state);
+        } else {
+            syncReportDeckMemoDialogPreview(dialog, state);
+            syncReportDeckMemoNotepadFontSizeControl(dialog, state);
         }
         markReportDeckDirty(root, state, meta);
         return true;
@@ -2951,20 +4109,60 @@
         if (toIndex < 0 || toIndex >= lines.length) return false;
         if (toIndex === fromIndex) return false;
         const sizes = getReportDeckMemoLineSizeArray(state, normalizedKey, lines.length);
+        const sizeRanges = getReportDeckMemoLineSizeRangeArray(state, normalizedKey, lines.length);
+        const colors = getReportDeckMemoLineColorArray(state, normalizedKey, lines.length);
         const [line] = lines.splice(fromIndex, 1);
         const [size] = sizes.splice(fromIndex, 1);
+        const [fontSizeRanges] = sizeRanges.splice(fromIndex, 1);
+        const [colorRanges] = colors.splice(fromIndex, 1);
         lines.splice(toIndex, 0, line);
         sizes.splice(toIndex, 0, size);
-        return setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, lines, { lineSizes: sizes });
+        sizeRanges.splice(toIndex, 0, fontSizeRanges || []);
+        colors.splice(toIndex, 0, colorRanges || []);
+        return setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, lines, { lineSizes: sizes, lineSizeRanges: sizeRanges, lineColors: colors });
     }
 
-    function adjustReportDeckMemoLineFontSize(root, state, meta, dialog, key, lineIndex, delta) {
+    function adjustReportDeckMemoLineFontSize(root, state, meta, dialog, key, lineIndex, delta, control = null) {
         const normalizedKey = String(key || '').trim();
         if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
         const lines = getReportDeckMemoLines(state[normalizedKey]);
         if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= lines.length) return false;
         const normalizedDelta = Number.parseInt(String(delta || '0'), 10);
         if (!Number.isFinite(normalizedDelta) || normalizedDelta === 0) return false;
+        const input = getReportDeckMemoLineInputFromControl(dialog, control, lineIndex);
+        const selectionStart = Number(input?.selectionStart);
+        const selectionEnd = Number(input?.selectionEnd);
+        if (input && Number.isFinite(selectionStart) && Number.isFinite(selectionEnd) && selectionEnd > selectionStart) {
+            lines[lineIndex] = String(input.value || '');
+            setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, lines, { syncDialog: false });
+            const nextLines = getReportDeckMemoLines(state[normalizedKey]);
+            const lineLength = normalizeReportDeckMemoLineText(nextLines[lineIndex] || '').length;
+            const start = Math.max(0, Math.min(lineLength, selectionStart));
+            const end = Math.max(0, Math.min(lineLength, selectionEnd));
+            if (end <= start) return false;
+            const sizes = getReportDeckMemoLineSizeArray(state, normalizedKey, nextLines.length);
+            const sizeRanges = getReportDeckMemoLineSizeRangeArray(state, normalizedKey, nextLines.length);
+            const currentSize = getReportDeckMemoLineSelectionFontSizeLevel(
+                sizes[lineIndex],
+                sizeRanges[lineIndex] || [],
+                start,
+                end,
+                normalizedDelta
+            );
+            const nextSize = normalizeReportDeckMemoLineFontSizeLevel(currentSize + normalizedDelta);
+            if (nextSize === currentSize) {
+                input.focus?.();
+                input.setSelectionRange?.(selectionStart, selectionEnd);
+                return false;
+            }
+            sizeRanges[lineIndex] = applyReportDeckMemoLineFontSizeRange(sizeRanges[lineIndex] || [], start, end, nextSize);
+            setReportDeckMemoLineSizeRangeArray(state, normalizedKey, sizeRanges);
+            syncReportDeckMemoControls(root, state);
+            markReportDeckDirty(root, state, meta);
+            input.focus?.();
+            input.setSelectionRange?.(selectionStart, selectionEnd);
+            return true;
+        }
         const sizes = getReportDeckMemoLineSizeArray(state, normalizedKey, lines.length);
         const nextSize = normalizeReportDeckMemoLineFontSizeLevel(sizes[lineIndex] + normalizedDelta);
         if (nextSize === sizes[lineIndex]) {
@@ -2977,6 +4175,216 @@
         syncReportDeckMemoDialogLines(dialog, state);
         markReportDeckDirty(root, state, meta);
         return true;
+    }
+
+    function getReportDeckMemoLineInputFromControl(dialog, control, lineIndex) {
+        const rowInput = control
+            ?.closest?.('[data-report-memo-line-row]')
+            ?.querySelector?.('[data-report-memo-line-input]');
+        if (rowInput) return rowInput;
+        return dialog?.querySelector?.(`[data-report-memo-line-input="${lineIndex}"]`) || null;
+    }
+
+    function applyReportDeckMemoLineColor(root, state, meta, dialog, key, lineIndex, color, control = null) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
+        const normalizedIndex = Number.parseInt(String(lineIndex ?? ''), 10);
+        if (!Number.isInteger(normalizedIndex) || normalizedIndex < 0) return false;
+        const input = getReportDeckMemoLineInputFromControl(dialog, control, normalizedIndex);
+        if (!input) return false;
+        const selectionStart = Number(input.selectionStart);
+        const selectionEnd = Number(input.selectionEnd);
+        if (!Number.isFinite(selectionStart) || !Number.isFinite(selectionEnd) || selectionEnd <= selectionStart) return false;
+        const lines = getReportDeckMemoLines(state[normalizedKey]);
+        if (normalizedIndex >= lines.length) return false;
+        lines[normalizedIndex] = String(input.value || '');
+        setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, lines, { syncDialog: false });
+        const nextLines = getReportDeckMemoLines(state[normalizedKey]);
+        const lineLength = normalizeReportDeckMemoLineText(nextLines[normalizedIndex] || '').length;
+        const start = Math.max(0, Math.min(lineLength, selectionStart));
+        const end = Math.max(0, Math.min(lineLength, selectionEnd));
+        if (end <= start) return false;
+        const colorAction = String(color || '').trim().toLowerCase();
+        if (colorAction !== 'clear' && !normalizeReportDeckMemoLineColor(colorAction)) return false;
+        const colors = getReportDeckMemoLineColorArray(state, normalizedKey, nextLines.length);
+        colors[normalizedIndex] = colorAction === 'clear'
+            ? clearReportDeckMemoLineColorRange(colors[normalizedIndex] || [], start, end)
+            : applyReportDeckMemoLineColorRange(colors[normalizedIndex] || [], start, end, colorAction);
+        setReportDeckMemoLineColorArray(state, normalizedKey, colors);
+        syncReportDeckMemoControls(root, state);
+        markReportDeckDirty(root, state, meta);
+        input.focus?.();
+        input.setSelectionRange?.(selectionStart, selectionEnd);
+        return true;
+    }
+
+    function adjustReportDeckMemoNotepadFontSize(root, state, meta, dialog, key, delta) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
+        const input = getReportDeckMemoNotepadInput(dialog);
+        const selection = getReportDeckMemoNotepadSelection(input, dialog);
+        const selectionStart = Number(selection?.start);
+        const selectionEnd = Number(selection?.end);
+        const selectedRanges = getReportDeckMemoNotepadSelectionRanges(input, dialog, state, normalizedKey);
+        const normalizedDelta = Number.parseInt(String(delta || '0'), 10);
+        if (!input || !selectedRanges.length || !Number.isFinite(normalizedDelta) || normalizedDelta === 0) {
+            syncReportDeckMemoNotepadFontSizeControl(dialog, state);
+            return false;
+        }
+        const model = buildReportDeckMemoNotepadLineRanges(
+            input.value || '',
+            isReportDeckMemoFormattingPreserved(state, normalizedKey)
+        );
+        const nextText = serializeReportDeckMemoLines(model.lines);
+        if (nextText !== String(state[normalizedKey] || '')) {
+            setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, model.lines, { syncDialog: false });
+        }
+        const lines = getReportDeckMemoLines(state[normalizedKey]);
+        const sizes = getReportDeckMemoLineSizeArray(state, normalizedKey, lines.length);
+        const sizeRanges = getReportDeckMemoLineSizeRangeArray(state, normalizedKey, lines.length);
+        let changed = false;
+        selectedRanges.forEach(range => {
+            if (range.lineIndex < 0 || range.lineIndex >= lines.length) return;
+            const currentSize = getReportDeckMemoLineSelectionFontSizeLevel(
+                sizes[range.lineIndex],
+                sizeRanges[range.lineIndex] || [],
+                range.start,
+                range.end,
+                normalizedDelta
+            );
+            const nextSize = normalizeReportDeckMemoLineFontSizeLevel(currentSize + normalizedDelta);
+            if (nextSize === currentSize) return;
+            sizeRanges[range.lineIndex] = applyReportDeckMemoLineFontSizeRange(
+                sizeRanges[range.lineIndex] || [],
+                range.start,
+                range.end,
+                nextSize
+            );
+            changed = true;
+        });
+        if (changed) {
+            setReportDeckMemoLineSizeRangeArray(state, normalizedKey, sizeRanges);
+            syncReportDeckMemoControls(root, state);
+            markReportDeckDirty(root, state, meta);
+        }
+        input.focus?.();
+        input.setSelectionRange?.(selectionStart, selectionEnd);
+        rememberReportDeckMemoNotepadSelection(dialog, input);
+        syncReportDeckMemoDialogPreview(dialog, state);
+        syncReportDeckMemoNotepadFontSizeControl(dialog, state);
+        return changed;
+    }
+
+    function setReportDeckMemoNotepadFontSize(root, state, meta, dialog, key, size) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
+        const input = getReportDeckMemoNotepadInput(dialog);
+        const selection = getReportDeckMemoNotepadSelection(input, dialog);
+        const selectionStart = Number(selection?.start);
+        const selectionEnd = Number(selection?.end);
+        const selectedRanges = getReportDeckMemoNotepadSelectionRanges(input, dialog, state, normalizedKey);
+        const parsedSize = getReportDeckMemoLineFontSizeLevelFromDisplayValue(size);
+        if (parsedSize === null) {
+            syncReportDeckMemoNotepadFontSizeControl(dialog, state);
+            return false;
+        }
+        const normalizedSize = normalizeReportDeckMemoLineFontSizeLevel(parsedSize);
+        if (!input || !selectedRanges.length) {
+            syncReportDeckMemoNotepadFontSizeControl(dialog, state);
+            return false;
+        }
+        const model = buildReportDeckMemoNotepadLineRanges(
+            input.value || '',
+            isReportDeckMemoFormattingPreserved(state, normalizedKey)
+        );
+        const nextText = serializeReportDeckMemoLines(model.lines);
+        if (nextText !== String(state[normalizedKey] || '')) {
+            setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, model.lines, { syncDialog: false });
+        }
+        const lines = getReportDeckMemoLines(state[normalizedKey]);
+        const sizeRanges = getReportDeckMemoLineSizeRangeArray(state, normalizedKey, lines.length);
+        const previousRanges = JSON.stringify(sizeRanges);
+        selectedRanges.forEach(range => {
+            if (range.lineIndex < 0 || range.lineIndex >= lines.length) return;
+            sizeRanges[range.lineIndex] = applyReportDeckMemoLineFontSizeRange(
+                sizeRanges[range.lineIndex] || [],
+                range.start,
+                range.end,
+                normalizedSize
+            );
+        });
+        const changed = JSON.stringify(sizeRanges) !== previousRanges;
+        if (changed) {
+            setReportDeckMemoLineSizeRangeArray(state, normalizedKey, sizeRanges);
+            syncReportDeckMemoControls(root, state);
+            markReportDeckDirty(root, state, meta);
+        }
+        input.focus?.();
+        input.setSelectionRange?.(selectionStart, selectionEnd);
+        rememberReportDeckMemoNotepadSelection(dialog, input);
+        syncReportDeckMemoDialogPreview(dialog, state);
+        syncReportDeckMemoNotepadFontSizeControl(dialog, state);
+        return changed;
+    }
+
+    function applyReportDeckMemoNotepadColor(root, state, meta, dialog, key, color) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
+        const input = getReportDeckMemoNotepadInput(dialog);
+        const selection = getReportDeckMemoNotepadSelection(input, dialog);
+        const selectionStart = Number(selection?.start);
+        const selectionEnd = Number(selection?.end);
+        const selectedRanges = getReportDeckMemoNotepadSelectionRanges(input, dialog, state, normalizedKey);
+        const colorAction = String(color || '').trim().toLowerCase();
+        if (!input || !selectedRanges.length || (colorAction !== 'clear' && !normalizeReportDeckMemoLineColor(colorAction))) return false;
+        const model = buildReportDeckMemoNotepadLineRanges(
+            input.value || '',
+            isReportDeckMemoFormattingPreserved(state, normalizedKey)
+        );
+        const nextText = serializeReportDeckMemoLines(model.lines);
+        if (nextText !== String(state[normalizedKey] || '')) {
+            setReportDeckMemoLines(root, state, meta, dialog, normalizedKey, model.lines, { syncDialog: false });
+        }
+        const lines = getReportDeckMemoLines(state[normalizedKey]);
+        const colors = getReportDeckMemoLineColorArray(state, normalizedKey, lines.length);
+        selectedRanges.forEach(range => {
+            if (range.lineIndex < 0 || range.lineIndex >= lines.length) return;
+            colors[range.lineIndex] = colorAction === 'clear'
+                ? clearReportDeckMemoLineColorRange(colors[range.lineIndex] || [], range.start, range.end)
+                : applyReportDeckMemoLineColorRange(colors[range.lineIndex] || [], range.start, range.end, colorAction);
+        });
+        setReportDeckMemoLineColorArray(state, normalizedKey, colors);
+        syncReportDeckMemoControls(root, state);
+        markReportDeckDirty(root, state, meta);
+        input.focus?.();
+        input.setSelectionRange?.(selectionStart, selectionEnd);
+        rememberReportDeckMemoNotepadSelection(dialog, input);
+        syncReportDeckMemoDialogPreview(dialog, state);
+        syncReportDeckMemoNotepadFontSizeControl(dialog, state);
+        return true;
+    }
+
+    function insertReportDeckMemoCandidateAtNotepadCursor(root, state, meta, dialog, key, candidateText = '') {
+        const normalizedKey = String(key || '').trim();
+        const text = normalizeReportDeckMemoLineText(candidateText);
+        if (!normalizedKey || !text || !Object.prototype.hasOwnProperty.call(state, normalizedKey)) return false;
+        const input = getReportDeckMemoNotepadInput(dialog);
+        if (!input) return false;
+        const value = String(input.value || '');
+        const rawStart = Number(input.selectionStart);
+        const rawEnd = Number(input.selectionEnd);
+        const start = Number.isFinite(rawStart) ? Math.max(0, Math.min(value.length, rawStart)) : value.length;
+        const end = Number.isFinite(rawEnd) ? Math.max(start, Math.min(value.length, rawEnd)) : start;
+        const prefix = value.slice(0, start);
+        const suffix = value.slice(end);
+        const before = prefix && !prefix.endsWith('\n') ? '\n' : '';
+        const after = suffix && !suffix.startsWith('\n') ? '\n' : '';
+        const inserted = `${before}${text}${after}`;
+        input.value = `${prefix}${inserted}${suffix}`;
+        const caret = prefix.length + inserted.length;
+        input.setSelectionRange?.(caret, caret);
+        input.focus?.();
+        return syncReportDeckMemoNotepadToState(root, state, meta, dialog, normalizedKey, { syncDialog: false });
     }
 
     function appendReportDeckMemoLines(root, state, meta, dialog, key, addedLines = []) {
@@ -3021,10 +4429,18 @@
                     + `<button type="button" data-report-memo-move-line="${index}" data-report-memo-move-direction="down" ${index >= lines.length - 1 ? 'disabled' : ''} title="&#50500;&#47000;&#47196;" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1} &#50500;&#47000;&#47196;">&#9660;</button>`
                     + `<button type="button" data-report-memo-line-font-size="${index}" data-report-memo-line-font-size-delta="-1" ${sizeLevel <= REPORT_DECK_MEMO_LINE_FONT_SIZE_MIN ? 'disabled' : ''} title="&#44544;&#51088; &#51089;&#44172;" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1} &#44544;&#51088; &#51089;&#44172;">-</button>`
                     + `<button type="button" data-report-memo-line-font-size="${index}" data-report-memo-line-font-size-delta="1" ${sizeLevel >= REPORT_DECK_MEMO_LINE_FONT_SIZE_MAX ? 'disabled' : ''} title="&#44544;&#51088; &#53356;&#44172;" aria-label="&#53945;&#51060;&#49324;&#54637; ${index + 1} &#44544;&#51088; &#53356;&#44172;">+</button>`
-                    + `<button type="button" data-report-memo-delete-line="${index}">삭제</button>`
+                    + '<span class="report-memo-line-color-actions">'
+                        + `<button type="button" class="report-memo-line-color-button is-red" data-report-memo-line-color="${index}" data-report-memo-line-color-value="red" title="선택 영역 빨강" aria-label="특이사항 ${index + 1} 선택 영역 빨강"><span></span></button>`
+                        + `<button type="button" class="report-memo-line-color-button is-blue" data-report-memo-line-color="${index}" data-report-memo-line-color-value="blue" title="선택 영역 파랑" aria-label="특이사항 ${index + 1} 선택 영역 파랑"><span></span></button>`
+                        + `<button type="button" class="report-memo-line-color-button is-clear" data-report-memo-line-color="${index}" data-report-memo-line-color-value="clear" title="색 초기화" aria-label="특이사항 ${index + 1} 선택 영역 색 초기화">&#8630;</button>`
+                    + '</span>'
                 + '</span>'
             + '</div>'
         }).join('');
+    }
+
+    function syncReportDeckMemoDialogLines(dialog, state) {
+        syncReportDeckMemoDialogNotepad(dialog, state);
     }
 
     function setReportDeckMemoCandidateMessage(dialog, message) {
@@ -3112,10 +4528,10 @@
         dialog.dataset.reportMemoTarget = key;
         syncReportDeckMemoMetricOptions(dialog, memoTarget.dataset.reportMemoDefaultMetric || metricSelect?.value);
         syncReportDeckMemoDialogLines(dialog, state);
-        clearReportDeckMemoManualInput(dialog);
         dialog.hidden = false;
+        syncReportDeckMemoDialogFloatingPosition(dialog);
         void refreshReportDeckMemoDialog(root, state, meta);
-        teamSelect?.focus?.();
+        getReportDeckMemoNotepadInput(dialog)?.focus?.();
         return true;
     }
 
@@ -3253,7 +4669,10 @@
         const layout = slide.querySelector?.('[data-report-plan-slide="slide10"]');
         if (layout?.dataset) layout.dataset.reportPlanPage = String(pageIndex);
         Array.from(slide.querySelectorAll?.('[data-report-safety-row]') || []).forEach((table, rowIndex) => {
-            if (table?.dataset) table.dataset.reportSafetyRow = String(rowIndex);
+            if (table?.dataset) {
+                table.dataset.reportSafetyRow = String(rowIndex);
+                table.dataset.reportSafetyTableIndex = String(rowIndex);
+            }
             Array.from(table.querySelectorAll?.('[data-report-plan-row-team]') || []).forEach(label => {
                 label.dataset.reportPlanRowIndex = String(rowIndex);
             });
@@ -3298,6 +4717,7 @@
             const pageIndex = Math.max(0, Number.parseInt(String(slide.dataset.reportPlanPage || '0'), 10) || 0);
             const totalCount = normalizeReportDeckPlanItemCount(state[`${slideKey}SlotCount`], slideKey);
             state[`${slideKey}SlotCount`] = String(totalCount);
+            const includeSlide10EditableEmptyRows = slideKey === 'slide10' && root?.dataset?.reportEditMode === 'editing';
             const pageCounts = buildReportDeckPlanPageCounts(totalCount, slideKey, state);
             const pageCount = pageCounts[pageIndex] || 0;
             const displayCount = slideKey === 'slide10'
@@ -3305,7 +4725,10 @@
                 : pageCount;
             const pageStart = getReportDeckPlanPageStart(pageCounts, pageIndex);
             const slide10PageRows = slideKey === 'slide10'
-                ? getReportDeckSlide10PageRows(state, pageIndex, { includeEmpty: true })
+                ? getReportDeckSlide10PageRows(state, pageIndex, {
+                    includeEmpty: true,
+                    includeEditableEmptyRows: includeSlide10EditableEmptyRows
+                })
                 : [];
             if (slideKey === 'slide10') {
                 const filledRowCount = slide10PageRows.filter(row => (
@@ -3317,7 +4740,10 @@
             }
             const getSourceIndex = localSlotIndex => (
                 slideKey === 'slide10'
-                    ? getReportDeckSlide10SourceIndexForLocalSlot(state, pageIndex, localSlotIndex, { includeEmpty: true })
+                    ? getReportDeckSlide10SourceIndexForLocalSlot(state, pageIndex, localSlotIndex, {
+                        includeEmpty: true,
+                        includeEditableEmptyRows: includeSlide10EditableEmptyRows
+                    })
                     : pageStart + localSlotIndex - 1
             );
             const isFilledSourceIndex = sourceIndex => (
@@ -3333,7 +4759,9 @@
             const slidePage = slide.closest?.('[data-report-slide-page]');
             if (slidePage) {
                 slidePage.hidden = slideKey === 'slide10'
-                    ? pageIndex >= getReportDeckSlide10RequiredPageCount(state)
+                    ? pageIndex >= getReportDeckSlide10RequiredPageCount(state, {
+                        includeEditableEmptyRows: includeSlide10EditableEmptyRows
+                    })
                     : pageIndex > 0 && pageCount <= 0;
             }
             slide.dataset.reportPlanSlotCount = String(displayCount);
@@ -3388,18 +4816,20 @@
                 team.dataset.reportPlanFilled = filled ? 'true' : 'false';
             });
             if (slideKey === 'slide10') {
+                const slide10MoveTables = cloneReportDeckSlide10TablesForManualMove(state);
                 Array.from(slide.querySelectorAll?.('[data-report-plan-row-team]') || []).forEach(label => {
                     const rowIndex = Math.max(0, Number.parseInt(String(label.dataset.reportPlanRowIndex || '0'), 10) || 0);
-                    const row = getReportDeckSlide10PageRow(state, pageIndex, rowIndex, { includeEmpty: true });
+                    const row = getReportDeckSlide10PageRow(state, pageIndex, rowIndex, {
+                        includeEmpty: true,
+                        includeEditableEmptyRows: includeSlide10EditableEmptyRows
+                    });
                     const sourceIndexes = slide10PageRows[rowIndex] || row.sourceIndexes || [];
-                    const teamEntry = sourceIndexes
-                        .map(index => (index ? getReportDeckSlide10OverviewEntry(state, index) : null))
-                        .find(entry => entry && entry.team);
                     const rowFilledSlotCount = sourceIndexes
                         .filter(index => index && hasReportDeckSlide10OverviewData(getReportDeckSlide10OverviewEntry(state, index)))
                         .length;
                     const rowFilled = rowFilledSlotCount > 0;
-                    const teamText = teamEntry?.team || row.team || (hasReportDeckSlide10Content(state) ? '' : getReportDeckSlide10DefaultTeamForPageRow(pageIndex, rowIndex));
+                    const fallbackTeam = row.team || (hasReportDeckSlide10Content(state) ? '' : getReportDeckSlide10DefaultTeamForPageRow(pageIndex, rowIndex));
+                    const teamText = getReportDeckSlide10RowTeamLabel(state, sourceIndexes, fallbackTeam);
                     const labelText = label.querySelector?.('[data-report-plan-row-team-label]');
                     if (labelText) {
                         labelText.textContent = teamText;
@@ -3418,6 +4848,15 @@
                     if (addButton) {
                         addButton.disabled = root?.dataset?.reportEditMode !== 'editing';
                     }
+                });
+                Array.from(slide.querySelectorAll?.('[data-report-safety-table-move]') || []).forEach(button => {
+                    const direction = normalizeReportDeckSlide10TableMoveDirection(button.dataset.reportSafetyTableMove);
+                    const context = direction ? getReportDeckSlide10TableMoveContext(button) : null;
+                    const enabled = root?.dataset?.reportEditMode === 'editing'
+                        && context
+                        && canMoveReportDeckSlide10Table(slide10MoveTables, context, direction);
+                    button.disabled = !enabled;
+                    button.dataset.reportSafetyTableMoveEnabled = enabled ? 'true' : 'false';
                 });
                 Array.from(slide.querySelectorAll?.('[data-report-safety-team-select]') || []).forEach(select => {
                     select.disabled = root?.dataset?.reportEditMode !== 'editing';
@@ -3566,7 +5005,8 @@
     }
 
     function getReportDeckOverviewDialogField(dialog, fieldKey) {
-        return dialog?.querySelector?.(`[data-report-overview-${fieldKey}]`) || null;
+        const dataKey = String(fieldKey || '').replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
+        return dialog?.querySelector?.(`[data-report-overview-${dataKey}]`) || null;
     }
 
     function getReportDeckOverviewSlot(root, slotToken, state = {}, slideKey = 'slide8') {
@@ -3595,6 +5035,39 @@
         });
     }
 
+    function syncReportDeckOverviewCustomTeamRow(dialog) {
+        const customTeamRow = dialog?.querySelector?.('[data-report-overview-custom-team-row]') || null;
+        const customTeamField = getReportDeckOverviewDialogField(dialog, 'customTeam');
+        const teamField = getReportDeckOverviewDialogField(dialog, 'team');
+        const showCustomTeam = Boolean(normalizeReportDeckPlanSlideKey(dialog?.dataset?.reportOverviewSlideKey))
+            && normalizeReportDeckOverviewTeam(teamField?.value) === REPORT_DECK_OTHER_TEAM_LABEL;
+        if (customTeamRow) customTeamRow.hidden = !showCustomTeam;
+        if (customTeamField) {
+            customTeamField.disabled = !showCustomTeam;
+            if (!showCustomTeam) {
+                customTeamField.value = '';
+                customTeamField.setCustomValidity?.('');
+            }
+        }
+        return showCustomTeam;
+    }
+
+    function syncReportDeckOverviewAmountFields(dialog) {
+        const amountField = getReportDeckOverviewDialogField(dialog, 'amount');
+        const amountTextField = getReportDeckOverviewDialogField(dialog, 'amountText');
+        const isSlide10 = normalizeReportDeckPlanSlideKey(dialog?.dataset?.reportOverviewSlideKey) === 'slide10';
+        if (!amountTextField) return false;
+        if (!isSlide10) {
+            amountTextField.value = '';
+            amountTextField.disabled = true;
+            if (amountField) amountField.disabled = false;
+            return false;
+        }
+        amountTextField.disabled = false;
+        if (amountField) amountField.disabled = false;
+        return true;
+    }
+
     function syncReportDeckOverviewDialogMode(dialog, slideKey) {
         const normalizedSlideKey = normalizeReportDeckPlanSlideKey(slideKey) || 'slide8';
         const formMode = normalizedSlideKey === 'slide10' ? 'slide10' : (normalizedSlideKey === 'slide9' ? 'slide9' : 'slide8');
@@ -3612,7 +5085,7 @@
             row.hidden = false;
         });
         Array.from(dialog.querySelectorAll?.('[data-report-overview-team-row]') || []).forEach(row => {
-            row.hidden = normalizedSlideKey === 'slide10';
+            row.hidden = false;
         });
         const dateLabel = dialog.querySelector?.('[data-report-overview-date-label]');
         if (dateLabel) dateLabel.textContent = normalizedSlideKey === 'slide10' ? '날짜' : (normalizedSlideKey === 'slide9' ? '예상 날짜' : '완료 날짜');
@@ -3624,6 +5097,8 @@
         }
         const amountLabel = dialog.querySelector?.('[data-report-overview-amount-label]');
         if (amountLabel) amountLabel.textContent = normalizedSlideKey === 'slide10' ? '비용' : (normalizedSlideKey === 'slide9' ? '예상 금액' : '금액');
+        syncReportDeckOverviewCustomTeamRow(dialog);
+        syncReportDeckOverviewAmountFields(dialog);
     }
 
     function openReportDeckOverviewDialog(root, state, slotToken, slideKey = 'slide8', options = {}) {
@@ -3638,22 +5113,34 @@
         const titleField = getReportDeckOverviewDialogField(dialog, 'title');
         const effectField = getReportDeckOverviewDialogField(dialog, 'effect');
         const hazardField = getReportDeckOverviewDialogField(dialog, 'hazard');
+        const customTeamField = getReportDeckOverviewDialogField(dialog, 'customTeam');
         const detailField = getReportDeckOverviewDialogField(dialog, 'detail');
         const dateField = getReportDeckOverviewDialogField(dialog, 'date');
         const amountField = getReportDeckOverviewDialogField(dialog, 'amount');
+        const amountTextField = getReportDeckOverviewDialogField(dialog, 'amountText');
         const defaultTeam = normalizedSlideKey === 'slide10'
             ? (normalizeReportDeckOverviewTeam(options.defaultTeam) || getReportDeckSlide10TeamForSourceIndex(state, slotIndex))
             : REPORT_DECK_SLIDE8_OVERVIEW_TEAMS[0];
-        if (teamField) teamField.value = entry.team || defaultTeam;
+        const entryTeam = normalizeReportDeckOverviewTeamValue(entry.team);
+        if (teamField) {
+            teamField.value = normalizeReportDeckOverviewTeam(entryTeam) || (entryTeam ? REPORT_DECK_OTHER_TEAM_LABEL : defaultTeam);
+        }
+        if (customTeamField) {
+            customTeamField.value = getReportDeckOverviewCustomTeam(entryTeam);
+            customTeamField.setCustomValidity?.('');
+        }
         if (titleField) titleField.value = entry.title || '';
         if (effectField) effectField.value = entry.effect || '';
-        if (hazardField) hazardField.value = normalizeReportDeckSlide10Hazard(entry.effect) || REPORT_DECK_SLIDE10_HAZARD_OPTIONS[0];
+        if (hazardField) hazardField.value = normalizeReportDeckSlide10Hazard(entry.effect);
         if (detailField) detailField.value = entry.detail || '';
         if (dateField) dateField.value = normalizedSlideKey === 'slide9'
             ? normalizeReportDeckOverviewMonth(entry.date)
             : (entry.date || '');
         if (amountField) amountField.value = entry.amount || '';
+        if (amountTextField) amountTextField.value = normalizedSlideKey === 'slide10' ? (entry.amountText || '') : '';
         setReportDeckOverviewKindControls(dialog, entry.kind || 'cause');
+        syncReportDeckOverviewCustomTeamRow(dialog);
+        syncReportDeckOverviewAmountFields(dialog);
         dialog.hidden = false;
         titleField?.focus?.();
         return true;
@@ -3685,9 +5172,34 @@
             return false;
         }
         amountField?.setCustomValidity?.('');
+        const amountText = slideKey === 'slide10'
+            ? normalizeReportDeckOverviewAmountText(getReportDeckOverviewDialogField(dialog, 'amountText')?.value)
+            : '';
+        const selectedTeam = getReportDeckOverviewDialogField(dialog, 'team')?.value || '';
+        const customTeamField = getReportDeckOverviewDialogField(dialog, 'customTeam');
+        let teamValue = selectedTeam;
+        if (normalizeReportDeckOverviewTeam(selectedTeam) === REPORT_DECK_OTHER_TEAM_LABEL) {
+            const customTeam = normalizeReportDeckOverviewTeamValue(customTeamField?.value);
+            if (!customTeam) {
+                customTeamField?.setCustomValidity?.('기타 팀명을 입력해 주세요.');
+                customTeamField?.reportValidity?.();
+                customTeamField?.focus?.();
+                setReportDeckStatus(root, 'error', '기타 팀명을 입력해 주세요');
+                return false;
+            }
+            if (normalizeReportDeckOverviewTeam(customTeam)) {
+                customTeamField?.setCustomValidity?.('기존 팀명은 해당 팀을 선택해 주세요.');
+                customTeamField?.reportValidity?.();
+                customTeamField?.focus?.();
+                setReportDeckStatus(root, 'error', '기존 팀명은 기타가 아니라 해당 팀을 선택해 주세요');
+                return false;
+            }
+            teamValue = customTeam;
+        }
+        customTeamField?.setCustomValidity?.('');
         const entry = {
             ...current,
-            team: getReportDeckOverviewDialogField(dialog, 'team')?.value || '',
+            team: teamValue,
             title: getReportDeckOverviewDialogField(dialog, 'title')?.value || '',
             effect: slideKey === 'slide10'
                 ? (getReportDeckOverviewDialogField(dialog, 'hazard')?.value || '')
@@ -3697,7 +5209,8 @@
             date: slideKey === 'slide9'
                 ? normalizeReportDeckPlanExpectedDateValue(getReportDeckOverviewDialogField(dialog, 'date')?.value || '')
                 : (getReportDeckOverviewDialogField(dialog, 'date')?.value || ''),
-            amount: normalizedAmount
+            amount: normalizedAmount,
+            amountText
         };
         setReportDeckPlanOverviewEntry(state, slideKey, slotIndex, entry);
         normalizeReportDeckPlanOverviewOrder(state, slideKey);
@@ -3733,6 +5246,11 @@
         if (!key || !Object.prototype.hasOwnProperty.call(state, key)) return false;
         let changed = false;
 
+        const notepadInput = getReportDeckMemoNotepadInput(dialog);
+        if (notepadInput) {
+            return syncReportDeckMemoNotepadToState(root, state, meta, dialog, key, { syncDialog: false });
+        }
+
         const lineInputs = Array.from(dialog.querySelectorAll?.('[data-report-memo-line-input]') || []);
         if (lineInputs.length) {
             const nextLines = getReportDeckMemoLines(state[key]);
@@ -3741,7 +5259,7 @@
                 if (!Number.isInteger(index) || index < 0) return;
                 nextLines[index] = String(input.value || '');
             });
-            const nextText = nextLines.map(line => String(line || '').trim()).filter(Boolean).join('\n');
+            const nextText = serializeReportDeckMemoLines(nextLines);
             if (nextText !== String(state[key] || '')) {
                 changed = setReportDeckMemoLines(root, state, meta, dialog, key, nextLines, { syncDialog: false }) || changed;
             }
@@ -3879,6 +5397,135 @@
         syncReportDeckPlanControls(root, state);
         markReportDeckDirty(root, state, meta);
         setReportDeckView(root, 'public-works', Math.max(0, getReportDeckVisibleSlides(root, 'public-works').length - 1));
+        return true;
+    }
+
+    function normalizeReportDeckSlide10TableMoveDirection(value = '') {
+        const direction = String(value || '').trim();
+        return ['left', 'right', 'up', 'down'].includes(direction) ? direction : '';
+    }
+
+    function cloneReportDeckSlide10TablesForManualMove(state = {}) {
+        return buildReportDeckSlide10RowObjects(state, { includeEmpty: false })
+            .map(row => ({
+                team: String(row?.team || ''),
+                sourceIndexes: Array.isArray(row?.sourceIndexes)
+                    ? row.sourceIndexes.map(normalizeReportDeckSlide10RowOrderIndex).filter(index => index >= 1)
+                    : []
+            }));
+    }
+
+    function ensureReportDeckSlide10ManualTableIndex(rows = [], tableIndex = 0) {
+        const targetIndex = Math.max(0, Number.parseInt(String(tableIndex || '0'), 10) || 0);
+        while (rows.length <= targetIndex) {
+            rows.push({ team: '', sourceIndexes: [] });
+        }
+        return rows;
+    }
+
+    function getReportDeckSlide10TableMoveContext(target) {
+        const slot = target?.closest?.('[data-report-plan-slot]') || null;
+        const table = target?.closest?.('.report-safety-table') || null;
+        const slide = table?.closest?.('[data-report-plan-slide="slide10"]')
+            || target?.closest?.('[data-report-plan-slide="slide10"]')
+            || null;
+        if (!slot || !table || !slide) return null;
+        const pageIndex = Math.max(0, Number.parseInt(String(slide.dataset.reportPlanPage || '0'), 10) || 0);
+        const tableIndex = Math.max(0, Number.parseInt(String(table.dataset.reportSafetyTableIndex || table.dataset.reportSafetyRow || '0'), 10) || 0);
+        const localSlotIndex = Math.max(1, Number.parseInt(String(slot.dataset.reportPlanLocalSlot || '1'), 10) || 1);
+        const columnIndex = (localSlotIndex - 1) % REPORT_DECK_SLIDE10_COLUMNS_PER_ROW;
+        const sourceIndex = normalizeReportDeckSlide10RowOrderIndex(slot.dataset.reportPlanSourceSlot);
+        return {
+            slot,
+            table,
+            slide,
+            pageIndex,
+            tableIndex,
+            tableGlobalIndex: pageIndex * REPORT_DECK_SLIDE10_ROWS_PER_PAGE + tableIndex,
+            columnIndex,
+            sourceIndex
+        };
+    }
+
+    function getReportDeckSlide10TableColumnIndex(rows = [], tableIndex = 0, sourceIndex = 0, fallbackColumnIndex = 0) {
+        const row = rows[tableIndex] || null;
+        const sourceIndexes = Array.isArray(row?.sourceIndexes) ? row.sourceIndexes : [];
+        const explicitIndex = sourceIndexes.indexOf(sourceIndex);
+        if (explicitIndex >= 0) return explicitIndex;
+        const fallback = Math.max(0, Number.parseInt(String(fallbackColumnIndex || '0'), 10) || 0);
+        return fallback < sourceIndexes.length ? fallback : -1;
+    }
+
+    function canMoveReportDeckSlide10Table(rows = [], context = {}, direction = '') {
+        const row = rows[context.tableGlobalIndex] || null;
+        const sourceIndexes = Array.isArray(row?.sourceIndexes) ? row.sourceIndexes : [];
+        const columnIndex = getReportDeckSlide10TableColumnIndex(
+            rows,
+            context.tableGlobalIndex,
+            context.sourceIndex,
+            context.columnIndex
+        );
+        if (!context.sourceIndex || columnIndex < 0) return false;
+        if (direction === 'left') return columnIndex > 0;
+        if (direction === 'right') return columnIndex < sourceIndexes.length - 1;
+        if (direction === 'up') return context.tableGlobalIndex > 0;
+        if (direction === 'down') return true;
+        return false;
+    }
+
+    function setReportDeckSlide10ActivePage(root, pageIndex = 0) {
+        const targetPage = Math.max(0, Number.parseInt(String(pageIndex || '0'), 10) || 0);
+        const slide = getReportDeckSlide10PageSlides(root)[targetPage] || null;
+        if (!slide) return;
+        const activeView = getReportDeckActiveView(root);
+        const slideIndex = getReportDeckVisibleSlides(root, activeView).indexOf(slide);
+        if (slideIndex >= 0) setReportDeckSlide(root, slideIndex);
+    }
+
+    function moveReportDeckSlide10Table(root, state, meta, target, directionValue = '') {
+        const direction = normalizeReportDeckSlide10TableMoveDirection(directionValue);
+        const context = direction ? getReportDeckSlide10TableMoveContext(target) : null;
+        if (!context) return false;
+        const rows = cloneReportDeckSlide10TablesForManualMove(state);
+        const fromIndex = context.tableGlobalIndex;
+        const row = rows[fromIndex] || { team: '', sourceIndexes: [] };
+        const sourceIndexes = Array.isArray(row.sourceIndexes) ? row.sourceIndexes : [];
+        const columnIndex = getReportDeckSlide10TableColumnIndex(rows, fromIndex, context.sourceIndex, context.columnIndex);
+        if (!canMoveReportDeckSlide10Table(rows, context, direction) || columnIndex < 0) return false;
+        let targetIndex = fromIndex;
+        if (direction === 'left' || direction === 'right') {
+            const targetColumnIndex = direction === 'left' ? columnIndex - 1 : columnIndex + 1;
+            const nextIndexes = sourceIndexes.slice();
+            const currentSourceIndex = nextIndexes[columnIndex];
+            nextIndexes[columnIndex] = nextIndexes[targetColumnIndex];
+            nextIndexes[targetColumnIndex] = currentSourceIndex;
+            row.sourceIndexes = nextIndexes;
+            rows[fromIndex] = row;
+        } else {
+            targetIndex = direction === 'up' ? fromIndex - 1 : fromIndex + 1;
+            ensureReportDeckSlide10ManualTableIndex(rows, targetIndex);
+            const sourceIndex = sourceIndexes.splice(columnIndex, 1)[0];
+            const targetRow = rows[targetIndex] || { team: '', sourceIndexes: [] };
+            const targetIndexes = Array.isArray(targetRow.sourceIndexes) ? targetRow.sourceIndexes : [];
+            if (targetIndexes.length >= REPORT_DECK_SLIDE10_COLUMNS_PER_ROW) {
+                const swapIndex = Math.min(columnIndex, targetIndexes.length - 1);
+                const swappedSourceIndex = targetIndexes[swapIndex];
+                targetIndexes[swapIndex] = sourceIndex;
+                sourceIndexes.splice(Math.min(columnIndex, sourceIndexes.length), 0, swappedSourceIndex);
+            } else {
+                targetIndexes.splice(Math.min(columnIndex, targetIndexes.length), 0, sourceIndex);
+            }
+            row.sourceIndexes = sourceIndexes;
+            targetRow.sourceIndexes = targetIndexes;
+            rows[fromIndex] = row;
+            rows[targetIndex] = targetRow;
+        }
+        state.slide10TableOrder = serializeReportDeckSlide10TableOrder(rows);
+        closeReportDeckOverviewDialog(root);
+        syncReportDeckPlanControls(root, state);
+        syncReportDeckDynamicSlides(root);
+        setReportDeckSlide10ActivePage(root, Math.floor(targetIndex / REPORT_DECK_SLIDE10_ROWS_PER_PAGE));
+        markReportDeckDirty(root, state, meta);
         return true;
     }
 
@@ -4709,6 +6356,18 @@
         return items ? `<div class="report-auto-chart-legend-overlay">${items}</div>` : '';
     }
 
+    function buildReportDeckBarChartLegendHtml(series) {
+        const items = (Array.isArray(series) ? series : []).map(item => `
+            <span class="report-auto-chart-legend-item">
+                <svg class="report-auto-chart-legend-mark" viewBox="0 0 24 16" aria-hidden="true" focusable="false">
+                    <rect x="3" y="3" width="14" height="10" fill="${escapeReportDeckSvgText(item.color)}"></rect>
+                </svg>
+                <span class="report-auto-chart-legend-label">${escapeReportDeckSvgText(item.label)}</span>
+            </span>
+        `).join('');
+        return items ? `<div class="report-auto-chart-legend-overlay">${items}</div>` : '';
+    }
+
     function buildReportDeckChartHighlightHitSvg(x, y, chartKey = '', monthKey = '', highlighted = false) {
         const safeChartKey = escapeReportDeckSvgText(chartKey);
         const safeMonthKey = escapeReportDeckSvgText(monthKey);
@@ -4716,6 +6375,15 @@
         const selectedClass = highlighted ? ' is-highlighted' : '';
         const selectedValue = highlighted ? 'true' : 'false';
         return `<circle class="report-chart-highlight-hit${selectedClass}" data-report-chart-highlight-point="true" data-report-chart-highlight-key="${safeChartKey}" data-report-chart-highlight-month="${safeMonthKey}" data-report-chart-highlight-selected="${selectedValue}" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="13"></circle>`;
+    }
+
+    function buildReportDeckChartHighlightRectSvg(x, y, width, height, chartKey = '', monthKey = '', highlighted = false) {
+        const safeChartKey = escapeReportDeckSvgText(chartKey);
+        const safeMonthKey = escapeReportDeckSvgText(monthKey);
+        if (!safeChartKey || !safeMonthKey) return '';
+        const selectedClass = highlighted ? ' is-highlighted' : '';
+        const selectedValue = highlighted ? 'true' : 'false';
+        return `<rect class="report-chart-highlight-hit${selectedClass}" data-report-chart-highlight-point="true" data-report-chart-highlight-key="${safeChartKey}" data-report-chart-highlight-month="${safeMonthKey}" data-report-chart-highlight-selected="${selectedValue}" x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${width.toFixed(2)}" height="${height.toFixed(2)}"></rect>`;
     }
 
     function buildReportDeckChartPath(points, xScale, yScale) {
@@ -5014,7 +6682,9 @@
             plotTop + plotHeight,
             compactHeader
                 ? {
-                    offsets: [0, 18, 31, 44, 56],
+                    offsets: Array.isArray(options.labelOffsets) && options.labelOffsets.length
+                        ? options.labelOffsets
+                        : [0, 18, 31, 44, 56],
                     topPadding: 16,
                     bottomPadding: 12
                 }
@@ -5035,6 +6705,148 @@
                 ${markers}
                 ${labels}
                 ${hitTargets.join('')}
+                ${emptyText}
+            </svg>
+        `;
+    }
+
+    function formatReportDeckLpgCostBarMonthLabel(monthKey = '', fallback = '') {
+        const normalizedMonth = normalizeReportDeckMonth(monthKey);
+        const month = Number(String(normalizedMonth || '').slice(5, 7));
+        if (Number.isFinite(month) && month >= 1 && month <= 12) return `${month}월`;
+        return String(fallback || '');
+    }
+
+    function buildReportDeckYusanLpgCostBarChartSvg(model = {}, options = {}) {
+        const width = 640;
+        const height = 330;
+        const plotLeft = 34;
+        const plotRight = 34;
+        const plotTop = 54;
+        const plotBottom = 32;
+        const plotWidth = width - plotLeft - plotRight;
+        const plotHeight = height - plotTop - plotBottom;
+        const chartKey = String(options.chartKey || '').trim();
+        const actualRow = model.costRows?.[0] || {};
+        const conversionRow = model.costRows?.[1] || {};
+        const series = [
+            { key: 'lpg', label: 'LPG', color: '#c0504d' },
+            { key: 'conversion', label: 'LNG환산', color: '#4472c4' }
+        ];
+        const groups = [
+            {
+                key: 'previous',
+                label: formatReportDeckLpgCostBarMonthLabel(model.previousMonthKey, model.monthLabels?.previous),
+                monthKey: normalizeReportDeckMonth(model.previousMonthKey),
+                values: {
+                    conversion: toReportDeckFiniteNumber(conversionRow.previous),
+                    lpg: toReportDeckFiniteNumber(actualRow.previous)
+                }
+            },
+            {
+                key: 'current',
+                label: formatReportDeckLpgCostBarMonthLabel(model.monthKey, model.monthLabels?.current),
+                monthKey: normalizeReportDeckMonth(model.monthKey),
+                values: {
+                    conversion: toReportDeckFiniteNumber(conversionRow.current),
+                    lpg: toReportDeckFiniteNumber(actualRow.current)
+                }
+            }
+        ];
+        const values = groups
+            .flatMap(group => series.map(item => group.values[item.key]))
+            .filter(value => value !== null);
+        const minRaw = values.length ? Math.min(...values) : 0;
+        const maxRaw = values.length ? Math.max(...values) : 1;
+        const rawRange = Math.max(0, maxRaw - minRaw);
+        const pad = Math.max(rawRange * 0.18, Math.abs(maxRaw || minRaw || 1) * 0.04, 1);
+        const minValue = minRaw > 0 ? Math.max(0, minRaw - pad) : minRaw - pad;
+        const maxValue = maxRaw + pad;
+        const yScale = value => plotTop + ((maxValue - value) / Math.max(1, maxValue - minValue)) * plotHeight;
+        const groupWidth = plotWidth / Math.max(1, groups.length);
+        const barGap = 8;
+        const barWidth = Math.min(78, Math.max(38, groupWidth * 0.25));
+        const totalBarWidth = (barWidth * series.length) + (barGap * (series.length - 1));
+        const baseline = plotTop + plotHeight;
+        const highlightMonthSet = new Set((Array.isArray(options.highlightMonthKeys) ? options.highlightMonthKeys : [])
+            .map(normalizeReportDeckMonth)
+            .filter(Boolean));
+        const highlightRanges = (Array.isArray(options.highlightRanges) ? options.highlightRanges : [])
+            .map(range => Array.isArray(range)
+                ? [normalizeReportDeckMonth(range[0]), normalizeReportDeckMonth(range[1])]
+                : [normalizeReportDeckMonth(range?.start), normalizeReportDeckMonth(range?.end)])
+            .filter(range => range[0] && range[1])
+            .map(range => range[0] <= range[1] ? range : [range[1], range[0]]);
+        const labelItems = [];
+        const groupLayouts = groups.map((group, groupIndex) => {
+            const centerX = plotLeft + (groupWidth * (groupIndex + 0.5));
+            return {
+                ...group,
+                centerX,
+                hitX: centerX - (totalBarWidth / 2) - 8,
+                hitWidth: totalBarWidth + 16
+            };
+        });
+        const bars = groupLayouts.flatMap(group => (
+            series.map((item, seriesIndex) => {
+                const value = group.values[item.key];
+                if (value === null) return '';
+                const x = group.centerX - (totalBarWidth / 2) + (seriesIndex * (barWidth + barGap));
+                const y = yScale(value);
+                const barHeight = Math.max(1, baseline - y);
+                labelItems.push({
+                    x: x + (barWidth / 2),
+                    y,
+                    value,
+                    baseLabelY: y - 8,
+                    text: formatReportDeckChartValue(value, 0, 'number'),
+                    color: item.color,
+                    monthKey: group.monthKey,
+                    highlighted: group.monthKey ? highlightMonthSet.has(group.monthKey) : false
+                });
+                return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" fill="${escapeReportDeckSvgText(item.color)}"></rect>`;
+            })
+        )).join('');
+        const monthTicks = groupLayouts.map(group => `
+            <line class="report-auto-chart-tick" x1="${group.centerX.toFixed(2)}" y1="${baseline.toFixed(2)}" x2="${group.centerX.toFixed(2)}" y2="${(baseline + 5).toFixed(2)}"></line>
+            <text class="report-auto-chart-month" x="${group.centerX.toFixed(2)}" y="${height - 10}" text-anchor="middle">${escapeReportDeckSvgText(group.label)}</text>
+        `).join('');
+        const rangeRects = highlightRanges.map(range => {
+            const included = groupLayouts.filter(group => group.monthKey && group.monthKey >= range[0] && group.monthKey <= range[1]);
+            if (!included.length) return '';
+            const left = Math.min(...included.map(group => group.hitX));
+            const right = Math.max(...included.map(group => group.hitX + group.hitWidth));
+            return `<rect class="report-chart-highlight-range" x="${left.toFixed(2)}" y="${plotTop.toFixed(2)}" width="${Math.max(1, right - left).toFixed(2)}" height="${plotHeight.toFixed(2)}"></rect>`;
+        }).join('');
+        const hitTargets = groupLayouts.map(group => (
+            buildReportDeckChartHighlightRectSvg(
+                group.hitX,
+                plotTop,
+                group.hitWidth,
+                plotHeight,
+                chartKey,
+                group.monthKey,
+                group.monthKey ? highlightMonthSet.has(group.monthKey) : false
+            )
+        )).join('');
+        const labels = renderReportDeckChartValueLabels(placeReportDeckChartValueLabels(
+            labelItems,
+            plotTop,
+            baseline,
+            { offsets: [0, 18, 31, 44, 56], topPadding: 16, bottomPadding: 12 }
+        ));
+        const emptyText = values.length
+            ? ''
+            : `<text class="report-auto-chart-empty" x="${width / 2}" y="${plotTop + (plotHeight / 2)}" text-anchor="middle">데이터 없음</text>`;
+        return `
+            ${buildReportDeckBarChartLegendHtml(series)}
+            <svg viewBox="0 0 ${width} ${height}" role="img" aria-hidden="true" focusable="false">
+                <line class="report-auto-chart-axis" x1="${plotLeft}" y1="${baseline.toFixed(2)}" x2="${plotLeft + plotWidth}" y2="${baseline.toFixed(2)}"></line>
+                ${monthTicks}
+                ${rangeRects}
+                ${bars}
+                ${labels}
+                ${hitTargets}
                 ${emptyText}
             </svg>
         `;
@@ -5332,6 +7144,8 @@
         Array.from(root?.querySelectorAll?.('[data-report-waste-auto-chart-plot]') || []).forEach(plot => {
             plot.innerHTML = buildReportDeckAutoChartSvg(model.chart || {}, {
                 chartKey: persistedChartKey,
+                roomyPlot: true,
+                labelOffsets: [0, 22, 38, 54, 70],
                 highlightMonthKeys: getReportDeckChartHighlightMonthKeys(state, persistedChartKey),
                 highlightRanges: getReportDeckChartHighlightRanges(state, persistedChartKey)
             });
@@ -5365,10 +7179,8 @@
         });
         Array.from(root?.querySelectorAll?.('[data-report-yusan-lpg-chart-plot="cost"]') || []).forEach(plot => {
             const chartKey = 'auto:yusan-lpg:cost';
-            plot.innerHTML = buildReportDeckAutoChartSvg(model.costChart || {}, {
+            plot.innerHTML = buildReportDeckYusanLpgCostBarChartSvg(model, {
                 chartKey,
-                valueDecimals: 0,
-                valueFormat: 'number',
                 highlightMonthKeys: getReportDeckChartHighlightMonthKeys(state, chartKey),
                 highlightRanges: getReportDeckChartHighlightRanges(state, chartKey)
             });
@@ -5529,6 +7341,9 @@
         Array.from(root?.querySelectorAll?.('[data-report-safety-team-option]') || []).forEach(button => {
             button.disabled = !isEditing;
         });
+        Array.from(root?.querySelectorAll?.('[data-report-safety-table-move]') || []).forEach(button => {
+            button.disabled = !isEditing;
+        });
         Array.from(root?.querySelectorAll?.('[data-report-add-page]') || []).forEach(button => {
             button.disabled = String(button.dataset.reportAddPage || '').trim() === 'slide10' || !isEditing;
         });
@@ -5538,6 +7353,7 @@
                 button.disabled = true;
             });
         }
+        closeReportDeckSaveMenu(root);
         syncReportDeckPlanImageModeHints(root);
         if (!isEditing) {
             setReportDeckActivePlanImageFrame(root, null);
@@ -5547,6 +7363,7 @@
             button.setAttribute?.('aria-pressed', isEditing ? 'true' : 'false');
             button.textContent = isEditing ? '완료' : '수정';
         });
+        syncReportDeckFullscreenControls(root);
     }
 
     function isReportDeckSaveShortcut(event) {
@@ -5806,11 +7623,14 @@
             '[data-report-slide-target]',
             '[data-report-jump-slide]',
             '[data-report-fullscreen]',
+            '[data-report-save-menu]',
+            '[data-report-save-menu-toggle]',
             '[data-report-export-html]',
             '[data-report-capture-pdf]',
             '[data-report-capture-zip]',
             '[data-report-print-pdf]',
             '[data-report-edit-toggle]',
+            '[data-report-contents-toggle]',
             '[data-report-memo-overview-toggle]',
             '[data-report-plan-image-input]',
             '[data-report-plan-image-upload]',
@@ -5869,6 +7689,47 @@
         syncReportDeckPlanControls(root, state);
     }
 
+    function syncReportDeckFullscreenControls(root) {
+        const isEditFullscreen = root?.dataset?.reportEditFullscreenMode === 'true';
+        const isContentsCollapsed = root?.dataset?.reportContentsCollapsed === 'true';
+        Array.from(root?.querySelectorAll?.('[data-report-edit-fullscreen-toggle]') || []).forEach(button => {
+            button.classList?.toggle?.('is-active', isEditFullscreen);
+            button.setAttribute?.('aria-pressed', isEditFullscreen ? 'true' : 'false');
+            button.title = isEditFullscreen ? '편집 전체화면 종료' : '편집 전체화면';
+            button.setAttribute?.('aria-label', isEditFullscreen ? '편집 전체화면 종료' : '편집 전체화면');
+        });
+        Array.from(root?.querySelectorAll?.('[data-report-contents-toggle]') || []).forEach(button => {
+            button.hidden = !isEditFullscreen;
+            button.classList?.toggle?.('is-active', isEditFullscreen && isContentsCollapsed);
+            button.setAttribute?.('aria-pressed', isContentsCollapsed ? 'true' : 'false');
+            button.title = isContentsCollapsed ? '목차 열기' : '목차 닫기';
+            button.setAttribute?.('aria-label', isContentsCollapsed ? '목차 열기' : '목차 닫기');
+        });
+    }
+
+    function clearReportDeckContentsCollapsedState(root) {
+        if (!root?.dataset) return;
+        delete root.dataset.reportContentsCollapsed;
+    }
+
+    function clearReportDeckEditFullscreenState(root) {
+        if (!root?.dataset) return;
+        delete root.dataset.reportEditFullscreenMode;
+        clearReportDeckContentsCollapsedState(root);
+        syncReportDeckFullscreenControls(root);
+    }
+
+    function toggleReportDeckContents(root) {
+        if (!root?.dataset || root.dataset.reportEditFullscreenMode !== 'true') return false;
+        if (root.dataset.reportContentsCollapsed === 'true') {
+            clearReportDeckContentsCollapsedState(root);
+        } else {
+            root.dataset.reportContentsCollapsed = 'true';
+        }
+        syncReportDeckFullscreenControls(root);
+        return true;
+    }
+
     function prepareReportDeckFullscreenOutputState(root, state = {}) {
         if (!root?.dataset) return false;
         root.dataset.reportFullscreenHadPrintMode = root.dataset.reportPrintMode === 'true' ? 'true' : 'false';
@@ -5893,6 +7754,7 @@
             const result = exit?.call?.(doc);
             result?.catch?.(() => {});
             clearReportDeckFullscreenOutputState(root, root.__reportDeckState || {});
+            clearReportDeckEditFullscreenState(root);
             return;
         }
         if (!prepareReportDeckFullscreenOutputState(root, root.__reportDeckState || {})) return;
@@ -5904,6 +7766,62 @@
         const result = request?.call?.(root);
         result?.catch?.(() => {
             clearReportDeckFullscreenOutputState(root, root.__reportDeckState || {});
+        });
+        const stage = root?.querySelector?.('[data-report-stage]');
+        stage?.focus?.();
+    }
+
+    async function presentReportDeck(root, state = {}, meta = {}) {
+        const doc = root?.ownerDocument;
+        const fullscreenElement = doc?.fullscreenElement || doc?.webkitFullscreenElement || null;
+        const wasEditFullscreen = fullscreenElement === root && root?.dataset?.reportEditFullscreenMode === 'true';
+        if (root?.dataset?.reportEditMode === 'editing') {
+            const completed = await completeReportDeckEdit(root, state, meta);
+            if (completed !== true || root?.dataset?.reportEditMode === 'editing') return false;
+        }
+        if (wasEditFullscreen) {
+            clearReportDeckEditFullscreenState(root);
+            if (!prepareReportDeckFullscreenOutputState(root, state)) return false;
+            const stage = root?.querySelector?.('[data-report-stage]');
+            stage?.focus?.();
+            return true;
+        }
+        toggleReportDeckFullscreen(root);
+        return true;
+    }
+
+    function toggleReportDeckEditFullscreen(root, state = {}, meta = {}) {
+        const doc = root?.ownerDocument;
+        const fullscreenElement = doc?.fullscreenElement || doc?.webkitFullscreenElement || null;
+        if (fullscreenElement === root && root?.dataset?.reportEditFullscreenMode === 'true') {
+            const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+            const result = exit?.call?.(doc);
+            result?.catch?.(() => {});
+            clearReportDeckEditFullscreenState(root);
+            return;
+        }
+        if (fullscreenElement) {
+            const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+            const result = exit?.call?.(doc);
+            result?.catch?.(() => {});
+            clearReportDeckFullscreenOutputState(root, state);
+            clearReportDeckEditFullscreenState(root);
+            return;
+        }
+        clearReportDeckFullscreenOutputState(root, state);
+        root.dataset.reportEditFullscreenMode = 'true';
+        setReportDeckEditMode(root, true);
+        syncReportDeckPlanControls(root, state);
+        setReportDeckStatus(root, meta.dirty ? 'dirty' : 'idle', meta.dirty ? '저장 필요' : '');
+        syncReportDeckFullscreenControls(root);
+        const request = root?.requestFullscreen || root?.webkitRequestFullscreen;
+        if (typeof request !== 'function') {
+            clearReportDeckEditFullscreenState(root);
+            return;
+        }
+        const result = request?.call?.(root);
+        result?.catch?.(() => {
+            clearReportDeckEditFullscreenState(root);
         });
         const stage = root?.querySelector?.('[data-report-stage]');
         stage?.focus?.();
@@ -6578,14 +8496,26 @@
         void loadReportDeckMonthOptions(root, state, meta);
 
         root.addEventListener?.('pointerdown', event => {
+            if (startReportDeckMemoDialogDrag(root, event)) return;
             startReportDeckMemoOverviewDrag(root, event);
         });
 
         getReportDeckMemoOverviewWindow(root)?.addEventListener?.('resize', () => {
+            syncReportDeckMemoDialogFloatingPosition(getReportDeckMemoDialog(root));
             syncReportDeckMemoOverviewFloatingPosition(getReportDeckMemoOverviewDialog(root));
         });
 
         root.addEventListener?.('click', event => {
+            const saveMenuToggle = event.target?.closest?.('[data-report-save-menu-toggle]');
+            if (saveMenuToggle) {
+                event.preventDefault();
+                toggleReportDeckSaveMenu(root, state);
+                return;
+            }
+            if (!event.target?.closest?.('[data-report-save-menu]')) {
+                closeReportDeckSaveMenu(root);
+            }
+
             const editButton = event.target?.closest?.('[data-report-edit-toggle]');
             if (editButton) {
                 event.preventDefault();
@@ -6694,6 +8624,24 @@
                 return;
             }
 
+            const memoNotepadFontSizeButton = event.target?.closest?.('[data-report-memo-notepad-font-size-delta]');
+            if (memoNotepadFontSizeButton && root.dataset.reportEditMode === 'editing') {
+                event.preventDefault();
+                const dialog = getReportDeckMemoDialog(root);
+                const key = getReportDeckMemoDialogTargetKey(dialog);
+                adjustReportDeckMemoNotepadFontSize(root, state, meta, dialog, key, memoNotepadFontSizeButton.dataset.reportMemoNotepadFontSizeDelta);
+                return;
+            }
+
+            const memoNotepadColorButton = event.target?.closest?.('[data-report-memo-notepad-color]');
+            if (memoNotepadColorButton && root.dataset.reportEditMode === 'editing') {
+                event.preventDefault();
+                const dialog = getReportDeckMemoDialog(root);
+                const key = getReportDeckMemoDialogTargetKey(dialog);
+                applyReportDeckMemoNotepadColor(root, state, meta, dialog, key, memoNotepadColorButton.dataset.reportMemoNotepadColor);
+                return;
+            }
+
             const memoClearButton = event.target?.closest?.('[data-report-memo-clear]');
             if (memoClearButton && root.dataset.reportEditMode === 'editing') {
                 event.preventDefault();
@@ -6721,25 +8669,17 @@
                 const dialog = getReportDeckMemoDialog(root);
                 const key = getReportDeckMemoDialogTargetKey(dialog);
                 const index = Number.parseInt(String(memoLineFontSizeButton.dataset.reportMemoLineFontSize || ''), 10);
-                adjustReportDeckMemoLineFontSize(root, state, meta, dialog, key, index, memoLineFontSizeButton.dataset.reportMemoLineFontSizeDelta);
+                adjustReportDeckMemoLineFontSize(root, state, meta, dialog, key, index, memoLineFontSizeButton.dataset.reportMemoLineFontSizeDelta, memoLineFontSizeButton);
                 return;
             }
 
-            const memoLineDeleteButton = event.target?.closest?.('[data-report-memo-delete-line]');
-            if (memoLineDeleteButton && root.dataset.reportEditMode === 'editing') {
+            const memoLineColorButton = event.target?.closest?.('[data-report-memo-line-color]');
+            if (memoLineColorButton && root.dataset.reportEditMode === 'editing') {
                 event.preventDefault();
                 const dialog = getReportDeckMemoDialog(root);
-                const key = String(memoLineDeleteButton.dataset.reportMemoDeleteKey || dialog?.dataset?.reportMemoTarget || '').trim();
-                const index = Number.parseInt(String(memoLineDeleteButton.dataset.reportMemoDeleteLine || ''), 10);
-                if (key && Number.isInteger(index) && Object.prototype.hasOwnProperty.call(state, key)) {
-                    const lines = getReportDeckMemoLines(state[key]);
-                    if (index >= 0 && index < lines.length) {
-                        const sizes = getReportDeckMemoLineSizeArray(state, key, lines.length);
-                        lines.splice(index, 1);
-                        sizes.splice(index, 1);
-                        setReportDeckMemoLines(root, state, meta, dialog, key, lines, { lineSizes: sizes });
-                    }
-                }
+                const key = getReportDeckMemoDialogTargetKey(dialog);
+                const index = Number.parseInt(String(memoLineColorButton.dataset.reportMemoLineColor || ''), 10);
+                applyReportDeckMemoLineColor(root, state, meta, dialog, key, index, memoLineColorButton.dataset.reportMemoLineColorValue, memoLineColorButton);
                 return;
             }
 
@@ -6778,7 +8718,7 @@
                 const index = Number.parseInt(String(memoCandidateButton.dataset.reportMemoCandidate || ''), 10);
                 const candidate = Array.isArray(dialog?.__reportMemoCandidates) ? dialog.__reportMemoCandidates[index] : null;
                 if (key && candidate?.text && Object.prototype.hasOwnProperty.call(state, key)) {
-                    appendReportDeckMemoLines(root, state, meta, dialog, key, [candidate.text]);
+                    insertReportDeckMemoCandidateAtNotepadCursor(root, state, meta, dialog, key, candidate.text);
                 }
                 return;
             }
@@ -6860,6 +8800,13 @@
                 return;
             }
 
+            const safetyTableMoveButton = event.target?.closest?.('[data-report-safety-table-move]');
+            if (safetyTableMoveButton && root.dataset.reportEditMode === 'editing') {
+                event.preventDefault();
+                moveReportDeckSlide10Table(root, state, meta, safetyTableMoveButton, safetyTableMoveButton.dataset.reportSafetyTableMove);
+                return;
+            }
+
             const deleteSlotButton = event.target?.closest?.('[data-report-plan-delete-slot]');
             if (deleteSlotButton && root.dataset.reportEditMode === 'editing') {
                 event.preventDefault();
@@ -6933,13 +8880,28 @@
             const fullscreenButton = event.target?.closest?.('[data-report-fullscreen]');
             if (fullscreenButton) {
                 event.preventDefault();
-                toggleReportDeckFullscreen(root);
+                void presentReportDeck(root, state, meta);
+                return;
+            }
+
+            const editFullscreenButton = event.target?.closest?.('[data-report-edit-fullscreen-toggle]');
+            if (editFullscreenButton) {
+                event.preventDefault();
+                toggleReportDeckEditFullscreen(root, state, meta);
+                return;
+            }
+
+            const contentsToggleButton = event.target?.closest?.('[data-report-contents-toggle]');
+            if (contentsToggleButton) {
+                event.preventDefault();
+                toggleReportDeckContents(root);
                 return;
             }
 
             const exportButton = event.target?.closest?.('[data-report-export-html]');
             if (exportButton) {
                 event.preventDefault();
+                closeReportDeckSaveMenu(root);
                 void exportReportDeckSingleHtml(root, state, meta);
                 return;
             }
@@ -6947,6 +8909,7 @@
             const pdfButton = event.target?.closest?.('[data-report-capture-pdf]');
             if (pdfButton) {
                 event.preventDefault();
+                closeReportDeckSaveMenu(root);
                 void captureReportDeckPdf(root, state, meta);
                 return;
             }
@@ -6954,6 +8917,7 @@
             const captureButton = event.target?.closest?.('[data-report-capture-zip]');
             if (captureButton) {
                 event.preventDefault();
+                closeReportDeckSaveMenu(root);
                 void captureReportDeckZip(root, state, meta);
                 return;
             }
@@ -7000,11 +8964,51 @@
             if (handleReportDeckCaptureControlInput(root, state, event.target, event.type)) {
                 return;
             }
+            const overviewTeamField = event.target?.closest?.('[data-report-overview-team]');
+            if (overviewTeamField) {
+                syncReportDeckOverviewCustomTeamRow(getReportDeckOverviewDialog(root));
+                return;
+            }
+            const overviewCustomTeamField = event.target?.closest?.('[data-report-overview-custom-team]');
+            if (overviewCustomTeamField) {
+                overviewCustomTeamField.setCustomValidity?.('');
+                return;
+            }
+            const overviewAmountField = event.target?.closest?.('[data-report-overview-amount], [data-report-overview-amount-text]');
+            if (overviewAmountField) {
+                syncReportDeckOverviewAmountFields(getReportDeckOverviewDialog(root));
+                return;
+            }
             const memoSelector = event.target?.closest?.('[data-report-memo-team], [data-report-memo-metric]');
             if (memoSelector) {
                 if (root.dataset.reportEditMode === 'editing') {
                     void refreshReportDeckMemoDialog(root, state, meta);
                 }
+                return;
+            }
+            const memoNotepadFontSizeInput = event.target?.closest?.('[data-report-memo-notepad-font-size-input]');
+            if (memoNotepadFontSizeInput) {
+                if (root.dataset.reportEditMode === 'editing' && event.type === 'change') {
+                    const dialog = getReportDeckMemoDialog(root);
+                    const key = getReportDeckMemoDialogTargetKey(dialog);
+                    setReportDeckMemoNotepadFontSize(root, state, meta, dialog, key, memoNotepadFontSizeInput.value);
+                }
+                return;
+            }
+            const memoNotepadInput = event.target?.closest?.('[data-report-memo-notepad]');
+            if (memoNotepadInput) {
+                const dialog = getReportDeckMemoDialog(root);
+                rememberReportDeckMemoNotepadSelection(dialog, memoNotepadInput);
+                if (event.type === 'select') {
+                    syncReportDeckMemoNotepadFontSizeControl(dialog, state);
+                    return;
+                }
+                if (root.dataset.reportEditMode === 'editing') {
+                    const key = getReportDeckMemoDialogTargetKey(dialog);
+                    syncReportDeckMemoNotepadToState(root, state, meta, dialog, key, { syncDialog: false });
+                }
+                syncReportDeckMemoDialogPreview(dialog, state);
+                syncReportDeckMemoNotepadFontSizeControl(dialog, state);
                 return;
             }
             const memoLineInput = event.target?.closest?.('[data-report-memo-line-input]');
@@ -7085,6 +9089,7 @@
         root.addEventListener?.('keydown', handleReportDeckCaptureRangeKeydown);
         root.addEventListener?.('input', handleReportDeckInput);
         root.addEventListener?.('change', handleReportDeckInput);
+        root.addEventListener?.('select', handleReportDeckInput);
         root.addEventListener?.('paste', event => {
             if (event?.defaultPrevented || root.dataset.reportEditMode !== 'editing') return;
             void pasteReportDeckPlanImage(root, state, meta, event);
@@ -7103,8 +9108,29 @@
                 void completeReportDeckEdit(root, state, meta);
                 return;
             }
-            if (root.dataset.reportEditMode === 'editing') return;
             const key = String(event.key || '');
+            if (key === 'Escape' && isReportDeckSaveMenuOpen(root)) {
+                event.preventDefault?.();
+                closeReportDeckSaveMenu(root);
+                return;
+            }
+            const memoNotepadFontSizeInput = event.target?.closest?.('[data-report-memo-notepad-font-size-input]');
+            if (memoNotepadFontSizeInput && root.dataset.reportEditMode === 'editing') {
+                event.stopPropagation?.();
+                if (key === 'Enter') {
+                    event.preventDefault?.();
+                    const dialog = getReportDeckMemoDialog(root);
+                    const memoKey = getReportDeckMemoDialogTargetKey(dialog);
+                    setReportDeckMemoNotepadFontSize(root, state, meta, dialog, memoKey, memoNotepadFontSizeInput.value);
+                }
+                return;
+            }
+            const memoTextInput = event.target?.closest?.('[data-report-memo-line-input], [data-report-memo-notepad]');
+            if (memoTextInput && (key === 'Enter' || key === ' ' || event.code === 'Space')) {
+                event.stopPropagation?.();
+                return;
+            }
+            if (root.dataset.reportEditMode === 'editing') return;
             if (key === 'ArrowRight' || key === 'PageDown' || key === ' ') {
                 event.preventDefault?.();
                 moveReportDeckSlide(root, 1);
@@ -7121,9 +9147,13 @@
                 if (root.dataset.reportFullscreenOutputMode === 'true') {
                     applyReportDeckFullscreenOutputPreparedState(root);
                 }
+                if (root.dataset.reportEditFullscreenMode === 'true') {
+                    syncReportDeckFullscreenControls(root);
+                }
                 return;
             }
             clearReportDeckFullscreenOutputState(root, state);
+            clearReportDeckEditFullscreenState(root);
         };
         reportDeckDocument?.addEventListener?.('fullscreenchange', handleReportDeckFullscreenChange);
         reportDeckDocument?.addEventListener?.('webkitfullscreenchange', handleReportDeckFullscreenChange);

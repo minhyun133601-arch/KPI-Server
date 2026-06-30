@@ -974,7 +974,7 @@
             Object.freeze({ key: 'ea', label: 'EA', scale: 1, decimals: 0 })
         ]),
         ratio: Object.freeze([
-            Object.freeze({ key: 'ratio', label: 'ratio', scale: 1, decimals: 3 })
+            Object.freeze({ key: 'ratio', label: 'ratio', scale: 1, decimals: 1 })
         ])
     });
     const WASTE_COST_DETAIL_KEYS = Object.freeze({
@@ -1198,6 +1198,131 @@
         return match ? getSummarySubjectOption(match.subjectKey) : null;
     }
 
+    const SUMMARY_LINE_SELECTION_LABEL_GROUPS = Object.freeze([
+        Object.freeze({
+            label: '이카',
+            suffix: '호기',
+            members: Object.freeze([
+                Object.freeze({ key: 'ica-1', label: '1' }),
+                Object.freeze({ key: 'ica-2', label: '2' }),
+                Object.freeze({ key: 'ica-3', label: '3' })
+            ])
+        }),
+        Object.freeze({
+            label: '로타리',
+            suffix: '호기',
+            members: Object.freeze([
+                Object.freeze({ key: 'rotary-1', label: '1' }),
+                Object.freeze({ key: 'rotary-2', label: '2' })
+            ])
+        }),
+        Object.freeze({
+            label: '스틱',
+            suffix: '호기',
+            members: Object.freeze([
+                Object.freeze({ key: 'stick-1', label: '1' }),
+                Object.freeze({ key: 'stick-2', label: '2' }),
+                Object.freeze({ key: 'stick-3', label: '3' }),
+                Object.freeze({ key: 'stick-4', label: '4' }),
+                Object.freeze({ key: 'stick-5', label: '5' }),
+                Object.freeze({ key: 'stick-6', label: '6' }),
+                Object.freeze({ key: 'stick-7', label: '7' }),
+                Object.freeze({ key: 'stick-8', label: '8' })
+            ])
+        }),
+        Object.freeze({
+            label: 'Bottle 38',
+            suffix: '',
+            wrapMembers: true,
+            members: Object.freeze([
+                Object.freeze({ key: 'bottle-38-manual', label: '수동' }),
+                Object.freeze({ key: 'bottle-38-auto', label: '자동' })
+            ])
+        })
+    ]);
+
+    function buildSummaryLineSelectionDisplayLabel(selectedOptions = []) {
+        const options = (Array.isArray(selectedOptions) ? selectedOptions : []).filter(Boolean);
+        if (!options.length) return '';
+        if (options.length === 1) return String(options[0]?.label || '').trim();
+        const optionByKey = new Map(options
+            .map(option => [String(option?.key || '').trim(), option])
+            .filter(([key]) => Boolean(key)));
+        const groupedLabelsByFirstKey = new Map();
+        const groupedKeys = new Set();
+        SUMMARY_LINE_SELECTION_LABEL_GROUPS.forEach(group => {
+            const selectedMembers = (Array.isArray(group?.members) ? group.members : [])
+                .filter(member => optionByKey.has(member.key));
+            if (selectedMembers.length < 2) return;
+            const allMembersSelected = selectedMembers.length === (Array.isArray(group?.members) ? group.members.length : 0);
+            const numberLabel = formatSummaryLineSelectionMemberLabels(selectedMembers.map(member => member.label));
+            const suffix = String(group?.suffix || '').trim();
+            const label = allMembersSelected
+                ? group.label
+                : (group?.wrapMembers === true
+                    ? `${group.label}(${numberLabel}${suffix})`
+                    : `${group.label}${numberLabel}${suffix}`);
+            groupedLabelsByFirstKey.set(selectedMembers[0].key, label);
+            selectedMembers.forEach(member => groupedKeys.add(member.key));
+        });
+        const teamGroups = [];
+        const teamGroupByKey = new Map();
+        options.forEach((option, index) => {
+            const teamKey = String(option?.teamKey || '').trim() || `__unscoped_${index}`;
+            if (!teamGroupByKey.has(teamKey)) {
+                const group = {
+                    teamKey,
+                    teamLabel: getSummaryLineOptionTeamLabel(option),
+                    options: []
+                };
+                teamGroupByKey.set(teamKey, group);
+                teamGroups.push(group);
+            }
+            teamGroupByKey.get(teamKey).options.push(option);
+        });
+        return teamGroups.map(group => {
+            const label = buildSummaryLineSelectionItemLabels(group.options, groupedLabelsByFirstKey, groupedKeys).join(' + ');
+            return group.teamLabel && label ? `${group.teamLabel} (${label})` : label;
+        }).filter(Boolean).join(' / ');
+    }
+
+    function buildSummaryLineSelectionItemLabels(options = [], groupedLabelsByFirstKey = new Map(), groupedKeys = new Set()) {
+        return (Array.isArray(options) ? options : []).reduce((labels, option) => {
+            const key = String(option?.key || '').trim();
+            const groupedLabel = groupedLabelsByFirstKey.get(key);
+            if (groupedLabel) labels.push(groupedLabel);
+            if (groupedKeys.has(key)) return labels;
+            if (option?.label) labels.push(option.label);
+            return labels;
+        }, []);
+    }
+
+    function formatSummaryLineSelectionMemberLabels(labels = []) {
+        const numbers = (Array.isArray(labels) ? labels : []).map(label => Number(label));
+        if (!numbers.length || numbers.some(number => !Number.isInteger(number))) {
+            return (Array.isArray(labels) ? labels : []).join(',');
+        }
+        const ranges = [];
+        let start = numbers[0];
+        let previous = numbers[0];
+        for (let index = 1; index <= numbers.length; index += 1) {
+            const number = numbers[index];
+            if (number === previous + 1) {
+                previous = number;
+                continue;
+            }
+            ranges.push(start === previous ? String(start) : `${start}~${previous}`);
+            start = number;
+            previous = number;
+        }
+        return ranges.join(',');
+    }
+
+    function getSummaryLineOptionTeamLabel(option = null) {
+        const teamKey = String(option?.teamKey || '').trim();
+        return PRODUCTION_TEAMS.find(team => team.key === teamKey)?.label || '';
+    }
+
     function buildGeneratedSummarySubjectKey(scopeKey = 'total', lineKeys = []) {
         const scope = normalizeCardBuilderScopeKey(scopeKey);
         const keyPart = (Array.isArray(lineKeys) ? lineKeys : [])
@@ -1216,7 +1341,7 @@
         if (!lineOptions.length) return null;
         const teamKeys = Array.from(new Set(lineOptions.map(option => option.teamKey).filter(Boolean)));
         const lineNames = Array.from(new Set(lineOptions.flatMap(option => option.lineNames || [])));
-        const label = lineOptions.map(option => option.label).join(' + ');
+        const label = buildSummaryLineSelectionDisplayLabel(lineOptions);
         const subject = Object.freeze({
             key: subjectKey,
             label,
@@ -1250,12 +1375,9 @@
         const selectedOptions = selectedLineKeys.map(getSummaryLineOptionByKey).filter(Boolean);
         const subject = resolveSummaryLineSelectionSubject(scopeKey, selectedLineKeys);
         const isAll = Boolean(lineOptions.length && selectedLineKeys.length === lineOptions.length);
-        const generatedSubjectKey = buildGeneratedSummarySubjectKey(scopeKey, selectedLineKeys);
         const label = isAll
             ? '전체'
-            : (subject && subject.key !== generatedSubjectKey
-                ? subject.label
-                : selectedOptions.map(option => option.label).join(' + '));
+            : buildSummaryLineSelectionDisplayLabel(selectedOptions);
         return {
             lineOptions,
             selectedLineKeys,
@@ -1272,12 +1394,9 @@
         const selectedOptions = selectedLineKeys.map(getSummaryLineOptionByKey).filter(Boolean);
         const subject = resolveSummaryLineSelectionSubject(scopeKey, selectedLineKeys);
         const isAll = Boolean(lineOptions.length && selectedLineKeys.length === lineOptions.length);
-        const generatedSubjectKey = buildGeneratedSummarySubjectKey(scopeKey, selectedLineKeys);
         const label = isAll
             ? '전체'
-            : (subject && subject.key !== generatedSubjectKey
-                ? subject.label
-                : selectedOptions.map(option => option.label).join(' + '));
+            : buildSummaryLineSelectionDisplayLabel(selectedOptions);
         return {
             lineOptions,
             selectedLineKeys,
@@ -1493,12 +1612,9 @@
         const selectedOptions = selectedLineKeys.map(getSummaryLineOptionByKey).filter(Boolean);
         const subject = resolveSummaryLineSelectionSubject(scope, selectedLineKeys);
         const isAll = Boolean(lineOptions.length && selectedLineKeys.length === lineOptions.length);
-        const generatedSubjectKey = buildGeneratedSummarySubjectKey(scope, selectedLineKeys);
         const label = isAll
             ? '전체'
-            : (subject && subject.key !== generatedSubjectKey
-                ? subject.label
-                : selectedOptions.map(option => option.label).join(' + '));
+            : buildSummaryLineSelectionDisplayLabel(selectedOptions);
         return {
             lineOptions,
             selectedLineKeys,
@@ -2113,7 +2229,7 @@
         const rule = resolveFractionRule(numerator, denominator);
         if (!numerator || !denominator || !rule.allowed) return null;
         const unitLabel = rule.outputUnitLabel || 'ratio';
-        const decimals = 3;
+        const decimals = 1;
         return Object.freeze({
             key: makeRatioCardKey(numerator.key, denominator.key, rule.ruleKey),
             title: `${denominator.title} 대비 ${numerator.title}`,
@@ -2255,7 +2371,7 @@
         if (!Number.isFinite(number)) {
             const unitDigits = Number(getCardUnitOption(shell, card)?.decimals);
             if (Number.isFinite(unitDigits)) return Math.max(0, Math.min(4, Math.trunc(unitDigits)));
-            return Number.isFinite(Number(card?.decimals)) ? Number(card.decimals) : (isDerivedRatioCard(card) ? 3 : 0);
+            return Number.isFinite(Number(card?.decimals)) ? Number(card.decimals) : (isDerivedRatioCard(card) ? 1 : 0);
         }
         return Math.max(0, Math.min(4, Math.trunc(number)));
     }
@@ -3223,18 +3339,35 @@
         `;
     }
 
+    function getExperimentChartMemoFixedDecimals(metric = {}) {
+        return Number.isInteger(metric.decimals) ? Math.max(0, Math.min(metric.decimals, 6)) : null;
+    }
+
+    function getExperimentChartMemoDisplayDecimals(value, metric = {}) {
+        const fixedDecimals = getExperimentChartMemoFixedDecimals(metric);
+        if (fixedDecimals !== null) return fixedDecimals;
+        const number = Number(value);
+        const absValue = Math.abs(Number.isFinite(number) ? number : 0);
+        return metric.deltaMode === 'percentagePoint' || absValue < 100 ? 1 : 0;
+    }
+
+    function roundExperimentChartMemoDisplayValue(value, metric = {}) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return NaN;
+        const scale = 10 ** getExperimentChartMemoDisplayDecimals(number, metric);
+        const rounded = Math.sign(number) * (Math.round((Math.abs(number) + 1e-12) * scale) / scale);
+        return Object.is(rounded, -0) ? 0 : rounded;
+    }
+
     function formatExperimentChartMemoNumber(value, metric = {}, current = false) {
         const number = Number(value);
         if (!Number.isFinite(number)) return '';
         const absValue = Math.abs(number);
-        const fixedDecimals = Number.isInteger(metric.decimals) ? Math.max(0, Math.min(metric.decimals, 6)) : null;
-        const roundedAbsValue = fixedDecimals !== null
-            ? Math.round((absValue + 1e-12) * (10 ** fixedDecimals)) / (10 ** fixedDecimals)
-            : absValue;
-        const displayValue = current ? Math.sign(number) * roundedAbsValue : roundedAbsValue;
-        const maximumFractionDigits = fixedDecimals !== null
-            ? fixedDecimals
-            : (metric.deltaMode === 'percentagePoint' || absValue < 100 ? 1 : 0);
+        const fixedDecimals = getExperimentChartMemoFixedDecimals(metric);
+        const displayValue = current
+            ? roundExperimentChartMemoDisplayValue(number, metric)
+            : roundExperimentChartMemoDisplayValue(absValue, metric);
+        const maximumFractionDigits = getExperimentChartMemoDisplayDecimals(absValue, metric);
         return displayValue.toLocaleString('ko-KR', {
             maximumFractionDigits,
             minimumFractionDigits: fixedDecimals !== null ? fixedDecimals : 0
@@ -3286,23 +3419,43 @@
         };
     }
 
-    function buildExperimentChartMemoComparisonSegment(metric, basisLabel, referenceValue, currentValue) {
+    function buildExperimentChartMemoDisplayPair(referenceValue, currentValue, metric = {}) {
         const reference = Number(referenceValue);
         const current = Number(currentValue);
         if (!Number.isFinite(reference) || !Number.isFinite(current)) return null;
-        const delta = current - reference;
-        const rate = reference === 0 ? NaN : delta / Math.abs(reference);
+        const displayReference = roundExperimentChartMemoDisplayValue(reference, metric);
+        const displayCurrent = roundExperimentChartMemoDisplayValue(current, metric);
+        if (!Number.isFinite(displayReference) || !Number.isFinite(displayCurrent)) return null;
+        const displayDelta = displayCurrent - displayReference;
+        const delta = Object.is(displayDelta, -0) ? 0 : displayDelta;
+        const rate = displayReference === 0 ? NaN : delta / Math.abs(displayReference);
+        return {
+            reference,
+            current,
+            rawDelta: current - reference,
+            rawRate: reference === 0 ? NaN : (current - reference) / Math.abs(reference),
+            displayReference,
+            displayCurrent,
+            delta,
+            rate
+        };
+    }
+
+    function buildExperimentChartMemoComparisonSegment(metric, basisLabel, referenceValue, currentValue) {
+        const pair = buildExperimentChartMemoDisplayPair(referenceValue, currentValue, metric);
+        if (!pair) return null;
+        const { reference, current, delta, rate } = pair;
         const direction = getExperimentChartMemoDisplayDirection(delta, metric);
         const arrow = getExperimentChartMemoArrow(direction);
         const deltaText = `${formatExperimentChartMemoNumber(delta, metric)}${metric.deltaUnit || ''}`;
         if (direction === 'flat') {
-            return { basis: basisLabel, direction, text: `${basisLabel} 동일`, reference, current, delta, rate };
+            return { ...pair, basis: basisLabel, direction, text: `${basisLabel} 동일` };
         }
         if (metric.deltaMode === 'percentagePoint') {
-            return { basis: basisLabel, direction, text: `${basisLabel} ${deltaText} ${arrow}`, reference, current, delta, rate };
+            return { ...pair, basis: basisLabel, direction, text: `${basisLabel} ${deltaText} ${arrow}` };
         }
         const rateText = Number.isFinite(rate) ? formatExperimentChartMemoRate(rate) : '-';
-        return { basis: basisLabel, direction, text: `${basisLabel} ${deltaText}, ${rateText} ${arrow}`, reference, current, delta, rate };
+        return { ...pair, basis: basisLabel, direction, text: `${basisLabel} ${deltaText}, ${rateText} ${arrow}` };
     }
 
     function getExperimentChartTableValueForMonth(entry, monthKey, shell = null) {

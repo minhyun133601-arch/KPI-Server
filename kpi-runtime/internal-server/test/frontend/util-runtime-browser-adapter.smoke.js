@@ -211,6 +211,60 @@ function createReportDeckContainer(options = {}) {
       return selector === '[data-report-fullscreen]' ? this : null;
     },
   };
+  const editFullscreenButton = {
+    dataset: {},
+    title: '',
+    hidden: false,
+    classList: {
+      active: false,
+      toggle(name, active) {
+        if (name === 'is-active') this.active = active;
+      },
+    },
+    setAttribute(name, value) {
+      this[name] = value;
+    },
+    closest(selector) {
+      return selector === '[data-report-edit-fullscreen-toggle]' ? this : null;
+    },
+  };
+  const contentsToggleButton = {
+    dataset: {},
+    title: '',
+    hidden: true,
+    classList: {
+      active: false,
+      toggle(name, active) {
+        if (name === 'is-active') this.active = active;
+      },
+    },
+    setAttribute(name, value) {
+      this[name] = value;
+    },
+    closest(selector) {
+      return selector === '[data-report-contents-toggle]' ? this : null;
+    },
+  };
+  const saveMenu = {
+    dataset: {},
+    closest(selector) {
+      return selector === '[data-report-save-menu]' ? this : null;
+    },
+  };
+  const saveMenuPanel = {
+    hidden: true,
+  };
+  const saveMenuToggleButton = {
+    classList: makeClassList(),
+    setAttribute(name, value) {
+      this[name] = value;
+    },
+    closest(selector) {
+      if (selector === '[data-report-save-menu-toggle]') return this;
+      if (selector === '[data-report-save-menu]') return saveMenu;
+      return null;
+    },
+  };
   const exportButton = {
     closest(selector) {
       return selector === '[data-report-export-html]' ? this : null;
@@ -241,6 +295,29 @@ function createReportDeckContainer(options = {}) {
       focus() {
         this.focusCount += 1;
       },
+      closest(selector) {
+        return selector === '[data-report-overview-team]' ? this : null;
+      },
+    },
+    customTeam: {
+      value: '',
+      disabled: false,
+      customValidity: '',
+      reportValidityCount: 0,
+      focusCount: 0,
+      setCustomValidity(message) {
+        this.customValidity = message;
+      },
+      reportValidity() {
+        this.reportValidityCount += 1;
+        return !this.customValidity;
+      },
+      focus() {
+        this.focusCount += 1;
+      },
+      closest(selector) {
+        return selector === '[data-report-overview-custom-team]' ? this : null;
+      },
     },
     title: {
       value: '',
@@ -268,6 +345,7 @@ function createReportDeckContainer(options = {}) {
     },
     amount: {
       value: '',
+      disabled: false,
       customValidity: '',
       reportValidityCount: 0,
       focusCount: 0,
@@ -281,16 +359,32 @@ function createReportDeckContainer(options = {}) {
       focus() {
         this.focusCount += 1;
       },
+      closest(selector) {
+        return selector.split(',').map((value) => value.trim()).includes('[data-report-overview-amount]') ? this : null;
+      },
+    },
+    amountText: {
+      value: '',
+      disabled: false,
+      closest(selector) {
+        return selector.split(',').map((value) => value.trim()).includes('[data-report-overview-amount-text]') ? this : null;
+      },
     },
   };
+  const overviewTeamRow = { hidden: false };
+  const overviewCustomTeamRow = { hidden: true };
   const overviewDialog = {
     hidden: true,
     dataset: {},
     querySelector(selector) {
-      const match = selector.match(/^\[data-report-overview-([a-z]+)\]$/);
-      return match ? overviewDialogFields[match[1]] || null : null;
+      if (selector === '[data-report-overview-custom-team-row]') return overviewCustomTeamRow;
+      const match = selector.match(/^\[data-report-overview-([a-z-]+)\]$/);
+      if (!match) return null;
+      const key = match[1].replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+      return overviewDialogFields[key] || null;
     },
     querySelectorAll(selector) {
+      if (selector === '[data-report-overview-team-row]') return [overviewTeamRow];
       if (selector === '[data-report-overview-kind-option]') return overviewKindButtons;
       return [];
     },
@@ -341,19 +435,78 @@ function createReportDeckContainer(options = {}) {
       return selector === '[data-report-memo-manual-add]' ? this : null;
     },
   };
+  const memoNotepad = {
+    value: '',
+    selectionStart: 0,
+    selectionEnd: 0,
+    focusCount: 0,
+    focus() {
+      this.focusCount += 1;
+    },
+    setSelectionRange(start, end) {
+      this.selectionStart = start;
+      this.selectionEnd = end;
+    },
+    closest(selector) {
+      if (selector === '[data-report-memo-notepad]') return this;
+      if (selector === '[data-report-memo-line-input], [data-report-memo-notepad]') return this;
+      return null;
+    },
+  };
+  const memoNotepadFontSizeButton = {
+    dataset: { reportMemoNotepadFontSizeDelta: '1' },
+    closest(selector) {
+      return selector === '[data-report-memo-notepad-font-size-delta]' ? this : null;
+    },
+  };
+  const memoNotepadFontSizeInput = {
+    value: '10.4',
+    disabled: false,
+    closest(selector) {
+      return selector === '[data-report-memo-notepad-font-size-input]' ? this : null;
+    },
+  };
+  const memoNotepadColorButton = {
+    dataset: { reportMemoNotepadColor: 'red' },
+    closest(selector) {
+      return selector === '[data-report-memo-notepad-color]' ? this : null;
+    },
+  };
+  const memoNotepadColorClearButton = {
+    dataset: { reportMemoNotepadColor: 'clear' },
+    closest(selector) {
+      return selector === '[data-report-memo-notepad-color]' ? this : null;
+    },
+  };
   const memoDialog = {
     hidden: true,
     dataset: {},
     __reportMemoCandidates: [],
+    style: {},
+    classList: makeClassList(),
+    offsetWidth: 360,
+    offsetHeight: 220,
+    getBoundingClientRect() {
+      return {
+        left: Number.parseFloat(this.style.left || '620') || 620,
+        top: Number.parseFloat(this.style.top || '54') || 54,
+        width: 360,
+        height: 220,
+      };
+    },
     querySelector(selector) {
       if (selector === '[data-report-memo-team]') return memoTeamSelect;
       if (selector === '[data-report-memo-metric]') return memoMetricSelect;
       if (selector === '[data-report-memo-lines]') return memoLines;
       if (selector === '[data-report-memo-candidates]') return memoCandidates;
       if (selector === '[data-report-memo-manual-input]') return memoManualInput;
+      if (selector === '[data-report-memo-notepad]') return memoNotepad;
+      if (selector === '[data-report-memo-notepad-font-size-input]') return memoNotepadFontSizeInput;
+      if (selector === '[data-report-memo-preview]') return memoPreview;
       return null;
     },
   };
+  const memoPreview = { dataset: {}, innerHTML: '' };
   const memoOverviewWindowListeners = {};
   const memoOverviewWindow = {
     innerWidth: 1000,
@@ -382,6 +535,7 @@ function createReportDeckContainer(options = {}) {
   if (withMemoOverviewWindow) {
     reportOwnerDocument.defaultView = memoOverviewWindow;
   }
+  memoDialog.ownerDocument = reportOwnerDocument;
   const memoOverviewList = { innerHTML: '' };
   const memoOverviewDialog = {
     hidden: true,
@@ -409,6 +563,20 @@ function createReportDeckContainer(options = {}) {
     releasedPointerCaptures: [],
     closest(selector) {
       if (selector === '[data-report-memo-overview-drag-handle]') return this;
+      return null;
+    },
+    setPointerCapture(pointerId) {
+      this.pointerCaptures.push(pointerId);
+    },
+    releasePointerCapture(pointerId) {
+      this.releasedPointerCaptures.push(pointerId);
+    },
+  };
+  const memoDialogDragHandle = {
+    pointerCaptures: [],
+    releasedPointerCaptures: [],
+    closest(selector) {
+      if (selector === '[data-report-memo-drag-handle]') return this;
       return null;
     },
     setPointerCapture(pointerId) {
@@ -455,15 +623,44 @@ function createReportDeckContainer(options = {}) {
   const memoLineInput = {
     dataset: { reportMemoLineInput: '0' },
     value: '',
+    selectionStart: 0,
+    selectionEnd: 0,
+    focusCount: 0,
+    focus() {
+      this.focusCount += 1;
+    },
+    setSelectionRange(start, end) {
+      this.selectionStart = start;
+      this.selectionEnd = end;
+    },
     closest(selector) {
-      return selector === '[data-report-memo-line-input]' ? this : null;
+      if (selector === '[data-report-memo-line-input]') return this;
+      if (selector === '[data-report-memo-line-input], [data-report-memo-notepad]') return this;
+      return null;
     },
   };
   const memoManualLineInput = {
     dataset: { reportMemoLineInput: '1' },
     value: '',
+    selectionStart: 0,
+    selectionEnd: 0,
+    focusCount: 0,
+    focus() {
+      this.focusCount += 1;
+    },
+    setSelectionRange(start, end) {
+      this.selectionStart = start;
+      this.selectionEnd = end;
+    },
     closest(selector) {
-      return selector === '[data-report-memo-line-input]' ? this : null;
+      if (selector === '[data-report-memo-line-input]') return this;
+      if (selector === '[data-report-memo-line-input], [data-report-memo-notepad]') return this;
+      return null;
+    },
+  };
+  const memoManualLineRow = {
+    querySelector(selector) {
+      return selector === '[data-report-memo-line-input]' ? memoManualLineInput : null;
     },
   };
   const memoLineMoveButton = {
@@ -476,6 +673,30 @@ function createReportDeckContainer(options = {}) {
     dataset: { reportMemoLineFontSize: '0', reportMemoLineFontSizeDelta: '1' },
     closest(selector) {
       return selector === '[data-report-memo-line-font-size]' ? this : null;
+    },
+  };
+  const memoManualLineFontSizeButton = {
+    dataset: { reportMemoLineFontSize: '1', reportMemoLineFontSizeDelta: '1' },
+    closest(selector) {
+      if (selector === '[data-report-memo-line-font-size]') return this;
+      if (selector === '[data-report-memo-line-row]') return memoManualLineRow;
+      return null;
+    },
+  };
+  const memoLineColorButton = {
+    dataset: { reportMemoLineColor: '1', reportMemoLineColorValue: 'red' },
+    closest(selector) {
+      if (selector === '[data-report-memo-line-color]') return this;
+      if (selector === '[data-report-memo-line-row]') return memoManualLineRow;
+      return null;
+    },
+  };
+  const memoLineColorClearButton = {
+    dataset: { reportMemoLineColor: '1', reportMemoLineColorValue: 'clear' },
+    closest(selector) {
+      if (selector === '[data-report-memo-line-color]') return this;
+      if (selector === '[data-report-memo-line-row]') return memoManualLineRow;
+      return null;
     },
   };
   const dateInput = {
@@ -553,8 +774,17 @@ function createReportDeckContainer(options = {}) {
       },
     })),
   ];
-  const planRowTables = Array.from({ length: 5 }, () => ({ dataset: {} }));
-  const planRowLabelTexts = Array.from({ length: 5 }, () => ({ textContent: '' }));
+  let slide10PlanSlide = null;
+  const planRowTables = Array.from({ length: 7 }, (_, rowIndex) => ({
+    dataset: { reportSafetyRow: String(rowIndex) },
+    closest(selector) {
+      if (selector === '.report-safety-table') return this;
+      if (selector === '[data-report-plan-slide="slide10"]') return slide10PlanSlide;
+      if (selector === '[data-report-slide-page]') return slides[10] || null;
+      return null;
+    },
+  }));
+  const planRowLabelTexts = Array.from({ length: 7 }, () => ({ textContent: '' }));
   const safetyTeamSelect = {
     value: '0',
     disabled: true,
@@ -581,7 +811,7 @@ function createReportDeckContainer(options = {}) {
       return null;
     },
   };
-  const safetyTeamLabels = ['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀'];
+  const safetyTeamLabels = ['1팀 1파트', '1팀 2파트', '2팀', '3팀', '공무환경팀', '물류센터', '기타'];
   const safetyTeamOptionButtons = safetyTeamLabels.map((team, rowIndex) => ({
     dataset: {
       reportSafetyTeamOption: String(rowIndex),
@@ -615,6 +845,26 @@ function createReportDeckContainer(options = {}) {
       return selector === '.report-safety-table' ? planRowTables[rowIndex] || null : null;
     },
   }));
+  const safetyTableMoveButtons = Array.from({ length: 16 }, (_, index) => index + 1).flatMap((slotIndex) => {
+    const rowIndex = Math.floor((slotIndex - 1) / 4);
+    const table = planRowTables[rowIndex] || planRowTables[0];
+    return ['left', 'right', 'up', 'down'].map((direction) => ({
+      rowIndex,
+      slotIndex,
+      direction,
+      dataset: { reportSafetyTableMove: direction },
+      disabled: true,
+      closest(selector) {
+        if (selector === '[data-report-safety-table-move]') return this;
+        if (selector === '.report-safety-table') return table;
+        if (selector === '[data-report-plan-slide="slide10"]') return slide10PlanSlide;
+        if (selector === '[data-report-plan-slot]') {
+          return planSlotCells.find((cell) => cell.dataset.reportPlanSlot === `slide10.${slotIndex}`) || null;
+        }
+        return null;
+      },
+    }));
+  });
   const planImages = [
     'slide8BeforeImage1',
     'slide8BeforeImage2',
@@ -663,40 +913,47 @@ function createReportDeckContainer(options = {}) {
         : null;
     },
   }));
-  const planSlides = ['slide8', 'slide9', 'slide10'].map((slideKey) => ({
-    dataset: { reportPlanSlide: slideKey, reportPlanPage: '0' },
-    querySelectorAll(selector) {
-      if (selector === '[data-report-plan-slot]') {
-        return planSlotCells.filter((cell) => cell.dataset.reportPlanSlot.startsWith(`${slideKey}.`));
-      }
-      if (selector === '[data-report-plan-delete-slot]') {
-        return planDeleteButtons.filter((button) => button.dataset.reportPlanDeleteSlot === slideKey);
-      }
-      if (selector === '[data-report-plan-add-slot]') {
-        return slideKey === 'slide10'
-          ? []
-          : planAddSlotButtons.filter((button) => button.dataset.reportPlanAddSlot === slideKey);
-      }
-      if (selector === '[data-report-plan-row-team]') {
-        return slideKey === 'slide10' ? planRowLabels : [];
-      }
-      if (selector === '[data-report-safety-team-select]') {
-        return slideKey === 'slide10' ? [safetyTeamSelect] : [];
-      }
-      if (selector === '[data-report-safety-add-toggle]') {
-        return slideKey === 'slide10' ? [safetyAddButton] : [];
-      }
-      if (selector === '[data-report-safety-team-option]') {
-        return slideKey === 'slide10' ? safetyTeamOptionButtons : [];
-      }
-      return [];
-    },
-    closest(selector) {
-      if (selector !== '[data-report-slide-page]') return null;
-      if (slideKey === 'slide10') return slides[10] || null;
-      return null;
-    },
-  }));
+  const planSlides = ['slide8', 'slide9', 'slide10'].map((slideKey) => {
+    const planSlide = {
+      dataset: { reportPlanSlide: slideKey, reportPlanPage: '0' },
+      querySelectorAll(selector) {
+        if (selector === '[data-report-plan-slot]') {
+          return planSlotCells.filter((cell) => cell.dataset.reportPlanSlot.startsWith(`${slideKey}.`));
+        }
+        if (selector === '[data-report-plan-delete-slot]') {
+          return planDeleteButtons.filter((button) => button.dataset.reportPlanDeleteSlot === slideKey);
+        }
+        if (selector === '[data-report-plan-add-slot]') {
+          return slideKey === 'slide10'
+            ? []
+            : planAddSlotButtons.filter((button) => button.dataset.reportPlanAddSlot === slideKey);
+        }
+        if (selector === '[data-report-plan-row-team]') {
+          return slideKey === 'slide10' ? planRowLabels : [];
+        }
+        if (selector === '[data-report-safety-team-select]') {
+          return slideKey === 'slide10' ? [safetyTeamSelect] : [];
+        }
+        if (selector === '[data-report-safety-add-toggle]') {
+          return slideKey === 'slide10' ? [safetyAddButton] : [];
+        }
+        if (selector === '[data-report-safety-team-option]') {
+          return slideKey === 'slide10' ? safetyTeamOptionButtons : [];
+        }
+        if (selector === '[data-report-safety-table-move]') {
+          return slideKey === 'slide10' ? safetyTableMoveButtons : [];
+        }
+        return [];
+      },
+      closest(selector) {
+        if (selector !== '[data-report-slide-page]') return null;
+        if (slideKey === 'slide10') return slides[10] || null;
+        return null;
+      },
+    };
+    if (slideKey === 'slide10') slide10PlanSlide = planSlide;
+    return planSlide;
+  });
   const optionalContentItems = ['slide8', 'slide9', 'slide10', 'slide8', 'slide9'].map((optionalPage) => ({
     dataset: { reportOptionalContent: optionalPage },
     hidden: true,
@@ -993,6 +1250,9 @@ function createReportDeckContainer(options = {}) {
       if (selector === '[data-report-stage]') return stage;
       if (selector === '[data-report-safety-add-control]') return safetyAddControl;
       if (selector === '[data-report-safety-team-select]') return safetyTeamSelect;
+      if (selector === '[data-report-save-menu]') return saveMenu;
+      if (selector === '[data-report-save-menu-toggle]') return saveMenuToggleButton;
+      if (selector === '[data-report-save-menu-panel]') return saveMenuPanel;
       const frameMatch = selector.match(/^\[data-report-plan-image-frame="([^"]+)"\]$/);
       if (frameMatch) return planImageFrames[frameMatch[1]] || null;
       return null;
@@ -1012,6 +1272,7 @@ function createReportDeckContainer(options = {}) {
       if (selector === '[data-report-safety-team-select]') return [safetyTeamSelect];
       if (selector === '[data-report-safety-add-toggle]') return [safetyAddButton];
       if (selector === '[data-report-safety-team-option]') return safetyTeamOptionButtons;
+      if (selector === '[data-report-safety-table-move]') return safetyTableMoveButtons;
       if (selector === '[data-report-add-page]') return [addPageButton];
       if (selector === '[data-report-memo-key]') return memoTargets;
       if (selector === '[data-report-memo-content]') return memoContents;
@@ -1025,6 +1286,8 @@ function createReportDeckContainer(options = {}) {
       if (selector === '[data-report-slide-target]') return navButtons;
       if (selector === '[data-report-return-hq]') return [reportReturnButton];
       if (selector === '[data-report-undo-delete]') return [undoDeleteButton];
+      if (selector === '[data-report-edit-fullscreen-toggle]') return [];
+      if (selector === '[data-report-contents-toggle]') return [];
       if (selector === '[data-report-optional-content]') return optionalContentItems;
       const autoChartMatch = selector.match(/^\[data-report-auto-chart-plot="([^"]+)"\]$/);
       if (autoChartMatch) return autoChartPlots[autoChartMatch[1]] ? [autoChartPlots[autoChartMatch[1]]] : [];
@@ -1072,6 +1335,11 @@ function createReportDeckContainer(options = {}) {
     editButton,
     undoDeleteButton,
     fullscreenButton,
+    editFullscreenButton,
+    contentsToggleButton,
+    saveMenu,
+    saveMenuPanel,
+    saveMenuToggleButton,
     exportButton,
     printButton,
     chartHighlightButton,
@@ -1082,6 +1350,8 @@ function createReportDeckContainer(options = {}) {
     productionContentsJumpButton,
     reportReturnButton,
     overviewDialog,
+    overviewTeamRow,
+    overviewCustomTeamRow,
     overviewDialogFields,
     overviewKindButtons,
     overviewSaveButton,
@@ -1092,7 +1362,14 @@ function createReportDeckContainer(options = {}) {
     memoCandidates,
     memoManualInput,
     memoManualAddButton,
+    memoNotepad,
+    memoNotepadFontSizeButton,
+    memoNotepadFontSizeInput,
+    memoNotepadColorButton,
+    memoNotepadColorClearButton,
+    memoPreview,
     memoDialog,
+    memoDialogDragHandle,
     memoOverviewDialog,
     memoOverviewDragHandle,
     memoOverviewWindowListeners,
@@ -1104,6 +1381,9 @@ function createReportDeckContainer(options = {}) {
     memoManualLineInput,
     memoLineMoveButton,
     memoLineFontSizeButton,
+    memoManualLineFontSizeButton,
+    memoLineColorButton,
+    memoLineColorClearButton,
     dateInput,
     planCountSelects,
     planAddSlotButtons,
@@ -1118,6 +1398,7 @@ function createReportDeckContainer(options = {}) {
     safetyTeamMenu,
     safetyAddButton,
     safetyTeamOptionButtons,
+    safetyTableMoveButtons,
     planImages,
     planImagePlaceholders,
     planImageSourceLabels,
@@ -1326,6 +1607,10 @@ test('util runtime browser adapter registers init boot save and closer hooks', a
   );
   assert.match(runtimeSource, /data-report-capture-zip/);
   assert.match(runtimeSource, /data-report-capture-pdf/);
+  assert.match(runtimeSource, /data-report-save-menu-toggle/);
+  assert.match(runtimeSource, /data-report-save-menu-panel/);
+  assert.match(runtimeSource, /toggleReportDeckSaveMenu/);
+  assert.match(runtimeSource, /closeReportDeckSaveMenu/);
   assert.match(runtimeSource, /data-report-capture-range-start/);
   assert.match(runtimeSource, /data-report-capture-range-end/);
   assert.match(runtimeSource, /data-report-capture-current-only/);
@@ -1609,9 +1894,14 @@ test('report public works tables place prior-year month before current month', (
   ].forEach((tokens) => assertSourceTokenOrder(reportSectionSource, tokens));
 });
 
-test('report safety summary keeps two equal-size compact lines', () => {
+test('report safety summary keeps compact team title and meta lines', () => {
   assert.match(reportSectionSource, /\.report-safety-summary-cell \{[^}]*padding: 2px 4px !important;/);
-  assert.match(reportSectionSource, /\.report-safety-summary-text \{[^}]*gap: 3px;[^}]*line-height: 1\.05;/);
+  assert.match(reportSectionSource, /\.report-safety-summary-text \{[^}]*gap: 2px;[^}]*line-height: 1\.05;/);
+  assert.match(
+    reportSectionSource,
+    /\.report-safety-summary-team, \.report-safety-summary-title, \.report-safety-summary-meta \{[^}]*white-space: nowrap;/
+  );
+  assert.match(reportSectionSource, /\.report-safety-summary-team \{ color: #1d4ed8; font-size: 10px; \}/);
   assert.match(
     reportSectionSource,
     /\.report-safety-summary-title, \.report-safety-summary-meta \{ font-size: 11px; \}/
@@ -1738,12 +2028,42 @@ test('report deck memo dialogs defer heavy work and cache repeated candidate res
   assert.match(runtimeSource, /memoOverviewCache:\s*new Map\(\)/);
   assert.match(runtimeSource, /buildReportDeckMemoCandidateCacheKey/);
   assert.match(runtimeSource, /function startReportDeckMemoOverviewDrag/);
+  assert.match(runtimeSource, /function startReportDeckMemoDialogDrag/);
   assert.match(runtimeSource, /data-report-memo-overview-drag-handle/);
+  assert.match(runtimeSource, /data-report-memo-drag-handle/);
   assert.match(runtimeSource, /function setReportDeckMemoOverviewPosition/);
+  assert.match(runtimeSource, /function setReportDeckMemoDialogPosition/);
   assert.match(runtimeSource, /function syncReportDeckMemoTeamOptions/);
+  assert.match(runtimeSource, /reportMemoLineColors/);
+  assert.match(runtimeSource, /reportMemoLineSizeRanges/);
+  assert.match(runtimeSource, /reportMemoPreserveFormatting/);
+  assert.match(runtimeSource, /function syncReportDeckMemoNotepadToState/);
+  assert.match(runtimeSource, /function adjustReportDeckMemoNotepadFontSize/);
+  assert.match(runtimeSource, /function setReportDeckMemoNotepadFontSize/);
+  assert.match(runtimeSource, /function applyReportDeckMemoNotepadColor/);
+  assert.match(runtimeSource, /function getReportDeckMemoLineSelectionFontSizeLevels/);
+  assert.match(runtimeSource, /function insertReportDeckMemoCandidateAtNotepadCursor/);
+  assert.match(runtimeSource, /function syncReportDeckMemoDialogPreview/);
+  assert.match(runtimeSource, /function rememberReportDeckMemoNotepadSelection/);
+  assert.match(runtimeSource, /data-report-memo-notepad/);
+  assert.match(runtimeSource, /data-report-memo-notepad-font-size-delta/);
+  assert.match(runtimeSource, /data-report-memo-notepad-font-size-input/);
+  assert.doesNotMatch(runtimeSource, /data-report-memo-indent-break/);
+  assert.doesNotMatch(runtimeSource, /data-report-memo-preserve-format/);
+  assert.match(runtimeSource, /data-report-memo-preview/);
+  assert.match(runtimeSource, /data-report-memo-notepad-color/);
+  assert.match(runtimeSource, /data-report-memo-line-color/);
+  assert.match(runtimeSource, /data-report-memo-line-color-value="clear"/);
+  assert.match(runtimeSource, /is-preserve-format/);
+  assert.match(runtimeSource, />&#8630;<\/button>/);
+  assert.doesNotMatch(runtimeSource, />초기화<\/button>/);
+  assert.match(runtimeSource, /function clearReportDeckMemoLineColorRange/);
+  assert.match(runtimeSource, /function applyReportDeckMemoLineColor/);
+  assert.match(runtimeSource, /function applyReportDeckMemoLineFontSizeRange/);
+  assert.match(runtimeSource, /report-auto-memo-manual-size/);
   assert.match(runtimeSource, /REPORT_DECK_MEMO_YUSAN_OVERVIEW_METRIC_KEYS/);
   assert.match(adapterSource, /site_yusan:\s*Object\.freeze\(REPORT_DECK_MEMO_YUSAN_OVERVIEW_METRIC_KEYS\)/);
-  assert.match(runtimeSource, /root\.addEventListener\?\.\('pointerdown'[\s\S]*startReportDeckMemoOverviewDrag\(root, event\);/);
+  assert.match(runtimeSource, /root\.addEventListener\?\.\('pointerdown'[\s\S]*startReportDeckMemoDialogDrag\(root, event\)[\s\S]*startReportDeckMemoOverviewDrag\(root, event\);/);
   assert.match(runtimeSource, /function openReportDeckMemoOverviewPopupOrDialog/);
   assert.match(runtimeSource, /ownerWindow\.open\(/);
   assert.match(runtimeSource, /void openReportDeckMemoOverviewPopupOrDialog\(root, meta\);/);
@@ -1764,6 +2084,56 @@ test('report deck memo dialogs defer heavy work and cache repeated candidate res
   assert.match(adapterSource, /'electricRows'/);
   assert.match(adapterSource, /'lineValueMaps'/);
   assert.match(adapterSource, /'wasteRows'/);
+});
+
+test('report deck memo input popup can be dragged by its header', () => {
+  const deckDom = createReportDeckContainer({ withMemoOverviewWindow: true });
+  const { registered } = createContext();
+  let preventCount = 0;
+
+  registered.initializers.get('report')({
+    category: { content: '' },
+    container: deckDom.container,
+  });
+
+  deckDom.memoDialog.hidden = false;
+  deckDom.listeners.pointerdown({
+    target: deckDom.memoDialogDragHandle,
+    button: 0,
+    pointerId: 9,
+    clientX: 700,
+    clientY: 100,
+    preventDefault() {
+      preventCount += 1;
+    },
+  });
+
+  assert.equal(deckDom.memoDialog.classList.contains('is-dragging'), true);
+  assert.deepEqual(deckDom.memoDialogDragHandle.pointerCaptures, [9]);
+  assert.equal(typeof deckDom.memoOverviewWindowListeners.pointermove, 'function');
+  assert.equal(typeof deckDom.memoOverviewWindowListeners.pointerup, 'function');
+
+  deckDom.memoOverviewWindowListeners.pointermove({
+    clientX: 640,
+    clientY: 130,
+    preventDefault() {
+      preventCount += 1;
+    },
+  });
+
+  assert.equal(deckDom.memoDialog.style.left, '560px');
+  assert.equal(deckDom.memoDialog.style.top, '84px');
+  assert.equal(deckDom.memoDialog.style.right, 'auto');
+  assert.equal(deckDom.memoDialog.dataset.reportMemoFloating, 'true');
+
+  const pointerUp = deckDom.memoOverviewWindowListeners.pointerup;
+  pointerUp({});
+
+  assert.equal(deckDom.memoDialog.classList.contains('is-dragging'), false);
+  assert.deepEqual(deckDom.memoDialogDragHandle.releasedPointerCaptures, [9]);
+  assert.equal(deckDom.memoOverviewWindowListeners.pointermove, undefined);
+  assert.equal(deckDom.memoOverviewWindowListeners.pointerup, undefined);
+  assert.equal(preventCount, 2);
 });
 
 test('report deck memo overview popup can be dragged as a floating panel', () => {
@@ -1905,7 +2275,7 @@ test('report deck memo overview copy button writes one memo line to clipboard', 
   assert.equal(copyButton.dataset.reportMemoCopyState, 'copied');
 });
 
-test('report deck memo dialog edits existing lines and appends manual entries', async () => {
+test('report deck memo dialog edits notepad text and applies selected range formatting', async () => {
   const fetchCalls = [];
   const deckDom = createReportDeckContainer();
   const { registered } = createContext({
@@ -1974,80 +2344,153 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
   assert.match(deckDom.memoTeamSelect.innerHTML, /value="site_yusan"/);
   assert.match(deckDom.memoTeamSelect.innerHTML, /value="site_total"/);
   assert.match(deckDom.memoTeamSelect.innerHTML, /value="other"/);
-  assert.match(deckDom.memoLines.innerHTML, /data-report-memo-line-input="0"/);
+  assert.match(deckDom.memoNotepad.value, /10, 5%/);
+  assert.match(deckDom.memoPreview.innerHTML, /report-auto-memo-change is-up/);
+  assert.equal(deckDom.memoNotepadFontSizeInput.disabled, true);
+  assert.equal(deckDom.memoNotepadFontSizeInput.value, '3');
   assert.match(deckDom.memoContents[0].innerHTML, /report-auto-memo-delta">/);
   assert.match(deckDom.memoContents[0].innerHTML, /<span class="report-auto-memo-change is-up"> 10, 5% ↑<\/span> 검정/);
   assert.doesNotMatch(deckDom.memoContents[0].innerHTML, /report-auto-memo-delta is-up/);
 
-  deckDom.memoLineInput.value = '';
-  deckDom.listeners.input({ target: deckDom.memoLineInput });
-  deckDom.memoLineInput.value = 'Edited memo';
-  deckDom.listeners.input({ target: deckDom.memoLineInput });
+  deckDom.memoNotepad.value = 'Edited memo';
+  deckDom.memoNotepad.selectionStart = deckDom.memoNotepad.value.length;
+  deckDom.memoNotepad.selectionEnd = deckDom.memoNotepad.value.length;
+  deckDom.listeners.input({ target: deckDom.memoNotepad });
   assert.match(deckDom.memoContents[0].innerHTML, /Edited memo/);
 
-  deckDom.memoLineFontSizeButton.dataset.reportMemoLineFontSize = '0';
-  deckDom.memoLineFontSizeButton.dataset.reportMemoLineFontSizeDelta = '1';
+  deckDom.memoNotepad.value = 'Edited memo\nManual memo\nSecond manual memo';
+  deckDom.memoNotepad.selectionStart = deckDom.memoNotepad.value.length;
+  deckDom.memoNotepad.selectionEnd = deckDom.memoNotepad.value.length;
+  deckDom.listeners.input({ target: deckDom.memoNotepad });
+  assert.match(deckDom.memoContents[0].innerHTML, /Manual memo/);
+  assert.match(deckDom.memoContents[0].innerHTML, /Second manual memo/);
+  assert.doesNotMatch(deckDom.memoContents[0].innerHTML, /report-auto-memo-delete/);
+  assert.doesNotMatch(deckDom.memoContents[0].innerHTML, /data-report-memo-delete-line/);
+
+  const memoCandidateButton = {
+    dataset: { reportMemoCandidate: '0' },
+    closest(selector) {
+      return selector === '[data-report-memo-candidate]' ? this : null;
+    },
+  };
+  deckDom.memoDialog.__reportMemoCandidates = [{ text: 'Candidate memo', direction: 'up' }];
+  const secondManualStart = deckDom.memoNotepad.value.indexOf('Second manual memo');
+  deckDom.memoNotepad.selectionStart = secondManualStart;
+  deckDom.memoNotepad.selectionEnd = secondManualStart;
   deckDom.listeners.click({
-    target: deckDom.memoLineFontSizeButton,
+    target: memoCandidateButton,
     preventDefault() {},
   });
-  assert.match(deckDom.memoContents[0].innerHTML, /data-report-memo-line-size="1"/);
-  assert.match(deckDom.memoLines.innerHTML, /data-report-memo-line-font-size="0"/);
-  assert.match(deckDom.memoLines.innerHTML, /data-report-memo-line-font-size-delta="-1"/);
-  assert.match(deckDom.memoLines.innerHTML, /data-report-memo-line-font-size-delta="1"/);
-  assert.notEqual(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-memo-row'), normalMemoRow);
+  assert.equal(deckDom.memoNotepad.value, 'Edited memo\nManual memo\nCandidate memo\nSecond manual memo');
+  assert.match(deckDom.memoContents[0].innerHTML, /Candidate memo/);
 
-  deckDom.memoManualInput.value = 'Manual memo\nSecond manual memo';
+  const revisedMemoText = 'Edited memo\nManual memo revised\nrow detail\nCandidate memo\nSecond manual memo';
+  deckDom.memoNotepad.value = revisedMemoText;
+  deckDom.listeners.input({ target: deckDom.memoNotepad });
+  assert.match(deckDom.memoContents[0].innerHTML, /Manual memo revised[\s\S]*row detail/);
+  assert.doesNotMatch(deckDom.memoContents[0].innerHTML, /report-auto-memo-delete/);
+  assert.doesNotMatch(deckDom.memoContents[0].innerHTML, /data-report-memo-delete-line/);
+  const selectedMemoStart = revisedMemoText.indexOf('Manual memo revised') + 'Manual '.length;
+  const selectedMemoEnd = selectedMemoStart + 'memo'.length;
+  deckDom.memoNotepad.selectionStart = selectedMemoStart;
+  deckDom.memoNotepad.selectionEnd = selectedMemoEnd;
+  deckDom.listeners.select({ target: deckDom.memoNotepad });
+  assert.equal(deckDom.memoNotepadFontSizeInput.disabled, false);
+  assert.equal(deckDom.memoNotepadFontSizeInput.value, '3');
   deckDom.listeners.click({
-    target: deckDom.memoManualAddButton,
-    preventDefault() {},
-  });
-
-  assert.equal(deckDom.memoManualInput.value, '');
-  assert.match(deckDom.memoLines.innerHTML, /Manual memo/);
-  assert.match(deckDom.memoLines.innerHTML, /Second manual memo/);
-  assert.match(deckDom.memoLines.innerHTML, /data-report-memo-move-line="1"/);
-  assert.match(deckDom.memoLines.innerHTML, /data-report-memo-move-direction="up"/);
-  assert.match(deckDom.memoLines.innerHTML, /data-report-memo-move-direction="down"/);
-  assert.match(
-    deckDom.memoLines.innerHTML,
-    /<textarea[^>]+data-report-memo-line-input="1"[^>]*>Manual memo<\/textarea>/
-  );
-  const memoLinesAfterManualAdd = deckDom.memoLines.innerHTML;
-  deckDom.memoManualInput.value = 'Manual memo\nSecond manual memo';
-  deckDom.listeners.click({
-    target: deckDom.memoManualAddButton,
-    preventDefault() {},
-  });
-  assert.equal(deckDom.memoManualInput.value, '');
-  assert.equal(deckDom.memoLines.innerHTML, memoLinesAfterManualAdd);
-  assert.doesNotMatch(deckDom.memoLines.innerHTML, /data-report-memo-line-input="3"/);
-
-  deckDom.memoManualLineInput.value = 'Manual memo revised';
-  deckDom.listeners.input({ target: deckDom.memoManualLineInput });
-  assert.match(deckDom.memoContents[0].innerHTML, /Manual memo revised/);
-
-  deckDom.memoLineMoveButton.dataset.reportMemoMoveLine = '2';
-  deckDom.memoLineMoveButton.dataset.reportMemoMoveDirection = 'up';
-  deckDom.listeners.click({
-    target: deckDom.memoLineMoveButton,
+    target: deckDom.memoNotepadColorButton,
     preventDefault() {},
   });
   assert.match(
-    deckDom.memoLines.innerHTML,
-    /<textarea[^>]+data-report-memo-line-input="1"[^>]*>Second manual memo<\/textarea>/
+    deckDom.memoContents[0].innerHTML,
+    /Manual <span class="report-auto-memo-manual-color is-red">memo<\/span> revised/
   );
-
-  deckDom.memoLineMoveButton.dataset.reportMemoMoveLine = '1';
-  deckDom.memoLineMoveButton.dataset.reportMemoMoveDirection = 'up';
+  assert.match(
+    deckDom.memoPreview.innerHTML,
+    /Manual <span class="report-auto-memo-manual-color is-red">memo<\/span> revised/
+  );
   deckDom.listeners.click({
-    target: deckDom.memoLineMoveButton,
+    target: deckDom.memoNotepadColorClearButton,
+    preventDefault() {},
+  });
+  assert.doesNotMatch(deckDom.memoContents[0].innerHTML, /report-auto-memo-manual-color/);
+  deckDom.listeners.click({
+    target: deckDom.memoNotepadColorButton,
     preventDefault() {},
   });
   assert.match(
-    deckDom.memoLines.innerHTML,
-    /<textarea[^>]+data-report-memo-line-input="0"[^>]*>Second manual memo<\/textarea>/
+    deckDom.memoContents[0].innerHTML,
+    /Manual <span class="report-auto-memo-manual-color is-red">memo<\/span> revised/
   );
+  deckDom.memoNotepadFontSizeButton.dataset.reportMemoNotepadFontSizeDelta = '1';
+  deckDom.listeners.click({
+    target: deckDom.memoNotepadFontSizeButton,
+    preventDefault() {},
+  });
+  assert.match(
+    deckDom.memoContents[0].innerHTML,
+    /Manual <span class="report-auto-memo-manual-size" style="font-size:11\.6px;line-height:1;"><span class="report-auto-memo-manual-color is-red">memo<\/span><\/span> revised/
+  );
+  assert.equal(deckDom.memoNotepadFontSizeInput.value, '4');
+  assert.match(
+    deckDom.memoPreview.innerHTML,
+    /Manual <span class="report-auto-memo-manual-size" style="font-size:11\.6px;line-height:1;"><span class="report-auto-memo-manual-color is-red">memo<\/span><\/span> revised/
+  );
+  deckDom.listeners.click({
+    target: deckDom.memoNotepadFontSizeButton,
+    preventDefault() {},
+  });
+  assert.match(deckDom.memoContents[0].innerHTML, /style="font-size:12\.8px;line-height:1;"/);
+  assert.equal(deckDom.memoNotepadFontSizeInput.value, '5');
+  deckDom.memoNotepadFontSizeButton.dataset.reportMemoNotepadFontSizeDelta = '-1';
+  deckDom.listeners.click({
+    target: deckDom.memoNotepadFontSizeButton,
+    preventDefault() {},
+  });
+  assert.match(deckDom.memoContents[0].innerHTML, /style="font-size:11\.6px;line-height:1;"/);
+  assert.equal(deckDom.memoNotepadFontSizeInput.value, '4');
+  deckDom.memoNotepadFontSizeInput.value = '6';
+  deckDom.listeners.change({ type: 'change', target: deckDom.memoNotepadFontSizeInput });
+  assert.match(deckDom.memoContents[0].innerHTML, /style="font-size:14px;line-height:1;"/);
+  assert.match(deckDom.memoPreview.innerHTML, /style="font-size:14px;line-height:1;"/);
+  assert.equal(deckDom.memoNotepadFontSizeInput.value, '6');
+  deckDom.memoNotepad.selectionStart = revisedMemoText.indexOf('Manual memo revised');
+  deckDom.memoNotepad.selectionEnd = selectedMemoEnd;
+  deckDom.listeners.select({ target: deckDom.memoNotepad });
+  assert.equal(deckDom.memoNotepadFontSizeInput.value, '?');
+  assert.ok(deckDom.memoNotepad.focusCount >= 6);
+  let memoLineSpacePropagationStopped = false;
+  deckDom.listeners.keydown({
+    key: ' ',
+    code: 'Space',
+    target: deckDom.memoNotepad,
+    preventDefault() {
+      assert.fail('space in a memo notepad should remain textarea input');
+    },
+    stopPropagation() {
+      memoLineSpacePropagationStopped = true;
+    },
+  });
+  assert.equal(memoLineSpacePropagationStopped, true);
+  let memoLineEnterPropagationStopped = false;
+  deckDom.listeners.keydown({
+    key: 'Enter',
+    code: 'Enter',
+    target: deckDom.memoNotepad,
+    preventDefault() {
+      assert.fail('enter in a memo notepad should remain textarea line break');
+    },
+    stopPropagation() {
+      memoLineEnterPropagationStopped = true;
+    },
+  });
+  assert.equal(memoLineEnterPropagationStopped, true);
+
+  const deletedMemoText = 'Edited memo\nManual memo revised\nrow detail\nSecond manual memo';
+  deckDom.memoNotepad.value = deletedMemoText;
+  deckDom.listeners.input({ target: deckDom.memoNotepad });
+  assert.doesNotMatch(deckDom.memoContents[0].innerHTML, /Candidate memo/);
+  assert.equal(deckDom.memoNotepad.value, deletedMemoText);
 
   deckDom.listeners.keydown({
     key: 's',
@@ -2064,17 +2507,23 @@ test('report deck memo dialog edits existing lines and appends manual entries', 
   const saveCall = fetchCalls.filter((call) => call.options?.method === 'PUT').at(-1);
   assert.ok(saveCall, 'report memo save request was not sent');
   const savedPayload = JSON.parse(saveCall.options.body).payload;
-  assert.equal(savedPayload.slide3GasMemo, 'Second manual memo\nEdited memo\nManual memo revised');
-  assert.deepEqual(JSON.parse(savedPayload.reportMemoLineSizes), { slide3GasMemo: [0, 1, 0] });
-  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-table-row'), '27%');
-  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-chart-row'), '58.5%');
-  assert.equal(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-memo-row'), '10.5%');
-  assert.equal(deckDom.analysisColumns[5].style.getPropertyValue('--report-analysis-memo-row'), '10.5%');
-  assert.equal(deckDom.wasteLayouts[0].style.getPropertyValue('--report-waste-main-row'), '83.5%');
-  assert.equal(deckDom.wasteLayouts[1].style.getPropertyValue('--report-waste-memo-row'), '6.5%');
+  assert.equal(savedPayload.slide3GasMemo, 'Edited memo\nManual memo revised\nrow detail\nSecond manual memo');
+  assert.deepEqual(JSON.parse(savedPayload.reportMemoLineSizes), {});
+  assert.deepEqual(JSON.parse(savedPayload.reportMemoLineSizeRanges), {
+    slide3GasMemo: [[], [{ start: 7, end: 11, size: 3 }], [], []],
+  });
+  assert.deepEqual(JSON.parse(savedPayload.reportMemoLineColors), {
+    slide3GasMemo: [[], [{ start: 7, end: 11, color: 'red' }], [], []],
+  });
+  assert.notEqual(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-memo-row'), normalMemoRow);
+  assert.match(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-table-row'), /%$/);
+  assert.match(deckDom.analysisColumns[0].style.getPropertyValue('--report-analysis-chart-row'), /%$/);
+  assert.match(deckDom.analysisColumns[5].style.getPropertyValue('--report-analysis-memo-row'), /%$/);
+  assert.match(deckDom.wasteLayouts[0].style.getPropertyValue('--report-waste-main-row'), /%$/);
+  assert.match(deckDom.wasteLayouts[1].style.getPropertyValue('--report-waste-memo-row'), /%$/);
 });
 
-test('report deck completion saves pending manual memo input to server', async () => {
+test('report deck completion saves pending memo notepad input to server', async () => {
   const fetchCalls = [];
   const deckDom = createReportDeckContainer();
   const { registered } = createContext({
@@ -2137,7 +2586,7 @@ test('report deck completion saves pending manual memo input to server', async (
     preventDefault() {},
   });
 
-  deckDom.memoManualInput.value = '북정 가스 직접 입력\n북정 전기 직접 입력';
+  deckDom.memoNotepad.value = '북정 가스 직접 입력\n북정 전기 직접 입력';
   deckDom.listeners.click({
     target: deckDom.editButton,
     preventDefault() {},
@@ -2148,7 +2597,7 @@ test('report deck completion saves pending manual memo input to server', async (
   assert.ok(saveCall, 'pending manual memo was not saved');
   const savedPayload = JSON.parse(saveCall.options.body).payload;
   assert.equal(savedPayload.slide3GasMemo, '북정 가스 직접 입력\n북정 전기 직접 입력');
-  assert.equal(deckDom.memoManualInput.value, '');
+  assert.equal(deckDom.memoNotepad.value, '북정 가스 직접 입력\n북정 전기 직접 입력');
   assert.equal(deckDom.memoDialog.hidden, true);
   assert.equal(deckDom.status.textContent, '저장되었습니다');
   assert.deepEqual(registered.alertMessages, ['저장되었습니다']);
@@ -2161,7 +2610,7 @@ test('report deck completion saves pending manual memo input to server', async (
     target: deckDom.memoTargets[0],
     preventDefault() {},
   });
-  deckDom.memoManualInput.value = '북정 가스 직접 입력';
+  deckDom.memoNotepad.value = '북정 가스 직접 입력\n북정 전기 직접 입력';
   const putCountBeforeDuplicatePending = fetchCalls.filter((call) => call.options?.method === 'PUT').length;
   deckDom.listeners.click({
     target: deckDom.editButton,
@@ -2169,7 +2618,7 @@ test('report deck completion saves pending manual memo input to server', async (
   });
   await flushMicrotasks();
 
-  assert.equal(deckDom.memoManualInput.value, '');
+  assert.equal(deckDom.memoNotepad.value, '북정 가스 직접 입력\n북정 전기 직접 입력');
   assert.equal(fetchCalls.filter((call) => call.options?.method === 'PUT').length, putCountBeforeDuplicatePending);
 });
 
@@ -2859,7 +3308,7 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
   assert.equal(model.costRows[3].previous, -6800);
   assert.equal(model.costRows[3].delta, -6700);
   assert.equal(model.costRows[3].monthDelta, -600);
-  assert.equal(model.costChart.title, '금액 차이 (LPG - LNG환산)');
+  assert.equal(model.costChart.title, 'LPG, LNG환산 (원)');
   assert.equal(
     model.costChart.series.find((item) => item.key === '2025').points.find((point) => point.month === 11).value,
     -7400
@@ -2880,10 +3329,37 @@ test('util runtime browser adapter builds yusan team 1 part 2 LPG report model f
   assert.match(runtimeSource, /height - \(roomyPlot \? 5 : 10\)/);
   assert.match(runtimeSource, /roomyPlot:\s*true/);
   assert.match(runtimeSource, /getReportDeckAutoChartLegendStart\(width,\s*plotRight,\s*series\.length,\s*legendItemWidth,\s*chart\?\.title,\s*compactHeader\)/);
-  assert.match(runtimeSource, /offsets:\s*\[0,\s*18,\s*31,\s*44,\s*56\]/);
+  assert.match(runtimeSource, /Array\.isArray\(options\.labelOffsets\)/);
+  assert.match(runtimeSource, /:\s*\[0,\s*18,\s*31,\s*44,\s*56\]/);
+  assert.match(runtimeSource, /roomyPlot:\s*true,\s*labelOffsets:\s*\[0,\s*22,\s*38,\s*54,\s*70\]/);
+  assert.match(runtimeSource, /const REPORT_DECK_SLIDE10_SLOTS_PER_PAGE = 8/);
+  assert.match(runtimeSource, /const REPORT_DECK_SLIDE10_COLUMNS_PER_ROW = 4/);
+  assert.match(runtimeSource, /const REPORT_DECK_SLIDE10_ROWS_PER_PAGE = 2/);
+  assert.match(runtimeSource, /slide10TableOrder:\s*''/);
+  assert.match(runtimeSource, /function parseReportDeckSlide10TableOrder/);
+  assert.match(runtimeSource, /function moveReportDeckSlide10Table/);
+  assert.match(runtimeSource, /data-report-safety-table-move/);
+  assert.match(runtimeSource, /const REPORT_DECK_OTHER_TEAM_LABEL = '[^']+'/);
+  assert.match(runtimeSource, /REPORT_DECK_SLIDE8_OVERVIEW_TEAMS = Object\.freeze\(\[[^\]]*REPORT_DECK_OTHER_TEAM_LABEL[^\]]*\]\)/);
+  assert.match(runtimeSource, /function normalizeReportDeckSlide10Team/);
+  assert.match(runtimeSource, /function syncReportDeckOverviewCustomTeamRow/);
+  assert.match(runtimeSource, /data-report-overview-custom-team/);
+  assert.match(runtimeSource, /function normalizeReportDeckSlide10Hazard\(value\) \{\s*return String\(value \|\| ''\)\.trim\(\);\s*\}/);
+  assert.doesNotMatch(runtimeSource, /REPORT_DECK_SLIDE10_HAZARD_OPTIONS/);
+  assert.match(runtimeSource, /const REPORT_DECK_PLAN_SLIDE_KEYS = Object\.freeze\(\['slide8', 'slide9', 'slide10'\]\)/);
+  assert.doesNotMatch(runtimeSource, /slide10:\s*16/);
+  assert.match(runtimeSource, /if \(normalizedSlideKey === 'slide10'\) return Number\.POSITIVE_INFINITY;/);
+  assert.match(runtimeSource, /appendReportDeckSlide10EditableEmptyRows/);
+  assert.match(runtimeSource, /function buildReportDeckYusanLpgCostBarChartSvg/);
+  assert.match(runtimeSource, /label:\s*'LPG',\s*color:\s*'#c0504d'/);
+  assert.match(runtimeSource, /label:\s*'LPG',\s*color:\s*'#c0504d'[\s\S]*label:\s*'LNG환산',\s*color:\s*'#4472c4'/);
+  assert.match(runtimeSource, /buildReportDeckBarChartLegendHtml\(series\)/);
+  assert.match(runtimeSource, /buildReportDeckChartHighlightRectSvg/);
+  assert.match(runtimeSource, /data-report-chart-highlight-point="true"/);
+  assert.match(runtimeSource, /buildReportDeckYusanLpgCostBarChartSvg\(model,\s*\{/);
   assert.match(runtimeSource, /const legendHtml = compactHeader \? buildReportDeckAutoChartLegendHtml\(series\) : ''/);
   assert.match(runtimeSource, /report-auto-chart-legend-overlay/);
-  assert.match(runtimeSource, /valueFormat:\s*'number'/);
+  assert.match(runtimeSource, /formatReportDeckChartValue\(value,\s*0,\s*'number'\)/);
   assert.match(runtimeSource, /formatReportDeckChartValue\(value,\s*valueDecimals,\s*valueFormat\)/);
   assert.equal(
     model.chart.series.find((item) => item.key === '2025').points.find((point) => point.month === 11).value,
@@ -3115,7 +3591,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(electricUnit.candidates[0].direction, 'down');
   assert.match(
     electricUnit.candidates[0].text,
-    /생산량 대비 전력량 0\.100kWh\/kg 전년대비 0\.009kWh\/kg, 8\.3% ↓, 전월대비 0\.013kWh\/kg, 11\.1% ↓/
+    /생산량 대비 전력량 0\.100kWh\/kg 전년대비 0\.009kWh\/kg, 8\.3% ↓, 전월대비 0\.013kWh\/kg, 11\.5% ↓/
   );
 
   const lngUnit = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
@@ -3125,8 +3601,33 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(lngUnit.candidates[0].direction, 'mixed');
   assert.match(
     lngUnit.candidates[0].text,
-    /생산량 대비 LNG 0\.070m³\/kg 전년대비 0\.002m³\/kg, 2\.7% ↑, 전월대비 0\.011m³\/kg, 13\.8% ↓/
+    /생산량 대비 LNG 0\.070m³\/kg 전년대비 0\.002m³\/kg, 2\.9% ↑, 전월대비 0\.011m³\/kg, 13\.6% ↓/
   );
+
+  const originalLngUnitReferenceMonth = monthly.get('2025-04');
+  const originalLngUnitCurrentMonth = monthly.get('2026-04');
+  monthly.set('2025-04', {
+    ...monthly.get('2025-04'),
+    productionByTeam: { ...monthly.get('2025-04')?.productionByTeam, '1팀 2파트': 1000 },
+    lng: 102.4,
+  });
+  monthly.set('2026-04', {
+    ...monthly.get('2026-04'),
+    productionByTeam: { ...monthly.get('2026-04')?.productionByTeam, '1팀 2파트': 1000 },
+    lng: 101.6,
+  });
+  const lngUnitRoundedEqual = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
+    teamKey: 'team_01_02',
+    metricKey: 'lng_unit',
+  });
+  assert.equal(lngUnitRoundedEqual.candidates[0].segments[0].direction, 'flat');
+  assert.equal(lngUnitRoundedEqual.candidates[0].segments[0].text, '\uC804\uB144\uB300\uBE44 \uB3D9\uC77C');
+  assert.equal(lngUnitRoundedEqual.candidates[0].segments[0].displayReference, 0.102);
+  assert.equal(lngUnitRoundedEqual.candidates[0].segments[0].displayCurrent, 0.102);
+  assert.equal(lngUnitRoundedEqual.candidates[0].segments[0].delta, 0);
+  assert.equal(lngUnitRoundedEqual.candidates[0].segments[0].rate, 0);
+  monthly.set('2025-04', originalLngUnitReferenceMonth);
+  monthly.set('2026-04', originalLngUnitCurrentMonth);
 
   const lngCost = await context.KpiUtilRuntimeBrowserAdapter.buildReportDeckMemoCandidates('2026-04', {
     teamKey: 'team_01_02',
@@ -3169,7 +3670,7 @@ test('util runtime browser adapter builds report memo candidates with direction 
   assert.equal(lpgUnit.candidates[0].direction, 'mixed');
   assert.match(
     lpgUnit.candidates[0].text,
-    /생산량 대비 LPG 0\.050kg\/kg 전년대비 0\.014kg\/kg, 37\.5% ↑, 전월대비 0\.025kg\/kg, 33\.3% ↓/
+    /생산량 대비 LPG 0\.050kg\/kg 전년대비 0\.014kg\/kg, 38\.9% ↑, 전월대비 0\.025kg\/kg, 33\.3% ↓/
   );
 
   const originalLpgUnitReferenceMonth = monthly.get('2025-04');
@@ -4141,7 +4642,7 @@ test('report deck editor loads and saves through server module records', async (
                 slide7Title: '2. 유산 (폐수 비용) 분석',
                 slide8SlotCount: '3',
                 slide8Item1Text: 'DB plan text',
-                slide8BeforeImage1: 'data:image/png;base64,AAAA',
+                slide8BeforeImage1: isNovember ? '' : 'data:image/png;base64,AAAA',
               },
               version: 7,
               updated_at: '2026-05-15T00:00:00.000Z',
@@ -4355,6 +4856,7 @@ test('report deck editor loads and saves through server module records', async (
   });
   assert.equal(deckDom.overviewDialog.hidden, false);
   assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlot, '1');
+  assert.equal(deckDom.overviewCustomTeamRow.hidden, true);
   deckDom.overviewDialogFields.team.value = '공무환경팀';
   deckDom.overviewDialogFields.title.value = '환경 설비 보수';
   deckDom.overviewDialogFields.effect.value = '점검 시간 단축';
@@ -4370,7 +4872,21 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.overviewDialogFields.amount.reportValidityCount, 1);
   assert.equal(deckDom.overviewDialogFields.amount.focusCount, 1);
   assert.equal(deckDom.status.textContent, '금액은 숫자만 입력해 주세요');
+  const slide8KnownTeamLabel = deckDom.safetyTeamOptionButtons[0].textContent;
+  const slide8OtherTeamLabel = deckDom.safetyTeamOptionButtons.at(-1).textContent;
+  const slide8CustomTeam = '협력공사';
+  deckDom.overviewDialogFields.team.value = slide8OtherTeamLabel;
+  deckDom.listeners.input({ target: deckDom.overviewDialogFields.team });
+  assert.equal(deckDom.overviewCustomTeamRow.hidden, false);
+  deckDom.overviewDialogFields.customTeam.value = slide8KnownTeamLabel;
   deckDom.overviewDialogFields.amount.value = '5.5';
+  deckDom.listeners.click({
+    target: deckDom.overviewSaveButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.overviewDialog.hidden, false);
+  assert.equal(deckDom.overviewDialogFields.customTeam.customValidity, '기존 팀명은 해당 팀을 선택해 주세요.');
+  deckDom.overviewDialogFields.customTeam.value = slide8CustomTeam;
   deckDom.listeners.click({
     target: deckDom.overviewSaveButton,
     preventDefault() {},
@@ -4380,7 +4896,7 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.overviewDialogFields.amount.customValidity, '');
   assert.equal(
     slide8OverviewField.textContent,
-    '공무환경팀\n환경 설비 보수\n▶ 효과 : 점검 시간 단축\n▶ 완료 날짜 : 12.20 完\n▶ 금액 : 5.5 백만원'
+    `${slide8CustomTeam}\n환경 설비 보수\n▶ 효과 : 점검 시간 단축\n▶ 완료 날짜 : 12.20 完\n▶ 금액 : 5.5 백만원`
   );
 
   const slide9SummaryField = {
@@ -4403,13 +4919,19 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlot, '1');
   assert.equal(deckDom.overviewDialogFields.kind.value, 'cause');
   assert.equal(deckDom.overviewDialogFields.date.type, 'month');
+  assert.equal(deckDom.overviewCustomTeamRow.hidden, true);
   deckDom.listeners.click({
     target: deckDom.overviewKindButtons[1],
     preventDefault() {},
   });
   assert.equal(deckDom.overviewDialogFields.kind.value, 'purpose');
   assert.equal(deckDom.overviewKindButtons[1].classList.active, true);
-  deckDom.overviewDialogFields.team.value = '1팀 2파트';
+  const slide9OtherTeamLabel = deckDom.safetyTeamOptionButtons.at(-1).textContent;
+  const slide9CustomTeam = '협력계획';
+  deckDom.overviewDialogFields.team.value = slide9OtherTeamLabel;
+  deckDom.listeners.input({ target: deckDom.overviewDialogFields.team });
+  assert.equal(deckDom.overviewCustomTeamRow.hidden, false);
+  deckDom.overviewDialogFields.customTeam.value = slide9CustomTeam;
   deckDom.overviewDialogFields.title.value = '외포장실 안전장치 설치';
   deckDom.overviewDialogFields.detail.value = '안전사고 예방';
   deckDom.overviewDialogFields.date.value = '2025-12-25';
@@ -4460,17 +4982,17 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(savedReportPayload.slide7Title, '2. 유 산 (폐수 비용) 분석');
   assert.equal(savedReportPayload.reportDate, getReportDateForMonth(latestReportMonth, 16));
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8SlotCount, '3');
-  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Team, '공무환경팀');
+  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Team, slide8CustomTeam);
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Title, '환경 설비 보수');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Effect, '점검 시간 단축');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Date, '2025-12-20');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Amount, '5.5');
   assert.equal(
     JSON.parse(fetchCalls[2].options.body).payload.slide8Item1Text,
-    '공무환경팀\n환경 설비 보수\n▶ 효과 : 점검 시간 단축\n▶ 완료 날짜 : 12.20 完\n▶ 금액 : 5.5 백만원'
+    `${slide8CustomTeam}\n환경 설비 보수\n▶ 효과 : 점검 시간 단축\n▶ 완료 날짜 : 12.20 完\n▶ 금액 : 5.5 백만원`
   );
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9SlotCount, '1');
-  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Team, '1팀 2파트');
+  assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Team, slide9CustomTeam);
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Title, '외포장실 안전장치 설치');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Kind, 'purpose');
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Detail, '안전사고 예방');
@@ -4478,7 +5000,7 @@ test('report deck editor loads and saves through server module records', async (
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Amount, '6.5');
   assert.equal(
     JSON.parse(fetchCalls[2].options.body).payload.slide9Item1Text,
-    '1팀 2파트\n외포장실 안전장치 설치\n▶ 목적 : 안전사고 예방\n▶ 예상 날짜 : 25.12월 中\n▶ 예상 금액 : 6.5 백만원'
+    `${slide9CustomTeam}\n외포장실 안전장치 설치\n▶ 목적 : 안전사고 예방\n▶ 예상 날짜 : 25.12월 中\n▶ 예상 금액 : 6.5 백만원`
   );
   assert.equal(JSON.parse(fetchCalls[2].options.body).payload.slide8BeforeImage1, '');
   assert.equal(deckDom.status.textContent, '저장되었습니다');
@@ -4516,10 +5038,63 @@ test('report deck editor loads and saves through server module records', async (
   });
   assert.equal(deckDom.root.dataset.reportActiveSlide, '4');
 
+  let saveMenuPrevented = false;
+  assert.equal(deckDom.saveMenuPanel.hidden, true);
+  deckDom.listeners.click({
+    target: deckDom.saveMenuToggleButton,
+    preventDefault() {
+      saveMenuPrevented = true;
+    },
+  });
+  assert.equal(saveMenuPrevented, true);
+  assert.equal(deckDom.saveMenuPanel.hidden, false);
+  assert.equal(deckDom.saveMenu.dataset.reportSaveMenuOpen, 'true');
+  assert.equal(deckDom.saveMenuToggleButton['aria-expanded'], 'true');
+  assert.equal(deckDom.saveMenuToggleButton.classList.active, true);
+  let saveMenuEscapePrevented = false;
+  deckDom.listeners.keydown({
+    key: 'Escape',
+    target: {
+      closest() {
+        return null;
+      },
+    },
+    preventDefault() {
+      saveMenuEscapePrevented = true;
+    },
+  });
+  assert.equal(saveMenuEscapePrevented, true);
+  assert.equal(deckDom.saveMenuPanel.hidden, true);
+  assert.equal(deckDom.saveMenu.dataset.reportSaveMenuOpen, undefined);
+  assert.equal(deckDom.saveMenuToggleButton['aria-expanded'], 'false');
+
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.root.dataset.reportEditMode, 'editing');
+  team1ContentsItem1Field.textContent = '발표 전 저장';
+  deckDom.listeners.input({
+    target: team1ContentsItem1Field,
+  });
+  await flushMicrotasks();
+  const presentationSaveIndex = fetchCalls.length;
   deckDom.listeners.click({
     target: deckDom.fullscreenButton,
     preventDefault() {},
   });
+  await flushMicrotasks();
+  await flushMicrotasks();
+  const presentationSaveCall = fetchCalls
+    .slice(presentationSaveIndex)
+    .find((call) => call.url === '/api/modules/report_runtime/records/report_2025_11' && call.options?.method === 'PUT');
+  assert.ok(presentationSaveCall, 'presentation should save edited report before fullscreen');
+  assert.equal(
+    JSON.parse(presentationSaveCall.options.body).payload.productionTeam1ContentsItem1,
+    '발표 전 저장'
+  );
+  assert.equal(deckDom.root.dataset.reportEditMode, 'view');
+  assert.equal(deckDom.editButton.textContent, '수정');
   assert.equal(deckDom.root.fullscreenRequestCount, 1);
   assert.equal(deckDom.stage.focusCount, 2);
   assert.equal(deckDom.root.dataset.reportFullscreenOutputMode, 'true');
@@ -5261,7 +5836,7 @@ test('report deck plan overviews sort by team date and amount', async () => {
             record: {
               payload: {
                 reportDate: '2025.12.15',
-                slide8SlotCount: '4',
+                slide8SlotCount: '7',
                 slide8Item1Team: '1팀 1파트',
                 slide8Item1Title: '늦은 정비',
                 slide8Item1Date: '2025-12-20',
@@ -5278,7 +5853,19 @@ test('report deck plan overviews sort by team date and amount', async () => {
                 slide8Item4Title: '다른 팀 빠른 정비',
                 slide8Item4Date: '2025-12-01',
                 slide8Item4Amount: '1',
-                slide9SlotCount: '4',
+                slide8Item5Team: '기타',
+                slide8Item5Title: '기타 정비',
+                slide8Item5Date: '2025-11-01',
+                slide8Item5Amount: '0',
+                slide8Item6Team: '공무환경팀',
+                slide8Item6Title: '공무 정비',
+                slide8Item6Date: '2025-12-31',
+                slide8Item6Amount: '9',
+                slide8Item7Team: '물류센터',
+                slide8Item7Title: '물류 정비',
+                slide8Item7Date: '2025-10-01',
+                slide8Item7Amount: '0',
+                slide9SlotCount: '7',
                 slide9Item1Team: '1팀 1파트',
                 slide9Item1Title: '늦은 계획',
                 slide9Item1Date: '2026-02',
@@ -5295,6 +5882,18 @@ test('report deck plan overviews sort by team date and amount', async () => {
                 slide9Item4Title: '다른 팀 빠른 계획',
                 slide9Item4Date: '2025-12',
                 slide9Item4Amount: '1',
+                slide9Item5Team: '기타',
+                slide9Item5Title: '기타 계획',
+                slide9Item5Date: '2025-11',
+                slide9Item5Amount: '0',
+                slide9Item6Team: '공무환경팀',
+                slide9Item6Title: '공무 계획',
+                slide9Item6Date: '2026-03',
+                slide9Item6Amount: '9',
+                slide9Item7Team: '물류센터',
+                slide9Item7Title: '물류 계획',
+                slide9Item7Date: '2025-10',
+                slide9Item7Amount: '0',
                 slide10Enabled: 'true',
                 slide10SlotCount: '4',
                 slide10Item1Team: '1팀 1파트',
@@ -5377,10 +5976,16 @@ test('report deck plan overviews sort by team date and amount', async () => {
   assert.equal(savedPayload.slide8Item2Title, '같은 날짜 고액 정비');
   assert.equal(savedPayload.slide8Item3Title, '늦은 정비');
   assert.equal(savedPayload.slide8Item4Title, '다른 팀 빠른 정비');
+  assert.equal(savedPayload.slide8Item5Title, '공무 정비');
+  assert.equal(savedPayload.slide8Item6Title, '물류 정비');
+  assert.equal(savedPayload.slide8Item7Title, '기타 정비');
   assert.equal(savedPayload.slide9Item1Title, '같은 월 저액 계획');
   assert.equal(savedPayload.slide9Item2Title, '같은 월 고액 계획');
   assert.equal(savedPayload.slide9Item3Title, '늦은 계획');
   assert.equal(savedPayload.slide9Item4Title, '다른 팀 빠른 계획');
+  assert.equal(savedPayload.slide9Item5Title, '공무 계획');
+  assert.equal(savedPayload.slide9Item6Title, '물류 계획');
+  assert.equal(savedPayload.slide9Item7Title, '기타 계획');
 });
 
 test('report deck plan slot add requires saved complete overview and delete removes a slot', async () => {
@@ -5567,8 +6172,10 @@ test('report deck safety starts as a team list and adds slots per selected team 
     preventDefault() {},
   });
   assert.equal(deckDom.safetyTeamMenu.hidden, false);
-  assert.equal(deckDom.safetyTeamOptionButtons.length, 5);
+  assert.equal(deckDom.safetyTeamOptionButtons.length, 7);
   assert.equal(deckDom.safetyTeamOptionButtons[4].textContent, '공무환경팀');
+  assert.equal(deckDom.safetyTeamOptionButtons[5].textContent, '물류센터');
+  assert.equal(deckDom.safetyTeamOptionButtons[6].textContent, '기타');
   assert.equal(deckDom.safetyTeamOptionButtons[1].disabled, false);
   assert.equal(deckDom.safetyTeamOptionButtons[0].focusCount, 1);
   deckDom.listeners.click({
@@ -5592,7 +6199,9 @@ test('report deck safety starts as a team list and adds slots per selected team 
   await flushMicrotasks();
 
   assert.equal(deckDom.planRowLabels[0].textContent, '1팀 2파트');
+  assert.equal(deckDom.planRowLabels[1].textContent, deckDom.safetyTeamOptionButtons[0].textContent);
   assert.equal(deckDom.planRowTables[0].dataset.reportPlanRowActiveSlotCount, '1');
+  assert.equal(deckDom.planRowTables[1].dataset.reportPlanRowActiveSlotCount, '0');
   assert.equal(
     deckDom.planSlotCells.find((cell) => cell.dataset.reportPlanSlot === 'slide10.1')?.dataset.reportPlanActive,
     'true'
@@ -5728,6 +6337,113 @@ test('report deck safety groups each team and balances rows after four items', a
   );
 });
 
+test('report deck safety table arrows reorder within a row and move to the next row', async () => {
+  const fetchCalls = [];
+  const deckDom = createReportDeckContainer();
+  const { registered } = createContext({
+    fetchImpl: async (url, options = {}) => {
+      fetchCalls.push({ url, options });
+      if (url === '/api/shared-store') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            store: createReportDeckSharedStore(),
+          }),
+        };
+      }
+      if (options.method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            record: {
+              payload: {
+                reportDate: '2025.12.15',
+                slide10SlotCount: '2',
+                slide10Item1Team: '1팀 1파트',
+                slide10Item1Effect: '미끄럼',
+                slide10Item1Date: '2025-12-01',
+                slide10Item2Team: '1팀 1파트',
+                slide10Item2Effect: '충돌',
+                slide10Item2Date: '2025-12-02',
+              },
+              version: 1,
+              updated_at: '2026-05-15T00:00:00.000Z',
+            },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, record: { payload: JSON.parse(options.body).payload } }),
+      };
+    },
+  });
+
+  registered.initializers.get('report')({
+    category: { content: '' },
+    container: deckDom.container,
+  });
+  await flushMicrotasks();
+
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+
+  const firstRightButton = deckDom.safetyTableMoveButtons.find(
+    (button) => button.slotIndex === 1 && button.direction === 'right'
+  );
+  assert.equal(firstRightButton.disabled, false);
+  deckDom.listeners.click({
+    target: firstRightButton,
+    preventDefault() {},
+  });
+  assert.equal(
+    deckDom.planSlotCells.find((cell) => cell.dataset.reportPlanSlot === 'slide10.1')?.dataset.reportPlanSourceSlot,
+    '2'
+  );
+  assert.equal(
+    deckDom.planSlotCells.find((cell) => cell.dataset.reportPlanSlot === 'slide10.2')?.dataset.reportPlanSourceSlot,
+    '1'
+  );
+
+  const secondDownButton = deckDom.safetyTableMoveButtons.find(
+    (button) => button.slotIndex === 2 && button.direction === 'down'
+  );
+  assert.equal(secondDownButton.disabled, false);
+  deckDom.listeners.click({
+    target: secondDownButton,
+    preventDefault() {},
+  });
+  assert.equal(
+    deckDom.planSlotCells.find((cell) => cell.dataset.reportPlanSlot === 'slide10.1')?.dataset.reportPlanSourceSlot,
+    '2'
+  );
+  assert.equal(
+    deckDom.planSlotCells.find((cell) => cell.dataset.reportPlanSlot === 'slide10.5')?.dataset.reportPlanSourceSlot,
+    '1'
+  );
+
+  deckDom.listeners.keydown({
+    key: 's',
+    code: 'KeyS',
+    ctrlKey: true,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+  await flushMicrotasks();
+  const savedPayload = JSON.parse(fetchCalls.at(-1).options.body).payload;
+  assert.equal(savedPayload.slide10TableOrder, '[[2],[1]]');
+});
+
 test('report deck safety page stays visible but blank output omits it and saves slide10 data', async () => {
   const fetchCalls = [];
   const deckDom = createReportDeckContainer();
@@ -5816,6 +6532,7 @@ test('report deck safety page stays visible but blank output omits it and saves 
   assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlideKey, 'slide10');
   assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlot, '5');
   assert.equal(deckDom.overviewDialogFields.team.value, '1팀 2파트');
+  assert.equal(deckDom.overviewTeamRow.hidden, false);
   assert.equal(deckDom.overviewDialogFields.title.focusCount, 1);
   assert.equal(deckDom.overviewDialogFields.date.focusCount, 0);
   deckDom.listeners.click({
@@ -5841,12 +6558,29 @@ test('report deck safety page stays visible but blank output omits it and saves 
   assert.equal(deckDom.overviewDialog.hidden, false);
   assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlideKey, 'slide10');
   assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlot, '1');
+  assert.equal(deckDom.overviewTeamRow.hidden, false);
   assert.equal(deckDom.overviewDialogFields.title.focusCount, 2);
 
-  deckDom.overviewDialogFields.team.value = '1팀 1파트';
+  const firstTeamLabel = deckDom.safetyTeamOptionButtons[0].textContent;
+  const regularTeamLabel = deckDom.safetyTeamOptionButtons[1].textContent;
+  const otherTeamLabel = deckDom.safetyTeamOptionButtons.at(-1).textContent;
+  deckDom.overviewDialogFields.team.value = otherTeamLabel;
+  deckDom.listeners.input({ target: deckDom.overviewDialogFields.team });
+  assert.equal(deckDom.overviewCustomTeamRow.hidden, false);
+  deckDom.overviewDialogFields.customTeam.value = firstTeamLabel;
+  deckDom.listeners.click({
+    target: deckDom.overviewSaveButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.overviewDialog.hidden, false);
+  assert.equal(deckDom.overviewDialogFields.customTeam.customValidity, '기존 팀명은 해당 팀을 선택해 주세요.');
+  assert.equal(deckDom.overviewDialogFields.customTeam.reportValidityCount, 1);
+  assert.equal(deckDom.overviewDialogFields.customTeam.focusCount, 1);
+
+  deckDom.overviewDialogFields.customTeam.value = '협력업체';
   deckDom.overviewDialogFields.title.value = '배관 주변 정리';
   deckDom.overviewDialogFields.effect.value = '통행 위험 제거';
-  deckDom.overviewDialogFields.hazard.value = '미끄럼';
+  deckDom.overviewDialogFields.hazard.value = '온습도 조절 불량';
   deckDom.overviewDialogFields.date.value = '2025-12-27';
   deckDom.overviewDialogFields.amount.value = '';
   deckDom.listeners.click({
@@ -5854,7 +6588,7 @@ test('report deck safety page stays visible but blank output omits it and saves 
     preventDefault() {},
   });
   await flushMicrotasks();
-  assert.equal(deckDom.planRowLabels[0].textContent, deckDom.overviewDialogFields.team.value);
+  assert.equal(deckDom.planRowLabels[0].textContent, '협력업체');
   assert.equal(deckDom.planRowLabels[0].dataset.reportPlanRowFilled, 'true');
   assert.equal(deckDom.planRowTables[0].dataset.reportPlanRowFilled, 'true');
   assert.equal(
@@ -5865,6 +6599,23 @@ test('report deck safety page stays visible but blank output omits it and saves 
     deckDom.planSlotCells.find((cell) => cell.dataset.reportPlanSlot === 'slide10.2')?.dataset.reportPlanFilled,
     'false'
   );
+  deckDom.listeners.click({
+    target: slide10SummaryField,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.overviewDialogFields.team.value, otherTeamLabel);
+  assert.equal(deckDom.overviewDialogFields.customTeam.value, '협력업체');
+  assert.equal(deckDom.overviewCustomTeamRow.hidden, false);
+  deckDom.overviewDialogFields.team.value = regularTeamLabel;
+  deckDom.listeners.input({ target: deckDom.overviewDialogFields.team });
+  assert.equal(deckDom.overviewCustomTeamRow.hidden, true);
+  assert.equal(deckDom.overviewDialogFields.customTeam.value, '');
+  deckDom.listeners.click({
+    target: deckDom.overviewSaveButton,
+    preventDefault() {},
+  });
+  await flushMicrotasks();
+  assert.equal(deckDom.planRowLabels[0].textContent, regularTeamLabel);
   deckDom.listeners.click({
     target: deckDom.printButton,
     preventDefault() {},
@@ -5888,13 +6639,125 @@ test('report deck safety page stays visible but blank output omits it and saves 
   const savedPayload = JSON.parse(fetchCalls.at(-1).options.body).payload;
   assert.equal(savedPayload.slide10Enabled, 'true');
   assert.equal(savedPayload.slide10SlotCount, '1');
-  assert.equal(savedPayload.slide10Item1Team, '1팀 1파트');
+  assert.equal(savedPayload.slide10Item1Team, regularTeamLabel);
   assert.equal(savedPayload.slide10Item1Title, '배관 주변 정리');
-  assert.equal(savedPayload.slide10Item1Effect, '미끄럼');
+  assert.equal(savedPayload.slide10Item1Effect, '온습도 조절 불량');
   assert.equal(savedPayload.slide10Item1Date, '2025-12-27');
-  assert.equal(savedPayload.slide10Item1Text, '배관 주변 정리\n12.27 完, 자체처리, 미끄럼 예방');
+  assert.equal(savedPayload.slide10Item1AmountText, '');
+  assert.equal(savedPayload.slide10Item1Text, '배관 주변 정리\n12.27 完, 온습도 조절 불량 예방');
   assert.equal(savedPayload.slide10BeforeImage16, '');
   assert.equal(savedPayload.slide10AfterImage16, '');
+});
+
+test('report deck safety custom cost text follows amount when both are entered', async () => {
+  const fetchCalls = [];
+  const deckDom = createReportDeckContainer();
+  const { registered } = createContext({
+    fetchImpl: async (url, options = {}) => {
+      fetchCalls.push({ url, options });
+      if (url === '/api/shared-store') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            store: createReportDeckSharedStore(),
+          }),
+        };
+      }
+      if (options.method === 'GET') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            record: {
+              payload: {
+                reportDate: '2026.05.15',
+              },
+              version: 1,
+              updated_at: '2026-05-15T00:00:00.000Z',
+            },
+          }),
+        };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          record: {
+            payload: JSON.parse(options.body).payload,
+            version: 2,
+            updated_at: '2026-05-15T00:01:00.000Z',
+          },
+        }),
+      };
+    },
+  });
+
+  registered.initializers.get('report')({
+    category: { content: '' },
+    container: deckDom.container,
+  });
+  await flushMicrotasks();
+
+  deckDom.listeners.click({
+    target: deckDom.editButton,
+    preventDefault() {},
+  });
+
+  const slide10SummaryField = {
+    dataset: { reportPlanSummary: 'slide10', reportPlanSourceSlot: '1' },
+    textContent: '',
+    closest(selector) {
+      return selector === '[data-report-plan-summary]' ? this : null;
+    },
+    setAttribute(name, value) {
+      this[name] = value;
+    },
+    blur() {},
+  };
+  deckDom.listeners.click({
+    target: slide10SummaryField,
+    preventDefault() {},
+  });
+
+  assert.equal(deckDom.overviewDialog.dataset.reportOverviewSlideKey, 'slide10');
+  assert.equal(deckDom.overviewDialogFields.amountText.disabled, false);
+  deckDom.overviewDialogFields.amount.value = '2';
+  deckDom.listeners.input({ target: deckDom.overviewDialogFields.amount });
+  assert.equal(deckDom.overviewDialogFields.amountText.disabled, false);
+  deckDom.overviewDialogFields.amountText.value = '자체 처리';
+  deckDom.listeners.input({ target: deckDom.overviewDialogFields.amountText });
+  assert.equal(deckDom.overviewDialogFields.amount.disabled, false);
+  assert.equal(deckDom.overviewDialogFields.amount.value, '2');
+
+  deckDom.overviewDialogFields.title.value = '배관 주변 정리';
+  deckDom.overviewDialogFields.hazard.value = '넘어짐';
+  deckDom.overviewDialogFields.date.value = '2025-12-28';
+  deckDom.listeners.click({
+    target: deckDom.overviewSaveButton,
+    preventDefault() {},
+  });
+  await flushMicrotasks();
+
+  deckDom.listeners.keydown({
+    key: 's',
+    code: 'KeyS',
+    ctrlKey: true,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false,
+    preventDefault() {},
+    stopPropagation() {},
+  });
+  await flushMicrotasks();
+
+  const savedPayload = JSON.parse(fetchCalls.at(-1).options.body).payload;
+  assert.equal(savedPayload.slide10Item1Amount, '2');
+  assert.equal(savedPayload.slide10Item1AmountText, '자체 처리');
+  assert.equal(savedPayload.slide10Item1Text, '배관 주변 정리\n12.28 完, 2 백만원 소요, 자체 처리, 넘어짐 예방');
 });
 
 test('report deck safety deleted slot can be restored from the report payload', async () => {
@@ -6148,10 +7011,17 @@ test('report deck output derives optional order and prints only filled plan cell
   assertOptionalContentHidden(deckDom, 'slide10', false);
 
   deckDom.listeners.click({
+    target: deckDom.saveMenuToggleButton,
+    preventDefault() {},
+  });
+  assert.equal(deckDom.saveMenuPanel.hidden, false);
+
+  deckDom.listeners.click({
     target: deckDom.exportButton,
     preventDefault() {},
   });
   await flushMicrotasks();
+  assert.equal(deckDom.saveMenuPanel.hidden, true);
   assert.equal(deckDom.root.dataset.reportPrintSlide8Visible, 'false');
   assert.equal(deckDom.root.dataset.reportPrintSlide9Visible, 'true');
   assert.equal(deckDom.root.dataset.reportPrintSlide10Visible, 'true');

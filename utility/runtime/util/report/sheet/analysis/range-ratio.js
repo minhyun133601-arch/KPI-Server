@@ -83,6 +83,19 @@
         return 0;
     }
 
+    function normalizeRatioDecimals(value, fallback = 1) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return fallback;
+        return Math.max(0, Math.min(4, Math.trunc(number)));
+    }
+
+    function getGasRatioDecimals(chartKey = '') {
+        const rawDigits = typeof runtime.getUtilGasAnalysisChartDecimals === 'function'
+            ? runtime.getUtilGasAnalysisChartDecimals(chartKey)
+            : 1;
+        return normalizeRatioDecimals(rawDigits, 1);
+    }
+
     function getGasUnitOptions(chartKey = '') {
         if (typeof runtime.getUtilGasAnalysisUnitOptions === 'function') {
             return runtime.getUtilGasAnalysisUnitOptions(chartKey);
@@ -110,7 +123,7 @@
         return `${compareLabel} ${deltaText}`;
     }
 
-    function formatRatio(value, digits = 3, fallback = '-') {
+    function formatRatio(value, digits = 1, fallback = '-') {
         if (typeof runtime.formatUtilSheetRatio === 'function') {
             return runtime.formatUtilSheetRatio(value, digits, fallback);
         }
@@ -196,6 +209,7 @@
     function buildUtilGasAnalysisRangeChartHtml(table) {
         const rows = Array.isArray(table?.rows) ? table.rows : [];
         if (!rows.length) return '';
+        const chartDecimals = getGasRatioDecimals(table?.key ? `ratio-${table.key}` : '');
 
         const series = rows.map((row, index) => ({
             label: `${String(row?.year || '').slice(-2)}년`,
@@ -219,7 +233,7 @@
             chartTitle: `${table?.title || ''} 추이`,
             periodLabel: '연도별 추이',
             inlinePeriodLegend: true,
-            decimals: 3,
+            decimals: chartDecimals,
             showLabelToggle: false,
             showLabels: false,
             tightRange: true,
@@ -279,6 +293,7 @@
                 label: 'LPG 소모량 (kg/kg)',
                 color: UTIL_GAS_RATIO_CHART_COLORS[0],
                 displayMode: getGasDisplayMode('ratio-lpg'),
+                decimals: getGasRatioDecimals('ratio-lpg'),
                 popupTableKey: 'lpg',
                 points: monthKeys.map(monthKey => ({
                     key: monthKey,
@@ -293,6 +308,7 @@
                 label: 'LNG 소모량 (Nm3/kg)',
                 color: UTIL_GAS_RATIO_CHART_COLORS[1],
                 displayMode: getGasDisplayMode('ratio-lng'),
+                decimals: getGasRatioDecimals('ratio-lng'),
                 popupTableKey: 'lng',
                 points: monthKeys.map(monthKey => ({
                     key: monthKey,
@@ -349,7 +365,7 @@
                 color: item.color,
                 type: item.displayMode,
                 lineWidth: Number.isFinite(item?.lineWidth) ? item.lineWidth : 3,
-                decimals: Number.isFinite(item?.decimals) ? item.decimals : 3,
+                decimals: Number.isFinite(item?.decimals) ? item.decimals : 1,
                 seriesKey: item.key,
                 points: item.points
             }));
@@ -357,6 +373,9 @@
         const buildRatioSummaryItem = (table, icon, tone = 'gas') => {
             if (!table) return null;
             const controlItem = controlItems.find(item => item?.key === `ratio-${table.key}`) || null;
+            const ratioDecimals = Number.isFinite(controlItem?.decimals)
+                ? controlItem.decimals
+                : getGasRatioDecimals(`ratio-${table.key}`);
             const activePoint = (Array.isArray(controlItem?.points) ? controlItem.points : [])
                 .find(point => String(point?.monthKey || point?.key || '').trim() === String(options?.activeMonthKey || '').trim());
             const referencePoint = (Array.isArray(controlItem?.points) ? controlItem.points : [])
@@ -371,14 +390,14 @@
                 ? Number(activePoint.value) - Number(referencePoint.value)
                 : null;
             const deltaText = Number.isFinite(deltaValue)
-                ? `${deltaValue > 0 ? '+' : ''}${Number(deltaValue).toFixed(3)}`
+                ? `${deltaValue > 0 ? '+' : ''}${formatRatio(deltaValue, ratioDecimals, '-')}`
                 : '-';
             return {
                 key: `ratio-${table.key}`,
                 title: table.title,
-                valueText: formatRatio(activePoint?.value, 3, '-'),
+                valueText: formatRatio(activePoint?.value, ratioDecimals, '-'),
                 secondaryLabelText: '범위 평균',
-                secondaryValueText: formatRatio(averageValue, 3, '-'),
+                secondaryValueText: formatRatio(averageValue, ratioDecimals, '-'),
                 subText: buildCompareSub(
                     options?.compareLabel || '전월대비',
                     options?.activeMonthKey || '',
@@ -433,6 +452,7 @@
             ratioSummaryItems.some(summaryItem => summaryItem.key === item.key)
             || lineRatioSummaryItems.some(summaryItem => summaryItem.key === item.key)
         ));
+        const modelDecimals = series.reduce((acc, item) => Math.max(acc, Number.isFinite(item?.decimals) ? item.decimals : 0), 1);
 
         return {
             key: 'ratio-combined',
@@ -440,7 +460,7 @@
             icon: 'fa-chart-line',
             tone: 'combined',
             periodLabel: rangeLabel,
-            decimals: 3,
+            decimals: modelDecimals,
             series,
             controlItems,
             summaryItems: ratioSummaryItems.concat(lineRatioSummaryItems),

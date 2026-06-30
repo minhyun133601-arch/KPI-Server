@@ -216,7 +216,7 @@
             { key: 'ton', label: 'ton', scale: 1000, decimals: 1 }
         ]),
         electricIntensity: Object.freeze([
-            { key: 'kwhkg', label: 'kWh/kg', scale: 1, decimals: 3 },
+            { key: 'kwhkg', label: 'kWh/kg', scale: 1, decimals: 1 },
             { key: 'kwhton', label: 'kWh/ton', scale: 0.001, decimals: 1 }
         ])
     });

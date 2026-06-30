@@ -114,7 +114,7 @@ test('report sheet analysis state registry normalizes analysis range and shared 
   assert.equal(registry.isUtilGasAnalysisFuelInactive('lpg'), true);
 
   assert.equal(registry.getUtilGasAnalysisChartDecimals('gasCost', 'million'), 1);
-  assert.equal(registry.getUtilGasAnalysisChartDecimals('ratio-lng'), 3);
+  assert.equal(registry.getUtilGasAnalysisChartDecimals('ratio-lng'), 1);
   assert.equal(registry.getUtilGasAnalysisUnitKey('productionLineRatio::1?占?1?占쏀듃::SD'), 'kg');
   assert.equal(registry.getUtilElectricAnalysisUnitKey('productionLineRatio::1?占?1?占쏀듃::SD'), 'kg');
   registry.setUtilSheetAnalysisDecimals('gas', 'gasCost', 4);

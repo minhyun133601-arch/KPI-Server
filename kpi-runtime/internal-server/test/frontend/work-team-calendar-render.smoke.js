@@ -86,6 +86,7 @@ function createContext(options = {}) {
   const modal = createModalElement();
   const editorState = { open: false, dateKey: '', manual: false };
   const selectedDateKey = options.selectedDateKey || '2026-04-15';
+  const selectedDateKeys = Array.isArray(options.selectedDateKeys) ? options.selectedDateKeys : [selectedDateKey];
   const productionSummaryMap =
     options.productionSummaryMap
     || new Map([[selectedDateKey, { count: 0, totalAmount: 0, isOffday: false }]]);
@@ -97,6 +98,8 @@ function createContext(options = {}) {
   const productionGroupsHtml = options.productionGroupsHtml || '<div class="groups">detail</div>';
   const overviewProductionGroupsHtml = options.overviewProductionGroupsHtml || '<div class="groups">overview</div>';
   const productionMetricLine = options.productionMetricLine || '';
+  const selectedHistoryRecords = Array.isArray(options.selectedHistoryRecords) ? options.selectedHistoryRecords : [];
+  const readonlyEntriesHtml = options.readonlyEntriesHtml || '';
   const utilitySummary = {
     electric: { usageText: '120 kWh', costText: '10000', canSelect: false, mode: 'all' },
     gas: { usageText: '55 Nm3', costText: '20000', canSelect: false, mode: 'all' },
@@ -221,7 +224,7 @@ function createContext(options = {}) {
   overrideBinding(context, 'parseMonthKey', () => ({ year: 2026, monthIndex: 3 }));
   overrideBinding(context, 'formatDateKey', () => selectedDateKey);
   overrideBinding(context, 'getWorkTeamCalendarSelectedDate', () => selectedDateKey);
-  overrideBinding(context, 'getWorkTeamCalendarSelectedDateKeys', () => [selectedDateKey]);
+  overrideBinding(context, 'getWorkTeamCalendarSelectedDateKeys', () => selectedDateKeys);
   overrideBinding(context, 'getWorkTeamCalendarPrimarySelectedDate', () => selectedDateKey);
   overrideBinding(context, 'isWorkTeamCalendarDateLocked', () => false);
   overrideBinding(context, 'isWorkTeamCalendarOverview', () => isOverviewCalendar);
@@ -236,8 +239,8 @@ function createContext(options = {}) {
     members: [],
     attachments: [],
   }));
-  overrideBinding(context, 'getWorkTeamCalendarHistoryRecordsForDates', () => []);
-  overrideBinding(context, 'renderWorkTeamCalendarReadonlyEntriesHtml', () => '');
+  overrideBinding(context, 'getWorkTeamCalendarHistoryRecordsForDates', () => selectedHistoryRecords);
+  overrideBinding(context, 'renderWorkTeamCalendarReadonlyEntriesHtml', () => readonlyEntriesHtml);
   overrideBinding(context, 'getWorkTeamCalendarMemberCountLabel', () => '0');
   overrideBinding(context, 'renderWorkTeamCalendarSelectedMembersHtml', () => '');
   overrideBinding(context, 'renderWorkTeamCalendarAttachmentListHtml', () => '');
@@ -293,6 +296,104 @@ test('work team calendar overview modal renders after split files are loaded tog
   assert.doesNotMatch(modal.innerHTML, /클릭하여 설비 목록 보기/);
   assert.match(modal.innerHTML, /work-team-calendar-grid/);
   assert.match(modal.innerHTML, /data-work-save-status="overview"/);
+});
+
+test('work team calendar total production chip opens monthly table popup', () => {
+  const { context, modal } = createContext({
+    isOverviewCalendar: false,
+    selectedDateKeys: [],
+    productionGroups: [
+      {
+        dateKey: '2026-04-15',
+        items: [
+          {
+            dateKey: '2026-04-15',
+            teamName: '1팀 1파트',
+            lineName: '라인A',
+            productCode: 'A-001',
+            productName: '테스트 품목',
+            amount: 1234,
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(context.openWorkTeamCalendarUtilityPopup('production', { render: false }), true);
+  context.renderWorkTeamCalendarModal();
+
+  assert.match(modal.innerHTML, /role="button"[\s\S]*work-team-calendar-utility-chip is-button is-active[\s\S]*총 생산량/);
+  assert.match(modal.innerHTML, /총 생산량[\s\S]*work-team-calendar-production-action-menu/);
+  assert.doesNotMatch(modal.innerHTML, /클릭하여 표 보기/);
+  assert.doesNotMatch(modal.innerHTML, /work-team-calendar-utility-chip-action/);
+  assert.doesNotMatch(modal.innerHTML, /is-composite/);
+  assert.match(modal.innerHTML, /work-team-calendar-production-table/);
+  assert.match(modal.innerHTML, /날짜/);
+  assert.match(modal.innerHTML, /품목이름/);
+  assert.match(modal.innerHTML, /생산량/);
+  assert.match(modal.innerHTML, /2026\.04\.15/);
+  assert.match(modal.innerHTML, /테스트 품목/);
+  assert.match(modal.innerHTML, /1234 kg/);
+});
+
+test('work team calendar offday without work is not selectable', () => {
+  const { context, modal } = createContext({
+    selectedDateKeys: [],
+    productionSummaryMap: new Map([['2026-04-15', { count: 0, totalAmount: 0, isOffday: true }]]),
+    historySummaryMap: new Map([['2026-04-15', { count: 0, kpiCount: 0 }]]),
+  });
+
+  context.renderWorkTeamCalendarModal();
+
+  assert.match(modal.innerHTML, /work-team-calendar-day[^"]*is-offday[^"]*"[^>]*disabled/);
+  assert.doesNotMatch(modal.innerHTML, /data-work-team-date="2026-04-15"[^>]*onclick="workTeamCalendarSelectDate/);
+});
+
+test('work team calendar offday with work shows only work history detail', () => {
+  const { context, modal } = createContext({
+    isOverviewCalendar: false,
+    productionSummaryMap: new Map([['2026-04-15', { count: 0, totalAmount: 0, isOffday: true }]]),
+    historySummaryMap: new Map([['2026-04-15', { count: 1, kpiCount: 0 }]]),
+    selectedHistoryRecords: [{ title: '휴무일 점검', startDate: '2026-04-15' }],
+    readonlyEntriesHtml: '<div class="work-team-calendar-history-simple">휴무일 점검</div>',
+  });
+
+  context.renderWorkTeamCalendarModal();
+
+  assert.match(modal.innerHTML, /휴무일 점검/);
+  assert.match(modal.innerHTML, /work-team-calendar-editor is-floating has-selection-clear/);
+  assert.match(
+    modal.innerHTML,
+    /class="work-team-calendar-editor-btn is-selection-clear"[^>]*>\s*<i class="fas fa-xmark"><\/i>\s*<\/button>/
+  );
+  assert.doesNotMatch(modal.innerHTML, /<div class="groups">detail<\/div>/);
+  assert.doesNotMatch(modal.innerHTML, /work-team-calendar-production-empty is-offday/);
+});
+
+test('work team calendar detail keeps clear icon in the top action area and work before production', () => {
+  const { context, modal } = createContext({
+    isOverviewCalendar: false,
+    productionSummaryMap: new Map([['2026-04-15', { count: 1, totalAmount: 1200, isOffday: false }]]),
+    historySummaryMap: new Map([['2026-04-15', { count: 1, kpiCount: 0 }]]),
+    selectedHistoryRecords: [{ title: 'History item', startDate: '2026-04-15' }],
+    readonlyEntriesHtml: '<div class="work-history-order-marker">history</div>',
+    productionGroupsHtml: '<div class="work-production-order-marker">production</div>',
+  });
+
+  context.renderWorkTeamCalendarModal();
+
+  const clearButtonIndex = modal.innerHTML.indexOf('work-team-calendar-editor-btn is-selection-clear');
+  const historyIndex = modal.innerHTML.indexOf('work-history-order-marker');
+  const productionIndex = modal.innerHTML.indexOf('work-production-order-marker');
+
+  assert.ok(clearButtonIndex > -1);
+  assert.ok(historyIndex > clearButtonIndex);
+  assert.ok(productionIndex > historyIndex);
+  assert.match(
+    modal.innerHTML,
+    /class="work-team-calendar-editor-btn is-selection-clear"[^>]*>\s*<i class="fas fa-xmark"><\/i>\s*<\/button>/
+  );
+  assert.doesNotMatch(modal.innerHTML, /work-team-calendar-production-card-actions[\s\S]*is-selection-clear/);
 });
 
 test('work team calendar equipment summary uses selected month maintenance rows', () => {
@@ -364,6 +465,8 @@ test('work team calendar single-date production popup renders the metric line on
 
   const metricOccurrences = modal.innerHTML.split(metricLine).length - 1;
   assert.equal(metricOccurrences, 1);
+  assert.doesNotMatch(modal.innerHTML, /data-work-team-member-count/);
+  assert.doesNotMatch(modal.innerHTML, /<span class="work-team-calendar-field-label">생산량<\/span>/);
   assert.match(modal.innerHTML, /work-team-calendar-production-action-menu/);
   assert.match(modal.innerHTML, /data-work-production-action="paste"/);
   assert.doesNotMatch(modal.innerHTML, /data-work-production-action="entry"/);

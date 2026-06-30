@@ -76,7 +76,7 @@
                 return clampUtilReportBuilderVizDecimals(UtilReportBuilderVizState.productionDecimals ?? fallback);
             }
             if (metricKey === 'ratio') {
-                return clampUtilReportBuilderVizDecimals(UtilReportBuilderVizState.ratioDecimals ?? Math.max(3, fallback));
+                return clampUtilReportBuilderVizDecimals(UtilReportBuilderVizState.ratioDecimals ?? Math.max(1, fallback));
             }
             return clampUtilReportBuilderVizDecimals(UtilReportBuilderVizState.usageDecimals ?? fallback);
         }
@@ -263,7 +263,7 @@
             UtilReportBuilderVizState.usageDecimals = clampUtilReportBuilderVizDecimals(UtilReportBuilderVizState.usageDecimals ?? UtilReportState.decimals);
             UtilReportBuilderVizState.costDecimals = clampUtilReportBuilderVizDecimals(UtilReportBuilderVizState.costDecimals ?? UtilReportState.decimals);
             UtilReportBuilderVizState.productionDecimals = clampUtilReportBuilderVizDecimals(UtilReportBuilderVizState.productionDecimals ?? UtilReportState.decimals);
-            UtilReportBuilderVizState.ratioDecimals = clampUtilReportBuilderVizDecimals(UtilReportBuilderVizState.ratioDecimals ?? Math.max(3, clampUtilReportBuilderVizDecimals(UtilReportState.decimals)));
+            UtilReportBuilderVizState.ratioDecimals = clampUtilReportBuilderVizDecimals(UtilReportBuilderVizState.ratioDecimals ?? Math.max(1, clampUtilReportBuilderVizDecimals(UtilReportState.decimals)));
             UtilReportBuilderVizState.decimals = clampUtilReportBuilderVizDecimals(UtilReportState.decimals);
             UtilReportBuilderVizState.showLabels = UtilReportState.showChartLabels === true;
             UtilReportBuilderVizState.usageChartType = normalizeUtilReportBuilderVizChartType(UtilReportBuilderVizState.usageChartType || 'bar');

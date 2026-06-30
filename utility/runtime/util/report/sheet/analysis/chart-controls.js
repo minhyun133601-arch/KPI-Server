@@ -120,7 +120,7 @@
 
     function buildUtilSheetAnalysisDecimalsSelectHtml(item = {}) {
         if (!item?.key) return '';
-        const fallbackDigits = String(item.key || '').trim().startsWith('ratio-') ? 3 : 0;
+        const fallbackDigits = String(item.key || '').trim().startsWith('ratio-') ? 1 : 0;
         const selectedDigits = normalizeAnalysisDecimalDigits(item.decimals, fallbackDigits);
         const optionsHtml = [0, 1, 2, 3, 4]
             .map(digits => `<option value="${digits}" ${digits === selectedDigits ? 'selected' : ''}>${digits}</option>`)

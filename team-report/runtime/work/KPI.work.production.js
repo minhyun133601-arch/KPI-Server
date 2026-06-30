@@ -681,6 +681,13 @@
                             ? `<div class="work-team-calendar-production-empty is-offday"><i class="fas fa-calendar-minus"></i><span>휴무</span></div>`
                             : `<div class="work-team-calendar-production-empty">${escapeHtml(emptyLabel)}</div>`
                     );
+                if (isOffday) {
+                    return `
+                        <div class="work-team-calendar-production-group is-offday">
+                            <div class="work-team-calendar-production-list">${rowsHtml}</div>
+                        </div>
+                    `;
+                }
                 return `
                     <div class="work-team-calendar-production-group ${isOffday ? 'is-offday' : ''}">
                         <div class="work-team-calendar-production-group-head">
@@ -691,6 +698,80 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        function getWorkTeamCalendarProductionTableRows(dataKey, dateKeys) {
+            const groups = getWorkTeamCalendarProductionGroups(dataKey, dateKeys);
+            return groups.flatMap(group => (
+                Array.isArray(group?.items)
+                    ? group.items.map(item => ({
+                        dateKey: String(item?.dateKey || group?.dateKey || '').trim(),
+                        teamName: String(item?.teamName || '').trim(),
+                        lineName: String(item?.lineName || '').trim(),
+                        productCode: String(item?.productCode || '').trim(),
+                        productName: String(item?.productName || '').trim(),
+                        productionKind: normalizeWorkProductionKind(item?.productionKind),
+                        amount: Number.isFinite(Number(item?.amount)) ? Number(item.amount) : null
+                    }))
+                    : []
+            )).sort((a, b) => (
+                String(a.dateKey || '').localeCompare(String(b.dateKey || ''), 'ko')
+                || String(a.teamName || '').localeCompare(String(b.teamName || ''), 'ko')
+                || String(a.lineName || '').localeCompare(String(b.lineName || ''), 'ko')
+                || String(a.productName || '').localeCompare(String(b.productName || ''), 'ko')
+            ));
+        }
+
+        function formatWorkTeamCalendarProductionTableDate(dateKey) {
+            if (typeof formatWorkTeamCalendarDateLabel === 'function') {
+                return formatWorkTeamCalendarDateLabel(dateKey);
+            }
+            return String(dateKey || '').trim() || '-';
+        }
+
+        function renderWorkTeamCalendarProductionTableHtml(dataKey, dateKeys, category = {}) {
+            const rows = getWorkTeamCalendarProductionTableRows(dataKey, dateKeys);
+            const emptyLabel = category?.emptyProductionLabel || '품목 미입력';
+            if (!rows.length) {
+                return '<div class="work-team-calendar-production-empty">조회 가능한 생산량 데이터가 없습니다.</div>';
+            }
+            return `
+                <div class="work-team-calendar-production-table-wrap">
+                    <table class="work-team-calendar-production-table" aria-label="생산량 상세 표">
+                        <thead>
+                            <tr>
+                                <th scope="col">날짜</th>
+                                <th scope="col">품목이름</th>
+                                <th scope="col">생산량</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(row => {
+                                const isRework = isWorkProductionReworkKind(row.productionKind);
+                                const productMeta = [
+                                    row.teamName,
+                                    row.lineName,
+                                    row.productCode ? `코드 ${row.productCode}` : '',
+                                    isRework ? getWorkProductionKindLabel(row.productionKind) : ''
+                                ].filter(Boolean).join(' · ');
+                                const amountText = Number.isFinite(Number(row.amount))
+                                    ? `${formatUtilNumber(Number(row.amount), 0)} kg`
+                                    : '-';
+                                return `
+                                    <tr>
+                                        <td>${escapeHtml(formatWorkTeamCalendarProductionTableDate(row.dateKey))}</td>
+                                        <td>
+                                            <span class="work-team-calendar-production-table-name">${escapeHtml(row.productName || emptyLabel)}</span>
+                                            ${productMeta ? `<span class="work-team-calendar-production-table-meta">${escapeHtml(productMeta)}</span>` : ''}
+                                        </td>
+                                        <td class="is-number">${escapeHtml(amountText)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
         }
 
         function getWorkTeamCalendarProductionSummaryMap(dataKey, dateKeys) {

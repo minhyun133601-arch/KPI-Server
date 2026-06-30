@@ -1735,19 +1735,33 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         return toReportDeckMonthKey(date.getFullYear(), date.getMonth() + 1);
     }
 
+    function getReportDeckMemoFixedDecimals(metric = {}) {
+        return Number.isInteger(metric.decimals) ? Math.max(0, Math.min(metric.decimals, 6)) : null;
+    }
+
+    function getReportDeckMemoDisplayDecimals(value, metric = {}) {
+        const fixedDecimals = getReportDeckMemoFixedDecimals(metric);
+        if (fixedDecimals !== null) return fixedDecimals;
+        const number = toFiniteNumber(value);
+        const absValue = Math.abs(number ?? 0);
+        return metric.deltaMode === 'percentagePoint' ? 1 : (metric.key === 'lng' || absValue < 100 ? 1 : 0);
+    }
+
+    function roundReportDeckMemoDisplayValue(value, metric = {}) {
+        const number = toFiniteNumber(value);
+        if (number === null) return null;
+        const scale = 10 ** getReportDeckMemoDisplayDecimals(number, metric);
+        const rounded = Math.sign(number) * (Math.round((Math.abs(number) + 1e-12) * scale) / scale);
+        return Object.is(rounded, -0) ? 0 : rounded;
+    }
+
     function formatReportDeckMemoNumber(value, metric = {}) {
         const number = toFiniteNumber(value);
         if (number === null) return '';
         const absValue = Math.abs(number);
-        const fixedDecimals = Number.isInteger(metric.decimals) ? Math.max(0, Math.min(metric.decimals, 6)) : null;
-        const displayValue = fixedDecimals !== null
-            ? Math.round((absValue + 1e-12) * (10 ** fixedDecimals)) / (10 ** fixedDecimals)
-            : absValue;
-        const maximumFractionDigits = fixedDecimals !== null
-            ? fixedDecimals
-            : metric.deltaMode === 'percentagePoint'
-            ? 1
-            : (metric.key === 'lng' || absValue < 100 ? 1 : 0);
+        const fixedDecimals = getReportDeckMemoFixedDecimals(metric);
+        const displayValue = roundReportDeckMemoDisplayValue(absValue, metric);
+        const maximumFractionDigits = getReportDeckMemoDisplayDecimals(absValue, metric);
         return displayValue.toLocaleString('ko-KR', {
             maximumFractionDigits,
             minimumFractionDigits: fixedDecimals !== null ? fixedDecimals : 0
@@ -1757,16 +1771,9 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
     function formatReportDeckMemoCurrentNumber(value, metric = {}) {
         const number = toFiniteNumber(value);
         if (number === null) return '';
-        const absValue = Math.abs(number);
-        const fixedDecimals = Number.isInteger(metric.decimals) ? Math.max(0, Math.min(metric.decimals, 6)) : null;
-        const displayValue = fixedDecimals !== null
-            ? Math.sign(number) * (Math.round((absValue + 1e-12) * (10 ** fixedDecimals)) / (10 ** fixedDecimals))
-            : number;
-        const maximumFractionDigits = fixedDecimals !== null
-            ? fixedDecimals
-            : metric.deltaMode === 'percentagePoint'
-            ? 1
-            : (metric.key === 'lng' || absValue < 100 ? 1 : 0);
+        const fixedDecimals = getReportDeckMemoFixedDecimals(metric);
+        const displayValue = roundReportDeckMemoDisplayValue(number, metric);
+        const maximumFractionDigits = getReportDeckMemoDisplayDecimals(number, metric);
         return displayValue.toLocaleString('ko-KR', {
             maximumFractionDigits,
             minimumFractionDigits: fixedDecimals !== null ? fixedDecimals : 0
@@ -1813,54 +1820,62 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
         return '-';
     }
 
-    function buildReportDeckMemoComparisonSegment(metric, basisLabel, referenceValue, currentValue) {
+    function buildReportDeckMemoDisplayPair(referenceValue, currentValue, metric = {}) {
         const pair = buildReportDeckMetricPair(referenceValue, currentValue);
+        if (pair.reference === null || pair.current === null || pair.delta === null) return pair;
+        const displayReference = roundReportDeckMemoDisplayValue(pair.reference, metric);
+        const displayCurrent = roundReportDeckMemoDisplayValue(pair.current, metric);
+        if (displayReference === null || displayCurrent === null) return pair;
+        const displayDelta = displayCurrent - displayReference;
+        const delta = Object.is(displayDelta, -0) ? 0 : displayDelta;
+        const rate = displayReference !== 0 ? delta / Math.abs(displayReference) : null;
+        return {
+            ...pair,
+            rawDelta: pair.delta,
+            rawRate: pair.rate,
+            displayReference,
+            displayCurrent,
+            delta,
+            rate
+        };
+    }
+
+    function buildReportDeckMemoComparisonSegment(metric, basisLabel, referenceValue, currentValue) {
+        const pair = buildReportDeckMemoDisplayPair(referenceValue, currentValue, metric);
         if (pair.reference === null || pair.current === null || pair.delta === null) return null;
         const direction = getReportDeckMemoDisplayDirection(pair.delta, metric);
         const arrow = getReportDeckMemoArrow(direction);
         const deltaText = `${formatReportDeckMemoNumber(pair.delta, metric)}${metric.unit || ''}`;
         if (direction === 'flat') {
             return {
+                ...pair,
                 basis: basisLabel,
                 direction,
-                text: `${basisLabel} \uB3D9\uC77C`,
-                reference: pair.reference,
-                current: pair.current,
-                delta: pair.delta,
-                rate: pair.rate
+                text: `${basisLabel} \uB3D9\uC77C`
             };
         }
         if (metric.deltaMode === 'percentagePoint') {
             return {
+                ...pair,
                 basis: basisLabel,
                 direction,
-                text: `${basisLabel} ${deltaText} ${arrow}`,
-                reference: pair.reference,
-                current: pair.current,
-                delta: pair.delta,
-                rate: pair.rate
+                text: `${basisLabel} ${deltaText} ${arrow}`
             };
         }
         if (metric.omitRate === true) {
             return {
+                ...pair,
                 basis: basisLabel,
                 direction,
-                text: `${basisLabel} ${deltaText} ${arrow}`,
-                reference: pair.reference,
-                current: pair.current,
-                delta: pair.delta,
-                rate: pair.rate
+                text: `${basisLabel} ${deltaText} ${arrow}`
             };
         }
         const rateText = formatReportDeckMemoRate(pair.rate) || '-';
         return {
+            ...pair,
             basis: basisLabel,
             direction,
-            text: `${basisLabel} ${deltaText}, ${rateText} ${arrow}`,
-            reference: pair.reference,
-            current: pair.current,
-            delta: pair.delta,
-            rate: pair.rate
+            text: `${basisLabel} ${deltaText}, ${rateText} ${arrow}`
         };
     }
 
@@ -3953,7 +3968,7 @@ ${buildReportDeckExportScript({ captureZipDataUrl, captureZipFileName })}
                 series: unitSeries
             },
             costChart: {
-                title: '금액 차이 (LPG - LNG환산)',
+                title: 'LPG, LNG환산 (원)',
                 series: costSeries
             }
         };
