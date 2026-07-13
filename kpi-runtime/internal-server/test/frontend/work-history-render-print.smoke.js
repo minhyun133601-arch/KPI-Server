@@ -208,7 +208,7 @@ test('work history render print registry exposes print helpers and bootstrap sna
 
 test('kpi html loads work history render print between render and view bootstrap', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=246');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=249');
   const paginationIndex = kpiHtml.indexOf('runtime/work/history/render/pagination.js?v=1');
   const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=236');
   const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=235');

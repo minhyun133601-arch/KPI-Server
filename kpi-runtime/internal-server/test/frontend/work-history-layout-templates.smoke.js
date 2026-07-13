@@ -19,6 +19,7 @@ const expectedHistoryStyleImports = [
   './styles/responsive-base.css',
   './styles/reference-ui.css',
   './styles/experiment-board.css',
+  '../../../../kpi-runtime/app/styles/shared/status-team-marks.css',
 ];
 const adapterSource = await fs.readFile(adapterPath, 'utf8');
 const layoutSource = await fs.readFile(layoutPath, 'utf8');
@@ -190,10 +191,10 @@ test('work history layout templates registry exposes shell and modal builders', 
 
 test('kpi html loads work history layout templates between layout and render', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=274');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=280');
   const workspaceStateIndex = kpiHtml.indexOf('runtime/work/history/layout/workspace-state.js?v=7');
   const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=266');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=246');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=249');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(layoutIndex >= 0, 'work history layout loader is missing');
@@ -208,7 +209,7 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   const view = context.KpiWorkHistory.view;
   const { importHrefs, sources } = await readImportedHistoryStyles();
 
-  assert.equal(view.CSS_PATH, 'team-report/runtime/work/history/KPI.work.history.css?v=268');
+  assert.equal(view.CSS_PATH, 'team-report/runtime/work/history/KPI.work.history.css?v=274');
   assert.match(layoutSource, /<link rel="stylesheet" href="\$\{CSS_PATH\}">/);
   assert.match(templatesSource, /pattern="\[0-9\]\*"/);
   assert.match(templatesSource, /<input type="text" id="recordAssignee"/);
@@ -225,6 +226,8 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   sources.forEach(({ href, source }) => {
     assert.ok(countLines(source) < 800, `${href} has ${countLines(source)} lines`);
   });
+  const experimentStyles = sources.find(({ href }) => href === './styles/experiment-board.css')?.source || '';
+  const sharedStatusStyles = sources.find(({ href }) => href === '../../../../kpi-runtime/app/styles/shared/status-team-marks.css')?.source || '';
   const combinedStyles = sources.map(({ source }) => source).join('\n');
   assert.match(combinedStyles, /\.work-history-app\s*\{/);
   assert.match(combinedStyles, /\.work-history-team-add-button\s*\{/);
@@ -251,12 +254,23 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   assert.match(combinedStyles, /\.record-detail-grid\s*,/);
   assert.match(combinedStyles, /\.work-history-experiment-board\s*\{/);
   assert.match(combinedStyles, /\.work-history-experiment-metrics\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(combinedStyles, /\.work-history-experiment-metric-card\s*\{[\s\S]*min-height:\s*98px[\s\S]*border-radius:\s*8px/);
-  assert.match(combinedStyles, /\.work-history-experiment-card-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(combinedStyles, /\.work-history-experiment-card-edit\s*\{[\s\S]*position:\s*absolute[\s\S]*right:\s*8px[\s\S]*opacity:\s*0/);
-  assert.match(combinedStyles, /\.work-history-experiment-card:hover \.work-history-experiment-card-edit/);
+  assert.match(combinedStyles, /\.work-history-experiment-metric-card\s*\{[\s\S]*min-height:\s*64px[\s\S]*padding:\s*12px 16px/);
+  assert.match(combinedStyles, /\.work-history-experiment-column-head,[\s\S]*\.work-history-experiment-card\s*\{[\s\S]*minmax\(240px, 2\.2fr\)/);
+  assert.match(combinedStyles, /\.work-history-experiment-card\s*\{[\s\S]*min-height:\s*64px[\s\S]*border-bottom:\s*1px solid var\(--gray-300\)/);
+  assert.match(combinedStyles, /\.work-history-experiment-card-edit\s*\{[\s\S]*min-height:\s*32px[\s\S]*box-shadow:\s*none/);
+  assert.doesNotMatch(combinedStyles, /\.work-history-experiment-card-edit\s*\{[^}]*opacity:\s*0/s);
+  assert.match(combinedStyles, /@media \(max-width:\s*1080px\)[\s\S]*\.work-history-experiment-column-head\s*\{[\s\S]*display:\s*none/);
   assert.match(combinedStyles, /\.main-content\.is-browser-fullscreen \.work-history-experiment-board/);
-  assert.match(combinedStyles, /\.main-content\.is-browser-fullscreen \.work-history-experiment-card h4/);
+  assert.match(combinedStyles, /\.main-content\.is-browser-fullscreen \.work-history-experiment-card-main h4/);
+  assert.match(experimentStyles, /\.work-history-app\s*\{[^}]*background:\s*var\(--gray-100\)[^}]*color:\s*var\(--gray-800\)/s);
+  assert.match(experimentStyles, /\.work-history-app \.history-page-head\s*\{[^}]*background:\s*var\(--white\)[^}]*box-shadow:\s*none/s);
+  assert.match(experimentStyles, /\.work-history-app \.work-history-experiment-team\s*\{[^}]*border:\s*1px solid var\(--gray-400\)[^}]*background:\s*var\(--white\)/s);
+  assert.match(experimentStyles, /\.work-history-app \.work-history-experiment-status\s*\{[^}]*border:\s*1px solid var\(--gray-300\)[^}]*background:\s*var\(--gray-50\)[^}]*color:\s*var\(--gray-700\)/s);
+  assert.doesNotMatch(experimentStyles, /--experiment-team|border-left:\s*4px/);
+  assert.doesNotMatch(experimentStyles, /var\(--(?:primary|team[1-4])-/);
+  assert.match(sharedStatusStyles, /--kpi-status-complete-text:\s*#166534/);
+  assert.match(sharedStatusStyles, /--kpi-status-incomplete-text:\s*#b91c1c/);
+  assert.match(sharedStatusStyles, /\.work-history-app \.work-history-experiment-team\.team1part1 \.work-history-experiment-team-name/);
 });
 
 test('work history templates keep the default work-history surface', () => {

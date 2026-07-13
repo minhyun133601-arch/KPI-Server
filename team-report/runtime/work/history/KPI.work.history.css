@@ -3,4 +3,5 @@
 @import url("./styles/modals.css?v=20260611d");
 @import url("./styles/responsive-base.css?v=20260508a");
 @import url("./styles/reference-ui.css?v=20260611h");
-@import url("./styles/experiment-board.css?v=20260611d");
+@import url("./styles/experiment-board.css?v=20260710b");
+@import url("../../../../kpi-runtime/app/styles/shared/status-team-marks.css?v=20260710d");

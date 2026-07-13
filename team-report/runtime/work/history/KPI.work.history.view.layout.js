@@ -13,7 +13,7 @@
         setShadowHost
     } = history;
 
-    const CSS_PATH = 'team-report/runtime/work/history/KPI.work.history.css?v=268';
+    const CSS_PATH = 'team-report/runtime/work/history/KPI.work.history.css?v=274';
     const COMPANY_LOGO_SRC = '/shared-assets/logo.jpg';
     const OVERVIEW_KEY = 'overview';
     const DRAG_SCROLL_THRESHOLD = 6;

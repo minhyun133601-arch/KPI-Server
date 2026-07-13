@@ -41,10 +41,16 @@ const styleEntries = [
     relativeSegments: ['metering', 'metering.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/audit/audit.css?v=070`,
-    manifestHref: './styles/audit/audit.css?v=070',
+    href: `${runtimeDirName}/app/styles/audit/audit.css?v=076`,
+    manifestHref: './styles/audit/audit.css?v=076',
     fileName: 'audit.css',
     relativeSegments: ['audit', 'audit.css'],
+  },
+  {
+    href: `${runtimeDirName}/app/styles/shared/status-team-marks.css?v=20260710d`,
+    manifestHref: './styles/shared/status-team-marks.css?v=20260710d',
+    fileName: 'status-team-marks.css',
+    relativeSegments: ['shared', 'status-team-marks.css'],
   },
 ];
 
@@ -218,7 +224,7 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['audit.css'], /\.print-sheet\s*\{/);
   assert.match(
     styleContents['audit.css'],
-    /\.audit-lux-shell\s*\{[^}]*height:\s*calc\(100vh - 84px\);[^}]*padding:\s*14px\s*16px\s*20px;/s
+    /\.audit-lux-shell\s*\{[^}]*height:\s*calc\(100vh - 84px\);[^}]*padding:\s*12px;[^}]*background:\s*#f3f4f6;/s
   );
   assert.match(
     styleContents['audit.css'],
@@ -231,11 +237,11 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['audit.css'], /\.audit-lux-window-icon\s*\{/);
   assert.match(
     styleContents['audit.css'],
-    /\.audit-lux-window-header\s*\{[^}]*grid-template-columns:\s*44px\s*minmax\(260px,\s*1fr\)\s*auto;[^}]*min-height:\s*78px;[^}]*padding:\s*16px\s*18px;/s
+    /\.audit-lux-window-header\s*\{[^}]*grid-template-columns:\s*34px\s*minmax\(260px,\s*1fr\)\s*auto;[^}]*min-height:\s*54px;[^}]*padding:\s*10px\s*12px;/s
   );
   assert.match(
     styleContents['audit.css'],
-    /\.audit-lux-window-title\s*\{[^}]*font-size:\s*clamp\(1\.32rem,\s*1\.75vw,\s*1\.72rem\);[^}]*line-height:\s*1\.1;/s
+    /\.audit-lux-window-title\s*\{[^}]*font-size:\s*1\.25rem;[^}]*line-height:\s*1\.2;/s
   );
   assert.match(
     styleContents['audit.css'],
@@ -243,7 +249,19 @@ test('split shell css keeps key selectors in the expected files', () => {
   );
   assert.match(
     styleContents['audit.css'],
-    /\.audit-lux-index-card\s*\{[^}]*min-height:\s*252px;[^}]*grid-template-rows:\s*auto\s*96px\s*auto;[^}]*border-radius:\s*8px;/s
+    /\.audit-lux-index-year-list\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*360px\);[^}]*gap:\s*10px;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-index-card\s*\{[^}]*min-height:\s*128px;[^}]*grid-template-columns:\s*118px\s*240px;[^}]*border-radius:\s*0;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-index-team-cell strong\s*\{[^}]*white-space:\s*normal;[^}]*text-overflow:\s*clip;[^}]*word-break:\s*keep-all;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-index-team-tools\s*\{[^}]*grid-template-columns:\s*92px;[^}]*gap:\s*4px;/s
   );
   assert.match(
     styleContents['audit.css'],
@@ -251,15 +269,35 @@ test('split shell css keeps key selectors in the expected files', () => {
   );
   assert.match(
     styleContents['audit.css'],
-    /\.audit-lux-index-card-actions\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\);[^}]*gap:\s*0\.45rem;/s
+    /\.audit-lux-progress-select\s*\{[^}]*width:\s*92px;[^}]*min-height:\s*28px;[^}]*font-size:\s*0\.74rem;/s
   );
   assert.match(
     styleContents['audit.css'],
-    /\.audit-lux-index-empty-thumb\s*\{[^}]*font-size:\s*0\.82rem;[^}]*font-weight:\s*900;/s
+    /\.audit-lux-index-card-media\s*\{[^}]*height:\s*112px;/s
   );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-icon-action\s*\{[^}]*width:\s*92px;[^}]*height:\s*28px;/s
+  );
+  assert.match(
+    styleContents['audit.css'],
+    /\.audit-lux-index-empty-thumb\s*\{[^}]*font-size:\s*0\.8rem;[^}]*font-weight:\s*900;/s
+  );
+  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-summary\s*\{/);
   assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-card-status\s*\{/);
-  assert.match(styleContents['audit.css'], /\.audit-lux-index-team-icon\s*\{/);
+  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-card-quarter-select\s*\{/);
+  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-card-actions\s*\{/);
+  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-grid-head\s*\{/);
+  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-inline-actions\s*\{/);
+  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-year-badge\s*\{/);
+  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-team-icon\s*\{/);
   assert.doesNotMatch(styleContents['audit.css'], /audit-lux-index-card\s*\{\s*grid-template-rows:\s*150px\s*auto\s*auto/);
+  assert.match(styleContents['status-team-marks.css'], /\.audit-lux-index-team-cell \.audit-lux-index-team-label\s*,[\s\S]*\.work-history-app \.work-history-experiment-team-name\s*\{/);
+  assert.match(styleContents['status-team-marks.css'], /\.audit-lux-index-team-cell \.audit-lux-index-team-label::before,[\s\S]*background:\s*var\(--kpi-team-accent\);/);
+  assert.doesNotMatch(styleContents['status-team-marks.css'], /background:\s*var\(--kpi-team-1-[12]\);/);
+  assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-status\.is-complete,[\s\S]*\.audit-lux-progress-select\.is-complete\s*\{/);
+  assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-status\.is-incomplete,[\s\S]*\.audit-lux-progress-select\.is-incomplete\s*\{/);
+  assert.match(styleContents['status-team-marks.css'], /\.audit-lux-progress-select\.is-progress\s*\{/);
 });
 
 test('utility sheet report modal stays above the viewer layer', () => {

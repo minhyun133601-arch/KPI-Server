@@ -137,6 +137,7 @@
         "audit/runtime/audit/records/KPI.audit.records.lux-alerts.js",
         "audit/runtime/audit/records/KPI.audit.records.lux-fullscreen.js",
         "audit/runtime/audit/records/KPI.audit.records.lux-attachments.js",
+        "audit/runtime/audit/records/KPI.audit.records.lux-pdf-thumbnails.js",
         "audit/runtime/audit/records/KPI.audit.records.lux-workspace.js",
         "audit/runtime/audit/records/KPI.audit.records.batch-actions.js",
         "audit/runtime/audit/records/KPI.audit.records.standard-actions.js",

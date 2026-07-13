@@ -37,6 +37,129 @@
             return `${Number(year)}::${normalizeAuditZone(team || '')}`;
         }
 
+        function normalizeAuditLuxProgressStatus(value) {
+            const raw = String(value ?? '').trim().toLowerCase();
+            if (raw === '1' || raw === 'q1' || raw === '1q') return '1';
+            if (raw === '2' || raw === 'q2' || raw === '2q') return '2';
+            if (raw === '3' || raw === 'q3' || raw === '3q') return '3';
+            if (raw === 'complete' || raw === 'done' || raw === '4' || raw === '4q' || raw === '완료') return 'complete';
+            return '';
+        }
+
+        function getAuditLuxProgressStatusOrder(value) {
+            return ['', '1', '2', '3', 'complete'].indexOf(normalizeAuditLuxProgressStatus(value));
+        }
+
+        function getAuditLuxProgressMaxStatusForYear(year) {
+            const targetYear = Number(year);
+            if (!Number.isFinite(targetYear)) return 'complete';
+            const now = typeof getAuditCurrentQuarterInfo === 'function'
+                ? getAuditCurrentQuarterInfo()
+                : getQuarterInfo(new Date());
+            if (targetYear < Number(now.year)) return 'complete';
+            if (targetYear > Number(now.year)) return '';
+            const currentQuarter = Math.min(Math.max(Number(now.quarter) || 1, 1), 4);
+            if (currentQuarter <= 1) return '1';
+            if (currentQuarter === 2) return '2';
+            if (currentQuarter === 3) return '3';
+            return 'complete';
+        }
+
+        function normalizeAuditLuxProgressStatusForYear(year, value) {
+            const status = normalizeAuditLuxProgressStatus(value);
+            if (!status) return '';
+            const maxStatus = getAuditLuxProgressMaxStatusForYear(year);
+            const statusOrder = getAuditLuxProgressStatusOrder(status);
+            const maxOrder = getAuditLuxProgressStatusOrder(maxStatus);
+            if (statusOrder < 0 || maxOrder < 0) return '';
+            return statusOrder <= maxOrder ? status : maxStatus;
+        }
+
+        function getAuditLuxProgressStatusState(dataKey) {
+            if (!AuditState.luxProgressStatus) AuditState.luxProgressStatus = {};
+            const normalizedDataKey = String(dataKey || '').trim();
+            if (!AuditState.luxProgressStatus[normalizedDataKey]) {
+                AuditState.luxProgressStatus[normalizedDataKey] = {};
+            }
+            return AuditState.luxProgressStatus[normalizedDataKey];
+        }
+
+        function getAuditLuxProgressStatusStateKey(year, team) {
+            return `${Number(year)}::${normalizeAuditZone(team || '')}`;
+        }
+
+        function getAuditLuxProgressStatusFromData(dataKey, year, team) {
+            if (typeof getAuditData !== 'function') return '';
+            const targetYear = Number(year);
+            const targetTeam = normalizeAuditZone(team || '');
+            if (!Number.isFinite(targetYear) || !targetTeam) return '';
+            const data = getAuditData(dataKey, dataKey);
+            const match = (Array.isArray(data?.luxProgress) ? data.luxProgress : []).find((item) => (
+                Number(item?.year) === targetYear
+                && normalizeAuditZone(item?.team || '') === targetTeam
+            ));
+            return normalizeAuditLuxProgressStatusForYear(year, match?.status);
+        }
+
+        function getAuditLuxProgressStatus(dataKey, year, team) {
+            const state = getAuditLuxProgressStatusState(dataKey);
+            const stateKey = getAuditLuxProgressStatusStateKey(year, team);
+            if (Object.prototype.hasOwnProperty.call(state, stateKey)) {
+                return normalizeAuditLuxProgressStatusForYear(year, state[stateKey]);
+            }
+            const persistedStatus = getAuditLuxProgressStatusFromData(dataKey, year, team);
+            state[stateKey] = persistedStatus;
+            return persistedStatus;
+        }
+
+        function getAuditLuxProgressStatusOptions(selectedStatus, year = null) {
+            const normalizedStatus = normalizeAuditLuxProgressStatusForYear(year, selectedStatus);
+            const maxStatus = getAuditLuxProgressMaxStatusForYear(year);
+            const maxOrder = getAuditLuxProgressStatusOrder(maxStatus);
+            return [
+                ['', '미완료'],
+                ['1', '1분기'],
+                ['2', '2분기'],
+                ['3', '3분기'],
+                ['complete', '완료']
+            ].filter(([value]) => getAuditLuxProgressStatusOrder(value) <= maxOrder).map(([value, label]) => (
+                `<option value="${escapeHtml(value)}" ${value === normalizedStatus ? 'selected' : ''}>${escapeHtml(label)}</option>`
+            )).join('');
+        }
+
+        function setAuditLuxProgressStatusForTarget(dataKey, year, team, value) {
+            if (!isAuditLuxDataKey(dataKey)) return false;
+            const targetYear = Number(year);
+            const targetTeam = String(team || '').trim();
+            if (!Number.isFinite(targetYear) || !targetTeam) return false;
+            const status = normalizeAuditLuxProgressStatusForYear(targetYear, value);
+            const state = getAuditLuxProgressStatusState(dataKey);
+            state[getAuditLuxProgressStatusStateKey(targetYear, targetTeam)] = status;
+            if (typeof getAuditData !== 'function' || typeof saveAuditData !== 'function') return true;
+
+            const data = getAuditData(dataKey, dataKey);
+            const normalizedTeam = normalizeAuditZone(targetTeam);
+            const nextProgress = (Array.isArray(data.luxProgress) ? data.luxProgress : []).filter((item) => !(
+                Number(item?.year) === targetYear
+                && normalizeAuditZone(item?.team || '') === normalizedTeam
+            ));
+            if (status) {
+                nextProgress.push({
+                    year: targetYear,
+                    team: targetTeam,
+                    status
+                });
+            }
+            if (nextProgress.length) data.luxProgress = nextProgress;
+            else delete data.luxProgress;
+
+            const saved = saveAuditData(dataKey, data);
+            if (saved && typeof saved.catch === 'function') {
+                saved.catch((error) => console.warn('[kpi] audit lux progress save failed', dataKey, error));
+            }
+            return true;
+        }
+
         function getAuditLuxAttachmentQuartersForTarget(dataKey, year, team) {
             const targetYear = Number(year);
             const teamKey = normalizeAuditZone(team || '');
@@ -65,28 +188,6 @@
             const normalizedQuarter = normalizeAuditLuxAttachmentQuarter(year, fallbackQuarter || null);
             state[stateKey] = normalizedQuarter;
             return normalizedQuarter;
-        }
-
-        function setAuditLuxAttachmentQuarterForTarget(dataKey, year, team, value) {
-            if (!isAuditLuxDataKey(dataKey)) return;
-            const targetQuarter = normalizeAuditLuxAttachmentQuarter(year, value);
-            const state = getAuditLuxAttachmentQuarterState(dataKey);
-            state[getAuditLuxAttachmentQuarterStateKey(year, team)] = targetQuarter;
-            setAuditLuxWorkspaceTarget(dataKey, year, team, { quarter: targetQuarter, render: false });
-            renderAuditLuxWorkspaceCategory(dataKey);
-        }
-
-        function getAuditLuxQuarterSelectOptionsForYear(year, selectedQuarter) {
-            const maxQuarter = getAuditLuxAttachmentMaxQuarterForYear(year);
-            if (maxQuarter < 1) {
-                return '<option value="">분기 없음</option>';
-            }
-            const normalizedQuarter = normalizeAuditLuxAttachmentQuarter(year, selectedQuarter);
-            const options = [];
-            for (let quarter = 1; quarter <= maxQuarter; quarter += 1) {
-                options.push(`<option value="${quarter}" ${quarter === normalizedQuarter ? 'selected' : ''}>${quarter}분기</option>`);
-            }
-            return options.join('');
         }
 
         function countAuditLuxYearQuarterAttachments(dataKey, year, teams) {

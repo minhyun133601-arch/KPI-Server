@@ -308,6 +308,14 @@
             if (viewUrl && !isPdf) {
                 return `<img class="audit-lux-index-thumb-image" src="${escapeHtml(viewUrl)}" alt="${escapeHtml(`${team} ${periodLabel} 조도본`)}" loading="lazy" decoding="async" style="transform: rotate(${rotation}deg);" />`;
             }
+            if (viewUrl && isPdf) {
+                return `
+                    <div class="audit-lux-index-file-thumb is-pdf" data-audit-lux-pdf-thumb="${escapeHtml(dataKey)}" data-audit-lux-pdf-url="${escapeHtml(viewUrl)}" data-audit-lux-pdf-alt="${escapeHtml(`${team} ${periodLabel} 조도본`)}">
+                        <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                        <span>PDF</span>
+                    </div>
+                `;
+            }
             return `
                 <div class="audit-lux-index-file-thumb ${isPdf ? 'is-pdf' : ''}">
                     <i class="fa-solid ${isPdf ? 'fa-file-pdf' : 'fa-file-lines'}" aria-hidden="true"></i>
@@ -329,37 +337,17 @@
             `;
         }
 
-        function getAuditLuxTeamKey(team) {
-            const label = String(team || '').trim();
-            if (label.includes('1팀') && label.includes('1파트')) return 'team1part1';
-            if (label.includes('1팀') && label.includes('2파트')) return 'team1part2';
-            if (label.startsWith('2팀')) return 'team2';
-            if (label.startsWith('3팀')) return 'team3';
-            if (label.startsWith('4팀')) return 'team4';
-            return 'overview';
-        }
-
-        function getAuditLuxTeamClass(team) {
-            const classNames = {
-                team1part1: 'is-team-1-part-1',
-                team1part2: 'is-team-1-part-2',
-                team2: 'is-team-2',
-                team3: 'is-team-3',
-                team4: 'is-team-4'
-            };
-            return classNames[getAuditLuxTeamKey(team)] || 'is-team-default';
-        }
-
-        function getAuditLuxTeamIconSvg(team) {
-            const icons = {
-                overview: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 19V10M12 19V5M19 19V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 19.5H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
-                team1part1: '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 15.5L15.7 6.1C16.7 5.3 18.2 5.7 18.7 6.9L21 12.2V18.5H4.5V15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.2" cy="11" r="1.1" fill="currentColor"/><circle cx="10.2" cy="15.2" r="1.1" fill="currentColor"/><path d="M4.5 15.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
-                team1part2: '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 15.5L15.7 6.1C16.7 5.3 18.2 5.7 18.7 6.9L21 12.2V18.5H4.5V15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.2" cy="11" r="1.1" fill="currentColor"/><circle cx="10.2" cy="15.2" r="1.1" fill="currentColor"/><path d="M4.5 15.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
-                team2: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 9.2L12 12.8L19 9.2M5 9.2L8.2 5.5L12 7.4L15.8 5.5L19 9.2V16.8L12 20.5L5 16.8V9.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 12.8V20.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
-                team3: '<svg viewBox="0 0 24 24" fill="none"><path d="M10 3.5H14M10.6 3.5V6.4L8.8 8.4V19C8.8 20.1 9.7 21 10.8 21H13.2C14.3 21 15.2 20.1 15.2 19V8.4L13.4 6.4V3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 13.3C10.8 12.2 12.7 14.5 15 13.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
-                team4: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 18L14.8 9.2M13.5 6.2L17.8 10.5M16.2 4.5L19.5 7.8L17.8 10.5L13.5 6.2L16.2 4.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.2 6.2L7.5 8.5M7.5 8.5L5.7 10.3L4 8.6L5.8 6.8L7.5 8.5ZM7.5 8.5L18 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-            };
-            return icons[team] || icons.overview;
+        function getAuditLuxTeamClassName(team) {
+            const numberTokens = String(team || '').match(/\d+/g) || [];
+            if (numberTokens[0] === '1' && numberTokens[1] === '1') {
+                return 'is-team1part1';
+            }
+            if (numberTokens[0] === '1' && numberTokens[1] === '2') {
+                return 'is-team1part2';
+            }
+            if (numberTokens[0] === '2') return 'is-team2';
+            if (numberTokens[0] === '3') return 'is-team3';
+            return 'is-team-other';
         }
 
         function renderAuditLuxAttachmentCard(dataKey, year, team) {
@@ -370,28 +358,32 @@
             const hasAttachment = Boolean(attachmentItem);
             const { viewUrl, downloadUrl, fileLabel } = hasAttachment ? getAuditLuxEvidenceMeta(attachmentItem) : {};
             const inputId = getAuditLuxAttachmentInputId(dataKey, year, team, selectedQuarter);
-            const teamClass = getAuditLuxTeamClass(team);
-            const teamKey = getAuditLuxTeamKey(team);
             const openUrl = viewUrl || downloadUrl || '#';
             const downloadHref = downloadUrl || viewUrl || '#';
             const teamLabel = team || '팀 없음';
+            const progressStatus = typeof getAuditLuxProgressStatus === 'function'
+                ? getAuditLuxProgressStatus(dataKey, year, team)
+                : '';
+            const progressStatusClass = progressStatus === 'complete'
+                ? 'is-complete'
+                : (progressStatus ? 'is-progress' : 'is-incomplete');
+            const teamClassName = getAuditLuxTeamClassName(team);
             return `
-                <article class="audit-lux-index-card ${teamClass} ${hasAttachment ? 'is-attached' : 'is-empty'}" data-audit-lux-card="${escapeHtml(dataKey)}" data-year="${escapeHtml(year)}" data-quarter="${escapeHtml(selectedQuarter)}" data-team="${escapeHtml(team)}">
-                    <div class="audit-lux-index-card-head">
-                        <span class="audit-lux-index-team-icon" aria-hidden="true">${getAuditLuxTeamIconSvg(teamKey)}</span>
-                        <div class="audit-lux-index-card-main">
-                            <strong>${escapeHtml(teamLabel)}</strong>
+                <article class="audit-lux-index-card ${hasAttachment ? 'is-attached' : 'is-empty'}" data-audit-lux-card="${escapeHtml(dataKey)}" data-year="${escapeHtml(year)}" data-quarter="${escapeHtml(selectedQuarter)}" data-team="${escapeHtml(team)}">
+                    <div class="audit-lux-index-team-cell">
+                        <strong class="audit-lux-index-team-label ${escapeHtml(teamClassName)}">${escapeHtml(teamLabel)}</strong>
+                        <div class="audit-lux-index-team-tools" onclick="event.stopPropagation()">
+                            <select class="audit-select audit-lux-progress-select ${progressStatusClass}" aria-label="${escapeHtml(`${teamLabel} 진행 상태`)}" onchange="this.classList.toggle('is-complete', this.value === 'complete'); this.classList.toggle('is-progress', this.value !== '' && this.value !== 'complete'); this.classList.toggle('is-incomplete', this.value === ''); setAuditLuxProgressStatusForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', this.value)" onclick="event.stopPropagation()">
+                                ${typeof getAuditLuxProgressStatusOptions === 'function' ? getAuditLuxProgressStatusOptions(progressStatus, year) : ''}
+                            </select>
+                            ${hasAttachment
+                                ? `<a class="audit-lux-icon-action audit-ref-download" href="${escapeHtml(downloadHref)}" download="${escapeHtml(fileLabel || `${year}-${team}-lux`)}" aria-label="${escapeHtml(`${teamLabel} 다운로드`)}" title="다운로드" onclick="event.stopPropagation()"><i class="fa-solid fa-download" aria-hidden="true"></i></a>`
+                                : `<button type="button" class="audit-lux-icon-action" aria-label="${escapeHtml(`${teamLabel} 다운로드`)}" title="다운로드" disabled><i class="fa-solid fa-download" aria-hidden="true"></i></button>`}
+                            <button type="button" class="audit-lux-icon-action audit-lux-index-replace" aria-label="${escapeHtml(`${teamLabel} 교체`)}" title="교체" onclick="event.preventDefault(); event.stopPropagation(); openAuditLuxAttachmentPickerForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', ${Number(selectedQuarter)})"><i class="fa-solid fa-arrow-rotate-right" aria-hidden="true"></i></button>
                         </div>
-                        <select class="audit-select audit-lux-index-card-quarter-select" aria-label="${escapeHtml(`${teamLabel} 분기`)}" onchange="setAuditLuxAttachmentQuarterForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', this.value)">
-                            ${getAuditLuxQuarterSelectOptionsForYear(year, selectedQuarter)}
-                        </select>
                     </div>
-                    ${renderAuditLuxAttachmentMedia(dataKey, year, team, selectedQuarter, attachmentItem, openUrl)}
-                    <div class="audit-lux-index-card-actions">
-                        <button type="button" class="work-btn primary audit-lux-index-replace" onclick="openAuditLuxAttachmentPickerForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', ${Number(selectedQuarter)})"><i class="fa-solid fa-arrow-rotate-right" aria-hidden="true"></i><span>${escapeHtml('\uAD50\uCCB4')}</span></button>
-                        ${hasAttachment
-                            ? `<a class="work-btn audit-ref-download" href="${escapeHtml(downloadHref)}" download="${escapeHtml(fileLabel || `${year}-${team}-lux`)}"><i class="fa-solid fa-download" aria-hidden="true"></i><span>${escapeHtml('\uB2E4\uC6B4\uB85C\uB4DC')}</span></a>`
-                            : `<button type="button" class="work-btn" disabled><i class="fa-solid fa-download" aria-hidden="true"></i><span>${escapeHtml('\uB2E4\uC6B4\uB85C\uB4DC')}</span></button>`}
+                    <div class="audit-lux-index-preview-cell">
+                        ${renderAuditLuxAttachmentMedia(dataKey, year, team, selectedQuarter, attachmentItem, openUrl)}
                         <input
                             type="file"
                             id="${escapeHtml(inputId)}"
@@ -408,16 +400,10 @@
 
         function renderAuditLuxYearSection(dataKey, year, teams) {
             const safeTeams = Array.isArray(teams) ? teams : [];
-            const totalCount = safeTeams.length * getAuditLuxAttachmentMaxQuarterForYear(year);
-            const attachedCount = countAuditLuxYearQuarterAttachments(dataKey, year, safeTeams);
             return `
                 <section class="audit-lux-index-year" data-audit-lux-year="${escapeHtml(year)}">
                     <div class="audit-lux-index-year-head">
-                        <div>
-                            <h3>${escapeHtml(year)}년</h3>
-                            <span>${escapeHtml(attachedCount)} / ${escapeHtml(totalCount)}분기 완료</span>
-                        </div>
-                        <span class="audit-lux-index-year-badge">${attachedCount === totalCount && totalCount ? '완료' : '대기'}</span>
+                        <h3>${escapeHtml(year)}년</h3>
                     </div>
                     <div class="audit-lux-index-grid">
                         ${safeTeams.length
@@ -425,36 +411,6 @@
                             : '<div class="audit-lux-index-empty">등록된 팀이 없습니다.</div>'}
                     </div>
                 </section>
-            `;
-        }
-
-        function renderAuditLuxIndexSummary(dataKey, years, teams) {
-            const totalSlots = countAuditLuxQuarterSlots(years, teams);
-            const attachedCount = countAuditLuxQuarterAttachments(dataKey, years, teams);
-            return `
-                <div class="audit-lux-index-summary" aria-label="조도 첨부 요약">
-                    <article>
-                        <span class="audit-lux-index-summary-icon is-total"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
-                        <div>
-                            <span>관리 분기</span>
-                            <strong>${escapeHtml(totalSlots)}<small>분기</small></strong>
-                        </div>
-                    </article>
-                    <article>
-                        <span class="audit-lux-index-summary-icon is-attached"><i class="fa-solid fa-file-circle-check" aria-hidden="true"></i></span>
-                        <div>
-                            <span>완료 분기</span>
-                            <strong>${escapeHtml(attachedCount)}<small>분기</small></strong>
-                        </div>
-                    </article>
-                    <article>
-                        <span class="audit-lux-index-summary-icon is-waiting"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i></span>
-                        <div>
-                            <span>남은 분기</span>
-                            <strong>${escapeHtml(Math.max(0, totalSlots - attachedCount))}<small>분기</small></strong>
-                        </div>
-                    </article>
-                </div>
             `;
         }
 
@@ -546,7 +502,6 @@
                         </div>
                         <div class="audit-lux-workspace is-file-index">
                             <div class="audit-lux-index-panel">
-                                ${renderAuditLuxIndexSummary(dataKey, years, teams)}
                                 <div class="audit-lux-index-year-list">
                                     ${years.length
                                         ? years.map((year) => renderAuditLuxYearSection(dataKey, year, teams)).join('')
@@ -558,6 +513,9 @@
                 </div>
             `;
             syncAuditLuxDetachedPreview(dataKey, selectedYear, selectedTeam, selectedQuarter);
+            if (typeof initAuditLuxPdfThumbnails === 'function') {
+                initAuditLuxPdfThumbnails(dataKey);
+            }
             syncAuditLuxWorkspaceFullscreenUi();
         }
 
@@ -568,7 +526,19 @@
             const team = String(entryForm.team || '').trim();
             if (!Number.isFinite(year) || !team) return false;
             const standardInputs = Array.from(document.querySelectorAll(`[data-audit-lux-standard-input="${dataKey}"]`));
-            if (!standardInputs.length) return false;
+            if (!standardInputs.length) {
+                const data = getAuditData(dataKey, dataKey);
+                const saved = await Promise.resolve(saveAuditData(dataKey, data));
+                if (saved === false) {
+                    if (options?.silent !== true) {
+                        alert('조도 데이터는 서버 저장이 가능한 환경에서만 저장할 수 있습니다.');
+                    }
+                    return false;
+                }
+                const category = getAuditLuxWorkspaceCategory(dataKey);
+                setLastModified(category?.title || '조도');
+                return true;
+            }
             const quarterInputs = Array.from(document.querySelectorAll(`[data-audit-lux-quarter-input="${dataKey}"]`));
             const invalidInput = standardInputs.concat(quarterInputs).find((input) => {
                 const value = normalizeAuditLuxNumericValue(input.value);

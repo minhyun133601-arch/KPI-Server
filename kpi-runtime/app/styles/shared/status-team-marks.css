@@ -1,0 +1,108 @@
+:root,
+.work-history-app {
+    --kpi-status-complete-bg: #f0fdf4;
+    --kpi-status-complete-border: #86efac;
+    --kpi-status-complete-text: #166534;
+    --kpi-status-incomplete-bg: #fef2f2;
+    --kpi-status-incomplete-border: #fca5a5;
+    --kpi-status-incomplete-text: #b91c1c;
+    --kpi-status-progress-bg: #ffffff;
+    --kpi-status-progress-border: #d1d5db;
+    --kpi-status-progress-text: #111827;
+    --kpi-team-1-1: #1d4ed8;
+    --kpi-team-1-2: #d97706;
+    --kpi-team-2: #047857;
+    --kpi-team-3: #5b21b6;
+    --kpi-team-other: #4b5563;
+    --kpi-team-name-text: #111827;
+}
+
+.audit-lux-index-team-cell .audit-lux-index-team-label,
+.work-history-app .work-history-experiment-team-name {
+    --kpi-team-accent: var(--kpi-team-other);
+    min-height: 20px;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 4px 0 12px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--kpi-team-name-text);
+    font-weight: 900;
+    line-height: 1.2;
+    letter-spacing: 0;
+    box-shadow: none;
+}
+
+.audit-lux-index-team-cell .audit-lux-index-team-label::before,
+.work-history-app .work-history-experiment-team-name::before {
+    content: '';
+    width: 3px;
+    height: 16px;
+    position: absolute;
+    top: 50%;
+    left: 0;
+    border-radius: 2px;
+    background: var(--kpi-team-accent);
+    transform: translateY(-50%);
+}
+
+.audit-lux-index-team-cell .audit-lux-index-team-label.is-team1part1,
+.work-history-app .work-history-experiment-team.team1part1 .work-history-experiment-team-name {
+    --kpi-team-accent: var(--kpi-team-1-1);
+}
+
+.audit-lux-index-team-cell .audit-lux-index-team-label.is-team1part2,
+.work-history-app .work-history-experiment-team.team1part2 .work-history-experiment-team-name {
+    --kpi-team-accent: var(--kpi-team-1-2);
+}
+
+.audit-lux-index-team-cell .audit-lux-index-team-label.is-team2,
+.work-history-app .work-history-experiment-team.team2 .work-history-experiment-team-name {
+    --kpi-team-accent: var(--kpi-team-2);
+}
+
+.audit-lux-index-team-cell .audit-lux-index-team-label.is-team3,
+.work-history-app .work-history-experiment-team.team3 .work-history-experiment-team-name {
+    --kpi-team-accent: var(--kpi-team-3);
+}
+
+.work-history-app .work-history-experiment-status.is-complete,
+.audit-lux-progress-select.is-complete {
+    border-color: var(--kpi-status-complete-border);
+    background: var(--kpi-status-complete-bg);
+    color: var(--kpi-status-complete-text);
+}
+
+.work-history-app .work-history-experiment-status.is-incomplete,
+.audit-lux-progress-select.is-incomplete {
+    border-color: var(--kpi-status-incomplete-border);
+    background: var(--kpi-status-incomplete-bg);
+    color: var(--kpi-status-incomplete-text);
+}
+
+.audit-lux-progress-select.is-progress {
+    border-color: var(--kpi-status-progress-border);
+    background: var(--kpi-status-progress-bg);
+    color: var(--kpi-status-progress-text);
+}
+
+.audit-lux-progress-select.is-complete:focus {
+    border-color: var(--kpi-status-complete-text);
+    box-shadow: 0 0 0 2px var(--kpi-status-complete-border);
+    outline: none;
+}
+
+.audit-lux-progress-select.is-incomplete:focus {
+    border-color: var(--kpi-status-incomplete-text);
+    box-shadow: 0 0 0 2px var(--kpi-status-incomplete-border);
+    outline: none;
+}
+
+.audit-lux-progress-select.is-progress:focus {
+    border-color: var(--kpi-status-progress-text);
+    box-shadow: 0 0 0 2px var(--kpi-status-progress-border);
+    outline: none;
+}

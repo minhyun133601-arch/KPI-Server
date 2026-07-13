@@ -233,16 +233,16 @@
             <section class="work-history-experiment-board" data-role="work-history-experiment-board" aria-label="작업이력 요약">
                 <div class="work-history-experiment-metrics" aria-label="작업이력 요약">
                     <article class="work-history-experiment-metric-card is-total">
-                        <span class="work-history-experiment-metric-icon" aria-hidden="true">${view.getSectionIconSvg('summary')}</span>
-                        <div><span>전체</span><strong>${escapeHtml(normalizedRecords.length)}<small>건</small></strong></div>
+                        <span>전체 작업</span>
+                        <strong>${escapeHtml(normalizedRecords.length)}<small>건</small></strong>
                     </article>
                     <article class="work-history-experiment-metric-card is-cost">
-                        <span class="work-history-experiment-metric-icon" aria-hidden="true">${view.getSectionIconSvg('cost')}</span>
-                        <div><span>비용</span><strong>${escapeHtml(view.formatCurrency(totalCost))}</strong></div>
+                        <span>총금액</span>
+                        <strong>${escapeHtml(view.formatCurrency(totalCost))}</strong>
                     </article>
                     <article class="work-history-experiment-metric-card is-recent">
-                        <span class="work-history-experiment-metric-icon" aria-hidden="true">${view.getSectionIconSvg('date')}</span>
-                        <div><span>최근</span><strong>${escapeHtml(view.formatDateKorean(latestDate))}</strong></div>
+                        <span>최근 작업일</span>
+                        <strong>${escapeHtml(view.formatDateKorean(latestDate))}</strong>
                     </article>
                 </div>
                 ${groupedMarkup || '<div class="work-history-experiment-empty">표시할 작업이력이 없습니다.</div>'}
@@ -271,12 +271,11 @@
             <section class="work-history-experiment-team ${escapeAttribute(info.class || team)}">
                 <header class="work-history-experiment-team-head">
                     <span class="work-history-experiment-team-title">
-                        <span class="work-history-experiment-team-icon">${view.getTeamIconSvg(team)}</span>
-                        <strong>${escapeHtml(info.name || team)}</strong>
+                        <strong class="work-history-experiment-team-name">${escapeHtml(info.name || team)}</strong>
                         <span class="work-history-experiment-team-count">${escapeHtml(teamRecords.length)}건</span>
-                        ${addButton}
                     </span>
                     <span class="work-history-experiment-team-actions">
+                        ${addButton}
                         ${shouldShowFullView ? `
                             <button
                                 class="work-history-experiment-team-view"
@@ -289,8 +288,19 @@
                         ` : ''}
                     </span>
                 </header>
-                <div class="work-history-experiment-card-grid">
-                    ${visibleRecords.map(record => buildExperimentRecordCard(record)).join('')}
+                <div class="work-history-experiment-sheet" role="table" aria-label="${escapeAttribute(`${info.name || team} 작업 이력`)}">
+                    <div class="work-history-experiment-column-head" role="row">
+                        <span role="columnheader">작업 내용</span>
+                        <span role="columnheader">구분</span>
+                        <span role="columnheader">작업일</span>
+                        <span role="columnheader">상태</span>
+                        <span role="columnheader">금액</span>
+                        <span role="columnheader">담당자</span>
+                        <span role="columnheader">관리</span>
+                    </div>
+                    <div class="work-history-experiment-card-grid" role="rowgroup">
+                        ${visibleRecords.map(record => buildExperimentRecordCard(record)).join('')}
+                    </div>
                 </div>
             </section>
         `;
@@ -303,26 +313,38 @@
         const status = getExperimentRecordStatus(record);
         const memo = buildRecordRemarkText(record);
         return `
-            <article class="work-history-experiment-card">
-                <button
-                    class="work-history-experiment-card-edit"
-                    type="button"
-                    data-action="edit-record"
-                    data-team="${escapeAttribute(record.team || record._team || '')}"
-                    data-index="${escapeAttribute(record._index)}"
-                    aria-label="${escapeAttribute(`${title || '작업이력'} 수정`)}"
-                    title="수정"
-                >수정</button>
-                <h4 title="${escapeAttribute(title)}">${highlightText(escapeHtml(title))}</h4>
-                <dl>
-                    <div><dt>구분</dt><dd>${escapeHtml(categoryText)}</dd></div>
-                    <div><dt>실적</dt><dd>${escapeHtml(resultTypeText)}</dd></div>
-                    <div><dt>기간</dt><dd>${escapeHtml(view.formatDateRange(record.startDate, record.endDate))}</dd></div>
-                    <div><dt>상태</dt><dd><span class="work-history-experiment-status ${escapeAttribute(status.className)}">${escapeHtml(status.label)}</span></dd></div>
-                    <div><dt>비용</dt><dd>${escapeHtml(view.formatCurrency(record.cost))}</dd></div>
-                    <div><dt>담당자</dt><dd>${escapeHtml(view.formatAssigneeText(record) || '-')}</dd></div>
-                </dl>
-                <p><strong>메모</strong>${escapeHtml(memo || '-')}</p>
+            <article class="work-history-experiment-card" role="row">
+                <div class="work-history-experiment-card-main" role="cell" data-label="작업 내용">
+                    <h4 title="${escapeAttribute(title)}">${highlightText(escapeHtml(title))}</h4>
+                    <p title="${escapeAttribute(memo || '-')}">${escapeHtml(memo || '-')}</p>
+                </div>
+                <div class="work-history-experiment-card-classification" role="cell" data-label="구분">
+                    <strong>${escapeHtml(categoryText)}</strong>
+                    <span>${escapeHtml(resultTypeText)}</span>
+                </div>
+                <div class="work-history-experiment-card-date" role="cell" data-label="작업일">
+                    ${escapeHtml(view.formatDateRange(record.startDate, record.endDate))}
+                </div>
+                <div class="work-history-experiment-card-status" role="cell" data-label="상태">
+                    <span class="work-history-experiment-status ${escapeAttribute(status.className)}">${escapeHtml(status.label)}</span>
+                </div>
+                <div class="work-history-experiment-card-cost" role="cell" data-label="금액">
+                    ${escapeHtml(view.formatCurrency(record.cost))}
+                </div>
+                <div class="work-history-experiment-card-assignee" role="cell" data-label="담당자">
+                    ${escapeHtml(view.formatAssigneeText(record) || '-')}
+                </div>
+                <div class="work-history-experiment-card-actions" role="cell" data-label="관리">
+                    <button
+                        class="work-history-experiment-card-edit"
+                        type="button"
+                        data-action="edit-record"
+                        data-team="${escapeAttribute(record.team || record._team || '')}"
+                        data-index="${escapeAttribute(record._index)}"
+                        aria-label="${escapeAttribute(`${title || '작업이력'} 수정`)}"
+                        title="수정"
+                    >수정</button>
+                </div>
             </article>
         `;
     }
@@ -339,10 +361,7 @@
         if (endDate && endDate <= todayKey) {
             return { label: '완료', className: 'is-complete' };
         }
-        if (startDate && startDate <= todayKey) {
-            return { label: '진행중', className: 'is-progress' };
-        }
-        return { label: '대기', className: 'is-waiting' };
+        return { label: '미완료', className: 'is-incomplete' };
     }
 
     function getRecordSummaryTitle(record) {

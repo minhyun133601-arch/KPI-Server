@@ -179,21 +179,37 @@ test('work history render card parts registry exposes summary, compact card, and
   assert.match(singleRecordBoard, /data-index="0"/);
   assert.match(singleRecordBoard, /title="수정"/);
   assert.match(singleRecordBoard, /work-history-team-add-button/);
+  assert.match(singleRecordBoard, /work-history-experiment-team-name[^>]*>Team 1-A<\/strong>/);
+  assert.doesNotMatch(singleRecordBoard, /work-history-experiment-team-mark|>1-1<\/span>/);
   assert.match(singleRecordBoard, /data-action="add-record"/);
   assert.match(singleRecordBoard, /data-team="team1part1"/);
   assert.match(singleRecordBoard, />\uCD94\uAC00<\/button>/);
   assert.match(
     singleRecordBoard,
-    /work-history-experiment-team-title[\s\S]*<strong>Team 1-A<\/strong>[\s\S]*work-history-experiment-team-count[^>]*>1\uAC74<\/span>[\s\S]*work-history-team-add-button/
+    /work-history-experiment-team-title[\s\S]*<strong[^>]*>Team 1-A<\/strong>[\s\S]*work-history-experiment-team-count[^>]*>1\uAC74<\/span>/
   );
+  assert.match(singleRecordBoard, /work-history-experiment-team-actions[\s\S]*work-history-team-add-button/);
   assert.doesNotMatch(singleRecordBoard, /work-history-experiment-team-view/);
   assert.match(singleRecordBoard, /work-history-experiment-metric-card is-total/);
   assert.match(singleRecordBoard, /work-history-experiment-metric-card is-cost/);
   assert.match(singleRecordBoard, /work-history-experiment-metric-card is-recent/);
-  assert.match(singleRecordBoard, />전체<\/span>/);
-  assert.match(singleRecordBoard, />비용<\/span>/);
-  assert.match(singleRecordBoard, />최근<\/span>/);
+  assert.match(singleRecordBoard, />전체 작업<\/span>/);
+  assert.match(singleRecordBoard, />총금액<\/span>/);
+  assert.match(singleRecordBoard, />최근 작업일<\/span>/);
+  assert.match(singleRecordBoard, /work-history-experiment-sheet/);
+  assert.match(singleRecordBoard, /role="table"/);
+  assert.match(singleRecordBoard, />작업 내용<\/span>/);
+  assert.match(singleRecordBoard, />작업일<\/span>/);
+  assert.match(singleRecordBoard, />금액<\/span>/);
+  assert.match(singleRecordBoard, /work-history-experiment-card-main/);
+  assert.match(singleRecordBoard, /work-history-experiment-card-classification/);
+  assert.match(singleRecordBoard, /work-history-experiment-card-date/);
+  assert.match(singleRecordBoard, /work-history-experiment-card-cost/);
+  assert.match(singleRecordBoard, /work-history-experiment-card-assignee/);
+  assert.match(singleRecordBoard, /data-label="관리"/);
   assert.equal((singleRecordBoard.match(/work-history-experiment-metric-card/g) || []).length, 3);
+  assert.match(view.buildExperimentRecordCard({ ...record, endDate: '2000-01-01' }), /is-complete[^>]*>완료<\/span>/);
+  assert.match(view.buildExperimentRecordCard({ ...record, endDate: '2999-12-31' }), /is-incomplete[^>]*>미완료<\/span>/);
   assert.ok(
     singleRecordBoard.indexOf('work-history-experiment-metrics') < singleRecordBoard.indexOf('work-history-experiment-team')
   );
@@ -203,13 +219,13 @@ test('work history render card parts registry exposes summary, compact card, and
   const sixRecordBoard = view.buildExperimentBoard(Array.from({ length: 6 }, (_, index) => createRecord(index + 1)));
   assert.match(sixRecordBoard, /work-history-experiment-team-view/);
   assert.match(sixRecordBoard, /data-prefix="team1part1"/);
-  assert.equal((sixRecordBoard.match(/<article class="work-history-experiment-card">/g) || []).length, 5);
+  assert.equal((sixRecordBoard.match(/class="work-history-experiment-card"/g) || []).length, 5);
 
   const fullContext = createContext();
   fullContext.KpiWorkHistory.state.currentTeam = 'team1part1';
   fullContext.KpiWorkHistory.view.isHistoryFullscreen = () => true;
   const fullBoard = fullContext.KpiWorkHistory.view.buildExperimentBoard(Array.from({ length: 6 }, (_, index) => createRecord(index + 1)));
-  assert.equal((fullBoard.match(/<article class="work-history-experiment-card">/g) || []).length, 6);
+  assert.equal((fullBoard.match(/class="work-history-experiment-card"/g) || []).length, 6);
   assert.match(fullBoard, /Task 6/);
   assert.match(view.renderEmptyState('empty'), /empty/);
 });
@@ -240,6 +256,9 @@ test('work history render keeps the card board as the only overview record surfa
   assert.match(overviewRecords.innerHTML, /work-history-experiment-metric-card is-total/);
   assert.match(overviewRecords.innerHTML, /work-history-experiment-metric-card is-cost/);
   assert.match(overviewRecords.innerHTML, /work-history-experiment-metric-card is-recent/);
+  assert.match(overviewRecords.innerHTML, /<strong>9<small>건<\/small><\/strong>/);
+  assert.match(overviewRecords.innerHTML, /<strong>450,000원<\/strong>/);
+  assert.match(overviewRecords.innerHTML, /<strong>2026-04-09<\/strong>/);
   assert.doesNotMatch(overviewRecords.innerHTML, /카드형 보기/);
   assert.doesNotMatch(overviewRecords.innerHTML, /팀별 작업이력을 카드로 확인합니다/);
   assert.doesNotMatch(overviewRecords.innerHTML, /실험본/);
@@ -247,7 +266,7 @@ test('work history render keeps the card board as the only overview record surfa
   assert.doesNotMatch(overviewRecords.innerHTML, /history-pagination/);
   assert.doesNotMatch(overviewRecords.innerHTML, /data-page="2"/);
   assert.match(overviewRecords.innerHTML, /work-history-experiment-team-view/);
-  assert.equal((overviewRecords.innerHTML.match(/<article class="work-history-experiment-card">/g) || []).length, 5);
+  assert.equal((overviewRecords.innerHTML.match(/class="work-history-experiment-card"/g) || []).length, 5);
   assert.match(overviewRecords.innerHTML, /Task 9/);
   assert.match(overviewRecords.innerHTML, /Task 5/);
   assert.doesNotMatch(overviewRecords.innerHTML, /Task 1/);
@@ -284,7 +303,7 @@ test('work history overview keyword filter finds records by title and assignee',
 
 test('kpi html loads work history render card parts between render and print', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=246');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=249');
   const paginationIndex = kpiHtml.indexOf('runtime/work/history/render/pagination.js?v=1');
   const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=236');
   const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=235');

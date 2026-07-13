@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
@@ -54,6 +55,54 @@ test('audit lux batch entry waits for the server save before rendering success',
   assert.doesNotMatch(auditRenderSource, /async function saveAuditLuxBatchEntries/);
 });
 
+test('audit lux Ctrl+S saves the file index even when sheet inputs are not rendered', async () => {
+  const savedPayloads = [];
+  const modifiedLabels = [];
+  const payload = { entries: [], standards: [], evidence: [] };
+  const context = {
+    console,
+    document: {
+      querySelectorAll: () => [],
+    },
+    HTMLElement: class HTMLElement {},
+    HTMLInputElement: class HTMLInputElement {},
+    AppData: {
+      data: {
+        categories: [{ dataKey: 'audit_lux', title: '조도' }],
+      },
+    },
+    AUDIT_LUX_BASE_YEAR: 2023,
+    getAuditCurrentQuarterInfo: () => ({ year: 2026, quarter: 3 }),
+    getAuditLuxAttachmentMaxQuarterForYear: () => 3,
+    normalizeAuditLuxAttachmentQuarter: (_year, quarter) => quarter,
+    getAuditFilterTeams: () => ['2팀'],
+    getAuditEntryFormState: () => ({ year: 2026, quarter: 3, team: '2팀' }),
+    isAuditLuxDataKey: (dataKey) => dataKey === 'audit_lux',
+    getAuditData: () => payload,
+    saveAuditData: async (dataKey, data) => {
+      savedPayloads.push({ dataKey, data });
+      return true;
+    },
+    setLastModified: (label) => modifiedLabels.push(label),
+  };
+  vm.createContext(context);
+  vm.runInContext(auditWorkspaceSource, context, {
+    filename: 'KPI.audit.records.lux-workspace.js',
+  });
+
+  const saved = await context.saveAuditLuxWorkspace('audit_lux', { silent: true });
+
+  assert.equal(saved, true);
+  assert.deepEqual(savedPayloads, [{ dataKey: 'audit_lux', data: payload }]);
+  assert.deepEqual(modifiedLabels, ['조도']);
+
+  context.saveAuditData = async () => false;
+  const rejected = await context.saveAuditLuxWorkspace('audit_lux', { silent: true });
+
+  assert.equal(rejected, false);
+  assert.deepEqual(modifiedLabels, ['조도']);
+});
+
 test('audit lux evidence validates at the server boundary and avoids deleting old files after a failed record save', () => {
   assert.match(uploadPolicySource, /'audit\.lux\.evidence'/);
   assert.match(uploadPolicySource, /function isAuditLuxEvidenceUpload/);
@@ -69,15 +118,15 @@ test('audit lux evidence validates at the server boundary and avoids deleting ol
   assert.match(auditWorkspaceSource, /첨부 파일은 올라갔지만 조도 기록 저장이 실패해 교체를 취소했습니다/);
 });
 
-test('audit lux evidence keeps attachments quarter-aware in labels filters and workspace replacement', () => {
+test('audit lux evidence keeps attachments quarter-aware in labels and workspace replacement', () => {
   assert.match(auditEvidenceSource, /function normalizeAuditLuxEvidenceQuarter/);
   assert.match(auditEvidenceSource, /const legacyQuarter = targetYear === 2026 \? 2 : 4/);
   assert.match(auditEvidenceSource, /function getAuditLuxEvidencePeriodLabel/);
   assert.match(auditEvidenceSource, /quarterIndex\(makeQuarterKey\(year, normalizeAuditLuxEvidenceQuarter\(item\)\)\)/);
   assert.match(auditRenderSource, /getAuditLuxEvidencePeriodLabel\(item\)/);
-  assert.match(auditAttachmentsSource, /setAuditLuxAttachmentQuarterForTarget/);
-  assert.match(auditAttachmentsSource, /getAuditLuxQuarterSelectOptionsForYear/);
-  assert.match(auditWorkspaceSource, /audit-lux-index-card-quarter-select/);
+  assert.doesNotMatch(auditAttachmentsSource, /setAuditLuxAttachmentQuarterForTarget/);
+  assert.doesNotMatch(auditAttachmentsSource, /getAuditLuxQuarterSelectOptionsForYear/);
+  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-card-quarter-select/);
   assert.match(auditWorkspaceSource, /replaceAuditLuxEvidenceForYear\(dataKey, targetYear, targetTeam, targetQuarter, file\)/);
 });
 
@@ -98,11 +147,17 @@ test('audit lux workspace keeps a compact title-only file header', () => {
   assert.doesNotMatch(auditWorkspaceSource, /팀별 연도 조도본을 보관합니다/);
 });
 
-test('audit lux file cards use team report icons and quiet status headers', () => {
-  assert.match(auditWorkspaceSource, /function getAuditLuxTeamIconSvg/);
-  assert.match(auditWorkspaceSource, /team1part1: '<svg viewBox="0 0 24 24" fill="none"><path d="M4\.5 15\.5L15\.7 6\.1/);
-  assert.match(auditWorkspaceSource, /team2: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 9\.2L12 12\.8L19 9\.2/);
-  assert.match(auditWorkspaceSource, /<span class="audit-lux-index-team-icon" aria-hidden="true">\$\{getAuditLuxTeamIconSvg\(teamKey\)\}<\/span>/);
+test('audit lux file index uses compact sheet rows with colored team names and no redundant status chrome', () => {
+  assert.match(auditWorkspaceSource, /audit-lux-index-team-cell/);
+  assert.match(auditWorkspaceSource, /audit-lux-index-team-label \$\{escapeHtml\(teamClassName\)\}/);
+  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-team-mark/);
+  assert.match(auditWorkspaceSource, /audit-lux-index-team-tools/);
+  assert.match(auditWorkspaceSource, /audit-lux-index-preview-cell/);
+  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-grid-head/);
+  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-inline-actions/);
+  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-progress-cell/);
+  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-team-icon/);
+  assert.doesNotMatch(auditWorkspaceSource, /getAuditLuxTeamIconSvg/);
   assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-card-status/);
   assert.doesNotMatch(auditWorkspaceSource, /statusLabel/);
   assert.doesNotMatch(auditWorkspaceSource, /`\$\{teamLabel\} 미첨부`/);
