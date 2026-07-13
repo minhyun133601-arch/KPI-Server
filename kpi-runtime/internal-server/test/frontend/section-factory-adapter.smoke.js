@@ -10,6 +10,10 @@ const sectionSourcePaths = [
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.section.factory-adapter.js'),
   path.join(repoRoot, 'team-report', 'runtime', 'work', 'sections', 'KPI.sections.work.js'),
   path.join(repoRoot, 'data-entry', 'runtime', 'data', 'sections', 'KPI.sections.data.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'report', 'KPI.sections.report.shared.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'report', 'KPI.sections.report.analysis.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'report', 'KPI.sections.report.deck.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'report', 'KPI.sections.report.content.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.report.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.experiment.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.owner.js'),
@@ -940,7 +944,11 @@ test('kpi html loads section factory adapter before all section factories', () =
   const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=234');
   const graphTemplateIndex = kpiHtml.indexOf('data-entry/runtime/data/utility-graph-template/app.js?v=42');
   const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=138');
-  const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=107');
+  const reportSharedIndex = kpiHtml.indexOf('kpi-runtime/sections/report/KPI.sections.report.shared.js?v=1');
+  const reportAnalysisIndex = kpiHtml.indexOf('kpi-runtime/sections/report/KPI.sections.report.analysis.js?v=1');
+  const reportDeckIndex = kpiHtml.indexOf('kpi-runtime/sections/report/KPI.sections.report.deck.js?v=1');
+  const reportContentIndex = kpiHtml.indexOf('kpi-runtime/sections/report/KPI.sections.report.content.js?v=1');
+  const reportIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.report.js?v=108');
   const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=69');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
   const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=5');
@@ -952,7 +960,11 @@ test('kpi html loads section factory adapter before all section factories', () =
   assert.ok(dataIndex > graphTemplateIndex, 'data section must load after graph template');
   assert.equal(kpiHtml.indexOf('utility/runtime/util/sections/KPI.sections.util.js'), -1, 'utility section loader must stay removed');
   assert.equal(kpiHtml.indexOf('KPI.sections.production-report.js'), -1, 'production report section loader must stay removed');
-  assert.ok(reportIndex > dataIndex, 'report section must load after data section');
+  assert.ok(reportSharedIndex > dataIndex, 'report shared part must load after data section');
+  assert.ok(reportAnalysisIndex > reportSharedIndex, 'report analysis part must load after shared');
+  assert.ok(reportDeckIndex > reportAnalysisIndex, 'report deck part must load after analysis');
+  assert.ok(reportContentIndex > reportDeckIndex, 'report content part must load after deck');
+  assert.ok(reportIndex > reportContentIndex, 'report section facade must load after report parts');
   assert.ok(experimentIndex > reportIndex, 'experiment section must load after report section');
   assert.ok(ownerIndex > experimentIndex, 'owner section must load after experiment section');
   assert.ok(registryIndex > ownerIndex, 'section registry must load after section factories');

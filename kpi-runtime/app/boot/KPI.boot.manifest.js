@@ -33,6 +33,10 @@
         "team-report/runtime/work/sections/KPI.sections.work.js",
         "data-entry/runtime/data/utility-graph-template/app.js",
         "data-entry/runtime/data/sections/KPI.sections.data.js",
+        "kpi-runtime/sections/report/KPI.sections.report.shared.js",
+        "kpi-runtime/sections/report/KPI.sections.report.analysis.js",
+        "kpi-runtime/sections/report/KPI.sections.report.deck.js",
+        "kpi-runtime/sections/report/KPI.sections.report.content.js",
         "kpi-runtime/sections/KPI.sections.report.js",
         "kpi-runtime/sections/KPI.sections.experiment.js",
         "kpi-runtime/sections/KPI.sections.owner.js",
@@ -55,6 +59,12 @@
         "data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js",
         "data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js",
         "data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js",
+        "data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.board.js",
+        "data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.card.js",
+        "data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.persistence.js",
+        "data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.print.js",
+        "data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.photo.js",
+        "data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.events.js",
         "data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js",
         "data-entry/runtime/data/KPI.data.runtime.js"
       ]

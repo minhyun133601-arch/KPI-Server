@@ -150,8 +150,9 @@
     "smoke:metering-team-monthly": "node --test test/frontend/metering-team-monthly.smoke.js",
     "smoke:metering-save-validation": "node --test test/frontend/metering-save-validation.smoke.js",
     "verify:cleanup-baseline": "npm run smoke:kpi-root && npm run cleanup:legacy-util-production-daily && npm run report:legacy-attachments",
+    "verify:frontend-maintainability": "node src/scripts/verifyFrontendMaintainability.js",
     "verify:server-structure": "node src/scripts/verifyServerStructure.js",
-    "verify": "npm run verify:cleanup-baseline && npm run verify:server-structure && npm test"
+    "verify": "npm run verify:cleanup-baseline && npm run verify:server-structure && npm run verify:frontend-maintainability && npm test"
   },
   "dependencies": {
     "pg": "^8.13.1"

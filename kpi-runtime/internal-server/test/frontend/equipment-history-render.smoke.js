@@ -10,12 +10,12 @@ const adapterSource = await fs.readFile(path.join(repoRoot, 'data-entry/runtime/
 const modelSource = await fs.readFile(path.join(repoRoot, 'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js'), 'utf8');
 const formSource = await fs.readFile(path.join(repoRoot, 'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js'), 'utf8');
 const storageSource = await fs.readFile(path.join(repoRoot, 'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js'), 'utf8');
-const renderSource = await fs.readFile(path.join(repoRoot, 'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js'), 'utf8');
+const renderModuleFiles = ['render/KPI.data.equipment-history.render.board.js', 'render/KPI.data.equipment-history.render.card.js', 'render/KPI.data.equipment-history.render.persistence.js', 'render/KPI.data.equipment-history.render.print.js', 'render/KPI.data.equipment-history.render.photo.js', 'render/KPI.data.equipment-history.render.events.js', 'KPI.data.equipment-history.render.js'];
+const renderSource = (await Promise.all(renderModuleFiles.map(file => fs.readFile(path.join(repoRoot, 'data-entry/runtime/data/equipment-history', file), 'utf8')))).join('\n');
 const bridgeSource = await fs.readFile(path.join(repoRoot, 'data-entry/runtime/data/KPI.data.runtime.js'), 'utf8');
 const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
 const bootManifestSource = await fs.readFile(path.join(repoRoot, 'kpi-runtime/app/boot/KPI.boot.manifest.js'), 'utf8');
 const dataCssSource = await fs.readFile(path.join(repoRoot, 'kpi-runtime/app/styles/data/data.css'), 'utf8');
-
 function createEquipmentHistoryRuntime() {
   const container = {
     innerHTML: '',
@@ -236,7 +236,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   const modelIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=17');
   const formIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=25');
   const storageIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=4');
-  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=52');
+  const renderIndex = kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=53');
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=5');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
@@ -244,7 +244,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(modelIndex > adapterIndex, 'equipment-history model loader must load after the browser adapter');
   assert.ok(formIndex > modelIndex, 'equipment-history form loader must load after the model');
   assert.ok(storageIndex > formIndex, 'equipment-history storage loader must load after the form');
-  assert.ok(renderIndex > storageIndex, 'equipment-history render loader must load after storage');
+  assert.ok(renderIndex > storageIndex, 'equipment-history render host must load after storage');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
   assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=108') >= 0, 'data css cache version is stale');
   assert.ok(bootManifestSource.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js') >= 0);

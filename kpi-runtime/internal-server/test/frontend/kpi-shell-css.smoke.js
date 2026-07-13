@@ -15,6 +15,51 @@ const stylesRoot = path.join(appRoot, 'styles');
 const kpiHtmlPath = path.join(repoRoot, 'KPI.html');
 const shellManifestPath = path.join(appRoot, 'KPI.app.shell.css');
 
+const dashboardFacadePath = path.join(stylesRoot, 'shell', 'dashboard.css');
+const dashboardChunkRoot = path.join(stylesRoot, 'shell', 'dashboard');
+const dashboardChunkImports = [
+  './dashboard/01-foundation.css',
+  './dashboard/02-panels.css',
+  './dashboard/03-override-stage-one.css',
+  './dashboard/04-override-stage-two.css',
+  './dashboard/05-experiment-composer.css',
+];
+
+function getCssImports(source) {
+  return [...source.matchAll(/@import\s+url\("([^"]+)"\);/g)];
+}
+
+function countCssLines(source) {
+  const lines = source.split(/\r?\n/);
+  return source.endsWith('\n') ? lines.length - 1 : lines.length;
+}
+
+async function resolveCssImports(filePath, ancestorPaths = []) {
+  const resolvedPath = path.resolve(filePath);
+  assert.equal(
+    ancestorPaths.includes(resolvedPath),
+    false,
+    `css import cycle must not include ${resolvedPath}`
+  );
+
+  const source = await fs.readFile(resolvedPath, 'utf8');
+  const imports = getCssImports(source);
+  const importedFiles = [];
+  let content = '';
+  let cursor = 0;
+
+  for (const match of imports) {
+    const importedPath = path.resolve(path.dirname(resolvedPath), match[1]);
+    const imported = await resolveCssImports(importedPath, [...ancestorPaths, resolvedPath]);
+    content += source.slice(cursor, match.index) + imported.content;
+    cursor = match.index + match[0].length;
+    importedFiles.push(importedPath, ...imported.importedFiles);
+  }
+
+  content += source.slice(cursor);
+  return { content, importedFiles, imports, source };
+}
+
 const styleEntries = [
   {
     href: `${runtimeDirName}/app/styles/shell/dashboard.css?v=108`,
@@ -56,11 +101,14 @@ const styleEntries = [
 
 const kpiHtml = await fs.readFile(kpiHtmlPath, 'utf8');
 const shellManifest = await fs.readFile(shellManifestPath, 'utf8');
+const resolvedDashboard = await resolveCssImports(dashboardFacadePath);
 const styleContents = Object.fromEntries(
     await Promise.all(
     styleEntries.map(async ({ fileName, relativeSegments }) => [
       fileName,
-      await fs.readFile(path.join(stylesRoot, ...relativeSegments), 'utf8'),
+      fileName === 'dashboard.css'
+        ? resolvedDashboard.content
+        : await fs.readFile(path.join(stylesRoot, ...relativeSegments), 'utf8'),
     ])
   )
 );
@@ -90,6 +138,34 @@ test('shell css compatibility manifest imports split files', () => {
       new RegExp(`@import url\\(\"${manifestHref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\"\\);`),
       `${fileName} must remain in the compatibility manifest`
     );
+  }
+});
+
+test('dashboard compatibility facade keeps recursive chunks ordered and bounded', async () => {
+  assert.deepEqual(
+    resolvedDashboard.imports.map((match) => match[1]),
+    dashboardChunkImports,
+    'dashboard facade imports must keep the documented cascade order'
+  );
+  assert.deepEqual(
+    resolvedDashboard.importedFiles,
+    dashboardChunkImports.map((importPath) => path.resolve(path.dirname(dashboardFacadePath), importPath)),
+    'dashboard recursive import traversal must resolve every documented chunk in order'
+  );
+  assert.equal(
+    resolvedDashboard.source.replace(/@import\s+url\("[^"]+"\);/g, '').trim(),
+    '',
+    'dashboard.css must remain an import-only compatibility facade'
+  );
+  assert.ok(countCssLines(resolvedDashboard.source) < 100, 'dashboard facade must stay below 100 lines');
+
+  for (const importPath of dashboardChunkImports) {
+    const chunkPath = path.resolve(path.dirname(dashboardFacadePath), importPath);
+    assert.equal(path.dirname(chunkPath), dashboardChunkRoot, `${importPath} must stay in the dashboard chunk directory`);
+    const chunkStat = await fs.stat(chunkPath);
+    const chunkSource = await fs.readFile(chunkPath, 'utf8');
+    assert.ok(chunkStat.isFile(), `${importPath} must exist as a CSS file`);
+    assert.ok(countCssLines(chunkSource) <= 800, `${importPath} must stay at or below 800 lines`);
   }
 });
 

@@ -10,10 +10,7 @@ const adapterPath = path.join(repoRoot, 'utility/runtime/util/KPI.util.runtime.b
 const runtimePath = path.join(repoRoot, 'utility/runtime/util/KPI.util.runtime.js');
 const adapterSource = await fs.readFile(adapterPath, 'utf8');
 const runtimeSource = await fs.readFile(runtimePath, 'utf8');
-const reportSectionSource = await fs.readFile(
-  path.join(repoRoot, 'kpi-runtime/sections/KPI.sections.report.js'),
-  'utf8'
-);
+const reportSectionSource = (await Promise.all(['kpi-runtime/sections/report/KPI.sections.report.shared.js', 'kpi-runtime/sections/report/KPI.sections.report.analysis.js', 'kpi-runtime/sections/report/KPI.sections.report.deck.js', 'kpi-runtime/sections/report/KPI.sections.report.content.js', 'kpi-runtime/sections/KPI.sections.report.js'].map(file => fs.readFile(path.join(repoRoot, file), 'utf8')))).join('\n');
 const manifestSource = await fs.readFile(path.join(repoRoot, 'kpi-runtime/app/boot/KPI.boot.manifest.js'), 'utf8');
 const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
 
