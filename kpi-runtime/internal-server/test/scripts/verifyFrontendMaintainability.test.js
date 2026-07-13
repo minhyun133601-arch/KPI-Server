@@ -11,7 +11,6 @@ import {
   FRONTEND_SMOKE_HARD_LIMIT,
   FRONTEND_SMOKE_SOFT_LIMIT,
   FRONTEND_SUPPORT_HARD_LIMIT,
-  LEGACY_BASELINES,
   PRODUCTION_CSS_HARD_LIMIT,
   PRODUCTION_JS_HARD_LIMIT,
   PRODUCTION_JS_SOFT_LIMIT,
@@ -41,38 +40,6 @@ test('countLines handles Windows and Unix newlines without counting a trailing n
   assert.equal(countLines('one\ntwo'), 2);
 });
 
-test('legacy files cannot grow and use standard policy once under the hard limit', () => {
-  const relativePath = 'fixture/legacy.js';
-  const legacyBaselines = { productionJs: { [relativePath]: 2000 } };
-  const atBaseline = evaluateFile({
-    category: 'productionJs',
-    relativePath,
-    lineCount: 2000,
-    legacyBaselines,
-  });
-  const aboveBaseline = evaluateFile({
-    category: 'productionJs',
-    relativePath,
-    lineCount: 2001,
-    legacyBaselines,
-  });
-  const retiredLegacy = evaluateFile({
-    category: 'productionJs',
-    relativePath,
-    lineCount: PRODUCTION_JS_HARD_LIMIT,
-    legacyBaselines,
-  });
-
-  assert.equal(atBaseline.errors.length, 0);
-  assert.match(atBaseline.warnings[0], /legacy no-growth baseline 2000/);
-  assert.equal(aboveBaseline.warnings.length, 0);
-  assert.match(aboveBaseline.errors[0], /legacy no-growth baseline 2000/);
-  assert.equal(retiredLegacy.errors.length, 0);
-  assert.equal(retiredLegacy.warnings.length, 1);
-  assert.match(retiredLegacy.warnings[0], /production JS soft limit 1200/);
-  assert.doesNotMatch(retiredLegacy.warnings[0], /legacy no-growth/);
-});
-
 test('new production JS, CSS, smoke tests, and support harnesses use their category limits', () => {
   const cases = [
     ['productionJs', PRODUCTION_JS_SOFT_LIMIT + 1, 1, 0],
@@ -88,7 +55,6 @@ test('new production JS, CSS, smoke tests, and support harnesses use their categ
       category,
       relativePath: `fixture/new-${category}.js`,
       lineCount,
-      legacyBaselines: {},
     });
     assert.equal(result.warnings.length, warningCount, `${category} warning count`);
     assert.equal(result.errors.length, errorCount, `${category} error count`);
@@ -130,7 +96,7 @@ test('discovery recursively includes new production chunks and frontend test har
   assert.ok(records.every(({ relativePath }) => !relativePath.includes('\\')));
 });
 
-test('dynamic verification rejects every unbaselined hard-limit overage', async (t) => {
+test('dynamic verification rejects every hard-limit overage', async (t) => {
   const { fixtureRoot, fixtureProjectRoot } = await createFixture(t);
   await Promise.all([
     writeLines(
@@ -155,25 +121,8 @@ test('dynamic verification rejects every unbaselined hard-limit overage', async 
     repoRoot: fixtureRoot,
     projectRoot: fixtureProjectRoot,
     productionScanRoots: ['frontend'],
-    legacyBaselines: {},
   });
 
   assert.equal(result.errors.length, 4);
   assert.ok(result.errors.every((message) => message.includes('hard limit')));
-});
-
-test('repository legacy baselines only contain genuine hard-limit overages', () => {
-  const policies = {
-    productionJs: PRODUCTION_JS_HARD_LIMIT,
-    productionCss: PRODUCTION_CSS_HARD_LIMIT,
-    smoke: FRONTEND_SMOKE_HARD_LIMIT,
-    support: FRONTEND_SUPPORT_HARD_LIMIT,
-  };
-
-  Object.entries(LEGACY_BASELINES).forEach(([category, baselines]) => {
-    Object.entries(baselines).forEach(([relativePath, baseline]) => {
-      assert.ok(baseline > policies[category], `${relativePath} must exceed its standard hard limit`);
-      assert.ok(!relativePath.includes('\\'), `${relativePath} must be Windows-safe POSIX output`);
-    });
-  });
 });

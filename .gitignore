@@ -27,6 +27,7 @@ kpi-runtime/internal-server/var/*
 !**/.env*.example
 .codex-run/
 **/internal-server/.codex-run/
+.claude/scheduled_tasks.lock
 .playwright-mcp/
 test-results/
 *.log

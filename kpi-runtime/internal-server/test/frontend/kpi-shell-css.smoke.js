@@ -68,8 +68,8 @@ const styleEntries = [
     relativeSegments: ['shell', 'dashboard.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/shell/shell-chrome.css?v=058`,
-    manifestHref: './styles/shell/shell-chrome.css?v=058',
+    href: `${runtimeDirName}/app/styles/shell/shell-chrome.css?v=059`,
+    manifestHref: './styles/shell/shell-chrome.css?v=059',
     fileName: 'shell-chrome.css',
     relativeSegments: ['shell', 'shell-chrome.css'],
   },
@@ -80,8 +80,8 @@ const styleEntries = [
     relativeSegments: ['work', 'work.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/metering/metering.css?v=084`,
-    manifestHref: './styles/metering/metering.css?v=084',
+    href: `${runtimeDirName}/app/styles/metering/metering.css?v=085`,
+    manifestHref: './styles/metering/metering.css?v=085',
     fileName: 'metering.css',
     relativeSegments: ['metering', 'metering.css'],
   },
@@ -106,9 +106,7 @@ const styleContents = Object.fromEntries(
     await Promise.all(
     styleEntries.map(async ({ fileName, relativeSegments }) => [
       fileName,
-      fileName === 'dashboard.css'
-        ? resolvedDashboard.content
-        : await fs.readFile(path.join(stylesRoot, ...relativeSegments), 'utf8'),
+      (await resolveCssImports(path.join(stylesRoot, ...relativeSegments))).content,
     ])
   )
 );

@@ -1,0 +1,30 @@
+Superloopy command capture
+startedAt: 2026-07-13T01:37:07.417Z
+finishedAt: 2026-07-13T01:37:08.274Z
+cwd: C:\Users\user\Desktop\KPI-Server-latest
+status: pass
+exitCode: 0
+signal: null
+command: ["node","--test","kpi-runtime/internal-server/test/frontend/frontend-refactor-contracts.smoke.js","kpi-runtime/internal-server/test/frontend/kpi-boot-manifest.smoke.js"]
+[stdout]
+✔ frontend refactor keeps classic-script dependency order stable (21.5988ms)
+✔ report section split keeps a private registry and bounded parts (7.7103ms)
+✔ experiment section split keeps a private registry, bounded parts, and frozen public facades (8.3653ms)
+✔ report deck browser adapter split keeps a private registry and bounded parts (7.8051ms)
+✔ report deck runtime split keeps a private registry and bounded parts (26.258ms)
+✔ report sheet modal shell split keeps a private registry, exact facade, and loader order (14.7412ms)
+✔ frontend refactor preserves the public global facades (188.7571ms)
+✔ frontend refactor preserves persistence and managed-file endpoints (94.7071ms)
+✔ kpi html loads boot manifest before static scripts and validator after app bootstrap (7.8515ms)
+✔ boot manifest groups cover the current static KPI script order (8.2944ms)
+✔ boot loader validates the static manifest against KPI html scripts (11.1361ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 681.9137
+
+[stderr]

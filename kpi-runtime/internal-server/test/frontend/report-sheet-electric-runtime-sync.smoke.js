@@ -17,11 +17,6 @@ const electricRuntimeSyncSource = await fs.readFile(
   new URL(REPORT_ROOT + '/sheet/electric/runtime-sync.js', import.meta.url),
   'utf8'
 );
-const kpiHtml = await fs.readFile(
-  new URL('../../../../KPI.html', import.meta.url),
-  'utf8'
-);
-
 function createElectricRuntimeSyncContext() {
   const context = {
     console,
@@ -151,18 +146,4 @@ test('report sheet electric runtime sync registry exposes store, snapshot, and s
   assert.equal(firstSync?.changed, true);
   assert.equal(secondSync?.changed, false);
   assert.equal(syncCallCount, 1);
-});
-
-test('kpi html loads electric runtime sync between electric table render and electric meter model', () => {
-  const tableRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/table-render.js?v=057');
-  const runtimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/runtime-sync.js?v=053');
-  const meterModelIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/meter-model.js?v=055');
-  const comparisonSummaryIndex = kpiHtml.indexOf('runtime/util/report/sheet/electric/comparison-summary.js?v=072');
-  const sheetIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.sheet.js?v=067');
-
-  assert.ok(tableRenderIndex >= 0, 'report sheet electric table render loader is missing');
-  assert.ok(runtimeSyncIndex > tableRenderIndex, 'report sheet electric runtime sync must load after electric table render');
-  assert.ok(meterModelIndex > runtimeSyncIndex, 'report sheet electric meter model must load after electric runtime sync');
-  assert.ok(comparisonSummaryIndex > meterModelIndex, 'report sheet electric comparison summary must load after electric meter model');
-  assert.ok(sheetIndex > comparisonSummaryIndex, 'report sheet electric runtime sync must load before sheet.js');
 });

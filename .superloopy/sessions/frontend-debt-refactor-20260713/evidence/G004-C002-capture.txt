@@ -1,0 +1,30 @@
+Superloopy command capture
+startedAt: 2026-07-13T01:26:04.919Z
+finishedAt: 2026-07-13T01:26:05.528Z
+cwd: C:\Users\user\Desktop\KPI-Server-latest
+status: pass
+exitCode: 0
+signal: null
+command: ["node","--test","kpi-runtime/internal-server/test/frontend/report-sheet-modal-actions.smoke.js","kpi-runtime/internal-server/test/frontend/report-sheet-modal-render.smoke.js"]
+[stdout]
+✔ report sheet modal actions registry updates compare and fullscreen state through runtime adapters (64.8958ms)
+✔ kpi html loads report sheet modal actions before sheet.js (0.3987ms)
+✔ report sheet modal render registry normalizes meter modal state and rerenders the active modal (36.0961ms)
+✔ report sheet modal render shows LNG and LPG graph buttons for Yusan gas meter sheets (3.2968ms)
+✔ report sheet modal render omits blank template from every utility sheet body (5.5135ms)
+✔ report sheet modal render omits blank template from no-data pre-extraction fallbacks (5.7484ms)
+✔ report sheet modal render loads electric metering store before no-data fallback (4.9227ms)
+✔ report sheet modal render syncs gas data before showing no-data fallback (5.8845ms)
+✔ report sheet modal render normalizes stale analysis sheets back to meter extraction (2.7302ms)
+✔ report sheet gas runtime sync forces one metering sync per report session (2.8992ms)
+✔ kpi html loads report sheet modal render between modal shell and sheet.js (0.4338ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 441.8493
+
+[stderr]

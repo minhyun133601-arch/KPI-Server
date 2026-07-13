@@ -6,30 +6,38 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
-const experimentSourcePath = path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.experiment.js');
-const experimentSource = await fs.readFile(experimentSourcePath, 'utf8');
+const experimentSourcePaths = [
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'experiment', 'KPI.sections.experiment.state.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'experiment', 'KPI.sections.experiment.catalog.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'experiment', 'KPI.sections.experiment.selection.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'experiment', 'KPI.sections.experiment.composer-model.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'experiment', 'KPI.sections.experiment.authority.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'experiment', 'KPI.sections.experiment.chart-model.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'experiment', 'KPI.sections.experiment.chart-view.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'experiment', 'KPI.sections.experiment.composer-view.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'experiment', 'KPI.sections.experiment.controller.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.experiment.js'),
+];
+const experimentSources = await Promise.all(experimentSourcePaths.map((sourcePath) => fs.readFile(sourcePath, 'utf8')));
+const experimentSource = experimentSources.join('\n');
 
 function loadExperimentLabelTestApi() {
-  const marker = '    root.KpiExperimentGraphPrototype = Object.freeze({';
-  assert.ok(experimentSource.includes(marker), 'experiment prototype marker is missing');
-  const instrumentedSource = experimentSource.replace(
-    marker,
-    [
-      '    root.__experimentLineSelectionLabelTestApi = Object.freeze({',
-      '        buildSummaryLineSelectionDisplayLabel',
-      '    });',
-      marker,
-    ].join('\n')
-  );
   const context = {
-    window: {},
     KpiSectionFactoryAdapter: {
       registerFactory() {},
     },
   };
   vm.createContext(context);
-  vm.runInContext(instrumentedSource, context, { filename: experimentSourcePath });
-  return context.window.__experimentLineSelectionLabelTestApi;
+  context.window = context;
+  experimentSources.forEach((source, index) => {
+    vm.runInContext(source, context, { filename: experimentSourcePaths[index] });
+  });
+  return Object.freeze({
+    buildSummaryLineSelectionDisplayLabel: vm.runInContext(
+      "this[Symbol.for('kpi.experiment.section.parts')]?.buildSummaryLineSelectionDisplayLabel",
+      context
+    ),
+  });
 }
 
 test('experiment line selection labels group multi-line selections by team', () => {

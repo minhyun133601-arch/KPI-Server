@@ -1,0 +1,40 @@
+Superloopy command capture
+startedAt: 2026-07-13T03:23:48.371Z
+finishedAt: 2026-07-13T03:23:50.833Z
+cwd: C:\Users\user\Desktop\KPI-Server-latest
+status: pass
+exitCode: 0
+signal: null
+command: ["node","--test","kpi-runtime/internal-server/test/frontend/equipment-history-render-adapter.smoke.js","kpi-runtime/internal-server/test/frontend/equipment-history-render-board.smoke.js","kpi-runtime/internal-server/test/frontend/equipment-history-render-board-contracts.smoke.js","kpi-runtime/internal-server/test/frontend/equipment-history-render-card-contracts.smoke.js","kpi-runtime/internal-server/test/frontend/equipment-history-render-editor.smoke.js","kpi-runtime/internal-server/test/frontend/equipment-history-render-interactions.smoke.js","kpi-runtime/internal-server/test/frontend/equipment-history-render-model.smoke.js","kpi-runtime/internal-server/test/frontend/equipment-history-render-photo-contracts.smoke.js","kpi-runtime/internal-server/test/frontend/equipment-history-render-print.smoke.js","kpi-runtime/internal-server/test/frontend/equipment-history-render-split.smoke.js"]
+[stdout]
+✔ equipment-history browser adapter wraps runtime portal fetch alert and print bridges (6.9184ms)
+✔ kpi html loads equipment-history modules before the data runtime bridge (1.6787ms)
+✔ equipment-history host modules no longer touch browser globals directly (0.9064ms)
+✔ equipment-history board source preserves dense responsive ordering filtering and history contracts (50.9587ms)
+✔ equipment-history renderer preserves team metadata empty columns room grouping and board authoring (111.8872ms)
+✔ equipment-history card source preserves explicit save topbar editor and document layout contracts (91.6412ms)
+✔ equipment-history editor helpers preserve document basic photo and categorized detail markup (82.6088ms)
+✔ equipment-history board search filters immediately and highlights visible matches (84.6227ms)
+✔ equipment-history board room order controls persist room group order and keep order mode (68.534ms)
+✔ equipment-history current card status changes are saved only by explicit save (36.8618ms)
+✔ equipment-history duplicate equipment names keep plain labels and block saves (36.5242ms)
+✔ equipment-history save assigns a unique id when the payload already has a duplicate id (19.1453ms)
+✔ equipment-history save confirms payload persistence before publishing uploaded assets (2.1558ms)
+✔ equipment-history photo changes stay draft-only until explicit save (1.4302ms)
+✔ equipment-history direct save paths request the saved popup without implicit save (0.5394ms)
+✔ equipment-history rate preserves explicit zero and rejects invalid authoring input (34.7581ms)
+✔ equipment-history draft and record models preserve labels groups photos and documents (57.8065ms)
+✔ equipment-history photo and attachment source preserves managed draft and normalization contracts (34.7951ms)
+✔ equipment-history print document preserves the A4 card form through maintenance docs and note (55.6466ms)
+✔ equipment-history renderer split keeps coherent modules and a thin host (5.0779ms)
+✔ equipment-history renderer parts load identically in html and boot manifest (0.5297ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2241.973
+
+[stderr]

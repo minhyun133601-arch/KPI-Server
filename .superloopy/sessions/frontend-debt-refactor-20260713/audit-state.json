@@ -1,0 +1,419 @@
+{
+  "version": 1,
+  "sessionId": "frontend-debt-refactor-20260713",
+  "auditsAccepted": 0,
+  "updatedAt": "2026-07-13T03:38:07.423Z",
+  "criteria": [
+    {
+      "criterion": "G001/C001",
+      "scenario": "Happy path works from the real user-facing surface.",
+      "inputHash": "aefdbcb5e7a3a9178b43e2de98e68e8a9a747f2c2d508dda6622a9cc82eb6db9",
+      "sourceHash": "c3df6346d8e2a21a87d32c10e507fbeed8a42f92f32d60022da279b625c161e2",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:35:15.031Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/frontend-refactor-contracts.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G001-C001-rerun.txt",
+      "rerunArtifactHash": "7134b28f48046910294875bc24c2febc1a7d38cf29fbc4875e5e093aa1c5ce08",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G001/C002",
+      "scenario": "Riskiest edge or failure path is handled.",
+      "inputHash": "52886ae052371d96406e043e0cf04d7c8802f8d4940098bcee3810ecbdcf5c14",
+      "sourceHash": "d45201a10234c14e25dd4f408ebedd100823f96b69315b59e87e61c1a9b1a63f",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:35:16.242Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/scripts/verifyFrontendMaintainability.test.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G001-C002-rerun.txt",
+      "rerunArtifactHash": "c0f627c3f6f32aca570ba9c21071e4f2033a679e1badb58757481e37104b116c",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G001/C003",
+      "scenario": "Adjacent existing behavior still works.",
+      "inputHash": "4d943921d300d0e1cee5ff46dba9ae6945226d7541b0c3c11c7a7e46b8d7b00c",
+      "sourceHash": "3eefd166c9204eacf987c483f33532cd3f8bbff2803d3f79f7d4cb9cd37901f4",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:35:17.493Z",
+      "command": [
+        "node",
+        "kpi-runtime/internal-server/src/scripts/verifyFrontendMaintainability.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G001-C003-rerun.txt",
+      "rerunArtifactHash": "110641d12060b40c29bde9c0bd1cbafb61e5ffadf048d3ea231c2049ac9f67b5",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G002/C001",
+      "scenario": "Happy path works from the real user-facing surface.",
+      "inputHash": "c6ae0d2992e91d6e19f4ba782f322668d367cd31110cdc0e4b916416f1ff3b1f",
+      "sourceHash": "e51c70a5ea78ce2e3ee2216577297aec8d930cc97bb523646f7a829e08f5340e",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:35:18.151Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/equipment-history-render-adapter.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/equipment-history-render-board.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/equipment-history-render-board-contracts.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/equipment-history-render-card-contracts.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/equipment-history-render-editor.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/equipment-history-render-interactions.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/equipment-history-render-model.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/equipment-history-render-photo-contracts.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/equipment-history-render-print.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/equipment-history-render-split.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G002-C001-rerun.txt",
+      "rerunArtifactHash": "82e441c342509ddd01cd2c5d7faa4146e9811ca432dd45aa04b6e3a05af7bb23",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G002/C002",
+      "scenario": "Riskiest edge or failure path is handled.",
+      "inputHash": "ea508afba890559cbbe17b3dc95fe64539282fc394805c80c6fce5f452beaf53",
+      "sourceHash": "706f4d38d8cb358a6d2d9c04fd250bee2e159dabb340b6a48dd3065343c8acd0",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:35:20.165Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/equipment-history-render-split.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/kpi-boot-manifest.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G002-C002-rerun.txt",
+      "rerunArtifactHash": "a7dd978e4453acc72d0d57f48e721dee882fe69b522638ff01db58f6a49568e3",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G002/C003",
+      "scenario": "Adjacent existing behavior still works.",
+      "inputHash": "aec263fd7da7f205973d7f9f987de985ea38f860753e56f4ece17c9c282c9210",
+      "sourceHash": "427554b2796e8bd16d8d6dfc9cd05710361432a62fd5389ba2bf32ca153004c7",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:35:21.033Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/data-css-split.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G002-C003-rerun.txt",
+      "rerunArtifactHash": "d6aff857b6571c4cabaa3129fc0be592b8b2390df60afe3fa361594a13dc929a",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G003/C001",
+      "scenario": "Happy path works from the real user-facing surface.",
+      "inputHash": "a54c6ec0310131700fb5b41ed3deb6c607a833300662850e2e91c3879b8a2b45",
+      "sourceHash": "60b9ad0d7a0dd831d9873d7a482bf5a46d3573e952f7e9720e6d82251ed796bf",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:35:21.814Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/util-runtime-browser-adapter.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G003-C001-rerun.txt",
+      "rerunArtifactHash": "0a02d229a0ce41016b9090cd24c228ec340d53ac079b84497b59cfdec8c6290f",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G003/C002",
+      "scenario": "Riskiest edge or failure path is handled.",
+      "inputHash": "6b4d5cf4f7bcc75cd7f06ae991d5bec26ae5ce0b7f420a26ab4fe4ef9e641505",
+      "sourceHash": "d905b5e66d395166be137f2039a6ded4f6b48120ab99191f05b8fa6e3fbede9b",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:35:22.241Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/frontend-refactor-contracts.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/kpi-boot-manifest.smoke.js",
+        "kpi-runtime/internal-server/test/routes/report-capture-routes.test.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G003-C002-rerun.txt",
+      "rerunArtifactHash": "fbebef2517344c3a0688f93ac8b65d43f0f2438b02aaae51266e50cc13498251",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G003/C003",
+      "scenario": "Adjacent existing behavior still works.",
+      "inputHash": "1ea1fefa17f764d54105ccf792b9cb6aaf840206afb62bdc5502a55c4774b8d0",
+      "sourceHash": "971bd9ac90c77a179f3dccaa30c99e8bc624eccb7d2243c5ad17bef68120d599",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:35:23.444Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/section-factory-adapter-data.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/section-factory-adapter-experiment.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/section-factory-adapter-experiment-source.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/section-factory-adapter-load-order.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/section-factory-adapter-report-core.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/section-factory-adapter-report-layout.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/global-access-adapter-closure.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G003-C003-rerun.txt",
+      "rerunArtifactHash": "74ff27ab61a55e8b79dfd240146ffeaee6004d785fc4f6b1c627916273c81ba9",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G004/C001",
+      "scenario": "Happy path works from the real user-facing surface.",
+      "inputHash": "23d49a6f6fdf565b717c30cb1f6db501e2ec3be2b414b02a3e0aa17d5e2c0b9c",
+      "sourceHash": "f178e05613e2b6393c3311385fd607ffafae3ee283d5a903ddd514f7deb6e64e",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:37:06.869Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/report-sheet-modal-shell.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/report-sheet-modal-shell-extract.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/report-sheet-modal-shell-monthly.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/report-sheet-modal-shell-print.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G004-C001-rerun.txt",
+      "rerunArtifactHash": "9fa045a1c596fd402afdcb0bcda9657eb3ba5727ee1e8f315938f7eec000e5f0",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G004/C002",
+      "scenario": "Riskiest edge or failure path is handled.",
+      "inputHash": "4e4d16cdfa766791a99a86fd42749a26773db9ac750c8b23ca1727fc46b3274b",
+      "sourceHash": "2ab685b3dc02d5d5ddc12d015cde3866d0c81d8c2a639a512dbe684d13db9afb",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:37:08.052Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/report-sheet-modal-actions.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/report-sheet-modal-render.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G004-C002-rerun.txt",
+      "rerunArtifactHash": "b62d30732ffccf78942c6d2b68f4f15986428059d0d41541374be07e35eb776d",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G004/C003",
+      "scenario": "Adjacent existing behavior still works.",
+      "inputHash": "0dadc946abfb9de20bc28ea9f17b67a7b8274f4aff39676f9d441a4205cc5e05",
+      "sourceHash": "20850cab0adea619a6658e7f7bc7522cede65cd7cfe041142d895a241d304957",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:37:09.477Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/global-access-adapter-closure.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G004-C003-rerun.txt",
+      "rerunArtifactHash": "3bb29a8c588b85e60fde8007d184829e4a56c96409c46cee20a10b175803c83b",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G005/C001",
+      "scenario": "Happy path works from the real user-facing surface.",
+      "inputHash": "15f3a6e1b993cdc551cad6d102e1bedfcf25697aea1d08e5071a1bf0ae507a57",
+      "sourceHash": "bacce0cfbd91daf9ea80432d963b272e68e0191987b20fe18b00dc3ff981be97",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:37:12.427Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/section-factory-adapter-experiment.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/section-factory-adapter-experiment-source.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/section-factory-adapter-load-order.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G005-C001-rerun.txt",
+      "rerunArtifactHash": "0ec9976fe637f79f0c766403dedea01fd7ba7f9dc9781f088789bea9091b193e",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G005/C002",
+      "scenario": "Riskiest edge or failure path is handled.",
+      "inputHash": "49a9adad3852cfff0ef7ebdff1a98c1f0efb525cadcb301ce3bb1a8f2c07738a",
+      "sourceHash": "ffdd05628ef5c12017a5c1260728edc7d359607f09253f5d548b512c826d808e",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:38:00.497Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/frontend-refactor-contracts.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/kpi-boot-manifest.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G005-C002-rerun.txt",
+      "rerunArtifactHash": "c2ea7d041c97a02bbd1e0709b015d64a3631db244c482879ea6636b62a217ebe",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G005/C003",
+      "scenario": "Adjacent existing behavior still works.",
+      "inputHash": "e041f3e0462af6abda7be53d3f7f8b020621fdff87c29bd0349b458f92b61441",
+      "sourceHash": "9058152ed1a18d9047fe35431328dfac6969ccc6dc6aa47a406be14b1fd7da2e",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:38:01.200Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/experiment-line-selection-labels.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/global-access-adapter-closure.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G005-C003-rerun.txt",
+      "rerunArtifactHash": "9dcbdd1beac22242ef77aa88242363497a62035b323c08fa183f420b10c33310",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G006/C001",
+      "scenario": "Happy path works from the real user-facing surface.",
+      "inputHash": "16831830873e229b6d69e0da0d090f31466850ab4dd4a83f0537b3c1b26b4e7b",
+      "sourceHash": "47b6c3c79db928a9fe687f3d357eb02a6bcf9672fe530e243286e0d11c812954",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:38:04.065Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/utility-entry-experiment-corrections.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G006-C001-rerun.txt",
+      "rerunArtifactHash": "e7b20c39a40acd597b391711d8ed053439aacdb77451d6d4c8429b58ba9e6881",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G006/C002",
+      "scenario": "Riskiest edge or failure path is handled.",
+      "inputHash": "91e8eb129eb014091d46e2e58cdb52980d69b46affde47bee38057e70f8c8896",
+      "sourceHash": "9e9009a9ddf168cabb0c2eadd4210301937dfb968ef8c9b75d4f979a278209b9",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:38:04.411Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/frontend-refactor-contracts.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/kpi-boot-manifest.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G006-C002-rerun.txt",
+      "rerunArtifactHash": "da1f2e5bac5a2f6f7f6e6d193ab716c2b101661178a248c2eeecc35e6445d8b5",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G006/C003",
+      "scenario": "Adjacent existing behavior still works.",
+      "inputHash": "9c7f15e513e7054ddb2de9d35f9df3dc88a2dd249b50c069b16653643edc6485",
+      "sourceHash": "e699a04f2a6db79c6507c01c2dfd8e98d3a49467b5dceb26aecad300cc808134",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:38:05.252Z",
+      "command": [
+        "node",
+        "--test",
+        "kpi-runtime/internal-server/test/frontend/util-runtime-browser-adapter.smoke.js",
+        "kpi-runtime/internal-server/test/frontend/global-access-adapter-closure.smoke.js"
+      ],
+      "rerunStatus": "pass",
+      "rerunExitCode": 0,
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/audit/G006-C003-rerun.txt",
+      "rerunArtifactHash": "88f1cc7ad38bcaa3b7ce0a21a52e4aad6ecd4a7f28d086521ffcb7dce8c2ec1f",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G007/C001",
+      "scenario": "Happy path works from the real user-facing surface.",
+      "inputHash": "08d24bc36c95464273efbc0b9913ec4166070ecb1804b4b382f82b4bdf10db5c",
+      "sourceHash": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:38:07.396Z",
+      "command": null,
+      "rerunStatus": "manual-recheck",
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/frontend/final-browser-qa/playwright-pass-final/.last-run.json",
+      "rerunArtifactHash": "91d1c43004802cd49950d78eb11c8fa7d05da8ffffe219a8b13b2f561bc00903",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G007/C002",
+      "scenario": "Riskiest edge or failure path is handled.",
+      "inputHash": "881cd9db1eae815c6efd13d4a825e43651004e91c6baf8f77c1a8bb4d758fc8a",
+      "sourceHash": "31607b5f23c591da18a4dcb8fb3f57943be20d00d908e82ec17eeede88cc3c85",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:38:07.407Z",
+      "command": null,
+      "rerunStatus": "manual-recheck",
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/move-only-reproducibility.md",
+      "rerunArtifactHash": "31607b5f23c591da18a4dcb8fb3f57943be20d00d908e82ec17eeede88cc3c85",
+      "floor": "pass"
+    },
+    {
+      "criterion": "G007/C003",
+      "scenario": "Adjacent existing behavior still works.",
+      "inputHash": "8593e8b7bc67e86617cb89ee8f46c368270174d5d1efe381c4aff2f6e4af289b",
+      "sourceHash": "262a9bda02a3e8e63355674a67d7d7d3e2fa6dc21ae19531bf75481f0eeb3d6f",
+      "verdict": null,
+      "failCount": 0,
+      "auditedAt": "2026-07-13T03:38:07.419Z",
+      "command": null,
+      "rerunStatus": "manual-recheck",
+      "rerunArtifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/final-frontend-static-audit.md",
+      "rerunArtifactHash": "262a9bda02a3e8e63355674a67d7d7d3e2fa6dc21ae19531bf75481f0eeb3d6f",
+      "floor": "pass"
+    }
+  ]
+}

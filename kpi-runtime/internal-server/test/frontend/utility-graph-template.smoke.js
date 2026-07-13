@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import test from 'node:test';
@@ -6,9 +7,18 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
-const templateSource = await fs.readFile(
-  path.join(repoRoot, 'data-entry/runtime/data/utility-graph-template/app.js'),
-  'utf8'
+const templateFiles = [
+  'data-entry/runtime/data/utility-graph-template/runtime/KPI.utility-graph-template.foundation.js',
+  'data-entry/runtime/data/utility-graph-template/runtime/KPI.utility-graph-template.charts.js',
+  'data-entry/runtime/data/utility-graph-template/runtime/KPI.utility-graph-template.memo.js',
+  'data-entry/runtime/data/utility-graph-template/runtime/KPI.utility-graph-template.shell.js',
+  'data-entry/runtime/data/utility-graph-template/app.js',
+];
+const templateSources = await Promise.all(
+  templateFiles.map(async (relativePath) => ({
+    filename: relativePath,
+    source: await fs.readFile(path.join(repoRoot, relativePath), 'utf8'),
+  }))
 );
 
 class FakeElement {
@@ -88,7 +98,7 @@ class FakeElement {
   focus() {}
 }
 
-function createContext() {
+function createVmContext() {
   const context = {
     CustomEvent: class CustomEvent {
       constructor(type, options = {}) {
@@ -111,7 +121,16 @@ function createContext() {
     setTimeout
   };
   vm.createContext(context);
-  vm.runInContext(templateSource, context, { filename: 'utility-graph-template/app.js' });
+  return context;
+}
+
+function runTemplateSources(context, sources = templateSources) {
+  sources.forEach(({ filename, source }) => vm.runInContext(source, context, { filename }));
+}
+
+function createContext() {
+  const context = createVmContext();
+  runTemplateSources(context);
   return context;
 }
 
@@ -162,6 +181,71 @@ function getTextChildrenByClass(svg, className) {
       String(child.attributes.class || '').split(/\s+/).includes(className)
   );
 }
+
+test('utility graph template preserves its exact mutable public contract and default data', () => {
+  const context = createContext();
+  const api = context.KpiUtilityGraphTemplate;
+  const parts = vm.runInContext(
+    "this[Symbol.for('kpi.utilityGraphTemplate.parts')]",
+    context
+  );
+
+  assert.deepEqual(Array.from(Object.keys(api)), [
+    'createEmptyData',
+    'mergeData',
+    'render',
+    'buildMonths',
+  ]);
+  assert.equal(Object.isFrozen(api), false);
+
+  for (const key of Object.keys(api)) {
+    const descriptor = Object.getOwnPropertyDescriptor(api, key);
+    assert.equal(typeof descriptor?.value, 'function');
+    assert.equal(descriptor?.enumerable, true);
+    assert.equal(descriptor?.writable, true);
+    assert.equal(descriptor?.configurable, true);
+  }
+
+  assert.equal(api.createEmptyData, parts.createEmptyData);
+  assert.equal(api.mergeData, parts.mergeReportData);
+  assert.equal(api.render, parts.render);
+  assert.equal(api.buildMonths, parts.buildMonths);
+  assert.deepEqual(
+    [api.createEmptyData.name, api.mergeData.name, api.render.name, api.buildMonths.name],
+    ['createEmptyData', 'mergeReportData', 'render', 'buildMonths']
+  );
+
+  const emptyDataJson = JSON.stringify(api.createEmptyData());
+  assert.equal(emptyDataJson.length, 6149);
+  assert.equal(
+    crypto.createHash('sha256').update(emptyDataJson).digest('hex'),
+    '5e0e0220505f5dd3d516d0223b54b4756fd1ec280244692820ddc2dd56ed728a'
+  );
+  assert.equal(
+    crypto
+      .createHash('sha256')
+      .update(JSON.stringify(api.buildMonths('2026-01', '2026-03')))
+      .digest('hex'),
+    '2fac9b8957d569eecf1f2f7a78f247036933d469198aa45006d59e99bffd223d'
+  );
+});
+
+test('utility graph template facade fails closed when parts are reversed or missing', () => {
+  const facadeSource = templateSources.at(-1);
+  const reversedContext = createVmContext();
+  assert.throws(
+    () => runTemplateSources(reversedContext, [facadeSource]),
+    /KpiUtilityGraphTemplate required part missing/
+  );
+  assert.equal(reversedContext.KpiUtilityGraphTemplate, undefined);
+
+  const missingShellContext = createVmContext();
+  assert.throws(
+    () => runTemplateSources(missingShellContext, [...templateSources.slice(0, 3), facadeSource]),
+    /KpiUtilityGraphTemplate required part missing/
+  );
+  assert.equal(missingShellContext.KpiUtilityGraphTemplate, undefined);
+});
 
 test('utility graph top auto scale separates series bands and uses local trend range', () => {
   const context = createContext();

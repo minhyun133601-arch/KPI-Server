@@ -1,0 +1,30 @@
+Superloopy command capture
+startedAt: 2026-07-13T01:12:14.861Z
+finishedAt: 2026-07-13T01:12:15.552Z
+cwd: C:\Users\user\Desktop\KPI-Server-latest
+status: pass
+exitCode: 0
+signal: null
+command: ["node","--test","kpi-runtime/internal-server/test/frontend/frontend-refactor-contracts.smoke.js","kpi-runtime/internal-server/test/frontend/kpi-boot-manifest.smoke.js","kpi-runtime/internal-server/test/routes/report-capture-routes.test.js"]
+[stdout]
+✔ frontend refactor keeps classic-script dependency order stable (13.0393ms)
+✔ report section split keeps a private registry and bounded parts (9.7972ms)
+✔ report deck browser adapter split keeps a private registry and bounded parts (6.4638ms)
+✔ report deck runtime split keeps a private registry and bounded parts (10.9323ms)
+✔ frontend refactor preserves the public global facades (106.4689ms)
+✔ frontend refactor preserves persistence and managed-file endpoints (84.1237ms)
+✔ kpi html loads boot manifest before static scripts and validator after app bootstrap (2.3233ms)
+✔ boot manifest groups cover the current static KPI script order (4.5411ms)
+✔ boot loader validates the static manifest against KPI html scripts (25.3407ms)
+✔ capture downloads encode Korean file names in Content-Disposition (1.477ms)
+✔ capture download fallback removes header-unsafe characters (0.317ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 559.3127
+
+[stderr]

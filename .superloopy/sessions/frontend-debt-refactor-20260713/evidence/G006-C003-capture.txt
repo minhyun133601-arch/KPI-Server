@@ -1,0 +1,71 @@
+Superloopy command capture
+startedAt: 2026-07-13T01:43:10.604Z
+finishedAt: 2026-07-13T01:43:17.629Z
+cwd: C:\Users\user\Desktop\KPI-Server-latest
+status: pass
+exitCode: 0
+signal: null
+command: ["node","--test","kpi-runtime/internal-server/test/frontend/util-runtime-browser-adapter.smoke.js","kpi-runtime/internal-server/test/frontend/global-access-adapter-closure.smoke.js"]
+[stdout]
+✔ production non-adapter JavaScript does not touch browser globals directly (1536.0653ms)
+✔ util runtime browser adapter registers init boot save and closer hooks (37.3954ms)
+✔ report public works tables place prior-year month before current month (0.7125ms)
+✔ report safety summary keeps compact team title and meta lines (1.1058ms)
+✔ report deck auto chart labels render above markers and avoid only different-value overlaps (5.1796ms)
+✔ report deck chart highlight click immediately marks the active point and button (170.7574ms)
+✔ report deck chart range highlight selects a start point and stores a range (96.4173ms)
+✔ report deck memo dialogs defer heavy work and cache repeated candidate results (6.8367ms)
+✔ report deck memo input popup can be dragged by its header (60.6243ms)
+✔ report deck memo overview popup can be dragged as a floating panel (68.2044ms)
+✔ report deck memo overview opens in a separate browser popup window (87.6669ms)
+✔ report deck memo overview copy button writes one memo line to clipboard (115.9274ms)
+✔ report deck memo dialog edits notepad text and applies selected range formatting (425.7413ms)
+✔ report deck completion saves pending memo notepad input to server (268.4098ms)
+✔ util runtime browser adapter builds production team 1 start chart model from daily entries (23.977ms)
+✔ util runtime browser adapter builds production team 1 yield model from daily entries (9.4864ms)
+✔ util runtime browser adapter reads and writes report deck module records (5.1953ms)
+✔ util runtime browser adapter uploads report deck images as managed files (4.8462ms)
+✔ util runtime browser adapter builds bukjeong report analysis model from sheet APIs (10.4819ms)
+✔ util runtime browser adapter caps report analysis data at selected month (7.7402ms)
+✔ util runtime report deck rendering omits null future month values (180.3075ms)
+✔ util runtime browser adapter builds yusan report analysis model from sheet APIs (4.7862ms)
+✔ util runtime browser adapter builds yusan team 1 part 2 LPG report model from sheet APIs (10.984ms)
+✔ util runtime browser adapter builds report memo candidates with direction markers (24.2708ms)
+✔ util runtime browser adapter omits prior-year memo comparison when the prior year has no data (7.4747ms)
+✔ util runtime browser adapter builds report memo overview with current values (32.7416ms)
+✔ util runtime browser adapter sums normal and rework detail rows for report production stats (5.4433ms)
+✔ util runtime browser adapter builds rework production memo candidates (6.6855ms)
+✔ util runtime browser adapter builds report memo candidates for production stats (13.7156ms)
+✔ util runtime browser adapter limits waste memo candidates to waste slides (6.6316ms)
+✔ util runtime browser adapter builds waste report analysis model from sheet APIs (4.848ms)
+✔ report deck editor loads and saves through server module records (740.739ms)
+✔ report deck overview blank amount renders self handled text (331.5558ms)
+✔ report deck editor externalizes inline image data before saving records (212.0831ms)
+✔ report deck editor accepts clipboard image paste into plan image slots (336.0789ms)
+✔ report deck safety image paste stays in the selected slide10 team row slot (230.3509ms)
+✔ report deck editor sorts slide8 overview columns by team order (185.5734ms)
+✔ report deck plan overviews sort by team date and amount (199.5014ms)
+✔ report deck plan slot add requires saved complete overview and delete removes a slot (284.5214ms)
+✔ report deck safety starts as a team list and adds slots per selected team row (324.9288ms)
+✔ report deck safety groups each team and balances rows after four items (172.7482ms)
+✔ report deck safety table arrows reorder within a row and move to the next row (249.3602ms)
+✔ report deck safety page stays visible but blank output omits it and saves slide10 data (377.7647ms)
+✔ report deck safety custom cost text follows amount when both are entered (280.5588ms)
+✔ report deck safety deleted slot can be restored from the report payload (312.056ms)
+✔ report deck output derives optional order and prints only filled plan cells (303.2221ms)
+✔ report deck output titles and roman headers are corrected from printed optional pages (175.4545ms)
+✔ report deck optional header roman numerals follow the extracted section order (141.4069ms)
+✔ util runtime browser adapter supports no-window and disabled-write branches (4.5769ms)
+✔ util runtime save provider only serves the utility entry experiment host (6.4647ms)
+✔ kpi html and boot manifest load report runtime parts between browser adapter and host (2.0021ms)
+✔ util runtime host uses the browser adapter and private report registry (0.4678ms)
+ℹ tests 52
+ℹ suites 0
+ℹ pass 52
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6862.6626
+
+[stderr]

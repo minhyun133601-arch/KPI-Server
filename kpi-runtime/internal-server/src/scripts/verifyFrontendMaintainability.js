@@ -27,33 +27,6 @@ const PRODUCTION_SCAN_ROOTS = Object.freeze([
   'utility/runtime',
 ]);
 
-const LEGACY_BASELINES = Object.freeze({
-  productionJs: Object.freeze({
-    'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js': 2922,
-    'data-entry/runtime/data/sections/KPI.sections.data.js': 7913,
-    'data-entry/runtime/data/utility-graph-template/app.js': 1646,
-    'kpi-runtime/sections/KPI.sections.experiment.js': 5838,
-    'kpi-runtime/sections/KPI.sections.report.js': 2631,
-    'utility/runtime/util/KPI.util.runtime.browser-adapter.js': 4209,
-    'utility/runtime/util/KPI.util.runtime.js': 9161,
-    'utility/runtime/util/report/sheet/modal/shell.js': 5209,
-  }),
-  productionCss: Object.freeze({
-    'data-entry/runtime/data/utility-graph-template/styles.css': 942,
-    'kpi-runtime/app/styles/data/data.css': 4056,
-    'kpi-runtime/app/styles/metering/metering.css': 1433,
-    'kpi-runtime/app/styles/shell/dashboard.css': 1799,
-    'kpi-runtime/app/styles/shell/shell-chrome.css': 1511,
-  }),
-  smoke: Object.freeze({
-    'kpi-runtime/internal-server/test/frontend/equipment-history-render.smoke.js': 1608,
-    'kpi-runtime/internal-server/test/frontend/report-sheet-modal-shell.smoke.js': 1532,
-    'kpi-runtime/internal-server/test/frontend/util-runtime-browser-adapter.smoke.js': 7299,
-    'kpi-runtime/internal-server/test/frontend/utility-entry-experiment-corrections.smoke.js': 2512,
-  }),
-  support: Object.freeze({}),
-});
-
 function toPosixRelative(fromPath, targetPath) {
   return path.relative(fromPath, targetPath).replaceAll('\\', '/');
 }
@@ -117,26 +90,13 @@ function getPolicy(category) {
   };
 }
 
-function evaluateFile({ category, relativePath, lineCount, legacyBaselines = LEGACY_BASELINES }) {
+function evaluateFile({ category, relativePath, lineCount }) {
   const policy = getPolicy(category);
-  const baseline = legacyBaselines[category]?.[relativePath];
   const warnings = [];
   const errors = [];
 
   if (lineCount > policy.hardLimit) {
-    if (Number.isInteger(baseline) && baseline > policy.hardLimit) {
-      if (lineCount > baseline) {
-        errors.push(
-          `${relativePath}: ${lineCount} lines (${policy.label} legacy no-growth baseline ${baseline})`
-        );
-      } else {
-        warnings.push(
-          `${relativePath}: ${lineCount} lines (${policy.label} legacy no-growth baseline ${baseline})`
-        );
-      }
-    } else {
-      errors.push(`${relativePath}: ${lineCount} lines (${policy.label} hard limit ${policy.hardLimit})`);
-    }
+    errors.push(`${relativePath}: ${lineCount} lines (${policy.label} hard limit ${policy.hardLimit})`);
     return { warnings, errors };
   }
 
@@ -196,10 +156,7 @@ async function verifyFrontendMaintainability(options = {}) {
   const warnings = [];
   const errors = [];
   for (const record of records) {
-    const evaluation = evaluateFile({
-      ...record,
-      legacyBaselines: options.legacyBaselines ?? LEGACY_BASELINES,
-    });
+    const evaluation = evaluateFile(record);
     warnings.push(...evaluation.warnings);
     errors.push(...evaluation.errors);
   }
@@ -250,7 +207,6 @@ export {
   FRONTEND_SMOKE_HARD_LIMIT,
   FRONTEND_SMOKE_SOFT_LIMIT,
   FRONTEND_SUPPORT_HARD_LIMIT,
-  LEGACY_BASELINES,
   PRODUCTION_CSS_HARD_LIMIT,
   PRODUCTION_JS_HARD_LIMIT,
   PRODUCTION_JS_SOFT_LIMIT,

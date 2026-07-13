@@ -1,0 +1,571 @@
+{
+  "version": 1,
+  "mode": "strict",
+  "createdAt": "2026-07-13T00:22:01.994Z",
+  "updatedAt": "2026-07-13T03:31:33.476Z",
+  "briefPath": ".superloopy/sessions/frontend-debt-refactor-20260713/brief.md",
+  "evidencePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence",
+  "goalsPath": ".superloopy/sessions/frontend-debt-refactor-20260713/goals.json",
+  "ledgerPath": ".superloopy/sessions/frontend-debt-refactor-20260713/ledger.jsonl",
+  "goals": [
+    {
+      "id": "G001",
+      "title": "기반 계약과 증가 방지 게이트",
+      "objective": "현재 KPI 프론트 디자인 토큰 계약, 공개 API/로드 순서 계약, 대형 파일 증가 방지 및 신규 파일 크기 게이트를 구축한다.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-07-13T00:22:01.994Z",
+      "updatedAt": "2026-07-13T00:49:12.978Z",
+      "criteria": [
+        {
+          "id": "C001",
+          "kind": "happy",
+          "scenario": "Happy path works from the real user-facing surface.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G001-C001-capture.txt",
+          "capturedAt": "2026-07-13T00:48:53.676Z",
+          "notes": "Classic script order, public facades, and persistence endpoints are contract-tested.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/frontend-refactor-contracts.smoke.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C002",
+          "kind": "risk",
+          "scenario": "Riskiest edge or failure path is handled.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G001-C002-capture.txt",
+          "capturedAt": "2026-07-13T00:48:54.636Z",
+          "notes": "Maintainability policy rejects unbaselined hard-limit growth and preserves exact legacy no-growth baselines.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/scripts/verifyFrontendMaintainability.test.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C003",
+          "kind": "regression",
+          "scenario": "Adjacent existing behavior still works.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G001-C003-capture.txt",
+          "capturedAt": "2026-07-13T00:49:06.335Z",
+          "notes": "Live repository maintainability scan passes after the new gate is integrated; server structure and the full suite are covered by the release gate.",
+          "command": [
+            "node",
+            "kpi-runtime/internal-server/src/scripts/verifyFrontendMaintainability.js"
+          ],
+          "exitCode": 0
+        }
+      ],
+      "startedAt": "2026-07-13T00:22:02.014Z",
+      "completedAt": "2026-07-13T00:49:12.978Z",
+      "evidence": "DESIGN.md, public contracts, dynamic no-growth gate, unit tests, and live repository scan passed."
+    },
+    {
+      "id": "G002",
+      "title": "설비 이력 렌더러와 데이터 CSS 분리",
+      "objective": "설비 이력 board/card/persistence/print/photo/events 책임을 분리하고 호환 facade 및 동작을 유지한다.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-07-13T00:22:01.994Z",
+      "updatedAt": "2026-07-13T03:23:50.848Z",
+      "criteria": [
+        {
+          "id": "C001",
+          "kind": "happy",
+          "scenario": "Happy path works from the real user-facing surface.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G002-C001-capture.txt",
+          "capturedAt": "2026-07-13T03:23:50.848Z",
+          "notes": "Current split equipment renderer suite replaces the deleted monolithic smoke and passes all authoring, persistence, print, photo and failure contracts.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/equipment-history-render-adapter.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/equipment-history-render-board.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/equipment-history-render-board-contracts.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/equipment-history-render-card-contracts.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/equipment-history-render-editor.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/equipment-history-render-interactions.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/equipment-history-render-model.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/equipment-history-render-photo-contracts.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/equipment-history-render-print.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/equipment-history-render-split.smoke.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C002",
+          "kind": "risk",
+          "scenario": "Riskiest edge or failure path is handled.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G002-C002-capture.txt",
+          "capturedAt": "2026-07-13T00:49:38.842Z",
+          "notes": "Renderer parts are bounded, facade is thin, browser-global boundaries and HTML/manifest order are enforced.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/equipment-history-render-split.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/kpi-boot-manifest.smoke.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C003",
+          "kind": "regression",
+          "scenario": "Adjacent existing behavior still works.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G002-C003-capture.txt",
+          "capturedAt": "2026-07-13T00:51:35.087Z",
+          "notes": "The data stylesheet is an import-only facade over eight <=800-line chunks and the concatenated bytes match the pre-split cascade hash.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/data-css-split.smoke.js"
+          ],
+          "exitCode": 0
+        }
+      ],
+      "startedAt": "2026-07-13T00:49:13.271Z",
+      "completedAt": "2026-07-13T00:51:35.368Z",
+      "evidence": "Equipment renderer behavior and failure paths pass; data CSS bytes/order are preserved across bounded chunks."
+    },
+    {
+      "id": "G003",
+      "title": "보고서 덱과 보고서 섹션 분리",
+      "objective": "보고서 템플릿, 상태, 메모, 계획, 차트, 출력, 저장, 브라우저 경계를 분리하고 기존 공개 API와 캡처 결과를 보존한다.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-07-13T00:22:01.994Z",
+      "updatedAt": "2026-07-13T03:26:23.098Z",
+      "criteria": [
+        {
+          "id": "C001",
+          "kind": "happy",
+          "scenario": "Happy path works from the real user-facing surface.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G003-C001-capture.txt",
+          "capturedAt": "2026-07-13T01:12:14.598Z",
+          "notes": "Full report deck VM behavior passes across state, memo, plan, chart, output, persistence, images, and initialization after section/adapter/runtime extraction.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/util-runtime-browser-adapter.smoke.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C002",
+          "kind": "risk",
+          "scenario": "Riskiest edge or failure path is handled.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G003-C002-capture.txt",
+          "capturedAt": "2026-07-13T01:12:15.564Z",
+          "notes": "Private registries, bounded parts, exact loader order, public facade methods, persistence endpoints, and capture routes are contract-tested.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/frontend-refactor-contracts.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/kpi-boot-manifest.smoke.js",
+            "kpi-runtime/internal-server/test/routes/report-capture-routes.test.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C003",
+          "kind": "regression",
+          "scenario": "Adjacent existing behavior still works.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G003-C003-capture.txt",
+          "capturedAt": "2026-07-13T03:26:23.098Z",
+          "notes": "Current split section-factory suite and global boundary test replace the deleted monolithic adapter smoke and preserve adjacent report behavior.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/section-factory-adapter-data.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/section-factory-adapter-experiment.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/section-factory-adapter-experiment-source.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/section-factory-adapter-load-order.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/section-factory-adapter-report-core.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/section-factory-adapter-report-layout.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/global-access-adapter-closure.smoke.js"
+          ],
+          "exitCode": 0
+        }
+      ],
+      "startedAt": "2026-07-13T00:51:35.724Z",
+      "completedAt": "2026-07-13T01:13:49.944Z",
+      "evidence": "Report section, browser adapter, and runtime are split into bounded private-registry parts; VM, loader, route, factory, and global-boundary tests pass."
+    },
+    {
+      "id": "G004",
+      "title": "보고서 시트 모달 셸 분리",
+      "objective": "DOM snapshot, meter/monthly document, print window, event router 책임을 분리하고 도달 불가 분석 추출 코드는 안전하게 격리한다.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-07-13T00:22:01.994Z",
+      "updatedAt": "2026-07-13T01:26:47.842Z",
+      "criteria": [
+        {
+          "id": "C001",
+          "kind": "happy",
+          "scenario": "Happy path works from the real user-facing surface.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G004-C001-capture.txt",
+          "capturedAt": "2026-07-13T01:26:03.892Z",
+          "notes": "Report sheet registry, extraction, monthly, print and loader behavior pass after the 11-part split.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/report-sheet-modal-shell.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/report-sheet-modal-shell-extract.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/report-sheet-modal-shell-monthly.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/report-sheet-modal-shell-print.smoke.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C002",
+          "kind": "risk",
+          "scenario": "Riskiest edge or failure path is handled.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G004-C002-capture.txt",
+          "capturedAt": "2026-07-13T01:26:05.544Z",
+          "notes": "Modal actions and render failure/fallback/state synchronization paths remain green.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/report-sheet-modal-actions.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/report-sheet-modal-render.smoke.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C003",
+          "kind": "regression",
+          "scenario": "Adjacent existing behavior still works.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G004-C003-capture.txt",
+          "capturedAt": "2026-07-13T01:26:08.858Z",
+          "notes": "Production global-access boundaries remain intact after the modal shell extraction.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/global-access-adapter-closure.smoke.js"
+          ],
+          "exitCode": 0
+        }
+      ],
+      "startedAt": "2026-07-13T01:13:50.219Z",
+      "completedAt": "2026-07-13T01:26:47.842Z",
+      "evidence": "Report sheet modal shell is split into 11 bounded parts plus 32-line facade; extraction, monthly, print, fallback, loader and global-boundary tests pass."
+    },
+    {
+      "id": "G005",
+      "title": "실험 분석 분리",
+      "objective": "catalog, state, selection, authority, chart model/view, composer, controller를 분리하고 KpiExperimentGraphPrototype 계약을 유지한다.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-07-13T00:22:01.994Z",
+      "updatedAt": "2026-07-13T03:27:41.507Z",
+      "criteria": [
+        {
+          "id": "C001",
+          "kind": "happy",
+          "scenario": "Happy path works from the real user-facing surface.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G005-C001-capture.txt",
+          "capturedAt": "2026-07-13T03:27:41.507Z",
+          "notes": "Current split experiment section-factory suites replace the deleted monolithic adapter smoke and preserve user-facing experiment analysis output.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/section-factory-adapter-experiment.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/section-factory-adapter-experiment-source.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/section-factory-adapter-load-order.smoke.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C002",
+          "kind": "risk",
+          "scenario": "Riskiest edge or failure path is handled.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G005-C002-capture.txt",
+          "capturedAt": "2026-07-13T01:37:08.294Z",
+          "notes": "Bounded private registry, frozen public facades, exact HTML/manifest loader order and boot validation pass.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/frontend-refactor-contracts.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/kpi-boot-manifest.smoke.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C003",
+          "kind": "regression",
+          "scenario": "Adjacent existing behavior still works.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G005-C003-capture.txt",
+          "capturedAt": "2026-07-13T01:37:11.255Z",
+          "notes": "Line-selection behavior and production browser-global boundaries remain green after extraction.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/experiment-line-selection-labels.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/global-access-adapter-closure.smoke.js"
+          ],
+          "exitCode": 0
+        }
+      ],
+      "startedAt": "2026-07-13T01:26:49.584Z",
+      "completedAt": "2026-07-13T01:37:19.402Z",
+      "evidence": "Experiment analysis is split into nine bounded parts plus a frozen 443-line facade; factory content, public API parity, loader order and regression tests pass."
+    },
+    {
+      "id": "G006",
+      "title": "유틸리티 데이터 입력 분리",
+      "objective": "readings, corrections, status, daily, monthly, graph, billing, store, quick-entry, templates, controller를 분리하고 저장·첨부·실패 동작을 보존한다.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-07-13T00:22:01.994Z",
+      "updatedAt": "2026-07-13T01:43:25.753Z",
+      "criteria": [
+        {
+          "id": "C001",
+          "kind": "happy",
+          "scenario": "Happy path works from the real user-facing surface.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G006-C001-capture.txt",
+          "capturedAt": "2026-07-13T01:43:08.269Z",
+          "notes": "All 51 correction, reading, daily/monthly save, quick-entry and stale-populate behaviors pass after the 12-part split.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/utility-entry-experiment-corrections.smoke.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C002",
+          "kind": "risk",
+          "scenario": "Riskiest edge or failure path is handled.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G006-C002-capture.txt",
+          "capturedAt": "2026-07-13T01:43:09.738Z",
+          "notes": "Bounded utility registry, exact facade, loader order and boot manifest contracts pass.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/frontend-refactor-contracts.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/kpi-boot-manifest.smoke.js"
+          ],
+          "exitCode": 0
+        },
+        {
+          "id": "C003",
+          "kind": "regression",
+          "scenario": "Adjacent existing behavior still works.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G006-C003-capture.txt",
+          "capturedAt": "2026-07-13T01:43:17.643Z",
+          "notes": "Global save-provider integration and production browser-global boundary remain green.",
+          "command": [
+            "node",
+            "--test",
+            "kpi-runtime/internal-server/test/frontend/util-runtime-browser-adapter.smoke.js",
+            "kpi-runtime/internal-server/test/frontend/global-access-adapter-closure.smoke.js"
+          ],
+          "exitCode": 0
+        }
+      ],
+      "startedAt": "2026-07-13T01:37:20.497Z",
+      "completedAt": "2026-07-13T01:43:25.753Z",
+      "evidence": "Utility entry is split into 12 bounded parts plus a 139-line facade; all 51 persistence/correction behaviors, public contracts, loader order and global boundaries pass."
+    },
+    {
+      "id": "G007",
+      "title": "CSS와 테스트 부채 마감 및 전체 검증",
+      "objective": "운영 프론트 JS 1500줄 초과를 제거하고 CSS chunk와 대형 테스트를 분리하며 전체 테스트, 구조 검증, 실서버·실브라우저 QA 증적을 완료한다.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-07-13T00:22:01.994Z",
+      "updatedAt": "2026-07-13T03:31:33.476Z",
+      "criteria": [
+        {
+          "id": "C001",
+          "kind": "happy",
+          "scenario": "Happy path works from the real user-facing surface.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/frontend/final-browser-qa/playwright-pass-final/.last-run.json",
+          "capturedAt": "2026-07-13T03:22:27.116Z",
+          "notes": "Official open-mode 3192 Playwright smoke passed the real navigation, experiment empty state, equipment create/upload/global-save/delete, and runtime error audit."
+        },
+        {
+          "id": "C002",
+          "kind": "risk",
+          "scenario": "Riskiest edge or failure path is handled.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/move-only-reproducibility.md",
+          "capturedAt": "2026-07-13T03:22:28.541Z",
+          "notes": "All five move-only reproducibility lanes passed, including equipment, report adapter/runtime, utility entry, and report-sheet equivalence."
+        },
+        {
+          "id": "C003",
+          "kind": "regression",
+          "scenario": "Adjacent existing behavior still works.",
+          "essential": true,
+          "status": "pass",
+          "artifact": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/final-frontend-static-audit.md",
+          "capturedAt": "2026-07-13T03:22:30.209Z",
+          "notes": "Final static audit, full verify, 951-test suite, format, lint, maintainability zero-warning, loader and public-surface checks remain green."
+        }
+      ],
+      "startedAt": "2026-07-13T01:43:26.603Z",
+      "completedAt": "2026-07-13T03:31:33.476Z",
+      "evidence": "All essential refactor, regression, official browser smoke, maintainability, and cleanup criteria passed; optional repeated performance and screenshot sampling was stopped at user direction and recorded as partial."
+    }
+  ],
+  "aggregateCompletion": {
+    "status": "complete",
+    "completedAt": "2026-07-13T03:31:33.476Z",
+    "evidence": "All essential refactor, regression, official browser smoke, maintainability, and cleanup criteria passed; optional repeated performance and screenshot sampling was stopped at user direction and recorded as partial.",
+    "qualityGate": {
+      "status": "passed",
+      "artifacts": [
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G001-C001-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G001-C001-capture.txt",
+          "size": 735
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G001-C002-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G001-C002-capture.txt",
+          "size": 971
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G001-C003-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G001-C003-capture.txt",
+          "size": 2989
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G002-C001-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G002-C001-capture.txt",
+          "size": 3327
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G002-C002-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G002-C002-capture.txt",
+          "size": 934
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G002-C003-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G002-C003-capture.txt",
+          "size": 566
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G003-C001-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G003-C001-capture.txt",
+          "size": 5095
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G003-C002-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G003-C002-capture.txt",
+          "size": 1470
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G003-C003-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G003-C003-capture.txt",
+          "size": 1671
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G004-C001-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G004-C001-capture.txt",
+          "size": 1560
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G004-C002-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G004-C002-capture.txt",
+          "size": 1552
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G004-C003-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G004-C003-capture.txt",
+          "size": 517
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G005-C001-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G005-C001-capture.txt",
+          "size": 907
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G005-C002-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G005-C002-capture.txt",
+          "size": 1455
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G005-C003-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G005-C003-capture.txt",
+          "size": 770
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G006-C001-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G006-C001-capture.txt",
+          "size": 5310
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G006-C002-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G006-C002-capture.txt",
+          "size": 1552
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\G006-C003-capture.txt",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/G006-C003-capture.txt",
+          "size": 5270
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\frontend\\final-browser-qa\\playwright-pass-final\\.last-run.json",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/frontend/final-browser-qa/playwright-pass-final/.last-run.json",
+          "size": 45
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\move-only-reproducibility.md",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/move-only-reproducibility.md",
+          "size": 31021
+        },
+        {
+          "absolutePath": "C:\\Users\\user\\Desktop\\KPI-Server-latest\\.superloopy\\sessions\\frontend-debt-refactor-20260713\\evidence\\final-frontend-static-audit.md",
+          "relativePath": ".superloopy/sessions/frontend-debt-refactor-20260713/evidence/final-frontend-static-audit.md",
+          "size": 13012
+        }
+      ]
+    }
+  },
+  "sessionId": "frontend-debt-refactor-20260713"
+}

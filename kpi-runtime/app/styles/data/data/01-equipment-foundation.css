@@ -1,0 +1,587 @@
+        /* Data management */
+        .data-equipment-page {
+            width: 100%;
+            margin: 0;
+            padding: 14px 16px 20px;
+            min-height: 100%;
+            height: 100%;
+            color: #314465;
+        }
+        #content-container.is-data-equipment-browser-fullscreen.is-data-equipment-browser-fullscreen {
+            width: 100vw;
+            height: 100dvh;
+            overflow: auto;
+            border: 0;
+            border-radius: 0;
+            background: #eef3f8;
+            box-shadow: none;
+            padding: 0;
+        }
+        #content-container.is-data-equipment-browser-fullscreen .data-equipment-page {
+            width: 100%;
+            min-height: 100dvh;
+            padding: 14px 16px 20px;
+        }
+        .data-equipment-topbar {
+            display: grid;
+            grid-template-columns: 62px minmax(0, 1fr) minmax(160px, 220px);
+            gap: 16px;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+        .data-equipment-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            color: #0e72da;
+            font-weight: 900;
+        }
+        .data-equipment-brand-mark {
+            width: 42px;
+            height: 42px;
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: #eaf4ff;
+            border: 1px solid #cfe4ff;
+            color: #0e72da;
+            font-size: 1rem;
+        }
+        .data-equipment-brand strong {
+            display: block;
+            font-size: 1.35rem;
+            line-height: 1;
+            color: #0f63c8;
+        }
+        .data-equipment-brand small {
+            display: block;
+            margin-top: 3px;
+            color: #64748b;
+            font-size: 0.68rem;
+            font-weight: 800;
+        }
+        .data-equipment-title-block {
+            text-align: center;
+        }
+        .data-equipment-title-block h2 {
+            margin: 0;
+            color: #243d68;
+            font-size: clamp(1.55rem, 2.1vw, 2.05rem);
+            font-weight: 900;
+            line-height: 1.1;
+        }
+        .data-equipment-title-block p {
+            margin: 4px 0 0;
+            color: #445d84;
+            font-size: 0.95rem;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+        }
+        .data-equipment-title-pair {
+            display: flex;
+            align-items: stretch;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+        }
+        .data-equipment-title-back {
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            border: 1px solid #d7e2ef;
+            border-radius: 7px;
+            background: #ffffff;
+            color: #1d4ed8;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        .data-equipment-title-back:hover,
+        .data-equipment-title-back:focus-visible {
+            border-color: #bfdbfe;
+            background: #eff6ff;
+            outline: none;
+        }
+        .data-equipment-title-pair .data-equipment-title-team,
+        .data-equipment-title-pair .data-equipment-title-room,
+        .data-equipment-title-pair .data-equipment-title-name {
+            color: #ffffff;
+            font-size: 1.48rem;
+            font-weight: 900;
+        }
+        .data-equipment-title-input {
+            min-width: 0;
+            height: 38px;
+            border: 1px solid rgba(255, 255, 255, 0.26);
+            border-radius: 7px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            padding: 0 11px;
+            text-align: center;
+            font: inherit;
+            line-height: 1.1;
+        }
+        .data-equipment-title-input::placeholder {
+            color: rgba(255, 255, 255, 0.56);
+        }
+        .data-equipment-title-input:focus {
+            outline: 2px solid rgba(47, 226, 124, 0.34);
+            border-color: rgba(47, 226, 124, 0.72);
+            background: rgba(255, 255, 255, 0.16);
+        }
+        .data-equipment-title-input.data-equipment-title-room {
+            width: min(150px, 100%);
+        }
+        .data-equipment-title-input.data-equipment-title-name {
+            width: min(380px, 100%);
+        }
+        .data-equipment-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .data-equipment-print-btn {
+            min-height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 1px solid #dbe7f5;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #415c86;
+            padding: 0 14px;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 10px 28px rgba(27, 53, 89, 0.06);
+        }
+        .data-equipment-print-btn:hover {
+            border-color: #bfd5ed;
+            color: #0d67d6;
+        }
+        .data-equipment-topbar-action {
+            min-height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 1px solid #dbe7f5;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #415c86;
+            padding: 0 13px;
+            font-size: 0.82rem;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 10px 28px rgba(27, 53, 89, 0.06);
+        }
+        .data-equipment-topbar-action:hover {
+            border-color: #bfd5ed;
+            color: #0d67d6;
+        }
+        .data-equipment-card-status-button.is-running {
+            border-color: #86efac;
+            background: #dcfce7;
+            color: #166534;
+        }
+        .data-equipment-card-status-button.is-stop {
+            border-color: #fecaca;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .data-equipment-card-status-button.is-check {
+            border-color: #fbbf24;
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .data-equipment-topbar-danger-action {
+            border-color: #dc2626;
+            background: #dc2626;
+            color: #ffffff;
+        }
+        .data-equipment-topbar-clear-action {
+            border-color: #fdba74;
+            background: #fff7ed;
+            color: #9a3412;
+        }
+        .data-equipment-layout {
+            display: grid;
+            gap: 12px;
+        }
+        .data-equipment-hero-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 8px;
+            align-items: stretch;
+        }
+        .data-equipment-hero-photo {
+            min-width: 0;
+            display: grid;
+            align-items: start;
+        }
+        .data-equipment-hero-photo .data-equipment-photo-card {
+            width: 100%;
+            min-height: 0;
+            aspect-ratio: 16 / 5;
+        }
+        .data-equipment-hero-side {
+            min-width: 0;
+            display: grid;
+            grid-template-rows: auto auto minmax(0, 1fr);
+            gap: 6px;
+            align-content: stretch;
+        }
+        .data-equipment-hero-updated {
+            min-width: 0;
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+            padding: 5px 8px;
+            border: 1px solid #dbe6f3;
+            border-radius: 8px;
+            background: #f8fbff;
+            color: #334155;
+            font-family: "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif;
+            letter-spacing: 0;
+        }
+        .data-equipment-card-heading {
+            min-width: 0;
+            display: grid;
+            grid-template-columns: minmax(220px, 0.28fr) minmax(0, 1fr);
+            gap: 8px;
+            align-items: center;
+        }
+        .data-equipment-card-heading .data-equipment-hero-updated {
+            min-height: 50px;
+            margin-bottom: 0;
+        }
+        .data-equipment-hero-updated span {
+            flex: 0 0 auto;
+            color: #64748b;
+            font-size: 0.82rem;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+        .data-equipment-hero-updated strong {
+            min-width: 0;
+            overflow: hidden;
+            color: #1f2a44;
+            font-size: 0.86rem;
+            font-weight: 900;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .data-equipment-hero-side .data-equipment-photo-title-row {
+            grid-template-columns: minmax(118px, 0.9fr) minmax(84px, 0.68fr) minmax(150px, 1.2fr);
+            gap: 4px;
+        }
+        .data-equipment-hero-side .data-equipment-title-name-field {
+            grid-column: auto;
+        }
+        .data-equipment-hero-side .data-equipment-title-field {
+            --equipment-title-value-left: 10px;
+        }
+        .data-equipment-hero-side .data-equipment-title-team-field {
+            --equipment-title-value-left: 38px;
+        }
+        .data-equipment-hero-side .data-equipment-title-room-field {
+            --equipment-title-value-left: 10px;
+        }
+        .data-equipment-hero-side .data-equipment-title-name-field {
+            --equipment-title-value-left: 10px;
+        }
+        .data-equipment-hero-side .data-equipment-title-team-icon {
+            left: 8px;
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            font-size: 0.68rem;
+        }
+        .data-equipment-hero-side .data-equipment-photo-title-row .data-equipment-title-input {
+            font-size: 0.82rem;
+        }
+        .data-equipment-hero-side .data-equipment-photo-title-row .data-equipment-title-input {
+            height: 34px;
+            padding-right: 8px;
+            box-shadow: 0 8px 18px rgba(27, 53, 89, 0.05);
+        }
+        .data-equipment-hero-doc-card {
+            min-width: 0;
+            min-height: 0;
+            display: grid;
+            grid-template-rows: minmax(0, 1fr);
+            align-content: stretch;
+            gap: 5px;
+            padding: 6px 8px;
+        }
+        .data-equipment-hero-doc-card .data-equipment-doc-list {
+            overflow: auto;
+            gap: 5px;
+            min-height: 0;
+        }
+        .data-equipment-hero-doc-card .data-equipment-doc-list-item {
+            grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+            gap: 5px;
+            padding: 4px;
+        }
+        .data-equipment-hero-doc-card .data-equipment-doc-list-item input[data-equipment-field="title"],
+        .data-equipment-hero-doc-card .data-equipment-document-picker {
+            min-height: 27px;
+        }
+        .data-equipment-top-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 12px;
+            align-items: stretch;
+        }
+        .data-equipment-top-grid .data-equipment-photo-card {
+            width: min(100%, 1600px);
+            justify-self: center;
+            min-height: 0;
+            aspect-ratio: 16 / 5;
+        }
+        .data-equipment-photo-title-row {
+            --equipment-team-color: #2563eb;
+            --equipment-team-color-2: #1d4ed8;
+            --equipment-team-tint: #eff6ff;
+            min-width: 0;
+            display: grid;
+            grid-template-columns: minmax(180px, 0.62fr) minmax(145px, 0.48fr) minmax(260px, 1.4fr);
+            align-items: center;
+            gap: 8px;
+            border: 0;
+            background: transparent;
+            padding: 0;
+        }
+        .data-equipment-title-field {
+            min-width: 0;
+            position: relative;
+            display: block;
+            --equipment-title-value-left: 12px;
+        }
+        .data-equipment-title-room-field {
+            --equipment-title-value-left: 12px;
+        }
+        .data-equipment-title-name-field {
+            --equipment-title-value-left: 12px;
+        }
+        .data-equipment-title-team-field {
+            --equipment-title-value-left: 50px;
+        }
+        .data-equipment-title-team-icon {
+            position: absolute;
+            z-index: 2;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid color-mix(in srgb, var(--equipment-team-color) 24%, #ffffff);
+            border-radius: 7px;
+            background: color-mix(in srgb, var(--equipment-team-color) 14%, #ffffff);
+            color: var(--equipment-team-color);
+            font-size: 0.8rem;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+            pointer-events: none;
+        }
+        .data-equipment-title-team-icon svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+        }
+        .data-equipment-photo-title-row .data-equipment-title-input {
+            width: 100%;
+            min-width: 0;
+            height: 50px;
+            border: 1px solid #d4deeb;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #172b4d;
+            padding: 0 14px;
+            font-family: "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif;
+            font-size: 1.13rem;
+            font-weight: 900;
+            line-height: 1.1;
+            letter-spacing: 0;
+            text-align: left;
+            box-shadow: 0 10px 26px rgba(27, 53, 89, 0.06);
+        }
+        .data-equipment-photo-title-row .data-equipment-title-field .data-equipment-title-input {
+            padding-left: var(--equipment-title-value-left);
+        }
+        .data-equipment-photo-title-row .data-equipment-title-input:focus {
+            border-color: #8bb8ee;
+            outline: 3px solid rgba(37, 99, 235, 0.18);
+            background: #ffffff;
+        }
+        .data-equipment-photo-title-row select.data-equipment-title-input {
+            cursor: pointer;
+        }
+        .data-equipment-bottom-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            align-items: start;
+        }
+        .data-equipment-card-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 12px;
+            align-items: stretch;
+        }
+        .data-equipment-card,
+        .data-equipment-photo-card {
+            overflow: hidden;
+            background: #ffffff;
+            border: 1px solid #dbe7f5;
+            border-radius: 8px;
+            box-shadow: 0 1px 2px rgba(27, 53, 89, 0.04), 0 10px 30px rgba(27, 53, 89, 0.05);
+        }
+        .data-equipment-card-pad,
+        .data-equipment-detail-card,
+        .data-equipment-history-card,
+        .data-equipment-note-card,
+        .data-equipment-doc-card {
+            padding: 14px 16px;
+        }
+        .data-equipment-history-card,
+        .data-equipment-note-card,
+        .data-equipment-doc-card {
+            display: grid;
+            align-content: start;
+            min-width: 0;
+        }
+        .data-equipment-photo-card {
+            position: relative;
+            min-height: 0;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 251, 255, 0.92)),
+                repeating-linear-gradient(45deg, transparent 0, transparent 14px, rgba(32, 110, 205, 0.03) 14px, rgba(32, 110, 205, 0.03) 28px);
+        }
+        .data-equipment-photo-card.is-locked {
+            grid-template-rows: minmax(0, 1fr) auto auto;
+            align-items: stretch;
+            cursor: default;
+        }
+        .data-equipment-photo-card:focus-visible {
+            outline: 3px solid rgba(37, 99, 235, 0.24);
+            outline-offset: 3px;
+        }
+        .data-equipment-photo-placeholder-actions .data-equipment-photo-paste {
+            border-color: #a7d7c5;
+            background: #ecfdf5;
+            color: #047857;
+        }
+        .data-equipment-photo-attach-key {
+            position: absolute;
+            z-index: 4;
+            left: 10px;
+            top: 10px;
+            min-height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border: 1px solid rgba(37, 99, 235, 0.22);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #1d4ed8;
+            padding: 0 11px;
+            font-size: 0.73rem;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 10px 24px rgba(22, 44, 78, 0.14);
+        }
+        .data-equipment-photo-attach-key:hover {
+            border-color: rgba(37, 99, 235, 0.4);
+            background: #eff6ff;
+            color: #0d67d6;
+        }
+        .data-equipment-photo-revert {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            min-height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border: 1px solid rgba(49, 80, 111, 0.2);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #31506f;
+            padding: 0 10px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(27, 53, 89, 0.12);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-3px);
+            transition: opacity 0.16s ease, transform 0.16s ease;
+        }
+        .data-equipment-photo-card:hover .data-equipment-photo-revert,
+        .data-equipment-photo-card:focus-within .data-equipment-photo-revert {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+        .data-equipment-photo-revert:hover {
+            border-color: rgba(180, 35, 24, 0.3);
+            color: #b42318;
+        }
+        .data-equipment-photo-placeholder {
+            display: grid;
+            gap: 7px;
+            justify-items: center;
+            color: #63748e;
+            text-align: center;
+            font-weight: 800;
+        }
+        .data-equipment-photo-placeholder-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .data-equipment-photo-placeholder-actions button {
+            min-height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border: 1px solid #c8d7ea;
+            border-radius: 7px;
+            background: #f8fbff;
+            color: #244766;
+            padding: 0 10px;
+            font-size: 0.74rem;
+            font-weight: 900;
+            cursor: pointer;
+        }
+        .data-equipment-photo-placeholder-actions button:hover {
+            border-color: #8fb9ef;
+            background: #eff6ff;
+            color: #0d67d6;
+        }
+        .data-equipment-photo-placeholder i {
+            font-size: 2.2rem;
+            color: #8d99aa;
+        }
+
