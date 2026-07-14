@@ -1,11 +1,3 @@
-# Legacy internal server runtime state
-work-log/internal-server/data/*
-!work-log/internal-server/data/.gitkeep
-work-log/internal-server/files/*
-!work-log/internal-server/files/.gitkeep
-work-log/internal-server/logs/*
-!work-log/internal-server/logs/.gitkeep
-
 # Active internal server runtime state
 kpi-runtime/internal-server/.env
 kpi-runtime/internal-server/.env.*
@@ -28,9 +20,14 @@ kpi-runtime/internal-server/var/*
 .codex-run/
 **/internal-server/.codex-run/
 .claude/scheduled_tasks.lock
+.claude/settings.local.json
+.superloopy/
 .playwright-mcp/
 test-results/
 *.log
+
+# Session notes and work logs are local artifacts, not repository structure.
+/work-log/
 
 # Imported handoff folders are review inputs, not repo structure.
 kpi-server-repository-map-handoff/

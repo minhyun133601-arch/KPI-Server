@@ -46,6 +46,7 @@ function createContext() {
   const confirmMessages = [];
   const alertMessages = [];
   let latestSavedPayload = null;
+  let timeoutCallback = null;
   const history = {
     TEAM_KEYS: ['team1part1'],
     TeamInfo: {
@@ -156,6 +157,13 @@ function createContext() {
     Boolean,
     Date,
     JSON,
+    setTimeout(callback) {
+      timeoutCallback = callback;
+      return 1;
+    },
+    clearTimeout() {
+      timeoutCallback = null;
+    },
   };
   context.window = context;
   context.globalThis = context;
@@ -172,6 +180,11 @@ function createContext() {
   context.__confirmMessages = confirmMessages;
   context.__alertMessages = alertMessages;
   context.__getSavedPayload = () => latestSavedPayload;
+  context.__runTimeout = () => {
+    const callback = timeoutCallback;
+    timeoutCallback = null;
+    callback?.();
+  };
   vm.createContext(context);
 
   splitSources.forEach(({ filename, source }) => {
@@ -242,10 +255,59 @@ function seedRecordModalElements(elements) {
   ].forEach(id => {
     elements.set(id, createFormElement(''));
   });
+  elements.get('deleteModal').hidden = true;
   elements.set('recordModal', {
+    hidden: true,
     classList: createClassList(),
   });
 }
+
+test('work history overlays use native hidden state outside their active lifecycle', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  const elements = context.__elements;
+  seedRecordModalElements(elements);
+
+  const recordModal = elements.get('recordModal');
+  const deleteModal = elements.get('deleteModal');
+  assert.equal(recordModal.hidden, true);
+  assert.equal(deleteModal.hidden, true);
+
+  view.openRecordModal('team1part1');
+  assert.equal(recordModal.hidden, false);
+  assert.equal(recordModal.classList.contains('show'), true);
+
+  view.closeRecordModal({ force: true });
+  assert.equal(recordModal.hidden, true);
+  assert.equal(recordModal.classList.contains('show'), false);
+
+  view.openDeleteModal('team1part1', 0);
+  assert.equal(deleteModal.hidden, false);
+  assert.equal(deleteModal.classList.contains('show'), true);
+
+  view.closeDeleteModal();
+  assert.equal(deleteModal.hidden, true);
+  assert.equal(deleteModal.classList.contains('show'), false);
+});
+
+test('work history toast is natively hidden before and after its visible interval', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  const message = { textContent: '' };
+  const toast = createFormElement('');
+  toast.hidden = true;
+  toast.querySelector = selector => selector === '.toast-message' ? message : null;
+  context.__elements.set('saveToast', toast);
+
+  view.showToast('saved');
+  assert.equal(toast.hidden, false);
+  assert.equal(toast.classList.contains('show'), true);
+  assert.equal(message.textContent, 'saved');
+
+  context.__runTimeout();
+  assert.equal(toast.hidden, true);
+  assert.equal(toast.classList.contains('show'), false);
+});
 
 test('work history split action files expose view and history hooks after bootstrap', () => {
   const context = createContext();
@@ -646,4 +708,30 @@ test('work history overlay close confirms when the record form has unsaved edits
   assert.equal(view.closeOverlays({ confirm: true }), true);
   assert.equal(elements.get('recordModal').classList.contains('show'), false);
   assert.match(context.__confirmMessages[0], /저장되지 않았습니다/);
+});
+
+test('work history modal cancel protects unsaved edits before closing', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  const elements = context.__elements;
+  seedRecordModalElements(elements);
+
+  view.openRecordModal('team1part1');
+  elements.get('recordWorkContent').value = 'Unsaved work';
+
+  const target = {
+    closest(selector) {
+      return selector === '[data-action]' ? { dataset: { action: 'close-record-modal' } } : null;
+    },
+    classList: { contains: () => false },
+  };
+
+  context.__confirmResult = false;
+  view.handleRootClick({ target });
+  assert.equal(elements.get('recordModal').classList.contains('show'), true);
+
+  context.__confirmResult = true;
+  view.handleRootClick({ target });
+  assert.equal(elements.get('recordModal').classList.contains('show'), false);
+  assert.equal(context.__confirmMessages.length, 2);
 });

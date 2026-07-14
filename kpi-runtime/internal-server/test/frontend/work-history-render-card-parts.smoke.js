@@ -302,11 +302,11 @@ test('work history overview keyword filter finds records by title and assignee',
 });
 
 test('kpi html loads work history render card parts between render and print', () => {
-  const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=249');
-  const paginationIndex = kpiHtml.indexOf('runtime/work/history/render/pagination.js?v=1');
-  const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=236');
-  const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=235');
+  const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js');
+  const paginationIndex = kpiHtml.indexOf('runtime/work/history/render/pagination.js');
+  const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js');
+  const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(renderIndex >= 0, 'work history render loader is missing');

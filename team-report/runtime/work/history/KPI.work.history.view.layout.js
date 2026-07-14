@@ -13,7 +13,7 @@
         setShadowHost
     } = history;
 
-    const CSS_PATH = 'team-report/runtime/work/history/KPI.work.history.css?v=274';
+    const CSS_PATH = 'team-report/runtime/work/history/KPI.work.history.css';
     const COMPANY_LOGO_SRC = '/shared-assets/logo.jpg';
     const OVERVIEW_KEY = 'overview';
     const DRAG_SCROLL_THRESHOLD = 6;
@@ -74,14 +74,14 @@
             container.innerHTML = '';
             host = document.createElement('div');
             host.className = 'kpi-work-history-host';
-            host.style.display = 'block';
+            host.hidden = true;
+            host.setAttribute('aria-busy', 'true');
             host.style.width = '100%';
             host.style.height = '100%';
             host.style.minHeight = '0';
             host.attachShadow({ mode: 'open' });
             container.appendChild(host);
             setShadowHost(host);
-            renderShell();
             view.bindEvents?.();
         } else {
             setShadowHost(host);
@@ -111,6 +111,7 @@
                 ${view.buildShellHtml?.() || ''}
             </div>
         `;
+        view.bindShadowStylesheetGate?.(root, state.shadowHost);
     }
 
     function initDateFilterLimits() {

@@ -207,12 +207,12 @@ test('work history core split files expose normalized payload and storage hooks 
 });
 
 test('kpi html loads work history core split files before layout bootstrap', () => {
-  const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js?v=6');
-  const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js?v=219');
-  const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js?v=5');
-  const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js?v=5');
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=280');
+  const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js');
+  const configIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.config.js');
+  const coreIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.js');
+  const recordsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.records.js');
+  const storageIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.core.storage.js');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(configIndex >= 0, 'work history core config loader is missing');

@@ -69,12 +69,14 @@
         if (!toast) return;
         const messageEl = toast.querySelector('.toast-message');
         if (messageEl) messageEl.textContent = message;
+        toast.hidden = false;
         toast.classList.add('show');
         if (state.toastTimer) {
             clearTimeout(state.toastTimer);
         }
         state.toastTimer = setTimeout(() => {
             toast.classList.remove('show');
+            toast.hidden = true;
             state.toastTimer = null;
         }, 2400);
     }

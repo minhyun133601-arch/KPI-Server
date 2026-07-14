@@ -47,7 +47,17 @@
     }
 
     function getRecordSaveButtonLabel() {
-        return isProductionWorkspace() ? '보고서 저장' : '저장';
+        return isProductionWorkspace() ? '보고서 저장' : '작업내역 저장';
+    }
+
+    function updateFieldLabel(labelElement, text) {
+        if (!labelElement) return;
+        const textElement = labelElement.querySelector?.('span:first-child');
+        if (textElement) {
+            textElement.textContent = text;
+            return;
+        }
+        labelElement.textContent = text;
     }
 
     function getDeleteModalMessage() {
@@ -72,8 +82,12 @@
         const modalTitleEl = getElement('modalTitle');
         const workContentLabelEl = getElement('recordWorkContentLabel');
         const remarksLabelEl = getElement('recordRemarksLabel');
+        const classificationTitleEl = getElement('recordClassificationSectionTitle');
+        const contentTitleEl = getElement('recordContentSectionTitle');
         const workContentInput = getElement('recordWorkContent');
         const remarksInput = getElement('recordRemarks');
+        const workContentHelpEl = getElement('recordWorkContentHelp');
+        const remarksHelpEl = getElement('recordRemarksHelp');
         const saveButtonEl = getElement('recordSaveButton');
         const deleteTitleEl = getElement('deleteModalTitle');
         const deleteMessageEl = getElement('deleteModalMessage');
@@ -105,20 +119,36 @@
             modalTitleEl.textContent = getRecordModalTitle(false);
         }
         if (workContentLabelEl) {
-            workContentLabelEl.textContent = isProductionReport ? '보고 제목 / 핵심 내용' : '제목';
+            updateFieldLabel(workContentLabelEl, isProductionReport ? '보고 제목 및 핵심 내용' : '작업 제목 및 상세 내용');
         }
         if (remarksLabelEl) {
-            remarksLabelEl.textContent = isProductionReport ? '보고 메모' : '비고';
+            updateFieldLabel(remarksLabelEl, isProductionReport ? '보고 메모' : '특이사항 및 후속 조치');
+        }
+        if (classificationTitleEl) {
+            classificationTitleEl.textContent = isProductionReport ? '비용 정보' : '분류 및 실적';
+        }
+        if (contentTitleEl) {
+            contentTitleEl.textContent = isProductionReport ? '보고 내용' : '기록 내용';
         }
         if (workContentInput) {
             workContentInput.placeholder = isProductionReport
-                ? '실적 보고 제목과 핵심 내용을 적습니다.'
-                : '작업 제목 또는 핵심 내용을 적습니다.';
+                ? '첫 줄에 보고 제목을 쓰고, 다음 줄부터 실적과 핵심 내용을 기록합니다.'
+                : '첫 줄에 작업 제목을 쓰고, 다음 줄부터 현상, 조치, 결과를 기록합니다.';
         }
         if (remarksInput) {
             remarksInput.placeholder = isProductionReport
-                ? '실적 수치, 특이사항, 후속 메모를 적습니다.'
-                : '특이사항, 후속 메모, 참고 내용을 적습니다.';
+                ? '실적 수치, 특이사항, 후속 메모를 기록합니다.'
+                : '특이사항, 남은 조치, 다음 확인 일정을 기록합니다.';
+        }
+        if (workContentHelpEl) {
+            workContentHelpEl.textContent = isProductionReport
+                ? '첫 줄은 보고서 제목으로 표시됩니다. 다음 줄부터 실적과 근거를 구체적으로 기록하세요.'
+                : '첫 줄은 목록 제목으로 표시됩니다. 다음 줄부터 현상, 조치, 결과를 구체적으로 기록하세요.';
+        }
+        if (remarksHelpEl) {
+            remarksHelpEl.textContent = isProductionReport
+                ? '추가 확인이 필요한 수치나 다음 보고에서 이어갈 내용을 적습니다.'
+                : '작업 후 남은 사항이나 다음 담당자가 확인할 내용을 적습니다.';
         }
         if (saveButtonEl) {
             saveButtonEl.textContent = getRecordSaveButtonLabel();
@@ -135,12 +165,12 @@
         if (guideRequiredEl) {
             guideRequiredEl.textContent = isProductionReport
                 ? '기간, 팀, 작성자, 보고 내용은 필수입니다.'
-                : '기간, 팀, 작업자, 업무내용은 필수입니다.';
+                : '분류, 실적 구분, 기간, 팀, 작업자, 작업 내용은 필수입니다.';
         }
         if (guideCostEl) {
             guideCostEl.textContent = isProductionReport
-                ? '비용은 실적 보고에 필요한 경우에만 입력합니다.'
-                : '비용은 필요한 경우에만 입력합니다.';
+                ? '비용과 후속 메모는 필요한 경우에만 입력합니다.'
+                : '비용과 후속 메모는 필요한 경우에만 입력합니다.';
         }
         queryAll('[data-role="add-record-label"]').forEach((node) => {
             node.textContent = getAddRecordLabel();

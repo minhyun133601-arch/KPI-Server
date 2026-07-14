@@ -207,15 +207,15 @@ test('work history render print registry exposes print helpers and bootstrap sna
 });
 
 test('kpi html loads work history render print between render and view bootstrap', () => {
-  const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=249');
-  const paginationIndex = kpiHtml.indexOf('runtime/work/history/render/pagination.js?v=1');
-  const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js?v=236');
-  const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js?v=235');
-  const actionsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.js?v=244');
-  const searchIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.search.js?v=6');
-  const recordIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.record.js?v=6');
-  const documentIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.document.js?v=5');
+  const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js');
+  const paginationIndex = kpiHtml.indexOf('runtime/work/history/render/pagination.js');
+  const cardPartsIndex = kpiHtml.indexOf('runtime/work/history/render/card-parts.js');
+  const printIndex = kpiHtml.indexOf('runtime/work/history/render/print.js');
+  const actionsIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.js');
+  const searchIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.search.js');
+  const recordIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.record.js');
+  const documentIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.actions.document.js');
   const viewIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.js');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');

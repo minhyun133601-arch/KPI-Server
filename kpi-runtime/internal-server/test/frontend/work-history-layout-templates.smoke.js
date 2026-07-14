@@ -9,6 +9,7 @@ const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.
 
 const layoutPath = path.join(repoRoot, 'team-report', 'runtime', 'work', 'history', 'KPI.work.history.view.layout.js');
 const adapterPath = path.join(repoRoot, 'team-report', 'runtime', 'work', 'history', 'KPI.work.history.browser-adapter.js');
+const styleGatePath = path.join(repoRoot, 'team-report', 'runtime', 'work', 'history', 'layout', 'style-gate.js');
 const workspaceStatePath = path.join(repoRoot, 'team-report', 'runtime', 'work', 'history', 'layout', 'workspace-state.js');
 const templatesPath = path.join(repoRoot, 'team-report', 'runtime', 'work', 'history', 'layout', 'templates.js');
 const historyCssPath = path.join(repoRoot, 'team-report', 'runtime', 'work', 'history', 'KPI.work.history.css');
@@ -23,6 +24,7 @@ const expectedHistoryStyleImports = [
 ];
 const adapterSource = await fs.readFile(adapterPath, 'utf8');
 const layoutSource = await fs.readFile(layoutPath, 'utf8');
+const styleGateSource = await fs.readFile(styleGatePath, 'utf8');
 const workspaceStateSource = await fs.readFile(workspaceStatePath, 'utf8');
 const templatesSource = await fs.readFile(templatesPath, 'utf8');
 const historyCssManifestSource = await fs.readFile(historyCssPath, 'utf8');
@@ -127,6 +129,7 @@ function createContext(options = {}) {
   vm.createContext(context);
   vm.runInContext(adapterSource, context, { filename: 'KPI.work.history.browser-adapter.js' });
   vm.runInContext(layoutSource, context, { filename: 'KPI.work.history.view.layout.js' });
+  vm.runInContext(styleGateSource, context, { filename: 'layout/style-gate.js' });
   vm.runInContext(workspaceStateSource, context, { filename: 'layout/workspace-state.js' });
   vm.runInContext(templatesSource, context, { filename: 'layout/templates.js' });
   return context;
@@ -178,30 +181,99 @@ test('work history layout templates registry exposes shell and modal builders', 
   assert.doesNotMatch(shellHtml, /tab-navigation/);
   assert.doesNotMatch(shellHtml, /id="keywordSearch"/);
   assert.match(shellHtml, /overview-records/);
+  assert.match(shellHtml, /id="saveToast"[^>]*hidden/);
   assert.match(shellHtml, /recordModal/);
+  assert.match(shellHtml, /id="recordModal"[^>]*hidden/);
   assert.match(shellHtml, /id="recordCancelButton"[\s\S]*data-action="close-record-modal"[\s\S]*>취소<\/button>/);
   assert.match(shellHtml, /id="recordDeleteButton"[\s\S]*data-action="delete-current-record"[\s\S]*hidden[\s\S]*>삭제<\/button>/);
   assert.match(shellHtml, /id="recordSaveButton"[\s\S]*data-action="save-record"/);
-  assert.match(
-    shellHtml,
-    /id="recordCategoryGroup"[\s\S]*record-meta-row[\s\S]*recordCategory[\s\S]*recordResultType[\s\S]*recordAssignee[\s\S]*recordCost/
-  );
+  assert.match(shellHtml, /id="recordModal"[\s\S]*role="dialog"[\s\S]*aria-modal="true"/);
+  assert.match(shellHtml, /record-sheet-section[\s\S]*기본 정보[\s\S]*분류 및 실적[\s\S]*기록 내용/);
+  assert.match(shellHtml, /id="recordCategoryGroup"[\s\S]*record-basic-grid[\s\S]*recordTeam[\s\S]*recordStartDate[\s\S]*recordEndDate[\s\S]*recordAssignee/);
+  assert.match(shellHtml, /record-classification-grid[\s\S]*recordCategory[\s\S]*recordResultType[\s\S]*recordCost/);
+  assert.match(shellHtml, /첫 줄은 목록 제목으로 표시됩니다/);
   assert.match(shellHtml, /deleteModal/);
+  assert.match(shellHtml, /id="deleteModal"[^>]*hidden/);
+});
+
+test('work history shell stays hidden until its shadow stylesheet settles', () => {
+  const context = createContext();
+  const view = context.KpiWorkHistory.view;
+  const state = context.KpiWorkHistory.state;
+  const listeners = {};
+  const attributes = new Map();
+  const stylesheet = {
+    addEventListener(type, listener) {
+      listeners[type] = listener;
+    },
+  };
+  let markup = '';
+  const root = {
+    get innerHTML() {
+      return markup;
+    },
+    set innerHTML(value) {
+      markup = String(value || '');
+    },
+    querySelector(selector) {
+      return selector === 'link[rel="stylesheet"]' && markup.includes('<link') ? stylesheet : null;
+    },
+  };
+  const host = {
+    hidden: false,
+    setAttribute(name, value) {
+      attributes.set(name, value);
+    },
+    removeAttribute(name) {
+      attributes.delete(name);
+    },
+  };
+  state.shadowHost = host;
+  state.shadowRoot = root;
+
+  view.renderShell();
+  assert.equal(host.hidden, true);
+  assert.equal(attributes.get('aria-busy'), 'true');
+  assert.equal(typeof listeners.load, 'function');
+  assert.equal(typeof listeners.error, 'function');
+
+  listeners.load();
+  assert.equal(host.hidden, false);
+  assert.equal(attributes.has('aria-busy'), false);
+
+  view.renderShell();
+  listeners.error();
+  assert.equal(host.hidden, false);
+  assert.match(root.innerHTML, /role="alert"/);
+  assert.match(root.innerHTML, /새로고침/);
+
+  const ensureMountBlock = layoutSource.slice(
+    layoutSource.indexOf('function ensureShadowMount'),
+    layoutSource.indexOf('function syncViewportLayout')
+  );
+  assert.doesNotMatch(ensureMountBlock, /renderShell\(\)/);
 });
 
 test('kpi html loads work history layout templates between layout and render', () => {
-  const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js?v=1');
-  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js?v=280');
-  const workspaceStateIndex = kpiHtml.indexOf('runtime/work/history/layout/workspace-state.js?v=7');
-  const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js?v=266');
-  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js?v=249');
+  const historyAssetPaths = [...kpiHtml.matchAll(/src="([^"]*runtime\/work\/history\/[^"]+)"/g)]
+    .map((match) => match[1]);
+  const adapterIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.browser-adapter.js');
+  const layoutIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.layout.js');
+  const styleGateIndex = kpiHtml.indexOf('runtime/work/history/layout/style-gate.js');
+  const workspaceStateIndex = kpiHtml.indexOf('runtime/work/history/layout/workspace-state.js');
+  const templatesIndex = kpiHtml.indexOf('runtime/work/history/layout/templates.js');
+  const renderIndex = kpiHtml.indexOf('runtime/work/history/KPI.work.history.view.render.js');
 
   assert.ok(adapterIndex >= 0, 'work history browser adapter loader is missing');
   assert.ok(layoutIndex >= 0, 'work history layout loader is missing');
+  assert.ok(styleGateIndex >= 0, 'work history style gate loader is missing');
   assert.ok(layoutIndex > adapterIndex, 'work history layout must load after browser adapter');
-  assert.ok(workspaceStateIndex > layoutIndex, 'work history workspace state must load after layout.js');
+  assert.ok(styleGateIndex > layoutIndex, 'work history style gate must load after layout.js');
+  assert.ok(workspaceStateIndex > styleGateIndex, 'work history workspace state must load after style gate');
   assert.ok(templatesIndex > workspaceStateIndex, 'work history layout templates must load after workspace state');
   assert.ok(renderIndex > templatesIndex, 'work history render must load after layout templates');
+  assert.ok(historyAssetPaths.length > 0, 'work history asset loaders are missing');
+  assert.ok(historyAssetPaths.every((assetPath) => !assetPath.includes('?v=')), 'work history asset loaders must be version-free');
 });
 
 test('work history CSS keeps the stable shadow stylesheet URL while importing split chunks', async () => {
@@ -209,11 +281,15 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   const view = context.KpiWorkHistory.view;
   const { importHrefs, sources } = await readImportedHistoryStyles();
 
-  assert.equal(view.CSS_PATH, 'team-report/runtime/work/history/KPI.work.history.css?v=274');
+  assert.equal(view.CSS_PATH, 'team-report/runtime/work/history/KPI.work.history.css');
   assert.match(layoutSource, /<link rel="stylesheet" href="\$\{CSS_PATH\}">/);
+  assert.doesNotMatch(view.CSS_PATH, /\?v=/);
+  assert.ok(importHrefs.every((href) => !href.includes('?v=')), 'work history CSS imports must be version-free');
   assert.match(templatesSource, /pattern="\[0-9\]\*"/);
   assert.match(templatesSource, /<input type="text" id="recordAssignee"/);
-  assert.match(templatesSource, /record-meta-row/);
+  assert.match(templatesSource, /record-basic-grid/);
+  assert.match(templatesSource, /record-classification-grid/);
+  assert.match(templatesSource, /record-sheet-content/);
   assert.match(templatesSource, /type="hidden" id="recordCategoryGroup"/);
   assert.match(templatesSource, /id="recordCategoryField"/);
   assert.match(templatesSource, /id="recordResultTypeField"/);
@@ -232,7 +308,10 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   assert.match(combinedStyles, /\.work-history-app\s*\{/);
   assert.match(combinedStyles, /\.work-history-team-add-button\s*\{/);
   assert.match(combinedStyles, /\.modal\.show\s*\{/);
-  assert.match(combinedStyles, /\.record-meta-row\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)[\s\S]*row-gap:\s*0/);
+  assert.match(combinedStyles, /\.modal \[hidden\]\s*\{[\s\S]*display:\s*none !important/);
+  assert.match(combinedStyles, /\.record-basic-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  assert.match(combinedStyles, /\.record-classification-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(combinedStyles, /\.record-sheet-section\s*\{[\s\S]*border:\s*1px solid var\(--gray-400\)[\s\S]*box-shadow:\s*none|\.modal-content\s*\{[\s\S]*box-shadow:\s*none/);
   assert.match(combinedStyles, /--team2-strong:\s*#047857/);
   assert.match(combinedStyles, /--team3-strong:\s*#5b21b6/);
   assert.match(combinedStyles, /--team4-strong:\s*#b91c1c/);
@@ -247,8 +326,8 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   assert.match(combinedStyles, /history-fullscreen-toggle-icon svg\s*\{[\s\S]*stroke:\s*currentColor[\s\S]*stroke-linejoin:\s*round/);
   assert.match(combinedStyles, /history-search-controls\s*\{[\s\S]*grid-template-columns:\s*minmax\(220px,\s*2fr\)\s*minmax\(124px,\s*1fr\)\s*auto\s*minmax\(0,\s*auto\)/);
   assert.match(combinedStyles, /history-search-panel\s*\{[\s\S]*width:\s*100%[\s\S]*max-width:\s*620px/);
-  assert.match(combinedStyles, /\.modal-footer \.record-modal-action-button\s*\{[\s\S]*min-height:\s*38px[\s\S]*border-radius:\s*7px/);
-  assert.match(combinedStyles, /\.modal-footer \.btn-danger\s*\{[\s\S]*background:\s*#fff5f5[\s\S]*color:\s*#b91c1c/);
+  assert.match(combinedStyles, /\.modal-footer \.record-modal-action-button\s*\{[\s\S]*min-height:\s*var\(--history-control-height\)[\s\S]*border-radius:\s*var\(--history-radius-ledger\)/);
+  assert.match(combinedStyles, /\.modal-footer \.btn-danger\s*\{[\s\S]*background:\s*var\(--team4-soft\)[\s\S]*color:\s*var\(--team4-strong\)/);
   assert.match(combinedStyles, /\.work-history-experiment-team-view\s*\{/);
   assert.match(combinedStyles, /\.report-card-summary\s*\{/);
   assert.match(combinedStyles, /\.record-detail-grid\s*,/);

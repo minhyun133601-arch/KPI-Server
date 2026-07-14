@@ -51,6 +51,26 @@
     --border-radius: 8px;
     --border-radius-lg: 12px;
     --transition: all 0.2s ease;
+    --history-dialog-scrim: rgb(17 24 39 / 0.48);
+    --history-dialog-width: 920px;
+    --history-dialog-compact-width: 420px;
+    --history-dialog-max-height: 92vh;
+    --history-control-height: 40px;
+    --history-textarea-main-height: 144px;
+    --history-textarea-note-height: 96px;
+    --history-radius-ledger: 4px;
+    --history-space-1: 4px;
+    --history-space-2: 8px;
+    --history-space-3: 12px;
+    --history-space-4: 16px;
+    --history-space-5: 20px;
+    --history-space-6: 24px;
+    --history-type-title: 1.04rem;
+    --history-type-input: 0.86rem;
+    --history-type-label: 0.75rem;
+    --history-type-help: 0.7rem;
+    --history-motion-duration: 180ms;
+    --history-motion-ease: ease-out;
 }
 
 * {

@@ -163,7 +163,7 @@
                 return;
             }
             if (action === 'close-record-modal') {
-                view.closeRecordModal?.();
+                view.closeRecordModal?.({ confirm: true });
                 return;
             }
             if (action === 'save-record') {
@@ -191,6 +191,7 @@
     function handleRootChange(event) {
         const target = event.target;
         if (!target) return;
+        if (target.closest?.('#recordForm')) view.clearRecordValidation?.();
 
         if (target.matches?.('[data-role="topbar-team-filter"]')) {
             view.switchTab?.(target.value || view.OVERVIEW_KEY);
@@ -232,6 +233,7 @@
     function handleRootInput(event) {
         const target = event.target;
         if (!target) return;
+        if (target.closest?.('#recordForm')) view.clearRecordValidation?.();
 
         if (target.matches?.('[data-role="keyword-search"]')) {
             view.searchByKeyword?.(target);
@@ -251,6 +253,7 @@
 
     function handleRootKeydown(event) {
         const target = event.target;
+        if (event.key === 'Tab' && view.keepRecordModalFocus?.(event)) return;
         const isSaveShortcut = (event.ctrlKey || event.metaKey) && String(event.key || '').toLowerCase() === 's';
         if (isSaveShortcut && view.isRecordModalOpen?.()) {
             event.preventDefault();
@@ -262,7 +265,7 @@
         if (event.key === 'Escape') {
             if (view.isRecordModalOpen?.()) {
                 event.preventDefault();
-                view.closeRecordModal?.();
+                view.closeRecordModal?.({ confirm: true });
                 return;
             }
             if (view.isDeleteModalOpen?.()) {

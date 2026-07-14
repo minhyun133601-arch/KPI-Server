@@ -28,6 +28,67 @@
         return typeof isProductionReportWorkspace === 'function' && isProductionReportWorkspace();
     }
 
+    const RECORD_FIELD_IDS = [
+        'recordStartDate',
+        'recordEndDate',
+        'recordTeam',
+        'recordAssignee',
+        'recordCategory',
+        'recordResultType',
+        'recordWorkContent',
+        'recordRemarks',
+        'recordCost'
+    ];
+
+    function setRecordFormStatus(message = '', tone = '') {
+        const status = getElement('recordFormStatus');
+        if (!status) return;
+        status.textContent = String(message || '');
+        if (tone) {
+            status.dataset.tone = tone;
+        } else if (status.dataset) {
+            delete status.dataset.tone;
+        }
+    }
+
+    function clearRecordValidation() {
+        RECORD_FIELD_IDS.forEach(id => getElement(id)?.removeAttribute?.('aria-invalid'));
+        setRecordFormStatus();
+    }
+
+    function showRecordValidationError(fieldId, message) {
+        const field = getElement(fieldId);
+        field?.setAttribute?.('aria-invalid', 'true');
+        setRecordFormStatus(message, 'error');
+        field?.focus?.();
+        browser.alert(message);
+        return false;
+    }
+
+    function setRecordModalSaving(isSaving) {
+        if (state.formState) {
+            state.formState.isSaving = isSaving === true;
+        }
+        const form = getElement('recordForm');
+        const saveButton = getElement('recordSaveButton');
+        if (isSaving) {
+            form?.setAttribute?.('aria-busy', 'true');
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.textContent = '저장 중';
+            }
+            setRecordFormStatus('작업내역을 저장하고 있습니다.');
+            return;
+        }
+        form?.removeAttribute?.('aria-busy');
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = saveButton.dataset?.defaultLabel
+                || view.getRecordSaveButtonLabel?.()
+                || '작업내역 저장';
+        }
+    }
+
     function showSavedPopup(options = {}) {
         if (options.showSavedPopup !== true) return false;
         browser.alert('저장되었습니다');
@@ -69,6 +130,7 @@
     }
 
     function openRecordModal(team, index = null) {
+        const triggerElement = view.getShadowRoot?.()?.activeElement || null;
         const form = getElement('recordForm');
         form?.reset();
         const sourceTeamInput = getElement('formSourceTeam');
@@ -92,7 +154,9 @@
         }
 
         state.formState = {
-            sourceTeam: team
+            sourceTeam: team,
+            triggerElement,
+            isSaving: false
         };
 
         const defaultTeam = TeamInfo[team] ? team : 'team1part1';
@@ -135,26 +199,71 @@
             getElement('recordCost').value = '';
         }
 
+        const saveButton = getElement('recordSaveButton');
+        if (saveButton) {
+            const saveLabel = view.getRecordSaveButtonLabel?.() || '작업내역 저장';
+            saveButton.dataset.defaultLabel = saveLabel;
+            saveButton.textContent = saveLabel;
+        }
+        clearRecordValidation();
+        setRecordModalSaving(false);
         updateAssigneePreview(getElement('recordAssignee')?.value || '');
         rememberRecordFormSnapshot();
-        getElement('recordModal')?.classList.add('show');
+        const recordModal = getElement('recordModal');
+        if (recordModal) {
+            recordModal.hidden = false;
+            recordModal.classList.add('show');
+        }
+        getElement('recordTeam')?.focus?.();
     }
 
     function closeRecordModal(options = {}) {
         if (options.force !== true && options.confirm === true && !confirmRecordModalClose()) {
             return false;
         }
-        getElement('recordModal')?.classList.remove('show');
+        const recordModal = getElement('recordModal');
+        if (recordModal) {
+            recordModal.classList.remove('show');
+            recordModal.hidden = true;
+        }
+        const triggerElement = state.formState?.triggerElement;
+        triggerElement?.focus?.();
         return true;
     }
 
     function isRecordModalOpen() {
-        return getElement('recordModal')?.classList.contains('show') === true;
+        const recordModal = getElement('recordModal');
+        return recordModal?.hidden !== true && recordModal?.classList.contains('show') === true;
+    }
+
+    function keepRecordModalFocus(event) {
+        if (event?.key !== 'Tab' || !isRecordModalOpen()) return false;
+        const modal = getElement('recordModal');
+        const focusable = Array.from(modal?.querySelectorAll?.('button, input, select, textarea, [tabindex]:not([tabindex="-1"])') || [])
+            .filter(node => node.tabIndex >= 0 && !node.disabled && !node.hidden && node.getAttribute?.('aria-hidden') !== 'true');
+        if (!focusable.length) return false;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && event.target === first) {
+            event.preventDefault();
+            last.focus?.();
+            return true;
+        }
+        if (!event.shiftKey && event.target === last) {
+            event.preventDefault();
+            first.focus?.();
+            return true;
+        }
+        return false;
     }
 
     function openDeleteModal(team, index) {
         state.pendingDelete = { team, index };
-        getElement('deleteModal')?.classList.add('show');
+        const deleteModal = getElement('deleteModal');
+        if (deleteModal) {
+            deleteModal.hidden = false;
+            deleteModal.classList.add('show');
+        }
     }
 
     function deleteCurrentRecordFromModal() {
@@ -167,12 +276,17 @@
     }
 
     function closeDeleteModal() {
-        getElement('deleteModal')?.classList.remove('show');
+        const deleteModal = getElement('deleteModal');
+        if (deleteModal) {
+            deleteModal.classList.remove('show');
+            deleteModal.hidden = true;
+        }
         state.pendingDelete = { team: null, index: null };
     }
 
     function isDeleteModalOpen() {
-        return getElement('deleteModal')?.classList.contains('show') === true;
+        const deleteModal = getElement('deleteModal');
+        return deleteModal?.hidden !== true && deleteModal?.classList.contains('show') === true;
     }
 
     function updateAssigneePreview(value) {
@@ -185,6 +299,8 @@
     }
 
     async function saveRecord(options = {}) {
+        if (state.formState?.isSaving === true) return false;
+        clearRecordValidation();
         const sourceTeam = String(getElement('formSourceTeam')?.value || '').trim();
         const indexValue = String(getElement('formIndex')?.value || '').trim();
         const targetTeam = String(getElement('recordTeam')?.value || '').trim();
@@ -217,48 +333,37 @@
             .filter(Boolean);
 
         if (!startDate || !endDate) {
-            browser.alert('작업 기간을 입력해 주세요.');
-            return false;
+            return showRecordValidationError(!startDate ? 'recordStartDate' : 'recordEndDate', '작업 기간을 입력해 주세요.');
         }
         if (startDate < minDate || endDate < minDate) {
-            browser.alert('작업내역 검색필터의 날짜는 2024-01-01부터 선택할 수 있습니다.');
-            return false;
+            return showRecordValidationError(startDate < minDate ? 'recordStartDate' : 'recordEndDate', '작업내역 검색필터의 날짜는 2024-01-01부터 선택할 수 있습니다.');
         }
         if (startDate > today || endDate > today) {
-            browser.alert('작업내역 검색필터의 날짜는 오늘까지만 선택할 수 있습니다.');
-            return false;
+            return showRecordValidationError(startDate > today ? 'recordStartDate' : 'recordEndDate', '작업내역 검색필터의 날짜는 오늘까지만 선택할 수 있습니다.');
         }
         if (endDate > view.todayInputValue()) {
-            browser.alert('작업 종료일은 오늘 날짜까지만 입력할 수 있습니다.');
-            return false;
+            return showRecordValidationError('recordEndDate', '작업 종료일은 오늘 날짜까지만 입력할 수 있습니다.');
         }
         if (endDate < startDate) {
-            browser.alert('작업 종료일이 시작일보다 빠를 수는 없습니다.');
-            return false;
+            return showRecordValidationError('recordEndDate', '작업 종료일이 시작일보다 빠를 수는 없습니다.');
         }
         if (!TeamInfo[targetTeam]) {
-            browser.alert('작업 팀을 선택해 주세요.');
-            return false;
+            return showRecordValidationError('recordTeam', '작업 팀을 선택해 주세요.');
         }
         if (!assignees.length) {
-            browser.alert('작업자를 입력해 주세요.');
-            return false;
+            return showRecordValidationError('recordAssignee', '작업자를 입력해 주세요.');
         }
         if (!normalizedCategoryGroup) {
-            browser.alert('구분을 선택해 주세요.');
-            return false;
+            return showRecordValidationError('recordCategory', '구분을 선택해 주세요.');
         }
         if (!isProductionWorkspace() && !normalizedResultType) {
-            browser.alert('실적 구분을 선택해 주세요.');
-            return false;
+            return showRecordValidationError('recordResultType', '실적 구분을 선택해 주세요.');
         }
         if (requiresCategory && (!normalizedCategory || !categoryOptionValues.includes(normalizedCategory) || (!isAllowedRecordCategory(normalizedCategory) && normalizedCategory !== category))) {
-            browser.alert('작업 분류를 선택해 주세요.');
-            return false;
+            return showRecordValidationError('recordCategory', '작업 분류를 선택해 주세요.');
         }
         if (!workContent) {
-            browser.alert('업무내용을 입력해 주세요.');
-            return false;
+            return showRecordValidationError('recordWorkContent', '작업 제목과 상세 내용을 입력해 주세요.');
         }
 
         const nextRecord = {
@@ -294,7 +399,9 @@
             payload.teams[targetTeam].unshift(nextRecord);
         }
 
+        setRecordModalSaving(true);
         const saved = await savePayload(payload);
+        setRecordModalSaving(false);
 
         closeRecordModal({ force: true });
         view.renderCurrentView?.();
@@ -350,11 +457,13 @@
         openRecordModal,
         closeRecordModal,
         isRecordModalOpen,
+        keepRecordModalFocus,
         openDeleteModal,
         deleteCurrentRecordFromModal,
         closeDeleteModal,
         isDeleteModalOpen,
         updateAssigneePreview,
+        clearRecordValidation,
         hasRecordFormChanged,
         confirmRecordModalClose,
         saveRecord,

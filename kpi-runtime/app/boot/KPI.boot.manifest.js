@@ -143,6 +143,7 @@
         "team-report/runtime/work/history/KPI.work.history.core.records.js",
         "team-report/runtime/work/history/KPI.work.history.core.storage.js",
         "team-report/runtime/work/history/KPI.work.history.view.layout.js",
+        "team-report/runtime/work/history/layout/style-gate.js",
         "team-report/runtime/work/history/layout/workspace-state.js",
         "team-report/runtime/work/history/layout/templates.js",
         "team-report/runtime/work/history/KPI.work.history.view.render.js",
