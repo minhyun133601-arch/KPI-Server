@@ -29,14 +29,15 @@
     });
 
     runtime.registerSectionRenderer('data', (category, context = {}) => {
-        if (String(category?.dataKey || '').trim() === EQUIPMENT_HISTORY_DATA_KEY) {
+        const dataKey = String(category?.dataKey || '').trim();
+        if (dataKey === EQUIPMENT_HISTORY_DATA_KEY) {
             const api = browser.getApi();
             if (typeof api.render === 'function') {
                 api.render(category, context, getEquipmentHistoryData());
                 return;
             }
         }
-        if (String(category?.dataKey || '').trim() === LUX_DATA_KEY && typeof renderAuditContent === 'function') {
+        if (dataKey === LUX_DATA_KEY && typeof renderAuditContent === 'function') {
             renderAuditContent(category);
             return;
         }

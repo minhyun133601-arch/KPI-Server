@@ -185,14 +185,6 @@
         .data-equipment-board-room-add-button {
             flex: 0 0 auto;
         }
-        .data-equipment-board-room-actions {
-            display: inline-flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 6px;
-            margin-left: auto;
-            flex-wrap: wrap;
-        }
         .data-equipment-board-room-icon {
             width: 30px;
             height: 30px;
@@ -393,22 +385,6 @@
             background: rgba(255, 255, 255, 0.1);
             color: #eaf5fb;
         }
-        .data-equipment-live-dot {
-            width: 9px;
-            height: 9px;
-            flex: 0 0 9px;
-            border-radius: 999px;
-            background: #2fe27c;
-            box-shadow: 0 0 10px rgba(47, 226, 124, 0.58);
-        }
-        .data-equipment-live-dot.is-check {
-            background: #f6c445;
-            box-shadow: 0 0 10px rgba(246, 196, 69, 0.65);
-        }
-        .data-equipment-live-dot.is-stop {
-            background: #f48b8b;
-            box-shadow: 0 0 10px rgba(244, 139, 139, 0.62);
-        }
         .data-equipment-board-card-tools {
             display: none;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -422,7 +398,6 @@
             display: inline-grid;
         }
         .data-equipment-board-column.is-ordering .data-equipment-board-add-button,
-        .data-equipment-board-column.is-ordering .data-equipment-board-status-actions,
         .data-equipment-board-column.is-ordering .data-equipment-board-card-actions {
             display: none;
         }

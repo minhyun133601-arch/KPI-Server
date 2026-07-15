@@ -13,6 +13,7 @@
     --kpi-team-1-2: #d97706;
     --kpi-team-2: #047857;
     --kpi-team-3: #5b21b6;
+    --kpi-team-4: #dc2626;
     --kpi-team-other: #4b5563;
     --kpi-team-name-text: #111827;
 }
@@ -67,6 +68,10 @@
 .audit-lux-index-team-cell .audit-lux-index-team-label.is-team3,
 .work-history-app .work-history-experiment-team.team3 .work-history-experiment-team-name {
     --kpi-team-accent: var(--kpi-team-3);
+}
+
+.work-history-app .work-history-experiment-team.team4 .work-history-experiment-team-name {
+    --kpi-team-accent: var(--kpi-team-4);
 }
 
 .work-history-app .work-history-experiment-status.is-complete,

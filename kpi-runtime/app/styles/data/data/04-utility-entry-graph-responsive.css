@@ -279,15 +279,6 @@
             .utility-entry-experiment-combined.is-daily {
                 grid-template-columns: 1fr;
             }
-            .utility-entry-experiment-head {
-                flex-wrap: wrap;
-                padding-top: 7px;
-                padding-bottom: 7px;
-            }
-            .utility-entry-experiment-head-main {
-                flex-wrap: wrap;
-                gap: 6px 10px;
-            }
             .utility-entry-experiment-nav {
                 align-items: stretch;
                 flex-direction: column;

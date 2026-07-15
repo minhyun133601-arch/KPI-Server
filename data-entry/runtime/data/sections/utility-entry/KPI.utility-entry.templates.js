@@ -130,6 +130,18 @@
 
         return `
             <div class="utility-entry-experiment-toolbar">
+                <div class="utility-entry-experiment-save" data-role="utility-entry-experiment-save-status">
+                    <span>저장상태</span>
+                    <strong class="${saved ? 'is-saved' : 'is-unsaved'}" data-role="utility-entry-experiment-save-state" role="status" aria-live="polite">${saved ? '저장됨' : '저장 안됨'}</strong>
+                    <button
+                        type="button"
+                        class="utility-entry-experiment-action is-save"
+                        data-role="utility-entry-experiment-save"
+                        data-utility-entry-experiment-period="${parts.escapeUtilityEntryExperimentHtml(period)}"
+                    >저장</button>
+                </div>
+                ${buildUtilityEntryExperimentPeriodTabs(period, 'is-toolbar-period')}
+                ${buildUtilityEntryExperimentRuleSummaryControl(rulesId)}
                 ${period === 'monthly' ? `
                     <div class="utility-entry-experiment-month-picker" role="group" aria-label="연도/월">
                         <span class="utility-entry-experiment-month-picker-label">연도/월</span>
@@ -149,7 +161,6 @@
                         ${buildUtilityEntryExperimentMonthShiftButton('monthly', 1)}
                     </div>
                 ` : ''}
-                ${period === 'monthly' ? buildUtilityEntryExperimentRuleSummaryControl(rulesId) : ''}
                 ${period === 'daily' ? `
                     <div class="utility-entry-experiment-month-picker" role="group" aria-label="연도/월">
                         <span class="utility-entry-experiment-month-picker-label">연도/월</span>
@@ -169,22 +180,8 @@
                         ${buildUtilityEntryExperimentMonthShiftButton('daily', 1)}
                         <input type="hidden" data-role="utility-entry-experiment-daily-date" value="${parts.escapeUtilityEntryExperimentHtml(date)}" aria-label="날짜" />
                     </div>
-                    <div class="utility-entry-experiment-completed-calendar" data-role="utility-entry-experiment-completed-calendar" aria-label="기입 날짜">
-                        <div class="utility-entry-experiment-completed-empty">기입 날짜 불러오는 중</div>
-                    </div>
                 ` : ''}
-                <div class="utility-entry-experiment-save" data-role="utility-entry-experiment-save-status">
-                    <span>저장상태</span>
-                    <strong class="${saved ? 'is-saved' : 'is-unsaved'}" data-role="utility-entry-experiment-save-state">${saved ? '저장됨' : '저장 안됨'}</strong>
-                    <button
-                        type="button"
-                        class="utility-entry-experiment-action is-save"
-                        data-role="utility-entry-experiment-save"
-                        data-utility-entry-experiment-period="${parts.escapeUtilityEntryExperimentHtml(period)}"
-                    >저장</button>
-                </div>
                 ${period === 'daily' ? `
-                    ${buildUtilityEntryExperimentRuleSummaryControl(rulesId)}
                     <div class="utility-entry-experiment-quick-entry" data-role="utility-entry-experiment-quick-entry">
                         <button
                             type="button"
@@ -192,6 +189,13 @@
                             data-role="utility-entry-experiment-quick-toggle"
                             aria-expanded="false"
                         >입력</button>
+                        <button
+                            type="button"
+                            class="utility-entry-experiment-action is-delete"
+                            data-role="utility-entry-experiment-delete"
+                            aria-label="선택 날짜 입력값 전체 삭제"
+                            title="선택 날짜 입력값 전체 삭제"
+                        >삭제</button>
                         <div class="utility-entry-experiment-quick-panel" data-role="utility-entry-experiment-quick-panel" hidden>
                             <input
                                 class="utility-entry-experiment-quick-input"
@@ -207,6 +211,9 @@
                                 <div class="utility-entry-experiment-quick-empty">값을 입력하면 가까운 항목 3개가 표시됩니다.</div>
                             </div>
                         </div>
+                    </div>
+                    <div class="utility-entry-experiment-completed-calendar" data-role="utility-entry-experiment-completed-calendar" aria-label="기입 날짜">
+                        <div class="utility-entry-experiment-completed-empty">기입 날짜 불러오는 중</div>
                     </div>
                 ` : ''}
             </div>
@@ -260,12 +267,6 @@
         return `
             <section class="utility-entry-experiment-panel" data-period="${parts.escapeUtilityEntryExperimentHtml(period)}">
                 <input class="utility-entry-experiment-rule-toggle" type="checkbox" id="${parts.escapeUtilityEntryExperimentHtml(rulesId)}" />
-                <header class="utility-entry-experiment-head">
-                    <div class="utility-entry-experiment-head-main">
-                        <strong>유틸리티 입력 시스템</strong>
-                        ${buildUtilityEntryExperimentPeriodTabs(period, 'is-head-period')}
-                    </div>
-                </header>
                 ${buildUtilityEntryExperimentToolbar(period, {
             year,
             month,
@@ -772,7 +773,8 @@
         const normalizedTeams = (Array.isArray(teams) ? teams : [])
             .map(team => ({
                 key: String(team?.key || '').trim(),
-                label: String(team?.label || '').trim()
+                label: String(team?.label || '').trim(),
+                siteLabel: String(team?.siteLabel || normalizedSiteLabel).trim()
             }))
             .filter(team => team.key && team.label);
 
@@ -793,13 +795,13 @@
                         ${normalizedTeams.map(team => `
                         <tr>
                             <th scope="row">${parts.escapeUtilityEntryExperimentHtml(team.label)}</th>
-                            <td>${buildUtilityEntryExperimentInputWithUnit(`${normalizedSiteLabel} CIP 횟수 ${team.label}`, '회', {
+                            <td>${buildUtilityEntryExperimentInputWithUnit(`${team.siteLabel} CIP 횟수 ${team.label}`, '회', {
                                 saveKind: 'other-team-monthly-field',
                                 resourceType: 'other',
                                 teamKey: team.key,
                                 fieldKey: 'cip_count'
                             })}</td>
-                            <td>${buildUtilityEntryExperimentInputWithUnit(`${normalizedSiteLabel} CIP 시간 ${team.label}`, '시간', {
+                            <td>${buildUtilityEntryExperimentInputWithUnit(`${team.siteLabel} CIP 시간 ${team.label}`, '시간', {
                                 saveKind: 'other-team-monthly-field',
                                 resourceType: 'other',
                                 teamKey: team.key,
@@ -986,6 +988,7 @@
                             totalRows: ['총비용']
                         })}
                         ${buildUtilityEntryExperimentCipCard('유산', [
+                            { key: 'team_01_01', label: '1팀 1파트', siteLabel: '북정' },
                             { key: 'team_01_02', label: '1팀 2파트' },
                             { key: 'team_02', label: '2팀' },
                             { key: 'team_03', label: '3팀' }
@@ -1036,9 +1039,6 @@
                             directMonthlyFirstRow: { resourceType: 'waste', teamKey: 'waste_bukjeong' },
                             totalRows: ['총비용']
                         })}
-                        ${buildUtilityEntryExperimentCipCard('북정', [
-                            { key: 'team_01_01', label: '1팀 1파트' }
-                        ])}
                             </div>
                         </div>
                     </section>

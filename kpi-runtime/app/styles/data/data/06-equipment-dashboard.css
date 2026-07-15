@@ -6,45 +6,6 @@
         .data-equipment-doc-card .data-equipment-edit-table td:nth-child(1) {
             width: 42%;
         }
-        .data-equipment-history-table,
-        .data-equipment-doc-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-        .data-equipment-history-table th,
-        .data-equipment-history-table td,
-        .data-equipment-doc-table th,
-        .data-equipment-doc-table td {
-            border: 1px solid #edf3fa;
-            padding: 7px 9px;
-            vertical-align: middle;
-            color: #405377;
-            font-size: 0.8rem;
-            line-height: 1.35;
-            word-break: keep-all;
-        }
-        .data-equipment-history-table th,
-        .data-equipment-doc-table th {
-            background: #f7faff;
-            color: #34476c;
-            font-weight: 900;
-            text-align: center;
-        }
-        .data-equipment-history-table td,
-        .data-equipment-doc-table td {
-            font-weight: 700;
-        }
-        .data-equipment-history-table td:first-child,
-        .data-equipment-history-table td:nth-child(2),
-        .data-equipment-history-table td:nth-child(4),
-        .data-equipment-history-table td:nth-child(5) {
-            text-align: center;
-        }
-        .data-equipment-doc-table td:nth-child(2) {
-            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-            font-size: 0.78rem;
-        }
         .data-equipment-empty {
             color: #94a3b8;
             text-align: center;
@@ -501,42 +462,4 @@
             border-radius: 8px;
             background: #ffffff;
             box-shadow: 0 10px 24px rgba(31, 51, 83, 0.05);
-        }
-        .data-equipment-board-global-actions > strong {
-            color: #233957;
-            font-size: 0.78rem;
-            font-weight: 900;
-            white-space: nowrap;
-        }
-        .data-equipment-board-status-actions {
-            display: inline-flex;
-            align-items: center;
-            min-width: 0;
-            flex: 0 1 auto;
-        }
-        .data-equipment-board-chip.data-equipment-board-status-cycle {
-            min-height: 28px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-            border: 1px solid #d7e2ef;
-            border-radius: 7px;
-            color: #334155;
-            padding: 0 8px;
-            font-size: 0.7rem;
-            font-weight: 900;
-            line-height: 1;
-            white-space: nowrap;
-            cursor: pointer;
-        }
-        .data-equipment-board-chip.data-equipment-board-status-cycle i {
-            font-size: 0.72rem;
-        }
-        .data-equipment-board-chip.data-equipment-board-status-cycle:hover {
-            filter: brightness(1.04);
-        }
-        .data-equipment-board-chip.data-equipment-board-status-cycle:disabled {
-            opacity: 0.42;
-            cursor: not-allowed;
         }

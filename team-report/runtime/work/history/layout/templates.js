@@ -64,14 +64,23 @@
     function buildPageHeader() {
         const title = typeof view.getWorkspaceTitle === 'function'
             ? view.getWorkspaceTitle()
-            : '작업이력';
+            : '작업 이력';
         return `
-                <header class="history-page-head history-topbar no-print">
-                    <div class="history-topbar-brand" aria-hidden="true">
-                        <span class="history-topbar-brand-mark">${getTeamIconSvg(OVERVIEW_KEY)}</span>
-                    </div>
-                    <div class="history-title-area history-topbar-title">
-                        <h1 id="history-title">${escapeHtml(title)}</h1>
+                <header class="history-page-head history-topbar no-print" aria-label="작업이력 요약 및 필터">
+                    <h1 class="history-toolbar-title" id="history-title">${escapeHtml(title)}</h1>
+                    <div class="history-topbar-metrics" aria-label="현재 작업 요약">
+                        <span class="history-topbar-metric is-total">
+                            <span><span class="history-topbar-metric-icon" aria-hidden="true">${getSectionIconSvg('work')}</span>전체 작업</span>
+                            <strong data-role="topbar-total-count">0건</strong>
+                        </span>
+                        <span class="history-topbar-metric is-cost">
+                            <span><span class="history-topbar-metric-icon" aria-hidden="true">${getSectionIconSvg('won')}</span>총금액</span>
+                            <strong data-role="topbar-total-cost">0원</strong>
+                        </span>
+                        <span class="history-topbar-metric is-recent">
+                            <span><span class="history-topbar-metric-icon" aria-hidden="true">${getSectionIconSvg('date')}</span>최근 작업일</span>
+                            <strong data-role="topbar-latest-date">-</strong>
+                        </span>
                     </div>
                     <div class="history-page-tools history-topbar-actions" aria-label="작업이력 필터">
                         ${buildWorkspaceFilterControls()}
@@ -486,6 +495,7 @@
             summary: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 7H18M6 12H18M6 17H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
             work: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 6.5H19M5 12H19M5 17.5H14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
             cost: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 7.5H17M7 12H17M7 16.5H13.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5 4H19V20H5V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+            won: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 6.5L8.5 17L12 6.5L15.5 17L19 6.5M4 10H20M4.5 13.5H19.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
             date: '<svg viewBox="0 0 24 24" fill="none"><path d="M7 4V7M17 4V7M5 9H19M7 13H10M14 13H17M7 17H10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M5 6.5H19V20H5V6.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
             remarks: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 4.5H18C19.1 4.5 20 5.4 20 6.5V15.5C20 16.6 19.1 17.5 18 17.5H10L6 20.5V17.5H6C4.9 17.5 4 16.6 4 15.5V6.5C4 5.4 4.9 4.5 6 4.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>'
         };

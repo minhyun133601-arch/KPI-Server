@@ -215,12 +215,6 @@
             display: grid;
             gap: 12px;
         }
-        .data-equipment-hero-grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr);
-            gap: 8px;
-            align-items: stretch;
-        }
         .data-equipment-hero-photo {
             min-width: 0;
             display: grid;
@@ -230,13 +224,6 @@
             width: 100%;
             min-height: 0;
             aspect-ratio: 16 / 5;
-        }
-        .data-equipment-hero-side {
-            min-width: 0;
-            display: grid;
-            grid-template-rows: auto auto minmax(0, 1fr);
-            gap: 6px;
-            align-content: stretch;
         }
         .data-equipment-hero-updated {
             min-width: 0;
@@ -279,63 +266,6 @@
             font-weight: 900;
             text-overflow: ellipsis;
             white-space: nowrap;
-        }
-        .data-equipment-hero-side .data-equipment-photo-title-row {
-            grid-template-columns: minmax(118px, 0.9fr) minmax(84px, 0.68fr) minmax(150px, 1.2fr);
-            gap: 4px;
-        }
-        .data-equipment-hero-side .data-equipment-title-name-field {
-            grid-column: auto;
-        }
-        .data-equipment-hero-side .data-equipment-title-field {
-            --equipment-title-value-left: 10px;
-        }
-        .data-equipment-hero-side .data-equipment-title-team-field {
-            --equipment-title-value-left: 38px;
-        }
-        .data-equipment-hero-side .data-equipment-title-room-field {
-            --equipment-title-value-left: 10px;
-        }
-        .data-equipment-hero-side .data-equipment-title-name-field {
-            --equipment-title-value-left: 10px;
-        }
-        .data-equipment-hero-side .data-equipment-title-team-icon {
-            left: 8px;
-            width: 22px;
-            height: 22px;
-            border-radius: 6px;
-            font-size: 0.68rem;
-        }
-        .data-equipment-hero-side .data-equipment-photo-title-row .data-equipment-title-input {
-            font-size: 0.82rem;
-        }
-        .data-equipment-hero-side .data-equipment-photo-title-row .data-equipment-title-input {
-            height: 34px;
-            padding-right: 8px;
-            box-shadow: 0 8px 18px rgba(27, 53, 89, 0.05);
-        }
-        .data-equipment-hero-doc-card {
-            min-width: 0;
-            min-height: 0;
-            display: grid;
-            grid-template-rows: minmax(0, 1fr);
-            align-content: stretch;
-            gap: 5px;
-            padding: 6px 8px;
-        }
-        .data-equipment-hero-doc-card .data-equipment-doc-list {
-            overflow: auto;
-            gap: 5px;
-            min-height: 0;
-        }
-        .data-equipment-hero-doc-card .data-equipment-doc-list-item {
-            grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-            gap: 5px;
-            padding: 4px;
-        }
-        .data-equipment-hero-doc-card .data-equipment-doc-list-item input[data-equipment-field="title"],
-        .data-equipment-hero-doc-card .data-equipment-document-picker {
-            min-height: 27px;
         }
         .data-equipment-top-grid {
             display: grid;

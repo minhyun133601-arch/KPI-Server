@@ -190,12 +190,8 @@ test('work history render card parts registry exposes summary, compact card, and
   );
   assert.match(singleRecordBoard, /work-history-experiment-team-actions[\s\S]*work-history-team-add-button/);
   assert.doesNotMatch(singleRecordBoard, /work-history-experiment-team-view/);
-  assert.match(singleRecordBoard, /work-history-experiment-metric-card is-total/);
-  assert.match(singleRecordBoard, /work-history-experiment-metric-card is-cost/);
-  assert.match(singleRecordBoard, /work-history-experiment-metric-card is-recent/);
-  assert.match(singleRecordBoard, />전체 작업<\/span>/);
-  assert.match(singleRecordBoard, />총금액<\/span>/);
-  assert.match(singleRecordBoard, />최근 작업일<\/span>/);
+  assert.doesNotMatch(singleRecordBoard, /work-history-experiment-metrics|work-history-experiment-metric-card/);
+  assert.doesNotMatch(singleRecordBoard, />전체 작업<\/span>|>총금액<\/span>|>최근 작업일<\/span>/);
   assert.match(singleRecordBoard, /work-history-experiment-sheet/);
   assert.match(singleRecordBoard, /role="table"/);
   assert.match(singleRecordBoard, />작업 내용<\/span>/);
@@ -207,12 +203,9 @@ test('work history render card parts registry exposes summary, compact card, and
   assert.match(singleRecordBoard, /work-history-experiment-card-cost/);
   assert.match(singleRecordBoard, /work-history-experiment-card-assignee/);
   assert.match(singleRecordBoard, /data-label="관리"/);
-  assert.equal((singleRecordBoard.match(/work-history-experiment-metric-card/g) || []).length, 3);
+  assert.equal((singleRecordBoard.match(/work-history-experiment-metric-card/g) || []).length, 0);
   assert.match(view.buildExperimentRecordCard({ ...record, endDate: '2000-01-01' }), /is-complete[^>]*>완료<\/span>/);
   assert.match(view.buildExperimentRecordCard({ ...record, endDate: '2999-12-31' }), /is-incomplete[^>]*>미완료<\/span>/);
-  assert.ok(
-    singleRecordBoard.indexOf('work-history-experiment-metrics') < singleRecordBoard.indexOf('work-history-experiment-team')
-  );
   assert.doesNotMatch(singleRecordBoard, /work-history-experiment-head/);
   assert.doesNotMatch(singleRecordBoard, /카드형 보기/);
   assert.doesNotMatch(view.buildExperimentBoard(Array.from({ length: 5 }, (_, index) => createRecord(index + 1))), /work-history-experiment-team-view/);
@@ -253,12 +246,7 @@ test('work history render keeps the card board as the only overview record surfa
   view.renderOverview();
   assert.match(overviewRecords.innerHTML, /work-history-experiment-board/);
   assert.match(overviewRecords.innerHTML, /work-history-experiment-card/);
-  assert.match(overviewRecords.innerHTML, /work-history-experiment-metric-card is-total/);
-  assert.match(overviewRecords.innerHTML, /work-history-experiment-metric-card is-cost/);
-  assert.match(overviewRecords.innerHTML, /work-history-experiment-metric-card is-recent/);
-  assert.match(overviewRecords.innerHTML, /<strong>9<small>건<\/small><\/strong>/);
-  assert.match(overviewRecords.innerHTML, /<strong>450,000원<\/strong>/);
-  assert.match(overviewRecords.innerHTML, /<strong>2026-04-09<\/strong>/);
+  assert.doesNotMatch(overviewRecords.innerHTML, /work-history-experiment-metrics|work-history-experiment-metric-card/);
   assert.doesNotMatch(overviewRecords.innerHTML, /카드형 보기/);
   assert.doesNotMatch(overviewRecords.innerHTML, /팀별 작업이력을 카드로 확인합니다/);
   assert.doesNotMatch(overviewRecords.innerHTML, /실험본/);

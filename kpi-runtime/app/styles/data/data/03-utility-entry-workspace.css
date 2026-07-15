@@ -2,6 +2,7 @@
             position: relative;
             display: inline-flex;
             align-items: center;
+            gap: 5px;
             margin-left: auto;
         }
         .utility-entry-experiment-quick-panel {

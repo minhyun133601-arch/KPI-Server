@@ -86,14 +86,14 @@ const styleEntries = [
     relativeSegments: ['metering', 'metering.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/audit/audit.css?v=076`,
-    manifestHref: './styles/audit/audit.css?v=076',
+    href: `${runtimeDirName}/app/styles/audit/audit.css?v=077`,
+    manifestHref: './styles/audit/audit.css?v=077',
     fileName: 'audit.css',
     relativeSegments: ['audit', 'audit.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/shared/status-team-marks.css?v=20260710d`,
-    manifestHref: './styles/shared/status-team-marks.css?v=20260710d',
+    href: `${runtimeDirName}/app/styles/shared/status-team-marks.css?v=20260715a`,
+    manifestHref: './styles/shared/status-team-marks.css?v=20260715a',
     fileName: 'status-team-marks.css',
     relativeSegments: ['shared', 'status-team-marks.css'],
   },
@@ -298,6 +298,14 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['audit.css'], /\.print-sheet\s*\{/);
   assert.match(
     styleContents['audit.css'],
+    /\.audit-lux-shell,\s*\.audit-lux-modal\s*\{[^}]*font-family:\s*"Noto Sans KR",\s*system-ui,\s*-apple-system,\s*BlinkMacSystemFont,\s*"Segoe UI",\s*sans-serif;/s
+  );
+  assert.doesNotMatch(
+    styleContents['audit.css'],
+    /font-family:\s*Arial,\s*["']Malgun Gothic["'],\s*["']Noto Sans KR["']/
+  );
+  assert.match(
+    styleContents['audit.css'],
     /\.audit-lux-shell\s*\{[^}]*height:\s*calc\(100vh - 84px\);[^}]*padding:\s*12px;[^}]*background:\s*#f3f4f6;/s
   );
   assert.match(
@@ -368,6 +376,8 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.doesNotMatch(styleContents['audit.css'], /audit-lux-index-card\s*\{\s*grid-template-rows:\s*150px\s*auto\s*auto/);
   assert.match(styleContents['status-team-marks.css'], /\.audit-lux-index-team-cell \.audit-lux-index-team-label\s*,[\s\S]*\.work-history-app \.work-history-experiment-team-name\s*\{/);
   assert.match(styleContents['status-team-marks.css'], /\.audit-lux-index-team-cell \.audit-lux-index-team-label::before,[\s\S]*background:\s*var\(--kpi-team-accent\);/);
+  assert.match(styleContents['status-team-marks.css'], /--kpi-team-4:\s*#dc2626;/);
+  assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-team\.team4 \.work-history-experiment-team-name\s*\{[\s\S]*--kpi-team-accent:\s*var\(--kpi-team-4\);/);
   assert.doesNotMatch(styleContents['status-team-marks.css'], /background:\s*var\(--kpi-team-1-[12]\);/);
   assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-status\.is-complete,[\s\S]*\.audit-lux-progress-select\.is-complete\s*\{/);
   assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-status\.is-incomplete,[\s\S]*\.audit-lux-progress-select\.is-incomplete\s*\{/);

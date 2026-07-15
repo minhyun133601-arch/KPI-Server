@@ -5,6 +5,7 @@ import {
   adapterSource,
   bootManifestSource,
   bridgeSource,
+  createEquipmentHistoryRuntime,
   formSource,
   kpiHtml,
   modelSource,
@@ -165,6 +166,26 @@ test('equipment-history browser adapter wraps runtime portal fetch alert and pri
   assert.equal(adapter.getWorkTeamCalendarCategoryMeta('work_team_calendar_team2').color, '#059669');
 });
 
+test('equipment-history canonical key renders the authoritative portal payload', () => {
+  const { context, container, registeredRenderer, registeredSaveProvider } = createEquipmentHistoryRuntime();
+  context.PortalData.data_equipment_history_card = {
+    equipmentList: [{ id: 'eq-real-1', name: 'Real Compressor', status: '가동중' }],
+  };
+
+  const category = {
+    title: '설비 이력',
+    dataKey: 'data_equipment_history_card',
+  };
+  registeredRenderer(category, { container });
+
+  assert.match(container.innerHTML, /class="equipment-history-skin"/);
+  assert.match(container.innerHTML, /data-equipment-history-surface/);
+  assert.match(container.innerHTML, /Real Compressor/);
+
+  const saveAction = registeredSaveProvider({ sectionId: 'data', category });
+  assert.equal(saveAction?.buttonLabel, '저장');
+});
+
 test('kpi html loads equipment-history modules before the data runtime bridge', () => {
   const adapterIndex = kpiHtml.indexOf(
     'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=6'
@@ -178,19 +199,35 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   const storageIndex = kpiHtml.indexOf(
     'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=4'
   );
-  const renderIndex = kpiHtml.indexOf(
-    'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=53'
+  const boardIndex = kpiHtml.indexOf(
+    'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.board.js?v=5'
   );
-  const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=5');
+  const cardIndex = kpiHtml.indexOf(
+    'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.card.js?v=3'
+  );
+  const renderIndex = kpiHtml.indexOf(
+    'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=56'
+  );
+  const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=7');
 
   assert.ok(adapterIndex >= 0, 'equipment-history browser adapter loader is missing');
   assert.ok(modelIndex >= 0, 'equipment-history model loader is missing');
   assert.ok(modelIndex > adapterIndex, 'equipment-history model loader must load after the browser adapter');
   assert.ok(formIndex > modelIndex, 'equipment-history form loader must load after the model');
   assert.ok(storageIndex > formIndex, 'equipment-history storage loader must load after the form');
+  assert.ok(boardIndex > storageIndex, 'equipment-history board renderer must load after storage');
+  assert.ok(cardIndex > storageIndex, 'equipment-history card renderer must load after storage');
+  assert.ok(cardIndex > boardIndex, 'equipment-history card renderer must load after the board renderer');
   assert.ok(renderIndex > storageIndex, 'equipment-history render host must load after storage');
+  assert.ok(renderIndex > cardIndex, 'equipment-history render host must load after the card renderer');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
-  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=109') >= 0, 'data css cache version is stale');
+  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=113') >= 0, 'data css cache version is stale');
+  assert.ok(
+    kpiHtml.indexOf(
+      'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.css?v=6'
+    ) >= 0,
+    'equipment-history authoritative stylesheet loader is missing'
+  );
   assert.ok(
     bootManifestSource.indexOf(
       'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js'

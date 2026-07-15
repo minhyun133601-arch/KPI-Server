@@ -378,6 +378,10 @@ test('work history topbar filters switch team and reset to overview', () => {
     id: 'team1part1',
     classList: createClassList(),
   };
+  let headerSummaryUpdates = 0;
+  view.updateHeaderSummary = () => {
+    headerSummaryUpdates += 1;
+  };
   elements.set('history-main-content', {
     classList: createClassList(),
   });
@@ -396,6 +400,7 @@ test('work history topbar filters switch team and reset to overview', () => {
   view.handleRootChange({ target: teamFilter });
   assert.equal(history.state.currentTeam, 'team1part1');
   assert.equal(teamSection.classList.contains('active'), true);
+  assert.equal(headerSummaryUpdates, 1);
 
   history.state.currentKeyword = 'pump';
   history.state.currentCategoryFilter = 'monthly';

@@ -1,5 +1,6 @@
 (function registerKpiUtilityEntryStoreSave(root) {
     const parts = root[Symbol.for('kpi.utilityEntryExperiment.parts')] ||= Object.create(null);
+    const UTILITY_ENTRY_EXPERIMENT_DAILY_DELETE_RESOURCE_TYPES = Object.freeze(['electric', 'gas']);
     function buildUtilityEntryExperimentLegacyElectricDataset(store) {
         const dataset = {};
         [
@@ -89,6 +90,65 @@
             || String(entry.dayStatus || '').trim()
             || entry.completed === true
         );
+    }
+
+    function getUtilityEntryExperimentStrictDailyDate(host) {
+        const rawDate = String(parts.getUtilityEntryExperimentDailyDateInput(host)?.value || '').trim();
+        const match = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return '';
+
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        const parsedDate = new Date(Date.UTC(year, month - 1, day));
+        if (
+            year < 2000
+            || parsedDate.getUTCFullYear() !== year
+            || parsedDate.getUTCMonth() !== month - 1
+            || parsedDate.getUTCDate() !== day
+            || rawDate > parts.getUtilityEntryExperimentTodayDateString()
+        ) {
+            return '';
+        }
+        return rawDate;
+    }
+
+    function isUtilityEntryExperimentDailyDeleteStore(store) {
+        if (!parts.isUtilityEntryExperimentPlainObject(store)) return false;
+        if (parts.isUtilityEntryExperimentPlainObject(store.resourceDatasets)) return true;
+        return ['equipmentEntries', 'equipmentItems', 'mode'].some(key =>
+            Object.prototype.hasOwnProperty.call(store, key)
+        );
+    }
+
+    function removeUtilityEntryExperimentDailyDateFromStore(store, dateString = '') {
+        if (!isUtilityEntryExperimentDailyDeleteStore(store) || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+            return { deletedCount: 0, deletedResourceTypes: [] };
+        }
+
+        const deletedResourceTypes = [];
+        UTILITY_ENTRY_EXPERIMENT_DAILY_DELETE_RESOURCE_TYPES.forEach(resourceType => {
+            const splitDataset = store.resourceDatasets?.[resourceType];
+            const dataset = parts.isUtilityEntryExperimentPlainObject(splitDataset)
+                ? splitDataset
+                : resourceType === 'electric'
+                    ? store
+                    : null;
+            const entries = dataset?.equipmentEntries;
+            if (
+                !parts.isUtilityEntryExperimentPlainObject(entries)
+                || !Object.prototype.hasOwnProperty.call(entries, dateString)
+            ) {
+                return;
+            }
+            delete entries[dateString];
+            deletedResourceTypes.push(resourceType);
+        });
+
+        return {
+            deletedCount: deletedResourceTypes.length,
+            deletedResourceTypes
+        };
     }
 
     function applyUtilityEntryExperimentDailyInputsToStore(host, store, options = {}) {
@@ -207,7 +267,7 @@
     function getUtilityEntryExperimentScopedDraft(scopedDrafts, resourceType, scopeKey) {
         const key = `${resourceType}:${scopeKey}`;
         if (!scopedDrafts.has(key)) {
-            scopedDrafts.set(key, { resourceType, scopeKey, fieldKeys: new Set() });
+            scopedDrafts.set(key, { resourceType, scopeKey, fieldKeys: new Set(), hasDirtyFields: false });
         }
         return scopedDrafts.get(key);
     }
@@ -265,6 +325,9 @@
                     delete draft.fields[fieldKey];
                 }
                 draft.fieldKeys.add(fieldKey);
+                if (parts.isUtilityEntryExperimentDirtyInput(input)) {
+                    draft.hasDirtyFields = true;
+                }
                 touchedCount += 1;
             });
 
@@ -347,7 +410,11 @@
         const records = getUtilityEntryExperimentStoreRecords(store);
         scopedDrafts.forEach(draft => {
             const dataset = records[draft.resourceType];
-            const rawFields = parts.isUtilityEntryExperimentPlainObject(draft.fields) ? draft.fields : {};
+            const rawFields = parts.stripUtilityEntryExperimentCalculatedSettlementFields(
+                parts.isUtilityEntryExperimentPlainObject(draft.fields) ? draft.fields : {},
+                draft.resourceType,
+                { preserveLegacyOnly: draft.hasDirtyFields !== true }
+            );
             const rawEntry = Object.keys(rawFields).length
                 ? {
                     monthValue,
@@ -419,6 +486,63 @@
         }
     }
 
+    async function deleteUtilityEntryExperimentDailyDate(host) {
+        if (!host || ['saving', 'deleting'].includes(host.dataset?.utilityEntryExperimentSaveStatus)) return false;
+
+        const dateString = getUtilityEntryExperimentStrictDailyDate(host);
+        if (!dateString) {
+            parts.alertUtilityEntryExperimentUser('삭제할 일간 날짜를 확인해 주세요.');
+            return false;
+        }
+
+        const confirmed = parts.confirmUtilityEntryExperimentUser(
+            `${dateString}에 기입된 유틸리티 값이 삭제됩니다.\n정말 삭제하시겠습니까?`
+        );
+        if (!confirmed) return false;
+
+        parts.setUtilityEntryExperimentSaveStatus(host, 'deleting', '삭제 중');
+        let writeCompleted = false;
+
+        try {
+            const { store: currentStore, meta } = await parts.fetchUtilityEntryExperimentSharedStore();
+            if (!isUtilityEntryExperimentDailyDeleteStore(currentStore)) {
+                throw new Error('invalid_shared_store');
+            }
+
+            const store = parts.cloneUtilityEntryExperimentJson(currentStore);
+            const result = removeUtilityEntryExperimentDailyDateFromStore(store, dateString);
+            if (result.deletedCount > 0) {
+                await parts.putUtilityEntryExperimentSharedStore(store, meta);
+                writeCompleted = true;
+            }
+
+            parts.state.actualRecordPromise = Promise.resolve(getUtilityEntryExperimentStoreRecords(store));
+            await populateUtilityEntryExperimentActualValues(host, { strictDailyDate: true });
+            if (host.dataset?.actualValuesReady !== 'true') {
+                parts.setUtilityEntryExperimentSaveStatus(
+                    host,
+                    'error',
+                    writeCompleted ? '삭제 완료 · 화면 갱신 실패' : '화면 갱신 실패'
+                );
+                return writeCompleted;
+            }
+
+            parts.setUtilityEntryExperimentSaveStatus(
+                host,
+                'saved',
+                result.deletedCount > 0 ? `${dateString} 삭제됨` : `${dateString} 입력값 없음`
+            );
+            return true;
+        } catch (error) {
+            const message = error?.message === 'version_conflict'
+                ? '다른 저장 내용이 먼저 반영되었습니다. 새로고침 후 다시 삭제해 주세요.'
+                : '삭제 실패';
+            host.dataset.utilityEntryExperimentDeleteError = error?.message || 'unknown_error';
+            parts.setUtilityEntryExperimentSaveStatus(host, 'error', message);
+            return false;
+        }
+    }
+
     function applyUtilityEntryExperimentUnsavedDailyInputDrafts(records, host, dateString = '') {
         if (!records || !host || host.dataset?.utilityEntryExperimentSaveStatus !== 'unsaved' || !dateString) {
             return 0;
@@ -464,7 +588,7 @@
         return touchedCount;
     }
 
-    async function populateUtilityEntryExperimentActualValues(host) {
+    async function populateUtilityEntryExperimentActualValues(host, options = {}) {
         if (!host) return;
         const populateSequence = ++parts.state.populateSequence;
         host.dataset.actualValuesReady = 'loading';
@@ -477,8 +601,12 @@
             const dailyDate = parts.getUtilityEntryExperimentSelectedDailyDate(host);
             const unsavedDailyDraftCount = applyUtilityEntryExperimentUnsavedDailyInputDrafts(records, host, dailyDate);
             const monthValue = parts.getUtilityEntryExperimentSelectedMonth(host);
-            const electricDailyDate = parts.resolveUtilityEntryExperimentResourceDailyDate(records.electric, dailyDate);
-            const gasDailyDate = parts.resolveUtilityEntryExperimentResourceDailyDate(records.gas, dailyDate);
+            const electricDailyDate = options.strictDailyDate === true
+                ? dailyDate
+                : parts.resolveUtilityEntryExperimentResourceDailyDate(records.electric, dailyDate);
+            const gasDailyDate = options.strictDailyDate === true
+                ? dailyDate
+                : parts.resolveUtilityEntryExperimentResourceDailyDate(records.gas, dailyDate);
             parts.renderUtilityEntryExperimentCompletedDateCalendar(host, records, dailyDate);
             parts.populateUtilityEntryExperimentDailyResource(host, records.electric, 'electric', electricDailyDate, dailyDate);
             parts.populateUtilityEntryExperimentDailyResource(host, records.gas, 'gas', gasDailyDate, dailyDate);
@@ -500,5 +628,5 @@
     }
 
 
-    Object.assign(parts, { buildUtilityEntryExperimentLegacyElectricDataset, getUtilityEntryExperimentStoreDataset, getUtilityEntryExperimentSaveView, isUtilityEntryExperimentInputVisible, getUtilityEntryExperimentInputNormalizedValue, getUtilityEntryExperimentValidatedNumberInputValue, hasUtilityEntryExperimentEntryData, applyUtilityEntryExperimentDailyInputsToStore, getUtilityEntryExperimentBillingScopeMap, setUtilityEntryExperimentBillingScopeEntry, getUtilityEntryExperimentStoreRecords, getUtilityEntryExperimentScopedDraft, applyUtilityEntryExperimentMonthlyInputsToStore, saveUtilityEntryExperiment, applyUtilityEntryExperimentUnsavedDailyInputDrafts, populateUtilityEntryExperimentActualValues });
+    Object.assign(parts, { buildUtilityEntryExperimentLegacyElectricDataset, getUtilityEntryExperimentStoreDataset, getUtilityEntryExperimentSaveView, isUtilityEntryExperimentInputVisible, getUtilityEntryExperimentInputNormalizedValue, getUtilityEntryExperimentValidatedNumberInputValue, hasUtilityEntryExperimentEntryData, getUtilityEntryExperimentStrictDailyDate, isUtilityEntryExperimentDailyDeleteStore, removeUtilityEntryExperimentDailyDateFromStore, applyUtilityEntryExperimentDailyInputsToStore, getUtilityEntryExperimentBillingScopeMap, setUtilityEntryExperimentBillingScopeEntry, getUtilityEntryExperimentStoreRecords, getUtilityEntryExperimentScopedDraft, applyUtilityEntryExperimentMonthlyInputsToStore, saveUtilityEntryExperiment, deleteUtilityEntryExperimentDailyDate, applyUtilityEntryExperimentUnsavedDailyInputDrafts, populateUtilityEntryExperimentActualValues });
 })(this);

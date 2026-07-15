@@ -18,7 +18,8 @@
     const removeDraftRow = (...args) => api.removeDraftRow(...args);
     const moveDraftRow = (...args) => api.moveDraftRow(...args);
     const cycleBoardCardStatus = (...args) => api.cycleBoardCardStatus(...args);
-    const cycleBoardStatus = (...args) => api.cycleBoardStatus(...args);
+    const applyBoardStatus = (...args) => api.applyBoardStatus(...args);
+    const getBoardBulkStatusState = (...args) => api.getBoardBulkStatusState(...args);
     const cycleCurrentCardStatus = (...args) => api.cycleCurrentCardStatus(...args);
     const moveBoardCard = (...args) => api.moveBoardCard(...args);
     const moveBoardRoom = (...args) => api.moveBoardRoom(...args);
@@ -111,19 +112,46 @@
             });
         });
 
-        root.querySelectorAll('[data-equipment-cycle-board-status]').forEach((button) => {
-            button.addEventListener('click', async () => {
-                try {
-                    if (await cycleBoardStatus(data, state, {
-                        scope: button.dataset.equipmentStatusScope,
-                        team: button.dataset.equipmentStatusTeam,
-                        room: button.dataset.equipmentStatusRoom,
-                    })) redraw();
-                } catch (error) {
-                    console.warn('[kpi] equipment history board status save failed', error);
-                    browser.alert('\uAC00\uB3D9 \uC0C1\uD0DC \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.');
-                }
-            });
+        root.querySelector('[data-equipment-bulk-status-toggle]')?.addEventListener('click', () => {
+            const bulkStatus = getBoardBulkStatusState(state);
+            bulkStatus.open = !bulkStatus.open;
+            redraw();
+        });
+
+        root.querySelector('[data-equipment-bulk-status-team]')?.addEventListener('change', (event) => {
+            const bulkStatus = getBoardBulkStatusState(state);
+            bulkStatus.team = event.target.value || '';
+            bulkStatus.room = '';
+            redraw();
+        });
+
+        root.querySelector('[data-equipment-bulk-status-room]')?.addEventListener('change', (event) => {
+            getBoardBulkStatusState(state).room = event.target.value || '';
+            redraw();
+        });
+
+        root.querySelector('[data-equipment-bulk-status-value]')?.addEventListener('change', (event) => {
+            getBoardBulkStatusState(state).status = event.target.value || '\uAC00\uB3D9\uC911';
+            redraw();
+        });
+
+        root.querySelector('[data-equipment-bulk-status-apply]')?.addEventListener('click', async () => {
+            const bulkStatus = getBoardBulkStatusState(state);
+            const scope = bulkStatus.room ? 'room' : bulkStatus.team ? 'team' : 'all';
+            try {
+                const applied = await applyBoardStatus(data, state, {
+                    scope,
+                    team: bulkStatus.team,
+                    room: bulkStatus.room,
+                    status: bulkStatus.status,
+                });
+                if (!applied) return;
+                bulkStatus.open = false;
+                redraw();
+            } catch (error) {
+                console.warn('[kpi] equipment history bulk status save failed', error);
+                browser.alert('\uAC00\uB3D9 \uC0C1\uD0DC \uC77C\uAD04 \uC801\uC6A9\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.');
+            }
         });
 
         root.querySelectorAll('[data-equipment-order-toggle-team]').forEach((button) => {

@@ -23,9 +23,9 @@ test('kpi html loads section factory adapter before all section factories', () =
     'data-entry/runtime/data/sections/utility-entry/KPI.utility-entry.config.js?v=1'
   );
   const utilityTemplatesIndex = kpiHtml.indexOf(
-    'data-entry/runtime/data/sections/utility-entry/KPI.utility-entry.templates.js?v=1'
+    'data-entry/runtime/data/sections/utility-entry/KPI.utility-entry.templates.js?v=5'
   );
-  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=139');
+  const dataIndex = kpiHtml.indexOf('data-entry/runtime/data/sections/KPI.sections.data.js?v=142');
   const reportSharedIndex = kpiHtml.indexOf('kpi-runtime/sections/report/KPI.sections.report.shared.js?v=1');
   const reportAnalysisIndex = kpiHtml.indexOf('kpi-runtime/sections/report/KPI.sections.report.analysis.js?v=1');
   const reportDeckIndex = kpiHtml.indexOf('kpi-runtime/sections/report/KPI.sections.report.deck.js?v=1');

@@ -19,6 +19,22 @@ const auditPdfThumbnailSource = await fs.readFile(
   'utf8'
 );
 
+test('audit lux keeps the standard team labels and storage keys unchanged', () => {
+  const context = {
+    getAuditFilterTeams() {
+      return ['2팀', '3팀'];
+    },
+  };
+  vm.createContext(context);
+  vm.runInContext(auditWorkspaceSource, context);
+
+  const teams = context.getAuditLuxWorkspaceTeams('audit_lux');
+  assert.deepEqual(Array.from(teams), ['1팀 1파트', '1팀 2파트', '2팀', '3팀']);
+  assert.match(auditWorkspaceSource, /const teamLabel = team \|\| '팀 없음';/);
+  assert.doesNotMatch(auditWorkspaceSource, /1팀 1파트 CIP/);
+  assert.match(auditWorkspaceSource, /data-team="\$\{escapeHtml\(team\)\}"/);
+});
+
 test('audit lux index card opens originals through media and keeps replace download actions', () => {
   assert.match(auditWorkspaceSource, /function renderAuditLuxAttachmentMedia/);
   assert.match(

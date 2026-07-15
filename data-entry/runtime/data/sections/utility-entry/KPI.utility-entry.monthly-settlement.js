@@ -1,6 +1,16 @@
 (function registerKpiUtilityEntryMonthlySettlement(root) {
     const parts = root[Symbol.for('kpi.utilityEntryExperiment.parts')] ||= Object.create(null);
     const { UTILITY_ENTRY_EXPERIMENT_TOTAL_POWER_FACTOR, UTILITY_ENTRY_EXPERIMENT_ACTIVE_POWER_IDS, UTILITY_ENTRY_EXPERIMENT_GAS_LPG_FACTOR, UTILITY_ENTRY_EXPERIMENT_GAS_CORRECTION_SOURCE_IDS, UTILITY_ENTRY_EXPERIMENT_GAS_FIELD_IDS, UTILITY_ENTRY_EXPERIMENT_ELECTRICITY_CHARGE_COMPONENTS, UTILITY_ENTRY_EXPERIMENT_ELECTRIC_BILLING_COMPONENTS, UTILITY_ENTRY_EXPERIMENT_GAS_BILLING_COMPONENTS, UTILITY_ENTRY_EXPERIMENT_GAS_LPG_BILLING_COMPONENTS, UTILITY_ENTRY_EXPERIMENT_WASTE_BILLING_COMPONENTS, UTILITY_ENTRY_EXPERIMENT_SHARED_COMPRESSOR_START_MONTH, UTILITY_ENTRY_EXPERIMENT_LIQUID_COMPRESSOR_START_MONTH, UTILITY_ENTRY_EXPERIMENT_SETTLEMENT_FIELDS } = parts.constants;
+    const UTILITY_ENTRY_EXPERIMENT_CALCULATED_SETTLEMENT_FIELDS = Object.freeze({
+        electric: Object.freeze(['electricity_charge_total', 'unit_price', 'billing_amount']),
+        gas: Object.freeze(['unit_price', 'unit_price_m3', 'billing_amount']),
+        waste: Object.freeze(['billing_amount', 'unit_price', 'waste_per_production_ton'])
+    });
+    const UTILITY_ENTRY_EXPERIMENT_USAGE_DEPENDENT_SETTLEMENT_FIELDS = new Set([
+        'unit_price',
+        'unit_price_m3',
+        'waste_per_production_ton'
+    ]);
 
     function roundUtilityEntryExperimentWholeNumber(value) {
         if (!Number.isFinite(value)) return null;
@@ -94,9 +104,30 @@
             : parts.roundUtilityEntryExperimentNumber(sourceValue / usageBase, fractionDigits);
     }
 
+    function stripUtilityEntryExperimentCalculatedSettlementFields(fields, resourceType, options = {}) {
+        const sourceFields = parts.isUtilityEntryExperimentPlainObject(fields) ? fields : {};
+        const calculatedFieldKeys = UTILITY_ENTRY_EXPERIMENT_CALCULATED_SETTLEMENT_FIELDS[resourceType] || [];
+        const nextFields = { ...sourceFields };
+        const hasManualSource = Object.entries(sourceFields).some(([fieldKey, value]) =>
+            !calculatedFieldKeys.includes(fieldKey) && String(value ?? '').trim()
+        );
+
+        calculatedFieldKeys.forEach(fieldKey => {
+            const preserveLegacyOnlyValue = options.preserveLegacyOnly === true
+                && !hasManualSource
+                && !UTILITY_ENTRY_EXPERIMENT_USAGE_DEPENDENT_SETTLEMENT_FIELDS.has(fieldKey)
+                && String(sourceFields[fieldKey] ?? '').trim();
+            if (!preserveLegacyOnlyValue) delete nextFields[fieldKey];
+        });
+        return nextFields;
+    }
+
     function resolveUtilityEntryExperimentSettlementFields(records, dataset, monthValue, scopeKey) {
-        const sourceFields = { ...(parts.getUtilityEntryExperimentSettlementScope(dataset, monthValue, scopeKey).fields || {}) };
         const resourceType = getUtilityEntryExperimentSettlementResource(scopeKey);
+        const storedFields = parts.getUtilityEntryExperimentSettlementScope(dataset, monthValue, scopeKey).fields || {};
+        const sourceFields = stripUtilityEntryExperimentCalculatedSettlementFields(storedFields, resourceType, {
+            preserveLegacyOnly: true
+        });
         const usageBase = getUtilityEntryExperimentSettlementUsageBase(records, scopeKey, monthValue);
         const fields = { ...sourceFields };
 
@@ -334,5 +365,5 @@
     }
 
 
-    Object.assign(parts, { roundUtilityEntryExperimentWholeNumber, calculateUtilityEntryExperimentSignedTotal, getUtilityEntryExperimentDirectMonthlyUsage, calculateUtilityEntryExperimentElectricityChargeTotalValue, getUtilityEntryExperimentSettlementResource, getUtilityEntryExperimentSettlementUsageBase, calculateUtilityEntryExperimentUnitPrice, resolveUtilityEntryExperimentSettlementFields, populateUtilityEntryExperimentSettlementFields, getUtilityEntryExperimentOtherMonthlyField, getUtilityEntryExperimentOtherTeamMonthlyField, shiftUtilityEntryExperimentMonthValue, getUtilityEntryExperimentTotalPowerReading, calculateUtilityEntryExperimentElectricTotalPowerUsage, buildUtilityEntryExperimentGasMonthUsage, populateUtilityEntryExperimentMonthly, getUtilityEntryExperimentCorrectionRuleRows, renderUtilityEntryExperimentCorrectionSummary });
+    Object.assign(parts, { roundUtilityEntryExperimentWholeNumber, calculateUtilityEntryExperimentSignedTotal, getUtilityEntryExperimentDirectMonthlyUsage, calculateUtilityEntryExperimentElectricityChargeTotalValue, getUtilityEntryExperimentSettlementResource, getUtilityEntryExperimentSettlementUsageBase, calculateUtilityEntryExperimentUnitPrice, stripUtilityEntryExperimentCalculatedSettlementFields, resolveUtilityEntryExperimentSettlementFields, populateUtilityEntryExperimentSettlementFields, getUtilityEntryExperimentOtherMonthlyField, getUtilityEntryExperimentOtherTeamMonthlyField, shiftUtilityEntryExperimentMonthValue, getUtilityEntryExperimentTotalPowerReading, calculateUtilityEntryExperimentElectricTotalPowerUsage, buildUtilityEntryExperimentGasMonthUsage, populateUtilityEntryExperimentMonthly, getUtilityEntryExperimentCorrectionRuleRows, renderUtilityEntryExperimentCorrectionSummary });
 })(this);

@@ -150,7 +150,7 @@
         syncSearchInputs(state.currentKeyword);
         syncCategoryFilterInputs(state.currentCategoryFilter);
         syncActiveTabUi();
-        view.updateSearchCount?.();
+        view.updateHeaderSummary?.();
     }
 
     function syncTopbarFilterUi() {

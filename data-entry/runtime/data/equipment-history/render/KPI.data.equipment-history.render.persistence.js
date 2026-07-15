@@ -4,11 +4,11 @@
     const EQUIPMENT_HISTORY_SAVED_POPUP_MESSAGE = '저장되었습니다';
     const EQUIPMENT_HISTORY_DUPLICATE_NAME_ERROR = 'equipment_history_duplicate_equipment_name';
     const EQUIPMENT_HISTORY_BROWSER_STATE_KEY = 'equipment-history-card';
+    const EQUIPMENT_BOARD_EXPLICIT_STATUSES = new Set(['\uAC00\uB3D9\uC911', '\uBE44\uAC00\uB3D9\uC911', '\uC815\uBE44\uC911']);
     let activeSaveController = null;
     const cleanupPreviousEquipmentPhotoDocument = (...args) => api.cleanupPreviousEquipmentPhotoDocument(...args);
     const createEquipmentHistoryDraftId = (...args) => api.createEquipmentHistoryDraftId(...args);
     const getNextEquipmentBoardStatus = (...args) => api.getNextEquipmentBoardStatus(...args);
-    const getBoardStatusCycleTargetStatus = (...args) => api.getBoardStatusCycleTargetStatus(...args);
     const getEquipmentTeamDataKey = (...args) => api.getEquipmentTeamDataKey(...args);
     const syncDraftFromForm = (...args) => api.syncDraftFromForm(...args);
     const ensureDraft = (...args) => api.ensureDraft(...args);
@@ -254,7 +254,7 @@
         return false;
     }
 
-    async function cycleBoardStatus(data, state, options = {}) {
+    function getBoardStatusScopeContext(data, options = {}) {
         const scope = api.normalizeText(options.scope || 'all');
         const targetTeam = api.normalizeText(options.team || '');
         const targetRoom = api.normalizeText(options.room || '');
@@ -264,8 +264,12 @@
             Number.isInteger(item.sourceIndex)
             && doesEquipmentItemMatchStatusScope(item, scope, targetTeam, targetRoom)
         ));
-        if (!scopeItems.length) return false;
-        const targetStatus = getBoardStatusCycleTargetStatus(scopeItems);
+        return { nextList, scopeItems };
+    }
+
+    async function persistBoardStatus(data, state, context, targetStatus) {
+        const { nextList, scopeItems } = context;
+        if (!scopeItems.length || !EQUIPMENT_BOARD_EXPLICIT_STATUSES.has(targetStatus)) return false;
         scopeItems.forEach((item) => {
             nextList[item.sourceIndex] = {
                 ...nextList[item.sourceIndex],
@@ -281,6 +285,12 @@
         state.selectedId = '';
         state.message = `${scopeItems.length}\uB300 \uC0C1\uD0DC\uB97C ${targetStatus}\uC73C\uB85C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.`;
         return true;
+    }
+
+    async function applyBoardStatus(data, state, options = {}) {
+        const targetStatus = api.normalizeText(options.status);
+        if (!EQUIPMENT_BOARD_EXPLICIT_STATUSES.has(targetStatus)) return false;
+        return persistBoardStatus(data, state, getBoardStatusScopeContext(data, options), targetStatus);
     }
 
     async function cycleCurrentCardStatus(root, data, state, redraw) {
@@ -409,6 +419,7 @@
         state.starter = null;
         state.filters = { team: '', status: '', search: '' };
         state.orderingTeams = {};
+        state.bulkStatus = { open: false, team: '', room: '', status: '\uAC00\uB3D9\uC911' };
         clearEquipmentHistoryPhotoDocumentCleanupQueue(state);
     }
 
@@ -550,7 +561,9 @@
         saveDraft,
         cycleBoardCardStatus,
         doesEquipmentItemMatchStatusScope,
-        cycleBoardStatus,
+        getBoardStatusScopeContext,
+        persistBoardStatus,
+        applyBoardStatus,
         cycleCurrentCardStatus,
         moveBoardCard,
         getBoardTeamIdentitySet,

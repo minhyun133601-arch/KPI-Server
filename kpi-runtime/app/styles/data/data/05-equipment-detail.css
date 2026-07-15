@@ -39,8 +39,7 @@
             display: grid;
             gap: 8px;
         }
-        .data-equipment-basic-grid,
-        .data-equipment-operation-grid {
+        .data-equipment-basic-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .data-equipment-identity-stack {

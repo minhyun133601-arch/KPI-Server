@@ -34,5 +34,5 @@ test('data css facade imports bounded chunks in original cascade order', async (
 
 test('data css split preserves the recorded pre-split byte sequence', () => {
   const digest = crypto.createHash('sha256').update(chunkSources.join('')).digest('hex');
-  assert.equal(digest, '79a6bff726729618f8444f5f0ce5847dd435a0349a29b37ddd1a49bb832d8292');
+  assert.equal(digest, 'a40be540475bb3d8b592e83379533dc396afcbdb36f6b6b272cc11be86beb0fb');
 });

@@ -220,31 +220,11 @@
 
     function buildExperimentBoard(records = []) {
         const normalizedRecords = Array.isArray(records) ? records : [];
-        const totalCost = normalizedRecords.reduce((sum, record) => sum + (Number(record?.cost) || 0), 0);
-        const latestDate = normalizedRecords
-            .map(record => record.endDate || record.startDate || '')
-            .filter(Boolean)
-            .sort()
-            .pop() || '';
         const groupedMarkup = TEAM_KEYS.map(team => buildExperimentTeamSection(team, normalizedRecords))
             .filter(Boolean)
             .join('');
         return `
-            <section class="work-history-experiment-board" data-role="work-history-experiment-board" aria-label="작업이력 요약">
-                <div class="work-history-experiment-metrics" aria-label="작업이력 요약">
-                    <article class="work-history-experiment-metric-card is-total">
-                        <span>전체 작업</span>
-                        <strong>${escapeHtml(normalizedRecords.length)}<small>건</small></strong>
-                    </article>
-                    <article class="work-history-experiment-metric-card is-cost">
-                        <span>총금액</span>
-                        <strong>${escapeHtml(view.formatCurrency(totalCost))}</strong>
-                    </article>
-                    <article class="work-history-experiment-metric-card is-recent">
-                        <span>최근 작업일</span>
-                        <strong>${escapeHtml(view.formatDateKorean(latestDate))}</strong>
-                    </article>
-                </div>
+            <section class="work-history-experiment-board" data-role="work-history-experiment-board" aria-label="작업이력 목록">
                 ${groupedMarkup || '<div class="work-history-experiment-empty">표시할 작업이력이 없습니다.</div>'}
             </section>
         `;

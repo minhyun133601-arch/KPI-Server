@@ -50,6 +50,12 @@
         return isActive ? 'fa-compress' : 'fa-expand';
     }
 
+    function getEquipmentHistoryFullscreenIconSvg(isActive = isEquipmentHistoryFullscreen()) {
+        return isActive
+            ? '<svg class="data-equipment-fullscreen-icon-svg" viewBox="0 0 20 20" focusable="false"><path d="M8 3v5H3M12 3v5h5M8 17v-5H3M12 17v-5h5"></path></svg>'
+            : '<svg class="data-equipment-fullscreen-icon-svg" viewBox="0 0 20 20" focusable="false"><path d="M7 3H3v4M3 3l5 5M13 3h4v4M17 3l-5 5M7 17H3v-4M3 17l5-5M13 17h4v-4M17 17l-5-5"></path></svg>';
+    }
+
     function renderEquipmentHistoryFullscreenButton() {
         const isActive = isEquipmentHistoryFullscreen();
         const label = getEquipmentHistoryFullscreenLabel(isActive);
@@ -62,8 +68,8 @@
                 aria-label="${api.escapeHtml(label)}"
                 title="${api.escapeHtml(label)}"
             >
-                <span class="data-equipment-fullscreen-toggle-icon">
-                    <i class="fas ${getEquipmentHistoryFullscreenIconClass(isActive)}" data-equipment-fullscreen-icon aria-hidden="true"></i>
+                <span class="data-equipment-fullscreen-toggle-icon" data-equipment-fullscreen-icon aria-hidden="true">
+                    ${getEquipmentHistoryFullscreenIconSvg(isActive)}
                 </span>
             </button>
         `;
@@ -83,7 +89,7 @@
             button.setAttribute('title', label);
             const icon = button.querySelector('[data-equipment-fullscreen-icon]');
             if (icon) {
-                icon.className = `fas ${getEquipmentHistoryFullscreenIconClass(isActive)}`;
+                icon.innerHTML = getEquipmentHistoryFullscreenIconSvg(isActive);
             }
         });
     }
@@ -401,47 +407,97 @@
         };
     }
 
-    function getBoardStatusCycleStatus(items = []) {
-        const labels = (Array.isArray(items) ? items : [])
-            .map((item) => api.getEquipmentStatus(item?.status).label)
-            .filter((label) => EQUIPMENT_BOARD_STATUS_CYCLE.includes(label));
-        const uniqueLabels = Array.from(new Set(labels));
-        return uniqueLabels.length === 1 ? uniqueLabels[0] : EQUIPMENT_BOARD_STATUS_CYCLE[0];
-    }
-
-    function getBoardStatusCycleTargetStatus(items = []) {
-        const labels = (Array.isArray(items) ? items : [])
-            .map((item) => api.getEquipmentStatus(item?.status).label)
-            .filter((label) => EQUIPMENT_BOARD_STATUS_CYCLE.includes(label));
-        const uniqueLabels = Array.from(new Set(labels));
-        return uniqueLabels.length === 1
-            ? getNextEquipmentBoardStatus(uniqueLabels[0])
+    function getBoardBulkStatusState(state) {
+        if (!state || typeof state !== 'object') {
+            return { open: false, team: '', room: '', status: EQUIPMENT_BOARD_STATUS_CYCLE[0] };
+        }
+        if (!state.bulkStatus || typeof state.bulkStatus !== 'object') {
+            state.bulkStatus = { open: false, team: '', room: '', status: EQUIPMENT_BOARD_STATUS_CYCLE[0] };
+        }
+        state.bulkStatus.open = state.bulkStatus.open === true;
+        state.bulkStatus.team = api.normalizeText(state.bulkStatus.team);
+        state.bulkStatus.room = api.normalizeText(state.bulkStatus.room);
+        state.bulkStatus.status = EQUIPMENT_BOARD_STATUS_CYCLE.includes(api.normalizeText(state.bulkStatus.status))
+            ? api.normalizeText(state.bulkStatus.status)
             : EQUIPMENT_BOARD_STATUS_CYCLE[0];
+        return state.bulkStatus;
     }
 
-    function renderBoardStatusActionGroup(scope, options = {}) {
-        const targetTeam = api.normalizeText(options.team || '');
-        const targetRoom = api.normalizeText(options.room || '');
-        const statusMeta = api.getEquipmentStatus(getBoardStatusCycleStatus(options.items));
-        const statusTone = ['running', 'stop', 'check'].includes(statusMeta.tone) ? statusMeta.tone : 'running';
-        const statusIcon = getEquipmentStatusIconClass(statusTone);
-        const disabled = options.disabled === true;
+    function getBoardBulkStatusTargetItems(items = [], bulkStatus = {}) {
+        const targetTeam = api.normalizeText(bulkStatus.team);
+        const targetRoom = api.normalizeText(bulkStatus.room);
+        return (Array.isArray(items) ? items : []).filter((item) => {
+            const itemTeam = item?.teamDataKey || getEquipmentTeamDataKey(item?.team);
+            if (targetTeam && itemTeam !== targetTeam) return false;
+            return !targetRoom || api.normalizeText(item?.room) === targetRoom;
+        });
+    }
+
+    function getBoardBulkStatusTeamOptions(groups = []) {
+        const seen = new Set();
+        return (Array.isArray(groups) ? groups : []).reduce((options, group) => {
+            const value = api.normalizeText(group?.teamDataKey || getEquipmentTeamDataKey(group?.team));
+            const label = api.normalizeText(group?.team);
+            if (!value || !label || seen.has(value)) return options;
+            seen.add(value);
+            options.push({ value, label });
+            return options;
+        }, []);
+    }
+
+    function renderBoardBulkStatusPanel(groups = [], items = [], state = null) {
+        const bulkStatus = getBoardBulkStatusState(state);
+        if (!bulkStatus.open) return '';
+        const teamOptions = getBoardBulkStatusTeamOptions(groups);
+        const validTeam = teamOptions.some((option) => option.value === bulkStatus.team);
+        if (bulkStatus.team && !validTeam) {
+            bulkStatus.team = '';
+            bulkStatus.room = '';
+        }
+        const roomOptions = bulkStatus.team ? getTeamRoomOptions({ equipmentList: items }, bulkStatus.team) : [];
+        if (bulkStatus.room && !roomOptions.includes(bulkStatus.room)) bulkStatus.room = '';
+        const targetItems = getBoardBulkStatusTargetItems(items, bulkStatus);
         return `
-            <span class="data-equipment-board-status-actions" data-equipment-board-status-actions="${api.escapeHtml(scope)}">
-                <button type="button" class="data-equipment-board-chip data-equipment-board-status-cycle is-${statusTone}" data-equipment-cycle-board-status data-equipment-status-scope="${api.escapeHtml(scope)}" data-equipment-status-team="${api.escapeHtml(targetTeam)}" data-equipment-status-room="${api.escapeHtml(targetRoom)}" aria-label="${api.escapeHtml(`${statusMeta.label} 일괄 상태 전환`)}" title="${api.escapeHtml('클릭하면 이 범위가 가동중, 비가동중, 정비중으로 바뀝니다.')}"${disabled ? ' disabled' : ''}>
-                    <i class="fas ${api.escapeHtml(statusIcon)}" aria-hidden="true"></i><span>${api.escapeHtml(statusMeta.label)}</span>
+            <div id="equipment-bulk-status-panel" class="data-equipment-board-bulk-status-panel" data-equipment-bulk-status-panel aria-label="설비 상태 전체 적용 필터">
+                <label class="data-equipment-board-bulk-status-field">
+                    <span>팀</span>
+                    <select data-equipment-bulk-status-team aria-label="적용할 팀">
+                        <option value="">전체 팀</option>
+                        ${teamOptions.map((option) => `<option value="${api.escapeHtml(option.value)}"${option.value === bulkStatus.team ? ' selected' : ''}>${api.escapeHtml(option.label)}</option>`).join('')}
+                    </select>
+                </label>
+                <label class="data-equipment-board-bulk-status-field">
+                    <span>실</span>
+                    <select data-equipment-bulk-status-room aria-label="적용할 실"${bulkStatus.team ? '' : ' disabled'}>
+                        <option value="">전체 실</option>
+                        ${roomOptions.map((room) => `<option value="${api.escapeHtml(room)}"${room === bulkStatus.room ? ' selected' : ''}>${api.escapeHtml(room)}</option>`).join('')}
+                    </select>
+                </label>
+                <label class="data-equipment-board-bulk-status-field">
+                    <span>변경 상태</span>
+                    <select data-equipment-bulk-status-value aria-label="변경할 상태">
+                        ${EQUIPMENT_BOARD_STATUS_CYCLE.map((status) => `<option value="${api.escapeHtml(status)}"${status === bulkStatus.status ? ' selected' : ''}>${api.escapeHtml(status)}</option>`).join('')}
+                    </select>
+                </label>
+                <div class="data-equipment-board-bulk-status-count" aria-live="polite">
+                    <span>적용 대상</span><strong>${api.escapeHtml(targetItems.length)}대</strong>
+                </div>
+                <button type="button" class="data-equipment-board-bulk-status-apply" data-equipment-bulk-status-apply${targetItems.length ? '' : ' disabled'}>
+                    적용
                 </button>
-            </span>
+            </div>
         `;
     }
 
-    function renderBoardGlobalStatusActions(items = []) {
-        const itemCount = Array.isArray(items) ? items.length : 0;
+    function renderBoardGlobalStatusActions(items = [], groups = [], state = null) {
+        const bulkStatus = getBoardBulkStatusState(state);
         return `
-            <div class="data-equipment-board-global-actions">
-                <strong>상태 일괄 변경</strong>
-                ${renderBoardStatusActionGroup('all', { items, disabled: itemCount <= 0 })}
+            <div class="data-equipment-board-global-actions" data-equipment-bulk-actions>
+                <button type="button" class="data-equipment-board-bulk-status-toggle" data-equipment-bulk-status-toggle aria-expanded="${bulkStatus.open ? 'true' : 'false'}" aria-controls="equipment-bulk-status-panel">
+                    <i class="fas fa-sliders" aria-hidden="true"></i><span>전체 적용</span><i class="fas fa-chevron-${bulkStatus.open ? 'up' : 'down'}" aria-hidden="true"></i>
+                </button>
             </div>
+            ${renderBoardBulkStatusPanel(groups, items, state)}
         `;
     }
 
@@ -466,7 +522,6 @@
                         </button>
                     </span>
                     ${renderBoardAddButton(teamKey, 'data-equipment-board-add-button data-equipment-board-room-add-button', roomTitle)}
-                    ${renderBoardStatusActionGroup('room', { team: teamKey, room: roomTitle, items: roomEquipmentItems, disabled: roomEquipmentItems.length <= 0 })}
                 </span>
             </h3>
         `;
@@ -475,50 +530,31 @@
     function renderBoardSummary(summary) {
         return `
             <div class="data-equipment-index-summary" aria-label="설비 상태 요약">
-                <article>
-                    <span class="data-equipment-index-summary-icon is-total"><i class="fas fa-grip" aria-hidden="true"></i></span>
+                <article class="is-total">
                     <div>
-                        <span>전체 설비</span>
+                        <span><i class="data-equipment-index-summary-icon fas fa-industry" aria-hidden="true"></i>전체 설비</span>
                         <strong>${api.escapeHtml(summary.total)}<small>대</small></strong>
                     </div>
                 </article>
-                <article>
-                    <span class="data-equipment-index-summary-icon is-running"><i class="fas fa-play" aria-hidden="true"></i></span>
+                <article class="is-running">
                     <div>
-                        <span>가동중</span>
-                        <strong>${api.escapeHtml(summary.running)}<small>대</small></strong>
+                        <span><i class="data-equipment-index-summary-icon fas fa-play" aria-hidden="true"></i>가동중</span>
+                        <strong>${api.escapeHtml(summary.running)}<small>대</small><small class="data-equipment-index-summary-rate">${api.escapeHtml(formatBoardPercent(summary.running, summary.total))}</small></strong>
                     </div>
                 </article>
-                <article>
-                    <span class="data-equipment-index-summary-icon is-stop"><i class="fas fa-square" aria-hidden="true"></i></span>
+                <article class="is-stop">
                     <div>
-                        <span>비가동중</span>
-                        <strong>${api.escapeHtml(summary.stopped)}<small>대</small></strong>
+                        <span><i class="data-equipment-index-summary-icon fas fa-square" aria-hidden="true"></i>비가동중</span>
+                        <strong>${api.escapeHtml(summary.stopped)}<small>대</small><small class="data-equipment-index-summary-rate">${api.escapeHtml(formatBoardPercent(summary.stopped, summary.total))}</small></strong>
+                    </div>
+                </article>
+                <article class="is-check">
+                    <div>
+                        <span><i class="data-equipment-index-summary-icon fas fa-wrench" aria-hidden="true"></i>정비중</span>
+                        <strong>${api.escapeHtml(summary.check)}<small>대</small><small class="data-equipment-index-summary-rate">${api.escapeHtml(formatBoardPercent(summary.check, summary.total))}</small></strong>
                     </div>
                 </article>
             </div>
-        `;
-    }
-
-    function renderBoardStatusOverview(summary) {
-        const runningAngle = summary.total ? (summary.running / summary.total) * 360 : 0;
-        const stoppedAngle = summary.total ? (summary.stopped / summary.total) * 360 : 0;
-        const checkAngle = summary.total ? (summary.check / summary.total) * 360 : 0;
-        const ringStyle = [
-            `--equipment-running-angle:${runningAngle.toFixed(2)}deg`,
-            `--equipment-stopped-angle:${stoppedAngle.toFixed(2)}deg`,
-            `--equipment-check-angle:${checkAngle.toFixed(2)}deg`,
-        ].join(';');
-        return `
-            <aside class="data-equipment-index-status" aria-label="상태 요약">
-                <strong>상태 요약</strong>
-                <div class="data-equipment-index-status-ring" style="${api.escapeHtml(ringStyle)}" aria-hidden="true"></div>
-                <div class="data-equipment-index-status-list">
-                    <span><i class="is-running"></i><em>가동중</em><b>${api.escapeHtml(summary.running)} (${api.escapeHtml(formatBoardPercent(summary.running, summary.total))})</b></span>
-                    <span><i class="is-stop"></i><em>비가동중</em><b>${api.escapeHtml(summary.stopped)} (${api.escapeHtml(formatBoardPercent(summary.stopped, summary.total))})</b></span>
-                    <span><i class="is-check"></i><em>점검중</em><b>${api.escapeHtml(summary.check)} (${api.escapeHtml(formatBoardPercent(summary.check, summary.total))})</b></span>
-                </div>
-            </aside>
         `;
     }
 
@@ -539,7 +575,7 @@
                     `).join('')}
                 </select>
                 <label class="data-equipment-index-search">
-                    <input type="search" value="${api.escapeHtml(filters.search)}" placeholder="설비명 또는 제조사 검색" data-equipment-filter-search aria-label="설비명 또는 제조사 검색">
+                    <input type="search" value="${api.escapeHtml(filters.search)}" placeholder="텍스트 검색" data-equipment-filter-search aria-label="텍스트 검색">
                     <i class="fas fa-search" aria-hidden="true"></i>
                 </label>
                 <div class="data-equipment-filter-actions">
@@ -622,7 +658,6 @@
                             <strong>${api.escapeHtml(group.team)}</strong>
                             <span class="data-equipment-board-team-count">${api.escapeHtml(sectionEquipment.length)}${api.escapeHtml('\uB300')}</span>
                             ${renderBoardAddButton(teamKey)}
-                            ${renderBoardStatusActionGroup('team', { team: teamKey, items: sectionEquipment, disabled: sectionEquipment.length <= 0 })}
                         </div>
                         <div class="data-equipment-board-team-actions">
                             <button type="button" class="data-equipment-board-team-order-toggle" data-equipment-order-toggle-team="${api.escapeHtml(teamKey)}" aria-label="${api.escapeHtml(orderToggleLabel)}" title="${api.escapeHtml(orderToggleLabel)}" aria-expanded="${isOrdering ? 'true' : 'false'}">
@@ -651,11 +686,13 @@
 
         return `
             <section class="data-equipment-dashboard" data-equipment-view="board">
-                <div class="data-equipment-index-overview">
+                <header class="data-equipment-board-toolbar" aria-label="설비이력 요약 및 필터">
                     ${renderBoardSummary(activeSummary)}
-                    ${renderBoardStatusOverview(activeSummary)}
-                    ${renderBoardGlobalStatusActions(items)}
-                </div>
+                    <div class="data-equipment-actions data-equipment-view-actions">
+                        ${renderBoardControls(boardGroups, state)}
+                    </div>
+                </header>
+                ${renderBoardGlobalStatusActions(items, boardGroups, state)}
                 <div class="data-equipment-board ${filteredGroups.length ? '' : 'is-empty'}">
                     ${boardBody}
                 </div>
@@ -672,6 +709,7 @@
         isEquipmentHistoryFullscreen,
         getEquipmentHistoryFullscreenLabel,
         getEquipmentHistoryFullscreenIconClass,
+        getEquipmentHistoryFullscreenIconSvg,
         renderEquipmentHistoryFullscreenButton,
         syncEquipmentHistoryFullscreenUi,
         ensureEquipmentHistoryFullscreenListener,
@@ -681,7 +719,6 @@
         renderMaintenanceRows,
         renderDocumentRows,
         getBoardStatusSummary,
-        formatBoardPercent,
         getBoardPhotoSrc,
         getBoardEquipmentSearchText,
         escapeEquipmentSearchRegExp,
@@ -705,16 +742,17 @@
         isBoardTeamOrdering,
         setBoardTeamOrdering,
         getBoardRoomOrderMeta,
-        getBoardStatusCycleStatus,
-        getBoardStatusCycleTargetStatus,
-        renderBoardStatusActionGroup,
+        getBoardBulkStatusState,
+        getBoardBulkStatusTargetItems,
+        getBoardBulkStatusTeamOptions,
+        renderBoardBulkStatusPanel,
         renderBoardGlobalStatusActions,
         renderBoardSectionTitle,
         renderBoardSummary,
-        renderBoardStatusOverview,
         renderBoardControls,
         renderBoardAddButton,
         getBoardGroupKey,
+        formatBoardPercent,
         createEmptyBoardTeamGroup,
         getBoardGroupsWithEmptyTeams,
         renderBoard,

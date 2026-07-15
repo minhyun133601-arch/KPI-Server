@@ -75,7 +75,7 @@
                 },
                 {
                     title: '설비 이력',
-                    icon: 'fa-screwdriver-wrench',
+                    icon: 'fa-table-list',
                     color: '#475569',
                     viewerMode: 'full-bleed',
                     desc: '',
@@ -84,7 +84,7 @@
                     readOnly: false,
                     content: `
                         <div class="rounded-lg border border-slate-200 bg-slate-50 px-5 py-5 text-sm text-slate-600">
-                            설비 이력카드 목차 화면을 불러오는 중입니다.
+                            설비 이력 화면을 불러오는 중입니다.
                         </div>
                     `
                 },

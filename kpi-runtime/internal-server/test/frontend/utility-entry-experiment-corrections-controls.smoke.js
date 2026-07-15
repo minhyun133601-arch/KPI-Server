@@ -14,12 +14,26 @@ test('utility entry toolbar shows document-style correction criteria control nea
     rulesId: 'utility-rules-daily',
     monthOptions,
   });
+  const saveIndex = dailyHtml.indexOf('data-role="utility-entry-experiment-save"');
+  const deleteIndex = dailyHtml.indexOf('data-role="utility-entry-experiment-delete"');
+  const periodIndex = dailyHtml.indexOf('is-toolbar-period');
   const ruleIndex = dailyHtml.indexOf('utility-entry-experiment-rule-card');
+  const monthIndex = dailyHtml.indexOf('data-role="utility-entry-experiment-daily-year"');
   const quickIndex = dailyHtml.indexOf('data-role="utility-entry-experiment-quick-entry"');
+  const calendarIndex = dailyHtml.indexOf('data-role="utility-entry-experiment-completed-calendar"');
 
   assert.doesNotMatch(dailyHtml, /data-role="utility-entry-experiment-complete"/);
   assert.doesNotMatch(dailyHtml, /utility-entry-experiment-check/);
-  assert.ok(quickIndex > ruleIndex, 'quick input should remain after the correction criteria control');
+  assert.ok(periodIndex > saveIndex, 'period tabs should follow the save control');
+  assert.ok(ruleIndex > periodIndex, 'correction criteria should follow the period tabs');
+  assert.ok(monthIndex > ruleIndex, 'year and month controls should follow the correction criteria control');
+  assert.ok(quickIndex > monthIndex, 'quick input should remain after the year and month controls');
+  assert.ok(deleteIndex > quickIndex, 'daily delete should follow the quick input control');
+  assert.ok(calendarIndex > deleteIndex, 'daily calendar should remain below the quick input and delete controls');
+  assert.match(dailyHtml, />\s*일간\s*</);
+  assert.match(dailyHtml, />\s*월간\s*</);
+  assert.match(dailyHtml, /aria-label="선택 날짜 입력값 전체 삭제"/);
+  assert.match(dailyHtml, />\s*삭제\s*</);
   assert.match(dailyHtml, /보정기준/);
   assert.match(dailyHtml, /fa-file-lines/);
   assert.doesNotMatch(dailyHtml, /공유컴프/);
@@ -35,7 +49,25 @@ test('utility entry toolbar shows document-style correction criteria control nea
 
   assert.match(monthlyHtml, /utility-entry-experiment-rule-card/);
   assert.match(monthlyHtml, /fa-file-lines/);
+  assert.ok(
+    monthlyHtml.indexOf('data-role="utility-entry-experiment-save"') < monthlyHtml.indexOf('is-toolbar-period')
+  );
+  assert.ok(monthlyHtml.indexOf('is-toolbar-period') < monthlyHtml.indexOf('utility-entry-experiment-rule-card'));
+  assert.ok(
+    monthlyHtml.indexOf('utility-entry-experiment-rule-card')
+      < monthlyHtml.indexOf('data-role="utility-entry-experiment-monthly-year"')
+  );
+  assert.doesNotMatch(monthlyHtml, /data-role="utility-entry-experiment-completed-calendar"/);
+  assert.doesNotMatch(monthlyHtml, /data-role="utility-entry-experiment-delete"/);
   assert.doesNotMatch(monthlyHtml, /원본 - 컴프 1 - 컴프 2/);
+
+  const panelHtml = api.buildPanel({
+    period: 'daily',
+    date: '2026-05-29',
+    body: '<div>본문</div>',
+  });
+  assert.doesNotMatch(panelHtml, /유틸리티 입력 시스템/);
+  assert.doesNotMatch(panelHtml, /utility-entry-experiment-head/);
 });
 
 test('utility entry gas monthly meter link opens from raw meter readings before settlement', () => {

@@ -152,6 +152,26 @@
             ? view.getFilteredOverviewRecords()
             : (Array.isArray(view.getAllRecords?.()) ? view.getAllRecords() : []);
         if (recordCountEl) recordCountEl.textContent = `${overviewRecords.length || 0}건`;
+        const activeRecords = state.currentTeam === OVERVIEW_KEY
+            ? overviewRecords
+            : (Array.isArray(view.getFilteredTeamRecords?.(state.currentTeam))
+                ? view.getFilteredTeamRecords(state.currentTeam)
+                : []);
+        const activeTotalCost = activeRecords.reduce((sum, record) => sum + (Number(record?.cost) || 0), 0);
+        const activeLatestDate = activeRecords
+            .map(record => record?.endDate || record?.startDate || '')
+            .filter(Boolean)
+            .sort()
+            .pop() || '';
+        queryAll('[data-role="topbar-total-count"]').forEach((node) => {
+            node.textContent = `${activeRecords.length}건`;
+        });
+        queryAll('[data-role="topbar-total-cost"]').forEach((node) => {
+            node.textContent = view.formatCurrency(activeTotalCost);
+        });
+        queryAll('[data-role="topbar-latest-date"]').forEach((node) => {
+            node.textContent = view.formatDateKorean(activeLatestDate);
+        });
         const totalsByTeam = new Map();
         totalsByTeam.set(OVERVIEW_KEY, {
             count: overviewRecords.length,

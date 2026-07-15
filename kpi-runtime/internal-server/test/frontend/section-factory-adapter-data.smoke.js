@@ -135,6 +135,13 @@ test('section factory adapter registers factories and preserves data and work ca
     utilityEntryCategory.content,
     /aria-label="북정 CIP 시간 1팀 1파트"[\s\S]*data-utility-entry-experiment-save-kind="other-team-monthly-field"[\s\S]*data-utility-entry-experiment-field-key="cip_time"[\s\S]*data-utility-entry-experiment-team-key="team_01_01"[\s\S]*data-utility-entry-experiment-number-kind="float"[\s\S]*시간/
   );
+  const cipCards = utilityEntryCategory.content.match(
+    /<section class="utility-entry-experiment-settlement is-cip">[\s\S]*?<\/section>/g
+  );
+  assert.equal(cipCards?.length, 1);
+  assert.match(cipCards[0], /1팀 1파트[\s\S]*1팀 2파트[\s\S]*2팀[\s\S]*3팀/);
+  assert.match(cipCards[0], /aria-label="북정 CIP 횟수 1팀 1파트"/);
+  assert.match(cipCards[0], /aria-label="유산 CIP 횟수 1팀 2파트"/);
   const dataSectionSource = sectionSources
     .filter(({ filename }) => filename.startsWith('KPI.utility-entry.') || filename === 'KPI.sections.data.js')
     .map(({ source }) => source)
@@ -205,9 +212,19 @@ test('section factory adapter registers factories and preserves data and work ca
   assert.equal(appData.data.categories[1].shortcutTarget.sectionId, 'work');
   assert.equal(appData.work.categories[1].title, '작업 이력');
   assert.equal(appData.work.categories[1].desc, '');
-  assert.equal(appData.data.categories[2].title, '설비 이력');
-  assert.equal(appData.data.categories[2].desc, '');
-  assert.equal(appData.data.categories[2].dataKey, 'data_equipment_history_card');
+  const dataCategoryTitles = Array.from(appData.data.categories, (category) => category.title);
+  const equipmentHistoryCategories = Array.from(appData.data.categories).filter(
+    (category) => category.title === '설비 이력'
+  );
+  assert.deepEqual(dataCategoryTitles, ['유틸리티', '작업 이력', '설비 이력', '조도']);
+  assert.equal(equipmentHistoryCategories.length, 1);
+  assert.equal(dataCategoryTitles.indexOf('설비 이력'), dataCategoryTitles.indexOf('작업 이력') + 1);
+  assert.equal(equipmentHistoryCategories[0].desc, '');
+  assert.equal(equipmentHistoryCategories[0].dataKey, 'data_equipment_history_card');
+  assert.deepEqual(
+    Object.keys(equipmentHistoryCategories[0]).filter((key) => /surface/i.test(key)),
+    []
+  );
   assert.equal(appData.data.categories[3].dataKey, 'audit_lux');
   assert.equal(appData.data.categories[3].fileName, 'Central Server DB / Lux Data');
 });

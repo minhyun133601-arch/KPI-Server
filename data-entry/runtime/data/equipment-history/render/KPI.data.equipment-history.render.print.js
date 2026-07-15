@@ -163,7 +163,6 @@
         .data-equipment-card-heading,
         .equipment-print-card-heading { min-width: 0; display: grid; grid-template-columns: minmax(34mm, 0.32fr) minmax(0, 1fr); gap: 2mm; align-items: center; }
         .data-equipment-hero-photo { min-width: 0; display: grid; align-items: start; }
-        .data-equipment-hero-side { min-width: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 1.4mm; align-content: stretch; }
         .data-equipment-hero-updated { min-width: 0; min-height: 9mm; display: flex; align-items: center; gap: 1.5mm; padding: 1.3mm 2mm; border: 1px solid #dbe6f3; border-radius: 7px; background: #f8fbff; color: #334155; line-height: 1.15; }
         .data-equipment-hero-updated span { flex: 0 0 auto; color: #64748b; font-size: 8px; font-weight: 900; white-space: nowrap; }
         .data-equipment-hero-updated strong { min-width: 0; overflow: hidden; color: #1f2a44; font-size: 8.4px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
@@ -190,12 +189,6 @@
         .data-equipment-photo-placeholder,
         .equipment-print-photo-empty { width: 100%; height: 100%; display: grid; place-items: center; color: #63748e; font-size: 10px; font-weight: 800; text-align: center; }
         .data-equipment-section-title { display: flex; align-items: center; gap: 2mm; margin: 0 0 2mm; color: #1268d8; font-size: 11px; font-weight: 900; line-height: 1.25; }
-        .equipment-print-hero-doc-card { min-height: 0; padding: 2mm; }
-        .equipment-print-hero-doc-card .data-equipment-section-title { margin-bottom: 1mm; font-size: 9.2px; }
-        .equipment-print-hero-doc-card .data-equipment-table-scroll { padding: 1mm; }
-        .equipment-print-hero-doc-card .equipment-print-table { border-spacing: 0 0.6mm; font-size: 7.8px; }
-        .equipment-print-hero-doc-card .equipment-print-table-value { min-height: 4.8mm; padding: 1mm 1.2mm; font-size: 7.8px; }
-        .equipment-print-hero-doc-card .equipment-print-empty-cell { padding: 1.2mm 1mm; font-size: 8px; }
         .data-equipment-edit-grid { display: grid; gap: 2mm; }
         .data-equipment-note-field { display: grid; gap: 1.2mm; min-width: 0; color: #34476c; font-size: 8.5px; font-weight: 900; }
         .data-equipment-note-field span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -182,13 +182,23 @@
         .audit-lux-note-field { display: grid; gap: 0.55rem; }
         .audit-lux-note-label { font-size: 0.82rem; font-weight: 800; color: #0f172a; }
         .audit-hidden-input { display: none; }
+        .audit-lux-shell,
+        .audit-lux-modal { font-family: "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+        .audit-lux-shell button,
+        .audit-lux-shell input,
+        .audit-lux-shell select,
+        .audit-lux-shell textarea,
+        .audit-lux-modal button,
+        .audit-lux-modal input,
+        .audit-lux-modal select,
+        .audit-lux-modal textarea { font-family: inherit; }
         .audit-lux-shell { box-sizing: border-box; height: calc(100vh - 84px); min-height: calc(100vh - 84px); display: grid; min-width: 0; padding: 12px; background: #f3f4f6; }
         .audit-lux-window { height: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; border-radius: 4px; border: 1px solid #9ca3af; background: #ffffff; box-shadow: none; overflow: hidden; }
         .audit-lux-window-header { display: grid; grid-template-columns: 34px minmax(260px, 1fr) auto; align-items: center; gap: 10px; min-height: 54px; padding: 10px 12px; border-bottom: 1px solid #9ca3af; background: #f9fafb; backdrop-filter: none; }
         .audit-lux-window-brand { display: inline-flex; align-items: center; justify-content: center; }
         .audit-lux-window-copy { min-width: 0; text-align: left; }
         .audit-lux-window-icon { width: 30px; height: 30px; flex: 0 0 30px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #d1d5db; border-radius: 3px; background: #ffffff; color: #374151; font-size: 0.9rem; }
-        .audit-lux-window-title { margin: 0; color: #111827; font-family: Arial, "Malgun Gothic", "Noto Sans KR", sans-serif; font-size: 1.25rem; font-weight: 900; line-height: 1.2; letter-spacing: 0; }
+        .audit-lux-window-title { margin: 0; color: #111827; font-family: inherit; font-size: 1.25rem; font-weight: 900; line-height: 1.2; letter-spacing: 0; }
         .audit-lux-window-actions { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; flex: 0 0 auto; }
         .audit-lux-fullscreen-toggle { width: 38px; min-width: 38px; height: 38px; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 0; padding: 0; border: 1px solid #d7e2ef; border-radius: 7px; background: #ffffff; color: #243b61; cursor: pointer; box-shadow: none; }
         .audit-lux-fullscreen-toggle:hover,
@@ -204,7 +214,7 @@
         .audit-lux-index-year-list { display: grid; grid-template-columns: repeat(auto-fit, 360px); gap: 10px; align-items: start; justify-content: start; }
         .audit-lux-index-year { min-width: 0; border: 1px solid #9ca3af; border-radius: 4px; background: #ffffff; padding: 0; box-shadow: none; overflow: hidden; }
         .audit-lux-index-year-head { display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 7px 9px; border-bottom: 1px solid #9ca3af; background: #e5e7eb; }
-        .audit-lux-index-year-head h3 { margin: 0; color: #111827; font-family: Arial, "Malgun Gothic", "Noto Sans KR", sans-serif; font-size: 0.82rem; font-weight: 900; line-height: 1.2; letter-spacing: 0; }
+        .audit-lux-index-year-head h3 { margin: 0; color: #111827; font-family: inherit; font-size: 0.82rem; font-weight: 900; line-height: 1.2; letter-spacing: 0; }
         .audit-lux-index-grid { display: grid; gap: 0; align-items: stretch; }
         .audit-lux-index-card { min-width: 0; min-height: 128px; position: relative; display: grid; grid-template-columns: 118px 240px; gap: 0; border: 0; border-bottom: 1px solid #d1d5db; border-radius: 0; background: #ffffff; padding: 0; box-shadow: none; transition: background 0.16s ease; }
         .audit-lux-index-card:last-child { border-bottom: 0; }
@@ -213,7 +223,7 @@
         .audit-lux-index-team-cell,
         .audit-lux-index-preview-cell { min-width: 0; border-right: 1px solid #d1d5db; padding: 7px; }
         .audit-lux-index-team-cell { display: grid; align-content: start; gap: 6px; color: #111827; border-right: 1px solid #d1d5db; }
-        .audit-lux-index-team-cell strong { min-width: 0; color: #111827; font-family: Arial, "Malgun Gothic", "Noto Sans KR", sans-serif; font-size: 0.78rem; font-weight: 900; line-height: 1.3; white-space: normal; overflow: visible; text-overflow: clip; word-break: keep-all; }
+        .audit-lux-index-team-cell strong { min-width: 0; color: #111827; font-family: inherit; font-size: 0.78rem; font-weight: 900; line-height: 1.3; white-space: normal; overflow: visible; text-overflow: clip; word-break: keep-all; }
         .audit-lux-index-team-tools { display: grid; grid-template-columns: 92px; align-items: start; justify-content: start; gap: 4px; min-width: 0; }
         .audit-lux-index-preview-cell { display: grid; min-height: 0; border-right: 0; }
         .audit-lux-index-card-media { width: 100%; height: 112px; min-width: 0; min-height: 0; border-radius: 2px; border: 1px solid #d1d5db; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
@@ -227,7 +237,7 @@
         .audit-lux-index-file-thumb i { font-size: 2rem; }
         .audit-lux-index-file-thumb { color: #4b5563; background: #f9fafb; font-size: 0.78rem; font-weight: 900; }
         .audit-lux-index-file-thumb.is-pdf { color: #4b5563; background: #f9fafb; }
-        .audit-lux-progress-select { width: 92px; min-width: 92px; min-height: 28px; border-radius: 2px; padding: 4px 7px; font-family: Arial, "Malgun Gothic", "Noto Sans KR", sans-serif; font-size: 0.74rem; font-weight: 800; color: #111827; background: #ffffff; border-color: #d1d5db; }
+        .audit-lux-progress-select { width: 92px; min-width: 92px; min-height: 28px; border-radius: 2px; padding: 4px 7px; font-family: inherit; font-size: 0.74rem; font-weight: 800; color: #111827; background: #ffffff; border-color: #d1d5db; }
         .audit-lux-icon-action { width: 92px; height: 28px; border-radius: 2px; border: 1px solid #d1d5db; background: #ffffff; color: #374151; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; transition: border-color 0.16s ease, background 0.16s ease; }
         .audit-lux-icon-action i { font-size: 0.72rem; line-height: 1; }
         .audit-lux-icon-action:hover,

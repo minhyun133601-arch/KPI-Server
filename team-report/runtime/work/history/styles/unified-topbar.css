@@ -1,0 +1,166 @@
+.work-history-app .history-page-head.history-topbar {
+    display: grid;
+    grid-template-columns: minmax(340px, 0.85fr) minmax(500px, 1.15fr);
+    align-items: center;
+    gap: 8px;
+    min-height: 50px;
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    border: 1px solid var(--gray-400);
+    border-radius: 4px;
+    background: var(--white);
+    box-shadow: none;
+}
+
+.work-history-app .history-toolbar-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.work-history-app.is-production-report-workspace .history-page-head.history-topbar {
+    grid-template-columns: minmax(156px, 0.5fr) minmax(300px, 0.85fr) minmax(480px, 1.15fr);
+}
+
+.work-history-app.is-production-report-workspace .history-toolbar-title {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+    color: var(--gray-900);
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.work-history-app .history-topbar-metrics {
+    min-width: 0;
+    min-height: 36px;
+    display: grid;
+    grid-template-columns: minmax(92px, 0.75fr) minmax(116px, 1.15fr) minmax(116px, 1fr);
+    overflow: hidden;
+    border: 1px solid var(--gray-300);
+    border-radius: 2px;
+    background: var(--white);
+}
+
+.work-history-app .history-topbar-metric {
+    min-width: 0;
+    display: grid;
+    align-content: center;
+    gap: 1px;
+    padding: 3px 10px;
+    border-right: 1px solid var(--gray-300);
+}
+
+.work-history-app .history-topbar-metric:last-child {
+    border-right: 0;
+}
+
+.work-history-app .history-topbar-metric > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--gray-600);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.work-history-app .history-topbar-metric-icon {
+    width: 13px;
+    height: 13px;
+    flex: 0 0 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: currentColor;
+    line-height: 1;
+}
+
+.work-history-app .history-topbar-metric-icon svg {
+    width: 13px;
+    height: 13px;
+    display: block;
+}
+
+.work-history-app .history-topbar-metric strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--gray-900);
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.work-history-app .history-page-tools.history-topbar-actions {
+    min-width: 0;
+    width: 100%;
+    display: block;
+}
+
+.work-history-app .history-workspace-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(92px, 0.7fr) minmax(104px, 0.8fr) minmax(156px, 1.25fr) auto;
+    align-items: center;
+    gap: 4px;
+}
+
+.work-history-app .history-workspace-select,
+.work-history-app .history-workspace-filter-lock,
+.work-history-app .history-workspace-search-input,
+.work-history-app .history-workspace-filter-reset,
+.work-history-app .btn.history-workspace-fullscreen-toggle {
+    height: 36px;
+    min-height: 36px;
+    border-radius: 2px;
+    font-size: 13px;
+}
+
+.work-history-app .history-workspace-select,
+.work-history-app .history-workspace-filter-lock,
+.work-history-app .history-workspace-search-input {
+    padding-right: 8px;
+    padding-left: 8px;
+}
+
+.work-history-app .history-workspace-search-input {
+    padding-right: 28px;
+}
+
+.work-history-app .history-workspace-search-icon {
+    right: 8px;
+}
+
+.work-history-app .history-workspace-filter-actions {
+    gap: 4px;
+}
+
+.work-history-app .history-workspace-filter-reset {
+    padding: 0 10px;
+}
+
+.work-history-app .btn.history-workspace-fullscreen-toggle {
+    width: 36px;
+    min-width: 36px;
+}
+
+.work-history-app .btn.history-workspace-fullscreen-toggle .history-fullscreen-toggle-icon,
+.work-history-app .btn.history-workspace-fullscreen-toggle .history-fullscreen-toggle-icon svg {
+    width: 17px;
+    height: 17px;
+}

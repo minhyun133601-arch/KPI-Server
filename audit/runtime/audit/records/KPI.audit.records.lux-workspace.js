@@ -496,9 +496,6 @@
                             <div class="audit-lux-window-copy">
                                 <h2 class="audit-lux-window-title">조도</h2>
                             </div>
-                            <div class="audit-lux-window-actions">
-                                ${getAuditLuxWorkspaceFullscreenButtonHtml()}
-                            </div>
                         </div>
                         <div class="audit-lux-workspace is-file-index">
                             <div class="audit-lux-index-panel">

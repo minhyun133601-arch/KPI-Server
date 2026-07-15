@@ -528,13 +528,50 @@ test.describe('KPI browser smoke', () => {
       await clickSidebarButton(page, '조도');
       await expect(page.locator('.audit-lux-window-title')).toHaveText('조도');
       await expect(page.locator('.audit-lux-index-panel')).toBeVisible();
+      await expect(page.locator('.audit-lux-index-year').first().locator('.audit-lux-index-team-label')).toHaveText([
+        '1팀 1파트',
+        '1팀 2파트',
+        '2팀',
+        '3팀',
+      ]);
+      await expect(page.locator('[data-action="audit-lux-toggle-fullscreen"]')).toHaveCount(0);
 
       await clickSidebarButton(page, '유틸리티');
       await expectUtilityEntryExperimentSurface(page);
+      await page.locator('label[for="utility-entry-experiment-monthly"]').first().click();
+      const monthlyCipCards = page.locator(
+        '.utility-entry-experiment-view.is-monthly .utility-entry-experiment-settlement.is-cip'
+      );
+      await expect(monthlyCipCards).toHaveCount(1);
+      await expect(monthlyCipCards.locator('tbody th')).toHaveText(['1팀 1파트', '1팀 2파트', '2팀', '3팀']);
 
       await clickSidebarButton(page, '작업 이력');
       await expect(page.locator('.kpi-work-history-host')).toBeVisible();
       await expectWorkHistoryShadowText(page, 'history-title', /작업 이력/);
+      await expect
+        .poll(async () => {
+          return await page.locator('.kpi-work-history-host').evaluate((host) => {
+            const root = host?.shadowRoot;
+            const title = root?.querySelector('#history-title');
+            const header = root?.querySelector('.history-page-head');
+            const metricLabels = Array.from(root?.querySelectorAll('.history-topbar-metric > span') || []).map((node) =>
+              (node.textContent || '').trim()
+            );
+            const titleRect = title?.getBoundingClientRect();
+            return {
+              titleVisuallyHidden: Boolean(titleRect && titleRect.width <= 1 && titleRect.height <= 1),
+              metricLabels,
+              controls: header?.querySelectorAll(
+                '[data-role="topbar-team-filter"], [data-role="category-filter"], [data-role="keyword-search"], [data-action="reset-topbar-filters"], [data-action="toggle-fullscreen"]'
+              ).length,
+            };
+          });
+        })
+        .toEqual({
+          titleVisuallyHidden: true,
+          metricLabels: ['전체 작업', '총금액', '최근 작업일'],
+          controls: 5,
+        });
       await expect
         .poll(async () => {
           return await page.locator('.kpi-work-history-host').evaluate((host) => {
@@ -546,7 +583,9 @@ test.describe('KPI browser smoke', () => {
 
       await clickSidebarButton(page, '설비 이력');
       await expect(page.locator('.data-equipment-page')).toBeVisible();
-      await expect(page.locator('.data-equipment-page')).toContainText('설비 이력');
+      await expect(page.locator('.data-equipment-board-toolbar')).toBeVisible();
+      await expect(page.locator('.data-equipment-board-toolbar')).toContainText('전체 설비');
+      await expect(page.locator('.data-equipment-page h2').filter({ hasText: /^\s*설비 이력\s*$/ })).toHaveCount(0);
       const existingEquipmentCards = page.locator('.data-equipment-board-card');
       if ((await existingEquipmentCards.count()) > 0) {
         await expect(existingEquipmentCards.first()).toBeVisible();

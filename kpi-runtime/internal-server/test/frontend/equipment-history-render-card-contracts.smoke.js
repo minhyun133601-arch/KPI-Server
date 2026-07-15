@@ -46,7 +46,8 @@ test('equipment-history card source preserves explicit save topbar editor and do
   assert.doesNotMatch(dataCssSource, /data-equipment-topbar-photo-edit/);
   assert.match(renderSource, /data-equipment-title-back/);
   assert.match(renderSource, /fa-arrow-left/);
-  assert.match(renderSource, /isAuthoring \? '' : `<div class="data-equipment-brand/);
+  assert.match(renderSource, /if \(!isAuthoring\) return '';/);
+  assert.doesNotMatch(renderSource, /isAuthoring \? '' : `<div class="data-equipment-brand/);
   assert.match(renderSource, /is-authoring-mode/);
   assert.match(
     dataCssSource,

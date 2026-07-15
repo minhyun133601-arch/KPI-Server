@@ -14,9 +14,6 @@
             .data-equipment-board {
                 grid-template-columns: 1fr;
             }
-            .data-equipment-hero-grid {
-                grid-template-columns: 1fr;
-            }
             .data-equipment-top-grid {
                 grid-template-columns: 1fr;
             }
@@ -34,7 +31,6 @@
             }
         }
         @media (max-width: 980px) {
-            .data-equipment-hero-grid,
             .data-equipment-bottom-grid,
             .data-equipment-card-grid {
                 grid-template-columns: 1fr;
@@ -96,8 +92,7 @@
             .data-equipment-photo-title-row .data-equipment-title-name {
                 text-align: left;
             }
-            .data-equipment-basic-grid,
-            .data-equipment-operation-grid {
+            .data-equipment-basic-grid {
                 grid-template-columns: 1fr;
             }
             .data-equipment-detail-items-grid {
@@ -138,10 +133,6 @@
             }
             .data-equipment-table-scroll {
                 overflow-x: auto;
-            }
-            .data-equipment-history-table,
-            .data-equipment-doc-table {
-                min-width: 720px;
             }
             .data-equipment-edit-table {
                 min-width: 760px;

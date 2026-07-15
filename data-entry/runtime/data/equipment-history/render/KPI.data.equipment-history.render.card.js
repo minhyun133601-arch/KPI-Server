@@ -9,7 +9,6 @@
     const getEquipmentTeamIconSvg = (...args) => api.getEquipmentTeamIconSvg(...args);
     const getBoardTeamStyle = (...args) => api.getBoardTeamStyle(...args);
     const getEquipmentStatusIconClass = (...args) => api.getEquipmentStatusIconClass(...args);
-    const renderBoardControls = (...args) => api.renderBoardControls(...args);
     const getBoardGroupsWithEmptyTeams = (...args) => api.getBoardGroupsWithEmptyTeams(...args);
     const getBoardFilters = (...args) => api.getBoardFilters(...args);
     const renderBoard = (...args) => api.renderBoard(...args);
@@ -374,7 +373,7 @@
             `;
         }
         return `
-            <h2>${api.escapeHtml(data?.header?.title || '설비 이력')}</h2>
+            <h2>${api.escapeHtml(category?.title || data?.header?.title || '설비 이력')}</h2>
         `;
     }
 
@@ -382,18 +381,14 @@
         const isCard = state.view === 'card';
         const isCardStart = state.view === 'card-start';
         const isAuthoring = isCard || isCardStart;
+        if (!isAuthoring) return '';
         return `
             <header class="data-equipment-topbar data-equipment-topbar-dashboard ${isCard ? 'is-card-mode' : ''} ${isAuthoring ? 'is-authoring-mode' : ''}">
-                ${isAuthoring ? '' : `<div class="data-equipment-brand data-equipment-brand-icon-only" aria-hidden="true">
-                    <span class="data-equipment-brand-mark"><i class="fas fa-cube"></i></span>
-                </div>`}
                 <div class="data-equipment-title-block">
                     ${renderTopbarTitle(category, selected, state, data)}
                 </div>
                 <div class="data-equipment-actions data-equipment-view-actions">
-                    ${isAuthoring ? `
-                        ${isCard ? renderTopbarCardActions(state) : ''}
-                    ` : renderBoardControls(groups, state)}
+                    ${isCard ? renderTopbarCardActions(state) : ''}
                 </div>
             </header>
         `;

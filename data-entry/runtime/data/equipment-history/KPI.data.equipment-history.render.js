@@ -18,9 +18,16 @@
             openEquipmentSpecBlocks: {},
             orderingTeams: {},
             pendingPhotoDocumentCleanupIds: [],
+            bulkStatus: {
+                open: false,
+                team: '',
+                room: '',
+                status: '\uAC00\uB3D9\uC911',
+            },
         };
         const redraw = () => {
-            container.innerHTML = api.renderShell(category, workingData, state);
+            const shell = api.renderShell(category, workingData, state);
+            container.innerHTML = `<div class="equipment-history-skin" data-equipment-history-surface>${shell}</div>`;
             api.bindEvents(container, redraw, state, workingData);
         };
         activeHistoryUnsubscribe?.();

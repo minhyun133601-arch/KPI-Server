@@ -65,56 +65,6 @@
     box-shadow: none;
 }
 
-.work-history-app .work-history-experiment-metrics {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    overflow: hidden;
-    border: 1px solid var(--gray-400);
-    border-radius: 4px;
-    background: var(--white);
-}
-
-.work-history-app .work-history-experiment-metric-card {
-    min-width: 0;
-    min-height: 64px;
-    display: grid;
-    grid-template-columns: minmax(96px, 0.7fr) minmax(0, 1fr);
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--white);
-}
-
-.work-history-app .work-history-experiment-metric-card + .work-history-experiment-metric-card {
-    border-left: 1px solid var(--gray-300);
-}
-
-.work-history-app .work-history-experiment-metric-card > span {
-    color: var(--gray-600);
-    font-size: 0.72rem;
-    font-weight: 800;
-    line-height: 1.2;
-}
-
-.work-history-app .work-history-experiment-metric-card strong {
-    min-width: 0;
-    overflow: hidden;
-    color: var(--gray-900);
-    font-size: 1rem;
-    font-weight: 900;
-    line-height: 1.2;
-    text-align: right;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.work-history-app .work-history-experiment-metric-card small {
-    margin-left: 4px;
-    color: var(--gray-600);
-    font-size: 0.68rem;
-    font-weight: 800;
-}
-
 .work-history-app .work-history-experiment-team {
     min-width: 0;
     overflow: hidden;
@@ -436,16 +386,6 @@
 }
 
 @media (max-width: 1080px) {
-    .work-history-app .work-history-experiment-metric-card {
-        grid-template-columns: 1fr;
-        align-content: center;
-        gap: 4px;
-    }
-
-    .work-history-app .work-history-experiment-metric-card strong {
-        text-align: left;
-    }
-
     .work-history-app .work-history-experiment-column-head {
         display: none;
     }
@@ -527,26 +467,6 @@
     .work-history-app .work-history-experiment-board {
         gap: 8px;
         padding: 8px;
-    }
-
-    .work-history-app .work-history-experiment-metrics {
-        grid-template-columns: 1fr;
-    }
-
-    .work-history-app .work-history-experiment-metric-card {
-        grid-template-columns: minmax(96px, 0.7fr) minmax(0, 1fr);
-        min-height: 48px;
-        gap: 12px;
-        padding: 8px 12px;
-    }
-
-    .work-history-app .work-history-experiment-metric-card strong {
-        text-align: right;
-    }
-
-    .work-history-app .work-history-experiment-metric-card + .work-history-experiment-metric-card {
-        border-top: 1px solid var(--gray-300);
-        border-left: 0;
     }
 
     .work-history-app .work-history-experiment-team-head {

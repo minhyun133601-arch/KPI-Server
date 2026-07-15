@@ -43,12 +43,25 @@ test('equipment-history renderer preserves team metadata empty columns room grou
     }
   );
 
-  assert.match(container.innerHTML, /설비 이력/);
+  assert.doesNotMatch(container.innerHTML, />\s*설비 이력\s*</);
+  assert.match(container.innerHTML, /data-equipment-board-toolbar/);
+  assert.match(container.innerHTML, /data-equipment-board-toolbar[\s\S]*전체 설비[\s\S]*가동중[\s\S]*비가동중[\s\S]*정비중/);
+  assert.match(container.innerHTML, /data-equipment-board-toolbar[\s\S]*data-equipment-filter-team[\s\S]*data-equipment-filter-status[\s\S]*data-equipment-filter-search[\s\S]*data-equipment-filter-reset[\s\S]*data-equipment-fullscreen-toggle/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-index-status/);
   assert.match(container.innerHTML, /전체 팀/);
   assert.match(container.innerHTML, /전체 상태/);
   assert.match(container.innerHTML, />추가</);
   assert.match(container.innerHTML, /data-equipment-filter-reset[\s\S]*data-equipment-fullscreen-toggle/);
   assert.match(container.innerHTML, /aria-label="전체화면"/);
+  assert.match(container.innerHTML, /data-equipment-fullscreen-icon[\s\S]*data-equipment-fullscreen-icon-svg/);
+  assert.match(container.innerHTML, /M7 3H3v4M3 3l5 5M13 3h4v4M17 3l-5 5M7 17H3v-4M3 17l5-5M13 17h4v-4M17 17l-5-5/);
+  assert.equal((container.innerHTML.match(/data-equipment-index-summary-icon/g) || []).length, 4);
+  assert.match(container.innerHTML, /data-equipment-index-summary-icon fas fa-industry" aria-hidden="true"><\/i>전체 설비/);
+  assert.match(container.innerHTML, /data-equipment-index-summary-icon fas fa-play" aria-hidden="true"><\/i>가동중/);
+  assert.match(container.innerHTML, /data-equipment-index-summary-icon fas fa-square" aria-hidden="true"><\/i>비가동중/);
+  assert.match(container.innerHTML, /data-equipment-index-summary-icon fas fa-wrench" aria-hidden="true"><\/i>정비중/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-index-summary-marker/);
+  assert.equal((container.innerHTML.match(/data-equipment-index-summary-rate/g) || []).length, 3);
   assert.doesNotMatch(container.innerHTML, /설비 추가/);
   assert.doesNotMatch(container.innerHTML, /등록된 설비가 없습니다/);
   [
@@ -74,6 +87,9 @@ test('equipment-history renderer preserves team metadata empty columns room grou
     ],
   };
   registeredRenderer({ title: '설비 이력', dataKey: 'data_equipment_history_card' }, { container });
+  assert.match(container.innerHTML, /is-running[\s\S]*66\.7%/);
+  assert.match(container.innerHTML, /is-stop[\s\S]*16\.7%/);
+  assert.match(container.innerHTML, /is-check[\s\S]*16\.7%/);
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team1_part1"/);
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team1_part2"/);
   assert.match(container.innerHTML, /data-equipment-board-team="work_team_calendar_team2"/);
@@ -144,15 +160,16 @@ test('equipment-history renderer preserves team metadata empty columns room grou
     /data-equipment-board-status-button is-check"[^>]*data-equipment-cycle-status-card="eq-team4"[\s\S]+fa-wrench[\s\S]+<span>정비중<\/span>/
   );
   assert.match(container.innerHTML, /data-equipment-board-global-actions/);
-  assert.match(container.innerHTML, /data-equipment-cycle-board-status[^>]*data-equipment-status-scope="all"/);
+  assert.match(container.innerHTML, /data-equipment-bulk-actions/);
   assert.match(
     container.innerHTML,
-    /data-equipment-cycle-board-status[^>]*data-equipment-status-scope="team"[^>]*data-equipment-status-team="work_team_calendar_team1_part1"/
+    /data-equipment-bulk-status-toggle[^>]*aria-expanded="false"[^>]*aria-controls="equipment-bulk-status-panel"[\s\S]+전체 적용/
   );
-  assert.match(
-    container.innerHTML,
-    /data-equipment-cycle-board-status[^>]*data-equipment-status-scope="room"[^>]*data-equipment-status-team="work_team_calendar_team1_part1"[^>]*data-equipment-status-room="A\uC2E4"/
-  );
+  assert.doesNotMatch(container.innerHTML, /data-equipment-bulk-status-panel/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-cycle-board-status/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-status-scope/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-board-status-actions/);
+  assert.doesNotMatch(container.innerHTML, /data-equipment-board-status-cycle/);
   assert.doesNotMatch(container.innerHTML, /data-equipment-set-board-status/);
   assert.doesNotMatch(container.innerHTML, /data-equipment-board-status-set/);
   assert.match(
@@ -161,7 +178,7 @@ test('equipment-history renderer preserves team metadata empty columns room grou
   );
   assert.match(
     container.innerHTML,
-    /data-equipment-board-room-title-main[\s\S]+data-equipment-board-room-add-button[\s\S]+data-equipment-cycle-board-status[^>]*data-equipment-status-scope="room"[\s\S]+<\/span>\s*<\/h3>/
+    /data-equipment-board-room-title-main[\s\S]+data-equipment-board-room-add-button[\s\S]+<\/span>\s*<\/h3>/
   );
   assert.doesNotMatch(container.innerHTML, /data-equipment-board-room-actions/);
   assert.doesNotMatch(container.innerHTML, /data-equipment-board-metric/);
@@ -232,6 +249,30 @@ test('equipment-history renderer preserves team metadata empty columns room grou
   assert.ok(container.innerHTML.indexOf('1팀 B 혼합기') < container.innerHTML.indexOf('1팀 A 혼합기'));
   assert.ok(container.innerHTML.indexOf('1팀 A 혼합기') < container.innerHTML.indexOf('1팀 C 혼합기'));
   assert.equal(api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card)[1].sourceIndex, 1);
+
+  const normalizedBulkItems = api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card);
+  const bulkStatusHtml = api.renderBoardGlobalStatusActions(normalizedBulkItems, groupedByRoom, {
+    bulkStatus: {
+      open: true,
+      team: 'work_team_calendar_team1_part1',
+      room: 'A\uC2E4',
+      status: '\uC815\uBE44\uC911',
+    },
+  });
+  assert.match(
+    bulkStatusHtml,
+    /data-equipment-bulk-status-toggle[^>]*aria-expanded="true"[^>]*aria-controls="equipment-bulk-status-panel"/
+  );
+  assert.match(bulkStatusHtml, /id="equipment-bulk-status-panel"[^>]*data-equipment-bulk-status-panel/);
+  assert.match(
+    bulkStatusHtml,
+    /data-equipment-bulk-status-team[\s\S]+<option value="work_team_calendar_team1_part1" selected>/
+  );
+  assert.match(bulkStatusHtml, /data-equipment-bulk-status-room[\s\S]+<option value="A\uC2E4" selected>/);
+  assert.match(bulkStatusHtml, /data-equipment-bulk-status-value[\s\S]+<option value="\uC815\uBE44\uC911" selected>/);
+  assert.match(bulkStatusHtml, /<span>적용 대상<\/span><strong>1대<\/strong>/);
+  assert.match(bulkStatusHtml, /data-equipment-bulk-status-apply/);
+  assert.doesNotMatch(bulkStatusHtml, /data-equipment-cycle-board-status|data-equipment-status-scope/);
 
   context.PortalData.data_equipment_history_card = {
     equipmentList: [

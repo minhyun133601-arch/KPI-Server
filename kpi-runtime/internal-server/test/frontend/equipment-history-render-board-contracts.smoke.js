@@ -3,10 +3,9 @@ import test from 'node:test';
 import { adapterSource, dataCssSource, modelSource, renderSource } from './support/equipment-history-render-harness.js';
 
 test('equipment-history board source preserves dense responsive ordering filtering and history contracts', () => {
-  assert.match(
-    dataCssSource,
-    /data-equipment-index-overview[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(310px,\s*420px\)/
-  );
+  assert.match(renderSource, /data-equipment-board-toolbar/);
+  assert.match(renderSource, /data-equipment-board-toolbar[\s\S]+renderBoardSummary\(activeSummary\)[\s\S]+renderBoardControls\(boardGroups, state\)/);
+  assert.doesNotMatch(renderSource, /function renderBoardStatusOverview/);
   assert.match(dataCssSource, /data-equipment-board-team-title/);
   assert.match(dataCssSource, /data-equipment-board-section[\s\S]+display:\s*grid/);
   assert.match(dataCssSource, /data-equipment-board-section[\s\S]+gap:\s*10px/);
@@ -30,10 +29,6 @@ test('equipment-history board source preserves dense responsive ordering filteri
   assert.match(dataCssSource, /data-equipment-board-room-count[\s\S]+min-height:\s*22px[\s\S]+font-weight:\s*900/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-room-badge/);
   assert.match(dataCssSource, /data-equipment-board-card[\s\S]+margin-top:\s*0/);
-  assert.match(
-    dataCssSource,
-    /data-equipment-index-overview[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(310px,\s*420px\)/
-  );
   assert.match(dataCssSource, /data-equipment-detail-groups[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(
     dataCssSource,
@@ -123,14 +118,8 @@ test('equipment-history board source preserves dense responsive ordering filteri
     /data-equipment-board-card[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)[\s\S]+grid-template-rows:\s*auto auto auto[\s\S]+min-height:\s*178px/
   );
   assert.match(dataCssSource, /data-equipment-board-global-actions[\s\S]+grid-column:\s*1 \/ -1/);
-  assert.match(
-    dataCssSource,
-    /data-equipment-board-status-actions[\s\S]+display:\s*inline-flex[\s\S]+align-items:\s*center/
-  );
-  assert.match(
-    dataCssSource,
-    /data-equipment-board-status-cycle[\s\S]+min-height:\s*28px[\s\S]+border:\s*1px solid #d7e2ef[\s\S]+border-radius:\s*7px[\s\S]+white-space:\s*nowrap/
-  );
+  assert.doesNotMatch(dataCssSource, /data-equipment-board-status-actions/);
+  assert.doesNotMatch(dataCssSource, /data-equipment-board-status-cycle/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-status-set/);
   assert.match(dataCssSource, /data-equipment-board-team-title[\s\S]+flex-wrap:\s*wrap/);
   assert.match(
@@ -202,20 +191,31 @@ test('equipment-history board source preserves dense responsive ordering filteri
   );
   assert.match(
     dataCssSource,
-    /data-equipment-board-column\.is-ordering[\s\S]+\.data-equipment-board-status-actions[\s\S]+display:\s*none/
-  );
-  assert.match(
-    dataCssSource,
     /data-equipment-board-column\.is-ordering[\s\S]+\.data-equipment-board-card-actions[\s\S]+display:\s*none/
   );
+  assert.doesNotMatch(dataCssSource, /data-equipment-board-column\.is-ordering[\s\S]+\.data-equipment-board-status-actions/);
   assert.match(dataCssSource, /data-equipment-board-order-button/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-open-button/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-card button\s*\{/);
   assert.match(renderSource, /EQUIPMENT_BOARD_STATUS_CYCLE/);
-  assert.match(renderSource, /function renderBoardStatusActionGroup/);
-  assert.match(renderSource, /function getBoardStatusCycleTargetStatus/);
-  assert.match(renderSource, /async function cycleBoardStatus/);
-  assert.match(renderSource, /data-equipment-cycle-board-status/);
+  assert.match(renderSource, /function getBoardBulkStatusState/);
+  assert.match(renderSource, /function renderBoardBulkStatusPanel/);
+  assert.match(renderSource, /function renderBoardGlobalStatusActions/);
+  assert.match(renderSource, /data-equipment-bulk-actions/);
+  assert.match(renderSource, /data-equipment-bulk-status-toggle/);
+  assert.match(renderSource, /data-equipment-bulk-status-team/);
+  assert.match(renderSource, /data-equipment-bulk-status-room/);
+  assert.match(renderSource, /data-equipment-bulk-status-value/);
+  assert.match(renderSource, /data-equipment-bulk-status-apply/);
+  assert.match(renderSource, /<span>전체 적용<\/span>/);
+  assert.match(renderSource, /async function applyBoardStatus/);
+  assert.doesNotMatch(renderSource, /function renderBoardStatusActionGroup/);
+  assert.doesNotMatch(renderSource, /function getBoardStatusCycleTargetStatus/);
+  assert.doesNotMatch(renderSource, /async function cycleBoardStatus/);
+  assert.doesNotMatch(renderSource, /data-equipment-cycle-board-status/);
+  assert.doesNotMatch(renderSource, /data-equipment-status-scope/);
+  assert.doesNotMatch(renderSource, /data-equipment-board-status-actions/);
+  assert.doesNotMatch(renderSource, /data-equipment-board-status-cycle/);
   assert.doesNotMatch(renderSource, /data-equipment-set-board-status/);
   assert.match(renderSource, /state\.pendingAddRoom = button\.dataset\.equipmentAddRoom/);
   assert.match(renderSource, /data-equipment-order-toggle-team/);

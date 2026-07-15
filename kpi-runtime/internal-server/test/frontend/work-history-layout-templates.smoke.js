@@ -21,6 +21,7 @@ const expectedHistoryStyleImports = [
   './styles/reference-ui.css',
   './styles/experiment-board.css',
   '../../../../kpi-runtime/app/styles/shared/status-team-marks.css',
+  './styles/unified-topbar.css',
 ];
 const adapterSource = await fs.readFile(adapterPath, 'utf8');
 const layoutSource = await fs.readFile(layoutPath, 'utf8');
@@ -91,11 +92,11 @@ function createContext(options = {}) {
     escapeAttribute(value) {
       return String(value ?? '');
     },
-    getElement() {
-      return null;
+    getElement(id) {
+      return options.elements?.[id] || null;
     },
-    queryAll() {
-      return [];
+    queryAll(selector) {
+      return options.queryAll?.(selector) || [];
     },
     setShadowHost() {},
     getRecordCategoryOptionsForGroup() {
@@ -162,7 +163,19 @@ test('work history layout templates registry exposes shell and modal builders', 
   assert.match(pageHeaderHtml, /history-topbar/);
   assert.doesNotMatch(pageHeaderHtml, /history-topbar-team-switch/);
   assert.doesNotMatch(pageHeaderHtml, /data-role="current-date"/);
-  assert.match(pageHeaderHtml, /id="history-title"/);
+  assert.match(pageHeaderHtml, /class="history-toolbar-title" id="history-title"/);
+  assert.doesNotMatch(pageHeaderHtml, /history-topbar-brand/);
+  assert.match(pageHeaderHtml, /history-topbar-metrics/);
+  assert.match(pageHeaderHtml, /data-role="topbar-total-count"/);
+  assert.match(pageHeaderHtml, /data-role="topbar-total-cost"/);
+  assert.match(pageHeaderHtml, /data-role="topbar-latest-date"/);
+  assert.equal((pageHeaderHtml.match(/class="history-topbar-metric-icon" aria-hidden="true"/g) || []).length, 3);
+  assert.ok(pageHeaderHtml.includes(view.getSectionIconSvg('work')));
+  assert.ok(pageHeaderHtml.includes(view.getSectionIconSvg('won')));
+  assert.ok(pageHeaderHtml.includes(view.getSectionIconSvg('date')));
+  assert.ok(pageHeaderHtml.indexOf('>전체 작업<') < pageHeaderHtml.indexOf('>총금액<'));
+  assert.ok(pageHeaderHtml.indexOf('>총금액<') < pageHeaderHtml.indexOf('>최근 작업일<'));
+  assert.ok(pageHeaderHtml.indexOf('>최근 작업일<') < pageHeaderHtml.indexOf('data-role="topbar-team-filter"'));
   assert.doesNotMatch(pageHeaderHtml, /id="history-subtitle"/);
   assert.doesNotMatch(pageHeaderHtml, /팀별 작업 기록을 카드형으로 조회하고 관리합니다/);
   assert.match(shellHtml, /history-main-content/);
@@ -174,6 +187,7 @@ test('work history layout templates registry exposes shell and modal builders', 
   assert.match(shellHtml, /history-workspace-fullscreen-toggle/);
   assert.match(shellHtml, /data-fullscreen-icon/);
   assert.match(shellHtml, /history-fullscreen-icon-svg/);
+  assert.match(shellHtml, /M7 3H3v4M3 3l5 5M13 3h4v4M17 3l-5 5M7 17H3v-4M3 17l5-5M13 17h4v-4M17 17l-5-5/);
   assert.match(shellHtml, /data-action="toggle-fullscreen"/);
   assert.match(shellHtml, /data-action="reset-topbar-filters"/);
   assert.match(pageHeaderHtml, /history-workspace-controls/);
@@ -194,6 +208,40 @@ test('work history layout templates registry exposes shell and modal builders', 
   assert.match(shellHtml, /첫 줄은 목록 제목으로 표시됩니다/);
   assert.match(shellHtml, /deleteModal/);
   assert.match(shellHtml, /id="deleteModal"[^>]*hidden/);
+});
+
+test('work history header summary follows the active filtered team', () => {
+  const countNode = { textContent: '' };
+  const costNode = { textContent: '' };
+  const latestNode = { textContent: '' };
+  const context = createContext({
+    state: { currentTeam: 'team1part1' },
+    queryAll(selector) {
+      if (selector === '[data-role="topbar-total-count"]') return [countNode];
+      if (selector === '[data-role="topbar-total-cost"]') return [costNode];
+      if (selector === '[data-role="topbar-latest-date"]') return [latestNode];
+      return [];
+    },
+  });
+  const { state, view } = context.KpiWorkHistory;
+  view.getFilteredOverviewRecords = () => [
+    { cost: 5000, startDate: '2026-04-01' },
+  ];
+  view.getFilteredTeamRecords = () => [
+    { cost: 10000, startDate: '2026-04-02' },
+    { cost: 20000, endDate: '2026-04-03' },
+  ];
+
+  view.updateHeaderSummary();
+  assert.equal(countNode.textContent, '2건');
+  assert.equal(costNode.textContent, '3만원');
+  assert.equal(latestNode.textContent, '2026.04.03');
+
+  state.currentTeam = 'overview';
+  view.updateHeaderSummary();
+  assert.equal(countNode.textContent, '1건');
+  assert.equal(costNode.textContent, '1만원 미만');
+  assert.equal(latestNode.textContent, '2026.04.01');
 });
 
 test('work history shell stays hidden until its shadow stylesheet settles', () => {
@@ -303,6 +351,7 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
     assert.ok(countLines(source) < 800, `${href} has ${countLines(source)} lines`);
   });
   const experimentStyles = sources.find(({ href }) => href === './styles/experiment-board.css')?.source || '';
+  const unifiedTopbarStyles = sources.find(({ href }) => href === './styles/unified-topbar.css')?.source || '';
   const sharedStatusStyles = sources.find(({ href }) => href === '../../../../kpi-runtime/app/styles/shared/status-team-marks.css')?.source || '';
   const combinedStyles = sources.map(({ source }) => source).join('\n');
   assert.match(combinedStyles, /\.work-history-app\s*\{/);
@@ -316,13 +365,20 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   assert.match(combinedStyles, /--team3-strong:\s*#5b21b6/);
   assert.match(combinedStyles, /--team4-strong:\s*#b91c1c/);
   assert.match(combinedStyles, /\.history-workspace-controls\s*\{/);
-  assert.match(combinedStyles, /history-workspace-controls\s*\{[\s\S]*grid-template-columns:\s*minmax\(116px,\s*1fr\)\s*minmax\(124px,\s*1fr\)\s*minmax\(220px,\s*2fr\)\s*auto/);
+  assert.match(unifiedTopbarStyles, /history-page-head\.history-topbar\s*\{[\s\S]*grid-template-columns:\s*minmax\(340px,\s*0\.85fr\)\s*minmax\(500px,\s*1\.15fr\)/);
+  assert.match(unifiedTopbarStyles, /history-topbar-metrics\s*\{[\s\S]*grid-template-columns:\s*minmax\(92px,\s*0\.75fr\)\s*minmax\(116px,\s*1\.15fr\)\s*minmax\(116px,\s*1fr\)/);
+  assert.match(unifiedTopbarStyles, /history-workspace-controls\s*\{[\s\S]*grid-template-columns:\s*minmax\(92px,\s*0\.7fr\)\s*minmax\(104px,\s*0\.8fr\)\s*minmax\(156px,\s*1\.25fr\)\s*auto/);
   assert.match(combinedStyles, /history-workspace-select\s*\{[\s\S]*appearance:\s*none[\s\S]*background-image:/);
   assert.match(combinedStyles, /\.history-workspace-search\s*\{[^}]*display:\s*block/);
   assert.match(combinedStyles, /\.history-workspace-search-icon\s*\{[\s\S]*right:\s*12px[\s\S]*width:\s*15px/);
   assert.match(combinedStyles, /history-workspace-search-icon svg\s*\{[\s\S]*stroke:\s*currentColor[\s\S]*stroke-linejoin:\s*round/);
-  assert.match(combinedStyles, /\.btn\.history-workspace-fullscreen-toggle\s*\{[\s\S]*width:\s*38px[\s\S]*height:\s*38px[\s\S]*border-radius:\s*7px/);
-  assert.match(combinedStyles, /history-fullscreen-toggle-icon[\s\S]+font-size:\s*0\.92rem/);
+  assert.match(unifiedTopbarStyles, /history-topbar-metric > span\s*\{[\s\S]*font-size:\s*12px/);
+  assert.match(unifiedTopbarStyles, /history-topbar-metric > span\s*\{[\s\S]*display:\s*inline-flex[\s\S]*gap:\s*4px/);
+  assert.match(unifiedTopbarStyles, /history-topbar-metric-icon\s*\{[\s\S]*width:\s*13px[\s\S]*height:\s*13px[\s\S]*flex:\s*0\s+0\s+13px/);
+  assert.match(unifiedTopbarStyles, /history-topbar-metric-icon svg\s*\{[\s\S]*width:\s*13px[\s\S]*height:\s*13px/);
+  assert.match(unifiedTopbarStyles, /history-topbar-metric strong\s*\{[\s\S]*font-size:\s*14px/);
+  assert.match(unifiedTopbarStyles, /\.btn\.history-workspace-fullscreen-toggle\s*\{[\s\S]*width:\s*36px[\s\S]*min-width:\s*36px/);
+  assert.match(unifiedTopbarStyles, /history-fullscreen-toggle-icon svg\s*\{[\s\S]*width:\s*17px[\s\S]*height:\s*17px/);
   assert.match(combinedStyles, /history-fullscreen-toggle-icon svg\s*\{[\s\S]*stroke:\s*currentColor[\s\S]*stroke-linejoin:\s*round/);
   assert.match(combinedStyles, /history-search-controls\s*\{[\s\S]*grid-template-columns:\s*minmax\(220px,\s*2fr\)\s*minmax\(124px,\s*1fr\)\s*auto\s*minmax\(0,\s*auto\)/);
   assert.match(combinedStyles, /history-search-panel\s*\{[\s\S]*width:\s*100%[\s\S]*max-width:\s*620px/);
@@ -332,8 +388,9 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   assert.match(combinedStyles, /\.report-card-summary\s*\{/);
   assert.match(combinedStyles, /\.record-detail-grid\s*,/);
   assert.match(combinedStyles, /\.work-history-experiment-board\s*\{/);
-  assert.match(combinedStyles, /\.work-history-experiment-metrics\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(combinedStyles, /\.work-history-experiment-metric-card\s*\{[\s\S]*min-height:\s*64px[\s\S]*padding:\s*12px 16px/);
+  assert.doesNotMatch(experimentStyles, /work-history-experiment-metrics|work-history-experiment-metric-card/);
+  assert.match(unifiedTopbarStyles, /history-toolbar-title\s*\{[\s\S]*clip-path:\s*inset\(50%\)/);
+  assert.match(unifiedTopbarStyles, /is-production-report-workspace \.history-toolbar-title\s*\{[\s\S]*position:\s*static/);
   assert.match(combinedStyles, /\.work-history-experiment-column-head,[\s\S]*\.work-history-experiment-card\s*\{[\s\S]*minmax\(240px, 2\.2fr\)/);
   assert.match(combinedStyles, /\.work-history-experiment-card\s*\{[\s\S]*min-height:\s*64px[\s\S]*border-bottom:\s*1px solid var\(--gray-300\)/);
   assert.match(combinedStyles, /\.work-history-experiment-card-edit\s*\{[\s\S]*min-height:\s*32px[\s\S]*box-shadow:\s*none/);
@@ -356,7 +413,8 @@ test('work history templates keep the default work-history surface', () => {
   const context = createContext();
   const shellHtml = context.KpiWorkHistory.view.buildShellHtml();
 
-  assert.match(shellHtml, /작업 이력/);
+  assert.match(shellHtml, /<h1 class="history-toolbar-title" id="history-title">작업 이력<\/h1>/);
+  assert.doesNotMatch(shellHtml, /history-topbar-brand/);
   assert.doesNotMatch(shellHtml, /작업 이력 기입|작업이력 기입/);
   assert.match(shellHtml, /work-history-team-add-button/);
   assert.match(shellHtml, /data-action="add-record"/);

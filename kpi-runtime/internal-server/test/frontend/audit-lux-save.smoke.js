@@ -143,6 +143,8 @@ test('audit lux workspace keeps a compact title-only file header', () => {
   assert.match(auditWorkspaceSource, /<h2 class="audit-lux-window-title">조도<\/h2>/);
   assert.doesNotMatch(auditWorkspaceSource, /audit-lux-window-kicker/);
   assert.doesNotMatch(auditWorkspaceSource, /audit-lux-window-desc/);
+  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-window-actions/);
+  assert.doesNotMatch(auditWorkspaceSource, /getAuditLuxWorkspaceFullscreenButtonHtml/);
   assert.doesNotMatch(auditWorkspaceSource, /조도 파일/);
   assert.doesNotMatch(auditWorkspaceSource, /팀별 연도 조도본을 보관합니다/);
 });

@@ -408,6 +408,20 @@
                 return;
             }
 
+            const deleteButton = event.target?.closest?.('[data-role="utility-entry-experiment-delete"]');
+            if (deleteButton && host.contains(deleteButton)) {
+                event.preventDefault();
+                if (
+                    deleteButton.disabled
+                    || deleteButton.getAttribute('aria-busy') === 'true'
+                    || !deleteButton.closest('.utility-entry-experiment-view.is-daily')
+                ) {
+                    return;
+                }
+                parts.deleteUtilityEntryExperimentDailyDate(host);
+                return;
+            }
+
             const quickToggle = event.target?.closest?.('[data-role="utility-entry-experiment-quick-toggle"]');
             if (quickToggle && host.contains(quickToggle)) {
                 setUtilityEntryExperimentQuickOpen(host, getUtilityEntryExperimentQuickPanel(host)?.hidden !== false);

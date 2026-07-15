@@ -50,7 +50,10 @@ export function createUtilityEntryExperimentContext(options = {}) {
         this.bubbles = eventOptions.bubbles === true;
       }
     },
-    window: {},
+    window: {
+      alert: options.alertImpl,
+      confirm: options.confirmImpl,
+    },
     KpiSectionFactoryAdapter: {
       registerFactory() {},
     },
@@ -91,6 +94,9 @@ export function createUtilityEntryExperimentContext(options = {}) {
     applyDailyInputsToStore: parts.applyUtilityEntryExperimentDailyInputsToStore,
     applyMonthlyInputsToStore: parts.applyUtilityEntryExperimentMonthlyInputsToStore,
     saveUtilityEntryExperiment: parts.saveUtilityEntryExperiment,
+    getStrictDailyDate: parts.getUtilityEntryExperimentStrictDailyDate,
+    removeDailyDateFromStore: parts.removeUtilityEntryExperimentDailyDateFromStore,
+    deleteDailyDate: parts.deleteUtilityEntryExperimentDailyDate,
     populateActualValues: parts.populateUtilityEntryExperimentActualValues,
     rejectLowerDailyInput: parts.rejectUtilityEntryExperimentLowerDailyInput,
     getDailyCurrentInputs: parts.getUtilityEntryExperimentDailyCurrentInputs,
@@ -101,9 +107,12 @@ export function createUtilityEntryExperimentContext(options = {}) {
     renderCompletedDateCalendar: parts.renderUtilityEntryExperimentCompletedDateCalendar,
     renderCorrectionSummary: parts.renderUtilityEntryExperimentCorrectionSummary,
     buildToolbar: parts.buildUtilityEntryExperimentToolbar,
+    buildPanel: parts.buildUtilityEntryExperimentPanel,
     getMonthlyMeterLinkState: parts.getUtilityEntryExperimentMonthlyMeterLinkState,
     getMonthlyMeterLinkStates: parts.getUtilityEntryExperimentMonthlyMeterLinkStates,
     updateConditionalRows: parts.updateUtilityEntryExperimentConditionalRows,
+    stripCalculatedSettlementFields: parts.stripUtilityEntryExperimentCalculatedSettlementFields,
+    resolveSettlementFields: parts.resolveUtilityEntryExperimentSettlementFields,
     constants: {
       liquidFieldId: parts.constants.UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID,
       liquid2FieldId: parts.constants.UTILITY_ENTRY_EXPERIMENT_LIQUID2_FIELD_ID,
@@ -187,11 +196,13 @@ export function createDailyCurrentInput(options = {}) {
 }
 
 export function createSaveNode(initialText = '') {
+  const attrs = new Map();
   const classTokens = new Set();
   return {
     textContent: initialText,
     title: '',
     dataset: {},
+    disabled: false,
     classList: {
       add(name) {
         classTokens.add(name);
@@ -209,6 +220,12 @@ export function createSaveNode(initialText = '') {
       contains(name) {
         return classTokens.has(name);
       },
+    },
+    setAttribute(name, value) {
+      attrs.set(name, String(value));
+    },
+    getAttribute(name) {
+      return attrs.has(name) ? attrs.get(name) : null;
     },
   };
 }
@@ -384,6 +401,12 @@ export function createDailyCurrentHost(inputs, options = {}) {
       }
       if (selector === '[data-role="utility-entry-experiment-save-status"]') {
         return statusNodes;
+      }
+      if (selector === '[data-role="utility-entry-experiment-save"]') {
+        return options.saveButtons || [];
+      }
+      if (selector === '[data-role="utility-entry-experiment-delete"]') {
+        return options.deleteButtons || [];
       }
       if (selector.includes('[data-utility-entry-experiment-row-field-id]')) {
         return rows;

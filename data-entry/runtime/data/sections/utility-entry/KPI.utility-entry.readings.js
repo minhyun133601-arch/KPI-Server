@@ -111,11 +111,15 @@
         if (!host) return;
         const stateNodes = Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save-state"]') || []);
         const statusNodes = Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save-status"]') || []);
-        const buttons = Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save"]') || []);
+        const buttons = [
+            ...Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save"]') || []),
+            ...Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-delete"]') || [])
+        ];
+        const busy = status === 'saving' || status === 'deleting';
         host.dataset.utilityEntryExperimentSaveStatus = status;
         buttons.forEach(button => {
-            button.disabled = status === 'saving';
-            button.setAttribute('aria-busy', status === 'saving' ? 'true' : 'false');
+            button.disabled = busy;
+            button.setAttribute('aria-busy', busy ? 'true' : 'false');
         });
         stateNodes.forEach(stateNode => {
             stateNode.classList.toggle('is-saved', status === 'saved');
@@ -126,6 +130,8 @@
                 ? '저장됨'
                 : status === 'saving'
                     ? '저장 중'
+                    : status === 'deleting'
+                        ? '삭제 중'
                     : status === 'error'
                         ? '저장 실패'
                         : '저장 필요');
