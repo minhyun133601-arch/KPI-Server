@@ -1,8 +1,8 @@
         .viewer-home-guideline-list li::before {
-            content: "??;
+            content: "\2022";
             position: absolute;
             left: 0;
-            top: 0;
+            top: 0.05em;
             color: #2563eb;
             font-weight: 900;
         }
@@ -12,90 +12,177 @@
         .viewer-home-guideline-card-value .viewer-home-guideline-list li::before {
             color: #65a30d;
         }
-        @media (max-width: 1180px) {
+        @media (max-width: 1080px) {
+            .viewer-home-shell {
+                height: auto;
+                min-height: calc(100vh - 60px);
+                min-height: calc(100dvh - 60px);
+                overflow: visible;
+                grid-template-rows: auto auto;
+                padding: 18px;
+            }
             .viewer-home-hero {
                 grid-template-columns: 1fr;
             }
             .viewer-home-brand-panel {
-                max-width: 420px;
-                justify-self: center;
+                min-height: 180px;
+                padding: 26px;
+                border-right: 0;
+                border-bottom: 1px solid var(--viewer-home-border);
+            }
+            .viewer-home-brand-logo {
+                max-width: 320px;
             }
             .viewer-home-copy-panel {
-                width: 100%;
-                justify-self: stretch;
+                padding: 32px;
+            }
+            .viewer-home-guideline-section {
+                height: auto;
             }
             .viewer-home-guideline-grid {
                 grid-template-columns: 1fr;
             }
-        }
-        @media (max-height: 760px) and (min-width: 1181px) {
-            .viewer-home-shell {
-                padding: 14px 24px;
-                gap: 14px;
+            .viewer-home-guideline-card {
+                border-top: 1px solid #e5e7eb;
+                border-left: 0;
             }
-            .viewer-home-brand-frame {
+            .viewer-home-guideline-card:first-child {
+                border-top: 0;
+            }
+        }
+        @media (max-height: 760px) and (min-width: 1081px) {
+            .viewer-home-shell {
+                height: auto;
+                overflow: visible;
+                grid-template-rows: auto auto;
                 padding: 14px 18px;
-                min-height: 180px;
+                gap: 12px;
+            }
+            .viewer-home-brand-panel {
+                padding: 18px 24px;
+            }
+            .viewer-home-copy-panel {
+                gap: 10px;
+                padding: 22px 30px;
             }
             .viewer-home-policy-title {
-                font-size: clamp(2rem, 3.2vw, 3.3rem);
+                font-size: clamp(2.15rem, 3vw, 3rem);
             }
             .viewer-home-policy-line {
-                font-size: clamp(0.98rem, 1.18vw, 1.34rem);
+                font-size: clamp(0.98rem, 1.15vw, 1.2rem);
+            }
+            .viewer-home-policy-line-icon {
+                width: 36px;
+                height: 36px;
+            }
+            .viewer-home-policy-line > span:last-child {
+                min-height: 36px;
             }
             .viewer-home-guideline-section {
+                padding: 14px 18px;
+            }
+            .viewer-home-guideline-header {
+                min-height: 30px;
+                padding-bottom: 10px;
+            }
+            .viewer-home-guideline-card {
+                grid-template-columns: 36px minmax(0, 1fr);
                 gap: 10px;
                 padding: 14px;
             }
-            .viewer-home-guideline-card {
-                padding: 12px 14px;
+            .viewer-home-guideline-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 0.9rem;
+            }
+            .viewer-home-guideline-copy {
+                gap: 4px;
+            }
+            .viewer-home-guideline-name {
+                font-size: 1rem;
+            }
+            .viewer-home-guideline-quote,
+            .viewer-home-guideline-tag {
+                font-size: 0.76rem;
+            }
+            .viewer-home-guideline-list {
+                margin-top: 2px;
+                gap: 4px;
+            }
+            .viewer-home-guideline-list li {
+                font-size: 0.72rem;
+                line-height: 1.38;
             }
         }
         @media (max-width: 900px) {
             .viewer-home-shell {
-                overflow: auto;
-                padding: 22px;
-                gap: 22px;
+                padding: 16px;
+                gap: 14px;
             }
-            .viewer-home-shell::before {
-                width: min(72vw, 420px);
-                height: min(24vw, 180px);
-                top: 54px;
-                right: -12px;
+            .viewer-home-brand-panel {
+                min-height: 150px;
+                padding: 22px;
+            }
+            .viewer-home-brand-logo {
+                max-width: 280px;
+            }
+            .viewer-home-copy-panel {
+                gap: 14px;
+                padding: 26px 24px;
+            }
+            .viewer-home-policy-title {
+                font-size: clamp(2.1rem, 8vw, 2.8rem);
             }
             .viewer-home-policy-line {
-                gap: 12px;
-            }
-            .viewer-home-policy-line-icon {
-                width: 40px;
-                height: 40px;
-                border-radius: 14px;
-                font-size: 0.96rem;
+                font-size: clamp(1rem, 3.6vw, 1.18rem);
             }
             .viewer-home-guideline-section {
-                padding: 20px;
-                border-radius: 26px;
+                padding: 16px;
             }
             .viewer-home-guideline-card {
-                grid-template-columns: 64px minmax(0, 1fr);
-                min-height: auto;
-                padding: 18px;
-            }
-            .viewer-home-guideline-icon {
-                width: 70px;
-                height: 70px;
-                border-radius: 22px;
-                font-size: 1.56rem;
+                padding: 18px 4px;
             }
             .viewer-home-guideline-name {
-                font-size: 1.16rem;
+                font-size: 1.05rem;
             }
             .viewer-home-guideline-quote,
             .viewer-home-guideline-tag {
-                font-size: 0.92rem;
+                font-size: 0.82rem;
+            }
+        }
+        @media (max-width: 560px) {
+            .viewer-home-shell {
+                padding: 12px;
+            }
+            .viewer-home-copy-panel {
+                padding: 22px 18px;
+            }
+            .viewer-home-policy-title {
+                font-size: 1.85rem;
+            }
+            .viewer-home-policy-line {
+                align-items: flex-start;
+                gap: 10px;
+                font-size: 0.98rem;
+            }
+            .viewer-home-policy-line-icon {
+                width: 36px;
+                height: 36px;
+            }
+            .viewer-home-policy-line > span:last-child {
+                min-height: 36px;
+            }
+            .viewer-home-guideline-card {
+                grid-template-columns: 36px minmax(0, 1fr);
+                gap: 10px;
+            }
+            .viewer-home-guideline-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 0.9rem;
             }
             .viewer-home-guideline-list li {
-                white-space: normal;
+                font-size: 0.76rem;
             }
         }
         .work-metering-embed-shell {

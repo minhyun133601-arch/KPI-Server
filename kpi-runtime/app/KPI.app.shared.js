@@ -222,11 +222,6 @@
             return currentUser && typeof currentUser === 'object' ? currentUser : null;
         }
 
-        function isTeamReportDocumentExperimentEnabled() {
-            const runtimeConfig = KpiRuntime?.getServerRuntimeConfig?.() || null;
-            return runtimeConfig?.experiments?.teamReportDocumentUi === true;
-        }
-
         function isLocalDashboardPreviewMode() {
             const runtimeConfig = KpiRuntime?.getServerRuntimeConfig?.() || null;
             if (

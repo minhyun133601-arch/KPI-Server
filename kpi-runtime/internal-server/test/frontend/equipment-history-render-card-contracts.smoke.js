@@ -129,6 +129,13 @@ test('equipment-history card source preserves explicit save topbar editor and do
     /data-equipment-top-grid[\s\S]+data-equipment-card-heading[\s\S]+renderEquipmentRecentUpdated\(header, data\)[\s\S]+renderEquipmentPhotoTitle\(draft\)[\s\S]+data-equipment-hero-photo[\s\S]+renderPhotoCard\(draft\)/
   );
   assert.match(renderSource, /data-equipment-note-card[\s\S]+renderCompactDocumentEditor\(draft\.documents\)/);
+  assert.match(
+    renderSource,
+    /data-equipment-detail-card[\s\S]+data-equipment-annual-plan-card[\s\S]+data-equipment-history-card/
+  );
+  assert.match(renderSource, /function renderAnnualMaintenancePlanEditor\(rows, equipmentName = ''\)/);
+  assert.match(renderSource, /data-equipment-add-row="annualMaintenancePlan"/);
+  assert.match(renderSource, /data-equipment-row-section="annualMaintenancePlan"/);
   assert.doesNotMatch(renderSource, /data-equipment-retired-doc-card/);
   assert.match(renderSource, /function renderEquipmentRecentUpdated/);
   assert.match(renderSource, /\\uCD5C\\uADFC \\uC5C5\\uB370\\uC774\\uD2B8 :/);
@@ -162,6 +169,11 @@ test('equipment-history card source preserves explicit save topbar editor and do
   assert.match(dataCssSource, /data-equipment-simple-spec-value-input[\s\S]+color:\s*#132844/);
   assert.match(dataCssSource, /data-equipment-simple-spec-remove[\s\S]+background:\s*transparent/);
   assert.match(dataCssSource, /data-equipment-maintenance-editor[\s\S]+display:\s*grid[\s\S]+gap:\s*7px/);
+  assert.match(dataCssSource, /data-equipment-annual-plan-editor[\s\S]+min-width:\s*940px/);
+  assert.match(
+    dataCssSource,
+    /data-equipment-annual-plan-head,[\s\S]+data-equipment-annual-plan-row[\s\S]+grid-template-columns:[\s\S]+minmax\(230px,\s*2\.55fr\)/
+  );
   assert.match(
     dataCssSource,
     /data-equipment-maintenance-head,[\s\S]+data-equipment-maintenance-row[\s\S]+grid-template-columns:\s*minmax\(82px,\s*14%\)\s*minmax\(74px,\s*12%\)\s*minmax\(0,\s*44%\)\s*minmax\(74px,\s*12%\)\s*minmax\(84px,\s*18%\)/
@@ -198,7 +210,7 @@ test('equipment-history card source preserves explicit save topbar editor and do
   );
   assert.match(
     dataCssSource,
-    /data-equipment-doc-list-item[\s\S]+align-content:\s*start[\s\S]+background:\s*#ffffff[\s\S]+padding:\s*8px 34px 9px 8px/
+    /data-equipment-doc-list-item[\s\S]+align-content:\s*start[\s\S]+background:\s*#ffffff[\s\S]+padding:\s*8px 8px 9px/
   );
   assert.match(dataCssSource, /data-equipment-document-picker[\s\S]+align-items:\s*center[\s\S]+min-height:\s*24px/);
   assert.match(
@@ -215,11 +227,16 @@ test('equipment-history card source preserves explicit save topbar editor and do
   );
   assert.match(dataCssSource, /data-equipment-document-file-name:empty[\s\S]+color:\s*transparent/);
   assert.match(dataCssSource, /data-equipment-document-pick[\s\S]+min-width:\s*44px/);
-  assert.match(dataCssSource, /data-equipment-document-remove[\s\S]+position:\s*absolute[\s\S]+opacity:\s*0/);
   assert.match(
     dataCssSource,
-    /data-equipment-doc-list-item:hover\s+\.data-equipment-document-remove,[\s\S]+data-equipment-doc-list-item:focus-within\s+\.data-equipment-document-remove[\s\S]+opacity:\s*1/
+    /data-equipment-document-picker[\s\S]+grid-template-columns:\s*auto minmax\(0,\s*1fr\) auto/
   );
+  assert.match(dataCssSource, /data-equipment-document-actions[\s\S]+display:\s*inline-flex[\s\S]+gap:\s*5px/);
+  assert.match(
+    dataCssSource,
+    /data-equipment-document-download,[\s\S]+data-equipment-document-remove[\s\S]+min-height:\s*24px/
+  );
+  assert.doesNotMatch(dataCssSource, /data-equipment-document-remove[\s\S]{0,160}opacity:\s*0/);
   assert.match(
     dataCssSource,
     /@media \(max-width:\s*1180px\)[\s\S]+data-equipment-doc-list[\s\S]+grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/

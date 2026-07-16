@@ -122,7 +122,6 @@ export const config = {
   loginRateLimitEnabled: readBoolean(process.env.KPI_LOGIN_RATE_LIMIT_ENABLED, true),
   loginRateLimitMaxAttempts: readPositiveInt(process.env.KPI_LOGIN_RATE_LIMIT_MAX_ATTEMPTS, 10),
   loginRateLimitWindowMs: readPositiveInt(process.env.KPI_LOGIN_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
-  teamReportDocumentExperimentUsername: readOptionalString(process.env.KPI_TEAM_REPORT_DOCUMENT_EXPERIMENT_USERNAME),
   securityHeadersEnabled: readBoolean(process.env.KPI_SECURITY_HEADERS_ENABLED, true),
   contentSecurityPolicy: readOptionalString(process.env.KPI_CONTENT_SECURITY_POLICY),
   frameOptions: readOptionalString(process.env.KPI_FRAME_OPTIONS) || 'SAMEORIGIN',

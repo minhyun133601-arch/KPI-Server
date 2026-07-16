@@ -84,6 +84,17 @@
         { key: 'note', label: '비고', placeholder: '비고' },
     ];
 
+    const ANNUAL_MAINTENANCE_PLAN_FIELDS = [
+        { key: 'equipmentName', label: '설비명', placeholder: '설비명' },
+        { key: 'maintenanceItem', label: '정비항목', placeholder: '정비항목' },
+        { key: 'maintenanceContent', label: '주요정비내용', placeholder: '주요 정비 내용을 입력하세요.' },
+        { key: 'cycle', label: '주기', placeholder: '예: 연 1회' },
+        { key: 'executionMonth', label: '실시월', placeholder: '예: 3월' },
+        { key: 'inspectionNotes', label: '점검여부 및 특이사항', placeholder: '점검 결과 또는 특이사항' },
+    ];
+    const ANNUAL_MAINTENANCE_PLAN_CONTENT_FIELDS = ANNUAL_MAINTENANCE_PLAN_FIELDS.slice(1);
+    const DEFAULT_ANNUAL_MAINTENANCE_PLAN_ROW_COUNT = 3;
+
     const DOCUMENT_FIELDS = [
         { key: 'title', label: '문서명', placeholder: '예: 점검 보고서' },
     ];
@@ -152,6 +163,17 @@
 
     function createBlankMaintenanceRow() {
         return { date: '', type: '', content: '', worker: '', note: '' };
+    }
+
+    function createBlankAnnualMaintenancePlanRow(equipmentName = '') {
+        return {
+            equipmentName: api.normalizeText(equipmentName),
+            maintenanceItem: '',
+            maintenanceContent: '',
+            cycle: '',
+            executionMonth: '',
+            inspectionNotes: '',
+        };
     }
 
     function createBlankDocumentRow() {
@@ -274,6 +296,12 @@
         ];
         const manufacturerLabel = api.normalizeText(source.manufacturerLabel || source.manufacturerTitle || source.manufacturerLabelText) || DEFAULT_MANUFACTURER_LABEL;
         const ownerLabel = api.normalizeText(source.ownerLabel || source.ownerTitle || source.ownerLabelText) || DEFAULT_OWNER_LABEL;
+        const annualMaintenancePlanSource = source.annualMaintenancePlan || source.maintenancePlan || source.annualMaintenanceSchedule;
+        const annualMaintenancePlan = normalizeRows(
+            annualMaintenancePlanSource,
+            () => createBlankAnnualMaintenancePlanRow(source.name),
+            DEFAULT_ANNUAL_MAINTENANCE_PLAN_ROW_COUNT
+        );
         return {
             id: api.normalizeText(source.id),
             equipmentCode: api.normalizeText(source.equipmentCode || source.id),
@@ -316,6 +344,7 @@
             photoAttachmentKey: api.normalizeText(source.photoAttachmentKey || source.photoAttachmentId) || EQUIPMENT_PHOTO_ATTACHMENT_KEY,
             detailInfo: editableDetailInfo,
             detailGroups,
+            annualMaintenancePlan,
             maintenanceHistory: normalizeRows(source.maintenanceHistory, createBlankMaintenanceRow),
             documents: normalizeRows(source.documents, createBlankDocumentRow, DEFAULT_DOCUMENT_ROW_COUNT),
         };
@@ -431,6 +460,13 @@
         const teamDataKey = normalized.teamDataKey || resolveEquipmentHistoryTeamDataKey(normalized.team);
         const documents = removeBlankRows(normalized.documents, DOCUMENT_SAVE_FIELDS)
             .map(({ pendingFile, attachmentKey, ...row }) => row);
+        const annualMaintenancePlan = removeBlankRows(
+            normalized.annualMaintenancePlan,
+            ANNUAL_MAINTENANCE_PLAN_CONTENT_FIELDS
+        ).map((row) => ANNUAL_MAINTENANCE_PLAN_FIELDS.reduce((result, field) => {
+            result[field.key] = api.normalizeText(row?.[field.key]);
+            return result;
+        }, {}));
         return {
             id,
             equipmentCode: normalized.equipmentCode || id.toUpperCase(),
@@ -466,6 +502,7 @@
             operationInfo: buildInfo(OPERATION_FIELDS.map((field) => ({ label: field.label, value: normalized[field.key] }))),
             detailInfo,
             detailGroups,
+            annualMaintenancePlan,
             maintenanceHistory: removeBlankRows(normalized.maintenanceHistory, MAINTENANCE_FIELDS),
             documents,
         };
@@ -794,6 +831,9 @@
         EQUIPMENT_SPEC_CATEGORY_ORDER,
         EQUIPMENT_SPEC_BLOCK_SIZE,
         MAINTENANCE_FIELDS,
+        ANNUAL_MAINTENANCE_PLAN_FIELDS,
+        ANNUAL_MAINTENANCE_PLAN_CONTENT_FIELDS,
+        DEFAULT_ANNUAL_MAINTENANCE_PLAN_ROW_COUNT,
         DOCUMENT_FIELDS,
         DEFAULT_DOCUMENT_ROW_COUNT,
         DOCUMENT_ATTACHMENT_ACCEPT,
@@ -806,6 +846,7 @@
         isEquipmentHistoryDetailGroupSection,
         normalizeEquipmentHistoryDetailGroups,
         createBlankMaintenanceRow,
+        createBlankAnnualMaintenancePlanRow,
         createBlankDocumentRow,
         createBlankDetailRow,
         createDraft,

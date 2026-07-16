@@ -54,6 +54,32 @@
         `;
     }
 
+    function getEquipmentPrintAnnualMaintenancePlanRows(draft) {
+        const fields = api.ANNUAL_MAINTENANCE_PLAN_FIELDS || [];
+        const contentKeys = fields.slice(1).map((field) => field.key);
+        const enteredRows = api.asList(draft?.annualMaintenancePlan)
+            .filter((row) => !isPrintRowBlank(row, contentKeys));
+        const rows = enteredRows.map((row) => ({
+            ...row,
+            equipmentName: normalizePrintText(row?.equipmentName) || normalizePrintText(draft?.name),
+        }));
+        const minimumRows = Math.max(3, Number(api.DEFAULT_ANNUAL_MAINTENANCE_PLAN_ROW_COUNT) || 3);
+        while (rows.length < minimumRows) {
+            rows.push(api.createBlankAnnualMaintenancePlanRow?.(rows.length === 0 ? draft?.name : '') || {});
+        }
+        return rows;
+    }
+
+    function renderEquipmentPrintAnnualMaintenancePlanRows(draft) {
+        return getEquipmentPrintAnnualMaintenancePlanRows(draft).map((row) => `
+            <tr>
+                ${(api.ANNUAL_MAINTENANCE_PLAN_FIELDS || []).map((field) => `
+                    <td><div class="equipment-print-table-value">${renderPrintText(row?.[field.key], '')}</div></td>
+                `).join('')}
+            </tr>
+        `).join('');
+    }
+
     function getEquipmentPrintDocumentRows(draft) {
         return api.asList(draft?.documents)
             .filter((row) => !isPrintRowBlank(row, ['title', 'fileName', 'originalName', 'downloadUrl']));
@@ -66,10 +92,14 @@
         }
         return rows.map((row) => {
             const fileLabel = row?.pendingFile?.name || row?.fileName || row?.originalName || row?.downloadUrl || '-';
+            const title = normalizePrintText(row?.title);
+            const isDuplicate = api.isDocumentTitleDuplicate?.(title, fileLabel) === true;
+            const primaryLabel = title || fileLabel;
+            const secondaryLabel = title && fileLabel && !isDuplicate ? fileLabel : '';
             return `
                 <div class="equipment-print-doc-cell">
-                    <span>${renderPrintText(row?.title || row?.fileName || row?.originalName, '\uC81C\uBAA9')}</span>
-                    <strong>${renderPrintText(fileLabel, '\uBB38\uC11C')}</strong>
+                    <strong>${renderPrintText(primaryLabel, '\uBB38\uC11C')}</strong>
+                    ${secondaryLabel ? `<span>${renderPrintText(secondaryLabel, '')}</span>` : ''}
                 </div>
             `;
         }).join('');
@@ -136,12 +166,12 @@
     <meta charset="UTF-8">
     <title>${api.escapeHtml(title)} ${api.escapeHtml('\uC124\uBE44 \uC774\uB825 \uCE74\uB4DC')}</title>
     <style>
-        @page { size: A4 portrait; margin: 6mm; }
+        @page { size: A4 portrait; margin: 8mm; }
         * { box-sizing: border-box; }
         figure { margin: 0; }
         html, body { margin: 0; background: #ffffff; color: #111827; font-family: 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif; }
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .equipment-print-page { width: 198mm; height: 285mm; max-height: 285mm; overflow: hidden; display: grid; align-content: start; gap: 2.4mm; }
+        .equipment-print-page { width: 100%; min-height: 0; height: auto; max-height: none; overflow: visible; display: grid; align-content: start; gap: 2.4mm; }
         .data-equipment-topbar { display: grid; grid-template-columns: 11mm minmax(0, 1fr) auto; gap: 4mm; align-items: center; }
         .data-equipment-topbar-dashboard.is-card-mode { min-height: 17mm; padding: 3.4mm 4mm; border: 1px solid #132844; border-radius: 8px; background: linear-gradient(135deg, #071a31 0%, #102b4b 100%); color: #ffffff; }
         .data-equipment-brand { display: inline-flex; align-items: center; justify-content: center; min-width: 0; }
@@ -156,28 +186,29 @@
         .equipment-print-date { color: rgba(226, 238, 255, 0.8); font-size: 8px; font-weight: 800; text-align: right; white-space: nowrap; }
         .data-equipment-card-view { min-height: 0; display: grid; align-content: start; }
         .data-equipment-layout,
-        .data-equipment-edit-form { min-height: 0; display: grid; grid-template-rows: none; align-content: start; gap: 2.4mm; }
+        .data-equipment-edit-form { min-height: 0; display: grid; grid-template-rows: auto; align-content: start; gap: 2.4mm; }
         .equipment-print-form { height: auto; }
         .data-equipment-top-grid,
         .equipment-print-top-grid { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 2mm; align-items: stretch; }
         .data-equipment-card-heading,
         .equipment-print-card-heading { min-width: 0; display: grid; grid-template-columns: minmax(34mm, 0.32fr) minmax(0, 1fr); gap: 2mm; align-items: center; }
         .data-equipment-hero-photo { min-width: 0; display: grid; align-items: start; }
-        .data-equipment-hero-updated { min-width: 0; min-height: 9mm; display: flex; align-items: center; gap: 1.5mm; padding: 1.3mm 2mm; border: 1px solid #dbe6f3; border-radius: 7px; background: #f8fbff; color: #334155; line-height: 1.15; }
+        .data-equipment-hero-updated { min-width: 0; min-height: 9mm; display: flex; align-items: center; gap: 1.5mm; padding: 1.3mm 2mm; border: 1px solid #d1d5db; border-radius: 4px; background: #f8fafc; color: #374151; line-height: 1.15; }
         .data-equipment-hero-updated span { flex: 0 0 auto; color: #64748b; font-size: 8px; font-weight: 900; white-space: nowrap; }
         .data-equipment-hero-updated strong { min-width: 0; overflow: hidden; color: #1f2a44; font-size: 8.4px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
         .data-equipment-photo-title-row { min-width: 0; display: grid; grid-template-columns: minmax(34mm, 0.62fr) minmax(28mm, 0.48fr) minmax(0, 1.4fr); gap: 2mm; align-items: center; border: 0; background: transparent; padding: 0; }
         .data-equipment-photo-title-row .data-equipment-title-team,
         .data-equipment-photo-title-row .data-equipment-title-room,
-        .data-equipment-photo-title-row .data-equipment-title-name { min-width: 0; min-height: 9mm; display: flex; align-items: center; justify-content: flex-start; gap: 1.6mm; border: 1px solid #d7e2ef; border-radius: 7px; background: #ffffff; color: #132844; padding: 1.5mm 2mm; font-family: 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif; line-height: 1.15; word-break: keep-all; }
-        .data-equipment-title-team-icon { width: 7mm; height: 7mm; display: inline-flex; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--equipment-team-color, #2563eb) 24%, #ffffff); border-radius: 7px; background: color-mix(in srgb, var(--equipment-team-color, #2563eb) 14%, #ffffff); color: var(--equipment-team-color, #2563eb); font-size: 8.5px; flex: 0 0 auto; }
+        .data-equipment-photo-title-row .data-equipment-title-name { min-width: 0; min-height: 9mm; display: flex; align-items: center; justify-content: flex-start; gap: 1.6mm; border: 1px solid #d1d5db; border-radius: 4px; background: #ffffff; color: #111827; padding: 1.5mm 2mm; font-family: 'Noto Sans KR', 'Malgun Gothic', Arial, sans-serif; line-height: 1.15; word-break: keep-all; }
+        .data-equipment-title-team-icon { width: 7mm; height: 7mm; display: inline-flex; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--equipment-team-color, #2563eb) 24%, #ffffff); border-radius: 4px; background: color-mix(in srgb, var(--equipment-team-color, #2563eb) 10%, #ffffff); color: var(--equipment-team-color, #2563eb); font-size: 8.5px; flex: 0 0 auto; }
         .data-equipment-title-team-icon svg { width: 4.8mm; height: 4.8mm; display: block; }
-        .data-equipment-title-value { min-width: 0; overflow: hidden; color: #132844; font-size: 13px; font-weight: 900; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
+        .data-equipment-title-value { min-width: 0; overflow: hidden; color: #111827; font-size: 13px; font-weight: 900; letter-spacing: 0; text-overflow: ellipsis; white-space: nowrap; }
         .equipment-print-section-stack { min-height: 0; display: grid; gap: 2mm; align-content: start; }
         .data-equipment-card,
-        .data-equipment-photo-card { overflow: hidden; background: #ffffff; border: 1px solid #dbe7f5; border-radius: 8px; box-shadow: none; }
+        .data-equipment-photo-card { overflow: hidden; background: #ffffff; border: 1px solid #d1d5db; border-radius: 4px; box-shadow: none; }
         .data-equipment-card-pad,
         .data-equipment-detail-card,
+        .data-equipment-annual-plan-card,
         .data-equipment-history-card,
         .data-equipment-note-card,
         .data-equipment-doc-card { min-width: 0; padding: 3mm; }
@@ -188,20 +219,20 @@
         .data-equipment-photo-preview { width: 100%; height: 100%; min-height: 0; object-fit: contain; display: block; background: #f8fbff; }
         .data-equipment-photo-placeholder,
         .equipment-print-photo-empty { width: 100%; height: 100%; display: grid; place-items: center; color: #63748e; font-size: 10px; font-weight: 800; text-align: center; }
-        .data-equipment-section-title { display: flex; align-items: center; gap: 2mm; margin: 0 0 2mm; color: #1268d8; font-size: 11px; font-weight: 900; line-height: 1.25; }
+        .data-equipment-section-title { display: flex; align-items: center; gap: 2mm; margin: 0 0 2mm; padding-bottom: 1.5mm; border-bottom: 1px solid #d1d5db; color: #111827; font-size: 11px; font-weight: 900; line-height: 1.25; }
         .data-equipment-edit-grid { display: grid; gap: 2mm; }
         .data-equipment-note-field { display: grid; gap: 1.2mm; min-width: 0; color: #34476c; font-size: 8.5px; font-weight: 900; }
         .data-equipment-note-field span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .equipment-print-static-note,
-        .equipment-print-table-value { width: 100%; min-width: 0; border: 1px solid #dce8f5; border-radius: 6px; background: #ffffff; color: #263957; padding: 1.45mm 1.7mm; font-size: 9.2px; font-weight: 800; line-height: 1.25; word-break: break-word; white-space: normal; }
+        .equipment-print-table-value { width: 100%; min-width: 0; border: 1px solid #d1d5db; border-radius: 2px; background: #ffffff; color: #374151; padding: 1.45mm 1.7mm; font-size: 9.2px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
         .data-equipment-detail-card { display: grid; align-content: start; }
         .equipment-print-spec-grid { min-width: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1.5mm; align-items: stretch; }
-        .equipment-print-spec-cell { min-width: 0; display: grid; gap: 0.9mm; border: 1px solid #dce8f5; border-radius: 6px; background: #ffffff; padding: 1.45mm 1.5mm; }
+        .equipment-print-spec-cell { min-width: 0; display: grid; gap: 0.9mm; border: 1px solid #d1d5db; border-radius: 2px; background: #ffffff; padding: 1.45mm 1.5mm; }
         .equipment-print-spec-cell span,
         .equipment-print-spec-cell strong { min-width: 0; overflow: hidden; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
         .equipment-print-spec-cell span { color: #405270; font-size: 8px; font-weight: 900; }
         .equipment-print-spec-cell strong { color: #132844; font-size: 9.4px; font-weight: 900; }
-        .data-equipment-table-scroll { min-width: 0; border: 1px solid #d8e5f2; border-radius: 8px; background: #f8fbff; padding: 2mm; }
+        .data-equipment-table-scroll { min-width: 0; border: 1px solid #d1d5db; border-radius: 4px; background: #f8fafc; padding: 2mm; }
         .data-equipment-edit-table,
         .equipment-print-table { width: 100%; border-collapse: separate; border-spacing: 0 1mm; table-layout: fixed; font-size: 8.5px; line-height: 1.2; }
         .data-equipment-edit-table th,
@@ -218,22 +249,39 @@
         .equipment-print-maintenance-table td:nth-child(4) { width: 12%; }
         .equipment-print-maintenance-table th:nth-child(5),
         .equipment-print-maintenance-table td:nth-child(5) { width: 18%; }
-        .equipment-print-maintenance-table .equipment-print-table-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .equipment-print-annual-plan-table th:nth-child(1), .equipment-print-annual-plan-table td:nth-child(1) { width: 11%; }
+        .equipment-print-annual-plan-table th:nth-child(2), .equipment-print-annual-plan-table td:nth-child(2) { width: 12%; }
+        .equipment-print-annual-plan-table th:nth-child(3), .equipment-print-annual-plan-table td:nth-child(3) { width: 25%; }
+        .equipment-print-annual-plan-table th:nth-child(4), .equipment-print-annual-plan-table td:nth-child(4) { width: 8%; }
+        .equipment-print-annual-plan-table th:nth-child(5), .equipment-print-annual-plan-table td:nth-child(5) { width: 8%; }
+        .equipment-print-annual-plan-table th:nth-child(6), .equipment-print-annual-plan-table td:nth-child(6) { width: 36%; }
         .equipment-print-doc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5mm; }
-        .equipment-print-doc-cell { min-width: 0; display: grid; gap: 0.9mm; border: 1px solid #dce8f5; border-radius: 6px; background: #ffffff; padding: 1.45mm 1.5mm; }
+        .equipment-print-doc-cell { min-width: 0; display: grid; gap: 0.9mm; border: 1px solid #d1d5db; border-radius: 2px; background: #ffffff; padding: 1.45mm 1.5mm; }
         .equipment-print-doc-cell span,
         .equipment-print-doc-cell strong { min-width: 0; overflow: hidden; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
         .equipment-print-doc-cell span { color: #405270; font-size: 8px; font-weight: 900; }
-        .equipment-print-doc-cell strong { color: #132844; font-size: 9.4px; font-weight: 900; }
+        .equipment-print-doc-cell strong { color: #111827; font-size: 9.4px; font-weight: 900; }
         .equipment-print-doc-empty { grid-column: 1 / -1; }
         .equipment-print-static-note { min-height: 0; }
         .equipment-print-note-card.is-empty .equipment-print-empty { padding-top: 1.2mm; padding-bottom: 1.2mm; }
+        .equipment-print-section-stack > .data-equipment-card { overflow: visible; }
         .equipment-print-empty,
         .equipment-print-empty-cell { color: #6b7280; font-size: 9px; font-weight: 800; text-align: center; }
         .equipment-print-empty { border: 1px dashed #dce8f5; border-radius: 6px; background: #f8fbff; padding: 1.6mm 2mm; }
+        .equipment-print-top-grid,
+        .equipment-print-spec-summary,
+        .equipment-print-note-card,
+        .equipment-print-documents,
+        .equipment-print-doc-cell { break-inside: avoid; page-break-inside: avoid; }
+        .equipment-print-table thead { display: table-header-group; }
+        .equipment-print-table tr { break-inside: avoid; page-break-inside: avoid; }
+        .equipment-print-table th,
+        .equipment-print-table td,
+        .equipment-print-doc-cell span,
+        .equipment-print-doc-cell strong { overflow: visible; text-overflow: clip; white-space: normal; }
         @media screen {
             body { padding: 10mm; background: #e5e7eb; }
-            .equipment-print-page { width: 198mm; margin: 0 auto; padding: 0; background: #ffffff; box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18); }
+            .equipment-print-page { width: 194mm; margin: 0 auto; padding: 0; background: #ffffff; box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18); }
         }
     </style>
 </head>
@@ -268,6 +316,19 @@
                     <article class="data-equipment-card data-equipment-detail-card equipment-print-spec-summary">
                         <h3 class="data-equipment-section-title">${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}</h3>
                         ${renderEquipmentPrintSpecRows(draft)}
+                    </article>
+                    <article class="data-equipment-card data-equipment-annual-plan-card equipment-print-annual-plan">
+                        <h3 class="data-equipment-section-title">${api.escapeHtml('연간정비계획표')}</h3>
+                        <div class="data-equipment-table-scroll">
+                            <table class="data-equipment-edit-table equipment-print-table equipment-print-annual-plan-table">
+                                <thead>
+                                    <tr>
+                                        ${(api.ANNUAL_MAINTENANCE_PLAN_FIELDS || []).map((field) => `<th>${api.escapeHtml(field.label)}</th>`).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>${renderEquipmentPrintAnnualMaintenancePlanRows(draft)}</tbody>
+                            </table>
+                        </div>
                     </article>
                     <article class="data-equipment-card data-equipment-history-card equipment-print-maintenance">
                         <h3 class="data-equipment-section-title">${api.escapeHtml('\uC815\uBE44 \uC774\uB825')}</h3>
@@ -340,6 +401,8 @@
         renderEquipmentPrintPhoto,
         getEquipmentPrintSpecRows,
         renderEquipmentPrintSpecRows,
+        getEquipmentPrintAnnualMaintenancePlanRows,
+        renderEquipmentPrintAnnualMaintenancePlanRows,
         getEquipmentPrintDocumentRows,
         renderEquipmentPrintDocumentRows,
         renderEquipmentPrintDocumentsCard,

@@ -174,73 +174,40 @@ async function expectWorkHistoryShadowText(page, elementId, pattern) {
     .toMatch(pattern);
 }
 
-async function openWorkTeamCalendar(page, dataKey, titlePattern) {
-  const clicked = await page.evaluate((targetDataKey) => {
-    const button = Array.from(document.querySelectorAll('#sidebar button')).find((node) =>
-      String(node.getAttribute('onclick') || '').includes(`'${targetDataKey}'`)
-    );
-    if (!button) {
-      return { ok: false, via: 'missing_button' };
-    }
-    button.click();
-    return {
-      ok: true,
-      via: 'sidebar_button',
-      id: button.id || '',
-    };
-  }, dataKey);
-  expect(clicked?.ok, `work sidebar button "${dataKey}" should exist`).toBeTruthy();
+async function expectInitialWorkTeamCalendar(page) {
+  const sidebar = page.locator('#sidebar');
+  const sidebarTree = page.locator('.sidebar-tree-shell');
+  const categoryButton = page.locator('#section-btn-work');
 
-  const dialog = page
-    .locator(
-      '#work-team-calendar-modal .work-team-calendar-dialog[role="region"], #work-team-calendar-modal .work-team-calendar-dialog[role="dialog"]'
-    )
-    .first();
-  const appearedAfterClick = await expect(dialog)
-    .toBeVisible({ timeout: 3000 })
-    .then(() => true)
-    .catch(() => false);
+  await expect(sidebar).toBeVisible();
+  await expect(categoryButton).toBeVisible();
+  await expect(categoryButton).toContainText(/팀별내역서/);
+  await expect(categoryButton).toHaveAttribute('aria-current', 'page');
+  await expect(sidebar.getByRole('button', { name: '팀별내역서', exact: true })).toHaveCount(1);
+  await expect(categoryButton.locator('.sidebar-group-chevron')).toHaveCount(0);
+  await expect(sidebar).not.toHaveClass(/is-team-report-document/);
+  await expect(sidebarTree).not.toHaveClass(/is-team-report-document/);
+  await expect(page.locator('#sidebar button[id^="cat-btn-work-"]')).toHaveCount(0);
+  await expect(categoryButton.locator('xpath=..').locator('.sidebar-group-items')).toHaveCount(0);
+  await expect(page.locator('[id^="cat-btn-work-0-team-"]')).toHaveCount(0);
+  await expect(page.locator('#cat-btn-work-0-mode-toggle')).toHaveCount(0);
+  await expect(sidebar).not.toContainText(/LAB|\uAE30\uC874 \uD654\uBA74/);
+  await expect(
+    page.locator('.is-team-report-experiment, .work-team-calendar-experiment-nav, .work-team-calendar-experiment-badge')
+  ).toHaveCount(0);
 
-  if (!appearedAfterClick) {
-    const forced = await page.evaluate((targetDataKey) => {
-      if (typeof window.openSidebarTeamCategory === 'function') {
-        window.openSidebarTeamCategory('work', 0, targetDataKey);
-        return 'openSidebarTeamCategory';
-      }
-      if (typeof window.selectCategory === 'function') {
-        window.selectCategory('work', 0, { teamDataKey: targetDataKey });
-        return 'selectCategory';
-      }
-      return '';
-    }, dataKey);
-    expect(forced, `work calendar fallback for "${dataKey}" should exist`).not.toEqual('');
-  }
-
+  const dialog = page.locator('#work-team-calendar-modal .work-team-calendar-dialog.is-team-report-document').first();
   await expect(dialog).toBeVisible({ timeout: 15000 });
-  await expect(dialog.locator('.work-team-calendar-brand-title')).toContainText(titlePattern);
+  await expect(dialog.locator('.work-team-calendar-document-nav')).toBeVisible();
+  await expect(page.locator('.viewer-home-shell')).toHaveCount(0);
+  await expect
+    .poll(() => page.evaluate(() => window.history.state?.route || null))
+    .toMatchObject({
+      view: 'category',
+      sectionId: 'work',
+      categoryIndex: 0,
+    });
   return dialog;
-}
-
-async function getWorkSidebarSnapshot(page) {
-  return await page.evaluate(() => {
-    const modeButton = document.querySelector('#cat-btn-work-0-mode-toggle');
-    const teamButtons = Array.from(document.querySelectorAll('[id^="cat-btn-work-0-team-"]'));
-    return {
-      modeLabel: (modeButton?.textContent || '').replace(/\s+/g, ' ').trim(),
-      teamLabels: teamButtons.map((node) => (node.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean),
-    };
-  });
-}
-
-async function toggleWorkSidebarMode(page) {
-  const clicked = await page.evaluate(() => {
-    const button = document.querySelector('#cat-btn-work-0-mode-toggle');
-    if (!button) return false;
-    button.click();
-    return true;
-  });
-  expect(clicked, 'work sidebar mode toggle should exist').toBeTruthy();
-  await page.waitForTimeout(500);
 }
 
 test.describe('KPI browser smoke', () => {
@@ -280,6 +247,9 @@ test.describe('KPI browser smoke', () => {
         await expect(page.locator('#viewer-auth-identity')).toHaveText('Codex E2E');
       }
 
+      const workCalendar = await expectInitialWorkTeamCalendar(page);
+      await expect(workCalendar.locator('[data-work-team-mode]')).toHaveCount(3);
+
       const viewerSidebarToggle = page.locator('#viewer-sidebar-toggle');
       await expect(viewerSidebarToggle).toHaveAttribute('aria-label', '닫기');
       await viewerSidebarToggle.click();
@@ -291,18 +261,19 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('#viewer-body')).not.toHaveClass(/is-sidebar-collapsed/);
       await expect(viewerSidebarToggle).toHaveAttribute('aria-label', '닫기');
 
-      const initialWorkSidebarSnapshot = await getWorkSidebarSnapshot(page);
-      expect(initialWorkSidebarSnapshot.modeLabel).not.toEqual('');
-      expect(initialWorkSidebarSnapshot.teamLabels.length).toBeGreaterThanOrEqual(4);
-      await toggleWorkSidebarMode(page);
-      const changedWorkSidebarSnapshot = await getWorkSidebarSnapshot(page);
-      expect(changedWorkSidebarSnapshot.modeLabel).not.toEqual(initialWorkSidebarSnapshot.modeLabel);
-      expect(changedWorkSidebarSnapshot.teamLabels).not.toEqual(initialWorkSidebarSnapshot.teamLabels);
-      await toggleWorkSidebarMode(page);
-      const cycledWorkSidebarSnapshot = await getWorkSidebarSnapshot(page);
-      expect(cycledWorkSidebarSnapshot.modeLabel).not.toEqual(changedWorkSidebarSnapshot.modeLabel);
-
-      const workCalendar = await openWorkTeamCalendar(page, 'work_team_calendar_overview', /통합 현황 캘린더/);
+      const overviewButton = workCalendar.locator('[data-work-team-switch="work_team_calendar_overview"]');
+      await expect(overviewButton).toBeVisible();
+      await overviewButton.click();
+      await expect(overviewButton).toHaveAttribute('aria-pressed', 'true');
+      await expect(workCalendar.locator('.work-team-calendar-brand-title, .work-team-calendar-brand-sub')).toHaveCount(
+        0
+      );
+      await expect(workCalendar).not.toContainText(/통합 현황 캘린더/);
+      await expect(
+        workCalendar.locator(
+          '.work-team-calendar-document-actions [data-action="work-team-calendar-toggle-fullscreen"]'
+        )
+      ).toBeVisible();
       await workCalendar.locator('button').filter({ hasText: /오늘/ }).first().click();
       await expect(page.getByRole('button', { name: /선택 닫기/ })).toBeVisible();
       await page.getByRole('button', { name: /전기 사용량/ }).click();

@@ -11,7 +11,7 @@ import {
 test('verifyServerStructure tracks the expanded work runtime files', () => {
   const trackedRelativeSuffixes = frontendTrackedFiles.map((entry) => entry.replaceAll('\\', '/'));
 
-  assert.equal(frontendTrackedFiles.length, 32);
+  assert.equal(frontendTrackedFiles.length, 29);
   assert.ok(
     trackedRelativeSuffixes.some((entry) => entry.endsWith('/runtime/work/KPI.work.team-calendar.js'))
   );
@@ -51,21 +51,6 @@ test('verifyServerStructure tracks the expanded work runtime files', () => {
   assert.ok(
     trackedRelativeSuffixes.some((entry) =>
       entry.endsWith('/runtime/work/KPI.work.shared.team-calendar.summary.js')
-    )
-  );
-  assert.ok(
-    trackedRelativeSuffixes.some((entry) =>
-      entry.endsWith('/runtime/work/KPI.work.renderers.weekly-actions.js')
-    )
-  );
-  assert.ok(
-    trackedRelativeSuffixes.some((entry) =>
-      entry.endsWith('/runtime/work/KPI.work.renderers.print.js')
-    )
-  );
-  assert.ok(
-    trackedRelativeSuffixes.some((entry) =>
-      entry.endsWith('/runtime/work/KPI.work.renderers.monthly-plan.js')
     )
   );
   assert.ok(

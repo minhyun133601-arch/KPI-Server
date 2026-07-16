@@ -139,6 +139,7 @@
 
             let changed = false;
             let removedProductionCount = 0;
+            const productionDedupeKeySet = new Set();
             range.forEach(point => {
                 metricSet.forEach(metricKey => {
                     const result = clearUtilDeleteSelectionMonthMetricValue({
@@ -148,22 +149,63 @@
                         monthValue: point.month,
                         metricKey,
                         costSubKeys: metricKey === 'cost' ? wasteCostSubKeys : [],
-                        deferRebuild: true
+                        deferRebuild: true,
+                        deferProductionEntryRemoval: metricKey === 'production'
                     });
                     if (result.changed) changed = true;
                     if (result.removedProductionCount > 0) {
                         removedProductionCount += Number(result.removedProductionCount) || 0;
                     }
+                    (result.productionDedupeKeys || []).forEach(key => {
+                        const normalizedKey = String(key || '').trim();
+                        if (normalizedKey) productionDedupeKeySet.add(normalizedKey);
+                    });
                 });
             });
+
+            let savePromise = null;
+            let shouldPersistProductionDelete = false;
+            if (productionDedupeKeySet.size > 0) {
+                const removed = removeUtilProductionEntriesByKeySet(productionDedupeKeySet, { persist: false });
+                if (removed > 0) {
+                    removedProductionCount += Number(removed) || 0;
+                    changed = true;
+                    shouldPersistProductionDelete = true;
+                }
+            }
 
             if (changed) {
                 rebuildUtilEntryCollections();
             }
+            if (shouldPersistProductionDelete) {
+                try {
+                    savePromise = Promise.resolve(persistUtilProductionDailyState({
+                        deleteDedupeKeys: Array.from(productionDedupeKeySet),
+                        upsertDedupeKeys: []
+                    })).catch(error => {
+                        console.warn('util production range delete save failed', error);
+                        return false;
+                    });
+                    void savePromise.then(saved => {
+                        if (saved !== true) return false;
+                        return Promise.resolve()
+                            .then(() => refreshUtilProductionLinkedDatasets())
+                            .catch(error => {
+                                console.warn('util production range delete refresh failed', error);
+                                return false;
+                            });
+                    });
+                } catch (error) {
+                    console.warn('util production range delete save failed', error);
+                    savePromise = Promise.resolve(false);
+                }
+            }
             return {
                 changed,
                 removedProductionCount,
-                touchedMonthCount: range.length
+                touchedMonthCount: range.length,
+                productionDedupeKeys: Array.from(productionDedupeKeySet),
+                savePromise
             };
         }
 

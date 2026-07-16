@@ -9,7 +9,6 @@ import {
   getModuleRecordPermissionKey,
 } from '../../src/lib/portal-data-registry.js';
 import { buildPortalDataBootstrapPayload } from '../../src/lib/portal-bootstrap/payload.js';
-import { canUseTeamReportDocumentExperiment } from '../../src/lib/portal-bootstrap/runtime-config.js';
 import { injectPortalDataBootstrap } from '../../src/lib/portal-bootstrap/static.js';
 
 test('injectPortalDataBootstrap inserts bootstrap tag once before xlsx script', () => {
@@ -60,22 +59,4 @@ test('report runtime cover record resolves to the utility shared permission key'
   assert.equal(getModuleRecordPermissionKey('report_runtime', 'report_2026_05'), 'util.metering.app');
   assert.equal(getModuleRecordPermissionKey('report_runtime', 'report_2026_5'), '');
   assert.equal(getModuleRecordPermissionKey('portal_data', 'report_2026_05'), '');
-});
-
-test('team report document experiment is enabled only for the exact configured account', () => {
-  const buildAuth = (username, displayName = username) => ({
-    user: {
-      id: 'test-user',
-      username,
-      display_name: displayName,
-      roles: [],
-    },
-  });
-
-  assert.equal(canUseTeamReportDocumentExperiment(buildAuth('Daniel'), 'Daniel'), true);
-  assert.equal(canUseTeamReportDocumentExperiment(buildAuth('daniel'), 'Daniel'), false);
-  assert.equal(canUseTeamReportDocumentExperiment(buildAuth('Daniel '), 'Daniel'), false);
-  assert.equal(canUseTeamReportDocumentExperiment(buildAuth('operator', 'Daniel'), 'Daniel'), false);
-  assert.equal(canUseTeamReportDocumentExperiment(buildAuth('Daniel'), ''), false);
-  assert.equal(canUseTeamReportDocumentExperiment(null, 'Daniel'), false);
 });

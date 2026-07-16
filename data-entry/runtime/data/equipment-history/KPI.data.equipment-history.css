@@ -565,6 +565,7 @@ box-shadow: none;
 
 .equipment-history-skin .data-equipment-card-pad,
 .equipment-history-skin .data-equipment-detail-card,
+.equipment-history-skin .data-equipment-annual-plan-card,
 .equipment-history-skin .data-equipment-history-card,
 .equipment-history-skin .data-equipment-note-card,
 .equipment-history-skin .data-equipment-doc-card {
@@ -598,7 +599,8 @@ font-weight: 800;
 .equipment-history-skin .data-equipment-note-field textarea,
 .equipment-history-skin .data-equipment-detail-item input,
 .equipment-history-skin .data-equipment-edit-table input,
-.equipment-history-skin .data-equipment-maintenance-row input {
+.equipment-history-skin .data-equipment-maintenance-row input,
+.equipment-history-skin .data-equipment-annual-plan-row input {
 border-color: var(--equipment-history-border);
 border-radius: var(--equipment-history-radius-small);
 background: var(--equipment-history-surface);
@@ -619,7 +621,8 @@ color: var(--equipment-history-muted);
 .equipment-history-skin .data-equipment-note-field textarea:focus,
 .equipment-history-skin .data-equipment-detail-item input:focus,
 .equipment-history-skin .data-equipment-edit-table input:focus,
-.equipment-history-skin .data-equipment-maintenance-row input:focus {
+.equipment-history-skin .data-equipment-maintenance-row input:focus,
+.equipment-history-skin .data-equipment-annual-plan-row input:focus {
 outline: 2px solid var(--equipment-history-focus);
 outline-offset: 1px;
 border-color: var(--equipment-history-focus);
@@ -684,6 +687,7 @@ color: var(--equipment-history-body);
 .equipment-history-skin .data-equipment-simple-spec,
 .equipment-history-skin .data-equipment-simple-spec-row,
 .equipment-history-skin .data-equipment-maintenance-row,
+.equipment-history-skin .data-equipment-annual-plan-row,
 .equipment-history-skin .data-equipment-doc-list,
 .equipment-history-skin .data-equipment-doc-list-item,
 .equipment-history-skin .data-equipment-table-scroll {
@@ -695,6 +699,7 @@ box-shadow: none;
 
 .equipment-history-skin .data-equipment-simple-spec-row,
 .equipment-history-skin .data-equipment-maintenance-row,
+.equipment-history-skin .data-equipment-annual-plan-row,
 .equipment-history-skin .data-equipment-doc-list-item {
 background: var(--equipment-history-surface);
 }
@@ -706,6 +711,8 @@ background: var(--equipment-history-surface);
 .equipment-history-skin .data-equipment-spec-block-add,
 .equipment-history-skin .data-equipment-spec-move,
 .equipment-history-skin .data-equipment-document-pick,
+.equipment-history-skin .data-equipment-document-download,
+.equipment-history-skin .data-equipment-document-remove,
 .equipment-history-skin .data-equipment-photo-placeholder-actions button,
 .equipment-history-skin .data-equipment-photo-attach-key,
 .equipment-history-skin .data-equipment-photo-revert {

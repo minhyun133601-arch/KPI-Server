@@ -1,17 +1,3 @@
-        function summarizeWorkTeamCalendarNote(note, maxLength = 40) {
-            const compact = String(note || '').replace(/\s+/g, ' ').trim();
-            if (!compact) return '';
-            if (compact.length <= maxLength) return compact;
-            return `${compact.slice(0, Math.max(1, maxLength - 1)).trim()}…`;
-        }
-
-        function summarizeWorkTeamCalendarTitle(title, maxLength = 28) {
-            const compact = String(title || '').replace(/\s+/g, ' ').trim();
-            if (!compact) return '';
-            if (compact.length <= maxLength) return compact;
-            return `${compact.slice(0, Math.max(1, maxLength - 1)).trim()}…`;
-        }
-
         function formatWorkTeamCalendarFileDateToken(dateKey) {
             const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateKey || ''));
             if (!match) return '';
@@ -56,66 +42,6 @@
 
         function getWorkTeamCalendarMemberCountLabel(count) {
             return count > 0 ? `${count}명 선택` : '선택 없음';
-        }
-
-        function getWorkTeamCalendarMemberSummary(members) {
-            const list = Array.isArray(members) ? members : [];
-            if (!list.length) return '담당자 미선택';
-            if (list.length === 1) return list[0];
-            return `${list[0]} 외 ${list.length - 1}명`;
-        }
-
-        function getWorkTeamCalendarFocusSummary(draft) {
-            const normalized = normalizeWorkTeamCalendarDraft(draft);
-            const titleSummary = summarizeWorkTeamCalendarTitle(normalized.title, 36);
-            const noteSummary = summarizeWorkTeamCalendarNote(normalized.note, 56);
-            const attachmentSummary = normalized.attachments.length ? `첨부 ${normalized.attachments.length}건` : '';
-            if (titleSummary && noteSummary && normalized.members.length) {
-                return `${titleSummary} · ${noteSummary} · 담당 ${getWorkTeamCalendarMemberSummary(normalized.members)}`;
-            }
-            if (titleSummary && normalized.members.length && attachmentSummary) {
-                return `${titleSummary} · 담당 ${getWorkTeamCalendarMemberSummary(normalized.members)} · ${attachmentSummary}`;
-            }
-            if (titleSummary && noteSummary) {
-                return `${titleSummary} · ${noteSummary}`;
-            }
-            if (titleSummary) {
-                return attachmentSummary ? `${titleSummary} · ${attachmentSummary}` : titleSummary;
-            }
-            if (noteSummary && normalized.members.length && attachmentSummary) {
-                return `${noteSummary} · 담당 ${getWorkTeamCalendarMemberSummary(normalized.members)} · ${attachmentSummary}`;
-            }
-            if (noteSummary && normalized.members.length) {
-                return `${noteSummary} · 담당 ${getWorkTeamCalendarMemberSummary(normalized.members)}`;
-            }
-            if (noteSummary) {
-                return attachmentSummary ? `${noteSummary} · ${attachmentSummary}` : `${noteSummary} · 작업자와 비고를 이어서 입력할 수 있습니다.`;
-            }
-            if (normalized.members.length && attachmentSummary) {
-                return `담당 ${getWorkTeamCalendarMemberSummary(normalized.members)} · ${attachmentSummary}`;
-            }
-            if (normalized.members.length) {
-                return `담당 ${getWorkTeamCalendarMemberSummary(normalized.members)} · 작업 내용 입력 대기`;
-            }
-            if (attachmentSummary) {
-                return `${attachmentSummary} · 작업 내용 입력 대기`;
-            }
-            return '날짜를 선택한 뒤 작업 내역 입력을 열어 작업자, 제목, 작업내용, 첨부파일, 비고를 기록할 수 있습니다.';
-        }
-
-        function getWorkTeamCalendarWorkStatus(draft, emptyLabel) {
-            const normalized = normalizeWorkTeamCalendarDraft(draft);
-            const titleSummary = summarizeWorkTeamCalendarTitle(normalized.title, 24);
-            const noteSummary = summarizeWorkTeamCalendarNote(normalized.note, 42);
-            if (titleSummary && noteSummary) return `${titleSummary} · ${noteSummary}`;
-            if (titleSummary && normalized.attachments.length) return `${titleSummary} · 첨부 ${normalized.attachments.length}건`;
-            if (titleSummary) return titleSummary;
-            if (noteSummary && normalized.attachments.length) return `${noteSummary} · 첨부 ${normalized.attachments.length}건`;
-            if (noteSummary) return noteSummary;
-            if (normalized.members.length && normalized.attachments.length) return `${getWorkTeamCalendarMemberSummary(normalized.members)} · 첨부 ${normalized.attachments.length}건`;
-            if (normalized.members.length) return `${getWorkTeamCalendarMemberSummary(normalized.members)} 선택`;
-            if (normalized.attachments.length) return `첨부 ${normalized.attachments.length}건`;
-            return emptyLabel || '작업 내역 미입력';
         }
 
         function summarizeWorkTeamCalendarProductionMetrics(items) {

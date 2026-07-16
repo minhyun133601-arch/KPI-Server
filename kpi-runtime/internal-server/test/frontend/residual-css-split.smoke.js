@@ -12,14 +12,14 @@ const contracts = [
     directory: 'kpi-runtime/app/styles/shell/shell-chrome',
     prefix: './shell-chrome/',
     files: ['01-shell-runtime.css', '02-sidebar-home.css', '03-home-area-responsive.css'],
-    sha256: '80059ff54e9ad2826c4df6dd912b19f6700f225610552a1fc2907b56609bccb0',
+    sha256: 'b4ed3cbb522b2c16cdb3d56f49b4c4270ef93031d14725ec38847fff0c58e5f8',
   },
   {
     facade: 'kpi-runtime/app/styles/metering/metering.css',
     directory: 'kpi-runtime/app/styles/metering/metering',
     prefix: './metering/',
     files: ['01-metering-core.css', '02-report-builder.css'],
-    sha256: '38d8c19aa987df984075df819e3c1d86fd9f409047a554d67a6bd9db4148ae98',
+    sha256: '241f8ae5d358ed1d3a444e448b8e406e7ed8abdafd453b2e870529bd6fa5b117',
   },
   {
     facade: 'data-entry/runtime/data/utility-graph-template/styles.css',

@@ -1,50 +1,7 @@
-        /* Work log */
-        .work-panel { display: flex; flex-direction: column; gap: 1rem; }
-        .work-toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between; }
-        .work-week-meta { display: flex; flex-direction: column; gap: 0.1rem; }
-        .work-week-title { font-size: 1.1rem; font-weight: 800; color: #0f172a; }
-        .work-week-range { font-size: 0.85rem; color: #64748b; }
-        .work-controls { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-        .work-select { border: 1px solid #e2e8f0; background: #fff; padding: 6px 10px; border-radius: 10px; font-size: 0.9rem; color: #0f172a; }
         .work-btn { border: 1px solid #e2e8f0; background: #fff; padding: 6px 10px; border-radius: 10px; font-size: 0.85rem; color: #0f172a; cursor: pointer; transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease; }
         .work-btn:hover { transform: translateY(-1px); border-color: #cbd5e1; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08); }
         .work-btn:active { transform: translateY(0); box-shadow: none; }
         .work-btn.primary { border-color: #2563eb; color: #1d4ed8; background: #eff6ff; }
-        .work-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.9rem; }
-        .work-day-card { border: 1px solid #e2e8f0; border-top: 4px solid var(--day-color); border-radius: 14px; background: #ffffff; box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06); overflow: visible; }
-        .work-day-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: rgba(15, 23, 42, 0.02); }
-        .work-day-label { font-weight: 800; color: #0f172a; }
-        .work-day-date { font-size: 0.8rem; color: #64748b; }
-        .work-fields { display: flex; flex-direction: column; gap: 0.5rem; padding: 12px; }
-        .work-field { display: flex; flex-direction: column; gap: 0.3rem; }
-        .work-entry { border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; background: #f8fafc; display: flex; flex-direction: column; gap: 0.6rem; }
-        .work-entry-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0.6rem; align-items: end; }
-        .work-entry-row > * { min-width: 0; }
-        .work-entry-remove { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
-        .work-entry-remove:disabled { opacity: 0.5; cursor: not-allowed; }
-        .work-team-select { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem; align-items: center; }
-        .work-team-icon { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; }
-        .work-team-select-wrap { position: relative; width: 100%; }
-        .work-team-trigger { display: flex; align-items: center; gap: 0.5rem; width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 7px 10px; background: #fff; font-size: 0.9rem; color: #0f172a; cursor: pointer; justify-content: space-between; }
-        .work-team-trigger:hover { border-color: #cbd5e1; }
-        .work-team-label { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; }
-        .work-team-chevron { color: #94a3b8; font-size: 0.8rem; }
-        .work-team-menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; min-width: 220px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12); padding: 6px; display: none; max-height: 240px; overflow: auto; z-index: 30; }
-        .work-team-select-wrap.open .work-team-menu { display: block; }
-        .work-team-option { display: flex; align-items: center; gap: 0.6rem; width: 100%; padding: 8px 10px; border-radius: 10px; border: none; background: transparent; cursor: pointer; text-align: left; font-size: 0.83rem; color: #0f172a; }
-        .work-team-option span:last-child { flex: 1; white-space: normal; word-break: keep-all; line-height: 1.2; }
-        .work-team-option:hover { background: #f1f5f9; }
-        .work-team-option.is-selected { background: #e0f2fe; }
-        .work-team-option-icon { width: 28px; height: 28px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem; }
-        .work-label { font-size: 0.72rem; color: #64748b; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
-        .work-input,
-        .work-select-input { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 10px; font-size: 0.9rem; color: #0f172a; outline: none; background: #fff; }
-        .work-input:focus,
-        .work-select-input:focus,
-        .work-textarea:focus { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2); }
-        .work-select-input:disabled { background: #f1f5f9; color: #94a3b8; }
-        .work-textarea { width: 100%; min-height: 110px; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; resize: vertical; font-size: 0.9rem; color: #0f172a; outline: none; }
-        .work-textarea::placeholder, .work-input::placeholder { color: #94a3b8; }
         .work-autosave { font-size: 0.75rem; color: #64748b; }
         .work-save-status { display: inline-flex; align-items: center; width: max-content; max-width: 100%; min-height: 26px; padding: 4px 9px; border-radius: 999px; border: 1px solid #e2e8f0; background: #f8fafc; color: #475569; font-weight: 800; line-height: 1.2; }
         .work-save-status::before { content: ""; width: 7px; height: 7px; margin-right: 6px; border-radius: 999px; background: currentColor; opacity: 0.72; }
@@ -53,184 +10,6 @@
         .work-save-status.is-saved { border-color: #bbf7d0; background: #f0fdf4; color: #15803d; }
         .work-save-status.is-failed { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
         .work-save-status.is-blocked { border-color: #fed7aa; background: #fff7ed; color: #c2410c; }
-        @media (max-width: 900px) {
-            .work-grid { grid-template-columns: 1fr; }
-        }
-
-        /* Work team monthly calendar */
-        .work-chooser-shell { display: grid; gap: 12px; }
-        .work-chooser-hero {
-            position: relative;
-            overflow: hidden;
-            border-radius: 26px;
-            padding: 18px 20px;
-            color: #ffffff;
-            background: linear-gradient(138deg, #166534 0%, #16a34a 56%, #bbf7d0 100%);
-            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
-        }
-        .work-chooser-hero::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.22), transparent 28%), linear-gradient(120deg, rgba(255, 255, 255, 0.07), transparent 42%, rgba(15, 23, 42, 0.12));
-            pointer-events: none;
-        }
-        .work-chooser-hero-copy { position: relative; z-index: 1; display: grid; gap: 0.75rem; }
-        .work-chooser-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            width: max-content;
-            padding: 7px 12px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.14);
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            font-size: 0.76rem;
-            font-weight: 900;
-        }
-        .work-chooser-title {
-            margin: 0;
-            font-size: clamp(1.8rem, 2.7vw, 2.5rem);
-            line-height: 1.02;
-            font-weight: 900;
-            letter-spacing: -0.035em;
-        }
-        .work-chooser-sub {
-            margin: 0;
-            max-width: 56ch;
-            font-size: 0.92rem;
-            line-height: 1.55;
-            color: rgba(255, 255, 255, 0.92);
-        }
-        .work-chooser-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.45rem;
-            align-items: center;
-        }
-        .work-chooser-meta-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            padding: 6px 11px;
-            border-radius: 999px;
-            background: rgba(15, 23, 42, 0.22);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            font-size: 0.74rem;
-            font-weight: 800;
-            color: rgba(255, 255, 255, 0.96);
-        }
-        .work-chooser-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 10px;
-        }
-        .work-chooser-card {
-            border: 1px solid #dbe7f4;
-            border-radius: 20px;
-            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-            padding: 13px 14px;
-            display: grid;
-            gap: 8px;
-            text-align: left;
-            cursor: pointer;
-            transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
-            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
-        }
-        .work-chooser-card:hover {
-            transform: translateY(-2px);
-            border-color: var(--chooser-color, #16a34a);
-            box-shadow: 0 18px 30px rgba(15, 23, 42, 0.1);
-        }
-        .work-chooser-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-        .work-chooser-card-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 14px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: color-mix(in srgb, var(--chooser-color, #16a34a) 16%, white);
-            color: var(--chooser-color, #16a34a);
-            font-size: 1rem;
-        }
-        .work-chooser-card-icon svg {
-            width: 22px;
-            height: 22px;
-            display: block;
-        }
-        .work-chooser-card-key {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 30px;
-            height: 30px;
-            border-radius: 10px;
-            background: #f1f5f9;
-            color: #0f172a;
-            font-size: 0.78rem;
-            font-weight: 900;
-            border: 1px solid #e2e8f0;
-        }
-        .work-chooser-card-title { font-size: 0.94rem; font-weight: 900; color: #0f172a; }
-        .work-chooser-card-desc { font-size: 0.76rem; line-height: 1.45; color: #64748b; font-weight: 700; }
-        .work-chooser-card-foot {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            width: max-content;
-            max-width: 100%;
-            padding: 5px 9px;
-            border-radius: 999px;
-            background: #f8fafc;
-            color: var(--chooser-color, #16a34a);
-            border: 1px solid #e2e8f0;
-            font-size: 0.7rem;
-            font-weight: 900;
-        }
-        .work-team-shell { display: grid; gap: 10px; }
-        .work-team-glyph { display: inline-flex; align-items: center; justify-content: center; color: currentColor; flex: 0 0 auto; }
-        .work-team-glyph svg { width: 100%; height: 100%; display: block; }
-        .work-team-glyph.is-xs { width: 16px; height: 16px; }
-        .work-team-glyph.is-sm { width: 18px; height: 18px; }
-        .work-team-glyph.is-md { width: 26px; height: 26px; }
-        .work-team-glyph.is-lg { width: 92px; height: 92px; }
-
-        .work-team-hero { position: relative; overflow: hidden; border-radius: 26px; padding: 20px 22px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: center; color: #ffffff; background: linear-gradient(138deg, var(--team-accent, #2563eb) 0%, var(--team-accent-2, #38bdf8) 56%, #dbeafe 100%); box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18); }
-        .work-team-hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 86% 18%, rgba(255, 255, 255, 0.2), transparent 28%), linear-gradient(120deg, rgba(255, 255, 255, 0.07), transparent 42%, rgba(15, 23, 42, 0.12)); pointer-events: none; }
-        .work-team-hero-copy { position: relative; z-index: 1; display: grid; gap: 0.75rem; min-width: 0; }
-        .work-team-brand { display: inline-flex; align-items: center; gap: 12px; width: max-content; }
-        .work-team-brand-logo { width: 54px; height: 54px; object-fit: contain; background: rgba(255, 255, 255, 0.96); border-radius: 16px; padding: 8px; border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16); }
-        .work-team-brand-copy { display: grid; gap: 4px; }
-        .work-team-brand-chip { display: inline-flex; align-items: center; width: max-content; padding: 4px 10px; border-radius: 999px; background: rgba(15, 23, 42, 0.24); font-size: 0.72rem; font-weight: 900; letter-spacing: 0.12em; }
-        .work-team-brand-name { font-size: 0.8rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); }
-        .work-team-kicker { display: inline-flex; align-items: center; gap: 8px; width: max-content; padding: 7px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.24); font-size: 0.78rem; font-weight: 900; }
-        .work-team-hero-title { margin: 0; font-size: clamp(1.9rem, 2.8vw, 2.7rem); line-height: 1.02; font-weight: 900; letter-spacing: -0.035em; }
-        .work-team-hero-sub { margin: 0; max-width: 50ch; font-size: 0.92rem; line-height: 1.5; color: rgba(255, 255, 255, 0.9); }
-        .work-team-hero-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; align-items: center; }
-        .work-team-range-chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px; background: rgba(15, 23, 42, 0.2); font-size: 0.76rem; font-weight: 800; color: rgba(255, 255, 255, 0.95); }
-        .work-team-preview { position: relative; z-index: 1; display: flex; justify-content: flex-end; }
-        .work-team-preview-card { position: relative; width: 220px; height: 220px; border-radius: 28px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.16); backdrop-filter: blur(8px); display: grid; place-items: center; gap: 10px; padding: 20px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); animation: workTeamFloat 5.6s ease-in-out infinite; }
-        .work-team-preview-card::after { content: ""; position: absolute; inset: 16px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.18); }
-        .work-team-preview-inner { position: relative; z-index: 1; display: grid; place-items: center; gap: 10px; }
-        .work-team-preview-label { font-size: 0.84rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
-        .work-team-note { display: flex; align-items: center; gap: 8px; padding: 0 4px; font-size: 0.79rem; color: #475569; }
-        .work-team-page { min-height: 100%; height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 16px; padding: 18px; background: linear-gradient(180deg, #f8fbff 0%, #ffffff 44%, #f6f9fc 100%); }
-        .work-team-page-head { min-width: 0; display: grid; gap: 16px; }
-        .work-team-page-body { min-height: 0; display: grid; grid-template-columns: minmax(220px, 248px) minmax(0, 1fr); gap: 16px; align-items: stretch; }
-        .work-team-outline { min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 12px; padding: 16px; border-radius: 28px; border: 1px solid #dbe7f4; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%); box-shadow: 0 18px 36px rgba(15, 23, 42, 0.06); }
-        .work-team-outline-head { display: grid; gap: 6px; }
-        .work-team-outline-kicker { display: inline-flex; width: max-content; padding: 4px 10px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 0.7rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
-        .work-team-outline-title { margin: 0; font-size: 1rem; font-weight: 900; color: #0f172a; }
-        .work-team-outline-desc { margin: 0; font-size: 0.78rem; line-height: 1.5; color: #64748b; }
-        .work-team-outline-list { min-height: 0; display: grid; gap: 10px; align-content: start; }
-        .work-team-outline-item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 20px; border: 1px solid #dbe7f4; background: linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--team-outline-soft, #eff6ff) 58%, #ffffff) 100%); color: #0f172a; text-align: left; font: inherit; cursor: pointer; transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease; }
-        .work-team-outline-item:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--team-outline-accent, #2563eb) 50%, #cbd5e1); box-shadow: 0 14px 24px rgba(15, 23, 42, 0.08); }
-        .work-team-outline-item.is-active { border-color: var(--team-outline-accent, #2563eb); background: linear-gradient(180deg, color-mix(in srgb, var(--team-outline-soft, #eff6ff) 88%, #ffffff) 0%, #ffffff 100%); box-shadow: 0 18px 28px rgba(15, 23, 42, 0.1); }
-        .work-team-outline-number { width: 34px; height: 34px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--team-outline-accent, #2563eb) 14%, #ffffff); color: var(--team-outline-accent, #2563eb); font-size: 0.82rem; font-weight: 900; flex: 0 0 auto; }
-        .work-team-outline-copy { min-width: 0; display: grid; gap: 3px; }
-        .work-team-outline-label { font-size: 0.88rem; font-weight: 900; color: #0f172a; line-height: 1.2; }
-        .work-team-outline-meta { font-size: 0.72rem; font-weight: 800; color: #64748b; line-height: 1.2; }
         .work-team-calendar-inline-shell { min-width: 0; min-height: 100%; height: 100%; display: flex; padding: 0; background: #ffffff; }
         .work-team-inline-stage { min-width: 0; min-height: 0; flex: 1 1 auto; display: flex; }
         .work-team-calendar-inline-host { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; overflow: hidden; }
@@ -247,7 +26,7 @@
         .work-team-calendar-modal:fullscreen .work-team-calendar-dialog { width: 100vw; height: 100dvh; border-radius: 0; box-shadow: none; animation: none; }
         .work-team-calendar-dialog.is-browser-fullscreen,
         .work-team-calendar-dialog:fullscreen { width: 100vw; height: 100dvh; border-radius: 0; box-shadow: none; animation: none; }
-        .work-team-calendar-topbar { position: relative; overflow: hidden; padding: 16px 18px 14px; color: #ffffff; background: linear-gradient(138deg, var(--team-accent, #2563eb) 0%, var(--team-accent-2, #38bdf8) 56%, #dbeafe 100%); display: grid; gap: 12px; }
+        .work-team-calendar-topbar { position: relative; z-index: 2; overflow: visible; padding: 16px 18px 14px; color: #ffffff; background: linear-gradient(138deg, var(--team-accent, #2563eb) 0%, var(--team-accent-2, #38bdf8) 56%, #dbeafe 100%); display: grid; gap: 12px; }
         .work-team-calendar-topbar::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 86% 16%, rgba(255, 255, 255, 0.22), transparent 26%), linear-gradient(120deg, rgba(255, 255, 255, 0.06), transparent 42%, rgba(15, 23, 42, 0.12)); pointer-events: none; }
         .work-team-calendar-head { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, auto) minmax(260px, 1fr) auto; align-items: center; gap: 12px; }
         .work-team-calendar-modal.is-inline .work-team-calendar-head { grid-template-columns: minmax(0, 1fr) auto; }
@@ -286,10 +65,13 @@
         .work-team-calendar-utility-chip.is-button { appearance: none; text-align: left; cursor: pointer; transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease; }
         .work-team-calendar-utility-chip.is-button:hover { transform: translateY(-1px); border-color: rgba(255, 255, 255, 0.38); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 12px 18px rgba(15, 23, 42, 0.18); }
         .work-team-calendar-utility-chip.is-button.is-active { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.5); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 14px 22px rgba(15, 23, 42, 0.2); }
+        .work-team-calendar-utility-chip.has-production-actions { position: relative; z-index: 1; }
+        .work-team-calendar-utility-head { min-width: 0; padding-right: 48px; }
         .work-team-calendar-utility-label { font-size: 0.64rem; font-weight: 900; color: rgba(255, 255, 255, 0.74); letter-spacing: 0.08em; text-transform: uppercase; }
+        .work-team-calendar-utility-head .work-team-calendar-utility-label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .work-team-calendar-utility-value { font-size: 0.82rem; font-weight: 900; color: #ffffff; line-height: 1.16; word-break: keep-all; }
         .work-team-calendar-utility-meta { font-size: 0.69rem; font-weight: 800; color: rgba(255, 255, 255, 0.84); line-height: 1.16; }
-        .work-team-calendar-utility-action-slot { display: inline-grid; justify-self: start; margin-top: 5px; }
+        .work-team-calendar-utility-action-slot { position: absolute; top: 7px; right: 10px; display: inline-flex; align-items: center; }
         .work-team-calendar-utility-hint { display: inline-flex; align-items: center; justify-content: center; width: max-content; margin-top: 4px; padding: 3px 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.92); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.04em; }
         .work-team-calendar-utility-choices { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
         .work-team-calendar-utility-choice { min-height: 24px; padding: 3px 8px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.86); font-size: 0.64rem; font-weight: 900; cursor: pointer; transition: background 120ms ease, border-color 120ms ease, transform 120ms ease; }
@@ -453,8 +235,9 @@
         .work-team-calendar-production-action-toggle::-webkit-details-marker { display: none; }
         .work-team-calendar-production-action-menu[open] .work-team-calendar-production-action-toggle { border-color: var(--team-accent, #2563eb); color: var(--team-accent, #2563eb); box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08); }
         .work-team-calendar-production-action-list { position: static; z-index: 10; min-width: 128px; margin-top: 6px; padding: 5px; border-radius: 12px; border: 1px solid #dbe7f4; background: #ffffff; box-shadow: 0 18px 34px rgba(15, 23, 42, 0.16); display: grid; gap: 4px; }
-        .work-team-calendar-utility-chip .work-team-calendar-production-action-menu { justify-self: start; margin-top: 5px; }
-        .work-team-calendar-utility-chip .work-team-calendar-production-action-toggle { min-height: 26px; padding: 4px 9px; border-radius: 999px; border-color: rgba(255, 255, 255, 0.28); background: rgba(255, 255, 255, 0.12); color: #ffffff; }
+        .work-team-calendar-utility-chip .work-team-calendar-production-action-menu { justify-self: auto; margin-top: 0; }
+        .work-team-calendar-utility-chip .work-team-calendar-production-action-list { position: absolute; top: calc(100% + 6px); right: 0; margin-top: 0; }
+        .work-team-calendar-utility-chip .work-team-calendar-production-action-toggle { min-height: 18px; padding: 2px 6px; border-radius: 999px; border-color: rgba(255, 255, 255, 0.28); background: rgba(255, 255, 255, 0.12); color: #ffffff; font-size: 0.6rem; line-height: 1; }
         .work-team-calendar-utility-chip .work-team-calendar-production-action-menu[open] .work-team-calendar-production-action-toggle { border-color: rgba(255, 255, 255, 0.58); color: #ffffff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 16px rgba(15, 23, 42, 0.16); }
         .work-team-calendar-production-action-btn { width: 100%; min-height: 30px; padding: 5px 9px; border: 0; border-radius: 8px; background: transparent; color: #334155; font-size: 0.7rem; font-weight: 900; text-align: left; cursor: pointer; }
         .work-team-calendar-production-action-btn:hover { background: var(--team-tint, #eff6ff); color: var(--team-accent, #2563eb); }
@@ -508,11 +291,6 @@
         .work-team-calendar-team-group-title { font-size: 0.78rem; font-weight: 900; color: #0f172a; }
         .work-team-calendar-team-group-meta { font-size: 0.69rem; font-weight: 800; color: #64748b; }
 
-        @keyframes workTeamFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-        }
-
         @keyframes workTeamBackdropIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -524,10 +302,6 @@
         }
 
         @media (max-width: 1200px) {
-            .work-team-hero { grid-template-columns: 1fr; }
-            .work-team-preview { justify-content: flex-start; }
-            .work-team-page-body { grid-template-columns: 1fr; }
-            .work-team-outline-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .work-team-calendar-head { grid-template-columns: 1fr; }
             .work-team-calendar-head-actions { justify-content: flex-start; }
             .work-team-calendar-switches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -535,11 +309,6 @@
         }
 
         @media (max-width: 760px) {
-            .work-team-page { padding: 12px; gap: 12px; }
-            .work-team-outline { padding: 14px; border-radius: 22px; }
-            .work-team-outline-list { grid-template-columns: 1fr; }
-            .work-team-hero { padding: 16px; border-radius: 22px; }
-            .work-team-preview-card { width: 180px; height: 180px; }
             .work-team-calendar-modal { padding: 0; }
             .work-team-calendar-dialog { height: 100dvh; border-radius: 0; }
             .work-team-calendar-modal.is-inline .work-team-calendar-dialog { height: 100%; min-height: 0; border-radius: 22px; }

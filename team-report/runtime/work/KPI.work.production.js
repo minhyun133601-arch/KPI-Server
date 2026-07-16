@@ -148,6 +148,28 @@
             });
         }
 
+        function captureWorkProductionMutationSnapshot() {
+            return {
+                dailyData: JSON.parse(JSON.stringify(
+                    typeof UTIL_PRODUCTION_DAILY_DATA !== 'undefined' ? (UTIL_PRODUCTION_DAILY_DATA || []) : []
+                )),
+                archiveMeta: JSON.parse(JSON.stringify(
+                    typeof UTIL_PRODUCTION_ARCHIVE_META !== 'undefined' ? (UTIL_PRODUCTION_ARCHIVE_META || []) : []
+                )),
+                stateMeta: JSON.parse(JSON.stringify(
+                    typeof UTIL_PRODUCTION_DAILY_STATE !== 'undefined' ? (UTIL_PRODUCTION_DAILY_STATE?.meta || {}) : {}
+                )),
+                periodDefault: JSON.parse(JSON.stringify(
+                    typeof UTIL_PRODUCTION_DAILY_STATE !== 'undefined'
+                        ? (UTIL_PRODUCTION_DAILY_STATE?.periodDefault || {})
+                        : {}
+                )),
+                startDay: typeof UtilProductionState !== 'undefined' && UtilProductionState
+                    ? UtilProductionState.startDay
+                    : null
+            };
+        }
+
         function restoreWorkProductionImportSnapshot(snapshot) {
             if (!snapshot) return;
             if (Array.isArray(UTIL_PRODUCTION_DAILY_DATA)) {
@@ -202,13 +224,7 @@
                 ? parsingApi.deduplicateRows(parseContext, rows)
                 : { rows, removedCount: 0 };
             const sortedRows = (dedup.rows || []).sort(compareWorkProductionRowsByDateAsc);
-            const rollbackSnapshot = {
-                dailyData: JSON.parse(JSON.stringify(UTIL_PRODUCTION_DAILY_DATA || [])),
-                archiveMeta: JSON.parse(JSON.stringify(UTIL_PRODUCTION_ARCHIVE_META || [])),
-                stateMeta: JSON.parse(JSON.stringify(UTIL_PRODUCTION_DAILY_STATE?.meta || {})),
-                periodDefault: JSON.parse(JSON.stringify(UTIL_PRODUCTION_DAILY_STATE?.periodDefault || {})),
-                startDay: UtilProductionState.startDay
-            };
+            const rollbackSnapshot = captureWorkProductionMutationSnapshot();
 
             try {
                 const previousStartDay = UtilProductionState.startDay;
@@ -347,7 +363,7 @@
             WorkProductionImportState.productionKind = normalizedKind;
             const modal = document.createElement('div');
             modal.id = WORK_PRODUCTION_PASTE_MODAL_ID;
-            modal.className = 'work-production-paste-modal';
+            modal.className = 'work-production-paste-modal is-team-report-document-ui';
             modal.dataset.productionKind = normalizedKind;
             const kindLabel = getWorkProductionKindLabel(normalizedKind);
             modal.innerHTML = `
@@ -413,6 +429,7 @@
             }
             openUtilSelectiveDeleteModal({
                 ...getWorkProductionDeleteDefaults(),
+                onBeforeApply: () => captureWorkProductionMutationSnapshot(),
                 onApplied: result => {
                     if (typeof setLastModified === 'function') {
                         setLastModified(WORK_PRODUCTION_ENTRY_LAST_MODIFIED_LABEL);
@@ -421,6 +438,21 @@
                     if (result?.removedProductionCount > 0) {
                         alert(`생산량 ${result.removedProductionCount.toLocaleString('ko-KR')}건을 삭제했습니다.`);
                     }
+                    return true;
+                },
+                onApplyError: async (error, applyContext, rollbackSnapshot) => {
+                    restoreWorkProductionImportSnapshot(rollbackSnapshot);
+                    if (typeof refreshUtilProductionLinkedDatasets === 'function') {
+                        try {
+                            await Promise.resolve(refreshUtilProductionLinkedDatasets());
+                        } catch (refreshError) {
+                            console.warn('work production delete rollback refresh failed', refreshError);
+                        }
+                    }
+                    if (typeof rebuildUtilEntryCollections === 'function') {
+                        rebuildUtilEntryCollections();
+                    }
+                    refreshWorkProductionAfterMutation();
                 }
             });
             return true;
@@ -431,11 +463,14 @@
             const extraClass = options.summary === true ? ' is-summary' : '';
             return `
                 <details class="work-team-calendar-production-action-menu${extraClass}">
-                    <summary class="work-team-calendar-production-action-toggle" aria-label="생산량 관리">관리</summary>
+                    <summary class="work-team-calendar-production-action-toggle" aria-label="생산량 관리">
+                        <span>관리</span>
+                        <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                    </summary>
                     <div class="work-team-calendar-production-action-list">
-                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="paste" data-work-production-kind="normal" onclick="openWorkProductionPasteModal(event, 'normal')"${disabled}>정상</button>
-                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="paste" data-work-production-kind="rework" onclick="openWorkProductionPasteModal(event, 'rework')"${disabled}>재가공품</button>
-                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="delete" onclick="openWorkProductionDeleteModal(event)"${disabled}>삭제</button>
+                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="paste" data-work-production-kind="normal" onclick="openWorkProductionPasteModal(event, 'normal')"${disabled}><i class="fas fa-clipboard" aria-hidden="true"></i><span>정상</span></button>
+                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="paste" data-work-production-kind="rework" onclick="openWorkProductionPasteModal(event, 'rework')"${disabled}><i class="fas fa-rotate" aria-hidden="true"></i><span>재가공품</span></button>
+                        <button type="button" class="work-team-calendar-production-action-btn" data-work-production-action="delete" onclick="openWorkProductionDeleteModal(event)"${disabled}><i class="fas fa-trash-can" aria-hidden="true"></i><span>삭제</span></button>
                     </div>
                 </details>
             `;
@@ -956,26 +991,26 @@
             });
             const usageParts = [];
             if (normalizedMode === 'lpg') {
-                if (hasLpg) usageParts.push(`${formatUtilNumber(lpgUsage, 0)}kg`);
+                if (hasLpg) usageParts.push(formatUtilNumberWithUnit(lpgUsage, 'kg', 0));
             } else if (normalizedMode === 'lng') {
-                if (hasLng) usageParts.push(`${formatUtilNumber(lngUsage, 0)}m³`);
+                if (hasLng) usageParts.push(formatUtilNumberWithUnit(lngUsage, 'm³', 0));
             } else {
-                if (hasLng) usageParts.push(`LNG ${formatUtilNumber(lngUsage, 0)}m³`);
-                if (hasLpg) usageParts.push(`LPG ${formatUtilNumber(lpgUsage, 0)}kg`);
+                if (hasLng) usageParts.push(`LNG ${formatUtilNumberWithUnit(lngUsage, 'm³', 0)}`);
+                if (hasLpg) usageParts.push(`LPG ${formatUtilNumberWithUnit(lpgUsage, 'kg', 0)}`);
             }
             const detailRows = [];
             if (hasLng) {
                 detailRows.push({
                     label: 'LNG',
                     metaText: hasLngCost ? formatWorkTeamCalendarUtilityCostLabel(lngCost) : '',
-                    valueText: `${formatUtilNumber(lngUsage, 0)}m³`
+                    valueText: formatUtilNumberWithUnit(lngUsage, 'm³', 0)
                 });
             }
             if (hasLpg) {
                 detailRows.push({
                     label: 'LPG',
                     metaText: hasLpgCost ? formatWorkTeamCalendarUtilityCostLabel(lpgCost) : '',
-                    valueText: `${formatUtilNumber(lpgUsage, 0)}kg`
+                    valueText: formatUtilNumberWithUnit(lpgUsage, 'kg', 0)
                 });
             }
             return {
@@ -1048,7 +1083,7 @@
                 });
             });
             return {
-                totalAmountText: totalAmount > 0 ? `${formatUtilNumber(totalAmount, 0)}kg` : '-',
+                totalAmountText: totalAmount > 0 ? formatUtilNumberWithUnit(totalAmount, 'kg', 0) : '-',
                 itemCountText: itemCount > 0 ? `${formatUtilNumber(itemCount, 0)}품목` : '-'
             };
         }

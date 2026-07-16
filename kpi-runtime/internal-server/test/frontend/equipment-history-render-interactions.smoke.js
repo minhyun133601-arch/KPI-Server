@@ -48,6 +48,33 @@ test('equipment-history board search filters immediately and highlights visible 
   assert.deepEqual(selectionRange, [4, 4]);
 });
 
+test('equipment-history annual maintenance plan rows edit add remove and persist through the draft model', () => {
+  const { context } = createEquipmentHistoryRuntime();
+  const api = context.KpiDataEquipmentHistory;
+  const state = { draft: api.createDraft({ name: 'Mixer A' }) };
+
+  assert.equal(state.draft.annualMaintenancePlan.length, 3);
+  api.updateDraftFromInput(null, state, {
+    target: {
+      value: '구동 벨트',
+      dataset: {
+        equipmentField: 'maintenanceItem',
+        equipmentRowSection: 'annualMaintenancePlan',
+        equipmentRowIndex: '0',
+      },
+    },
+  });
+  api.addDraftRow(state, 'annualMaintenancePlan');
+  assert.equal(state.draft.annualMaintenancePlan.length, 4);
+  assert.equal(state.draft.annualMaintenancePlan[3].equipmentName, 'Mixer A');
+  api.removeDraftRow(state, 'annualMaintenancePlan', 3);
+
+  const record = api.buildRecordFromDraft(state.draft);
+  assert.equal(record.annualMaintenancePlan.length, 1);
+  assert.equal(record.annualMaintenancePlan[0].equipmentName, 'Mixer A');
+  assert.equal(record.annualMaintenancePlan[0].maintenanceItem, '구동 벨트');
+});
+
 test('equipment-history team edit mode exposes order controls and persists room group order', async () => {
   const { context, container, registeredRenderer } = createEquipmentHistoryRuntime();
   const api = context.KpiDataEquipmentHistory;

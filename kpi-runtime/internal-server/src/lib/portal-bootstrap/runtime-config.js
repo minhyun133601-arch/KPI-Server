@@ -1,4 +1,3 @@
-import { config } from '../../config.js';
 import { isOwnerRole } from '../../services/auth.js';
 import {
   CURRENT_PORTAL_DATA_RECORDS,
@@ -8,14 +7,6 @@ import {
   WORK_RUNTIME_MODULE_KEY,
 } from '../portal-data-registry.js';
 import { PERMISSION_KEYS, getWorkPermissionKey } from '../permission-registry.js';
-
-export function canUseTeamReportDocumentExperiment(
-  auth,
-  experimentUsername = config.teamReportDocumentExperimentUsername
-) {
-  const targetUsername = typeof experimentUsername === 'string' ? experimentUsername : '';
-  return targetUsername.length > 0 && String(auth?.user?.username || '') === targetUsername;
-}
 
 function buildCurrentUser(auth) {
   if (!auth?.user) {
@@ -113,9 +104,6 @@ export async function buildPortalRuntimeConfig(auth, permissionProbe) {
     apiBase: '/api',
     auth: {
       currentUser: buildCurrentUser(auth),
-    },
-    experiments: {
-      teamReportDocumentUi: canUseTeamReportDocumentExperiment(auth),
     },
     metering: {
       enabled: true,

@@ -146,13 +146,27 @@
         ];
         const UTIL_DELETE_TEAM_OPTIONS = {
             default: ['1팀 1파트', '1팀 2파트', '2팀', '3팀', '유산', '전체'],
+            production: [
+                '1팀 1파트',
+                '1팀 2파트',
+                '2팀',
+                '3팀',
+                '건조',
+                '스틱,소포장',
+                '액상',
+                '북정',
+                '유산',
+                '공무환경팀',
+                '전체'
+            ],
             waste: ['유산', '북정', '전체']
         };
 
         function listUtilDatasetTeamNames(datasetKey) {
-            return String(datasetKey || '').trim() === 'waste'
-                ? UTIL_DELETE_TEAM_OPTIONS.waste.slice()
-                : UTIL_DELETE_TEAM_OPTIONS.default.slice();
+            const normalizedDatasetKey = String(datasetKey || '').trim();
+            if (normalizedDatasetKey === 'waste') return UTIL_DELETE_TEAM_OPTIONS.waste.slice();
+            if (normalizedDatasetKey === 'production') return UTIL_DELETE_TEAM_OPTIONS.production.slice();
+            return UTIL_DELETE_TEAM_OPTIONS.default.slice();
         }
 
         function resolveUtilDeleteTeamSelectionValue(teamName, datasetKey = '') {
@@ -173,9 +187,47 @@
             return options.includes(canonical) ? canonical : '';
         }
 
+        function listUtilDeleteProductionSourceTeams(teamName) {
+            const selectedTeam = resolveUtilDeleteTeamSelectionValue(teamName, 'production');
+            const sourceTeams = [];
+            const seen = new Set();
+            const appendTeam = sourceTeam => {
+                const raw = String(sourceTeam || '').trim();
+                const normalized = normalizeUtilTeamName(raw).toLowerCase();
+                if (!raw || !normalized || seen.has(normalized)) return;
+                seen.add(normalized);
+                sourceTeams.push(raw);
+            };
+            resolveUtilProductionSourceTeams(selectedTeam || teamName).forEach(appendTeam);
+            if (selectedTeam !== '전체') return sourceTeams;
+
+            const dailyData = typeof UTIL_PRODUCTION_DAILY_DATA !== 'undefined'
+                ? UTIL_PRODUCTION_DAILY_DATA
+                : [];
+            const dailyIndex = typeof UTIL_PRODUCTION_DAILY_INDEX !== 'undefined'
+                ? UTIL_PRODUCTION_DAILY_INDEX
+                : {};
+            (dailyData || []).forEach(team => appendTeam(team?.name));
+            Object.keys(dailyIndex || {}).forEach(appendTeam);
+            return sourceTeams;
+        }
+
         function matchesUtilDeleteTeamSelection(selectedTeamName, candidateTeamName, datasetKey = '') {
             const selectedTeam = resolveUtilDeleteTeamSelectionValue(selectedTeamName, datasetKey);
             if (!selectedTeam) return false;
+            if (String(datasetKey || '').trim() === 'production') {
+                if (selectedTeam === '전체') return true;
+                const selectedSourceTeams = new Set(
+                    listUtilDeleteProductionSourceTeams(selectedTeam)
+                        .map(sourceTeam => normalizeUtilTeamName(sourceTeam).toLowerCase())
+                        .filter(Boolean)
+                );
+                const candidateSourceTeams = resolveUtilProductionSourceTeams(candidateTeamName)
+                    .map(sourceTeam => normalizeUtilTeamName(sourceTeam).toLowerCase())
+                    .filter(Boolean);
+                return candidateSourceTeams.length > 0
+                    && candidateSourceTeams.every(sourceTeam => selectedSourceTeams.has(sourceTeam));
+            }
             if (selectedTeam === '전체') return true;
             if (String(datasetKey || '').trim() === 'waste') {
                 return canonicalizeUtilTeamName(candidateTeamName) === selectedTeam;
@@ -208,7 +260,7 @@
 
         function buildUtilDeleteProductionMonthKeySet(teamName, yearValue, monthValue) {
             const keySet = new Set();
-            const sourceTeams = resolveUtilProductionSourceTeams(teamName);
+            const sourceTeams = listUtilDeleteProductionSourceTeams(teamName);
             sourceTeams.forEach(sourceTeam => {
                 const listed = listUtilDailyEntriesByMetric(sourceTeam, yearValue, monthValue, 'amount');
                 (listed?.entries || []).forEach(entry => {
@@ -228,13 +280,15 @@
                 ? options.costSubKeys.map(item => String(item || '').trim()).filter(Boolean)
                 : [];
             const deferRebuild = options.deferRebuild === true;
+            const deferProductionEntryRemoval = options.deferProductionEntryRemoval === true;
             if (!datasetKey || !teamName || !Number.isFinite(yearValue) || !Number.isFinite(monthValue) || !metricKey) {
-                return { changed: false, removedProductionCount: 0 };
+                return { changed: false, removedProductionCount: 0, productionDedupeKeys: [] };
             }
 
             const rows = findUtilDatasetDeleteMonthRows(datasetKey, teamName, yearValue, monthValue);
             let changed = false;
             let removedProductionCount = 0;
+            let productionDedupeKeys = [];
 
             if (metricKey === 'usage') {
                 rows.forEach(row => {
@@ -294,19 +348,22 @@
                     }
                 });
                 const keySet = buildUtilDeleteProductionMonthKeySet(teamName, yearValue, monthValue);
-                const removed = removeUtilProductionEntriesByKeySet(keySet);
-                if (removed > 0) {
-                    removedProductionCount = removed;
-                    changed = true;
+                productionDedupeKeys = Array.from(keySet);
+                if (!deferProductionEntryRemoval) {
+                    const removed = removeUtilProductionEntriesByKeySet(keySet);
+                    if (removed > 0) {
+                        removedProductionCount = removed;
+                        changed = true;
+                    }
                 }
             } else {
-                return { changed: false, removedProductionCount: 0 };
+                return { changed: false, removedProductionCount: 0, productionDedupeKeys: [] };
             }
 
             if (changed && !deferRebuild) {
                 rebuildUtilEntryCollections();
             }
-            return { changed, removedProductionCount };
+            return { changed, removedProductionCount, productionDedupeKeys };
         }
 
         function ensureUtilSelectiveDeleteModal() {
@@ -314,11 +371,11 @@
             if (modal) return modal;
             modal = document.createElement('div');
             modal.id = 'util-selective-delete-modal';
-            modal.className = 'util-production-modal';
+            modal.className = 'util-production-modal is-team-report-delete-modal';
             modal.innerHTML = `
-                <div class="util-production-modal-card" role="dialog" aria-modal="true" aria-label="유틸리티 선택 삭제">
+                <div class="util-production-modal-card" role="dialog" aria-modal="true" aria-labelledby="util-selective-delete-title">
                     <div class="util-production-modal-header">
-                        <div class="util-production-modal-title">유틸리티 선택 삭제</div>
+                        <div id="util-selective-delete-title" class="util-production-modal-title">생산량 삭제</div>
                         <div class="util-production-modal-header-actions">
                             <button type="button" class="util-production-modal-close" data-role="close">닫기</button>
                         </div>
@@ -328,7 +385,7 @@
                             <span data-role="dataset"></span>
                             <span data-role="summary"></span>
                         </div>
-                        <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                        <div class="util-selective-delete-controls">
                             <label class="util-dual-control">
                                 시작
                                 <select class="util-table-select util-table-select-sm" data-role="from"></select>
@@ -342,14 +399,14 @@
                                 <select class="util-table-select util-table-select-sm" data-role="team"></select>
                             </label>
                         </div>
-                        <div style="display:grid; gap:0.32rem;">
-                            <div style="font-size:0.72rem; font-weight:800; color:#475569;">품목</div>
+                        <div class="util-selective-delete-items">
+                            <div class="util-selective-delete-label">품목</div>
                             <div class="util-production-toggle-grid">
                                 <button type="button" class="util-production-toggle-btn is-active" aria-pressed="true" disabled>생산량</button>
                             </div>
-                            <div style="font-size:0.72rem; color:#64748b;">사용량과 비용은 이 삭제 창에서 지우지 않습니다.</div>
+                            <div class="util-selective-delete-note">사용량과 비용은 이 삭제 창에서 지우지 않습니다.</div>
                         </div>
-                        <div style="display:flex; justify-content:flex-end; gap:0.4rem; margin-top:0.7rem;">
+                        <div class="util-selective-delete-actions">
                             <button type="button" class="util-detail-btn" data-role="apply">삭제</button>
                         </div>
                     </div>
@@ -364,10 +421,12 @@
             return modal;
         }
 
-        function closeUtilSelectiveDeleteModal() {
+        function closeUtilSelectiveDeleteModal(options = {}) {
             const modal = document.getElementById('util-selective-delete-modal');
-            if (!modal) return;
+            if (!modal) return false;
+            if (modal._busy === true && options.force !== true) return false;
             modal.classList.remove('is-open');
+            return true;
         }
 
         function syncUtilSelectiveDeleteModalControls(modal, options = {}) {
@@ -405,9 +464,14 @@
             }
 
             const datasetMonthOptions = listUtilProductionYearMonths();
-            const monthOptions = datasetMonthOptions.length
+            const availableMonthOptions = datasetMonthOptions.length
                 ? datasetMonthOptions
                 : listUtilDeleteYearMonths();
+            const contextualMonthOptions = [preferredFrom, preferredTo, currentFrom, currentTo]
+                .filter(month => /^\d{4}-(0[1-9]|1[0-2])$/.test(month));
+            const monthOptions = Array.from(new Set(
+                availableMonthOptions.concat(contextualMonthOptions)
+            )).sort();
             const monthHtml = monthOptions.map(month => `<option value="${month}">${month}</option>`).join('');
             if (fromSelect) {
                 if (fromSelect.innerHTML !== monthHtml) {
@@ -450,7 +514,10 @@
 
 function openUtilSelectiveDeleteModal(options = {}) {
             const modal = ensureUtilSelectiveDeleteModal();
+            if (modal._busy === true) return false;
             modal._onApplied = typeof options.onApplied === 'function' ? options.onApplied : null;
+            modal._onBeforeApply = typeof options.onBeforeApply === 'function' ? options.onBeforeApply : null;
+            modal._onApplyError = typeof options.onApplyError === 'function' ? options.onApplyError : null;
             const teamSelect = modal.querySelector('[data-role="team"]');
             const fromSelect = modal.querySelector('[data-role="from"]');
             const toSelect = modal.querySelector('[data-role="to"]');
@@ -486,7 +553,7 @@ function openUtilSelectiveDeleteModal(options = {}) {
             resync();
 
             if (applyButton) {
-                applyButton.onclick = () => {
+                applyButton.onclick = async () => {
                     const datasetKey = String(modal.dataset.datasetKey || '').trim();
                     const teamName = String(teamSelect?.value || '').trim();
                     const fromYm = String(fromSelect?.value || '').trim();
@@ -506,32 +573,75 @@ function openUtilSelectiveDeleteModal(options = {}) {
                     const confirmMessage = `${getUtilDatasetLabel(datasetKey)} / ${teamName}\n${fromYm} ~ ${toYm}\n품목: ${selectedLabels}\n삭제를 진행할까요?`;
                     const ok = confirm(confirmMessage);
                     if (!ok) return;
-                    const result = clearUtilRangeMetricValues({
+                    const applyContext = {
                         datasetKey,
                         teamName,
                         fromYm,
                         toYm,
+                        itemKeys: selectedItemKeys,
                         metricKeys,
                         wasteCostSubKeys
+                    };
+                    const busyControls = Array.from(modal.querySelectorAll('button, select'));
+                    const disabledStates = busyControls.map(control => control.disabled === true);
+                    const onBeforeApply = modal._onBeforeApply;
+                    const onApplied = modal._onApplied;
+                    const onApplyError = modal._onApplyError;
+                    modal._busy = true;
+                    busyControls.forEach(control => {
+                        control.disabled = true;
                     });
-                    if (!result.changed) {
-                        alert('삭제할 데이터가 없습니다.');
-                        return;
-                    }
-                    if (typeof modal._onApplied === 'function') {
-                        modal._onApplied(result, {
+                    let rollbackToken = null;
+                    let persistenceCommitted = false;
+                    try {
+                        if (typeof onBeforeApply === 'function') {
+                            rollbackToken = await Promise.resolve(onBeforeApply(applyContext));
+                        }
+                        const result = clearUtilRangeMetricValues({
                             datasetKey,
                             teamName,
                             fromYm,
                             toYm,
-                            itemKeys: selectedItemKeys,
                             metricKeys,
                             wasteCostSubKeys
                         });
+                        if (!result.changed) {
+                            alert('삭제할 데이터가 없습니다.');
+                            return;
+                        }
+                        if (result.savePromise && typeof result.savePromise.then === 'function') {
+                            const saved = await result.savePromise;
+                            if (saved !== true) {
+                                throw new Error('생산량 삭제 내용을 서버에 저장하지 못했습니다.');
+                            }
+                            persistenceCommitted = true;
+                        }
+                        if (typeof onApplied === 'function') {
+                            const applied = await Promise.resolve(onApplied(result, applyContext, rollbackToken));
+                            if (applied === false) {
+                                throw new Error('삭제 완료 처리를 마치지 못했습니다.');
+                            }
+                        }
+                        closeUtilSelectiveDeleteModal({ force: true });
+                    } catch (error) {
+                        if (!persistenceCommitted && typeof onApplyError === 'function') {
+                            try {
+                                await Promise.resolve(onApplyError(error, applyContext, rollbackToken));
+                            } catch (rollbackError) {
+                                console.warn('util selective delete rollback failed', rollbackError);
+                            }
+                        }
+                        console.warn('util selective delete apply failed', error);
+                        alert(error?.message || '삭제 내용을 저장하지 못했습니다.');
+                    } finally {
+                        modal._busy = false;
+                        busyControls.forEach((control, index) => {
+                            control.disabled = disabledStates[index];
+                        });
                     }
-                    closeUtilSelectiveDeleteModal();
                 };
             }
 
             modal.classList.add('is-open');
+            return true;
         }

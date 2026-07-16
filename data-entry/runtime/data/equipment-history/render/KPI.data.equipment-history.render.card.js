@@ -162,24 +162,61 @@
         `;
     }
 
+    function renderAnnualMaintenancePlanEditor(rows, equipmentName = '') {
+        const list = api.asList(rows);
+        return `
+            <div class="data-equipment-annual-plan-editor" data-equipment-annual-plan-editor>
+                <div class="data-equipment-annual-plan-head" aria-hidden="true">
+                    ${api.ANNUAL_MAINTENANCE_PLAN_FIELDS.map((field) => `<span>${api.escapeHtml(field.label)}</span>`).join('')}
+                </div>
+                ${list.map((row, rowIndex) => `
+                    <div class="data-equipment-annual-plan-row" data-equipment-row-index="${rowIndex}">
+                        <button type="button" class="data-equipment-row-remove data-equipment-annual-plan-remove" data-equipment-remove-row="annualMaintenancePlan" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml('연간 정비 계획 삭제')}">
+                            ${api.escapeHtml('삭제')}
+                        </button>
+                        ${api.ANNUAL_MAINTENANCE_PLAN_FIELDS.map((field) => `
+                            <div class="data-equipment-annual-plan-cell">
+                                ${api.renderInput(field, row?.[field.key] || (field.key === 'equipmentName' ? equipmentName : ''), `class="data-equipment-annual-plan-input" data-equipment-row-section="annualMaintenancePlan" data-equipment-row-index="${rowIndex}" aria-label="${api.escapeHtml(field.label)}"`)}
+                            </div>
+                        `).join('')}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function isDocumentTitleDuplicate(title, fileName) {
+        const normalizedTitle = api.normalizeText(title).toLocaleLowerCase();
+        const normalizedFileName = api.normalizeText(fileName).toLocaleLowerCase();
+        return Boolean(normalizedTitle && normalizedFileName && normalizedTitle === normalizedFileName);
+    }
+
     function renderCompactDocumentEditor(rows) {
         const list = api.asList(rows);
         return `
             <div class="data-equipment-doc-list" data-equipment-doc-list>
                 ${list.map((row, rowIndex) => {
                     const label = row?.pendingFile?.name || row?.fileName || row?.originalName || '';
+                    const title = api.normalizeText(row?.title);
+                    const visibleFileName = isDocumentTitleDuplicate(title, label) ? '' : label;
+                    const documentId = api.normalizeText(row?.documentId || row?.fileId);
+                    const downloadUrl = documentId ? `/api/files/${encodeURIComponent(documentId)}/download` : '';
+                    const downloadName = api.normalizeText(row?.fileName || row?.originalName || label);
                     return `
                         <div class="data-equipment-doc-list-item" data-equipment-row-index="${rowIndex}">
-                            ${api.renderInput({ ...api.DOCUMENT_FIELDS[0], placeholder: '\uC81C\uBAA9' }, row?.title || '', `class="data-equipment-document-title-input" data-equipment-row-section="documents" data-equipment-row-index="${rowIndex}" aria-label="문서 제목"`)}
+                            ${api.renderInput({ ...api.DOCUMENT_FIELDS[0], placeholder: '\uC81C\uBAA9' }, title, `class="data-equipment-document-title-input" data-equipment-row-section="documents" data-equipment-row-index="${rowIndex}" aria-label="문서 제목"`)}
                             <div class="data-equipment-document-picker">
                                 <input type="file" hidden accept="${api.escapeHtml(api.DOCUMENT_ATTACHMENT_ACCEPT || '')}" data-equipment-document-file-input data-equipment-row-index="${rowIndex}">
                                 <button type="button" class="data-equipment-document-pick" data-equipment-document-pick="${rowIndex}" aria-label="문서 첨부" title="문서 첨부">
                                     문서
                                 </button>
-                                <span class="data-equipment-document-file-name">${api.escapeHtml(label)}</span>
-                                <button type="button" class="data-equipment-document-remove" data-equipment-remove-row="documents" data-equipment-row-index="${rowIndex}" aria-label="문서 삭제">
-                                    삭제
-                                </button>
+                                <span class="data-equipment-document-file-name">${api.escapeHtml(visibleFileName)}</span>
+                                <span class="data-equipment-document-actions">
+                                    ${downloadUrl ? `<a class="data-equipment-document-download" href="${api.escapeHtml(downloadUrl)}" download="${api.escapeHtml(downloadName)}" aria-label="${api.escapeHtml(`${title || downloadName || '문서'} 다운로드`)}">다운로드</a>` : ''}
+                                    <button type="button" class="data-equipment-document-remove" data-equipment-remove-row="documents" data-equipment-row-index="${rowIndex}" aria-label="문서 삭제">
+                                        삭제
+                                    </button>
+                                </span>
                             </div>
                         </div>
                     `;
@@ -231,6 +268,17 @@
                                 </button>
                             </h3>
                             ${renderSimpleSpecEditor(draft)}
+                        </article>
+                        <article class="data-equipment-card data-equipment-annual-plan-card">
+                            <h3 class="data-equipment-section-title">
+                                연간정비계획표
+                                <button type="button" class="data-equipment-add-row" data-equipment-add-row="annualMaintenancePlan">
+                                    <i class="fas fa-plus"></i><span>추가</span>
+                                </button>
+                            </h3>
+                            <div class="data-equipment-table-scroll">
+                                ${renderAnnualMaintenancePlanEditor(draft.annualMaintenancePlan, draft.name)}
+                            </div>
                         </article>
                         <article class="data-equipment-card data-equipment-history-card">
                             <h3 class="data-equipment-section-title">
@@ -514,6 +562,7 @@
         while (rows.length <= index) {
             if (section === 'detailInfo') rows.push(api.createBlankDetailRow());
             else if (section === 'documents') rows.push(api.createBlankDocumentRow());
+            else if (section === 'annualMaintenancePlan') rows.push(api.createBlankAnnualMaintenancePlanRow(state.draft.name));
             else rows.push(api.createBlankMaintenanceRow());
         }
         return rows[index];
@@ -555,6 +604,10 @@
         }
         if (section === 'documents') {
             state.draft.documents.push(api.createBlankDocumentRow());
+            return;
+        }
+        if (section === 'annualMaintenancePlan') {
+            state.draft.annualMaintenancePlan.push(api.createBlankAnnualMaintenancePlanRow(state.draft.name));
             return;
         }
         state.draft.maintenanceHistory.push(api.createBlankMaintenanceRow());
@@ -670,6 +723,8 @@
         getDraftSpecRows,
         renderSimpleSpecEditor,
         renderMaintenanceEditor,
+        renderAnnualMaintenancePlanEditor,
+        isDocumentTitleDuplicate,
         renderCompactDocumentEditor,
         isBlankDocumentEditorRow,
         ensureDraftDocumentEditorSlot,

@@ -7,5 +7,4 @@
         renderGlobalSaveUi({ forceDefault: true });
         KpiRuntime?.runBootTasks?.();
         renderRuntimeAuthUi();
-        goHome({ __skipHistory: true });
         initializeAppHistoryState();

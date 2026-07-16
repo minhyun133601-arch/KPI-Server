@@ -39,9 +39,8 @@ const sharedSources = await Promise.all(
     source: await fs.readFile(targetPath, 'utf8'),
   }))
 );
-const sharedStateSource = sharedSources.find(
-  (entry) => entry.filename === 'KPI.work.shared.team-calendar.state.js'
-)?.source || '';
+const sharedStateSource =
+  sharedSources.find((entry) => entry.filename === 'KPI.work.shared.team-calendar.state.js')?.source || '';
 
 const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
 
@@ -74,68 +73,56 @@ function createContext() {
     {
       dataKey: 'work_team_calendar_team1_part1',
       title: '1팀 1파트',
-      view: 'team_calendar',
       icon: 'fa-flask',
       color: '#2563eb',
       secondaryColor: '#1d4ed8',
       tint: '#dbeafe',
       emptyProductionLabel: '생산량 없음',
-      emptyWorkLabel: '작업 내역 미입력',
     },
     {
       dataKey: 'work_team_calendar_team1_part2',
       title: '1팀 2파트',
-      view: 'team_calendar',
       icon: 'fa-flask',
       color: '#0ea5e9',
       secondaryColor: '#0284c7',
       tint: '#e0f2fe',
       emptyProductionLabel: '생산량 없음',
-      emptyWorkLabel: '작업 내역 미입력',
     },
     {
       dataKey: 'work_team_calendar_team2',
       title: '2팀',
-      view: 'team_calendar',
       icon: 'fa-box',
       color: '#16a34a',
       secondaryColor: '#15803d',
       tint: '#dcfce7',
       emptyProductionLabel: '생산량 없음',
-      emptyWorkLabel: '작업 내역 미입력',
     },
     {
       dataKey: 'work_team_calendar_team3',
       title: '3팀',
-      view: 'team_calendar',
       icon: 'fa-tint',
       color: '#f59e0b',
       secondaryColor: '#d97706',
       tint: '#fef3c7',
       emptyProductionLabel: '생산량 없음',
-      emptyWorkLabel: '작업 내역 미입력',
     },
     {
       dataKey: 'work_team_calendar_team4',
       title: '4팀',
-      view: 'team_calendar',
       icon: 'fa-water',
       color: '#64748b',
       secondaryColor: '#475569',
       tint: '#e2e8f0',
       emptyProductionLabel: '생산량 없음',
-      emptyWorkLabel: '작업 내역 미입력',
     },
     {
       dataKey: 'work_team_calendar_overview',
       title: '통합 현황',
-      view: 'team_calendar',
       icon: 'fa-chart-column',
       color: '#7c3aed',
       secondaryColor: '#6d28d9',
       tint: '#ede9fe',
       emptyProductionLabel: '생산량 없음',
-      emptyWorkLabel: '작업 내역 미입력',
     },
   ];
 
@@ -192,13 +179,28 @@ function createContext() {
       return -1;
     },
     selectCategory() {},
+    getWorkTeamCalendarCategory(dataKey) {
+      return categoryRecords.find((entry) => entry.dataKey === dataKey) || null;
+    },
     formatWorkTeamCalendarDateLabel(dateKey) {
       return String(dateKey || '');
     },
     AppData: {
       work: {
-        categories: categoryRecords,
-        teamCategories: [],
+        categories: [
+          {
+            dataKey: 'work_team_calendar_team1_part1',
+            title: '팀별내역서',
+            view: 'team_calendar_document',
+          },
+          {
+            dataKey: 'work_history_records',
+            title: '작업 이력',
+            view: 'history_tool',
+            navHidden: true,
+          },
+        ],
+        teamCategories: categoryRecords,
       },
       equip: {
         teamCategories: [
@@ -233,8 +235,12 @@ function createContext() {
       };
     },
     normalizeAreaAssetType(type, name) {
-      const normalizedType = String(type || '').trim().toLowerCase();
-      const normalizedName = String(name || '').trim().toLowerCase();
+      const normalizedType = String(type || '')
+        .trim()
+        .toLowerCase();
+      const normalizedName = String(name || '')
+        .trim()
+        .toLowerCase();
       if (normalizedType.includes('pdf') || normalizedName.endsWith('.pdf')) return 'pdf';
       if (normalizedType.startsWith('image/') || /\.(png|jpg|jpeg|gif|webp)$/i.test(normalizedName)) return 'image';
       return 'file';
@@ -266,6 +272,7 @@ test('work shared split files expose category, state, and summary helpers togeth
   assert.equal(typeof context.getWorkTeamCalendarDraftSnapshot, 'function');
   assert.equal(typeof context.getWorkTeamCalendarProductionMetricLine, 'function');
   assert.equal(Object.prototype.hasOwnProperty.call(context, 'getWorkTeamCalendarUtilityVisibleDataKeys'), false);
+  assert.deepEqual(Object.keys(context.getWorkTeamCalendarModeMeta('detail')).sort(), ['label', 'mode']);
 
   const detailCategories = context.getWorkTeamCalendarDisplayCategoryList();
   assert.ok(detailCategories.some((entry) => entry.dataKey === 'work_team_calendar_team1_part1'));
@@ -313,8 +320,6 @@ test('work shared draft and summary helpers keep draft state readable after the 
   ];
 
   const snapshot = context.getWorkTeamCalendarDraftSnapshot(dataKey, dateKey);
-  const focusSummary = context.getWorkTeamCalendarFocusSummary(snapshot);
-  const workStatus = context.getWorkTeamCalendarWorkStatus(snapshot, '작업 내역 미입력');
   const metricLine = context.getWorkTeamCalendarProductionMetricLine({
     moistureExcludedYieldRate: 91.2,
     totalEquipmentCapa: 320,
@@ -329,9 +334,7 @@ test('work shared draft and summary helpers keep draft state readable after the 
 
   assert.equal(snapshot.title, '열교환기 점검');
   assert.equal(JSON.stringify(Array.from(snapshot.members)), JSON.stringify(['류원대', '김민규']));
-  assert.match(focusSummary, /열교환기 점검/);
-  assert.match(focusSummary, /담당 류원대 외 1명/);
-  assert.match(workStatus, /열교환기 점검/);
+  assert.equal(context.hasWorkTeamCalendarDraftContent(snapshot), true);
   assert.match(metricLine, /수율/);
   assert.doesNotMatch(metricLine, /CAPA/);
   assert.match(metricLine, /EA/);
@@ -350,11 +353,11 @@ test('work shared team calendar state reads runtime globals through the browser 
 });
 
 test('kpi html loads shared split files before production bootstrap', () => {
-  const sharedIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.js?v=240');
-  const categoriesIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.categories.js?v=3');
+  const sharedIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.js?v=242');
+  const categoriesIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.categories.js?v=5');
   const stateIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.state.js?v=1');
-  const summaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.summary.js?v=3');
-  const productionIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=247');
+  const summaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.summary.js?v=4');
+  const productionIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=250');
 
   assert.ok(sharedIndex >= 0, 'work shared loader is missing');
   assert.ok(categoriesIndex > sharedIndex, 'shared categories must load after shared.js');

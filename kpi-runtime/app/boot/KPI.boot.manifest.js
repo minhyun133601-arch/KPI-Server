@@ -299,9 +299,6 @@
       "key": "workRenderers",
       "label": "Work renderer tail",
       "scripts": [
-        "team-report/runtime/work/KPI.work.renderers.weekly-actions.js",
-        "team-report/runtime/work/KPI.work.renderers.print.js",
-        "team-report/runtime/work/KPI.work.renderers.monthly-plan.js",
         "team-report/runtime/work/KPI.work.renderers.js"
       ]
     },

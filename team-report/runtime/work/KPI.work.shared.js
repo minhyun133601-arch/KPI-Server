@@ -2,11 +2,10 @@
         // [작업내역 로컬 데이터/주차 처리]
         // ----------------------------------------------------------------
         const WorkCache = {};
-        const WorkState = { activeWeek: {}, activeMonth: {}, activeDate: {}, monthFilters: {}, monthReportCache: {}, teamCalendarMonth: {}, teamCalendarSharedMonth: '', teamCalendarDate: {}, teamCalendarSharedDate: '', teamCalendarSelectedDates: {}, teamCalendarEditor: {}, teamCalendarDatePicked: {}, teamCalendarModal: '', teamCalendarHubDataKey: '', teamCalendarInline: false, teamReportDocumentExperiment: false, teamCalendarMemberAnchor: {}, teamCalendarGasMode: {}, teamCalendarUtilityPopup: {}, teamCalendarMode: 'detail', workEntryRootConnected: false };
+        const WorkState = { teamCalendarMonth: {}, teamCalendarSharedMonth: '', teamCalendarDate: {}, teamCalendarSharedDate: '', teamCalendarSelectedDates: {}, teamCalendarEditor: {}, teamCalendarDatePicked: {}, teamCalendarModal: '', teamCalendarHubDataKey: '', teamCalendarInline: false, teamCalendarMemberAnchor: {}, teamCalendarGasMode: {}, teamCalendarUtilityPopup: {}, teamCalendarMode: 'detail', workEntryRootConnected: false };
         const WorkSaveStatusState = {};
         const WORK_DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
         const WORK_DAY_LABELS = ['월', '화', '수', '목', '금', '토', '일'];
-        const WORK_DAY_COLORS = ['#2563eb', '#22c55e', '#f59e0b', '#f97316', '#ef4444', '#8b5cf6', '#0ea5e9'];
         const WORK_TEAM_CALENDAR_MODE_DETAIL = 'detail';
         const WORK_TEAM_CALENDAR_MODE_PROCESS = 'process';
         const WORK_TEAM_CALENDAR_MODE_GROUP = 'group';
@@ -44,52 +43,12 @@
         const WORK_ENTRY_HANDLE_DB_NAME = 'kpi-work-entry-folder-db';
         const WORK_ENTRY_HANDLE_STORE_NAME = 'handles';
 
-        function makeWeekKey(year, week) {
-            return `${year}-W${String(week).padStart(2, '0')}`;
-        }
-
-        function parseWeekKey(key) {
-            const match = /^(\d{4})-W(\d{2})$/.exec(key || '');
-            if (!match) return null;
-            return { year: parseInt(match[1], 10), week: parseInt(match[2], 10) };
-        }
-
-        function getISOWeekInfo(date) {
-            const d = new Date(date.getTime());
-            d.setHours(0, 0, 0, 0);
-            const day = (d.getDay() + 6) % 7; // Monday = 0
-            d.setDate(d.getDate() - day + 3); // Thursday
-            const isoYear = d.getFullYear();
-            const firstThursday = new Date(isoYear, 0, 4);
-            const firstDay = (firstThursday.getDay() + 6) % 7;
-            firstThursday.setDate(firstThursday.getDate() - firstDay + 3);
-            const week = 1 + Math.round((d - firstThursday) / 604800000);
-            const monday = getWeekStartDate(isoYear, week);
-            return { year: isoYear, week, monday };
-        }
-
         function getWeekStartDate(year, week) {
             const simple = new Date(year, 0, 4 + (week - 1) * 7);
             const day = (simple.getDay() + 6) % 7; // Monday = 0
             simple.setDate(simple.getDate() - day);
             simple.setHours(0, 0, 0, 0);
             return simple;
-        }
-
-        function formatDate(date) {
-            const mm = String(date.getMonth() + 1).padStart(2, '0');
-            const dd = String(date.getDate()).padStart(2, '0');
-            return `${mm}.${dd}`;
-        }
-
-        function formatWeekRange(startDate) {
-            const end = new Date(startDate.getTime());
-            end.setDate(end.getDate() + 6);
-            return `${formatDate(startDate)}(${WORK_DAY_LABELS[0]}) ~ ${formatDate(end)}(${WORK_DAY_LABELS[6]})`;
-        }
-
-        function formatMonthLabel(year, monthIndex) {
-            return `${year}년 ${monthIndex + 1}월`;
         }
 
         function formatDateKey(date) {
@@ -177,16 +136,6 @@
             return name;
         }
 
-        function getWorkTeamOptions() {
-            const base = getEquipTeams().map(team => normalizeWorkTeamName(team)).filter(Boolean);
-            const unique = [];
-            base.forEach(team => {
-                if (!unique.includes(team)) unique.push(team);
-            });
-            const middle = unique.filter(team => team !== WORK_TEAM_TOP && team !== WORK_TEAM_ETC);
-            return [WORK_TEAM_TOP, ...middle, WORK_TEAM_ETC];
-        }
-
         function resolveEquipCategoryByTeam(team) {
             const categories = Array.isArray(AppData?.equip?.teamCategories) && AppData.equip.teamCategories.length
                 ? AppData.equip.teamCategories
@@ -263,15 +212,6 @@
             return { start, end };
         }
 
-        function isDateInRange(dateKey, startMonthKey, endMonthKey) {
-            const dateMonth = dateKey.slice(0, 7);
-            const dateIndex = monthKeyToIndex(dateMonth);
-            const startIndex = monthKeyToIndex(startMonthKey);
-            const endIndex = monthKeyToIndex(endMonthKey);
-            if (dateIndex === null || startIndex === null || endIndex === null) return true;
-            return dateIndex >= startIndex && dateIndex <= endIndex;
-        }
-
         function getWorkVisibleCategories() {
             return Array.isArray(AppData?.work?.categories) ? AppData.work.categories : [];
         }
@@ -281,9 +221,7 @@
         }
 
         function getWorkTeamCalendarRawCategoryList() {
-            const hiddenTeamCategories = getWorkHiddenTeamCategories().filter(cat => cat?.view === 'team_calendar');
-            if (hiddenTeamCategories.length) return hiddenTeamCategories;
-            return getWorkVisibleCategories().filter(cat => cat?.view === 'team_calendar');
+            return getWorkHiddenTeamCategories().filter(cat => String(cat?.dataKey || '').trim());
         }
 
         function getWorkTeamCalendarRawCategoryByDataKey(dataKey) {

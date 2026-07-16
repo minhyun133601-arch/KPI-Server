@@ -12,12 +12,12 @@
     <!-- Noto Sans KR -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="kpi-runtime/app/styles/shell/dashboard.css?v=108">
-    <link rel="stylesheet" href="kpi-runtime/app/styles/shell/shell-chrome.css?v=060">
-    <link rel="stylesheet" href="kpi-runtime/app/styles/work/work.css?v=066">
-    <link rel="stylesheet" href="kpi-runtime/app/styles/work/team-report-document-experiment.css?v=001">
-    <link rel="stylesheet" href="kpi-runtime/app/styles/metering/metering.css?v=085">
-    <link rel="stylesheet" href="kpi-runtime/app/styles/data/data.css?v=114">
-    <link rel="stylesheet" href="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.css?v=9">
+    <link rel="stylesheet" href="kpi-runtime/app/styles/shell/shell-chrome.css?v=064">
+    <link rel="stylesheet" href="kpi-runtime/app/styles/work/work.css?v=068">
+    <link rel="stylesheet" href="kpi-runtime/app/styles/work/team-report-document.css?v=007">
+    <link rel="stylesheet" href="kpi-runtime/app/styles/metering/metering.css?v=086">
+    <link rel="stylesheet" href="kpi-runtime/app/styles/data/data.css?v=115">
+    <link rel="stylesheet" href="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.css?v=10">
     <link rel="stylesheet" href="data-entry/runtime/data/utility-graph-template/styles.css?v=29">
     <link rel="stylesheet" href="kpi-runtime/app/styles/audit/audit.css?v=077">
     <link rel="stylesheet" href="kpi-runtime/app/styles/shared/status-team-marks.css?v=20260716a">
@@ -25,7 +25,7 @@
 <body>
 
     <!-- 1. 대시보드 (메인 화면) -->
-    <div id="dashboard">
+    <div id="dashboard" class="hidden-view">
         <div class="dashboard-shell">
             <aside class="dashboard-side">
                 <div class="dashboard-side-brand">
@@ -130,13 +130,13 @@
     <!-- Print sheet -->
     <div id="print-sheet" class="print-sheet"></div>
 
-    <script src="kpi-runtime/app/boot/KPI.boot.manifest.js?v=5"></script>
+    <script src="kpi-runtime/app/boot/KPI.boot.manifest.js?v=6"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="kpi-runtime/demo/KPI.demo-data.browser-adapter.js?v=1"></script>
     <script src="kpi-runtime/demo/KPI.demo-data.js?v=9"></script>
     <script src="utility/runtime/util/integration/KPI.util.metering.bridge.js?v=199"></script>
     <script src="kpi-runtime/sections/KPI.section.factory-adapter.js?v=2"></script>
-    <script src="team-report/runtime/work/sections/KPI.sections.work.js?v=235"></script>
+    <script src="team-report/runtime/work/sections/KPI.sections.work.js?v=238"></script>
     <script src="data-entry/runtime/data/utility-graph-template/runtime/KPI.utility-graph-template.foundation.js?v=1"></script>
     <script src="data-entry/runtime/data/utility-graph-template/runtime/KPI.utility-graph-template.charts.js?v=1"></script>
     <script src="data-entry/runtime/data/utility-graph-template/runtime/KPI.utility-graph-template.memo.js?v=1"></script>
@@ -177,13 +177,13 @@
     <script src="kpi-runtime/core/KPI.core.browser-adapter.js?v=1"></script>
     <script src="kpi-runtime/core/KPI.core.js"></script>
     <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=6"></script>
-    <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=17"></script>
-    <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=25"></script>
+    <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=18"></script>
+    <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=26"></script>
     <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=4"></script>
     <script src="data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.board.js?v=8"></script>
-    <script src="data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.card.js?v=3"></script>
+    <script src="data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.card.js?v=4"></script>
     <script src="data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.persistence.js?v=4"></script>
-    <script src="data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.print.js?v=2"></script>
+    <script src="data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.print.js?v=3"></script>
     <script src="data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.photo.js?v=3"></script>
     <script src="data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.events.js?v=5"></script>
     <script src="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=57"></script>
@@ -192,29 +192,29 @@
     <script src="utility/runtime/util/KPI.util.data-sync.js?v=207"></script>
     <script src="utility/runtime/util/KPI.util.data-sync.production.js?v=7"></script>
     <script src="utility/apps/production-extractor/runtime/import-parsing.js?v=24"></script>
-    <script src="utility/runtime/util/KPI.util.production-import.js?v=10"></script>
+    <script src="utility/runtime/util/KPI.util.production-import.js?v=11"></script>
     <script src="utility/runtime/util/production/KPI.util.production.extractor.js?v=21"></script>
     <script src="utility/runtime/util/production/KPI.util.production.dataset-tools.js"></script>
     <script src="utility/runtime/util/KPI.util.production-management.js"></script>
     <script src="utility/runtime/util/KPI.util.maintenance.browser-adapter.js?v=1"></script>
-    <script src="utility/runtime/util/KPI.util.maintenance.js"></script>
-    <script src="utility/runtime/util/KPI.util.maintenance.delete.js?v=3"></script>
+    <script src="utility/runtime/util/KPI.util.maintenance.js?v=3"></script>
+    <script src="utility/runtime/util/KPI.util.maintenance.delete.js?v=7"></script>
     <script src="utility/runtime/util/KPI.util.maintenance.config.js?v=1"></script>
     <script src="utility/runtime/util/KPI.util.maintenance.export.js?v=2"></script>
-    <script src="team-report/runtime/work/KPI.work.shared.js?v=240"></script>
-    <script src="team-report/runtime/work/KPI.work.shared.team-calendar.categories.js?v=3"></script>
+    <script src="team-report/runtime/work/KPI.work.shared.js?v=242"></script>
+    <script src="team-report/runtime/work/KPI.work.shared.team-calendar.categories.js?v=5"></script>
     <script src="team-report/runtime/work/KPI.work.shared.team-calendar.state.js?v=1"></script>
-    <script src="team-report/runtime/work/KPI.work.shared.team-calendar.summary.js?v=3"></script>
-    <script src="team-report/runtime/work/KPI.work.production.js?v=247"></script>
+    <script src="team-report/runtime/work/KPI.work.shared.team-calendar.summary.js?v=4"></script>
+    <script src="team-report/runtime/work/KPI.work.production.js?v=250"></script>
     <script src="team-report/runtime/work/KPI.work.browser-adapter.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.production.history.js?v=4"></script>
     <script src="team-report/runtime/work/KPI.work.production.overview.js?v=3"></script>
     <script src="team-report/runtime/work/KPI.work.production.draft.js?v=1"></script>
-    <script src="team-report/runtime/work/KPI.work.team-calendar.js?v=237"></script>
+    <script src="team-report/runtime/work/KPI.work.team-calendar.js?v=238"></script>
     <script src="team-report/runtime/work/KPI.work.team-calendar.selection.js?v=2"></script>
     <script src="team-report/runtime/work/KPI.work.team-calendar.draft-actions.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.team-calendar.equipment-summary.js?v=2"></script>
-    <script src="team-report/runtime/work/KPI.work.team-calendar.render.js?v=9"></script>
+    <script src="team-report/runtime/work/KPI.work.team-calendar.render.js?v=15"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.browser-adapter.js"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.core.config.js"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.core.js"></script>
@@ -334,11 +334,8 @@
     <script src="utility/runtime/util/report/sheet/summary/render.js?v=064"></script>
     <script src="utility/runtime/util/report/KPI.util.report.sheet.helpers.js?v=342"></script>
     <script src="utility/runtime/util/report/KPI.util.report.sheet.js?v=067"></script>
-    <script src="utility/runtime/util/analytics/KPI.util.analytics.js"></script>
-    <script src="team-report/runtime/work/KPI.work.renderers.weekly-actions.js?v=1"></script>
-    <script src="team-report/runtime/work/KPI.work.renderers.print.js?v=1"></script>
-    <script src="team-report/runtime/work/KPI.work.renderers.monthly-plan.js?v=1"></script>
-    <script src="team-report/runtime/work/KPI.work.renderers.js?v=2"></script>
+    <script src="utility/runtime/util/analytics/KPI.util.analytics.js?v=3"></script>
+    <script src="team-report/runtime/work/KPI.work.renderers.js?v=4"></script>
     <script src="utility/runtime/util/report-deck/browser-adapter/KPI.util.report-deck.adapter.api.js?v=1"></script>
     <script src="utility/runtime/util/report-deck/browser-adapter/KPI.util.report-deck.adapter.export-dom.js?v=1"></script>
     <script src="utility/runtime/util/report-deck/browser-adapter/KPI.util.report-deck.adapter.export-html.js?v=1"></script>
@@ -361,14 +358,14 @@
     <script src="utility/runtime/util/report-deck/runtime/KPI.util.report-deck.persistence-editor.js?v=1"></script>
     <script src="utility/runtime/util/KPI.util.runtime.js?v=309"></script>
     <script src="audit/runtime/audit/KPI.audit.runtime.js"></script>
-    <script src="team-report/runtime/work/KPI.work.runtime.js?v=228"></script>
+    <script src="team-report/runtime/work/KPI.work.runtime.js?v=230"></script>
     <script src="kpi-runtime/app/KPI.app.browser-adapter.js?v=3"></script>
-    <script src="kpi-runtime/app/KPI.app.shared.js?v=8"></script>
+    <script src="kpi-runtime/app/KPI.app.shared.js?v=9"></script>
     <script src="kpi-runtime/app/KPI.app.auth-owner.js?v=1"></script>
-    <script src="kpi-runtime/app/KPI.app.navigation.js?v=5"></script>
+    <script src="kpi-runtime/app/KPI.app.navigation.js?v=8"></script>
     <script src="kpi-runtime/app/KPI.app.global-save.js?v=4"></script>
-    <script src="kpi-runtime/app/KPI.app.viewer.js?v=8"></script>
-    <script src="kpi-runtime/app/KPI.app.js?v=250"></script>
+    <script src="kpi-runtime/app/KPI.app.viewer.js?v=14"></script>
+    <script src="kpi-runtime/app/KPI.app.js?v=251"></script>
     <script src="kpi-runtime/app/boot/KPI.boot.loader.js?v=1"></script>
 </body>
 </html>

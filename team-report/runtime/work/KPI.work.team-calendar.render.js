@@ -4,7 +4,6 @@
 
         function renderWorkTeamCalendarInlineContent(category, headerHtml, options = {}) {
             const contentContainer = document.getElementById('content-container');
-            WorkState.teamReportDocumentExperiment = options.teamReportDocumentExperiment === true;
             const teamCategories = getWorkTeamCalendarCategories();
             const defaultDataKey = String(teamCategories[0]?.dataKey || category.dataKey || '').trim();
             const preferredDataKey = String(options.teamDataKey || WorkState.teamCalendarHubDataKey || category.dataKey || '').trim();
@@ -18,12 +17,8 @@
                     </section>
                 </div>
             `;
-            if (options.autoOpenModal === false) {
-                closeWorkTeamCalendarModal();
-            } else {
-                syncWorkTeamCalendarInlineIndex(activeDataKey);
-                openWorkTeamCalendarModal(activeDataKey, { inline: true });
-            }
+            syncWorkTeamCalendarInlineIndex(activeDataKey);
+            openWorkTeamCalendarModal(activeDataKey, { inline: true });
         }
 
         function renderWorkTeamCalendarContent(category, headerHtml, options = {}) {
@@ -156,9 +151,6 @@
                 showSelectionClearButton ? 'has-selection-clear' : ''
             ].filter(Boolean).join(' ');
             const isInline = isWorkTeamCalendarInlineMode();
-            const isTeamReportExperiment = WorkState.teamReportDocumentExperiment === true
-                && typeof isTeamReportDocumentExperimentEnabled === 'function'
-                && isTeamReportDocumentExperimentEnabled();
             const isFullscreenActive = isWorkTeamCalendarFullscreen();
             const fullscreenToggleLabel = getWorkTeamCalendarFullscreenLabel(isFullscreenActive);
             const fullscreenToggleHtml = `
@@ -181,9 +173,7 @@
                 return `<button type="button" class="work-team-calendar-member-toggle ${isActive ? 'is-active' : ''}" data-work-team-member-name="${escapeHtml(name)}" aria-pressed="${isActive ? 'true' : 'false'}" ${!hasDateSelection || selectedDateLocked ? 'disabled' : ''}>${escapeHtml(name)}</button>`;
             }).join('');
             const teamSwitchHtml = getWorkTeamCalendarCategories().map(item => {
-                const glyphHtml = isTeamReportExperiment
-                    ? `<i class="fas ${escapeHtml(item.icon || 'fa-layer-group')}" aria-hidden="true"></i>`
-                    : renderWorkTeamCalendarGlyph(item.productVisual, 'sm');
+                const glyphHtml = `<i class="fas ${escapeHtml(item.icon || 'fa-layer-group')}" aria-hidden="true"></i>`;
                 return `
                     <button type="button" class="work-team-calendar-switch ${item.dataKey === dataKey ? 'is-active' : ''}" onclick="switchWorkTeamCalendarTeam('${item.dataKey}')" data-work-team-switch="${escapeHtml(item.dataKey)}" aria-label="${escapeHtml(`${item.title} 보기`)}" aria-pressed="${item.dataKey === dataKey ? 'true' : 'false'}" style="--switch-accent:${item.color || '#2563eb'}; --switch-accent-2:${item.secondaryColor || item.color || '#38bdf8'}; --switch-soft:${item.tint || '#eff6ff'};">
                         <span class="work-team-calendar-switch-glyph">${glyphHtml}</span>
@@ -194,8 +184,7 @@
                     </button>
                 `;
             }).join('');
-            const experimentModeSwitchHtml = isTeamReportExperiment
-                ? ['detail', 'process', 'group'].map(mode => {
+            const documentModeSwitchHtml = ['detail', 'process', 'group'].map(mode => {
                     const itemMeta = getWorkTeamCalendarModeMeta(mode);
                     const isActive = itemMeta.mode === getWorkTeamCalendarMode();
                     return `
@@ -207,8 +196,7 @@
                             aria-pressed="${isActive ? 'true' : 'false'}"
                         >${escapeHtml(itemMeta.label)}</button>
                     `;
-                }).join('')
-                : '';
+                }).join('');
             const yearOptionHtml = getWorkTeamCalendarYearOptions().map(year => (
                 `<option value="${year}" ${String(parsed.year) === String(year) ? 'selected' : ''}>${escapeHtml(String(year))}년</option>`
             )).join('');
@@ -233,6 +221,7 @@
                     </div>
                 `
                 : '';
+            const gasChoiceClass = gasChoiceHtml ? ' has-gas-choices' : '';
             const isWorkPopupActive = utilityPopupMetric === 'work';
             const isProductionPopupActive = utilityPopupMetric === 'production';
             const workUtilityChipHtml = `
@@ -252,16 +241,18 @@
                 <div
                     role="button"
                     tabindex="0"
-                    class="work-team-calendar-utility-chip is-button${isProductionPopupActive ? ' is-active' : ''}"
+                    class="work-team-calendar-utility-chip is-button${isProductionPopupActive ? ' is-active' : ''} has-production-actions"
                     onclick="openWorkTeamCalendarUtilityPopup('production')"
                     onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();openWorkTeamCalendarUtilityPopup('production')}"
                     aria-pressed="${isProductionPopupActive ? 'true' : 'false'}"
                     aria-label="${escapeHtml(label)} 열기"
                 >
-                    <span class="work-team-calendar-utility-label">${escapeHtml(label)}</span>
+                    <div class="work-team-calendar-utility-head">
+                        <span class="work-team-calendar-utility-label">${escapeHtml(label)}</span>
+                        <div class="work-team-calendar-utility-action-slot" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">${productionSummaryActionMenuHtml}</div>
+                    </div>
                     <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.production?.totalAmountText || '-')}</span>
                     <span class="work-team-calendar-utility-meta">${escapeHtml(utilitySummary.production?.itemCountText || '-')}</span>
-                    <span class="work-team-calendar-utility-action-slot" onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">${productionSummaryActionMenuHtml}</span>
                 </div>
             `;
             const wasteUtilityChipHtml = utilitySummary.waste
@@ -281,6 +272,7 @@
                             <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.waste?.usageText || '-')}</span>
                             <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.waste?.costText || '-')}</span>
                         </div>
+                        ${buildProductionUtilityChipHtml('총 생산량')}
                         ${workUtilityChipHtml}
                         ${equipmentUtilityChipHtml}
                     </div>
@@ -292,7 +284,7 @@
                             <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.electric.usageText || '-')}</span>
                             <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.electric.costText || '-')}</span>
                         </div>
-                        <div class="work-team-calendar-utility-chip">
+                        <div class="work-team-calendar-utility-chip${gasChoiceClass}">
                             <span class="work-team-calendar-utility-label">가스 사용량</span>
                             <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.gas.usageText || '-')}</span>
                             <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.gas.costText || '-')}</span>
@@ -312,7 +304,7 @@
                             <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.electric?.usageText || '-')}</span>
                             <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.electric?.costText || '-')}</span>
                         </div>
-                        <div class="work-team-calendar-utility-chip">
+                        <div class="work-team-calendar-utility-chip${gasChoiceClass}">
                             <span class="work-team-calendar-utility-label">가스 사용량</span>
                             <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.gas?.usageText || '-')}</span>
                             <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.gas?.costText || '-')}</span>
@@ -324,7 +316,7 @@
                             <span class="work-team-calendar-utility-meta">비용 ${escapeHtml(utilitySummary.waste?.costText || '-')}</span>
                         </div>
                         <div class="work-team-calendar-utility-chip">
-                            <span class="work-team-calendar-utility-label">총생산량</span>
+                            <span class="work-team-calendar-utility-label">총 생산량</span>
                             <span class="work-team-calendar-utility-value">${escapeHtml(utilitySummary.production?.totalAmountText || '-')}</span>
                             <span class="work-team-calendar-utility-meta">${escapeHtml(utilitySummary.production?.itemCountText || '-')}</span>
                         </div>
@@ -379,15 +371,10 @@
                 const renderOverviewUtilityChip = (metricKey, label, valueText, metaText) => {
                     const isActionMetric = metricKey === 'electric' || metricKey === 'gas' || metricKey === 'work';
                     const activeClass = utilityPopupMetric === metricKey ? ' is-active' : '';
-                    const hintText = '클릭하여 팀별 상세 보기';
-                    const hintHtml = isActionMetric && metricKey !== 'work'
-                        ? `<span class="work-team-calendar-utility-hint">${escapeHtml(hintText)}</span>`
-                        : '';
                     const bodyHtml = `
                         <span class="work-team-calendar-utility-label">${escapeHtml(label)}</span>
                         <span class="work-team-calendar-utility-value">${escapeHtml(valueText || '-')}</span>
                         <span class="work-team-calendar-utility-meta">${escapeHtml(metaText || '-')}</span>
-                        ${hintHtml}
                     `;
                     if (!isActionMetric) {
                         return `<div class="work-team-calendar-utility-chip">${bodyHtml}</div>`;
@@ -408,7 +395,7 @@
                         ${renderOverviewUtilityChip('electric', '전기 사용량', utilitySummary.electric?.usageText || '-', `비용 ${utilitySummary.electric?.costText || '-'}`)}
                         ${renderOverviewUtilityChip('gas', '가스 사용량', utilitySummary.gas?.usageText || '-', `비용 ${utilitySummary.gas?.costText || '-'}`)}
                         ${renderOverviewUtilityChip('waste', '폐수 방류량', utilitySummary.waste?.usageText || '-', `비용 ${utilitySummary.waste?.costText || '-'}`)}
-                        ${buildProductionUtilityChipHtml('총생산량')}
+                        ${buildProductionUtilityChipHtml('총 생산량')}
                         ${renderOverviewUtilityChip('work', '작업내역', utilitySummary.workEntryCountText || '0건', `비용 ${utilitySummary.workCostText || '-'}`)}
                         ${equipmentUtilityChipHtml}
                     </div>
@@ -678,31 +665,20 @@
                 `;
             }).join('');
             modal.innerHTML = `
-                <div class="work-team-calendar-dialog ${isInline ? 'is-inline' : ''}${isTeamReportExperiment ? ' is-team-report-experiment' : ''}" role="${dialogRole}" ${dialogModalAttr} aria-label="${escapeHtml(category.title)} \uCE98\uB9B0\uB354" style="--team-accent:${category.color || '#2563eb'}; --team-accent-2:${category.secondaryColor || category.color || '#38bdf8'}; --team-tint:${category.tint || '#eff6ff'};">
+                <div class="work-team-calendar-dialog ${isInline ? 'is-inline' : ''} is-team-report-document" role="${dialogRole}" ${dialogModalAttr} aria-label="${escapeHtml(category.title)} \uCE98\uB9B0\uB354" style="--team-accent:${category.color || '#2563eb'}; --team-accent-2:${category.secondaryColor || category.color || '#38bdf8'}; --team-tint:${category.tint || '#eff6ff'};">
                     <div class="work-team-calendar-topbar">
-                        <div class="work-team-calendar-head">
-                            <div class="work-team-calendar-brand">
-                                <div class="work-team-calendar-brand-copy">
-                                    <div class="work-team-calendar-brand-title">${escapeHtml(category.title)} \uCE98\uB9B0\uB354${isTeamReportExperiment ? '<span class="work-team-calendar-experiment-badge">실험 화면</span>' : ''}</div>
-                                    <div class="work-team-calendar-brand-sub">${escapeHtml(category.processLabel || category.title)} \u00B7 ${getWorkTeamCalendarRangeLabel()}</div>
-                                </div>
+                        <div class="work-team-calendar-document-nav">
+                            <div class="work-team-calendar-mode-segments" role="group" aria-label="팀별내역서 보기 기준">
+                                ${documentModeSwitchHtml}
                             </div>
-                            ${isInline || isTeamReportExperiment ? '' : `<div class="work-team-calendar-switches">${teamSwitchHtml}</div>`}
-                            <div class="work-team-calendar-head-actions">
+                            <div class="work-team-calendar-switches" role="group" aria-label="팀별내역서 대상 선택">
+                                ${teamSwitchHtml}
+                            </div>
+                            <div class="work-team-calendar-document-actions">
                                 ${fullscreenToggleHtml}
                                 ${isInline ? '' : `<button type="button" class="work-team-calendar-close" onclick="closeWorkTeamCalendarModal()" aria-label="\uB2EB\uAE30"><i class="fas fa-xmark"></i></button>`}
                             </div>
                         </div>
-                        ${isTeamReportExperiment ? `
-                            <div class="work-team-calendar-experiment-nav">
-                                <div class="work-team-calendar-mode-segments" role="group" aria-label="팀별내역서 보기 기준">
-                                    ${experimentModeSwitchHtml}
-                                </div>
-                                <div class="work-team-calendar-switches" role="group" aria-label="팀별내역서 대상 선택">
-                                    ${teamSwitchHtml}
-                                </div>
-                            </div>
-                        ` : ''}
                         <div class="work-team-calendar-toolbar">
                             <div class="work-team-calendar-nav">
                                 <button type="button" class="work-team-calendar-arrow" data-work-team-arrow-step="-1" onclick="workTeamCalendarMoveMonth(-1)" ${prevDisabled} aria-label="\uC774\uC804\uB2EC"><i class="fas fa-chevron-left"></i></button>

@@ -325,6 +325,7 @@
             operationInfo,
             detailInfo,
             detailGroups,
+            annualMaintenancePlan: asList(item?.annualMaintenancePlan || item?.maintenancePlan || item?.annualMaintenanceSchedule),
             maintenanceHistory: asList(item?.maintenanceHistory),
             documents: normalizeDocuments(item?.documents),
         };

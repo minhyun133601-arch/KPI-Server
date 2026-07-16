@@ -6,323 +6,90 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
-
-async function findFile(startDir, basename) {
-  const entries = await fs.readdir(startDir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(startDir, entry.name);
-    if (entry.isDirectory()) {
-      const nested = await findFile(fullPath, basename);
-      if (nested) return nested;
-      continue;
-    }
-    if (entry.name === basename) return fullPath;
-  }
-  return null;
-}
-
-const renderersPath = await findFile(repoRoot, 'KPI.work.renderers.js');
-assert.ok(renderersPath, 'work renderers source is missing');
-
-const workDir = path.dirname(renderersPath);
-const renderSourcePaths = [
-  path.join(workDir, 'KPI.work.browser-adapter.js'),
-  path.join(workDir, 'KPI.work.renderers.weekly-actions.js'),
-  path.join(workDir, 'KPI.work.renderers.print.js'),
-  path.join(workDir, 'KPI.work.renderers.monthly-plan.js'),
-  renderersPath,
-];
-
-const renderSources = await Promise.all(
-  renderSourcePaths.map(async (targetPath) => ({
-    filename: path.basename(targetPath),
-    source: await fs.readFile(targetPath, 'utf8'),
-  }))
+const workDir = path.join(repoRoot, 'team-report', 'runtime', 'work');
+const rendererPath = path.join(workDir, 'KPI.work.renderers.js');
+const analyticsPath = path.join(
+  repoRoot,
+  'utility',
+  'runtime',
+  'util',
+  'analytics',
+  'KPI.util.analytics.js'
 );
-const renderersSource = renderSources.find((entry) => entry.filename === 'KPI.work.renderers.js')?.source || '';
-const weeklyActionsSource = renderSources.find(
-  (entry) => entry.filename === 'KPI.work.renderers.weekly-actions.js'
-)?.source || '';
-const printSource = renderSources.find((entry) => entry.filename === 'KPI.work.renderers.print.js')?.source || '';
-
+const rendererSource = await fs.readFile(rendererPath, 'utf8');
+const analyticsSource = await fs.readFile(analyticsPath, 'utf8');
 const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
 
-function createClassList() {
-  const classes = new Set();
-  return {
-    add(...tokens) {
-      tokens.forEach((token) => classes.add(token));
+function createRendererContext() {
+  const calendarCalls = [];
+  const historyCalls = [];
+  const context = {
+    KpiWorkBrowserAdapter: {
+      renderHistory(category, renderContext) {
+        historyCalls.push({ category, renderContext });
+      },
     },
-    remove(...tokens) {
-      tokens.forEach((token) => classes.delete(token));
-    },
-    contains(token) {
-      return classes.has(token);
+    renderWorkTeamCalendarContent(category, headerHtml, options) {
+      calendarCalls.push({ category, headerHtml, options });
     },
   };
+  vm.createContext(context);
+  vm.runInContext(rendererSource, context, { filename: 'KPI.work.renderers.js' });
+  return { context, calendarCalls, historyCalls };
 }
 
-function createContext() {
-  const contentContainer = { innerHTML: '' };
-  const printSheet = {
+function createAnalyticsPrintContext() {
+  const classes = new Set();
+  const sheet = {
     innerHTML: '',
-    dataset: {},
+    mode: '',
     setAttribute(name, value) {
-      this.dataset[name] = value;
+      if (name === 'data-mode') this.mode = value;
     },
   };
-  const clickedAnchors = [];
-  const localUrls = [];
-  const categoryMap = new Map();
-  const store = {
-    work_demo: {
-      meta: { moduleKey: 'work_demo', moduleName: '주간 데모', version: 1, updatedAt: '2026-04-23T00:00:00.000Z' },
-      weeks: [
-        {
-          year: 2026,
-          week: 17,
-          days: {
-            mon: [{ team: '유산', room: 'A', task: '점검' }],
-            tue: [],
-            wed: [],
-            thu: [],
-            fri: [],
-            sat: [],
-            sun: [],
-          },
-        },
-      ],
-    },
-    work_monthly_plan: {
-      meta: { moduleKey: 'work_monthly_plan', moduleName: '월간 계획', version: 1, updatedAt: '2026-04-23T00:00:00.000Z' },
-      monthly: { entries: {} },
-      weeks: [],
-    },
-  };
+  let printCalls = 0;
   const context = {
     console,
-    window: null,
     document: {
-      body: {
-        appendChild() {},
-      },
       documentElement: {
-        classList: createClassList(),
+        classList: {
+          add(value) {
+            classes.add(value);
+          },
+          remove(value) {
+            classes.delete(value);
+          },
+          contains(value) {
+            return classes.has(value);
+          },
+        },
       },
       getElementById(id) {
-        if (id === 'content-container') return contentContainer;
-        if (id === 'print-sheet') return printSheet;
-        return null;
-      },
-      querySelector() {
-        return null;
-      },
-      querySelectorAll() {
-        return [];
-      },
-      createElement(tagName) {
-        if (tagName === 'a') {
-          return {
-            href: '',
-            download: '',
-            style: {},
-            click() {
-              clickedAnchors.push({ href: this.href, download: this.download });
-            },
-            remove() {},
-          };
-        }
-        return { style: {}, click() {}, remove() {} };
+        return id === 'print-sheet' ? sheet : null;
       },
     },
-    URL: {
-      createObjectURL(blob) {
-        localUrls.push(blob);
-        return `blob:${localUrls.length}`;
+    KpiWorkBrowserAdapter: {
+      setWindowTimeout(callback) {
+        callback();
+        return 1;
       },
-      revokeObjectURL() {},
-    },
-    Blob,
-    AppData: {
-      work: {
-        name: '팀별내역서',
-        accent: '#16a34a',
+      printWindow() {
+        printCalls += 1;
       },
-    },
-    WorkState: {
-      activeWeek: { work_demo: '2026-W17' },
-      activeMonth: { work_monthly_plan: '2026-04' },
-      activeDate: { work_monthly_plan: '2026-04-15' },
-      monthFilters: {},
-      monthReportCache: {
-        work_monthly_plan: {
-          rangeLabel: '2026-04 ~ 2026-04',
-          totalCount: 1,
-          filters: { team: '', owner: '', room: '', keyword: '' },
-          entries: [
-            { dateKey: '2026-04-15', team: '유산', room: 'A', owner: '홍길동', task: '월간 점검' },
-          ],
-        },
-      },
-    },
-    WORK_DAY_KEYS: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
-    WORK_DAY_LABELS: ['월', '화', '수', '목', '금', '토', '일'],
-    WORK_DAY_COLORS: ['#2563eb', '#22c55e', '#f59e0b', '#f97316', '#ef4444', '#8b5cf6', '#0ea5e9'],
-    getWorkData(dataKey, moduleName) {
-      const data = store[dataKey];
-      if (data) return JSON.parse(JSON.stringify(data));
-      return { meta: { moduleKey: dataKey, moduleName: moduleName || dataKey, version: 1 }, weeks: [] };
-    },
-    saveWorkData(dataKey, data) {
-      store[dataKey] = JSON.parse(JSON.stringify(data));
-      return true;
-    },
-    cloneWorkDataPayload(value) {
-      return JSON.parse(JSON.stringify(value || {}));
-    },
-    waitForWorkServerWrite() {
-      return Promise.resolve(true);
-    },
-    ensureWeeksUpToCurrent() {},
-    ensureWeek(data, year, week) {
-      data.weeks = data.weeks || [];
-      const existing = data.weeks.find((entry) => entry.year === year && entry.week === week);
-      if (existing) return;
-      data.weeks.push({
-        year,
-        week,
-        days: {
-          mon: [],
-          tue: [],
-          wed: [],
-          thu: [],
-          fri: [],
-          sat: [],
-          sun: [],
-        },
-      });
-    },
-    makeWeekKey(year, week) {
-      return `${year}-W${String(week).padStart(2, '0')}`;
-    },
-    parseWeekKey(key) {
-      const match = /^(\d{4})-W(\d{2})$/.exec(String(key || ''));
-      if (!match) return null;
-      return { year: Number(match[1]), week: Number(match[2]) };
-    },
-    getISOWeekInfo() {
-      return { year: 2026, week: 17 };
-    },
-    getWeekStartDate(year, week) {
-      const date = new Date(Date.UTC(year, 0, 1));
-      date.setUTCDate(date.getUTCDate() + (week - 1) * 7);
-      return new Date(date);
-    },
-    formatWeekRange() {
-      return '04.21(월) ~ 04.27(일)';
-    },
-    formatDate(date) {
-      return `${String(date.getUTCMonth() + 1).padStart(2, '0')}.${String(date.getUTCDate()).padStart(2, '0')}`;
-    },
-    normalizeDayEntries(entries) {
-      return (entries || []).map((entry) => ({
-        team: entry.team || '',
-        room: entry.room || '',
-        task: entry.task || '',
-      }));
-    },
-    normalizeWorkTeamName(value) {
-      return String(value || '').trim();
-    },
-    getWorkTeamOptions() {
-      return ['유산', '북정'];
-    },
-    getEquipIconInfo(team) {
-      return {
-        icon: team === '북정' ? 'fa-box' : 'fa-folder',
-        color: team === '북정' ? '#f97316' : '#2563eb',
-      };
-    },
-    escapeJs(value) {
-      return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     },
     escapeHtml(value) {
-      return String(value || '')
+      return String(value ?? '')
         .replaceAll('&', '&amp;')
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;');
     },
-    renderWorkTeamCalendarContent() {},
-    getWorkCategory(dataKey) {
-      return categoryMap.get(dataKey) || null;
-    },
-    setLastModified() {},
-    getMonthMatrix(year, monthIndex) {
-      return [new Date(Date.UTC(year, monthIndex, 15))];
-    },
-    getMonthlyFilterState() {
-      return {
-        startMonth: '2026-04',
-        endMonth: '2026-04',
-        team: '',
-        room: '',
-        owner: '',
-        keyword: '',
-      };
-    },
-    normalizeMonthRange(startMonth, endMonth) {
-      return { start: startMonth || '2026-04', end: endMonth || '2026-04' };
-    },
-    collectEntriesByDateRange() {
-      return {
-        '2026-04-15': [
-          { team: '유산', room: 'A', owner: '홍길동', task: '월간 점검' },
-        ],
-      };
-    },
-    isDateInRange() {
-      return true;
-    },
-    entryMatchesFilter() {
-      return true;
-    },
-    getWorkOwners() {
-      return ['홍길동'];
-    },
-    buildSelectOptions(list, selectedValue, placeholder) {
-      const options = [`<option value="">${placeholder}</option>`];
-      (list || []).forEach((item) => {
-        const selected = item === selectedValue ? 'selected' : '';
-        options.push(`<option value="${item}" ${selected}>${item}</option>`);
-      });
-      return options.join('');
-    },
-    getEquipRooms() {
-      return ['A'];
-    },
-    formatMonthLabel(year, monthIndex) {
-      return `${year}년 ${monthIndex + 1}월`;
-    },
-    formatDateKey(date) {
-      return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
-    },
-    updateMonthlyFilter() {},
-    clearMonthlyFilter() {},
-    ensureMonthly(data) {
-      data.monthly = data.monthly || { entries: {} };
-      return data.monthly;
-    },
     formatUtilNumber(value, digits = 0) {
-      return Number(value || 0).toFixed(digits);
+      return Number(value || 0).toFixed(digits ?? 0);
     },
     setTimeout(callback) {
       callback();
-      return 0;
-    },
-    printCalls: 0,
-    print() {
-      this.printCalls += 1;
+      return 1;
     },
     Date,
     JSON,
@@ -336,114 +103,83 @@ function createContext() {
     Boolean,
     Promise,
   };
-  context.window = context;
-  context.globalThis = context;
-
-  const weeklyCategory = {
-    dataKey: 'work_demo',
-    title: '주간 데모',
-    desc: '주간 편집 데모',
-    color: '#2563eb',
-  };
-  const monthlyCategory = {
-    dataKey: 'work_monthly_plan',
-    title: '월간 계획',
-    desc: '월간 계획 데모',
-    color: '#0f766e',
-  };
-  categoryMap.set(weeklyCategory.dataKey, weeklyCategory);
-  categoryMap.set(monthlyCategory.dataKey, monthlyCategory);
-  context.weeklyCategory = weeklyCategory;
-  context.monthlyCategory = monthlyCategory;
-
   vm.createContext(context);
-  renderSources.forEach(({ filename, source }) => {
-    vm.runInContext(source, context, { filename });
-  });
-
-  return { context, contentContainer, printSheet, clickedAnchors, localUrls };
+  vm.runInContext(analyticsSource, context, { filename: 'KPI.util.analytics.js' });
+  return { context, sheet, classes, getPrintCalls: () => printCalls };
 }
 
-test('work renderers split files expose weekly, monthly, and print helpers together', () => {
-  const { context } = createContext();
+test('work renderer has one canonical document route and preserves hidden history routing', () => {
+  const { context, calendarCalls, historyCalls } = createRendererContext();
+  const options = { teamDataKey: 'work_team_calendar_team2' };
+  const documentCategory = { view: 'team_calendar_document', dataKey: 'work_team_calendar_team1_part1' };
+  const historyCategory = { view: 'history_tool', dataKey: 'work_history_records' };
 
-  assert.equal(typeof context.renderWorkContent, 'function');
-  assert.equal(typeof context.workExport, 'function');
-  assert.equal(typeof context.workSelect, 'function');
-  assert.equal(typeof context.printMonthlyReport, 'function');
-  assert.equal(typeof context.printUtilAnalytics, 'function');
-  assert.equal(typeof context.renderMonthlyPlan, 'function');
-  assert.equal(typeof context.monthPrev, 'function');
-  assert.equal(typeof context.monthNext, 'function');
+  context.renderWorkContent(documentCategory, { options });
+  context.renderWorkContent(historyCategory, { source: 'shortcut' });
+  context.renderWorkContent({ view: 'removed_legacy_view' });
+
+  assert.equal(calendarCalls.length, 1);
+  assert.equal(calendarCalls[0].category, documentCategory);
+  assert.equal(calendarCalls[0].headerHtml, '');
+  assert.equal(calendarCalls[0].options, options);
+  assert.equal(historyCalls.length, 1);
+  assert.equal(historyCalls[0].category, historyCategory);
+  assert.equal(calendarCalls.length + historyCalls.length, 2);
+  assert.doesNotMatch(rendererSource, /team_calendar(?:'|"|\s)/);
+  assert.doesNotMatch(rendererSource, /work_monthly_plan|renderMonthlyPlan|activeWeek|workExport/);
 });
 
-test('work renderers split files render weekly and monthly content after loading together', () => {
-  const { context, contentContainer } = createContext();
-
-  context.renderWorkContent(context.weeklyCategory);
-  assert.match(contentContainer.innerHTML, /work-week-meta/);
-  assert.match(contentContainer.innerHTML, /workExport\('work_demo'\)/);
-  assert.match(contentContainer.innerHTML, /data-work-save-status="work_demo"/);
-
-  context.renderWorkContent(context.monthlyCategory);
-  assert.match(contentContainer.innerHTML, /month-panel/);
-  assert.match(contentContainer.innerHTML, /printMonthlyReport\('work_monthly_plan'\)/);
-  assert.match(contentContainer.innerHTML, /data-work-save-status="work_monthly_plan"/);
+test('legacy work renderer files and loaders are gone', async () => {
+  const removedFiles = [
+    'KPI.work.renderers.weekly-actions.js',
+    'KPI.work.renderers.monthly-plan.js',
+    'KPI.work.renderers.print.js',
+  ];
+  for (const filename of removedFiles) {
+    await assert.rejects(fs.access(path.join(workDir, filename)));
+    assert.doesNotMatch(kpiHtml, new RegExp(filename.replaceAll('.', '\\.')));
+  }
+  assert.match(kpiHtml, /runtime\/work\/KPI\.work\.renderers\.js\?v=4/);
+  assert.doesNotMatch(kpiHtml, /work-chooser|work_monthly_plan/);
 });
 
-test('work renderers export helper downloads a js bootstrap payload', async () => {
-  const { context, clickedAnchors, localUrls } = createContext();
+test('utility analytics owns its print preview after legacy work print removal', () => {
+  assert.match(analyticsSource, /const decimalsVal = parseInt\(/);
+  const { context, sheet, classes, getPrintCalls } = createAnalyticsPrintContext();
+  const result = {
+    datasetLabel: '전기',
+    metricKey: 'usage',
+    metricLabel: '사용량',
+    from: '2026-01',
+    to: '2026-02',
+    team: '전체',
+    scale: 1,
+    decimals: 0,
+    count: 2,
+    sum: 30,
+    avg: 15,
+    entries: [
+      { year: 2026, month: 1, team: '1팀', usage: 10 },
+      { year: 2026, month: 2, team: '2팀', usage: 20 },
+    ],
+  };
 
-  const didExport = await context.workExport('work_demo');
-
-  assert.equal(didExport, true);
-  assert.equal(clickedAnchors.length, 1);
-  assert.match(clickedAnchors[0].download, /work_demo/);
-  assert.match(clickedAnchors[0].href, /^blob:/);
-  assert.equal(localUrls.length, 1);
-  assert.doesNotMatch(weeklyActionsSource, /window\./);
-  assert.equal(typeof context.KpiWorkBrowserAdapter.buildPortalDataBootstrapScript, 'function');
-  const bootstrapScript = await localUrls[0].text();
-  assert.match(bootstrapScript, /\(function bootstrapWorkPortalData\(\)\{/);
-  assert.match(bootstrapScript, /window\.PortalData = window\.PortalData \|\| \{\};/);
-  assert.match(bootstrapScript, /window\.PortalData\["work_demo"\]/);
+  assert.equal(context.printUtilAnalytics(null), false);
+  assert.equal(context.printUtilAnalytics(result), true);
+  assert.equal(sheet.mode, 'util');
+  assert.match(sheet.innerHTML, /유틸리티 분석 \(전기\)/);
+  assert.match(sheet.innerHTML, /2026-01/);
+  assert.equal(getPrintCalls(), 1);
+  assert.equal(classes.has('printing'), false);
+  assert.doesNotMatch(analyticsSource, /triggerWorkPrintPreview|printMonthlyReport/);
 });
 
-test('work renderers print helper populates the print sheet and triggers print', () => {
-  const { context, printSheet } = createContext();
+test('kpi html loads utility analytics and the canonical renderer before work runtime', () => {
+  const analyticsIndex = kpiHtml.indexOf('utility/runtime/util/analytics/KPI.util.analytics.js?v=3');
+  const rendererIndex = kpiHtml.indexOf('team-report/runtime/work/KPI.work.renderers.js?v=4');
+  const runtimeIndex = kpiHtml.indexOf('team-report/runtime/work/KPI.work.runtime.js');
 
-  context.printMonthlyReport('work_monthly_plan');
-
-  assert.equal(printSheet.dataset['data-mode'], 'monthly');
-  assert.match(printSheet.innerHTML, /월간 실적 보고서/);
-  assert.equal(context.printCalls, 1);
-});
-
-test('work renderers print helper uses the browser adapter for print access', () => {
-  const { context } = createContext();
-
-  assert.equal(typeof context.KpiWorkBrowserAdapter.printWindow, 'function');
-  assert.doesNotMatch(printSource, /window\./);
-});
-
-test('work renderers route history rendering through the browser adapter', () => {
-  assert.doesNotMatch(renderersSource, /window\.KpiWorkHistory/);
-});
-
-test('kpi html loads work renderer split files before work runtime bootstrap', () => {
-  const weeklyActionsIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.weekly-actions.js?v=1');
-  const printIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.print.js?v=1');
-  const monthlyPlanIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.monthly-plan.js?v=1');
-  const adapterIndex = kpiHtml.indexOf('runtime/work/KPI.work.browser-adapter.js?v=1');
-  const renderersIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.js?v=2');
-  const workRuntimeIndex = kpiHtml.indexOf('runtime/work/KPI.work.runtime.js?v=228');
-
-  assert.ok(adapterIndex >= 0, 'work browser adapter loader is missing');
-  assert.ok(weeklyActionsIndex >= 0, 'work renderer weekly actions loader is missing');
-  assert.ok(weeklyActionsIndex > adapterIndex, 'work renderer weekly actions must load after browser adapter');
-  assert.ok(printIndex > weeklyActionsIndex, 'work renderer print helper must load after weekly actions');
-  assert.ok(monthlyPlanIndex > printIndex, 'work renderer monthly plan must load after print helper');
-  assert.ok(renderersIndex > adapterIndex, 'work renderers shell must load after browser adapter');
-  assert.ok(renderersIndex > monthlyPlanIndex, 'work renderers shell must load after split helpers');
-  assert.ok(workRuntimeIndex > renderersIndex, 'work runtime bootstrap must load after work renderers');
+  assert.ok(analyticsIndex >= 0, 'utility analytics loader is missing');
+  assert.ok(rendererIndex > analyticsIndex, 'canonical work renderer must load after utility analytics');
+  assert.ok(runtimeIndex > rendererIndex, 'work runtime must load after the canonical renderer');
 });

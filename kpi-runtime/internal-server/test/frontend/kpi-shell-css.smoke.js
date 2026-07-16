@@ -14,6 +14,7 @@ const appRoot = path.join(repoRoot, runtimeDirName, 'app');
 const stylesRoot = path.join(appRoot, 'styles');
 const kpiHtmlPath = path.join(repoRoot, 'KPI.html');
 const shellManifestPath = path.join(appRoot, 'KPI.app.shell.css');
+const navigationPath = path.join(appRoot, 'KPI.app.navigation.js');
 
 const dashboardFacadePath = path.join(stylesRoot, 'shell', 'dashboard.css');
 const dashboardChunkRoot = path.join(stylesRoot, 'shell', 'dashboard');
@@ -68,26 +69,26 @@ const styleEntries = [
     relativeSegments: ['shell', 'dashboard.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/shell/shell-chrome.css?v=060`,
-    manifestHref: './styles/shell/shell-chrome.css?v=060',
+    href: `${runtimeDirName}/app/styles/shell/shell-chrome.css?v=064`,
+    manifestHref: './styles/shell/shell-chrome.css?v=064',
     fileName: 'shell-chrome.css',
     relativeSegments: ['shell', 'shell-chrome.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/work/work.css?v=066`,
-    manifestHref: './styles/work/work.css?v=066',
+    href: `${runtimeDirName}/app/styles/work/work.css?v=068`,
+    manifestHref: './styles/work/work.css?v=068',
     fileName: 'work.css',
     relativeSegments: ['work', 'work.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/work/team-report-document-experiment.css?v=001`,
-    manifestHref: './styles/work/team-report-document-experiment.css?v=001',
-    fileName: 'team-report-document-experiment.css',
-    relativeSegments: ['work', 'team-report-document-experiment.css'],
+    href: `${runtimeDirName}/app/styles/work/team-report-document.css?v=007`,
+    manifestHref: './styles/work/team-report-document.css?v=007',
+    fileName: 'team-report-document.css',
+    relativeSegments: ['work', 'team-report-document.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/metering/metering.css?v=085`,
-    manifestHref: './styles/metering/metering.css?v=085',
+    href: `${runtimeDirName}/app/styles/metering/metering.css?v=086`,
+    manifestHref: './styles/metering/metering.css?v=086',
     fileName: 'metering.css',
     relativeSegments: ['metering', 'metering.css'],
   },
@@ -107,6 +108,7 @@ const styleEntries = [
 
 const kpiHtml = await fs.readFile(kpiHtmlPath, 'utf8');
 const shellManifest = await fs.readFile(shellManifestPath, 'utf8');
+const navigationSource = await fs.readFile(navigationPath, 'utf8');
 const resolvedDashboard = await resolveCssImports(dashboardFacadePath);
 const styleContents = Object.fromEntries(
     await Promise.all(
@@ -143,6 +145,53 @@ test('shell css compatibility manifest imports split files', () => {
       `${fileName} must remain in the compatibility manifest`
     );
   }
+});
+
+test('management policy home keeps its copy and uses the clean full-viewport layout', () => {
+  const expectedCopy = [
+    '2026년 경영방침',
+    '새로운 기준으로 지속 성장의 기반을 구축한다',
+    'AI 역량을 확보하여 업무효율을 극대화한다.',
+    '신소가 행동강령',
+    '신뢰(信賴)',
+    '“의지하고, 이해하고, 믿고, 열어라”',
+    '“의리신열”',
+    '차이나 부족함을 인정하고 스스로를 낮추는 겸손한 자세',
+    '상대를 배려, 존중하고 이해하려는 태도',
+    '존중, 성실, 책임 있는 행동을 취하는 자세',
+    '개방적이고 열린 마음으로 받아들이려는 자세',
+    '소통(疏通)',
+    '“찾아가고, 다가가고, 듣고, 말하라”',
+    '“방다청설”',
+    '적극적인 문제해결과 도전하려는 자세',
+    '자발적이며 친절하게 협업하고 협력하는 모습',
+    '경청하고 수용하는 태도',
+    '진정성과 공감대 형성을 위한 적극적인 자세',
+    '가치창조(價値創造)',
+    '“경험하고, 나누고, 배우고, 쓸모있게 하라”',
+    '“경나학쓸”',
+    '도전을 통해 노하우를 쌓고 다양한 기능과 지식을 획득하는 자세',
+    '생각과 정보를 나누고 공유하는 자세',
+    '새로운 기술과 환경에서 아이디어를 찾고 학습하려는 자세',
+    '창의적인 마인드와 가치지향적인 태도',
+  ];
+
+  for (const copy of expectedCopy) {
+    assert.ok(navigationSource.includes(copy), `management policy copy must remain unchanged: ${copy}`);
+  }
+
+  const shellCss = styleContents['shell-chrome.css'];
+  const homeStart = shellCss.indexOf('.viewer-home-shell {');
+  const homeEnd = shellCss.indexOf('.work-metering-embed-shell {', homeStart);
+  const homeCss = shellCss.slice(homeStart, homeEnd);
+
+  assert.ok(homeStart >= 0 && homeEnd > homeStart, 'management policy home css must remain discoverable');
+  assert.match(homeCss, /height:\s*calc\(100dvh - 60px\);/);
+  assert.match(homeCss, /grid-template-rows:\s*minmax\(250px, 0\.9fr\) minmax\(330px, 1\.1fr\);/);
+  assert.match(homeCss, /grid-template-columns:\s*minmax\(280px, 32%\) minmax\(0, 1fr\);/);
+  assert.match(homeCss, /\.viewer-home-guideline-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\);/s);
+  assert.match(homeCss, /@media \(max-width: 1080px\)[\s\S]*grid-template-columns:\s*1fr;/);
+  assert.doesNotMatch(homeCss, /max-width:\s*1260px|radial-gradient|backdrop-filter|box-shadow/);
 });
 
 test('dashboard compatibility facade keeps recursive chunks ordered and bounded', async () => {
@@ -269,14 +318,20 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['shell-chrome.css'], /\.viewer-header\s*\{/);
   assert.match(styleContents['shell-chrome.css'], /\.global-save-dock\s*\{/);
   assert.match(styleContents['shell-chrome.css'], /\.runtime-auth-bar\s*\{/);
+  assert.doesNotMatch(styleContents['shell-chrome.css'], /sidebar-item-team/);
 
-  assert.match(styleContents['work.css'], /\.work-panel\s*\{/);
-  assert.match(styleContents['work.css'], /\.work-chooser-shell\s*\{/);
+  assert.match(styleContents['work.css'], /\.work-btn\s*\{/);
+  assert.match(styleContents['work.css'], /\.work-save-status\s*\{/);
+  assert.match(styleContents['work.css'], /\.work-team-calendar-inline-shell\s*\{/);
+  assert.doesNotMatch(styleContents['work.css'], /\.work-panel\s*\{|work-chooser|work-team-hero|work-team-outline|work-team-glyph/);
   assert.doesNotMatch(styleContents['work.css'], /f107/);
   assert.match(styleContents['work.css'], /\.work-team-calendar-production-action-list\s*\{[^}]*position:\s*static;/s);
+  assert.match(styleContents['work.css'], /\.work-team-calendar-utility-action-slot\s*\{[^}]*position:\s*absolute;/s);
+  assert.match(styleContents['work.css'], /\.work-team-calendar-utility-chip \.work-team-calendar-production-action-list\s*\{[^}]*position:\s*absolute;/s);
+  assert.match(styleContents['team-report-document.css'], /\.work-team-calendar-dialog\.is-team-report-document \.work-team-calendar-topbar\s*\{[^}]*overflow:\s*visible;/s);
 
   assert.match(styleContents['metering.css'], /\.util-tabs-wrap\s*\{/);
-  assert.match(styleContents['metering.css'], /\.month-panel\s*\{/);
+  assert.doesNotMatch(styleContents['metering.css'], /\.month-panel\s*\{|Monthly plan calendar/);
   assert.match(styleContents['metering.css'], /\.util-sheet-meter-table-electric\s+th\[data-correction-source="true"\]/);
   assert.match(styleContents['metering.css'], /\.util-sheet-meter-table-electric\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*0;[^}]*table-layout:\s*fixed;/s);
   assert.match(styleContents['metering.css'], /\.util-sheet-meter-table-electric\s+th,\s*\.util-sheet-meter-table-electric\s+td\s*\{[^}]*white-space:\s*normal;[^}]*overflow-wrap:\s*anywhere;/s);

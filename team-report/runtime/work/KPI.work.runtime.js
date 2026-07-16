@@ -38,20 +38,6 @@
         };
     }
 
-    function getWorkSaveCapability(dataKey) {
-        const serverRuntime = typeof getWorkServerRuntimeConfig === 'function'
-            ? getWorkServerRuntimeConfig(dataKey)
-            : null;
-        const serverMode = runtime.hasServerAuthority();
-        const canWrite = runtime.canUseServerWrite(serverRuntime?.writeEnabled === true);
-        return {
-            serverMode,
-            canWrite
-        };
-    }
-
-    runtime.registerDefaultOpenOptions('work', { autoOpenModal: false });
-
     runtime.registerSectionRenderer('work', (category, context = {}) => {
         renderWorkContent(category, context);
     });
@@ -60,7 +46,6 @@
         renderLastModified();
     });
 
-    runtime.registerSaveProvider('work-team-calendar-save', () => null);
     runtime.registerSaveProvider('work-history-save', (context = {}) => buildWorkHistorySaveProvider(context));
 
     runtime.registerShortcutCloser('work-team-calendar', () => {

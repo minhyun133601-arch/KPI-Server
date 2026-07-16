@@ -490,6 +490,89 @@
         .data-equipment-maintenance-row:focus-within .data-equipment-maintenance-remove {
             opacity: 1;
         }
+        .data-equipment-annual-plan-card .data-equipment-table-scroll {
+            overflow-x: auto;
+        }
+        .data-equipment-annual-plan-editor {
+            display: grid;
+            gap: 7px;
+            min-width: 940px;
+        }
+        .data-equipment-annual-plan-head,
+        .data-equipment-annual-plan-row {
+            display: grid;
+            grid-template-columns: minmax(108px, 1.1fr) minmax(108px, 1.1fr) minmax(210px, 2.35fr) minmax(72px, 0.72fr) minmax(72px, 0.72fr) minmax(230px, 2.55fr);
+            gap: 6px;
+            min-width: 0;
+            align-items: center;
+        }
+        .data-equipment-annual-plan-head {
+            padding: 0 7px 1px;
+            color: #34476c;
+            font-size: 0.72rem;
+            font-weight: 900;
+            line-height: 1.2;
+        }
+        .data-equipment-annual-plan-head span {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .data-equipment-annual-plan-row {
+            position: relative;
+            border: 1px solid #dce8f5;
+            border-radius: 6px;
+            background: #ffffff;
+            padding: 7px 8px;
+        }
+        .data-equipment-annual-plan-cell {
+            min-width: 0;
+        }
+        .data-equipment-annual-plan-row input {
+            width: 100%;
+            min-width: 0;
+            min-height: 34px;
+            border: 1px solid #dce8f5;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #263957;
+            padding: 7px 8px;
+            font: inherit;
+            font-size: 0.8rem;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+        .data-equipment-annual-plan-row input:focus {
+            outline: 2px solid rgba(37, 99, 235, 0.16);
+            border-color: #8bb8ee;
+            background: #f8fbff;
+        }
+        .data-equipment-annual-plan-cell:last-of-type input {
+            padding-right: 34px;
+        }
+        .data-equipment-annual-plan-remove {
+            position: absolute;
+            top: 5px;
+            right: 6px;
+            z-index: 2;
+            width: auto;
+            height: auto;
+            min-height: 0;
+            border: 0;
+            background: transparent;
+            color: #9f1239;
+            padding: 0 2px;
+            font-size: 0.68rem;
+            font-weight: 900;
+            line-height: 1.1;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .data-equipment-annual-plan-row:hover .data-equipment-annual-plan-remove,
+        .data-equipment-annual-plan-row:focus-within .data-equipment-annual-plan-remove {
+            opacity: 1;
+        }
         .data-equipment-doc-list {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -509,7 +592,7 @@
             border: 1px solid #dce8f5;
             border-radius: 6px;
             background: #ffffff;
-            padding: 8px 34px 9px 8px;
+            padding: 8px 8px 9px;
         }
         .data-equipment-doc-list-item input[data-equipment-field="title"] {
             box-sizing: border-box;
@@ -536,7 +619,7 @@
         .data-equipment-document-picker {
             box-sizing: border-box;
             display: grid;
-            grid-template-columns: auto minmax(0, 1fr);
+            grid-template-columns: auto minmax(0, 1fr) auto;
             align-items: center;
             gap: 6px;
             min-height: 24px;
@@ -572,35 +655,43 @@
             font-weight: 900;
             cursor: pointer;
         }
+        .data-equipment-document-actions {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 5px;
+            white-space: nowrap;
+        }
+        .data-equipment-document-download,
         .data-equipment-document-remove {
-            position: absolute;
-            top: 5px;
-            right: 6px;
-            z-index: 2;
-            width: auto;
-            height: auto;
-            min-height: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 24px;
             border: 0;
             background: transparent;
-            color: #9f1239;
-            padding: 0 2px;
+            padding: 0 3px;
             font-size: 0.68rem;
             font-weight: 900;
             line-height: 1.1;
-            opacity: 0;
-            pointer-events: none;
             cursor: pointer;
             white-space: nowrap;
         }
-        .data-equipment-doc-list-item:hover .data-equipment-document-remove,
-        .data-equipment-doc-list-item:focus-within .data-equipment-document-remove,
-        .data-equipment-document-remove:focus-visible {
-            opacity: 1;
-            pointer-events: auto;
+        .data-equipment-document-download {
+            color: #1d4ed8;
+            text-decoration: none;
         }
+        .data-equipment-document-remove {
+            color: #9f1239;
+        }
+        .data-equipment-document-download:hover,
         .data-equipment-document-remove:hover {
-            color: #be123c;
             text-decoration: underline;
+        }
+        .data-equipment-document-download:focus-visible,
+        .data-equipment-document-remove:focus-visible {
+            outline: 2px solid rgba(37, 99, 235, 0.24);
+            outline-offset: 1px;
         }
         .data-equipment-table-scroll {
             min-width: 0;

@@ -3,9 +3,9 @@
  * Runtime now loads split styles directly from KPI.html to keep static-asset smoke coverage explicit.
  */
 @import url("./styles/shell/dashboard.css?v=108");
-@import url("./styles/shell/shell-chrome.css?v=060");
-@import url("./styles/work/work.css?v=066");
-@import url("./styles/work/team-report-document-experiment.css?v=001");
-@import url("./styles/metering/metering.css?v=085");
+@import url("./styles/shell/shell-chrome.css?v=064");
+@import url("./styles/work/work.css?v=068");
+@import url("./styles/work/team-report-document.css?v=007");
+@import url("./styles/metering/metering.css?v=086");
 @import url("./styles/audit/audit.css?v=077");
 @import url("./styles/shared/status-team-marks.css?v=20260716a");

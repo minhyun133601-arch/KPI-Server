@@ -627,7 +627,7 @@
             ].join('|');
         }
 
-        function removeUtilProductionEntriesByKeySet(keySet) {
+        function removeUtilProductionEntriesByKeySet(keySet, options = {}) {
             if (!(keySet instanceof Set) || keySet.size === 0) return 0;
             const nextEntries = [];
             let removedCount = 0;
@@ -655,14 +655,16 @@
                 targetTeam.entries.push(entry);
             });
             refreshUtilProductionDailyIndex();
-            Promise.resolve(persistUtilProductionDailyState({
-                deleteDedupeKeys: Array.from(keySet),
-                upsertDedupeKeys: []
-            }))
-                .then(() => refreshUtilProductionLinkedDatasets())
-                .catch(error => {
-                    console.warn('util production delete save failed', error);
-                });
+            if (options.persist !== false) {
+                Promise.resolve(persistUtilProductionDailyState({
+                    deleteDedupeKeys: Array.from(keySet),
+                    upsertDedupeKeys: []
+                }))
+                    .then(saved => (saved === true ? refreshUtilProductionLinkedDatasets() : false))
+                    .catch(error => {
+                        console.warn('util production delete save failed', error);
+                    });
+            }
             if (typeof refreshUtilProductionArchiveCountBadges === 'function') {
                 refreshUtilProductionArchiveCountBadges();
             }

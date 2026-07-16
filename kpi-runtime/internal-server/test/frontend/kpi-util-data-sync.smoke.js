@@ -247,7 +247,7 @@ test('util data sync browser adapter loads before data sync runtime', () => {
   const adapterIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.data-sync.browser-adapter.js?v=2');
   const dataSyncIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.data-sync.js?v=207');
   const productionIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.data-sync.production.js?v=7');
-  const productionImportIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.production-import.js?v=10');
+  const productionImportIndex = kpiHtml.indexOf('utility/runtime/util/KPI.util.production-import.js?v=11');
 
   assert.ok(adapterIndex >= 0, 'util data sync browser adapter loader is missing');
   assert.ok(dataSyncIndex > adapterIndex, 'util data sync runtime must load after its browser adapter');

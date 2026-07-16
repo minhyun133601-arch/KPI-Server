@@ -28,6 +28,16 @@ test('equipment-history draft and record models preserve labels groups photos an
     photoThumbDataUrl: 'data:image/jpeg;base64,VEhVTUI=',
     photoCrop: { x: 0.1, y: 0.2, width: 0.5, height: 0.4 },
     detailInfo: [{ label: '제조사', value: '샘플 제조사' }],
+    annualMaintenancePlan: [
+      {
+        equipmentName: '샘플 혼합기 A',
+        maintenanceItem: '구동 벨트',
+        maintenanceContent: '장력 확인 및 마모 상태 점검',
+        cycle: '연 2회',
+        executionMonth: '3월',
+        inspectionNotes: '점검 완료',
+      },
+    ],
     maintenanceHistory: [
       { date: '2026.04.29', type: '정기점검', content: '구동부 점검', worker: '홍길동', note: '정상' },
     ],
@@ -230,6 +240,9 @@ test('equipment-history draft and record models preserve labels groups photos an
     'custom-photo-key'
   );
   assert.equal(api.createDraft().documents.length, 1);
+  assert.equal(api.createDraft({ name: 'Mixer' }).annualMaintenancePlan.length, 3);
+  assert.equal(api.createDraft({ name: 'Mixer' }).annualMaintenancePlan[0].equipmentName, 'Mixer');
+  assert.equal(api.buildRecordFromDraft({ name: 'Mixer' }).annualMaintenancePlan.length, 0);
   assert.equal(api.createDraft({ documents: [{ title: '점검 보고서' }] }).documents.length, 1);
   assert.equal(
     api.createDraft({ documents: Array.from({ length: 4 }, (_, index) => ({ title: `문서 ${index + 1}` })) }).documents
@@ -241,6 +254,23 @@ test('equipment-history draft and record models preserve labels groups photos an
   assert.equal(record.manufacturedAt, '2020-03');
   assert.equal(record.documents[0].documentId, 'doc-attachment-1');
   assert.equal(record.documents[0].attachmentKey, undefined);
+  assert.equal(
+    JSON.stringify(record.annualMaintenancePlan),
+    JSON.stringify([
+      {
+        equipmentName: '샘플 혼합기 A',
+        maintenanceItem: '구동 벨트',
+        maintenanceContent: '장력 확인 및 마모 상태 점검',
+        cycle: '연 2회',
+        executionMonth: '3월',
+        inspectionNotes: '점검 완료',
+      },
+    ])
+  );
+  assert.equal(
+    api.normalizeEquipmentItems({ equipmentList: [record] })[0].annualMaintenancePlan[0].maintenanceItem,
+    '구동 벨트'
+  );
   assert.equal(record.operationInfo.map((item) => item.label).join(','), '설비명,관리팀,실,공정,가동률');
   assert.ok(record.detailInfo.some((item) => item.label === '공정' && item.value === '혼합'));
   assert.ok(!record.detailInfo.some((item) => item.label === '설비코드'));

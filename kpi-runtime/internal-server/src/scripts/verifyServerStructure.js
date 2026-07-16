@@ -52,9 +52,6 @@ const frontendTrackedFiles = [
   repoPath('team-report', 'runtime', 'work', 'KPI.work.production.overview.js'),
   repoPath('team-report', 'runtime', 'work', 'KPI.work.production.draft.js'),
   repoPath('team-report', 'runtime', 'work', 'KPI.work.renderers.js'),
-  repoPath('team-report', 'runtime', 'work', 'KPI.work.renderers.weekly-actions.js'),
-  repoPath('team-report', 'runtime', 'work', 'KPI.work.renderers.print.js'),
-  repoPath('team-report', 'runtime', 'work', 'KPI.work.renderers.monthly-plan.js'),
   repoPath('team-report', 'runtime', 'work', 'history', 'KPI.work.history.browser-adapter.js'),
   repoPath('team-report', 'runtime', 'work', 'history', 'KPI.work.history.core.config.js'),
   repoPath('team-report', 'runtime', 'work', 'history', 'KPI.work.history.core.js'),
@@ -78,9 +75,6 @@ const frontendLegacyWarningFiles = new Set();
 
 const frontendServerLimitFiles = new Set([
   repoRelativePath('team-report', 'runtime', 'work', 'KPI.work.renderers.js'),
-  repoRelativePath('team-report', 'runtime', 'work', 'KPI.work.renderers.weekly-actions.js'),
-  repoRelativePath('team-report', 'runtime', 'work', 'KPI.work.renderers.print.js'),
-  repoRelativePath('team-report', 'runtime', 'work', 'KPI.work.renderers.monthly-plan.js'),
   repoRelativePath('team-report', 'runtime', 'work', 'history', 'KPI.work.history.core.js'),
   repoRelativePath('team-report', 'runtime', 'work', 'history', 'KPI.work.history.view.actions.js'),
   repoRelativePath('team-report', 'runtime', 'work', 'history', 'KPI.work.history.view.layout.js'),

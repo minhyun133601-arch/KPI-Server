@@ -256,6 +256,8 @@ test('app split source files route browser globals through the browser adapter',
   assert.match(sharedSource, /navigationHidden !== true/);
   assert.match(navigationSource, /getDashboardNavigationSections\(getDashboardSections\(\)\)/);
   assert.match(viewerSource, /getDashboardNavigationSections\(getDashboardSections\(\)\)/);
+  assert.match(viewerSource, /isNavigationShortcut && category\.navHidden === true/);
+  assert.match(viewerSource, /SidebarTreeState\.expandedSections\[navSectionId\] = true/);
 });
 
 test('app shell records internal navigation in browser history and restores on back', () => {
@@ -281,6 +283,16 @@ test('app shell records internal navigation in browser history and restores on b
   assert.match(globalSaveSource, /\uC800\uC7A5\uB418\uC5C8\uC2B5\uB2C8\uB2E4\./);
   assert.match(globalSaveSource, /successAlertMessage = '저장되었습니다'/);
   assert.match(appSource, /bindAppHistoryNavigation\(\);/);
-  assert.match(appSource, /goHome\(\{ __skipHistory: true \}\);/);
+  assert.doesNotMatch(appSource, /goHome\(\{ __skipHistory: true \}\);/);
   assert.match(appSource, /initializeAppHistoryState\(\);/);
+  assert.match(kpiHtml, /<div id="dashboard" class="hidden-view">/);
+  assert.match(navigationSource, /function getDefaultAppStartRoute\(\)/);
+  assert.match(navigationSource, /category\?\.view === 'team_calendar_document'/);
+  assert.match(
+    navigationSource,
+    /navCategoryIndex: params\.has\('navCategory'\) \? params\.get\('navCategory'\) : undefined/
+  );
+  assert.match(navigationSource, /const initialRoute = restoredRoute \|\| getDefaultAppStartRoute\(\);/);
+  assert.match(navigationSource, /getElementById\('dashboard'\)\?\.classList\.add\('hidden-view'\)/);
+  assert.match(navigationSource, /applyAppHistoryRoute\(initialRoute\);/);
 });

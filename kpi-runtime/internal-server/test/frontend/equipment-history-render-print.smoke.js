@@ -22,7 +22,17 @@ test('equipment-history print document preserves the A4 card form through mainte
         { label: '\uC804\uC555', value: '220 V' },
       ],
     },
-    documents: [{ title: '\uC810\uAC80 \uBCF4\uACE0\uC11C', fileName: 'mixer-a-report.pdf' }],
+    documents: [{ title: 'mixer-a-report.pdf', fileName: 'mixer-a-report.pdf' }],
+    annualMaintenancePlan: [
+      {
+        equipmentName: 'Mixer A',
+        maintenanceItem: '\uAD6C\uB3D9 \uBCA8\uD2B8',
+        maintenanceContent: '\uC7A5\uB825 \uD655\uC778 \uBC0F \uB9C8\uBAA8 \uC810\uAC80',
+        cycle: '\uC5F0 2\uD68C',
+        executionMonth: '3\uC6D4',
+        inspectionNotes: '\uC810\uAC80 \uC644\uB8CC',
+      },
+    ],
     maintenanceHistory: [
       {
         date: '2026.05.11',
@@ -38,7 +48,7 @@ test('equipment-history print document preserves the A4 card form through mainte
   const emptyHtml = api.buildEquipmentHistoryPrintDocument(api.createDraft({ name: 'Empty Card' }));
 
   assert.equal(typeof api.buildEquipmentHistoryPrintDocument, 'function');
-  assert.match(html, /@page \{ size: A4 portrait; margin: 6mm; \}/);
+  assert.match(html, /@page \{ size: A4 portrait; margin: 8mm; \}/);
   assert.match(html, /class="equipment-print-page"/);
   assert.match(html, /class="data-equipment-layout data-equipment-edit-form equipment-print-form"/);
   assert.match(html, /class="data-equipment-top-grid equipment-print-top-grid"/);
@@ -52,6 +62,9 @@ test('equipment-history print document preserves the A4 card form through mainte
   assert.match(html, /class="data-equipment-card data-equipment-detail-card equipment-print-spec-summary"/);
   assert.doesNotMatch(html, /equipment-print-status-pill|equipment-print-status-toggle/);
   assert.match(html, /<h3 class="data-equipment-section-title">설비 스펙<\/h3>/);
+  assert.match(html, /class="data-equipment-card data-equipment-annual-plan-card equipment-print-annual-plan"/);
+  assert.match(html, /<h3 class="data-equipment-section-title">연간정비계획표<\/h3>/);
+  assert.match(html, /class="data-equipment-edit-table equipment-print-table equipment-print-annual-plan-table"/);
   assert.match(html, /class="data-equipment-card data-equipment-history-card equipment-print-maintenance"/);
   assert.match(html, /class="data-equipment-card data-equipment-note-card equipment-print-note-card"/);
   assert.match(html, /class="data-equipment-card data-equipment-doc-card equipment-print-documents"/);
@@ -64,8 +77,11 @@ test('equipment-history print document preserves the A4 card form through mainte
   assert.match(html, /\uBB38\uC11C \uCCA8\uBD80/);
   assert.match(html, /\uC815\uBE44 \uC774\uB825/);
   assert.match(html, /\uBE44\uACE0/);
-  assert.match(html, /grid-template-rows: none/);
+  assert.match(html, /grid-template-rows: auto/);
   assert.match(html, /height: auto/);
+  assert.match(html, /max-height: none/);
+  assert.match(html, /overflow: visible/);
+  assert.doesNotMatch(html, /height: 285mm|max-height: 285mm|overflow: hidden; display: grid; align-content: start/);
   assert.match(
     html,
     /data-equipment-top-grid,[\s\S]+equipment-print-top-grid[\s\S]+grid-template-columns: minmax\(0, 1fr\)/
@@ -80,6 +96,10 @@ test('equipment-history print document preserves the A4 card form through mainte
   assert.match(html, /equipment-print-doc-empty \{ grid-column: 1 \/ -1; \}/);
   assert.match(html, /equipment-print-maintenance-table td:nth-child\(1\) \{ width: 14%; \}/);
   assert.match(html, /equipment-print-maintenance-table td:nth-child\(3\) \{ width: 44%; \}/);
+  assert.match(html, /equipment-print-annual-plan-table th:nth-child\(6\)[\s\S]+width: 36%/);
+  assert.match(html, /equipment-print-table thead \{ display: table-header-group; \}/);
+  assert.match(html, /equipment-print-table tr \{ break-inside: avoid; page-break-inside: avoid; \}/);
+  assert.match(html, /equipment-print-section-stack > \.data-equipment-card \{ overflow: visible; \}/);
   assert.match(html, /equipment-print-note-card\.is-empty \.equipment-print-empty/);
   assert.match(html, /aspect-ratio: 16 \/ 5/);
   assert.ok(
@@ -96,6 +116,10 @@ test('equipment-history print document preserves the A4 card form through mainte
   );
   assert.ok(
     html.indexOf('class="data-equipment-card data-equipment-detail-card equipment-print-spec-summary"') <
+      html.indexOf('class="data-equipment-card data-equipment-annual-plan-card equipment-print-annual-plan"')
+  );
+  assert.ok(
+    html.indexOf('class="data-equipment-card data-equipment-annual-plan-card equipment-print-annual-plan"') <
       html.indexOf('class="data-equipment-card data-equipment-history-card equipment-print-maintenance"')
   );
   assert.ok(
@@ -107,9 +131,13 @@ test('equipment-history print document preserves the A4 card form through mainte
       html.indexOf('class="data-equipment-card data-equipment-doc-card equipment-print-documents"')
   );
   assert.match(html, /mixer-a-report\.pdf/);
+  assert.equal((html.match(/mixer-a-report\.pdf/g) || []).length, 1);
+  assert.match(html, /구동 벨트/);
+  assert.match(html, /점검여부 및 특이사항/);
   assert.match(html, /100 kg/);
   assert.match(html, /\uBE44\uACE0 \uB0B4\uC6A9/);
   assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uC124\uBE44 \uC2A4\uD399\uC774 \uC5C6\uC2B5\uB2C8\uB2E4\./);
+  assert.match(emptyHtml, /연간정비계획표/);
   assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uC815\uBE44 \uC774\uB825\uC774 \uC5C6\uC2B5\uB2C8\uB2E4\./);
   assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uBE44\uACE0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4\./);
   assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uAD00\uB828 \uBB38\uC11C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4\./);

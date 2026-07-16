@@ -58,15 +58,11 @@
         function getWorkTeamCalendarCategories() {
             return typeof getWorkTeamCalendarCategoryList === 'function'
                 ? getWorkTeamCalendarCategoryList()
-                : (AppData?.work?.categories || []).filter(cat => cat.view === 'team_calendar');
+                : (Array.isArray(AppData?.work?.teamCategories) ? AppData.work.teamCategories : []);
         }
 
         function getWorkTeamCalendarCategory(dataKey) {
             return getWorkTeamCalendarCategories().find(cat => cat.dataKey === dataKey) || null;
-        }
-
-        function getWorkTeamCalendarCategoryIndex(dataKey) {
-            return getWorkTeamCalendarCategories().findIndex(cat => cat.dataKey === dataKey);
         }
 
         function formatWorkTeamCalendarMonthOptionLabel(monthKey) {
@@ -88,44 +84,6 @@
         function getWorkTeamCalendarMonthOptionsForYear(year) {
             const yearText = String(year || '').trim();
             return getWorkTeamCalendarMonthOptions().filter(key => key.startsWith(`${yearText}-`));
-        }
-
-        function renderWorkTeamCalendarGlyph(type, size = 'md') {
-            const visual = String(type || '').trim() || 'dry';
-            let svg = '';
-            if (visual === 'stick') {
-                svg = `
-                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="11" y="14" width="16" height="36" rx="7" stroke="currentColor" stroke-width="3"/>
-                        <rect x="37" y="10" width="16" height="40" rx="7" stroke="currentColor" stroke-width="3"/>
-                        <path d="M15 24H23" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M41 20H49" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M41 28H49" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M15 32H23" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                        <circle cx="32" cy="48" r="4" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="2"/>
-                    </svg>
-                `;
-            } else if (visual === 'liquid') {
-                svg = `
-                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M26 11H38V18L42 22V48C42 52.418 38.418 56 34 56H30C25.582 56 22 52.418 22 48V22L26 18V11Z" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
-                        <path d="M28 28H36" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M32 30C36.418 35.042 38 37.653 38 40.5C38 43.538 35.538 46 32.5 46C29.462 46 27 43.538 27 40.5C27 37.653 28.582 35.042 32 30Z" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="2"/>
-                    </svg>
-                `;
-            } else {
-                svg = `
-                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="16" y="10" width="32" height="44" rx="10" stroke="currentColor" stroke-width="3"/>
-                        <path d="M21 22H43" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M22 42C26 35 38 35 42 42" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-                        <circle cx="27" cy="33" r="2.5" fill="currentColor"/>
-                        <circle cx="36" cy="30" r="2" fill="currentColor" fill-opacity="0.55"/>
-                        <circle cx="40" cy="36" r="1.8" fill="currentColor" fill-opacity="0.55"/>
-                    </svg>
-                `;
-            }
-            return `<span class="work-team-glyph is-${escapeHtml(size)}" aria-hidden="true">${svg}</span>`;
         }
 
         function getWorkTeamCalendarDialog() {
@@ -374,57 +332,3 @@
             return !!nextMetric;
         }
         // Team calendar selection, editor, attachment, and render flows are split into sibling runtime files.
-
-        function getMonthlyFilterState(dataKey) {
-            if (!WorkState.monthFilters[dataKey]) {
-                const current = getCurrentMonthKey();
-                WorkState.monthFilters[dataKey] = { startMonth: current, endMonth: current, team: '', room: '', owner: '', keyword: '' };
-            }
-            return WorkState.monthFilters[dataKey];
-        }
-
-        function updateMonthlyFilter(dataKey, field, value) {
-            const filter = getMonthlyFilterState(dataKey);
-            filter[field] = value;
-            if (field === 'startMonth' || field === 'endMonth') {
-                const normalized = normalizeMonthRange(filter.startMonth, filter.endMonth);
-                filter.startMonth = normalized.start;
-                filter.endMonth = normalized.end;
-                WorkState.activeMonth[dataKey] = filter.startMonth;
-            }
-            if (field === 'team') {
-                const rooms = value ? getEquipRooms(value) : [];
-                if (!rooms.length || !rooms.includes(filter.room)) {
-                    filter.room = '';
-                }
-            }
-            const category = getWorkCategory(dataKey);
-            if (category) renderWorkContent(category);
-        }
-
-        function clearMonthlyFilter(dataKey) {
-            const current = getCurrentMonthKey();
-            WorkState.monthFilters[dataKey] = { startMonth: current, endMonth: current, team: '', room: '', owner: '', keyword: '' };
-            const category = getWorkCategory(dataKey);
-            if (category) renderWorkContent(category);
-        }
-
-        function entryMatchesFilter(entry, filter) {
-            if (filter.team && normalizeWorkTeamName(entry.team) !== normalizeWorkTeamName(filter.team)) return false;
-            if (filter.room && entry.room !== filter.room) return false;
-            if (filter.owner && entry.owner !== filter.owner) return false;
-            if (filter.keyword) {
-                const hay = `${entry.team || ''} ${entry.room || ''} ${entry.task || ''} ${entry.owner || ''}`.toLowerCase();
-                if (!hay.includes(filter.keyword.toLowerCase())) return false;
-            }
-            return true;
-        }
-
-        function getWorkOwners() {
-            const categories = typeof getWorkAllCategories === 'function'
-                ? getWorkAllCategories()
-                : (AppData?.work?.categories || []);
-            return categories
-                .filter(cat => cat.dataKey && cat.dataKey !== 'work_monthly_plan')
-                .map(cat => cat.title);
-        }

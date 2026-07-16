@@ -8,6 +8,7 @@
             const teamVal = block.querySelector('[data-role="team"]')?.value;
             const metricVal = block.querySelector('[data-role="metric"]')?.value;
             const scaleVal = parseFloat(block.querySelector('[data-role="scale"]')?.value || '1');
+            const decimalsVal = parseInt(block.querySelector('[data-role="decimals"]')?.value || '0', 10);
             if (!fromVal || !toVal || !metricVal) {
                 block._utilResult = null;
                 return null;
@@ -72,6 +73,72 @@
             };
             block._utilResult = result;
             return result;
+        }
+
+        function triggerUtilAnalyticsPrintPreview(html) {
+            const sheet = document.getElementById('print-sheet');
+            if (!sheet) return false;
+            sheet.setAttribute('data-mode', 'util');
+            sheet.innerHTML = html;
+            document.documentElement.classList.add('printing');
+            const browserAdapter = getWorkBrowserAdapter();
+            const setTimer = browserAdapter?.setWindowTimeout?.bind(browserAdapter) || setTimeout;
+            setTimer(() => {
+                browserAdapter?.printWindow?.();
+                setTimer(() => {
+                    document.documentElement.classList.remove('printing');
+                }, 500);
+            }, 100);
+            return true;
+        }
+
+        function printUtilAnalytics(result) {
+            if (!result || !Array.isArray(result.entries)) return false;
+            const scale = result.scale || 1;
+            const decimals = Number.isFinite(result.decimals) ? result.decimals : null;
+            const scaledSum = scale ? result.sum / scale : result.sum;
+            const scaledAvg = scale ? result.avg / scale : result.avg;
+            const rows = result.entries.length ? result.entries.map(entry => {
+                const value = entry[result.metricKey];
+                const scaled = scale ? value / scale : value;
+                const period = `${entry.year}-${String(entry.month).padStart(2, '0')}`;
+                return `
+                    <tr>
+                        <td class="print-col-date">${escapeHtml(period)}</td>
+                        <td class="print-col-team">${escapeHtml(entry.team || '-')}</td>
+                        <td class="print-col-task">${escapeHtml(formatUtilNumber(scaled, decimals))}</td>
+                    </tr>
+                `;
+            }).join('') : `
+                <tr>
+                    <td colspan="3">해당 기간에 표시할 데이터가 없습니다.</td>
+                </tr>
+            `;
+
+            return triggerUtilAnalyticsPrintPreview(`
+                <div class="print-header">
+                    <div>
+                        <div class="print-title">유틸리티 분석 (${escapeHtml(result.datasetLabel || '')})</div>
+                        <div class="print-meta">기간: ${escapeHtml(result.from || '')} ~ ${escapeHtml(result.to || '')} · ${escapeHtml(result.metricLabel || '')} · ${escapeHtml(result.team || '')} · ${escapeHtml(result.count || 0)}건</div>
+                    </div>
+                    <div class="print-meta">${new Date().toISOString().slice(0, 10)}</div>
+                </div>
+                <div class="print-summary">
+                    <span>단위 변환: ÷ ${escapeHtml(scale)}</span>
+                    <span>합계: ${escapeHtml(formatUtilNumber(scaledSum, decimals))}</span>
+                    <span>평균: ${escapeHtml(formatUtilNumber(scaledAvg, decimals))}</span>
+                </div>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th class="print-col-date">기간</th>
+                            <th class="print-col-team">팀</th>
+                            <th class="print-col-task">값</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `);
         }
 
         function initUtilAnalytics(scope) {
@@ -372,7 +439,7 @@
             const categories = typeof getWorkAllCategories === 'function'
                 ? getWorkAllCategories()
                 : (AppData?.work?.categories || []);
-            const workCategories = categories.filter(cat => cat.dataKey && cat.dataKey !== 'work_monthly_plan');
+            const workCategories = categories.filter(cat => cat.dataKey);
             workCategories.forEach(cat => {
                 const data = getWorkData(cat.dataKey, cat.title);
                 (data.weeks || []).forEach(week => {

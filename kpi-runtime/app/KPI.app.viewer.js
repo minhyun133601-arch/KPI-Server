@@ -1,62 +1,3 @@
-        function getSidebarTeamCategories(sectionEntry, category = null) {
-            if (sectionEntry?.id !== 'work' || category?.view !== 'team_calendar') return [];
-            if (typeof getWorkTeamCalendarCategoryList === 'function') {
-                return getWorkTeamCalendarCategoryList();
-            }
-            return Array.isArray(sectionEntry.section?.teamCategories) ? sectionEntry.section.teamCategories : [];
-        }
-
-        function getSidebarTeamModeToggleHtml(sectionEntry, category = null, categoryIndex = -1) {
-            if (sectionEntry?.id !== 'work' || category?.view !== 'team_calendar') return '';
-            const modeMeta = typeof getWorkTeamCalendarModeMeta === 'function'
-                ? getWorkTeamCalendarModeMeta()
-                : { mode: 'detail', label: '\uD300\uBCC4', nextLabel: '\uACF5\uC815\uBCC4' };
-            const buttonClass = modeMeta.mode === 'group'
-                ? ' is-group'
-                : (modeMeta.mode === 'process' ? ' is-process' : '');
-            const label = `${modeMeta.label} \uBAA8\uB4DC, ${modeMeta.nextLabel} \uBCF4\uAE30\uB85C \uC804\uD658`;
-            return `
-                <div class="sidebar-mode-toggle-row">
-                    <button
-                        type="button"
-                        class="sidebar-mode-toggle-button${buttonClass}"
-                        onclick="toggleSidebarWorkTeamMode()"
-                        aria-label="${escapeDashboardHtml(label)}"
-                        title="${escapeDashboardHtml(label)}"
-                        data-mode="${escapeDashboardHtml(modeMeta.mode || 'detail')}"
-                        id="cat-btn-${sectionEntry.id}-${categoryIndex}-mode-toggle"
-                    >
-                        <i class="fas fa-right-left" aria-hidden="true"></i>
-                        <span class="sidebar-mode-toggle-text">${escapeDashboardHtml(modeMeta.label || '\uD300\uBCC4')}</span>
-                    </button>
-                </div>
-            `;
-        }
-
-        function toggleSidebarWorkTeamMode() {
-            if (typeof toggleWorkTeamCalendarDisplayMode !== 'function') return;
-            toggleWorkTeamCalendarDisplayMode();
-        }
-
-        function getActiveSidebarTeamDataKey(sectionId = '', categoryIndex = -1) {
-            const section = AppData?.[sectionId];
-            const category = Array.isArray(section?.categories) ? section.categories[categoryIndex] : null;
-            if (!category || category.view !== 'team_calendar') return '';
-            if (getNavigationSelectionSectionId() !== getDashboardSectionKey(sectionId)) return '';
-            if (getNavigationSelectionCategoryIndex(sectionId) !== Number(categoryIndex)) return '';
-            const selectedTeamDataKey = getNavigationSelectionTeamDataKey(sectionId, categoryIndex);
-            if (selectedTeamDataKey) return selectedTeamDataKey;
-            const fallbackKey = String(category.dataKey || '').trim();
-            if (typeof WorkState === 'undefined' || !WorkState) return fallbackKey;
-            return String(WorkState.teamCalendarHubDataKey || fallbackKey).trim();
-        }
-
-        function openSidebarTeamCategory(sectionId, categoryIndex = 0, teamDataKey = '') {
-            selectCategory(sectionId, categoryIndex, {
-                teamDataKey: String(teamDataKey || '').trim()
-            });
-        }
-
         function getSidebarRenderableCategories(sectionEntry = null) {
             return getSectionNavigationCategories(sectionEntry?.section);
         }
@@ -66,14 +7,8 @@
             if (!sidebar) return;
             const sections = ensureSidebarTreeState(getDashboardNavigationSections(getDashboardSections()));
             const selectedSectionId = getNavigationSelectionSectionId();
-            const selectedWorkCategoryIndex = getNavigationSelectionCategoryIndex('work');
-            const selectedWorkCategory = AppData?.work?.categories?.[selectedWorkCategoryIndex] || null;
-            const isTeamReportExperiment = isTeamReportDocumentExperimentEnabled()
-                && selectedSectionId === 'work'
-                && selectedWorkCategory?.view === 'team_calendar_experiment';
-            sidebar.classList.toggle('is-team-report-experiment', isTeamReportExperiment);
             sidebar.innerHTML = `
-                <div class="sidebar-tree-shell${isTeamReportExperiment ? ' is-team-report-experiment' : ''}">
+                <div class="sidebar-tree-shell">
                     <button id="viewer-sidebar-toggle" type="button" class="sidebar-group-toggle sidebar-viewer-toggle" onclick="toggleViewerSidebar()" aria-label="닫기" title="닫기" aria-pressed="false">
                         <span class="sidebar-group-toggle-main">
                             <span class="sidebar-group-icon"><i class="fas fa-angles-left" aria-hidden="true"></i></span>
@@ -85,10 +20,15 @@
                         const shouldOpenDefaultCategoryFromMain = sectionEntry.section?.openDefaultCategoryOnMain === true
                             && Array.isArray(sectionEntry.section?.categories)
                             && sectionEntry.section.categories.length > 0;
-                        const isExpanded = SidebarTreeState.expandedSections[sectionEntry.id] === true
-                            || shouldKeepDirectLaunchSubmenuVisible;
+                        const hasRenderableCategories = renderableCategories.length > 0;
+                        const isExpanded = hasRenderableCategories && (
+                            SidebarTreeState.expandedSections[sectionEntry.id] === true
+                            || shouldKeepDirectLaunchSubmenuVisible
+                        );
                         const isActiveSection = selectedSectionId === sectionEntry.id;
-                        const hideNavigationChevron = sectionEntry.section?.hideNavigationChevron === true;
+                        const isLeafCurrent = isActiveSection && !hasRenderableCategories;
+                        const hideNavigationChevron = sectionEntry.section?.hideNavigationChevron === true
+                            || !hasRenderableCategories;
                         const actionIcon = sectionEntry.section?.directLaunch === true
                             ? 'fa-arrow-up-right-from-square'
                             : (shouldOpenDefaultCategoryFromMain ? 'fa-arrow-right' : 'fa-chevron-right');
@@ -99,40 +39,17 @@
                                 : `toggleSidebarSection('${sectionEntry.id}')`);
                         return `
                             <div class="sidebar-group${isExpanded ? ' is-expanded' : ''}" style="--cat-color:${sectionEntry.accent}; --cat-soft:${sectionEntry.softAccent};">
-                                <button type="button" class="sidebar-group-toggle${isActiveSection ? ' is-active' : ''}" onclick="${sectionAction}">
+                                <button type="button" class="sidebar-group-toggle${isActiveSection ? ' is-active' : ''}" onclick="${sectionAction}" id="section-btn-${sectionEntry.id}" aria-label="${escapeDashboardHtml(sectionEntry.section.name || sectionEntry.id)}"${isLeafCurrent ? ' aria-current="page"' : ''}>
                                     <span class="sidebar-group-toggle-main">
                                         <span class="sidebar-group-icon"><i class="fas ${escapeDashboardHtml(sectionEntry.section.icon || 'fa-folder-open')}"></i></span>
                                         <span class="sidebar-group-label">${escapeDashboardHtml(sectionEntry.section.name || sectionEntry.id)}</span>
                                     </span>
                                     ${hideNavigationChevron ? '' : `<span class="sidebar-group-chevron"><i class="fas ${actionIcon}"></i></span>`}
                                 </button>
-                                <div class="sidebar-group-items">
+                                ${hasRenderableCategories ? `<div class="sidebar-group-items">
                                     ${renderableCategories.map(({ category, index }) => {
                                         const categoryColor = category.color || sectionEntry.accent;
                                         const isActiveCategory = isActiveSection && getNavigationSelectionCategoryIndex(sectionEntry.id) === index;
-                                        const teamCategories = getSidebarTeamCategories(sectionEntry, category);
-                                        const activeTeamDataKey = getActiveSidebarTeamDataKey(sectionEntry.id, index);
-                                        if (teamCategories.length) {
-                                            return `
-                                                <div class="sidebar-category-branch">
-                                                    ${isTeamReportExperiment ? '<div class="sidebar-original-view-label" role="heading" aria-level="3">기존 화면</div>' : ''}
-                                                    ${teamCategories.map((teamCategory, teamIndex) => {
-                                                        const teamColor = teamCategory.color || categoryColor;
-                                                        const teamDataKey = String(teamCategory.dataKey || '').trim();
-                                                        const isActiveTeam = isActiveCategory && activeTeamDataKey === teamDataKey;
-                                                        return `
-                                                            <button type="button" class="sidebar-item sidebar-item-nested sidebar-item-team${isActiveTeam ? ' active' : ''}" style="--cat-color:${teamColor};" onclick="openSidebarTeamCategory('${sectionEntry.id}', ${index}, '${teamCategory.dataKey}')" id="cat-btn-${sectionEntry.id}-${index}-team-${teamIndex}"${isActiveTeam ? ' aria-current="page"' : ''}>
-                                                                <span class="sidebar-item-main">
-                                                                    <i class="fas ${escapeDashboardHtml(teamCategory.icon || 'fa-layer-group')} w-5 text-center"></i>
-                                                                    <span>${escapeDashboardHtml(teamCategory.title || `팀 ${teamIndex + 1}`)}</span>
-                                                                </span>
-                                                            </button>
-                                                        `;
-                                                    }).join('')}
-                                                    ${getSidebarTeamModeToggleHtml(sectionEntry, category, index)}
-                                                </div>
-                                            `;
-                                        }
                                         return `
                                             <div class="sidebar-category-branch">
                                                 <button type="button" class="sidebar-item sidebar-item-nested${isActiveCategory ? ' active' : ''}" style="--cat-color:${categoryColor};" onclick="selectCategory('${sectionEntry.id}', ${index}, { __allowLaunch: true })" id="cat-btn-${sectionEntry.id}-${index}"${isActiveCategory ? ' aria-current="page"' : ''}>
@@ -144,7 +61,7 @@
                                             </div>
                                         `;
                                     }).join('')}
-                                </div>
+                                </div>` : ''}
                             </div>
                         `;
                     }).join('')}
@@ -382,13 +299,20 @@
             setNavigationSelection(navSectionId, navCategoryIndex, { teamDataKey: navTeamDataKey });
             activeSectionId = dataId;
             activeCategoryIndex = index;
-            SidebarTreeState.expandedSections[dataId] = options.keepSidebarCollapsed === true ? false : true;
+            const isNavigationShortcut = Boolean(navSectionId && navSectionId !== dataId);
+            SidebarTreeState.expandedSections[dataId] = options.keepSidebarCollapsed === true
+                || (isNavigationShortcut && category.navHidden === true)
+                ? false
+                : true;
+            if (isNavigationShortcut) {
+                SidebarTreeState.expandedSections[navSectionId] = true;
+            }
             activeRenderContext = renderContext;
             renderDashboardSideNav();
             const activeTeamDataKey = options.teamDataKey
                 || ((typeof WorkState !== 'undefined' && WorkState) ? WorkState.teamCalendarHubDataKey : '')
                 || category.dataKey;
-            const viewerCategory = category.view === 'team_calendar' && typeof getWorkCategoryByDataKey === 'function'
+            const viewerCategory = category.view === 'team_calendar_document' && typeof getWorkCategoryByDataKey === 'function'
                 ? (getWorkCategoryByDataKey(activeTeamDataKey) || category)
                 : category;
             updateViewerTitle(dataId, viewerCategory);

@@ -381,11 +381,13 @@
         }
         .data-equipment-card-pad,
         .data-equipment-detail-card,
+        .data-equipment-annual-plan-card,
         .data-equipment-history-card,
         .data-equipment-note-card,
         .data-equipment-doc-card {
             padding: 14px 16px;
         }
+        .data-equipment-annual-plan-card,
         .data-equipment-history-card,
         .data-equipment-note-card,
         .data-equipment-doc-card {

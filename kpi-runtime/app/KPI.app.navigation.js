@@ -120,21 +120,8 @@
         function toggleSidebarSection(sectionId = '') {
             const key = getDashboardSectionKey(sectionId);
             if (!key) return;
-            if (key === 'work' && getNavigationSelectionSectionId() !== 'work') {
-                let teamDataKey = String((typeof WorkState !== 'undefined' && WorkState)
-                    ? (WorkState.teamCalendarHubDataKey || '')
-                    : '').trim();
-                if (typeof applyWorkTeamCalendarMode === 'function') {
-                    const currentMode = typeof getWorkTeamCalendarMode === 'function'
-                        ? getWorkTeamCalendarMode()
-                        : 'detail';
-                    teamDataKey = String(applyWorkTeamCalendarMode(currentMode) || teamDataKey || '').trim();
-                }
-                if (!teamDataKey) {
-                    teamDataKey = String(AppData?.work?.categories?.[0]?.dataKey || 'work_team_calendar_team1_part1').trim();
-                }
-                SidebarTreeState.expandedSections[key] = true;
-                selectCategory('work', 0, { teamDataKey });
+            if (AppData[key]?.openDefaultCategoryOnMain === true && getNavigationSelectionSectionId() !== key) {
+                openSection(key);
                 return;
             }
             SidebarTreeState.expandedSections[key] = SidebarTreeState.expandedSections[key] !== true;
@@ -185,11 +172,12 @@
             sideNav.innerHTML = entries.map(entry => {
                 const isActive = entry.id === activeEntry?.id;
                 const navCategories = getSectionNavigationCategories(entry.section);
-                const shouldKeepDirectLaunchSubmenuVisible = entry.section?.directLaunch === true && navCategories.length > 0;
+                const hasNavCategories = navCategories.length > 0;
+                const shouldKeepDirectLaunchSubmenuVisible = entry.section?.directLaunch === true && hasNavCategories;
                 const shouldOpenDefaultCategoryFromMain = entry.section?.openDefaultCategoryOnMain === true
                     && Array.isArray(entry.section?.categories)
                     && entry.section.categories.length > 0;
-                const hideNavigationChevron = entry.section?.hideNavigationChevron === true;
+                const hideNavigationChevron = entry.section?.hideNavigationChevron === true || !hasNavCategories;
                 const actionIcon = entry.section?.directLaunch === true
                     ? 'fa-arrow-up-right-from-square'
                     : (shouldOpenDefaultCategoryFromMain ? 'fa-arrow-right' : 'fa-chevron-right');
@@ -209,7 +197,7 @@
                             </span>
                             ${hideNavigationChevron ? '' : `<span class="dashboard-tree-chevron"><i class="fas ${actionIcon}"></i></span>`}
                         </button>
-                        <div class="dashboard-tree-submenu">
+                        ${hasNavCategories ? `<div class="dashboard-tree-submenu">
                             ${navCategories.map(({ category, index }) => {
                                 const isActiveCategory = selectedSectionId === entry.id && getNavigationSelectionCategoryIndex(entry.id) === index;
                                 return `
@@ -218,7 +206,7 @@
                                 </button>
                             `;
                             }).join('')}
-                        </div>
+                        </div>` : ''}
                     </div>
                 `;
             }).join('');
@@ -408,10 +396,30 @@
                 categoryIndex: params.get('category') || -1,
                 teamDataKey: params.get('team') || '',
                 navSectionId: params.get('navSection') || '',
-                navCategoryIndex: params.get('navCategory') || -1,
+                navCategoryIndex: params.has('navCategory') ? params.get('navCategory') : undefined,
                 navTeamDataKey: params.get('navTeam') || ''
             };
             return sanitizeAppHistoryRoute(route);
+        }
+
+        function getDefaultAppStartRoute() {
+            const categories = Array.isArray(AppData?.work?.categories) ? AppData.work.categories : [];
+            const categoryIndex = categories.findIndex(category => category?.view === 'team_calendar_document');
+            if (categoryIndex < 0) return { view: 'home' };
+            const teamDataKey = String(
+                AppData?.work?.teamCategories?.[0]?.dataKey
+                || categories[categoryIndex]?.dataKey
+                || ''
+            ).trim();
+            return sanitizeAppHistoryRoute({
+                view: 'category',
+                sectionId: 'work',
+                categoryIndex,
+                teamDataKey,
+                navSectionId: 'work',
+                navCategoryIndex: categoryIndex,
+                navTeamDataKey: teamDataKey
+            });
         }
 
         function commitAppHistoryRoute(route = null, options = {}) {
@@ -447,6 +455,7 @@
                     return true;
                 }
                 if (normalized.view === 'category') {
+                    document.getElementById('dashboard')?.classList.add('hidden-view');
                     selectCategory(normalized.sectionId, normalized.categoryIndex, {
                         teamDataKey: normalized.teamDataKey,
                         __navSectionId: normalized.navSectionId || normalized.sectionId,
@@ -490,14 +499,11 @@
             syncAppPopupModeClass();
             const existingState = browser?.getCurrentHistoryState?.();
             const locationMeta = browser?.getLocationMeta?.() || {};
-            const initialRoute = isAppHistoryState(existingState)
-                ? sanitizeAppHistoryRoute(existingState.route)
-                : (parseAppHistoryHash(locationMeta.hash) || getCurrentAppRoute());
-            const currentKey = getAppHistoryRouteKey(getCurrentAppRoute());
-            const initialKey = getAppHistoryRouteKey(initialRoute);
-            if (initialKey !== currentKey) {
-                applyAppHistoryRoute(initialRoute);
-            }
+            const hashRoute = parseAppHistoryHash(locationMeta.hash);
+            const restoredRoute = hashRoute
+                || (isAppHistoryState(existingState) ? sanitizeAppHistoryRoute(existingState.route) : null);
+            const initialRoute = restoredRoute || getDefaultAppStartRoute();
+            applyAppHistoryRoute(initialRoute);
             commitAppHistoryRoute(getCurrentAppRoute(), { replace: true, force: true });
         }
 

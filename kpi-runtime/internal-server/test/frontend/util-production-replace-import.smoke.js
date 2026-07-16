@@ -364,10 +364,10 @@ test('production import merge treats different product codes as distinct daily r
 
   const team = context.__testExports.getTeams().find((item) => item.name === '2팀');
   assert.equal(result.addedCount, 2);
-  assert.deepEqual(
-    JSON.parse(JSON.stringify(team.entries.map((entry) => entry.productCode).sort())),
-    ['CODE-A', 'CODE-B']
-  );
+  assert.deepEqual(JSON.parse(JSON.stringify(team.entries.map((entry) => entry.productCode).sort())), [
+    'CODE-A',
+    'CODE-B',
+  ]);
 });
 
 test('production import merge treats normal and rework rows as distinct daily rows', () => {
@@ -412,10 +412,10 @@ test('production import merge treats normal and rework rows as distinct daily ro
   assert.equal(result.addedCount, 1);
   assert.equal(result.replacedCount, 0);
   assert.equal(team.entries.length, 2);
-  assert.deepEqual(
-    JSON.parse(JSON.stringify(team.entries.map((entry) => entry.productionKind || 'normal').sort())),
-    ['normal', 'rework']
-  );
+  assert.deepEqual(JSON.parse(JSON.stringify(team.entries.map((entry) => entry.productionKind || 'normal').sort())), [
+    'normal',
+    'rework',
+  ]);
 });
 
 test('production import delete removes matching daily entries and queues a save', async () => {
@@ -454,4 +454,31 @@ test('production import delete removes matching daily entries and queues a save'
   assert.equal(context.__getQueuedWriteCount(), 2);
   assert.deepEqual(context.__getLastWriteOptions()?.deleteDedupeKeys, [targetKey]);
   assert.deepEqual(JSON.parse(JSON.stringify(context.__getLastWriteOptions()?.upsertDedupeKeys || [])), []);
+});
+
+test('production import delete can defer persistence for one batched range save', async () => {
+  const context = createProductionImportContext();
+  const result = context.__testExports.mergeUtilProductionExtractorRows([
+    {
+      date: '2026-05-03',
+      team: '1팀 1파트',
+      lineName: 'MSD',
+      productName: '제품C',
+      amount: 70,
+    },
+  ]);
+  await result.savePromise;
+  const targetEntry = context.__testExports
+    .getTeams()
+    .flatMap((team) => (team.entries || []).map((entry) => ({ ...entry, team: entry.team || team.name })))
+    .find((entry) => entry.amount === 70);
+  const targetKey = context.__testExports.buildUtilProductionDailyEntryKey(targetEntry);
+  const writesBeforeDelete = context.__getQueuedWriteCount();
+
+  const removed = context.__testExports.removeUtilProductionEntriesByKeySet(new Set([targetKey]), { persist: false });
+  await Promise.resolve();
+
+  assert.equal(removed, 1);
+  assert.equal(context.__getQueuedWriteCount(), writesBeforeDelete);
+  assert.equal(JSON.stringify(context.__testExports.getTeams()).includes('제품C'), false);
 });

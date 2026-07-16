@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  createEquipmentHistoryRuntime,
   dataCssSource,
   formSource,
   modelSource,
@@ -33,6 +34,8 @@ test('equipment-history photo and attachment source preserves managed draft and 
   assert.match(renderSource, /renderSimpleSpecEditor\(draft\)/);
   assert.match(renderSource, /function renderMaintenanceEditor\(rows\)/);
   assert.match(renderSource, /renderMaintenanceEditor\(draft\.maintenanceHistory\)/);
+  assert.match(renderSource, /function renderAnnualMaintenancePlanEditor\(rows, equipmentName = ''\)/);
+  assert.match(renderSource, /renderAnnualMaintenancePlanEditor\(draft\.annualMaintenancePlan, draft\.name\)/);
   assert.match(
     renderSource,
     /class="data-equipment-card data-equipment-note-card"[\s\S]+<h3 class="data-equipment-section-title">비고<\/h3>[\s\S]+data-equipment-field="note"/
@@ -67,6 +70,9 @@ test('equipment-history photo and attachment source preserves managed draft and 
   assert.match(compactDocumentSource, /data-equipment-document-file-name/);
   assert.match(compactDocumentSource, />\s*문서\s*<\/button>/);
   assert.match(compactDocumentSource, /data-equipment-document-remove/);
+  assert.match(compactDocumentSource, /data-equipment-document-download/);
+  assert.match(compactDocumentSource, /isDocumentTitleDuplicate\(title, label\)/);
+  assert.match(compactDocumentSource, /\/api\/files\/\$\{encodeURIComponent\(documentId\)\}\/download/);
   assert.doesNotMatch(compactDocumentSource, /fa-file-pdf|fa-plus|fa-trash-alt/);
   const cardSource =
     renderSource.match(
@@ -184,4 +190,22 @@ test('equipment-history photo and attachment source preserves managed draft and 
     /persistEquipmentHistoryPayload\(data, nextPayload, 'equipment_history_payload_status_failed'\)/
   );
   assert.match(renderSource, /bindPhotoPreview\(root, state, data, redraw\)/);
+});
+
+test('equipment-history attachment UI hides repeated file labels and exposes saved downloads beside delete', () => {
+  const { context } = createEquipmentHistoryRuntime();
+  const api = context.KpiDataEquipmentHistory;
+  const savedHtml = api.renderCompactDocumentEditor([
+    { title: 'same-file.pdf', fileName: 'same-file.pdf', documentId: 'doc id/1' },
+  ]);
+  const pendingHtml = api.renderCompactDocumentEditor([
+    { title: '새 문서', pendingFile: { name: 'pending.pdf' }, fileName: 'pending.pdf' },
+  ]);
+
+  assert.match(savedHtml, /value="same-file\.pdf"/);
+  assert.match(savedHtml, /class="data-equipment-document-file-name"><\/span>/);
+  assert.match(savedHtml, /href="\/api\/files\/doc%20id%2F1\/download"/);
+  assert.match(savedHtml, /class="data-equipment-document-download"[\s\S]+class="data-equipment-document-remove"/);
+  assert.doesNotMatch(pendingHtml, /data-equipment-document-download/);
+  assert.match(pendingHtml, /class="data-equipment-document-file-name">pending\.pdf<\/span>/);
 });

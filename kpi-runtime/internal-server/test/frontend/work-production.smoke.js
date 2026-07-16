@@ -3,15 +3,13 @@ import test from 'node:test';
 
 import { createContext, overrideBinding } from './support/work-production-harness.js';
 
-test('work production split files expose utility, history, and draft helpers together', () => {
+test('work production split files expose utility, history, and draft helpers together', async () => {
   const context = createContext();
   const summary = context.getWorkTeamCalendarUtilitySummary('work_team_calendar_overview', '2026-04');
   const historySummary = context
     .getWorkTeamCalendarHistorySummaryMap('work_team_calendar_overview', ['2026-04-15'])
     .get('2026-04-15');
-  const historyHtml = context.renderWorkTeamCalendarGroupedHistoryHtml('work_team_calendar_overview', [
-    '2026-04-15',
-  ]);
+  const historyHtml = context.renderWorkTeamCalendarGroupedHistoryHtml('work_team_calendar_overview', ['2026-04-15']);
   const productionGroups = context.getWorkTeamCalendarProductionGroups('work_team_calendar_team1_part1', [
     '2026-04-15',
     '2026-04-16',
@@ -30,7 +28,9 @@ test('work production split files expose utility, history, and draft helpers tog
   assert.equal(typeof context.renderWorkTeamCalendarGroupedHistoryHtml, 'function');
   assert.equal(typeof context.getWorkTeamCalendarDraftForDates, 'function');
   assert.equal(summary.electric.usageText, '120 kWh');
-  assert.equal(summary.production.totalAmountText, '350kg');
+  assert.equal(summary.gas.usageText, 'LNG 55 m³');
+  assert.equal(summary.gas.detailRows[0].valueText, '55 m³');
+  assert.equal(summary.production.totalAmountText, '350 kg');
   assert.equal(productionGroups[0].items[0].productCode, 'A-001');
   assert.equal(productionGroups[0].items[0].regularWorkers, 2.5);
   assert.equal(productionGroups[0].items[0].contractWorkers, 0.5);
@@ -68,8 +68,11 @@ test('work production split files expose utility, history, and draft helpers tog
   assert.match(actionHtml, /data-work-production-action="paste"/);
   assert.match(actionHtml, /data-work-production-kind="normal"/);
   assert.match(actionHtml, /data-work-production-kind="rework"/);
-  assert.match(actionHtml, /openWorkProductionPasteModal\(event, 'normal'\)[^>]*>정상</);
-  assert.match(actionHtml, /openWorkProductionPasteModal\(event, 'rework'\)[^>]*>재가공품</);
+  assert.match(actionHtml, /openWorkProductionPasteModal\(event, 'normal'\)[^>]*>[\s\S]*?<span>정상<\/span><\/button>/);
+  assert.match(
+    actionHtml,
+    /openWorkProductionPasteModal\(event, 'rework'\)[^>]*>[\s\S]*?<span>재가공품<\/span><\/button>/
+  );
   assert.match(actionHtml, /data-work-production-action="delete"/);
   assert.doesNotMatch(actionHtml, /data-work-production-action="entry"/);
   assert.doesNotMatch(actionHtml, /openWorkProductionEntryModal/);
@@ -83,8 +86,11 @@ test('work production split files expose utility, history, and draft helpers tog
   context.alert = (message) => alerts.push(String(message || ''));
   context.openUtilSelectiveDeleteModal = (options) => {
     deleteOptions = options;
-    options.onApplied?.({ removedProductionCount: 2 });
   };
+  context.UTIL_PRODUCTION_DAILY_DATA = [];
+  context.UTIL_PRODUCTION_ARCHIVE_META = [];
+  context.UTIL_PRODUCTION_DAILY_STATE = { meta: {}, periodDefault: {}, teams: [], archives: [] };
+  context.UtilProductionState = { startDay: 1 };
   overrideBinding(context, 'setLastModified', (label) => {
     modifiedLabel = String(label || '');
   });
@@ -92,17 +98,116 @@ test('work production split files expose utility, history, and draft helpers tog
     renderCount += 1;
   });
 
-  assert.equal(context.openWorkProductionDeleteModal({
-    stopPropagation() {},
-    preventDefault() {},
-  }), true);
+  assert.equal(
+    context.openWorkProductionDeleteModal({
+      stopPropagation() {},
+      preventDefault() {},
+    }),
+    true
+  );
   assert.equal(deleteOptions.datasetKey, 'production');
   assert.equal(deleteOptions.teamName, context.getWorkTeamCalendarCategory('work_team_calendar_team1_part1').title);
   assert.equal(deleteOptions.fromYm, '2026-04');
   assert.equal(deleteOptions.toYm, '2026-04');
+  assert.equal(typeof deleteOptions.onBeforeApply, 'function');
+  assert.equal(typeof deleteOptions.onApplyError, 'function');
+  assert.equal(modifiedLabel, '');
+  assert.equal(renderCount, 0);
+  assert.equal(alerts.length, 0);
+
+  const rollbackSnapshot = deleteOptions.onBeforeApply();
+  assert.equal(await deleteOptions.onApplied({ removedProductionCount: 2 }, {}, rollbackSnapshot), true);
   assert.equal(modifiedLabel, '팀별내역서');
   assert.equal(renderCount, 1);
   assert.match(alerts.at(-1), /2/);
+});
+
+test('work production delete rollback restores local authority after save failure', async () => {
+  const context = createContext();
+  const originalDailyData = [{ name: '1팀 1파트', entries: [{ date: '2026-04-15', amount: 200 }] }];
+  context.UTIL_PRODUCTION_DAILY_DATA = JSON.parse(JSON.stringify(originalDailyData));
+  context.UTIL_PRODUCTION_ARCHIVE_META = [{ id: 'archive-1' }];
+  context.UTIL_PRODUCTION_DAILY_STATE = {
+    meta: { version: 3 },
+    periodDefault: { startDay: 1 },
+    teams: context.UTIL_PRODUCTION_DAILY_DATA,
+    archives: context.UTIL_PRODUCTION_ARCHIVE_META,
+  };
+  context.UtilProductionState = { startDay: 1 };
+  let deleteOptions = null;
+  let portalRecord = null;
+  let rebuildCount = 0;
+  let renderCount = 0;
+  let modifiedCount = 0;
+  const alerts = [];
+  context.alert = (message) => alerts.push(String(message || ''));
+  context.openUtilSelectiveDeleteModal = (options) => {
+    deleteOptions = options;
+  };
+  context.KpiUtilDataSyncBrowserAdapter = {
+    writeExistingPortalRecord(key, value) {
+      portalRecord = { key, value: JSON.parse(JSON.stringify(value)) };
+    },
+  };
+  context.refreshUtilProductionLinkedDatasets = () => Promise.resolve(true);
+  context.rebuildUtilEntryCollections = () => {
+    rebuildCount += 1;
+  };
+  overrideBinding(context, 'renderWorkTeamCalendarModal', () => {
+    renderCount += 1;
+  });
+  overrideBinding(context, 'setLastModified', () => {
+    modifiedCount += 1;
+  });
+
+  context.openWorkProductionDeleteModal();
+  const rollbackSnapshot = deleteOptions.onBeforeApply();
+  context.UTIL_PRODUCTION_DAILY_DATA.length = 0;
+  context.UTIL_PRODUCTION_ARCHIVE_META.length = 0;
+  context.UTIL_PRODUCTION_DAILY_STATE.meta = { version: 4 };
+  context.UtilProductionState.startDay = 7;
+
+  await deleteOptions.onApplyError(new Error('save failed'), {}, rollbackSnapshot);
+
+  assert.deepEqual(context.UTIL_PRODUCTION_DAILY_DATA, originalDailyData);
+  assert.deepEqual(context.UTIL_PRODUCTION_ARCHIVE_META, [{ id: 'archive-1' }]);
+  assert.deepEqual(context.UTIL_PRODUCTION_DAILY_STATE.meta, { version: 3 });
+  assert.equal(context.UtilProductionState.startDay, 1);
+  assert.equal(portalRecord.key, 'util_production_daily');
+  assert.deepEqual(portalRecord.value.teams, originalDailyData);
+  assert.equal(rebuildCount, 1);
+  assert.equal(renderCount, 1);
+  assert.equal(modifiedCount, 0);
+  assert.equal(alerts.length, 0);
+});
+
+test('work production delete defaults preserve every canonical document scope', () => {
+  const context = createContext();
+  const categoryTitles = new Map([
+    ['detail-team1', '1팀 1파트'],
+    ['process-dry', '건조'],
+    ['process-stick', '스틱,소포장'],
+    ['process-liquid', '액상'],
+    ['group-bukjeong', '북정'],
+    ['group-yusan', '유산'],
+    ['group-maintenance', '공무환경팀'],
+  ]);
+  overrideBinding(context, 'getWorkTeamCalendarCategory', (dataKey) => ({
+    dataKey,
+    title: categoryTitles.get(dataKey) || '',
+  }));
+  overrideBinding(context, 'isWorkTeamCalendarOverview', (dataKey) => dataKey === 'overview');
+
+  for (const [dataKey, teamName] of [...categoryTitles, ['overview', '전체']]) {
+    context.WorkState.teamCalendarModal = dataKey;
+    const defaults = context.getWorkProductionDeleteDefaults();
+    assert.deepEqual(JSON.parse(JSON.stringify(defaults)), {
+      datasetKey: 'production',
+      teamName,
+      fromYm: '2026-04',
+      toYm: '2026-04',
+    });
+  }
 });
 
 test('work production pasted entry keeps extractor parsing and merge payload shape', async () => {

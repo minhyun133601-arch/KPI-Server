@@ -14,14 +14,6 @@
             return nextMode;
         }
 
-        function getNextWorkTeamCalendarMode(mode = '') {
-            const currentMode = WORK_TEAM_CALENDAR_MODE_ORDER.includes(String(mode || '').trim().toLowerCase())
-                ? String(mode || '').trim().toLowerCase()
-                : getWorkTeamCalendarMode();
-            const currentIndex = WORK_TEAM_CALENDAR_MODE_ORDER.indexOf(currentMode);
-            return WORK_TEAM_CALENDAR_MODE_ORDER[(currentIndex + 1) % WORK_TEAM_CALENDAR_MODE_ORDER.length];
-        }
-
         function getWorkTeamCalendarModeMeta(mode = '') {
             const currentMode = WORK_TEAM_CALENDAR_MODE_ORDER.includes(String(mode || '').trim().toLowerCase())
                 ? String(mode || '').trim().toLowerCase()
@@ -33,9 +25,7 @@
             };
             return {
                 mode: currentMode,
-                label: labelMap[currentMode] || labelMap[WORK_TEAM_CALENDAR_MODE_DETAIL],
-                nextMode: getNextWorkTeamCalendarMode(currentMode),
-                nextLabel: labelMap[getNextWorkTeamCalendarMode(currentMode)] || labelMap[WORK_TEAM_CALENDAR_MODE_DETAIL]
+                label: labelMap[currentMode] || labelMap[WORK_TEAM_CALENDAR_MODE_DETAIL]
             };
         }
 
@@ -72,11 +62,8 @@
                     title: '북정',
                     dataKey,
                     processLabel: '북정',
-                    processTag: '북정',
                     desc: '1팀 1파트 기준 북정 통합 현황',
-                    processDesc: '1팀 1파트를 기준으로 묶은 북정 통합 현황입니다.',
-                    emptyProductionLabel: '생산량 없음',
-                    emptyWorkLabel: '작업 내역 미입력'
+                    emptyProductionLabel: '생산량 없음'
                 };
             }
             if (dataKey === WORK_TEAM_CALENDAR_GROUP_YUSAN_KEY) {
@@ -92,11 +79,8 @@
                     secondaryColor: '#047857',
                     tint: '#ecfdf5',
                     processLabel: '유산',
-                    processTag: '유산',
                     desc: '1팀 2파트, 2팀, 3팀 기준 유산 통합 현황',
-                    processDesc: '1팀 2파트, 2팀, 3팀을 묶은 유산 통합 현황입니다.',
-                    emptyProductionLabel: '생산량 없음',
-                    emptyWorkLabel: '작업 내역 미입력'
+                    emptyProductionLabel: '생산량 없음'
                 };
             }
             return null;
@@ -116,11 +100,8 @@
                     secondaryColor: '#d97706',
                     tint: '#fff7ed',
                     processLabel: '\uAC74\uC870',
-                    processTag: '\uACF5\uC815',
                     desc: '\uAC74\uC870 \uACF5\uC815 \uD1B5\uD569 \uB0B4\uC5ED',
-                    processDesc: '1\uD300 1\uD30C\uD2B8\uC640 1\uD300 2\uD30C\uD2B8\uB97C \uD568\uAED8 \uBCF4\uB294 \uAC74\uC870 \uACF5\uC815 \uB0B4\uC5ED\uC785\uB2C8\uB2E4.',
-                    emptyProductionLabel: source.emptyProductionLabel,
-                    emptyWorkLabel: source.emptyWorkLabel
+                    emptyProductionLabel: source.emptyProductionLabel
                 };
             }
             if (dataKey === WORK_TEAM_CALENDAR_PROCESS_STICK_KEY) {
@@ -131,11 +112,8 @@
                     title: '\uC2A4\uD2F1,\uC18C\uD3EC\uC7A5',
                     dataKey,
                     processLabel: '\uC2A4\uD2F1,\uC18C\uD3EC\uC7A5',
-                    processTag: '\uACF5\uC815',
                     desc: '\uC2A4\uD2F1,\uC18C\uD3EC\uC7A5 \uACF5\uC815 \uB0B4\uC5ED',
-                    processDesc: '2\uD300 \uAE30\uC900\uC73C\uB85C \uC2A4\uD2F1,\uC18C\uD3EC\uC7A5 \uACF5\uC815\uC744 \uBCF4\uB294 \uB0B4\uC5ED\uC785\uB2C8\uB2E4.',
-                    emptyProductionLabel: source.emptyProductionLabel,
-                    emptyWorkLabel: source.emptyWorkLabel
+                    emptyProductionLabel: source.emptyProductionLabel
                 };
             }
             if (dataKey === WORK_TEAM_CALENDAR_PROCESS_LIQUID_KEY) {
@@ -146,11 +124,8 @@
                     title: '\uC561\uC0C1',
                     dataKey,
                     processLabel: '\uC561\uC0C1',
-                    processTag: '\uACF5\uC815',
                     desc: '\uC561\uC0C1 \uACF5\uC815 \uB0B4\uC5ED',
-                    processDesc: '3\uD300 \uAE30\uC900\uC73C\uB85C \uC561\uC0C1 \uACF5\uC815\uC744 \uBCF4\uB294 \uB0B4\uC5ED\uC785\uB2C8\uB2E4.',
-                    emptyProductionLabel: source.emptyProductionLabel,
-                    emptyWorkLabel: source.emptyWorkLabel
+                    emptyProductionLabel: source.emptyProductionLabel
                 };
             }
             return null;
@@ -162,8 +137,7 @@
             return {
                 ...source,
                 title: '\uD1B5\uD569 \uD604\uD669',
-                processLabel: '\uD1B5\uD569 \uD604\uD669',
-                processTag: '\uC804\uCCB4'
+                processLabel: '\uD1B5\uD569 \uD604\uD669'
             };
         }
 
@@ -291,9 +265,8 @@
             const activeMode = getWorkTeamCalendarMode();
             const activeCategoryIndex = Number(getNavigationSelectionCategoryIndex?.('work'));
             const activeCategory = AppData?.work?.categories?.[activeCategoryIndex] || null;
-            const isTeamCalendarView = activeCategory?.view === 'team_calendar'
-                || activeCategory?.view === 'team_calendar_experiment';
-            if (typeof selectCategory === 'function' && getNavigationSelectionSectionId?.() === 'work' && isTeamCalendarView) {
+            const isTeamReportDocument = activeCategory?.view === 'team_calendar_document';
+            if (typeof selectCategory === 'function' && getNavigationSelectionSectionId?.() === 'work' && isTeamReportDocument) {
                 selectCategory('work', activeCategoryIndex, { teamDataKey: targetDataKey });
                 restoreWorkTeamCalendarControlFocus('data-work-team-mode', activeMode);
                 return targetDataKey;
@@ -303,7 +276,7 @@
         }
 
         function restoreWorkTeamCalendarControlFocus(attributeName, value) {
-            if (WorkState?.teamReportDocumentExperiment !== true || typeof document === 'undefined') return;
+            if (typeof document === 'undefined') return;
             const restoreFocus = () => {
                 const expectedValue = String(value || '');
                 const controls = Array.from(document.querySelectorAll(`[${attributeName}]`));
@@ -315,10 +288,6 @@
                 return;
             }
             restoreFocus();
-        }
-
-        function toggleWorkTeamCalendarDisplayMode() {
-            return switchWorkTeamCalendarDisplayMode(getNextWorkTeamCalendarMode());
         }
 
         function getWorkAllCategories() {
@@ -340,10 +309,5 @@
 
         function getWorkTeamCalendarCategoryList() {
             return getWorkTeamCalendarDisplayCategoryList();
-        }
-
-        function getWorkTeamCalendarCategory(dataKey) {
-            const category = getWorkCategoryByDataKey(dataKey);
-            return category?.view === 'team_calendar' ? category : null;
         }
 
