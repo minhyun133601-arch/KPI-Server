@@ -6,6 +6,7 @@
     const getBoardFilters = (...args) => api.getBoardFilters(...args);
     const applyBoardSearchFilter = (...args) => api.applyBoardSearchFilter(...args);
     const setBoardTeamOrdering = (...args) => api.setBoardTeamOrdering(...args);
+    const setBoardTeamCollapsed = (...args) => api.setBoardTeamCollapsed(...args);
     const ensureDraftDocumentEditorSlot = (...args) => api.ensureDraftDocumentEditorSlot(...args);
     const startNewCard = (...args) => api.startNewCard(...args);
     const updateStarterFromInput = (...args) => api.updateStarterFromInput(...args);
@@ -33,6 +34,36 @@
     const revertPhoto = (...args) => api.revertPhoto(...args);
     const deleteDraft = (...args) => api.deleteDraft(...args);
     const bindPhotoPreview = (...args) => api.bindPhotoPreview(...args);
+
+    function syncBoardTeamCollapseUi(column, button, isCollapsed) {
+        if (!column || !button) return;
+        const content = column.querySelector?.('[data-equipment-team-content]');
+        const teamName = button.dataset.equipmentTeamName || '';
+        const actionLabel = `${teamName} ${isCollapsed ? '\uD3BC\uCE58\uAE30' : '\uC811\uAE30'}`.trim();
+        column.classList.toggle('is-collapsed', isCollapsed);
+        if (content) content.hidden = isCollapsed;
+        button.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        button.setAttribute('aria-label', actionLabel);
+        button.setAttribute('title', actionLabel);
+        const icon = button.querySelector?.('i');
+        icon?.classList.toggle('fa-chevron-down', isCollapsed);
+        icon?.classList.toggle('fa-chevron-up', !isCollapsed);
+    }
+
+    function syncBoardTeamEditUi(column, button, isEditing) {
+        if (!column || !button) return;
+        const teamName = button.dataset.equipmentTeamName || '';
+        const actionLabel = `${teamName} \uD3B8\uC9D1 \uBAA8\uB4DC ${isEditing ? '\uB2EB\uAE30' : '\uC5F4\uAE30'}`.trim();
+        column.classList.toggle('is-ordering', isEditing);
+        column.classList.toggle('is-editing', isEditing);
+        button.setAttribute('aria-expanded', isEditing ? 'true' : 'false');
+        button.setAttribute('aria-pressed', isEditing ? 'true' : 'false');
+        button.setAttribute('aria-label', actionLabel);
+        button.setAttribute('title', actionLabel);
+        column.querySelectorAll('.data-equipment-board-card-tools, .data-equipment-board-room-tools').forEach((tools) => {
+            tools.setAttribute('aria-hidden', isEditing ? 'false' : 'true');
+        });
+    }
 
     function bindEvents(root, redraw, state, data) {
         root.querySelectorAll('[data-equipment-history-print]').forEach((button) => {
@@ -154,17 +185,32 @@
             }
         });
 
-        root.querySelectorAll('[data-equipment-order-toggle-team]').forEach((button) => {
+        root.querySelectorAll('[data-equipment-team-collapse-toggle]').forEach((button) => {
             button.addEventListener('click', () => {
                 const column = button.closest?.('.data-equipment-board-column');
                 if (!column) return;
-                const isOpen = !column.classList.contains('is-ordering');
-                setBoardTeamOrdering(state, button.dataset.equipmentOrderToggleTeam, isOpen);
-                column.classList.toggle('is-ordering', isOpen);
-                button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-                column.querySelectorAll('.data-equipment-board-card-tools, .data-equipment-board-room-tools').forEach((tools) => {
-                    tools.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-                });
+                const isCollapsed = !column.classList.contains('is-collapsed');
+                setBoardTeamCollapsed(state, button.dataset.equipmentTeamCollapseToggle, isCollapsed);
+                syncBoardTeamCollapseUi(column, button, isCollapsed);
+                if (!isCollapsed || !column.classList.contains('is-editing')) return;
+                const editToggle = column.querySelector?.('[data-equipment-edit-toggle-team]');
+                setBoardTeamOrdering(state, editToggle?.dataset.equipmentEditToggleTeam, false);
+                syncBoardTeamEditUi(column, editToggle, false);
+            });
+        });
+
+        root.querySelectorAll('[data-equipment-edit-toggle-team]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const column = button.closest?.('.data-equipment-board-column');
+                if (!column) return;
+                const isEditing = !column.classList.contains('is-editing');
+                if (isEditing && column.classList.contains('is-collapsed')) {
+                    const collapseToggle = column.querySelector?.('[data-equipment-team-collapse-toggle]');
+                    setBoardTeamCollapsed(state, collapseToggle?.dataset.equipmentTeamCollapseToggle, false);
+                    syncBoardTeamCollapseUi(column, collapseToggle, false);
+                }
+                setBoardTeamOrdering(state, button.dataset.equipmentEditToggleTeam, isEditing);
+                syncBoardTeamEditUi(column, button, isEditing);
             });
         });
 

@@ -4,7 +4,10 @@ import { adapterSource, dataCssSource, modelSource, renderSource } from './suppo
 
 test('equipment-history board source preserves dense responsive ordering filtering and history contracts', () => {
   assert.match(renderSource, /data-equipment-board-toolbar/);
-  assert.match(renderSource, /data-equipment-board-toolbar[\s\S]+renderBoardSummary\(activeSummary\)[\s\S]+renderBoardControls\(boardGroups, state\)/);
+  assert.match(
+    renderSource,
+    /data-equipment-board-toolbar[\s\S]+renderBoardSummary\(activeSummary\)[\s\S]+renderBoardControls\(boardGroups, state\)/
+  );
   assert.doesNotMatch(renderSource, /function renderBoardStatusOverview/);
   assert.match(dataCssSource, /data-equipment-board-team-title/);
   assert.match(dataCssSource, /data-equipment-board-section[\s\S]+display:\s*grid/);
@@ -187,13 +190,12 @@ test('equipment-history board source preserves dense responsive ordering filteri
   );
   assert.match(
     dataCssSource,
-    /data-equipment-board-column\.is-ordering\s+\.data-equipment-board-add-button[\s\S]+display:\s*none/
-  );
-  assert.match(
-    dataCssSource,
     /data-equipment-board-column\.is-ordering[\s\S]+\.data-equipment-board-card-actions[\s\S]+display:\s*none/
   );
-  assert.doesNotMatch(dataCssSource, /data-equipment-board-column\.is-ordering[\s\S]+\.data-equipment-board-status-actions/);
+  assert.doesNotMatch(
+    dataCssSource,
+    /data-equipment-board-column\.is-ordering[\s\S]+\.data-equipment-board-status-actions/
+  );
   assert.match(dataCssSource, /data-equipment-board-order-button/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-open-button/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-card button\s*\{/);
@@ -219,6 +221,23 @@ test('equipment-history board source preserves dense responsive ordering filteri
   assert.doesNotMatch(renderSource, /data-equipment-set-board-status/);
   assert.match(renderSource, /state\.pendingAddRoom = button\.dataset\.equipmentAddRoom/);
   assert.match(renderSource, /data-equipment-order-toggle-team/);
+  assert.match(renderSource, /data-equipment-board-team-edit-toggle/);
+  assert.match(renderSource, /data-equipment-edit-toggle-team/);
+  assert.match(renderSource, /aria-pressed="\$\{isEditing \? 'true' : 'false'\}"/);
+  assert.match(renderSource, /fas fa-pen/);
+  assert.match(renderSource, /collapsedTeams:\s*\{\}/);
+  assert.match(renderSource, /function getBoardCollapsedTeams/);
+  assert.match(renderSource, /function isBoardTeamCollapsed/);
+  assert.match(renderSource, /function setBoardTeamCollapsed/);
+  assert.match(renderSource, /data-equipment-team-collapse-toggle/);
+  assert.match(renderSource, /data-equipment-team-content/);
+  assert.match(renderSource, /aria-controls="\$\{teamContentId\}"/);
+  assert.match(renderSource, /function syncBoardTeamCollapseUi/);
+  assert.match(renderSource, /content\.hidden = isCollapsed/);
+  assert.match(
+    renderSource,
+    /setBoardTeamCollapsed\(state, button\.dataset\.equipmentTeamCollapseToggle, isCollapsed\)/
+  );
   assert.match(renderSource, /data-equipment-move-room/);
   assert.match(renderSource, /async function moveBoardRoom/);
   assert.doesNotMatch(renderSource, /data-equipment-order-toggle-card/);
@@ -255,7 +274,9 @@ test('equipment-history board source preserves dense responsive ordering filteri
   assert.match(adapterSource, /function addPopStateListener/);
   assert.doesNotMatch(renderSource, /data-equipment-board-open-button/);
   assert.match(renderSource, /aria-hidden="true"/);
-  assert.match(renderSource, /column\.classList\.toggle\('is-ordering', isOpen\)/);
+  assert.match(renderSource, /function syncBoardTeamEditUi/);
+  assert.match(renderSource, /column\.classList\.toggle\('is-ordering', isEditing\)/);
+  assert.match(renderSource, /column\.classList\.toggle\('is-editing', isEditing\)/);
   assert.match(renderSource, /async function cycleBoardCardStatus/);
   assert.match(renderSource, /async function moveBoardCard/);
   assert.match(renderSource, /buildEquipmentListWithRecord/);

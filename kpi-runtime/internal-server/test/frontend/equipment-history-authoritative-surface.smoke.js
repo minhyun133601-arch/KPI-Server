@@ -83,10 +83,7 @@ test('equipment history uses the shared Noto Sans KR typography without changing
     /font-family:\s*Arial,\s*["']Malgun Gothic["'],\s*["']Noto Sans KR["']/
   );
   assert.match(equipmentHistoryStyleSource, /--equipment-history-team-gap:\s*var\(--equipment-history-space-8\);/);
-  assert.match(
-    equipmentHistoryStyleSource,
-    /--equipment-history-team-4:\s*var\(--kpi-team-4,\s*rgb\(220 38 38\)\);/
-  );
+  assert.match(equipmentHistoryStyleSource, /--equipment-history-team-4:\s*var\(--kpi-team-4,\s*rgb\(220 38 38\)\);/);
   assert.match(
     equipmentHistoryStyleSource,
     /\[data-equipment-board-team="work_team_calendar_team4"\]\s*\{\s*--equipment-history-team-accent:\s*var\(--equipment-history-team-4\);\s*\}/
@@ -98,6 +95,7 @@ test('equipment history uses the shared Noto Sans KR typography without changing
   assert.match(equipmentHistoryStyleSource, /--equipment-history-toolbar-control-size:\s*13px;/);
   assert.match(equipmentHistoryStyleSource, /--equipment-history-toolbar-icon-size:\s*13px;/);
   assert.match(equipmentHistoryStyleSource, /--equipment-history-fullscreen-icon-size:\s*17px;/);
+  assert.match(equipmentHistoryStyleSource, /--equipment-history-team-control:\s*28px;/);
   assert.match(
     equipmentHistoryStyleSource,
     /\.data-equipment-board-toolbar\s*\{[\s\S]*grid-template-columns:\s*minmax\(340px,\s*\.85fr\)\s*minmax\(500px,\s*1\.15fr\)[\s\S]*min-height:\s*50px/
@@ -106,14 +104,56 @@ test('equipment history uses the shared Noto Sans KR typography without changing
     equipmentHistoryStyleSource,
     /\.data-equipment-board-toolbar \.data-equipment-index-controls\s*\{[\s\S]*minmax\(92px,\s*\.7fr\)[\s\S]*minmax\(156px,\s*1\.25fr\)/
   );
-  assert.match(equipmentHistoryStyleSource, /\.data-equipment-index-summary\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(equipmentHistoryStyleSource, /\.data-equipment-board-toolbar \.data-equipment-fullscreen-toggle\s*\{[\s\S]*width:\s*var\(--equipment-history-toolbar-control\)/);
-  assert.match(equipmentHistoryStyleSource, /\.data-equipment-fullscreen-toggle-icon svg\s*\{[\s\S]*stroke:\s*currentColor[\s\S]*stroke-linejoin:\s*round/);
-  assert.match(equipmentHistoryStyleSource, /\.data-equipment-index-summary article \.data-equipment-index-summary-rate\s*\{[\s\S]*font-size:\s*var\(--equipment-history-toolbar-rate-size\)/);
-  assert.match(equipmentHistoryStyleSource, /\.data-equipment-index-summary-icon\s*\{[\s\S]*width:\s*var\(--equipment-history-toolbar-icon-size\)[\s\S]*height:\s*var\(--equipment-history-toolbar-icon-size\)[\s\S]*border-radius:\s*0[\s\S]*background:\s*transparent[\s\S]*font-size:\s*var\(--equipment-history-toolbar-icon-size\)/);
-  assert.match(equipmentHistoryStyleSource, /article\.is-running div > span[\s\S]*color:\s*var\(--equipment-history-running\)/);
-  assert.match(equipmentHistoryStyleSource, /article\.is-stop div > span[\s\S]*color:\s*var\(--equipment-history-stop\)/);
-  assert.match(equipmentHistoryStyleSource, /article\.is-check div > span[\s\S]*color:\s*var\(--equipment-history-check\)/);
+  assert.match(
+    equipmentHistoryStyleSource,
+    /\.data-equipment-index-summary\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/
+  );
+  assert.match(
+    equipmentHistoryStyleSource,
+    /\.data-equipment-board-toolbar \.data-equipment-fullscreen-toggle\s*\{[\s\S]*width:\s*var\(--equipment-history-toolbar-control\)/
+  );
+  assert.match(
+    equipmentHistoryStyleSource,
+    /\.data-equipment-fullscreen-toggle-icon svg\s*\{[\s\S]*stroke:\s*currentColor[\s\S]*stroke-linejoin:\s*round/
+  );
+  assert.match(
+    equipmentHistoryStyleSource,
+    /\.data-equipment-index-summary article \.data-equipment-index-summary-rate\s*\{[\s\S]*font-size:\s*var\(--equipment-history-toolbar-rate-size\)/
+  );
+  assert.match(
+    equipmentHistoryStyleSource,
+    /\.data-equipment-index-summary-icon\s*\{[\s\S]*width:\s*var\(--equipment-history-toolbar-icon-size\)[\s\S]*height:\s*var\(--equipment-history-toolbar-icon-size\)[\s\S]*border-radius:\s*0[\s\S]*background:\s*transparent[\s\S]*font-size:\s*var\(--equipment-history-toolbar-icon-size\)/
+  );
+  assert.match(
+    equipmentHistoryStyleSource,
+    /article\.is-running div > span[\s\S]*color:\s*var\(--equipment-history-running\)/
+  );
+  assert.match(
+    equipmentHistoryStyleSource,
+    /article\.is-stop div > span[\s\S]*color:\s*var\(--equipment-history-stop\)/
+  );
+  assert.match(
+    equipmentHistoryStyleSource,
+    /article\.is-check div > span[\s\S]*color:\s*var\(--equipment-history-check\)/
+  );
   assert.doesNotMatch(equipmentHistoryStyleSource, /data-equipment-index-summary-marker/);
   assert.doesNotMatch(equipmentHistoryStyleSource, /\.data-equipment-index-status(?:\s|\{|,)/);
+  assert.match(
+    equipmentHistoryStyleSource,
+    /\.data-equipment-board-team-collapse-toggle,[\s\S]*\.data-equipment-board-team-edit-toggle\s*\{[\s\S]*width:\s*var\(--equipment-history-team-control\)/
+  );
+  assert.match(
+    equipmentHistoryStyleSource,
+    /\.data-equipment-board-column\.is-collapsed\s*>\s*header\s*\{\s*margin-bottom:\s*0;/
+  );
+  assert.match(equipmentHistoryStyleSource, /\.data-equipment-board-team-content\[hidden\]\s*\{\s*display:\s*none;/);
+  assert.match(
+    equipmentHistoryStyleSource,
+    /\.data-equipment-board-column \.data-equipment-board-add-button\s*\{\s*display:\s*none;/
+  );
+  assert.match(
+    equipmentHistoryStyleSource,
+    /\.data-equipment-board-column\.is-editing \.data-equipment-board-add-button\s*\{\s*display:\s*inline-flex;/
+  );
+  assert.match(equipmentHistoryStyleSource, /\.data-equipment-board-team-edit-toggle\[aria-pressed="true"\]/);
 });

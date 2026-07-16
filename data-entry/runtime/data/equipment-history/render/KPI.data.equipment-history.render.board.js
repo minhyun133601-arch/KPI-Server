@@ -398,6 +398,27 @@
         }
     }
 
+    function getBoardCollapsedTeams(state) {
+        if (!state || typeof state !== 'object') return {};
+        if (!state.collapsedTeams || typeof state.collapsedTeams !== 'object') state.collapsedTeams = {};
+        return state.collapsedTeams;
+    }
+
+    function isBoardTeamCollapsed(state, teamKey) {
+        return getBoardCollapsedTeams(state)[api.normalizeText(teamKey)] === true;
+    }
+
+    function setBoardTeamCollapsed(state, teamKey, isCollapsed) {
+        const normalizedTeamKey = api.normalizeText(teamKey);
+        if (!normalizedTeamKey || !state || typeof state !== 'object') return;
+        const collapsedTeams = getBoardCollapsedTeams(state);
+        if (isCollapsed) {
+            collapsedTeams[normalizedTeamKey] = true;
+        } else {
+            delete collapsedTeams[normalizedTeamKey];
+        }
+    }
+
     function getBoardRoomOrderMeta(sections = [], index = 0) {
         const previous = sections[index - 1];
         const next = sections[index + 1];
@@ -641,17 +662,20 @@
         const hasActiveFilter = Boolean(filters.team || filters.status || filters.search);
         const activeSummary = hasActiveFilter ? filteredSummary : fullSummary;
         const boardBody = filteredGroups.length
-            ? boardGroups.map((group) => {
+            ? boardGroups.map((group, groupIndex) => {
                 const filteredGroup = filteredGroups.find((candidate) => getBoardGroupKey(candidate) === getBoardGroupKey(group));
                 if (!filteredGroup) return '';
                 const teamMeta = group.teamMeta || api.getEquipmentHistoryTeamMeta?.(group.teamDataKey || group.team) || {};
                 const teamKey = group.teamDataKey || group.team;
-                const orderToggleLabel = `${group.team} \uC21C\uC11C \uC774\uB3D9`;
-                const isOrdering = isBoardTeamOrdering(state, teamKey);
+                const isEditing = isBoardTeamOrdering(state, teamKey);
+                const editToggleLabel = `${group.team} \uD3B8\uC9D1 \uBAA8\uB4DC ${isEditing ? '\uB2EB\uAE30' : '\uC5F4\uAE30'}`;
+                const isCollapsed = isBoardTeamCollapsed(state, teamKey);
+                const collapseToggleLabel = `${group.team} ${isCollapsed ? '\uD3BC\uCE58\uAE30' : '\uC811\uAE30'}`;
+                const teamContentId = `equipment-board-team-content-${groupIndex}`;
                 const visibleSections = filteredGroup.sections.length ? filteredGroup.sections : [{ title: '', equipment: [] }];
                 const sectionEquipment = visibleSections.flatMap((section) => section.equipment);
                 return `
-                <section class="data-equipment-board-column${isOrdering ? ' is-ordering' : ''}" data-equipment-board-team="${api.escapeHtml(teamKey)}" style="${getBoardTeamStyle(teamMeta)}">
+                <section class="data-equipment-board-column${isEditing ? ' is-ordering is-editing' : ''}${isCollapsed ? ' is-collapsed' : ''}" data-equipment-board-team="${api.escapeHtml(teamKey)}" style="${getBoardTeamStyle(teamMeta)}">
                     <header>
                         <div class="data-equipment-board-team-title">
                             <span class="data-equipment-board-team-icon" aria-hidden="true">${getEquipmentTeamIconSvg(teamMeta)}</span>
@@ -660,19 +684,24 @@
                             ${renderBoardAddButton(teamKey)}
                         </div>
                         <div class="data-equipment-board-team-actions">
-                            <button type="button" class="data-equipment-board-team-order-toggle" data-equipment-order-toggle-team="${api.escapeHtml(teamKey)}" aria-label="${api.escapeHtml(orderToggleLabel)}" title="${api.escapeHtml(orderToggleLabel)}" aria-expanded="${isOrdering ? 'true' : 'false'}">
-                                <i class="fas fa-arrows-up-down" aria-hidden="true"></i>
+                            <button type="button" class="data-equipment-board-team-collapse-toggle" data-equipment-team-collapse-toggle="${api.escapeHtml(teamKey)}" data-equipment-team-name="${api.escapeHtml(group.team)}" aria-label="${api.escapeHtml(collapseToggleLabel)}" title="${api.escapeHtml(collapseToggleLabel)}" aria-expanded="${isCollapsed ? 'false' : 'true'}" aria-controls="${teamContentId}">
+                                <i class="fas fa-chevron-${isCollapsed ? 'down' : 'up'}" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="data-equipment-board-team-order-toggle data-equipment-board-team-edit-toggle" data-equipment-order-toggle-team="${api.escapeHtml(teamKey)}" data-equipment-edit-toggle-team="${api.escapeHtml(teamKey)}" data-equipment-team-name="${api.escapeHtml(group.team)}" aria-label="${api.escapeHtml(editToggleLabel)}" title="${api.escapeHtml(editToggleLabel)}" aria-expanded="${isEditing ? 'true' : 'false'}" aria-pressed="${isEditing ? 'true' : 'false'}">
+                                <i class="fas fa-pen" aria-hidden="true"></i>
                             </button>
                         </div>
                     </header>
-                    ${visibleSections.map((section, sectionIndex) => `
-                        <div class="data-equipment-board-section">
-                            ${renderBoardSectionTitle(section.title, teamKey, section.equipment, getBoardRoomOrderMeta(visibleSections, sectionIndex), isOrdering)}
-                            <div class="data-equipment-board-card-row">
-                                ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex), state, isOrdering)).join('')}
+                    <div class="data-equipment-board-team-content" id="${teamContentId}" data-equipment-team-content${isCollapsed ? ' hidden' : ''}>
+                        ${visibleSections.map((section, sectionIndex) => `
+                            <div class="data-equipment-board-section">
+                                ${renderBoardSectionTitle(section.title, teamKey, section.equipment, getBoardRoomOrderMeta(visibleSections, sectionIndex), isEditing)}
+                                <div class="data-equipment-board-card-row">
+                                    ${section.equipment.map((item, itemIndex) => renderBoardCard(item, getBoardCardOrderMeta(section.equipment, itemIndex), state, isEditing)).join('')}
+                                </div>
                             </div>
-                        </div>
-                    `).join('')}
+                        `).join('')}
+                    </div>
                 </section>
             `;
             }).join('')
@@ -741,6 +770,9 @@
         getBoardOrderingTeams,
         isBoardTeamOrdering,
         setBoardTeamOrdering,
+        getBoardCollapsedTeams,
+        isBoardTeamCollapsed,
+        setBoardTeamCollapsed,
         getBoardRoomOrderMeta,
         getBoardBulkStatusState,
         getBoardBulkStatusTargetItems,

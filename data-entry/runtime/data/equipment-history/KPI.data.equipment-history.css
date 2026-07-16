@@ -50,6 +50,7 @@
 --equipment-history-toolbar-rate-size: 12px;
 --equipment-history-toolbar-icon-size: 13px;
 --equipment-history-fullscreen-icon-size: 17px;
+--equipment-history-team-control: 28px;
 --equipment-history-motion: 120ms ease-out;
 min-height: 100%;
 background: var(--equipment-history-canvas);
@@ -269,8 +270,20 @@ color: var(--equipment-history-text);
 font-size: 14px;
 font-weight: 800;
 }
+.equipment-history-skin .data-equipment-board-column.is-collapsed {
+padding-bottom: 0;
+}
+.equipment-history-skin .data-equipment-board-column.is-collapsed > header {
+margin-bottom: 0;
+}
+.equipment-history-skin .data-equipment-board-team-content[hidden] {
+display: none;
+}
 .equipment-history-skin .data-equipment-board-team-title {
 gap: var(--equipment-history-space-2);
+}
+.equipment-history-skin .data-equipment-board-team-actions {
+gap: var(--equipment-history-space-1);
 }
 .equipment-history-skin .data-equipment-board-team-icon {
 width: var(--equipment-history-space-6);
@@ -311,9 +324,10 @@ background: transparent;
 color: var(--equipment-history-muted);
 }
 .equipment-history-skin .data-equipment-board-add-button,
-.equipment-history-skin .data-equipment-board-team-order-toggle {
-min-width: 28px;
-height: 28px;
+.equipment-history-skin .data-equipment-board-team-collapse-toggle,
+.equipment-history-skin .data-equipment-board-team-edit-toggle {
+min-width: var(--equipment-history-team-control);
+height: var(--equipment-history-team-control);
 border: 1px solid var(--equipment-history-border);
 border-radius: var(--equipment-history-radius-small);
 background: var(--equipment-history-surface);
@@ -322,12 +336,36 @@ padding: 0 var(--equipment-history-space-2);
 font-size: 11px;
 font-weight: 700;
 }
+.equipment-history-skin .data-equipment-board-team-collapse-toggle,
+.equipment-history-skin .data-equipment-board-team-edit-toggle {
+width: var(--equipment-history-team-control);
+display: inline-flex;
+flex: 0 0 var(--equipment-history-team-control);
+align-items: center;
+justify-content: center;
+padding: 0;
+cursor: pointer;
+}
 .equipment-history-skin .data-equipment-board-add-button:hover,
-.equipment-history-skin .data-equipment-board-team-order-toggle:hover,
-.equipment-history-skin .data-equipment-board-team-order-toggle[aria-expanded="true"] {
+.equipment-history-skin .data-equipment-board-team-collapse-toggle:hover,
+.equipment-history-skin .data-equipment-board-team-edit-toggle:hover,
+.equipment-history-skin .data-equipment-board-team-edit-toggle[aria-pressed="true"] {
 border-color: var(--equipment-history-border-strong);
 background: var(--equipment-history-surface-muted);
 color: var(--equipment-history-text);
+}
+.equipment-history-skin .data-equipment-board-add-button:focus-visible,
+.equipment-history-skin .data-equipment-board-team-collapse-toggle:focus-visible,
+.equipment-history-skin .data-equipment-board-team-edit-toggle:focus-visible {
+outline: 2px solid var(--equipment-history-focus);
+outline-offset: 1px;
+border-color: var(--equipment-history-focus);
+}
+.equipment-history-skin .data-equipment-board-column .data-equipment-board-add-button {
+display: none;
+}
+.equipment-history-skin .data-equipment-board-column.is-editing .data-equipment-board-add-button {
+display: inline-flex;
 }
 .equipment-history-skin .data-equipment-board-section {
 overflow: hidden;

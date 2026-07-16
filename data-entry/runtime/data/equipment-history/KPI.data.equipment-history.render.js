@@ -16,6 +16,7 @@
             starter: null,
             message: '',
             openEquipmentSpecBlocks: {},
+            collapsedTeams: {},
             orderingTeams: {},
             pendingPhotoDocumentCleanupIds: [],
             bulkStatus: {

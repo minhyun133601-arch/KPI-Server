@@ -68,6 +68,7 @@
 - Team header tint: 10%
 - Team boundary mix: pure team color on top, 42% team color on the header divider
 - Room boundary mix: 36% team color mixed with the neutral border
+- Team disclosure control: 28px square, same border/radius rules as the team order control
 - Equipment card min width: 220px
 - Photo ratio: wide, `object-fit: contain`
 
@@ -84,6 +85,8 @@
 - 팀 구분은 3px 순색 상단선, 10% 팀색 헤더, 16px 팀명으로 가장 강하게 표시한다.
 - 실 구분은 팀 안쪽의 2px 저채도 세로 레일과 중립 헤더로 표시해 팀보다 한 단계 낮게 읽히게 한다.
 - 팀색은 팀 헤더와 경계 표식에만 제한하고 설비 카드 배경에는 사용하지 않는다.
+- 각 팀 헤더 오른쪽에는 접기·펼치기 버튼과 28px 연필 아이콘의 팀 편집 버튼을 둔다. 팀은 기본적으로 펼쳐지며, 접었을 때도 팀명·대수·두 제어와 팀 경계색은 유지하고 실·설비 목록만 숨긴다.
+- 팀과 실의 `추가` 버튼은 평소에는 숨기고, 해당 팀의 편집 모드를 열었을 때만 순서 이동 제어와 함께 표시한다. 다른 팀의 편집 도구는 영향을 받지 않는다.
 - 전체 적용은 상단의 단일 진입 버튼으로 열고, 내부에서 팀/실/상태 필터를 선택한다.
 - 구형 팀/실별 상태 전환 버튼은 사용하지 않고, 상단 전체 적용과 개별 카드 상태 변경을 유지한다.
 - 설비 목차의 전체 설비 사진 노출은 유지한다.
@@ -93,6 +96,10 @@
 - 전환은 120ms ease-out만 사용한다.
 - hover lift나 큰 그림자, 그라디언트 강조는 사용하지 않는다.
 - `prefers-reduced-motion: reduce`에서는 전환을 제거한다.
+- 팀 접힘 상태는 설비 데이터와 분리된 현재 화면의 메모리 상태다. 검색·필터로 목차가 다시 그려져도 유지하되 새로 화면을 마운트하면 기본 펼침으로 시작한다.
+- 팀 접기 버튼은 `aria-expanded`와 `aria-controls`를 제공하고, 접힌 실·설비 영역은 `hidden`으로 키보드 탐색에서도 제외한다.
+- 팀 편집 버튼은 `aria-pressed`와 `aria-expanded`로 현재 모드를 알리고 라벨을 `편집 모드 열기/닫기`로 갱신한다.
+- 접힌 팀에서 편집 모드를 열면 해당 팀을 자동으로 펼치고, 편집 중인 팀을 접으면 편집 모드도 함께 종료한다.
 
 ## 적용 조건
 

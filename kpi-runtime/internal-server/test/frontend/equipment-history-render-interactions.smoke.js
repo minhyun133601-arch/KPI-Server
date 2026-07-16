@@ -48,18 +48,18 @@ test('equipment-history board search filters immediately and highlights visible 
   assert.deepEqual(selectionRange, [4, 4]);
 });
 
-test('equipment-history board room order controls persist room group order and keep order mode', async () => {
+test('equipment-history team edit mode exposes order controls and persists room group order', async () => {
   const { context, container, registeredRenderer } = createEquipmentHistoryRuntime();
   const api = context.KpiDataEquipmentHistory;
   let roomMoveHandler = null;
-  let orderToggleHandler = null;
+  let editToggleHandler = null;
   const columnClassList = {
-    isOrdering: false,
+    isEditing: false,
     contains(name) {
-      return name === 'is-ordering' && this.isOrdering;
+      return (name === 'is-ordering' || name === 'is-editing') && this.isEditing;
     },
     toggle(name, value) {
-      if (name === 'is-ordering') this.isOrdering = value;
+      if (name === 'is-ordering' || name === 'is-editing') this.isEditing = value;
     },
   };
   const column = {
@@ -70,14 +70,17 @@ test('equipment-history board room order controls persist room group order and k
         : [];
     },
   };
-  const orderToggleButton = {
-    dataset: { equipmentOrderToggleTeam: 'work_team_calendar_team1_part1' },
+  const editToggleButton = {
+    dataset: {
+      equipmentEditToggleTeam: 'work_team_calendar_team1_part1',
+      equipmentTeamName: '1팀 1파트',
+    },
     closest(selector) {
       return selector === '.data-equipment-board-column' ? column : null;
     },
     setAttribute() {},
     addEventListener(type, handler) {
-      if (type === 'click') orderToggleHandler = handler;
+      if (type === 'click') editToggleHandler = handler;
     },
   };
   const moveRoomButton = {
@@ -91,7 +94,7 @@ test('equipment-history board room order controls persist room group order and k
     },
   };
   container.querySelectorAll = (selector) => {
-    if (selector === '[data-equipment-order-toggle-team]') return [orderToggleButton];
+    if (selector === '[data-equipment-edit-toggle-team]') return [editToggleButton];
     if (selector === '[data-equipment-move-room]') return [moveRoomButton];
     return [];
   };
@@ -106,9 +109,9 @@ test('equipment-history board room order controls persist room group order and k
   };
 
   registeredRenderer({ title: 'Equipment History', dataKey: 'data_equipment_history_card' }, { container });
-  assert.equal(typeof orderToggleHandler, 'function');
+  assert.equal(typeof editToggleHandler, 'function');
   assert.equal(typeof roomMoveHandler, 'function');
-  orderToggleHandler();
+  editToggleHandler();
   await roomMoveHandler();
 
   assert.equal(
@@ -119,14 +122,166 @@ test('equipment-history board room order controls persist room group order and k
   assert.equal(JSON.stringify(grouped[0].sections.map((section) => section.title)), JSON.stringify(['A', 'B', 'C']));
   assert.match(
     container.innerHTML,
-    /class="data-equipment-board-column is-ordering" data-equipment-board-team="work_team_calendar_team1_part1"/
+    /class="data-equipment-board-column is-ordering is-editing" data-equipment-board-team="work_team_calendar_team1_part1"/
   );
   assert.match(
     container.innerHTML,
-    /data-equipment-order-toggle-team="work_team_calendar_team1_part1"[^>]*aria-expanded="true"/
+    /data-equipment-edit-toggle-team="work_team_calendar_team1_part1"[^>]*aria-label="1팀 1파트 편집 모드 닫기"[^>]*aria-expanded="true"[^>]*aria-pressed="true"/
   );
   assert.match(container.innerHTML, /data-equipment-board-room-tools" aria-hidden="false"/);
   assert.match(container.innerHTML, /data-equipment-board-card-tools" aria-hidden="false"/);
+});
+
+test('equipment-history team disclosure and edit mode stay UI-only and coordinate across redraws', () => {
+  const { context, container, registeredRenderer } = createEquipmentHistoryRuntime();
+  let collapseHandler = null;
+  let editToggleHandler = null;
+  let resetHandler = null;
+  const attributes = new Map();
+  const iconStates = new Set(['fa-chevron-up']);
+  const content = { hidden: false };
+  const tools = [
+    {
+      setAttribute(name, value) {
+        attributes.set('tools:' + name, value);
+      },
+    },
+  ];
+  const columnClasses = new Set();
+  const classList = {
+    contains(name) {
+      return columnClasses.has(name);
+    },
+    toggle(name, value) {
+      if (value) columnClasses.add(name);
+      else columnClasses.delete(name);
+    },
+    remove(name) {
+      columnClasses.delete(name);
+    },
+  };
+  const icon = {
+    classList: {
+      toggle(name, value) {
+        if (value) iconStates.add(name);
+        else iconStates.delete(name);
+      },
+    },
+  };
+  const editToggleButton = {
+    dataset: {
+      equipmentEditToggleTeam: 'work_team_calendar_team1_part1',
+      equipmentTeamName: '1팀 1파트',
+    },
+    closest(selector) {
+      return selector === '.data-equipment-board-column' ? column : null;
+    },
+    setAttribute(name, value) {
+      attributes.set('edit:' + name, value);
+    },
+    addEventListener(type, handler) {
+      if (type === 'click') editToggleHandler = handler;
+    },
+  };
+  const collapseButton = {
+    dataset: {
+      equipmentTeamCollapseToggle: 'work_team_calendar_team1_part1',
+      equipmentTeamName: '1팀 1파트',
+    },
+    closest(selector) {
+      return selector === '.data-equipment-board-column' ? column : null;
+    },
+    querySelector(selector) {
+      return selector === 'i' ? icon : null;
+    },
+    setAttribute(name, value) {
+      attributes.set('collapse:' + name, value);
+    },
+    addEventListener(type, handler) {
+      if (type === 'click') collapseHandler = handler;
+    },
+  };
+  const column = {
+    classList,
+    querySelector(selector) {
+      if (selector === '[data-equipment-team-content]') return content;
+      if (selector === '[data-equipment-edit-toggle-team]') return editToggleButton;
+      if (selector === '[data-equipment-team-collapse-toggle]') return collapseButton;
+      return null;
+    },
+    querySelectorAll(selector) {
+      return selector === '.data-equipment-board-card-tools, .data-equipment-board-room-tools' ? tools : [];
+    },
+  };
+  const resetButton = {
+    addEventListener(type, handler) {
+      if (type === 'click') resetHandler = handler;
+    },
+  };
+
+  container.querySelector = (selector) => (selector === '[data-equipment-filter-reset]' ? resetButton : null);
+  container.querySelectorAll = (selector) => {
+    if (selector === '[data-equipment-team-collapse-toggle]') return [collapseButton];
+    if (selector === '[data-equipment-edit-toggle-team]') return [editToggleButton];
+    return [];
+  };
+  context.PortalData.data_equipment_history_card = {
+    equipmentList: [
+      {
+        id: 'eq-collapse',
+        name: 'Collapse Pump',
+        teamDataKey: 'work_team_calendar_team1_part1',
+        room: 'A실',
+        status: '가동중',
+      },
+    ],
+  };
+  const equipmentPayloadBefore = JSON.stringify(context.PortalData.data_equipment_history_card);
+
+  registeredRenderer({ title: '설비 이력', dataKey: 'data_equipment_history_card' }, { container });
+  assert.equal(typeof collapseHandler, 'function');
+  assert.equal(typeof editToggleHandler, 'function');
+  assert.equal(typeof resetHandler, 'function');
+
+  collapseHandler();
+  assert.equal(columnClasses.has('is-collapsed'), true);
+  assert.equal(content.hidden, true);
+  assert.equal(attributes.get('collapse:aria-expanded'), 'false');
+  assert.equal(attributes.get('collapse:aria-label'), '1팀 1파트 펼치기');
+  assert.equal(iconStates.has('fa-chevron-down'), true);
+  assert.equal(iconStates.has('fa-chevron-up'), false);
+
+  resetHandler();
+  assert.match(
+    container.innerHTML,
+    /data-equipment-board-column is-collapsed"[^>]*data-equipment-board-team="work_team_calendar_team1_part1"/
+  );
+  assert.match(
+    container.innerHTML,
+    /data-equipment-team-collapse-toggle="work_team_calendar_team1_part1"[^>]*aria-expanded="false"/
+  );
+  assert.match(container.innerHTML, /data-equipment-team-content hidden/);
+
+  editToggleHandler();
+  assert.equal(columnClasses.has('is-collapsed'), false);
+  assert.equal(columnClasses.has('is-ordering'), true);
+  assert.equal(columnClasses.has('is-editing'), true);
+  assert.equal(content.hidden, false);
+  assert.equal(attributes.get('collapse:aria-expanded'), 'true');
+  assert.equal(attributes.get('edit:aria-expanded'), 'true');
+  assert.equal(attributes.get('edit:aria-pressed'), 'true');
+  assert.equal(attributes.get('edit:aria-label'), '1팀 1파트 편집 모드 닫기');
+
+  collapseHandler();
+  assert.equal(columnClasses.has('is-collapsed'), true);
+  assert.equal(columnClasses.has('is-ordering'), false);
+  assert.equal(columnClasses.has('is-editing'), false);
+  assert.equal(content.hidden, true);
+  assert.equal(attributes.get('edit:aria-expanded'), 'false');
+  assert.equal(attributes.get('edit:aria-pressed'), 'false');
+  assert.equal(attributes.get('edit:aria-label'), '1팀 1파트 편집 모드 열기');
+  assert.equal(attributes.get('tools:aria-hidden'), 'true');
+  assert.equal(JSON.stringify(context.PortalData.data_equipment_history_card), equipmentPayloadBefore);
 });
 
 test('equipment-history current card status changes are saved only by explicit save', async () => {

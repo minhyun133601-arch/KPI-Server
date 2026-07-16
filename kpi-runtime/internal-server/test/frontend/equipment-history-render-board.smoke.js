@@ -45,8 +45,14 @@ test('equipment-history renderer preserves team metadata empty columns room grou
 
   assert.doesNotMatch(container.innerHTML, />\s*설비 이력\s*</);
   assert.match(container.innerHTML, /data-equipment-board-toolbar/);
-  assert.match(container.innerHTML, /data-equipment-board-toolbar[\s\S]*전체 설비[\s\S]*가동중[\s\S]*비가동중[\s\S]*정비중/);
-  assert.match(container.innerHTML, /data-equipment-board-toolbar[\s\S]*data-equipment-filter-team[\s\S]*data-equipment-filter-status[\s\S]*data-equipment-filter-search[\s\S]*data-equipment-filter-reset[\s\S]*data-equipment-fullscreen-toggle/);
+  assert.match(
+    container.innerHTML,
+    /data-equipment-board-toolbar[\s\S]*전체 설비[\s\S]*가동중[\s\S]*비가동중[\s\S]*정비중/
+  );
+  assert.match(
+    container.innerHTML,
+    /data-equipment-board-toolbar[\s\S]*data-equipment-filter-team[\s\S]*data-equipment-filter-status[\s\S]*data-equipment-filter-search[\s\S]*data-equipment-filter-reset[\s\S]*data-equipment-fullscreen-toggle/
+  );
   assert.doesNotMatch(container.innerHTML, /data-equipment-index-status/);
   assert.match(container.innerHTML, /전체 팀/);
   assert.match(container.innerHTML, /전체 상태/);
@@ -56,9 +62,15 @@ test('equipment-history renderer preserves team metadata empty columns room grou
   assert.match(container.innerHTML, /data-equipment-fullscreen-icon[\s\S]*data-equipment-fullscreen-icon-svg/);
   assert.match(container.innerHTML, /M7 3H3v4M3 3l5 5M13 3h4v4M17 3l-5 5M7 17H3v-4M3 17l5-5M13 17h4v-4M17 17l-5-5/);
   assert.equal((container.innerHTML.match(/data-equipment-index-summary-icon/g) || []).length, 4);
-  assert.match(container.innerHTML, /data-equipment-index-summary-icon fas fa-industry" aria-hidden="true"><\/i>전체 설비/);
+  assert.match(
+    container.innerHTML,
+    /data-equipment-index-summary-icon fas fa-industry" aria-hidden="true"><\/i>전체 설비/
+  );
   assert.match(container.innerHTML, /data-equipment-index-summary-icon fas fa-play" aria-hidden="true"><\/i>가동중/);
-  assert.match(container.innerHTML, /data-equipment-index-summary-icon fas fa-square" aria-hidden="true"><\/i>비가동중/);
+  assert.match(
+    container.innerHTML,
+    /data-equipment-index-summary-icon fas fa-square" aria-hidden="true"><\/i>비가동중/
+  );
   assert.match(container.innerHTML, /data-equipment-index-summary-icon fas fa-wrench" aria-hidden="true"><\/i>정비중/);
   assert.doesNotMatch(container.innerHTML, /data-equipment-index-summary-marker/);
   assert.equal((container.innerHTML.match(/data-equipment-index-summary-rate/g) || []).length, 3);
@@ -191,6 +203,19 @@ test('equipment-history renderer preserves team metadata empty columns room grou
     (container.innerHTML.match(/data-equipment-order-toggle-team="work_team_calendar_team1_part1"/g) || []).length,
     1
   );
+  assert.match(
+    container.innerHTML,
+    /data-equipment-board-team-edit-toggle"[^>]*data-equipment-edit-toggle-team="work_team_calendar_team1_part1"[^>]*data-equipment-team-name="1팀 1파트"[^>]*aria-label="1팀 1파트 편집 모드 열기"[^>]*aria-expanded="false"[^>]*aria-pressed="false"[\s\S]*fas fa-pen/
+  );
+  assert.doesNotMatch(container.innerHTML, /fa-arrows-up-down/);
+  assert.match(
+    container.innerHTML,
+    /data-equipment-team-collapse-toggle="work_team_calendar_team1_part1"[^>]*data-equipment-team-name="1팀 1파트"[^>]*aria-label="1팀 1파트 접기"[^>]*aria-expanded="true"[^>]*aria-controls="equipment-board-team-content-0"/
+  );
+  assert.match(
+    container.innerHTML,
+    /id="equipment-board-team-content-0"[^>]*data-equipment-team-content>(?!\s*<\/div>)/
+  );
   assert.doesNotMatch(container.innerHTML, /data-equipment-order-toggle-card/);
   assert.match(container.innerHTML, /data-equipment-board-team-count[^>]*>4/);
   assert.match(
@@ -249,6 +274,61 @@ test('equipment-history renderer preserves team metadata empty columns room grou
   assert.ok(container.innerHTML.indexOf('1팀 B 혼합기') < container.innerHTML.indexOf('1팀 A 혼합기'));
   assert.ok(container.innerHTML.indexOf('1팀 A 혼합기') < container.innerHTML.indexOf('1팀 C 혼합기'));
   assert.equal(api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card)[1].sourceIndex, 1);
+
+  const collapsedState = { collapsedTeams: {} };
+  assert.equal(api.isBoardTeamCollapsed(collapsedState, 'work_team_calendar_team1_part1'), false);
+  api.setBoardTeamCollapsed(collapsedState, 'work_team_calendar_team1_part1', true);
+  assert.equal(api.isBoardTeamCollapsed(collapsedState, 'work_team_calendar_team1_part1'), true);
+  const collapsedBoardHtml = api.renderBoard(
+    groupedByRoom,
+    api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card),
+    collapsedState
+  );
+  assert.match(
+    collapsedBoardHtml,
+    /data-equipment-board-column is-collapsed"[^>]*data-equipment-board-team="work_team_calendar_team1_part1"/
+  );
+  assert.match(
+    collapsedBoardHtml,
+    /data-equipment-team-collapse-toggle="work_team_calendar_team1_part1"[^>]*aria-label="1팀 1파트 펼치기"[^>]*aria-expanded="false"[^>]*aria-controls="equipment-board-team-content-0"/
+  );
+  assert.match(
+    collapsedBoardHtml,
+    /id="equipment-board-team-content-0"[^>]*data-equipment-team-content hidden>[\s\S]*data-equipment-open-card="eq-team1-a"/
+  );
+  assert.match(
+    collapsedBoardHtml,
+    /data-equipment-board-team-count[^>]*>4대<\/span>[\s\S]*data-equipment-add-team="work_team_calendar_team1_part1"/
+  );
+  api.setBoardTeamCollapsed(collapsedState, 'work_team_calendar_team1_part1', false);
+  assert.equal(api.isBoardTeamCollapsed(collapsedState, 'work_team_calendar_team1_part1'), false);
+  assert.equal(Object.hasOwn(collapsedState.collapsedTeams, 'work_team_calendar_team1_part1'), false);
+
+  const editingState = {
+    orderingTeams: { work_team_calendar_team1_part1: true },
+  };
+  const editingBoardHtml = api.renderBoard(
+    groupedByRoom,
+    api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card),
+    editingState
+  );
+  assert.match(
+    editingBoardHtml,
+    /data-equipment-board-column is-ordering is-editing"[^>]*data-equipment-board-team="work_team_calendar_team1_part1"/
+  );
+  assert.match(
+    editingBoardHtml,
+    /data-equipment-edit-toggle-team="work_team_calendar_team1_part1"[^>]*aria-label="1팀 1파트 편집 모드 닫기"[^>]*aria-expanded="true"[^>]*aria-pressed="true"/
+  );
+  assert.match(editingBoardHtml, /data-equipment-board-room-tools" aria-hidden="false"/);
+  assert.match(editingBoardHtml, /data-equipment-board-card-tools" aria-hidden="false"/);
+
+  const independentEditingState = { orderingTeams: {} };
+  api.setBoardTeamOrdering(independentEditingState, 'work_team_calendar_team1_part1', true);
+  api.setBoardTeamOrdering(independentEditingState, 'work_team_calendar_team1_part2', true);
+  api.setBoardTeamOrdering(independentEditingState, 'work_team_calendar_team1_part1', false);
+  assert.equal(api.isBoardTeamOrdering(independentEditingState, 'work_team_calendar_team1_part1'), false);
+  assert.equal(api.isBoardTeamOrdering(independentEditingState, 'work_team_calendar_team1_part2'), true);
 
   const normalizedBulkItems = api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card);
   const bulkStatusHtml = api.renderBoardGlobalStatusActions(normalizedBulkItems, groupedByRoom, {

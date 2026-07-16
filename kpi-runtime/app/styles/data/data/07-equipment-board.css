@@ -397,9 +397,12 @@
         .data-equipment-board-column.is-ordering .data-equipment-board-room-tools {
             display: inline-grid;
         }
-        .data-equipment-board-column.is-ordering .data-equipment-board-add-button,
+        .data-equipment-board-column .data-equipment-board-add-button,
         .data-equipment-board-column.is-ordering .data-equipment-board-card-actions {
             display: none;
+        }
+        .data-equipment-board-column.is-editing .data-equipment-board-add-button {
+            display: inline-flex;
         }
         .data-equipment-board-order-button {
             border: 1px solid color-mix(in srgb, var(--equipment-card-status-color) 32%, #d7e2ef);
