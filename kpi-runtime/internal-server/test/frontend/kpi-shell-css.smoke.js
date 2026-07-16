@@ -92,8 +92,8 @@ const styleEntries = [
     relativeSegments: ['audit', 'audit.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/shared/status-team-marks.css?v=20260715a`,
-    manifestHref: './styles/shared/status-team-marks.css?v=20260715a',
+    href: `${runtimeDirName}/app/styles/shared/status-team-marks.css?v=20260716a`,
+    manifestHref: './styles/shared/status-team-marks.css?v=20260716a',
     fileName: 'status-team-marks.css',
     relativeSegments: ['shared', 'status-team-marks.css'],
   },
@@ -374,10 +374,16 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-year-badge\s*\{/);
   assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-team-icon\s*\{/);
   assert.doesNotMatch(styleContents['audit.css'], /audit-lux-index-card\s*\{\s*grid-template-rows:\s*150px\s*auto\s*auto/);
-  assert.match(styleContents['status-team-marks.css'], /\.audit-lux-index-team-cell \.audit-lux-index-team-label\s*,[\s\S]*\.work-history-app \.work-history-experiment-team-name\s*\{/);
-  assert.match(styleContents['status-team-marks.css'], /\.audit-lux-index-team-cell \.audit-lux-index-team-label::before,[\s\S]*background:\s*var\(--kpi-team-accent\);/);
+  assert.match(styleContents['status-team-marks.css'], /\.audit-lux-index-team-cell \.audit-lux-index-team-label\s*,[\s\S]*\.kpi-team-display\s*\{/);
+  assert.match(styleContents['status-team-marks.css'], /\.kpi-team-display-icon\s*\{[^}]*width:\s*24px[^}]*height:\s*24px[^}]*background:\s*color-mix\(in srgb, var\(--kpi-team-accent\) 8%, #ffffff\)/s);
+  assert.match(styleContents['status-team-marks.css'], /\.kpi-team-display-icon svg\s*\{[^}]*width:\s*16px[^}]*height:\s*16px/s);
   assert.match(styleContents['status-team-marks.css'], /--kpi-team-4:\s*#dc2626;/);
-  assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-team\.team4 \.work-history-experiment-team-name\s*\{[\s\S]*--kpi-team-accent:\s*var\(--kpi-team-4\);/);
+  assert.match(styleContents['status-team-marks.css'], /\.audit-lux-index-card\.is-team1part1,[\s\S]*--kpi-team-accent:\s*var\(--kpi-team-1-1\);/);
+  assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-team\.team4\s*\{[^}]*--kpi-team-accent:\s*var\(--kpi-team-4\);/s);
+  assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-team\s*\{[^}]*border-top:\s*3px solid var\(--kpi-team-accent\)/s);
+  assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-team-head\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--kpi-team-accent\) 10%, var\(--white\)\)/s);
+  assert.match(styleContents['status-team-marks.css'], /\.audit-lux-index-team-cell\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--kpi-team-accent\) 10%, #ffffff\)[^}]*box-shadow:\s*inset 3px 0 0 var\(--kpi-team-accent\)/s);
+  assert.doesNotMatch(styleContents['status-team-marks.css'], /audit-lux-index-team-label::before|work-history-experiment-team-name::before/);
   assert.doesNotMatch(styleContents['status-team-marks.css'], /background:\s*var\(--kpi-team-1-[12]\);/);
   assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-status\.is-complete,[\s\S]*\.audit-lux-progress-select\.is-complete\s*\{/);
   assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-status\.is-incomplete,[\s\S]*\.audit-lux-progress-select\.is-incomplete\s*\{/);

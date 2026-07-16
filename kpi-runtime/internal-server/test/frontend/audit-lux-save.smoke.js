@@ -149,7 +149,7 @@ test('audit lux workspace keeps a compact title-only file header', () => {
   assert.doesNotMatch(auditWorkspaceSource, /팀별 연도 조도본을 보관합니다/);
 });
 
-test('audit lux file index uses compact sheet rows with colored team names and no redundant status chrome', () => {
+test('audit lux file index uses compact sheet rows with equipment-style team marks and no redundant status chrome', () => {
   assert.match(auditWorkspaceSource, /audit-lux-index-team-cell/);
   assert.match(auditWorkspaceSource, /audit-lux-index-team-label \$\{escapeHtml\(teamClassName\)\}/);
   assert.doesNotMatch(auditWorkspaceSource, /audit-lux-team-mark/);
@@ -158,8 +158,8 @@ test('audit lux file index uses compact sheet rows with colored team names and n
   assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-grid-head/);
   assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-inline-actions/);
   assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-progress-cell/);
-  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-team-icon/);
-  assert.doesNotMatch(auditWorkspaceSource, /getAuditLuxTeamIconSvg/);
+  assert.match(auditWorkspaceSource, /audit-lux-index-team-icon kpi-team-display-icon/);
+  assert.match(auditWorkspaceSource, /getAuditLuxTeamIconSvg\(team\)/);
   assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-card-status/);
   assert.doesNotMatch(auditWorkspaceSource, /statusLabel/);
   assert.doesNotMatch(auditWorkspaceSource, /`\$\{teamLabel\} 미첨부`/);

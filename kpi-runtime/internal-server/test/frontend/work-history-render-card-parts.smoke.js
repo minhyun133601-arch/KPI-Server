@@ -179,14 +179,16 @@ test('work history render card parts registry exposes summary, compact card, and
   assert.match(singleRecordBoard, /data-index="0"/);
   assert.match(singleRecordBoard, /title="수정"/);
   assert.match(singleRecordBoard, /work-history-team-add-button/);
-  assert.match(singleRecordBoard, /work-history-experiment-team-name[^>]*>Team 1-A<\/strong>/);
+  assert.match(singleRecordBoard, /work-history-experiment-team-name kpi-team-display/);
+  assert.match(singleRecordBoard, /work-history-experiment-team-icon kpi-team-display-icon" aria-hidden="true"><svg><\/svg>/);
+  assert.match(singleRecordBoard, /kpi-team-display-name">Team 1-A<\/span>/);
   assert.doesNotMatch(singleRecordBoard, /work-history-experiment-team-mark|>1-1<\/span>/);
   assert.match(singleRecordBoard, /data-action="add-record"/);
   assert.match(singleRecordBoard, /data-team="team1part1"/);
   assert.match(singleRecordBoard, />\uCD94\uAC00<\/button>/);
   assert.match(
     singleRecordBoard,
-    /work-history-experiment-team-title[\s\S]*<strong[^>]*>Team 1-A<\/strong>[\s\S]*work-history-experiment-team-count[^>]*>1\uAC74<\/span>/
+    /work-history-experiment-team-title[\s\S]*work-history-experiment-team-icon[\s\S]*kpi-team-display-name">Team 1-A<\/span>[\s\S]*work-history-experiment-team-count[^>]*>1\uAC74<\/span>/
   );
   assert.match(singleRecordBoard, /work-history-experiment-team-actions[\s\S]*work-history-team-add-button/);
   assert.doesNotMatch(singleRecordBoard, /work-history-experiment-team-view/);

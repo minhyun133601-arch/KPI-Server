@@ -1,12 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { adapterSource, dataCssSource, modelSource, renderSource } from './support/equipment-history-render-harness.js';
+import {
+  adapterSource,
+  dataCssSource,
+  equipmentHistoryStyleSource,
+  modelSource,
+  renderSource,
+} from './support/equipment-history-render-harness.js';
 
 test('equipment-history board source preserves dense responsive ordering filtering and history contracts', () => {
   assert.match(renderSource, /data-equipment-board-toolbar/);
   assert.match(
     renderSource,
-    /data-equipment-board-toolbar[\s\S]+renderBoardSummary\(activeSummary\)[\s\S]+renderBoardControls\(boardGroups, state\)/
+    /data-equipment-board-toolbar[\s\S]+renderBoardSummary\(activeSummary, state\)[\s\S]+renderBoardControls\(boardGroups, state\)/
   );
   assert.doesNotMatch(renderSource, /function renderBoardStatusOverview/);
   assert.match(dataCssSource, /data-equipment-board-team-title/);
@@ -120,7 +126,11 @@ test('equipment-history board source preserves dense responsive ordering filteri
     dataCssSource,
     /data-equipment-board-card[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)[\s\S]+grid-template-rows:\s*auto auto auto[\s\S]+min-height:\s*178px/
   );
-  assert.match(dataCssSource, /data-equipment-board-global-actions[\s\S]+grid-column:\s*1 \/ -1/);
+  assert.match(
+    equipmentHistoryStyleSource,
+    /data-equipment-index-summary[\s\S]+repeat\(4,\s*minmax\(0,\s*1fr\)\) auto/
+  );
+  assert.match(equipmentHistoryStyleSource, /data-equipment-board-global-actions[\s\S]+grid-column:\s*auto/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-status-actions/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-status-cycle/);
   assert.doesNotMatch(dataCssSource, /data-equipment-board-status-set/);
@@ -203,6 +213,10 @@ test('equipment-history board source preserves dense responsive ordering filteri
   assert.match(renderSource, /function getBoardBulkStatusState/);
   assert.match(renderSource, /function renderBoardBulkStatusPanel/);
   assert.match(renderSource, /function renderBoardGlobalStatusActions/);
+  assert.match(
+    renderSource,
+    /function renderBoardSummary\(summary, state = null\)[\s\S]+renderBoardGlobalStatusActions\(state\)/
+  );
   assert.match(renderSource, /data-equipment-bulk-actions/);
   assert.match(renderSource, /data-equipment-bulk-status-toggle/);
   assert.match(renderSource, /data-equipment-bulk-status-team/);

@@ -200,7 +200,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
     'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=4'
   );
   const boardIndex = kpiHtml.indexOf(
-    'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.board.js?v=7'
+    'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.board.js?v=8'
   );
   const cardIndex = kpiHtml.indexOf(
     'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.card.js?v=3'
@@ -223,7 +223,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
   assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=114') >= 0, 'data css cache version is stale');
   assert.ok(
-    kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.css?v=8') >= 0,
+    kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.css?v=9') >= 0,
     'equipment-history authoritative stylesheet loader is missing'
   );
   assert.ok(

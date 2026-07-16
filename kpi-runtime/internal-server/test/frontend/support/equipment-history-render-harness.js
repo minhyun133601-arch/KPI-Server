@@ -42,6 +42,10 @@ export const bridgeSource = await fs.readFile(
   'utf8'
 );
 export const kpiHtml = await fs.readFile(path.join(repoRoot, 'KPI.html'), 'utf8');
+export const equipmentHistoryStyleSource = await fs.readFile(
+  path.join(repoRoot, 'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.css'),
+  'utf8'
+);
 export const bootManifestSource = await fs.readFile(
   path.join(repoRoot, 'kpi-runtime/app/boot/KPI.boot.manifest.js'),
   'utf8'

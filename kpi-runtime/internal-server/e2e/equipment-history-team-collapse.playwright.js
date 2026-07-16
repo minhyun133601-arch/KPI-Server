@@ -106,8 +106,31 @@ test('equipment-history team edit tools stay contextual without touching equipme
     await clickSidebarButton(page, '설비 이력');
 
     const board = page.locator('.equipment-history-skin .data-equipment-board');
+    const summary = page.locator('.equipment-history-skin .data-equipment-index-summary');
+    const maintenanceSummary = summary.locator(':scope > .is-check');
+    const bulkActions = summary.locator(':scope > [data-equipment-bulk-actions]');
     const columns = board.locator('.data-equipment-board-column');
     await expect(board).toBeVisible();
+    await expect(maintenanceSummary).toBeVisible();
+    await expect(bulkActions).toBeVisible();
+    const bulkActionLayout = await summary.evaluate((element) => {
+      const maintenance = element.querySelector(':scope > .is-check');
+      const actions = element.querySelector(':scope > [data-equipment-bulk-actions]');
+      const maintenanceRect = maintenance?.getBoundingClientRect();
+      const actionsRect = actions?.getBoundingClientRect();
+      return {
+        followsMaintenance: maintenance?.nextElementSibling === actions,
+        horizontalGap: Math.round((actionsRect?.left || 0) - (maintenanceRect?.right || 0)),
+        topOffset: Math.round((actionsRect?.top || 0) - (maintenanceRect?.top || 0)),
+        heightOffset: Math.round((actionsRect?.height || 0) - (maintenanceRect?.height || 0)),
+      };
+    });
+    expect(bulkActionLayout).toEqual({
+      followsMaintenance: true,
+      horizontalGap: 0,
+      topOffset: 0,
+      heightOffset: 0,
+    });
     const columnCount = await columns.count();
     expect(columnCount).toBeGreaterThanOrEqual(5);
     await expect(board.locator('[data-equipment-team-collapse-toggle]')).toHaveCount(columnCount);

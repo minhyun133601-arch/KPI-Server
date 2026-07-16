@@ -251,7 +251,10 @@
             <section class="work-history-experiment-team ${escapeAttribute(info.class || team)}">
                 <header class="work-history-experiment-team-head">
                     <span class="work-history-experiment-team-title">
-                        <strong class="work-history-experiment-team-name">${escapeHtml(info.name || team)}</strong>
+                        <strong class="work-history-experiment-team-name kpi-team-display">
+                            <span class="work-history-experiment-team-icon kpi-team-display-icon" aria-hidden="true">${view.getTeamIconSvg(team)}</span>
+                            <span class="kpi-team-display-name">${escapeHtml(info.name || team)}</span>
+                        </strong>
                         <span class="work-history-experiment-team-count">${escapeHtml(teamRecords.length)}건</span>
                     </span>
                     <span class="work-history-experiment-team-actions">

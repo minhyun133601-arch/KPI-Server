@@ -18,15 +18,46 @@
     --kpi-team-name-text: #111827;
 }
 
-.audit-lux-index-team-cell .audit-lux-index-team-label,
-.work-history-app .work-history-experiment-team-name {
+.audit-lux-index-card,
+.work-history-app .work-history-experiment-team {
     --kpi-team-accent: var(--kpi-team-other);
-    min-height: 20px;
-    position: relative;
+}
+
+.audit-lux-index-card.is-team1part1,
+.work-history-app .work-history-experiment-team.team1part1 {
+    --kpi-team-accent: var(--kpi-team-1-1);
+}
+
+.audit-lux-index-card.is-team1part2,
+.work-history-app .work-history-experiment-team.team1part2 {
+    --kpi-team-accent: var(--kpi-team-1-2);
+}
+
+.audit-lux-index-card.is-team2,
+.work-history-app .work-history-experiment-team.team2 {
+    --kpi-team-accent: var(--kpi-team-2);
+}
+
+.audit-lux-index-card.is-team3,
+.work-history-app .work-history-experiment-team.team3 {
+    --kpi-team-accent: var(--kpi-team-3);
+}
+
+.audit-lux-index-card.is-team4,
+.work-history-app .work-history-experiment-team.team4 {
+    --kpi-team-accent: var(--kpi-team-4);
+}
+
+.audit-lux-index-team-cell .audit-lux-index-team-label,
+.work-history-app .work-history-experiment-team-name,
+.kpi-team-display {
+    min-width: 0;
+    min-height: 24px;
     display: inline-flex;
     align-items: center;
     justify-content: flex-start;
-    padding: 0 4px 0 12px;
+    gap: 8px;
+    padding: 0;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -37,41 +68,69 @@
     box-shadow: none;
 }
 
-.audit-lux-index-team-cell .audit-lux-index-team-label::before,
-.work-history-app .work-history-experiment-team-name::before {
-    content: '';
-    width: 3px;
-    height: 16px;
-    position: absolute;
-    top: 50%;
-    left: 0;
+.kpi-team-display-icon {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--kpi-team-accent) 32%, #d1d5db);
     border-radius: 2px;
-    background: var(--kpi-team-accent);
-    transform: translateY(-50%);
+    background: color-mix(in srgb, var(--kpi-team-accent) 8%, #ffffff);
+    color: var(--kpi-team-accent);
 }
 
-.audit-lux-index-team-cell .audit-lux-index-team-label.is-team1part1,
-.work-history-app .work-history-experiment-team.team1part1 .work-history-experiment-team-name {
-    --kpi-team-accent: var(--kpi-team-1-1);
+.kpi-team-display-icon svg {
+    width: 16px;
+    height: 16px;
+    display: block;
 }
 
-.audit-lux-index-team-cell .audit-lux-index-team-label.is-team1part2,
-.work-history-app .work-history-experiment-team.team1part2 .work-history-experiment-team-name {
-    --kpi-team-accent: var(--kpi-team-1-2);
+.kpi-team-display-name {
+    min-width: 0;
 }
 
-.audit-lux-index-team-cell .audit-lux-index-team-label.is-team2,
-.work-history-app .work-history-experiment-team.team2 .work-history-experiment-team-name {
-    --kpi-team-accent: var(--kpi-team-2);
+.work-history-app .work-history-experiment-team {
+    border-top: 3px solid var(--kpi-team-accent);
 }
 
-.audit-lux-index-team-cell .audit-lux-index-team-label.is-team3,
-.work-history-app .work-history-experiment-team.team3 .work-history-experiment-team-name {
-    --kpi-team-accent: var(--kpi-team-3);
+.work-history-app .work-history-experiment-team-head {
+    border-bottom-color: color-mix(in srgb, var(--kpi-team-accent) 42%, var(--gray-300));
+    background: color-mix(in srgb, var(--kpi-team-accent) 10%, var(--white));
 }
 
-.work-history-app .work-history-experiment-team.team4 .work-history-experiment-team-name {
-    --kpi-team-accent: var(--kpi-team-4);
+.work-history-app .work-history-experiment-team-name {
+    color: var(--gray-900);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.work-history-app .work-history-experiment-team-count {
+    min-height: 20px;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid color-mix(in srgb, var(--kpi-team-accent) 36%, var(--gray-300));
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--kpi-team-accent) 10%, var(--white));
+    color: var(--kpi-team-accent);
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.audit-lux-index-team-cell {
+    background: color-mix(in srgb, var(--kpi-team-accent) 10%, #ffffff);
+    box-shadow: inset 3px 0 0 var(--kpi-team-accent);
+}
+
+.audit-lux-index-team-cell .audit-lux-index-team-label {
+    align-items: flex-start;
+    color: var(--kpi-team-name-text);
+}
+
+.audit-lux-index-team-cell .kpi-team-display-name {
+    padding-top: 4px;
 }
 
 .work-history-app .work-history-experiment-status.is-complete,

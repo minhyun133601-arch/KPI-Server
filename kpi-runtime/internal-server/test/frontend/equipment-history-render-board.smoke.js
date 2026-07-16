@@ -175,6 +175,10 @@ test('equipment-history renderer preserves team metadata empty columns room grou
   assert.match(container.innerHTML, /data-equipment-bulk-actions/);
   assert.match(
     container.innerHTML,
+    /data-equipment-index-summary[\s\S]*정비중[\s\S]*data-equipment-board-global-actions[\s\S]*전체 적용[\s\S]*data-equipment-index-controls/
+  );
+  assert.match(
+    container.innerHTML,
     /data-equipment-bulk-status-toggle[^>]*aria-expanded="false"[^>]*aria-controls="equipment-bulk-status-panel"[\s\S]+전체 적용/
   );
   assert.doesNotMatch(container.innerHTML, /data-equipment-bulk-status-panel/);
@@ -331,28 +335,31 @@ test('equipment-history renderer preserves team metadata empty columns room grou
   assert.equal(api.isBoardTeamOrdering(independentEditingState, 'work_team_calendar_team1_part2'), true);
 
   const normalizedBulkItems = api.normalizeEquipmentItems(context.PortalData.data_equipment_history_card);
-  const bulkStatusHtml = api.renderBoardGlobalStatusActions(normalizedBulkItems, groupedByRoom, {
+  const bulkStatusState = {
     bulkStatus: {
       open: true,
       team: 'work_team_calendar_team1_part1',
       room: 'A\uC2E4',
       status: '\uC815\uBE44\uC911',
     },
-  });
+  };
+  const bulkStatusHtml = api.renderBoardGlobalStatusActions(bulkStatusState);
+  const bulkStatusPanelHtml = api.renderBoardBulkStatusPanel(groupedByRoom, normalizedBulkItems, bulkStatusState);
   assert.match(
     bulkStatusHtml,
     /data-equipment-bulk-status-toggle[^>]*aria-expanded="true"[^>]*aria-controls="equipment-bulk-status-panel"/
   );
-  assert.match(bulkStatusHtml, /id="equipment-bulk-status-panel"[^>]*data-equipment-bulk-status-panel/);
+  assert.doesNotMatch(bulkStatusHtml, /data-equipment-bulk-status-panel/);
+  assert.match(bulkStatusPanelHtml, /id="equipment-bulk-status-panel"[^>]*data-equipment-bulk-status-panel/);
   assert.match(
-    bulkStatusHtml,
+    bulkStatusPanelHtml,
     /data-equipment-bulk-status-team[\s\S]+<option value="work_team_calendar_team1_part1" selected>/
   );
-  assert.match(bulkStatusHtml, /data-equipment-bulk-status-room[\s\S]+<option value="A\uC2E4" selected>/);
-  assert.match(bulkStatusHtml, /data-equipment-bulk-status-value[\s\S]+<option value="\uC815\uBE44\uC911" selected>/);
-  assert.match(bulkStatusHtml, /<span>적용 대상<\/span><strong>1대<\/strong>/);
-  assert.match(bulkStatusHtml, /data-equipment-bulk-status-apply/);
-  assert.doesNotMatch(bulkStatusHtml, /data-equipment-cycle-board-status|data-equipment-status-scope/);
+  assert.match(bulkStatusPanelHtml, /data-equipment-bulk-status-room[\s\S]+<option value="A\uC2E4" selected>/);
+  assert.match(bulkStatusPanelHtml, /data-equipment-bulk-status-value[\s\S]+<option value="\uC815\uBE44\uC911" selected>/);
+  assert.match(bulkStatusPanelHtml, /<span>적용 대상<\/span><strong>1대<\/strong>/);
+  assert.match(bulkStatusPanelHtml, /data-equipment-bulk-status-apply/);
+  assert.doesNotMatch(bulkStatusPanelHtml, /data-equipment-cycle-board-status|data-equipment-status-scope/);
 
   context.PortalData.data_equipment_history_card = {
     equipmentList: [

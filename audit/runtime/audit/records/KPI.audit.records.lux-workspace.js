@@ -337,17 +337,34 @@
             `;
         }
 
+        function getAuditLuxTeamKey(team) {
+            const label = String(team || '').trim();
+            const compactLabel = label.replace(/\s+/g, '');
+            const numberTokens = label.match(/\d+/g) || [];
+            if (compactLabel.includes('\uC720\uC0B0')) return 'team4';
+            if (compactLabel.includes('\uBD81\uC815')) return 'team1part1';
+            if (numberTokens[0] === '1' && numberTokens[1] === '1') return 'team1part1';
+            if (numberTokens[0] === '1' && numberTokens[1] === '2') return 'team1part2';
+            if (numberTokens[0] === '2') return 'team2';
+            if (numberTokens[0] === '3') return 'team3';
+            if (numberTokens[0] === '4' || compactLabel.includes('\uACF5\uBB34\uD658\uACBD')) return 'team4';
+            return 'other';
+        }
+
         function getAuditLuxTeamClassName(team) {
-            const numberTokens = String(team || '').match(/\d+/g) || [];
-            if (numberTokens[0] === '1' && numberTokens[1] === '1') {
-                return 'is-team1part1';
-            }
-            if (numberTokens[0] === '1' && numberTokens[1] === '2') {
-                return 'is-team1part2';
-            }
-            if (numberTokens[0] === '2') return 'is-team2';
-            if (numberTokens[0] === '3') return 'is-team3';
-            return 'is-team-other';
+            return `is-${getAuditLuxTeamKey(team)}`;
+        }
+
+        function getAuditLuxTeamIconSvg(team) {
+            const icons = {
+                team1part1: '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 15.5L15.7 6.1C16.7 5.3 18.2 5.7 18.7 6.9L21 12.2V18.5H4.5V15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.2" cy="11" r="1.1" fill="currentColor"/><circle cx="10.2" cy="15.2" r="1.1" fill="currentColor"/><path d="M4.5 15.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+                team1part2: '<svg viewBox="0 0 24 24" fill="none"><path d="M4.5 15.5L15.7 6.1C16.7 5.3 18.2 5.7 18.7 6.9L21 12.2V18.5H4.5V15.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="15.2" cy="11" r="1.1" fill="currentColor"/><circle cx="10.2" cy="15.2" r="1.1" fill="currentColor"/><path d="M4.5 15.5H21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+                team2: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 9.2L12 12.8L19 9.2M5 9.2L8.2 5.5L12 7.4L15.8 5.5L19 9.2V16.8L12 20.5L5 16.8V9.2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 12.8V20.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+                team3: '<svg viewBox="0 0 24 24" fill="none"><path d="M10 3.5H14M10.6 3.5V6.4L8.8 8.4V19C8.8 20.1 9.7 21 10.8 21H13.2C14.3 21 15.2 20.1 15.2 19V8.4L13.4 6.4V3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 13.3C10.8 12.2 12.7 14.5 15 13.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+                team4: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 18L14.8 9.2M13.5 6.2L17.8 10.5M16.2 4.5L19.5 7.8L17.8 10.5L13.5 6.2L16.2 4.5Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.2 6.2L7.5 8.5M7.5 8.5L5.7 10.3L4 8.6L5.8 6.8L7.5 8.5ZM7.5 8.5L18 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+                other: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 19V10M12 19V5M19 19V13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 19.5H20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
+            };
+            return icons[getAuditLuxTeamKey(team)] || icons.other;
         }
 
         function renderAuditLuxAttachmentCard(dataKey, year, team) {
@@ -369,9 +386,12 @@
                 : (progressStatus ? 'is-progress' : 'is-incomplete');
             const teamClassName = getAuditLuxTeamClassName(team);
             return `
-                <article class="audit-lux-index-card ${hasAttachment ? 'is-attached' : 'is-empty'}" data-audit-lux-card="${escapeHtml(dataKey)}" data-year="${escapeHtml(year)}" data-quarter="${escapeHtml(selectedQuarter)}" data-team="${escapeHtml(team)}">
+                <article class="audit-lux-index-card ${escapeHtml(teamClassName)} ${hasAttachment ? 'is-attached' : 'is-empty'}" data-audit-lux-card="${escapeHtml(dataKey)}" data-year="${escapeHtml(year)}" data-quarter="${escapeHtml(selectedQuarter)}" data-team="${escapeHtml(team)}">
                     <div class="audit-lux-index-team-cell">
-                        <strong class="audit-lux-index-team-label ${escapeHtml(teamClassName)}">${escapeHtml(teamLabel)}</strong>
+                        <strong class="audit-lux-index-team-label ${escapeHtml(teamClassName)} kpi-team-display">
+                            <span class="audit-lux-index-team-icon kpi-team-display-icon" aria-hidden="true">${getAuditLuxTeamIconSvg(team)}</span>
+                            <span class="kpi-team-display-name">${escapeHtml(teamLabel)}</span>
+                        </strong>
                         <div class="audit-lux-index-team-tools" onclick="event.stopPropagation()">
                             <select class="audit-select audit-lux-progress-select ${progressStatusClass}" aria-label="${escapeHtml(`${teamLabel} 진행 상태`)}" onchange="this.classList.toggle('is-complete', this.value === 'complete'); this.classList.toggle('is-progress', this.value !== '' && this.value !== 'complete'); this.classList.toggle('is-incomplete', this.value === ''); setAuditLuxProgressStatusForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', this.value)" onclick="event.stopPropagation()">
                                 ${typeof getAuditLuxProgressStatusOptions === 'function' ? getAuditLuxProgressStatusOptions(progressStatus, year) : ''}

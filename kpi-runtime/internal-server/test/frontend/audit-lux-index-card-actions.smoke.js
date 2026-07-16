@@ -30,6 +30,15 @@ test('audit lux keeps the standard team labels and storage keys unchanged', () =
 
   const teams = context.getAuditLuxWorkspaceTeams('audit_lux');
   assert.deepEqual(Array.from(teams), ['1팀 1파트', '1팀 2파트', '2팀', '3팀']);
+  assert.equal(context.getAuditLuxTeamKey('1팀 1파트'), 'team1part1');
+  assert.equal(context.getAuditLuxTeamKey('공무환경팀'), 'team4');
+  assert.equal(context.getAuditLuxTeamKey('북정'), 'team1part1');
+  assert.equal(context.getAuditLuxTeamKey('유산 2팀'), 'team4');
+  assert.equal(context.getAuditLuxTeamClassName('3팀'), 'is-team3');
+  assert.match(context.getAuditLuxTeamIconSvg('1팀 1파트'), /M4\.5 15\.5L15\.7 6\.1/);
+  assert.match(context.getAuditLuxTeamIconSvg('2팀'), /M5 9\.2L12 12\.8L19 9\.2/);
+  assert.match(context.getAuditLuxTeamIconSvg('3팀'), /M10 3\.5H14/);
+  assert.match(context.getAuditLuxTeamIconSvg('공무환경팀'), /M6 18L14\.8 9\.2/);
   assert.match(auditWorkspaceSource, /const teamLabel = team \|\| '팀 없음';/);
   assert.doesNotMatch(auditWorkspaceSource, /1팀 1파트 CIP/);
   assert.match(auditWorkspaceSource, /data-team="\$\{escapeHtml\(team\)\}"/);
@@ -83,7 +92,9 @@ test('audit lux index card opens originals through media and keeps replace downl
   assert.doesNotMatch(rowBlock[0], /audit-lux-index-progress-cell/);
   assert.doesNotMatch(rowBlock[0], /audit-lux-index-inline-actions/);
   assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-card-head/);
-  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-team-icon/);
+  assert.match(rowBlock[0], /audit-lux-index-card \$\{escapeHtml\(teamClassName\)\}/);
+  assert.match(rowBlock[0], /audit-lux-index-team-icon kpi-team-display-icon" aria-hidden="true">\$\{getAuditLuxTeamIconSvg\(team\)\}/);
+  assert.match(rowBlock[0], /kpi-team-display-name">\$\{escapeHtml\(teamLabel\)\}<\/span>/);
   assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-card-actions/);
   assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-year-badge/);
   assert.doesNotMatch(auditWorkspaceSource, /renderAuditLuxIndexSummary/);

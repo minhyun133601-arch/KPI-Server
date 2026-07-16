@@ -406,7 +406,13 @@ test('work history CSS keeps the stable shadow stylesheet URL while importing sp
   assert.doesNotMatch(experimentStyles, /var\(--(?:primary|team[1-4])-/);
   assert.match(sharedStatusStyles, /--kpi-status-complete-text:\s*#166534/);
   assert.match(sharedStatusStyles, /--kpi-status-incomplete-text:\s*#b91c1c/);
-  assert.match(sharedStatusStyles, /\.work-history-app \.work-history-experiment-team\.team1part1 \.work-history-experiment-team-name/);
+  assert.match(sharedStatusStyles, /\.work-history-app \.work-history-experiment-team\.team1part1\s*\{[^}]*--kpi-team-accent:\s*var\(--kpi-team-1-1\)/s);
+  assert.match(sharedStatusStyles, /\.work-history-app \.work-history-experiment-team\s*\{[^}]*border-top:\s*3px solid var\(--kpi-team-accent\)/s);
+  assert.match(sharedStatusStyles, /\.work-history-app \.work-history-experiment-team-head\s*\{[^}]*background:\s*color-mix\(in srgb, var\(--kpi-team-accent\) 10%, var\(--white\)\)/s);
+  assert.match(sharedStatusStyles, /\.kpi-team-display-icon\s*\{[^}]*width:\s*24px[^}]*height:\s*24px[^}]*border:\s*1px solid color-mix\(in srgb, var\(--kpi-team-accent\) 32%, #d1d5db\)/s);
+  assert.match(sharedStatusStyles, /\.kpi-team-display-icon svg\s*\{[^}]*width:\s*16px[^}]*height:\s*16px/s);
+  assert.match(sharedStatusStyles, /\.work-history-app \.work-history-experiment-team-count\s*\{[^}]*border:\s*1px solid color-mix\(in srgb, var\(--kpi-team-accent\) 36%, var\(--gray-300\)\)[^}]*color:\s*var\(--kpi-team-accent\)/s);
+  assert.doesNotMatch(sharedStatusStyles, /work-history-experiment-team-name::before/);
 });
 
 test('work history templates keep the default work-history surface', () => {

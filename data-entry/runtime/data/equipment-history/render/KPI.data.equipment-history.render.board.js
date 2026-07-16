@@ -510,7 +510,7 @@
         `;
     }
 
-    function renderBoardGlobalStatusActions(items = [], groups = [], state = null) {
+    function renderBoardGlobalStatusActions(state = null) {
         const bulkStatus = getBoardBulkStatusState(state);
         return `
             <div class="data-equipment-board-global-actions" data-equipment-bulk-actions>
@@ -518,7 +518,6 @@
                     <i class="fas fa-sliders" aria-hidden="true"></i><span>전체 적용</span><i class="fas fa-chevron-${bulkStatus.open ? 'up' : 'down'}" aria-hidden="true"></i>
                 </button>
             </div>
-            ${renderBoardBulkStatusPanel(groups, items, state)}
         `;
     }
 
@@ -548,7 +547,7 @@
         `;
     }
 
-    function renderBoardSummary(summary) {
+    function renderBoardSummary(summary, state = null) {
         return `
             <div class="data-equipment-index-summary" aria-label="설비 상태 요약">
                 <article class="is-total">
@@ -575,6 +574,7 @@
                         <strong>${api.escapeHtml(summary.check)}<small>대</small><small class="data-equipment-index-summary-rate">${api.escapeHtml(formatBoardPercent(summary.check, summary.total))}</small></strong>
                     </div>
                 </article>
+                ${renderBoardGlobalStatusActions(state)}
             </div>
         `;
     }
@@ -716,12 +716,12 @@
         return `
             <section class="data-equipment-dashboard" data-equipment-view="board">
                 <header class="data-equipment-board-toolbar" aria-label="설비이력 요약 및 필터">
-                    ${renderBoardSummary(activeSummary)}
+                    ${renderBoardSummary(activeSummary, state)}
                     <div class="data-equipment-actions data-equipment-view-actions">
                         ${renderBoardControls(boardGroups, state)}
                     </div>
                 </header>
-                ${renderBoardGlobalStatusActions(items, boardGroups, state)}
+                ${renderBoardBulkStatusPanel(boardGroups, items, state)}
                 <div class="data-equipment-board ${filteredGroups.length ? '' : 'is-empty'}">
                     ${boardBody}
                 </div>

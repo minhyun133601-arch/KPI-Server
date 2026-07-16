@@ -204,7 +204,7 @@ box-shadow: none;
 .equipment-history-skin .data-equipment-fullscreen-toggle-icon,
 .equipment-history-skin .data-equipment-fullscreen-toggle-icon svg { width: var(--equipment-history-fullscreen-icon-size); height: var(--equipment-history-fullscreen-icon-size); display: inline-flex; align-items: center; justify-content: center; }
 .equipment-history-skin .data-equipment-fullscreen-toggle-icon svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.equipment-history-skin .data-equipment-index-summary { min-width: 0; min-height: var(--equipment-history-toolbar-control); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--equipment-history-border); border-radius: var(--equipment-history-radius-small); background: var(--equipment-history-surface); box-shadow: none; }
+.equipment-history-skin .data-equipment-index-summary { min-width: 0; min-height: var(--equipment-history-toolbar-control); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; overflow: hidden; border: 1px solid var(--equipment-history-border); border-radius: var(--equipment-history-radius-small); background: var(--equipment-history-surface); box-shadow: none; }
 .equipment-history-skin .data-equipment-index-summary article { min-width: 0; display: grid; align-content: center; padding: 3px var(--equipment-history-space-2); border-right: 1px solid var(--equipment-history-border); }
 .equipment-history-skin .data-equipment-index-summary article:last-child { border-right: 0; }
 .equipment-history-skin .data-equipment-index-summary article div { min-width: 0; display: grid; gap: 1px; }
@@ -224,11 +224,11 @@ box-shadow: none;
 .equipment-history-skin .data-equipment-index-summary article.is-check strong,
 .equipment-history-skin .data-equipment-index-summary article.is-check small { color: var(--equipment-history-check); }
 
-.equipment-history-skin .data-equipment-board-global-actions { min-height: var(--equipment-history-control); gap: var(--equipment-history-space-2); padding: var(--equipment-history-space-1) var(--equipment-history-space-2); border: 1px solid var(--equipment-history-border); border-radius: var(--equipment-history-radius); background: var(--equipment-history-surface); box-shadow: none; }
-.equipment-history-skin [data-equipment-bulk-actions] { justify-content: flex-end; padding: 0; border: 0; background: transparent; }
+.equipment-history-skin .data-equipment-board-global-actions { grid-column: auto; min-width: 104px; min-height: var(--equipment-history-toolbar-control); gap: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.equipment-history-skin [data-equipment-bulk-actions] { justify-content: stretch; padding: 0; border: 0; background: transparent; }
 .equipment-history-skin .data-equipment-board-bulk-status-toggle,
 .equipment-history-skin .data-equipment-board-bulk-status-apply { display: inline-flex; min-height: var(--equipment-history-control); align-items: center; justify-content: center; gap: var(--equipment-history-space-2); border: 1px solid var(--equipment-history-border-strong); border-radius: var(--equipment-history-radius-small); background: var(--equipment-history-surface); color: var(--equipment-history-body); font-size: 12px; font-weight: 800; }
-.equipment-history-skin .data-equipment-board-bulk-status-toggle { padding: 0 var(--equipment-history-space-3); }
+.equipment-history-skin .data-equipment-board-bulk-status-toggle { width: 100%; min-height: var(--equipment-history-toolbar-control); padding: 0 var(--equipment-history-space-3); border: 0; border-radius: 0; }
 .equipment-history-skin .data-equipment-board-bulk-status-toggle:hover,
 .equipment-history-skin .data-equipment-board-bulk-status-apply:hover { background: var(--equipment-history-surface-muted); }
 .equipment-history-skin .data-equipment-board-bulk-status-panel { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: var(--equipment-history-space-2); align-items: end; padding: var(--equipment-history-space-2); border: 1px solid var(--equipment-history-border); border-radius: var(--equipment-history-radius); background: var(--equipment-history-surface-muted); }
