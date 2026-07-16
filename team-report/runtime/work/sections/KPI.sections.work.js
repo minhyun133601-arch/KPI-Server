@@ -1,6 +1,7 @@
 (function () {
     KpiSectionFactoryAdapter.registerFactory('work', function buildWorkSection() {
         const AppData = {};
+        const teamReportDocumentExperimentEnabled = KpiSectionFactoryAdapter.isExperimentEnabled?.('teamReportDocumentUi') === true;
         const teamCategories = [
             {
                 title: '1팀 1파트',
@@ -142,7 +143,24 @@
                     dataKey: 'work_history_records',
                     view: 'history_tool',
                     viewerMode: 'full-bleed'
-                }
+                },
+                ...(teamReportDocumentExperimentEnabled ? [{
+                    title: '팀별내역서 LAB',
+                    icon: 'fa-flask',
+                    color: '#0f766e',
+                    secondaryColor: '#0f172a',
+                    tint: '#ecfeff',
+                    desc: '기존 화면과 데이터를 그대로 사용하는 Daniel 전용 문서형 실험 화면',
+                    dataKey: 'work_team_calendar_team1_part1',
+                    view: 'team_calendar_experiment',
+                    viewerMode: 'full-bleed',
+                    productVisual: 'dry',
+                    processLabel: '문서형 실험',
+                    processTag: 'LAB',
+                    processDesc: '팀별·공정별·공장별 전환과 팀 선택을 한 줄 문서형 컨트롤로 정리한 실험 화면입니다.',
+                    emptyProductionLabel: '품목 미입력',
+                    emptyWorkLabel: '작업 내역 미입력'
+                }] : [])
             ]
         };
         return AppData['work'];

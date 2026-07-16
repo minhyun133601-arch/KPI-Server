@@ -350,8 +350,8 @@ test('work shared team calendar state reads runtime globals through the browser 
 });
 
 test('kpi html loads shared split files before production bootstrap', () => {
-  const sharedIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.js?v=239');
-  const categoriesIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.categories.js?v=2');
+  const sharedIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.js?v=240');
+  const categoriesIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.categories.js?v=3');
   const stateIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.state.js?v=1');
   const summaryIndex = kpiHtml.indexOf('runtime/work/KPI.work.shared.team-calendar.summary.js?v=3');
   const productionIndex = kpiHtml.indexOf('runtime/work/KPI.work.production.js?v=247');

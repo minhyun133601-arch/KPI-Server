@@ -57,13 +57,21 @@
         return nextRegistry;
     }
 
+    function isExperimentEnabled(key) {
+        const normalizedKey = String(key || '').trim();
+        if (!normalizedKey) return false;
+        const runtimeConfig = root.__KPI_SERVER_RUNTIME_CONFIG__;
+        return runtimeConfig?.experiments?.[normalizedKey] === true;
+    }
+
     root.KpiSectionFactoryAdapter = Object.freeze({
         registerFactory,
         getFactories,
         registerBuilder,
         getBuilder,
         getBuilders,
-        setRegistry
+        setRegistry,
+        isExperimentEnabled
     });
 
     if (globalScope && globalScope !== root) {

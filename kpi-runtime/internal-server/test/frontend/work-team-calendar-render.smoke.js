@@ -123,6 +123,16 @@ function createContext(options = {}) {
     Number,
     Boolean,
     RegExp,
+    isTeamReportDocumentExperimentEnabled() {
+      return options.teamReportExperiment === true;
+    },
+    getWorkTeamCalendarMode() {
+      return 'detail';
+    },
+    getWorkTeamCalendarModeMeta(mode = 'detail') {
+      const labels = { detail: '팀별', process: '공정별', group: '공장별' };
+      return { mode, label: labels[mode] || labels.detail };
+    },
     AppData: {
       work: {
         categories: [
@@ -131,6 +141,8 @@ function createContext(options = {}) {
             view: 'team_calendar',
             title: 'Overview',
             processLabel: 'Overview Process',
+            icon: 'fa-wrench',
+            productVisual: 'maintenance',
             color: '#2563eb',
             secondaryColor: '#38bdf8',
             tint: '#eff6ff',
@@ -178,6 +190,7 @@ function createContext(options = {}) {
       teamCalendarDate: {},
       teamCalendarSelectedDates: {},
       teamCalendarDatePicked: {},
+      teamReportDocumentExperiment: options.teamReportExperiment === true,
       workEntryRootConnected: false,
       monthFilters: {},
       activeMonth: {},
@@ -261,7 +274,7 @@ function createContext(options = {}) {
   overrideBinding(context, 'getWorkTeamCalendarSelectionLabel', () => '2026.04.15');
   overrideBinding(context, 'getWorkTeamCalendarRangeLabel', () => '26.04 ~ 26.04');
   overrideBinding(context, 'formatUtilNumber', (value, digits = 0) => Number(value || 0).toFixed(digits));
-  overrideBinding(context, 'isWorkTeamCalendarInlineMode', () => false);
+  overrideBinding(context, 'isWorkTeamCalendarInlineMode', () => options.inlineMode === true);
   overrideBinding(context, 'isWorkTeamCalendarFullscreen', () => false);
   overrideBinding(context, 'getWorkTeamCalendarFullscreenLabel', () => 'Fullscreen');
   overrideBinding(context, 'escapeHtml', (value) => String(value ?? ''));
@@ -296,6 +309,26 @@ test('work team calendar overview modal renders after split files are loaded tog
   assert.doesNotMatch(modal.innerHTML, /클릭하여 설비 목록 보기/);
   assert.match(modal.innerHTML, /work-team-calendar-grid/);
   assert.match(modal.innerHTML, /data-work-save-status="overview"/);
+});
+
+test('team report document experiment renders compact controls only on its inline surface', () => {
+  const regular = createContext({ inlineMode: true });
+  regular.context.renderWorkTeamCalendarModal();
+  assert.doesNotMatch(regular.modal.innerHTML, /is-team-report-experiment/);
+  assert.doesNotMatch(regular.modal.innerHTML, /work-team-calendar-experiment-nav/);
+  assert.doesNotMatch(regular.modal.innerHTML, /data-work-team-switch=/);
+
+  const experiment = createContext({ inlineMode: true, teamReportExperiment: true });
+  experiment.context.renderWorkTeamCalendarModal();
+  assert.match(experiment.modal.innerHTML, /is-team-report-experiment/);
+  assert.match(experiment.modal.innerHTML, /work-team-calendar-mode-segments/);
+  assert.match(experiment.modal.innerHTML, /data-work-team-mode="detail"/);
+  assert.match(experiment.modal.innerHTML, /data-work-team-switch="overview"/);
+  assert.match(experiment.modal.innerHTML, /class="fas fa-wrench"/);
+  assert.match(experiment.modal.innerHTML, /aria-pressed="true"/);
+  assert.match(experiment.modal.innerHTML, />팀별<\/button>/);
+  assert.match(experiment.modal.innerHTML, />공정별<\/button>/);
+  assert.match(experiment.modal.innerHTML, />공장별<\/button>/);
 });
 
 test('work team calendar total production chip opens monthly table popup', () => {

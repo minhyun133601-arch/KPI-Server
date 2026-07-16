@@ -68,8 +68,8 @@ const styleEntries = [
     relativeSegments: ['shell', 'dashboard.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/shell/shell-chrome.css?v=059`,
-    manifestHref: './styles/shell/shell-chrome.css?v=059',
+    href: `${runtimeDirName}/app/styles/shell/shell-chrome.css?v=060`,
+    manifestHref: './styles/shell/shell-chrome.css?v=060',
     fileName: 'shell-chrome.css',
     relativeSegments: ['shell', 'shell-chrome.css'],
   },
@@ -78,6 +78,12 @@ const styleEntries = [
     manifestHref: './styles/work/work.css?v=066',
     fileName: 'work.css',
     relativeSegments: ['work', 'work.css'],
+  },
+  {
+    href: `${runtimeDirName}/app/styles/work/team-report-document-experiment.css?v=001`,
+    manifestHref: './styles/work/team-report-document-experiment.css?v=001',
+    fileName: 'team-report-document-experiment.css',
+    relativeSegments: ['work', 'team-report-document-experiment.css'],
   },
   {
     href: `${runtimeDirName}/app/styles/metering/metering.css?v=085`,

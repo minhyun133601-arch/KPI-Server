@@ -145,6 +145,100 @@
             font-size: var(--sidebar-nav-item-size);
             font-weight: var(--sidebar-nav-item-weight);
         }
+        .sidebar.is-team-report-experiment {
+            width: 248px;
+            padding: 10px 8px;
+            gap: 6px;
+            background: #ffffff;
+        }
+        .viewer-body.is-sidebar-collapsed .sidebar.is-team-report-experiment {
+            width: 96px;
+            min-width: 96px;
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+        .sidebar-tree-shell.is-team-report-experiment {
+            gap: 2px;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-group {
+            gap: 2px;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-group-toggle {
+            min-height: 42px;
+            padding: 6px 8px;
+            border-color: transparent;
+            border-radius: 6px;
+            background: transparent;
+            box-shadow: none;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-group-toggle:hover,
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-group-toggle.is-active,
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-group.is-expanded .sidebar-group-toggle {
+            border-color: transparent;
+            background: color-mix(in srgb, var(--cat-soft, #eff6ff) 48%, #ffffff);
+            box-shadow: inset 3px 0 0 var(--cat-color, #2563eb);
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-group-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: color-mix(in srgb, var(--cat-color, #2563eb) 8%, #ffffff);
+            font-size: 0.78rem;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-group-label {
+            font-size: 14px;
+            font-weight: 800;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-group-items {
+            gap: 2px;
+            margin-left: 14px;
+            padding: 4px 0 5px 10px;
+            border-left: 1px solid #e2e8f0;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-category-branch {
+            display: grid;
+            gap: 2px;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-original-view-label {
+            padding: 7px 9px 3px;
+            color: #94a3b8;
+            font-size: 0.66rem;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-item.sidebar-item-nested {
+            min-height: 36px;
+            padding: 7px 9px;
+            border-color: transparent;
+            border-radius: 4px;
+            box-shadow: none;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-item.sidebar-item-nested:hover {
+            border-color: transparent;
+            background: #f8fafc;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-item.sidebar-item-nested.active {
+            border-color: transparent;
+            background: color-mix(in srgb, var(--cat-color, #2563eb) 9%, #ffffff);
+            box-shadow: inset 3px 0 0 var(--cat-color, #2563eb);
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-item.sidebar-item-team {
+            margin-left: 0;
+            padding-left: 9px;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-item:focus-visible,
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-group-toggle:focus-visible {
+            outline: 2px solid #0f766e;
+            outline-offset: 2px;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-reset-row {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .sidebar-tree-shell.is-team-report-experiment .sidebar-item-reset {
+            color: #94a3b8;
+        }
         /* ?熬곣뫕?????????ㅼ굡??*/
         .content-area { flex: 1; padding: 1.35rem; overflow-y: auto; background: #f5f7fb; }
         .content-area.content-area-full-bleed { padding: 0; overflow-x: hidden; overflow-y: auto; background: #ffffff; }

@@ -66,8 +66,14 @@
             if (!sidebar) return;
             const sections = ensureSidebarTreeState(getDashboardNavigationSections(getDashboardSections()));
             const selectedSectionId = getNavigationSelectionSectionId();
+            const selectedWorkCategoryIndex = getNavigationSelectionCategoryIndex('work');
+            const selectedWorkCategory = AppData?.work?.categories?.[selectedWorkCategoryIndex] || null;
+            const isTeamReportExperiment = isTeamReportDocumentExperimentEnabled()
+                && selectedSectionId === 'work'
+                && selectedWorkCategory?.view === 'team_calendar_experiment';
+            sidebar.classList.toggle('is-team-report-experiment', isTeamReportExperiment);
             sidebar.innerHTML = `
-                <div class="sidebar-tree-shell">
+                <div class="sidebar-tree-shell${isTeamReportExperiment ? ' is-team-report-experiment' : ''}">
                     <button id="viewer-sidebar-toggle" type="button" class="sidebar-group-toggle sidebar-viewer-toggle" onclick="toggleViewerSidebar()" aria-label="닫기" title="닫기" aria-pressed="false">
                         <span class="sidebar-group-toggle-main">
                             <span class="sidebar-group-icon"><i class="fas fa-angles-left" aria-hidden="true"></i></span>
@@ -109,6 +115,7 @@
                                         if (teamCategories.length) {
                                             return `
                                                 <div class="sidebar-category-branch">
+                                                    ${isTeamReportExperiment ? '<div class="sidebar-original-view-label" role="heading" aria-level="3">기존 화면</div>' : ''}
                                                     ${teamCategories.map((teamCategory, teamIndex) => {
                                                         const teamColor = teamCategory.color || categoryColor;
                                                         const teamDataKey = String(teamCategory.dataKey || '').trim();

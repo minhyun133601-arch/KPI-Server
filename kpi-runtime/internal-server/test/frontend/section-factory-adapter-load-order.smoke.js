@@ -4,8 +4,8 @@ import test from 'node:test';
 import { kpiHtml } from './support/section-factory-harness.js';
 
 test('kpi html loads section factory adapter before all section factories', () => {
-  const adapterIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.factory-adapter.js?v=1');
-  const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=234');
+  const adapterIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.factory-adapter.js?v=2');
+  const workIndex = kpiHtml.indexOf('team-report/runtime/work/sections/KPI.sections.work.js?v=235');
   const graphFoundationIndex = kpiHtml.indexOf(
     'data-entry/runtime/data/utility-graph-template/runtime/KPI.utility-graph-template.foundation.js?v=1'
   );

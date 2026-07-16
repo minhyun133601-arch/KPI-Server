@@ -435,7 +435,7 @@ test('kpi html loads work renderer split files before work runtime bootstrap', (
   const printIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.print.js?v=1');
   const monthlyPlanIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.monthly-plan.js?v=1');
   const adapterIndex = kpiHtml.indexOf('runtime/work/KPI.work.browser-adapter.js?v=1');
-  const renderersIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.js?v=1');
+  const renderersIndex = kpiHtml.indexOf('runtime/work/KPI.work.renderers.js?v=2');
   const workRuntimeIndex = kpiHtml.indexOf('runtime/work/KPI.work.runtime.js?v=228');
 
   assert.ok(adapterIndex >= 0, 'work browser adapter loader is missing');

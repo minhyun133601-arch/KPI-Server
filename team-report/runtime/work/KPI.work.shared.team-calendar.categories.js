@@ -286,15 +286,39 @@
             return targetDataKey;
         }
 
-        function toggleWorkTeamCalendarDisplayMode() {
-            const nextMode = getNextWorkTeamCalendarMode();
-            const targetDataKey = applyWorkTeamCalendarMode(nextMode);
-            if (typeof selectCategory === 'function' && getNavigationSelectionSectionId?.() === 'work' && getNavigationSelectionCategoryIndex?.('work') === 0) {
-                selectCategory('work', 0, { teamDataKey: targetDataKey });
+        function switchWorkTeamCalendarDisplayMode(mode) {
+            const targetDataKey = applyWorkTeamCalendarMode(mode);
+            const activeMode = getWorkTeamCalendarMode();
+            const activeCategoryIndex = Number(getNavigationSelectionCategoryIndex?.('work'));
+            const activeCategory = AppData?.work?.categories?.[activeCategoryIndex] || null;
+            const isTeamCalendarView = activeCategory?.view === 'team_calendar'
+                || activeCategory?.view === 'team_calendar_experiment';
+            if (typeof selectCategory === 'function' && getNavigationSelectionSectionId?.() === 'work' && isTeamCalendarView) {
+                selectCategory('work', activeCategoryIndex, { teamDataKey: targetDataKey });
+                restoreWorkTeamCalendarControlFocus('data-work-team-mode', activeMode);
                 return targetDataKey;
             }
             if (typeof renderSidebar === 'function') renderSidebar();
             return targetDataKey;
+        }
+
+        function restoreWorkTeamCalendarControlFocus(attributeName, value) {
+            if (WorkState?.teamReportDocumentExperiment !== true || typeof document === 'undefined') return;
+            const restoreFocus = () => {
+                const expectedValue = String(value || '');
+                const controls = Array.from(document.querySelectorAll(`[${attributeName}]`));
+                const target = controls.find(control => control.getAttribute(attributeName) === expectedValue);
+                target?.focus?.();
+            };
+            if (typeof queueMicrotask === 'function') {
+                queueMicrotask(restoreFocus);
+                return;
+            }
+            restoreFocus();
+        }
+
+        function toggleWorkTeamCalendarDisplayMode() {
+            return switchWorkTeamCalendarDisplayMode(getNextWorkTeamCalendarMode());
         }
 
         function getWorkAllCategories() {

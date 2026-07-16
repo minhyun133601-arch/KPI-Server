@@ -117,6 +117,7 @@
             if (typeof renderSidebar === 'function') {
                 renderSidebar();
             }
+            restoreWorkTeamCalendarControlFocus('data-work-team-switch', targetDataKey);
         }
 
         function switchWorkTeamCalendarTeamByNumber(numberKey) {

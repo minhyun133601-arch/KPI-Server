@@ -9,8 +9,11 @@
             const options = context.options && typeof context.options === 'object'
                 ? context.options
                 : contextOrOptions;
-            if (category.view === 'team_calendar') {
-                renderWorkTeamCalendarContent(category, '', options);
+            if (category.view === 'team_calendar' || category.view === 'team_calendar_experiment') {
+                renderWorkTeamCalendarContent(category, '', {
+                    ...options,
+                    teamReportDocumentExperiment: category.view === 'team_calendar_experiment'
+                });
                 return;
             }
             const accent = category.color || AppData.work?.accent || '#2563eb';
