@@ -84,16 +84,46 @@
         { key: 'note', label: '비고', placeholder: '비고' },
     ];
 
+    const ANNUAL_MAINTENANCE_CYCLE_DATALIST_ID = 'data-equipment-annual-maintenance-cycle-options';
+    const ANNUAL_MAINTENANCE_MONTH_DATALIST_ID = 'data-equipment-annual-maintenance-month-options';
+    const ANNUAL_MAINTENANCE_CYCLE_OPTIONS = Object.freeze([
+        '일 1회',
+        '주 1회',
+        '월 1회',
+        '분기 1회',
+        '반기 1회',
+        '연 1회',
+        '연 2회',
+        '필요 시',
+    ]);
+    const ANNUAL_MAINTENANCE_MONTH_OPTIONS = Object.freeze([
+        '매월',
+        ...Array.from({ length: 12 }, (_, index) => `${index + 1}월`),
+        '필요 시',
+    ]);
+
     const ANNUAL_MAINTENANCE_PLAN_FIELDS = [
         { key: 'equipmentName', label: '설비명', placeholder: '설비명' },
         { key: 'maintenanceItem', label: '정비항목', placeholder: '정비항목' },
         { key: 'maintenanceContent', label: '주요정비내용', placeholder: '주요 정비 내용을 입력하세요.' },
-        { key: 'cycle', label: '주기', placeholder: '예: 연 1회' },
-        { key: 'executionMonth', label: '실시월', placeholder: '예: 3월' },
+        {
+            key: 'cycle',
+            label: '주기',
+            placeholder: '예: 연 1회',
+            datalistId: ANNUAL_MAINTENANCE_CYCLE_DATALIST_ID,
+            options: ANNUAL_MAINTENANCE_CYCLE_OPTIONS,
+        },
+        {
+            key: 'executionMonth',
+            label: '실시월',
+            placeholder: '예: 3월, 9월',
+            datalistId: ANNUAL_MAINTENANCE_MONTH_DATALIST_ID,
+            options: ANNUAL_MAINTENANCE_MONTH_OPTIONS,
+        },
         { key: 'inspectionNotes', label: '점검여부 및 특이사항', placeholder: '점검 결과 또는 특이사항' },
     ];
     const ANNUAL_MAINTENANCE_PLAN_CONTENT_FIELDS = ANNUAL_MAINTENANCE_PLAN_FIELDS.slice(1);
-    const DEFAULT_ANNUAL_MAINTENANCE_PLAN_ROW_COUNT = 3;
+    const DEFAULT_ANNUAL_MAINTENANCE_PLAN_ROW_COUNT = 1;
 
     const DOCUMENT_FIELDS = [
         { key: 'title', label: '문서명', placeholder: '예: 점검 보고서' },
@@ -213,6 +243,72 @@
         return api.normalizeText(value).replace(/\s*[\r\n]+\s*/g, ' / ');
     }
 
+    function normalizeAnnualMaintenanceCycleValue(value) {
+        const raw = normalizeSingleLineValue(value).replace(/\s+/g, ' ');
+        if (!raw) return '';
+        const compact = raw.replace(/\s+/g, '').replace(/／/g, '/');
+        if (/^(?:필요시|필요할때)$/i.test(compact)) return '필요 시';
+        if (compact === '수시') return '수시';
+
+        const everyMatch = compact.match(/^매(일|주|월|분기|반기|연|년)$/);
+        if (everyMatch) {
+            const unit = everyMatch[1] === '년' ? '연' : everyMatch[1];
+            return `${unit} 1회`;
+        }
+
+        const unitFirstMatch = compact.match(/^(일|주|월|분기|반기|연|연간|년)(?:\/?(\d+)회|\/(\d+))$/);
+        const countFirstMatch = compact.match(/^(\d+)(?:회\/?|\/)(일|주|월|분기|반기|연|연간|년)$/);
+        const match = unitFirstMatch || countFirstMatch;
+        if (!match) return raw;
+
+        const rawUnit = unitFirstMatch ? match[1] : match[2];
+        const rawCount = unitFirstMatch ? match[2] || match[3] : match[1];
+        const count = Number(rawCount);
+        if (!Number.isInteger(count) || count < 1) return raw;
+        const unit = rawUnit === '년' || rawUnit === '연간' ? '연' : rawUnit;
+        return `${unit} ${count}회`;
+    }
+
+    function normalizeAnnualMaintenanceExecutionMonthValue(value) {
+        const raw = normalizeSingleLineValue(value).replace(/\s+/g, ' ');
+        if (!raw) return '';
+        const compact = raw.replace(/\s+/g, '');
+        if (compact === '매월') return '매월';
+        if (/^(?:필요시|필요할때)$/i.test(compact)) return '필요 시';
+        if (compact === '수시') return '수시';
+
+        const tokenSource = raw
+            .replace(/월/g, '')
+            .replace(/[，、·ㆍ\/／;；|]+/g, ',')
+            .replace(/\s+/g, ',')
+            .replace(/,+/g, ',')
+            .replace(/^,|,$/g, '');
+        const tokens = tokenSource ? tokenSource.split(',') : [];
+        if (!tokens.length || tokens.some((token) => !/^\d{1,2}$/.test(token))) return raw;
+
+        const months = tokens.map(Number);
+        if (months.some((month) => !Number.isInteger(month) || month < 1 || month > 12)) return raw;
+        return [...new Set(months)]
+            .sort((left, right) => left - right)
+            .map((month) => `${month}월`)
+            .join(', ');
+    }
+
+    function normalizeAnnualMaintenancePlanFieldValue(fieldKey, value) {
+        if (fieldKey === 'cycle') return normalizeAnnualMaintenanceCycleValue(value);
+        if (fieldKey === 'executionMonth') return normalizeAnnualMaintenanceExecutionMonthValue(value);
+        return normalizeSingleLineValue(value);
+    }
+
+    function normalizeAnnualMaintenancePlanRow(row, fallbackEquipmentName = '') {
+        const source = row && typeof row === 'object' ? row : {};
+        return ANNUAL_MAINTENANCE_PLAN_FIELDS.reduce((result, field) => {
+            const fallback = field.key === 'equipmentName' ? fallbackEquipmentName : '';
+            result[field.key] = normalizeAnnualMaintenancePlanFieldValue(field.key, source[field.key] || fallback);
+            return result;
+        }, {});
+    }
+
     function getCustomSystemDetailLabels(source = {}) {
         return [
             source.manufacturerLabel,
@@ -301,7 +397,7 @@
             annualMaintenancePlanSource,
             () => createBlankAnnualMaintenancePlanRow(source.name),
             DEFAULT_ANNUAL_MAINTENANCE_PLAN_ROW_COUNT
-        );
+        ).map((row) => normalizeAnnualMaintenancePlanRow(row, source.name));
         return {
             id: api.normalizeText(source.id),
             equipmentCode: api.normalizeText(source.equipmentCode || source.id),
@@ -463,10 +559,7 @@
         const annualMaintenancePlan = removeBlankRows(
             normalized.annualMaintenancePlan,
             ANNUAL_MAINTENANCE_PLAN_CONTENT_FIELDS
-        ).map((row) => ANNUAL_MAINTENANCE_PLAN_FIELDS.reduce((result, field) => {
-            result[field.key] = api.normalizeText(row?.[field.key]);
-            return result;
-        }, {}));
+        ).map((row) => normalizeAnnualMaintenancePlanRow(row, normalized.name));
         return {
             id,
             equipmentCode: normalized.equipmentCode || id.toUpperCase(),
@@ -511,7 +604,19 @@
     function renderInput(field, value, attrs = '') {
         const inputType = api.normalizeText(field.inputType) || 'text';
         const controlValue = inputType === 'month' ? normalizeYearMonthValue(value) : normalizeSingleLineValue(value);
-        return `<input type="${api.escapeHtml(inputType)}" value="${api.escapeHtml(controlValue)}" placeholder="${api.escapeHtml(field.placeholder || '')}" data-equipment-field="${api.escapeHtml(field.key)}" ${attrs}>`;
+        const listAttr = field.datalistId ? ` list="${api.escapeHtml(field.datalistId)}"` : '';
+        return `<input type="${api.escapeHtml(inputType)}" value="${api.escapeHtml(controlValue)}" placeholder="${api.escapeHtml(field.placeholder || '')}" data-equipment-field="${api.escapeHtml(field.key)}"${listAttr} ${attrs}>`;
+    }
+
+    function renderAnnualMaintenancePlanDatalists() {
+        return ANNUAL_MAINTENANCE_PLAN_FIELDS
+            .filter((field) => field.datalistId && api.asList(field.options).length)
+            .map((field) => `
+                <datalist id="${api.escapeHtml(field.datalistId)}">
+                    ${api.asList(field.options).map((option) => `<option value="${api.escapeHtml(option)}"></option>`).join('')}
+                </datalist>
+            `)
+            .join('');
     }
 
     function renderTextarea(field, value, attrs = '') {
@@ -833,6 +938,8 @@
         MAINTENANCE_FIELDS,
         ANNUAL_MAINTENANCE_PLAN_FIELDS,
         ANNUAL_MAINTENANCE_PLAN_CONTENT_FIELDS,
+        ANNUAL_MAINTENANCE_CYCLE_OPTIONS,
+        ANNUAL_MAINTENANCE_MONTH_OPTIONS,
         DEFAULT_ANNUAL_MAINTENANCE_PLAN_ROW_COUNT,
         DOCUMENT_FIELDS,
         DEFAULT_DOCUMENT_ROW_COUNT,
@@ -847,6 +954,10 @@
         normalizeEquipmentHistoryDetailGroups,
         createBlankMaintenanceRow,
         createBlankAnnualMaintenancePlanRow,
+        normalizeAnnualMaintenanceCycleValue,
+        normalizeAnnualMaintenanceExecutionMonthValue,
+        normalizeAnnualMaintenancePlanFieldValue,
+        normalizeAnnualMaintenancePlanRow,
         createBlankDocumentRow,
         createBlankDetailRow,
         createDraft,
@@ -855,6 +966,7 @@
         getEquipmentHistoryStartValidationErrors,
         buildRecordFromDraft,
         renderInput,
+        renderAnnualMaintenancePlanDatalists,
         renderTeamSelect,
         renderFieldControl,
         renderFieldGrid,

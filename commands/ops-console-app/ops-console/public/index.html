@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
@@ -20,7 +20,7 @@
           </p>
           <h1 data-i18n-key="heroTitle">KPI 운영 콘솔</h1>
           <p class="hero-summary" data-i18n-key="heroSummary">
-            KPI 서버, DB, 계정 작업을 현재 저장소 포트 기준으로 관리합니다.
+            최근 접속 이력과 계정 상태를 한 화면에서 관리합니다.
           </p>
           <div class="hero-meta">
             <span class="meta-chip" data-i18n-key="metaRuntime"
@@ -76,29 +76,6 @@
 
       <main class="page-main">
         <section class="status-strip">
-          <article id="scheduleTile" class="status-tile">
-            <div class="status-headline">
-              <span class="status-light" aria-hidden="true"></span>
-              <span
-                class="ui-icon status-icon"
-                data-icon="clock"
-                aria-hidden="true"
-              ></span>
-              <span class="status-label" data-i18n-key="scheduleLabel"
-                >컴퓨터 예약</span
-              >
-            </div>
-            <strong id="scheduleStatus" data-i18n-key="checking"
-              >확인 중</strong
-            >
-            <span
-              id="scheduleSummary"
-              class="status-meta"
-              data-i18n-key="scheduleInitialSummary"
-              >시작 / 종료 예약 상태</span
-            >
-            <div id="scheduleActions" class="status-actions"></div>
-          </article>
           <article id="kpiTile" class="status-tile">
             <div class="status-headline">
               <span class="status-light" aria-hidden="true"></span>
@@ -132,24 +109,6 @@
             >
             <span id="postgresSummary" class="status-meta">-</span>
           </article>
-          <article id="startupTile" class="status-tile">
-            <div class="status-headline">
-              <span class="status-light" aria-hidden="true"></span>
-              <span
-                class="ui-icon status-icon"
-                data-icon="clock"
-                aria-hidden="true"
-              ></span>
-              <span class="status-label" data-i18n-key="startupLabel"
-                >로그인 자동시작</span
-              >
-            </div>
-            <strong id="startupStatus" data-i18n-key="checking">확인 중</strong>
-            <span class="status-meta" data-i18n-key="startupSummary"
-              >Windows 예약 작업</span
-            >
-            <div id="startupActions" class="status-actions"></div>
-          </article>
           <article id="resultTile" class="status-tile status-result-tile">
             <div class="status-headline">
               <span class="status-light" aria-hidden="true"></span>
@@ -174,232 +133,96 @@
           </article>
         </section>
 
-        <section class="workbench workbench-tabs">
-          <nav
-            class="tab-bar"
-            aria-label="운영 콘솔 분류"
-            data-i18n-aria-label="tabAriaLabel"
-          >
-            <button
-              class="tab-button is-active"
-              data-tab="server"
-              type="button"
-            >
-              <span
-                class="ui-icon tab-icon"
-                data-icon="server"
-                aria-hidden="true"
-              ></span>
-              <span data-i18n-key="serverTab">서버 관리</span>
-            </button>
-            <button class="tab-button" data-tab="data" type="button">
-              <span
-                class="ui-icon tab-icon"
-                data-icon="database"
-                aria-hidden="true"
-              ></span>
-              <span data-i18n-key="accountTab">계정 관리</span>
-            </button>
-          </nav>
-
-          <section
-            class="tab-panel tab-panel-layout is-active"
-            data-tab-panel="server"
-          >
-            <div class="section-stack">
-              <section class="section section-compact">
-                <div class="section-head">
-                  <div class="section-title-group">
-                    <span
-                      class="ui-icon section-icon"
-                      data-icon="terminal"
-                      aria-hidden="true"
-                    ></span>
-                    <div>
-                      <h2 data-i18n-key="logsTitle">로그 보기</h2>
-                      <p data-i18n-key="logsSummary">
-                        최근 로그 60줄을 바로 확인합니다.
-                      </p>
-                    </div>
+        <section class="workbench workbench-clean">
+          <div class="section-stack">
+            <section class="section account-section">
+              <div class="section-head">
+                <div class="section-title-group">
+                  <span
+                    class="ui-icon section-icon"
+                    data-icon="user"
+                    aria-hidden="true"
+                  ></span>
+                  <div>
+                    <h2 data-i18n-key="accountTitle">계정 관리</h2>
+                    <p data-i18n-key="accountSummary">
+                      오너·직원 계정과 비밀번호를 안전하게 관리합니다.
+                    </p>
                   </div>
                 </div>
-                <div class="toolbar-row toolbar-row-tight">
-                  <button
-                    class="secondary-button log-button"
-                    data-log-key="serverActions"
-                    type="button"
-                    data-i18n-key="serverActionsLog"
-                  >
-                    서버 액션
-                  </button>
-                  <button
-                    class="secondary-button log-button"
-                    data-log-key="serverStdout"
-                    type="button"
-                  >
-                    서버 stdout
-                  </button>
-                  <button
-                    class="secondary-button log-button"
-                    data-log-key="serverStderr"
-                    type="button"
-                  >
-                    서버 stderr
-                  </button>
-                  <button
-                    class="secondary-button log-button"
-                    data-log-key="postgres"
-                    type="button"
-                  >
-                    PostgreSQL
-                  </button>
+              </div>
+              <div id="accountActions" class="disclosure-list"></div>
+            </section>
+
+            <section class="section users-section">
+              <div class="section-head section-head-inline">
+                <div class="section-title-group">
+                  <span
+                    class="ui-icon section-icon"
+                    data-icon="list"
+                    aria-hidden="true"
+                  ></span>
+                  <div>
+                    <h2 data-i18n-key="usersTitle">접속 내역</h2>
+                    <p data-i18n-key="usersSummary">
+                      등록된 계정과 최근 접속 상태를 확인합니다.
+                    </p>
+                  </div>
                 </div>
-                <pre
-                  id="logOutput"
-                  class="output-box drag-scroll"
-                  data-i18n-key="logOutputIdle"
+                <div class="summary-group">
+                  <span class="summary-pill"
+                    ><span data-i18n-key="userCountLabel">총 사용자</span>
+                    <strong id="userCountStat">0명</strong></span
+                  >
+                  <span class="summary-pill"
+                    ><span data-i18n-key="sessionCountLabel">활성 세션</span>
+                    <strong id="sessionCountStat">0개</strong></span
+                  >
+                </div>
+              </div>
+              <div class="toolbar-row">
+                <button
+                  id="reloadUsersButton"
+                  class="secondary-button"
+                  type="button"
+                  data-i18n-key="reloadUsersButton"
                 >
-로그를 선택해 주세요.</pre
+                  사용자 목록 새로고침
+                </button>
+                <span
+                  id="usersDragHint"
+                  class="drag-hint"
+                  data-i18n-key="usersDragHint"
+                  >목록을 잡아 위아래로 이동할 수 있습니다.</span
                 >
-              </section>
-            </div>
-
-            <div class="section-stack">
-              <section class="section">
-                <div class="section-head">
-                  <div class="section-title-group">
-                    <span
-                      class="ui-icon section-icon"
-                      data-icon="tools"
-                      aria-hidden="true"
-                    ></span>
-                    <div>
-                      <h2 data-i18n-key="toolsTitle">DB / 도구</h2>
-                      <p data-i18n-key="toolsSummary">
-                        DB 콘솔과 운영 보조 작업을 처리합니다.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div id="toolActions" class="action-list"></div>
-              </section>
-
-              <section class="section section-compact">
-                <div class="section-head section-head-inline">
-                  <div class="section-title-group">
-                    <span
-                      class="ui-icon section-icon"
-                      data-icon="table"
-                      aria-hidden="true"
-                    ></span>
-                    <div>
-                      <h2 data-i18n-key="tablesTitle">DB 테이블</h2>
-                      <p data-i18n-key="tablesSummary">
-                        테이블 목록을 이 화면에서 바로 확인합니다.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    id="loadTablesButton"
-                    class="secondary-button"
-                    type="button"
-                    data-i18n-key="loadButton"
-                  >
-                    불러오기
-                  </button>
-                </div>
-                <pre
-                  id="tablesOutput"
-                  class="output-box drag-scroll"
-                  data-i18n-key="tablesOutputIdle"
-                >
-아직 불러오지 않았습니다.</pre
-                >
-              </section>
-            </div>
-          </section>
-
-          <section class="tab-panel tab-panel-single" data-tab-panel="data">
-            <div class="section-stack">
-              <section class="section">
-                <div class="section-head">
-                  <div class="section-title-group">
-                    <span
-                      class="ui-icon section-icon"
-                      data-icon="user"
-                      aria-hidden="true"
-                    ></span>
-                    <div>
-                      <h2 data-i18n-key="accountTitle">계정 관리</h2>
-                      <p data-i18n-key="accountSummary">
-                        오너, 직원 계정과 비밀번호 작업을 처리합니다.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div id="accountActions" class="disclosure-list"></div>
-              </section>
-
-              <section class="section">
-                <div class="section-head section-head-inline">
-                  <div class="section-title-group">
-                    <span
-                      class="ui-icon section-icon"
-                      data-icon="list"
-                      aria-hidden="true"
-                    ></span>
-                    <div>
-                      <h2 data-i18n-key="usersTitle">사용자 현황</h2>
-                      <p data-i18n-key="usersSummary">
-                        현재 DB에 등록된 계정 상태를 확인합니다.
-                      </p>
-                    </div>
-                  </div>
-                  <div class="summary-group">
-                    <span class="summary-pill"
-                      ><span data-i18n-key="userCountLabel">총 사용자</span>
-                      <strong id="userCountStat">0명</strong></span
-                    >
-                    <span class="summary-pill"
-                      ><span data-i18n-key="sessionCountLabel">활성 세션</span>
-                      <strong id="sessionCountStat">0개</strong></span
-                    >
-                  </div>
-                </div>
-                <div class="toolbar-row">
-                  <button
-                    id="reloadUsersButton"
-                    class="secondary-button"
-                    type="button"
-                    data-i18n-key="reloadUsersButton"
-                  >
-                    사용자 목록 새로고침
-                  </button>
-                </div>
-                <div class="table-wrap drag-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th data-i18n-key="userIdHeader">아이디</th>
-                        <th data-i18n-key="displayNameHeader">표시 이름</th>
-                        <th data-i18n-key="roleHeader">역할</th>
-                        <th data-i18n-key="lastAccessHeader">최근 접속</th>
-                        <th data-i18n-key="sessionHeader">세션</th>
-                      </tr>
-                    </thead>
-                    <tbody id="usersTableBody">
-                      <tr>
-                        <td colspan="5" data-i18n-key="loading">
-                          불러오는 중...
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            </div>
-          </section>
-
+              </div>
+              <div
+                class="table-wrap users-table-wrap drag-scroll"
+                role="region"
+                tabindex="0"
+                aria-describedby="usersDragHint"
+                data-i18n-aria-label="usersScrollAriaLabel"
+              >
+                <table>
+                  <thead>
+                    <tr>
+                      <th data-i18n-key="userIdHeader">아이디</th>
+                      <th data-i18n-key="roleHeader">역할</th>
+                      <th data-i18n-key="lastAccessHeader">최근 접속</th>
+                      <th data-i18n-key="sessionHeader">세션</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usersTableBody">
+                    <tr>
+                      <td colspan="4" data-i18n-key="loading">
+                        불러오는 중...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
         </section>
       </main>
     </div>

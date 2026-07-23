@@ -11,6 +11,9 @@
   .activity-column {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .workbench-clean > .section-stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 880px) {
@@ -72,5 +75,11 @@
   .modal-card {
     width: calc(100vw - 24px);
     margin: 12px auto;
+  }
+  .users-table-wrap {
+    max-height: min(58vh, 480px);
+  }
+  .drag-hint {
+    width: 100%;
   }
 }

@@ -132,4 +132,43 @@ export function bindDragScroll(element) {
   element.addEventListener('dragstart', (event) => {
     event.preventDefault();
   });
+  element.addEventListener('keydown', (event) => {
+    const lineStep = 48;
+    const pageStep = Math.max(lineStep, Math.floor(element.clientHeight * 0.8));
+    const previousLeft = element.scrollLeft;
+    const previousTop = element.scrollTop;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        element.scrollTop += lineStep;
+        break;
+      case 'ArrowUp':
+        element.scrollTop -= lineStep;
+        break;
+      case 'ArrowRight':
+        element.scrollLeft += lineStep;
+        break;
+      case 'ArrowLeft':
+        element.scrollLeft -= lineStep;
+        break;
+      case 'PageDown':
+        element.scrollTop += pageStep;
+        break;
+      case 'PageUp':
+        element.scrollTop -= pageStep;
+        break;
+      case 'Home':
+        element.scrollTop = 0;
+        break;
+      case 'End':
+        element.scrollTop = element.scrollHeight;
+        break;
+      default:
+        return;
+    }
+
+    if (element.scrollLeft !== previousLeft || element.scrollTop !== previousTop) {
+      event.preventDefault();
+    }
+  });
 }

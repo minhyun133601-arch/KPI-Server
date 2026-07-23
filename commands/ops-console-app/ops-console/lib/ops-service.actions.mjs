@@ -1,14 +1,23 @@
+import fs from "node:fs";
 import { getDbTableList } from "./ops-service.overview.mjs";
 import {
+  readLoginAccessState,
+  writeLoginAccessState,
+} from "./login-access.mjs";
+import {
+  buildServerActionSnapshot,
   commandsRoot,
   ensureRuntimeReady,
   envFilePath,
   getNextOccurrenceFromTimeText,
+  getPostgresReadyState,
+  getServerUrls,
   internalServerLogsDir,
   internalServerScripts,
   launchTrackedServerAction,
   openExternalWindow,
   openKpiDbConsole,
+  requestJson,
   resolveStalePendingServerActionIfNeeded,
   runNodeScript,
   runPowerShellScript,
@@ -20,8 +29,18 @@ import {
   writeJsonFile,
 } from "./ops-service.runtime.mjs";
 
+const DISABLE_LOGIN_CONFIRMATION = "OPEN_WITHOUT_LOGIN";
+let exclusiveServerControlActive = false;
+
+function assertExclusiveServerControlIdle() {
+  if (exclusiveServerControlActive) {
+    throw new Error("server_action_in_progress");
+  }
+}
+
 async function actionServerStart() {
   await resolveStalePendingServerActionIfNeeded();
+  assertExclusiveServerControlIdle();
   const launched = launchTrackedServerAction(
     "server.start",
     runStartLifecycleJob,
@@ -48,30 +67,41 @@ async function actionServerStart() {
 }
 
 async function actionServerStop() {
-  const stopServerResult = await runPowerShellScript(
-    internalServerScripts.stopServer,
-    ["-EnvFile", envFilePath],
-    {
-      timeoutMs: 60000,
-    },
-  );
-  const stopDbResult = await stopLocalPostgresCluster();
-  return {
-    ok: true,
-    summary: "KPI 서버와 PostgreSQL 종료 요청이 완료되었습니다.",
-    output: [
-      stopServerResult.stdout,
-      stopDbResult.stdout,
-      stopServerResult.stderr,
-      stopDbResult.stderr,
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  };
+  await resolveStalePendingServerActionIfNeeded();
+  if (buildServerActionSnapshot().active) {
+    throw new Error("server_action_in_progress");
+  }
+  assertExclusiveServerControlIdle();
+  exclusiveServerControlActive = true;
+  try {
+    const stopServerResult = await runPowerShellScript(
+      internalServerScripts.stopServer,
+      ["-EnvFile", envFilePath],
+      {
+        timeoutMs: 60000,
+      },
+    );
+    const stopDbResult = await stopLocalPostgresCluster();
+    return {
+      ok: true,
+      summary: "KPI 서버와 PostgreSQL 종료 요청이 완료되었습니다.",
+      output: [
+        stopServerResult.stdout,
+        stopDbResult.stdout,
+        stopServerResult.stderr,
+        stopDbResult.stderr,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    };
+  } finally {
+    exclusiveServerControlActive = false;
+  }
 }
 
 async function actionServerRecover() {
   await resolveStalePendingServerActionIfNeeded();
+  assertExclusiveServerControlIdle();
   const launched = launchTrackedServerAction(
     "server.recover",
     runRecoverLifecycleJob,
@@ -127,11 +157,180 @@ async function actionUnregisterStartup() {
   };
 }
 
+async function assertActiveOwnerExists(serverWasRunning) {
+  if (!serverWasRunning) {
+    const postgresState = await getPostgresReadyState();
+    if (!postgresState.ok) {
+      throw new Error("owner_check_requires_running_database");
+    }
+  }
+
+  const result = await runNodeScript("listUsers.js");
+  const parsed = safeJsonParse(result.stdout);
+  if (!parsed?.ok || !Array.isArray(parsed.users)) {
+    throw new Error(parsed?.error || "owner_check_failed");
+  }
+
+  const ownerExists = parsed.users.some(
+    (user) =>
+      user?.is_active !== false &&
+      Array.isArray(user?.roles) &&
+      user.roles.includes("owner"),
+  );
+  if (!ownerExists) {
+    throw new Error("active_owner_required");
+  }
+}
+
+async function requestHttp(url, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    return await fetch(url, {
+      redirect: "manual",
+      signal: controller.signal,
+      ...options,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function assertEffectiveLoginAccess(enabled) {
+  const { loginUrl } = getServerUrls();
+  const statusUrl = new URL("/api/bootstrap/status", loginUrl).toString();
+  const rootUrl = new URL("/", loginUrl).toString();
+  const adminUsersUrl = new URL("/api/admin/users", loginUrl).toString();
+  const status = await requestJson(statusUrl);
+  const [rootResponse, adminUsersResponse] = await Promise.all([
+    requestHttp(rootUrl),
+    requestHttp(adminUsersUrl),
+  ]);
+  const authEnabled = status.payload?.authEnabled === true;
+  const loginEnabled = status.payload?.loginEnabled === true;
+  let effectiveStateMatches = false;
+
+  if (enabled) {
+    const loginPageResponse = await requestHttp(loginUrl);
+    const loginPageHtml = await loginPageResponse.text();
+    effectiveStateMatches =
+      authEnabled &&
+      loginEnabled &&
+      rootResponse.status === 302 &&
+      /^\/login(?:\?|$)/.test(rootResponse.headers.get("location") || "") &&
+      loginPageResponse.status === 200 &&
+      loginPageHtml.includes('id="loginForm"') &&
+      adminUsersResponse.status === 401;
+  } else {
+    const loginEndpointResponse = await requestHttp(
+      new URL("/api/auth/login", loginUrl).toString(),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      },
+    );
+    effectiveStateMatches =
+      !authEnabled &&
+      !loginEnabled &&
+      rootResponse.status === 200 &&
+      adminUsersResponse.status === 200 &&
+      loginEndpointResponse.status === 403;
+  }
+
+  if (!status.ok || !effectiveStateMatches) {
+    throw new Error("login_access_verification_failed");
+  }
+}
+
+async function actionSetLoginAccess(enabled) {
+  await resolveStalePendingServerActionIfNeeded();
+  if (buildServerActionSnapshot().active || exclusiveServerControlActive) {
+    throw new Error("server_action_in_progress");
+  }
+  exclusiveServerControlActive = true;
+
+  try {
+    const previousState = readLoginAccessState(envFilePath);
+    if (!previousState.exists) {
+      throw new Error("kpi_env_file_missing");
+    }
+
+    const { healthUrl } = getServerUrls();
+    const serverWasRunning = (await requestJson(healthUrl)).ok;
+    if (enabled) {
+      await assertActiveOwnerExists(serverWasRunning);
+    }
+
+    const previousEnvSource = fs.readFileSync(envFilePath, "utf8");
+    const actionKey = enabled
+      ? "account.enableLogin"
+      : "account.disableLogin";
+
+    writeLoginAccessState(envFilePath, enabled);
+    try {
+      if (serverWasRunning) {
+        await runStartLifecycleJob(actionKey);
+        await assertEffectiveLoginAccess(enabled);
+      }
+    } catch (applyError) {
+      fs.writeFileSync(envFilePath, previousEnvSource, "utf8");
+      let rollbackError = null;
+      if (serverWasRunning) {
+        try {
+          await runStartLifecycleJob(`${actionKey}.rollback`);
+        } catch (error) {
+          rollbackError = error;
+        }
+      }
+
+      if (rollbackError) {
+        throw new Error(
+          `login_access_apply_failed_rollback_failed:${applyError.message}:${rollbackError.message}`,
+        );
+      }
+      throw new Error(
+        `login_access_apply_failed_rolled_back:${applyError.message}`,
+      );
+    }
+
+    const loginAccess = readLoginAccessState(envFilePath);
+    return {
+      ok: true,
+      summary: serverWasRunning
+        ? enabled
+          ? "로그인 보호를 켜고 KPI 서버에 적용했습니다."
+          : "로그인 보호를 끄고 KPI 서버에 적용했습니다."
+        : "로그인 보호 설정을 저장했습니다. 다음 서버 시작부터 적용됩니다.",
+      output: serverWasRunning
+        ? "설정을 저장하고 KPI 서버를 다시 시작한 뒤 적용 상태를 확인했습니다."
+        : "KPI 서버가 정지 상태여서 설정만 저장했습니다.",
+      data: {
+        loginAccess,
+        restarted: serverWasRunning,
+      },
+    };
+  } finally {
+    exclusiveServerControlActive = false;
+  }
+}
+
+async function actionEnableLogin() {
+  return actionSetLoginAccess(true);
+}
+
+async function actionDisableLogin(payload) {
+  if (String(payload?.confirmText || "").trim() !== DISABLE_LOGIN_CONFIRMATION) {
+    throw new Error("disable_login_confirmation_required");
+  }
+  return actionSetLoginAccess(false);
+}
+
 async function actionBootstrapOwner(payload) {
   await ensureRuntimeReady();
   const result = await runNodeScript("bootstrapOwnerLocal.js", [
     `--username=${payload.username || ""}`,
-    `--displayName=${payload.displayName || ""}`,
+    `--displayName=${payload.username || ""}`,
     `--password=${payload.password || ""}`,
   ]);
   const parsed = safeJsonParse(result.stdout);
@@ -150,7 +349,7 @@ async function actionCreateEmployee(payload) {
   await ensureRuntimeReady();
   const result = await runNodeScript("createManagedUserLocal.js", [
     `--username=${payload.username || ""}`,
-    `--displayName=${payload.displayName || ""}`,
+    `--displayName=${payload.username || ""}`,
     `--password=${payload.password || ""}`,
     `--roles=${payload.roles || "viewer"}`,
   ]);
@@ -312,6 +511,8 @@ const actionHandlers = {
   "server.recover": actionServerRecover,
   "startup.register": actionRegisterStartup,
   "startup.unregister": actionUnregisterStartup,
+  "account.enableLogin": actionEnableLogin,
+  "account.disableLogin": actionDisableLogin,
   "account.bootstrapOwner": actionBootstrapOwner,
   "account.createEmployee": actionCreateEmployee,
   "account.resetPassword": actionResetPassword,

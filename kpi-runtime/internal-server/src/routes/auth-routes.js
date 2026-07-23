@@ -156,6 +156,10 @@ function buildLoginPageHtml(nextPath) {
 </html>`;
 }
 
+function isLoginAvailable() {
+  return config.authEnabled && config.loginEnabled;
+}
+
 export async function handleBootstrapOwner(context) {
   const { req, res } = context;
   const body = await parseBody(req);
@@ -172,6 +176,14 @@ export async function handleBootstrapOwner(context) {
 
 export async function handleLogin(context) {
   const { req, res } = context;
+  if (!isLoginAvailable()) {
+    sendJson(res, 403, {
+      ok: false,
+      error: 'login_disabled'
+    });
+    return;
+  }
+
   const body = await parseBody(req);
   const payload = await login({
     username: normalizeText(body.username),
@@ -198,7 +210,7 @@ export async function handleLogout(context) {
 
 export async function handleLoginPage(context) {
   const { req, res, url, auth } = context;
-  if (!config.loginEnabled) {
+  if (!isLoginAvailable()) {
     return handleKpiRootHtml(req, res);
   }
 

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { readLoginAccessState } from './login-access.mjs';
 import {
   buildServerActionSnapshot,
   commandRegistry,
@@ -55,6 +56,7 @@ async function getOverview() {
     users,
     usersError,
     envFileExists: fs.existsSync(envFilePath),
+    loginAccess: readLoginAccessState(envFilePath),
     commandRegistry,
     logFiles: {
       serverActions: serverActionLogFile,

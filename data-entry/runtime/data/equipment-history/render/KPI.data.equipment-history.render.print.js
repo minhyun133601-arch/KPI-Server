@@ -63,21 +63,39 @@
             ...row,
             equipmentName: normalizePrintText(row?.equipmentName) || normalizePrintText(draft?.name),
         }));
-        const minimumRows = Math.max(3, Number(api.DEFAULT_ANNUAL_MAINTENANCE_PLAN_ROW_COUNT) || 3);
-        while (rows.length < minimumRows) {
-            rows.push(api.createBlankAnnualMaintenancePlanRow?.(rows.length === 0 ? draft?.name : '') || {});
-        }
         return rows;
     }
 
-    function renderEquipmentPrintAnnualMaintenancePlanRows(draft) {
-        return getEquipmentPrintAnnualMaintenancePlanRows(draft).map((row) => `
+    function renderEquipmentPrintAnnualMaintenancePlanRows(draft, rows = getEquipmentPrintAnnualMaintenancePlanRows(draft)) {
+        if (!rows.length) {
+            return `<tr><td colspan="6" class="equipment-print-empty-cell">${api.escapeHtml('등록된 연간정비계획이 없습니다.')}</td></tr>`;
+        }
+        return rows.map((row) => `
             <tr>
                 ${(api.ANNUAL_MAINTENANCE_PLAN_FIELDS || []).map((field) => `
                     <td><div class="equipment-print-table-value">${renderPrintText(row?.[field.key], '')}</div></td>
                 `).join('')}
             </tr>
         `).join('');
+    }
+
+    function renderEquipmentPrintAnnualMaintenancePlanCard(draft) {
+        const rows = getEquipmentPrintAnnualMaintenancePlanRows(draft);
+        return `
+            <article class="data-equipment-card data-equipment-annual-plan-card equipment-print-annual-plan">
+                <h3 class="data-equipment-section-title">${api.escapeHtml('연간정비계획표')}</h3>
+                <div class="data-equipment-table-scroll">
+                    <table class="data-equipment-edit-table equipment-print-table equipment-print-annual-plan-table">
+                        <thead>
+                            <tr>
+                                ${(api.ANNUAL_MAINTENANCE_PLAN_FIELDS || []).map((field) => `<th>${api.escapeHtml(field.label)}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>${renderEquipmentPrintAnnualMaintenancePlanRows(draft, rows)}</tbody>
+                    </table>
+                </div>
+            </article>
+        `;
     }
 
     function getEquipmentPrintDocumentRows(draft) {
@@ -317,19 +335,7 @@
                         <h3 class="data-equipment-section-title">${api.escapeHtml('\uC124\uBE44 \uC2A4\uD399')}</h3>
                         ${renderEquipmentPrintSpecRows(draft)}
                     </article>
-                    <article class="data-equipment-card data-equipment-annual-plan-card equipment-print-annual-plan">
-                        <h3 class="data-equipment-section-title">${api.escapeHtml('연간정비계획표')}</h3>
-                        <div class="data-equipment-table-scroll">
-                            <table class="data-equipment-edit-table equipment-print-table equipment-print-annual-plan-table">
-                                <thead>
-                                    <tr>
-                                        ${(api.ANNUAL_MAINTENANCE_PLAN_FIELDS || []).map((field) => `<th>${api.escapeHtml(field.label)}</th>`).join('')}
-                                    </tr>
-                                </thead>
-                                <tbody>${renderEquipmentPrintAnnualMaintenancePlanRows(draft)}</tbody>
-                            </table>
-                        </div>
-                    </article>
+                    ${renderEquipmentPrintAnnualMaintenancePlanCard(draft)}
                     <article class="data-equipment-card data-equipment-history-card equipment-print-maintenance">
                         <h3 class="data-equipment-section-title">${api.escapeHtml('\uC815\uBE44 \uC774\uB825')}</h3>
                         <div class="data-equipment-table-scroll">
@@ -403,6 +409,7 @@
         renderEquipmentPrintSpecRows,
         getEquipmentPrintAnnualMaintenancePlanRows,
         renderEquipmentPrintAnnualMaintenancePlanRows,
+        renderEquipmentPrintAnnualMaintenancePlanCard,
         getEquipmentPrintDocumentRows,
         renderEquipmentPrintDocumentRows,
         renderEquipmentPrintDocumentsCard,

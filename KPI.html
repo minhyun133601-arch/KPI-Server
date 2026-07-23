@@ -12,9 +12,10 @@
     <!-- Noto Sans KR -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="kpi-runtime/app/styles/shell/dashboard.css?v=108">
-    <link rel="stylesheet" href="kpi-runtime/app/styles/shell/shell-chrome.css?v=064">
+    <link rel="stylesheet" href="kpi-runtime/app/styles/shell/shell-chrome.css?v=067">
     <link rel="stylesheet" href="kpi-runtime/app/styles/work/work.css?v=068">
     <link rel="stylesheet" href="kpi-runtime/app/styles/work/team-report-document.css?v=007">
+    <link rel="stylesheet" href="kpi-runtime/app/styles/work/team-report-date-detail.css?v=001">
     <link rel="stylesheet" href="kpi-runtime/app/styles/metering/metering.css?v=086">
     <link rel="stylesheet" href="kpi-runtime/app/styles/data/data.css?v=115">
     <link rel="stylesheet" href="data-entry/runtime/data/equipment-history/KPI.data.equipment-history.css?v=10">
@@ -82,9 +83,8 @@
             <div class="viewer-header-actions">
                 <div id="global-save-dock" class="global-save-dock" aria-live="polite">
                     <span id="global-save-status" class="global-save-status">현재 화면은 저장 대상이 없습니다.</span>
-                    <div id="viewer-auth-bar" class="runtime-auth-bar" hidden>
+                    <div id="viewer-auth-bar" class="runtime-auth-bar" aria-label="현재 로그인 계정" hidden>
                         <div class="runtime-auth-segment runtime-auth-segment-main">
-                            <span class="runtime-auth-caption">현재 로그인</span>
                             <strong id="viewer-auth-identity" class="runtime-auth-identity">-</strong>
                         </div>
                         <div id="viewer-auth-meta" class="runtime-auth-segment runtime-auth-meta" hidden>
@@ -96,14 +96,16 @@
                             <span class="runtime-auth-logout-label">로그아웃</span>
                         </button>
                     </div>
-                    <span id="global-save-recent-chip" class="global-save-date-chip">
-                        <span class="label">최근 수정</span>
-                        <span id="global-save-recent-value" class="value">-</span>
-                    </span>
-                    <span id="global-save-date-chip" class="global-save-date-chip is-hidden">
-                        <span class="label">오늘 날짜</span>
-                        <span id="global-save-date-value" class="value">-</span>
-                    </span>
+                    <div class="global-save-context" aria-label="문서 시간 정보">
+                        <span id="global-save-recent-chip" class="global-save-date-chip">
+                            <span class="label">최근 수정</span>
+                            <span id="global-save-recent-value" class="value">-</span>
+                        </span>
+                        <span id="global-save-date-chip" class="global-save-date-chip is-hidden">
+                            <span class="label">오늘</span>
+                            <span id="global-save-date-value" class="value">-</span>
+                        </span>
+                    </div>
                     <button id="global-save-button" type="button" class="global-save-button" disabled>
                         <i class="fas fa-floppy-disk"></i>
                         <span id="global-save-button-label">저장</span>
@@ -214,7 +216,7 @@
     <script src="team-report/runtime/work/KPI.work.team-calendar.selection.js?v=2"></script>
     <script src="team-report/runtime/work/KPI.work.team-calendar.draft-actions.js?v=1"></script>
     <script src="team-report/runtime/work/KPI.work.team-calendar.equipment-summary.js?v=2"></script>
-    <script src="team-report/runtime/work/KPI.work.team-calendar.render.js?v=15"></script>
+    <script src="team-report/runtime/work/KPI.work.team-calendar.render.js?v=16"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.browser-adapter.js"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.core.config.js"></script>
     <script src="team-report/runtime/work/history/KPI.work.history.core.js"></script>
@@ -361,9 +363,9 @@
     <script src="team-report/runtime/work/KPI.work.runtime.js?v=230"></script>
     <script src="kpi-runtime/app/KPI.app.browser-adapter.js?v=3"></script>
     <script src="kpi-runtime/app/KPI.app.shared.js?v=9"></script>
-    <script src="kpi-runtime/app/KPI.app.auth-owner.js?v=1"></script>
+    <script src="kpi-runtime/app/KPI.app.auth-owner.js?v=3"></script>
     <script src="kpi-runtime/app/KPI.app.navigation.js?v=8"></script>
-    <script src="kpi-runtime/app/KPI.app.global-save.js?v=4"></script>
+    <script src="kpi-runtime/app/KPI.app.global-save.js?v=5"></script>
     <script src="kpi-runtime/app/KPI.app.viewer.js?v=14"></script>
     <script src="kpi-runtime/app/KPI.app.js?v=251"></script>
     <script src="kpi-runtime/app/boot/KPI.boot.loader.js?v=1"></script>

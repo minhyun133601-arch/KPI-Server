@@ -18,6 +18,13 @@ const navigationPath = path.join(appRoot, 'KPI.app.navigation.js');
 
 const dashboardFacadePath = path.join(stylesRoot, 'shell', 'dashboard.css');
 const dashboardChunkRoot = path.join(stylesRoot, 'shell', 'dashboard');
+const shellChromeFacadePath = path.join(stylesRoot, 'shell', 'shell-chrome.css');
+const shellChromeResponsivePath = path.join(
+  stylesRoot,
+  'shell',
+  'shell-chrome',
+  '03-home-area-responsive.css'
+);
 const dashboardChunkImports = [
   './dashboard/01-foundation.css',
   './dashboard/02-panels.css',
@@ -50,7 +57,7 @@ async function resolveCssImports(filePath, ancestorPaths = []) {
   let cursor = 0;
 
   for (const match of imports) {
-    const importedPath = path.resolve(path.dirname(resolvedPath), match[1]);
+    const importedPath = path.resolve(path.dirname(resolvedPath), match[1].replace(/[?#].*$/, ''));
     const imported = await resolveCssImports(importedPath, [...ancestorPaths, resolvedPath]);
     content += source.slice(cursor, match.index) + imported.content;
     cursor = match.index + match[0].length;
@@ -69,8 +76,8 @@ const styleEntries = [
     relativeSegments: ['shell', 'dashboard.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/shell/shell-chrome.css?v=064`,
-    manifestHref: './styles/shell/shell-chrome.css?v=064',
+    href: `${runtimeDirName}/app/styles/shell/shell-chrome.css?v=067`,
+    manifestHref: './styles/shell/shell-chrome.css?v=067',
     fileName: 'shell-chrome.css',
     relativeSegments: ['shell', 'shell-chrome.css'],
   },
@@ -85,6 +92,12 @@ const styleEntries = [
     manifestHref: './styles/work/team-report-document.css?v=007',
     fileName: 'team-report-document.css',
     relativeSegments: ['work', 'team-report-document.css'],
+  },
+  {
+    href: `${runtimeDirName}/app/styles/work/team-report-date-detail.css?v=001`,
+    manifestHref: './styles/work/team-report-date-detail.css?v=001',
+    fileName: 'team-report-date-detail.css',
+    relativeSegments: ['work', 'team-report-date-detail.css'],
   },
   {
     href: `${runtimeDirName}/app/styles/metering/metering.css?v=086`,
@@ -108,6 +121,8 @@ const styleEntries = [
 
 const kpiHtml = await fs.readFile(kpiHtmlPath, 'utf8');
 const shellManifest = await fs.readFile(shellManifestPath, 'utf8');
+const shellChromeFacade = await fs.readFile(shellChromeFacadePath, 'utf8');
+const shellChromeResponsive = await fs.readFile(shellChromeResponsivePath, 'utf8');
 const navigationSource = await fs.readFile(navigationPath, 'utf8');
 const resolvedDashboard = await resolveCssImports(dashboardFacadePath);
 const styleContents = Object.fromEntries(
@@ -145,6 +160,62 @@ test('shell css compatibility manifest imports split files', () => {
       `${fileName} must remain in the compatibility manifest`
     );
   }
+});
+
+test('viewer header keeps account, timing, logout, and save details in compact groups', () => {
+  const requiredIds = [
+    'viewer-auth-bar',
+    'viewer-auth-identity',
+    'viewer-auth-role',
+    'viewer-auth-id',
+    'viewer-auth-logout',
+    'global-save-recent-chip',
+    'global-save-recent-value',
+    'global-save-date-chip',
+    'global-save-date-value',
+    'global-save-button',
+  ];
+
+  for (const id of requiredIds) {
+    assert.match(kpiHtml, new RegExp(`id="${id}"`), `${id} must remain available in the viewer header`);
+  }
+
+  assert.match(
+    kpiHtml,
+    /class="global-save-context"[^>]*>[\s\S]*id="global-save-recent-chip"[\s\S]*id="global-save-date-chip"[\s\S]*<\/div>/
+  );
+  const viewerAuthMarkup = kpiHtml.slice(
+    kpiHtml.indexOf('id="viewer-auth-bar"'),
+    kpiHtml.indexOf('id="global-save-recent-chip"')
+  );
+  assert.doesNotMatch(viewerAuthMarkup, /runtime-auth-caption/);
+  assert.match(viewerAuthMarkup, /runtime-auth-segment-main[^>]*>\s*<strong id="viewer-auth-identity"/);
+  assert.match(kpiHtml, /class="label">오늘<\/span>/);
+
+  const shellCss = styleContents['shell-chrome.css'];
+  assert.match(
+    shellCss,
+    /\.viewer-header-actions \.runtime-auth-bar\s*\{[^}]*display:\s*inline-flex;[^}]*align-items:\s*stretch;[^}]*height:\s*44px;[^}]*border-radius:\s*7px;/s
+  );
+  assert.match(
+    shellCss,
+    /\.global-save-context\s*\{[^}]*display:\s*inline-grid;[^}]*height:\s*44px;[^}]*overflow:\s*hidden;[^}]*border-radius:\s*7px;/s
+  );
+  assert.match(shellCss, /\.global-save-button\s*\{[^}]*height:\s*44px;[^}]*border-radius:\s*7px;/s);
+  assert.match(
+    shellCss,
+    /@media \(max-width:\s*640px\)[\s\S]*\.viewer-header-actions \.runtime-auth-bar\s*\{[^}]*grid-column:\s*1 \/ -1;/s
+  );
+  assert.match(
+    shellChromeResponsive,
+    /@media \(max-width:\s*900px\)[\s\S]*\.viewer-header\s*\{[^}]*flex-wrap:\s*wrap;/s
+  );
+  assert.match(
+    shellChromeResponsive,
+    /@media \(max-width:\s*640px\)[\s\S]*\.viewer-header-actions \.global-save-dock\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto;/s
+  );
+  assert.match(shellChromeFacade, /01-shell-runtime\.css\?v=067/);
+  assert.match(shellChromeFacade, /03-home-area-responsive\.css\?v=067/);
 });
 
 test('management policy home keeps its copy and uses the clean full-viewport layout', () => {
@@ -329,6 +400,22 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['work.css'], /\.work-team-calendar-utility-action-slot\s*\{[^}]*position:\s*absolute;/s);
   assert.match(styleContents['work.css'], /\.work-team-calendar-utility-chip \.work-team-calendar-production-action-list\s*\{[^}]*position:\s*absolute;/s);
   assert.match(styleContents['team-report-document.css'], /\.work-team-calendar-dialog\.is-team-report-document \.work-team-calendar-topbar\s*\{[^}]*overflow:\s*visible;/s);
+  assert.match(
+    styleContents['team-report-date-detail.css'],
+    /\.work-team-calendar-overlay-layer\.is-date-detail\s*\{[^}]*place-items:\s*center;[^}]*overflow:\s*hidden;/s
+  );
+  assert.match(
+    styleContents['team-report-date-detail.css'],
+    /\.work-team-calendar-editor\.is-floating\.is-date-detail\s*\{[^}]*width:\s*min\(860px,\s*calc\(100% - 12px\)\);[^}]*grid-template-rows:\s*auto minmax\(0,\s*1fr\);/s
+  );
+  assert.match(
+    styleContents['team-report-date-detail.css'],
+    /\.work-team-calendar-detail-body\s*\{[^}]*align-content:\s*start;[^}]*overflow:\s*auto;/s
+  );
+  assert.match(
+    styleContents['team-report-date-detail.css'],
+    /@media \(max-width:\s*760px\)[\s\S]*\.work-team-calendar-overlay-layer\.is-date-detail\s*\{[^}]*position:\s*fixed;[^}]*inset:\s*8px;/s
+  );
 
   assert.match(styleContents['metering.css'], /\.util-tabs-wrap\s*\{/);
   assert.doesNotMatch(styleContents['metering.css'], /\.month-panel\s*\{|Monthly plan calendar/);

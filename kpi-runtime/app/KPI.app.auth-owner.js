@@ -35,6 +35,12 @@
             return baseRoleLabel;
         }
 
+        function getRuntimeViewerAuthRoleLabel(user = null) {
+            const currentUser = user || getRuntimeCurrentUser();
+            if (!currentUser) return '';
+            return hasOwnerRole(currentUser) ? 'owner' : getRuntimeAuthRoleLabel(currentUser);
+        }
+
         function getRuntimeAuthAccountLabel(user = null) {
             const currentUser = user || getRuntimeCurrentUser();
             if (!currentUser) return '';
@@ -44,19 +50,31 @@
             return `ID ${username}`;
         }
 
+        function getRuntimeViewerAuthAccountLabel(user = null) {
+            const currentUser = user || getRuntimeCurrentUser();
+            if (!currentUser) return '';
+            const username = String(currentUser.username || '').trim();
+            const identityLabel = getRuntimeAuthIdentityLabel(currentUser);
+            if (!username || !identityLabel) return '';
+            if (username.toLowerCase() === identityLabel.toLowerCase()) return '';
+            return getRuntimeAuthAccountLabel(currentUser);
+        }
+
         function renderRuntimeAuthUi() {
             const elements = getRuntimeAuthElements();
             const currentUser = getRuntimeCurrentUser();
             const identityLabel = getRuntimeAuthIdentityLabel(currentUser);
             const roleLabel = getRuntimeAuthRoleLabel(currentUser);
+            const viewerRoleLabel = getRuntimeViewerAuthRoleLabel(currentUser);
             const accountLabel = getRuntimeAuthAccountLabel(currentUser);
+            const viewerAccountLabel = getRuntimeViewerAuthAccountLabel(currentUser);
             const isVisible = Boolean(currentUser && identityLabel);
             const logoutLabel = RuntimeAuthState.busy ? '로그아웃 중...' : '로그아웃';
 
             [
-                [elements.dashboardBar, elements.dashboardIdentity, elements.dashboardMeta, elements.dashboardRole, elements.dashboardId, elements.dashboardLogout],
-                [elements.viewerBar, elements.viewerIdentity, elements.viewerMeta, elements.viewerRole, elements.viewerId, elements.viewerLogout]
-            ].forEach(([bar, identity, meta, role, accountId, logoutButton]) => {
+                [elements.dashboardBar, elements.dashboardIdentity, elements.dashboardMeta, elements.dashboardRole, elements.dashboardId, elements.dashboardLogout, roleLabel, accountLabel],
+                [elements.viewerBar, elements.viewerIdentity, elements.viewerMeta, elements.viewerRole, elements.viewerId, elements.viewerLogout, viewerRoleLabel, viewerAccountLabel]
+            ].forEach(([bar, identity, meta, role, accountId, logoutButton, visibleRoleLabel, visibleAccountLabel]) => {
                 if (bar) {
                     bar.hidden = !isVisible;
                 }
@@ -65,17 +83,17 @@
                     identity.setAttribute('title', identityLabel || '');
                 }
                 if (meta) {
-                    meta.hidden = !Boolean(roleLabel || accountLabel);
+                    meta.hidden = !Boolean(visibleRoleLabel || visibleAccountLabel);
                 }
                 if (role) {
-                    role.textContent = roleLabel || '';
-                    role.setAttribute('title', roleLabel || '');
-                    role.hidden = !Boolean(roleLabel);
+                    role.textContent = visibleRoleLabel || '';
+                    role.setAttribute('title', visibleRoleLabel || '');
+                    role.hidden = !Boolean(visibleRoleLabel);
                 }
                 if (accountId) {
-                    accountId.textContent = accountLabel || '';
-                    accountId.setAttribute('title', accountLabel || '');
-                    accountId.hidden = !Boolean(accountLabel);
+                    accountId.textContent = visibleAccountLabel || '';
+                    accountId.setAttribute('title', visibleAccountLabel || '');
+                    accountId.hidden = !Boolean(visibleAccountLabel);
                 }
                 if (logoutButton) {
                     const logoutLabelElement = logoutButton.querySelector('.runtime-auth-logout-label');

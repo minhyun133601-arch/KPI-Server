@@ -7,6 +7,7 @@ const opsBrowser = OpsConsoleAppBrowserAdapter;
 let overviewCache = null;
 let commandRegistryCache = new Map();
 let currentLanguage = readInitialLanguage();
+const DISABLE_LOGIN_CONFIRMATION = 'OPEN_WITHOUT_LOGIN';
 function $(id) {
   return document.getElementById(id);
 }
@@ -86,6 +87,9 @@ function compactDescription(command) { return commandDescription(command); }
 function commandLabel(command) { return getCommandLanguageMap('labels')[command.key] || commandLabelMap[command.key] || commandTitle(command); }
 function setTileTone(id, tone) {
   const element = $(id);
+  if (!element) {
+    return;
+  }
   element.classList.remove('status-tone-ok', 'status-tone-warn', 'status-tone-down');
   if (tone) element.classList.add(`status-tone-${tone}`);
 }
@@ -114,6 +118,15 @@ function isServerLifecycleCommand(commandKey = '') {
 }
 function getCommand(commandKey) {
   return commandRegistryCache.get(commandKey) || null;
+}
+function shouldRenderLoginAccessCommand(commandKey, loginAccess = {}) {
+  if (commandKey === 'account.enableLogin') {
+    return loginAccess.enabled !== true;
+  }
+  if (commandKey === 'account.disableLogin') {
+    return loginAccess.exists !== false && loginAccess.mode !== 'disabled';
+  }
+  return true;
 }
 function setResult(summary, output = '-') {
   const timeLabel = nowLabel();
@@ -150,6 +163,11 @@ function getActiveScheduleItems(schedule = {}) {
     .filter((item) => item?.active);
 }
 function renderScheduleStatus(schedule = {}) {
+  const scheduleStatus = $('scheduleStatus');
+  const scheduleSummary = $('scheduleSummary');
+  if (!scheduleStatus || !scheduleSummary) {
+    return;
+  }
   const activeItems = getActiveScheduleItems(schedule);
   const statusText = activeItems.length === 0
     ? t('noSchedule')
@@ -159,9 +177,9 @@ function renderScheduleStatus(schedule = {}) {
   const summaryText = activeItems.length === 0
     ? t('scheduleNoneSummary')
     : activeItems.map((item) => t('scheduleSummary', { kind: scheduleKindLabel(item.kind), time: item.timeLabel || '-' })).join(' / ');
-  $('scheduleStatus').textContent = statusText;
-  $('scheduleSummary').textContent = summaryText;
-  setStatusTone($('scheduleStatus'), activeItems.length ? 'status-up' : 'status-warn');
+  scheduleStatus.textContent = statusText;
+  scheduleSummary.textContent = summaryText;
+  setStatusTone(scheduleStatus, activeItems.length ? 'status-up' : 'status-warn');
   setTileTone('scheduleTile', activeItems.length ? 'ok' : 'warn');
 }
 function renderStatus(overview) {
@@ -175,13 +193,21 @@ function renderStatus(overview) {
   const serverAction = overview.serverAction || {};
   const serverActionActive = Boolean(serverAction.active);
   const kpiOk = Boolean(overview.kpi.health?.ok);
+  const loginAccessMode = overview.loginAccess?.mode;
+  const loginPortSummaryKey = loginAccessMode === 'enabled'
+    ? 'portLogin'
+    : loginAccessMode === 'disabled'
+      ? 'portOpen'
+      : 'portInconsistent';
   $('kpiStatus').textContent = kpiOk
     ? t('running')
     : serverActionActive
       ? t('actionInProgress', { action: serverActionLabel(serverAction.key) })
       : t('stopped');
   $('kpiSummary').textContent = kpiOk
-    ? t('portLogin', { port: overview.kpi.port })
+    ? t(loginPortSummaryKey, {
+      port: overview.kpi.port
+    })
     : serverActionActive
       ? (localizeServerSummary(serverAction.summary) || t('serverPreparing'))
       : (overview.kpi.health?.error || t('healthFailed'));
@@ -195,8 +221,15 @@ function renderStatus(overview) {
   setTileTone('postgresTile', postgresOk ? 'ok' : 'down');
 
   const startupRegistered = Boolean(overview.startupTaskRegistered);
-  $('startupStatus').textContent = startupRegistered ? t('startupRegistered') : t('startupUnregistered');
-  setStatusTone($('startupStatus'), startupRegistered ? 'status-up' : 'status-down');
+  const startupStatusElement = $('startupStatus');
+  if (startupStatusElement) {
+    startupStatusElement.textContent = startupRegistered ? t('startupRegistered') : t('startupUnregistered');
+    const startupSummaryElement = $('startupSummary');
+    if (startupSummaryElement) {
+      startupSummaryElement.textContent = t('startupSummary');
+    }
+    setStatusTone(startupStatusElement, startupRegistered ? 'status-up' : 'status-down');
+  }
   setTileTone('startupTile', startupRegistered ? 'ok' : 'down');
   setTileTone('resultTile', 'ok');
   renderCardActions(overview);
@@ -213,12 +246,12 @@ function renderUsers(users, errorMessage = '') {
   const tbody = $('usersTableBody');
   if (errorMessage) {
     renderUserStats([]);
-    tbody.innerHTML = `<tr><td colspan="5">${escapeHtml(errorMessage)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4">${escapeHtml(errorMessage)}</td></tr>`;
     return;
   }
   if (!Array.isArray(users) || users.length === 0) {
     renderUserStats([]);
-    tbody.innerHTML = `<tr><td colspan="5">${escapeHtml(t('noUsers'))}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4">${escapeHtml(t('noUsers'))}</td></tr>`;
     return;
   }
   renderUserStats(users);
@@ -230,7 +263,6 @@ function renderUsers(users, errorMessage = '') {
     return `
       <tr>
         <td>${escapeHtml(user.username)}</td>
-        <td>${escapeHtml(user.display_name || '')}</td>
         <td>${escapeHtml(roles)}</td>
         <td>${escapeHtml(lastAccess)}</td>
         <td class="session-cell">
@@ -293,15 +325,21 @@ async function executeCommand(command, payload = {}, options = {}) {
   if (confirmMessage && !opsBrowser.confirm(confirmMessage)) {
     return null;
   }
+  const requestPayload = command.key === 'account.disableLogin'
+    ? { ...payload, confirmText: DISABLE_LOGIN_CONFIRMATION }
+    : payload;
   const shouldWaitForKpiReady = options.waitForKpiReady === true;
   setResult(t('commandRunning', { title: commandTitle(command) }));
   const result = await fetchJson(`/api/actions/${command.key}`, {
     method: 'POST',
     headers: actionHeader,
-    body: JSON.stringify(payload)
+    body: JSON.stringify(requestPayload)
   });
   if (command.key === 'db.listTables') {
-    $('tablesOutput').textContent = result.output || t('noOutput');
+    const tablesOutput = $('tablesOutput');
+    if (tablesOutput) {
+      tablesOutput.textContent = result.output || t('noOutput');
+    }
   }
   setResult(localizeServerSummary(result.summary) || t('commandDone', { title: commandTitle(command) }), result.output || '-');
   if (shouldWaitForKpiReady) {
@@ -366,7 +404,9 @@ function buildActionItem(command) {
   action.appendChild(buildInlineButton({
     label: commandLabel(command),
     iconName: commandIconMap[command.key] || 'spark',
-    variant: command.key.includes('stop') || command.key.includes('delete') ? 'secondary' : 'primary',
+    variant: command.key.includes('stop') || command.key.includes('delete') || command.key.includes('disable')
+      ? 'secondary'
+      : 'primary',
     onClick: async () => {
       try {
         await executeCommand(command);
@@ -479,12 +519,19 @@ function buildFormItem(command) {
 function renderCommands(commands) {
   const accountActions = $('accountActions');
   const toolActions = $('toolActions');
-  accountActions.innerHTML = '';
-  toolActions.innerHTML = '';
+  if (accountActions) {
+    accountActions.innerHTML = '';
+  }
+  if (toolActions) {
+    toolActions.innerHTML = '';
+  }
   commandRegistryCache = new Map(commands.map((command) => [command.key, command]));
   renderCardActions(overviewCache);
 
   for (const command of commands) {
+    if (!shouldRenderLoginAccessCommand(command.key, overviewCache?.loginAccess)) {
+      continue;
+    }
     if ([
       'server.start',
       'server.stop',
@@ -496,10 +543,13 @@ function renderCommands(commands) {
       continue;
     }
     if (command.category === 'account') {
+      if (!accountActions) {
+        continue;
+      }
       accountActions.appendChild(command.kind === 'action' ? buildActionItem(command) : buildFormItem(command));
       continue;
     }
-    if (command.category === 'db' || command.category === 'tools') {
+    if ((command.category === 'db' || command.category === 'tools') && toolActions) {
       toolActions.appendChild(buildActionItem(command));
     }
   }
@@ -509,16 +559,20 @@ function renderCardActions(overview = null) {
   const scheduleActions = $('scheduleActions');
   const kpiActions = $('kpiActions');
   const startupActions = $('startupActions');
-  if (!scheduleActions || !kpiActions || !startupActions) {
+  if (!kpiActions) {
     return;
   }
 
-  scheduleActions.innerHTML = '';
+  if (scheduleActions) {
+    scheduleActions.innerHTML = '';
+  }
   kpiActions.innerHTML = '';
-  startupActions.innerHTML = '';
+  if (startupActions) {
+    startupActions.innerHTML = '';
+  }
 
   const scheduleCommand = getCommand('system.scheduleShutdown');
-  if (scheduleCommand) {
+  if (scheduleCommand && scheduleActions) {
     scheduleActions.appendChild(buildInlineButton({
       label: t('scheduleSettings'),
       iconName: 'clock',
@@ -579,7 +633,7 @@ function renderCardActions(overview = null) {
 
   const startupRegistered = Boolean(nextOverview?.startupTaskRegistered);
   const startupCommand = getCommand(startupRegistered ? 'startup.unregister' : 'startup.register');
-  if (startupCommand) {
+  if (startupCommand && startupActions) {
     startupActions.appendChild(buildInlineButton({
       label: startupRegistered ? t('startupUnregister') : t('startupRegister'),
       iconName: commandIconMap[startupCommand.key] || 'clock',
@@ -657,6 +711,10 @@ async function reloadUsers() {
   }
 }
 async function loadTables() {
+  const tablesOutput = $('tablesOutput');
+  if (!tablesOutput) {
+    return;
+  }
   $('tablesOutput').textContent = t('tablesLoading');
   try {
     const payload = await fetchJson('/api/db/tables');
@@ -687,9 +745,12 @@ function bindStaticEvents() {
   $('reloadUsersButton').addEventListener('click', async () => {
     await reloadUsers();
   });
-  $('loadTablesButton').addEventListener('click', async () => {
-    await loadTables();
-  });
+  const loadTablesButton = $('loadTablesButton');
+  if (loadTablesButton) {
+    loadTablesButton.addEventListener('click', async () => {
+      await loadTables();
+    });
+  }
   $('openKpiButton').addEventListener('click', () => {
     const url = overviewCache?.kpi?.loginUrl;
     if (!url) {
@@ -733,10 +794,15 @@ async function bootstrap() {
   bindDragScrollTargets();
   bindStaticEvents();
   applyLanguage();
-  const initialTab = getRequestedTab();
-  activateTab(initialTab, { hydrate: false });
+  const hasTabs = document.querySelector('.tab-button') && document.querySelector('.tab-panel');
+  if (hasTabs) {
+    const initialTab = getRequestedTab();
+    activateTab(initialTab, { hydrate: false });
+  }
   await reloadOverview();
-  await hydrateTab(initialTab);
+  if (hasTabs) {
+    await hydrateTab(getRequestedTab());
+  }
 }
 bootstrap().catch((error) => {
   setResult(t('initialLoadFailed'), error.message);

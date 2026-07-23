@@ -143,6 +143,22 @@ function createContext(options = {}) {
   return { context, state, storage };
 }
 
+function createShellMetadataContext() {
+  const { context } = createContext();
+  const metadataSources = splitSources.filter(({ sourcePath }) =>
+    [
+      'kpi-runtime/app/KPI.app.shared.js',
+      'kpi-runtime/app/KPI.app.auth-owner.js',
+      'kpi-runtime/app/KPI.app.global-save.js',
+    ].includes(sourcePath)
+  );
+
+  for (const { sourcePath, source } of metadataSources) {
+    vm.runInContext(source, context, { filename: sourcePath });
+  }
+  return context;
+}
+
 test('app browser adapter wraps runtime storage location events popups and bridges', () => {
   const { context, state, storage } = createContext();
   const adapter = context.KpiAppBrowserAdapter;
@@ -220,6 +236,96 @@ test('app browser adapter wraps runtime storage location events popups and bridg
 test('app browser adapter registers on the root object when no window object exists', () => {
   const { context } = createContext({ withWindow: false });
   assert.equal(context.KpiAppBrowserAdapter.getRuntime()?.name, 'runtime');
+});
+
+test('viewer header metadata uses compact owner and date labels', () => {
+  const context = createShellMetadataContext();
+
+  assert.equal(
+    vm.runInContext(`getRuntimeAuthRoleLabel({ isOwner: true, roles: ['owner'] })`, context),
+    '오너 계정'
+  );
+  assert.equal(
+    vm.runInContext(`getRuntimeViewerAuthRoleLabel({ isOwner: true, roles: ['owner'] })`, context),
+    'owner'
+  );
+  assert.equal(
+    vm.runInContext(`getRuntimeAuthAccountLabel({ username: 'daniel', displayName: 'Daniel' })`, context),
+    'ID daniel'
+  );
+  assert.equal(
+    vm.runInContext(`getRuntimeViewerAuthAccountLabel({ username: 'daniel', displayName: 'Daniel' })`, context),
+    ''
+  );
+  assert.equal(
+    vm.runInContext(`getRuntimeViewerAuthAccountLabel({ username: 'owner', displayName: '관리자' })`, context),
+    'ID owner'
+  );
+  assert.equal(
+    vm.runInContext(`getRuntimeViewerAuthAccountLabel({ username: 'jose', displayName: 'José' })`, context),
+    'ID jose'
+  );
+  assert.equal(vm.runInContext(`formatViewerHeaderDate('2026-07-20T03:05:00')`, context), '07.20');
+  assert.equal(
+    vm.runInContext(`formatViewerHeaderRecentDate('2026-07-20T03:05:00')`, context),
+    '07.20 03:05'
+  );
+  assert.equal(vm.runInContext(`formatViewerHeaderRecentDate('invalid')`, context), '-');
+
+  const authElementIds = [
+    'dashboard-auth-bar',
+    'dashboard-auth-identity',
+    'dashboard-auth-meta',
+    'dashboard-auth-role',
+    'dashboard-auth-id',
+    'dashboard-auth-logout',
+    'viewer-auth-bar',
+    'viewer-auth-identity',
+    'viewer-auth-meta',
+    'viewer-auth-role',
+    'viewer-auth-id',
+    'viewer-auth-logout',
+  ];
+  const authElements = Object.fromEntries(
+    authElementIds.map(id => [
+      id,
+      {
+        hidden: true,
+        textContent: '',
+        setAttribute(name, value) {
+          this[name] = value;
+        },
+        querySelector() {
+          return null;
+        },
+      },
+    ])
+  );
+  context.document = {
+    getElementById(id) {
+      return authElements[id] || null;
+    },
+  };
+  context.KpiRuntime.getServerRuntimeConfig = () => ({
+    auth: {
+      currentUser: {
+        username: 'daniel',
+        displayName: 'Daniel',
+        roles: ['owner'],
+        isOwner: true,
+      },
+    },
+  });
+
+  vm.runInContext('renderRuntimeAuthUi()', context);
+  assert.equal(authElements['dashboard-auth-identity'].textContent, 'Daniel');
+  assert.equal(authElements['dashboard-auth-role'].textContent, '오너 계정');
+  assert.equal(authElements['dashboard-auth-id'].textContent, 'ID daniel');
+  assert.equal(authElements['dashboard-auth-id'].hidden, false);
+  assert.equal(authElements['viewer-auth-identity'].textContent, 'Daniel');
+  assert.equal(authElements['viewer-auth-role'].textContent, 'owner');
+  assert.equal(authElements['viewer-auth-id'].textContent, '');
+  assert.equal(authElements['viewer-auth-id'].hidden, true);
 });
 
 test('kpi html and boot manifest load app browser adapter and split hosts before app bootstrap', () => {

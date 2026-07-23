@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { dataCssSource, renderSource } from './support/equipment-history-render-harness.js';
+import { dataCssSource, formSource, renderSource } from './support/equipment-history-render-harness.js';
 
 test('equipment-history card source preserves explicit save topbar editor and document layout contracts', () => {
   assert.doesNotMatch(renderSource, /설비 운영 정보/);
@@ -136,6 +136,11 @@ test('equipment-history card source preserves explicit save topbar editor and do
   assert.match(renderSource, /function renderAnnualMaintenancePlanEditor\(rows, equipmentName = ''\)/);
   assert.match(renderSource, /data-equipment-add-row="annualMaintenancePlan"/);
   assert.match(renderSource, /data-equipment-row-section="annualMaintenancePlan"/);
+  assert.match(renderSource, /renderAnnualMaintenancePlanDatalists/);
+  assert.match(formSource, /data-equipment-annual-maintenance-cycle-options/);
+  assert.match(formSource, /data-equipment-annual-maintenance-month-options/);
+  assert.match(formSource, /function normalizeAnnualMaintenanceCycleValue/);
+  assert.match(formSource, /function normalizeAnnualMaintenanceExecutionMonthValue/);
   assert.doesNotMatch(renderSource, /data-equipment-retired-doc-card/);
   assert.match(renderSource, /function renderEquipmentRecentUpdated/);
   assert.match(renderSource, /\\uCD5C\\uADFC \\uC5C5\\uB370\\uC774\\uD2B8 :/);

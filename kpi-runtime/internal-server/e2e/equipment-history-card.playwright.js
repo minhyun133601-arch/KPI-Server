@@ -63,7 +63,11 @@ test.describe('equipment-history card', () => {
         /연간정비계획표/,
         /정비 이력/,
       ]);
-      await expect(page.locator('.data-equipment-annual-plan-row')).toHaveCount(3);
+      await expect(page.locator('.data-equipment-annual-plan-row')).toHaveCount(1);
+      await page.locator('[data-equipment-add-row="annualMaintenancePlan"]').click();
+      await expect(page.locator('.data-equipment-annual-plan-row')).toHaveCount(2);
+      await page.locator('[data-equipment-remove-row="annualMaintenancePlan"]').nth(1).click();
+      await expect(page.locator('.data-equipment-annual-plan-row')).toHaveCount(1);
       await page
         .locator('[data-equipment-row-section="annualMaintenancePlan"][data-equipment-field="maintenanceItem"]')
         .first()
@@ -75,11 +79,11 @@ test.describe('equipment-history card', () => {
       await page
         .locator('[data-equipment-row-section="annualMaintenancePlan"][data-equipment-field="cycle"]')
         .first()
-        .fill('연 2회');
+        .fill('연2회');
       await page
         .locator('[data-equipment-row-section="annualMaintenancePlan"][data-equipment-field="executionMonth"]')
         .first()
-        .fill('3월');
+        .fill('09월, 03월, 9월');
       await page
         .locator('[data-equipment-row-section="annualMaintenancePlan"][data-equipment-field="inspectionNotes"]')
         .first()
@@ -120,6 +124,12 @@ test.describe('equipment-history card', () => {
           .locator('[data-equipment-row-section="annualMaintenancePlan"][data-equipment-field="maintenanceContent"]')
           .first()
       ).toHaveValue('장력 확인 및 마모 상태 점검');
+      await expect(
+        page.locator('[data-equipment-row-section="annualMaintenancePlan"][data-equipment-field="cycle"]').first()
+      ).toHaveValue('연 2회');
+      await expect(
+        page.locator('[data-equipment-row-section="annualMaintenancePlan"][data-equipment-field="executionMonth"]').first()
+      ).toHaveValue('3월, 9월');
       await expect(documentTitle).toHaveValue('sample-nameplate.png');
       await expect(page.locator('.data-equipment-document-file-name').first()).toHaveText('');
       await page.screenshot({ path: testInfo.outputPath('equipment-history-card.png'), fullPage: true });
@@ -150,6 +160,7 @@ test.describe('equipment-history card', () => {
       await printPage.emulateMedia({ media: 'print' });
       await expect(printPage.locator('.equipment-print-annual-plan')).toContainText('구동 벨트');
       await expect(printPage.locator('.equipment-print-annual-plan')).toContainText('점검 완료');
+      await expect(printPage.locator('.equipment-print-annual-plan tbody tr')).toHaveCount(1);
       await expect(printPage.locator('.equipment-print-doc-cell')).toHaveText('sample-nameplate.png');
       const layout = await printPage.locator('.equipment-print-page').evaluate((element) => ({
         clientHeight: element.clientHeight,

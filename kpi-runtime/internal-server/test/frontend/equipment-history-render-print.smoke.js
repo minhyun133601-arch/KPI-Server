@@ -32,6 +32,14 @@ test('equipment-history print document preserves the A4 card form through mainte
         executionMonth: '3\uC6D4',
         inspectionNotes: '\uC810\uAC80 \uC644\uB8CC',
       },
+      {
+        equipmentName: 'Mixer A',
+        maintenanceItem: '',
+        maintenanceContent: '',
+        cycle: '',
+        executionMonth: '',
+        inspectionNotes: '',
+      },
     ],
     maintenanceHistory: [
       {
@@ -48,6 +56,8 @@ test('equipment-history print document preserves the A4 card form through mainte
   const emptyHtml = api.buildEquipmentHistoryPrintDocument(api.createDraft({ name: 'Empty Card' }));
 
   assert.equal(typeof api.buildEquipmentHistoryPrintDocument, 'function');
+  assert.equal(api.getEquipmentPrintAnnualMaintenancePlanRows(draft).length, 1);
+  assert.equal(api.getEquipmentPrintAnnualMaintenancePlanRows(api.createDraft({ name: 'Empty Card' })).length, 0);
   assert.match(html, /@page \{ size: A4 portrait; margin: 8mm; \}/);
   assert.match(html, /class="equipment-print-page"/);
   assert.match(html, /class="data-equipment-layout data-equipment-edit-form equipment-print-form"/);
@@ -138,6 +148,12 @@ test('equipment-history print document preserves the A4 card form through mainte
   assert.match(html, /\uBE44\uACE0 \uB0B4\uC6A9/);
   assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uC124\uBE44 \uC2A4\uD399\uC774 \uC5C6\uC2B5\uB2C8\uB2E4\./);
   assert.match(emptyHtml, /연간정비계획표/);
+  assert.match(
+    emptyHtml,
+    /class="data-equipment-card data-equipment-annual-plan-card equipment-print-annual-plan"/
+  );
+  assert.match(emptyHtml, /등록된 연간정비계획이 없습니다\./);
+  assert.match(emptyHtml, /<td colspan="6" class="equipment-print-empty-cell">/);
   assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uC815\uBE44 \uC774\uB825\uC774 \uC5C6\uC2B5\uB2C8\uB2E4\./);
   assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uBE44\uACE0\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4\./);
   assert.match(emptyHtml, /\uB4F1\uB85D\uB41C \uAD00\uB828 \uBB38\uC11C\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4\./);

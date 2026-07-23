@@ -1,0 +1,464 @@
+/* Team report date-detail sheet */
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-overlay-layer.is-date-detail {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  overflow: hidden;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-overlay-layer.is-date-detail
+  .work-team-calendar-overlay-backdrop {
+  background: rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(1px);
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail {
+  position: relative;
+  inset: auto;
+  top: auto !important;
+  left: auto !important;
+  width: min(860px, calc(100% - 12px));
+  max-width: 100%;
+  max-height: 100%;
+  margin: 0 auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #dbe7f4;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+  backdrop-filter: none;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail.is-dragging {
+  box-shadow: 0 22px 42px rgba(15, 23, 42, 0.16);
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-editor-head,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-editor-actions {
+  display: none;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px 18px;
+  align-items: start;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-heading {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-title {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 900;
+  line-height: 1.35;
+  color: #0f172a;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-sub {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-summary {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin: 0;
+  padding: 0;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-summary-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #475569;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: none;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-close:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  color: #0f172a;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-body {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px 18px 18px;
+  overflow: auto;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-section {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-section-title {
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-section-count {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #64748b;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-section-body {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-empty,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-empty {
+  padding: 12px 0;
+  color: #64748b;
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-empty.is-offday {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  background: #fff7ed;
+  color: #c2410c;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-work-view,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-team-groups,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-groups {
+  gap: 10px;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-team-group,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-group {
+  gap: 8px;
+  padding: 10px 12px;
+  border-color: #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  box-shadow: none;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-group.is-offday {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-team-group-head,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-group-head {
+  gap: 6px 10px;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-team-group-meta,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-summary {
+  color: #64748b;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-count {
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+  background: #ffffff;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-work-card.is-history-compact {
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid var(--team-accent, #2563eb);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-work-date,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-work-title,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-team-group-title,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-name {
+  color: #0f172a;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-work-cost,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-work-pill,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-chip,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-detail-row span {
+  min-height: 22px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: #ffffff;
+  box-shadow: none;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-work-cost {
+  border-color: #dbeafe;
+  color: var(--team-accent, #2563eb);
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-work-pill,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-detail-row span {
+  border-color: #e2e8f0;
+  color: #475569;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-work-pill.is-kpi {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-list {
+  gap: 8px;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-item {
+  align-items: start;
+  gap: 10px 12px;
+  padding: 10px 12px;
+  border-color: #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-main {
+  gap: 4px;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-meta,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-work-summary,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-details {
+  color: #64748b;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-stat-row {
+  gap: 5px;
+  margin-top: 2px;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-chip {
+  border-color: #dbeafe;
+  background: #f8fafc;
+  color: #1d4ed8;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-details summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0;
+  color: #475569;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-amount {
+  font-size: 0.76rem;
+  align-self: center;
+}
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-detail-close:focus-visible,
+.work-team-calendar-dialog.is-team-report-document
+  .work-team-calendar-editor.is-floating.is-date-detail
+  .work-team-calendar-production-details summary:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-overlay-layer.is-date-detail {
+    position: fixed;
+    inset: 8px;
+    z-index: 20;
+    padding: 10px;
+  }
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail {
+    width: min(680px, 100%);
+    max-height: 100%;
+  }
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail
+    .work-team-calendar-detail-head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding: 14px 14px 12px;
+  }
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail
+    .work-team-calendar-detail-summary {
+    order: 2;
+    gap: 6px;
+  }
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail
+    .work-team-calendar-detail-summary-item {
+    min-height: 26px;
+    padding: 4px 8px;
+  }
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail
+    .work-team-calendar-detail-close {
+    order: 3;
+    width: 100%;
+    min-height: 40px;
+  }
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail
+    .work-team-calendar-detail-body {
+    gap: 10px;
+    padding: 12px 14px 14px;
+  }
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail
+    .work-team-calendar-detail-section,
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail
+    .work-team-calendar-team-group,
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail
+    .work-team-calendar-production-group,
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail
+    .work-team-calendar-work-card.is-history-compact,
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail
+    .work-team-calendar-production-item {
+    padding: 10px;
+  }
+  .work-team-calendar-dialog.is-team-report-document
+    .work-team-calendar-editor.is-floating.is-date-detail
+    .work-team-calendar-production-item {
+    flex-direction: column;
+  }
+}

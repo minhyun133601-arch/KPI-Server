@@ -1,7 +1,3 @@
-        const workTeamCalendarRenderBrowser = typeof KpiWorkBrowserAdapter !== 'undefined'
-            ? KpiWorkBrowserAdapter
-            : null;
-
         function renderWorkTeamCalendarInlineContent(category, headerHtml, options = {}) {
             const contentContainer = document.getElementById('content-container');
             const teamCategories = getWorkTeamCalendarCategories();
@@ -63,21 +59,20 @@
             const draft = getWorkTeamCalendarDraftForDates(dataKey, selectedDateKeys);
             const selectedHistoryRecords = getWorkTeamCalendarHistoryRecordsForDates(dataKey, selectedDateKeys);
             const hasSelectedEntryContent = selectedHistoryRecords.length > 0;
-            const hasReadonlyEntryContent = hasSelectedEntryContent && !isOverviewCalendar;
-            const historyKpiLabel = workTeamCalendarRenderBrowser?.getHistoryImportantFlagLabel?.() || '\u2605';
-            const selectedHistoryStarCount = hasSelectedEntryContent
-                ? (typeof workTeamCalendarRenderBrowser?.isHistoryImportantRecord === 'function'
-                    ? selectedHistoryRecords.filter(record => workTeamCalendarRenderBrowser.isHistoryImportantRecord(record)).length
-                    : selectedHistoryRecords.length)
-                : 0;
             const selectedHistoryCostSummary = hasSelectedEntryContent && typeof getWorkTeamCalendarHistoryCostSummary === 'function'
                 ? getWorkTeamCalendarHistoryCostSummary(selectedHistoryRecords)
                 : { totalCost: 0, costText: '-' };
-            const readonlyEntriesHtml = hasReadonlyEntryContent
+            const readonlyEntriesHtml = hasSelectedEntryContent
                 ? (
-                    renderWorkTeamCalendarReadonlyEntriesHtml(dataKey, selectedDateKeys)
+                    isOverviewCalendar && typeof renderWorkTeamCalendarGroupedHistoryHtml === 'function'
+                        ? (
+                            renderWorkTeamCalendarGroupedHistoryHtml(dataKey, selectedDateKeys)
+                            || renderWorkTeamCalendarReadonlyEntriesHtml(dataKey, selectedDateKeys)
+                        )
+                        : renderWorkTeamCalendarReadonlyEntriesHtml(dataKey, selectedDateKeys)
                 )
                 : '';
+            const hasReadonlyEntryContent = !!readonlyEntriesHtml;
             const memberCountText = getWorkTeamCalendarMemberCountLabel(draft.members.length);
             const selectedMembersHtml = renderWorkTeamCalendarSelectedMembersHtml(draft.members);
             const attachmentListHtml = renderWorkTeamCalendarAttachmentListHtml(draft.attachments, { batch: isBatchSelection });
@@ -116,36 +111,42 @@
                 })
                 : '';
             const detailTitle = hasDateSelection
-                ? getWorkTeamCalendarSelectionLabel(selectedDateKeys, selectedDate)
+                ? (
+                    (() => {
+                        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(selectedDate || '').trim());
+                        if (!match) return getWorkTeamCalendarSelectionLabel(selectedDateKeys, selectedDate);
+                        const detailDate = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+                        const weekday = ['\uC77C', '\uC6D4', '\uD654', '\uC218', '\uBAA9', '\uAE08', '\uD1A0'][detailDate.getDay()];
+                        const shortLabel = `${match[2]}.${match[3]} (${weekday})`;
+                        return isBatchSelection
+                            ? `${shortLabel} \uC678 ${formatUtilNumber(selectedDateKeys.length - 1, 0)}\uC77C`
+                            : shortLabel;
+                    })()
+                )
                 : '';
-            let detailSub = isOverviewCalendar
-                ? '\uD300\uBCC4 \uC0DD\uC0B0 \uD488\uBAA9 \uBCF4\uAE30'
-                : (hasSelectedEntryContent ? '\uC791\uC5C5\uB0B4\uC5ED \uC0C1\uC138' : '');
-            let detailCountText = hasSelectedEntryContent
-                ? `${formatUtilNumber(selectedHistoryRecords.length, 0)}\uAC74`
-                : (
-                    productionItemCount > 0
-                        ? `${formatUtilNumber(productionOverallSummary.totalAmount || 0, 0)}kg \u00B7 ${formatUtilNumber(productionItemCount, 0)}\uD488\uBAA9`
-                        : (selectedProductionSummary?.isOffday ? '-' : (category.emptyProductionLabel || '\uD488\uBAA9 \uC5C6\uC74C'))
-                );
-            let detailCountBadgeText = hasSelectedEntryContent
-                ? (formatUtilNumber(selectedHistoryRecords.length, 0) + '\uAC74' + (selectedHistoryStarCount > 0 ? (' \u00B7 ' + historyKpiLabel + (selectedHistoryStarCount > 1 ? (' ' + formatUtilNumber(selectedHistoryStarCount, 0)) : '')) : '') + ' \u00B7 \uBE44\uC6A9 ' + (selectedHistoryCostSummary.costText || '-'))
-                : detailCountText;
-            if (isOverviewCalendar) {
-                detailSub = '\uD300\uBCC4 \uC0DD\uC0B0 \uD488\uBAA9 \uBCF4\uAE30';
-                detailCountText = productionItemCount > 0
-                    ? `${formatUtilNumber(productionOverallSummary.totalAmount || 0, 0)}kg \u00B7 ${formatUtilNumber(productionItemCount, 0)}\uD488\uBAA9`
-                    : (selectedProductionSummary?.isOffday ? '-' : (category.emptyProductionLabel || '\uD488\uBAA9 \uC5C6\uC74C'));
-                detailCountBadgeText = detailCountText;
-            }
-            if (!hasSelectedEntryContent) {
-                detailCountBadgeText = '';
-            }
-            const detailCountBadgeHtml = detailCountBadgeText
-                ? `<span class="work-team-calendar-editor-count" data-work-team-member-count>${escapeHtml(detailCountBadgeText)}</span>`
+            const detailSub = isBatchSelection
+                ? `\uC120\uD0DD\uD55C ${formatUtilNumber(selectedDateKeys.length, 0)}\uC77C \uD569\uACC4`
                 : '';
             const showProductionDetailField = !(selectedProductionSummary?.isOffday && hasSelectedEntryContent);
             const showSelectionClearButton = detailOverlayActive && !workInputActive;
+            const hasProductionDetailContent = showProductionDetailField && productionItemCount > 0;
+            const showDetailEmptyState = !hasReadonlyEntryContent && !hasProductionDetailContent;
+            const detailSummaryWorkText = `\uC791\uC5C5 ${formatUtilNumber(selectedHistoryRecords.length, 0)}\uAC74`;
+            const detailSummaryProductionText = selectedProductionSummary?.isOffday && !hasProductionDetailContent
+                ? '\uC0DD\uC0B0 \uD734\uBB34'
+                : `\uC0DD\uC0B0 ${formatUtilNumber((productionItemCount > 0 ? (productionOverallSummary.totalAmount || 0) : (selectedProductionSummary?.totalAmount || 0)) || 0, 0)}kg`;
+            const detailSummaryCostText = `\uBE44\uC6A9 ${selectedHistoryCostSummary.costText || '-'}`;
+            const detailSummaryHtml = `
+                <div class="work-team-calendar-detail-summary" role="group" aria-label="선택 날짜 요약">
+                    <span class="work-team-calendar-detail-summary-item">${escapeHtml(detailSummaryWorkText)}</span>
+                    <span class="work-team-calendar-detail-summary-item">${escapeHtml(detailSummaryProductionText)}</span>
+                    <span class="work-team-calendar-detail-summary-item">${escapeHtml(detailSummaryCostText)}</span>
+                </div>
+            `;
+            const workSectionCountText = `${formatUtilNumber(selectedHistoryRecords.length, 0)}\uAC74`;
+            const productionSectionCountText = selectedProductionSummary?.isOffday && !hasProductionDetailContent
+                ? '\uD734\uBB34'
+                : `${formatUtilNumber(productionItemCount, 0)}\uD488\uBAA9`;
             const detailEditorStateClass = [
                 workInputActive ? 'is-work-active' : '',
                 showSelectionClearButton ? 'has-selection-clear' : ''
@@ -699,30 +700,20 @@
                                 ${dayCells}
                             </div>
                             ${detailOverlayActive ? `
-                                <div class="work-team-calendar-overlay-layer">
-                                    <button type="button" class="work-team-calendar-overlay-backdrop" onclick="clearWorkTeamCalendarSelection()" aria-label="선택 닫기"></button>
-                                    <div class="work-team-calendar-editor is-floating${detailEditorStateClass ? ` ${detailEditorStateClass}` : ''}" data-work-team-editor>
-                                        <div class="work-team-calendar-editor-head">
-                                            <div class="work-team-calendar-editor-handle" data-work-team-editor-handle>
-                                                ${detailTitle ? `<div class="work-team-calendar-editor-title">${escapeHtml(detailTitle)}</div>` : ''}
-                                                ${detailSub ? `<div class="work-team-calendar-editor-sub">${escapeHtml(detailSub)}</div>` : ''}
+                                <div class="work-team-calendar-overlay-layer is-date-detail">
+                                    <button type="button" class="work-team-calendar-overlay-backdrop" onclick="clearWorkTeamCalendarSelection()" aria-label="날짜 상세 닫기"></button>
+                                    <div class="work-team-calendar-editor is-floating is-date-detail${detailEditorStateClass ? ` ${detailEditorStateClass}` : ''}" data-work-team-editor role="dialog" aria-modal="true" aria-labelledby="work-team-calendar-detail-title" tabindex="-1">
+                                        <header class="work-team-calendar-detail-head">
+                                            <div class="work-team-calendar-detail-heading">
+                                                ${detailTitle ? `<h2 id="work-team-calendar-detail-title" class="work-team-calendar-detail-title">${escapeHtml(detailTitle)}</h2>` : ''}
+                                                ${detailSub ? `<div class="work-team-calendar-editor-sub work-team-calendar-detail-sub">${escapeHtml(detailSub)}</div>` : ''}
                                             </div>
-                                            <div class="work-team-calendar-editor-actions">
-                                                ${detailCountBadgeHtml}
-                                                ${workInputActive ? `
-                                                    <label class="work-team-calendar-editor-btn">
-                                                        <i class="fas fa-paperclip"></i>첨부
-                                                        <input type="file" class="work-team-calendar-file-input" accept=".ppt,.pptx,.xls,.xlsx,.pdf,.doc,.docx,.hwp,.hwpx" multiple onchange="handleWorkTeamCalendarAttachmentInput(this)">
-                                                    </label>
-                                                    <button type="button" class="work-team-calendar-editor-btn is-danger" onclick="deleteWorkTeamCalendarSelectedEntries()" ${hasSelectedEntryContent ? 'title="\uC120\uD0DD\uD55C \uC791\uC5C5\uB0B4\uC5ED\uC744 \uC0AD\uC81C\uD569\uB2C8\uB2E4."' : 'disabled title="\uC0AD\uC81C\uD560 \uC791\uC5C5\uB0B4\uC5ED\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."'}><i class="fas fa-trash-can"></i>${escapeHtml(isBatchSelection ? '\uC120\uD0DD \uC0AD\uC81C' : '\uC791\uC5C5\uB0B4\uC5ED \uC0AD\uC81C')}</button>
-                                                    <button type="button" class="work-team-calendar-editor-btn is-primary" onclick="completeWorkTeamCalendarEditor()"><i class="fas fa-check"></i>완료</button>
-                                                    <button type="button" class="work-team-calendar-editor-btn" onclick="closeWorkTeamCalendarEditor()" aria-label="닫기"><i class="fas fa-xmark"></i></button>
-                                                ` : ''}
-                                                ${showSelectionClearButton ? `
-                                                    <button type="button" class="work-team-calendar-editor-btn is-selection-clear" onclick="clearWorkTeamCalendarSelection()" aria-label="\uC120\uD0DD \uD574\uC81C" title="\uC120\uD0DD \uD574\uC81C"><i class="fas fa-xmark"></i></button>
-                                                ` : ''}
-                                            </div>
-                                        </div>
+                                            ${showSelectionClearButton ? `
+                                                <button type="button" class="work-team-calendar-detail-close" onclick="clearWorkTeamCalendarSelection()">닫기</button>
+                                            ` : ''}
+                                            ${detailSummaryHtml}
+                                        </header>
+                                        <div class="work-team-calendar-detail-body">
                                         ${workInputActive ? `
                                             <div class="work-team-calendar-field">
                                                 <div class="work-team-calendar-field-head">
@@ -773,25 +764,38 @@
                                                 ${utilityBreakdownHtml}
                                             </div>
                                         ` : ''}
-                                        ${readonlyEntriesHtml ? `
-                                            <div class="work-team-calendar-field">
-                                                <div class="work-team-calendar-field-head">
-                                                    <span class="work-team-calendar-field-label">${isOverviewCalendar ? '통합 작업내역' : '작업내역'}</span>
+                                        ${showDetailEmptyState ? `
+                                            <div class="work-team-calendar-detail-empty" role="status">등록된 작업·생산 자료가 없습니다.</div>
+                                        ` : `
+                                            <section class="work-team-calendar-detail-section work-team-calendar-field">
+                                                <div class="work-team-calendar-field-head work-team-calendar-detail-section-head">
+                                                    <span class="work-team-calendar-field-label work-team-calendar-detail-section-title">작업내역</span>
+                                                    <span class="work-team-calendar-detail-section-count">${escapeHtml(workSectionCountText)}</span>
                                                 </div>
-                                                ${readonlyEntriesHtml}
-                                            </div>
-                                        ` : ''}
-                                        ${showProductionDetailField ? `
-                                        <div class="work-team-calendar-field">
-                                            ${isOverviewCalendar ? `
-                                                <div class="work-team-calendar-field-head">
-                                                    <span class="work-team-calendar-field-label">팀별 생산 품목</span>
+                                                <div class="work-team-calendar-detail-section-body">
+                                                    ${hasReadonlyEntryContent
+                                                        ? readonlyEntriesHtml
+                                                        : `<div class="work-team-calendar-detail-empty">등록된 작업 자료가 없습니다.</div>`}
                                                 </div>
+                                            </section>
+                                            ${showProductionDetailField ? `
+                                                <section class="work-team-calendar-detail-section work-team-calendar-field">
+                                                    <div class="work-team-calendar-field-head work-team-calendar-detail-section-head">
+                                                        <span class="work-team-calendar-field-label work-team-calendar-detail-section-title">생산내역</span>
+                                                        <span class="work-team-calendar-detail-section-count">${escapeHtml(productionSectionCountText)}</span>
+                                                    </div>
+                                                    <div class="work-team-calendar-detail-section-body">
+                                                        ${hasProductionDetailContent ? `
+                                                            ${productionMetricText ? `<div class="work-team-calendar-production-summary${productionMetricClass}">${escapeHtml(productionMetricText)}</div>` : ''}
+                                                            <div class="work-team-calendar-production-groups">${productionGroupsHtml}</div>
+                                                        ` : `
+                                                            <div class="work-team-calendar-detail-empty">등록된 생산 자료가 없습니다.</div>
+                                                        `}
+                                                    </div>
+                                                </section>
                                             ` : ''}
-                                            ${productionMetricText ? `<div class="work-team-calendar-production-summary${productionMetricClass}">${escapeHtml(productionMetricText)}</div>` : ''}
-                                            <div class="work-team-calendar-production-groups">${productionGroupsHtml}</div>
+                                        `}
                                         </div>
-                                        ` : ''}
                                     </div>
                                 </div>
                             ` : ''}
@@ -805,4 +809,8 @@
             refreshWorkTeamCalendarStorageStatus(modal);
             syncWorkTeamCalendarInlineIndex(dataKey);
             syncWorkTeamCalendarFullscreenUi();
+            const detailEditor = modal?.querySelector?.('.work-team-calendar-editor.is-date-detail');
+            if (typeof detailEditor?.focus === 'function') {
+                try { detailEditor.focus(); } catch (error) {}
+            }
         }

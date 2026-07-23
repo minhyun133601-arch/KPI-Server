@@ -181,6 +181,7 @@
                         `).join('')}
                     </div>
                 `).join('')}
+                ${api.renderAnnualMaintenancePlanDatalists?.() || ''}
             </div>
         `;
     }
@@ -577,7 +578,15 @@
         if (section) {
             const index = Number(input.dataset.equipmentRowIndex);
             const row = ensureDraftSectionRow(state, section, index);
-            if (row) row[field] = value;
+            if (row) {
+                const normalizedValue = section === 'annualMaintenancePlan'
+                    ? api.normalizeAnnualMaintenancePlanFieldValue?.(field, value) ?? value
+                    : value;
+                row[field] = normalizedValue;
+                if (section === 'annualMaintenancePlan' && event?.type === 'change' && input.value !== normalizedValue) {
+                    input.value = normalizedValue;
+                }
+            }
             return;
         }
         state.draft[field] = value;

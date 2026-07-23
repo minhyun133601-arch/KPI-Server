@@ -40,6 +40,25 @@ export const commandRegistry = [
     kind: "action",
   },
   {
+    key: "account.enableLogin",
+    category: "account",
+    title: "로그인 보호 켜기",
+    description:
+      "등록된 계정 로그인을 요구하도록 설정하고 실행 중인 KPI 서버에 바로 적용합니다.",
+    kind: "action",
+    confirmMessage: "로그인 보호를 켜고 실행 중인 KPI 서버를 다시 시작합니다.",
+  },
+  {
+    key: "account.disableLogin",
+    category: "account",
+    title: "로그인 보호 끄기",
+    description:
+      "KPI 화면과 API를 인증 없이 열도록 설정하고 실행 중인 KPI 서버에 바로 적용합니다.",
+    kind: "action",
+    confirmMessage:
+      "주의: 로그인 보호를 끄면 KPI 화면과 API를 인증 없이 사용할 수 있습니다. 계속하시겠습니까?",
+  },
+  {
     key: "account.bootstrapOwner",
     category: "account",
     title: "오너 생성",
@@ -51,13 +70,6 @@ export const commandRegistry = [
         label: "오너 아이디",
         type: "text",
         placeholder: "owner",
-        required: true,
-      },
-      {
-        name: "displayName",
-        label: "오너 표시 이름",
-        type: "text",
-        placeholder: "KPI Owner",
         required: true,
       },
       { name: "password", label: "비밀번호", type: "password", required: true },
@@ -75,13 +87,6 @@ export const commandRegistry = [
         label: "직원 아이디",
         type: "text",
         placeholder: "staff-01",
-        required: true,
-      },
-      {
-        name: "displayName",
-        label: "직원 표시 이름",
-        type: "text",
-        placeholder: "직원 이름",
         required: true,
       },
       { name: "password", label: "비밀번호", type: "password", required: true },

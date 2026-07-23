@@ -53,7 +53,7 @@ test('equipment-history annual maintenance plan rows edit add remove and persist
   const api = context.KpiDataEquipmentHistory;
   const state = { draft: api.createDraft({ name: 'Mixer A' }) };
 
-  assert.equal(state.draft.annualMaintenancePlan.length, 3);
+  assert.equal(state.draft.annualMaintenancePlan.length, 1);
   api.updateDraftFromInput(null, state, {
     target: {
       value: '구동 벨트',
@@ -65,9 +65,21 @@ test('equipment-history annual maintenance plan rows edit add remove and persist
     },
   });
   api.addDraftRow(state, 'annualMaintenancePlan');
-  assert.equal(state.draft.annualMaintenancePlan.length, 4);
-  assert.equal(state.draft.annualMaintenancePlan[3].equipmentName, 'Mixer A');
-  api.removeDraftRow(state, 'annualMaintenancePlan', 3);
+  assert.equal(state.draft.annualMaintenancePlan.length, 2);
+  assert.equal(state.draft.annualMaintenancePlan[1].equipmentName, 'Mixer A');
+  api.removeDraftRow(state, 'annualMaintenancePlan', 1);
+
+  const cycleInput = {
+    value: '연2회',
+    dataset: {
+      equipmentField: 'cycle',
+      equipmentRowSection: 'annualMaintenancePlan',
+      equipmentRowIndex: '0',
+    },
+  };
+  api.updateDraftFromInput(null, state, { type: 'change', target: cycleInput });
+  assert.equal(cycleInput.value, '연 2회');
+  assert.equal(state.draft.annualMaintenancePlan[0].cycle, '연 2회');
 
   const record = api.buildRecordFromDraft(state.draft);
   assert.equal(record.annualMaintenancePlan.length, 1);

@@ -33,8 +33,8 @@ test('equipment-history draft and record models preserve labels groups photos an
         equipmentName: '샘플 혼합기 A',
         maintenanceItem: '구동 벨트',
         maintenanceContent: '장력 확인 및 마모 상태 점검',
-        cycle: '연 2회',
-        executionMonth: '3월',
+        cycle: '연2회',
+        executionMonth: '09월, 03월, 9월',
         inspectionNotes: '점검 완료',
       },
     ],
@@ -240,9 +240,16 @@ test('equipment-history draft and record models preserve labels groups photos an
     'custom-photo-key'
   );
   assert.equal(api.createDraft().documents.length, 1);
-  assert.equal(api.createDraft({ name: 'Mixer' }).annualMaintenancePlan.length, 3);
+  assert.equal(api.createDraft({ name: 'Mixer' }).annualMaintenancePlan.length, 1);
   assert.equal(api.createDraft({ name: 'Mixer' }).annualMaintenancePlan[0].equipmentName, 'Mixer');
   assert.equal(api.buildRecordFromDraft({ name: 'Mixer' }).annualMaintenancePlan.length, 0);
+  assert.equal(api.normalizeAnnualMaintenanceCycleValue('2회/년'), '연 2회');
+  assert.equal(api.normalizeAnnualMaintenanceCycleValue('매월'), '월 1회');
+  assert.equal(api.normalizeAnnualMaintenanceCycleValue('2년'), '2년');
+  assert.equal(api.normalizeAnnualMaintenanceCycleValue('연2'), '연2');
+  assert.equal(api.normalizeAnnualMaintenanceCycleValue('사용자 정의'), '사용자 정의');
+  assert.equal(api.normalizeAnnualMaintenanceExecutionMonthValue('09월 / 03월 / 9월'), '3월, 9월');
+  assert.equal(api.normalizeAnnualMaintenanceExecutionMonthValue('상반기'), '상반기');
   assert.equal(api.createDraft({ documents: [{ title: '점검 보고서' }] }).documents.length, 1);
   assert.equal(
     api.createDraft({ documents: Array.from({ length: 4 }, (_, index) => ({ title: `문서 ${index + 1}` })) }).documents
@@ -262,7 +269,7 @@ test('equipment-history draft and record models preserve labels groups photos an
         maintenanceItem: '구동 벨트',
         maintenanceContent: '장력 확인 및 마모 상태 점검',
         cycle: '연 2회',
-        executionMonth: '3월',
+        executionMonth: '3월, 9월',
         inspectionNotes: '점검 완료',
       },
     ])

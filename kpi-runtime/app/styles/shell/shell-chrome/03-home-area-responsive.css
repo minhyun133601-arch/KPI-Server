@@ -327,9 +327,11 @@
         height: auto;
         min-height: 60px;
         padding-left: 1rem;
+        padding-right: 1rem;
         padding-top: 0.75rem;
         padding-bottom: 0.75rem;
         align-items: flex-start;
+        flex-wrap: wrap;
         gap: 0.75rem;
     }
     .viewer-header-leading {
@@ -344,21 +346,44 @@
     .viewer-header-actions .runtime-auth-bar {
         width: auto;
         min-width: 0;
-        max-width: none;
-        flex-wrap: wrap;
+        max-width: min(360px, 100%);
     }
     .viewer-header-actions .runtime-auth-meta {
         flex: 0 0 auto;
         border-left: 0;
         border-top: 0;
     }
-    .viewer-header-actions .runtime-auth-logout {
-        min-height: 34px;
-    }
     .global-save-toolbar-button {
         min-height: 38px;
     }
     .global-save-dock {
         flex: 0 0 auto;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .viewer-header-leading {
+        gap: 0.65rem;
+    }
+    .viewer-header-brand-text {
+        font-size: 0.82rem;
+    }
+    .viewer-header-actions .global-save-dock {
+        width: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .viewer-header-actions .runtime-auth-bar {
+        grid-column: 1 / -1;
+        width: 100%;
+        max-width: none;
+    }
+    .global-save-context {
+        width: 100%;
+        grid-template-columns: minmax(112px, 1.25fr) minmax(72px, 0.8fr);
+    }
+    .global-save-button {
+        min-width: 76px;
     }
 }

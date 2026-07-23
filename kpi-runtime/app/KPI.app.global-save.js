@@ -35,12 +35,20 @@
             };
         }
 
-        function formatViewerHeaderDate() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const date = String(today.getDate()).padStart(2, '0');
-            return `${year}.${month}.${date}`;
+        function formatViewerHeaderDate(value = new Date()) {
+            const date = parseDashboardDate(value);
+            if (!date) return '-';
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${month}.${day}`;
+        }
+
+        function formatViewerHeaderRecentDate(value) {
+            const date = parseDashboardDate(value);
+            if (!date) return '-';
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${formatViewerHeaderDate(date)} ${hours}:${minutes}`;
         }
 
         function shouldShowGlobalSaveDateChip() {
@@ -96,7 +104,7 @@
             status.classList.toggle('is-success', GlobalSaveUiState.tone === 'success');
             status.classList.toggle('is-error', GlobalSaveUiState.tone === 'error');
             if (recentValue) {
-                recentValue.textContent = formatDashboardDateTime(getLatestRecentUpdateValue());
+                recentValue.textContent = formatViewerHeaderRecentDate(getLatestRecentUpdateValue());
             }
             if (dateChip && dateValue) {
                 const shouldShowDateChip = shouldShowGlobalSaveDateChip();
