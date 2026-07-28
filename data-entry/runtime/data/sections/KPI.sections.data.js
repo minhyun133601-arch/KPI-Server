@@ -1,6 +1,6 @@
 (function registerKpiUtilityEntryFacade(root) {
     const parts = root[Symbol.for('kpi.utilityEntryExperiment.parts')] ||= Object.create(null);
-    const required = ["escapeUtilityEntryExperimentHtml","buildUtilityEntryExperimentPanel","buildUtilityEntryExperimentViews","sanitizeUtilityEntryExperimentNumberText","normalizeUtilityEntryExperimentNumberText","formatUtilityEntryExperimentNumberText","getUtilityEntryExperimentDailyEntryStatus","getUtilityEntryExperimentDailyEntryStatuses","getUtilityEntryExperimentMonthlyMeterLinkStates","openUtilityEntryExperimentMonthlyMeterSheet","getUtilityEntryExperimentSelectedMonth","openUtilityEntryExperimentGraphTemplateByKey","initializeUtilityEntryExperiment","initializeUtilityEntryExperimentShells","populateUtilityEntryExperimentActualValues","saveUtilityEntryExperiment","setupUtilityEntryExperimentAutoInitialize"];
+    const required = ["escapeUtilityEntryExperimentHtml","buildUtilityEntryExperimentPanel","buildUtilityEntryExperimentViews","sanitizeUtilityEntryExperimentNumberText","normalizeUtilityEntryExperimentNumberText","formatUtilityEntryExperimentNumberText","getUtilityEntryExperimentDailyEntryStatus","getUtilityEntryExperimentDailyEntryStatuses","getUtilityEntryExperimentMonthlyMeterLinkStates","openUtilityEntryExperimentMonthlyMeterSheet","getUtilityEntryExperimentSelectedMonth","openUtilityEntryExperimentGraphTemplateByKey","renderUtilityEntryExperimentGraphTemplateByKey","captureUtilityEntryExperimentGraphPdf","toggleUtilityEntryExperimentGraphMemoOverview","isUtilityEntryExperimentGraphFullscreen","syncUtilityEntryExperimentGraphFullscreenState","toggleUtilityEntryExperimentGraphFullscreen","exitUtilityEntryExperimentGraphFullscreen","initializeUtilityEntryExperiment","initializeUtilityEntryExperimentShells","populateUtilityEntryExperimentActualValues","saveUtilityEntryExperiment","setupUtilityEntryExperimentAutoInitialize"];
     for (const name of required) {
         if (typeof parts[name] !== 'function') throw new Error(`Missing utility-entry part: ${name}`);
     }
@@ -128,6 +128,31 @@
                     : null;
                 const selectedMonth = monthValue || parts.getUtilityEntryExperimentSelectedMonth(host);
                 return parts.openUtilityEntryExperimentGraphTemplateByKey(graphKey, selectedMonth);
+            },
+            renderGraphTemplate(target = null, graphKey = '', monthValue = '') {
+                const host = typeof document !== 'undefined'
+                    ? document.querySelector('[data-role="utility-entry-experiment"]')
+                    : null;
+                const selectedMonth = monthValue || parts.getUtilityEntryExperimentSelectedMonth(host);
+                return parts.renderUtilityEntryExperimentGraphTemplateByKey(target, graphKey, selectedMonth);
+            },
+            captureGraphPdf(modal = null) {
+                return parts.captureUtilityEntryExperimentGraphPdf(modal);
+            },
+            toggleGraphMemoOverview(modal = null) {
+                return parts.toggleUtilityEntryExperimentGraphMemoOverview(modal);
+            },
+            isGraphFullscreen(modal = null) {
+                return parts.isUtilityEntryExperimentGraphFullscreen(modal);
+            },
+            syncGraphFullscreenState(modal = null) {
+                return parts.syncUtilityEntryExperimentGraphFullscreenState(modal);
+            },
+            toggleGraphFullscreen(modal = null) {
+                return parts.toggleUtilityEntryExperimentGraphFullscreen(modal);
+            },
+            exitGraphFullscreen(modal = null) {
+                return parts.exitUtilityEntryExperimentGraphFullscreen(modal);
             },
             initialize: parts.initializeUtilityEntryExperiment,
             initializeAll: parts.initializeUtilityEntryExperimentShells,

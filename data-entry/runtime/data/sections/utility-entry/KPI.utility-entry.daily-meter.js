@@ -3,6 +3,11 @@
     const { UTILITY_ENTRY_EXPERIMENT_DEFAULT_DAILY_DATE, UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_DATASET_KEYS, UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_LINKS, UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_LINK_ALIASES, UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_GRAPH_KEYS, UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_GRAPH_OPTIONS, UTILITY_ENTRY_EXPERIMENT_GAS_LPG_FACTOR, UTILITY_ENTRY_EXPERIMENT_OTHER_EQUIPMENT_ID, UTILITY_ENTRY_EXPERIMENT_LIQUID_FIELD_ID, UTILITY_ENTRY_EXPERIMENT_DAILY_FIELDS } = parts.constants;
 
     const utilityEntryExperimentRoot = typeof window !== 'undefined' ? window : null;
+    const UTILITY_ENTRY_EXPERIMENT_EMBEDDED_GRAPH_METER_LINK_KEYS = Object.freeze([
+        'electric_yusan',
+        'gas_yusan_lng',
+        'gas_yusan_lpg'
+    ]);
 
     function populateUtilityEntryExperimentDailyResource(host, dataset, resourceType, dateString, displayDateString = dateString) {
         const previousDate = parts.getUtilityEntryExperimentPreviousEntryDate(dataset, dateString);
@@ -319,6 +324,9 @@
 
     function getUtilityEntryExperimentMonthlyMeterGraphOptions(linkKey = '') {
         const normalizedKey = String(linkKey || '').trim();
+        if (!UTILITY_ENTRY_EXPERIMENT_EMBEDDED_GRAPH_METER_LINK_KEYS.includes(normalizedKey)) {
+            return [];
+        }
         const optionList = UTILITY_ENTRY_EXPERIMENT_MONTHLY_METER_GRAPH_OPTIONS[normalizedKey];
         if (Array.isArray(optionList) && optionList.length) {
             return optionList

@@ -359,6 +359,8 @@
         if (hidden) {
             delete button.dataset.utilityEntryExperimentGraphKey;
             delete button.dataset.utilityEntryExperimentGraphLabel;
+            button.classList?.remove?.('is-active');
+            button.setAttribute?.('aria-pressed', 'false');
             return;
         }
 
@@ -368,6 +370,8 @@
         button.dataset.utilityEntryExperimentGraphLabel = label;
         button.classList?.toggle?.('is-analysis', false);
         button.classList?.toggle?.('is-meter', true);
+        button.classList?.remove?.('is-active');
+        button.setAttribute?.('aria-pressed', 'false');
         button.setAttribute?.('aria-label', title);
         button.setAttribute?.('title', title);
         button.innerHTML = `
@@ -381,7 +385,10 @@
         const secondaryButton = modal?.querySelector?.('[data-util-sheet-gas-view-toggle-secondary]') || null;
         if (!primaryButton && !secondaryButton) return;
         const normalizedDatasetKey = resolveDatasetKey(sheetType, datasetKey);
-        const isSupported = ['electric', 'gas'].includes(normalizedDatasetKey);
+        const utilityEntryMeterLinkKey = String(modal?.dataset?.utilityEntryExperimentMeterLinkKey || '').trim();
+        const isSupported = sheetType === 'meter'
+            && ['electric', 'gas'].includes(normalizedDatasetKey)
+            && ['electric_yusan', 'gas_yusan_lng', 'gas_yusan_lpg'].includes(utilityEntryMeterLinkKey);
         const buttons = [primaryButton, secondaryButton].filter(Boolean);
         buttons.forEach(button => {
             button.hidden = !isSupported;
@@ -517,6 +524,13 @@
 
     function renderUtilSheetReportModal(modal) {
         if (!modal) return;
+        if (
+            modal.dataset.utilityEntryExperimentView === 'graph'
+            && modal.querySelector?.('[data-role="utility-entry-experiment-graph-template"]')
+        ) {
+            syncSupplementaryWindows(modal);
+            return;
+        }
         const sheetType = normalizeSheetType(modal.dataset.sheetType);
         const datasetKey = resolveDatasetKey(sheetType, modal.dataset.datasetKey || UtilSheetReportState[sheetType] || 'gas');
         const presentation = typeof runtime.getUtilSheetPresentation === 'function'

@@ -23,6 +23,7 @@ test('report sheet modal render registry normalizes meter modal state and rerend
     gasViewToggleSecondary,
     extractButton,
   } = createModalHarness();
+  modal.dataset.utilityEntryExperimentMeterLinkKey = 'gas_yusan_lng';
 
   assert.doesNotMatch(reportSheetModalRenderSource, /globalThis|window\.|globalScope/);
   assert.match(reportSheetModalRenderSource, /KPIUtilReportRuntimeAdapter/);
@@ -220,6 +221,7 @@ test('report sheet modal render shows LNG and LPG graph buttons for Yusan gas me
   modal.dataset.sheetType = 'meter';
   modal.dataset.datasetKey = 'gas';
   modal.dataset.monthKey = '2026-04';
+  modal.dataset.utilityEntryExperimentMeterLinkKey = 'gas_yusan_lng';
   modal.dataset.utilityEntryExperimentGraphKey = 'gas_yusan';
   modal.dataset.utilityEntryExperimentGraphOptions = JSON.stringify([
     { key: 'gas_yusan', label: 'LNG \uADF8\uB798\uD504' },
@@ -275,7 +277,7 @@ test('kpi html loads report sheet modal render between modal shell and sheet.js'
   const gasScopedMetricsIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/scoped-metrics.js?v=056');
   const gasRuntimeSyncIndex = kpiHtml.indexOf('runtime/util/report/sheet/gas/runtime-sync.js?v=054');
   const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=124');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=081');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=068');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 

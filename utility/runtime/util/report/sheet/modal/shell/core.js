@@ -88,6 +88,11 @@
 
     const MONTHLY_EXTRACT_DATASET_KEYS = Object.freeze(['gas', 'electric', 'waste']);
     const MONTHLY_EXTRACT_SHEET_TYPES = Object.freeze(['meter']);
+    const UTILITY_ENTRY_EMBEDDED_GRAPH_METER_LINK_KEYS = Object.freeze([
+        'electric_yusan',
+        'gas_yusan_lng',
+        'gas_yusan_lpg'
+    ]);
 
 
     function rerenderAndSync(modal) {
@@ -129,7 +134,14 @@
         if (sheetType === 'analysis' && isCustomAnalysisDataset(datasetKey) && typeof runtime.setUtilSheetAnalysisToMonth === 'function') {
             runtime.setUtilSheetAnalysisToMonth(datasetKey, normalizedMonthKey);
         }
-        rerenderAndSync(modal);
+        if (isUtilityEntryGraphView(modal)) {
+            renderUtilityEntryGraphTemplateInMeterModal(
+                modal,
+                modal.dataset.utilityEntryExperimentActiveGraphKey || ''
+            );
+        } else {
+            rerenderAndSync(modal);
+        }
         parts.syncMonthlyExtractDatasetControls(modal);
         syncPanelSelection(sheetType, datasetKey);
         return true;
@@ -211,31 +223,220 @@
         return resolveDatasetKey('meter', datasetKey) === 'electric' ? '전기' : '가스';
     }
 
-    function openUtilityEntryGraphTemplateFromMeterModal(modal, trigger = null) {
+    function isUtilityEntryGraphView(modal = null) {
+        return modal?.dataset?.utilityEntryExperimentView === 'graph';
+    }
+
+    function isUtilityEntryEmbeddedGraphMeterLink(modal = null) {
+        const meterLinkKey = String(modal?.dataset?.utilityEntryExperimentMeterLinkKey || '').trim();
+        return UTILITY_ENTRY_EMBEDDED_GRAPH_METER_LINK_KEYS.includes(meterLinkKey);
+    }
+
+    function syncUtilityEntryGraphSupplementaryWindows(modal) {
+        if (typeof runtime.syncUtilSheetDetachedReportWindow === 'function') {
+            runtime.syncUtilSheetDetachedReportWindow(modal);
+        }
+        if (typeof runtime.syncUtilSheetReportWindowState === 'function') {
+            runtime.syncUtilSheetReportWindowState(modal);
+        }
+        if (isUtilityEntryGraphView(modal)) {
+            const api = runtimeAdapter.getRootValue('KpiUtilityEntryExperiment');
+            api?.syncGraphFullscreenState?.(modal);
+        }
+    }
+
+    function setUtilityEntryGraphControlHidden(control, hidden = false) {
+        if (!control) return;
+        control.hidden = hidden;
+        control.toggleAttribute?.('hidden', hidden);
+    }
+
+    function syncUtilityEntryGraphViewControls(modal, graphKey = '', data = null) {
+        if (!modal) return;
+        const active = isUtilityEntryGraphView(modal);
+        const activeGraphKey = String(graphKey || modal.dataset.utilityEntryExperimentActiveGraphKey || '').trim();
+        const meterButton = modal.querySelector?.('[data-role="util-sheet-meter-view-select"]') || null;
+        const memoButton = modal.querySelector?.('[data-role="util-sheet-graph-memo-overview"]') || null;
+        const compareToggle = modal.querySelector?.('[data-role="util-sheet-modal-compare-toggle"]') || null;
+        const printButton = modal.querySelector?.('[data-role="util-sheet-report-print"]') || null;
+        const body = modal.querySelector?.('[data-role="util-sheet-report-body"]') || null;
+
+        setUtilityEntryGraphControlHidden(meterButton, !active);
+        setUtilityEntryGraphControlHidden(memoButton, !active);
+        setUtilityEntryGraphControlHidden(compareToggle, active);
+        modal.classList?.toggle?.('is-utility-entry-graph-view', active);
+        body?.classList?.toggle?.('is-utility-entry-graph-body', active);
+
+        Array.from(modal.querySelectorAll?.('[data-role="util-sheet-graph-view-select"]') || []).forEach(button => {
+            const pressed = active && String(button?.dataset?.utilityEntryExperimentGraphKey || '').trim() === activeGraphKey;
+            button.classList?.toggle?.('is-active', pressed);
+            button.setAttribute?.('aria-pressed', pressed ? 'true' : 'false');
+        });
+
+        if (memoButton) {
+            memoButton.classList?.remove?.('is-active');
+            memoButton.setAttribute?.('aria-pressed', 'false');
+            memoButton.setAttribute?.('aria-label', '특이사항 전체 확인');
+            memoButton.setAttribute?.('title', '특이사항');
+        }
+        if (printButton && active) {
+            printButton.hidden = false;
+            printButton.disabled = false;
+            printButton.textContent = 'PDF';
+            printButton.setAttribute?.('aria-label', '그래프 PDF');
+            printButton.setAttribute?.('title', '그래프 PDF');
+        }
+
+        if (!active) return;
+        const title = String(data?.title || '').trim();
+        const monthKey = String(data?.memo?.monthKey || modal.dataset.monthKey || '').trim();
+        const kickerEl = modal.querySelector?.('[data-role="util-sheet-report-kicker"]') || null;
+        const titleEl = modal.querySelector?.('[data-role="util-sheet-report-title"]') || null;
+        const subEl = modal.querySelector?.('[data-role="util-sheet-report-sub"]') || null;
+        if (kickerEl) kickerEl.textContent = 'UTILITY GRAPH';
+        if (titleEl) titleEl.textContent = title || '정산 그래프';
+        if (subEl) subEl.textContent = monthKey ? `기준 ${monthKey}` : '월간 정산 그래프';
+    }
+
+    async function restoreUtilityEntryMeterView(modal) {
+        if (!modal || !isUtilityEntryGraphView(modal)) return false;
+        const fullscreenExit = exitUtilityEntryGraphFullscreenFromMeterModal(modal);
+        if (fullscreenExit) {
+            const exited = await Promise.resolve(fullscreenExit);
+            if (!exited) return false;
+        }
+        modal._utilityEntryExperimentGraphRenderToken = Number(modal._utilityEntryExperimentGraphRenderToken || 0) + 1;
+        modal.dataset.utilityEntryExperimentView = 'meter';
+        delete modal.dataset.utilityEntryExperimentActiveGraphKey;
+        modal._utilityEntryExperimentGraphData = null;
+        syncUtilityEntryGraphViewControls(modal);
+        if (typeof runtime.renderUtilSheetReportModal === 'function') {
+            runtime.renderUtilSheetReportModal(modal);
+        }
+        syncUtilityEntryGraphSupplementaryWindows(modal);
+        return true;
+    }
+
+    function renderUtilityEntryGraphTemplateInMeterModal(modal, graphKey = '', trigger = null) {
         const sheetType = normalizeSheetType(modal?.dataset?.sheetType || 'meter');
         const datasetKey = resolveDatasetKey(sheetType, modal?.dataset?.datasetKey || UtilSheetReportState[sheetType] || 'gas');
-        const graphKey = String(
-            trigger?.dataset?.utilityEntryExperimentGraphKey
+        const normalizedGraphKey = String(
+            graphKey
+            || trigger?.dataset?.utilityEntryExperimentGraphKey
             || modal?.dataset?.utilityEntryExperimentGraphKey
+            || modal?.dataset?.utilityEntryExperimentActiveGraphKey
             || ''
         ).trim();
-        if (sheetType !== 'meter' || !['electric', 'gas'].includes(datasetKey)) return false;
+        if (
+            sheetType !== 'meter'
+            || !['electric', 'gas'].includes(datasetKey)
+            || !isUtilityEntryEmbeddedGraphMeterLink(modal)
+        ) return false;
         const datasetLabel = getUtilityEntryGraphDatasetLabel(datasetKey);
-        if (!graphKey) {
+        if (!normalizedGraphKey) {
             runtimeAdapter.alert(`새 ${datasetLabel} 그래프 연결 정보가 없습니다. 유틸리티 기입의 ${datasetLabel} 제목에서 다시 열어 주세요.`);
             return true;
         }
 
         const api = runtimeAdapter.getRootValue('KpiUtilityEntryExperiment');
-        if (typeof api?.openGraphTemplate !== 'function') {
+        if (typeof api?.renderGraphTemplate !== 'function') {
             runtimeAdapter.alert(`새 ${datasetLabel} 그래프를 열 수 없습니다. 새로고침 후 다시 시도해 주세요.`);
             return true;
         }
-        const result = api.openGraphTemplate(graphKey, modal?.dataset?.monthKey || '');
-        result?.catch?.(() => {
+
+        const body = modal?.querySelector?.('[data-role="util-sheet-report-body"]') || null;
+        if (!body) return false;
+        const renderToken = Number(modal._utilityEntryExperimentGraphRenderToken || 0) + 1;
+        modal._utilityEntryExperimentGraphRenderToken = renderToken;
+        modal.classList?.remove?.('is-expanded');
+        modal.dataset.utilityEntryExperimentView = 'graph';
+        modal.dataset.utilityEntryExperimentActiveGraphKey = normalizedGraphKey;
+        body.innerHTML = `
+            <div class="util-sheet-embedded-graph" data-role="utility-entry-experiment-graph-template">
+                <div class="util-sheet-embedded-graph-loading">그래프를 불러오는 중입니다.</div>
+            </div>
+        `;
+        const graphHost = body.querySelector?.('[data-role="utility-entry-experiment-graph-template"]') || null;
+        if (!graphHost) {
+            restoreUtilityEntryMeterView(modal);
+            return false;
+        }
+        syncUtilityEntryGraphViewControls(modal, normalizedGraphKey);
+        syncUtilityEntryGraphSupplementaryWindows(modal);
+
+        const result = api.renderGraphTemplate(
+            graphHost,
+            normalizedGraphKey,
+            modal?.dataset?.monthKey || ''
+        );
+        Promise.resolve(result).then(data => {
+            if (modal._utilityEntryExperimentGraphRenderToken !== renderToken) return;
+            if (!isUtilityEntryGraphView(modal)) return;
+            if (String(modal.dataset.utilityEntryExperimentActiveGraphKey || '') !== normalizedGraphKey) return;
+            if (!data) {
+                restoreUtilityEntryMeterView(modal);
+                return;
+            }
+            modal._utilityEntryExperimentGraphData = data;
+            syncUtilityEntryGraphViewControls(modal, normalizedGraphKey, data);
+            syncUtilityEntryGraphSupplementaryWindows(modal);
+        }).catch(() => {
+            if (modal._utilityEntryExperimentGraphRenderToken !== renderToken) return;
+            restoreUtilityEntryMeterView(modal);
             runtimeAdapter.alert(`${datasetLabel} 그래프를 열지 못했습니다. 잠시 후 다시 시도해 주세요.`);
         });
         return true;
+    }
+
+    function openUtilityEntryGraphTemplateFromMeterModal(modal, trigger = null) {
+        return renderUtilityEntryGraphTemplateInMeterModal(
+            modal,
+            trigger?.dataset?.utilityEntryExperimentGraphKey || '',
+            trigger
+        );
+    }
+
+    function captureUtilityEntryGraphPdfFromMeterModal(modal) {
+        if (!isUtilityEntryGraphView(modal)) return false;
+        const api = runtimeAdapter.getRootValue('KpiUtilityEntryExperiment');
+        if (typeof api?.captureGraphPdf !== 'function') return false;
+        const result = api.captureGraphPdf(modal);
+        result?.catch?.(() => {
+            runtimeAdapter.alert('그래프 PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        });
+        return true;
+    }
+
+    function toggleUtilityEntryGraphMemoFromMeterModal(modal) {
+        if (!isUtilityEntryGraphView(modal)) return false;
+        const api = runtimeAdapter.getRootValue('KpiUtilityEntryExperiment');
+        return typeof api?.toggleGraphMemoOverview === 'function'
+            ? api.toggleGraphMemoOverview(modal)
+            : false;
+    }
+
+    function toggleUtilityEntryGraphFullscreenFromMeterModal(modal) {
+        if (!isUtilityEntryGraphView(modal)) return false;
+        const api = runtimeAdapter.getRootValue('KpiUtilityEntryExperiment');
+        if (typeof api?.toggleGraphFullscreen !== 'function') return false;
+        const result = api.toggleGraphFullscreen(modal);
+        result?.catch?.(() => {
+            runtimeAdapter.alert('그래프 전체화면을 전환하지 못했습니다.');
+        });
+        return true;
+    }
+
+    function exitUtilityEntryGraphFullscreenFromMeterModal(modal) {
+        if (!modal) return false;
+        const api = runtimeAdapter.getRootValue('KpiUtilityEntryExperiment');
+        if (
+            typeof api?.isGraphFullscreen !== 'function'
+            || !api.isGraphFullscreen(modal)
+            || typeof api?.exitGraphFullscreen !== 'function'
+        ) return false;
+        const result = api.exitGraphFullscreen(modal);
+        if (result?.catch) return result.catch(() => false);
+        return result !== false;
     }
 
     function syncPanelSelection(sheetType, datasetKey) {
@@ -294,7 +495,15 @@
         getActiveAnalysisDatasetKey,
         findClosest,
         getUtilityEntryGraphDatasetLabel,
+        isUtilityEntryGraphView,
+        syncUtilityEntryGraphViewControls,
+        restoreUtilityEntryMeterView,
+        renderUtilityEntryGraphTemplateInMeterModal,
         openUtilityEntryGraphTemplateFromMeterModal,
+        captureUtilityEntryGraphPdfFromMeterModal,
+        toggleUtilityEntryGraphMemoFromMeterModal,
+        toggleUtilityEntryGraphFullscreenFromMeterModal,
+        exitUtilityEntryGraphFullscreenFromMeterModal,
         syncPanelSelection,
         shiftMonthKey,
         getTextContent,

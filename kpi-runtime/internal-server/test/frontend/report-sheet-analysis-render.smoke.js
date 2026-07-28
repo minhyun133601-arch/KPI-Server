@@ -347,7 +347,7 @@ test('report sheet analysis render registry builds fullscreen gas chart cards an
 
 test('kpi html loads report sheet analysis render between modal render and sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=081');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=068');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 

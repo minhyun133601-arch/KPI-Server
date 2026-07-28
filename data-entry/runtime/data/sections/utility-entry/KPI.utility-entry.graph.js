@@ -14,24 +14,25 @@
         modal.id = 'utility-entry-experiment-graph-modal';
         modal.className = 'utility-entry-experiment-graph-modal';
         modal.setAttribute('aria-hidden', 'true');
+        modal.setAttribute('tabindex', '-1');
         modal.innerHTML = `
             <div class="utility-entry-experiment-graph-modal-backdrop" data-role="utility-entry-experiment-graph-close"></div>
             <div class="utility-entry-experiment-graph-modal-card" role="dialog" aria-modal="true" aria-label="정산 그래프">
                 <header class="utility-entry-experiment-graph-modal-head">
                     <strong data-role="utility-entry-experiment-graph-title">정산 그래프</strong>
-                    <button type="button" class="utility-entry-experiment-graph-modal-pdf" data-role="utility-entry-experiment-graph-capture-pdf" aria-label="PDF 인쇄" title="PDF 인쇄">
+                    <button type="button" class="work-btn utility-entry-experiment-graph-modal-pdf is-label" data-role="utility-entry-experiment-graph-capture-pdf" aria-label="PDF 인쇄" title="PDF 인쇄">
                         <i class="fa-solid fa-file-pdf" data-role="utility-entry-experiment-graph-capture-pdf-icon" aria-hidden="true"></i>
                         <span data-role="utility-entry-experiment-graph-capture-pdf-label">PDF 인쇄</span>
                     </button>
-                    <button type="button" class="utility-entry-experiment-graph-modal-fullscreen" data-role="utility-entry-experiment-graph-fullscreen" aria-label="전체화면" title="전체화면">
+                    <button type="button" class="util-sheet-report-icon-btn utility-entry-experiment-graph-modal-fullscreen" data-role="utility-entry-experiment-graph-fullscreen" aria-label="전체화면" title="전체화면">
                         <i class="fa-solid fa-expand" data-role="utility-entry-experiment-graph-fullscreen-icon" aria-hidden="true"></i>
                         <span data-role="utility-entry-experiment-graph-fullscreen-label">전체화면</span>
                     </button>
-                    <button type="button" class="utility-entry-experiment-graph-modal-memo-overview" data-role="utility-entry-experiment-graph-memo-overview" aria-label="특이사항 전체 확인" title="특이사항">
+                    <button type="button" class="util-sheet-report-icon-btn utility-entry-experiment-graph-modal-memo-overview is-label" data-role="utility-entry-experiment-graph-memo-overview" aria-label="특이사항 전체 확인" title="특이사항">
                         <i class="fa-solid fa-list" aria-hidden="true"></i>
                         <span>특이사항</span>
                     </button>
-                    <button type="button" data-role="utility-entry-experiment-graph-close" aria-label="닫기" title="닫기">
+                    <button type="button" class="util-sheet-report-icon-btn is-close" data-role="utility-entry-experiment-graph-close" aria-label="닫기" title="닫기">
                         <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                     </button>
                 </header>
@@ -58,11 +59,21 @@
                 return;
             }
             if (event.target?.closest?.('[data-role="utility-entry-experiment-graph-close"]')) {
-                closeUtilityEntryExperimentGraphModal(modal);
+                void closeUtilityEntryExperimentGraphModal(modal);
             }
         });
         modal.addEventListener('utility-graph-memo-overview-state', event => {
             syncUtilityEntryExperimentGraphMemoOverviewState(modal, event.detail?.open === true);
+        });
+        modal.addEventListener('keydown', event => {
+            if (event?.key !== 'Escape' || event.defaultPrevented) return;
+            event.preventDefault?.();
+            event.stopPropagation?.();
+            if (isUtilityEntryExperimentGraphFullscreen(modal)) {
+                void exitUtilityEntryExperimentGraphFullscreen(modal);
+                return;
+            }
+            void closeUtilityEntryExperimentGraphModal(modal);
         });
         utilityEntryExperimentRoot.document.body.appendChild(modal);
         return modal;
@@ -113,9 +124,15 @@
         const target = modal || utilityEntryExperimentRoot?.document?.getElementById?.('utility-entry-experiment-graph-modal');
         if (!target) return;
         const active = isUtilityEntryExperimentGraphFullscreen(target);
-        const button = target.querySelector?.('[data-role="utility-entry-experiment-graph-fullscreen"]');
-        const icon = target.querySelector?.('[data-role="utility-entry-experiment-graph-fullscreen-icon"]');
-        const labelNode = target.querySelector?.('[data-role="utility-entry-experiment-graph-fullscreen-label"]');
+        const button = target.querySelector?.(
+            '[data-role="utility-entry-experiment-graph-fullscreen"], [data-role="util-sheet-report-expand"]'
+        );
+        const icon = target.querySelector?.(
+            '[data-role="utility-entry-experiment-graph-fullscreen-icon"], [data-role="util-sheet-report-expand-icon"]'
+        );
+        const labelNode = target.querySelector?.(
+            '[data-role="utility-entry-experiment-graph-fullscreen-label"], [data-role="util-sheet-report-expand-label"]'
+        );
         const label = active ? '전체화면 종료' : '전체화면';
         target.classList.toggle('is-browser-fullscreen', active);
         if (button) {
@@ -128,16 +145,38 @@
         if (labelNode) labelNode.textContent = label;
     }
 
+    async function exitUtilityEntryExperimentGraphFullscreen(modal = null) {
+        const target = modal || utilityEntryExperimentRoot?.document?.getElementById?.('utility-entry-experiment-graph-modal');
+        const doc = utilityEntryExperimentRoot?.document || null;
+        if (!target || !doc) return false;
+        if (!isUtilityEntryExperimentGraphFullscreen(target)) {
+            syncUtilityEntryExperimentGraphFullscreenState(target);
+            return true;
+        }
+        const exitFullscreen = doc.exitFullscreen || doc.webkitExitFullscreen;
+        if (typeof exitFullscreen !== 'function') return false;
+        try {
+            await exitFullscreen.call(doc);
+        } catch (error) {
+            void error;
+            return false;
+        } finally {
+            syncUtilityEntryExperimentGraphFullscreenState(target);
+            scheduleUtilityEntryExperimentGraphModalResize(target);
+        }
+        return true;
+    }
+
     async function toggleUtilityEntryExperimentGraphFullscreen(modal = null) {
         const target = modal || utilityEntryExperimentRoot?.document?.getElementById?.('utility-entry-experiment-graph-modal');
         const doc = utilityEntryExperimentRoot?.document || null;
         if (!target || !doc) return false;
+        bindUtilityEntryExperimentGraphModalResize();
 
         const fullscreenElement = getUtilityEntryExperimentGraphFullscreenElement();
         try {
             if (fullscreenElement === target) {
-                const exitFullscreen = doc.exitFullscreen || doc.webkitExitFullscreen;
-                if (typeof exitFullscreen === 'function') await exitFullscreen.call(doc);
+                return exitUtilityEntryExperimentGraphFullscreen(target);
             } else {
                 if (fullscreenElement) {
                     const exitFullscreen = doc.exitFullscreen || doc.webkitExitFullscreen;
@@ -160,20 +199,21 @@
         return true;
     }
 
-    function closeUtilityEntryExperimentGraphModal(modal = null) {
+    async function closeUtilityEntryExperimentGraphModal(modal = null) {
         const target = modal || utilityEntryExperimentRoot?.document?.getElementById?.('utility-entry-experiment-graph-modal');
-        if (!target) return;
+        if (!target) return false;
         if (isUtilityEntryExperimentGraphFullscreen(target)) {
-            const doc = utilityEntryExperimentRoot?.document || null;
-            const exitFullscreen = doc?.exitFullscreen || doc?.webkitExitFullscreen;
-            const result = typeof exitFullscreen === 'function' ? exitFullscreen.call(doc) : null;
-            result?.catch?.(() => {});
+            const exited = await exitUtilityEntryExperimentGraphFullscreen(target);
+            if (!exited && isUtilityEntryExperimentGraphFullscreen(target)) return false;
         }
+        const activeElement = utilityEntryExperimentRoot?.document?.activeElement || null;
+        if (target.contains?.(activeElement)) activeElement.blur?.();
         target.classList.remove('is-open');
         target.classList.remove('is-browser-fullscreen');
         target.setAttribute('aria-hidden', 'true');
         syncUtilityEntryExperimentGraphFullscreenState(target);
         syncUtilityEntryExperimentGraphMemoOverviewState(target, false);
+        return true;
     }
 
     function resizeUtilityEntryExperimentGraphModalContent(modal = null) {
@@ -181,6 +221,16 @@
         const body = target?.querySelector?.('[data-role="utility-entry-experiment-graph-template"]');
         const template = body?.querySelector?.('[data-role="utility-graph-template-root"], .utility-graph-template');
         if (!target?.classList?.contains?.('is-open') || !body || !template) return false;
+        const isEmbeddedReportGraph = target.id === 'util-sheet-report-modal';
+        if (isEmbeddedReportGraph && !isUtilityEntryExperimentGraphFullscreen(target)) {
+            template.style.width = '';
+            template.style.minHeight = '';
+            template.style.height = '';
+            template.style.margin = '';
+            template.style.transformOrigin = '';
+            template.style.transform = '';
+            return true;
+        }
 
         const bodyRect = typeof body.getBoundingClientRect === 'function'
             ? body.getBoundingClientRect()
@@ -230,15 +280,30 @@
         if (typeof utilityEntryExperimentRoot.addEventListener !== 'function') return;
         utilityEntryExperimentRoot.__utilityEntryExperimentGraphResizeBound = true;
         utilityEntryExperimentRoot.addEventListener('resize', () => {
-            const modal = utilityEntryExperimentRoot.document?.getElementById?.('utility-entry-experiment-graph-modal');
-            if (modal?.classList?.contains?.('is-open')) scheduleUtilityEntryExperimentGraphModalResize(modal);
+            const doc = utilityEntryExperimentRoot.document || null;
+            const graphModals = [
+                doc?.getElementById?.('utility-entry-experiment-graph-modal'),
+                doc?.getElementById?.('util-sheet-report-modal')
+            ].filter(Boolean);
+            graphModals.forEach(modal => {
+                const isEmbeddedGraph = modal.id === 'util-sheet-report-modal';
+                if (!modal.classList?.contains?.('is-open')) return;
+                if (isEmbeddedGraph && !modal.classList?.contains?.('is-utility-entry-graph-view')) return;
+                scheduleUtilityEntryExperimentGraphModalResize(modal);
+            });
         });
         const doc = utilityEntryExperimentRoot.document || null;
         const handleFullscreenChange = () => {
-            const modal = doc?.getElementById?.('utility-entry-experiment-graph-modal');
-            if (!modal) return;
-            syncUtilityEntryExperimentGraphFullscreenState(modal);
-            if (modal.classList?.contains?.('is-open')) scheduleUtilityEntryExperimentGraphModalResize(modal);
+            const graphModals = [
+                doc?.getElementById?.('utility-entry-experiment-graph-modal'),
+                doc?.getElementById?.('util-sheet-report-modal')
+            ].filter(Boolean);
+            graphModals.forEach(modal => {
+                const isEmbeddedGraph = modal.id === 'util-sheet-report-modal';
+                if (isEmbeddedGraph && !modal.classList?.contains?.('is-utility-entry-graph-view')) return;
+                syncUtilityEntryExperimentGraphFullscreenState(modal);
+                if (modal.classList?.contains?.('is-open')) scheduleUtilityEntryExperimentGraphModalResize(modal);
+            });
         };
         doc?.addEventListener?.('fullscreenchange', handleFullscreenChange);
         doc?.addEventListener?.('webkitfullscreenchange', handleFullscreenChange);
@@ -494,7 +559,9 @@ html, body {
     }
 
     function setUtilityEntryExperimentGraphPdfBusy(modal = null, busy = false) {
-        const button = modal?.querySelector?.('[data-role="utility-entry-experiment-graph-capture-pdf"]');
+        const button = modal?.querySelector?.(
+            '[data-role="utility-entry-experiment-graph-capture-pdf"], [data-role="util-sheet-report-print"]'
+        );
         const icon = modal?.querySelector?.('[data-role="utility-entry-experiment-graph-capture-pdf-icon"]');
         const labelNode = modal?.querySelector?.('[data-role="utility-entry-experiment-graph-capture-pdf-label"]');
         const label = busy ? 'PDF 변환 중' : 'PDF 인쇄';
@@ -506,6 +573,7 @@ html, body {
         }
         if (icon) icon.className = `fa-solid ${busy ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`;
         if (labelNode) labelNode.textContent = label;
+        else if (button) button.textContent = busy ? '변환 중' : 'PDF';
     }
 
     async function captureUtilityEntryExperimentGraphPdf(modal = null) {
@@ -518,7 +586,11 @@ html, body {
         }
         setUtilityEntryExperimentGraphPdfBusy(targetModal, true);
         try {
-            await ensureUtilityEntryExperimentGraphFullscreenForCapture(targetModal);
+            if (targetModal.id === 'utility-entry-experiment-graph-modal') {
+                await ensureUtilityEntryExperimentGraphFullscreenForCapture(targetModal);
+            } else {
+                await waitUtilityEntryExperimentGraphCaptureFrame();
+            }
             await utilityEntryExperimentRoot?.document?.fonts?.ready?.catch?.(() => {});
             const size = getUtilityEntryExperimentGraphCaptureSize(targetModal);
             const templateSize = getUtilityEntryExperimentGraphTemplateCaptureSize(target);
@@ -557,20 +629,26 @@ html, body {
         }
     }
 
-    function openUtilityEntryExperimentGraphModal(data) {
+    function renderUtilityEntryExperimentGraphTemplate(target, data) {
         const renderer = utilityEntryExperimentRoot?.KpiUtilityGraphTemplate;
         if (!renderer || typeof renderer.render !== 'function') {
             utilityEntryExperimentRoot?.alert?.('그래프 양식을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.');
             return false;
         }
+        if (!target) return false;
+        renderer.render(target, data || {});
+        target._utilityEntryExperimentGraphData = data || {};
+        return true;
+    }
 
+    function openUtilityEntryExperimentGraphModal(data) {
         const modal = ensureUtilityEntryExperimentGraphModal();
         const body = modal?.querySelector?.('[data-role="utility-entry-experiment-graph-template"]');
         const title = modal?.querySelector?.('[data-role="utility-entry-experiment-graph-title"]');
         if (!modal || !body) return false;
 
         if (title) title.textContent = data?.title || '정산 그래프';
-        renderer.render(body, data || {});
+        if (!renderUtilityEntryExperimentGraphTemplate(body, data)) return false;
         modal._utilityEntryExperimentGraphData = data || {};
         modal.classList.add('is-open');
         modal.setAttribute('aria-hidden', 'false');
@@ -578,6 +656,7 @@ html, body {
         syncUtilityEntryExperimentGraphFullscreenState(modal);
         syncUtilityEntryExperimentGraphMemoOverviewState(modal, false);
         scheduleUtilityEntryExperimentGraphModalResize(modal);
+        modal.focus?.({ preventScroll: true });
         return true;
     }
 
@@ -901,10 +980,10 @@ html, body {
         return data;
     }
 
-    async function openUtilityEntryExperimentGraphTemplateByKey(graphKey = '', monthValue = '') {
+    async function loadUtilityEntryExperimentGraphTemplateDataByKey(graphKey = '', monthValue = '') {
         const normalizedGraphKey = String(graphKey || '').trim();
         const normalizedMonth = /^\d{4}-\d{2}$/.test(String(monthValue || '')) ? String(monthValue) : '';
-        if (!normalizedGraphKey) return false;
+        if (!normalizedGraphKey) return null;
 
         let records = null;
         try {
@@ -912,15 +991,27 @@ html, body {
         } catch (error) {
             void error;
             utilityEntryExperimentRoot?.alert?.('그래프 데이터를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.');
-            return false;
+            return null;
         }
 
         const data = buildUtilityEntryExperimentGraphTemplateData(records, normalizedGraphKey, normalizedMonth);
         if (!data) {
             utilityEntryExperimentRoot?.alert?.('그래프 양식을 만들 수 없습니다.');
-            return false;
+            return null;
         }
         attachUtilityEntryExperimentGraphMemoSave(data, normalizedMonth);
+        return data;
+    }
+
+    async function renderUtilityEntryExperimentGraphTemplateByKey(target, graphKey = '', monthValue = '') {
+        const data = await loadUtilityEntryExperimentGraphTemplateDataByKey(graphKey, monthValue);
+        if (!data || !renderUtilityEntryExperimentGraphTemplate(target, data)) return false;
+        return data;
+    }
+
+    async function openUtilityEntryExperimentGraphTemplateByKey(graphKey = '', monthValue = '') {
+        const data = await loadUtilityEntryExperimentGraphTemplateDataByKey(graphKey, monthValue);
+        if (!data) return false;
         return openUtilityEntryExperimentGraphModal(data);
     }
 
@@ -934,5 +1025,5 @@ html, body {
     }
 
 
-    Object.assign(parts, { ensureUtilityEntryExperimentGraphModal, syncUtilityEntryExperimentGraphMemoOverviewState, toggleUtilityEntryExperimentGraphMemoOverview, getUtilityEntryExperimentGraphFullscreenElement, isUtilityEntryExperimentGraphFullscreen, syncUtilityEntryExperimentGraphFullscreenState, toggleUtilityEntryExperimentGraphFullscreen, closeUtilityEntryExperimentGraphModal, resizeUtilityEntryExperimentGraphModalContent, scheduleUtilityEntryExperimentGraphModalResize, bindUtilityEntryExperimentGraphModalResize, getUtilityEntryExperimentGraphCaptureTarget, normalizeUtilityEntryExperimentGraphCaptureEdge, getUtilityEntryExperimentGraphTemplateCaptureSize, getUtilityEntryExperimentGraphCaptureSize, waitUtilityEntryExperimentGraphCaptureFrame, ensureUtilityEntryExperimentGraphFullscreenForCapture, collectUtilityEntryExperimentGraphStylesheetText, loadUtilityEntryExperimentGraphCaptureStyleText, cleanUtilityEntryExperimentGraphCaptureClone, buildUtilityEntryExperimentGraphCapturePageHtml, buildUtilityEntryExperimentGraphCaptureEndpoint, normalizeUtilityEntryExperimentGraphPdfFileName, buildUtilityEntryExperimentGraphPdfFileName, downloadUtilityEntryExperimentGraphCaptureBlob, setUtilityEntryExperimentGraphPdfBusy, captureUtilityEntryExperimentGraphPdf, openUtilityEntryExperimentGraphModal, setUtilityEntryExperimentGraphTogglePressed, getUtilityEntryExperimentMonthOffset, buildUtilityEntryExperimentGraphEmptyMonthList, getUtilityEntryExperimentGraphDefinition, buildUtilityEntryExperimentGraphTemplateEmptyData, buildUtilityEntryExperimentGraphMonthList, getUtilityEntryExperimentGraphMonthParts, getUtilityEntryExperimentGraphMonthlyProduction, getUtilityEntryExperimentWasteProductionTeamNames, getUtilityEntryExperimentWasteMonthlyProduction, calculateUtilityEntryExperimentWastePerProductionTon, getUtilityEntryExperimentGraphAmountValue, buildUtilityEntryExperimentGraphMemoConfig, getUtilityEntryExperimentReportRecordKey, saveUtilityEntryExperimentGraphReportMemo, buildUtilityEntryExperimentGraphTemplateData, attachUtilityEntryExperimentGraphMemoSave, openUtilityEntryExperimentGraphTemplateByKey, openUtilityEntryExperimentGraphTemplate });
+    Object.assign(parts, { ensureUtilityEntryExperimentGraphModal, syncUtilityEntryExperimentGraphMemoOverviewState, toggleUtilityEntryExperimentGraphMemoOverview, getUtilityEntryExperimentGraphFullscreenElement, isUtilityEntryExperimentGraphFullscreen, syncUtilityEntryExperimentGraphFullscreenState, exitUtilityEntryExperimentGraphFullscreen, toggleUtilityEntryExperimentGraphFullscreen, closeUtilityEntryExperimentGraphModal, resizeUtilityEntryExperimentGraphModalContent, scheduleUtilityEntryExperimentGraphModalResize, bindUtilityEntryExperimentGraphModalResize, getUtilityEntryExperimentGraphCaptureTarget, normalizeUtilityEntryExperimentGraphCaptureEdge, getUtilityEntryExperimentGraphTemplateCaptureSize, getUtilityEntryExperimentGraphCaptureSize, waitUtilityEntryExperimentGraphCaptureFrame, ensureUtilityEntryExperimentGraphFullscreenForCapture, collectUtilityEntryExperimentGraphStylesheetText, loadUtilityEntryExperimentGraphCaptureStyleText, cleanUtilityEntryExperimentGraphCaptureClone, buildUtilityEntryExperimentGraphCapturePageHtml, buildUtilityEntryExperimentGraphCaptureEndpoint, normalizeUtilityEntryExperimentGraphPdfFileName, buildUtilityEntryExperimentGraphPdfFileName, downloadUtilityEntryExperimentGraphCaptureBlob, setUtilityEntryExperimentGraphPdfBusy, captureUtilityEntryExperimentGraphPdf, renderUtilityEntryExperimentGraphTemplate, openUtilityEntryExperimentGraphModal, setUtilityEntryExperimentGraphTogglePressed, getUtilityEntryExperimentMonthOffset, buildUtilityEntryExperimentGraphEmptyMonthList, getUtilityEntryExperimentGraphDefinition, buildUtilityEntryExperimentGraphTemplateEmptyData, buildUtilityEntryExperimentGraphMonthList, getUtilityEntryExperimentGraphMonthParts, getUtilityEntryExperimentGraphMonthlyProduction, getUtilityEntryExperimentWasteProductionTeamNames, getUtilityEntryExperimentWasteMonthlyProduction, calculateUtilityEntryExperimentWastePerProductionTon, getUtilityEntryExperimentGraphAmountValue, buildUtilityEntryExperimentGraphMemoConfig, getUtilityEntryExperimentReportRecordKey, saveUtilityEntryExperimentGraphReportMemo, buildUtilityEntryExperimentGraphTemplateData, attachUtilityEntryExperimentGraphMemoSave, loadUtilityEntryExperimentGraphTemplateDataByKey, renderUtilityEntryExperimentGraphTemplateByKey, openUtilityEntryExperimentGraphTemplateByKey, openUtilityEntryExperimentGraphTemplate });
 })(this);

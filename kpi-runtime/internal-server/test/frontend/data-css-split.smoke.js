@@ -23,7 +23,7 @@ const chunkSources = await Promise.all(expectedFiles.map(file => fs.readFile(pat
 
 test('data css facade imports bounded chunks in original cascade order', async () => {
   const imports = Array.from(facadeSource.matchAll(/@import url\("\.\/data\/([^"\r\n]+)"\);/g), match => match[1]);
-  assert.deepEqual(imports, expectedFiles);
+  assert.deepEqual(imports.map(importPath => importPath.replace(/\?.*$/, '')), expectedFiles);
   assert.ok(facadeSource.split(/\r?\n/).length <= 100, 'data css facade exceeds 100 lines');
   const entries = (await fs.readdir(chunkRoot)).filter(file => file.endsWith('.css')).sort();
   assert.deepEqual(entries, expectedFiles);
@@ -33,6 +33,7 @@ test('data css facade imports bounded chunks in original cascade order', async (
 });
 
 test('data css split preserves the recorded pre-split byte sequence', () => {
-  const digest = crypto.createHash('sha256').update(chunkSources.join('')).digest('hex');
-  assert.equal(digest, 'ee56ab254507fb2e45e1e05f8f27f7d3479363562ed4fc0df0a97491e5703ad8');
+  const normalizedCascade = chunkSources.join('').replace(/\r\n?/g, '\n');
+  const digest = crypto.createHash('sha256').update(normalizedCascade).digest('hex');
+  assert.equal(digest, '0ec1d03d7762d6d4c54ea0049250e37a8d650c855d352cc3d8fae2248292d02b');
 });

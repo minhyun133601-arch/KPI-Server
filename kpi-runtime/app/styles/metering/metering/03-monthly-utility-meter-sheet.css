@@ -1,0 +1,574 @@
+        /* Monthly utility meter sheet alignment: start */
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) {
+            --util-entry-meter-line: #cbd5e1;
+            --util-entry-meter-line-strong: #94a3b8;
+            --util-entry-meter-head: #eef2f7;
+            --util-entry-meter-soft: #f8fafc;
+            --util-entry-meter-ink: #1e293b;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-report-head-actions {
+            gap: 4px;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-report-main-controls {
+            gap: 4px;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-month-field.is-modal {
+            border-color: var(--util-entry-meter-line);
+            border-radius: 4px;
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-month-step-btn {
+            width: 26px;
+            min-width: 26px;
+            min-height: 26px;
+            background: #ffffff;
+            color: #475569;
+            font-size: 0.66rem;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-month-step-btn + .util-sheet-month-select,
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-month-select + .util-sheet-month-step-btn {
+            border-left-color: var(--util-entry-meter-line);
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-report-head-actions .util-sheet-month-select {
+            min-height: 26px;
+            padding: 0 8px;
+            font-size: 0.7rem;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-segment {
+            gap: 1px;
+            padding: 2px;
+            border-color: var(--util-entry-meter-line);
+            border-radius: 4px;
+            background: var(--util-entry-meter-soft);
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-segment-btn {
+            min-height: 24px;
+            padding: 0 8px;
+            border-radius: 3px;
+            font-size: 0.69rem;
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-segment-btn.is-active,
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-segment-btn[aria-pressed="true"] {
+            background: #dbeafe;
+            color: #1d4ed8;
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-gas-view-toggle,
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-gas-view-toggle.is-meter {
+            min-height: 28px;
+            padding: 0 8px;
+            border-color: var(--util-entry-meter-line-strong);
+            border-radius: 4px;
+            background: #ffffff;
+            color: #334155;
+            font-size: 0.69rem;
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-gas-view-toggle:hover,
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-gas-view-toggle.is-meter:hover {
+            border-color: #64748b;
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) [data-role="util-sheet-report-print"] {
+            min-height: 28px;
+            height: 28px;
+            padding: 0 8px;
+            border: 1px solid var(--util-entry-meter-line-strong);
+            border-radius: 4px;
+            background: #ffffff;
+            color: #334155;
+            font-size: 0.69rem;
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-report-window-actions .util-sheet-report-icon-btn {
+            width: 28px;
+            min-width: 28px;
+            min-height: 28px;
+            height: 28px;
+            border-color: var(--util-entry-meter-line-strong);
+            border-radius: 4px;
+            background: #ffffff;
+            color: #475569;
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-report-window-actions .util-sheet-report-icon-btn:hover,
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-report-window-actions .util-sheet-report-icon-btn.is-close:hover {
+            border-color: #64748b;
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-section {
+            align-self: start;
+            gap: 8px;
+            padding: 10px;
+            border-color: var(--util-entry-meter-line);
+            border-radius: 4px;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-stack {
+            gap: 10px;
+            align-content: start;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-card {
+            gap: 8px;
+            padding: 10px;
+            border-color: var(--util-entry-meter-line-strong);
+            border-radius: 4px;
+            background: #ffffff;
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-card.is-reference {
+            border-color: var(--util-entry-meter-line-strong);
+            background: #fcfcfd;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-head {
+            min-height: 28px;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--util-entry-meter-line);
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-title-wrap {
+            gap: 8px;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-badge,
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-icon {
+            width: 26px;
+            min-width: 26px;
+            height: 26px;
+            border: 1px solid var(--util-entry-meter-line);
+            border-radius: 3px;
+            background: var(--util-entry-meter-soft);
+            color: #475569;
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-title {
+            color: var(--util-entry-meter-ink);
+            font-size: 0.84rem;
+            font-weight: 850;
+            line-height: 1.2;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-sub {
+            margin-top: 1px;
+            color: #64748b;
+            font-size: 0.68rem;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-table-wrap {
+            border-color: var(--util-entry-meter-line-strong);
+            border-radius: 2px;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table th,
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table td {
+            padding: 7px 8px;
+            border-right: 1px solid var(--util-entry-meter-line);
+            border-bottom: 1px solid var(--util-entry-meter-line);
+            color: #334155;
+            font-size: 0.72rem;
+            line-height: 1.25;
+            font-variant-numeric: tabular-nums;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table th:last-child,
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table td:last-child {
+            border-right: 0;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table thead th {
+            background: var(--util-entry-meter-head);
+            color: var(--util-entry-meter-ink);
+            font-weight: 850;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table th:first-child,
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table td:first-child {
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table tbody th:first-child {
+            background: var(--util-entry-meter-soft);
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table td.is-accent {
+            background: #f1f5f9;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric thead th[data-team-key] {
+            background: color-mix(in srgb, var(--util-team-soft, #f8fafc) 38%, #ffffff);
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric tbody td[data-team-key] {
+            background: color-mix(in srgb, var(--util-team-soft, #f8fafc) 24%, #ffffff);
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric th[data-team-group-start],
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric td[data-team-group-start] {
+            border-left-width: 1px;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric th[data-team-group-end],
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric td[data-team-group-end] {
+            border-right-width: 1px;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric thead th[data-team-group-start],
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric thead th[data-team-group-end],
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric tbody tr:last-child td[data-team-group-start],
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric tbody tr:last-child td[data-team-group-end] {
+            border-radius: 0;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric th[data-correction-source="true"],
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-meter-table-electric td[data-correction-source="true"] {
+            background: #f0fdfa;
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-graph-memo-toggle {
+            min-height: 28px;
+            height: 28px;
+            padding: 0 8px;
+            border-color: var(--util-entry-meter-line-strong);
+            border-radius: 4px;
+            background: #ffffff;
+            color: #334155;
+            font-size: 0.69rem;
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-graph-memo-toggle[hidden],
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ).is-utility-entry-graph-view [data-role="util-sheet-modal-compare-toggle"][hidden] {
+            display: none !important;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-gas-view-toggle.is-active,
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-gas-view-toggle.is-active:hover,
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-graph-memo-toggle.is-active {
+            border-color: #2563eb;
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ).is-utility-entry-graph-view .util-sheet-report-card {
+            width: min(1180px, 96vw);
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-report-body.is-utility-entry-graph-body {
+            display: block;
+            padding: 14px;
+            background: #f8fafc;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-embedded-graph {
+            width: 1100px;
+            min-width: 1100px;
+            min-height: 768px;
+            margin: 0 auto;
+            border: 1px solid var(--util-entry-meter-line-strong);
+            border-radius: 2px;
+            background: #ffffff;
+            overflow: visible;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-embedded-graph-loading {
+            min-height: 768px;
+            display: grid;
+            place-items: center;
+            color: #64748b;
+            font-size: 0.78rem;
+            font-weight: 800;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ) .util-sheet-embedded-graph > .utility-graph-template {
+            margin: 0;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ).is-utility-entry-graph-view:is(:fullscreen, .is-browser-fullscreen) {
+            padding: 0;
+            background: #f8fafc;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ).is-utility-entry-graph-view:is(:fullscreen, .is-browser-fullscreen) .util-sheet-report-card {
+            width: 100vw;
+            max-width: none;
+            height: 100vh;
+            height: 100dvh;
+            max-height: none;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ).is-utility-entry-graph-view:is(:fullscreen, .is-browser-fullscreen) .util-sheet-report-body.is-utility-entry-graph-body {
+            min-height: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ).is-utility-entry-graph-view:is(:fullscreen, .is-browser-fullscreen) .util-sheet-embedded-graph {
+            width: 100%;
+            min-width: 0;
+            height: 100%;
+            min-height: 0;
+            margin: 0;
+            border: 0;
+            border-radius: 0;
+            overflow: hidden;
+        }
+        .util-sheet-report-modal[data-sheet-type="meter"]:is(
+            [data-utility-entry-experiment-meter-link-key="electric_yusan"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lng"],
+            [data-utility-entry-experiment-meter-link-key="gas_yusan_lpg"]
+        ).is-utility-entry-graph-view:is(:fullscreen, .is-browser-fullscreen) .util-sheet-embedded-graph > .utility-graph-template {
+            max-width: none;
+            transform-origin: top left;
+        }
+        /* Monthly utility meter sheet alignment: end */

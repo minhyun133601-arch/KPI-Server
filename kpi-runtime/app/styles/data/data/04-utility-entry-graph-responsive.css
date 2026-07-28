@@ -96,8 +96,8 @@
         }
         .utility-entry-experiment-graph-modal-head {
             position: absolute;
-            top: 6px;
-            right: 8px;
+            top: 8px;
+            right: 10px;
             z-index: 4;
             display: flex;
             align-items: center;
@@ -112,23 +112,51 @@
             display: none;
         }
         .utility-entry-experiment-graph-modal-head button {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            min-width: 28px;
+            height: 28px;
+            min-height: 28px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 5px;
+            padding: 0;
             border: 1px solid #cbd5e1;
             border-radius: 4px;
             background: #ffffff;
             color: #334155;
+            font-family: inherit;
+            font-size: 0.69rem;
+            font-weight: 800;
+            line-height: 1;
             cursor: pointer;
             pointer-events: auto;
+            box-shadow: none;
         }
         .utility-entry-experiment-graph-modal-head button span {
             display: none;
         }
+        .utility-entry-experiment-graph-modal-head button.is-label {
+            width: auto;
+            padding: 0 8px;
+        }
+        .utility-entry-experiment-graph-modal-head button.is-label span {
+            display: inline;
+        }
+        .utility-entry-experiment-graph-modal-head button[data-role="utility-entry-experiment-graph-close"] {
+            width: 28px;
+            min-width: 28px;
+            border-color: #cbd5e1;
+            color: #334155;
+        }
         .utility-entry-experiment-graph-modal-head button:hover,
         .utility-entry-experiment-graph-modal-head button:focus-visible {
+            border-color: #64748b;
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+        .utility-entry-experiment-graph-modal-head button[data-role="utility-entry-experiment-graph-close"]:hover,
+        .utility-entry-experiment-graph-modal-head button[data-role="utility-entry-experiment-graph-close"]:focus-visible {
             border-color: #64748b;
             background: #f1f5f9;
             color: #0f172a;

@@ -225,7 +225,7 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(renderIndex > storageIndex, 'equipment-history render host must load after storage');
   assert.ok(renderIndex > cardIndex, 'equipment-history render host must load after the card renderer');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
-  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=115') >= 0, 'data css cache version is stale');
+  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=116') >= 0, 'data css cache version is stale');
   assert.ok(
     kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.css?v=10') >= 0,
     'equipment-history authoritative stylesheet loader is missing'

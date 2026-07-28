@@ -13,7 +13,13 @@
         setManualMemoText,
         getActiveAnalysisDatasetKey,
         findClosest,
+        isUtilityEntryGraphView,
+        restoreUtilityEntryMeterView,
         openUtilityEntryGraphTemplateFromMeterModal,
+        captureUtilityEntryGraphPdfFromMeterModal,
+        toggleUtilityEntryGraphMemoFromMeterModal,
+        toggleUtilityEntryGraphFullscreenFromMeterModal,
+        exitUtilityEntryGraphFullscreenFromMeterModal,
         isMeterPdfPrintModal,
         buildMonthlyExtractMonthOptions,
         normalizeMonthlyExtractRange,
@@ -69,15 +75,23 @@
                                 <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-modal-compare-select" data-compare-key="month" aria-pressed="true">전월대비</button>
                                 <button type="button" class="util-sheet-segment-btn" data-role="util-sheet-modal-compare-select" data-compare-key="year" aria-pressed="false">전년대비</button>
                             </div>
-                            <button type="button" class="util-sheet-report-icon-btn util-sheet-gas-view-toggle" data-role="util-sheet-modal-type-select" data-util-sheet-gas-view-toggle hidden aria-label="가스 그래프 보기" title="가스 그래프 보기">
+                            <button type="button" class="util-sheet-report-icon-btn util-sheet-gas-view-toggle is-meter" data-role="util-sheet-meter-view-select" hidden aria-label="검침표 보기" title="검침표 보기">
+                                <i class="fa-solid fa-table-cells" aria-hidden="true"></i>
+                                <span>검침표</span>
+                            </button>
+                            <button type="button" class="util-sheet-report-icon-btn util-sheet-gas-view-toggle" data-role="util-sheet-graph-view-select" data-util-sheet-gas-view-toggle hidden aria-label="가스 그래프 보기" title="가스 그래프 보기">
                                 <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
                                 <span>그래프</span>
                             </button>
-                            <button type="button" class="util-sheet-report-icon-btn util-sheet-gas-view-toggle" data-role="util-sheet-modal-type-select" data-util-sheet-gas-view-toggle-secondary hidden aria-label="가스 LPG 그래프 보기" title="가스 LPG 그래프 보기">
+                            <button type="button" class="util-sheet-report-icon-btn util-sheet-gas-view-toggle" data-role="util-sheet-graph-view-select" data-util-sheet-gas-view-toggle-secondary hidden aria-label="가스 LPG 그래프 보기" title="가스 LPG 그래프 보기">
                                 <i class="fa-solid fa-chart-column" aria-hidden="true"></i>
                                 <span>LPG 그래프</span>
                             </button>
                         </div>
+                        <button type="button" class="util-sheet-report-icon-btn util-sheet-graph-memo-toggle" data-role="util-sheet-graph-memo-overview" hidden aria-label="특이사항 전체 확인" title="특이사항">
+                            <i class="fa-solid fa-list" aria-hidden="true"></i>
+                            <span>특이사항</span>
+                        </button>
                         <button type="button" class="work-btn" data-role="util-sheet-report-print" aria-label="추출" title="추출">추출</button>
                         <div class="util-sheet-extract-options" data-role="util-sheet-extract-options" role="dialog" aria-modal="true" aria-label="추출 선택" hidden>
                             <div class="util-sheet-extract-options-card">
@@ -160,9 +174,14 @@
             </div>
         `;
 
-        modal.addEventListener('click', event => {
+        modal.addEventListener('click', async event => {
             const target = event?.target || null;
             if (target === modal || findClosest(target, '[data-role="util-sheet-report-close"]')) {
+                const fullscreenExit = exitUtilityEntryGraphFullscreenFromMeterModal(modal);
+                if (fullscreenExit) {
+                    const exited = await Promise.resolve(fullscreenExit);
+                    if (!exited) return;
+                }
                 if (typeof runtime.closeUtilSheetReportModal === 'function') {
                     runtime.closeUtilSheetReportModal();
                 }
@@ -173,7 +192,19 @@
                 rerenderAndSync(modal);
                 return;
             }
+            if (findClosest(target, '[data-role="util-sheet-meter-view-select"]')) {
+                await restoreUtilityEntryMeterView(modal);
+                return;
+            }
+            if (findClosest(target, '[data-role="util-sheet-graph-memo-overview"]')) {
+                toggleUtilityEntryGraphMemoFromMeterModal(modal);
+                return;
+            }
             if (findClosest(target, '[data-role="util-sheet-report-print"]')) {
+                if (isUtilityEntryGraphView(modal)) {
+                    captureUtilityEntryGraphPdfFromMeterModal(modal);
+                    return;
+                }
                 if (isMeterPdfPrintModal(modal) && modal.dataset.monthlyReportMode !== 'true') {
                     runUtilSheetMeterPdfPrint(modal);
                     return;
@@ -200,6 +231,7 @@
                 return;
             }
             if (findClosest(target, '[data-role="util-sheet-report-expand"]')) {
+                if (toggleUtilityEntryGraphFullscreenFromMeterModal(modal)) return;
                 if (typeof runtime.toggleUtilSheetReportExpanded === 'function') {
                     runtime.toggleUtilSheetReportExpanded(modal);
                 }
@@ -223,7 +255,7 @@
                 applyModalMonthSelection(modal, values[nextIndex]);
                 return;
             }
-            const typeButton = findClosest(target, '[data-role="util-sheet-modal-type-select"]');
+            const typeButton = findClosest(target, '[data-role="util-sheet-graph-view-select"]');
             if (typeButton) {
                 if (openUtilityEntryGraphTemplateFromMeterModal(modal, typeButton)) {
                     return;
@@ -279,8 +311,8 @@
             }
         });
 
-        modal.addEventListener('keydown', event => {
-            if (event?.key !== 'Escape') return;
+        modal.addEventListener('keydown', async event => {
+            if (event?.key !== 'Escape' || event.defaultPrevented) return;
             if (modal.dataset.monthlyExtractOptionsOpen === 'true') {
                 event.preventDefault?.();
                 event.stopPropagation?.();
@@ -302,9 +334,26 @@
                 rerenderAndSync(modal);
                 return;
             }
+            const fullscreenExit = exitUtilityEntryGraphFullscreenFromMeterModal(modal);
+            if (fullscreenExit) {
+                event.preventDefault?.();
+                event.stopPropagation?.();
+                await Promise.resolve(fullscreenExit);
+                return;
+            }
             if (typeof runtime.closeUtilSheetReportModal === 'function') {
                 runtime.closeUtilSheetReportModal();
             }
+        });
+
+        modal.addEventListener('utility-graph-memo-overview-state', event => {
+            const button = modal.querySelector?.('[data-role="util-sheet-graph-memo-overview"]') || null;
+            if (!button) return;
+            const active = event?.detail?.open === true;
+            button.classList?.toggle?.('is-active', active);
+            button.setAttribute?.('aria-pressed', active ? 'true' : 'false');
+            button.setAttribute?.('aria-label', active ? '특이사항 닫기' : '특이사항 전체 확인');
+            button.setAttribute?.('title', active ? '특이사항 닫기' : '특이사항');
         });
 
         modal.addEventListener('input', event => {

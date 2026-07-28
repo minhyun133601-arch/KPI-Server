@@ -312,6 +312,34 @@
         }
     }
 
+    function resetUtilityEntryGraphView(modal) {
+        if (!modal) return;
+        modal.dataset.utilityEntryExperimentView = 'meter';
+        delete modal.dataset.utilityEntryExperimentActiveGraphKey;
+        modal._utilityEntryExperimentGraphData = null;
+        modal._utilityEntryExperimentGraphRenderToken = Number(modal._utilityEntryExperimentGraphRenderToken || 0) + 1;
+        modal.classList.remove('is-utility-entry-graph-view');
+        modal.querySelector?.('[data-role="util-sheet-report-body"]')?.classList?.remove?.('is-utility-entry-graph-body');
+        const meterButton = modal.querySelector?.('[data-role="util-sheet-meter-view-select"]') || null;
+        const memoButton = modal.querySelector?.('[data-role="util-sheet-graph-memo-overview"]') || null;
+        const compareToggle = modal.querySelector?.('[data-role="util-sheet-modal-compare-toggle"]') || null;
+        [meterButton, memoButton].forEach(button => {
+            if (!button) return;
+            button.hidden = true;
+            button.toggleAttribute?.('hidden', true);
+            button.classList?.remove?.('is-active');
+            button.setAttribute?.('aria-pressed', 'false');
+        });
+        if (compareToggle) {
+            compareToggle.hidden = false;
+            compareToggle.toggleAttribute?.('hidden', false);
+        }
+        Array.from(modal.querySelectorAll?.('[data-role="util-sheet-graph-view-select"]') || []).forEach(button => {
+            button.classList?.remove?.('is-active');
+            button.setAttribute?.('aria-pressed', 'false');
+        });
+    }
+
     function openUtilSheetReportModal(sheetType, datasetKey = '', monthKey = '', compareKey = 'month') {
         const normalizedSheetType = normalizeSheetType(sheetType);
         const normalizedDatasetKey = resolveDatasetKey(
@@ -332,6 +360,7 @@
         delete modal.dataset.utilityEntryExperimentMeterLinkKey;
         delete modal.dataset.utilityEntryExperimentGraphKey;
         delete modal.dataset.utilityEntryExperimentGraphOptions;
+        resetUtilityEntryGraphView(modal);
         modal.dataset.monthlyReportMode = 'false';
         modal.dataset.monthlyExtractOptionsOpen = 'false';
         const monthlyOptions = modal.querySelector?.('[data-role="util-sheet-monthly-extract-options"]') || null;
@@ -398,6 +427,7 @@
         modal.classList.remove('is-open');
         modal.classList.remove('is-expanded');
         modal.classList.remove('is-analysis-chart-fullscreen');
+        resetUtilityEntryGraphView(modal);
         modal.dataset.analysisFullscreen = 'false';
         modal.dataset.analysisFullscreenChartKey = '';
         modal.dataset.analysisFullscreenAutoExpanded = 'false';

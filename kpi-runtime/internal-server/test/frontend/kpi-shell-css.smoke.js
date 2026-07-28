@@ -100,8 +100,8 @@ const styleEntries = [
     relativeSegments: ['work', 'team-report-date-detail.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/metering/metering.css?v=086`,
-    manifestHref: './styles/metering/metering.css?v=086',
+    href: `${runtimeDirName}/app/styles/metering/metering.css?v=089`,
+    manifestHref: './styles/metering/metering.css?v=089',
     fileName: 'metering.css',
     relativeSegments: ['metering', 'metering.css'],
   },
@@ -160,6 +160,40 @@ test('shell css compatibility manifest imports split files', () => {
       `${fileName} must remain in the compatibility manifest`
     );
   }
+});
+
+test('monthly utility meter sheet alignment stays limited to the three requested desktop sheets', () => {
+  const meteringCss = styleContents['metering.css'];
+  const startMarker = '/* Monthly utility meter sheet alignment: start */';
+  const endMarker = '/* Monthly utility meter sheet alignment: end */';
+  const startIndex = meteringCss.indexOf(startMarker);
+  const endIndex = meteringCss.indexOf(endMarker, startIndex);
+
+  assert.ok(startIndex >= 0, 'monthly utility meter sheet alignment start marker must exist');
+  assert.ok(endIndex > startIndex, 'monthly utility meter sheet alignment end marker must exist');
+
+  const scopedCss = meteringCss.slice(startIndex, endIndex + endMarker.length);
+  const scopedLinkKeys = new Set(
+    [...scopedCss.matchAll(/data-utility-entry-experiment-meter-link-key="([^"]+)"/g)]
+      .map(([, linkKey]) => linkKey)
+  );
+
+  assert.deepEqual(
+    [...scopedLinkKeys].sort(),
+    ['electric_yusan', 'gas_yusan_lng', 'gas_yusan_lpg'],
+    'alignment rules must target only the requested monthly electric, LNG, and LPG meter sheets'
+  );
+  assert.match(scopedCss, /\.util-sheet-gas-view-toggle/);
+  assert.match(scopedCss, /\[data-role="util-sheet-report-print"\]/);
+  assert.match(scopedCss, /\.util-sheet-meter-table-card/);
+  assert.match(scopedCss, /min-height:\s*28px;/);
+  assert.match(scopedCss, /border-radius:\s*4px;/);
+  assert.match(scopedCss, /box-shadow:\s*none;/);
+  assert.doesNotMatch(
+    scopedCss,
+    /utility-entry-experiment-(?:form-table|input)|data-dataset-key="waste"|@media/,
+    'alignment rules must not alter entry fields, waste sheets, or mobile breakpoints'
+  );
 });
 
 test('viewer header keeps account, timing, logout, and save details in compact groups', () => {

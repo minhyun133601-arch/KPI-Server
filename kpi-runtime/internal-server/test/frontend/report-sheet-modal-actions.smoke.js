@@ -226,8 +226,8 @@ test('report sheet modal actions registry updates compare and fullscreen state t
 
 test('kpi html loads report sheet modal actions before sheet.js', () => {
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=061');
-  const modalShellCoreIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell/core.js?v=1');
+  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=063');
+  const modalShellCoreIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell/core.js?v=5');
   const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=124');
 
   assert.ok(adapterIndex >= 0, 'report runtime adapter loader is missing');

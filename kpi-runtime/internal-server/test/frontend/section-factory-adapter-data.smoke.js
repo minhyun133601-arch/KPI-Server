@@ -17,6 +17,13 @@ test('section factory adapter registers factories and preserves data and work ca
   assert.equal(typeof context.window.KpiUtilityEntryExperiment?.normalizeNumberText, 'function');
   assert.equal(typeof context.window.KpiUtilityEntryExperiment?.getMonthlyMeterLinkStates, 'function');
   assert.equal(typeof context.window.KpiUtilityEntryExperiment?.openGraphTemplate, 'function');
+  assert.equal(typeof context.window.KpiUtilityEntryExperiment?.renderGraphTemplate, 'function');
+  assert.equal(typeof context.window.KpiUtilityEntryExperiment?.captureGraphPdf, 'function');
+  assert.equal(typeof context.window.KpiUtilityEntryExperiment?.toggleGraphMemoOverview, 'function');
+  assert.equal(typeof context.window.KpiUtilityEntryExperiment?.isGraphFullscreen, 'function');
+  assert.equal(typeof context.window.KpiUtilityEntryExperiment?.syncGraphFullscreenState, 'function');
+  assert.equal(typeof context.window.KpiUtilityEntryExperiment?.toggleGraphFullscreen, 'function');
+  assert.equal(typeof context.window.KpiUtilityEntryExperiment?.exitGraphFullscreen, 'function');
   assert.equal(typeof context.window.KpiUtilityEntryExperiment?.save, 'function');
 
   assert.deepEqual(Object.keys(appData), ['work', 'data', 'report', 'experiment']);

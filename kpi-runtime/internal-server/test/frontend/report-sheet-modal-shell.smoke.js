@@ -12,7 +12,7 @@ import {
   reportSheetModalShellSources,
 } from './support/report-sheet-modal-shell.harness.js';
 
-test('report sheet modal shell registry creates the shared modal and routes type/month interactions through runtime adapters', () => {
+test('report sheet modal shell registry creates the shared modal and routes type/month interactions through runtime adapters', async () => {
   const { context, harness } = createModalShellContext();
   const modalShell = context.KPIUtilReportSheetModalShell;
   const config = context.KPIUtilReportSheetConfig;
@@ -82,6 +82,11 @@ test('report sheet modal shell registry creates the shared modal and routes type
   let closeCount = 0;
   let panelSyncArgs = null;
   const analysisMonthCalls = [];
+  let graphFullScreenToggleCount = 0;
+  let graphFullScreenExitCount = 0;
+  let graphFullScreenSyncCount = 0;
+  let graphFullScreenState = false;
+  let genericExpandCount = 0;
 
   modalShell.setRuntimeAdapters({
     closeUtilSheetReportModal() {
@@ -119,6 +124,10 @@ test('report sheet modal shell registry creates the shared modal and routes type
     setUtilSheetAnalysisToMonth(datasetKey, monthKey) {
       analysisMonthCalls.push({ datasetKey, monthKey });
     },
+    toggleUtilSheetReportExpanded() {
+      genericExpandCount += 1;
+      return true;
+    },
     syncUtilSheetPanelSelection(sheetType, datasetKey) {
       panelSyncArgs = { sheetType, datasetKey };
     },
@@ -140,11 +149,33 @@ test('report sheet modal shell registry creates the shared modal and routes type
   modal.dataset.datasetKey = 'gas';
   modal.dataset.monthKey = '2026-04';
   modal.dataset.compareKey = 'month';
+  modal.dataset.utilityEntryExperimentMeterLinkKey = 'gas_yusan_lng';
+  const graphHost = {};
+  const graphBody = {
+    classList: { toggle() {} },
+    querySelector(selector) {
+      return selector === '[data-role="utility-entry-experiment-graph-template"]'
+        ? graphHost
+        : null;
+    },
+  };
+  modal.querySelector = (selector) => (
+    selector === '[data-role="util-sheet-report-body"]' ? graphBody : null
+  );
+  const closeButton = createTarget({
+    '[data-role="util-sheet-report-close"]': true,
+  });
+  const expandButton = createTarget({
+    '[data-role="util-sheet-report-expand"]': true,
+  });
+  const meterViewButton = createTarget({
+    '[data-role="util-sheet-meter-view-select"]': true,
+  });
 
   const typeButton = createTarget({
-    '[data-role="util-sheet-modal-type-select"]': true,
+    '[data-role="util-sheet-graph-view-select"]': true,
   });
-  modal.listeners.click({ target: typeButton });
+  await modal.listeners.click({ target: typeButton });
   assert.equal(modal.dataset.sheetType, 'meter');
   assert.equal(modal.dataset.datasetKey, 'gas');
   assert.equal(modal.dataset.monthKey, '2026-04');
@@ -152,36 +183,94 @@ test('report sheet modal shell registry creates the shared modal and routes type
   assert.match(harness.alertMessages.at(-1), /\uC0C8 \uAC00\uC2A4 \uADF8\uB798\uD504 \uC5F0\uACB0 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4/);
   assert.equal(panelSyncArgs, null);
 
-  let graphOpenArgs = null;
+  let graphOpenArgs;
   context.KpiUtilityEntryExperiment = {
-    openGraphTemplate(graphKey, monthKey) {
-      graphOpenArgs = { graphKey, monthKey };
+    renderGraphTemplate(target, graphKey, monthKey) {
+      graphOpenArgs = { target, graphKey, monthKey };
+      return Promise.resolve({ title: '가스 정산 그래프', memo: { monthKey } });
+    },
+    captureGraphPdf(_targetModal) {
+      return Promise.resolve(true);
+    },
+    toggleGraphMemoOverview() {
+      return true;
+    },
+    isGraphFullscreen() {
+      return graphFullScreenState;
+    },
+    syncGraphFullscreenState() {
+      graphFullScreenSyncCount += 1;
+    },
+    toggleGraphFullscreen() {
+      graphFullScreenToggleCount += 1;
+      graphFullScreenState = !graphFullScreenState;
+      return Promise.resolve(graphFullScreenState);
+    },
+    exitGraphFullscreen() {
+      graphFullScreenExitCount += 1;
+      graphFullScreenState = false;
       return Promise.resolve(true);
     },
   };
   modal.dataset.utilityEntryExperimentGraphKey = 'gas_yusan';
-  modal.listeners.click({ target: typeButton });
-  assert.deepEqual(graphOpenArgs, { graphKey: 'gas_yusan', monthKey: '2026-04' });
-  assert.equal(modal.dataset.sheetType, 'meter');
-
   graphOpenArgs = null;
-  const lpgGraphButton = createTarget(
-    {
-      '[data-role="util-sheet-modal-type-select"]': true,
-    },
-    {
-      utilityEntryExperimentGraphKey: 'gas_yusan_lpg',
-      utilityEntryExperimentGraphLabel: 'LPG \uADF8\uB798\uD504',
-    }
-  );
-  modal.listeners.click({ target: lpgGraphButton });
-  assert.deepEqual(graphOpenArgs, { graphKey: 'gas_yusan_lpg', monthKey: '2026-04' });
+  await modal.listeners.click({ target: typeButton });
+  assert.deepEqual(graphOpenArgs, { target: graphHost, graphKey: 'gas_yusan', monthKey: '2026-04' });
+  assert.equal(modal.dataset.utilityEntryExperimentView, 'graph');
+  assert.equal(modal.dataset.utilityEntryExperimentActiveGraphKey, 'gas_yusan');
+  await modal.listeners.click({ target: expandButton });
+  assert.equal(graphFullScreenToggleCount, 1);
+  assert.equal(graphFullScreenState, true);
+  assert.equal(genericExpandCount, 0);
+  await modal.listeners.click({ target: meterViewButton });
+  assert.equal(graphFullScreenExitCount, 1);
+  assert.equal(graphFullScreenState, false);
+  assert.equal(modal.dataset.utilityEntryExperimentView, 'meter');
 
   graphOpenArgs = null;
   modal.dataset.datasetKey = 'electric';
+  modal.dataset.utilityEntryExperimentMeterLinkKey = 'electric_bukjeong';
   modal.dataset.utilityEntryExperimentGraphKey = 'electric_bukjeong';
-  modal.listeners.click({ target: typeButton });
-  assert.deepEqual(graphOpenArgs, { graphKey: 'electric_bukjeong', monthKey: '2026-04' });
+  await modal.listeners.click({ target: typeButton });
+  assert.equal(graphOpenArgs, null);
+  assert.equal(modal.dataset.sheetType, 'meter');
+  assert.equal(graphFullScreenState, false);
+
+  graphOpenArgs = null;
+  modal.dataset.sheetType = 'meter';
+  modal.dataset.datasetKey = 'gas';
+  modal.dataset.utilityEntryExperimentMeterLinkKey = 'gas_yusan_lng';
+  modal.dataset.utilityEntryExperimentGraphKey = 'gas_yusan';
+  await modal.listeners.click({ target: typeButton });
+  assert.deepEqual(graphOpenArgs, { target: graphHost, graphKey: 'gas_yusan', monthKey: '2026-04' });
+  await modal.listeners.click({ target: expandButton });
+  const closeCountBefore = closeCount;
+  const exitCountBefore = graphFullScreenExitCount;
+  await modal.listeners.click({ target: closeButton });
+  assert.equal(closeCount, closeCountBefore + 1);
+  assert.equal(graphFullScreenExitCount, exitCountBefore + 1);
+  assert.equal(modal.dataset.utilityEntryExperimentView, 'graph');
+  assert.equal(graphFullScreenState, false);
+
+  graphOpenArgs = null;
+  modal.dataset.sheetType = 'meter';
+  modal.dataset.datasetKey = 'gas';
+  modal.dataset.utilityEntryExperimentMeterLinkKey = 'gas_yusan_lpg';
+  const lpgGraphButton = createTarget({
+    '[data-role="util-sheet-graph-view-select"]': true,
+  }, {
+    utilityEntryExperimentGraphKey: 'gas_yusan_lpg',
+    utilityEntryExperimentGraphLabel: 'LPG \uADF8\uB798\uD504',
+  });
+  await modal.listeners.click({ target: lpgGraphButton });
+  assert.deepEqual(graphOpenArgs, { target: graphHost, graphKey: 'gas_yusan_lpg', monthKey: '2026-04' });
+
+  graphOpenArgs = null;
+  modal.dataset.datasetKey = 'electric';
+  modal.dataset.utilityEntryExperimentMeterLinkKey = 'electric_yusan';
+  modal.dataset.utilityEntryExperimentGraphKey = 'electric_yusan';
+  await modal.listeners.click({ target: typeButton });
+  assert.deepEqual(graphOpenArgs, { target: graphHost, graphKey: 'electric_yusan', monthKey: '2026-04' });
   assert.equal(modal.dataset.sheetType, 'meter');
 
   modal.dataset.datasetKey = 'electric';
@@ -209,19 +298,17 @@ test('report sheet modal shell registry creates the shared modal and routes type
   const previousMonthButton = createTarget({
     '[data-role="util-sheet-modal-month-step"]': true,
   }, { direction: 'prev' });
-  modal.listeners.click({ target: previousMonthButton });
+  await modal.listeners.click({ target: previousMonthButton });
   assert.equal(stepMonthSelect.value, '2026-05');
   assert.equal(config.UtilSheetReportMonthState.meter, '2026-05');
   assert.equal(analysisMonthCalls.length, 0);
   assert.deepEqual(panelSyncArgs, { sheetType: 'meter', datasetKey: 'electric' });
 
 
-  const closeButton = createTarget({
-    '[data-role="util-sheet-report-close"]': true,
-  });
-  modal.listeners.click({ target: closeButton });
-  assert.equal(closeCount, 1);
-  assert.ok(renderCount >= 2);
+  await modal.listeners.click({ target: closeButton });
+  assert.equal(closeCount, 2);
+  assert.ok(graphFullScreenSyncCount >= 1);
+  assert.ok(renderCount >= 1);
   assert.ok(detachedSyncCount >= 2);
   assert.ok(windowStateSyncCount >= 3);
 });
@@ -230,7 +317,7 @@ test('kpi html loads report sheet modal shell before modal render and sheet.js',
   assert.match(reportSheetModalShellSource, /function openUtilityEntryGraphTemplateFromMeterModal/);
   assert.match(reportSheetModalShellSource, /getUtilityEntryGraphDatasetLabel/);
   assert.match(reportSheetModalShellSource, /runtimeAdapter\.getRootValue\('KpiUtilityEntryExperiment'\)/);
-  assert.match(reportSheetModalShellSource, /api\.openGraphTemplate\(graphKey,\s*modal\?\.dataset\?\.monthKey/);
+  assert.match(reportSheetModalShellSource, /api\.renderGraphTemplate\(/);
   assert.match(reportSheetModalShellSource, /`\uC0C8 \${datasetLabel} \uADF8\uB798\uD504 \uC5F0\uACB0 \uC815\uBCF4\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4/);
 
   assert.match(
@@ -240,12 +327,16 @@ test('kpi html loads report sheet modal shell before modal render and sheet.js',
   );
 
   const adapterIndex = kpiHtml.indexOf('runtime/util/report/KPI.util.report.runtime-adapter.js?v=341');
-  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=061');
+  const modalActionsIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/actions.js?v=063');
+  const modalShellPartVersions = {
+    'core.js': 5,
+    'modal-dom.js': 5,
+  };
   const modalShellPartPaths = reportSheetModalShellPartPaths.map(
-    (file) => `runtime/util/report/sheet/modal/shell/${file}?v=1`
+    (file) => `runtime/util/report/sheet/modal/shell/${file}?v=${modalShellPartVersions[file] || 1}`
   );
   const modalShellIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/shell.js?v=124');
-  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=079');
+  const modalRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/modal/render.js?v=081');
   const analysisRenderIndex = kpiHtml.indexOf('runtime/util/report/sheet/analysis/render.js?v=068');
   const sheetIndex = kpiHtml.indexOf('KPI.util.report.sheet.js?v=067');
 
