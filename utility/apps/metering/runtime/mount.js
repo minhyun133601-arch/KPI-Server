@@ -100,6 +100,13 @@ async function bootMountedApp() {
 async function unmountIntegratedMetering(options = {}) {
   const { clearHost = false } = options;
 
+  if (equipmentLocalAutosaveTimer) {
+    clearEquipmentLocalAutosaveTimer();
+    if (runtimeContext.mountRoot && elements.fieldsGrid) {
+      saveEquipmentEntryDraftToLocalStore();
+    }
+  }
+
   try {
     await exitFormFullscreenMode({ skipBrowserExit: false, skipPopupClose: false });
   } catch (error) {

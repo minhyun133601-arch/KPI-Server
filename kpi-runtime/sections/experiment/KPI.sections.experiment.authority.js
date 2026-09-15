@@ -155,10 +155,10 @@
     }
 
     function getProductionLineValue(lineKey = '', teamKey = '', monthKey = '') {
-        const parts = parseExperimentMonthParts(monthKey);
+        const monthParts = parseExperimentMonthParts(monthKey);
         const teamName = parts.EXPERIMENT_TEAM_LABELS[teamKey];
-        if (!parts || !teamName || typeof root.getUtilDailyProductionValue !== 'function') return NaN;
-        const daily = root.getUtilDailyProductionValue(teamName, parts.year, parts.month);
+        if (!monthParts || !teamName || typeof root.getUtilDailyProductionValue !== 'function') return NaN;
+        const daily = root.getUtilDailyProductionValue(teamName, monthParts.year, monthParts.month);
         const entries = Array.isArray(daily?.details) ? daily.details : [];
         const seen = new Set();
         let total = 0;
@@ -184,10 +184,10 @@
     }
 
     function getExperimentProductionEntriesByTeamKey(teamKey = '', monthKey = '') {
-        const parts = parseExperimentMonthParts(monthKey);
+        const monthParts = parseExperimentMonthParts(monthKey);
         const teamName = parts.EXPERIMENT_TEAM_LABELS[teamKey];
-        if (!parts || !teamName || typeof root.getUtilDailyProductionValue !== 'function') return [];
-        const daily = root.getUtilDailyProductionValue(teamName, parts.year, parts.month);
+        if (!monthParts || !teamName || typeof root.getUtilDailyProductionValue !== 'function') return [];
+        const daily = root.getUtilDailyProductionValue(teamName, monthParts.year, monthParts.month);
         return Array.isArray(daily?.details) ? daily.details : [];
     }
 

@@ -6,7 +6,7 @@
 
     async function loadUtilityEntryExperimentActualRecords() {
         if (parts.state.actualRecordPromise) return parts.state.actualRecordPromise;
-        parts.state.actualRecordPromise = Promise.all(Object.entries(UTILITY_ENTRY_EXPERIMENT_RECORD_KEYS).map(async ([resourceType, recordKey]) => {
+        const recordPromise = Promise.all(Object.entries(UTILITY_ENTRY_EXPERIMENT_RECORD_KEYS).map(async ([resourceType, recordKey]) => {
             if (typeof fetch !== 'function') throw new Error('fetch_unavailable');
             const response = await fetch(`/api/modules/util_metering/records/${encodeURIComponent(recordKey)}`, {
                 cache: 'no-store',
@@ -19,7 +19,13 @@
             const payload = await response.json();
             return [resourceType, payload?.record?.payload || {}];
         })).then(entries => Object.fromEntries(entries));
-        return parts.state.actualRecordPromise;
+        parts.state.actualRecordPromise = recordPromise;
+        try {
+            return await recordPromise;
+        } catch (error) {
+            if (parts.state.actualRecordPromise === recordPromise) parts.state.actualRecordPromise = null;
+            throw error;
+        }
     }
 
     function normalizeUtilityEntryExperimentResourceType(value = '') {

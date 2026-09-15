@@ -69,7 +69,7 @@ test('ops console omits repository map and data reference surfaces', async () =>
   assert.doesNotMatch(opsRuntimeSource, /\? parsed : 55432/);
   assert.match(commandRegistrySource, /\.env\.production\.local/);
   assert.doesNotMatch(commandRegistrySource, /\.env\.local-experiment/);
-  assert.match(indexHtml, /startupTile|startupActions|startupStatus/);
+  assert.doesNotMatch(indexHtml, /startupTile|startupActions|startupStatus/);
   assert.match(appSource, /startupTaskRegistered|startup\.register|startup\.unregister/);
   assert.match(appConfigSource, /startupLabel|startupSummary|startupRegister|startupUnregister/);
   assert.match(opsPathsSource, /register-startup-task|unregister-startup-task/);

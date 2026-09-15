@@ -107,20 +107,25 @@
         parts.syncUtilityEntryExperimentDailyValidation(host);
     }
 
-    function setUtilityEntryExperimentSaveStatus(host, status = 'idle', message = '') {
+    function syncUtilityEntryExperimentSaveButtons(host, status = host?.dataset?.utilityEntryExperimentSaveStatus) {
         if (!host) return;
-        const stateNodes = Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save-state"]') || []);
-        const statusNodes = Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save-status"]') || []);
         const buttons = [
             ...Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save"]') || []),
             ...Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-delete"]') || [])
         ];
-        const busy = status === 'saving' || status === 'deleting';
-        host.dataset.utilityEntryExperimentSaveStatus = status;
+        const busy = status === 'saving' || status === 'deleting' || host.dataset?.utilityEntryExperimentWritePending === 'true';
         buttons.forEach(button => {
             button.disabled = busy;
             button.setAttribute('aria-busy', busy ? 'true' : 'false');
         });
+    }
+
+    function setUtilityEntryExperimentSaveStatus(host, status = 'idle', message = '') {
+        if (!host) return;
+        const stateNodes = Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save-state"]') || []);
+        const statusNodes = Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-save-status"]') || []);
+        host.dataset.utilityEntryExperimentSaveStatus = status;
+        syncUtilityEntryExperimentSaveButtons(host, status);
         stateNodes.forEach(stateNode => {
             stateNode.classList.toggle('is-saved', status === 'saved');
             stateNode.classList.toggle('is-unsaved', status !== 'saved');
@@ -968,5 +973,5 @@
     }
 
 
-    Object.assign(parts, { isUtilityEntryExperimentPlainObject, cloneUtilityEntryExperimentJson, parseUtilityEntryExperimentNumber, roundUtilityEntryExperimentNumber, getUtilityEntryExperimentInputScope, setUtilityEntryExperimentInputValue, getUtilityEntryExperimentDailyRowInputsByFieldId, setUtilityEntryExperimentDailyRowInputText, setUtilityEntryExperimentDailyRowInputValue, markUtilityEntryExperimentUnsaved, setUtilityEntryExperimentSaveStatus, getUtilityEntryExperimentPeriodFromElement, setUtilityEntryExperimentActivePeriod, getUtilityEntryExperimentEntryValues, hasUtilityEntryExperimentEntryValue, getUtilityEntryExperimentPreviousEntryDate, getUtilityEntryExperimentPreviousEquipmentEntryDate, getUtilityEntryExperimentFirstEquipmentEntryDateInMonth, hasUtilityEntryExperimentRecentUsageEntryValues, hasUtilityEntryExperimentMonthlyBoundaryEntryValues, hasUtilityEntryExperimentDailyMonthEntryValues, getUtilityEntryExperimentEquipmentFactor, getUtilityEntryExperimentEquipmentItem, getUtilityEntryExperimentAdjustedReading, getUtilityEntryExperimentResolvedStickReadingValue, getUtilityEntryExperimentReadingTimeline, getUtilityEntryExperimentReadingDetailOnDate, getUtilityEntryExperimentReadingOnDate, getUtilityEntryExperimentNextDateString, getUtilityEntryExperimentDistributedDates, getUtilityEntryExperimentDistributedUsageWindow, getUtilityEntryExperimentGasRecentUsageWindow, getUtilityEntryExperimentRecentUsageWindow, getUtilityEntryExperimentDateSpanDays, getUtilityEntryExperimentFirstReadingInMonth, getUtilityEntryExperimentGasMonthlyBoundaryUsageWindow, getUtilityEntryExperimentMonthDateStrings, getUtilityEntryExperimentEquipmentSummaryIds, getUtilityEntryExperimentTotalPowerReadingDates, getUtilityEntryExperimentTotalPowerRecentUsageWindow, getUtilityEntryExperimentTotalPowerDistributedUsageWindow, getUtilityEntryExperimentFirstTotalPowerReadingInMonth, calculateUtilityEntryExperimentEquipmentAlignedUsageBetweenDates, calculateUtilityEntryExperimentOtherUsageForWindow, getUtilityEntryExperimentReactivePowerReading, calculateUtilityEntryExperimentReactivePowerPeriodUsage, calculateUtilityEntryExperimentReactivePowerDailyMonthUsage, calculateUtilityEntryExperimentActivePowerMonthlyUsage, calculateUtilityEntryExperimentEquipmentDailyUsage, calculateUtilityEntryExperimentEquipmentPeriodUsage, getUtilityEntryExperimentEquipmentPeriodUsageDays, getUtilityEntryExperimentPeriodUsageLabel, updateUtilityEntryExperimentPeriodUsageLabels, shouldDisplayUtilityEntryExperimentMonthlyUsage, getUtilityEntryExperimentDisplayUsageLabel, calculateUtilityEntryExperimentEquipmentMonthlyUsage, calculateUtilityEntryExperimentEquipmentUsageBetweenReadings, calculateUtilityEntryExperimentEquipmentDailyMonthUsage });
+    Object.assign(parts, { syncUtilityEntryExperimentSaveButtons, isUtilityEntryExperimentPlainObject, cloneUtilityEntryExperimentJson, parseUtilityEntryExperimentNumber, roundUtilityEntryExperimentNumber, getUtilityEntryExperimentInputScope, setUtilityEntryExperimentInputValue, getUtilityEntryExperimentDailyRowInputsByFieldId, setUtilityEntryExperimentDailyRowInputText, setUtilityEntryExperimentDailyRowInputValue, markUtilityEntryExperimentUnsaved, setUtilityEntryExperimentSaveStatus, getUtilityEntryExperimentPeriodFromElement, setUtilityEntryExperimentActivePeriod, getUtilityEntryExperimentEntryValues, hasUtilityEntryExperimentEntryValue, getUtilityEntryExperimentPreviousEntryDate, getUtilityEntryExperimentPreviousEquipmentEntryDate, getUtilityEntryExperimentFirstEquipmentEntryDateInMonth, hasUtilityEntryExperimentRecentUsageEntryValues, hasUtilityEntryExperimentMonthlyBoundaryEntryValues, hasUtilityEntryExperimentDailyMonthEntryValues, getUtilityEntryExperimentEquipmentFactor, getUtilityEntryExperimentEquipmentItem, getUtilityEntryExperimentAdjustedReading, getUtilityEntryExperimentResolvedStickReadingValue, getUtilityEntryExperimentReadingTimeline, getUtilityEntryExperimentReadingDetailOnDate, getUtilityEntryExperimentReadingOnDate, getUtilityEntryExperimentNextDateString, getUtilityEntryExperimentDistributedDates, getUtilityEntryExperimentDistributedUsageWindow, getUtilityEntryExperimentGasRecentUsageWindow, getUtilityEntryExperimentRecentUsageWindow, getUtilityEntryExperimentDateSpanDays, getUtilityEntryExperimentFirstReadingInMonth, getUtilityEntryExperimentGasMonthlyBoundaryUsageWindow, getUtilityEntryExperimentMonthDateStrings, getUtilityEntryExperimentEquipmentSummaryIds, getUtilityEntryExperimentTotalPowerReadingDates, getUtilityEntryExperimentTotalPowerRecentUsageWindow, getUtilityEntryExperimentTotalPowerDistributedUsageWindow, getUtilityEntryExperimentFirstTotalPowerReadingInMonth, calculateUtilityEntryExperimentEquipmentAlignedUsageBetweenDates, calculateUtilityEntryExperimentOtherUsageForWindow, getUtilityEntryExperimentReactivePowerReading, calculateUtilityEntryExperimentReactivePowerPeriodUsage, calculateUtilityEntryExperimentReactivePowerDailyMonthUsage, calculateUtilityEntryExperimentActivePowerMonthlyUsage, calculateUtilityEntryExperimentEquipmentDailyUsage, calculateUtilityEntryExperimentEquipmentPeriodUsage, getUtilityEntryExperimentEquipmentPeriodUsageDays, getUtilityEntryExperimentPeriodUsageLabel, updateUtilityEntryExperimentPeriodUsageLabels, shouldDisplayUtilityEntryExperimentMonthlyUsage, getUtilityEntryExperimentDisplayUsageLabel, calculateUtilityEntryExperimentEquipmentMonthlyUsage, calculateUtilityEntryExperimentEquipmentUsageBetweenReadings, calculateUtilityEntryExperimentEquipmentDailyMonthUsage });
 })(this);
