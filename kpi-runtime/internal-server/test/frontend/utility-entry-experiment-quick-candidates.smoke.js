@@ -79,6 +79,54 @@ test('utility entry completed calendar marks done dates that have validation err
   assert.match(container.innerHTML, /오류 1건/);
 });
 
+test('utility entry calendar limits history scans to the displayed month and keeps earlier reading validation', () => {
+  const api = createCorrectionContext();
+  const electricEntries = {};
+  const gasEntries = {};
+  for (let index = 0; index < 730; index += 1) {
+    const date = new Date(Date.UTC(2024, 0, index + 1)).toISOString().slice(0, 10);
+    electricEntries[date] = { values: createCompleteElectricDailyValues(100 + index, api.constants) };
+    gasEntries[date] = { values: createCompleteGasDailyValues(100 + index) };
+  }
+  const previousElectricValues = createCompleteElectricDailyValues(900, api.constants);
+  const previousGasValues = createCompleteGasDailyValues(900);
+  electricEntries['2025-12-31'] = { values: previousElectricValues };
+  gasEntries['2025-12-31'] = { values: previousGasValues };
+  electricEntries['2026-01-01'] = {
+    values: { ...createCompleteElectricDailyValues(920, api.constants), field_01: '890' },
+  };
+  gasEntries['2026-01-01'] = { values: createCompleteGasDailyValues(920) };
+
+  // A month needs at most one history scan per field and visible day, plus bookkeeping.
+  const scanBudget = 31 * (Object.keys(previousElectricValues).length + Object.keys(previousGasValues).length + 2);
+  let historyScans = 0;
+  const trackHistoryScans = (entries) =>
+    new Proxy(entries, {
+      ownKeys(target) {
+        historyScans += 1;
+        assert.ok(historyScans <= scanBudget, 'calendar must not recompute status for every historical day');
+        return Reflect.ownKeys(target);
+      },
+    });
+  const records = {
+    electric: { equipmentEntries: trackHistoryScans(electricEntries) },
+    gas: { equipmentEntries: trackHistoryScans(gasEntries) },
+  };
+  const container = { innerHTML: '' };
+  const host = {
+    querySelectorAll(selector) {
+      return selector === '[data-role="utility-entry-experiment-completed-calendar"]' ? [container] : [];
+    },
+  };
+
+  api.renderCompletedDateCalendar(host, records, '2026-01-01');
+
+  assert.equal((container.innerHTML.match(/data-utility-entry-experiment-date=/g) || []).length, 31);
+  assert.doesNotMatch(container.innerHTML, /data-utility-entry-experiment-date="2025-/);
+  assert.match(container.innerHTML, /is-done has-error is-selected/);
+  assert.match(container.innerHTML, /오류 1건/);
+});
+
 test('utility entry quick candidates still show closest rows below previous reading', () => {
   const api = createCorrectionContext();
   const firstRow = createDailyValidationRow({

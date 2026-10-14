@@ -23,6 +23,7 @@ export const storageSource = await fs.readFile(
 );
 export const renderModuleFiles = [
   'render/KPI.data.equipment-history.render.board.js',
+  'render/KPI.data.equipment-history.render.preventive.js',
   'render/KPI.data.equipment-history.render.card.js',
   'render/KPI.data.equipment-history.render.persistence.js',
   'render/KPI.data.equipment-history.render.print.js',

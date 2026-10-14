@@ -1,6 +1,9 @@
 (function registerKpiUtilityEntryStoreSave(root) {
     const parts = root[Symbol.for('kpi.utilityEntryExperiment.parts')] ||= Object.create(null);
     const UTILITY_ENTRY_EXPERIMENT_DAILY_DELETE_RESOURCE_TYPES = Object.freeze(['electric', 'gas']);
+    const UTILITY_ENTRY_EXPERIMENT_MONTHLY_SAVE_KINDS = Object.freeze([
+        'team-monthly-usage', 'settlement-field', 'other-monthly-field', 'other-team-monthly-field'
+    ]);
     const utilityEntryExperimentDailyDrafts = new WeakMap();
     const utilityEntryExperimentPopulateRequests = new WeakMap();
     function buildUtilityEntryExperimentLegacyElectricDataset(store) {
@@ -274,15 +277,35 @@
         return scopedDrafts.get(key);
     }
 
-    function applyUtilityEntryExperimentMonthlyInputsToStore(host, store, options = {}) {
+    function getUtilityEntryExperimentMonthlySaveInputs(host, kind, options = {}) {
         const view = getUtilityEntryExperimentSaveView(host, 'monthly');
-        const monthValue = parts.getUtilityEntryExperimentSelectedMonth(host);
+        return Array.from(options.inputsByKind?.[kind] || view?.querySelectorAll?.(`[data-utility-entry-experiment-save-kind="${kind}"]`) || [])
+            .filter(input => isUtilityEntryExperimentInputVisible(input) && !input.readOnly);
+    }
+
+    function snapshotUtilityEntryExperimentMonthlyInputs(host) {
+        return {
+            monthValue: parts.getUtilityEntryExperimentSelectedMonth(host),
+            inputsByKind: Object.fromEntries(UTILITY_ENTRY_EXPERIMENT_MONTHLY_SAVE_KINDS.map(kind => [
+                kind,
+                getUtilityEntryExperimentMonthlySaveInputs(host, kind).map(input => ({
+                    value: String(input.value ?? ''),
+                    dataset: {
+                        ...input.dataset,
+                        normalizedValue: parts.normalizeUtilityEntryExperimentNumberText(input.value)
+                    }
+                }))
+            ]))
+        };
+    }
+
+    function applyUtilityEntryExperimentMonthlyInputsToStore(host, store, options = {}) {
+        const monthValue = options.monthValue || parts.getUtilityEntryExperimentSelectedMonth(host);
         const updatedAt = options.updatedAt || new Date().toISOString();
         const scopedDrafts = new Map();
         let touchedCount = 0;
 
-        Array.from(view?.querySelectorAll?.('[data-utility-entry-experiment-save-kind="team-monthly-usage"]') || [])
-            .filter(input => isUtilityEntryExperimentInputVisible(input) && !input.readOnly)
+        getUtilityEntryExperimentMonthlySaveInputs(host, 'team-monthly-usage', options)
             .forEach(input => {
                 const resourceType = parts.normalizeUtilityEntryExperimentResourceType(input.dataset.utilityEntryExperimentResourceType);
                 const teamKey = String(input.dataset.utilityEntryExperimentTeamKey || '').trim();
@@ -305,8 +328,7 @@
                 touchedCount += 1;
             });
 
-        Array.from(view?.querySelectorAll?.('[data-utility-entry-experiment-save-kind="settlement-field"]') || [])
-            .filter(input => isUtilityEntryExperimentInputVisible(input) && !input.readOnly)
+        getUtilityEntryExperimentMonthlySaveInputs(host, 'settlement-field', options)
             .forEach(input => {
                 const resourceType = parts.normalizeUtilityEntryExperimentResourceType(input.dataset.utilityEntryExperimentResourceType);
                 const scopeKey = String(input.dataset.utilityEntryExperimentScopeKey || '').trim();
@@ -333,8 +355,7 @@
                 touchedCount += 1;
             });
 
-        Array.from(view?.querySelectorAll?.('[data-utility-entry-experiment-save-kind="other-monthly-field"]') || [])
-            .filter(input => isUtilityEntryExperimentInputVisible(input) && !input.readOnly)
+        getUtilityEntryExperimentMonthlySaveInputs(host, 'other-monthly-field', options)
             .forEach(input => {
                 const fieldKey = String(input.dataset.utilityEntryExperimentFieldKey || '').trim();
                 const dataset = getUtilityEntryExperimentStoreDataset(store, 'other');
@@ -366,8 +387,7 @@
                 touchedCount += 1;
             });
 
-        Array.from(view?.querySelectorAll?.('[data-utility-entry-experiment-save-kind="other-team-monthly-field"]') || [])
-            .filter(input => isUtilityEntryExperimentInputVisible(input) && !input.readOnly)
+        getUtilityEntryExperimentMonthlySaveInputs(host, 'other-team-monthly-field', options)
             .forEach(input => {
                 const teamKey = String(input.dataset.utilityEntryExperimentTeamKey || '').trim();
                 const fieldKey = String(input.dataset.utilityEntryExperimentFieldKey || '').trim();
@@ -450,11 +470,13 @@
     async function saveUtilityEntryExperiment(host, period = 'daily', options = {}) {
         if (!host || host.dataset?.utilityEntryExperimentWritePending === 'true' || ['saving', 'deleting'].includes(host.dataset?.utilityEntryExperimentSaveStatus)) return false;
         const savePeriod = period === 'monthly' ? 'monthly' : 'daily';
+        if (savePeriod === 'daily' && ['loading', 'error'].includes(host.dataset?.actualValuesReady)) return false;
         if (savePeriod === 'daily' && parts.blockUtilityEntryExperimentDailySaveForValidation(host)) {
             return false;
         }
         const dailyDate = savePeriod === 'daily' ? parts.getUtilityEntryExperimentSelectedDailyDate(host) : '';
         const dailyInputs = savePeriod === 'daily' ? snapshotUtilityEntryExperimentDailyInputs(host) : null;
+        const monthlySnapshot = savePeriod === 'monthly' ? snapshotUtilityEntryExperimentMonthlyInputs(host) : null;
         captureUtilityEntryExperimentDailyDraft(host);
         host.dataset.utilityEntryExperimentWritePending = 'true';
         parts.setUtilityEntryExperimentSaveStatus(host, 'saving', '저장 중');
@@ -464,7 +486,7 @@
             const store = parts.cloneUtilityEntryExperimentJson(currentStore);
             const updatedAt = new Date().toISOString();
             const result = savePeriod === 'monthly'
-                ? applyUtilityEntryExperimentMonthlyInputsToStore(host, store, { updatedAt })
+                ? applyUtilityEntryExperimentMonthlyInputsToStore(host, store, { updatedAt, ...monthlySnapshot })
                 : applyUtilityEntryExperimentDailyInputsToStore(host, store, { updatedAt, dateString: dailyDate, inputs: dailyInputs });
 
             if (!result.touchedCount) {
@@ -484,7 +506,10 @@
                 }
             }
             parts.state.actualRecordPromise = Promise.resolve(getUtilityEntryExperimentStoreRecords(store));
-            await populateUtilityEntryExperimentActualValues(host, { captureDraft: savePeriod !== 'daily' });
+            await populateUtilityEntryExperimentActualValues(host, {
+                captureDraft: savePeriod !== 'daily',
+                monthlySaveSnapshot: monthlySnapshot
+            });
             if (host.dataset.utilityEntryExperimentSaveStatus !== 'unsaved') {
                 parts.setUtilityEntryExperimentSaveStatus(host, 'saved', '저장됨');
             }
@@ -508,6 +533,7 @@
 
     async function deleteUtilityEntryExperimentDailyDate(host) {
         if (!host || host.dataset?.utilityEntryExperimentWritePending === 'true' || ['saving', 'deleting'].includes(host.dataset?.utilityEntryExperimentSaveStatus)) return false;
+        if (['loading', 'error'].includes(host.dataset?.actualValuesReady)) return false;
 
         const dateString = getUtilityEntryExperimentStrictDailyDate(host);
         if (!dateString) {
@@ -652,9 +678,11 @@
         const dailyDate = parts.getUtilityEntryExperimentSelectedDailyDate(host);
         host.dataset.actualValuesReady = 'loading';
         const loadingMonthValue = parts.getUtilityEntryExperimentSelectedMonth(host);
-        parts.renderUtilityEntryExperimentMonthlyMeterLinks(host, null, loadingMonthValue);
-        parts.renderUtilityEntryExperimentSettlementReadiness(host, null, loadingMonthValue);
         try {
+            parts.renderUtilityEntryExperimentCompletedDateCalendar(host, null, dailyDate);
+            parts.syncUtilityEntryExperimentSaveButtons(host);
+            parts.renderUtilityEntryExperimentMonthlyMeterLinks(host, null, loadingMonthValue);
+            parts.renderUtilityEntryExperimentSettlementReadiness(host, null, loadingMonthValue);
             const loadedRecords = await parts.loadUtilityEntryExperimentActualRecords();
             if (utilityEntryExperimentPopulateRequests.get(host) !== populateRequest) return;
             if (options.captureDraft !== false) captureUtilityEntryExperimentDailyDraft(host);
@@ -670,7 +698,10 @@
             parts.renderUtilityEntryExperimentCompletedDateCalendar(host, records, dailyDate);
             parts.populateUtilityEntryExperimentDailyResource(host, records.electric, 'electric', electricDailyDate, dailyDate);
             parts.populateUtilityEntryExperimentDailyResource(host, records.gas, 'gas', gasDailyDate, dailyDate);
-            parts.populateUtilityEntryExperimentMonthly(host, records, monthValue);
+            const currentMonthlySnapshot = options.monthlySaveSnapshot ? snapshotUtilityEntryExperimentMonthlyInputs(host) : null;
+            const preserveMonthlyInputs = currentMonthlySnapshot
+                && JSON.stringify(currentMonthlySnapshot) !== JSON.stringify(options.monthlySaveSnapshot);
+            if (!preserveMonthlyInputs) parts.populateUtilityEntryExperimentMonthly(host, records, monthValue);
             parts.renderUtilityEntryExperimentSettlementReadiness(host, records, monthValue);
             parts.renderUtilityEntryExperimentMonthlyMeterLinks(host, records, monthValue);
             parts.renderUtilityEntryExperimentBillingDocumentActions(host, records, monthValue);
@@ -679,7 +710,8 @@
             host.dataset.actualValuesReady = 'true';
             delete host.dataset.actualValuesError;
             parts.setUtilityEntryExperimentSaveStatus(host, 'saved', '저장됨');
-            if (unsavedDailyDraftCount > 0) {
+            if (unsavedDailyDraftCount > 0 || (preserveMonthlyInputs
+                && Object.values(currentMonthlySnapshot.inputsByKind).flat().some(input => parts.isUtilityEntryExperimentDirtyInput(input)))) {
                 parts.markUtilityEntryExperimentUnsaved(host);
             }
             parts.syncUtilityEntryExperimentDailyValidation(host);
@@ -687,6 +719,8 @@
             if (utilityEntryExperimentPopulateRequests.get(host) !== populateRequest) return;
             host.dataset.actualValuesReady = 'error';
             host.dataset.actualValuesError = error?.message || 'unknown_error';
+            parts.renderUtilityEntryExperimentCompletedDateCalendar(host, null, dailyDate);
+            parts.syncUtilityEntryExperimentSaveButtons(host);
         }
     }
 

@@ -64,6 +64,12 @@ async function openFixture(page, options = {}) {
   let records = createRecords();
   let failReads = options.failReads === true;
   let pendingRead = null;
+  let releaseRecordReads = () => {};
+  let pendingRecordReads = options.holdRecordReads
+    ? new Promise((resolve) => {
+        releaseRecordReads = resolve;
+      })
+    : null;
   const errors = [];
   const writes = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -88,6 +94,7 @@ async function openFixture(page, options = {}) {
       return;
     }
     if (url.pathname.startsWith('/api/modules/util_metering/records/')) {
+      if (pendingRecordReads) await pendingRecordReads;
       const resourceType = url.pathname.split('/').pop().replace(/_v1$/, '');
       await route.fulfill({
         status: failReads ? 503 : 200,
@@ -112,10 +119,15 @@ async function openFixture(page, options = {}) {
     errors.push(`Unexpected fixture request: ${request.method()} ${url.pathname}`);
     await route.abort();
   });
-  await page.goto(fixtureOrigin);
+  await page.clock.setFixedTime(new Date('2026-09-30T03:00:00Z'));
+  await page.goto(fixtureOrigin, { waitUntil: 'domcontentloaded' });
   return {
     errors,
     writes,
+    releaseRecordReads() {
+      releaseRecordReads();
+      pendingRecordReads = null;
+    },
     setFailReads(value) {
       failReads = value;
     },
@@ -135,6 +147,50 @@ async function openFixture(page, options = {}) {
 const hostSelector = '[data-role="utility-entry-experiment"]';
 const currentSelector =
   'input[data-utility-entry-experiment-save-kind="daily-current"][data-utility-entry-experiment-field-id="field_01"]:visible';
+const calendarSelector = '[data-role="utility-entry-experiment-completed-calendar"]';
+const daySelector = 'button[data-utility-entry-experiment-date]';
+
+test('daily dates remain visible and selectable while records are loading', async ({ page }) => {
+  const fixture = await openFixture(page, { holdRecordReads: true });
+  const host = page.locator(hostSelector);
+  const calendar = page.locator(calendarSelector);
+  const save = page.locator('[data-role="utility-entry-experiment-save"]');
+  const remove = page.locator('[data-role="utility-entry-experiment-delete"]');
+  try {
+    await expect(calendar.locator(daySelector)).toHaveCount(31);
+    await expect(calendar.locator('.utility-entry-experiment-completed-head')).toContainText('선택 2026-05-01');
+    await expect(calendar).toContainText('기입 상태 불러오는 중');
+    await expect(calendar.locator(`${daySelector}.is-unknown`)).toHaveCount(31);
+    await expect(calendar.locator('.is-missing, .is-done, .is-partial')).toHaveCount(0);
+    await expect(save).toBeDisabled();
+    await expect(remove).toBeDisabled();
+
+    await page.locator('[data-utility-entry-experiment-date="2026-05-02"]').click();
+    await expect(calendar.locator('.utility-entry-experiment-completed-head')).toContainText('선택 2026-05-02');
+    await expect(page.locator('[data-utility-entry-experiment-date="2026-05-02"]')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    await page.locator('[data-role="utility-entry-experiment-daily-month"]').selectOption('06');
+    await expect(calendar.locator(daySelector)).toHaveCount(30);
+    await expect(calendar.locator('.utility-entry-experiment-completed-head')).toContainText('선택 2026-06-01');
+    await expect(calendar.locator(`${daySelector}.is-unknown`)).toHaveCount(30);
+    await page.locator('[data-role="utility-entry-experiment-daily-month"]').selectOption('05');
+    await page.locator('[data-utility-entry-experiment-date="2026-05-02"]').click();
+  } finally {
+    fixture.releaseRecordReads();
+  }
+  await expect(host).toHaveAttribute('data-actual-values-ready', 'true');
+  await expect(page.locator(currentSelector)).toHaveValue('200');
+  await expect(calendar.locator('.utility-entry-experiment-completed-head')).toContainText('선택 2026-05-02');
+  await expect(page.locator('[data-utility-entry-experiment-date="2026-05-02"]')).toHaveClass(/is-partial/);
+  await expect(page.locator('[data-utility-entry-experiment-date="2026-05-04"]')).toHaveClass(/is-missing/);
+  await expect(calendar.locator('.is-unknown')).toHaveCount(0);
+  await expect(save).toBeEnabled();
+  await expect(remove).toBeEnabled();
+  expect(fixture.writes).toEqual([]);
+  expect(fixture.errors).toEqual([]);
+});
 
 test('daily calendar keeps edits on their date and restores an empty draft', async ({ page }) => {
   const fixture = await openFixture(page);
@@ -179,15 +235,64 @@ test('daily save writes the original date while another calendar day is selected
   expect(fixture.errors).toEqual([]);
 });
 
-test('daily controls retry a failed initial record read', async ({ page }) => {
+test('failed daily reads preserve the calendar and recover using the visible retry button', async ({ page }) => {
   const fixture = await openFixture(page, { failReads: true });
   const host = page.locator(hostSelector);
+  const calendar = page.locator(calendarSelector);
+  const retry = calendar.locator('[data-role="utility-entry-experiment-retry"]');
   await expect(host).toHaveAttribute('data-actual-values-ready', 'error');
-  fixture.setFailReads(false);
+  await expect(calendar.locator(daySelector)).toHaveCount(31);
+  await expect(calendar.getByText('기입 상태를 불러오지 못했습니다.', { exact: true })).toBeVisible();
+  await expect(retry).toBeVisible();
+  await expect(retry).toHaveText('다시 불러오기');
+  await expect(calendar.locator(`${daySelector}.is-unknown`)).toHaveCount(31);
+  await expect(calendar.locator('.is-missing, .is-done, .is-partial')).toHaveCount(0);
+  await expect(page.locator('[data-role="utility-entry-experiment-save"]')).toBeDisabled();
+  await expect(page.locator('[data-role="utility-entry-experiment-delete"]')).toBeDisabled();
+  await page.locator('[data-utility-entry-experiment-date="2026-05-02"]').click();
+  await expect(calendar.locator('.utility-entry-experiment-completed-head')).toContainText('선택 2026-05-02');
   await page.locator('[data-role="utility-entry-experiment-daily-month"]').selectOption('06');
-  await expect(host).toHaveAttribute('data-actual-values-ready', 'true');
+  await expect(calendar.locator(daySelector)).toHaveCount(30);
+  await expect(calendar.locator('.utility-entry-experiment-completed-head')).toContainText('선택 2026-06-01');
   await page.locator('[data-role="utility-entry-experiment-daily-month"]').selectOption('05');
+  await expect(host).toHaveAttribute('data-actual-values-ready', 'error');
+  await expect(retry).toBeVisible();
+  fixture.setFailReads(false);
+  await retry.click();
+  await expect(host).toHaveAttribute('data-actual-values-ready', 'true');
   await expect(page.locator(currentSelector)).toHaveValue('100');
+  await expect(calendar.locator('.utility-entry-experiment-completed-head')).toContainText('선택 2026-05-01');
+  await expect(page.locator('[data-utility-entry-experiment-date="2026-05-01"]')).toHaveClass(/is-partial/);
+  await expect(page.locator('[data-utility-entry-experiment-date="2026-05-04"]')).toHaveClass(/is-missing/);
+  await expect(calendar.locator('.is-unknown')).toHaveCount(0);
+  await expect(retry).toHaveCount(0);
+  await expect(page.locator('[data-role="utility-entry-experiment-save"]')).toBeEnabled();
+  await expect(page.locator('[data-role="utility-entry-experiment-delete"]')).toBeEnabled();
   await expect(host).not.toHaveAttribute('data-actual-values-error', /.+/);
+  expect(fixture.writes).toEqual([]);
+  expect(fixture.errors).toEqual([]);
+});
+
+test('daily dates show leap days and remain usable at mobile width', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const fixture = await openFixture(page);
+  const calendar = page.locator(calendarSelector);
+  await expect(page.locator(hostSelector)).toHaveAttribute('data-actual-values-ready', 'true');
+  await page.locator('[data-role="utility-entry-experiment-daily-year"]').selectOption('2024');
+  await page.locator('[data-role="utility-entry-experiment-daily-month"]').selectOption('02');
+  await expect(calendar.locator(daySelector)).toHaveCount(29);
+  const leapDay = calendar.locator('[data-utility-entry-experiment-date="2024-02-29"]');
+  await expect(leapDay).toBeVisible();
+  await leapDay.click();
+  await expect(leapDay).toHaveAttribute('aria-pressed', 'true');
+  await expect(calendar.locator('.utility-entry-experiment-completed-head')).toContainText('선택 2024-02-29');
+  const bounds = await leapDay.boundingBox();
+  expect(bounds.x).toBeGreaterThanOrEqual(0);
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
+  await page.locator('[data-role="utility-entry-experiment-daily-year"]').selectOption('2025');
+  await expect(calendar.locator(daySelector)).toHaveCount(28);
+  await expect(calendar.locator('[data-utility-entry-experiment-date="2025-02-29"]')).toHaveCount(0);
+  await expect(calendar.locator('.utility-entry-experiment-completed-head')).toContainText('선택 2025-02-01');
+  expect(fixture.writes).toEqual([]);
   expect(fixture.errors).toEqual([]);
 });

@@ -153,6 +153,32 @@ test('daily records retry after a failed request and clear the previous load err
   assert.equal(host.dataset.actualValuesError, undefined);
 });
 
+test('daily writes wait for a successful record load before reading or changing the store', async () => {
+  let requestCount = 0;
+  let confirmationCount = 0;
+  const api = createUtilityEntryExperimentContext({
+    fetchImpl: async () => {
+      requestCount += 1;
+      throw new Error('unexpected_request');
+    },
+    confirmImpl: () => {
+      confirmationCount += 1;
+      return true;
+    },
+  });
+  const { host, input } = createHost();
+  editInput(host, input, '150');
+
+  for (const state of ['loading', 'error']) {
+    host.dataset.actualValuesReady = state;
+    assert.equal(await api.saveUtilityEntryExperiment(host), false);
+    assert.equal(await api.deleteDailyDate(host), false);
+    assert.equal(input.value, '150');
+  }
+  assert.equal(requestCount, 0);
+  assert.equal(confirmationCount, 0);
+});
+
 test('daily save keeps the clicked date and values when navigation occurs during the server read', async () => {
   const records = createFixture();
   let releaseRead;

@@ -85,6 +85,7 @@
         "data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js",
         "data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js",
         "data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.board.js",
+        "data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.preventive.js",
         "data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.card.js",
         "data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.persistence.js",
         "data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.print.js",

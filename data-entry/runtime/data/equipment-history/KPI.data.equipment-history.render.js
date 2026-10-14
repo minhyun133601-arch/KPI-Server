@@ -38,6 +38,7 @@
         }) || null;
         api.setEquipmentHistoryActiveSaveController({
             container,
+            state,
             save: (options = {}) => api.saveCurrentEquipmentHistoryView(container, workingData, state, redraw, options),
         });
         redraw();

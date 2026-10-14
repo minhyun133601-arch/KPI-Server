@@ -165,6 +165,7 @@
         }
 
         async function triggerGlobalSave(options = {}) {
+            if (GlobalSaveUiState.busy) return false;
             const action = resolveGlobalSaveAction();
             if (!action || action.canSave === false || typeof action.perform !== 'function') {
                 GlobalSaveUiState.activeAction = null;
@@ -174,6 +175,11 @@
                 renderGlobalSaveUi();
                 return false;
             }
+
+            const saveContext = activeRenderContext;
+            const saveSectionId = activeSectionId;
+            const saveCategoryTitle = saveContext?.category?.title || '';
+            const isCurrentSaveView = () => activeRenderContext === saveContext && activeSectionId === saveSectionId;
 
             GlobalSaveUiState.busy = true;
             GlobalSaveUiState.activeAction = action;
@@ -186,7 +192,7 @@
             try {
                 const result = await action.perform({
                     trigger: options.trigger || 'manual',
-                    context: activeRenderContext || {},
+                    context: saveContext || {},
                     action
                 });
                 if (result === false) {
@@ -194,8 +200,8 @@
                 }
                 const savedRecord = KpiRuntime?.recordSaveHistory?.({
                     providerKey: action.providerKey,
-                    sectionId: activeSectionId,
-                    categoryTitle: activeRenderContext?.category?.title || '',
+                    sectionId: saveSectionId,
+                    categoryTitle: saveCategoryTitle,
                     label: action.historyLabel || action.buttonLabel || action.label || '저장',
                     trigger: options.trigger || 'manual'
                 });
@@ -203,24 +209,26 @@
                 const savedTime = savedRecord?.savedAt
                     ? new Date(savedRecord.savedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
                     : '';
-                GlobalSaveUiState.message = savedTime
-                    ? `저장되었습니다. ${savedTime}`
-                    : '저장되었습니다.';
-                GlobalSaveUiState.tone = 'success';
-                successAlertMessage = '저장되었습니다';
+                if (isCurrentSaveView()) {
+                    GlobalSaveUiState.message = savedTime
+                        ? `저장되었습니다. ${savedTime}`
+                        : '저장되었습니다.';
+                    GlobalSaveUiState.tone = 'success';
+                    successAlertMessage = '저장되었습니다';
+                }
                 return true;
             } catch (error) {
                 console.error('KPI global save failed.', error);
-                GlobalSaveUiState.message = action.errorMessage || '저장에 실패했습니다.';
-                GlobalSaveUiState.tone = 'error';
+                if (isCurrentSaveView()) {
+                    GlobalSaveUiState.message = action.errorMessage || '저장에 실패했습니다.';
+                    GlobalSaveUiState.tone = 'error';
+                }
                 return false;
             } finally {
                 GlobalSaveUiState.busy = false;
-                if (successAlertMessage) {
-                    renderGlobalSaveUi();
+                renderGlobalSaveUi({ forceDefault: !isCurrentSaveView() });
+                if (successAlertMessage && isCurrentSaveView()) {
                     browser?.showAlert?.(successAlertMessage);
-                } else {
-                    renderGlobalSaveUi();
                 }
             }
         }

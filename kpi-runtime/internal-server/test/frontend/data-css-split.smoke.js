@@ -32,8 +32,8 @@ test('data css facade imports bounded chunks in original cascade order', async (
   });
 });
 
-test('data css split preserves the recorded pre-split byte sequence', () => {
+test('data css split preserves the reviewed cascade byte sequence', () => {
   const normalizedCascade = chunkSources.join('').replace(/\r\n?/g, '\n');
   const digest = crypto.createHash('sha256').update(normalizedCascade).digest('hex');
-  assert.equal(digest, '0ec1d03d7762d6d4c54ea0049250e37a8d650c855d352cc3d8fae2248292d02b');
+  assert.equal(digest, '8f4140482711bd909f022d4517b0a099271ab18f55b4559411d0f3949f16125b');
 });

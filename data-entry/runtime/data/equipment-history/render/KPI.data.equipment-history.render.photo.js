@@ -79,58 +79,60 @@
     }
 
     async function deleteDraft(data, state) {
-        const draft = state.draft || null;
-        const recordId = api.normalizeText(draft?.id);
-        if (!recordId) {
-            browser.alert('저장된 설비 이력카드만 삭제할 수 있습니다.');
-            return false;
-        }
-        if (browser.confirm?.('이 설비 이력카드를 삭제할까요?') === false) return false;
-
-        const previousPayload = JSON.parse(JSON.stringify(data || {}));
-        const previousList = Array.isArray(data?.equipmentList) ? data.equipmentList : api.normalizeEquipmentItems(data);
-        const nextList = previousList.filter((item) => api.normalizeText(item?.id) !== recordId);
-        if (nextList.length === previousList.length) {
-            browser.alert('삭제할 설비 이력카드를 찾을 수 없습니다.');
-            return false;
-        }
-
-        let nextPayload = {
-            ...JSON.parse(JSON.stringify(data || {})),
-            equipmentList: nextList,
-        };
-        if (rejectDuplicateEquipmentNames(nextPayload)) return false;
-        const canSaveToServer = api.canSaveEquipmentHistoryToServer?.() === true;
-        try {
-            if (canSaveToServer) {
-                const savedPayload = await api.saveEquipmentHistoryPayload?.(nextPayload);
-                if (!savedPayload) throw new Error('equipment_history_payload_delete_failed');
-                nextPayload = savedPayload;
+        return api.withEquipmentHistoryWrite(state, async () => {
+            const draft = state.draft || null;
+            const recordId = api.normalizeText(draft?.id);
+            if (!recordId) {
+                browser.alert('저장된 설비 이력카드만 삭제할 수 있습니다.');
+                return false;
             }
-        } catch (error) {
-            browser.writePortalPayload('data_equipment_history_card', previousPayload);
-            throw error;
-        }
+            if (browser.confirm?.('이 설비 이력카드를 삭제할까요?') === false) return false;
 
-        Object.keys(data || {}).forEach((key) => delete data[key]);
-        Object.assign(data, nextPayload);
-        browser.writePortalPayload('data_equipment_history_card', nextPayload);
+            const previousPayload = JSON.parse(JSON.stringify(data || {}));
+            const previousList = Array.isArray(data?.equipmentList) ? data.equipmentList : api.normalizeEquipmentItems(data);
+            const nextList = previousList.filter((item) => api.normalizeText(item?.id) !== recordId);
+            if (nextList.length === previousList.length) {
+                browser.alert('삭제할 설비 이력카드를 찾을 수 없습니다.');
+                return false;
+            }
 
-        if (canSaveToServer) {
+            let nextPayload = {
+                ...JSON.parse(JSON.stringify(data || {})),
+                equipmentList: nextList,
+            };
+            if (rejectDuplicateEquipmentNames(nextPayload)) return false;
+            const canSaveToServer = api.canSaveEquipmentHistoryToServer?.() === true;
             try {
-                await api.deleteEquipmentHistoryDraftAssets?.(draft);
-            } catch (cleanupError) {
-                console.warn('[kpi] equipment history deleted card asset cleanup failed', cleanupError);
-                browser.alert('카드는 삭제했지만 첨부 파일 삭제는 실패했습니다.');
+                if (canSaveToServer) {
+                    const savedPayload = await api.saveEquipmentHistoryPayload?.(nextPayload);
+                    if (!savedPayload) throw new Error('equipment_history_payload_delete_failed');
+                    nextPayload = savedPayload;
+                }
+            } catch (error) {
+                browser.writePortalPayload('data_equipment_history_card', previousPayload);
+                throw error;
             }
-        }
 
-        const items = api.normalizeEquipmentItems(data);
-        state.selectedId = items[0]?.id || '';
-        state.draft = null;
-        state.view = 'board';
-        state.message = '설비 이력카드를 삭제했습니다.';
-        return true;
+            Object.keys(data || {}).forEach((key) => delete data[key]);
+            Object.assign(data, nextPayload);
+            browser.writePortalPayload('data_equipment_history_card', nextPayload);
+
+            if (canSaveToServer) {
+                try {
+                    await api.deleteEquipmentHistoryDraftAssets?.(draft);
+                } catch (cleanupError) {
+                    console.warn('[kpi] equipment history deleted card asset cleanup failed', cleanupError);
+                    browser.alert('카드는 삭제했지만 첨부 파일 삭제는 실패했습니다.');
+                }
+            }
+
+            const items = api.normalizeEquipmentItems(data);
+            state.selectedId = items[0]?.id || '';
+            state.draft = null;
+            state.view = 'board';
+            state.message = '설비 이력카드를 삭제했습니다.';
+            return true;
+        });
     }
 
     function loadEquipmentPhotoImage(dataUrl, doc) {

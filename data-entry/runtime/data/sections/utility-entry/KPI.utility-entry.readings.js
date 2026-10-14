@@ -114,8 +114,9 @@
             ...Array.from(host.querySelectorAll?.('[data-role="utility-entry-experiment-delete"]') || [])
         ];
         const busy = status === 'saving' || status === 'deleting' || host.dataset?.utilityEntryExperimentWritePending === 'true';
+        const recordsUnavailable = ['loading', 'error'].includes(host.dataset?.actualValuesReady);
         buttons.forEach(button => {
-            button.disabled = busy;
+            button.disabled = busy || (recordsUnavailable && button.dataset?.utilityEntryExperimentPeriod !== 'monthly');
             button.setAttribute('aria-busy', busy ? 'true' : 'false');
         });
     }

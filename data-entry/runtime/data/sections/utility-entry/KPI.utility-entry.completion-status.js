@@ -369,8 +369,8 @@
         const selectedParts = getUtilityEntryExperimentMonthParts(normalizedSelectedDate);
         const todayString = parts.getUtilityEntryExperimentTodayDateString();
         const todayParts = getUtilityEntryExperimentMonthParts(todayString);
-        const dailyStatuses = getUtilityEntryExperimentDailyEntryStatuses(records);
-        const dailyStatusMap = new Map(dailyStatuses.map(dateInfo => [dateInfo.dateString, dateInfo]));
+        const hasRecords = Boolean(records);
+        const loadFailed = !hasRecords && host.dataset?.actualValuesReady === 'error';
         const firstDay = new Date(selectedParts.year, selectedParts.month - 1, 1);
         const daysInMonth = new Date(selectedParts.year, selectedParts.month, 0).getDate();
         const maxVisibleDay = selectedParts.monthValue > todayParts.monthValue
@@ -390,7 +390,9 @@
 
         for (let day = 1; day <= maxVisibleDay; day += 1) {
             const dateString = `${selectedParts.monthValue}-${String(day).padStart(2, '0')}`;
-            const dateInfo = dailyStatusMap.get(dateString) || getUtilityEntryExperimentDailyEntryStatus(records, dateString);
+            const dateInfo = hasRecords
+                ? getUtilityEntryExperimentDailyEntryStatus(records, dateString)
+                : { state: 'unknown' };
             const isDone = dateInfo.state === 'done';
             const isPartial = dateInfo.state === 'partial';
             const isSelected = dateString === normalizedSelectedDate;
@@ -399,13 +401,15 @@
                 doneCount += 1;
             } else if (isPartial) {
                 partialCount += 1;
-            } else {
+            } else if (hasRecords) {
                 missingCount += 1;
             }
-            const stateClass = isDone ? 'is-done' : isPartial ? 'is-partial' : 'is-missing';
-            const titleText = isDone || isPartial
-                ? `${dateString} ${dateInfo.resources.join(' / ')}`
-                : `${dateString} 미기입`;
+            const stateClass = !hasRecords ? 'is-unknown' : isDone ? 'is-done' : isPartial ? 'is-partial' : 'is-missing';
+            const titleText = !hasRecords
+                ? `${dateString} 기입 상태 ${loadFailed ? '확인 실패' : '불러오는 중'}`
+                : isDone || isPartial
+                    ? `${dateString} ${dateInfo.resources.join(' / ')}`
+                    : `${dateString} 미기입`;
             const errorTitleText = hasErrors ? `${titleText} / 오류 ${Number(dateInfo.errorCount || 1)}건` : titleText;
             cells.push(`
                 <button
@@ -413,6 +417,7 @@
                     class="utility-entry-experiment-completed-day ${stateClass}${hasErrors ? ' has-error' : ''}${isSelected ? ' is-selected' : ''}"
                     data-utility-entry-experiment-date="${parts.escapeUtilityEntryExperimentHtml(dateString)}"
                     aria-pressed="${isSelected ? 'true' : 'false'}"
+                    aria-label="${parts.escapeUtilityEntryExperimentHtml(errorTitleText)}"
                     title="${parts.escapeUtilityEntryExperimentHtml(errorTitleText)}"
                 >
                     <span>${parts.escapeUtilityEntryExperimentHtml(String(day))}</span>
@@ -425,18 +430,22 @@
             <div class="utility-entry-experiment-completed-weekdays" aria-hidden="true">
                 <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
             </div>
-            <div class="utility-entry-experiment-completed-grid" role="listbox" aria-label="${parts.escapeUtilityEntryExperimentHtml(`${monthLabel} 일간 기입 상태`)}">
+            <div class="utility-entry-experiment-completed-grid" role="group" aria-label="${parts.escapeUtilityEntryExperimentHtml(`${monthLabel} 일간 기입 상태`)}">
                 ${cells.join('')}
             </div>
         ` : `
             <div class="utility-entry-experiment-completed-empty">오늘 이후 날짜 없음</div>
         `;
 
+        const statusLabel = hasRecords
+            ? `${monthLabel} · 저장 ${doneCount} / 부분 ${partialCount} / 미기입 ${missingCount}`
+            : loadFailed ? '기입 상태를 불러오지 못했습니다.' : '기입 상태 불러오는 중';
         containers.forEach(container => {
             container.innerHTML = `
                 <div class="utility-entry-experiment-completed-head">
-                    <span>일간 기입 상태</span>
-                    <strong>${parts.escapeUtilityEntryExperimentHtml(monthLabel)} · 저장 ${doneCount} / 부분 ${partialCount} / 미기입 ${missingCount}</strong>
+                    <span>일간 기입 상태 · 선택 ${parts.escapeUtilityEntryExperimentHtml(normalizedSelectedDate)}</span>
+                    <strong role="status" aria-live="polite">${parts.escapeUtilityEntryExperimentHtml(statusLabel)}</strong>
+                    ${loadFailed ? '<button type="button" class="utility-entry-experiment-action" data-role="utility-entry-experiment-retry">다시 불러오기</button>' : ''}
                 </div>
                 ${bodyHtml}
             `;

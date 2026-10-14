@@ -10,6 +10,7 @@ const repoRoot = path.resolve(__dirname, '..', '..', '..', '..');
 const equipmentRoot = path.join(repoRoot, 'data-entry/runtime/data/equipment-history');
 const moduleFiles = [
   'render/KPI.data.equipment-history.render.board.js',
+  'render/KPI.data.equipment-history.render.preventive.js',
   'render/KPI.data.equipment-history.render.card.js',
   'render/KPI.data.equipment-history.render.persistence.js',
   'render/KPI.data.equipment-history.render.print.js',
@@ -30,11 +31,12 @@ test('equipment-history renderer split keeps coherent modules and a thin host', 
   });
   assert.ok(hostSource.split(/\r?\n/).length <= 500, 'equipment-history render host exceeds 500 lines');
   assert.match(moduleSources[0], /function renderBoard\(/);
-  assert.match(moduleSources[1], /function renderHistoryCard\(/);
-  assert.match(moduleSources[2], /async function persistEquipmentHistoryPayload\(/);
-  assert.match(moduleSources[3], /function buildEquipmentHistoryPrintDocument\(/);
-  assert.match(moduleSources[4], /async function applyEquipmentHistoryPhotoFile\(/);
-  assert.match(moduleSources[5], /function bindEvents\(/);
+  assert.match(moduleSources[1], /function renderPreventiveMaintenanceDialog\(/);
+  assert.match(moduleSources[2], /function renderHistoryCard\(/);
+  assert.match(moduleSources[3], /async function persistEquipmentHistoryPayload\(/);
+  assert.match(moduleSources[4], /function buildEquipmentHistoryPrintDocument\(/);
+  assert.match(moduleSources[5], /async function applyEquipmentHistoryPhotoFile\(/);
+  assert.match(moduleSources[6], /function bindEvents\(/);
   assert.doesNotMatch(hostSource, /function (?:renderBoard|renderHistoryCard|bindEvents)\(/);
 });
 

@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import test from 'node:test';
-import { dataCssSource, formSource, renderSource } from './support/equipment-history-render-harness.js';
+import { dataCssSource, equipmentHistoryStyleSource, formSource, renderSource, repoRoot } from './support/equipment-history-render-harness.js';
+
+const maintenanceStyleSource = await fs.readFile(
+  path.join(repoRoot, 'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.maintenance.css'),
+  'utf8'
+);
 
 test('equipment-history card source preserves explicit save topbar editor and document layout contracts', () => {
   assert.doesNotMatch(renderSource, /설비 운영 정보/);
@@ -124,10 +131,14 @@ test('equipment-history card source preserves explicit save topbar editor and do
     dataCssSource,
     /data-equipment-topbar-dashboard\.is-card-mode\s+\.data-equipment-view-actions\s+\.data-equipment-topbar-clear-action[\s\S]+background:\s*#fff7ed/
   );
-  assert.match(
-    renderSource,
-    /data-equipment-top-grid[\s\S]+data-equipment-card-heading[\s\S]+renderEquipmentRecentUpdated\(header, data\)[\s\S]+renderEquipmentPhotoTitle\(draft\)[\s\S]+data-equipment-hero-photo[\s\S]+renderPhotoCard\(draft\)/
-  );
+  const cardSource = renderSource.match(/function renderHistoryCard\(category, data, state\) \{[\s\S]*?\n {4}function renderFooter/)?.[0] || '';
+  const titleSource = renderSource.match(/function renderEquipmentPhotoTitle\(draft\) \{[\s\S]*?\n {4}function renderTopbarBackButton/)?.[0] || '';
+  assert.match(cardSource, /data-equipment-top-grid[\s\S]+data-equipment-card-heading[\s\S]+renderEquipmentPhotoTitle\(draft\)[\s\S]+data-equipment-hero-photo[\s\S]+renderPhotoCard\(draft\)/);
+  assert.match(cardSource, /<\/form>\s*<div class="data-equipment-card-bottom">[\s\S]+renderFooter\(state\)[\s\S]+renderEquipmentRecentUpdated\(header, data\)/);
+  assert.doesNotMatch(cardSource.split('data-equipment-hero-photo')[0], /renderEquipmentRecentUpdated|data-equipment-maintenance-category-field|data-equipment-maintenance-category-help/);
+  assert.match(titleSource, /renderTitleTeamSelect\(teamName, teamMeta\)[\s\S]+renderTitleInput\('room'[\s\S]+renderTitleInput\('maintenanceCategory'[\s\S]+renderTitleInput\('name'/);
+  assert.match(titleSource, /data-equipment-title-category/);
+  assert.match(cardSource, /equipment-maintenance-category-options/);
   assert.match(renderSource, /data-equipment-note-card[\s\S]+renderCompactDocumentEditor\(draft\.documents\)/);
   assert.match(
     renderSource,
@@ -149,13 +160,13 @@ test('equipment-history card source preserves explicit save topbar editor and do
     /data-equipment-top-grid[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)[\s\S]+gap:\s*12px/
   );
   assert.match(
-    dataCssSource,
-    /data-equipment-card-heading[\s\S]+grid-template-columns:\s*minmax\(220px,\s*0\.28fr\)\s*minmax\(0,\s*1fr\)/
+    equipmentHistoryStyleSource,
+    /data-equipment-card-heading\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/
   );
   assert.match(dataCssSource, /data-equipment-hero-photo\s+\.data-equipment-photo-card[\s\S]+aspect-ratio:\s*16 \/ 5/);
   assert.match(
-    dataCssSource,
-    /data-equipment-card-heading\s+\.data-equipment-hero-updated[\s\S]+min-height:\s*50px[\s\S]+margin-bottom:\s*0/
+    maintenanceStyleSource,
+    /data-equipment-card-bottom\s*\{[^}]*display:\s*flex[\s\S]+data-equipment-card-bottom\s+\.data-equipment-hero-updated\s*\{[^}]*margin:\s*0 0 0 auto/
   );
   assert.match(
     dataCssSource,

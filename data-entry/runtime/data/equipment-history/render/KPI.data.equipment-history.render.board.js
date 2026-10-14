@@ -652,7 +652,7 @@
         });
     }
 
-    function renderBoard(groups, items, state) {
+    function renderBoard(groups, items, state, data = { equipmentList: items }) {
         const filters = getBoardFilters(state);
         const filteredItems = getFilteredBoardItems(items, state);
         const boardGroups = getBoardGroupsWithEmptyTeams(groups, filters, items.length);
@@ -680,6 +680,7 @@
                         <div class="data-equipment-board-team-title">
                             <span class="data-equipment-board-team-icon" aria-hidden="true">${getEquipmentTeamIconSvg(teamMeta)}</span>
                             <strong>${api.escapeHtml(group.team)}</strong>
+                            ${api.renderPreventiveMaintenanceButton?.(teamKey, group.team, items) || ''}
                             <span class="data-equipment-board-team-count">${api.escapeHtml(sectionEquipment.length)}${api.escapeHtml('\uB300')}</span>
                             ${renderBoardAddButton(teamKey)}
                         </div>
@@ -725,6 +726,7 @@
                 <div class="data-equipment-board ${filteredGroups.length ? '' : 'is-empty'}">
                     ${boardBody}
                 </div>
+                ${api.renderPreventiveMaintenanceDialog?.(state, data) || ''}
             </section>
         `;
     }

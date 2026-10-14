@@ -16,6 +16,16 @@
     const syncStarterFromForm = (...args) => api.syncStarterFromForm(...args);
     const startNewCard = (...args) => api.startNewCard(...args);
 
+    async function withEquipmentHistoryWrite(state, write) {
+        if (state.equipmentMaintenanceSaving || state.maintenanceBatch?.saving || state.pendingMaintenanceShare) return false;
+        state.equipmentMaintenanceSaving = true;
+        try {
+            return await write();
+        } finally {
+            state.equipmentMaintenanceSaving = false;
+        }
+    }
+
     function clonePayload(value) {
         return JSON.parse(JSON.stringify(value || {}));
     }
@@ -31,8 +41,39 @@
         browser.writePortalPayload('data_equipment_history_card', nextPayload);
     }
 
+    function withEquipmentMaintenanceCategoryCatalog(previousPayload, nextPayload) {
+        const getCatalog = (payload) => {
+            const value = payload?.maintenanceCategoriesByTeam;
+            return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+        };
+        const catalog = {
+            ...clonePayload(getCatalog(previousPayload)),
+            ...clonePayload(getCatalog(nextPayload)),
+        };
+        const teamKeys = new Set(Object.keys(catalog)
+            .map((teamKey) => api.resolveEquipmentHistoryTeamDataKey(teamKey)).filter(Boolean));
+        [...api.normalizeEquipmentItems(previousPayload), ...api.normalizeEquipmentItems(nextPayload)]
+            .forEach((item) => {
+                const teamKey = api.getEquipmentMaintenanceCategory(item).teamKey;
+                if (teamKey) teamKeys.add(teamKey);
+            });
+        [...teamKeys].sort().forEach((teamKey) => {
+            const labels = [
+                ...api.getEquipmentMaintenanceCategoryOptions(previousPayload, teamKey),
+                ...api.getEquipmentMaintenanceCategoryOptions(nextPayload, teamKey),
+            ];
+            const options = api.getEquipmentMaintenanceCategoryOptions({
+                equipmentList: [],
+                maintenanceCategoriesByTeam: { [teamKey]: labels },
+            }, teamKey);
+            if (options.length) catalog[teamKey] = options;
+        });
+        return Object.keys(catalog).length ? { ...nextPayload, maintenanceCategoriesByTeam: catalog } : nextPayload;
+    }
+
     async function persistEquipmentHistoryPayload(data, nextPayload, errorCode) {
         const previousPayload = clonePayload(data);
+        nextPayload = withEquipmentMaintenanceCategoryCatalog(previousPayload, nextPayload);
         const canSaveToServer = api.canSaveEquipmentHistoryToServer?.() === true;
         let persistedPayload = nextPayload;
         try {
@@ -68,6 +109,9 @@
         }
         if (code === EQUIPMENT_HISTORY_DUPLICATE_NAME_ERROR) {
             return api.getDuplicateEquipmentNameWarningMessage?.(error?.payload) || '\uC124\uBE44\uBA85\uC774 \uC911\uBCF5\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC124\uBE44\uBA85\uC744 \uB2E4\uB974\uAC8C \uC785\uB825\uD574\uC57C \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.';
+        }
+        if (code === 'equipment_maintenance_share_targets_changed') {
+            return '설비 또는 카테고리가 변경되었습니다. 함께 등록할 설비를 다시 확인해 주세요.';
         }
         return '저장에 실패했습니다.';
     }
@@ -149,14 +193,31 @@
         const safeRecord = applyUniqueEquipmentRecordId(record, nextList, replaceIndex);
         if (safeRecord !== record) Object.assign(record, safeRecord);
         if (matched && Number.isInteger(matched.sourceIndex)) {
-            nextList[matched.sourceIndex] = safeRecord;
+            const raw = nextList[matched.sourceIndex];
+            const previousPlan = getEquipmentMaintenanceRows(raw, 'annualMaintenancePlan');
+            const usedIndexes = new Set();
+            const annualMaintenancePlan = api.asList(safeRecord.annualMaintenancePlan).map((row) => {
+                const signature = getEquipmentMaintenanceRowSignature('annualMaintenancePlan', row);
+                const index = previousPlan.findIndex((previousRow, rowIndex) => !usedIndexes.has(rowIndex)
+                    && getEquipmentMaintenanceRowSignature('annualMaintenancePlan', previousRow) === signature);
+                if (index < 0) return row;
+                usedIndexes.add(index);
+                return { ...previousPlan[index], ...row };
+            });
+            nextList[matched.sourceIndex] = { ...raw, ...safeRecord, annualMaintenancePlan };
             return nextList;
         }
         return [safeRecord, ...nextList];
     }
 
     async function saveDraft(data, state, options = {}) {
-        const draft = state.draft || api.createDraft();
+        return withEquipmentHistoryWrite(state, () => persistDraft(data, state, options));
+    }
+
+    async function persistDraft(data, state, options = {}) {
+        const sourceDraft = state.draft || api.createDraft();
+        // Preserve File references and existing attachment metadata until the payload is saved.
+        const draft = { ...sourceDraft, documents: api.asList(sourceDraft.documents).map((row) => ({ ...row })) };
         const validationErrors = api.getEquipmentHistoryDraftValidationErrors?.(draft) || [];
         if (validationErrors.length) {
             browser.alert(validationErrors[0].message);
@@ -184,6 +245,8 @@
                 ...JSON.parse(JSON.stringify(data || {})),
                 equipmentList: buildEquipmentListWithRecord(data, record, state.selectedId),
             };
+            applyEquipmentMaintenanceShare(data, nextPayload, record, options.maintenanceShare);
+            nextPayload = withEquipmentMaintenanceCategoryCatalog(data, nextPayload);
             if (rejectDuplicateEquipmentNames(nextPayload)) return false;
             if (canSaveToServer) {
                 await api.uploadEquipmentHistoryDraftAssets?.(draft);
@@ -192,6 +255,8 @@
                     ...JSON.parse(JSON.stringify(data || {})),
                     equipmentList: buildEquipmentListWithRecord(data, record, state.selectedId),
                 };
+                applyEquipmentMaintenanceShare(data, nextPayload, record, options.maintenanceShare);
+                nextPayload = withEquipmentMaintenanceCategoryCatalog(data, nextPayload);
                 const savedPayload = await api.saveEquipmentHistoryPayload?.(nextPayload);
                 if (!savedPayload) throw new Error('equipment_history_payload_save_failed');
                 nextPayload = savedPayload;
@@ -221,27 +286,273 @@
         return true;
     }
 
-    async function cycleBoardCardStatus(data, state, recordId) {
-        const normalizedRecordId = api.normalizeText(recordId);
-        if (!normalizedRecordId) return false;
-        const nextList = getPayloadEquipmentList(data);
-        const item = api.normalizeEquipmentItems({ equipmentList: nextList })
-            .find((entry) => entry.id === normalizedRecordId);
-        if (!item || !Number.isInteger(item.sourceIndex)) return false;
+    function getEquipmentMaintenanceBatchRow(section, row, equipmentName = '') {
+        if (section === 'annualMaintenancePlan') {
+            return api.normalizeAnnualMaintenancePlanRow({ ...row, equipmentName }, equipmentName);
+        }
+        return api.MAINTENANCE_FIELDS.reduce((result, field) => {
+            result[field.key] = api.normalizeText(row?.[field.key]);
+            return result;
+        }, {});
+    }
 
-        nextList[item.sourceIndex] = {
-            ...nextList[item.sourceIndex],
-            status: getNextEquipmentBoardStatus(item.status),
+    function getEquipmentMaintenanceRows(record, section) {
+        return api.asList(section === 'annualMaintenancePlan'
+            ? record?.annualMaintenancePlan || record?.maintenancePlan || record?.annualMaintenanceSchedule
+            : record?.maintenanceHistory);
+    }
+
+    function getEquipmentMaintenanceRowSignature(section, row) {
+        const normalized = getEquipmentMaintenanceBatchRow(section, row);
+        const fields = section === 'annualMaintenancePlan'
+            ? api.ANNUAL_MAINTENANCE_PLAN_CONTENT_FIELDS : api.MAINTENANCE_FIELDS;
+        return JSON.stringify(fields.map((field) => normalized[field.key]));
+    }
+
+    function getEquipmentMaintenanceChanges(previous, record) {
+        return ['annualMaintenancePlan', 'maintenanceHistory'].reduce((changes, section) => {
+            const counts = new Map();
+            getEquipmentMaintenanceRows(previous, section).forEach((row) => {
+                const signature = getEquipmentMaintenanceRowSignature(section, row);
+                counts.set(signature, (counts.get(signature) || 0) + 1);
+            });
+            const fields = section === 'annualMaintenancePlan'
+                ? api.ANNUAL_MAINTENANCE_PLAN_CONTENT_FIELDS : api.MAINTENANCE_FIELDS;
+            changes[section] = getEquipmentMaintenanceRows(record, section).filter((row) => {
+                if (!fields.some((field) => api.normalizeText(row?.[field.key]))) return false;
+                const signature = getEquipmentMaintenanceRowSignature(section, row);
+                const count = counts.get(signature) || 0;
+                if (!count) return true;
+                counts.set(signature, count - 1);
+                return false;
+            }).map((row) => getEquipmentMaintenanceBatchRow(section, row, record.name));
+            return changes;
+        }, {});
+    }
+
+    function getEquipmentMaintenanceShareContext(data, state) {
+        const record = api.buildRecordFromDraft(state.draft);
+        const sourceId = api.normalizeText(state.selectedId || record.id);
+        const items = api.normalizeEquipmentItems(data);
+        const sources = items.filter((item) => item.id === sourceId);
+        if (sources.length > 1) return null;
+        const previous = sources[0];
+        const category = api.getEquipmentMaintenanceCategory(record);
+        if (!category.teamKey || !record.name) return null;
+        const candidates = items.filter((item) => item.id !== sourceId
+            && api.getEquipmentMaintenanceCategory(item).teamKey === category.teamKey
+            && items.filter((other) => other.id === item.id).length === 1);
+        if (!candidates.length) return null;
+        const changes = getEquipmentMaintenanceChanges(previous, record);
+        if (!changes.annualMaintenancePlan.length && !changes.maintenanceHistory.length) return null;
+        return {
+            teamKey: category.teamKey,
+            categoryKey: category.key,
+            categoryLabel: category.label,
+            sourceId,
+            sourceName: record.name,
+            sourceStoredCategoryKey: previous ? api.getEquipmentMaintenanceCategory(previous).key : '',
+            sourceStoredTeamKey: previous ? api.getEquipmentMaintenanceCategory(previous).teamKey : '',
+            sourceStoredExists: Boolean(previous),
+            selectedIds: candidates.filter((item) => category.key
+                && api.getEquipmentMaintenanceCategory(item).key === category.key).map((item) => item.id),
+            candidates: clonePayload(candidates),
+            changes: clonePayload(changes),
+            message: '',
         };
-        const nextPayload = {
-            ...clonePayload(data),
-            equipmentList: nextList,
-        };
-        if (rejectDuplicateEquipmentNames(nextPayload)) return false;
-        await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_status_failed');
-        state.selectedId = item.id;
-        state.message = '\uAC00\uB3D9 \uC0C1\uD0DC\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
-        return true;
+    }
+
+    function hasSameEquipmentMaintenanceShareChanges(left, right) {
+        return left?.sourceId === right?.sourceId
+            && left?.teamKey === right?.teamKey
+            && left?.categoryKey === right?.categoryKey
+            && left?.sourceStoredCategoryKey === right?.sourceStoredCategoryKey
+            && left?.sourceStoredTeamKey === right?.sourceStoredTeamKey
+            && left?.sourceStoredExists === right?.sourceStoredExists
+            && JSON.stringify(left?.changes) === JSON.stringify(right?.changes);
+    }
+
+    function isEquipmentMaintenanceShareTargetCurrent(items, share, id) {
+        const snapshots = api.asList(share.candidates).filter((item) => item.id === id);
+        const matches = items.filter((item) => item.id === id);
+        if (id === share.sourceId || snapshots.length !== 1 || matches.length !== 1) return false;
+        const snapshotCategory = api.getEquipmentMaintenanceCategory(snapshots[0]);
+        const currentCategory = api.getEquipmentMaintenanceCategory(matches[0]);
+        return snapshotCategory.teamKey === share.teamKey
+            && currentCategory.teamKey === share.teamKey
+            && snapshotCategory.key === currentCategory.key;
+    }
+
+    function applyEquipmentMaintenanceShare(data, nextPayload, record, share) {
+        if (!share) return;
+        const category = api.getEquipmentMaintenanceCategory(record);
+        const items = api.normalizeEquipmentItems(data);
+        const sources = items.filter((item) => item.id === share.sourceId);
+        const source = sources[0];
+        const sourceCategoryKey = source ? api.getEquipmentMaintenanceCategory(source).key : '';
+        const sourceTeamKey = source ? api.getEquipmentMaintenanceCategory(source).teamKey : '';
+        const selectedIds = [...new Set(api.asList(share.selectedIds).map(api.normalizeText).filter(Boolean))];
+        if (!selectedIds.length || category.teamKey !== share.teamKey || category.key !== share.categoryKey
+            || sources.length !== (share.sourceStoredExists ? 1 : 0)
+            || sourceCategoryKey !== share.sourceStoredCategoryKey
+            || sourceTeamKey !== share.sourceStoredTeamKey
+            || selectedIds.some((id) => !isEquipmentMaintenanceShareTargetCurrent(items, share, id))) {
+            throw new Error('equipment_maintenance_share_targets_changed');
+        }
+        const nextItems = api.normalizeEquipmentItems(nextPayload);
+        selectedIds.forEach((id) => {
+            const item = nextItems.find((entry) => entry.id === id);
+            if (!item || !Number.isInteger(item.sourceIndex)) throw new Error('equipment_maintenance_share_targets_changed');
+            const raw = nextPayload.equipmentList[item.sourceIndex];
+            const next = { ...raw };
+            ['annualMaintenancePlan', 'maintenanceHistory'].forEach((section) => {
+                const rows = getEquipmentMaintenanceRows(raw, section);
+                const signatures = new Set(rows.map((row) => getEquipmentMaintenanceRowSignature(section, row)));
+                const additions = api.asList(share.changes?.[section]).filter((row) => {
+                    const signature = getEquipmentMaintenanceRowSignature(section, row);
+                    if (signatures.has(signature)) return false;
+                    signatures.add(signature);
+                    return true;
+                }).map((row) => getEquipmentMaintenanceBatchRow(section, row, item.name));
+                if (additions.length) next[section] = [...rows, ...additions];
+            });
+            nextPayload.equipmentList[item.sourceIndex] = next;
+        });
+    }
+
+    async function saveEquipmentPreventiveCategory(data, state, recordId, value) {
+        if (state.equipmentMaintenanceSaving || state.maintenanceBatch?.saving || state.pendingMaintenanceShare) return false;
+        state.preventiveCategoryMessage = '';
+        const teamKey = api.resolveEquipmentHistoryTeamDataKey(state.preventiveMaintenance?.teamKey);
+        const matches = api.normalizeEquipmentItems(data).filter((item) => item.id === api.normalizeText(recordId));
+        const item = matches[0];
+        if (!teamKey || matches.length !== 1 || !Number.isInteger(item.sourceIndex)
+            || api.getEquipmentMaintenanceCategory(item).teamKey !== teamKey) {
+            state.preventiveCategoryMessage = '현재 팀의 설비를 선택해 주세요.';
+            return false;
+        }
+        const maintenanceCategory = api.normalizeText(value).replace(/\s+/g, ' ');
+        state.equipmentMaintenanceSaving = true;
+        try {
+            const nextList = getPayloadEquipmentList(data);
+            nextList[item.sourceIndex] = { ...nextList[item.sourceIndex], maintenanceCategory };
+            const nextPayload = { ...clonePayload(data), equipmentList: nextList };
+            if (rejectDuplicateEquipmentNames(nextPayload)) return false;
+            await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_category_save_failed');
+            if (state.draft?.id === item.id) state.draft.maintenanceCategory = maintenanceCategory;
+            state.preventiveCategoryMessage = `${item.displayName || item.name} 카테고리를 저장했습니다.`;
+            return true;
+        } catch (error) {
+            console.warn('[kpi] equipment preventive category save failed', error);
+            state.preventiveCategoryMessage = getEquipmentHistorySaveFailureMessage(error);
+            return false;
+        } finally {
+            state.equipmentMaintenanceSaving = false;
+        }
+    }
+
+    function isEquipmentMaintenanceDateValid(value) {
+        const match = api.normalizeText(value).match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})$/);
+        if (!match) return false;
+        const [year, month, day] = match.slice(1).map(Number);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+    }
+
+    async function saveEquipmentMaintenanceBatch(data, state, options = {}) {
+        const batch = state?.maintenanceBatch;
+        if (!batch || batch.saving || state.equipmentMaintenanceSaving) return false;
+        batch.message = '';
+        const section = api.normalizeText(batch.section);
+        if (!['maintenanceHistory', 'annualMaintenancePlan'].includes(section)) {
+            batch.message = '추가할 정비 기록을 선택해 주세요.';
+            return false;
+        }
+
+        const selectedIds = [...new Set(api.asList(batch.selectedIds).map(api.normalizeText).filter(Boolean))];
+        const candidates = api.getEquipmentMaintenanceBatchCandidates(data, batch.teamKey, batch.categoryKey);
+        const allItems = api.normalizeEquipmentItems(data);
+        const selectedItems = selectedIds.map((id) => candidates.filter((item) => item.id === id));
+        if (!selectedIds.length || selectedItems.some((matches) => matches.length !== 1)
+            || selectedIds.some((id) => allItems.filter((item) => item.id === id).length !== 1)) {
+            batch.message = '같은 팀에서 설비 종류가 같은 설비를 선택해 주세요.';
+            return false;
+        }
+        const row = getEquipmentMaintenanceBatchRow(section, batch.row);
+        if (section === 'maintenanceHistory' && (!isEquipmentMaintenanceDateValid(row.date) || !row.content)) {
+            batch.message = '올바른 정비 일자와 작업 내용을 입력해 주세요.';
+            return false;
+        }
+        if (section === 'annualMaintenancePlan' && !row.maintenanceItem && !row.maintenanceContent) {
+            batch.message = '정비항목 또는 주요정비내용을 입력해 주세요.';
+            return false;
+        }
+
+        batch.saving = true;
+        const previousDraft = state.draft;
+        const previousDraftId = api.normalizeText(previousDraft?.id || state.selectedId);
+        const appendedRows = new Map();
+        try {
+            const nextList = getPayloadEquipmentList(data);
+            selectedItems.flat().forEach((item) => {
+                const raw = nextList[item.sourceIndex];
+                const existingRows = section === 'annualMaintenancePlan'
+                    ? (raw.annualMaintenancePlan || raw.maintenancePlan || raw.annualMaintenanceSchedule)
+                    : raw.maintenanceHistory;
+                const nextRow = getEquipmentMaintenanceBatchRow(section, row, item.name);
+                appendedRows.set(item.id, nextRow);
+                nextList[item.sourceIndex] = {
+                    ...raw,
+                    [section]: [...api.asList(existingRows), clonePayload(nextRow)],
+                };
+            });
+            const nextPayload = { ...clonePayload(data), equipmentList: nextList };
+            if (rejectDuplicateEquipmentNames(nextPayload)) return false;
+            await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_batch_save_failed');
+
+            if (previousDraft && state.draft === previousDraft && appendedRows.has(previousDraftId)) {
+                const fields = section === 'annualMaintenancePlan'
+                    ? api.ANNUAL_MAINTENANCE_PLAN_CONTENT_FIELDS
+                    : api.MAINTENANCE_FIELDS;
+                const draftRows = api.asList(previousDraft[section])
+                    .filter((draftRow) => fields.some((field) => api.normalizeText(draftRow?.[field.key])));
+                previousDraft[section] = [...draftRows, clonePayload(appendedRows.get(previousDraftId))];
+            }
+            batch.message = options.message || `${selectedIds.length}대 설비에 정비 기록을 추가했습니다.`;
+            state.message = batch.message;
+            return true;
+        } catch (error) {
+            console.warn('[kpi] equipment maintenance batch save failed', error);
+            batch.message = getEquipmentHistorySaveFailureMessage(error);
+            return false;
+        } finally {
+            batch.saving = false;
+        }
+    }
+
+    async function cycleBoardCardStatus(data, state, recordId) {
+        return withEquipmentHistoryWrite(state, async () => {
+            const normalizedRecordId = api.normalizeText(recordId);
+            if (!normalizedRecordId) return false;
+            const nextList = getPayloadEquipmentList(data);
+            const item = api.normalizeEquipmentItems({ equipmentList: nextList })
+                .find((entry) => entry.id === normalizedRecordId);
+            if (!item || !Number.isInteger(item.sourceIndex)) return false;
+
+            nextList[item.sourceIndex] = {
+                ...nextList[item.sourceIndex],
+                status: getNextEquipmentBoardStatus(item.status),
+            };
+            const nextPayload = {
+                ...clonePayload(data),
+                equipmentList: nextList,
+            };
+            if (rejectDuplicateEquipmentNames(nextPayload)) return false;
+            await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_status_failed');
+            state.selectedId = item.id;
+            state.message = '\uAC00\uB3D9 \uC0C1\uD0DC\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
+            return true;
+        });
     }
 
     function doesEquipmentItemMatchStatusScope(item, scope, targetTeam, targetRoom) {
@@ -288,9 +599,11 @@
     }
 
     async function applyBoardStatus(data, state, options = {}) {
-        const targetStatus = api.normalizeText(options.status);
-        if (!EQUIPMENT_BOARD_EXPLICIT_STATUSES.has(targetStatus)) return false;
-        return persistBoardStatus(data, state, getBoardStatusScopeContext(data, options), targetStatus);
+        return withEquipmentHistoryWrite(state, async () => {
+            const targetStatus = api.normalizeText(options.status);
+            if (!EQUIPMENT_BOARD_EXPLICIT_STATUSES.has(targetStatus)) return false;
+            return persistBoardStatus(data, state, getBoardStatusScopeContext(data, options), targetStatus);
+        });
     }
 
     async function cycleCurrentCardStatus(root, data, state, redraw) {
@@ -303,37 +616,39 @@
     }
 
     async function moveBoardCard(data, state, recordId, direction) {
-        const normalizedRecordId = api.normalizeText(recordId);
-        const moveDirection = Number(direction) < 0 ? -1 : 1;
-        if (!normalizedRecordId) return false;
-        const nextList = getPayloadEquipmentList(data);
-        const items = api.normalizeEquipmentItems({ equipmentList: nextList });
-        const item = items.find((entry) => entry.id === normalizedRecordId);
-        if (!item || !Number.isInteger(item.sourceIndex)) return false;
+        return withEquipmentHistoryWrite(state, async () => {
+            const normalizedRecordId = api.normalizeText(recordId);
+            const moveDirection = Number(direction) < 0 ? -1 : 1;
+            if (!normalizedRecordId) return false;
+            const nextList = getPayloadEquipmentList(data);
+            const items = api.normalizeEquipmentItems({ equipmentList: nextList });
+            const item = items.find((entry) => entry.id === normalizedRecordId);
+            if (!item || !Number.isInteger(item.sourceIndex)) return false;
 
-        const teamKey = item.teamDataKey || api.normalizeEquipmentHistoryTeamName?.(item.team) || item.team;
-        const itemRoom = api.normalizeText(item.room || '');
-        const teamItems = items.filter((entry) => {
-            const entryTeamKey = entry.teamDataKey || api.normalizeEquipmentHistoryTeamName?.(entry.team) || entry.team;
-            return entryTeamKey === teamKey
-                && api.normalizeText(entry.room || '') === itemRoom;
+            const teamKey = item.teamDataKey || api.normalizeEquipmentHistoryTeamName?.(item.team) || item.team;
+            const itemRoom = api.normalizeText(item.room || '');
+            const teamItems = items.filter((entry) => {
+                const entryTeamKey = entry.teamDataKey || api.normalizeEquipmentHistoryTeamName?.(entry.team) || entry.team;
+                return entryTeamKey === teamKey
+                    && api.normalizeText(entry.room || '') === itemRoom;
+            });
+            const teamIndex = teamItems.findIndex((entry) => entry.id === item.id);
+            const swapItem = teamItems[teamIndex + moveDirection];
+            if (!swapItem || !Number.isInteger(swapItem.sourceIndex)) return false;
+
+            const currentRaw = nextList[item.sourceIndex];
+            nextList[item.sourceIndex] = nextList[swapItem.sourceIndex];
+            nextList[swapItem.sourceIndex] = currentRaw;
+            const nextPayload = {
+                ...clonePayload(data),
+                equipmentList: nextList,
+            };
+            if (rejectDuplicateEquipmentNames(nextPayload)) return false;
+            await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_order_failed');
+            state.selectedId = item.id;
+            state.message = '\uC124\uBE44 \uD45C\uC2DC \uC21C\uC11C\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
+            return true;
         });
-        const teamIndex = teamItems.findIndex((entry) => entry.id === item.id);
-        const swapItem = teamItems[teamIndex + moveDirection];
-        if (!swapItem || !Number.isInteger(swapItem.sourceIndex)) return false;
-
-        const currentRaw = nextList[item.sourceIndex];
-        nextList[item.sourceIndex] = nextList[swapItem.sourceIndex];
-        nextList[swapItem.sourceIndex] = currentRaw;
-        const nextPayload = {
-            ...clonePayload(data),
-            equipmentList: nextList,
-        };
-        if (rejectDuplicateEquipmentNames(nextPayload)) return false;
-        await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_order_failed');
-        state.selectedId = item.id;
-        state.message = '\uC124\uBE44 \uD45C\uC2DC \uC21C\uC11C\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
-        return true;
     }
 
     function getBoardTeamIdentitySet(value) {
@@ -354,51 +669,53 @@
     }
 
     async function moveBoardRoom(data, state, options = {}) {
-        const targetTeam = api.normalizeText(options.team);
-        const targetRoom = api.normalizeText(options.room);
-        const moveDirection = Number(options.direction) < 0 ? -1 : 1;
-        if (!targetTeam || !targetRoom) return false;
+        return withEquipmentHistoryWrite(state, async () => {
+            const targetTeam = api.normalizeText(options.team);
+            const targetRoom = api.normalizeText(options.room);
+            const moveDirection = Number(options.direction) < 0 ? -1 : 1;
+            if (!targetTeam || !targetRoom) return false;
 
-        const nextList = getPayloadEquipmentList(data);
-        const items = api.normalizeEquipmentItems({ equipmentList: nextList });
-        const teamItems = items
-            .filter((item) => isBoardTeamMatch(item, targetTeam) && Number.isInteger(item.sourceIndex))
-            .sort((left, right) => left.sourceIndex - right.sourceIndex);
-        const roomGroups = [];
-        teamItems.forEach((item) => {
-            const room = api.normalizeText(item.room || '');
-            let group = roomGroups.find((candidate) => candidate.room === room);
-            if (!group) {
-                group = { room, items: [] };
-                roomGroups.push(group);
-            }
-            group.items.push(item);
+            const nextList = getPayloadEquipmentList(data);
+            const items = api.normalizeEquipmentItems({ equipmentList: nextList });
+            const teamItems = items
+                .filter((item) => isBoardTeamMatch(item, targetTeam) && Number.isInteger(item.sourceIndex))
+                .sort((left, right) => left.sourceIndex - right.sourceIndex);
+            const roomGroups = [];
+            teamItems.forEach((item) => {
+                const room = api.normalizeText(item.room || '');
+                let group = roomGroups.find((candidate) => candidate.room === room);
+                if (!group) {
+                    group = { room, items: [] };
+                    roomGroups.push(group);
+                }
+                group.items.push(item);
+            });
+
+            const roomIndex = roomGroups.findIndex((group) => group.room === targetRoom);
+            const swapIndex = roomIndex + moveDirection;
+            if (roomIndex < 0 || !roomGroups[swapIndex]?.room) return false;
+
+            const currentGroup = roomGroups[roomIndex];
+            roomGroups[roomIndex] = roomGroups[swapIndex];
+            roomGroups[swapIndex] = currentGroup;
+
+            const targetIndexes = teamItems.map((item) => item.sourceIndex).sort((left, right) => left - right);
+            const orderedItems = roomGroups.flatMap((group) => group.items);
+            const rawBySourceIndex = new Map(teamItems.map((item) => [item.sourceIndex, nextList[item.sourceIndex]]));
+            orderedItems.forEach((item, index) => {
+                nextList[targetIndexes[index]] = rawBySourceIndex.get(item.sourceIndex);
+            });
+
+            const nextPayload = {
+                ...clonePayload(data),
+                equipmentList: nextList,
+            };
+            if (rejectDuplicateEquipmentNames(nextPayload)) return false;
+            await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_room_order_failed');
+            state.selectedId = '';
+            state.message = '\uC2E4 \uD45C\uC2DC \uC21C\uC11C\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
+            return true;
         });
-
-        const roomIndex = roomGroups.findIndex((group) => group.room === targetRoom);
-        const swapIndex = roomIndex + moveDirection;
-        if (roomIndex < 0 || !roomGroups[swapIndex]?.room) return false;
-
-        const currentGroup = roomGroups[roomIndex];
-        roomGroups[roomIndex] = roomGroups[swapIndex];
-        roomGroups[swapIndex] = currentGroup;
-
-        const targetIndexes = teamItems.map((item) => item.sourceIndex).sort((left, right) => left - right);
-        const orderedItems = roomGroups.flatMap((group) => group.items);
-        const rawBySourceIndex = new Map(teamItems.map((item) => [item.sourceIndex, nextList[item.sourceIndex]]));
-        orderedItems.forEach((item, index) => {
-            nextList[targetIndexes[index]] = rawBySourceIndex.get(item.sourceIndex);
-        });
-
-        const nextPayload = {
-            ...clonePayload(data),
-            equipmentList: nextList,
-        };
-        if (rejectDuplicateEquipmentNames(nextPayload)) return false;
-        await persistEquipmentHistoryPayload(data, nextPayload, 'equipment_history_payload_room_order_failed');
-        state.selectedId = '';
-        state.message = '\uC2E4 \uD45C\uC2DC \uC21C\uC11C\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.';
-        return true;
     }
 
     function isEquipmentBoardCardInteractiveTarget(target) {
@@ -414,12 +731,15 @@
     }
 
     function resetEquipmentHistoryBoardState(state) {
+        if (state.equipmentMaintenanceSaving || state.maintenanceBatch?.saving || state.pendingMaintenanceShare) return false;
         state.view = 'board';
         state.draft = null;
         state.starter = null;
         state.filters = { team: '', status: '', search: '' };
         state.orderingTeams = {};
         state.bulkStatus = { open: false, team: '', room: '', status: '\uAC00\uB3D9\uC911' };
+        state.preventiveMaintenance = { teamKey: '', month: 'all', equipmentId: '' };
+        state.maintenanceBatch = null;
         clearEquipmentHistoryPhotoDocumentCleanupQueue(state);
     }
 
@@ -432,6 +752,7 @@
     }
 
     function applyEquipmentHistoryBrowserState(data, state, historyState, redraw) {
+        if (state.equipmentMaintenanceSaving || state.maintenanceBatch?.saving || state.pendingMaintenanceShare) return false;
         if (historyState?.key === EQUIPMENT_HISTORY_BROWSER_STATE_KEY && historyState.view === 'card' && historyState.selectedId) {
             state.selectedId = historyState.selectedId;
             state.view = 'card';
@@ -444,6 +765,7 @@
     }
 
     function openEquipmentBoardCard(data, state, recordId, redraw, options = {}) {
+        if (state.equipmentMaintenanceSaving || state.maintenanceBatch?.saving || state.pendingMaintenanceShare) return false;
         state.selectedId = recordId || state.selectedId;
         state.view = 'card';
         ensureDraft(data, state);
@@ -452,9 +774,32 @@
     }
 
     async function saveCurrentEquipmentHistoryView(root, data, state, redraw, options = {}) {
+        if (state.equipmentMaintenanceSaving || state.maintenanceBatch?.saving) return false;
+        const pendingShare = state.pendingMaintenanceShare;
+        if (pendingShare && !['current', 'selected'].includes(options.shareDecision)) {
+            root?.querySelector?.('[data-equipment-maintenance-share-dialog]')?.focus?.();
+            return false;
+        }
+        if (!pendingShare && options.shareDecision) return false;
+        if (state.maintenanceBatch) {
+            api.syncEquipmentMaintenanceBatchFromForm?.(root, state);
+            const pendingSave = saveEquipmentMaintenanceBatch(data, state, options);
+            redraw();
+            const saved = await pendingSave;
+            if (saved) state.maintenanceBatch = null;
+            redraw();
+            if (saved) showEquipmentHistorySavedPopup(options);
+            return saved;
+        }
+        const preventiveOpen = Boolean(root?.querySelector?.('[data-equipment-preventive-dialog]'));
+        const preventiveEquipmentId = api.normalizeText(state.preventiveMaintenance?.equipmentId);
+        if (preventiveOpen && (!preventiveEquipmentId || state.draft?.id !== preventiveEquipmentId)) return false;
         const previousView = state.view;
+        state.equipmentMaintenanceSaving = true;
         try {
-            if (state.view === 'card-start') {
+            if (preventiveOpen) {
+                state.selectedId = preventiveEquipmentId;
+            } else if (state.view === 'card-start') {
                 syncStarterFromForm(root, state);
                 if (!createDraftFromStarter(state)) return false;
             } else if (state.view !== 'card') {
@@ -470,22 +815,63 @@
             }
 
             syncDraftFromForm(root, state);
-            const saved = await saveDraft(data, state, {
+            let maintenanceShare = null;
+            if (!pendingShare) {
+                const validationErrors = api.getEquipmentHistoryDraftValidationErrors?.(state.draft) || [];
+                if (validationErrors.length) {
+                    browser.alert(validationErrors[0].message);
+                    return false;
+                }
+                const share = getEquipmentMaintenanceShareContext(data, state);
+                if (share) {
+                    state.pendingMaintenanceShare = share;
+                    return false;
+                }
+            } else if (pendingShare && options.shareDecision === 'selected') {
+                const currentShare = getEquipmentMaintenanceShareContext(data, state);
+                const selectedIds = [...new Set(api.asList(options.shareTargetIds ?? pendingShare.selectedIds)
+                    .map(api.normalizeText).filter(Boolean))];
+                if (!currentShare || !hasSameEquipmentMaintenanceShareChanges(pendingShare, currentShare)) {
+                    state.pendingMaintenanceShare = currentShare || pendingShare;
+                    state.pendingMaintenanceShare.message = '입력 내용이나 카테고리가 변경되었습니다. 등록할 내용을 다시 확인해 주세요.';
+                    return false;
+                }
+                pendingShare.selectedIds = selectedIds;
+                const currentItems = api.normalizeEquipmentItems(data);
+                if (!selectedIds.length || selectedIds.some((id) => (
+                    !isEquipmentMaintenanceShareTargetCurrent(currentItems, pendingShare, id)
+                ))) {
+                    pendingShare.message = '함께 등록할 설비를 선택해 주세요. 팀이나 카테고리가 변경된 설비는 다시 확인해 주세요.';
+                    return false;
+                }
+                pendingShare.message = '';
+                maintenanceShare = { ...pendingShare, selectedIds };
+            }
+            redraw();
+            const saved = await persistDraft(data, state, {
                 message: options.message || '\uC124\uBE44 \uC774\uB825\uCE74\uB4DC\uB97C \uC800\uC7A5\uD588\uC2B5\uB2C8\uB2E4.',
+                maintenanceShare,
             });
             if (saved && previousView === 'board') {
                 state.view = 'board';
-                state.draft = null;
+                if (!preventiveOpen) state.draft = null;
             }
             if (saved) {
+                state.pendingMaintenanceShare = null;
+                state.equipmentMaintenanceSaving = false;
                 redraw();
                 showEquipmentHistorySavedPopup(options);
             }
             return saved;
         } catch (error) {
             console.warn('[kpi] equipment history save failed', error);
+            if (state.pendingMaintenanceShare) state.pendingMaintenanceShare.message = getEquipmentHistorySaveFailureMessage(error);
             browser.alert(getEquipmentHistorySaveFailureMessage(error));
             return false;
+        } finally {
+            const wasSaving = state.equipmentMaintenanceSaving;
+            state.equipmentMaintenanceSaving = false;
+            if (wasSaving) redraw();
         }
     }
 
@@ -522,7 +908,15 @@
     function getEquipmentHistorySaveAction() {
         if (!activeSaveController || typeof activeSaveController.save !== 'function') return null;
         if (activeSaveController.container?.isConnected === false) return null;
-        const canSave = api.canSaveEquipmentHistoryToServer?.() === true;
+        const preventiveMaintenanceOpen = Boolean(
+            activeSaveController.container?.querySelector?.('[data-equipment-preventive-dialog]')
+        );
+        const state = activeSaveController.state;
+        const preventiveEditable = Boolean(state?.preventiveMaintenance?.equipmentId && state?.draft);
+        const busy = state?.equipmentMaintenanceSaving || state?.maintenanceBatch?.saving || state?.pendingMaintenanceShare;
+        const canSave = !busy
+            && (!preventiveMaintenanceOpen || preventiveEditable || Boolean(state?.maintenanceBatch))
+            && api.canSaveEquipmentHistoryToServer?.() === true;
         return {
             priority: 110,
             canSave,
@@ -547,6 +941,7 @@
     Object.assign(api, {
         clonePayload,
         getPayloadEquipmentList,
+        withEquipmentHistoryWrite,
         writeWorkingPayload,
         persistEquipmentHistoryPayload,
         getEquipmentHistorySaveFailureMessage,
@@ -559,6 +954,8 @@
         applyUniqueEquipmentRecordId,
         buildEquipmentListWithRecord,
         saveDraft,
+        saveEquipmentMaintenanceBatch,
+        saveEquipmentPreventiveCategory,
         cycleBoardCardStatus,
         doesEquipmentItemMatchStatusScope,
         getBoardStatusScopeContext,

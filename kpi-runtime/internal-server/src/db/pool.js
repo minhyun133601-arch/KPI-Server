@@ -12,6 +12,11 @@ export function getPool() {
       max: 10,
       idleTimeoutMillis: 30000
     });
+    pool.on('error', (error) => {
+      console.warn('[kpi-internal-server] idle database connection failed', {
+        code: error.code || 'unknown'
+      });
+    });
   }
   return pool;
 }

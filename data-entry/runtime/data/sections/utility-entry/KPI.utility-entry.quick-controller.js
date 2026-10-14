@@ -397,6 +397,12 @@
         });
 
         host.addEventListener('click', event => {
+            const retryButton = event.target?.closest?.('[data-role="utility-entry-experiment-retry"]');
+            if (retryButton && host.contains(retryButton)) {
+                parts.populateUtilityEntryExperimentActualValues(host);
+                return;
+            }
+
             const saveButton = event.target?.closest?.('[data-role="utility-entry-experiment-save"]');
             if (saveButton && host.contains(saveButton)) {
                 event.preventDefault();

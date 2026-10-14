@@ -16,6 +16,7 @@
 
     const PHOTO_INFO_FIELDS = [
         { key: 'name', label: '\uC124\uBE44\uBA85', placeholder: '\uC608: \uBC18\uC8FD\uAE30' },
+        { key: 'maintenanceCategory', label: '설비 카테고리', placeholder: '예: 펌프, 모터, 포장기' },
         { key: 'room', label: '\uC2E4', placeholder: '\uC608: \uC81C\uD658\uC2E4' },
         { key: 'process', label: '\uACF5\uC815', placeholder: '\uC608: \uD63C\uD569 \uACF5\uC815' },
         { key: 'rate', label: '\uAC00\uB3D9\uB960', placeholder: '\uC22B\uC790\uB9CC \uC785\uB825' },
@@ -193,6 +194,52 @@
 
     function createBlankMaintenanceRow() {
         return { date: '', type: '', content: '', worker: '', note: '' };
+    }
+
+    function getEquipmentMaintenanceCategory(item) {
+        const teamKey = resolveEquipmentHistoryTeamDataKey(api.getEquipmentHistoryTeamAssignment(item).teamDataKey);
+        const label = api.normalizeText(item?.maintenanceCategory).replace(/\s+/g, ' ');
+        return {
+            key: teamKey && label ? JSON.stringify([teamKey, label.toLocaleLowerCase('ko-KR')]) : '',
+            label,
+            teamKey,
+        };
+    }
+
+    function getEquipmentMaintenanceCategoryOptions(data, teamKey) {
+        const normalizedTeamKey = resolveEquipmentHistoryTeamDataKey(teamKey);
+        if (!normalizedTeamKey) return [];
+        const labels = new Map();
+        const addLabel = (value) => {
+            if (typeof value !== 'string') return;
+            const category = getEquipmentMaintenanceCategory({ teamDataKey: normalizedTeamKey, maintenanceCategory: value });
+            if (category.key && !labels.has(category.key)) labels.set(category.key, category.label);
+        };
+        api.normalizeEquipmentItems(data).forEach((item) => {
+            if (getEquipmentMaintenanceCategory(item).teamKey === normalizedTeamKey) addLabel(item.maintenanceCategory);
+        });
+        const catalog = data?.maintenanceCategoriesByTeam;
+        if (catalog && typeof catalog === 'object' && !Array.isArray(catalog)) {
+            Object.entries(catalog).forEach(([catalogTeamKey, values]) => {
+                if (resolveEquipmentHistoryTeamDataKey(catalogTeamKey) === normalizedTeamKey) {
+                    api.asList(values).forEach(addLabel);
+                }
+            });
+        }
+        return [...labels.values()].sort((left, right) => left.localeCompare(right, 'ko-KR', {
+            numeric: true,
+            sensitivity: 'base',
+        }));
+    }
+
+    function getEquipmentMaintenanceBatchCandidates(data, teamKey, categoryKey) {
+        const normalizedTeamKey = resolveEquipmentHistoryTeamDataKey(teamKey);
+        const normalizedCategoryKey = api.normalizeText(categoryKey);
+        if (!normalizedTeamKey || !normalizedCategoryKey) return [];
+        return api.normalizeEquipmentItems(data).filter((item) => {
+            const category = getEquipmentMaintenanceCategory(item);
+            return category.teamKey === normalizedTeamKey && category.key === normalizedCategoryKey;
+        });
     }
 
     function createBlankAnnualMaintenancePlanRow(equipmentName = '') {
@@ -383,6 +430,7 @@
 
     function createDraft(equipment = null) {
         const source = equipment || {};
+        const { team, teamDataKey } = api.getEquipmentHistoryTeamAssignment(source);
         const detailGroups = normalizeEquipmentHistoryDetailGroups(source);
         const editableDetailInfo = removeBlankRows(flattenDetailGroupRows(detailGroups), DETAIL_ITEM_FIELDS);
         const rawDetailRows = [
@@ -402,6 +450,7 @@
             id: api.normalizeText(source.id),
             equipmentCode: api.normalizeText(source.equipmentCode || source.id),
             name: api.normalizeText(source.name),
+            maintenanceCategory: api.normalizeText(source.maintenanceCategory),
             displayName: api.normalizeText(source.displayName),
             duplicateNameCount: Math.max(0, Math.trunc(Number(source.duplicateNameCount) || 0)),
             nameSequence: Math.max(0, Math.trunc(Number(source.nameSequence) || 0)),
@@ -413,9 +462,9 @@
             rate: source.rate === null || source.rate === undefined || source.rate === '' ? '' : String(source.rate),
             lastCheck: api.normalizeText(source.lastCheck),
             nextCheck: api.normalizeText(source.nextCheck),
-            team: normalizeEquipmentHistoryTeamName(source.team || source.teamDataKey),
+            team,
             room: api.normalizeText(source.room),
-            teamDataKey: api.normalizeText(source.teamDataKey) || resolveEquipmentHistoryTeamDataKey(source.team),
+            teamDataKey,
             group: api.normalizeText(source.group),
             modelName: api.normalizeText(source.modelName || source.model || source.equipmentModel || source.machineModel || source.machineType)
                 || getDetailInfoValue(rawDetailRows, ['\uAE30\uC885', '\uBAA8\uB378\uBA85', '\uBAA8\uB378', '\uBAA8\uB378 \uBC88\uD638', 'modelName', 'model']),
@@ -449,7 +498,7 @@
     function createEquipmentHistoryStartDraft(source = null) {
         const base = source || {};
         return {
-            team: normalizeEquipmentHistoryTeamName(base.team || base.teamDataKey),
+            team: api.getEquipmentHistoryTeamAssignment(base).team,
             room: api.normalizeText(base.room),
             name: api.normalizeText(base.name),
         };
@@ -553,7 +602,7 @@
         const rate = parseDraftRate(normalized.rate).value;
         const detailGroups = removeBlankDetailGroupRows(normalized.detailGroups);
         const detailInfo = mergeDetailInfoRows(normalized, detailGroups);
-        const teamDataKey = normalized.teamDataKey || resolveEquipmentHistoryTeamDataKey(normalized.team);
+        const { teamDataKey } = api.getEquipmentHistoryTeamAssignment(normalized);
         const documents = removeBlankRows(normalized.documents, DOCUMENT_SAVE_FIELDS)
             .map(({ pendingFile, attachmentKey, ...row }) => row);
         const annualMaintenancePlan = removeBlankRows(
@@ -564,6 +613,7 @@
             id,
             equipmentCode: normalized.equipmentCode || id.toUpperCase(),
             name: normalized.name,
+            maintenanceCategory: normalized.maintenanceCategory,
             line: normalized.line,
             process: normalized.process,
             status: normalizeEquipmentRunStatus(normalized.status),
@@ -950,6 +1000,9 @@
         EQUIPMENT_HISTORY_TEAM_DATA_KEY_MAP,
         resolveEquipmentHistoryTeamDataKey,
         normalizeEquipmentHistoryTeamName,
+        getEquipmentMaintenanceCategory,
+        getEquipmentMaintenanceCategoryOptions,
+        getEquipmentMaintenanceBatchCandidates,
         isEquipmentHistoryDetailGroupSection,
         normalizeEquipmentHistoryDetailGroups,
         createBlankMaintenanceRow,

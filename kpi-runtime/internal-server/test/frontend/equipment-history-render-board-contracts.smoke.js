@@ -85,10 +85,10 @@ test('equipment-history board source preserves dense responsive ordering filteri
   assert.doesNotMatch(dataCssSource, /data-equipment-detail-table th:first-child/);
   assert.match(dataCssSource, /data-equipment-top-grid[\s\S]+grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   assert.match(dataCssSource, /data-equipment-top-grid\s+\.data-equipment-photo-card[\s\S]+aspect-ratio:\s*16 \/ 5/);
-  assert.match(
-    dataCssSource,
-    /data-equipment-photo-title-row[\s\S]+grid-template-columns:\s*minmax\(180px,\s*0\.62fr\)\s*minmax\(145px,\s*0\.48fr\)\s*minmax\(260px,\s*1\.4fr\)/
-  );
+  const titleColumns = equipmentHistoryStyleSource.match(/data-equipment-photo-title-row\s*\{[^}]*grid-template-columns:\s*([^;]+)/)?.[1] || '';
+  assert.equal((titleColumns.match(/minmax\(/g) || []).length, 4);
+  assert.match(equipmentHistoryStyleSource, /@media \(max-width:\s*1180px\)[\s\S]+data-equipment-photo-title-row\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(equipmentHistoryStyleSource, /@media \(max-width:\s*780px\)[\s\S]+data-equipment-photo-title-row\s*\{[^}]*grid-template-columns:\s*(?:minmax\(0,\s*1fr\)|1fr)/);
   assert.match(
     dataCssSource,
     /data-equipment-photo-title-row[\s\S]+border:\s*0[\s\S]+background:\s*transparent[\s\S]+padding:\s*0/

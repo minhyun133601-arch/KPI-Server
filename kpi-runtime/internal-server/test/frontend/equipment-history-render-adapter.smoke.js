@@ -191,25 +191,34 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
     'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.browser-adapter.js?v=6'
   );
   const modelIndex = kpiHtml.indexOf(
-    'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=18'
+    'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.model.js?v=20'
   );
   const formIndex = kpiHtml.indexOf(
-    'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=26'
+    'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.form.js?v=30'
   );
   const storageIndex = kpiHtml.indexOf(
     'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.storage.js?v=4'
   );
   const boardIndex = kpiHtml.indexOf(
-    'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.board.js?v=8'
+    'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.board.js?v=11'
+  );
+  const preventiveIndex = kpiHtml.indexOf(
+    'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.preventive.js?v=7'
   );
   const cardIndex = kpiHtml.indexOf(
-    'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.card.js?v=4'
+    'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.card.js?v=9'
+  );
+  const persistenceIndex = kpiHtml.indexOf(
+    'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.persistence.js?v=10'
   );
   const printIndex = kpiHtml.indexOf(
     'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.print.js?v=3'
   );
+  const eventsIndex = kpiHtml.indexOf(
+    'data-entry/runtime/data/equipment-history/render/KPI.data.equipment-history.render.events.js?v=11'
+  );
   const renderIndex = kpiHtml.indexOf(
-    'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=57'
+    'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.render.js?v=58'
   );
   const bridgeIndex = kpiHtml.indexOf('data-entry/runtime/data/KPI.data.runtime.js?v=7');
 
@@ -219,16 +228,29 @@ test('kpi html loads equipment-history modules before the data runtime bridge', 
   assert.ok(formIndex > modelIndex, 'equipment-history form loader must load after the model');
   assert.ok(storageIndex > formIndex, 'equipment-history storage loader must load after the form');
   assert.ok(boardIndex > storageIndex, 'equipment-history board renderer must load after storage');
+  assert.ok(preventiveIndex > boardIndex, 'equipment-history preventive renderer must load after the board renderer');
   assert.ok(cardIndex > storageIndex, 'equipment-history card renderer must load after storage');
-  assert.ok(cardIndex > boardIndex, 'equipment-history card renderer must load after the board renderer');
-  assert.ok(printIndex > cardIndex, 'equipment-history print renderer must load after the card renderer');
+  assert.ok(cardIndex > preventiveIndex, 'equipment-history card renderer must load after the preventive renderer');
+  assert.ok(persistenceIndex > cardIndex, 'equipment-history persistence renderer must load after the card renderer');
+  assert.ok(printIndex > persistenceIndex, 'equipment-history print renderer must load after persistence');
+  assert.ok(eventsIndex > printIndex, 'equipment-history events renderer must load after the print renderer');
   assert.ok(renderIndex > storageIndex, 'equipment-history render host must load after storage');
-  assert.ok(renderIndex > cardIndex, 'equipment-history render host must load after the card renderer');
+  assert.ok(renderIndex > eventsIndex, 'equipment-history render host must load after the events renderer');
   assert.ok(bridgeIndex > renderIndex, 'data runtime bridge must load after equipment-history modules');
-  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=116') >= 0, 'data css cache version is stale');
+  assert.ok(kpiHtml.indexOf('kpi-runtime/app/styles/data/data.css?v=117') >= 0, 'data css cache version is stale');
   assert.ok(
-    kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.css?v=10') >= 0,
+    kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.css?v=12') >= 0,
     'equipment-history authoritative stylesheet loader is missing'
+  );
+  assert.ok(
+    kpiHtml.indexOf(
+      'data-entry/runtime/data/equipment-history/KPI.data.equipment-history.preventive-maintenance.css?v=7'
+    ) >= 0,
+    'equipment-history preventive-maintenance stylesheet loader is missing'
+  );
+  assert.ok(
+    kpiHtml.indexOf('data-entry/runtime/data/equipment-history/KPI.data.equipment-history.maintenance.css?v=5') >= 0,
+    'equipment-history maintenance batch stylesheet loader is missing'
   );
   assert.ok(
     bootManifestSource.indexOf(

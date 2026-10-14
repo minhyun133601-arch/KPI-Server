@@ -355,6 +355,7 @@
         }
         .utility-entry-experiment-completed-head {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
             gap: 8px;
@@ -423,6 +424,12 @@
             margin: 10px auto 0;
             border-radius: 999px;
             background: #cbd5e1;
+        }
+        .utility-entry-experiment-completed-day.is-unknown {
+            border-color: #cbd5e1;
+            background: #ffffff;
+            color: #475569;
+            cursor: pointer;
         }
         .utility-entry-experiment-completed-day.is-done {
             border-color: #9fd5b4;

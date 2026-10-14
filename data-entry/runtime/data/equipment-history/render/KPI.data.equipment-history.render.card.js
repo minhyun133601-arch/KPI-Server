@@ -252,8 +252,8 @@
                 <form class="data-equipment-layout data-equipment-edit-form" aria-label="설비 기록 작성" data-equipment-form>
                     <div class="data-equipment-top-grid">
                         <div class="data-equipment-card-heading">
-                            ${renderEquipmentRecentUpdated(header, data)}
                             ${renderEquipmentPhotoTitle(draft)}
+                            <datalist id="equipment-maintenance-category-options">${api.getEquipmentMaintenanceCategoryOptions(data, draft.team).map((label) => `<option value="${api.escapeHtml(label)}"></option>`).join('')}</datalist>
                         </div>
                         <div class="data-equipment-hero-photo">
                             ${renderPhotoCard(draft)}
@@ -273,6 +273,7 @@
                         <article class="data-equipment-card data-equipment-annual-plan-card">
                             <h3 class="data-equipment-section-title">
                                 연간정비계획표
+                                ${renderEquipmentMaintenanceBatchButton('annualMaintenancePlan')}
                                 <button type="button" class="data-equipment-add-row" data-equipment-add-row="annualMaintenancePlan">
                                     <i class="fas fa-plus"></i><span>추가</span>
                                 </button>
@@ -284,6 +285,7 @@
                         <article class="data-equipment-card data-equipment-history-card">
                             <h3 class="data-equipment-section-title">
                                 정비 이력
+                                ${renderEquipmentMaintenanceBatchButton('maintenanceHistory')}
                                 <button type="button" class="data-equipment-add-row" data-equipment-add-row="maintenanceHistory">
                                     <i class="fas fa-plus"></i><span>추가</span>
                                 </button>
@@ -309,7 +311,10 @@
                         ${renderCompactDocumentEditor(draft.documents)}
                     </article>
                 </form>
-                ${renderFooter(state)}
+                <div class="data-equipment-card-bottom">
+                    ${renderFooter(state)}
+                    ${renderEquipmentRecentUpdated(header, data)}
+                </div>
             </section>
         `;
     }
@@ -332,7 +337,25 @@
         `;
     }
 
+    function renderEquipmentCategoryCombobox(value, options) {
+        const { id, label = '설비 카테고리', listId, className = '', attrs = '', disabled = false, placeholder = '카테고리 입력 또는 선택' } = options;
+        return `
+            <div class="data-equipment-category-combo">
+                <input type="text" ${attrs} value="${api.escapeHtml(value || '')}" id="${api.escapeHtml(id)}" class="${api.escapeHtml(className)}" placeholder="${api.escapeHtml(placeholder)}" aria-label="${api.escapeHtml(label)}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${api.escapeHtml(id)}-options" data-equipment-category-input data-equipment-category-list="${api.escapeHtml(listId)}"${disabled ? ' disabled' : ''}>
+                <button type="button" data-equipment-category-toggle aria-label="${api.escapeHtml(`${label} 목록 열기`)}" aria-controls="${api.escapeHtml(id)}-options" aria-expanded="false"${disabled ? ' disabled' : ''}><span aria-hidden="true">▾</span></button>
+                <div id="${api.escapeHtml(id)}-options" data-equipment-category-options role="listbox" aria-label="${api.escapeHtml(`${label} 목록`)}" hidden></div>
+            </div>
+        `;
+    }
+
     function renderTitleInput(field, value, label, className, placeholder = '', attrs = '') {
+        if (field === 'maintenanceCategory') {
+            return `<div class="data-equipment-title-field ${api.escapeHtml(`${className}-field`)}">${renderEquipmentCategoryCombobox(value, {
+                id: 'equipment-card-category', label, listId: 'equipment-maintenance-category-options',
+                className: `data-equipment-title-input ${className}`, placeholder,
+                attrs: 'data-equipment-field="maintenanceCategory"',
+            })}</div>`;
+        }
         return `
             <div class="data-equipment-title-field ${api.escapeHtml(`${className}-field`)}">
                 <input
@@ -372,6 +395,7 @@
             <div class="data-equipment-photo-title-row" aria-label="${api.escapeHtml('\uC124\uBE44 \uC81C\uBAA9')}" style="${getBoardTeamStyle(teamMeta)}">
                 ${renderTitleTeamSelect(teamName, teamMeta)}
                 ${renderTitleInput('room', roomName, '\uC2E4', 'data-equipment-title-room', '\uC2E4', `list="${api.escapeHtml(CARD_ROOM_DATALIST_ID)}"`)}
+                ${renderTitleInput('maintenanceCategory', api.normalizeText(source.maintenanceCategory), '설비 카테고리', 'data-equipment-title-category', '설비 카테고리')}
                 ${renderTitleInput('name', equipmentName, '\uC124\uBE44\uBA85', 'data-equipment-title-name', '\uC124\uBE44\uBA85')}
             </div>
         `;
@@ -453,8 +477,120 @@
         return `
             <section class="data-equipment-page">
                 ${renderTopbar(category, data, items, selected, state, isCard || isCardStart ? groups : boardGroups)}
-                ${isCard ? renderHistoryCard(category, data, state) : isCardStart ? renderCardStarter(state, data) : renderBoard(boardGroups, items, state)}
+                ${isCard ? renderHistoryCard(category, data, state) : isCardStart ? renderCardStarter(state, data) : renderBoard(boardGroups, items, state, data)}
+                ${renderEquipmentMaintenanceBatchDialog(data, state)}
+                ${renderEquipmentMaintenanceShareDialog(state)}
             </section>
+        `;
+    }
+
+    function renderEquipmentMaintenanceBatchButton(section) {
+        return `<button type="button" class="data-equipment-add-row" data-equipment-maintenance-batch="${api.escapeHtml(section)}" title="현재 설비의 변경사항을 저장한 뒤 같은 카테고리의 설비에 일괄 입력합니다."><i class="fas fa-layer-group" aria-hidden="true"></i><span>같은 카테고리 일괄 입력</span></button>`;
+    }
+
+    function getEquipmentMaintenanceBatchCategories(data, teamKey) {
+        const categories = new Map();
+        api.normalizeEquipmentItems(data).forEach((item) => {
+            const category = api.getEquipmentMaintenanceCategory(item);
+            if (category.key && category.teamKey === teamKey) categories.set(category.key, category);
+        });
+        return [...categories.values()].sort((left, right) => left.label.localeCompare(right.label, 'ko-KR'));
+    }
+
+    function renderEquipmentMaintenanceBatchDialog(data, state) {
+        const batch = state.maintenanceBatch;
+        if (!batch) return '';
+        const categories = getEquipmentMaintenanceBatchCategories(data, batch.teamKey);
+        const candidates = api.getEquipmentMaintenanceBatchCandidates(data, batch.teamKey, batch.categoryKey);
+        const selected = new Set(api.asList(batch.selectedIds));
+        const selectedCount = candidates.filter((item) => selected.has(item.id)).length;
+        const isPlan = batch.section === 'annualMaintenancePlan';
+        const fields = (isPlan ? api.ANNUAL_MAINTENANCE_PLAN_FIELDS : api.MAINTENANCE_FIELDS)
+            .filter((field) => field.key !== 'equipmentName');
+        const teamName = api.getEquipmentHistoryTeamMeta(batch.teamKey).title;
+        return `
+            <div class="data-equipment-maintenance-batch-dialog" data-equipment-maintenance-batch-dialog role="dialog" aria-modal="true" aria-labelledby="equipment-maintenance-batch-title" tabindex="-1">
+                <section class="data-equipment-maintenance-batch-panel">
+                    <header><div><span>${api.escapeHtml(teamName)}</span><h2 id="equipment-maintenance-batch-title">같은 카테고리 설비 일괄 입력</h2></div>
+                        <button type="button" data-equipment-maintenance-batch-close aria-label="일괄 입력 닫기" ${batch.saving ? 'disabled' : ''}>닫기</button>
+                    </header>
+                    <form data-equipment-maintenance-batch-form>
+                        <fieldset ${batch.saving ? 'disabled' : ''}>
+                            <legend>설비 카테고리와 적용할 설비 선택</legend>
+                            <div class="data-equipment-maintenance-batch-controls">
+                                <label>설비 카테고리<select data-equipment-maintenance-batch-category><option value="">설비 카테고리 선택</option>${categories.map((category) => `<option value="${api.escapeHtml(category.key)}" ${category.key === batch.categoryKey ? 'selected' : ''}>${api.escapeHtml(category.label)}</option>`).join('')}</select></label>
+                                <label>입력 항목<select data-equipment-maintenance-batch-section><option value="maintenanceHistory" ${!isPlan ? 'selected' : ''}>정비 이력</option><option value="annualMaintenancePlan" ${isPlan ? 'selected' : ''}>연간 정비 계획</option></select></label>
+                            </div>
+                            ${!categories.length ? '<p>설비의 ‘설비 카테고리’를 지정하고 저장하면 같은 카테고리끼리 일괄 입력할 수 있습니다.</p>' : ''}
+                            <div class="data-equipment-maintenance-batch-target-heading"><strong>적용 설비 <span data-equipment-maintenance-batch-count>${selectedCount}</span>대</strong><button type="button" data-equipment-maintenance-batch-all ${!candidates.length ? 'disabled' : ''}>${selectedCount === candidates.length && candidates.length ? '선택 해제' : '전체 선택'}</button></div>
+                            <div class="data-equipment-maintenance-batch-targets">${candidates.map((item) => `<label><input type="checkbox" data-equipment-maintenance-batch-target="${api.escapeHtml(item.id)}" ${selected.has(item.id) ? 'checked' : ''}><span><strong>${api.escapeHtml(item.name)}</strong><small>${api.escapeHtml([item.room, item.process].filter(Boolean).join(' · '))}</small></span></label>`).join('') || '<p>설비 카테고리를 선택해 주세요.</p>'}</div>
+                            <div class="data-equipment-maintenance-batch-fields">${fields.map((field) => `<label>${api.escapeHtml(field.label)}<input type="text" data-equipment-maintenance-batch-field="${api.escapeHtml(field.key)}" value="${api.escapeHtml(batch.row?.[field.key] || '')}" placeholder="${api.escapeHtml(field.placeholder || '')}" ${field.datalistId ? `list="${api.escapeHtml(field.datalistId)}"` : ''}></label>`).join('')}</div>
+                            <p class="data-equipment-maintenance-batch-help">선택한 설비마다 같은 내용이 한 건씩 추가됩니다. 기존 기록은 유지됩니다.</p>
+                            ${batch.message ? `<p role="alert">${api.escapeHtml(batch.message)}</p>` : ''}
+                            <button type="submit" data-equipment-maintenance-batch-save>${batch.saving ? '저장 중…' : '선택한 설비에 추가'}</button>
+                        </fieldset>
+                    </form>
+                </section>
+            </div>
+        `;
+    }
+
+    function renderEquipmentMaintenanceShareGroups(share, selected) {
+        const groups = new Map();
+        api.asList(share.candidates).forEach((item) => {
+            const category = api.getEquipmentMaintenanceCategory(item);
+            if (!groups.has(category.key)) groups.set(category.key, { ...category, items: [] });
+            groups.get(category.key).items.push(item);
+        });
+        return [...groups.values()].sort((left, right) => {
+            if (left.key === share.categoryKey) return -1;
+            if (right.key === share.categoryKey) return 1;
+            return Number(!left.key) - Number(!right.key) || left.label.localeCompare(right.label, 'ko');
+        }).map((group) => {
+            const count = group.items.filter((item) => selected.has(item.id)).length;
+            return `
+                <details data-equipment-maintenance-share-group ${count ? 'open' : ''}>
+                    <summary>
+                        <label><input type="checkbox" data-equipment-maintenance-share-category="${api.escapeHtml(group.key)}" aria-label="${api.escapeHtml(`${group.label || '미지정'} 카테고리 전체 선택`)}" ${count === group.items.length ? 'checked' : ''}><strong>${api.escapeHtml(group.label || '미지정')}</strong></label>
+                        <span><span data-equipment-maintenance-share-group-count>${count}</span> / ${group.items.length}대</span>
+                    </summary>
+                    <div class="data-equipment-maintenance-share-equipment">${group.items.map((item) => `<label><input type="checkbox" data-equipment-maintenance-share-target="${api.escapeHtml(item.id)}" ${selected.has(item.id) ? 'checked' : ''}><span>${api.escapeHtml(item.displayName || item.name)}<small>${api.escapeHtml([item.room, item.process].filter(Boolean).join(' · '))}</small></span></label>`).join('')}</div>
+                </details>
+            `;
+        }).join('');
+    }
+
+    function renderEquipmentMaintenanceShareDialog(state) {
+        const share = state.pendingMaintenanceShare;
+        if (!share) return '';
+        const selected = new Set(api.asList(share.selectedIds));
+        const candidates = api.asList(share.candidates);
+        const selectedCount = candidates.filter((item) => selected.has(item.id)).length;
+        const plans = api.asList(share.changes?.annualMaintenancePlan);
+        const history = api.asList(share.changes?.maintenanceHistory);
+        return `
+            <div class="data-equipment-maintenance-batch-dialog" data-equipment-maintenance-share-dialog role="dialog" aria-modal="true" aria-labelledby="equipment-maintenance-share-title" tabindex="-1">
+                <section class="data-equipment-maintenance-batch-panel data-equipment-maintenance-share-panel">
+                    <header><div><span>${api.escapeHtml(share.sourceName || '현재 설비')} · ${api.escapeHtml(share.categoryLabel || '카테고리 미지정')}</span><h2 id="equipment-maintenance-share-title">다른 카테고리에도 적용하시겠습니까?</h2></div></header>
+                    <p>함께 적용할 카테고리나 설비를 선택해 주세요. 같은 팀의 설비만 표시됩니다.</p>
+                    <details class="data-equipment-maintenance-share-preview" data-equipment-maintenance-share-preview>
+                        <summary>작성 내용 <span>${[plans.length ? `예방정비 ${plans.length}건` : '', history.length ? `정비 이력 ${history.length}건` : ''].filter(Boolean).join(' · ')}</span></summary>
+                        <div class="data-equipment-maintenance-share-records">
+                        ${plans.length ? `<section><h3>예방정비 계획 ${plans.length}건</h3><ul>${plans.map((row) => `<li><strong>${api.escapeHtml(row.maintenanceItem || '예방정비')}</strong> ${api.escapeHtml(row.maintenanceContent || '')}<small>${api.escapeHtml([row.cycle, row.executionMonth, row.inspectionNotes].filter(Boolean).join(' · '))}</small></li>`).join('')}</ul></section>` : ''}
+                        ${history.length ? `<section><h3>정비 이력 ${history.length}건</h3><ul>${history.map((row) => `<li><strong>${api.escapeHtml(row.date || row.type || '정비 이력')}</strong> ${api.escapeHtml(row.content || '')}<small>${api.escapeHtml([row.type, row.worker, row.note].filter(Boolean).join(' · '))}</small></li>`).join('')}</ul></section>` : ''}
+                        </div>
+                    </details>
+                    <div class="data-equipment-maintenance-batch-target-heading"><strong>추가 적용 <span data-equipment-maintenance-share-count>${selectedCount}</span>대</strong><button type="button" data-equipment-maintenance-share-all>${selectedCount === candidates.length ? '선택 해제' : '전체 선택'}</button></div>
+                    <div class="data-equipment-maintenance-share-groups">${renderEquipmentMaintenanceShareGroups(share, selected)}</div>
+                    <p class="data-equipment-maintenance-batch-help">기존 기록은 유지하고, 같은 내용은 한 번만 등록합니다.</p>
+                    ${share.message ? `<p role="alert">${api.escapeHtml(share.message)}</p>` : ''}
+                    <footer class="data-equipment-maintenance-share-actions">
+                        <button type="button" data-equipment-maintenance-share-cancel>계속 작성</button>
+                        <button type="button" data-equipment-maintenance-share-decision="current">이 설비만 저장</button>
+                        <button type="button" data-equipment-maintenance-share-decision="selected" ${!selectedCount ? 'disabled' : ''}>${state.equipmentMaintenanceSaving ? '저장 중…' : '선택 설비에도 등록'}</button>
+                    </footer>
+                </section>
+            </div>
         `;
     }
 
@@ -725,6 +861,7 @@
 
 
     Object.assign(api, {
+        renderEquipmentCategoryCombobox,
         normalizePhotoCropValue,
         renderPhotoCard,
         getStartDraft,
@@ -748,6 +885,10 @@
         renderTopbarTitle,
         renderTopbar,
         renderShell,
+        renderEquipmentMaintenanceBatchButton,
+        getEquipmentMaintenanceBatchCategories,
+        renderEquipmentMaintenanceBatchDialog,
+        renderEquipmentMaintenanceShareDialog,
         ensureDraft,
         startNewCard,
         updateStarterFromInput,

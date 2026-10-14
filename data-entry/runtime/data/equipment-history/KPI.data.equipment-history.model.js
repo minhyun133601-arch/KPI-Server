@@ -146,6 +146,18 @@
         return normalizeText(teamName);
     }
 
+    function getEquipmentHistoryTeamAssignment(item) {
+        const rawTeam = normalizeText(item?.team) || normalizeText(item?.department)
+            || getInfoValue(item?.detailInfo, ['관리팀', '관리부서', '부서']);
+        const team = normalizeEquipmentHistoryTeamName(rawTeam || item?.teamDataKey);
+        return {
+            team,
+            // The board groups by the displayed team; old stored keys must not move an item elsewhere.
+            teamDataKey: resolveEquipmentHistoryTeamDataKey(team)
+                || resolveEquipmentHistoryTeamDataKey(item?.teamDataKey) || normalizeText(item?.teamDataKey),
+        };
+    }
+
     function getEquipmentHistoryTeamSortIndex(teamName) {
         const normalized = normalizeEquipmentHistoryTeamName(teamName);
         const index = EQUIPMENT_HISTORY_TEAM_SORT_ORDER.indexOf(normalized);
@@ -283,9 +295,7 @@
         const detailInfo = asList(item?.detailInfo);
         const detailGroups = normalizeDetailGroups(item);
         const statusMeta = getEquipmentStatus(item?.status);
-        const rawTeam = item?.team || item?.department || getInfoValue(detailInfo, ['관리팀', '관리부서', '부서']);
-        const team = normalizeEquipmentHistoryTeamName(rawTeam || item?.teamDataKey);
-        const teamDataKey = normalizeText(item?.teamDataKey) || resolveEquipmentHistoryTeamDataKey(rawTeam);
+        const { team, teamDataKey } = getEquipmentHistoryTeamAssignment(item);
         const manufacturerLabel = normalizeText(item?.manufacturerLabel || item?.manufacturerTitle || item?.manufacturerLabelText) || '제조사';
         const ownerLabel = normalizeText(item?.ownerLabel || item?.ownerTitle || item?.ownerLabelText) || '담당 업체';
         return {
@@ -296,6 +306,7 @@
             room: normalizeText(item?.room || item?.roomName || item?.locationRoom || getInfoValue(detailInfo, ['실', '위치', '설치실']) || getInfoValue(operationInfo, ['실', '위치', '설치실'])),
             group: normalizeText(item?.group || item?.section || getInfoValue(detailInfo, ['공정', '설비구분', '공정 구분', '공정구분']) || item?.process || getInfoValue(operationInfo, ['공정', '공정 단계'])),
             name: normalizeText(item?.name || item?.equipmentName || getInfoValue(detailInfo, ['설비명'])),
+            maintenanceCategory: normalizeText(item?.maintenanceCategory),
             line: normalizeText(item?.line || getInfoValue(detailInfo, ['생산라인']) || getInfoValue(operationInfo, ['생산라인'])),
             process: normalizeText(item?.process || getInfoValue(detailInfo, ['공정']) || getInfoValue(operationInfo, ['공정', '공정 단계']) || item?.group),
             modelName: normalizeText(item?.modelName || item?.model || item?.equipmentModel || item?.machineModel || item?.machineType || getInfoValue(detailInfo, ['기종', '모델명', '모델', '모델 번호']) || getInfoValue(operationInfo, ['기종', '모델명', '모델', '모델 번호'])),
@@ -409,6 +420,7 @@
         getInfoValue,
         getEquipmentStatus,
         getEquipmentHistoryTeamMeta,
+        getEquipmentHistoryTeamAssignment,
         normalizeEquipmentItems,
         findDuplicateEquipmentNames,
         hasDuplicateEquipmentNames,
