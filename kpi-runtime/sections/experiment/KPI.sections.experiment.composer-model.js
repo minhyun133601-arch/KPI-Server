@@ -250,12 +250,14 @@
             addCardBuilderOption(options, 'lng-usage', 'LNG 사용량');
             addCardBuilderOption(options, 'lpg-usage', 'LPG 사용량');
             addCardBuilderOption(options, 'waste-discharge', '폐수 방류량');
+            addCardBuilderOption(options, 'energy-conversion-total', '열량 환산');
             return options;
         }
         if (target === 'bukjeong') {
             addCardBuilderOption(options, 'electric-usage-team-01-01', '전기 사용량');
             addCardBuilderOption(options, 'lng-usage-team-01-01', 'LNG 사용량');
             addCardBuilderOption(options, 'waste-discharge-bukjeong', '폐수 방류량');
+            addCardBuilderOption(options, 'energy-conversion-bukjeong', '열량 환산');
             return options;
         }
         if (target === 'yusan') {
@@ -263,11 +265,13 @@
             addCardBuilderOption(options, 'lng-usage-yusan', 'LNG 사용량');
             addCardBuilderOption(options, 'lpg-usage-team-01-02', 'LPG 사용량');
             addCardBuilderOption(options, 'waste-discharge-yusan', '폐수 방류량');
+            addCardBuilderOption(options, 'energy-conversion-yusan', '열량 환산');
             return options;
         }
         addCardBuilderOption(options, `electric-usage-${target}`, '전기 사용량');
         addCardBuilderOption(options, `lng-usage-${target}`, 'LNG 사용량');
         addCardBuilderOption(options, `lpg-usage-${target}`, 'LPG 사용량');
+        addCardBuilderOption(options, `energy-conversion-${target}`, '열량 환산');
         return options;
     }
 
@@ -732,7 +736,9 @@
             reason: 'ok',
             ruleKey: parts.VALUE_RATIO_RULE.key,
             outputKind: parts.VALUE_RATIO_RULE.outputKind,
-            outputUnitLabel: parts.VALUE_RATIO_RULE.outputUnitLabel,
+            outputUnitLabel: numerator.energyScopeKey && denominator.normalization?.metricKind === 'production'
+                ? 'kcal/kg'
+                : parts.VALUE_RATIO_RULE.outputUnitLabel,
             numeratorKey: numerator.key,
             denominatorKey: denominator.key
         });
@@ -814,7 +820,7 @@
             denominatorKey: denominator.key,
             ratioRule: rule,
             decimals,
-            normalization: parts.makeNormalization({ metricKind: 'derived-ratio', unitKey: 'ratio_index', derived: true })
+            normalization: parts.makeNormalization({ metricKind: 'derived-ratio', unitKey: unitLabel === 'kcal/kg' ? 'energy_intensity' : 'ratio_index', derived: true })
         });
     }
 

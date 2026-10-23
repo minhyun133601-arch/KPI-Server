@@ -1,3 +1,9 @@
+        const auditLuxProgressPendingWrites = new Set();
+
+        function isAuditLuxProgressSaving(dataKey) {
+            return auditLuxProgressPendingWrites.has(dataKey);
+        }
+
         function getAuditLuxAttachmentMaxQuarterForYear(year) {
             if (typeof getAuditLuxMaxQuarterForYear === 'function') {
                 return getAuditLuxMaxQuarterForYear(year);
@@ -104,12 +110,15 @@
         function getAuditLuxProgressStatus(dataKey, year, team) {
             const state = getAuditLuxProgressStatusState(dataKey);
             const stateKey = getAuditLuxProgressStatusStateKey(year, team);
-            if (Object.prototype.hasOwnProperty.call(state, stateKey)) {
-                return normalizeAuditLuxProgressStatusForYear(year, state[stateKey]);
+            if (!Object.prototype.hasOwnProperty.call(state, stateKey)) {
+                state[stateKey] = getAuditLuxProgressStatusFromData(dataKey, year, team);
             }
-            const persistedStatus = getAuditLuxProgressStatusFromData(dataKey, year, team);
-            state[stateKey] = persistedStatus;
-            return persistedStatus;
+            const manualStatus = normalizeAuditLuxProgressStatusForYear(year, state[stateKey]);
+            const completedQuarter = Math.max(
+                getAuditLuxProgressStatusOrder(manualStatus),
+                getAuditLuxEvidenceCompletedQuarter(dataKey, year, team)
+            );
+            return completedQuarter === 4 ? 'complete' : (completedQuarter ? String(completedQuarter) : '');
         }
 
         function getAuditLuxProgressStatusOptions(selectedStatus, year = null) {
@@ -127,17 +136,24 @@
             )).join('');
         }
 
-        function setAuditLuxProgressStatusForTarget(dataKey, year, team, value) {
-            if (!isAuditLuxDataKey(dataKey)) return false;
+        async function setAuditLuxProgressStatusForTarget(dataKey, year, team, value) {
+            if (!isAuditLuxDataKey(dataKey) || isAuditLuxProgressSaving(dataKey)) return false;
             const targetYear = Number(year);
             const targetTeam = String(team || '').trim();
             if (!Number.isFinite(targetYear) || !targetTeam) return false;
-            const status = normalizeAuditLuxProgressStatusForYear(targetYear, value);
+            const requestedStatus = normalizeAuditLuxProgressStatusForYear(targetYear, value);
+            const completedQuarter = Math.max(
+                getAuditLuxProgressStatusOrder(requestedStatus),
+                getAuditLuxEvidenceCompletedQuarter(dataKey, targetYear, targetTeam)
+            );
+            const status = completedQuarter === 4 ? 'complete' : (completedQuarter ? String(completedQuarter) : '');
             const state = getAuditLuxProgressStatusState(dataKey);
-            state[getAuditLuxProgressStatusStateKey(targetYear, targetTeam)] = status;
-            if (typeof getAuditData !== 'function' || typeof saveAuditData !== 'function') return true;
+            const stateKey = getAuditLuxProgressStatusStateKey(targetYear, targetTeam);
+            const previousStatus = getAuditLuxProgressStatus(dataKey, targetYear, targetTeam);
+            if (typeof getAuditData !== 'function' || typeof saveAuditData !== 'function') return false;
 
             const data = getAuditData(dataKey, dataKey);
+            const previousProgress = data.luxProgress;
             const normalizedTeam = normalizeAuditZone(targetTeam);
             const nextProgress = (Array.isArray(data.luxProgress) ? data.luxProgress : []).filter((item) => !(
                 Number(item?.year) === targetYear
@@ -153,11 +169,22 @@
             if (nextProgress.length) data.luxProgress = nextProgress;
             else delete data.luxProgress;
 
-            const saved = saveAuditData(dataKey, data);
-            if (saved && typeof saved.catch === 'function') {
-                saved.catch((error) => console.warn('[kpi] audit lux progress save failed', dataKey, error));
+            auditLuxProgressPendingWrites.add(dataKey);
+            try {
+                const saved = await Promise.resolve(saveAuditData(dataKey, data));
+                if (saved === false) throw new Error('audit_lux_progress_save_failed');
+                state[stateKey] = status;
+                return true;
+            } catch (error) {
+                if (previousProgress === undefined) delete data.luxProgress;
+                else data.luxProgress = previousProgress;
+                state[stateKey] = previousStatus;
+                if (typeof syncAuditPortalDataCache === 'function') syncAuditPortalDataCache(dataKey, data);
+                console.warn('[kpi] audit lux progress save failed', dataKey, error);
+                return false;
+            } finally {
+                auditLuxProgressPendingWrites.delete(dataKey);
             }
-            return true;
         }
 
         function getAuditLuxAttachmentQuartersForTarget(dataKey, year, team) {
@@ -170,6 +197,20 @@
                     .map(item => normalizeAuditLuxAttachmentQuarter(targetYear, typeof normalizeAuditLuxEvidenceQuarter === 'function' ? normalizeAuditLuxEvidenceQuarter(item) : item?.quarter))
                     .filter(quarter => quarter >= 1 && quarter <= getAuditLuxAttachmentMaxQuarterForYear(targetYear))
             )).sort((a, b) => b - a);
+        }
+
+        function getAuditLuxEvidenceCompletedQuarter(dataKey, year, team) {
+            return getAuditLuxAttachmentQuartersForTarget(dataKey, year, team)[0] || 0;
+        }
+
+        function getAuditLuxCumulativeEvidenceItem(dataKey, year, team, quarter = null) {
+            const latestQuarter = getAuditLuxEvidenceCompletedQuarter(dataKey, year, team);
+            const targetQuarter = quarter === null ? latestQuarter : Number(quarter);
+            if (!latestQuarter || !Number.isInteger(targetQuarter) || targetQuarter < 1
+                || targetQuarter > latestQuarter || targetQuarter > getAuditLuxAttachmentMaxQuarterForYear(year)) return null;
+            return typeof getAuditLuxYearEvidenceItem === 'function'
+                ? getAuditLuxYearEvidenceItem(dataKey, year, team, latestQuarter)
+                : null;
         }
 
         function getAuditLuxSelectedAttachmentQuarter(dataKey, year, team) {

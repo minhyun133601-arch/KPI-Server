@@ -36,8 +36,13 @@ test('kpi html loads section factory adapter before all section factories', () =
     'kpi-runtime/sections/experiment/KPI.sections.experiment.controller.js?v=1'
   );
   const experimentIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.experiment.js?v=70');
+  const kpiModelIndex = kpiHtml.indexOf('kpi-runtime/sections/kpi/KPI.sections.kpi.energy-model.js?v=1');
+  const kpiViewIndex = kpiHtml.indexOf('kpi-runtime/sections/kpi/KPI.sections.kpi.energy-view.js?v=6');
+  const kpiChartIndex = kpiHtml.indexOf('kpi-runtime/sections/kpi/KPI.sections.kpi.energy-chart.js?v=3');
+  const kpiPopoutIndex = kpiHtml.indexOf('kpi-runtime/sections/kpi/KPI.sections.kpi.energy-popout.js?v=2');
+  const kpiIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.kpi.js?v=7');
   const ownerIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.sections.owner.js?v=5');
-  const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=5');
+  const registryIndex = kpiHtml.indexOf('kpi-runtime/sections/KPI.section.registry.js?v=6');
 
   assert.ok(adapterIndex >= 0, 'section factory adapter loader is missing');
   assert.equal(
@@ -72,6 +77,11 @@ test('kpi html loads section factory adapter before all section factories', () =
   assert.ok(experimentStateIndex > reportIndex, 'experiment parts must load after report section');
   assert.ok(experimentControllerIndex > experimentStateIndex, 'experiment parts must keep dependency order');
   assert.ok(experimentIndex > experimentControllerIndex, 'experiment section facade must load after its parts');
-  assert.ok(ownerIndex > experimentIndex, 'owner section must load after experiment section');
+  assert.ok(kpiModelIndex > experimentIndex, 'KPI model must load after the energy conversion helpers');
+  assert.ok(kpiViewIndex > kpiModelIndex, 'KPI view must load after its model');
+  assert.ok(kpiChartIndex > kpiViewIndex, 'KPI analysis chart must load after its view');
+  assert.ok(kpiPopoutIndex > kpiChartIndex, 'KPI separate window must load after its chart');
+  assert.ok(kpiIndex > kpiPopoutIndex, 'KPI section must load after its separate window support');
+  assert.ok(ownerIndex > kpiIndex, 'owner section must load after KPI section');
   assert.ok(registryIndex > ownerIndex, 'section registry must load after section factories');
 });

@@ -377,6 +377,75 @@
         return sumFiniteValues(teamKeys.map(teamKey => getUtilityValueByTeamKey(teamKey, monthKey, metricKey)));
     }
 
+    function getEnergyConversionFactors() {
+        const defaults = typeof UTIL_ENERGY_DEFAULTS === 'object' ? UTIL_ENERGY_DEFAULTS : root.UTIL_ENERGY_DEFAULTS;
+        const state = typeof UtilEnergyState === 'object' ? UtilEnergyState : root.UtilEnergyState;
+        const kjPerKcal = 4.1868;
+        const resolveFactor = (value, fallback) => Number.isFinite(value) && value >= 0 ? value : fallback;
+        // Final electricity is 3.6 MJ/kWh; the primary-energy setting is not used here.
+        const electricMJ = resolveFactor(defaults?.electricFinal, 3.6);
+        const lngMJ = resolveFactor(state?.gasLNG, resolveFactor(defaults?.gasLNG, 42.705));
+        const lpgMJ = resolveFactor(state?.gasLPG, resolveFactor(defaults?.gasLPG, 50));
+        return {
+            electric: electricMJ * 1000 / kjPerKcal,
+            lng: lngMJ * 1000 / kjPerKcal,
+            lpg: lpgMJ * 1000 / kjPerKcal,
+            kjPerKcal
+        };
+    }
+
+    function getEnergyConversionBreakdown(card, monthKey = '') {
+        const scopeKey = String(card?.energyScopeKey || '').trim();
+        const dataKey = ({
+            total: 'work_team_calendar_overview',
+            bukjeong: 'work_team_calendar_group_bukjeong',
+            yusan: 'work_team_calendar_group_yusan'
+        })[scopeKey] || parts.EXPERIMENT_TEAM_DATA_KEYS[scopeKey];
+        const month = parseExperimentMonthParts(monthKey);
+        const factors = getEnergyConversionFactors();
+        const canRead = !!dataKey && !!month
+            && typeof root.getWorkTeamCalendarUtilityTeamNames === 'function'
+            && typeof root.findUtilDatasetMonthRow === 'function';
+        const sources = { electric: [], lng: [], lpg: [] };
+        if (canRead) {
+            ['electric', 'gas'].forEach(datasetKey => {
+                const names = root.getWorkTeamCalendarUtilityTeamNames(dataKey, datasetKey);
+                const seen = new Set();
+                (Array.isArray(names) ? names : []).forEach(teamName => {
+                    const name = String(teamName || '').trim();
+                    // Converted gas equivalents are presentation values, not another fuel input.
+                    if (!name || /환산|equiv(?:alent)?|converted/i.test(name)) return;
+                    const normalized = name.replace(/\s+/g, '').toLowerCase();
+                    if (seen.has(normalized)) return;
+                    seen.add(normalized);
+                    const fuel = datasetKey === 'electric' ? 'electric'
+                        : (typeof root.inferUtilFuelType === 'function' ? root.inferUtilFuelType(name) : (/lpg/i.test(name) ? 'lpg' : 'lng'));
+                    const componentKey = fuel === 'lpg' ? 'lpg' : (datasetKey === 'electric' ? 'electric' : 'lng');
+                    const row = root.findUtilDatasetMonthRow(datasetKey, name, month.year, month.month);
+                    const rawAmount = row?.usage;
+                    const amount = typeof rawAmount === 'number' ? rawAmount : parseExperimentNumberText(rawAmount);
+                    sources[componentKey].push(Number.isFinite(amount) ? amount : NaN);
+                });
+            });
+        }
+        const components = [
+            { key: 'electric', label: '전기', unit: 'kWh' },
+            { key: 'lng', label: 'LNG', unit: 'Nm³' },
+            { key: 'lpg', label: 'LPG', unit: 'kg' }
+        ].map(component => {
+            const values = sources[component.key];
+            const applicable = values.length > 0;
+            const amount = values.every(Number.isFinite) ? values.reduce((total, value) => total + value, 0) : NaN;
+            const factor = factors[component.key];
+            return { ...component, amount, factor, kcal: amount * factor, applicable };
+        });
+        const applicableComponents = components.filter(component => component.applicable);
+        const complete = canRead && applicableComponents.length > 0
+            && applicableComponents.every(component => Number.isFinite(component.kcal));
+        const totalKcal = complete ? applicableComponents.reduce((total, component) => total + component.kcal, 0) : NaN;
+        return { components, totalKcal, complete };
+    }
+
     function getTeamLngCostValue(teamKey = '', monthKey = '') {
         return getUtilityValueByTeamKey(teamKey, monthKey, 'lngCost');
     }
@@ -491,6 +560,7 @@
     function resolveAuthorityRawValue(card, monthKey) {
         const cardKey = String(card?.key || '').trim();
         if (!cardKey) return NaN;
+        if (card?.energyScopeKey) return getEnergyConversionBreakdown(card, monthKey).totalKcal;
         if (cardKey === 'production-total') return getProductionValueByDataKey('work_team_calendar_overview', monthKey);
         if (cardKey === 'production-yusan') return sumProductionValueByTeamKeys(parts.EXPERIMENT_YUSAN_TEAM_KEYS, monthKey);
         if (cardKey.startsWith('production-team-')) {
@@ -622,6 +692,8 @@
 
     Object.assign(parts, {
         parseExperimentNumberText,
+        getEnergyConversionFactors,
+        getEnergyConversionBreakdown,
         getSummaryMetricValue,
         formatMetricTableValue,
         getSafeChartColor,

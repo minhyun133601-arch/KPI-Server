@@ -64,6 +64,11 @@
         "kpi-runtime/sections/experiment/KPI.sections.experiment.composer-view.js",
         "kpi-runtime/sections/experiment/KPI.sections.experiment.controller.js",
         "kpi-runtime/sections/KPI.sections.experiment.js",
+        "kpi-runtime/sections/kpi/KPI.sections.kpi.energy-model.js",
+        "kpi-runtime/sections/kpi/KPI.sections.kpi.energy-view.js",
+        "kpi-runtime/sections/kpi/KPI.sections.kpi.energy-chart.js",
+        "kpi-runtime/sections/kpi/KPI.sections.kpi.energy-popout.js",
+        "kpi-runtime/sections/KPI.sections.kpi.js",
         "kpi-runtime/sections/KPI.sections.owner.js",
         "kpi-runtime/sections/KPI.section.registry.js"
       ]

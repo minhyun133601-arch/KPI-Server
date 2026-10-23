@@ -497,14 +497,30 @@ test.describe('KPI browser smoke', () => {
       await expect(page.locator('#sidebar')).toBeVisible();
 
       await clickSidebarButton(page, '조도');
-      await expect(page.locator('.audit-lux-window-title')).toHaveText('조도');
-      await expect(page.locator('.audit-lux-index-panel')).toBeVisible();
-      await expect(page.locator('.audit-lux-index-year').first().locator('.audit-lux-index-team-label')).toHaveText([
-        '1팀 1파트',
-        '1팀 2파트',
-        '2팀',
-        '3팀',
-      ]);
+      await expect(page.locator('.audit-lux-window-header')).toHaveCount(0);
+      await expect(page.locator('.audit-lux-category-title')).toHaveText('조도');
+      await expect(page.locator('.audit-lux-team-workspace')).toBeVisible();
+      await expect(page.locator('#audit-lux-team-audit_lux')).toHaveValue('');
+      await expect(page.locator('.audit-lux-selection-empty')).toBeVisible();
+      await expect(page.locator('.audit-lux-team-content')).toHaveCount(0);
+      await page.locator('#audit-lux-team-audit_lux').selectOption('2팀');
+      await expect(page.locator('.audit-lux-team-content')).toHaveCount(1);
+      await expect(page.locator('.audit-lux-team-content')).toHaveAttribute('data-team', '2팀');
+      await expect(page.locator('.audit-lux-team-heading h3')).toHaveText('2팀 조도 측정');
+      await expect(page.locator('.audit-lux-quarter-button')).toHaveCount(4);
+      await expect(page.locator('.audit-lux-completion-bar')).toHaveAttribute('max', '4');
+      await expect(page.locator('.audit-lux-completion-select')).toBeVisible();
+      await page.locator('#audit-lux-year-audit_lux').selectOption('2025');
+      await expect(page.locator('.audit-lux-team-content')).toHaveAttribute('data-year', '2025');
+      await page.locator('.audit-lux-quarter-button[data-quarter="1"]').click();
+      await expect(page.locator('.audit-lux-quarter-button[data-quarter="1"]')).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('.audit-lux-document')).toHaveAttribute('data-quarter', '1');
+      await page.locator('#audit-lux-team-audit_lux').selectOption('3팀');
+      await expect(page.locator('.audit-lux-team-content')).toHaveAttribute('data-team', '3팀');
+      await expect(page.locator('.audit-lux-team-heading h3')).toHaveText('3팀 조도 측정');
+      await page.locator('#audit-lux-team-audit_lux').selectOption('');
+      await expect(page.locator('.audit-lux-selection-empty')).toBeVisible();
+      await expect(page.locator('.audit-lux-team-content')).toHaveCount(0);
       await expect(page.locator('[data-action="audit-lux-toggle-fullscreen"]')).toHaveCount(0);
 
       await clickSidebarButton(page, '유틸리티');

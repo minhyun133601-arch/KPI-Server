@@ -137,30 +137,58 @@ test('audit lux workspace loads detached preview template before workspace behav
   assert.doesNotMatch(auditWorkspaceSource, /function buildAuditLuxDetachedPreviewHtml/);
 });
 
-test('audit lux workspace keeps a compact title-only file header', () => {
-  assert.match(auditWorkspaceSource, /<div class="audit-lux-window-brand" aria-hidden="true">/);
-  assert.match(auditWorkspaceSource, /<span class="audit-lux-window-icon"><i class="fa-solid fa-lightbulb"><\/i><\/span>/);
-  assert.match(auditWorkspaceSource, /<h2 class="audit-lux-window-title">조도<\/h2>/);
-  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-window-kicker/);
-  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-window-desc/);
-  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-window-actions/);
-  assert.doesNotMatch(auditWorkspaceSource, /getAuditLuxWorkspaceFullscreenButtonHtml/);
-  assert.doesNotMatch(auditWorkspaceSource, /조도 파일/);
-  assert.doesNotMatch(auditWorkspaceSource, /팀별 연도 조도본을 보관합니다/);
+function createAttachmentTargetRuntime() {
+  const entryForm = { year: 2026, quarter: 3, team: '3팀' };
+  const events = [];
+  const context = {
+    console: { error() {} },
+    AUDIT_LUX_BASE_YEAR: 2023,
+    AppData: { audit: { categories: [{ dataKey: 'audit_lux', title: '조도' }] } },
+    getAuditCurrentQuarterInfo: () => ({ year: 2026, quarter: 3 }),
+    getAuditEntryFormState: () => entryForm,
+    getAuditFilterTeams: () => ['2팀', '3팀'],
+    isAuditLuxDataKey: (dataKey) => dataKey === 'audit_lux',
+    normalizeAuditZone: (value) => String(value || '').trim(),
+    replaceAuditLuxEvidenceForYear: async (...args) => events.push(['replace', ...args]),
+    renderAuditContent: () => events.push(['render']),
+    setLastModified: (label) => events.push(['modified', label]),
+    alert: (message) => events.push(['alert', message]),
+  };
+  vm.createContext(context);
+  vm.runInContext(auditAttachmentsSource, context);
+  vm.runInContext(auditWorkspaceSource, context);
+  return { context, entryForm, events };
+}
+
+test('audit lux attachment upload retains its explicit year team and quarter target', async () => {
+  const { context, entryForm, events } = createAttachmentTargetRuntime();
+  const file = { name: 'measurement.pdf' };
+  const input = { files: [file], value: 'measurement.pdf', dataset: { quarter: '1' } };
+
+  await context.handleAuditLuxAttachmentChangeForTarget('audit_lux', 2025, '2팀', 1, input);
+
+  assert.deepEqual(events, [
+    ['replace', 'audit_lux', 2025, '2팀', 1, file],
+    ['render'],
+    ['modified', '조도'],
+  ]);
+  assert.equal(entryForm.year, 2025);
+  assert.equal(entryForm.team, '2팀');
+  assert.equal(entryForm.quarter, 1);
+  assert.equal(input.value, '', 'a completed picker must allow choosing the same file again');
 });
 
-test('audit lux file index uses compact sheet rows with equipment-style team marks and no redundant status chrome', () => {
-  assert.match(auditWorkspaceSource, /audit-lux-index-team-cell/);
-  assert.match(auditWorkspaceSource, /audit-lux-index-team-label \$\{escapeHtml\(teamClassName\)\}/);
-  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-team-mark/);
-  assert.match(auditWorkspaceSource, /audit-lux-index-team-tools/);
-  assert.match(auditWorkspaceSource, /audit-lux-index-preview-cell/);
-  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-grid-head/);
-  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-inline-actions/);
-  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-progress-cell/);
-  assert.match(auditWorkspaceSource, /audit-lux-index-team-icon kpi-team-display-icon/);
-  assert.match(auditWorkspaceSource, /getAuditLuxTeamIconSvg\(team\)/);
-  assert.doesNotMatch(auditWorkspaceSource, /audit-lux-index-card-status/);
-  assert.doesNotMatch(auditWorkspaceSource, /statusLabel/);
-  assert.doesNotMatch(auditWorkspaceSource, /`\$\{teamLabel\} 미첨부`/);
+test('audit lux failed attachment save reports the rollback and clears the file picker', async () => {
+  const { context, events } = createAttachmentTargetRuntime();
+  context.replaceAuditLuxEvidenceForYear = async () => {
+    throw new Error('audit_lux_evidence_record_save_failed');
+  };
+  const input = { files: [{ name: 'measurement.pdf' }], value: 'measurement.pdf' };
+
+  await context.handleAuditLuxAttachmentChangeForTarget('audit_lux', 2026, '2팀', 2, input);
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0][0], 'alert');
+  assert.match(events[0][1], /조도 기록 저장이 실패해 교체를 취소했습니다/);
+  assert.equal(input.value, '');
 });

@@ -36,9 +36,11 @@
             const selectedQuarter = typeof normalizeAuditLuxEvidenceQuarter === 'function'
                 ? normalizeAuditLuxEvidenceQuarter(year, quarter)
                 : Number(quarter || 1);
-            const attachmentItem = typeof getAuditLuxYearEvidenceItem === 'function'
-                ? getAuditLuxYearEvidenceItem(dataKey, year, team, selectedQuarter)
-                : null;
+            const attachmentItem = typeof getAuditLuxCumulativeEvidenceItem === 'function'
+                ? getAuditLuxCumulativeEvidenceItem(dataKey, year, team, selectedQuarter)
+                : (typeof getAuditLuxYearEvidenceItem === 'function'
+                    ? getAuditLuxYearEvidenceItem(dataKey, year, team, selectedQuarter)
+                    : null);
             const viewUrl = typeof getAuditEvidenceViewUrl === 'function'
                 ? getAuditEvidenceViewUrl(attachmentItem)
                 : '';
@@ -54,9 +56,12 @@
             const rotation = Number.isFinite(parseFloat(attachmentItem?.rotate))
                 ? parseFloat(attachmentItem.rotate)
                 : 0;
+            const sourceQuarter = attachmentItem && typeof normalizeAuditLuxEvidenceQuarter === 'function'
+                ? normalizeAuditLuxEvidenceQuarter(attachmentItem)
+                : selectedQuarter;
             const periodLabel = typeof getAuditLuxEvidencePeriodLabel === 'function'
-                ? getAuditLuxEvidencePeriodLabel(year, selectedQuarter)
-                : `${String(year || '').trim()}년 ${selectedQuarter}분기`;
+                ? getAuditLuxEvidencePeriodLabel(year, sourceQuarter)
+                : `${String(year || '').trim()}년 ${sourceQuarter}분기`;
             const title = `${String(team || '').trim()} ${periodLabel} 조도 스캔본`;
             const html = buildDetachedPreviewHtml({
                 title,
@@ -88,9 +93,11 @@
                 popup = auditLuxPreviewBrowser.openWindow('', 'kpi_audit_lux_detached_preview', 'popup=yes,width=1280,height=920,left=120,top=80,resizable=yes,scrollbars=yes');
                 if (!popup) {
                     showToast('원본 창을 열지 못했습니다. 팝업 차단을 확인해 주세요.');
-                    const attachmentItem = typeof getAuditLuxYearEvidenceItem === 'function'
-                        ? getAuditLuxYearEvidenceItem(dataKey, year, team, quarter)
-                        : null;
+                    const attachmentItem = typeof getAuditLuxCumulativeEvidenceItem === 'function'
+                        ? getAuditLuxCumulativeEvidenceItem(dataKey, year, team, quarter)
+                        : (typeof getAuditLuxYearEvidenceItem === 'function'
+                            ? getAuditLuxYearEvidenceItem(dataKey, year, team, quarter)
+                            : null);
                     const fallbackUrl = typeof getAuditEvidenceViewUrl === 'function'
                         ? getAuditEvidenceViewUrl(attachmentItem)
                         : '';

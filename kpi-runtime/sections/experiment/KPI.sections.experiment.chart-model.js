@@ -381,6 +381,91 @@
         return '';
     }
 
+    function getExperimentEnergyConversionCards(cards = []) {
+        const energyCards = new Map();
+        const visited = new Set();
+        function visit(card) {
+            if (!card || visited.has(card.key)) return;
+            visited.add(card.key);
+            if (String(card.energyScopeKey || '').trim()) {
+                energyCards.set(card.energyScopeKey, card);
+            }
+            for (const key of [card.numeratorKey, card.denominatorKey]) {
+                if (key) visit(parts.findAnalysisCard(key));
+            }
+        }
+        cards.forEach(visit);
+        return Array.from(energyCards.values());
+    }
+
+    function formatEnergyConversionValue(value, decimals = 3) {
+        return Number.isFinite(value)
+            ? value.toLocaleString('ko-KR', { maximumFractionDigits: decimals })
+            : '미입력';
+    }
+
+    function buildEnergyConversionComponentHtml(component) {
+        if (component?.applicable === false) {
+            return '<span class="experiment-energy-conversion-empty">미사용 · 합산 제외</span>';
+        }
+        if (!Number.isFinite(component?.amount) || !Number.isFinite(component?.kcal)) {
+            return '<span class="experiment-energy-conversion-empty">미입력</span>';
+        }
+        const amount = parts.escapeHtml(formatEnergyConversionValue(component.amount));
+        const factor = parts.escapeHtml(formatEnergyConversionValue(component.factor, 6));
+        const kcal = parts.escapeHtml(formatEnergyConversionValue(component.kcal, 2));
+        const unit = parts.escapeHtml(component.unit || '');
+        return `<span>${amount} ${unit} × ${factor}</span><strong>= ${kcal} kcal</strong>`;
+    }
+
+    function buildExperimentEnergyConversionHtml(selectedCards = [], period = {}) {
+        const energyCards = getExperimentEnergyConversionCards(selectedCards);
+        if (!energyCards.length || typeof parts.getEnergyConversionBreakdown !== 'function') return '';
+        const factors = parts.getEnergyConversionFactors();
+        const monthKeys = Array.isArray(period.monthKeys) ? period.monthKeys : [];
+        const factorText = [
+            ['전기', factors.electric, 'kWh'],
+            ['LNG', factors.lng, 'Nm³'],
+            ['LPG', factors.lpg, 'kg']
+        ].map(([label, factor, unit]) => `${label} ${formatEnergyConversionValue(factor, 6)} kcal/${unit}`).join(' · ');
+        const sections = energyCards.map(card => {
+            const rows = monthKeys.map(monthKey => {
+                const breakdown = parts.getEnergyConversionBreakdown(card, monthKey);
+                const components = new Map((breakdown?.components || []).map(component => [component.key, component]));
+                const total = breakdown?.complete === true && Number.isFinite(breakdown.totalKcal)
+                    ? `${formatEnergyConversionValue(breakdown.totalKcal, 2)} kcal`
+                    : '미입력';
+                return `
+                    <tr>
+                        <th scope="row">${parts.escapeHtml(monthKey)}</th>
+                        ${['electric', 'lng', 'lpg'].map(key => `<td>${buildEnergyConversionComponentHtml(components.get(key))}</td>`).join('')}
+                        <td class="experiment-energy-conversion-total">${parts.escapeHtml(total)}</td>
+                    </tr>
+                `;
+            }).join('');
+            return `
+                <div class="experiment-energy-conversion-scope">
+                    <table class="experiment-energy-conversion-table">
+                        <caption>${parts.escapeHtml(card.title || '열량 환산')}</caption>
+                        <thead><tr><th scope="col">월</th><th scope="col">전기</th><th scope="col">LNG</th><th scope="col">LPG</th><th scope="col">합계 열량</th></tr></thead>
+                        <tbody>${rows || '<tr><td colspan="5">선택한 기간에 해당하는 월이 없습니다.</td></tr>'}</tbody>
+                    </table>
+                </div>
+            `;
+        }).join('');
+        return `
+            <details class="experiment-energy-conversion" data-exp-energy-conversion>
+                <summary>변환 과정 <span class="experiment-energy-conversion-help" aria-hidden="true">?</span></summary>
+                <div class="experiment-energy-conversion-content">
+                    <p>월별 합계 열량 = 전기 사용량 × 전기 환산계수 + LNG 사용량 × LNG 환산계수 + LPG 사용량 × LPG 환산계수</p>
+                    <p>${parts.escapeHtml(factorText)}</p>
+                    <p>최종에너지 기준 · 1 kcal = ${parts.escapeHtml(formatEnergyConversionValue(factors.kjPerKcal, 4))} kJ. 미입력 항목이 있으면 합계를 계산하지 않으며, 미사용 항목은 합산에서 제외합니다.</p>
+                    ${sections}
+                </div>
+            </details>
+        `;
+    }
+
     function buildCardSeries(card, period, shell, seriesIndex = 0) {
         const monthKeys = Array.isArray(period?.monthKeys)
             ? period.monthKeys
@@ -536,6 +621,7 @@
                 chartDataList: visibleSeries.map(item => ({ seriesKey: item.seriesKey, points: item.points })),
                 showViewToggle: false,
                 viewMode,
+                headerToolsHtml: buildExperimentEnergyConversionHtml(selectedCards, period),
                 tableHtml: buildExperimentChartTableHtml(summarySeries, selectedCards, shell),
                 suppressChartLabelToggle: true,
                 controlItems: summarySeries.map(item => ({

@@ -76,6 +76,11 @@ const sectionSourcePaths = [
   path.join(repoRoot, 'kpi-runtime', 'sections', 'experiment', 'KPI.sections.experiment.composer-view.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'experiment', 'KPI.sections.experiment.controller.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.experiment.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'kpi', 'KPI.sections.kpi.energy-model.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'kpi', 'KPI.sections.kpi.energy-view.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'kpi', 'KPI.sections.kpi.energy-chart.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'kpi', 'KPI.sections.kpi.energy-popout.js'),
+  path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.kpi.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.sections.owner.js'),
   path.join(repoRoot, 'kpi-runtime', 'sections', 'KPI.section.registry.js'),
 ];

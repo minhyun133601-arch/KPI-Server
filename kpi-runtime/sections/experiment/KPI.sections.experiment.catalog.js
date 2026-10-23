@@ -23,6 +23,8 @@
     const NORMALIZATION_UNITS = Object.freeze({
         production_kg: Object.freeze({ key: 'production_kg', label: 'kg', family: 'production', dimension: 'mass' }),
         electric_kwh: Object.freeze({ key: 'electric_kwh', label: 'kWh', family: 'electric', dimension: 'energy' }),
+        energy_kcal: Object.freeze({ key: 'energy_kcal', label: 'kcal', family: 'energy', dimension: 'energy' }),
+        energy_intensity: Object.freeze({ key: 'energy_intensity', label: 'kcal/kg', family: 'energy_intensity', dimension: 'energy-per-mass' }),
         lng_nm3: Object.freeze({ key: 'lng_nm3', label: 'Nm3', family: 'lng', dimension: 'volume' }),
         lpg_kg: Object.freeze({ key: 'lpg_kg', label: 'kg', family: 'lpg', dimension: 'mass' }),
         waste_m3: Object.freeze({ key: 'waste_m3', label: 'm3', family: 'waste', dimension: 'volume' }),
@@ -90,6 +92,9 @@
                 unitKey: getSummaryMetricNormalizationUnitKey(summaryCard.metricKey),
                 fractionRole: 'both'
             });
+        }
+        if (key.startsWith('energy-conversion-')) {
+            return makeNormalization({ metricKind: 'usage', unitKey: 'energy_kcal', fractionRole: 'both' });
         }
         if (key === 'electric-usage' || key.startsWith('electric-usage-')) {
             return makeNormalization({
@@ -892,10 +897,31 @@
         })
     ]);
 
+    const ENERGY_CONVERSION_CARDS = Object.freeze([
+        { key: 'total', label: '전체' },
+        { key: 'bukjeong', label: '북정' },
+        { key: 'yusan', label: '유산' },
+        ...PRODUCTION_TEAMS
+    ].map(scope => Object.freeze({
+        ...createCard({
+            key: `energy-conversion-${scope.key}`,
+            title: `${scope.label} 열량 환산`,
+            valueText: '',
+            metaText: '전기 + LNG + LPG · kcal',
+            subText: '최종 에너지 사용량',
+            icon: 'fa-fire-flame-curved',
+            tone: 'usage',
+            color: '#c2410c',
+            values: []
+        }),
+        energyScopeKey: scope.key
+    })));
+
     const ANALYSIS_CARD_GROUPS = Object.freeze([
         Object.freeze({ key: 'production', title: '생산량', desc: '총/팀/라인 생산량', cards: PRODUCTION_CARDS }),
         Object.freeze({ key: 'electric', title: '전기', desc: '전기 사용량과 금액', cards: ELECTRIC_CARDS }),
         Object.freeze({ key: 'gas', title: '가스', desc: 'LNG/LPG 사용량과 금액', cards: GAS_CARDS }),
+        Object.freeze({ key: 'energy', title: '열량 환산', desc: '전기·LNG·LPG 통합 열량', cards: ENERGY_CONVERSION_CARDS }),
         Object.freeze({ key: 'waste', title: '폐수', desc: '방류량과 처리비용', cards: WASTE_CARDS }),
         Object.freeze({ key: 'cost', title: '비용', desc: '팀/사업장별 전기+가스+폐수 비용 합계', cards: COST_CARDS }),
         Object.freeze({ key: 'summary', title: '종합', desc: '팀별내역서 주요 생산 내역', cards: SUMMARY_CARDS }),
@@ -927,6 +953,12 @@
         electric: Object.freeze([
             Object.freeze({ key: 'kwh', label: 'kWh', scale: 1, decimals: 0 }),
             Object.freeze({ key: 'mwh', label: 'MWh', scale: 1000, decimals: 1 })
+        ]),
+        energy: Object.freeze([
+            Object.freeze({ key: 'kcal', label: 'kcal', scale: 1, decimals: 0 })
+        ]),
+        energy_intensity: Object.freeze([
+            Object.freeze({ key: 'kcal-per-kg', label: 'kcal/kg', scale: 1, decimals: 1 })
         ]),
         lng: Object.freeze([
             Object.freeze({ key: 'nm3', label: 'Nm3', scale: 1, decimals: 0 }),

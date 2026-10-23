@@ -89,6 +89,21 @@
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-actions { width: 100%; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-left: 0; flex-wrap: nowrap; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-actions-left { min-width: 0; display: inline-flex; align-items: center; justify-content: flex-start; gap: 6px; flex: 1 1 auto; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-actions-right { min-width: max-content; display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; flex: 0 0 auto; margin-left: auto; }
+.experiment-energy-conversion { width: 100%; min-width: 0; padding: 6px 10px; color: #334155; font-size: 12px; line-height: 1.5; }
+.experiment-chart-mount .util-sheet-analysis-chart-head:has(.experiment-energy-conversion), .experiment-chart-mount .util-sheet-analysis-chart-actions:has(.experiment-energy-conversion), .experiment-chart-mount .util-sheet-analysis-chart-actions-left:has(.experiment-energy-conversion) { width: 100%; min-width: 0; max-width: 100%; }
+.experiment-energy-conversion > summary { width: fit-content; cursor: pointer; color: #334155; font-weight: 800; }
+.experiment-energy-conversion > summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; border-radius: 2px; }
+.experiment-energy-conversion-help { width: 15px; height: 15px; display: inline-grid; place-items: center; margin-left: 3px; border: 1px solid #94a3b8; border-radius: 50%; font-size: 10px; line-height: 1; }
+.experiment-energy-conversion-content { max-height: 360px; min-width: 0; overflow: auto; margin-top: 8px; border-top: 1px solid #e2e8f0; }
+.experiment-energy-conversion-content > p { margin: 7px 0; overflow-wrap: anywhere; }
+.experiment-energy-conversion-scope { margin: 12px 0; }
+.experiment-energy-conversion-table { width: 100%; min-width: 700px; border-collapse: collapse; font-size: 11px; }
+.experiment-energy-conversion-table caption { padding: 0 0 5px; text-align: left; color: #0f172a; font-size: 12px; font-weight: 800; }
+.experiment-energy-conversion-table th, .experiment-energy-conversion-table td { padding: 6px 8px; border: 1px solid #e2e8f0; text-align: right; vertical-align: top; white-space: nowrap; }
+.experiment-energy-conversion-table thead th { background: #f8fafc; color: #334155; }
+.experiment-energy-conversion-table td > span, .experiment-energy-conversion-table td > strong { display: block; }
+.experiment-energy-conversion-table td > strong, .experiment-energy-conversion-total { font-weight: 800; color: #0f172a; }
+.experiment-energy-conversion-empty { color: #64748b; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-btn { border-radius: 5px; border-color: #111827; background: #ffffff; color: #111827; box-shadow: none; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-view-toggle { display: inline-flex; align-items: center; gap: 0; border: 1px solid #111827; background: #ffffff; }
 .experiment-chart-mount[data-exp-report-chart-style="report-auto"] .util-sheet-analysis-chart-view-btn { min-height: 30px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; border: 0; border-right: 1px solid #111827; background: #ffffff; color: #111827; padding: 0 10px; font-size: 12px; font-weight: 900; letter-spacing: 0; cursor: pointer; }

@@ -19,7 +19,7 @@
             }
             const teams = getAuditLuxWorkspaceTeams(dataKey);
             if (!teams.includes(entryForm.team)) {
-                entryForm.team = teams[0] || '';
+                entryForm.team = '';
             }
             return { entryForm, now, teams, yearStart };
         }
@@ -59,8 +59,67 @@
             const nextYear = Number.parseInt(value, 10);
             if (!Number.isFinite(nextYear)) return;
             entryForm.year = Math.min(Math.max(nextYear, yearStart), now.year);
-            entryForm.quarter = normalizeAuditLuxAttachmentQuarter(entryForm.year, entryForm.quarter);
+            entryForm.quarter = getAuditLuxSelectedAttachmentQuarter(dataKey, entryForm.year, entryForm.team);
             renderAuditLuxWorkspaceCategory(dataKey);
+        }
+
+        function setAuditLuxWorkspaceTeam(dataKey, value) {
+            if (!isAuditLuxDataKey(dataKey)) return;
+            const { entryForm, teams } = getAuditLuxWorkspaceState(dataKey);
+            const team = String(value || '').trim();
+            if (team && !teams.includes(team)) return;
+            entryForm.team = team;
+            entryForm.quarter = getAuditLuxSelectedAttachmentQuarter(dataKey, entryForm.year, team);
+            renderAuditLuxWorkspaceCategory(dataKey);
+        }
+
+        function selectAuditLuxWorkspaceQuarter(dataKey, value) {
+            if (!isAuditLuxDataKey(dataKey)) return;
+            const { entryForm } = getAuditLuxWorkspaceState(dataKey);
+            const quarter = Number(value);
+            if (!entryForm.team || !Number.isInteger(quarter) || quarter < 1
+                || quarter > getAuditLuxAttachmentMaxQuarterForYear(entryForm.year)) return;
+            const state = getAuditLuxAttachmentQuarterState(dataKey);
+            state[getAuditLuxAttachmentQuarterStateKey(entryForm.year, entryForm.team)] = quarter;
+            entryForm.quarter = quarter;
+            renderAuditLuxWorkspaceCategory(dataKey);
+            document.querySelector(`.audit-lux-quarter-button[data-quarter="${quarter}"]`)?.focus({ preventScroll: true });
+        }
+
+        async function updateAuditLuxWorkspaceProgress(dataKey, input) {
+            const { entryForm } = getAuditLuxWorkspaceState(dataKey);
+            const year = Number(entryForm.year);
+            const team = String(entryForm.team || '').trim();
+            if (!team || !input || input.disabled) return;
+            const feedback = document.querySelector('.audit-lux-save-feedback');
+            const attachmentButton = document.querySelector('.audit-lux-document-actions button');
+            input.disabled = true;
+            if (attachmentButton) attachmentButton.disabled = true;
+            if (feedback) feedback.textContent = '저장 중…';
+            const saved = await setAuditLuxProgressStatusForTarget(dataKey, year, team, input.value);
+            input.disabled = false;
+            if (attachmentButton) attachmentButton.disabled = false;
+            const shouldRestoreFocus = input.isConnected;
+            if (!shouldRestoreFocus) {
+                const panel = document.querySelector('.audit-lux-team-content');
+                if (!panel) return;
+                if (Number(panel.dataset.year) !== year || panel.dataset.team !== team) {
+                    renderAuditLuxWorkspaceCategory(dataKey);
+                    return;
+                }
+            }
+            if (saved || !shouldRestoreFocus) {
+                renderAuditLuxWorkspaceCategory(dataKey);
+                const nextInput = document.querySelector('.audit-lux-completion-select');
+                if (shouldRestoreFocus) nextInput?.focus({ preventScroll: true });
+                const nextFeedback = document.querySelector('.audit-lux-save-feedback');
+                if (nextFeedback) nextFeedback.textContent = saved
+                    ? '저장되었습니다.'
+                    : '저장하지 못했습니다. 다시 선택해 주세요.';
+            } else {
+                input.value = getAuditLuxProgressStatus(dataKey, year, team);
+                if (feedback) feedback.textContent = '저장하지 못했습니다. 다시 선택해 주세요.';
+            }
         }
 
         function normalizeAuditLuxNumericValue(value) {
@@ -369,67 +428,86 @@
 
         function renderAuditLuxAttachmentCard(dataKey, year, team) {
             const selectedQuarter = getAuditLuxSelectedAttachmentQuarter(dataKey, year, team);
-            const attachmentItem = typeof getAuditLuxYearEvidenceItem === 'function'
-                ? getAuditLuxYearEvidenceItem(dataKey, year, team, selectedQuarter)
-                : null;
+            const attachmentItem = getAuditLuxCumulativeEvidenceItem(dataKey, year, team, selectedQuarter);
             const hasAttachment = Boolean(attachmentItem);
-            const { viewUrl, downloadUrl, fileLabel } = hasAttachment ? getAuditLuxEvidenceMeta(attachmentItem) : {};
-            const inputId = getAuditLuxAttachmentInputId(dataKey, year, team, selectedQuarter);
+            const attachmentQuarter = hasAttachment ? getAuditLuxEvidenceCompletedQuarter(dataKey, year, team) : selectedQuarter;
+            const { viewUrl, downloadUrl, fileLabel, isPdf, rotation } = hasAttachment ? getAuditLuxEvidenceMeta(attachmentItem) : {};
+            const inputId = getAuditLuxAttachmentInputId(dataKey, year, team, attachmentQuarter);
             const openUrl = viewUrl || downloadUrl || '#';
             const downloadHref = downloadUrl || viewUrl || '#';
-            const teamLabel = team || '팀 없음';
-            const progressStatus = typeof getAuditLuxProgressStatus === 'function'
-                ? getAuditLuxProgressStatus(dataKey, year, team)
+            const media = viewUrl
+                ? (isPdf
+                    ? `<iframe class="audit-lux-document-frame" src="${escapeHtml(viewUrl)}" title="${escapeHtml(`${year}년 ${team} ${attachmentQuarter}분기 누적 조도 측정 자료`)}"></iframe>`
+                    : `<a class="audit-lux-document-image-link" href="${escapeHtml(openUrl)}" target="_blank" rel="noopener" aria-label="${escapeHtml(`${team} ${attachmentQuarter}분기 누적 측정 자료 원본 열기`)}"><img class="audit-lux-document-image" src="${escapeHtml(viewUrl)}" alt="${escapeHtml(`${year}년 ${team} ${attachmentQuarter}분기 누적 조도 측정 자료`)}" decoding="async" style="transform: rotate(${rotation}deg);" /></a>`)
                 : '';
-            const progressStatusClass = progressStatus === 'complete'
-                ? 'is-complete'
-                : (progressStatus ? 'is-progress' : 'is-incomplete');
-            const teamClassName = getAuditLuxTeamClassName(team);
             return `
-                <article class="audit-lux-index-card ${escapeHtml(teamClassName)} ${hasAttachment ? 'is-attached' : 'is-empty'}" data-audit-lux-card="${escapeHtml(dataKey)}" data-year="${escapeHtml(year)}" data-quarter="${escapeHtml(selectedQuarter)}" data-team="${escapeHtml(team)}">
-                    <div class="audit-lux-index-team-cell">
-                        <strong class="audit-lux-index-team-label ${escapeHtml(teamClassName)} kpi-team-display">
-                            <span class="audit-lux-index-team-icon kpi-team-display-icon" aria-hidden="true">${getAuditLuxTeamIconSvg(team)}</span>
-                            <span class="kpi-team-display-name">${escapeHtml(teamLabel)}</span>
-                        </strong>
-                        <div class="audit-lux-index-team-tools" onclick="event.stopPropagation()">
-                            <select class="audit-select audit-lux-progress-select ${progressStatusClass}" aria-label="${escapeHtml(`${teamLabel} 진행 상태`)}" onchange="this.classList.toggle('is-complete', this.value === 'complete'); this.classList.toggle('is-progress', this.value !== '' && this.value !== 'complete'); this.classList.toggle('is-incomplete', this.value === ''); setAuditLuxProgressStatusForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', this.value)" onclick="event.stopPropagation()">
-                                ${typeof getAuditLuxProgressStatusOptions === 'function' ? getAuditLuxProgressStatusOptions(progressStatus, year) : ''}
-                            </select>
-                            ${hasAttachment
-                                ? `<a class="audit-lux-icon-action audit-ref-download" href="${escapeHtml(downloadHref)}" download="${escapeHtml(fileLabel || `${year}-${team}-lux`)}" aria-label="${escapeHtml(`${teamLabel} 다운로드`)}" title="다운로드" onclick="event.stopPropagation()"><i class="fa-solid fa-download" aria-hidden="true"></i></a>`
-                                : `<button type="button" class="audit-lux-icon-action" aria-label="${escapeHtml(`${teamLabel} 다운로드`)}" title="다운로드" disabled><i class="fa-solid fa-download" aria-hidden="true"></i></button>`}
-                            <button type="button" class="audit-lux-icon-action audit-lux-index-replace" aria-label="${escapeHtml(`${teamLabel} 교체`)}" title="교체" onclick="event.preventDefault(); event.stopPropagation(); openAuditLuxAttachmentPickerForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', ${Number(selectedQuarter)})"><i class="fa-solid fa-arrow-rotate-right" aria-hidden="true"></i></button>
+                <article class="audit-lux-document" data-year="${escapeHtml(year)}" data-quarter="${escapeHtml(selectedQuarter)}" data-source-quarter="${escapeHtml(hasAttachment ? attachmentQuarter : '')}" data-team="${escapeHtml(team)}">
+                    <header class="audit-lux-document-head">
+                        <div>
+                            <h4>${selectedQuarter}분기 측정 자료</h4>
+                            <p>${escapeHtml(fileLabel || '이미지 또는 PDF로 측정 자료를 등록하세요.')}</p>
+                            ${hasAttachment ? `<p>${attachmentQuarter}분기 누적 자료 · ${attachmentQuarter === 1 ? '1' : `1~${attachmentQuarter}`}분기 포함</p>` : ''}
                         </div>
-                    </div>
-                    <div class="audit-lux-index-preview-cell">
-                        ${renderAuditLuxAttachmentMedia(dataKey, year, team, selectedQuarter, attachmentItem, openUrl)}
-                        <input
-                            type="file"
-                            id="${escapeHtml(inputId)}"
-                            class="audit-hidden-input"
-                            data-audit-lux-attachment-input="${escapeHtml(dataKey)}"
-                            data-quarter="${escapeHtml(selectedQuarter)}"
-                            accept="image/*,application/pdf"
-                            onchange="handleAuditLuxAttachmentChangeForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', ${Number(selectedQuarter)}, this)"
-                        />
-                    </div>
+                        <div class="audit-lux-document-actions">
+                            ${hasAttachment ? `
+                                <a class="audit-lux-document-action" href="${escapeHtml(openUrl)}" target="_blank" rel="noopener">원본 열기</a>
+                                <a class="audit-lux-document-action audit-ref-download" href="${escapeHtml(downloadHref)}" download="${escapeHtml(fileLabel || `${year}-${team}-lux`)}">다운로드</a>
+                            ` : ''}
+                            <button type="button" class="audit-lux-document-action is-primary" onclick="openAuditLuxAttachmentPickerForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', ${Number(attachmentQuarter)})" ${isAuditLuxProgressSaving(dataKey) ? 'disabled' : ''}>${hasAttachment ? '누적 자료 교체' : '자료 등록'}</button>
+                        </div>
+                    </header>
+                    ${media
+                        ? `<div class="audit-lux-document-stage ${isPdf ? 'is-pdf' : ''}">${media}</div>`
+                        : `<div class="audit-lux-document-empty"><strong>${selectedQuarter}분기 측정 자료가 없습니다.</strong><p>위의 자료 등록 버튼으로 이 팀의 측정 자료를 추가하세요.</p></div>`}
+                    <input type="file" id="${escapeHtml(inputId)}" class="audit-hidden-input"
+                        data-audit-lux-attachment-input="${escapeHtml(dataKey)}" data-quarter="${escapeHtml(attachmentQuarter)}"
+                        accept="image/*,application/pdf"
+                        onchange="handleAuditLuxAttachmentChangeForTarget('${escapeJs(dataKey)}', ${Number(year)}, '${escapeJs(team)}', ${Number(attachmentQuarter)}, this)" />
                 </article>
             `;
         }
 
-        function renderAuditLuxYearSection(dataKey, year, teams) {
-            const safeTeams = Array.isArray(teams) ? teams : [];
+        function renderAuditLuxTeamContent(dataKey, year, team) {
+            const status = getAuditLuxProgressStatus(dataKey, year, team);
+            const completedQuarters = Math.max(0, getAuditLuxProgressStatusOrder(status));
+            const evidenceCompletedQuarter = getAuditLuxEvidenceCompletedQuarter(dataKey, year, team);
+            const maxQuarter = getAuditLuxAttachmentMaxQuarterForYear(year);
+            const selectedQuarter = getAuditLuxSelectedAttachmentQuarter(dataKey, year, team);
+            const completionLabel = completedQuarters === 4
+                ? '연간 측정 완료'
+                : (completedQuarters ? `${completedQuarters}분기까지 완료` : '아직 완료된 분기가 없습니다');
+            const progressOptions = [
+                ['', '미완료'], ['1', '1분기까지 완료'], ['2', '2분기까지 완료'],
+                ['3', '3분기까지 완료'], ['complete', '연간 완료 (4분기)']
+            ].filter(([value]) => getAuditLuxProgressStatusOrder(value) <= maxQuarter);
             return `
-                <section class="audit-lux-index-year" data-audit-lux-year="${escapeHtml(year)}">
-                    <div class="audit-lux-index-year-head">
-                        <h3>${escapeHtml(year)}년</h3>
+                <section class="audit-lux-team-content" data-year="${escapeHtml(year)}" data-team="${escapeHtml(team)}" aria-label="${escapeHtml(`${year}년 ${team} 조도 측정`)}">
+                    <div class="audit-lux-team-summary">
+                        <div class="audit-lux-team-heading"><span class="audit-lux-eyebrow">${escapeHtml(year)}년</span><h3>${escapeHtml(team)} 조도 측정</h3></div>
+                        <div class="audit-lux-completion ${completedQuarters ? 'is-complete' : 'is-incomplete'}"><strong>${completionLabel}</strong><span>${completedQuarters} / 4분기</span></div>
                     </div>
-                    <div class="audit-lux-index-grid">
-                        ${safeTeams.length
-                            ? safeTeams.map((team) => renderAuditLuxAttachmentCard(dataKey, year, team)).join('')
-                            : '<div class="audit-lux-index-empty">등록된 팀이 없습니다.</div>'}
+                    <progress class="audit-lux-completion-bar" max="4" value="${completedQuarters}" aria-label="연간 측정 완료 범위">${completedQuarters} / 4분기</progress>
+                    <div class="audit-lux-progress-field">
+                        <label><span>완료 범위</span>
+                            <select class="audit-select audit-lux-completion-select" onchange="updateAuditLuxWorkspaceProgress('${escapeJs(dataKey)}', this)" ${isAuditLuxProgressSaving(dataKey) ? 'disabled' : ''}>
+                                ${progressOptions.map(([value, label]) => `<option value="${value}" ${value === status ? 'selected' : ''} ${getAuditLuxProgressStatusOrder(value) < evidenceCompletedQuarter ? 'disabled' : ''}>${label}</option>`).join('')}
+                            </select>
+                        </label>
+                        <small class="audit-lux-save-feedback" role="status">${isAuditLuxProgressSaving(dataKey) ? '저장 중…' : (evidenceCompletedQuarter ? `${evidenceCompletedQuarter}분기 누적 자료 기준으로 이전 분기까지 자동 완료됩니다.` : '자료를 등록하고 저장하면 해당 분기까지 자동 완료됩니다.')}</small>
                     </div>
+                    <div class="audit-lux-quarter-list" role="group" aria-label="분기별 진행 상태 및 측정 자료 선택">
+                        ${[1, 2, 3, 4].map((quarter) => {
+                            const available = quarter <= maxQuarter;
+                            const complete = quarter <= completedQuarters;
+                            const attachment = available ? getAuditLuxCumulativeEvidenceItem(dataKey, year, team, quarter) : null;
+                            return `<button type="button" class="audit-lux-quarter-button ${quarter === selectedQuarter ? 'is-selected' : ''} ${complete ? 'is-complete' : (available ? 'is-incomplete' : 'is-pending')}" data-quarter="${quarter}" aria-pressed="${quarter === selectedQuarter}" onclick="selectAuditLuxWorkspaceQuarter('${escapeJs(dataKey)}', ${quarter})" ${available ? '' : 'disabled'}>
+                                <span class="audit-lux-quarter-name">${quarter}분기</span>
+                                <strong class="audit-lux-quarter-state">${complete ? '완료' : (available ? '미완료' : '예정')}</strong>
+                                <span class="audit-lux-quarter-evidence">${available ? (attachment ? (evidenceCompletedQuarter === quarter ? '누적 자료 등록' : `${evidenceCompletedQuarter}분기 누적 자료`) : '자료 없음') : '측정 시기 전'}</span>
+                            </button>`;
+                        }).join('')}
+                    </div>
+                    ${renderAuditLuxAttachmentCard(dataKey, year, team)}
                 </section>
             `;
         }
@@ -451,12 +529,11 @@
 
         function renderAuditLuxWorkspacePreview(dataKey, year, team, quarter = null) {
             const selectedQuarter = normalizeAuditLuxAttachmentQuarter(year, quarter);
+            const attachmentItem = getAuditLuxCumulativeEvidenceItem(dataKey, year, team, selectedQuarter);
+            const sourceQuarter = attachmentItem ? getAuditLuxEvidenceCompletedQuarter(dataKey, year, team) : selectedQuarter;
             const periodLabel = typeof getAuditLuxEvidencePeriodLabel === 'function'
-                ? getAuditLuxEvidencePeriodLabel(year, selectedQuarter)
+                ? getAuditLuxEvidencePeriodLabel(year, sourceQuarter)
                 : `${year}년 ${selectedQuarter}분기`;
-            const attachmentItem = typeof getAuditLuxYearEvidenceItem === 'function'
-                ? getAuditLuxYearEvidenceItem(dataKey, year, team, selectedQuarter)
-                : null;
             if (!attachmentItem) {
                 return `
                     <div class="audit-lux-preview-card">
@@ -502,34 +579,39 @@
             const dataKey = category.dataKey;
             const { entryForm, now, teams, yearStart } = getAuditLuxWorkspaceState(dataKey);
             const selectedYear = Number(entryForm.year);
-            const selectedQuarter = Number(entryForm.quarter);
             const selectedTeam = String(entryForm.team || '').trim();
+            const selectedQuarter = selectedTeam
+                ? getAuditLuxSelectedAttachmentQuarter(dataKey, selectedYear, selectedTeam)
+                : Number(entryForm.quarter);
+            entryForm.quarter = selectedQuarter;
             const years = getAuditLuxYearRange(yearStart, now.year);
             const contentContainer = document.getElementById('content-container');
             contentContainer.innerHTML = `
-                <div class="audit-lux-shell is-file-index" data-audit-lux-workspace="${dataKey}">
+                <div class="audit-lux-shell is-team-view" data-audit-lux-workspace="${escapeHtml(dataKey)}" role="region" aria-label="조도 측정 자료">
                     <div class="audit-lux-window">
-                        <div class="audit-lux-window-header">
-                            <div class="audit-lux-window-brand" aria-hidden="true">
-                                <span class="audit-lux-window-icon"><i class="fa-solid fa-lightbulb"></i></span>
+                        <div class="audit-lux-team-workspace">
+                            <div class="audit-lux-selection">
+                                <h2 class="audit-lux-category-title">조도</h2>
+                                <label class="audit-lux-select-field" for="audit-lux-year-${escapeHtml(dataKey)}"><span>연도</span>
+                                    <select class="audit-select" id="audit-lux-year-${escapeHtml(dataKey)}" onchange="setAuditLuxWorkspaceYear('${escapeJs(dataKey)}', this.value)">
+                                        ${years.map((year) => `<option value="${year}" ${year === selectedYear ? 'selected' : ''}>${year}년</option>`).join('')}
+                                    </select>
+                                </label>
+                                <label class="audit-lux-select-field" for="audit-lux-team-${escapeHtml(dataKey)}"><span>팀</span>
+                                    <select class="audit-select" id="audit-lux-team-${escapeHtml(dataKey)}" onchange="setAuditLuxWorkspaceTeam('${escapeJs(dataKey)}', this.value)">
+                                        <option value="" ${selectedTeam ? '' : 'selected'}>팀을 선택하세요</option>
+                                        ${teams.map((team) => `<option value="${escapeHtml(team)}" ${team === selectedTeam ? 'selected' : ''}>${escapeHtml(team)}</option>`).join('')}
+                                    </select>
+                                </label>
+                                <p class="audit-lux-selection-hint">선택한 연도와 팀의 측정 자료를 확인합니다.</p>
                             </div>
-                            <div class="audit-lux-window-copy">
-                                <h2 class="audit-lux-window-title">조도</h2>
-                            </div>
-                        </div>
-                        <div class="audit-lux-workspace is-file-index">
-                            <div class="audit-lux-index-panel">
-                                <div class="audit-lux-index-year-list">
-                                    ${years.length
-                                        ? years.map((year) => renderAuditLuxYearSection(dataKey, year, teams)).join('')
-                                        : '<div class="audit-lux-index-empty">표시할 년도가 없습니다.</div>'}
-                                </div>
-                            </div>
+                            ${selectedTeam ? renderAuditLuxTeamContent(dataKey, selectedYear, selectedTeam)
+                                : '<div class="audit-lux-selection-empty"><strong>연도와 팀을 선택하세요.</strong><p>해당 팀의 조도 측정 자료와 분기별 완료 현황이 여기에 표시됩니다.</p></div>'}
                         </div>
                     </div>
                 </div>
             `;
-            syncAuditLuxDetachedPreview(dataKey, selectedYear, selectedTeam, selectedQuarter);
+            if (selectedTeam) syncAuditLuxDetachedPreview(dataKey, selectedYear, selectedTeam, selectedQuarter);
             if (typeof initAuditLuxPdfThumbnails === 'function') {
                 initAuditLuxPdfThumbnails(dataKey);
             }
@@ -538,6 +620,7 @@
 
         async function saveAuditLuxWorkspace(dataKey, options = {}) {
             if (!isAuditLuxDataKey(dataKey)) return false;
+            if (typeof isAuditLuxProgressSaving === 'function' && isAuditLuxProgressSaving(dataKey)) return false;
             const { entryForm } = getAuditLuxWorkspaceState(dataKey);
             const year = Number(entryForm.year);
             const team = String(entryForm.team || '').trim();
@@ -646,10 +729,8 @@
         }
 
         function openAuditLuxAttachmentPickerForTarget(dataKey, year, team, quarter = null) {
+            if (!isAuditLuxDataKey(dataKey) || isAuditLuxProgressSaving(dataKey)) return;
             const targetQuarter = normalizeAuditLuxAttachmentQuarter(year, quarter ?? getAuditLuxSelectedAttachmentQuarter(dataKey, year, team));
-            if (!setAuditLuxWorkspaceTarget(dataKey, year, team, { quarter: targetQuarter, render: false })) return;
-            const state = getAuditLuxAttachmentQuarterState(dataKey);
-            state[getAuditLuxAttachmentQuarterStateKey(year, team)] = targetQuarter;
             const inputId = getAuditLuxAttachmentInputId(dataKey, year, team, targetQuarter);
             const input = document.getElementById(inputId);
             if (input) {

@@ -11,6 +11,7 @@ test('section factory adapter registers factories and preserves data and work ca
   assert.equal(typeof factories.data, 'function');
   assert.equal(typeof factories.report, 'function');
   assert.equal(typeof factories.experiment, 'function');
+  assert.equal(typeof factories.kpi, 'function');
   assert.equal(typeof factories.owner, 'function');
   assert.equal(typeof registry.registerSections, 'function');
   assert.equal(context.window.KpiSectionFactoryAdapter.getBuilder('buildUtilityOverviewRatioContent'), null);
@@ -26,7 +27,7 @@ test('section factory adapter registers factories and preserves data and work ca
   assert.equal(typeof context.window.KpiUtilityEntryExperiment?.exitGraphFullscreen, 'function');
   assert.equal(typeof context.window.KpiUtilityEntryExperiment?.save, 'function');
 
-  assert.deepEqual(Object.keys(appData), ['work', 'data', 'report', 'experiment']);
+  assert.deepEqual(Object.keys(appData), ['work', 'data', 'report', 'experiment', 'kpi']);
   assert.equal(appData.owner, undefined);
   assert.equal(appData.work.name, '팀별내역서');
   assert.equal(appData.data.name, '데이터 관리');

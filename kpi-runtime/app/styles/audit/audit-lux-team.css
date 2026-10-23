@@ -1,0 +1,591 @@
+/* Selected-year, selected-team lux workspace. Legacy audit styles stay separate. */
+#main-scroll:has(> #content-container > .audit-lux-shell.is-team-view) {
+  padding: 0;
+}
+
+#content-container:has(> .audit-lux-shell.is-team-view) {
+  display: flex;
+  flex-direction: column;
+  border: 0;
+  animation: none;
+}
+
+.audit-lux-shell.is-team-view {
+  --audit-lux-page: #ffffff;
+  --audit-lux-surface: #ffffff;
+  --audit-lux-surface-muted: #fafafa;
+  --audit-lux-foreground: #262626;
+  --audit-lux-foreground-muted: #737373;
+  --audit-lux-border: #e5e5e5;
+  --audit-lux-border-strong: #a3a3a3;
+  --audit-lux-focus: #404040;
+  --audit-lux-complete: #3f6e50;
+  --audit-lux-complete-surface: #f2f7f3;
+  --audit-lux-incomplete: #946b26;
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  color: var(--audit-lux-foreground);
+  background: var(--audit-lux-page);
+}
+
+.audit-lux-shell.is-team-view *,
+.audit-lux-shell.is-team-view *::before,
+.audit-lux-shell.is-team-view *::after {
+  box-sizing: border-box;
+  animation: none;
+  transition: none;
+}
+
+.audit-lux-shell.is-team-view > .audit-lux-window {
+  width: 100%;
+  height: auto;
+  min-height: inherit;
+  grid-template-rows: minmax(0, 1fr);
+  border: 0;
+  border-radius: 0;
+  background: var(--audit-lux-surface);
+  overflow: visible;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-team-workspace {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  padding: 20px 24px 24px;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--audit-lux-border);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-category-title {
+  flex: 0 0 auto;
+  margin: 0 8px 9px 0;
+  color: var(--audit-lux-foreground);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-select-field {
+  display: grid;
+  flex: 0 1 168px;
+  min-width: 0;
+  gap: 8px;
+  color: var(--audit-lux-foreground);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-select-field:has(select[id^="audit-lux-team-"]) {
+  flex-basis: 240px;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-select-field select,
+.audit-lux-shell.is-team-view .audit-lux-completion-select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid var(--audit-lux-border-strong);
+  border-radius: 5px;
+  background: var(--audit-lux-surface);
+  color: var(--audit-lux-foreground);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  box-shadow: none;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-selection-hint {
+  flex: 1 1 240px;
+  margin: 0 0 11px;
+  color: var(--audit-lux-foreground-muted);
+  font-size: 13px;
+  line-height: 1.7;
+  word-break: keep-all;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-selection-empty,
+.audit-lux-shell.is-team-view .audit-lux-document-empty {
+  display: grid;
+  min-width: 0;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-selection-empty {
+  flex: 1;
+  min-height: 320px;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-selection-empty strong,
+.audit-lux-shell.is-team-view .audit-lux-document-empty strong {
+  color: var(--audit-lux-foreground);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.6;
+  word-break: keep-all;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-selection-empty p,
+.audit-lux-shell.is-team-view .audit-lux-document-empty p {
+  max-width: 420px;
+  margin: 0;
+  color: var(--audit-lux-foreground-muted);
+  font-size: 14px;
+  line-height: 1.8;
+  word-break: keep-all;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-team-content {
+  min-width: 0;
+  padding-top: 20px;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-team-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-team-heading {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-eyebrow {
+  color: var(--audit-lux-foreground-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-team-heading h3 {
+  margin: 0;
+  color: var(--audit-lux-foreground);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.45;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-completion {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 5px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-completion strong {
+  color: var(--audit-lux-foreground);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-completion span {
+  color: var(--audit-lux-foreground-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-completion.is-complete strong {
+  color: var(--audit-lux-complete);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-completion.is-incomplete strong {
+  color: var(--audit-lux-incomplete);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-completion-bar {
+  display: block;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  margin: 14px 0;
+  border: 0;
+  border-radius: 3px;
+  background: var(--audit-lux-border);
+  color: var(--audit-lux-complete);
+  overflow: hidden;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-completion-bar::-webkit-progress-bar {
+  border-radius: 3px;
+  background: var(--audit-lux-border);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-completion-bar::-webkit-progress-value {
+  border-radius: 3px;
+  background: var(--audit-lux-complete);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-completion-bar::-moz-progress-bar {
+  border-radius: 3px;
+  background: var(--audit-lux-complete);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-progress-field,
+.audit-lux-shell.is-team-view .audit-lux-progress-field label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-progress-field {
+  min-width: 0;
+  margin-bottom: 18px;
+  color: var(--audit-lux-foreground-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-progress-field label > span {
+  color: var(--audit-lux-foreground);
+  font-weight: 500;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-completion-select {
+  width: 180px;
+  min-height: 38px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-save-feedback {
+  min-width: 0;
+  color: var(--audit-lux-foreground-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-save-feedback.is-error {
+  color: #b91c1c;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-button {
+  display: grid;
+  min-width: 0;
+  min-height: 88px;
+  align-content: start;
+  gap: 5px;
+  padding: 12px 14px;
+  border: 1px solid var(--audit-lux-border);
+  border-radius: 6px;
+  background: var(--audit-lux-quarter-surface, var(--audit-lux-surface));
+  color: var(--audit-lux-foreground);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-button:hover:not(:disabled) {
+  border-color: var(--audit-lux-border-strong);
+  background: var(--audit-lux-quarter-surface, var(--audit-lux-surface-muted));
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-button.is-selected,
+.audit-lux-shell.is-team-view .audit-lux-quarter-button.is-selected:hover:not(:disabled) {
+  border-color: var(--audit-lux-foreground);
+  outline: 1px solid var(--audit-lux-foreground);
+  outline-offset: -1px;
+  background: var(--audit-lux-quarter-surface, var(--audit-lux-surface-muted));
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-name {
+  color: var(--audit-lux-foreground-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-state {
+  color: var(--audit-lux-foreground);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-button.is-complete {
+  --audit-lux-quarter-surface: var(--audit-lux-complete-surface);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-button.is-complete .audit-lux-quarter-state {
+  color: var(--audit-lux-complete);
+  font-weight: 700;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-button.is-incomplete .audit-lux-quarter-state {
+  color: var(--audit-lux-incomplete);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-evidence {
+  color: var(--audit-lux-foreground-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-button:disabled {
+  background: var(--audit-lux-surface-muted);
+  cursor: default;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-quarter-button:disabled .audit-lux-quarter-state {
+  color: var(--audit-lux-foreground-muted);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document {
+  min-width: 0;
+  border: 1px solid var(--audit-lux-border);
+  border-radius: 7px;
+  background: var(--audit-lux-surface);
+  overflow: hidden;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-head {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  padding: 16px;
+  border-bottom: 1px solid var(--audit-lux-border);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-head > div:first-child {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-head h4 {
+  margin: 0;
+  color: var(--audit-lux-foreground);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-head p {
+  margin: 5px 0 0;
+  color: var(--audit-lux-foreground-muted);
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-actions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-action {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 11px;
+  border: 1px solid var(--audit-lux-border);
+  border-radius: 5px;
+  background: var(--audit-lux-surface);
+  color: var(--audit-lux-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-action.is-primary {
+  border-color: var(--audit-lux-foreground);
+  background: var(--audit-lux-foreground);
+  color: var(--audit-lux-surface);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-action:hover:not(:disabled) {
+  border-color: var(--audit-lux-border-strong);
+  background: var(--audit-lux-surface-muted);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-action.is-primary:hover:not(:disabled) {
+  border-color: var(--audit-lux-focus);
+  background: var(--audit-lux-focus);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-action:disabled,
+.audit-lux-shell.is-team-view .audit-lux-completion-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.audit-lux-shell.is-team-view select:focus-visible,
+.audit-lux-shell.is-team-view button:focus-visible,
+.audit-lux-shell.is-team-view a:focus-visible {
+  outline: 2px solid var(--audit-lux-focus);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-stage {
+  display: grid;
+  min-width: 0;
+  min-height: 540px;
+  background: var(--audit-lux-surface-muted);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-frame {
+  display: block;
+  width: 100%;
+  height: 620px;
+  min-width: 0;
+  border: 0;
+  background: var(--audit-lux-surface);
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-image-link {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  cursor: zoom-in;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-image {
+  display: block;
+  width: 100%;
+  height: 600px;
+  max-width: 100%;
+  object-fit: contain;
+  image-orientation: from-image;
+}
+
+.audit-lux-shell.is-team-view .audit-lux-document-empty {
+  min-height: 280px;
+  background: var(--audit-lux-surface-muted);
+}
+
+@media (max-width: 760px) {
+  .audit-lux-shell.is-team-view {
+    padding: 0;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-team-workspace {
+    padding: 16px;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-selection {
+    gap: 16px 12px;
+    padding-bottom: 18px;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-selection-hint {
+    flex-basis: 100%;
+    margin: 0;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-team-content {
+    padding-top: 18px;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-team-heading h3 {
+    font-size: 20px;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-quarter-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-document-head {
+    padding: 16px;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-document-actions {
+    flex-basis: 100%;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-document-stage {
+    min-height: 360px;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-document-frame {
+    height: 500px;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-document-image-link {
+    padding: 10px;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-document-image {
+    height: 420px;
+  }
+}
+
+@media (max-width: 480px) {
+  .audit-lux-shell.is-team-view .audit-lux-team-workspace {
+    padding: 14px 12px 20px;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-category-title {
+    flex-basis: 100%;
+    margin: 0;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-select-field,
+  .audit-lux-shell.is-team-view .audit-lux-select-field:has(select[id^="audit-lux-team-"]) {
+    flex: 1 1 100%;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-team-summary {
+    align-items: start;
+    gap: 14px;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-completion {
+    text-align: left;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-quarter-button {
+    min-height: 88px;
+    padding: 12px 14px;
+  }
+
+  .audit-lux-shell.is-team-view .audit-lux-selection-empty,
+  .audit-lux-shell.is-team-view .audit-lux-document-empty {
+    padding: 32px 16px;
+  }
+}

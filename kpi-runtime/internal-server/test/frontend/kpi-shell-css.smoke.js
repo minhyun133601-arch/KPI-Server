@@ -30,7 +30,8 @@ const dashboardChunkImports = [
   './dashboard/02-panels.css',
   './dashboard/03-override-stage-one.css',
   './dashboard/04-override-stage-two.css',
-  './dashboard/05-experiment-composer.css',
+  './dashboard/05-experiment-composer.css?v=2',
+  './dashboard/06-energy-kpi.css?v=6',
 ];
 
 function getCssImports(source) {
@@ -70,8 +71,8 @@ async function resolveCssImports(filePath, ancestorPaths = []) {
 
 const styleEntries = [
   {
-    href: `${runtimeDirName}/app/styles/shell/dashboard.css?v=108`,
-    manifestHref: './styles/shell/dashboard.css?v=108',
+    href: `${runtimeDirName}/app/styles/shell/dashboard.css?v=115`,
+    manifestHref: './styles/shell/dashboard.css?v=115',
     fileName: 'dashboard.css',
     relativeSegments: ['shell', 'dashboard.css'],
   },
@@ -106,8 +107,8 @@ const styleEntries = [
     relativeSegments: ['metering', 'metering.css'],
   },
   {
-    href: `${runtimeDirName}/app/styles/audit/audit.css?v=077`,
-    manifestHref: './styles/audit/audit.css?v=077',
+    href: `${runtimeDirName}/app/styles/audit/audit.css?v=081`,
+    manifestHref: './styles/audit/audit.css?v=081',
     fileName: 'audit.css',
     relativeSegments: ['audit', 'audit.css'],
   },
@@ -307,7 +308,7 @@ test('dashboard compatibility facade keeps recursive chunks ordered and bounded'
   );
   assert.deepEqual(
     resolvedDashboard.importedFiles,
-    dashboardChunkImports.map((importPath) => path.resolve(path.dirname(dashboardFacadePath), importPath)),
+    dashboardChunkImports.map((importPath) => path.resolve(path.dirname(dashboardFacadePath), importPath.replace(/[?#].*$/, ''))),
     'dashboard recursive import traversal must resolve every documented chunk in order'
   );
   assert.equal(
@@ -318,7 +319,7 @@ test('dashboard compatibility facade keeps recursive chunks ordered and bounded'
   assert.ok(countCssLines(resolvedDashboard.source) < 100, 'dashboard facade must stay below 100 lines');
 
   for (const importPath of dashboardChunkImports) {
-    const chunkPath = path.resolve(path.dirname(dashboardFacadePath), importPath);
+    const chunkPath = path.resolve(path.dirname(dashboardFacadePath), importPath.replace(/[?#].*$/, ''));
     assert.equal(path.dirname(chunkPath), dashboardChunkRoot, `${importPath} must stay in the dashboard chunk directory`);
     const chunkStat = await fs.stat(chunkPath);
     const chunkSource = await fs.readFile(chunkPath, 'utf8');
@@ -512,51 +513,7 @@ test('split shell css keeps key selectors in the expected files', () => {
     /\.audit-lux-fullscreen-toggle\s*\{[^}]*width:\s*38px;[^}]*height:\s*38px;[^}]*border-radius:\s*7px;/s
   );
   assert.match(
-    styleContents['audit.css'],
-    /\.audit-lux-index-year-list\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*360px\);[^}]*gap:\s*10px;/s
-  );
-  assert.match(
-    styleContents['audit.css'],
-    /\.audit-lux-index-card\s*\{[^}]*min-height:\s*128px;[^}]*grid-template-columns:\s*118px\s*240px;[^}]*border-radius:\s*0;/s
-  );
-  assert.match(
-    styleContents['audit.css'],
-    /\.audit-lux-index-team-cell strong\s*\{[^}]*white-space:\s*normal;[^}]*text-overflow:\s*clip;[^}]*word-break:\s*keep-all;/s
-  );
-  assert.match(
-    styleContents['audit.css'],
-    /\.audit-lux-index-team-tools\s*\{[^}]*grid-template-columns:\s*92px;[^}]*gap:\s*4px;/s
-  );
-  assert.match(
-    styleContents['audit.css'],
-    /\.audit-lux-index-card-media-link\s*\{[^}]*cursor:\s*zoom-in;[^}]*text-decoration:\s*none;/s
-  );
-  assert.match(
-    styleContents['audit.css'],
-    /\.audit-lux-progress-select\s*\{[^}]*width:\s*92px;[^}]*min-height:\s*28px;[^}]*font-size:\s*0\.74rem;/s
-  );
-  assert.match(
-    styleContents['audit.css'],
-    /\.audit-lux-index-card-media\s*\{[^}]*height:\s*112px;/s
-  );
-  assert.match(
-    styleContents['audit.css'],
-    /\.audit-lux-icon-action\s*\{[^}]*width:\s*92px;[^}]*height:\s*28px;/s
-  );
-  assert.match(
-    styleContents['audit.css'],
-    /\.audit-lux-index-empty-thumb\s*\{[^}]*font-size:\s*0\.8rem;[^}]*font-weight:\s*900;/s
-  );
-  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-summary\s*\{/);
-  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-card-status\s*\{/);
-  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-card-quarter-select\s*\{/);
-  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-card-actions\s*\{/);
-  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-grid-head\s*\{/);
-  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-inline-actions\s*\{/);
-  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-year-badge\s*\{/);
-  assert.doesNotMatch(styleContents['audit.css'], /\.audit-lux-index-team-icon\s*\{/);
-  assert.doesNotMatch(styleContents['audit.css'], /audit-lux-index-card\s*\{\s*grid-template-rows:\s*150px\s*auto\s*auto/);
-  assert.match(styleContents['status-team-marks.css'], /\.audit-lux-index-team-cell \.audit-lux-index-team-label\s*,[\s\S]*\.kpi-team-display\s*\{/);
+    styleContents['status-team-marks.css'], /\.audit-lux-index-team-cell \.audit-lux-index-team-label\s*,[\s\S]*\.kpi-team-display\s*\{/);
   assert.match(styleContents['status-team-marks.css'], /\.kpi-team-display-icon\s*\{[^}]*width:\s*24px[^}]*height:\s*24px[^}]*background:\s*color-mix\(in srgb, var\(--kpi-team-accent\) 8%, #ffffff\)/s);
   assert.match(styleContents['status-team-marks.css'], /\.kpi-team-display-icon svg\s*\{[^}]*width:\s*16px[^}]*height:\s*16px/s);
   assert.match(styleContents['status-team-marks.css'], /--kpi-team-4:\s*#dc2626;/);
@@ -570,6 +527,38 @@ test('split shell css keeps key selectors in the expected files', () => {
   assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-status\.is-complete,[\s\S]*\.audit-lux-progress-select\.is-complete\s*\{/);
   assert.match(styleContents['status-team-marks.css'], /\.work-history-app \.work-history-experiment-status\.is-incomplete,[\s\S]*\.audit-lux-progress-select\.is-incomplete\s*\{/);
   assert.match(styleContents['status-team-marks.css'], /\.audit-lux-progress-select\.is-progress\s*\{/);
+});
+
+test('audit lux team workspace scopes its selection progress and responsive document layout', async () => {
+  const teamCss = await fs.readFile(path.join(stylesRoot, 'audit', 'audit-lux-team.css'), 'utf8');
+  const auditFacade = await fs.readFile(path.join(stylesRoot, 'audit', 'audit.css'), 'utf8');
+  assert.match(auditFacade, /@import\s+url\(["']\.\/audit-lux-team\.css\?v=4["']\)/);
+  assert.match(teamCss, /\.audit-lux-shell\.is-team-view\s+\.audit-lux-team-workspace\s*\{/);
+  assert.match(teamCss, /\.audit-lux-shell\.is-team-view\s+\.audit-lux-quarter-list\s*\{/);
+  assert.match(teamCss, /\.audit-lux-shell\.is-team-view\s+button:focus-visible/);
+  assert.match(teamCss, /\.audit-lux-shell\.is-team-view\s+\.audit-lux-document\s*\{/);
+  assert.match(
+    teamCss,
+    /\.audit-lux-shell\.is-team-view\s+\.audit-lux-quarter-button\.is-complete\s*\{[^}]*--audit-lux-quarter-surface:\s*var\(--audit-lux-complete-surface\);/s
+  );
+  assert.match(
+    teamCss,
+    /\.audit-lux-shell\.is-team-view\s+\.audit-lux-quarter-button\.is-complete\s+\.audit-lux-quarter-state\s*\{[^}]*color:\s*var\(--audit-lux-complete\);/s
+  );
+  assert.match(
+    teamCss,
+    /\.audit-lux-shell\.is-team-view\s+\.audit-lux-quarter-button\.is-incomplete\s+\.audit-lux-quarter-state\s*\{[^}]*color:\s*var\(--audit-lux-incomplete\);/s
+  );
+  assert.match(
+    teamCss,
+    /\.audit-lux-quarter-button\.is-selected:hover:not\(:disabled\)\s*\{[^}]*outline:\s*1px solid var\(--audit-lux-foreground\);[^}]*background:\s*var\(--audit-lux-quarter-surface,/s
+  );
+  assert.match(
+    teamCss,
+    /\.audit-lux-quarter-button:disabled\s+\.audit-lux-quarter-state\s*\{[^}]*color:\s*var\(--audit-lux-foreground-muted\);/s
+  );
+  assert.match(teamCss, /@media\s*\(max-width:[^)]+\)[\s\S]*\.audit-lux-shell\.is-team-view/);
+  assert.doesNotMatch(teamCss, /(?:^|\})\s*\.audit-lux-(?:quarter|document|completion|team)-[^{}]*\{/);
 });
 
 test('utility sheet report modal stays above the viewer layer', () => {

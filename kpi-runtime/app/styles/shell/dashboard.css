@@ -2,4 +2,5 @@
 @import url("./dashboard/02-panels.css");
 @import url("./dashboard/03-override-stage-one.css");
 @import url("./dashboard/04-override-stage-two.css");
-@import url("./dashboard/05-experiment-composer.css");
+@import url("./dashboard/05-experiment-composer.css?v=2");
+@import url("./dashboard/06-energy-kpi.css?v=6");

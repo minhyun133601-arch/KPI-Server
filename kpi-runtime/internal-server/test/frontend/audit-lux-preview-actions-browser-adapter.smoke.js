@@ -148,6 +148,39 @@ test('audit lux preview actions use adapter popout fallback when the popup is bl
   assert.match(context.toast, /./);
 });
 
+test('audit lux detached preview and blocked-popup fallback use the latest cumulative document', () => {
+  for (const blockedPopup of [false, true]) {
+    const context = createPreviewActionsContext({ blockedPopup });
+    const cumulativeCalls = [];
+    const evidence = {
+      year: 2026, quarter: 3, fileName: 'cumulative-q3.png',
+      viewUrl: '/files/cumulative-q3.png', downloadUrl: '/download/cumulative-q3.png',
+    };
+    context.getAuditLuxCumulativeEvidenceItem = (...args) => {
+      cumulativeCalls.push(args);
+      return evidence;
+    };
+    context.getAuditLuxYearEvidenceItem = () => { assert.fail('cumulative previews must not use the exact-quarter lookup'); };
+    context.normalizeAuditLuxEvidenceQuarter = (yearOrItem, quarter) => (
+      typeof yearOrItem === 'object' ? yearOrItem.quarter : Number(quarter)
+    );
+    context.getAuditEvidenceViewUrl = (item) => item?.viewUrl || '';
+    context.getAuditEvidenceDownloadUrl = (item) => item?.downloadUrl || '';
+
+    context.openAuditLuxDetachedPreview('audit_lux');
+
+    assert.deepEqual(cumulativeCalls, [['audit_lux', 2026, 'A team', 2]]);
+    if (blockedPopup) {
+      assert.deepEqual(context.openCalls[1], ['/files/cumulative-q3.png', '_blank', 'noopener']);
+    } else {
+      assert.match(context.popup.html, /2026년 3분기/);
+      assert.match(context.popup.html, /cumulative-q3\.png/);
+      const state = context.KpiAuditRecordsBrowserAdapter.getRootState('__auditLuxDetachedPreviewState');
+      assert.equal(state.quarter, 2, 'preview selection must retain the requested quarter while its title identifies the source');
+    }
+  }
+});
+
 test('audit lux preview actions load after detached preview and avoid direct browser globals', () => {
   const adapterScript = 'audit/runtime/audit/records/KPI.audit.records.browser-adapter.js';
   const detachedScript = 'audit/runtime/audit/records/KPI.audit.records.lux-detached-preview.js';
